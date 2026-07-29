@@ -33,7 +33,6 @@
 #include <string>
 #include <vector>
 
-#include "Async/async.h"
 #include "Auth/AuthMode.h"
 #include "Auth/Permissions.h"
 #include "Auth/Rbac/Service.h"
@@ -90,23 +89,19 @@ struct MockService : rbac::Service {
     std::string resource;
   };
 
-  std::vector<Query> queries;
-  Result answer{};  // returned from every check(); {} == ok
+  std::vector<Query> queries;  // all pairs, flattened across all check() calls
+  int checkCalls = 0;          // number of check() invocations
+  Result answer{};             // returned from every check(); {} == ok
 
-  auto check(Token /*token*/, rbac::Action action,
-             rbac::Resource const& resource) noexcept -> Result override {
-    queries.push_back({action, resourceStr(resource)});
+  auto check(rbac::JwtToken const& /*token*/,
+             std::span<rbac::ActionResource const> qs) noexcept
+      -> Result override {
+    ++checkCalls;
+    for (auto const& q : qs) {
+      queries.push_back({q.action, resourceStr(q.resource)});
+    }
+
     return answer;
-  }
-
-  // The async batch interface is not exercised by these tests; stub it out.
-  auto mayImpl(User, std::vector<AuthorizationQuery>) noexcept
-      -> async<ResultT<bool>> override {
-    co_return ResultT<bool>{true};
-  }
-  auto maySyncImpl(User, std::vector<AuthorizationQuery>) noexcept
-      -> ResultT<bool> override {
-    return {true};
   }
 };
 
@@ -226,6 +221,7 @@ TEST_F(RbacAuthModeTest, CreateViewChecksViewThenLinkedCollections) {
   EXPECT_TRUE(check(p::CreateView{
                         .db = "mydb", .name = "v", .linkedCollections = links})
                   .ok());
+  EXPECT_EQ(svc.checkCalls, 1);  // view + linked collections in one batch
   ASSERT_EQ(svc.queries.size(), 3u);
   EXPECT_EQ(svc.queries[0].action, rbac::Action::Create);
   EXPECT_EQ(svc.queries[0].resource, "view:mydb:v");
@@ -238,6 +234,7 @@ TEST_F(RbacAuthModeTest, CreateViewChecksViewThenLinkedCollections) {
 TEST_F(RbacAuthModeTest, ModifyViewChecksViewThenLinkedCollections) {
   std::vector<std::string> links{"c1"};
   check(p::ModifyView{.db = "mydb", .name = "v", .linkedCollections = links});
+  EXPECT_EQ(svc.checkCalls, 1);
   ASSERT_EQ(svc.queries.size(), 2u);
   EXPECT_EQ(svc.queries[0].action, rbac::Action::WriteMeta);
   EXPECT_EQ(svc.queries[0].resource, "view:mydb:v");
@@ -315,6 +312,7 @@ TEST_F(RbacAuthModeTest, CreateGraphChecksGraphThenChildCollections) {
                        .name = "g",
                        .collectionNamesToCreate = toCreate,
                        .collectionNamesToRead = toRead});
+  EXPECT_EQ(svc.checkCalls, 1);  // graph + child collections in one batch
   ASSERT_EQ(svc.queries.size(), 3u);
   EXPECT_EQ(svc.queries[0].action, rbac::Action::Create);
   EXPECT_EQ(svc.queries[0].resource, "graph:mydb:g");
@@ -327,6 +325,7 @@ TEST_F(RbacAuthModeTest, CreateGraphChecksGraphThenChildCollections) {
 TEST_F(RbacAuthModeTest, DropGraphChecksGraphThenListedCollections) {
   std::vector<std::string> colls{"c1", "c2"};
   check(p::DropGraph{.db = "mydb", .name = "g", .collectionNames = colls});
+  EXPECT_EQ(svc.checkCalls, 1);  // graph + listed collections in one batch
   ASSERT_EQ(svc.queries.size(), 3u);
   EXPECT_EQ(svc.queries[0].action, rbac::Action::Drop);
   EXPECT_EQ(svc.queries[0].resource, "graph:mydb:g");
@@ -455,9 +454,11 @@ TEST_F(RbacAuthModeTest, DeniedResultIsPropagated) {
   EXPECT_EQ(r.errorNumber(), TRI_ERROR_FORBIDDEN);
 }
 
-TEST_F(RbacAuthModeTest, CompositeCheckShortCircuitsOnFirstDenial) {
-  // If the graph resource check is denied, the child-collection checks must not
-  // be attempted.
+TEST_F(RbacAuthModeTest, CompositeCheckIsSentAsOneBatchAndDenialPropagates) {
+  // A composite permission is evaluated as a single batch: all pairs are sent
+  // together in one Service::check() call (one network round-trip), and the
+  // service's denial is propagated. It is the service's job to decide the batch
+  // as a whole; the auth mode does not pre-filter pairs.
   svc.answer = {TRI_ERROR_FORBIDDEN, "nope"};
   std::vector<std::string> toCreate{"cc"};
   std::vector<std::string> toRead{"cr"};
@@ -466,8 +467,11 @@ TEST_F(RbacAuthModeTest, CompositeCheckShortCircuitsOnFirstDenial) {
                                 .collectionNamesToCreate = toCreate,
                                 .collectionNamesToRead = toRead});
   EXPECT_EQ(r.errorNumber(), TRI_ERROR_FORBIDDEN);
-  ASSERT_EQ(svc.queries.size(), 1u);
+  EXPECT_EQ(svc.checkCalls, 1);
+  ASSERT_EQ(svc.queries.size(), 3u);
   EXPECT_EQ(svc.queries[0].resource, "graph:mydb:g");
+  EXPECT_EQ(svc.queries[1].resource, "collection:mydb:cc");
+  EXPECT_EQ(svc.queries[2].resource, "collection:mydb:cr");
 }
 
 }  // namespace

@@ -26,7 +26,7 @@
 
 namespace arangodb {
 
-void MaxMapCountOptionsProvider::declareOptions(
+void MaxMapCountOptionsProvider::declareOptionsImpl(
     std::shared_ptr<options::ProgramOptions> options,
     MaxMapCountFeatureOptions& /*opts*/) {
   options->addObsoleteOption(

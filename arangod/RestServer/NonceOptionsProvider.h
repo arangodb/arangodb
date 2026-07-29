@@ -24,17 +24,16 @@
 
 #include "ApplicationFeatures/OptionsProvider.h"
 
-namespace arangodb::options {
-class ProgramOptions;
-}
-
 namespace arangodb {
 
 struct NonceFeatureOptions {};
 
-struct NonceOptionsProvider : OptionsProvider<NonceFeatureOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      NonceFeatureOptions& options) override;
+struct NonceOptionsProvider
+    : OptionsProviderImpl<NonceOptionsProvider, NonceFeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          NonceFeatureOptions& options);
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
+                           NonceFeatureOptions& /*options*/){};
 };
 
 }  // namespace arangodb

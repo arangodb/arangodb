@@ -97,70 +97,6 @@ network::Response makeNetworkResponse(fuerte::StatusCode statusCode,
 // Tests
 // ---------------------------------------------------------------------------
 
-TEST(RbacBackendTest, evaluateMany_sendsCorrectRequestAndParsesResponse) {
-  auto responseJson = buildAllowResponseJson({rbac::Backend::Effect::Allow});
-
-  auto sendRequestMock = [&](network::DestinationId const& dest,
-                             fuerte::RestVerb verb, std::string const& path,
-                             velocypack::Buffer<uint8_t> const& payload,
-                             network::RequestOptions const& opts,
-                             network::Headers const&) -> network::FutureRes {
-    EXPECT_EQ(dest, "http://localhost:8080");
-    EXPECT_EQ(verb, fuerte::RestVerb::Post);
-    EXPECT_EQ(path, "/_integration/authorization/v1/evaluate-many");
-    EXPECT_EQ(opts.contentType, "application/json; charset=utf-8");
-    EXPECT_EQ(opts.acceptType, "application/json; charset=utf-8");
-    EXPECT_EQ(normalizeJson(payloadToString(payload)), normalizeJson(R"({
-                    "user": "alice",
-                    "roles": ["admin"],
-                    "items": [{
-                      "action": "db:ReadDatabase",
-                      "resource": "db:database:mydata",
-                      "context": {
-                        "parameters": { "attribute": { "values": [] } }
-                      }
-                    }]
-                  })"));
-    return makeNetworkResponse(fuerte::StatusOK, responseJson);
-  };
-
-  auto testee = rbac::BackendImpl{sendRequestMock, "http://localhost:8080"};
-
-  auto result =
-      testee
-          .evaluateMany(
-              rbac::Backend::PlainUser{.username = "alice", .roles = {"admin"}},
-              rbac::Backend::RequestItems{.items = {rbac::Backend::RequestItem{
-                                              .action = "db:ReadDatabase",
-                                              .resource = "db:database:mydata",
-                                              .attributeValues = {}}}})
-          .waitAndGet();
-
-  ASSERT_TRUE(result.ok());
-  EXPECT_EQ(result.get().effect, rbac::Backend::Effect::Allow);
-  ASSERT_EQ(result.get().items.size(), 1u);
-  EXPECT_EQ(result.get().items[0].effect, rbac::Backend::Effect::Allow);
-}
-
-TEST(RbacBackendTest, evaluateMany_returnsErrorOnNonOkHttpStatus) {
-  auto sendRequestMock =
-      [](network::DestinationId const&, fuerte::RestVerb, std::string const&,
-         velocypack::Buffer<uint8_t> const&, network::RequestOptions const&,
-         network::Headers const&) -> network::FutureRes {
-    return makeNetworkResponse(fuerte::StatusForbidden);
-  };
-  auto testee =
-      rbac::BackendImpl{std::move(sendRequestMock), "http://localhost:8080"};
-
-  auto result = testee
-                    .evaluateMany(rbac::Backend::PlainUser{.username = "alice",
-                                                           .roles = {}},
-                                  rbac::Backend::RequestItems{})
-                    .waitAndGet();
-
-  EXPECT_FALSE(result.ok());
-}
-
 TEST(RbacBackendTest, evaluateTokenMany_sendsCorrectRequestAndParsesResponse) {
   auto responseJson = buildAllowResponseJson();
 
@@ -182,11 +118,11 @@ TEST(RbacBackendTest, evaluateTokenMany_sendsCorrectRequestAndParsesResponse) {
   };
   auto testee = rbac::BackendImpl{sendRequestMock, "http://localhost:8080"};
 
-  auto result = testee
-                    .evaluateTokenMany(
-                        rbac::Backend::JwtToken{.jwtToken = "my.jwt.token"},
-                        rbac::Backend::RequestItems{})
-                    .waitAndGet();
+  auto result =
+      testee
+          .evaluateTokenMany(rbac::JwtToken{.jwtToken = "my.jwt.token"},
+                             rbac::Backend::RequestItems{})
+          .waitAndGet();
 
   ASSERT_TRUE(result.ok());
   EXPECT_EQ(result.get().effect, rbac::Backend::Effect::Allow);
@@ -203,36 +139,12 @@ TEST(RbacBackendTest, evaluateTokenMany_returnsErrorOnNonOkHttpStatus) {
   auto testee =
       rbac::BackendImpl{std::move(sendRequestMock), "http://localhost:8080"};
 
-  auto result =
-      testee
-          .evaluateTokenMany(rbac::Backend::JwtToken{.jwtToken = "bad.token"},
-                             rbac::Backend::RequestItems{})
-          .waitAndGet();
+  auto result = testee
+                    .evaluateTokenMany(rbac::JwtToken{.jwtToken = "bad.token"},
+                                       rbac::Backend::RequestItems{})
+                    .waitAndGet();
 
   EXPECT_FALSE(result.ok());
-}
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-
-TEST(RbacBackendTest, evaluateManySync_setsSkipSchedulerAndReturnsResult) {
-  auto responseJson = buildAllowResponseJson();
-
-  auto sendRequestMock = [&](network::DestinationId const&, fuerte::RestVerb,
-                             std::string const&,
-                             velocypack::Buffer<uint8_t> const&,
-                             network::RequestOptions const& opts,
-                             network::Headers const&) -> network::FutureRes {
-    EXPECT_TRUE(opts.skipScheduler);
-    return makeNetworkResponse(fuerte::StatusOK, responseJson);
-  };
-  auto testee = rbac::BackendImpl{sendRequestMock, "http://localhost:8080"};
-
-  auto result = testee.evaluateManySync(
-      rbac::Backend::PlainUser{.username = "alice", .roles = {}},
-      rbac::Backend::RequestItems{});
-
-  EXPECT_TRUE(result.ok());
 }
 
 TEST(RbacBackendTest, evaluateTokenManySync_setsSkipSchedulerAndReturnsResult) {
@@ -248,11 +160,9 @@ TEST(RbacBackendTest, evaluateTokenManySync_setsSkipSchedulerAndReturnsResult) {
   };
   auto testee = rbac::BackendImpl{sendRequestMock, "http://localhost:8080"};
 
-  auto result = testee.evaluateTokenManySync(
-      rbac::Backend::JwtToken{.jwtToken = "my.jwt.token"},
-      rbac::Backend::RequestItems{});
+  auto result =
+      testee.evaluateTokenManySync(rbac::JwtToken{.jwtToken = "my.jwt.token"},
+                                   rbac::Backend::RequestItems{});
 
   EXPECT_TRUE(result.ok());
 }
-
-#pragma GCC diagnostic pop

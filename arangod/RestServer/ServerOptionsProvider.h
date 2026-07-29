@@ -25,15 +25,14 @@
 #include "ApplicationFeatures/OptionsProvider.h"
 #include "RestServer/ServerFeatureOptions.h"
 
-namespace arangodb::options {
-class ProgramOptions;
-}
-
 namespace arangodb {
 
-struct ServerOptionsProvider : OptionsProvider<ServerFeatureOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      ServerFeatureOptions& options) override;
+struct ServerOptionsProvider
+    : OptionsProviderImpl<ServerOptionsProvider, ServerFeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          ServerFeatureOptions& options);
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
+                           ServerFeatureOptions& options);
 };
 
 }  // namespace arangodb

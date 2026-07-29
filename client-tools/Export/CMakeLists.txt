@@ -1,5 +1,6 @@
 add_executable(${BIN_ARANGOEXPORT}
   ${ProductVersionFiles_arangoexport}
+  ArangoExportServer.cpp
   ExportFeature.cpp
   ExportOptionsProvider.cpp
   arangoexport.cpp

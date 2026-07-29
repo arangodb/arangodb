@@ -190,7 +190,6 @@ set(ARANGODB_TESTS_SOURCES
   # Auth/RbacIntegrationTest.cpp
   Auth/RbacSerializationTest.cpp
   Auth/SmockerClient.cpp
-  Auth/RbacServiceTest.cpp
   Auth/RbacServiceImplTest.cpp
   Auth/UserManagerClusterTest.cpp
   Auth/UserManagerTest.cpp

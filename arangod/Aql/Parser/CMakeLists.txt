@@ -1,4 +1,5 @@
 target_sources(arango_aql PRIVATE
+  LazyConditions.cpp
   Parser.cpp
   ${BISON_AqlGrammar_OUTPUT_SOURCE}
   ${FLEX_AqlTokens_OUTPUTS})

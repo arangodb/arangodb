@@ -196,6 +196,26 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
   revokeWildcardRequest.addSuffix("*");
   revokeWildcardRequest.setRequestType(arangodb::rest::RequestType::DELETE_REQ);
 
+  auto testUserExists = [&]() { return userManager->userExists(userName); };
+  auto giveUserAdmin = [&]() {
+    userManager->updateUser(
+        userName,
+        [](arangodb::auth::User& user) -> arangodb::Result {
+          user.grantDatabase("_system", arangodb::auth::Level::RW);
+          return {};
+        },
+        arangodb::auth::UserManager::RetryOnConflict::No);
+  };
+  auto takeUserAdmin = [&]() {
+    userManager->updateUser(
+        userName,
+        [](arangodb::auth::User& user) -> arangodb::Result {
+          user.removeDatabase("_system");
+          return {};
+        },
+        arangodb::auth::UserManager::RetryOnConflict::No);
+  };
+
   auto execCtxBundle = arangodb::tests::mocks::makeClassicExecContextFrom(
       *userManager, userName);
   auto execContext = execCtxBundle.execContext;
@@ -203,27 +223,18 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
 
   // test auth missing (grant)
   {
-    arangodb::auth::UserMap userMap;
-    arangodb::auth::User* userPtr = nullptr;
-    userManager->setAuthInfo(userMap);  // insure an empty map is set before
-                                        // UserManager::storeUser(...)
+    userManager->removeAllUsers();
     userManager->storeUser(false, userName, arangodb::StaticStrings::Empty,
                            true, arangodb::velocypack::Slice());
-    userManager->accessUser(
-        userName,
-        [&userPtr](arangodb::auth::User const& user) -> arangodb::Result {
-          userPtr = const_cast<arangodb::auth::User*>(&user);
-          return arangodb::Result();
-        });
-    ASSERT_NE(nullptr, userPtr);
-    userPtr->grantDatabase("_system", arangodb::auth::Level::RW);
+    ASSERT_TRUE(testUserExists());
 
-    // Since we have _system RW access, we will have access to this collection!
     EXPECT_TRUE(execContext
                     ->canUseCollection(vocbase->name(), "testDataSource",
                                        arangodb::CollectionAccessLevel::Read)
-                    .ok());
+                    .fail());
+    giveUserAdmin();
     auto status = grantHandler.execute();
+    takeUserAdmin();
     EXPECT_EQ(arangodb::RestStatus::DONE, status);
     EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND,
               grantResponce.responseCode());
@@ -243,35 +254,29 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
                      ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
                                    .getNumber<int>()}));
-    // Again, since we have RW access to _system, we do have access to the
-    // collection!
     EXPECT_TRUE(execContext
                     ->canUseCollection(vocbase->name(), "testDataSource",
                                        arangodb::CollectionAccessLevel::Read)
-                    .ok());
+                    .fail());
   }
 
   // test auth missing (revoke)
   {
-    arangodb::auth::UserMap userMap;
-    arangodb::auth::User* userPtr = nullptr;
-    userManager->setAuthInfo(userMap);  // insure an empty map is set before
-                                        // UserManager::storeUser(...)
+    userManager->removeAllUsers();
     userManager->storeUser(false, userName, arangodb::StaticStrings::Empty,
                            true, arangodb::velocypack::Slice());
-    userManager->accessUser(
+    auto res = userManager->updateUser(
         userName,
-        [&userPtr](arangodb::auth::User const& user) -> arangodb::Result {
-          userPtr = const_cast<arangodb::auth::User*>(&user);
-          return arangodb::Result();
-        });
-    ASSERT_NE(nullptr, userPtr);
-    userPtr->grantDatabase("_system", arangodb::auth::Level::RW);
-    userPtr->grantCollection(
-        vocbase->name(), "testDataSource",
-        arangodb::auth::Level::RO);  // for missing collections
-                                     // User::collectionAuthLevel(...)
-                                     // returns database auth::Level
+        [&vocbase](arangodb::auth::User& user) -> arangodb::Result {
+          user.grantCollection(vocbase->name(), "testDataSource",
+                               arangodb::auth::Level::RO);
+          // for missing collections
+          // User::collectionAuthLevel(...)
+          // returns database auth::Level
+          return {};
+        },
+        arangodb::auth::UserManager::RetryOnConflict::No);
+    ASSERT_TRUE(res.ok()) << res.errorMessage();
 
     EXPECT_TRUE(execContext
                     ->canUseCollection(vocbase->name(), "testDataSource",
@@ -282,7 +287,9 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
             ->canUseCollection(vocbase->name(), "testDataSource",
                                arangodb::CollectionAccessLevel::WriteData)
             .fail());
+    giveUserAdmin();
     auto status = revokeHandler.execute();
+    takeUserAdmin();
     EXPECT_EQ(arangodb::RestStatus::DONE, status);
     EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND,
               revokeResponce.responseCode());
@@ -317,20 +324,11 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testDataSource\" }");
-    arangodb::auth::UserMap userMap;
-    arangodb::auth::User* userPtr = nullptr;
-    userManager->setAuthInfo(userMap);  // insure an empty map is set before
-                                        // UserManager::storeUser(...)
+    userManager->removeAllUsers();
     userManager->storeUser(false, userName, arangodb::StaticStrings::Empty,
                            true, arangodb::velocypack::Slice());
-    userManager->accessUser(
-        userName,
-        [&userPtr](arangodb::auth::User const& user) -> arangodb::Result {
-          userPtr = const_cast<arangodb::auth::User*>(&user);
-          return arangodb::Result();
-        });
-    ASSERT_NE(nullptr, userPtr);
-    userPtr->grantDatabase("_system", arangodb::auth::Level::RW);
+    EXPECT_TRUE(testUserExists());
+
     auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(
         vocbase->createCollection(collectionJson->slice()).get(),
         [vocbase](arangodb::LogicalCollection* ptr) -> void {
@@ -338,13 +336,13 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
         });
     ASSERT_FALSE(!logicalCollection);
 
-    // Since we have access to the _system database, we also have access
-    // to the collection:
     EXPECT_TRUE(execContext
                     ->canUseCollection(vocbase->name(), "testDataSource",
                                        arangodb::CollectionAccessLevel::Read)
-                    .ok());
+                    .fail());
+    giveUserAdmin();
     auto status = grantHandler.execute();
+    takeUserAdmin();
     EXPECT_EQ(arangodb::RestStatus::DONE, status);
     EXPECT_EQ(arangodb::rest::ResponseCode::OK, grantResponce.responseCode());
     auto slice = grantResponce._payload.slice();
@@ -365,25 +363,22 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testDataSource\" }");
-    arangodb::auth::UserMap userMap;
-    arangodb::auth::User* userPtr = nullptr;
-    userManager->setAuthInfo(userMap);  // insure an empty map is set before
-                                        // UserManager::storeUser(...)
+    userManager->removeAllUsers();
     userManager->storeUser(false, userName, arangodb::StaticStrings::Empty,
                            true, arangodb::velocypack::Slice());
-    userManager->accessUser(
+    auto res = userManager->updateUser(
         userName,
-        [&userPtr](arangodb::auth::User const& user) -> arangodb::Result {
-          userPtr = const_cast<arangodb::auth::User*>(&user);
-          return arangodb::Result();
-        });
-    ASSERT_NE(nullptr, userPtr);
-    userPtr->grantDatabase("_system", arangodb::auth::Level::RW);
-    userPtr->grantCollection(
-        vocbase->name(), "testDataSource",
-        arangodb::auth::Level::RO);  // for missing collections
-                                     // User::collectionAuthLevel(...)
-                                     // returns database auth::Level
+        [&vocbase](arangodb::auth::User& user) -> arangodb::Result {
+          user.grantCollection(
+              vocbase->name(), "testDataSource",
+              arangodb::auth::Level::RO);  // for missing collections
+                                           // User::collectionAuthLevel(...)
+                                           // returns database auth::Level
+          return {};
+        },
+        arangodb::auth::UserManager::RetryOnConflict::No);
+    ASSERT_TRUE(res.ok()) << res.errorMessage();
+
     auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(
         vocbase->createCollection(collectionJson->slice()).get(),
         [vocbase](arangodb::LogicalCollection* ptr) -> void {
@@ -400,7 +395,9 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
             ->canUseCollection(vocbase->name(), "testDataSource",
                                arangodb::CollectionAccessLevel::WriteData)
             .fail());
+    giveUserAdmin();
     auto status = revokeHandler.execute();
+    takeUserAdmin();
     EXPECT_EQ(arangodb::RestStatus::DONE, status);
     EXPECT_EQ(arangodb::rest::ResponseCode::ACCEPTED,
               revokeResponce.responseCode());
@@ -417,32 +414,22 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
          false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
     // Granting collection-level access sets the Database level to UNDEFINED
     // (see User::grantCollection) after the collection-level access is revoked,
-    // the DB level stays UNDEFINED. However, this means due to our RW access
-    // to the _system database, we have access to the collection, too:
+    // the DB level stays UNDEFINED.
     EXPECT_TRUE(execContext
                     ->canUseCollection(vocbase->name(), "testDataSource",
                                        arangodb::CollectionAccessLevel::Read)
-                    .ok());
+                    .fail());
   }
 
   // test auth view (grant)
   {
     auto viewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testDataSource\", \"type\": \"testViewType\" }");
-    arangodb::auth::UserMap userMap;
-    arangodb::auth::User* userPtr = nullptr;
-    userManager->setAuthInfo(userMap);  // insure an empty map is set before
-                                        // UserManager::storeUser(...)
+    userManager->removeAllUsers();
     userManager->storeUser(false, userName, arangodb::StaticStrings::Empty,
                            true, arangodb::velocypack::Slice());
-    userManager->accessUser(
-        userName,
-        [&userPtr](arangodb::auth::User const& user) -> arangodb::Result {
-          userPtr = const_cast<arangodb::auth::User*>(&user);
-          return arangodb::Result();
-        });
-    ASSERT_NE(nullptr, userPtr);
-    userPtr->grantDatabase("_system", arangodb::auth::Level::RW);
+    EXPECT_TRUE(testUserExists());
+
     auto logicalView = std::shared_ptr<arangodb::LogicalView>(
         vocbase->createView(viewJson->slice(), false).get(),
         [vocbase](arangodb::LogicalView* ptr) -> void {
@@ -450,13 +437,13 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
         });
     ASSERT_FALSE(!logicalView);
 
-    // Our access to the _system database grants us access to the
-    // view:
     EXPECT_TRUE(execContext
                     ->canUseView(vocbase->name(), "testDataSource",
                                  arangodb::ViewAccessLevel::Read)
-                    .ok());
+                    .fail());
+    giveUserAdmin();
     auto status = grantHandler.execute();
+    takeUserAdmin();
     EXPECT_EQ(arangodb::RestStatus::DONE, status);
     EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND,
               grantResponce.responseCode());
@@ -476,36 +463,32 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
                      ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
                                    .getNumber<int>()}));
-    // Our access to the _system database grants us access to the view:
     EXPECT_TRUE(execContext
                     ->canUseView(vocbase->name(), "testDataSource",
                                  arangodb::ViewAccessLevel::Read)
-                    .ok());
+                    .fail());
   }
 
   // test auth view (revoke)
   {
     auto viewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testDataSource\", \"type\": \"testViewType\" }");
-    arangodb::auth::UserMap userMap;
-    arangodb::auth::User* userPtr = nullptr;
-    userManager->setAuthInfo(userMap);  // insure an empty map is set before
-                                        // UserManager::storeUser(...)
+    userManager->removeAllUsers();
     userManager->storeUser(false, userName, arangodb::StaticStrings::Empty,
                            true, arangodb::velocypack::Slice());
-    userManager->accessUser(
+    auto res = userManager->updateUser(
         userName,
-        [&userPtr](arangodb::auth::User const& user) -> arangodb::Result {
-          userPtr = const_cast<arangodb::auth::User*>(&user);
-          return arangodb::Result();
-        });
-    ASSERT_NE(nullptr, userPtr);
-    userPtr->grantDatabase("_system", arangodb::auth::Level::RW);
-    userPtr->grantCollection(
-        vocbase->name(), "testDataSource",
-        arangodb::auth::Level::RO);  // for missing collections
-                                     // User::collectionAuthLevel(...)
-                                     // returns database auth::Level
+        [&vocbase](arangodb::auth::User& user) -> arangodb::Result {
+          user.grantCollection(
+              vocbase->name(), "testDataSource",
+              arangodb::auth::Level::RO);  // for missing collections
+                                           // User::collectionAuthLevel(...)
+                                           // returns database auth::Level
+          return {};
+        },
+        arangodb::auth::UserManager::RetryOnConflict::No);
+    ASSERT_TRUE(res.ok()) << res.errorMessage();
+
     auto logicalView = std::shared_ptr<arangodb::LogicalView>(
         vocbase->createView(viewJson->slice(), false).get(),
         [vocbase](arangodb::LogicalView* ptr) -> void {
@@ -513,13 +496,13 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
         });
     ASSERT_FALSE(!logicalView);
 
-    // In Classic auth mode, views use database-level access. Since we
-    // have RW access to _system, the view is accessible:
     EXPECT_TRUE(execContext
                     ->canUseView(vocbase->name(), "testDataSource",
                                  arangodb::ViewAccessLevel::Read)
-                    .ok());
+                    .fail());
+    giveUserAdmin();
     auto status = revokeHandler.execute();
+    takeUserAdmin();
     EXPECT_EQ(arangodb::RestStatus::DONE, status);
     EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND,
               revokeResponce.responseCode());
@@ -539,31 +522,21 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
                      ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
                                    .getNumber<int>()}));
-    // Our RW access to _system gives us access to the view:
     EXPECT_TRUE(execContext
                     ->canUseView(vocbase->name(), "testDataSource",
                                  arangodb::ViewAccessLevel::Read)
-                    .ok());  // not modified from above
+                    .fail());  // not modified from above
   }
 
   // test auth wildcard (grant)
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testDataSource\" }");
-    arangodb::auth::UserMap userMap;
-    arangodb::auth::User* userPtr = nullptr;
-    userManager->setAuthInfo(userMap);  // insure an empty map is set before
-                                        // UserManager::storeUser(...)
+    userManager->removeAllUsers();
     userManager->storeUser(false, userName, arangodb::StaticStrings::Empty,
                            true, arangodb::velocypack::Slice());
-    userManager->accessUser(
-        userName,
-        [&userPtr](arangodb::auth::User const& user) -> arangodb::Result {
-          userPtr = const_cast<arangodb::auth::User*>(&user);
-          return arangodb::Result();
-        });
-    ASSERT_NE(nullptr, userPtr);
-    userPtr->grantDatabase("_system", arangodb::auth::Level::RW);
+    EXPECT_TRUE(testUserExists());
+
     auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(
         vocbase->createCollection(collectionJson->slice()).get(),
         [vocbase](arangodb::LogicalCollection* ptr) -> void {
@@ -571,12 +544,13 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
         });
     ASSERT_FALSE(!logicalCollection);
 
-    // Our access to the _system database grants us access to the view:
     EXPECT_TRUE(execContext
                     ->canUseCollection(vocbase->name(), "testDataSource",
                                        arangodb::CollectionAccessLevel::Read)
-                    .ok());
+                    .fail());
+    giveUserAdmin();
     auto status = grantWildcardHandler.execute();
+    takeUserAdmin();
     EXPECT_EQ(arangodb::RestStatus::DONE, status);
     EXPECT_EQ(arangodb::rest::ResponseCode::OK,
               grantWildcardResponce.responseCode());
@@ -598,25 +572,22 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testDataSource\" }");
-    arangodb::auth::UserMap userMap;
-    arangodb::auth::User* userPtr = nullptr;
-    userManager->setAuthInfo(userMap);  // insure an empty map is set before
-                                        // UserManager::storeUser(...)
+    userManager->removeAllUsers();
     userManager->storeUser(false, userName, arangodb::StaticStrings::Empty,
                            true, arangodb::velocypack::Slice());
-    userManager->accessUser(
+    auto res = userManager->updateUser(
         userName,
-        [&userPtr](arangodb::auth::User const& user) -> arangodb::Result {
-          userPtr = const_cast<arangodb::auth::User*>(&user);
-          return arangodb::Result();
-        });
-    ASSERT_NE(nullptr, userPtr);
-    userPtr->grantDatabase("_system", arangodb::auth::Level::RW);
-    userPtr->grantCollection(
-        vocbase->name(), "testDataSource",
-        arangodb::auth::Level::RO);  // for missing collections
-                                     // User::collectionAuthLevel(...)
-                                     // returns database auth::Level
+        [&vocbase](arangodb::auth::User& user) -> arangodb::Result {
+          user.grantCollection(
+              vocbase->name(), "testDataSource",
+              arangodb::auth::Level::RO);  // for missing collections
+                                           // User::collectionAuthLevel(...)
+                                           // returns database auth::Level
+          return {};
+        },
+        arangodb::auth::UserManager::RetryOnConflict::No);
+    ASSERT_TRUE(res.ok()) << res.errorMessage();
+
     auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(
         vocbase->createCollection(collectionJson->slice()).get(),
         [vocbase](arangodb::LogicalCollection* ptr) -> void {
@@ -633,7 +604,9 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
             ->canUseCollection(vocbase->name(), "testDataSource",
                                arangodb::CollectionAccessLevel::WriteData)
             .fail());
+    giveUserAdmin();
     auto status = revokeWildcardHandler.execute();
+    takeUserAdmin();
     EXPECT_EQ(arangodb::RestStatus::DONE, status);
     EXPECT_TRUE((arangodb::rest::ResponseCode::ACCEPTED ==
                  revokeWildcardResponce.responseCode()));

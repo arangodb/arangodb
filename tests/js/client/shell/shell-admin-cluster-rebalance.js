@@ -38,15 +38,7 @@ function resignServer(server) {
   assertEqual(202, res.code);
   const id = res.parsedBody.id;
 
-  let count = 10;
-  while (--count >= 0) {
-    require("internal").wait(5.0, false);
-    res = arango.GET_RAW("/_admin/cluster/queryAgencyJob?id=" + id);
-    if (res.code === 200 && res.parsedBody.status === "Finished") {
-      return;
-    }
-  }
-  assertTrue(false, `We failed to resign a leader in 50s. We cannot reliably test rebalancing of shards now.`);
+  IM.waitForAgencyJob(id, 50*10, `resign leadership of ${server} We cannot reliably test rebalancing of shards now.`);
 }
 
 function getRebalancePlan(moveLeaders, moveFollowers, leaderChanges, excludeSystemCollections) {

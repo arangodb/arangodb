@@ -22,64 +22,27 @@
 
 #pragma once
 
-#include "Async/async.h"
 #include "Auth/Rbac/Actions.h"
-#include "Basics/ResultT.h"
+#include "Basics/Result.h"
 
-#include <string>
-#include <variant>
-#include <vector>
+#include <span>
 
 namespace arangodb::rbac {
 
 struct Service {
   virtual ~Service() = default;
 
-  struct User {
-    std::string jwtToken;
-  };
-
-  struct AuthorizationQuery {
-    std::string action;
-    std::string resource;
-  };
-
-  // Translates a Category into the corresponding authorization query.
-  // Currently each Category maps to exactly one AuthorizationQuery.
-  static auto toAuthorizationQueries(Category::Any const& category)
-      -> std::vector<AuthorizationQuery>;
-
-  auto may(User user, Category::Any const& category) noexcept
-      -> async<ResultT<bool>>;
-
-  [[deprecated("Use the asynchronous counterpart instead")]] auto maySync(
-      User user, Category::Any const& category) noexcept -> ResultT<bool>;
-
-  // TODO We might want to change the return type in a way that it reports
-  //      which permission(s) are missing, in order to give a proper error
-  //      message to the user.
-  auto mayAll(User user, std::vector<Category::Any> categories) noexcept
-      -> async<ResultT<bool>>;
-
-  [[deprecated("Use the asynchronous counterpart instead")]] auto mayAllSync(
-      User user, std::vector<Category::Any> categories) noexcept
-      -> ResultT<bool>;
-
-  using Token = std::string_view;
-
-  // Ask a single authorization question. Virtual so that tests (in particular
-  // the upcoming RBAC auth-mode tests) can inject a mock Service. The base
-  // implementation fails closed; see Service.cpp.
-  virtual auto check(Token token, Action action,
-                     Resource const& resource) noexcept -> Result;
-
- private:
-  virtual auto mayImpl(User user,
-                       std::vector<AuthorizationQuery> queries) noexcept
-      -> async<ResultT<bool>> = 0;
-  virtual auto maySyncImpl(User user,
-                           std::vector<AuthorizationQuery> queries) noexcept
-      -> ResultT<bool> = 0;
+  // Ask a batch of authorization questions for a single token at once. A real
+  // implementation performs a single network round-trip, so callers that need
+  // several (action, resource) pairs for one logical permission should pass
+  // them together rather than calling check() repeatedly. Returns ok iff every
+  // pair is permitted; otherwise the first/aggregated denial.
+  //
+  // Virtual so that tests (in particular the RBAC auth-mode tests) can inject a
+  // mock Service. The base implementation fails closed; see Service.cpp.
+  virtual auto check(JwtToken const& token,
+                     std::span<ActionResource const> queries) noexcept
+      -> Result;
 };
 
 }  // namespace arangodb::rbac

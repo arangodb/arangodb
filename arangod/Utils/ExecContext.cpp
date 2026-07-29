@@ -439,8 +439,11 @@ Result ExecContext::canUseGraph(std::string_view db, std::string_view graph,
 /// @brief returns true if the user can be read
 Result ExecContext::canReadUser(std::string_view userName) const {
   using namespace auth::perms;
-  // We implement one exception here: A user can read itself:
-  if (userName == user()) {
+  // We implement one exception here: A user can read itself, we forbid
+  // this, though, if the request was not authenticated, just to be safe:
+  // We do this distinction here such that we do not have to implement
+  // it separately for Classic and RBAC.
+  if (!_authMode.isUnauthenticated() && userName == user()) {
     return {};
   }
   return can(ReadUser{.name{userName}});
@@ -472,8 +475,11 @@ Result ExecContext::canModifyUserProfile(std::string_view userName) const {
   if (!isSuperuser() && ServerState::readOnly()) {
     return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
   }
-  // We implement one exception here: A user can modify their own profile:
-  if (userName == user()) {
+  // We implement one exception here: A user can read itself, we forbid
+  // this, though, if the request was not authenticated, just to be safe:
+  // We do this distinction here such that we do not have to implement
+  // it separately for Classic and RBAC.
+  if (!_authMode.isUnauthenticated() && userName == user()) {
     return {};
   }
   return can(ModifyUserProfile{.name{userName}});

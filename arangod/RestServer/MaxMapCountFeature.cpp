@@ -46,12 +46,6 @@ MaxMapCountFeature::MaxMapCountFeature(
   startsAfter<application_features::GreetingsFeaturePhase>();
 }
 
-void MaxMapCountFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  MaxMapCountOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
 uint64_t MaxMapCountFeature::actualMaxMappings() {
   uint64_t maxMappings = UINT64_MAX;
 
