@@ -6,7 +6,7 @@ orbs:
   # Exact patch pin, never a floating @1 or @1.1: an orb range resolves at
   # config-compile time, so a floating pin silently changes what runs. Same
   # version as base_nightly_packages.yml, which runs the scans themselves.
-  trivy-scan: arangodb/trivy-scan@1.1.2
+  trivy-scan: arangodb/trivy-scan@1.2.0
 
 parameters:
   enterprise-commit:

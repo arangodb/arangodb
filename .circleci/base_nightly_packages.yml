@@ -178,7 +178,7 @@ orbs:
   # nightly publish. 1.1.2 adds report-severity (report band separate from
   # gate band), expect-targets/min-targets coverage assertions and the
   # kev-epss-check command used below.
-  trivy-scan: arangodb/trivy-scan@1.1.2
+  trivy-scan: arangodb/trivy-scan@1.2.0
 
 parameters:
   enterprise-branch:
@@ -690,7 +690,7 @@ jobs:
             # These are the FedRAMP High remediation timelines (ConMon
             # Performance Management Guide: High 30d, Moderate 90d, Low 180d
             # from discovery; UNKNOWN gets the High clock until triaged),
-            # tighter than the orb's waiver-windows default (high=90). It
+            # the same table the trivy-scan orb defaults to since 1.2.0. It
             # replaces a flat "90 days from today", which let a CRITICAL sit
             # for a quarter and let any entry be renewed indefinitely by
             # re-dating it; a window anchored to detection cannot be renewed
