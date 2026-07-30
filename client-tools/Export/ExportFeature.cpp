@@ -79,9 +79,6 @@ ExportFeature::ExportFeature(application_features::ApplicationServer& server,
       _result(result) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
-
-  auto const cwd = std::filesystem::current_path();
-  _options.outputDirectory = FileUtils::buildFilename(cwd.string(), "export");
 }
 
 ExportFeature::~ExportFeature() = default;

@@ -65,9 +65,6 @@ ImportFeature::ImportFeature(application_features::ApplicationServer& server,
       _result(result) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
-  _options.threadCount =
-      std::max(uint32_t(_options.threadCount),
-               static_cast<uint32_t>(NumberOfCores::getValue()));
 }
 
 ImportFeature::~ImportFeature() = default;
