@@ -74,16 +74,6 @@ DaemonFeature::DaemonFeature(ApplicationServer& server,
   startsAfter<application_features::GreetingsFeaturePhase>();
 }
 
-void DaemonFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  DaemonOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void DaemonFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  DaemonOptionsProvider provider;
-  provider.validateOptions(options, _options);
-}
-
 void DaemonFeature::daemonize() {
   LOG_TOPIC("71164", TRACE, Logger::STARTUP) << name() << "::daemonize";
 

@@ -20,30 +20,20 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "SystemMonitor/AsyncRegistry/OptionsProvider.h"
+#include "LogRotateOptionsProvider.h"
 
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
-namespace arangodb::async_registry {
+namespace arangodb {
 
-using namespace arangodb::options;
-
-void OptionsProvider::declareOptionsImpl(std::shared_ptr<ProgramOptions> opts,
-                                         FeatureOptions& options) {
-  opts->addSection("async-registry", "Options for the async-registry");
-
-  opts->addOption(
-          "--async-registry.cleanup-timeout",
-          "Timeout in seconds between async-registry garbage collection "
-          "swipes.",
-          new SizeTParameter(&options.gc_timeout, /*base*/ 1,
-                             /*minValue*/ 1))
-      .setLongDescription(
-          R"(Each thread that is involved in the async-registry needs to
-garbage collect its finished async function calls regularly. This option
-controls how often this is done in seconds. This can possibly be performance
-relevant because each involved thread acquires a lock.)");
+void LogRotateOptionsProvider::declareOptionsImpl(
+    std::shared_ptr<options::ProgramOptions> prgOpts,
+    LogRotateOptions& logRotateOpts) {
+  prgOpts->addOption(
+      "--log.keep-logrotate", "Keep the old log file after receiving a SIGHUP.",
+      new options::BooleanParameter(&logRotateOpts.keepLogRotate),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 
-}  // namespace arangodb::async_registry
+}  // namespace arangodb

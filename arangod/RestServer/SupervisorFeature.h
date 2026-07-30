@@ -45,8 +45,6 @@ class SupervisorFeature final
                              SupervisorFeatureOptions options);
   explicit SupervisorFeature(application_features::ApplicationServer& server);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void daemonize() override final;
 
  private:
