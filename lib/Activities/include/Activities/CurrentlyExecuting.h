@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -19,21 +19,29 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
-#include "ApplicationFeatures/OptionsProvider.h"
-#include "Actions/ActionFeatureOptions.h"
+#include "Activities/Activity.h"
 
-namespace arangodb::options {
-class ProgramOptions;
-}
+namespace arangodb::activities {
+/**
+   Structure for the currently executing activity
 
-namespace arangodb {
+   It adds the current thread to the activity-thread-list at construction and
+   removes the thread on destruction.
+ */
+struct CurrentlyExecuting {
+  CurrentlyExecuting(ActivityHandle handle);
+  ~CurrentlyExecuting();
+  CurrentlyExecuting(CurrentlyExecuting&& other) noexcept;
+  auto operator=(CurrentlyExecuting&& other) noexcept -> CurrentlyExecuting&;
+  CurrentlyExecuting(CurrentlyExecuting const& other) noexcept = delete;
+  auto operator=(CurrentlyExecuting const& other) noexcept
+      -> CurrentlyExecuting& = delete;
+  ActivityHandle activity;
 
-struct ActionOptionsProvider : OptionsProvider<ActionFeatureOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      ActionFeatureOptions& options) override;
+ private:
+  Activity::ThreadListIterator _position;
 };
 
-}  // namespace arangodb
+}  // namespace arangodb::activities

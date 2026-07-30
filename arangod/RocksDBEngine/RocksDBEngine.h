@@ -460,7 +460,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 #ifdef USE_ENTERPRISE
   bool encryptionKeyRotationEnabled() const;
 
-  bool isEncryptionEnabled() const;
+  bool isEncryptionEnabled() const override;
 
   std::string const& getEncryptionKey();
 

@@ -1,8 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2026 ArangoDB GmbH, Hyderabad, India
+/// Copyright 2026 triAGENS GmbH, Hyderabad, India
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -16,27 +16,27 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Hyderabad, India
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ActionOptionsProvider.h"
+#pragma once
 
-#include "ProgramOptions/Parameters.h"
-#include "ProgramOptions/ProgramOptions.h"
+#include "ApplicationFeatures/OptionsProvider.h"
+#include "VectorIndexFeatureOptions.h"
+#include <memory>
 
-namespace arangodb {
-
-using namespace arangodb::options;
-
-void ActionOptionsProvider::declareOptions(
-    std::shared_ptr<ProgramOptions> options, ActionFeatureOptions& opts) {
-  options->addOption(
-      "--server.allow-use-database",
-      "Allow to change the database in REST actions. Only needed internally "
-      "for unit tests.",
-      new BooleanParameter(&opts.allowUseDatabase),
-      makeDefaultFlags(Flags::Uncommon));
+namespace arangodb::options {
+class ProgramOptions;
 }
 
-}  // namespace arangodb
+namespace arangodb::vector_index {
+
+struct VectorIndexOptionsProvider : OptionsProvider<VectorIndexFeatureOptions> {
+  VectorIndexOptionsProvider() = default;
+
+  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
+                      VectorIndexFeatureOptions& options) override;
+};
+
+}  // namespace arangodb::vector_index

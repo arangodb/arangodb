@@ -44,7 +44,6 @@ class OptimizerRulesFeature final
   explicit OptimizerRulesFeature(
       application_features::ApplicationServer& server);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void unprepare() override final;
 

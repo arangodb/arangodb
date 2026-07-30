@@ -2,6 +2,8 @@
 
 #include "ApplicationFeatures/CoreOptionProviders.h"
 #include "ApplicationFeatures/LanguageOptionsProvider.h"
+#include "Aql/OptimizerRulesOptionsProvider.h"
+#include "Aql/QueryInfoLoggerOptionsProvider.h"
 #include "GeneralServer/AuthenticationOptionsProvider.h"
 #include "GeneralServer/GeneralServerOptionsProvider.h"
 #include "GeneralServer/SslServerOptionsProvider.h"
@@ -14,15 +16,21 @@
 #include "RestServer/FortuneOptionsProvider.h"
 #include "RestServer/InitDatabaseOptionsProvider.h"
 #include "RestServer/LogBufferOptionsProvider.h"
+#include "RestServer/QueryRegistryOptionsProvider.h"
 #include "RestServer/ServerOptionsProvider.h"
 #include "RestServer/TemporaryStorageOptionsProvider.h"
 #include "RestServer/UpgradeOptionsProvider.h"
+#include "RocksDBEngine/RocksDBEngineOptionsProvider.h"
 #include "RocksDBEngine/RocksDBIndexCacheRefillOptionsProvider.h"
 #include "RocksDBEngine/RocksDBOptionFeatureOptionsProvider.h"
-#include "RocksDBEngine/RocksDBEngineOptionsProvider.h"
 
 #ifdef USE_ENTERPRISE
+#include "Enterprise/Audit/AuditOptionsProvider.h"
+#include "Enterprise/Encryption/EncryptionOptionsProvider.h"
+#include "Enterprise/License/LicenseOptionsProvider.h"
+#include "Enterprise/RClone/RCloneOptionsProvider.h"
 #include "Enterprise/Ssl/SslServerEEOptionsProvider.h"
+#include "Enterprise/StorageEngine/HotBackupOptionsProvider.h"
 #endif
 
 #ifdef TRI_HAVE_GETRLIMIT
@@ -38,13 +46,16 @@ using ArangodOptionProviders = CoreOptionProviders<
     fortune::FortuneOptionsProvider, GeneralServerOptionsProvider,
     InitDatabaseOptionsProvider, LanguageOptionsProvider,
     LogBufferOptionsProvider, NetworkOptionsProvider,
-    RocksDBEngineOptionsProvider, RocksDBIndexCacheRefillOptionsProvider,
-    RocksDBOptionFeatureOptionsProvider, ServerOptionsProvider,
-    SslServerOptionsProvider, TemporaryStorageOptionsProvider,
-    UpgradeOptionsProvider
+    aql::OptimizerRulesOptionsProvider, aql::QueryInfoLoggerOptionsProvider,
+    QueryRegistryOptionsProvider, RocksDBEngineOptionsProvider,
+    RocksDBIndexCacheRefillOptionsProvider, RocksDBOptionFeatureOptionsProvider,
+    ServerOptionsProvider, SslServerOptionsProvider,
+    TemporaryStorageOptionsProvider, UpgradeOptionsProvider
 #ifdef USE_ENTERPRISE
     ,
-    enterprise::SslServerEEOptionsProvider
+    AuditOptionsProvider, LicenseOptionsProvider, RCloneOptionsProvider,
+    HotBackupOptionsProvider, EncryptionOptionsProvider,
+    SslServerEEOptionsProvider
 #endif
 #ifdef TRI_HAVE_GETRLIMIT
     ,

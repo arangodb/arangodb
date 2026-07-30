@@ -358,6 +358,42 @@ bool validateAggregates(Parser* parser, AstNode const* aggregates,
   return true;
 }
 
+/// @brief validate COLLECT grouping assignments do not refer to each other.
+/// Group expressions are evaluated before any COLLECT output variables exist.
+/// Therefore no grouping expression may reference a variable introduced by the
+/// same COLLECT statement.
+void validateCollectGroupVariables(Parser* parser, AstNode const* groupAssignments, int line,
+                           int column) {
+  TRI_ASSERT(groupAssignments != nullptr);
+
+  VarSet collectVariables;
+  size_t const n = groupAssignments->numMembers();
+  collectVariables.reserve(n);
+
+  // First pass: collect all variables introduced by the COLLECT clause.
+  for (size_t i = 0; i < n; ++i) {
+    auto member = groupAssignments->getMemberUnchecked(i);
+    if (member != nullptr) {
+      TRI_ASSERT(member->type == NODE_TYPE_ASSIGN);
+
+      collectVariables.emplace(
+        static_cast<Variable const*>(member->getMember(0)->getData()));
+    }
+  }
+
+  // Second pass: ensure no grouping expression references any COLLECT
+  // variable introduced by this statement.
+  for (size_t i = 0; i < n; ++i) {
+    auto member = groupAssignments->getMemberUnchecked(i);
+    if (member != nullptr) {
+      TRI_ASSERT(member->type == NODE_TYPE_ASSIGN);
+      
+      ::checkCollectVariables(parser, "COLLECT", member->getMember(1), line,
+                            column, collectVariables);
+    }
+  }
+}
+
 /// @brief validate the WINDOW specification
 bool validateWindowSpec(Parser* parser, AstNode const* spec,
                         int line, int column) {
@@ -1434,6 +1470,8 @@ collect_variable_list:
     } collect_list {
       auto list = static_cast<AstNode*>(parser->popStack());
       TRI_ASSERT(list != nullptr);
+      ::validateCollectGroupVariables(parser, list, yylloc.first_line,
+                              yylloc.first_column);
       $$ = list;
     }
   ;

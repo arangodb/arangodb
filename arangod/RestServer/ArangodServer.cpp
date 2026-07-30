@@ -103,7 +103,6 @@ void ArangodServer::addFeatures() {
   addFeature<MaintenanceFeature>(&clusterFeature);
   addFeature<OptionsCheckFeature>();
   addFeature<PrivilegeFeature>();
-  addFeature<QueryRegistryFeature>(metrics);
   addFeature<ReplicationFeature>(comm, metrics);
   addFeature<ReplicatedLogFeature>();
   addFeature<ReplicationMetricsFeature>(metrics);
@@ -123,19 +122,10 @@ void ArangodServer::addFeatures() {
   addFeature<transaction::ManagerFeature>(metrics);
   addFeature<ViewTypesFeature>();
   addFeature<aql::AqlFunctionFeature>();
-  addFeature<aql::OptimizerRulesFeature>();
-  addFeature<aql::QueryInfoLoggerFeature>();
   addFeature<RocksDBRecoveryManager>(database, database);
 #ifdef ARANGODB_HAVE_FORK
   addFeature<DaemonFeature>();
   addFeature<SupervisorFeature>();
-#endif
-#ifdef USE_ENTERPRISE
-  addFeature<AuditFeature>();
-  addFeature<LicenseFeature>();
-  addFeature<RCloneFeature>();
-  addFeature<HotBackupFeature>();
-  addFeature<EncryptionFeature>();
 #endif
   addFeature<iresearch::IResearchFeature>(metrics);
   addFeature<ClusterEngine>(metrics);
@@ -154,9 +144,14 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& aqlFunctionFeature = getFeature<aql::AqlFunctionFeature>();
 
 #ifdef USE_ENTERPRISE
+  addFeature<AuditFeature>(getOptions<AuditOptionsProvider>());
+  addFeature<LicenseFeature>(getOptions<LicenseOptionsProvider>());
+  addFeature<RCloneFeature>(getOptions<RCloneOptionsProvider>());
+  addFeature<HotBackupFeature>(getOptions<HotBackupOptionsProvider>());
+  addFeature<EncryptionFeature>(getOptions<EncryptionOptionsProvider>());
   addFeature<SslServerFeature, SslServerFeatureEE>(
       getOptions<SslServerOptionsProvider>(),
-      getOptions<enterprise::SslServerEEOptionsProvider>());
+      getOptions<SslServerEEOptionsProvider>());
 #else
   addFeature<SslServerFeature>(getOptions<SslServerOptionsProvider>());
 #endif
@@ -188,6 +183,15 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   addFeature<CrashHandlerFeature>(
       _dumpManager, getOptions<crash_handler::CrashHandlerOptionsProvider>());
   addFeature<LogBufferFeature>(metrics, getOptions<LogBufferOptionsProvider>());
+
+  addFeature<aql::OptimizerRulesFeature>(
+      getOptions<aql::OptimizerRulesOptionsProvider>());
+
+  addFeature<aql::QueryInfoLoggerFeature>(
+      getOptions<aql::QueryInfoLoggerOptionsProvider>());
+
+  addFeature<QueryRegistryFeature>(metrics,
+                                   getOptions<QueryRegistryOptionsProvider>());
 
   auto& rocksdbCacheRefill = addFeature<RocksDBIndexCacheRefillFeature>(
       database, &clusterFeature, metrics,
