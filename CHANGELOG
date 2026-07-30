@@ -1,7 +1,7 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
-* COR-726/COR-787/COR-792: Removed the deprecated replication applier's REST API,
+* COR-726/COR-787: Removed the deprecated replication applier's REST API,
   along with the arangosh client methods that used them.
   Single-server-to-single-server replication is no longer supported.
   Removed endpoints:
@@ -14,7 +14,6 @@
   - `PUT /_api/replication/sync`
   - `GET /_api/replication/logger-follow`
   - `GET /_api/replication/logger-first-tick`
-  - `GET /_api/replication/logger-last`
   - `GET /_api/replication/logger-tick-ranges`
   - `GET /_api/replication/server-id`
 
