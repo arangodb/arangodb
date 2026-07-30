@@ -71,6 +71,7 @@ struct ThreadOwnedList
     // identifies the promise list it belongs to, to be able to mark itself for
     // deletion
     ThreadOwnedList<T>& list;
+    std::atomic<bool> is_marked_for_deletion = false;
 
     auto mark_for_deletion() -> void { list.mark_for_deletion(*this); }
   };
@@ -147,9 +148,10 @@ struct ThreadOwnedList
     // (2) - this load synchronizes with store in (1) and (3)
     for (auto current = _head.load(std::memory_order_acquire);
          current != nullptr; current = current->next) {
-      // TODO if (current->list != nullptr) {
-      function(current->data.snapshot());
-      // }
+      // (9) - this load synchronizes with compare_exchange_strong in (10)
+      if (not current->is_marked_for_deletion.load(std::memory_order_acquire)) {
+        function(current->data.snapshot());
+      }
     }
   }
 
@@ -175,6 +177,13 @@ struct ThreadOwnedList
   auto mark_for_deletion(Node& node) noexcept -> void {
     // makes sure that node is really in this list
     ADB_PROD_ASSERT(&node.list == this);
+    bool was_marked = false;
+    // (10) - this compare_exchange_strong synchronizes with load in (9)
+    node.is_marked_for_deletion.compare_exchange_strong(
+        was_marked, true, std::memory_order_release, std::memory_order_relaxed);
+    ADB_PROD_ASSERT(not was_marked)
+        << "ThreadOwnedList::mark_for_deletion: Node cannot be marked for "
+           "deletion more than once";
 
     auto current_head = _free_head.load(std::memory_order_relaxed);
     do {
