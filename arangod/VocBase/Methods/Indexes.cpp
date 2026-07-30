@@ -496,14 +496,9 @@ futures::Future<arangodb::Result> Indexes::ensureIndex(
     if (auto r = exec.canUseCollection(collection.vocbase().name(),
                                        collection.name(), AccessLevel::Read);
         r.fail()) {
-      if (exec.requestedApiVersion() == 0) {
-        // Backwards compatibility!
-        ensureIndexResult = TRI_ERROR_FORBIDDEN;
-        co_return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
-      } else {
-        ensureIndexResult = r.errorNumber();
-        co_return r;
-      }
+      // Needed for backwards compatibility!
+      ensureIndexResult = TRI_ERROR_FORBIDDEN;
+      co_return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
     }
   }
 
