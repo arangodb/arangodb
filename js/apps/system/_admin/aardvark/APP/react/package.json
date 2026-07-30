@@ -62,6 +62,7 @@
   },
   "scripts": {
     "start": "webpack serve --mode development",
+    "prebuild": "yarn lint",
     "build": "webpack --mode production",
     "lint": "eslint src",
     "postinstall": "patch-package",
