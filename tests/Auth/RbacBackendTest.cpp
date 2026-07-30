@@ -206,11 +206,11 @@ TEST(RbacBackendTest, evaluateTokenMany_measuresRequestDuration) {
   ASSERT_TRUE(result.ok());
   EXPECT_EQ(totalObservations(requestDuration), 1);
 
-  auto asyncResult = testee
-                         .evaluateTokenMany(
-                             rbac::JwtToken{.jwtToken = "my.jwt.token"},
+  auto asyncResult =
+      testee
+          .evaluateTokenMany(rbac::JwtToken{.jwtToken = "my.jwt.token"},
                              rbac::Backend::RequestItems{})
-                         .waitAndGet();
+          .waitAndGet();
 
   ASSERT_TRUE(asyncResult.ok());
   EXPECT_EQ(totalObservations(requestDuration), 2);
@@ -228,9 +228,8 @@ TEST(RbacBackendTest, evaluateTokenMany_measuresRequestDurationOnError) {
   auto testee = rbac::BackendImpl{sendRequestMock, "http://localhost:8080",
                                   &requestDuration};
 
-  auto result =
-      testee.evaluateTokenManySync(rbac::JwtToken{.jwtToken = "bad.token"},
-                                   rbac::Backend::RequestItems{});
+  auto result = testee.evaluateTokenManySync(
+      rbac::JwtToken{.jwtToken = "bad.token"}, rbac::Backend::RequestItems{});
 
   ASSERT_FALSE(result.ok());
   EXPECT_EQ(totalObservations(requestDuration), 1);
