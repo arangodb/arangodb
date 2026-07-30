@@ -73,9 +73,30 @@ void ArangodServer::processOptions() {
   Logger::setKeepLogrotate(
       getOptions<LogRotateOptionsProvider>().keepLogRotate);
 
+  // must run after the OptionProvidingServer::processOptions() call above,
+  // since ClusterOptions::enableCluster is only resolved there
   auto const& clusterOptions = getOptions<ClusterOptionsProvider>();
-  auto const& agencyOptions = getOptions<AgencyOptionsProvider>();
+  ServerState::instance()->setRole(
+      resolveRole(clusterOptions, getOptions<AgencyOptionsProvider>()));
 
+  if (!clusterOptions.enableCluster) {
+    ServerState::instance()->findHost("localhost");
+  } else {
+    std::string fallback = clusterOptions.myEndpoint;
+    auto pos = fallback.find("://");
+    if (pos != std::string::npos) {
+      fallback = fallback.substr(pos + 3);
+    }
+    pos = fallback.rfind(':');
+    if (pos != std::string::npos) {
+      fallback.resize(pos);
+    }
+    ServerState::instance()->findHost(fallback);
+  }
+}
+
+ServerState::RoleEnum ArangodServer::resolveRole(
+    ClusterOptions const& clusterOptions, AgencyOptions const& agencyOptions) {
   if (agencyOptions.activated && !clusterOptions.myRole.empty()) {
     LOG_TOPIC("a3f61", FATAL, Logger::CLUSTER)
         << "cannot specify both '--agency.activate true' and "
@@ -83,12 +104,6 @@ void ArangodServer::processOptions() {
            "separate cluster role";
     FATAL_ERROR_EXIT();
   }
-
-  ServerState::instance()->setRole(resolveRole(clusterOptions, agencyOptions));
-}
-
-ServerState::RoleEnum ArangodServer::resolveRole(
-    ClusterOptions const& clusterOptions, AgencyOptions const& agencyOptions) {
   if (agencyOptions.activated) {
     return ServerState::ROLE_AGENT;
   }
@@ -98,7 +113,11 @@ ServerState::RoleEnum ArangodServer::resolveRole(
   if (!clusterOptions.myRole.empty()) {
     return ServerState::stringToRole(clusterOptions.myRole);
   }
-  return ServerState::ROLE_UNDEFINED;
+  LOG_TOPIC("26795", FATAL, Logger::CLUSTER)
+      << "unable to determine server role: cluster is enabled via "
+         "'--cluster.agency-endpoint' but '--cluster.my-role' was not "
+         "specified";
+  FATAL_ERROR_EXIT();
 }
 
 void ArangodServer::addFeatures() {
@@ -274,8 +293,7 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& clusterFeature =
       addFeature<ClusterFeature>(metrics, getOptions<ClusterOptionsProvider>());
 
-  // must come after ClusterFeature: its ctor eagerly reads ClusterFeature
-  addFeature<ClusterEngine>(metrics);
+  addFeature<ClusterEngine>(clusterFeature, metrics);
 
   addFeature<MaintenanceFeature>(&clusterFeature,
                                  getOptions<MaintenanceOptionsProvider>());

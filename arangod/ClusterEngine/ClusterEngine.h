@@ -39,6 +39,7 @@ class ClusterEngine final : public StorageEngine {
 
   // create the storage engine
   explicit ClusterEngine(application_features::ApplicationServer& server,
+                         ClusterFeature& clusterFeature,
                          metrics::IRegistry& metrics);
   ~ClusterEngine();
 

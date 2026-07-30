@@ -54,8 +54,6 @@ class ArangodServer : public OptionProvidingServer<ArangodOptionProviders> {
   void processOptions() override final;
 
  private:
-  // needs both options structs together to reject invalid combinations,
-  // e.g. agency.activate with cluster.my-role also set
   static ServerState::RoleEnum resolveRole(ClusterOptions const& clusterOptions,
                                            AgencyOptions const& agencyOptions);
 

@@ -431,10 +431,10 @@ inconsistent.)")
 
 void ClusterOptionsProvider::processOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, ClusterOptions& options) {
-  // computed here, rather than in validateOptionsImpl, because
-  // ArangodServer::processOptions() needs it to resolve the server role
-  // before validateOptions() runs
   options.enableCluster = !options.agencyEndpoints.empty();
+  if (options.forceOneShard) {
+    options.maxNumberOfShards = 1;
+  }
 }
 
 void ClusterOptionsProvider::validateOptionsImpl(
@@ -448,10 +448,6 @@ void ClusterOptionsProvider::validateOptionsImpl(
         << "https://github.com/arangodb-helper/arangodb/ for more "
         << "details.";
     FATAL_ERROR_EXIT();
-  }
-
-  if (options.forceOneShard) {
-    options.maxNumberOfShards = 1;
   }
 
   TRI_ASSERT(options.minReplicationFactor > 0);

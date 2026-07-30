@@ -40,20 +40,20 @@ void ReplicatedLogOptionsProvider::declareOptionsImpl(
       "send a batch of log updates early when threshold "
       "(in bytes) is exceeded",
       new SizeTParameter(
-          &options._thresholdNetworkBatchSize, /*base*/ 1, /*minValue*/
+          &options.thresholdNetworkBatchSize, /*base*/ 1, /*minValue*/
           ReplicatedLogGlobalSettings::minThresholdNetworkBatchSize));
   opts->addOption(
       "--replicated-log.threshold-rocksdb-write-batch-size",
       "write a batch of log updates to RocksDB early "
       "when threshold (in bytes) is exceeded",
       new SizeTParameter(
-          &options._thresholdRocksDBWriteBatchSize, /*base*/ 1, /*minValue*/
+          &options.thresholdRocksDBWriteBatchSize, /*base*/ 1, /*minValue*/
           ReplicatedLogGlobalSettings::minThresholdRocksDBWriteBatchSize));
   opts->addOption(
       "--replicated-log.threshold-log-compaction",
       "threshold for log compaction. Number of log entries to wait for before "
       "compacting.",
-      new SizeTParameter(&options._thresholdLogCompaction, /*base*/ 1,
+      new SizeTParameter(&options.thresholdLogCompaction, /*base*/ 1,
                          /*minValue*/ 0));
 #endif
 }
