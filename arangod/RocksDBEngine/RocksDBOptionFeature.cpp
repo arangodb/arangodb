@@ -26,8 +26,6 @@
 #include <memory>
 
 #include "RocksDBOptionFeature.h"
-#include "RocksDBEngine/RocksDBOptionFeatureOptionsProvider.h"
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Agency/AgencyFeature.h"
 #include "Basics/NumberOfCores.h"
@@ -107,7 +105,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(
     application_features::ApplicationServer& server,
     AgencyFeature const* agencyFeature)
     : RocksDBOptionFeature(server, agencyFeature,
-                           RocksDBOptionFeatureOptionsProvider{}.options()) {}
+                           RocksDBOptionFeatureOptions{}) {}
 
 RocksDBOptionFeature::RocksDBOptionFeature(
     application_features::ApplicationServer& server,

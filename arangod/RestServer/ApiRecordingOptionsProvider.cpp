@@ -29,7 +29,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void ApiRecordingOptionsProvider::declareOptions(
+void ApiRecordingOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, ApiRecordingFeatureOptions& options) {
   opts->addOption(
       "--server.api-call-recording",
@@ -86,7 +86,7 @@ It is controlled by the `--server.api-call-recording` and
 `--server.aql-query-recording` startup options.)");
 }
 
-void ApiRecordingOptionsProvider::validateOptions(
+void ApiRecordingOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, ApiRecordingFeatureOptions& options) {
   if (options.apiSwitch == "true" || options.apiSwitch == "on" ||
       options.apiSwitch == "On") {
