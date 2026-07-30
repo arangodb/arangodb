@@ -128,12 +128,7 @@ class ClusterEngine final : public StorageEngine {
                            velocypack::Builder& builder) override {
     return {TRI_ERROR_NOT_IMPLEMENTED};
   }
-  Result createTickRanges(velocypack::Builder& builder) override {
-    return {TRI_ERROR_NOT_IMPLEMENTED};
-  }
-  Result firstTick(uint64_t& tick) override {
-    return {TRI_ERROR_NOT_IMPLEMENTED};
-  }
+
   WalAccess const* walAccess() const override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
     return nullptr;

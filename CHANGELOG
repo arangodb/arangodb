@@ -20,7 +20,7 @@
 
 * COR-784: Missing Variable in Collect Query
   Fixed an issue where certain invalid COLLECT statements could trigger an internal query planning error instead of reporting a user-facing query validation error.
-  
+
 * BTS-2400: Added the `--vector-index-build-retry-backoff` startup option (seconds) to
   configure the vector index build retry backoff (default: 60). Additionally, a
   DBServer now marks the database dirty when a vector index build reports or

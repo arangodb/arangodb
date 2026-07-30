@@ -276,8 +276,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
                         std::string const& keysId) override;
   Result createLoggerState(TRI_vocbase_t* vocbase,
                            velocypack::Builder& builder) override;
-  Result createTickRanges(velocypack::Builder& builder) override;
-  Result firstTick(uint64_t& tick) override;
+
   WalAccess const* walAccess() const override;
 
   // database, collection and index management
