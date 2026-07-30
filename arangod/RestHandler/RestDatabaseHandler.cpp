@@ -85,15 +85,12 @@ RestStatus RestDatabaseHandler::getDatabases() {
       }
     } else if (suffixes[0] == "user") {
       // When we get here, we usually are either authenticated or authentication
-      // is disabled, so no need to check further. However, in the case of a
-      // Unix domain socket and if --server.authentication-unix-sockets=false
-      // we can get here with an unauthenticated request, so let's check anyway:
-      if (!_request->authenticated() && !ExecContext::current().isDisabled()) {
-        res.reset(TRI_ERROR_FORBIDDEN);
-      } else {
-        names =
-            methods::Databases::list(server(), /* onlyCurrentUser = */ true);
-      }
+      // is disabled, so no need to check further.
+      // Earlier versions than 3.12.10 however, did an additional check for
+      // the case that --server.authentication-unix-sockets=false
+      // and some request comes in via the unix domain socket. We have decided
+      // to get rid of this check here, since the code without "user" suffix
+      // has never been separately checked.
     }
 
     // return database names in sorted order
