@@ -26,7 +26,6 @@
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/PhysicalMemory.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/DumpLimitsOptionsProvider.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -35,7 +34,7 @@ using namespace arangodb::options;
 namespace arangodb {
 
 DumpLimitsFeature::DumpLimitsFeature(ApplicationServer& server)
-    : DumpLimitsFeature(server, DumpLimitsOptionsProvider{}.options()) {}
+    : DumpLimitsFeature(server, DumpLimitsFeatureOptions{}) {}
 
 DumpLimitsFeature::DumpLimitsFeature(ApplicationServer& server,
                                      DumpLimitsFeatureOptions options)
