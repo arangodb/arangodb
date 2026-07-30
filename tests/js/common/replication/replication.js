@@ -52,7 +52,7 @@ function ReplicationLoggerSuite () {
 
   var tailWal = function (from) {
     const chunkSize = 32 * 1024 * 1024;
-    const result = arango.GET_RAW(`/_api/wal/tail?from=${from}&includeSystem=true&chunkSize=${chunkSize}`, {accept: "application/json"});
+    const result = arango.GET_RAW(`/_api/wal/tail?from=${from}&includeSystem=false&chunkSize=${chunkSize}`, {accept: "application/json"});
     if (result.error) {
       throw new Error("WAL tailing failed: " + JSON.stringify(result));
     }
@@ -71,21 +71,9 @@ function ReplicationLoggerSuite () {
     var result = [ ];
     getLastLogTick();
 
-    var exclude = function(name) {
-      return (name.substr(0, 11) === '_statistics' ||
-              name === '_apps' ||
-              name === '_foxxlog' ||
-              name === '_jobs' ||
-              name === '_queues' ||
-              name === '_sessions');
-    };
     var entries = tailWal(tick);
     if (Array.isArray(type)) {
       entries.forEach(function(e) {
-        if ((e.type === 2300 || e.type === 2302) && e.cname && exclude(e.cname)) {
-          // exclude statistics markers here
-          return;
-        }
         if (type.indexOf(e.type) !== -1) {
           result.push(e);
         }
@@ -93,10 +81,6 @@ function ReplicationLoggerSuite () {
     }
     else {
       entries.forEach(function(e) {
-        if ((e.type === 2300 || e.type === 2302) && e.cname && exclude(e.cname)) {
-          // exclude statistics markers here
-          return;
-        }
         if (type === undefined || e.type === type) {
           result.push(e);
         }
