@@ -34,7 +34,7 @@ export const useLinkModifiers = () => {
     value
   }: {
     id: string[];
-    value: string | string[] | {} | undefined;
+    value: string | string[] | boolean | Record<string, unknown> | undefined;
   }) => {
     const newLinks = values.links
       ? set(cloneDeep(values.links), [currentLink, ...fieldPath, ...id], value)
