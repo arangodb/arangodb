@@ -75,9 +75,6 @@ void ArangoshServer::addFeatures() {
 
   addFeature<ShellConsoleFeature>();
   addFeature<HttpEndpointProvider, ClientFeature>(true);
-  addFeature<VersionFeature>();
-  addFeature<LoggerFeature>(false);
-  addFeature<ConfigFeature>(_binaryName);
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(
@@ -85,19 +82,24 @@ void ArangoshServer::addFeatures() {
   addFeature<SslFeature>();
   addFeature<V8ShellFeaturePhase>();
   addFeature<ShellFeature>(_ret);
-  addFeature<V8PlatformFeature>();
-
-  auto& v8ShellFeature = addFeature<V8ShellFeature>(_binaryName);
-  addFeature<V8SecurityFeature>(AllowListStrictness::NONSTRICT);
-  addFeature<ProcessMonitoringFeature>(v8ShellFeature);
-  addFeature<TempFeature>(_binaryName);
+  addFeature<V8ShellFeature>(_binaryName);
 }
 
 void ArangoshServer::addFeaturesWithOptionProvider() {
+  addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
+  addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
+  addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());
+  addFeature<TempFeature>(_binaryName, getOptions<TempOptionsProvider>());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   addFeature<ProcessEnvironmentFeature>(
       _binaryName, getOptions<ProcessEnvironmentOptionsProvider>());
 #endif
+
+  addFeature<V8PlatformFeature>(getOptions<V8PlatformOptionsProvider>());
+  auto& v8SecurityFeature = addFeature<V8SecurityFeature>(
+      AllowListStrictness::NONSTRICT, getOptions<V8SecurityOptionsProvider>());
+  auto& v8ShellFeature = getFeature<V8ShellFeature>();
+  addFeature<ProcessMonitoringFeature>(v8ShellFeature, v8SecurityFeature);
 
   addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
   addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
