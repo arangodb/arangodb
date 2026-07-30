@@ -185,9 +185,13 @@ void ArangodServer::addFeaturesWithOptionProvider() {
       _dataSourceRegistry, getOptions<async_registry::OptionsProvider>());
   addFeature<ActionFeature>(getOptions<ActionOptionsProvider>());
 
+  auto& databasePath = addFeature<DatabasePathFeature>(
+      getOptions<DatabasePathOptionsProvider>());
+
 #ifdef USE_ENTERPRISE
   addFeature<AuditFeature>(getOptions<AuditOptionsProvider>());
-  addFeature<LicenseFeature>(getOptions<LicenseOptionsProvider>());
+  addFeature<LicenseFeature>(databasePath,
+                             getOptions<LicenseOptionsProvider>());
   addFeature<RCloneFeature>(getOptions<RCloneOptionsProvider>());
   addFeature<HotBackupFeature>(getOptions<HotBackupOptionsProvider>());
   addFeature<EncryptionFeature>(getOptions<EncryptionOptionsProvider>());
@@ -262,9 +266,6 @@ void ArangodServer::addFeaturesWithOptionProvider() {
 
   auto& rocksdbOption = addFeature<RocksDBOptionFeature>(
       &agency, getOptions<RocksDBOptionFeatureOptionsProvider>());
-
-  auto& databasePath = addFeature<DatabasePathFeature>(
-      getOptions<DatabasePathOptionsProvider>());
 
   addFeature<TemporaryStorageFeature>(
       databasePath, getOptions<TemporaryStorageOptionsProvider>());
