@@ -52,14 +52,15 @@ function ReplicationLoggerSuite () {
   };
 
   var tailWal = function (from) {
-    var result = arango.GET_RAW(`/_api/wal/tail?from=${from}&includeSystem=true&chunkSize=33554432`);
+    const chunkSize = 32 * 1024 * 1024;
+    const result = arango.GET_RAW(`/_api/wal/tail?from=${from}&includeSystem=true&chunkSize=${chunkSize}`, {accept: "application/json"});
     if (result.error) {
       throw new Error("WAL tailing failed: " + JSON.stringify(result));
     }
     if (result.code === 204) {
       return [];
     }
-    var body = result.body.utf8Slice(0, result.body.length);
+    const body = result.body.utf8Slice(0, result.body.length);
     return body.split('\n').filter(function (line) {
       return line.length > 0;
     }).map(function (line) {
