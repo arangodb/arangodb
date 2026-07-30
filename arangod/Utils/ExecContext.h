@@ -135,9 +135,10 @@ class ExecContext {
   //   using namespace arangodb::auth::perms;
   //   if (auto r = ec.can(SeeCollection{.db = db, .name = coll});
   //       !r.ok()) { /* ... */ }
-  [[nodiscard]] Result can(auth::Permission permission) const {
-    return _authMode.getIAuth().check(std::move(permission));
-  }
+  //
+  // Every question asked here is traced on `Logger::AUTHORIZATION` (TRACE);
+  // see tests/js/client/server_permissions/authorization-questions.js.
+  [[nodiscard]] Result can(auth::Permission permission) const;
 
   // New Result-returning permission check methods:
 
