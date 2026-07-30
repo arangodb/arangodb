@@ -35,8 +35,10 @@ add_library(arango_rest_server STATIC
   InitDatabaseOptionsProvider.cpp
   LanguageCheckFeature.cpp
   LockfileFeature.cpp
+  LogApiOptionsProvider.cpp
   LogBufferFeature.cpp
   LogBufferOptionsProvider.cpp
+  LogRotateOptionsProvider.cpp
   MaxMapCountFeature.cpp
   MaxMapCountOptionsProvider.cpp
   NonceFeature.cpp

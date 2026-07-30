@@ -41,8 +41,6 @@ class DaemonFeature final : public application_features::ApplicationFeature {
                          DaemonFeatureOptions options);
   explicit DaemonFeature(application_features::ApplicationServer& server);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void daemonize() override final;
   void unprepare() override final;
 
