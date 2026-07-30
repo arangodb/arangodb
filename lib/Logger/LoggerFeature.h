@@ -27,7 +27,6 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
-#include "Logger/LogApiOptions.h"
 #include "Logger/LoggerOptions.h"
 #include <velocypack/Builder.h>
 
@@ -47,7 +46,7 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   static constexpr std::string_view name() { return "Logger"; }
 
   LoggerFeature(application_features::ApplicationServer& server, bool threaded,
-                LoggerOptions options, LogApiOptions apiOptions = {});
+                LoggerOptions options);
   LoggerFeature(application_features::ApplicationServer& server, bool threaded);
 
   ~LoggerFeature();

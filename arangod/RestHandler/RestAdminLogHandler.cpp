@@ -32,7 +32,6 @@
 #include "Inspection/VPack.h"
 #include "Logger/LogLevel.h"
 #include "Logger/Logger.h"
-#include "Logger/LoggerFeature.h"
 #include "Logger/LogTopic.h"
 #include "Logger/LogLevel.h"
 #include "Logger/LogMacros.h"

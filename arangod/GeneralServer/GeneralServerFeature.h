@@ -35,7 +35,7 @@
 #include "Metrics/MetricsFeature.h"
 #include "Rest/ApiVersion.h"
 #include "Rest/CommonDefines.h"
-#include "Logger/LogApiOptions.h"
+#include "RestServer/LogApiOptions.h"
 
 #include <cstdint>
 #include <memory>

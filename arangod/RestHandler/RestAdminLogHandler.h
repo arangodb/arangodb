@@ -23,7 +23,7 @@
 #pragma once
 
 #include "RestHandler/RestBaseHandler.h"
-#include "Logger/LogApiOptions.h"
+#include "RestServer/LogApiOptions.h"
 
 namespace arangodb {
 
