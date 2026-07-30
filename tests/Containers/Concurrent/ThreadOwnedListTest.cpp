@@ -58,7 +58,7 @@ struct NodeData : InstanceCounterValue {
     int number;
     bool operator==(Snapshot const&) const = default;
   };
-  auto snapshot() -> Snapshot { return Snapshot{.number = number}; }
+  auto snapshot() const -> Snapshot { return Snapshot{.number = number}; }
 };
 
 using MyList = ThreadOwnedList<NodeData>;

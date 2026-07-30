@@ -53,15 +53,17 @@ TEST(ForestTest, index_forest) {
 
   auto indexed = forest.index_by_parent();
 
-  ASSERT_EQ(indexed.children((void*)1), std::vector<void*>{});
-  ASSERT_EQ(indexed.children((void*)2),
-            (std::vector<void*>{(void*)3, (void*)1}));  // order does not matter
-  ASSERT_EQ(indexed.children((void*)3), std::vector<void*>{});
-  ASSERT_EQ(indexed.children((void*)4), std::vector<void*>{(void*)2});
-  ASSERT_EQ(indexed.children((void*)32),
-            std::vector<void*>{});  // exists as waiter but not as proper node
+  ASSERT_EQ(indexed.children((void*)1), std::vector<void const*>{});
+  ASSERT_EQ(
+      indexed.children((void*)2),
+      (std::vector<void const*>{(void*)3, (void*)1}));  // order does not matter
+  ASSERT_EQ(indexed.children((void*)3), std::vector<void const*>{});
+  ASSERT_EQ(indexed.children((void*)4), std::vector<void const*>{(void*)2});
+  ASSERT_EQ(
+      indexed.children((void*)32),
+      std::vector<void const*>{});  // exists as waiter but not as proper node
   ASSERT_EQ(indexed.children((void*)8),
-            std::vector<void*>{});  // node does not exist at all
+            std::vector<void const*>{});  // node does not exist at all
   ASSERT_EQ(forest, (Forest<std::string>{{}, {}, {}}));
 }
 

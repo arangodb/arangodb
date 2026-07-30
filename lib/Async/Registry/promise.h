@@ -52,7 +52,7 @@ auto inspect(Inspector& f, State& x) {
 }
 
 struct PromiseId {
-  void* id;
+  void const* id;
   bool operator==(PromiseId const&) const = default;
 };
 template<typename Inspector>
@@ -61,11 +61,12 @@ auto inspect(Inspector& f, PromiseId& x) {
 }
 
 struct Requester : std::variant<basics::ThreadInfo, PromiseId> {
-  static auto from(std::variant<basics::ThreadInfo, void*> var) -> Requester {
+  static auto from(std::variant<basics::ThreadInfo, void const*> var)
+      -> Requester {
     return std::visit(
         overloaded{
             [](basics::ThreadInfo const& info) { return Requester{info}; },
-            [](void* ptr) { return Requester{PromiseId{ptr}}; }},
+            [](void const* ptr) { return Requester{PromiseId{ptr}}; }},
         var);
   }
 };
@@ -97,7 +98,7 @@ auto inspect(Inspector& f, PromiseSnapshot& x) {
 using CurrentRequester =
     std::variant<containers::SharedPtr<basics::ThreadInfo>, PromiseId>;
 struct AtomicRequester
-    : containers::AtomicSharedOrRawPtr<basics::ThreadInfo, void> {
+    : containers::AtomicSharedOrRawPtr<basics::ThreadInfo, const void> {
   static auto from(CurrentRequester req) -> AtomicRequester {
     return std::visit(
         overloaded{[](containers::SharedPtr<basics::ThreadInfo> const& ptr) {
@@ -116,8 +117,8 @@ struct Promise {
   Promise(CurrentRequester requester, std::source_location location);
   ~Promise() = default;
 
-  auto id() -> PromiseId { return PromiseId{this}; }
-  auto snapshot() -> Snapshot {
+  auto id() const -> PromiseId { return PromiseId{this}; }
+  auto snapshot() const -> Snapshot {
     return PromiseSnapshot{
         .id = id(),
         .owning_thread =
