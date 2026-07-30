@@ -81,22 +81,23 @@ TEST(ForestTest, executes_post_ordered_depth_first) {
 
   auto dfs = DFS_PostOrder{indexed, (void*)1};
 
-  ASSERT_EQ(dfs.next(), std::make_pair((void*)5, (size_t)3));
-  ASSERT_EQ(dfs.next(), std::make_pair((void*)6, (size_t)3));
-  ASSERT_EQ(dfs.next(), std::make_pair((void*)3, (size_t)2));
-  ASSERT_EQ(dfs.next(), std::make_pair((void*)7, (size_t)3));
-  ASSERT_EQ(dfs.next(), std::make_pair((void*)4, (size_t)2));
-  ASSERT_EQ(dfs.next(), std::make_pair((void*)2, (size_t)1));
-  ASSERT_EQ(dfs.next(), std::make_pair((void*)1, (size_t)0));
+  ASSERT_EQ(dfs.next(), std::make_pair((void const*)5, (size_t)3));
+  ASSERT_EQ(dfs.next(), std::make_pair((void const*)6, (size_t)3));
+  ASSERT_EQ(dfs.next(), std::make_pair((void const*)3, (size_t)2));
+  ASSERT_EQ(dfs.next(), std::make_pair((void const*)7, (size_t)3));
+  ASSERT_EQ(dfs.next(), std::make_pair((void const*)4, (size_t)2));
+  ASSERT_EQ(dfs.next(), std::make_pair((void const*)2, (size_t)1));
+  ASSERT_EQ(dfs.next(), std::make_pair((void const*)1, (size_t)0));
   ASSERT_EQ(dfs.next(), std::nullopt);
 
   auto dfs_of_another_tree = DFS_PostOrder{indexed, (void*)32};
-  ASSERT_EQ(dfs_of_another_tree.next(), std::make_pair((void*)32, (size_t)0));
+  ASSERT_EQ(dfs_of_another_tree.next(),
+            std::make_pair((void const*)32, (size_t)0));
   ASSERT_EQ(dfs_of_another_tree.next(), std::nullopt);
   // does not also give 8 back because 32 is not a proper node in the forest
 
   auto dfs_of_unexistend_node = DFS_PostOrder{indexed, (void*)10};
   ASSERT_EQ(dfs_of_unexistend_node.next(),
-            std::make_pair((void*)10, (size_t)0));
+            std::make_pair((void const*)10, (size_t)0));
   ASSERT_EQ(dfs_of_unexistend_node.next(), std::nullopt);
 }
