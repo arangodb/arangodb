@@ -29,7 +29,6 @@
 
 #include "Basics/Exceptions.h"
 #include "Containers/FlatHashSet.h"
-#include "Basics/application-exit.h"
 
 namespace arangodb {
 namespace options {

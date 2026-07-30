@@ -350,7 +350,7 @@ class ApplicationServer {
   virtual void validateOptions();
 
   // adds the features that receive their options as a c-tor dependency.
-  virtual void addFeaturesWithOptionProvider() {};
+  virtual void addFeaturesWithOptionProvider(){};
 
   // allows process control
   void daemonize();
