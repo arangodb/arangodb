@@ -16,15 +16,6 @@
 
 namespace {
 
-auto promise_count_in_registry() -> uint {
-  uint promise_count = 0;
-  arangodb::async_registry::get_thread_registry().for_node(
-      [&](arangodb::async_registry::PromiseSnapshot promise) {
-        promise_count++;
-      });
-  return promise_count;
-}
-
 struct InstanceCounterValue {
   InstanceCounterValue() { instanceCounter += 1; }
   InstanceCounterValue(InstanceCounterValue const& o) { instanceCounter += 1; }
@@ -75,7 +66,7 @@ struct AsyncTest<std::pair<WaitType, ValueType>> : ::testing::Test {
     arangodb::async_registry::get_thread_registry().garbage_collect();
     wait.stop();
     EXPECT_EQ(InstanceCounterValue::instanceCounter, 0);
-    EXPECT_EQ(promise_count_in_registry(), 0);
+    EXPECT_EQ(arangodb::async_registry::registry.size(), 0);
     EXPECT_TRUE(std::holds_alternative<
                 arangodb::containers::SharedPtr<arangodb::basics::ThreadInfo>>(
         *arangodb::async_registry::get_current_coroutine()));
@@ -376,7 +367,7 @@ auto baz() -> async<void> { co_return; }
 }  // namespace
 TYPED_TEST(AsyncTest, promises_are_registered_in_global_async_registry) {
   auto coro_foo = foo();
-  EXPECT_EQ(promise_count_in_registry(), 1);
+  EXPECT_EQ(arangodb::async_registry::registry.size(), 1);
 
   std::jthread([&]() {
     auto coro_bar = bar();
