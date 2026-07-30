@@ -21,14 +21,18 @@
 #pragma once
 
 #include "ApplicationFeatures/CoreOptionProviders.h"
+#include "ApplicationFeatures/ConfigOptionsProvider.h"
+#include "ApplicationFeatures/TempOptionsProvider.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionOptionsProvider.h"
 #endif
 
 namespace arangodb {
-using ArangoImportOptionProviders = CoreOptionProviders<
+using ArangoImportOptionProviders =
+    CoreOptionProviders<ConfigOptionsProvider, TempOptionsProvider
 #ifdef USE_ENTERPRISE
-    EncryptionOptionsProvider
+                        ,
+                        EncryptionOptionsProvider
 #endif
-    >;
+                        >;
 }  // namespace arangodb

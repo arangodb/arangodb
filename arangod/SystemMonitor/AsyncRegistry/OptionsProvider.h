@@ -27,9 +27,12 @@
 
 namespace arangodb::async_registry {
 
-struct OptionsProvider : arangodb::OptionsProvider<FeatureOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      FeatureOptions& options) override;
+struct OptionsProvider
+    : arangodb::OptionsProviderImpl<OptionsProvider, FeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          FeatureOptions& options);
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                           FeatureOptions& options){};
 };
 
 }  // namespace arangodb::async_registry
