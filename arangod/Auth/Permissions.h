@@ -24,6 +24,7 @@
 
 #include "Basics/Meta/TypeList.h"
 
+#include <iosfwd>
 #include <span>
 #include <string>
 #include <string_view>
@@ -373,5 +374,26 @@ using CompleteList = meta::detail::Union<AdminList, NonAdminList>::type;
 // implicitly constructible from any of its alternatives, so callers just
 // pass a `perms::Xxx{...}` and it is wrapped automatically.
 using Permission = perms::detail::CompleteList::asVariant;
+
+namespace perms {
+
+// Streams one authorization question as a human- and machine-readable list of
+// the permission's type name followed by its fields, e.g.
+//
+//   UseCollection db=_system name=foo level=read
+//   AdminBackup
+//
+// Used by `ExecContext::can()` to trace every authorization question on
+// `Logger::AUTHORIZATION`; the format is asserted on by
+// tests/js/client/server_permissions/authorization-questions*.js, so treat it
+// as a (loose) contract. Values never contain whitespace, so a reader can
+// tokenize on spaces and split each token at its first '='.
+//
+// NOTE: this has to be declared in `perms`, not in `auth`, even though it is
+// about `auth::Permission`: that is an alias for `std::variant<perms::...>`,
+// so ADL only ever considers `std` and `perms`.
+std::ostream& operator<<(std::ostream& os, Permission const& permission);
+
+}  // namespace perms
 
 }  // namespace arangodb::auth
