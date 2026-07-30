@@ -69,6 +69,11 @@ class FeatureOptionProviderContainer final {
     return std::get<ProviderType>(_providers).options();
   }
 
+  template<typename ProviderType>
+  auto& mutableOptions() {
+    return std::get<ProviderType>(_providers).mutableOptions();
+  }
+
  private:
   template<class Provider>
   void processProviderOptions(

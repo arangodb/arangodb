@@ -21,14 +21,24 @@
 #pragma once
 
 #include "ApplicationFeatures/CoreOptionProviders.h"
+#include "ApplicationFeatures/ConfigOptionsProvider.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionOptionsProvider.h"
 #endif
+#ifdef TRI_HAVE_GETRLIMIT
+#include "ApplicationFeatures/BumpFileDescriptorsOptionsProvider.h"
+#endif
 
 namespace arangodb {
-using ArangoDumpOptionProviders = CoreOptionProviders<
+using ArangoDumpOptionProviders =
+    CoreOptionProviders<ConfigOptionsProvider
 #ifdef USE_ENTERPRISE
-    EncryptionOptionsProvider
+                        ,
+                        EncryptionOptionsProvider
 #endif
-    >;
+#ifdef TRI_HAVE_GETRLIMIT
+                        ,
+                        ClientBumpFileDescriptorsOptionsProvider
+#endif
+                        >;
 }  // namespace arangodb

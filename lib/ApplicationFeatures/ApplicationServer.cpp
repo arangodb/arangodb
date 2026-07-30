@@ -425,15 +425,6 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
     exit(EXIT_SUCCESS);
   }
 
-  for (auto it = _orderedFeatures.begin(); it != _orderedFeatures.end(); ++it) {
-    ApplicationFeature& feature = (*it).get();
-    if (feature.isEnabled()) {
-      LOG_TOPIC("5c642", TRACE, Logger::STARTUP)
-          << feature.name() << "::loadOptions";
-      feature.loadOptions(_options, _binaryPath);
-    }
-  }
-
   if (_dumpOptions) {
     auto builder = _options->toVelocyPack(
         false, true, [](std::string const&) { return true; });
