@@ -91,6 +91,7 @@ RestStatus RestDatabaseHandler::getDatabases() {
       // and some request comes in via the unix domain socket. We have decided
       // to get rid of this check here, since the code without "user" suffix
       // has never been separately checked.
+      names = methods::Databases::list(server(), /* onlyCurrentUser = */ true);
     }
 
     // return database names in sorted order
