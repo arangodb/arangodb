@@ -25,6 +25,8 @@
 #include "Auth/Rbac/BackendImpl.h"
 #include "Basics/StaticStrings.h"
 #include "Inspection/JsonPrintInspector.h"
+#include "Metrics/Histogram.h"
+#include "Metrics/LogScale.h"
 #include "Network/Methods.h"
 
 #include <fuerte/types.h>
@@ -32,6 +34,7 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/Parser.h>
 
+#include <numeric>
 #include <sstream>
 
 using namespace arangodb;
@@ -89,6 +92,20 @@ network::Response makeNetworkResponse(fuerte::StatusCode statusCode,
   auto request = std::make_unique<fuerte::Request>();
   return network::Response{std::string{}, fuerte::Error::NoError,
                            std::move(request), std::move(response)};
+}
+
+auto makeRequestDurationMetric() -> rbac::BackendImpl::RequestDurationMetric {
+  // the exact scale doesn't matter here, only the number of recorded
+  // observations
+  using scale_t = metrics::LogScale<std::uint64_t>;
+  return {scale_t{scale_t::kSupplySmallestBucket, 2, 0, 1'000, 16},
+          "arangodb_rbac_request_duration", "", ""};
+}
+
+auto totalObservations(rbac::BackendImpl::RequestDurationMetric const& metric)
+    -> std::uint64_t {
+  auto buckets = metric.load();
+  return std::accumulate(buckets.begin(), buckets.end(), std::uint64_t{0});
 }
 
 }  // namespace
@@ -165,4 +182,56 @@ TEST(RbacBackendTest, evaluateTokenManySync_setsSkipSchedulerAndReturnsResult) {
                                    rbac::Backend::RequestItems{});
 
   EXPECT_TRUE(result.ok());
+}
+
+TEST(RbacBackendTest, evaluateTokenMany_measuresRequestDuration) {
+  auto responseJson = buildAllowResponseJson();
+  auto requestDuration = makeRequestDurationMetric();
+
+  auto sendRequestMock =
+      [&](network::DestinationId const&, fuerte::RestVerb, std::string const&,
+          velocypack::Buffer<uint8_t> const&, network::RequestOptions const&,
+          network::Headers const&) -> network::FutureRes {
+    return makeNetworkResponse(fuerte::StatusOK, responseJson);
+  };
+  auto testee = rbac::BackendImpl{sendRequestMock, "http://localhost:8080",
+                                  &requestDuration};
+
+  ASSERT_EQ(totalObservations(requestDuration), 0);
+
+  auto result =
+      testee.evaluateTokenManySync(rbac::JwtToken{.jwtToken = "my.jwt.token"},
+                                   rbac::Backend::RequestItems{});
+
+  ASSERT_TRUE(result.ok());
+  EXPECT_EQ(totalObservations(requestDuration), 1);
+
+  auto asyncResult = testee
+                         .evaluateTokenMany(
+                             rbac::JwtToken{.jwtToken = "my.jwt.token"},
+                             rbac::Backend::RequestItems{})
+                         .waitAndGet();
+
+  ASSERT_TRUE(asyncResult.ok());
+  EXPECT_EQ(totalObservations(requestDuration), 2);
+}
+
+TEST(RbacBackendTest, evaluateTokenMany_measuresRequestDurationOnError) {
+  auto requestDuration = makeRequestDurationMetric();
+
+  auto sendRequestMock =
+      [](network::DestinationId const&, fuerte::RestVerb, std::string const&,
+         velocypack::Buffer<uint8_t> const&, network::RequestOptions const&,
+         network::Headers const&) -> network::FutureRes {
+    return makeNetworkResponse(fuerte::StatusUnauthorized);
+  };
+  auto testee = rbac::BackendImpl{sendRequestMock, "http://localhost:8080",
+                                  &requestDuration};
+
+  auto result =
+      testee.evaluateTokenManySync(rbac::JwtToken{.jwtToken = "bad.token"},
+                                   rbac::Backend::RequestItems{});
+
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ(totalObservations(requestDuration), 1);
 }
