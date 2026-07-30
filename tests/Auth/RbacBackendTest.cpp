@@ -98,7 +98,7 @@ auto makeRequestDurationMetric() -> rbac::BackendImpl::RequestDurationMetric {
   // the exact scale doesn't matter here, only the number of recorded
   // observations
   using scale_t = metrics::LogScale<std::uint64_t>;
-  return {scale_t{scale_t::kSupplySmallestBucket, 2, 0, 1'000, 16},
+  return {scale_t{scale_t::kSupplySmallestBucket, 2, 0, 10, 22},
           "arangodb_rbac_request_duration", "", ""};
 }
 

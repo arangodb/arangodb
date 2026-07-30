@@ -13,7 +13,10 @@ description: |
   Histogram of the time spent on a single `evaluate-token-many` request to the
   external RBAC authorization service, in microseconds. This covers serializing
   the request body, the round trip to the authorization service, and parsing the
-  response. The metric is only exposed if an external RBAC service is configured.
+  response. The buckets start at 10 microseconds and double up to about 21
+  seconds, because the authorization service is typically a sidecar reachable
+  over the loopback interface. The metric is only exposed if an external RBAC
+  service is configured.
 troubleshoot: |
   Counts in the high buckets mean that permission checks are slow, which directly
   adds latency to every incoming request that requires an authorization decision.

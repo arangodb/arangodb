@@ -48,8 +48,11 @@ namespace arangodb::rbac {
 struct RbacRequestDurationScale {
   using scale_t = metrics::LogScale<std::uint64_t>;
   static scale_t scale() {
-    // values in us, smallest bucket is up to 1ms, scales up to 2^16 ms =~ 65s.
-    return {scale_t::kSupplySmallestBucket, 2, 0, 1'000, 16};
+    // Values in us. The authorization service usually runs as a sidecar on
+    // localhost, so latencies are expected in the microsecond range: the
+    // smallest bucket is up to 10us, and the scale goes up to
+    // 10 * 2^21 us =~ 21s.
+    return {scale_t::kSupplySmallestBucket, 2, 0, 10, 22};
   }
 };
 
