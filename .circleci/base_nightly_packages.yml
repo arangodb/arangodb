@@ -47,15 +47,28 @@ version: 2.1
 #                       industry standard for published artifacts: HIGH and
 #                       CRITICAL findings block; NONE = report-only; ALL =
 #                       any finding, incl. UNKNOWN). The EOL base-OS check on
-#                       images always fails regardless. Waivers (time-boxed,
-#                       signed off): .circleci/trivy-gate-waivers.json —
-#                       entries {id, package (optional), expires YYYY-MM-DD,
-#                       reason, approved-by}; a vulnerability finding
-#                       matching an unexpired entry does not count toward
-#                       the gate. Expiry is end-of-day and capped at 90 days
-#                       out (validated in prepare-nightly, which stages the
-#                       file into the workspace); expired entries block
-#                       again and warn. Secret findings are never waivable
+#                       images always fails regardless. Every scan also
+#                       asserts WHICH targets it found (expect-targets /
+#                       min-targets), so a packaging or base-image change
+#                       that drops part of the dependency surface fails by
+#                       name instead of leaving a green gate over less, and
+#                       correlates its findings against the CISA KEV catalog
+#                       and the FIRST EPSS scores (report-only for now), the
+#                       two signals no CVSS band can express. Waivers
+#                       (time-boxed, signed off):
+#                       .circleci/trivy-gate-waivers.json, entries {id,
+#                       package (optional), severity, detected YYYY-MM-DD,
+#                       expires YYYY-MM-DD, reason, approved-by, class
+#                       (optional)}; a vulnerability finding matching an
+#                       unexpired entry does not count toward the gate.
+#                       Expiry is end-of-day and must fall inside the
+#                       severity's remediation window measured from
+#                       "detected" (CRITICAL 30d, HIGH/UNKNOWN 90d,
+#                       MEDIUM/LOW 180d, class design-acceptance 366d), with
+#                       a 366-day renewal horizon; unknown keys are rejected
+#                       (validated in prepare-nightly, which stages the file
+#                       into the workspace); expired entries block again and
+#                       warn. Secret findings are never waivable
 #                       here (dev-fixture allowlists belong in a trivy
 #                       secret config, by path). Published reports and SBOMs
 #                       always keep ALL findings — waivers change gating
@@ -160,7 +173,12 @@ version: 2.1
 orbs:
   aws-cli: circleci/aws-cli@4.1.1
   aws-ecr: circleci/aws-ecr@9.0.1
-  trivy-scan: arangodb/trivy-scan@1.0
+  # Exact patch pin, never a floating @1 or @1.0: an orb range resolves at
+  # config-compile time, so a floating pin silently changes what gates the
+  # nightly publish. 1.1.2 adds report-severity (report band separate from
+  # gate band), expect-targets/min-targets coverage assertions and the
+  # kev-epss-check command used below.
+  trivy-scan: arangodb/trivy-scan@1.1.2
 
 parameters:
   enterprise-branch:
@@ -230,10 +248,12 @@ commands:
     # Only compile-nightly needs the real source tree (sparse: false). All
     # other jobs work on the install tree / workspace and need just the
     # support files, so they default to a sparse blob-filtered checkout of
-    # .circleci/ + scripts/ + CMakeLists.txt + VERSIONS + LICENSE — a few
-    # MB instead of the full tree. .circleci/ is needed by prepare-nightly
-    # (validates and stages trivy-gate-waivers.json) and by publish-nightly
-    # (records the active waiver count in the publish reports).
+    # .circleci/ + scripts/ + CMakeLists.txt + VERSIONS + LICENSE +
+    # .github/CODEOWNERS, a few MB instead of the full tree. .circleci/ is
+    # needed by prepare-nightly (validates and stages
+    # trivy-gate-waivers.json) and by publish-nightly (records the active
+    # waiver count in the publish reports); CODEOWNERS is what prepare-nightly
+    # cross-checks waiver approvers against.
     parameters:
       destination:
         type: string
@@ -252,7 +272,7 @@ commands:
             git init
             git remote add origin https://github.com/arangodb/arangodb.git
             if [ "<< parameters.sparse >>" = "true" ]; then
-              git sparse-checkout set --no-cone /.circleci/ /scripts/ /CMakeLists.txt /VERSIONS /LICENSE
+              git sparse-checkout set --no-cone /.circleci/ /scripts/ /CMakeLists.txt /VERSIONS /LICENSE /.github/CODEOWNERS
               git fetch --depth 1 --filter=blob:none origin << pipeline.git.revision >>
             else
               git fetch --depth 1 origin << pipeline.git.revision >>
@@ -427,10 +447,15 @@ commands:
               -o install.tar.gz "${URL}"
 
   gate-trivy-findings:
-    # The trivy-scan orb couples what is reported and what fails the job in
-    # one severity filter, so the scans run report-only over ALL severities
-    # (fail-on-findings: false) and this gate decides separately, from the
-    # JSON report, whether the job fails: only findings (vulnerabilities and
+    # The scans run report-only (fail-on-findings: false) over the full
+    # severity band, and this gate decides separately, from the JSON report,
+    # whether the job fails, because the gate band here is the
+    # security-check-fail-level pipeline parameter, which is resolved at
+    # trigger time, while an orb parameter is fixed when the config is
+    # compiled. The orb's own report/gate severity split (1.1.2) narrows what
+    # its trivy-gate.txt artifact shows to the CRITICAL/HIGH standard; this
+    # command stays the authority on whether the publish proceeds: only
+    # findings (vulnerabilities and
     # secrets) at or above security-check-fail-level do — minus
     # vulnerabilities covered by an unexpired entry in
     # .circleci/trivy-gate-waivers.json (staged into the workspace by
@@ -645,24 +670,121 @@ jobs:
               exit 1
             fi
             TODAY=$(date -u +%F)
-            CAP=$(date -u -d "today + 90 days" +%F 2>/dev/null || date -u -v+90d +%F)
-            # Structural validation: every entry needs a non-empty id,
-            # reason and approved-by, an ISO expiry date no more than 90
-            # days out (time-boxed means time-boxed), and — if present —
-            # a non-empty package scope.
-            if ! jq -e --arg cap "${CAP}" '
-                 (.waivers | type == "array")
-                 and ([.waivers[] | select(
-                       ((.id? // "") | type == "string" and length > 0)
-                       and ((.expires? // "") | test("^[0-9]{4}-[0-9]{2}-[0-9]{2}$"))
-                       and (.expires <= $cap)
-                       and ((.reason? // "") | type == "string" and length > 0)
-                       and ((."approved-by"? // "") | type == "string" and length > 0)
-                       and (if has("package") then (.package | type == "string" and length > 0) else true end)
-                     )] | length) == (.waivers | length)' "${W}" >/dev/null; then
-              echo "ERROR: ${W} failed validation — every waiver needs id, reason, approved-by, and an expires date (YYYY-MM-DD) at most 90 days out (${CAP}); package, when given, must be non-empty" >&2
-              jq . "${W}" >&2 || cat "${W}" >&2
+            # Unparseable JSON is caught first: the validator below reads
+            # fields, and jq failing on a syntax error must not be confused
+            # with jq reporting no problems.
+            if ! jq -e . "${W}" >/dev/null 2>&1; then
+              echo "ERROR: ${W} is not valid JSON" >&2
+              cat "${W}" >&2
               exit 1
+            fi
+            # Structural + POA&M validation. Every entry needs a non-empty
+            # id, reason, approved-by, a severity and a detection date, and
+            # an expiry inside that severity's remediation window measured
+            # FROM THE DETECTION DATE:
+            #
+            #   CRITICAL  30 days      MEDIUM  180 days
+            #   HIGH      90 days      LOW     180 days
+            #   UNKNOWN   90 days      class: design-acceptance  366 days
+            #
+            # Same table as the trivy-scan orb's waiver-windows default, so
+            # the file migrates to the orb's structured schema unchanged. It
+            # replaces a flat "90 days from today", which let a CRITICAL sit
+            # for a quarter and let any entry be renewed indefinitely by
+            # re-dating it; a window anchored to detection cannot be renewed
+            # by editing the expiry alone. A 366-day horizon on top stops a
+            # design acceptance from becoming a parking lot.
+            #
+            # Unknown keys are REJECTED rather than ignored, which is the
+            # lesson from Trivy's own ignorefile: it accepts a misspelled
+            # expiry key as "no expiry" and then suppresses the finding
+            # forever. A waiver format that fails open is worse than none.
+            jq -r --arg today "${TODAY}" '
+                 def days: (. + "T00:00:00Z") | fromdate;
+                 def isdate: (type == "string") and test("^[0-9]{4}-[0-9]{2}-[0-9]{2}$");
+                 def nonempty: (type == "string") and (length > 0);
+                 def window($class; $sev):
+                   if $class == "design-acceptance" then 366
+                   elif $sev == "CRITICAL" then 30
+                   elif $sev == "HIGH" then 90
+                   elif $sev == "MEDIUM" then 180
+                   elif $sev == "LOW" then 180
+                   elif $sev == "UNKNOWN" then 90
+                   else null
+                   end;
+                 ["id", "package", "severity", "detected", "expires", "reason", "approved-by", "class"] as $allowed
+                 | ["CRITICAL", "HIGH", "MEDIUM", "LOW", "UNKNOWN"] as $sevs
+                 | ["remediation-pending", "design-acceptance"] as $classes
+                 | if (type != "object") or (has("waivers") | not) or ((.waivers | type) != "array")
+                   then ["the file must be a JSON object with a \"waivers\" array"]
+                   else
+                     [ .waivers
+                       | to_entries[]
+                       | ("waiver #" + (.key + 1 | tostring)) as $at
+                       | .value as $w
+                       | if ($w | type) != "object" then "\($at): must be an object"
+                         else
+                           ($w.id // "") as $id
+                           | ("\($at)" + (if ($id | nonempty) then " (\($id))" else "" end)) as $at
+                           | ($w.class // "remediation-pending") as $class
+                           | ($w.severity // "") as $sev
+                           | [ ( $w | keys_unsorted - $allowed | .[]
+                                 | "\($at): unknown key \"\(.)\", allowed keys are \($allowed | join(", "))" ),
+                               ( if ($id | nonempty) then empty
+                                 else "\($at): id is required and must be a non-empty string (the Trivy VulnerabilityID)" end ),
+                               ( if ($classes | index($class)) then empty
+                                 else "\($at): class \"\($class)\" is not one of \($classes | join(", "))" end ),
+                               ( if $class == "design-acceptance" then empty
+                                 elif ($sevs | index($sev)) then empty
+                                 else "\($at): severity is required (one of \($sevs | join(", "))) and drives the expiry window" end ),
+                               ( if ($w.reason // "" | nonempty) then empty
+                                 else "\($at): reason is required and must be a non-empty string" end ),
+                               ( if ($w["approved-by"] // "" | nonempty) then empty
+                                 else "\($at): approved-by is required and must be a non-empty string" end ),
+                               ( if ($w | has("package") | not) or ($w.package | nonempty) then empty
+                                 else "\($at): package, when given, must be a non-empty string" end ),
+                               ( if ($w.detected // null | isdate) then empty
+                                 else "\($at): detected is required and must be YYYY-MM-DD (the window runs from it)" end ),
+                               ( if ($w.expires // null | isdate) then empty
+                                 else "\($at): expires is required and must be YYYY-MM-DD" end ),
+                               ( if ($w.detected // null | isdate) and ($w.expires // null | isdate) then
+                                   ( if $w.expires >= $w.detected then empty
+                                     else "\($at): expires \($w.expires) is before detected \($w.detected)" end ),
+                                   ( window($class; $sev) as $win
+                                     | if $win == null then empty
+                                       else (($w.detected | days) + ($win * 86400) | todate | .[0:10]) as $cap
+                                         | if $w.expires <= $cap then empty
+                                           else "\($at): expires \($w.expires) is beyond the \($win)-day \(if $class == "design-acceptance" then "design-acceptance" else $sev end) window (detected \($w.detected), cap \($cap))" end
+                                       end ),
+                                   ( (($today | days) + (366 * 86400) | todate | .[0:10]) as $horizon
+                                     | if $w.expires <= $horizon then empty
+                                       else "\($at): expires \($w.expires) is past the \($horizon) renewal horizon, that is a parking lot, not a deadline" end )
+                                 else empty end )
+                             ]
+                           | .[]
+                         end
+                     ]
+                   end
+                 | .[]' "${W}" > /tmp/waiver-problems.txt
+            if [ -s /tmp/waiver-problems.txt ]; then
+              echo "ERROR: ${W} failed validation:" >&2
+              sed -e "s/^/  /" /tmp/waiver-problems.txt >&2
+              exit 1
+            fi
+            # approved-by should name somebody who owns the code, which is
+            # the first thing an auditor asks about a risk acceptance. NOTICE
+            # rather than a failure while CODEOWNERS routes no security owner
+            # for this repository: make it a failure once it does.
+            CO=.github/CODEOWNERS
+            if [ -f "${CO}" ]; then
+              jq -r ".waivers[].\"approved-by\"" "${W}" | sort -u | while IFS= read -r APPROVER; do
+                [ -n "${APPROVER}" ] || continue
+                if ! grep -qF -- "${APPROVER}" "${CO}"; then
+                  echo "NOTICE: waiver approver ${APPROVER} does not appear in ${CO}; a risk acceptance should come from a code owner" >&2
+                fi
+              done
+            else
+              echo "NOTICE: no ${CO} in the checkout, so waiver approvers could not be cross-checked" >&2
             fi
             # Expired entries are dead weight (the finding blocks again
             # regardless) — warn so they get cleaned up.
@@ -1045,10 +1167,11 @@ jobs:
   # One job instance per published item, so a finding in one item never
   # prevents the remaining items from being scanned; publish-nightly requires
   # every instance, so any gated finding still blocks the whole publish.
-  # The orb couples reporting and failing in one severity filter, so the
-  # scans run report-only over ALL severities (unfixed CVEs included, secret
-  # scanning kept enabled — orb default) and the gate-trivy-findings command
-  # fails the job per security-check-fail-level. EOL base-OS check on image
+  # The scans report over ALL severities (unfixed CVEs included, secret
+  # scanning kept enabled, orb default) while their gate band stays at the
+  # CRITICAL/HIGH industry standard (report-severity vs severity), and the
+  # gate-trivy-findings command fails the job per security-check-fail-level.
+  # EOL base-OS check on image
   # scans still fails unconditionally. detection-priority stays "precise" —
   # the orb explicitly recommends against "comprehensive" on blocking gates,
   # and these scans still feed one.
@@ -1123,13 +1246,47 @@ jobs:
             fi
       # Report-only over ALL severities; gate-trivy-findings below decides
       # whether the job (and with it the publish) fails.
+      #
+      # report-severity carries the FULL band, severity carries the industry
+      # standard blocking band. Before 1.1.2 the orb applied one severity
+      # filter to both, so keeping the report complete meant telling the orb
+      # its gate band was CRITICAL..UNKNOWN as well; the two are now
+      # separate. /tmp/trivy-results.json keeps exactly the same full-band
+      # content it had before (the split steps below and the published
+      # reports are unaffected), and the orb additionally renders a
+      # trivy-gate.txt artifact holding just the CRITICAL/HIGH view, so what
+      # blocks a publish and what is merely recorded are both visible.
+      # NOTE the orb's gate view is fixed at the CRITICAL,HIGH standard while
+      # THIS pipeline's gate is security-check-fail-level (default HIGH,
+      # i.e. the same band); the two only differ when the parameter is
+      # overridden, and gate-trivy-findings remains the authority.
       - trivy-scan/scan:
           scan-type: rootfs
           scan-path: /tmp/scan-root
-          severity: "CRITICAL,HIGH,MEDIUM,LOW,UNKNOWN"
+          severity: "CRITICAL,HIGH"
+          report-severity: "CRITICAL,HIGH,MEDIUM,LOW,UNKNOWN"
           fail-on-findings: false
           ignore-unfixed: false
           store-junit-results: true
+          # Coverage assertions. require-targets (orb default) is a floor of
+          # ONE, so an extraction that produced only the client package, or a
+          # packaging change that stopped shipping the Go binaries, would
+          # leave one target and keep the gate green over a fraction of the
+          # surface. These name the targets instead. Values read off the
+          # 2026-07-29 nightly (pipeline 53660, jobs security-check-{deb,rpm,
+          # tar}-{amd64,arm64}), where every rootfs scan detects exactly
+          # these three and nothing else:
+          #   Node.js                        aggregated node-pkg inventory
+          #   <pkg>/usr/bin/arangodb         starter (gobinary)
+          #   <pkg>/usr/sbin/rclone-arangodb rclone (gobinary)
+          # Substrings, so the version/date in the package directory name
+          # does not have to be predicted. Deliberately NOT asserted: an
+          # os-pkgs target: extracted DEB/RPM/TAR contents carry no dpkg/rpm
+          # database, so trivy reports no OS packages here (the OS layer is
+          # covered by the image scans), and arangod itself is C++, which no
+          # trivy mode analyzes.
+          expect-targets: "Node.js,usr/bin/arangodb,usr/sbin/rclone-arangodb"
+          min-targets: 3
           # sbom-output makes the scan run with --list-all-pkgs so the JSON
           # report carries the FULL package inventory (not only vulnerable
           # ones); the PER-PACKAGE SBOMs below are rendered from that
@@ -1279,6 +1436,27 @@ jobs:
           root: /tmp/nightly
           paths:
             - trivy-reports/<< parameters.arch >>
+      # Exploitation signal over the FULL-severity report, which is the only
+      # place it can be seen: trivy reports neither KEV membership nor an
+      # EPSS score, so a KEV-listed MEDIUM sits below every CVSS-banded gate
+      # in this pipeline. CISA BOD 26-04 moved the federal baseline onto
+      # exactly these two signals. Runs BEFORE the gate so the signal is
+      # recorded even on a run the gate blocks.
+      #
+      # REPORT-ONLY for the first cycle (fail-on-match: false). Measured on
+      # the 2026-07-29 nightly: no finding in any package or image report is
+      # KEV-listed and the highest EPSS score is 0.011, well under the 0.1
+      # threshold, so arming the check today would be green. What it would
+      # also mean is that a CISA or FIRST feed update, no code change and no
+      # new dependency, could block a publish over one of the MEDIUM/LOW findings
+      # the CVSS gate has never counted (the Ubuntu image alone carries dozens
+      # of them). FLIP CRITERION: after one nightly cycle whose KEV/EPSS
+      # output has been triaged, set fail-on-match: true. strict-feeds stays
+      # false either way, so a CISA or FIRST outage cannot block a publish.
+      - trivy-scan/kev-epss-check:
+          report-path: /tmp/trivy-results.json
+          fail-on-match: false
+          strict-feeds: false
       - gate-trivy-findings
 
   security-check-docker-image:
@@ -1316,11 +1494,27 @@ jobs:
       - trivy-scan/scan:
           scan-type: image
           image-ref: nightly-security-scan:<< parameters.distro >>-<< parameters.arch >>
-          severity: "CRITICAL,HIGH,MEDIUM,LOW,UNKNOWN"
+          # Same report/gate split as the package scans: the artifacts keep
+          # the full band, the orb's gate view is the CRITICAL/HIGH standard,
+          # and gate-trivy-findings below remains this pipeline's authority.
+          severity: "CRITICAL,HIGH"
+          report-severity: "CRITICAL,HIGH,MEDIUM,LOW,UNKNOWN"
           fail-on-findings: false
           ignore-unfixed: false
           exit-on-eol: "1"
           store-junit-results: true
+          # Same assertion as the package scans, for the same reason: an image
+          # that stopped shipping the Go binaries, or a base change that took
+          # the bundled Node modules with it, would still leave the OS
+          # package database as a target and keep the gate green. Values read
+          # off the 2026-07-29 nightly (pipeline 53660, jobs
+          # security-check-docker-{alpine,deb}-{amd64,arm64}), where both
+          # distros detect exactly four targets: the OS database plus these
+          # three. The OS target is not named here because it carries the
+          # scan re-tag and the distro release ("... (alpine 3.24.1)"), which
+          # a base-image bump changes by design; min-targets covers it.
+          expect-targets: "Node.js,usr/bin/arangodb,usr/sbin/rclone-arangodb"
+          min-targets: 4
           # Setting sbom-output makes the scan run with --list-all-pkgs so
           # the JSON report carries the FULL package inventory. The
           # published SBOMs are NOT this file: they are rendered in the
@@ -1438,6 +1632,13 @@ jobs:
           root: /tmp/nightly
           paths:
             - trivy-reports/docker
+      # See the package job for the rationale and the flip criterion. The
+      # untouched orb report is used, not the re-tagged copy: the correlation
+      # only reads vulnerability ids.
+      - trivy-scan/kev-epss-check:
+          report-path: /tmp/trivy-results.json
+          fail-on-match: false
+          strict-feeds: false
       - gate-trivy-findings
 
   # ── GPG signing ──────────────────────────────────────────────────────────────
