@@ -60,22 +60,16 @@ const {
   setUpApiTestData,
   tearDownApiTestData,
   DB,
-  readOnWrite
+  singleOnly
 } = require('@arangodb/testutils/apitest-fixtures');
 
 function aqlFunctionApiAuthzSuite () {
-  const useD = `UseDatabase name=${DB} level=read`;
-  const useSystem = 'UseDatabase name=_system level=read';
   const fnName = 'APITESTNS::APITESTFUNC';
   const fnCode = 'function (a, b) { return a + b; }';
   const fnBody = { name: fnName, code: fnCode, isDeterministic: true };
 
   // the system collection the functions are stored in
   const aqlFuncD = '_aqlfunctions';
-  const readD = `UseCollection db=${DB} name=${aqlFuncD} level=read`;
-  const writeD = `UseCollection db=${DB} name=${aqlFuncD} level=writedata`;
-  const readSys = `UseCollection db=_system name=${aqlFuncD} level=read`;
-  const writeSys = `UseCollection db=_system name=${aqlFuncD} level=writedata`;
 
   function makeFnD () {
     arango.DELETE_RAW(`/_db/${DB}/_api/aqlfunction/${fnName}`);
@@ -106,14 +100,20 @@ function aqlFunctionApiAuthzSuite () {
     testListFunctionsD: function () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/aqlfunction`);
-      assertPermissions([useD, readD], endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=_aqlfunctions level=read"
+      ], endObserve());
     },
 
     // GET /_db/d/_api/aqlfunction/APITESTNS - same, filtered by namespace
     testListFunctionsByNamespaceD: function () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/aqlfunction/APITESTNS`);
-      assertPermissions([useD, readD], endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=_aqlfunctions level=read"
+      ], endObserve());
     },
 
     // POST /_db/d/_api/aqlfunction - WRITE trx (insert) over _aqlfunctions.
@@ -123,8 +123,13 @@ function aqlFunctionApiAuthzSuite () {
       dropFnD();
       beginObserve();
       arango.POST_RAW(`/_db/${DB}/_api/aqlfunction`, fnBody);
-      assertPermissions([useD, writeD].concat(readOnWrite(DB, '_aqlfunctions')),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=_aqlfunctions level=writedata",
+        ...singleOnly([
+          "UseCollection db=d name=_aqlfunctions level=read"
+        ])
+      ], endObserve());
     },
 
     // DELETE /_db/d/_api/aqlfunction/{name} - WRITE trx (remove) over
@@ -133,22 +138,33 @@ function aqlFunctionApiAuthzSuite () {
       makeFnD();
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/aqlfunction/${fnName}`);
-      assertPermissions([useD, writeD].concat(readOnWrite(DB, '_aqlfunctions')),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=_aqlfunctions level=writedata",
+        ...singleOnly([
+          "UseCollection db=d name=_aqlfunctions level=read"
+        ])
+      ], endObserve());
     },
 
     // GET /_db/_system/_api/aqlfunction - AQL query over _aqlfunctions (read trx)
     testListFunctionsSystem: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/aqlfunction`);
-      assertPermissions([useSystem, readSys], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "UseCollection db=_system name=_aqlfunctions level=read"
+      ], endObserve());
     },
 
     // GET /_db/_system/_api/aqlfunction/APITESTNS - same, filtered by namespace
     testListFunctionsByNamespaceSystem: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/aqlfunction/APITESTNS`);
-      assertPermissions([useSystem, readSys], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "UseCollection db=_system name=_aqlfunctions level=read"
+      ], endObserve());
     },
 
     // POST /_db/_system/_api/aqlfunction - WRITE trx (insert) over _aqlfunctions
@@ -157,9 +173,12 @@ function aqlFunctionApiAuthzSuite () {
       dropFnSys();
       beginObserve();
       arango.POST_RAW(`/_db/_system/_api/aqlfunction`, fnBody);
-      assertPermissions([useSystem, writeSys]
-                        .concat(readOnWrite('_system', '_aqlfunctions')),
-                        endObserve());
+      // creating a function in _system asks the read in both deployment modes
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "UseCollection db=_system name=_aqlfunctions level=read",
+        "UseCollection db=_system name=_aqlfunctions level=writedata"
+      ], endObserve());
     },
 
     // DELETE /_db/_system/_api/aqlfunction/{name} - WRITE trx (remove)
@@ -168,9 +187,13 @@ function aqlFunctionApiAuthzSuite () {
       makeFnSys();
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_api/aqlfunction/${fnName}`);
-      assertPermissions([useSystem, writeSys]
-                        .concat(readOnWrite('_system', '_aqlfunctions')),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "UseCollection db=_system name=_aqlfunctions level=writedata",
+        ...singleOnly([
+          "UseCollection db=_system name=_aqlfunctions level=read"
+        ])
+      ], endObserve());
     },
   };
 }

@@ -69,7 +69,6 @@ const {
 const { clusterOnly } = require('@arangodb/testutils/apitest-fixtures');
 
 function replicationApiAuthzSuite () {
-  const useSystem = `UseDatabase name=_system level=read`;
 
   function createBatch () {
     const res = arango.POST_RAW(
@@ -92,7 +91,9 @@ function replicationApiAuthzSuite () {
       beginObserve();
       const res = arango.POST_RAW(
         `/_db/_system/_api/replication/batch`, { ttl: 30 });
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
       if (res.parsedBody && res.parsedBody.id) {
         deleteBatch(res.parsedBody.id);
       }
@@ -104,7 +105,9 @@ function replicationApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(
         `/_db/_system/_api/replication/batch/${id}`, { ttl: 30 });
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
       deleteBatch(id);
     },
 
@@ -113,7 +116,9 @@ function replicationApiAuthzSuite () {
       const id = createBatch();
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_api/replication/batch/${id}`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // GET /_api/replication/clusterInventory
@@ -125,8 +130,12 @@ function replicationApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/replication/clusterInventory`);
       // a single server rejects the request before asking
-      assertPermissions([useSystem].concat(clusterOnly(['AdminClusterInfo'])),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        ...clusterOnly([
+          "AdminClusterInfo"
+        ])
+      ], endObserve());
     },
   };
 }

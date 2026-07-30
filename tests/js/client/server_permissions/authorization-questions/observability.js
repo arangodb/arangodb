@@ -54,8 +54,6 @@ const {
 } = require('@arangodb/testutils/permissions-observer');
 
 function observabilityApiAuthzSuite () {
-  const useSystem = 'UseDatabase name=_system level=read';
-  const monInternal = 'AdminMonitoringInternal';
 
   return {
     tearDown: function () {
@@ -73,7 +71,10 @@ function observabilityApiAuthzSuite () {
     testListActivities: function () {
       beginObserve();
       arango.GET_RAW(`/_arango/experimental/_admin/activities`);
-      assertPermissions([useSystem, monInternal], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminMonitoringInternal"
+      ], endObserve());
     },
 
     // GET /_admin/async-registry - AsyncRegistry/RestHandler asks
@@ -81,7 +82,10 @@ function observabilityApiAuthzSuite () {
     testListAsyncRegistry: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/async-registry`);
-      assertPermissions([useSystem, monInternal], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminMonitoringInternal"
+      ], endObserve());
     },
   };
 }

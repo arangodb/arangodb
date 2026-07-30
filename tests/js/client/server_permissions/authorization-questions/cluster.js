@@ -69,14 +69,12 @@ const {
 } = require('@arangodb/testutils/permissions-observer');
 const {
   setUpApiTestData,
-  tearDownApiTestData
+  tearDownApiTestData,
+  singleOnly,
+  clusterOnly
 } = require('@arangodb/testutils/apitest-fixtures');
 
 function clusterApiAuthzSuite () {
-  const useSystem = `UseDatabase name=_system level=read`;
-  const adminClusterInfo = `AdminClusterInfo`;
-  const adminReadAgency = `AdminReadAgency`;
-  const isCluster = require('internal').isCluster();
   const base = `/_db/_system/_api/cluster`;
 
   return {
@@ -92,7 +90,10 @@ function clusterApiAuthzSuite () {
     testAgencyCache: function () {
       beginObserve();
       arango.GET_RAW(`${base}/agency-cache`);
-      assertPermissions([useSystem, adminReadAgency], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminReadAgency"
+      ], endObserve());
     },
 
     // GET /_api/cluster/agency-dump - isCoordinator() then
@@ -104,8 +105,12 @@ function clusterApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`${base}/agency-dump`);
       // the single server rejects the request before asking
-      assertPermissions(isCluster ? [useSystem, adminReadAgency]
-                                  : [useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        ...clusterOnly([
+          "AdminReadAgency"
+        ])
+      ], endObserve());
     },
 
     // GET /_api/cluster/cluster-info - canUseAdminAction(AdminClusterInfo)
@@ -113,7 +118,10 @@ function clusterApiAuthzSuite () {
     testClusterInfo: function () {
       beginObserve();
       arango.GET_RAW(`${base}/cluster-info`);
-      assertPermissions([useSystem, adminClusterInfo], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminClusterInfo"
+      ], endObserve());
     },
 
     // PUT /_api/cluster/cluster-info/flush - canUseAdminAction(AdminClusterInfo),
@@ -123,10 +131,14 @@ function clusterApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`${base}/cluster-info/flush`, {});
       // on a single server flushing also reloads the statistics collections
-      assertPermissions([useSystem, adminClusterInfo].concat(isCluster ? [] : [
-                         'UseCollection db=_system name=_statistics level=read',
-                         'UseCollection db=_system name=_statisticsRaw level=read']),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminClusterInfo",
+        ...singleOnly([
+          "UseCollection db=_system name=_statistics level=read",
+          "UseCollection db=_system name=_statisticsRaw level=read"
+        ])
+      ], endObserve());
     },
 
     // GET /_api/cluster/cluster-info/get_collection_info/d/c
@@ -135,7 +147,10 @@ function clusterApiAuthzSuite () {
     testGetCollectionInfo: function () {
       beginObserve();
       arango.GET_RAW(`${base}/cluster-info/get_collection_info/d/c`);
-      assertPermissions([useSystem, adminClusterInfo], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminClusterInfo"
+      ], endObserve());
     },
 
     // GET /_api/cluster/cluster-info/get_collection_info_current/d/c/s1
@@ -143,7 +158,10 @@ function clusterApiAuthzSuite () {
     testGetCollectionInfoCurrent: function () {
       beginObserve();
       arango.GET_RAW(`${base}/cluster-info/get_collection_info_current/d/c/s1`);
-      assertPermissions([useSystem, adminClusterInfo], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminClusterInfo"
+      ], endObserve());
     },
 
     // POST /_api/cluster/cluster-info/get_responsible_servers
@@ -151,7 +169,10 @@ function clusterApiAuthzSuite () {
     testGetResponsibleServers: function () {
       beginObserve();
       arango.POST_RAW(`${base}/cluster-info/get_responsible_servers`, []);
-      assertPermissions([useSystem, adminClusterInfo], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminClusterInfo"
+      ], endObserve());
     },
 
     // POST /_api/cluster/cluster-info/get_responsible_shard/d/c/true
@@ -160,7 +181,10 @@ function clusterApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`${base}/cluster-info/get_responsible_shard/d/c/true`,
                       { _key: 'testkey' });
-      assertPermissions([useSystem, adminClusterInfo], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminClusterInfo"
+      ], endObserve());
     },
 
     // GET /_api/cluster/cluster-info/get_analyzers_revision/_system
@@ -168,7 +192,10 @@ function clusterApiAuthzSuite () {
     testGetAnalyzersRevision: function () {
       beginObserve();
       arango.GET_RAW(`${base}/cluster-info/get_analyzers_revision/_system`);
-      assertPermissions([useSystem, adminClusterInfo], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminClusterInfo"
+      ], endObserve());
     },
 
     // GET /_api/cluster/cluster-info/wait_for_plan_version/1
@@ -176,7 +203,10 @@ function clusterApiAuthzSuite () {
     testWaitForPlanVersion: function () {
       beginObserve();
       arango.GET_RAW(`${base}/cluster-info/wait_for_plan_version/1`);
-      assertPermissions([useSystem, adminClusterInfo], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminClusterInfo"
+      ], endObserve());
     },
 
     // GET /_api/cluster/cluster-info/get_max_number_of_shards
@@ -184,7 +214,10 @@ function clusterApiAuthzSuite () {
     testGetMaxNumberOfShards: function () {
       beginObserve();
       arango.GET_RAW(`${base}/cluster-info/get_max_number_of_shards`);
-      assertPermissions([useSystem, adminClusterInfo], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminClusterInfo"
+      ], endObserve());
     },
 
     // GET /_api/cluster/cluster-info/get_max_replication_factor
@@ -192,7 +225,10 @@ function clusterApiAuthzSuite () {
     testGetMaxReplicationFactor: function () {
       beginObserve();
       arango.GET_RAW(`${base}/cluster-info/get_max_replication_factor`);
-      assertPermissions([useSystem, adminClusterInfo], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminClusterInfo"
+      ], endObserve());
     },
 
     // GET /_api/cluster/cluster-info/get_min_replication_factor
@@ -200,7 +236,10 @@ function clusterApiAuthzSuite () {
     testGetMinReplicationFactor: function () {
       beginObserve();
       arango.GET_RAW(`${base}/cluster-info/get_min_replication_factor`);
-      assertPermissions([useSystem, adminClusterInfo], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminClusterInfo"
+      ], endObserve());
     },
 
     // GET /_api/cluster/endpoints - allowed for any authenticated user; the

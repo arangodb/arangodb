@@ -111,17 +111,20 @@ function tearDownApiTestData () {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief single-server-only authorization questions
+// / @brief questions only one of the two deployment modes asks
 // /
-// / Two questions are asked by a single server but not by a coordinator:
+// / Spread these into an expectation to keep the mode split visible in place:
 // /
-// /  - writing to a collection additionally loads it under the caller's
-// /    ExecContext, which asks for read access (readOnWrite),
-// /  - storing a user or a permission goes through the _users collection under
-// /    the caller's ExecContext, while a coordinator writes it via the agency
-// /    without asking (readUsers).
+// /   assertPermissions([
+// /     "UseDatabase name=d level=read",
+// /     "UseCollection db=d name=c level=writedata",
+// /     ...singleOnly([
+// /       "UseCollection db=d name=c level=read"
+// /     ])
+// /   ], endObserve());
 // /
-// / Both return a list, so that they can be `.concat()`ed into an expectation.
+// / They are pure - they must not send a request, because they are evaluated
+// / while an observation is running.
 // //////////////////////////////////////////////////////////////////////////////
 
 // note: this deliberately does NOT use internal.isCluster(), which sends a
@@ -139,9 +142,9 @@ function isCluster () {
   return cachedIsCluster;
 }
 
-// Questions only one of the two deployment modes asks, e.g. because a single
-// server rejects a cluster-only endpoint before asking, or because it resolves
-// a collection under the caller's ExecContext where a coordinator does not.
+// e.g. because a single server rejects a cluster-only endpoint before asking,
+// or because it resolves a collection under the caller's ExecContext where a
+// coordinator does not.
 function clusterOnly (questions) {
   return isCluster() ? questions : [];
 }
@@ -150,20 +153,9 @@ function singleOnly (questions) {
   return isCluster() ? [] : questions;
 }
 
-function readOnWrite (database, collection) {
-  return isCluster()
-    ? [] : [`UseCollection db=${database} name=${collection} level=read`];
-}
-
-function readUsers () {
-  return isCluster() ? [] : ['UseCollection db=_system name=_users level=read'];
-}
-
 exports.isCluster = isCluster;
 exports.clusterOnly = clusterOnly;
 exports.singleOnly = singleOnly;
-exports.readOnWrite = readOnWrite;
-exports.readUsers = readUsers;
 exports.setUpApiTestData = setUpApiTestData;
 exports.tearDownApiTestData = tearDownApiTestData;
 exports.DB = DB;

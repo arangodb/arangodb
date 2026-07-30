@@ -63,7 +63,6 @@ const {
 } = require('@arangodb/testutils/permissions-observer');
 
 function walApiAuthzSuite () {
-  const useSystem = `UseDatabase name=_system level=read`;
 
   return {
     tearDown: function () {
@@ -74,28 +73,36 @@ function walApiAuthzSuite () {
     testGetProperties: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/wal/properties`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // PUT /_admin/wal/properties - no in-handler auth check
     testSetProperties: function () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_admin/wal/properties`, {});
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // GET /_admin/wal/transactions - no in-handler auth check
     testGetTransactions: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/wal/transactions`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // PUT /_admin/wal/flush - no in-handler auth check
     testFlush: function () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_admin/wal/flush`, {});
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // PUT /_admin/wal/wait_for_estimator_sync
@@ -107,7 +114,10 @@ function walApiAuthzSuite () {
     testWaitForEstimatorSync: function () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_admin/wal/wait_for_estimator_sync`, {});
-      assertPermissions([useSystem, 'AdminWalAccess'], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminWalAccess"
+      ], endObserve());
     },
   };
 }

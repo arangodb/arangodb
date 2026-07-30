@@ -62,9 +62,7 @@ const {
 } = require('@arangodb/testutils/apitest-fixtures');
 
 function cursorApiAuthzSuite () {
-  const useD = `UseDatabase name=${DB} level=read`;
   const c = DOC_COLLECTION;
-  const readC = `UseCollection db=${DB} name=${c} level=read`;
 
   // create a cursor with batchSize 10 (100 docs -> hasMore) as root, before
   // observation, and return its response body
@@ -91,7 +89,10 @@ function cursorApiAuthzSuite () {
     testCreateCursorSingleBatch: function () {
       beginObserve();
       arango.POST_RAW(`/_db/${DB}/_api/cursor`, { query: `FOR d IN ${c} RETURN d` });
-      assertPermissions([useD, readC], endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=read"
+      ], endObserve());
     },
 
     // POST /_api/cursor - batchSize 10; query executes -> read trx on c, then a
@@ -100,7 +101,10 @@ function cursorApiAuthzSuite () {
       beginObserve();
       const res = arango.POST_RAW(`/_db/${DB}/_api/cursor`,
                                   { query: `FOR d IN ${c} RETURN d`, batchSize: 10 });
-      assertPermissions([useD, readC], endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=read"
+      ], endObserve());
       dropCursor(res.parsedBody.id);
     },
 
@@ -112,7 +116,9 @@ function cursorApiAuthzSuite () {
       const cur = createCursor();
       beginObserve();
       arango.POST_RAW(`/_db/${DB}/_api/cursor/${cur.id}`, {});
-      assertPermissions([useD], endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read"
+      ], endObserve());
       dropCursor(cur.id);
     },
 
@@ -122,7 +128,9 @@ function cursorApiAuthzSuite () {
       const cur = createCursor();
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/cursor/${cur.id}`, {});
-      assertPermissions([useD], endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read"
+      ], endObserve());
       dropCursor(cur.id);
     },
 
@@ -132,7 +140,9 @@ function cursorApiAuthzSuite () {
       const cur = createCursor();
       beginObserve();
       arango.POST_RAW(`/_db/${DB}/_api/cursor/${cur.id}/${cur.nextBatchId}`, {});
-      assertPermissions([useD], endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read"
+      ], endObserve());
       dropCursor(cur.id);
     },
 
@@ -141,7 +151,9 @@ function cursorApiAuthzSuite () {
       const cur = createCursor();
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/cursor/${cur.id}`);
-      assertPermissions([useD], endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read"
+      ], endObserve());
     },
   };
 }

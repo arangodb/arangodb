@@ -60,8 +60,6 @@ const {
 } = require('@arangodb/testutils/permissions-observer');
 
 function backupApiAuthzSuite () {
-  const useSystem = `UseDatabase name=_system level=read`;
-  const adminBackup = `AdminBackup`;
 
   // remove every hot backup whose id carries one of our test labels
   function cleanupBackups () {
@@ -95,7 +93,10 @@ function backupApiAuthzSuite () {
     testListBackups: function () {
       beginObserve();
       arango.POST_RAW(`/_db/_system/_admin/backup/list`, {});
-      assertPermissions([useSystem, adminBackup], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminBackup"
+      ], endObserve());
     },
 
     // POST /_admin/backup/create - verifyPermitted() -> canUseAdminAction(AdminBackup)
@@ -103,7 +104,10 @@ function backupApiAuthzSuite () {
       beginObserve();
       const res = arango.POST_RAW(`/_db/_system/_admin/backup/create`,
                                   { label: 'apitestcreate' });
-      assertPermissions([useSystem, adminBackup], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminBackup"
+      ], endObserve());
       // clean up whatever the create produced
       if (res.parsedBody && res.parsedBody.result && res.parsedBody.result.id) {
         arango.POST_RAW(`/_db/_system/_admin/backup/delete`,
@@ -116,7 +120,10 @@ function backupApiAuthzSuite () {
       const id = createBackup('apitestdelete');
       beginObserve();
       arango.POST_RAW(`/_db/_system/_admin/backup/delete`, { id: id });
-      assertPermissions([useSystem, adminBackup], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminBackup"
+      ], endObserve());
     },
   };
 }

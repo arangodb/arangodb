@@ -68,12 +68,10 @@ const {
   setUpApiTestData,
   tearDownApiTestData,
   DB,
-  readOnWrite
+  singleOnly
 } = require('@arangodb/testutils/apitest-fixtures');
 
 function analyzerApiAuthzSuite () {
-  const useD = `UseDatabase name=${DB} level=read`;
-  const useSys = `UseDatabase name=_system level=read`;
   const NAME = 'apitest_analyzer';
 
   function dropAnalyzer (dbPrefix) {
@@ -101,10 +99,12 @@ function analyzerApiAuthzSuite () {
     testListAnalyzersD: function () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/analyzer`);
-      assertPermissions([useD, useSys,
-                         `UseCollection db=${DB} name=_analyzers level=read`,
-                         'UseCollection db=_system name=_analyzers level=read'],
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseDatabase name=_system level=read",
+        "UseCollection db=d name=_analyzers level=read",
+        "UseCollection db=_system name=_analyzers level=read"
+      ], endObserve());
     },
 
     // GET /_db/d/_api/analyzer/identity - built-in (static) analyzer, canUse()
@@ -112,7 +112,9 @@ function analyzerApiAuthzSuite () {
     testGetIdentityAnalyzerD: function () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/analyzer/identity`);
-      assertPermissions([useD], endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read"
+      ], endObserve());
     },
 
     // POST /_db/d/_api/analyzer - canUse(Modify) -> UseAnalyzer(... modify).
@@ -124,11 +126,14 @@ function analyzerApiAuthzSuite () {
       dropAnalyzer(`/_db/${DB}`);
       beginObserve();
       arango.POST_RAW(`/_db/${DB}/_api/analyzer`, { name: NAME, type: 'identity' });
-      assertPermissions([useD,
-                         `UseAnalyzer db=${DB} name=${NAME} level=modify`,
-                         `UseCollection db=${DB} name=_analyzers level=writedata`]
-                        .concat(readOnWrite(`${DB}`, '_analyzers')),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseAnalyzer db=d name=apitest_analyzer level=modify",
+        "UseCollection db=d name=_analyzers level=writedata",
+        ...singleOnly([
+          "UseCollection db=d name=_analyzers level=read"
+        ])
+      ], endObserve());
     },
 
     // DELETE /_db/d/_api/analyzer/{name} - canUse(Modify) -> UseAnalyzer(modify)
@@ -138,11 +143,14 @@ function analyzerApiAuthzSuite () {
       createAnalyzer(`/_db/${DB}`);
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/analyzer/${NAME}`);
-      assertPermissions([useD,
-                         `UseAnalyzer db=${DB} name=${NAME} level=modify`,
-                         `UseCollection db=${DB} name=_analyzers level=writedata`]
-                        .concat(readOnWrite(`${DB}`, '_analyzers')),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseAnalyzer db=d name=apitest_analyzer level=modify",
+        "UseCollection db=d name=_analyzers level=writedata",
+        ...singleOnly([
+          "UseCollection db=d name=_analyzers level=read"
+        ])
+      ], endObserve());
     },
 
     // GET /_api/analyzer - list from _system. Static + _system analyzers; the
@@ -151,14 +159,18 @@ function analyzerApiAuthzSuite () {
     testListAnalyzersSystem: function () {
       beginObserve();
       arango.GET_RAW(`/_api/analyzer`);
-      assertPermissions([useSys], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // GET /_api/analyzer/identity - static analyzer, only base question.
     testGetIdentityAnalyzerSystem: function () {
       beginObserve();
       arango.GET_RAW(`/_api/analyzer/identity`);
-      assertPermissions([useSys], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // POST /_api/analyzer - canUse(Modify) -> UseAnalyzer(_system ... modify)
@@ -167,11 +179,14 @@ function analyzerApiAuthzSuite () {
       dropAnalyzer('');
       beginObserve();
       arango.POST_RAW(`/_api/analyzer`, { name: NAME, type: 'identity' });
-      assertPermissions([useSys,
-                         `UseAnalyzer db=_system name=${NAME} level=modify`,
-                         `UseCollection db=_system name=_analyzers level=writedata`]
-                        .concat(readOnWrite(`_system`, '_analyzers')),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "UseAnalyzer db=_system name=apitest_analyzer level=modify",
+        "UseCollection db=_system name=_analyzers level=writedata",
+        ...singleOnly([
+          "UseCollection db=_system name=_analyzers level=read"
+        ])
+      ], endObserve());
     },
 
     // DELETE /_api/analyzer/{name} - canUse(Modify) -> UseAnalyzer(_system modify)
@@ -181,11 +196,14 @@ function analyzerApiAuthzSuite () {
       createAnalyzer('');
       beginObserve();
       arango.DELETE_RAW(`/_api/analyzer/${NAME}`);
-      assertPermissions([useSys,
-                         `UseAnalyzer db=_system name=${NAME} level=modify`,
-                         `UseCollection db=_system name=_analyzers level=writedata`]
-                        .concat(readOnWrite(`_system`, '_analyzers')),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "UseAnalyzer db=_system name=apitest_analyzer level=modify",
+        "UseCollection db=_system name=_analyzers level=writedata",
+        ...singleOnly([
+          "UseCollection db=_system name=_analyzers level=read"
+        ])
+      ], endObserve());
     },
   };
 }

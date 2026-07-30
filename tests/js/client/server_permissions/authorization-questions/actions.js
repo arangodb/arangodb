@@ -54,7 +54,6 @@ const {
 } = require('@arangodb/testutils/permissions-observer');
 
 function actionApiAuthzSuite () {
-  const useSystem = `UseDatabase name=_system level=read`;
 
   return {
     tearDown: function () {
@@ -67,14 +66,18 @@ function actionApiAuthzSuite () {
     testListActions: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/actions`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // POST /_admin/actions - proceed (idempotent resume)
     testProceed: function () {
       beginObserve();
       arango.POST_RAW(`/_db/_system/_admin/actions`, { execute: 'proceed' });
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // POST /_admin/actions - pause for 1s (resumed in tearDown)
@@ -82,7 +85,9 @@ function actionApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/_system/_admin/actions`,
                       { execute: 'pause', duration: 1 });
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
       arango.POST_RAW(`/_db/_system/_admin/actions`, { execute: 'proceed' });
     },
 
@@ -90,7 +95,9 @@ function actionApiAuthzSuite () {
     testPutEmptyBody: function () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_admin/actions`, {});
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // DELETE /_admin/actions/999999 - non-existent action -> 400, base check
@@ -98,7 +105,9 @@ function actionApiAuthzSuite () {
     testDeleteNonExistent: function () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_admin/actions/999999`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
   };
 }

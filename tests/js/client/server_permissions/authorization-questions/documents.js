@@ -63,14 +63,11 @@ const {
   tearDownApiTestData,
   DB,
   DOC_COLLECTION,
-  readOnWrite
+  singleOnly
 } = require('@arangodb/testutils/apitest-fixtures');
 
 function documentApiAuthzSuite () {
-  const useD = `UseDatabase name=${DB} level=read`;
   const c = DOC_COLLECTION;
-  const readC = `UseCollection db=${DB} name=${c} level=read`;
-  const writeC = `UseCollection db=${DB} name=${c} level=writedata`;
   const key = 'testdoc';
 
   function makeDoc () {
@@ -95,7 +92,10 @@ function documentApiAuthzSuite () {
       makeDoc();
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/document/${c}/${key}`);
-      assertPermissions([useD, readC], endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=read"
+      ], endObserve());
     },
 
     // HEAD /_api/document/c/key - read transaction
@@ -103,7 +103,10 @@ function documentApiAuthzSuite () {
       makeDoc();
       beginObserve();
       arango.HEAD_RAW(`/_db/${DB}/_api/document/${c}/${key}`);
-      assertPermissions([useD, readC], endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=read"
+      ], endObserve());
     },
 
     // POST /_api/document/c - write transaction (read + writedata)
@@ -111,8 +114,13 @@ function documentApiAuthzSuite () {
       dropDoc();
       beginObserve();
       arango.POST_RAW(`/_db/${DB}/_api/document/${c}`, { _key: key, value: 1 });
-      assertPermissions([useD, writeC].concat(readOnWrite(DB, c)),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=writedata",
+        ...singleOnly([
+          "UseCollection db=d name=c level=read"
+        ])
+      ], endObserve());
     },
 
     // PUT /_api/document/c/key - replace with key
@@ -120,8 +128,13 @@ function documentApiAuthzSuite () {
       makeDoc();
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/document/${c}/${key}`, { value: 2 });
-      assertPermissions([useD, writeC].concat(readOnWrite(DB, c)),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=writedata",
+        ...singleOnly([
+          "UseCollection db=d name=c level=read"
+        ])
+      ], endObserve());
     },
 
     // PUT /_api/document/c - replace without key (batch)
@@ -129,8 +142,13 @@ function documentApiAuthzSuite () {
       makeDoc();
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/document/${c}`, [{ _key: key, value: 2 }]);
-      assertPermissions([useD, writeC].concat(readOnWrite(DB, c)),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=writedata",
+        ...singleOnly([
+          "UseCollection db=d name=c level=read"
+        ])
+      ], endObserve());
     },
 
     // PATCH /_api/document/c/key - update with key
@@ -138,8 +156,13 @@ function documentApiAuthzSuite () {
       makeDoc();
       beginObserve();
       arango.PATCH_RAW(`/_db/${DB}/_api/document/${c}/${key}`, { value: 3 });
-      assertPermissions([useD, writeC].concat(readOnWrite(DB, c)),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=writedata",
+        ...singleOnly([
+          "UseCollection db=d name=c level=read"
+        ])
+      ], endObserve());
     },
 
     // PATCH /_api/document/c - update without key (batch)
@@ -147,8 +170,13 @@ function documentApiAuthzSuite () {
       makeDoc();
       beginObserve();
       arango.PATCH_RAW(`/_db/${DB}/_api/document/${c}`, [{ _key: key, value: 3 }]);
-      assertPermissions([useD, writeC].concat(readOnWrite(DB, c)),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=writedata",
+        ...singleOnly([
+          "UseCollection db=d name=c level=read"
+        ])
+      ], endObserve());
     },
 
     // DELETE /_api/document/c/key - delete with key
@@ -156,8 +184,13 @@ function documentApiAuthzSuite () {
       makeDoc();
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/document/${c}/${key}`);
-      assertPermissions([useD, writeC].concat(readOnWrite(DB, c)),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=writedata",
+        ...singleOnly([
+          "UseCollection db=d name=c level=read"
+        ])
+      ], endObserve());
     },
 
     // DELETE /_api/document/c - delete without key (batch)
@@ -165,8 +198,13 @@ function documentApiAuthzSuite () {
       makeDoc();
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/document/${c}`, [{ _key: key }]);
-      assertPermissions([useD, writeC].concat(readOnWrite(DB, c)),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=writedata",
+        ...singleOnly([
+          "UseCollection db=d name=c level=read"
+        ])
+      ], endObserve());
     },
   };
 }

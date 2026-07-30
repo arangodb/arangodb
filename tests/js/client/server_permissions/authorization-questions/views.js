@@ -66,7 +66,6 @@ const {
 } = require('@arangodb/testutils/apitest-fixtures');
 
 function viewApiAuthzSuite () {
-  const useD = `UseDatabase name=${DB} level=read`;
   const c = DOC_COLLECTION;
   const TEST_VIEW = 'v_apitest';
   const TEST_VIEW_NEW = 'v_apitest_new';
@@ -76,16 +75,12 @@ function viewApiAuthzSuite () {
     links: { c: { includeAllFields: true } }
   };
 
-  // AUDIT: on a single server an arangosearch link is resolved twice - once
-  // by the collection's name and once by its id, i.e. the id is passed where
-  // a name is expected. A coordinator only resolves it by name.
-  // The id is looked up in setUpAll, so that linkedC() itself does not send
-  // any request while an observation is running.
+  // AUDIT: on a single server an arangosearch link is resolved twice - once by
+  // the collection's name and once by its id, i.e. the id is passed where a
+  // name is expected. A coordinator only resolves it by name. The id is the one
+  // value that cannot be spelled out below; it is read in setUpAll, so that no
+  // request is sent while an observation is running.
   let cId;
-  function linkedC () {
-    return [`UseCollection db=${DB} name=${c} level=read`].concat(
-      singleOnly([`UseCollection db=${DB} name=${cId} level=read`]));
-  }
 
   function dropView (name) {
     arango.DELETE_RAW(`/_db/${DB}/_api/view/${name}`);
@@ -115,14 +110,16 @@ function viewApiAuthzSuite () {
     // enumerate all views in d to build the expected SeeView set.
     testListViews: function () {
       createView();
-      db._useDatabase(DB);
-      const names = db._views().map((v) => v.name());
-      db._useDatabase('_system');
-      const expected = [useD].concat(linkedC()).concat(
-        names.map((n) => `SeeView db=${DB} name=${n}`));
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/view`);
-      assertPermissions(expected, endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=read",
+        "SeeView db=d name=v_apitest",
+        ...singleOnly([
+          `UseCollection db=d name=${cId} level=read`
+        ])
+      ], endObserve());
     },
 
     // POST /_api/view - createView() -> canCreateView(linkedCollections=[c]).
@@ -131,11 +128,17 @@ function viewApiAuthzSuite () {
       dropView(TEST_VIEW);
       beginObserve();
       arango.POST_RAW(`/_db/${DB}/_api/view`, viewBody);
-      assertPermissions([useD,
-                         `CreateView db=${DB} name=${TEST_VIEW} linkedCollections=[${c}]`]
-                        .concat(linkedC(), clusterOnly(
-                          [`UseCollection db=${DB} name=${c} level=writemeta`])),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "CreateView db=d name=v_apitest linkedCollections=[c]",
+        "UseCollection db=d name=c level=read",
+        ...singleOnly([
+          `UseCollection db=d name=${cId} level=read`
+        ]),
+        ...clusterOnly([
+          "UseCollection db=d name=c level=writemeta"
+        ])
+      ], endObserve());
     },
 
     // GET /_api/view/v_apitest - getView() -> canUseView(Read)
@@ -143,9 +146,14 @@ function viewApiAuthzSuite () {
       createView();
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/view/${TEST_VIEW}`);
-      assertPermissions([useD, `UseView db=${DB} name=${TEST_VIEW} level=read`]
-                        .concat(linkedC()),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseView db=d name=v_apitest level=read",
+        "UseCollection db=d name=c level=read",
+        ...singleOnly([
+          `UseCollection db=d name=${cId} level=read`
+        ])
+      ], endObserve());
     },
 
     // GET /_api/view/v_apitest/properties - getView(detailed) -> canUseView(Read)
@@ -153,9 +161,14 @@ function viewApiAuthzSuite () {
       createView();
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/view/${TEST_VIEW}/properties`);
-      assertPermissions([useD, `UseView db=${DB} name=${TEST_VIEW} level=read`]
-                        .concat(linkedC()),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseView db=d name=v_apitest level=read",
+        "UseCollection db=d name=c level=read",
+        ...singleOnly([
+          `UseCollection db=d name=${cId} level=read`
+        ])
+      ], endObserve());
     },
 
     // PATCH /_api/view/v_apitest/properties - modifyView() -> canModifyView().
@@ -168,10 +181,14 @@ function viewApiAuthzSuite () {
       beginObserve();
       arango.PATCH_RAW(`/_db/${DB}/_api/view/${TEST_VIEW}/properties`,
                        { cleanupIntervalStep: 2 });
-      assertPermissions([useD,
-                         `ModifyView db=${DB} name=${TEST_VIEW} linkedCollections=[]`]
-                        .concat(linkedC()),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "ModifyView db=d name=v_apitest linkedCollections=[]",
+        "UseCollection db=d name=c level=read",
+        ...singleOnly([
+          `UseCollection db=d name=${cId} level=read`
+        ])
+      ], endObserve());
     },
 
     // PUT /_api/view/v_apitest/properties - modifyView() -> canModifyView().
@@ -182,12 +199,18 @@ function viewApiAuthzSuite () {
       createView();
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/view/${TEST_VIEW}/properties`, {});
-      assertPermissions([useD,
-                         `ModifyView db=${DB} name=${TEST_VIEW} linkedCollections=[]`]
-                        .concat(linkedC(), clusterOnly([
-                          `UseCollection db=${DB} name=${c} level=writemeta`,
-                          `UseDatabase name=${DB} level=write`])),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "ModifyView db=d name=v_apitest linkedCollections=[]",
+        "UseCollection db=d name=c level=read",
+        ...singleOnly([
+          `UseCollection db=d name=${cId} level=read`
+        ]),
+        ...clusterOnly([
+          "UseCollection db=d name=c level=writemeta",
+          "UseDatabase name=d level=write"
+        ])
+      ], endObserve());
     },
 
     // PATCH /_api/view/v_apitest/rename - modifyView(rename) -> canRenameView()
@@ -197,10 +220,14 @@ function viewApiAuthzSuite () {
       beginObserve();
       arango.PATCH_RAW(`/_db/${DB}/_api/view/${TEST_VIEW}/rename`,
                        { name: TEST_VIEW_NEW });
-      assertPermissions([useD,
-                         `RenameView db=${DB} oldName=${TEST_VIEW} newName=${TEST_VIEW_NEW}`]
-                        .concat(linkedC()),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "RenameView db=d oldName=v_apitest newName=v_apitest_new",
+        "UseCollection db=d name=c level=read",
+        ...singleOnly([
+          `UseCollection db=d name=${cId} level=read`
+        ])
+      ], endObserve());
     },
 
     // PUT /_api/view/v_apitest/rename - modifyView(rename) -> canRenameView()
@@ -210,10 +237,14 @@ function viewApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/view/${TEST_VIEW}/rename`,
                      { name: TEST_VIEW_NEW });
-      assertPermissions([useD,
-                         `RenameView db=${DB} oldName=${TEST_VIEW} newName=${TEST_VIEW_NEW}`]
-                        .concat(linkedC()),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "RenameView db=d oldName=v_apitest newName=v_apitest_new",
+        "UseCollection db=d name=c level=read",
+        ...singleOnly([
+          `UseCollection db=d name=${cId} level=read`
+        ])
+      ], endObserve());
     },
 
     // DELETE /_api/view/v_apitest - deleteView() -> canDropView()
@@ -221,13 +252,17 @@ function viewApiAuthzSuite () {
       createView();
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/view/${TEST_VIEW}`);
-      assertPermissions([useD, `DropView db=${DB} name=${TEST_VIEW}`]
-                        .concat(singleOnly(
-                          [`UseCollection db=${DB} name=${c} level=read`]),
-                          clusterOnly([
-                            `UseCollection db=${DB} name=${c} level=writemeta`,
-                            `UseDatabase name=${DB} level=write`])),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "DropView db=d name=v_apitest",
+        ...singleOnly([
+          "UseCollection db=d name=c level=read"
+        ]),
+        ...clusterOnly([
+          "UseCollection db=d name=c level=writemeta",
+          "UseDatabase name=d level=write"
+        ])
+      ], endObserve());
     },
   };
 }

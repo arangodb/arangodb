@@ -60,9 +60,7 @@ const {
 } = require('@arangodb/testutils/apitest-fixtures');
 
 function edgesApiAuthzSuite () {
-  const useD = `UseDatabase name=${DB} level=read`;
   const e = EDGE_COLLECTION;
-  const readE = `UseCollection db=${DB} name=${e} level=read`;
 
   return {
     setUpAll: setUpApiTestData,
@@ -76,7 +74,10 @@ function edgesApiAuthzSuite () {
     testReadEdgesGet: function () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/edges/${e}?vertex=c%2Fk1&direction=any`);
-      assertPermissions([useD, readE], endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=e level=read"
+      ], endObserve());
     },
 
     // POST /_api/edges/e - internal read AQL query per vertex on e -> read trx
@@ -84,7 +85,10 @@ function edgesApiAuthzSuite () {
     testReadEdgesPost: function () {
       beginObserve();
       arango.POST_RAW(`/_db/${DB}/_api/edges/${e}`, ['c/k1', 'c/k2']);
-      assertPermissions([useD, readE], endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=e level=read"
+      ], endObserve());
     },
   };
 }

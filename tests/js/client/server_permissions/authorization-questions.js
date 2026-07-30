@@ -48,13 +48,10 @@ const {
   disableObserve,
   assertPermissions
 } = require('@arangodb/testutils/permissions-observer');
+const { singleOnly } = require('@arangodb/testutils/apitest-fixtures');
 
 function authorizationQuestionsSuite () {
-  const isCluster = require('internal').isCluster();
   const cn = 'UnitTestsAuthzQuestions';
-  // every request checks read access to the database it addresses, see
-  // RestHandler::checkUserCanAccess()
-  const useSystem = 'UseDatabase name=_system level=read';
 
   return {
     setUp: function () {
@@ -71,38 +68,41 @@ function authorizationQuestionsSuite () {
     testCollectionCount: function () {
       beginObserve();
       arango.GET_RAW(`/_api/collection/${cn}/count`);
-      assertPermissions([useSystem,
-                         `UseCollection db=_system name=${cn} level=read`],
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "UseCollection db=_system name=UnitTestsAuthzQuestions level=read"
+      ], endObserve());
     },
 
     testInsertDocument: function () {
-      let expected = [useSystem,
-                      `UseCollection db=_system name=${cn} level=writedata`];
-      if (!isCluster) {
-        // the single server additionally asks for read access
-        expected.push(`UseCollection db=_system name=${cn} level=read`);
-      }
       beginObserve();
       arango.POST_RAW(`/_api/document/${cn}`, { value: 1 });
-      assertPermissions(expected, endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "UseCollection db=_system name=UnitTestsAuthzQuestions level=writedata",
+        // the single server additionally asks for read access
+        ...singleOnly([
+          "UseCollection db=_system name=UnitTestsAuthzQuestions level=read"
+        ])
+      ], endObserve());
     },
 
     // dropping a collection also cleans up graph definitions, hence the
     // question about _graphs
     testDropCollection: function () {
-      let expected = [useSystem,
-                      `DropCollection db=_system name=${cn}`,
-                      `UseCollection db=_system name=${cn} level=read`,
-                      'UseCollection db=_system name=_graphs level=read'];
-      if (!isCluster) {
-        // the single server also revokes the collection's permissions from all
-        // users; in the cluster that happens without an ExecContext
-        expected.push('UseCollection db=_system name=_users level=read');
-      }
       beginObserve();
       arango.DELETE_RAW(`/_api/collection/${cn}`);
-      assertPermissions(expected, endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "DropCollection db=_system name=UnitTestsAuthzQuestions",
+        "UseCollection db=_system name=UnitTestsAuthzQuestions level=read",
+        "UseCollection db=_system name=_graphs level=read",
+        // the single server also revokes the collection's permissions from all
+        // users; in the cluster that happens without an ExecContext
+        ...singleOnly([
+          "UseCollection db=_system name=_users level=read"
+        ])
+      ], endObserve());
     },
 
     // a handler that asks nothing beyond the database access every request
@@ -110,7 +110,9 @@ function authorizationQuestionsSuite () {
     testVersion: function () {
       beginObserve();
       arango.GET_RAW('/_api/version');
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
   };
 }

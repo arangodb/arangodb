@@ -57,7 +57,6 @@ const {
 } = require('@arangodb/testutils/apitest-fixtures');
 
 function aqlApiAuthzSuite () {
-  const useSystem = `UseDatabase name=_system level=read`;
 
   return {
     setUpAll: setUpApiTestData,
@@ -72,7 +71,9 @@ function aqlApiAuthzSuite () {
     testListBuiltinFunctions: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/aql-builtin`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
   };
 }

@@ -60,14 +60,11 @@ const {
   tearDownApiTestData,
   DB,
   DOC_COLLECTION,
-  readOnWrite
+  singleOnly
 } = require('@arangodb/testutils/apitest-fixtures');
 
 function simpleApiAuthzSuite () {
-  const useD = `UseDatabase name=${DB} level=read`;
   const c = DOC_COLLECTION;
-  const readC = `UseCollection db=${DB} name=${c} level=read`;
-  const writeC = `UseCollection db=${DB} name=${c} level=writedata`;
 
   return {
     setUpAll: setUpApiTestData,
@@ -81,7 +78,10 @@ function simpleApiAuthzSuite () {
     testAll: function () {
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/simple/all`, { collection: c, limit: 1 });
-      assertPermissions([useD, readC], endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=read"
+      ], endObserve());
     },
 
     // PUT /_api/simple/all-keys - AQL "FOR doc IN c RETURN doc._key" -> read trx
@@ -89,7 +89,10 @@ function simpleApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/simple/all-keys`,
                      { collection: c, limit: 1 });
-      assertPermissions([useD, readC], endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=read"
+      ], endObserve());
     },
 
     // PUT /_api/simple/by-example - AQL "FOR doc IN c FILTER ... RETURN doc"
@@ -98,7 +101,10 @@ function simpleApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/simple/by-example`,
                      { collection: c, example: { Hallo: 1 } });
-      assertPermissions([useD, readC], endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=read"
+      ], endObserve());
     },
 
     // PUT /_api/simple/lookup-by-keys - AQL
@@ -107,7 +113,10 @@ function simpleApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/simple/lookup-by-keys`,
                      { collection: c, keys: ['nonexistent-key-apitester-99999'] });
-      assertPermissions([useD, readC], endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=read"
+      ], endObserve());
     },
 
     // PUT /_api/simple/remove-by-keys - AQL
@@ -117,8 +126,13 @@ function simpleApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/simple/remove-by-keys`,
                      { collection: c, keys: ['nonexistent-key-apitester-99999'] });
-      assertPermissions([useD, writeC].concat(readOnWrite(DB, c)),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=writedata",
+        ...singleOnly([
+          "UseCollection db=d name=c level=read"
+        ])
+      ], endObserve());
     },
   };
 }

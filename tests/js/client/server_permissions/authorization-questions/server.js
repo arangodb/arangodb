@@ -58,7 +58,6 @@ const {
 } = require('@arangodb/testutils/permissions-observer');
 
 function serverApiAuthzSuite () {
-  const useSystem = 'UseDatabase name=_system level=read';
 
   return {
     tearDown: function () {
@@ -69,7 +68,9 @@ function serverApiAuthzSuite () {
     testDeploymentId: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/deployment/id`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // POST /_admin/execute - RestAdminExecuteHandler, no check (AUTHEN)
@@ -79,7 +80,9 @@ function serverApiAuthzSuite () {
     testExecute: function () {
       beginObserve();
       arango.POST_RAW(`/_db/_system/_admin/execute`, "1");
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // GET /_admin/license - canUseHardenedAction(AdminLicense)
@@ -87,7 +90,9 @@ function serverApiAuthzSuite () {
     testGetLicense: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/license`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // PUT /_admin/license - canUseHardenedAction(AdminLicense)
@@ -95,7 +100,9 @@ function serverApiAuthzSuite () {
     testSetLicense: function () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_admin/license`, {});
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // GET /_admin/metrics - canUseHardenedAction(AdminMonitoring)
@@ -103,7 +110,9 @@ function serverApiAuthzSuite () {
     testMetrics: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/metrics`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // GET /_admin/options - RestOptionsBaseHandler::checkAuthentication().
@@ -114,7 +123,9 @@ function serverApiAuthzSuite () {
     testGetOptions: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/options`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // GET /_admin/options-description - same checkAuthentication() guard.
@@ -122,21 +133,27 @@ function serverApiAuthzSuite () {
     testGetOptionsDescription: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/options-description`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // GET /_admin/options-public - RestPublicOptionsHandler, no check (AUTHEN)
     testGetOptionsPublic: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/options-public`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // POST /_admin/routing/reload - RestAdminRoutingHandler, no check (AUTHEN)
     testRoutingReload: function () {
       beginObserve();
       arango.POST_RAW(`/_db/_system/_admin/routing/reload`, {});
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // GET /_admin/server/api-calls - RestAdminServerHandler::handleApiCalls()
@@ -146,7 +163,10 @@ function serverApiAuthzSuite () {
     testApiCalls: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/server/api-calls`);
-      assertPermissions([useSystem, `AdminApiCalls`], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminApiCalls"
+      ], endObserve());
     },
 
     // GET /_admin/server/aql-queries - RestAdminServerHandler::handleAqlQueries()
@@ -155,7 +175,10 @@ function serverApiAuthzSuite () {
     testAqlQueries: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/server/aql-queries`);
-      assertPermissions([useSystem, `AdminAqlQueries`], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminAqlQueries"
+      ], endObserve());
     },
 
     // GET /_admin/server/availability - OPEN endpoint, but an authenticated
@@ -171,21 +194,27 @@ function serverApiAuthzSuite () {
     testDatabaseDefaults: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/server/databaseDefaults`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // GET /_admin/server/id - no check (AUTHEN; 500 on single server)
     testServerId: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/server/id`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // GET /_admin/server/mode - no check (AUTHEN)
     testGetMode: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/server/mode`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // PUT /_admin/server/mode - RestAdminServerHandler::handleMode() asks
@@ -194,28 +223,37 @@ function serverApiAuthzSuite () {
     testSetMode: function () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_admin/server/mode`, { mode: "default" });
-      assertPermissions([useSystem, `AdminMaintenance`], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminMaintenance"
+      ], endObserve());
     },
 
     // GET /_admin/server/role - no check (AUTHEN)
     testServerRole: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/server/role`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // GET /_admin/server/tls - no check (AUTHEN)
     testGetTls: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/server/tls`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // POST /_admin/server/tls - isSuperuserOrDisabled() gate (no question)
     testReloadTls: function () {
       beginObserve();
       arango.POST_RAW(`/_db/_system/_admin/server/tls`, {});
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // GET /_admin/server/jwt - no check (AUTHEN)
@@ -223,7 +261,9 @@ function serverApiAuthzSuite () {
     testGetJwt: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/server/jwt`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // POST /_admin/server/jwt - isSuperuserOrDisabled() gate (no question)
@@ -231,7 +271,9 @@ function serverApiAuthzSuite () {
     testReloadJwt: function () {
       beginObserve();
       arango.POST_RAW(`/_db/_system/_admin/server/jwt`, {});
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // GET /_admin/server/encryption - no check (AUTHEN)
@@ -239,7 +281,9 @@ function serverApiAuthzSuite () {
     testGetEncryption: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/server/encryption`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // POST /_admin/server/encryption - isSuperuserOrDisabled() gate (no question)
@@ -247,7 +291,9 @@ function serverApiAuthzSuite () {
     testRotateEncryption: function () {
       beginObserve();
       arango.POST_RAW(`/_db/_system/_admin/server/encryption`, {});
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
   };
 }

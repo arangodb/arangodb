@@ -69,12 +69,7 @@ const {
 } = require('@arangodb/testutils/apitest-fixtures');
 
 function indexApiAuthzSuite () {
-  const useD = `UseDatabase name=${DB} level=read`;
-  const useDWrite = `UseDatabase name=${DB} level=write`;
   const c = DOC_COLLECTION;
-  const readC = `UseCollection db=${DB} name=${c} level=read`;
-  const writeMetaC = `UseCollection db=${DB} name=${c} level=writemeta`;
-  const writeDataC = `UseCollection db=${DB} name=${c} level=writedata`;
 
   // create a persistent index as root (before observation), return its handle
   function createIndex () {
@@ -101,14 +96,22 @@ function indexApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/index?collection=${c}`);
       // only a single server resolves the collection under the ExecContext
-      assertPermissions([useD].concat(singleOnly([readC])), endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        ...singleOnly([
+          "UseCollection db=d name=c level=read"
+        ])
+      ], endObserve());
     },
 
     // GET /_api/index/selectivity?collection=c - READ transaction
     testSelectivity: function () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/index/selectivity?collection=${c}`);
-      assertPermissions([useD, readC], endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=read"
+      ], endObserve());
     },
 
     // POST /_api/index?collection=c - canCreateIndex() -> writemeta
@@ -119,9 +122,14 @@ function indexApiAuthzSuite () {
       beginObserve();
       const res = arango.POST_RAW(`/_db/${DB}/_api/index?collection=${c}`,
                                   { type: 'persistent', fields: ['value'] });
-      assertPermissions([useD, writeMetaC]
-                        .concat(singleOnly([readC, writeDataC])),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=writemeta",
+        ...singleOnly([
+          "UseCollection db=d name=c level=read",
+          "UseCollection db=d name=c level=writedata"
+        ])
+      ], endObserve());
       if (res.parsedBody && res.parsedBody.id) {
         dropIndex(res.parsedBody.id);
       }
@@ -131,7 +139,9 @@ function indexApiAuthzSuite () {
     testSyncCaches: function () {
       beginObserve();
       arango.POST_RAW(`/_db/${DB}/_api/index/sync-caches`, {});
-      assertPermissions([useD], endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read"
+      ], endObserve());
     },
 
     // DELETE /_api/index/<handle> - drop() checks canUseDatabase(write) +
@@ -142,9 +152,15 @@ function indexApiAuthzSuite () {
       const handle = createIndex();
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/index/${handle}`);
-      assertPermissions([useD, useDWrite, writeMetaC]
-                        .concat(singleOnly([readC, writeDataC])),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseDatabase name=d level=write",
+        "UseCollection db=d name=c level=writemeta",
+        ...singleOnly([
+          "UseCollection db=d name=c level=read",
+          "UseCollection db=d name=c level=writedata"
+        ])
+      ], endObserve());
     },
   };
 }

@@ -55,9 +55,6 @@ const {
 } = require('@arangodb/testutils/permissions-observer');
 
 function logApiAuthzSuite () {
-  const useSystem = 'UseDatabase name=_system level=read';
-  const readLogs = 'AdminReadLogs';
-  const setLevel = 'AdminSetLogLevel';
 
   return {
     tearDown: function () {
@@ -68,63 +65,90 @@ function logApiAuthzSuite () {
     testGetLog: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/log`);
-      assertPermissions([useSystem, readLogs], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminReadLogs"
+      ], endObserve());
     },
 
     // GET /_admin/log/entries - new object-per-entry format (AdminReadLogs)
     testGetLogEntries: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/log/entries`);
-      assertPermissions([useSystem, readLogs], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminReadLogs"
+      ], endObserve());
     },
 
     // GET /_admin/log/level - current per-topic log levels (AdminReadLogs)
     testGetLogLevel: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/log/level`);
-      assertPermissions([useSystem, readLogs], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminReadLogs"
+      ], endObserve());
     },
 
     // GET /_admin/log/structured - structured-logging parameters (AdminReadLogs)
     testGetLogStructured: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/log/structured`);
-      assertPermissions([useSystem, readLogs], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminReadLogs"
+      ], endObserve());
     },
 
     // PUT /_admin/log/level - no-op empty body (AdminSetLogLevel)
     testSetLogLevel: function () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_admin/log/level`, {});
-      assertPermissions([useSystem, setLevel], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminSetLogLevel"
+      ], endObserve());
     },
 
     // PUT /_admin/log/structured - no-op body (AdminSetLogLevel)
     testSetLogStructured: function () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_admin/log/structured`, {});
-      assertPermissions([useSystem, setLevel], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminSetLogLevel"
+      ], endObserve());
     },
 
     // DELETE /_admin/log - clear the in-memory log buffer (AdminSetLogLevel)
     testClearLog: function () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_admin/log`);
-      assertPermissions([useSystem, setLevel], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminSetLogLevel"
+      ], endObserve());
     },
 
     // DELETE /_admin/log/entries - alias for clearing the buffer (AdminSetLogLevel)
     testClearLogEntries: function () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_admin/log/entries`);
-      assertPermissions([useSystem, setLevel], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminSetLogLevel"
+      ], endObserve());
     },
 
     // DELETE /_admin/log/level - reset per-topic levels to defaults (AdminSetLogLevel)
     testResetLogLevel: function () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_admin/log/level`);
-      assertPermissions([useSystem, setLevel], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminSetLogLevel"
+      ], endObserve());
     },
   };
 }

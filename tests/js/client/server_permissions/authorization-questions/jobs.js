@@ -55,7 +55,6 @@ const {
 } = require('@arangodb/testutils/permissions-observer');
 
 function jobApiAuthzSuite () {
-  const useSystem = `UseDatabase name=_system level=read`;
 
   // create one async job (owned by the connected user) by firing an async
   // /_api/version request; returns the job id from the x-arango-async-id header
@@ -81,14 +80,18 @@ function jobApiAuthzSuite () {
     testListDone: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/job/done`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // GET /_api/job/pending - list pending jobs for the caller
     testListPending: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/job/pending`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // GET /_api/job/{id} - job status by id
@@ -96,7 +99,9 @@ function jobApiAuthzSuite () {
       const jobId = createJob();
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/job/${jobId}`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
       deleteJob(jobId);
     },
 
@@ -105,7 +110,9 @@ function jobApiAuthzSuite () {
       const jobId = createJob();
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_api/job/${jobId}`, {});
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
       deleteJob(jobId);
     },
 
@@ -114,7 +121,9 @@ function jobApiAuthzSuite () {
       const jobId = createJob();
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_api/job/${jobId}/cancel`, {});
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
       deleteJob(jobId);
     },
 
@@ -122,14 +131,18 @@ function jobApiAuthzSuite () {
     testDeleteAll: function () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_api/job/all`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // DELETE /_api/job/expired?stamp=0 - delete expired jobs of the caller
     testDeleteExpired: function () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_api/job/expired?stamp=0`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // DELETE /_api/job/{id} - delete one specific job result
@@ -137,7 +150,9 @@ function jobApiAuthzSuite () {
       const jobId = createJob();
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_api/job/${jobId}`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
       deleteJob(jobId);
     },
 
@@ -145,7 +160,9 @@ function jobApiAuthzSuite () {
     testAdminMountPoint: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/job/done`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
   };
 }

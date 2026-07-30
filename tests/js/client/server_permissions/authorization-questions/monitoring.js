@@ -58,7 +58,6 @@ const {
 } = require('@arangodb/testutils/permissions-observer');
 
 function monitoringApiAuthzSuite () {
-  const useSystem = 'UseDatabase name=_system level=read';
 
   return {
     tearDown: function () {
@@ -70,7 +69,9 @@ function monitoringApiAuthzSuite () {
     testStatistics: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/statistics`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // GET /_admin/statistics-description - canUseHardenedAction(AdminMonitoring)
@@ -78,7 +79,9 @@ function monitoringApiAuthzSuite () {
     testStatisticsDescription: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/statistics-description`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // GET /_admin/status - canUseHardenedAction(AdminMonitoring)
@@ -86,7 +89,9 @@ function monitoringApiAuthzSuite () {
     testStatus: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/status`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // GET /_admin/supervisionState - RestSupervisionStateHandler asks
@@ -95,7 +100,10 @@ function monitoringApiAuthzSuite () {
     testSupervisionState: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/supervisionState`);
-      assertPermissions([useSystem, `AdminSupervisionState`], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminSupervisionState"
+      ], endObserve());
     },
 
     // GET /_admin/support-info - default --server.support-info-api=jwt policy;
@@ -106,7 +114,10 @@ function monitoringApiAuthzSuite () {
     testSupportInfo: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/support-info`);
-      assertPermissions([useSystem, 'AdminMonitoring'], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminMonitoring"
+      ], endObserve());
     },
 
     // GET /_admin/system-report - canUseHardenedAction(AdminMonitoringInternal)
@@ -116,7 +127,9 @@ function monitoringApiAuthzSuite () {
     testSystemReport: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/system-report`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // GET /_admin/telemetrics - default --server.support-info-api=jwt policy;
@@ -127,7 +140,9 @@ function monitoringApiAuthzSuite () {
     testGetTelemetrics: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/telemetrics`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // DELETE /_admin/telemetrics - same auth guard as GET.
@@ -135,14 +150,18 @@ function monitoringApiAuthzSuite () {
     testDeleteTelemetrics: function () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_admin/telemetrics`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // GET /_admin/time - RestTimeHandler has no permission check (AUTHEN)
     testTime: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/time`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // GET /_admin/usage-metrics - canUseHardenedAction(AdminMonitoringInternal)
@@ -150,7 +169,9 @@ function monitoringApiAuthzSuite () {
     testUsageMetrics: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/usage-metrics`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // GET /_admin/version - RestVersionHandler always returns 200 and only uses
@@ -160,7 +181,9 @@ function monitoringApiAuthzSuite () {
     testVersion: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/version`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
   };
 }

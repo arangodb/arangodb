@@ -54,7 +54,6 @@ if (getOptions === true) {
 }
 
 const jsunity = require('jsunity');
-const db = require('@arangodb').db;
 const {
   beginObserve,
   endObserve,
@@ -66,12 +65,10 @@ const {
   tearDownApiTestData,
   DB,
   DOC_COLLECTION,
-  readUsers,
   singleOnly
 } = require('@arangodb/testutils/apitest-fixtures');
 
 function collectionApiAuthzSuite () {
-  const useD = `UseDatabase name=${DB} level=read`;
   const c = DOC_COLLECTION;
   // a scratch collection for the destructive create/drop cells
   const tmp = 'c_apitest';
@@ -98,86 +95,111 @@ function collectionApiAuthzSuite () {
     // handler asks canSeeCollection() for every (non-deleted) collection in
     // the database, including the system collections, so we enumerate them.
     testListCollections: function () {
-      db._useDatabase(DB);
-      const names = db._collections().map((coll) => coll.name());
-      db._useDatabase('_system');
-      const expected = [useD].concat(
-        names.map((n) => `SeeCollection db=${DB} name=${n}`));
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/collection`);
-      assertPermissions(expected, endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "SeeCollection db=d name=c",
+        "SeeCollection db=d name=e",
+        "SeeCollection db=d name=_analyzers",
+        "SeeCollection db=d name=_appbundles",
+        "SeeCollection db=d name=_apps",
+        "SeeCollection db=d name=_aqlfunctions",
+        "SeeCollection db=d name=_frontend",
+        "SeeCollection db=d name=_graphs",
+        "SeeCollection db=d name=_jobs",
+        "SeeCollection db=d name=_queues"
+      ], endObserve());
     },
 
     // GET /_api/collection/c - lookup() -> UseCollection(Read)
     testGetCollection: function () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/collection/${c}`);
-      assertPermissions([useD, `UseCollection db=${DB} name=${c} level=read`],
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=read"
+      ], endObserve());
     },
 
     // GET /_api/collection/c/checksum - lookup() -> UseCollection(Read)
     testChecksum: function () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/collection/${c}/checksum`);
-      assertPermissions([useD, `UseCollection db=${DB} name=${c} level=read`],
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=read"
+      ], endObserve());
     },
 
     // GET /_api/collection/c/count - lookup() -> UseCollection(Read)
     testCount: function () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/collection/${c}/count`);
-      assertPermissions([useD, `UseCollection db=${DB} name=${c} level=read`],
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=read"
+      ], endObserve());
     },
 
     // GET /_api/collection/c/figures - lookup() -> UseCollection(Read)
     testFigures: function () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/collection/${c}/figures`);
-      assertPermissions([useD, `UseCollection db=${DB} name=${c} level=read`],
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=read"
+      ], endObserve());
     },
 
     // GET /_api/collection/c/properties - lookup() -> UseCollection(Read)
     testGetProperties: function () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/collection/${c}/properties`);
-      assertPermissions([useD, `UseCollection db=${DB} name=${c} level=read`],
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=read"
+      ], endObserve());
     },
 
     // GET /_api/collection/c/revision - lookup() -> UseCollection(Read)
     testRevision: function () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/collection/${c}/revision`);
-      assertPermissions([useD, `UseCollection db=${DB} name=${c} level=read`],
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=read"
+      ], endObserve());
     },
 
     // GET /_api/collection/c/shards - lookup() -> UseCollection(Read)
     testShards: function () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/collection/${c}/shards`);
-      assertPermissions([useD, `UseCollection db=${DB} name=${c} level=read`],
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=read"
+      ], endObserve());
     },
 
     // PUT /_api/collection/c/load - lookup() -> UseCollection(Read); no-op
     testLoad: function () {
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/collection/${c}/load`, {});
-      assertPermissions([useD, `UseCollection db=${DB} name=${c} level=read`],
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=read"
+      ], endObserve());
     },
 
     // PUT /_api/collection/c/unload - lookup() -> UseCollection(Read); no-op
     testUnload: function () {
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/collection/${c}/unload`, {});
-      assertPermissions([useD, `UseCollection db=${DB} name=${c} level=read`],
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=read"
+      ], endObserve());
     },
 
     // PUT /_api/collection/c/loadIndexesIntoMemory - lookup() ->
@@ -185,8 +207,10 @@ function collectionApiAuthzSuite () {
     testLoadIndexesIntoMemory: function () {
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/collection/${c}/loadIndexesIntoMemory`, {});
-      assertPermissions([useD, `UseCollection db=${DB} name=${c} level=read`],
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=read"
+      ], endObserve());
     },
 
     // PUT /_api/collection/c/compact - lookup() -> UseCollection(Read) only;
@@ -194,9 +218,10 @@ function collectionApiAuthzSuite () {
     testCompact: function () {
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/collection/${c}/compact`, {});
-      assertPermissions([useD,
-                         `UseCollection db=${DB} name=${c} level=read`],
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=read"
+      ], endObserve());
     },
 
     // PUT /_api/collection/c/properties - lookup() -> UseCollection(Read),
@@ -206,12 +231,14 @@ function collectionApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/collection/${c}/properties`,
                      { waitForSync: false });
-      assertPermissions([useD,
-                         `UseCollection db=${DB} name=${c} level=read`,
-                         `UseCollection db=${DB} name=${c} level=writemeta`]
-                        .concat(singleOnly(
-                          [`UseCollection db=${DB} name=${c} level=writedata`])),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=read",
+        "UseCollection db=d name=c level=writemeta",
+        ...singleOnly([
+          "UseCollection db=d name=c level=writedata"
+        ])
+      ], endObserve());
     },
 
     // PUT /_api/collection/c/responsibleShard - lookup() -> UseCollection(Read)
@@ -220,8 +247,10 @@ function collectionApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/collection/${c}/responsibleShard`,
                      { _key: 'k1' });
-      assertPermissions([useD, `UseCollection db=${DB} name=${c} level=read`],
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=read"
+      ], endObserve());
     },
 
     // PUT /_api/collection/c/truncate - lookup() -> UseCollection(Read), then
@@ -229,10 +258,11 @@ function collectionApiAuthzSuite () {
     testTruncate: function () {
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/collection/${c}/truncate`, {});
-      assertPermissions([useD,
-                         `UseCollection db=${DB} name=${c} level=read`,
-                         `UseCollection db=${DB} name=${c} level=writedata`],
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=read",
+        "UseCollection db=d name=c level=writedata"
+      ], endObserve());
       // re-insert the 100 setup documents that truncate removed
       let docs = [];
       for (let i = 1; i <= 100; ++i) {
@@ -252,12 +282,15 @@ function collectionApiAuthzSuite () {
                      { name: `${tmp}_renamed` });
       // AUDIT: a coordinator only resolves the collection - neither the
       // writemeta question nor the graph cleanup is asked
-      assertPermissions([useD, `UseCollection db=${DB} name=${tmp} level=read`]
-                        .concat(singleOnly([
-                          `UseCollection db=${DB} name=${tmp} level=writemeta`,
-                          `UseCollection db=${DB} name=_graphs level=read`,
-                          `UseCollection db=${DB} name=${tmp}_renamed level=read`])),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c_apitest level=read",
+        ...singleOnly([
+          "UseCollection db=d name=c_apitest level=writemeta",
+          "UseCollection db=d name=_graphs level=read",
+          "UseCollection db=d name=c_apitest_renamed level=read"
+        ])
+      ], endObserve());
       arango.DELETE_RAW(`/_db/${DB}/_api/collection/${tmp}_renamed`);
     },
 
@@ -267,10 +300,14 @@ function collectionApiAuthzSuite () {
       dropTmp();
       beginObserve();
       arango.POST_RAW(`/_db/${DB}/_api/collection`, { name: tmp });
-      assertPermissions([useD, `CreateCollection db=${DB} name=${tmp}`,
-                         `UseCollection db=${DB} name=${tmp} level=read`]
-                        .concat(readUsers()),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "CreateCollection db=d name=c_apitest",
+        "UseCollection db=d name=c_apitest level=read",
+        ...singleOnly([
+          "UseCollection db=_system name=_users level=read"
+        ])
+      ], endObserve());
     },
 
     // DELETE /_api/collection/tmp - canDropCollection(), lookup() ->
@@ -281,12 +318,15 @@ function collectionApiAuthzSuite () {
       createTmp();
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/collection/${tmp}`);
-      assertPermissions([useD,
-                         `DropCollection db=${DB} name=${tmp}`,
-                         `UseCollection db=${DB} name=${tmp} level=read`,
-                         `UseCollection db=${DB} name=_graphs level=read`]
-                        .concat(readUsers()),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "DropCollection db=d name=c_apitest",
+        "UseCollection db=d name=c_apitest level=read",
+        "UseCollection db=d name=_graphs level=read",
+        ...singleOnly([
+          "UseCollection db=_system name=_users level=read"
+        ])
+      ], endObserve());
     },
   };
 }

@@ -72,11 +72,11 @@ const {
   tearDownApiTestData,
   DB,
   DOC_COLLECTION,
-  isCluster
+  singleOnly,
+  clusterOnly
 } = require('@arangodb/testutils/apitest-fixtures');
 
 function dumpApiAuthzSuite () {
-  const useD = `UseDatabase name=${DB} level=read`;
   const c = DOC_COLLECTION;
 
   // start a dump session as root (single-server: shard name == collection name)
@@ -114,13 +114,17 @@ function dumpApiAuthzSuite () {
       const res = arango.POST_RAW(`/_db/${DB}/_api/dump/start`, { shards: [c] });
       // AUDIT: on a coordinator the question carries an empty collection
       // name, and AdminDump is not asked at all
-      assertPermissions(isCluster()
-                        ? [useD, `DumpCollection db=${DB} name=`]
-                        : [useD,
-                           `DumpCollection db=${DB} name=${c}`,
-                           `UseCollection db=${DB} name=${c} level=read`,
-                           `AdminDump`],
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        ...singleOnly([
+          "DumpCollection db=d name=c",
+          "UseCollection db=d name=c level=read",
+          "AdminDump"
+        ]),
+        ...clusterOnly([
+          "DumpCollection db=d name="
+        ])
+      ], endObserve());
       // abort the dump the observed request started
       if (res.headers && res.headers['x-arango-dump-id']) {
         abortDump(res.headers['x-arango-dump-id']);
@@ -137,7 +141,9 @@ function dumpApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(
         `/_db/${DB}/_api/dump/next/${dumpId}?batchId=${batchId}`, {});
-      assertPermissions([useD], endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read"
+      ], endObserve());
       abortDump(dumpId);
       deleteBatch(batchId);
     },
@@ -149,7 +155,9 @@ function dumpApiAuthzSuite () {
       const dumpId = startDump();
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/dump/${dumpId}`);
-      assertPermissions([useD], endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read"
+      ], endObserve());
       abortDump(dumpId);
     },
   };

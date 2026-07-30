@@ -60,13 +60,11 @@ const {
   tearDownApiTestData,
   DB,
   DOC_COLLECTION,
-  readUsers,
+  singleOnly,
   clusterOnly
 } = require('@arangodb/testutils/apitest-fixtures');
 
 function adminApiAuthzSuite () {
-  const useSystem = 'UseDatabase name=_system level=read';
-  const useD = `UseDatabase name=${DB} level=read`;
 
   return {
     // the fixture creates database d + collection c, needed only so that the
@@ -83,8 +81,13 @@ function adminApiAuthzSuite () {
     testAuthReload: function () {
       beginObserve();
       arango.POST_RAW(`/_db/_system/_admin/auth/reload`, {});
-      assertPermissions([useSystem, `AdminAuthReload`].concat(readUsers()),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminAuthReload",
+        ...singleOnly([
+          "UseCollection db=_system name=_users level=read"
+        ])
+      ], endObserve());
     },
 
     // GET /_admin/cluster/collectionShardDistribution - handler rejects
@@ -94,15 +97,21 @@ function adminApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_admin/cluster/collectionShardDistribution?collection=${DOC_COLLECTION}`);
       // a single server rejects the request before asking
-      assertPermissions([useD].concat(clusterOnly(['AdminClusterInfo'])),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        ...clusterOnly([
+          "AdminClusterInfo"
+        ])
+      ], endObserve());
     },
 
     // GET /_admin/cluster/health - no admin check (AUTHEN)
     testClusterHealth: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/cluster/health`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // GET /_admin/cluster/maintenance - handleMaintenance asks
@@ -111,7 +120,10 @@ function adminApiAuthzSuite () {
     testGetClusterMaintenance: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/cluster/maintenance`);
-      assertPermissions([useSystem, `AdminMaintenance`], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminMaintenance"
+      ], endObserve());
     },
 
     // PUT /_admin/cluster/maintenance - same handleMaintenance auth (AdminMaintenance).
@@ -119,7 +131,10 @@ function adminApiAuthzSuite () {
     testPutClusterMaintenance: function () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_admin/cluster/maintenance`, "off");
-      assertPermissions([useSystem, `AdminMaintenance`], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminMaintenance"
+      ], endObserve());
     },
 
     // GET /_admin/cluster/nodeEngine - proxy handler rejects non-coordinators
@@ -127,21 +142,27 @@ function adminApiAuthzSuite () {
     testNodeEngine: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/cluster/nodeEngine`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // GET /_admin/cluster/nodeStatistics - non-coordinator rejected first (AUTHEN)
     testNodeStatistics: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/cluster/nodeStatistics`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // GET /_admin/cluster/nodeVersion - non-coordinator rejected first (AUTHEN)
     testNodeVersion: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/cluster/nodeVersion`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // GET /_admin/cluster/numberOfServers - handleNumberOfServers rejects
@@ -149,7 +170,9 @@ function adminApiAuthzSuite () {
     testGetNumberOfServers: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/cluster/numberOfServers`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // PUT /_admin/cluster/numberOfServers - non-coordinator rejected first;
@@ -159,8 +182,12 @@ function adminApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_admin/cluster/numberOfServers`, {});
       // a single server rejects the request before asking
-      assertPermissions([useSystem].concat(clusterOnly(['AdminMaintenance'])),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        ...clusterOnly([
+          "AdminMaintenance"
+        ])
+      ], endObserve());
     },
 
     // GET /_admin/cluster/rebalance - handleRebalance rejects non-coordinators
@@ -169,8 +196,12 @@ function adminApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/cluster/rebalance`);
       // a single server rejects the request before asking
-      assertPermissions([useSystem].concat(clusterOnly(['AdminRebalance'])),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        ...clusterOnly([
+          "AdminRebalance"
+        ])
+      ], endObserve());
     },
 
     // PUT /_admin/cluster/rebalance - non-coordinator rejected first; base only.
@@ -178,8 +209,12 @@ function adminApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_admin/cluster/rebalance`, {});
       // a single server rejects the request before asking
-      assertPermissions([useSystem].concat(clusterOnly(['AdminRebalance'])),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        ...clusterOnly([
+          "AdminRebalance"
+        ])
+      ], endObserve());
     },
 
     // GET /_admin/cluster/shardDistribution - handleShardDistribution rejects
@@ -188,8 +223,12 @@ function adminApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/cluster/shardDistribution`);
       // a single server rejects the request before asking
-      assertPermissions([useSystem].concat(clusterOnly(['AdminClusterInfo'])),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        ...clusterOnly([
+          "AdminClusterInfo"
+        ])
+      ], endObserve());
     },
 
     // GET /_admin/cluster/shardStatistics - handleShardStatistics asks
@@ -198,7 +237,10 @@ function adminApiAuthzSuite () {
     testShardStatistics: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/cluster/shardStatistics`);
-      assertPermissions([useSystem, `AdminClusterInfo`], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminClusterInfo"
+      ], endObserve());
     },
 
     // GET /_admin/cluster/statistics - proxy handler rejects non-coordinators
@@ -206,7 +248,9 @@ function adminApiAuthzSuite () {
     testClusterStatistics: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/cluster/statistics`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // POST /_admin/cluster/cancelAgencyJob - handleCancelJob asks
@@ -215,7 +259,10 @@ function adminApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/_system/_admin/cluster/cancelAgencyJob`,
                       { id: "nonexistent-job-apitester" });
-      assertPermissions([useSystem, `AdminMoveShards`], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminMoveShards"
+      ], endObserve());
     },
 
     // POST /_admin/cluster/cleanOutServer - handleSingleServerJob asks
@@ -223,7 +270,10 @@ function adminApiAuthzSuite () {
     testCleanOutServer: function () {
       beginObserve();
       arango.POST_RAW(`/_db/_system/_admin/cluster/cleanOutServer`, {});
-      assertPermissions([useSystem, `AdminMoveShards`], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminMoveShards"
+      ], endObserve());
     },
 
     // GET /_admin/cluster/maintenance/{serverId} - handleDBServerMaintenance
@@ -231,7 +281,10 @@ function adminApiAuthzSuite () {
     testGetDBServerMaintenance: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/cluster/maintenance/nonexistent`);
-      assertPermissions([useSystem, `AdminMaintenance`], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminMaintenance"
+      ], endObserve());
     },
 
     // PUT /_admin/cluster/maintenance/{serverId} - same handleDBServerMaintenance
@@ -240,7 +293,10 @@ function adminApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_admin/cluster/maintenance/nonexistent`,
                      { mode: "normal" });
-      assertPermissions([useSystem, `AdminMaintenance`], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminMaintenance"
+      ], endObserve());
     },
 
     // POST /_admin/cluster/moveShard - handleMoveShard rejects non-coordinators
@@ -251,8 +307,12 @@ function adminApiAuthzSuite () {
                       { database: "_system", collection: "nonexistent_apitester",
                         shard: "s1", fromServer: "from", toServer: "to" });
       // a single server rejects the request before asking
-      assertPermissions([useSystem].concat(clusterOnly(['AdminMoveShards'])),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        ...clusterOnly([
+          "AdminMoveShards"
+        ])
+      ], endObserve());
     },
 
     // GET /_admin/cluster/queryAgencyJob - handleQueryJobStatus asks
@@ -260,7 +320,10 @@ function adminApiAuthzSuite () {
     testQueryAgencyJob: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/cluster/queryAgencyJob?id=nonexistent-job-apitester-99999`);
-      assertPermissions([useSystem, `AdminMoveShards`], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminMoveShards"
+      ], endObserve());
     },
 
     // POST /_admin/cluster/rebalanceShards - handleRebalanceShards rejects
@@ -270,8 +333,12 @@ function adminApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/_system/_admin/cluster/rebalanceShards`, {});
       // a single server rejects the request before asking
-      assertPermissions([useSystem].concat(clusterOnly(['AdminRebalance'])),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        ...clusterOnly([
+          "AdminRebalance"
+        ])
+      ], endObserve());
     },
 
     // POST /_admin/cluster/removeServer - handleRemoveServer asks
@@ -280,7 +347,10 @@ function adminApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/_system/_admin/cluster/removeServer`,
                       { server: "PRMR-nonexistent-apitester" });
-      assertPermissions([useSystem, `AdminRemoveServer`], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminRemoveServer"
+      ], endObserve());
     },
 
     // POST /_admin/cluster/resignLeadership - handleSingleServerJob asks
@@ -288,7 +358,10 @@ function adminApiAuthzSuite () {
     testResignLeadership: function () {
       beginObserve();
       arango.POST_RAW(`/_db/_system/_admin/cluster/resignLeadership`, {});
-      assertPermissions([useSystem, `AdminMoveShards`], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminMoveShards"
+      ], endObserve());
     },
 
     // PUT /_admin/cluster/uniqId - handleUniqId rejects non-coordinators FIRST
@@ -297,8 +370,12 @@ function adminApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_admin/cluster/uniqId?number=1`, {});
       // a single server rejects the request before asking
-      assertPermissions([useSystem].concat(clusterOnly(['AdminMaintenance'])),
-                        endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        ...clusterOnly([
+          "AdminMaintenance"
+        ])
+      ], endObserve());
     },
 
     // GET /_admin/cluster/vpackSortMigration/check - handleVPackSortMigration
@@ -306,7 +383,9 @@ function adminApiAuthzSuite () {
     testVPackSortMigration: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/cluster/vpackSortMigration/check`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // PUT /_admin/compact - RestCompactHandler gates on isSuperuserOrDisabled()
@@ -315,7 +394,9 @@ function adminApiAuthzSuite () {
     testCompact: function () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_admin/compact`, {});
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // GET /_admin/crashes - RestCrashHandler asks canUseAdminAction(AdminCrashHandler)
@@ -323,28 +404,39 @@ function adminApiAuthzSuite () {
     testListCrashes: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/crashes`);
-      assertPermissions([useSystem, `AdminCrashHandler`], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminCrashHandler"
+      ], endObserve());
     },
 
     // GET /_admin/crashes/{id} - same AdminCrashHandler check.
     testGetCrash: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/crashes/nonexistent`);
-      assertPermissions([useSystem, `AdminCrashHandler`], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminCrashHandler"
+      ], endObserve());
     },
 
     // DELETE /_admin/crashes/{id} - same AdminCrashHandler check.
     testDeleteCrash: function () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_admin/crashes/nonexistent`);
-      assertPermissions([useSystem, `AdminCrashHandler`], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminCrashHandler"
+      ], endObserve());
     },
 
     // GET /_admin/database/target-version - RestAdminDatabaseHandler, no check (AUTHEN)
     testTargetVersion: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/database/target-version`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // GET /_admin/shutdown - RestShutdownHandler asks canUseAdminAction(AdminShutdown)
@@ -353,21 +445,26 @@ function adminApiAuthzSuite () {
     testGetShutdown: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/shutdown`);
-      assertPermissions([useSystem, `AdminShutdown`], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "AdminShutdown"
+      ], endObserve());
     },
 
     // DELETE /_admin/shutdown - RestShutdownHandler asks canUseAdminAction(AdminShutdown)
     // then actually shuts the server down.
     // AUDIT: fires a REAL shutdown when run as root (rw on _system passes the
     // AdminShutdown check) and would kill the test server. The request is
-    // intentionally NOT fired here. Expected questions: [useSystem, AdminShutdown].
+    // intentionally NOT fired here. Expected questions:
+    //   ["UseDatabase name=_system level=read", "AdminShutdown"].
     // A human must decide how to guard this (e.g. observe as a user without
     // _system rw, expecting the auth check to reject before shutdown).
     testDoShutdown: function () {
       // intentionally disabled - see AUDIT above.
       // beginObserve();
       // arango.DELETE_RAW(`/_db/_system/_admin/shutdown`);
-      // assertPermissions([useSystem, `AdminShutdown`], endObserve());
+      // assertPermissions(["UseDatabase name=_system level=read",
+      //                    "AdminShutdown"], endObserve());
     },
   };
 }

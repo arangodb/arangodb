@@ -66,9 +66,7 @@ const {
 } = require('@arangodb/testutils/apitest-fixtures');
 
 function transactionApiAuthzSuite () {
-  const useD = `UseDatabase name=${DB} level=read`;
   const c = DOC_COLLECTION;
-  const readC = `UseCollection db=${DB} name=${c} level=read`;
 
   // begin a stream transaction as root (before observation) and return its id
   function beginTrx (collections) {
@@ -94,7 +92,9 @@ function transactionApiAuthzSuite () {
     testListTransactions: function () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/transaction`);
-      assertPermissions([useD], endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read"
+      ], endObserve());
     },
 
     // GET /_api/transaction/{id} - get state; manager only
@@ -102,7 +102,9 @@ function transactionApiAuthzSuite () {
       const id = beginTrx({ read: [c] });
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/transaction/${id}`);
-      assertPermissions([useD], endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read"
+      ], endObserve());
       abortTrx(id);
     },
 
@@ -115,7 +117,10 @@ function transactionApiAuthzSuite () {
         collections: { read: [c] },
         action: 'function () { return 1; }'
       });
-      assertPermissions([useD, readC], endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=read"
+      ], endObserve());
     },
 
     // POST /_api/transaction/begin - begin read stream trx on c -> read check
@@ -123,7 +128,10 @@ function transactionApiAuthzSuite () {
       beginObserve();
       const res = arango.POST_RAW(`/_db/${DB}/_api/transaction/begin`,
                                   { collections: { read: [c] } });
-      assertPermissions([useD, readC], endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=read"
+      ], endObserve());
       if (res.parsedBody && res.parsedBody.result) {
         abortTrx(res.parsedBody.result.id);
       }
@@ -137,7 +145,9 @@ function transactionApiAuthzSuite () {
                       { 'x-arango-trx-id': id });
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/transaction/${id}`, {});
-      assertPermissions([useD], endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read"
+      ], endObserve());
       // committed -> the document now exists; remove it again
       arango.DELETE_RAW(`/_db/${DB}/_api/document/${c}/apitester-trx-doc`);
     },
@@ -147,14 +157,18 @@ function transactionApiAuthzSuite () {
       const id = beginTrx({ write: [c] });
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/transaction/${id}`);
-      assertPermissions([useD], endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read"
+      ], endObserve());
     },
 
     // DELETE /_api/transaction/write - abort all write transactions; manager only
     testAbortAllWriteTransactions: function () {
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/transaction/write`);
-      assertPermissions([useD], endObserve());
+      assertPermissions([
+        "UseDatabase name=d level=read"
+      ], endObserve());
     },
   };
 }

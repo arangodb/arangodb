@@ -61,7 +61,6 @@ const {
 } = require('@arangodb/testutils/permissions-observer');
 
 function debugApiAuthzSuite () {
-  const useSystem = 'UseDatabase name=_system level=read';
   const failPoint = 'apitest-dummy';
 
   return {
@@ -75,14 +74,18 @@ function debugApiAuthzSuite () {
     testFailatAvailability: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/debug/failat`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // GET /_admin/debug/failat/all - list active failure points (AUTHEN)
     testFailatAll: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/debug/failat/all`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // PUT /_admin/debug/failat/{name} - activate a named failure point (AUTHEN)
@@ -91,7 +94,9 @@ function debugApiAuthzSuite () {
       arango.DELETE_RAW(`/_db/_system/_admin/debug/failat/${failPoint}`);
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_admin/debug/failat/${failPoint}`, {});
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
       arango.DELETE_RAW(`/_db/_system/_admin/debug/failat/${failPoint}`);
     },
 
@@ -101,21 +106,27 @@ function debugApiAuthzSuite () {
       arango.PUT_RAW(`/_db/_system/_admin/debug/failat/${failPoint}`, {});
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_admin/debug/failat/${failPoint}`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // DELETE /_admin/debug/failat - clear ALL failure points (AUTHEN)
     testClearFailat: function () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_admin/debug/failat`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
 
     // DELETE /_admin/debug/raceControl - reset the race controller (AUTHEN)
     testResetRaceControl: function () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_admin/debug/raceControl`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
     },
   };
 }
