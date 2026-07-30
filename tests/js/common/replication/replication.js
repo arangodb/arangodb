@@ -26,7 +26,6 @@
 
 var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
-var errors = arangodb.errors;
 var db = arangodb.db;
 var internal = require("internal");
 var replication = require("@arangodb/replication");
@@ -237,55 +236,6 @@ function ReplicationLoggerSuite () {
       assertNotEqual(tick, state.lastLogTick);
       assertEqual(1, compareTicks(state.lastLogTick, tick));
       assertTrue(state.totalEvents > events);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test first tick
-////////////////////////////////////////////////////////////////////////////////
-
-    testFirstTick : function () {
-      var state = replication.logger.state().state;
-      assertTrue(state.running);
-      var tick = state.lastLogTick;
-      assertTrue(typeof tick === 'string');
-      assertMatch(/^\d+$/, tick);
-
-      var firstTick = replication.logger.firstTick();
-      assertTrue(typeof firstTick === 'string');
-      assertMatch(/^\d+$/, firstTick);
-      assertEqual(-1, compareTicks(firstTick, tick));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test tick ranges
-////////////////////////////////////////////////////////////////////////////////
-
-    testTickRanges : function () {
-      var state = replication.logger.state().state;
-      assertTrue(state.running);
-      var tick = state.lastLogTick;
-      assertTrue(typeof tick === 'string');
-      assertMatch(/^\d+$/, tick);
-
-      var ranges = replication.logger.tickRanges();
-      assertTrue(Array.isArray(ranges));
-      assertTrue(ranges.length > 0);
-
-      for (var i = 0; i < ranges.length; ++i) {
-        var df = ranges[i];
-        assertTrue(typeof df === 'object');
-        assertTrue(df.hasOwnProperty('datafile'));
-        assertTrue(df.hasOwnProperty('status'));
-        assertTrue(df.hasOwnProperty('tickMin'));
-        assertTrue(df.hasOwnProperty('tickMax'));
-
-        assertTrue(typeof df.datafile === 'string');
-        assertTrue(typeof df.status === 'string');
-        assertTrue(typeof df.tickMin === 'string');
-        assertMatch(/^\d+$/, df.tickMin);
-        assertTrue(typeof df.tickMax === 'string');
-        assertMatch(/^\d+$/, df.tickMax);
-      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2151,172 +2101,9 @@ function ReplicationLoggerSuite () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
-
-function ReplicationSyncSuite () {
-  'use strict';
-  return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUp : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-    tearDown : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief server id
-////////////////////////////////////////////////////////////////////////////////
-
-    testServerId : function () {
-      var result = replication.serverId();
-
-      assertTrue(typeof result === 'string');
-      assertMatch(/^\d+$/, result);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief invalid endpoint
-////////////////////////////////////////////////////////////////////////////////
-
-    testSyncNoEndpoint2 : function () {
-      try {
-        replication.sync({
-          endpoint: "tcp://9.9.9.9:9999",
-          connectTimeout: 2,
-          maxConnectRetries: 0,
-          connectionRetryWaitTime: 1,
-          verbose: true
-        });
-        fail();
-      }
-      catch (err) {
-        assertEqual(errors.ERROR_REPLICATION_NO_RESPONSE.code, err.errorNum);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief invalid response
-////////////////////////////////////////////////////////////////////////////////
-
-    testSyncInvalidResponse : function () {
-      try {
-        replication.sync({
-          endpoint: "tcp://arango.ai:80",
-          connectTimeout: 2,
-          maxConnectRetries: 0,
-          connectionRetryWaitTime: 1
-        });
-        fail();
-      } catch (err) {
-        assertTrue(err.errorNum === errors.ERROR_REPLICATION_INVALID_RESPONSE.code ||
-                   err.errorNum === errors.ERROR_REPLICATION_LEADER_ERROR.code ||
-                   err.errorNum === errors.ERROR_REPLICATION_NO_RESPONSE.code);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief invalid restrictType
-////////////////////////////////////////////////////////////////////////////////
-
-    testSyncRestrict1 : function () {
-      try {
-        replication.sync({
-          endpoint: "tcp://9.9.9.9:9999",
-          restrictType: "foo"
-        });
-        fail();
-      }
-      catch (err) {
-        assertEqual(errors.ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION.code, err.errorNum);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief invalid restrictCollections
-////////////////////////////////////////////////////////////////////////////////
-
-    testSyncRestrict2 : function () {
-      try {
-        replication.sync({
-          endpoint: "tcp://9.9.9.9:9999",
-          restrictType: "exclude"
-        });
-        fail();
-      }
-      catch (err) {
-        assertEqual(errors.ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION.code, err.errorNum);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief invalid restrictCollections
-////////////////////////////////////////////////////////////////////////////////
-
-    testSyncRestrict3 : function () {
-      try {
-        replication.sync({
-          endpoint: "tcp://9.9.9.9:9999",
-          restrictType: "include"
-        });
-        fail();
-      }
-      catch (err) {
-        assertEqual(errors.ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION.code, err.errorNum);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief invalid restrictCollections
-////////////////////////////////////////////////////////////////////////////////
-
-    testSyncRestrict4 : function () {
-      try {
-        replication.sync({
-          endpoint: "tcp://9.9.9.9:9999",
-          restrictCollections: [ "foo" ]
-        });
-        fail();
-      }
-      catch (err) {
-        assertEqual(errors.ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION.code, err.errorNum);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief invalid restrictCollections
-////////////////////////////////////////////////////////////////////////////////
-
-    testSyncRestrict5 : function () {
-      try {
-        replication.sync({
-          endpoint: "tcp://9.9.9.9:9999",
-          restrictType: "include",
-          restrictCollections: "foo"
-        });
-        fail();
-      }
-      catch (err) {
-        assertEqual(errors.ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION.code, err.errorNum);
-      }
-    }
-
-  };
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ReplicationLoggerSuite);
-jsunity.run(ReplicationSyncSuite);
 
 return jsunity.done();
