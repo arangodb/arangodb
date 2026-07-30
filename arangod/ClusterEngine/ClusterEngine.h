@@ -129,12 +129,6 @@ class ClusterEngine final : public StorageEngine {
                            velocypack::Builder& builder) override {
     return {TRI_ERROR_NOT_IMPLEMENTED};
   }
-  Result createTickRanges(velocypack::Builder& builder) override {
-    return {TRI_ERROR_NOT_IMPLEMENTED};
-  }
-  Result firstTick(uint64_t& tick) override {
-    return {TRI_ERROR_NOT_IMPLEMENTED};
-  }
   Result lastLogger(TRI_vocbase_t& vocbase, uint64_t tickStart,
                     uint64_t tickEnd, velocypack::Builder& builder) override {
     return {TRI_ERROR_NOT_IMPLEMENTED};
