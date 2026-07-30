@@ -764,7 +764,7 @@ class instanceManager {
         throw new Error(`failed to resign ${dbServer.name} (${dbServer.shortName}) from leadership via ${frontend.name}: ${JSON.stringify(result)}`);
       }
       if (this.waitForAgencyJob(
-        result.parsedBody.id, (this.options.isInstrumented)?10000:1000,
+        result.parsedBody.id, (this.options.isInstrumented) ? 10000 : 1000,
         `resign ${dbServer.name} from leadership via ${frontend.name}:`)) {
         return;
       }
