@@ -49,7 +49,6 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer& server,
                              LogApiOptions apiOptions)
     : ApplicationFeature(server, *this),
       _options(std::move(options)),
-      _apiOptions(std::move(apiOptions)),
       _threaded(threaded) {
   startsAfter<ShellColorsFeature>();
   startsAfter<VersionFeature>();
@@ -65,7 +64,6 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer& server,
                              LoggerOptions options)
     : ApplicationFeature(server, registration, name()),
       _options(std::move(options)),
-      _apiOptions(LogApiOptions{}),
       _threaded(threaded) {
   // note: we use the _threaded option to determine whether we are arangod
   // (_threaded = true) or one of the client tools (_threaded = false). in

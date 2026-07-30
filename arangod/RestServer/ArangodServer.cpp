@@ -212,7 +212,8 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   addFeature<AuthenticationFeature>(
       getOptions<AuthenticationOptionsProvider>());
   addFeature<GeneralServerFeature>(metrics,
-                                   getOptions<GeneralServerOptionsProvider>());
+                                   getOptions<GeneralServerOptionsProvider>(),
+                                   getOptions<LogApiOptionsProvider>());
   auto& networkFeature =
       addFeature<NetworkFeature>(metrics, getOptions<NetworkOptionsProvider>());
   addFeature<HttpEndpointProvider, EndpointFeature>(
