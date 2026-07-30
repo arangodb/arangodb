@@ -45,11 +45,14 @@
 if (getOptions === true) {
   return {
     'server.authentication': 'true',
-    'log.force-direct': 'true'
+    'log.force-direct': 'true',
+    // keep background threads from asking questions of their own
+    'foxx.queues': 'false'
   };
 }
 
 const jsunity = require('jsunity');
+const db = require('@arangodb').db;
 const {
   beginObserve,
   endObserve,
@@ -60,7 +63,9 @@ const {
   setUpApiTestData,
   tearDownApiTestData,
   DB,
-  DOC_COLLECTION
+  DOC_COLLECTION,
+  singleOnly,
+  readUsers
 } = require('@arangodb/testutils/apitest-fixtures');
 
 function miscApiAuthzSuite () {
@@ -330,37 +335,48 @@ function miscApiAuthzSuite () {
     testWalLastTick: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/wal/lastTick`);
-      assertPermissions([useSystem, 'AdminWalAccess'], endObserve());
+      assertPermissions([useSystem].concat(singleOnly(['AdminWalAccess'])),
+                        endObserve());
     },
 
     testWalOpenTransactions: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/wal/open-transactions`);
-      assertPermissions([useSystem, 'AdminWalAccess'], endObserve());
+      assertPermissions([useSystem].concat(singleOnly(['AdminWalAccess'])),
+                        endObserve());
     },
 
     testWalRange: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/wal/range`);
-      assertPermissions([useSystem, 'AdminWalAccess'], endObserve());
+      assertPermissions([useSystem].concat(singleOnly(['AdminWalAccess'])),
+                        endObserve());
     },
 
+    // tailing the WAL resolves the collection of every operation it reports,
+    // which after the startup activity is every collection of the database
     testWalTailRead: function () {
+      const names = db._collections().map((coll) => coll.name());
+      const expected = [useSystem].concat(singleOnly(
+        ['AdminWalAccess'].concat(
+          names.map((n) => `UseCollection db=_system name=${n} level=read`))));
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/wal/tail`);
-      assertPermissions([useSystem, 'AdminWalAccess'], endObserve());
+      assertPermissions(expected, endObserve());
     },
 
     testWalTailAcknowledge: function () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_api/wal/tail`, {});
-      assertPermissions([useSystem, 'AdminWalAccess'], endObserve());
+      assertPermissions([useSystem].concat(singleOnly(['AdminWalAccess'])),
+                        endObserve());
     },
 
     testWalTailRelease: function () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_api/wal/tail`);
-      assertPermissions([useSystem, 'AdminWalAccess'], endObserve());
+      assertPermissions([useSystem].concat(singleOnly(['AdminWalAccess'])),
+                        endObserve());
     },
 
     // ── /openapi.json ────────────────────────────────────────────────────
@@ -416,9 +432,8 @@ function miscApiAuthzSuite () {
     // authentication (no base UseDatabase question). GET -> canReadUser(user),
     // POST/DELETE -> canModifyUserProfile(user). The target user is "root",
     // which equals the connected (authenticated) user, so both short-circuit
-    // to OK WITHOUT calling can(). Hence these endpoints ask NOTHING.
-    // AUDIT: empty expected set - both the base check and the user check are
-    // skipped for a self-targeted, authenticated request.
+    // to OK WITHOUT calling can(). Reading the tokens hence asks NOTHING,
+    // while creating/deleting one persists it and thus reads _users.
     testListAccessTokens: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/token/root`);
@@ -429,7 +444,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       const res = arango.POST_RAW(`/_db/_system/_api/token/root`,
                                   { name: 'apitester-token' });
-      assertPermissions([], endObserve());
+      assertPermissions(readUsers(), endObserve());
       if (res.parsedBody && res.parsedBody.id) {
         arango.DELETE_RAW(`/_db/_system/_api/token/root/${res.parsedBody.id}`);
       }
@@ -441,7 +456,7 @@ function miscApiAuthzSuite () {
       const id = created.parsedBody ? created.parsedBody.id : undefined;
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_api/token/root/${id}`);
-      assertPermissions([], endObserve());
+      assertPermissions(readUsers(), endObserve());
     },
   };
 }

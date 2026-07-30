@@ -47,7 +47,9 @@
 if (getOptions === true) {
   return {
     'server.authentication': 'true',
-    'log.force-direct': 'true'
+    'log.force-direct': 'true',
+    // keep background threads from asking questions of their own
+    'foxx.queues': 'false'
   };
 }
 
@@ -62,7 +64,8 @@ const {
   setUpApiTestData,
   tearDownApiTestData,
   DB,
-  DOC_COLLECTION
+  DOC_COLLECTION,
+  singleOnly
 } = require('@arangodb/testutils/apitest-fixtures');
 
 function indexApiAuthzSuite () {
@@ -97,7 +100,8 @@ function indexApiAuthzSuite () {
     testListIndexes: function () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/index?collection=${c}`);
-      assertPermissions([useD, readC], endObserve());
+      // only a single server resolves the collection under the ExecContext
+      assertPermissions([useD].concat(singleOnly([readC])), endObserve());
     },
 
     // GET /_api/index/selectivity?collection=c - READ transaction
@@ -109,13 +113,15 @@ function indexApiAuthzSuite () {
 
     // POST /_api/index?collection=c - canCreateIndex() -> writemeta
     // AUDIT: index creation (methods::Indexes::ensureIndex -> createIndex) may
-    // fill the index inside a transaction; if that transaction runs under the
-    // caller's ExecContext it could add read/writedata questions as well.
+    // fill the index inside a transaction, which runs under the caller's
+    // ExecContext and hence adds the read/writedata questions.
     testCreateIndex: function () {
       beginObserve();
       const res = arango.POST_RAW(`/_db/${DB}/_api/index?collection=${c}`,
                                   { type: 'persistent', fields: ['value'] });
-      assertPermissions([useD, writeMetaC], endObserve());
+      assertPermissions([useD, writeMetaC]
+                        .concat(singleOnly([readC, writeDataC])),
+                        endObserve());
       if (res.parsedBody && res.parsedBody.id) {
         dropIndex(res.parsedBody.id);
       }
@@ -136,7 +142,8 @@ function indexApiAuthzSuite () {
       const handle = createIndex();
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/index/${handle}`);
-      assertPermissions([useD, useDWrite, readC, writeMetaC, writeDataC],
+      assertPermissions([useD, useDWrite, writeMetaC]
+                        .concat(singleOnly([readC, writeDataC])),
                         endObserve());
     },
   };

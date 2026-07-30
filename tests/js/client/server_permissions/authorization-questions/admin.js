@@ -42,7 +42,9 @@
 if (getOptions === true) {
   return {
     'server.authentication': 'true',
-    'log.force-direct': 'true'
+    'log.force-direct': 'true',
+    // keep background threads from asking questions of their own
+    'foxx.queues': 'false'
   };
 }
 
@@ -57,7 +59,9 @@ const {
   setUpApiTestData,
   tearDownApiTestData,
   DB,
-  DOC_COLLECTION
+  DOC_COLLECTION,
+  readUsers,
+  clusterOnly
 } = require('@arangodb/testutils/apitest-fixtures');
 
 function adminApiAuthzSuite () {
@@ -79,7 +83,8 @@ function adminApiAuthzSuite () {
     testAuthReload: function () {
       beginObserve();
       arango.POST_RAW(`/_db/_system/_admin/auth/reload`, {});
-      assertPermissions([useSystem, `AdminAuthReload`], endObserve());
+      assertPermissions([useSystem, `AdminAuthReload`].concat(readUsers()),
+                        endObserve());
     },
 
     // GET /_admin/cluster/collectionShardDistribution - handler rejects
@@ -88,7 +93,9 @@ function adminApiAuthzSuite () {
     testCollectionShardDistribution: function () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_admin/cluster/collectionShardDistribution?collection=${DOC_COLLECTION}`);
-      assertPermissions([useD], endObserve());
+      // a single server rejects the request before asking
+      assertPermissions([useD].concat(clusterOnly(['AdminClusterInfo'])),
+                        endObserve());
     },
 
     // GET /_admin/cluster/health - no admin check (AUTHEN)
@@ -151,7 +158,9 @@ function adminApiAuthzSuite () {
     testPutNumberOfServers: function () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_admin/cluster/numberOfServers`, {});
-      assertPermissions([useSystem], endObserve());
+      // a single server rejects the request before asking
+      assertPermissions([useSystem].concat(clusterOnly(['AdminMaintenance'])),
+                        endObserve());
     },
 
     // GET /_admin/cluster/rebalance - handleRebalance rejects non-coordinators
@@ -159,14 +168,18 @@ function adminApiAuthzSuite () {
     testGetRebalance: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/cluster/rebalance`);
-      assertPermissions([useSystem], endObserve());
+      // a single server rejects the request before asking
+      assertPermissions([useSystem].concat(clusterOnly(['AdminRebalance'])),
+                        endObserve());
     },
 
     // PUT /_admin/cluster/rebalance - non-coordinator rejected first; base only.
     testPutRebalance: function () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_admin/cluster/rebalance`, {});
-      assertPermissions([useSystem], endObserve());
+      // a single server rejects the request before asking
+      assertPermissions([useSystem].concat(clusterOnly(['AdminRebalance'])),
+                        endObserve());
     },
 
     // GET /_admin/cluster/shardDistribution - handleShardDistribution rejects
@@ -174,7 +187,9 @@ function adminApiAuthzSuite () {
     testShardDistribution: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/cluster/shardDistribution`);
-      assertPermissions([useSystem], endObserve());
+      // a single server rejects the request before asking
+      assertPermissions([useSystem].concat(clusterOnly(['AdminClusterInfo'])),
+                        endObserve());
     },
 
     // GET /_admin/cluster/shardStatistics - handleShardStatistics asks
@@ -235,7 +250,9 @@ function adminApiAuthzSuite () {
       arango.POST_RAW(`/_db/_system/_admin/cluster/moveShard`,
                       { database: "_system", collection: "nonexistent_apitester",
                         shard: "s1", fromServer: "from", toServer: "to" });
-      assertPermissions([useSystem], endObserve());
+      // a single server rejects the request before asking
+      assertPermissions([useSystem].concat(clusterOnly(['AdminMoveShards'])),
+                        endObserve());
     },
 
     // GET /_admin/cluster/queryAgencyJob - handleQueryJobStatus asks
@@ -252,7 +269,9 @@ function adminApiAuthzSuite () {
     testRebalanceShards: function () {
       beginObserve();
       arango.POST_RAW(`/_db/_system/_admin/cluster/rebalanceShards`, {});
-      assertPermissions([useSystem], endObserve());
+      // a single server rejects the request before asking
+      assertPermissions([useSystem].concat(clusterOnly(['AdminRebalance'])),
+                        endObserve());
     },
 
     // POST /_admin/cluster/removeServer - handleRemoveServer asks
@@ -277,7 +296,9 @@ function adminApiAuthzSuite () {
     testUniqId: function () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_admin/cluster/uniqId?number=1`, {});
-      assertPermissions([useSystem], endObserve());
+      // a single server rejects the request before asking
+      assertPermissions([useSystem].concat(clusterOnly(['AdminMaintenance'])),
+                        endObserve());
     },
 
     // GET /_admin/cluster/vpackSortMigration/check - handleVPackSortMigration

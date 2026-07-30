@@ -48,7 +48,9 @@
 if (getOptions === true) {
   return {
     'server.authentication': 'true',
-    'log.force-direct': 'true'
+    'log.force-direct': 'true',
+    // keep background threads from asking questions of their own
+    'foxx.queues': 'false'
   };
 }
 
@@ -105,7 +107,7 @@ function walApiAuthzSuite () {
     testWaitForEstimatorSync: function () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_admin/wal/wait_for_estimator_sync`, {});
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([useSystem, 'AdminWalAccess'], endObserve());
     },
   };
 }

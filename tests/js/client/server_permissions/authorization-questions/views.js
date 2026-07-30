@@ -42,7 +42,9 @@
 if (getOptions === true) {
   return {
     'server.authentication': 'true',
-    'log.force-direct': 'true'
+    'log.force-direct': 'true',
+    // keep background threads from asking questions of their own
+    'foxx.queues': 'false'
   };
 }
 
@@ -58,7 +60,9 @@ const {
   setUpApiTestData,
   tearDownApiTestData,
   DB,
-  DOC_COLLECTION
+  DOC_COLLECTION,
+  singleOnly,
+  clusterOnly
 } = require('@arangodb/testutils/apitest-fixtures');
 
 function viewApiAuthzSuite () {
@@ -72,6 +76,17 @@ function viewApiAuthzSuite () {
     links: { c: { includeAllFields: true } }
   };
 
+  // AUDIT: on a single server an arangosearch link is resolved twice - once
+  // by the collection's name and once by its id, i.e. the id is passed where
+  // a name is expected. A coordinator only resolves it by name.
+  // The id is looked up in setUpAll, so that linkedC() itself does not send
+  // any request while an observation is running.
+  let cId;
+  function linkedC () {
+    return [`UseCollection db=${DB} name=${c} level=read`].concat(
+      singleOnly([`UseCollection db=${DB} name=${cId} level=read`]));
+  }
+
   function dropView (name) {
     arango.DELETE_RAW(`/_db/${DB}/_api/view/${name}`);
   }
@@ -81,7 +96,12 @@ function viewApiAuthzSuite () {
   }
 
   return {
-    setUpAll: setUpApiTestData,
+    setUpAll: function () {
+      setUpApiTestData();
+      db._useDatabase(DB);
+      cId = db._collection(c)._id;
+      db._useDatabase('_system');
+    },
     tearDownAll: tearDownApiTestData,
 
     tearDown: function () {
@@ -98,23 +118,23 @@ function viewApiAuthzSuite () {
       db._useDatabase(DB);
       const names = db._views().map((v) => v.name());
       db._useDatabase('_system');
-      const expected = [useD].concat(
+      const expected = [useD].concat(linkedC()).concat(
         names.map((n) => `SeeView db=${DB} name=${n}`));
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/view`);
       assertPermissions(expected, endObserve());
     },
 
-    // POST /_api/view - createView() -> canCreateView(linkedCollections=[c])
-    // AUDIT: LogicalView::create for an arangosearch view with a link to c may
-    //        ask additional collection questions (e.g. UseCollection on c)
-    //        when establishing the link.
+    // POST /_api/view - createView() -> canCreateView(linkedCollections=[c]).
+    // Establishing the link resolves c, see linkedC().
     testCreateView: function () {
       dropView(TEST_VIEW);
       beginObserve();
       arango.POST_RAW(`/_db/${DB}/_api/view`, viewBody);
       assertPermissions([useD,
-                         `CreateView db=${DB} name=${TEST_VIEW} linkedCollections=[${c}]`],
+                         `CreateView db=${DB} name=${TEST_VIEW} linkedCollections=[${c}]`]
+                        .concat(linkedC(), clusterOnly(
+                          [`UseCollection db=${DB} name=${c} level=writemeta`])),
                         endObserve());
     },
 
@@ -123,7 +143,8 @@ function viewApiAuthzSuite () {
       createView();
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/view/${TEST_VIEW}`);
-      assertPermissions([useD, `UseView db=${DB} name=${TEST_VIEW} level=read`],
+      assertPermissions([useD, `UseView db=${DB} name=${TEST_VIEW} level=read`]
+                        .concat(linkedC()),
                         endObserve());
     },
 
@@ -132,35 +153,40 @@ function viewApiAuthzSuite () {
       createView();
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/view/${TEST_VIEW}/properties`);
-      assertPermissions([useD, `UseView db=${DB} name=${TEST_VIEW} level=read`],
+      assertPermissions([useD, `UseView db=${DB} name=${TEST_VIEW} level=read`]
+                        .concat(linkedC()),
                         endObserve());
     },
 
     // PATCH /_api/view/v_apitest/properties - modifyView() -> canModifyView().
     // The body ({cleanupIntervalStep:2}) has no `links` field, so
     // linkedCollections is empty.
-    // AUDIT: a partial property update may still touch the currently linked
-    //        collection c; verify no extra UseCollection question appears.
+    // The currently linked collection c is resolved on the way, see
+    // linkedC().
     testUpdateViewProperties: function () {
       createView();
       beginObserve();
       arango.PATCH_RAW(`/_db/${DB}/_api/view/${TEST_VIEW}/properties`,
                        { cleanupIntervalStep: 2 });
       assertPermissions([useD,
-                         `ModifyView db=${DB} name=${TEST_VIEW} linkedCollections=[]`],
+                         `ModifyView db=${DB} name=${TEST_VIEW} linkedCollections=[]`]
+                        .concat(linkedC()),
                         endObserve());
     },
 
     // PUT /_api/view/v_apitest/properties - modifyView() -> canModifyView().
     // The body ({}) has no `links` field, so linkedCollections is empty.
-    // AUDIT: replacing properties resets the links map (drops the link to c),
-    //        which may add a UseCollection question for c.
+    // Replacing the properties resets the links map, which resolves the
+    // previously linked c, see linkedC().
     testReplaceViewProperties: function () {
       createView();
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/view/${TEST_VIEW}/properties`, {});
       assertPermissions([useD,
-                         `ModifyView db=${DB} name=${TEST_VIEW} linkedCollections=[]`],
+                         `ModifyView db=${DB} name=${TEST_VIEW} linkedCollections=[]`]
+                        .concat(linkedC(), clusterOnly([
+                          `UseCollection db=${DB} name=${c} level=writemeta`,
+                          `UseDatabase name=${DB} level=write`])),
                         endObserve());
     },
 
@@ -172,7 +198,8 @@ function viewApiAuthzSuite () {
       arango.PATCH_RAW(`/_db/${DB}/_api/view/${TEST_VIEW}/rename`,
                        { name: TEST_VIEW_NEW });
       assertPermissions([useD,
-                         `RenameView db=${DB} oldName=${TEST_VIEW} newName=${TEST_VIEW_NEW}`],
+                         `RenameView db=${DB} oldName=${TEST_VIEW} newName=${TEST_VIEW_NEW}`]
+                        .concat(linkedC()),
                         endObserve());
     },
 
@@ -184,7 +211,8 @@ function viewApiAuthzSuite () {
       arango.PUT_RAW(`/_db/${DB}/_api/view/${TEST_VIEW}/rename`,
                      { name: TEST_VIEW_NEW });
       assertPermissions([useD,
-                         `RenameView db=${DB} oldName=${TEST_VIEW} newName=${TEST_VIEW_NEW}`],
+                         `RenameView db=${DB} oldName=${TEST_VIEW} newName=${TEST_VIEW_NEW}`]
+                        .concat(linkedC()),
                         endObserve());
     },
 
@@ -193,7 +221,12 @@ function viewApiAuthzSuite () {
       createView();
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/view/${TEST_VIEW}`);
-      assertPermissions([useD, `DropView db=${DB} name=${TEST_VIEW}`],
+      assertPermissions([useD, `DropView db=${DB} name=${TEST_VIEW}`]
+                        .concat(singleOnly(
+                          [`UseCollection db=${DB} name=${c} level=read`]),
+                          clusterOnly([
+                            `UseCollection db=${DB} name=${c} level=writemeta`,
+                            `UseDatabase name=${DB} level=write`])),
                         endObserve());
     },
   };

@@ -43,7 +43,9 @@
 if (getOptions === true) {
   return {
     'server.authentication': 'true',
-    'log.force-direct': 'true'
+    'log.force-direct': 'true',
+    // keep background threads from asking questions of their own
+    'foxx.queues': 'false'
   };
 }
 
@@ -104,7 +106,7 @@ function monitoringApiAuthzSuite () {
     testSupportInfo: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/support-info`);
-      assertPermissions([useSystem], endObserve());
+      assertPermissions([useSystem, 'AdminMonitoring'], endObserve());
     },
 
     // GET /_admin/system-report - canUseHardenedAction(AdminMonitoringInternal)

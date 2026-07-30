@@ -34,25 +34,23 @@ if (getOptions === true) {
     'server.authentication': 'true',
     // the observer reads the log file right after the request, so the log must
     // not be written by the logging thread
-    'log.force-direct': 'true'
+    'log.force-direct': 'true',
+    // keep background threads from accessing collections while we observe
+    'foxx.queues': 'false'
   };
 }
 
 const jsunity = require('jsunity');
-const { assertEqual } = jsunity.jsUnity.assertions;
 const db = require('@arangodb').db;
-const request = require('@arangodb/request');
-const users = require('@arangodb/users');
-const IM = global.instanceManager;
 const {
   beginObserve,
   endObserve,
   disableObserve,
-  permissionSet,
   assertPermissions
 } = require('@arangodb/testutils/permissions-observer');
 
 function authorizationQuestionsSuite () {
+  const isCluster = require('internal').isCluster();
   const cn = 'UnitTestsAuthzQuestions';
   // every request checks read access to the database it addresses, see
   // RestHandler::checkUserCanAccess()
@@ -79,25 +77,32 @@ function authorizationQuestionsSuite () {
     },
 
     testInsertDocument: function () {
+      let expected = [useSystem,
+                      `UseCollection db=_system name=${cn} level=writedata`];
+      if (!isCluster) {
+        // the single server additionally asks for read access
+        expected.push(`UseCollection db=_system name=${cn} level=read`);
+      }
       beginObserve();
       arango.POST_RAW(`/_api/document/${cn}`, { value: 1 });
-      assertPermissions([useSystem,
-                         `UseCollection db=_system name=${cn} level=read`,
-                         `UseCollection db=_system name=${cn} level=writedata`],
-                        endObserve());
+      assertPermissions(expected, endObserve());
     },
 
-    // dropping a collection also revokes its permissions from all users and
-    // cleans up graph definitions, hence the questions about _users/_graphs
+    // dropping a collection also cleans up graph definitions, hence the
+    // question about _graphs
     testDropCollection: function () {
+      let expected = [useSystem,
+                      `DropCollection db=_system name=${cn}`,
+                      `UseCollection db=_system name=${cn} level=read`,
+                      'UseCollection db=_system name=_graphs level=read'];
+      if (!isCluster) {
+        // the single server also revokes the collection's permissions from all
+        // users; in the cluster that happens without an ExecContext
+        expected.push('UseCollection db=_system name=_users level=read');
+      }
       beginObserve();
       arango.DELETE_RAW(`/_api/collection/${cn}`);
-      assertPermissions([useSystem,
-                         `DropCollection db=_system name=${cn}`,
-                         `UseCollection db=_system name=${cn} level=read`,
-                         'UseCollection db=_system name=_graphs level=read',
-                         'UseCollection db=_system name=_users level=read'],
-                        endObserve());
+      assertPermissions(expected, endObserve());
     },
 
     // a handler that asks nothing beyond the database access every request

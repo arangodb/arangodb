@@ -54,7 +54,9 @@
 if (getOptions === true) {
   return {
     'server.authentication': 'true',
-    'log.force-direct': 'true'
+    'log.force-direct': 'true',
+    // keep background threads from asking questions of their own
+    'foxx.queues': 'false'
   };
 }
 
@@ -69,7 +71,8 @@ const {
   setUpApiTestData,
   tearDownApiTestData,
   DB,
-  DOC_COLLECTION
+  DOC_COLLECTION,
+  isCluster
 } = require('@arangodb/testutils/apitest-fixtures');
 
 function dumpApiAuthzSuite () {
@@ -109,9 +112,14 @@ function dumpApiAuthzSuite () {
     testDumpStart: function () {
       beginObserve();
       const res = arango.POST_RAW(`/_db/${DB}/_api/dump/start`, { shards: [c] });
-      assertPermissions([useD,
-                         `DumpCollection db=${DB} name=${c}`,
-                         `AdminDump`],
+      // AUDIT: on a coordinator the question carries an empty collection
+      // name, and AdminDump is not asked at all
+      assertPermissions(isCluster()
+                        ? [useD, `DumpCollection db=${DB} name=`]
+                        : [useD,
+                           `DumpCollection db=${DB} name=${c}`,
+                           `UseCollection db=${DB} name=${c} level=read`,
+                           `AdminDump`],
                         endObserve());
       // abort the dump the observed request started
       if (res.headers && res.headers['x-arango-dump-id']) {

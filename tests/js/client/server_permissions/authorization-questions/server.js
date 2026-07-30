@@ -43,7 +43,9 @@
 if (getOptions === true) {
   return {
     'server.authentication': 'true',
-    'log.force-direct': 'true'
+    'log.force-direct': 'true',
+    // keep background threads from asking questions of their own
+    'foxx.queues': 'false'
   };
 }
 
@@ -161,7 +163,8 @@ function serverApiAuthzSuite () {
     testAvailability: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/server/availability`);
-      assertPermissions([useSystem], endObserve());
+      // this endpoint bypasses RestHandler::checkUserCanAccess()
+      assertPermissions([], endObserve());
     },
 
     // GET /_admin/server/databaseDefaults - no check (AUTHEN)

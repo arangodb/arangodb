@@ -110,6 +110,60 @@ function tearDownApiTestData () {
   }
 }
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief single-server-only authorization questions
+// /
+// / Two questions are asked by a single server but not by a coordinator:
+// /
+// /  - writing to a collection additionally loads it under the caller's
+// /    ExecContext, which asks for read access (readOnWrite),
+// /  - storing a user or a permission goes through the _users collection under
+// /    the caller's ExecContext, while a coordinator writes it via the agency
+// /    without asking (readUsers).
+// /
+// / Both return a list, so that they can be `.concat()`ed into an expectation.
+// //////////////////////////////////////////////////////////////////////////////
+
+// note: this deliberately does NOT use internal.isCluster(), which sends a
+// `GET /_admin/server/role` request - the helpers below are called while an
+// observation is running, and that request would show up in it. The harness
+// knows the deployment layout without asking the server.
+let cachedIsCluster;
+
+function isCluster () {
+  if (cachedIsCluster === undefined) {
+    const { instanceRole } = require('@arangodb/testutils/instance');
+    cachedIsCluster = global.instanceManager.arangods.some(
+      (arangod) => arangod.isRole(instanceRole.coordinator));
+  }
+  return cachedIsCluster;
+}
+
+// Questions only one of the two deployment modes asks, e.g. because a single
+// server rejects a cluster-only endpoint before asking, or because it resolves
+// a collection under the caller's ExecContext where a coordinator does not.
+function clusterOnly (questions) {
+  return isCluster() ? questions : [];
+}
+
+function singleOnly (questions) {
+  return isCluster() ? [] : questions;
+}
+
+function readOnWrite (database, collection) {
+  return isCluster()
+    ? [] : [`UseCollection db=${database} name=${collection} level=read`];
+}
+
+function readUsers () {
+  return isCluster() ? [] : ['UseCollection db=_system name=_users level=read'];
+}
+
+exports.isCluster = isCluster;
+exports.clusterOnly = clusterOnly;
+exports.singleOnly = singleOnly;
+exports.readOnWrite = readOnWrite;
+exports.readUsers = readUsers;
 exports.setUpApiTestData = setUpApiTestData;
 exports.tearDownApiTestData = tearDownApiTestData;
 exports.DB = DB;

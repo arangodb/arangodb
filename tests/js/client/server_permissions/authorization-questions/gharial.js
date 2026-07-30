@@ -68,7 +68,9 @@
 if (getOptions === true) {
   return {
     'server.authentication': 'true',
-    'log.force-direct': 'true'
+    'log.force-direct': 'true',
+    // keep background threads from asking questions of their own
+    'foxx.queues': 'false'
   };
 }
 
@@ -86,7 +88,8 @@ const {
   DB,
   DOC_COLLECTION,
   EDGE_COLLECTION,
-  GRAPH
+  GRAPH,
+  singleOnly
 } = require('@arangodb/testutils/apitest-fixtures');
 
 function gharialApiAuthzSuite () {
@@ -293,7 +296,8 @@ function gharialApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/${DB}/_api/gharial/${g}/edge/${e}`,
                       { _key: EDGE_KEY, _from: `${c}/k1`, _to: `${c}/k2` });
-      assertPermissions([useD].concat(lookup(g), [readC, readE, writeE]), endObserve());
+      assertPermissions([useD].concat(lookup(g), [readC, writeE],
+                                      singleOnly([readE])), endObserve());
     },
 
     // PUT /_api/gharial/g_apitest/edge/e_apitest - editEdgeDefinition():
@@ -306,8 +310,11 @@ function gharialApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/gharial/${G_APITEST}/edge/${E_APITEST}`,
                      { collection: E_APITEST, from: [c], to: [c] });
-      assertPermissions([useD].concat(lookup(G_APITEST),
+      assertPermissions([useD, `UseDatabase name=${DB} level=write`]
+                        .concat(lookup(G_APITEST),
                         [`UseGraph db=${DB} name=${G_APITEST} level=modify`,
+                         `SeeGraph db=${DB} name=${g}`,
+                         `SeeGraph db=${DB} name=${G_APITEST}`,
                          readC,
                          `UseCollection db=${DB} name=${E_APITEST} level=read`,
                          graphsWrite]),
@@ -334,7 +341,8 @@ function gharialApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/gharial/${g}/edge/${e}/${EDGE_KEY}`,
                      { _from: `${c}/k2`, _to: `${c}/k3` });
-      assertPermissions([useD].concat(lookup(g), [readC, readE, writeE]), endObserve());
+      assertPermissions([useD].concat(lookup(g), [readC, writeE],
+                                      singleOnly([readE])), endObserve());
     },
 
     // PATCH /_api/gharial/g/edge/e/{key} - updateEdge() -> validateEdge(). Body
@@ -346,7 +354,8 @@ function gharialApiAuthzSuite () {
       beginObserve();
       arango.PATCH_RAW(`/_db/${DB}/_api/gharial/${g}/edge/${e}/${EDGE_KEY}`,
                        { extra: 1 });
-      assertPermissions([useD].concat(lookup(g), [readE, writeE]), endObserve());
+      assertPermissions([useD].concat(lookup(g), [writeE],
+                                      singleOnly([readE])), endObserve());
     },
 
     // DELETE /_api/gharial/g/edge/e/{key} - removeEdge() -> removeEdgeOrVertex:
@@ -358,8 +367,8 @@ function gharialApiAuthzSuite () {
       insertTestEdge();
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/gharial/${g}/edge/${e}/${EDGE_KEY}`);
-      assertPermissions([useD].concat(lookup(g),
-                        [`SeeGraph db=${DB} name=${g}`, readE, writeE]),
+      assertPermissions([useD].concat(lookup(g), [writeE],
+                                      singleOnly([readE])),
                         endObserve());
     },
 
@@ -381,6 +390,9 @@ function gharialApiAuthzSuite () {
                       { collection: C_ORPHAN });
       assertPermissions([useD].concat(lookup(G_APITEST),
                         [`UseGraph db=${DB} name=${G_APITEST} level=modify`,
+                         readC,
+                         `UseCollection db=${DB} name=${E_APITEST} level=read`,
+                         `UseCollection db=${DB} name=${C_ORPHAN} level=read`,
                          graphsWrite]),
                         endObserve());
     },
@@ -398,7 +410,8 @@ function gharialApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/${DB}/_api/gharial/${g}/vertex/${c}`,
                       { _key: VERTEX_KEY, value: 9999 });
-      assertPermissions([useD].concat(lookup(g), [readC, writeC]), endObserve());
+      assertPermissions([useD].concat(lookup(g), [writeC],
+                                      singleOnly([readC])), endObserve());
     },
 
     // DELETE /_api/gharial/g_apitest/vertex/c_orphan?dropCollection=false -
@@ -409,6 +422,7 @@ function gharialApiAuthzSuite () {
       arango.DELETE_RAW(`/_db/${DB}/_api/gharial/${G_APITEST}/vertex/${C_ORPHAN}?dropCollection=false`);
       assertPermissions([useD].concat(lookup(G_APITEST),
                         [`UseGraph db=${DB} name=${G_APITEST} level=modify`,
+                         `UseCollection db=${DB} name=${C_ORPHAN} level=writemeta`,
                          graphsWrite]),
                         endObserve());
     },
@@ -419,7 +433,8 @@ function gharialApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/gharial/${g}/vertex/${c}/${VERTEX_KEY}`,
                      { value: 10000 });
-      assertPermissions([useD].concat(lookup(g), [readC, writeC]), endObserve());
+      assertPermissions([useD].concat(lookup(g), [writeC],
+                                      singleOnly([readC])), endObserve());
     },
 
     // PATCH /_api/gharial/g/vertex/c/{key} - updateVertex() -> WRITE txn on c.
@@ -428,7 +443,8 @@ function gharialApiAuthzSuite () {
       beginObserve();
       arango.PATCH_RAW(`/_db/${DB}/_api/gharial/${g}/vertex/${c}/${VERTEX_KEY}`,
                        { extra: 42 });
-      assertPermissions([useD].concat(lookup(g), [readC, writeC]), endObserve());
+      assertPermissions([useD].concat(lookup(g), [writeC],
+                                      singleOnly([readC])), endObserve());
     },
 
     // DELETE /_api/gharial/g/vertex/c/{key} - removeVertex() ->
@@ -441,7 +457,8 @@ function gharialApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/gharial/${g}/vertex/${c}/${VERTEX_KEY}`);
       assertPermissions([useD].concat(lookup(g),
-                        [`SeeGraph db=${DB} name=${g}`, readC, readE, writeC, writeE]),
+                        [writeC, writeE],
+                        singleOnly([readC, readE])),
                         endObserve());
     },
   };

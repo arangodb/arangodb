@@ -47,7 +47,9 @@
 if (getOptions === true) {
   return {
     'server.authentication': 'true',
-    'log.force-direct': 'true'
+    'log.force-direct': 'true',
+    // keep background threads from asking questions of their own
+    'foxx.queues': 'false'
   };
 }
 
@@ -63,7 +65,9 @@ const {
   setUpApiTestData,
   tearDownApiTestData,
   DB,
-  DOC_COLLECTION
+  DOC_COLLECTION,
+  readUsers,
+  singleOnly
 } = require('@arangodb/testutils/apitest-fixtures');
 
 function collectionApiAuthzSuite () {
@@ -185,26 +189,28 @@ function collectionApiAuthzSuite () {
                         endObserve());
     },
 
-    // PUT /_api/collection/c/compact - lookup() -> UseCollection(Read), then
-    // explicit canUseCollection(WriteMeta)
+    // PUT /_api/collection/c/compact - lookup() -> UseCollection(Read) only;
+    // the compaction itself runs without an ExecContext
     testCompact: function () {
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/collection/${c}/compact`, {});
       assertPermissions([useD,
-                         `UseCollection db=${DB} name=${c} level=read`,
-                         `UseCollection db=${DB} name=${c} level=writemeta`],
+                         `UseCollection db=${DB} name=${c} level=read`],
                         endObserve());
     },
 
     // PUT /_api/collection/c/properties - lookup() -> UseCollection(Read),
-    // then updateProperties() -> UseCollection(WriteMeta)
+    // then updateProperties() -> UseCollection(WriteMeta), and the property
+    // update runs in a transaction -> UseCollection(WriteData)
     testUpdateProperties: function () {
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/collection/${c}/properties`,
                      { waitForSync: false });
       assertPermissions([useD,
                          `UseCollection db=${DB} name=${c} level=read`,
-                         `UseCollection db=${DB} name=${c} level=writemeta`],
+                         `UseCollection db=${DB} name=${c} level=writemeta`]
+                        .concat(singleOnly(
+                          [`UseCollection db=${DB} name=${c} level=writedata`])),
                         endObserve());
     },
 
@@ -236,26 +242,34 @@ function collectionApiAuthzSuite () {
     },
 
     // PUT /_api/collection/tmp/rename - lookup() -> UseCollection(Read), then
-    // rename() -> UseCollection(WriteMeta)
+    // rename() -> UseCollection(WriteMeta); renaming also fixes up the graph
+    // definitions (_graphs) and looks the collection up under its new name
     testRename: function () {
       dropTmp();
       createTmp();
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/collection/${tmp}/rename`,
-                     { name: 'c_apitest_renamed' });
-      assertPermissions([useD,
-                         `UseCollection db=${DB} name=${tmp} level=read`,
-                         `UseCollection db=${DB} name=${tmp} level=writemeta`],
+                     { name: `${tmp}_renamed` });
+      // AUDIT: a coordinator only resolves the collection - neither the
+      // writemeta question nor the graph cleanup is asked
+      assertPermissions([useD, `UseCollection db=${DB} name=${tmp} level=read`]
+                        .concat(singleOnly([
+                          `UseCollection db=${DB} name=${tmp} level=writemeta`,
+                          `UseCollection db=${DB} name=_graphs level=read`,
+                          `UseCollection db=${DB} name=${tmp}_renamed level=read`])),
                         endObserve());
-      arango.DELETE_RAW(`/_db/${DB}/_api/collection/c_apitest_renamed`);
+      arango.DELETE_RAW(`/_db/${DB}/_api/collection/${tmp}_renamed`);
     },
 
-    // POST /_api/collection - canCreateCollection()
+    // POST /_api/collection - canCreateCollection(); the new collection is
+    // then granted to the creating user (_system's _users) and looked up
     testCreateCollection: function () {
       dropTmp();
       beginObserve();
       arango.POST_RAW(`/_db/${DB}/_api/collection`, { name: tmp });
-      assertPermissions([useD, `CreateCollection db=${DB} name=${tmp}`],
+      assertPermissions([useD, `CreateCollection db=${DB} name=${tmp}`,
+                         `UseCollection db=${DB} name=${tmp} level=read`]
+                        .concat(readUsers()),
                         endObserve());
     },
 
@@ -270,8 +284,8 @@ function collectionApiAuthzSuite () {
       assertPermissions([useD,
                          `DropCollection db=${DB} name=${tmp}`,
                          `UseCollection db=${DB} name=${tmp} level=read`,
-                         `UseCollection db=${DB} name=_graphs level=read`,
-                         `UseCollection db=${DB} name=_users level=read`],
+                         `UseCollection db=${DB} name=_graphs level=read`]
+                        .concat(readUsers()),
                         endObserve());
     },
   };

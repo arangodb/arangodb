@@ -46,11 +46,14 @@
 if (getOptions === true) {
   return {
     'server.authentication': 'true',
-    'log.force-direct': 'true'
+    'log.force-direct': 'true',
+    // keep background threads from asking questions of their own
+    'foxx.queues': 'false'
   };
 }
 
 const jsunity = require('jsunity');
+const db = require('@arangodb').db;
 const {
   beginObserve,
   endObserve,
@@ -60,7 +63,9 @@ const {
 const {
   setUpApiTestData,
   tearDownApiTestData,
-  DB
+  DB,
+  readUsers,
+  singleOnly
 } = require('@arangodb/testutils/apitest-fixtures');
 
 function databaseApiAuthzSuite () {
@@ -99,11 +104,15 @@ function databaseApiAuthzSuite () {
       assertPermissions([useD], endObserve());
     },
 
-    // GET /_db/d/_api/database/user - Databases::list(user), no can()
+    // GET /_db/d/_api/database/user - Databases::list(user) asks
+    // canSeeDatabase() for every database it enumerates
     testUserDatabases: function () {
+      const names = db._databases();
+      const expected = [useD].concat(
+        names.map((n) => `SeeDatabase name=${n}`));
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/database/user`);
-      assertPermissions([useD], endObserve());
+      assertPermissions(expected, endObserve());
     },
 
     // GET /_db/d/_api/database/shardStatistics - on a single server this
@@ -121,7 +130,17 @@ function databaseApiAuthzSuite () {
       dropD2();
       beginObserve();
       arango.POST_RAW(`/_db/_system/_api/database`, { name: 'd2' });
-      assertPermissions([useSystem, `CreateDatabase name=d2`], endObserve());
+      assertPermissions([useSystem, `CreateDatabase name=d2`]
+                        .concat(readUsers())
+                        .concat(['_analyzers', '_appbundles', '_apps',
+                                 '_aqlfunctions', '_frontend', '_graphs',
+                                 '_jobs', '_queues']
+                                .map((n) => `CreateCollection db=d2 name=${n}`))
+                        .concat(['_apps', '_jobs'].flatMap((n) => [
+                          `UseCollection db=d2 name=${n} level=writemeta`]
+                          .concat(singleOnly(
+                            [`UseCollection db=d2 name=${n} level=read`])))),
+                        endObserve());
       dropD2();
     },
 
@@ -130,7 +149,8 @@ function databaseApiAuthzSuite () {
       createD2();
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_api/database/d2`);
-      assertPermissions([useSystem, `DropDatabase name=d2`], endObserve());
+      assertPermissions([useSystem, `DropDatabase name=d2`].concat(readUsers()),
+                        endObserve());
     },
   };
 }

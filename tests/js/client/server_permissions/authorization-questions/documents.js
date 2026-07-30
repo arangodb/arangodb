@@ -45,7 +45,9 @@
 if (getOptions === true) {
   return {
     'server.authentication': 'true',
-    'log.force-direct': 'true'
+    'log.force-direct': 'true',
+    // keep background threads from asking questions of their own
+    'foxx.queues': 'false'
   };
 }
 
@@ -60,7 +62,8 @@ const {
   setUpApiTestData,
   tearDownApiTestData,
   DB,
-  DOC_COLLECTION
+  DOC_COLLECTION,
+  readOnWrite
 } = require('@arangodb/testutils/apitest-fixtures');
 
 function documentApiAuthzSuite () {
@@ -108,7 +111,8 @@ function documentApiAuthzSuite () {
       dropDoc();
       beginObserve();
       arango.POST_RAW(`/_db/${DB}/_api/document/${c}`, { _key: key, value: 1 });
-      assertPermissions([useD, readC, writeC], endObserve());
+      assertPermissions([useD, writeC].concat(readOnWrite(DB, c)),
+                        endObserve());
     },
 
     // PUT /_api/document/c/key - replace with key
@@ -116,7 +120,8 @@ function documentApiAuthzSuite () {
       makeDoc();
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/document/${c}/${key}`, { value: 2 });
-      assertPermissions([useD, readC, writeC], endObserve());
+      assertPermissions([useD, writeC].concat(readOnWrite(DB, c)),
+                        endObserve());
     },
 
     // PUT /_api/document/c - replace without key (batch)
@@ -124,7 +129,8 @@ function documentApiAuthzSuite () {
       makeDoc();
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/document/${c}`, [{ _key: key, value: 2 }]);
-      assertPermissions([useD, readC, writeC], endObserve());
+      assertPermissions([useD, writeC].concat(readOnWrite(DB, c)),
+                        endObserve());
     },
 
     // PATCH /_api/document/c/key - update with key
@@ -132,7 +138,8 @@ function documentApiAuthzSuite () {
       makeDoc();
       beginObserve();
       arango.PATCH_RAW(`/_db/${DB}/_api/document/${c}/${key}`, { value: 3 });
-      assertPermissions([useD, readC, writeC], endObserve());
+      assertPermissions([useD, writeC].concat(readOnWrite(DB, c)),
+                        endObserve());
     },
 
     // PATCH /_api/document/c - update without key (batch)
@@ -140,7 +147,8 @@ function documentApiAuthzSuite () {
       makeDoc();
       beginObserve();
       arango.PATCH_RAW(`/_db/${DB}/_api/document/${c}`, [{ _key: key, value: 3 }]);
-      assertPermissions([useD, readC, writeC], endObserve());
+      assertPermissions([useD, writeC].concat(readOnWrite(DB, c)),
+                        endObserve());
     },
 
     // DELETE /_api/document/c/key - delete with key
@@ -148,7 +156,8 @@ function documentApiAuthzSuite () {
       makeDoc();
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/document/${c}/${key}`);
-      assertPermissions([useD, readC, writeC], endObserve());
+      assertPermissions([useD, writeC].concat(readOnWrite(DB, c)),
+                        endObserve());
     },
 
     // DELETE /_api/document/c - delete without key (batch)
@@ -156,7 +165,8 @@ function documentApiAuthzSuite () {
       makeDoc();
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/document/${c}`, [{ _key: key }]);
-      assertPermissions([useD, readC, writeC], endObserve());
+      assertPermissions([useD, writeC].concat(readOnWrite(DB, c)),
+                        endObserve());
     },
   };
 }

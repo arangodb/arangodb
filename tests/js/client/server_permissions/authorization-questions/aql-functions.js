@@ -43,7 +43,9 @@
 if (getOptions === true) {
   return {
     'server.authentication': 'true',
-    'log.force-direct': 'true'
+    'log.force-direct': 'true',
+    // keep background threads from asking questions of their own
+    'foxx.queues': 'false'
   };
 }
 
@@ -57,7 +59,8 @@ const {
 const {
   setUpApiTestData,
   tearDownApiTestData,
-  DB
+  DB,
+  readOnWrite
 } = require('@arangodb/testutils/apitest-fixtures');
 
 function aqlFunctionApiAuthzSuite () {
@@ -120,7 +123,8 @@ function aqlFunctionApiAuthzSuite () {
       dropFnD();
       beginObserve();
       arango.POST_RAW(`/_db/${DB}/_api/aqlfunction`, fnBody);
-      assertPermissions([useD, readD, writeD], endObserve());
+      assertPermissions([useD, writeD].concat(readOnWrite(DB, '_aqlfunctions')),
+                        endObserve());
     },
 
     // DELETE /_db/d/_api/aqlfunction/{name} - WRITE trx (remove) over
@@ -129,7 +133,8 @@ function aqlFunctionApiAuthzSuite () {
       makeFnD();
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/aqlfunction/${fnName}`);
-      assertPermissions([useD, readD, writeD], endObserve());
+      assertPermissions([useD, writeD].concat(readOnWrite(DB, '_aqlfunctions')),
+                        endObserve());
     },
 
     // GET /_db/_system/_api/aqlfunction - AQL query over _aqlfunctions (read trx)
@@ -152,7 +157,9 @@ function aqlFunctionApiAuthzSuite () {
       dropFnSys();
       beginObserve();
       arango.POST_RAW(`/_db/_system/_api/aqlfunction`, fnBody);
-      assertPermissions([useSystem, readSys, writeSys], endObserve());
+      assertPermissions([useSystem, writeSys]
+                        .concat(readOnWrite('_system', '_aqlfunctions')),
+                        endObserve());
     },
 
     // DELETE /_db/_system/_api/aqlfunction/{name} - WRITE trx (remove)
@@ -161,7 +168,9 @@ function aqlFunctionApiAuthzSuite () {
       makeFnSys();
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_api/aqlfunction/${fnName}`);
-      assertPermissions([useSystem, readSys, writeSys], endObserve());
+      assertPermissions([useSystem, writeSys]
+                        .concat(readOnWrite('_system', '_aqlfunctions')),
+                        endObserve());
     },
   };
 }

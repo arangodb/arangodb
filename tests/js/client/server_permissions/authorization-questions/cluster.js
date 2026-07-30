@@ -54,7 +54,9 @@
 if (getOptions === true) {
   return {
     'server.authentication': 'true',
-    'log.force-direct': 'true'
+    'log.force-direct': 'true',
+    // keep background threads from asking questions of their own
+    'foxx.queues': 'false'
   };
 }
 
@@ -74,6 +76,7 @@ function clusterApiAuthzSuite () {
   const useSystem = `UseDatabase name=_system level=read`;
   const adminClusterInfo = `AdminClusterInfo`;
   const adminReadAgency = `AdminReadAgency`;
+  const isCluster = require('internal').isCluster();
   const base = `/_db/_system/_api/cluster`;
 
   return {
@@ -100,7 +103,9 @@ function clusterApiAuthzSuite () {
     testAgencyDump: function () {
       beginObserve();
       arango.GET_RAW(`${base}/agency-dump`);
-      assertPermissions([useSystem, adminReadAgency], endObserve());
+      // the single server rejects the request before asking
+      assertPermissions(isCluster ? [useSystem, adminReadAgency]
+                                  : [useSystem], endObserve());
     },
 
     // GET /_api/cluster/cluster-info - canUseAdminAction(AdminClusterInfo)
@@ -117,7 +122,11 @@ function clusterApiAuthzSuite () {
     testClusterInfoFlush: function () {
       beginObserve();
       arango.PUT_RAW(`${base}/cluster-info/flush`, {});
-      assertPermissions([useSystem, adminClusterInfo], endObserve());
+      // on a single server flushing also reloads the statistics collections
+      assertPermissions([useSystem, adminClusterInfo].concat(isCluster ? [] : [
+                         'UseCollection db=_system name=_statistics level=read',
+                         'UseCollection db=_system name=_statisticsRaw level=read']),
+                        endObserve());
     },
 
     // GET /_api/cluster/cluster-info/get_collection_info/d/c

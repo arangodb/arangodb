@@ -53,7 +53,9 @@
 if (getOptions === true) {
   return {
     'server.authentication': 'true',
-    'log.force-direct': 'true'
+    'log.force-direct': 'true',
+    // keep background threads from asking questions of their own
+    'foxx.queues': 'false'
   };
 }
 
@@ -64,6 +66,7 @@ const {
   disableObserve,
   assertPermissions
 } = require('@arangodb/testutils/permissions-observer');
+const { clusterOnly } = require('@arangodb/testutils/apitest-fixtures');
 
 function replicationApiAuthzSuite () {
   const useSystem = `UseDatabase name=_system level=read`;
@@ -121,7 +124,9 @@ function replicationApiAuthzSuite () {
     testClusterInventory: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/replication/clusterInventory`);
-      assertPermissions([useSystem], endObserve());
+      // a single server rejects the request before asking
+      assertPermissions([useSystem].concat(clusterOnly(['AdminClusterInfo'])),
+                        endObserve());
     },
   };
 }

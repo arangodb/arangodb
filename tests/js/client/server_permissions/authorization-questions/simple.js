@@ -42,7 +42,9 @@
 if (getOptions === true) {
   return {
     'server.authentication': 'true',
-    'log.force-direct': 'true'
+    'log.force-direct': 'true',
+    // keep background threads from asking questions of their own
+    'foxx.queues': 'false'
   };
 }
 
@@ -57,7 +59,8 @@ const {
   setUpApiTestData,
   tearDownApiTestData,
   DB,
-  DOC_COLLECTION
+  DOC_COLLECTION,
+  readOnWrite
 } = require('@arangodb/testutils/apitest-fixtures');
 
 function simpleApiAuthzSuite () {
@@ -114,7 +117,8 @@ function simpleApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/simple/remove-by-keys`,
                      { collection: c, keys: ['nonexistent-key-apitester-99999'] });
-      assertPermissions([useD, readC, writeC], endObserve());
+      assertPermissions([useD, writeC].concat(readOnWrite(DB, c)),
+                        endObserve());
     },
   };
 }
