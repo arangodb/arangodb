@@ -28,6 +28,7 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
+#include "Logger/LogMacros.h"
 #include "Rest/GeneralRequest.h"
 #include "VocBase/vocbase.h"
 
@@ -163,6 +164,14 @@ std::string ExecContext::authMethod() const {
   return "n/a";
 }
 #endif
+
+Result ExecContext::can(auth::Permission permission) const {
+  // Note that the log message is built before the check, because `check()`
+  // consumes `permission`.
+  LOG_TOPIC("7e3f1", TRACE, Logger::AUTHORIZATION)
+      << "AUTHZ-CHECK " << permission;
+  return _authMode.getIAuth().check(std::move(permission));
+}
 
 Result ExecContext::canSeeDatabase(std::string_view db) const {
   using namespace auth::perms;
