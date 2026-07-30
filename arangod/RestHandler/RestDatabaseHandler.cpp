@@ -80,12 +80,18 @@ RestStatus RestDatabaseHandler::getDatabases() {
       if (!_vocbase.isSystem()) {
         res.reset(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
       } else {
-        names = methods::Databases::list(server(), std::string());
+        names =
+            methods::Databases::list(server(), /* onlyCurrentUser = */ false);
       }
     } else if (suffixes[0] == "user") {
-      // When we get here, we are either authenticated or authentication
+      // When we get here, we usually are either authenticated or authentication
       // is disabled, so no need to check further.
-      names = methods::Databases::list(server(), _request->user());
+      // Earlier versions than 3.12.10 however, did an additional check for
+      // the case that --server.authentication-unix-sockets=false
+      // and some request comes in via the unix domain socket. We have decided
+      // to get rid of this check here, since the code without "user" suffix
+      // has never been separately checked.
+      names = methods::Databases::list(server(), /* onlyCurrentUser = */ true);
     }
 
     // return database names in sorted order

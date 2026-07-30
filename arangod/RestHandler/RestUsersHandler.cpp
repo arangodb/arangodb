@@ -90,6 +90,8 @@ RestStatus RestUsersHandler::execute() {
     return RestStatus::DONE;
   }
 
+  // Note that contrary to versions up to and including 3.12.9 writes are now
+  // forbidden if the server is in read-only mode. This is intentional.
   switch (type) {
     case RequestType::GET:
       return getRequest(af->userManager());
