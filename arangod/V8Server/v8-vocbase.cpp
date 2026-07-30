@@ -1733,6 +1733,12 @@ static void JS_Databases(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (argc > 0) {
     user = TRI_ObjectToString(isolate, args[0]);
     if (!user.empty()) {
+      // Prior to 3.12.10, the given username was handed on here. However,
+      // it was ignored subsequently. So although this method appeared
+      // to deliver the list of databases visible to the given user name,
+      // it has always returned the list of databases visible to the
+      // current user. So we keep the behaviour and the signature of
+      // the function, but implement it in a more reasonable way.
       onlyCurrentUser = true;
     }
   }
