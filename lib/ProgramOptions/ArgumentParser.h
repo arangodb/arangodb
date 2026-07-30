@@ -56,23 +56,6 @@ class ArgumentParser {
     return "";
   }
 
-  // returns "json" for --version-json, "text" for --version, "" otherwise
-  std::string versionCommand(int argc, char* argv[]) {
-    for (int i = 1; i < argc; ++i) {
-      std::string const current(argv[i]);
-      if (current == "--") {
-        break;
-      }
-      if (current == "--version-json") {
-        return "json";
-      }
-      if (current == "--version") {
-        return "text";
-      }
-    }
-    return "";
-  }
-
   // parse options from argc/argv. returns true if all is well, false otherwise
   // errors that occur during parse are reported to _options
   bool parse(int argc, char* argv[]) {

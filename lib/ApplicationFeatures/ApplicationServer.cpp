@@ -376,6 +376,19 @@ void ApplicationServer::collectOptions() {
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Command));
 
+  _options->addOption(
+      "--version",
+      "Print the version and other related information, then exit.",
+      new BooleanParameter(&_printVersion), makeDefaultFlags(Flags::Command));
+
+  _options
+      ->addOption("--version-json",
+                  "Print the version and other related information in JSON "
+                  "format, then exit.",
+                  new BooleanParameter(&_printVersionJson),
+                  makeDefaultFlags(Flags::Command))
+      .setIntroducedIn(30900);
+
   apply(
       [this](ApplicationFeature& feature) {
         LOG_TOPIC("b2731", TRACE, Logger::STARTUP)
@@ -404,22 +417,24 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
     return;
   }
 
-  auto const versionCmd = parser.versionCommand(argc, argv);
-  if (!versionCmd.empty()) {
-    // user asked for --version or --version-json
-    if (versionCmd == "json") {
-      printVersionJson(std::cout);
-    } else {
-      printVersion(std::cout);
-    }
-    _commandCompleted = true;
-    return;
-  }
-
   if (!parser.parse(argc, argv)) {
     // command-line option parsing failed. an error was already printed
     // by now, so we can exit
     FATAL_ERROR_EXIT_CODE(_options->processingResult().exitCodeOrFailure());
+  }
+
+  // handle `--version-json` command
+  if (_printVersionJson) {
+    printVersionJson(std::cout);
+    _commandCompleted = true;
+    return;
+  }
+
+  // handle `--version` command
+  if (_printVersion) {
+    printVersion(std::cout);
+    _commandCompleted = true;
+    return;
   }
 
   if (_dumpDependencies) {
