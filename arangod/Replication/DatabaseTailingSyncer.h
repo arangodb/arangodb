@@ -39,13 +39,11 @@ class DatabaseTailingSyncer : public TailingSyncer {
   // constructor is private, as DatabaseTailingSyncer uses shared_from_this()
   // and we must ensure that it is only created via make_shared.
   DatabaseTailingSyncer(Database& vocbase,
-                        ReplicationApplierConfiguration const& configuration,
-                        TRI_voc_tick_t initialTick, bool useTick);
+                        ReplicationApplierConfiguration const& configuration);
 
  public:
   static std::shared_ptr<DatabaseTailingSyncer> create(
-      Database& vocbase, ReplicationApplierConfiguration const& configuration,
-      TRI_voc_tick_t initialTick, bool useTick);
+      Database& vocbase, ReplicationApplierConfiguration const& configuration);
 
   Database* resolveVocbase(velocypack::Slice /*slice*/) override {
     return _vocbase;

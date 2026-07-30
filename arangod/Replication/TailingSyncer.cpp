@@ -79,10 +79,9 @@ constexpr std::string_view dbRef("db");
 std::string const TailingSyncer::WalAccessUrl = "/_api/wal";
 
 TailingSyncer::TailingSyncer(
-    ReplicationApplierConfiguration const& configuration,
-    TRI_voc_tick_t initialTick, bool useTick)
+    ReplicationApplierConfiguration const& configuration)
     : Syncer(configuration),
-      _initialTick(initialTick),
+      _initialTick(0),
       _usersModified(false),
       _ignoreRenameCreateDrop(false),
       _ignoreDatabaseMarkers(true),

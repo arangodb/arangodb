@@ -50,8 +50,7 @@ struct ApplyStats {
 
 class TailingSyncer : public Syncer {
  public:
-  TailingSyncer(ReplicationApplierConfiguration const&,
-                TRI_voc_tick_t initialTick, bool useTick);
+  explicit TailingSyncer(ReplicationApplierConfiguration const&);
 
   virtual ~TailingSyncer();
 
@@ -59,7 +58,7 @@ class TailingSyncer : public Syncer {
   /// @brief decide based on _leaderInfo which api to use
   virtual std::string tailingBaseUrl(std::string const& command);
 
-  /// @brief set the applier progress
+  /// @brief log the current progress message
   void setProgress(std::string const&);
 
   /// @brief abort all ongoing transactions

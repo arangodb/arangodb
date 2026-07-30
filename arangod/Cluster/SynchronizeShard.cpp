@@ -1727,8 +1727,7 @@ std::shared_ptr<DatabaseTailingSyncer> SynchronizeShard::buildTailingSyncer(
   configuration.validate();
 
   // build DatabaseTailingSyncer object for WAL tailing
-  auto syncer = DatabaseTailingSyncer::create(vocbase, configuration,
-                                              /*lastTick*/ 0, /*useTick*/ true);
+  auto syncer = DatabaseTailingSyncer::create(vocbase, configuration);
 
   std::string const& leader = _description.get(THE_LEADER);
   if (!leader.empty()) {
