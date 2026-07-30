@@ -30,6 +30,7 @@
 #include <concepts>
 #include <format>
 #include <memory>
+#include <shared_mutex>
 
 namespace arangodb::containers {
 
@@ -79,7 +80,7 @@ struct ThreadOwnedList
  private:
   std::atomic<Node*> _head = nullptr;
   std::atomic<Node*> _free_head = nullptr;
-  std::mutex _mutex;  // gc and reading cannot happen at same time
+  std::shared_mutex _mutex;  // gc and reading cannot happen at same time
   std::shared_ptr<Metrics> _metrics;
 
  public:
@@ -144,7 +145,7 @@ struct ThreadOwnedList
   template<typename F>
   requires std::invocable<F, typename T::Snapshot>
   auto for_node(F&& function) noexcept -> void {
-    auto guard = std::lock_guard(_mutex);
+    auto guard = std::shared_lock(_mutex);
     // (2) - this load synchronizes with store in (1) and (3)
     for (auto current = _head.load(std::memory_order_acquire);
          current != nullptr; current = current->next) {
@@ -157,7 +158,7 @@ struct ThreadOwnedList
 
   auto size() noexcept -> size_t {
     size_t count = 0;
-    auto guard = std::lock_guard(_mutex);
+    auto guard = std::shared_lock(_mutex);
     // (2) - this load synchronizes with store in (1) and (3)
     for (auto current = _head.load(std::memory_order_acquire);
          current != nullptr; current = current->next) {
