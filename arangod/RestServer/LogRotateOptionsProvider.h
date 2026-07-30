@@ -23,16 +23,16 @@
 #pragma once
 
 #include "ApplicationFeatures/OptionsProvider.h"
-#include "SystemMonitor/Activities/FeatureOptions.h"
+#include "RestServer/LogRotateOptions.h"
 
-namespace arangodb::activities {
+namespace arangodb {
 
-struct OptionsProvider
-    : arangodb::OptionsProviderImpl<OptionsProvider, FeatureOptions> {
-  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                          FeatureOptions& options);
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                           FeatureOptions& options){};
+struct LogRotateOptionsProvider
+    : OptionsProviderImpl<LogRotateOptionsProvider, LogRotateOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> prgOpts,
+                          LogRotateOptions& logRotateOpts);
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*prgOpts*/,
+                           LogRotateOptions& /*logRotateOpts*/) {}
 };
 
-}  // namespace arangodb::activities
+}  // namespace arangodb
