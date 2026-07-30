@@ -138,9 +138,6 @@ class ApplicationServer {
 
   virtual ~ApplicationServer();
 
-  std::string helpSection() const { return _helpSection; }
-  bool helpShown() const { return !_helpSection.empty(); }
-  void setCommandCompleted() { _commandCompleted = true; }
   bool commandCompleted() const { return _commandCompleted; }
 
   /// @brief stringify the internal state

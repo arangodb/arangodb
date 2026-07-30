@@ -36,7 +36,7 @@ class ArgumentParser {
 
   // get the name of the section for which help was requested, and "*" if only
   // --help was specified
-  std::string helpSection(int argc, char* argv[]) {
+  static std::string helpSection(int argc, char* argv[]) {
     for (int i = 1; i < argc; ++i) {
       std::string const current(argv[i]);
 
@@ -60,7 +60,6 @@ class ArgumentParser {
   std::string versionCommand(int argc, char* argv[]) {
     for (int i = 1; i < argc; ++i) {
       std::string const current(argv[i]);
-
       if (current == "--") {
         break;
       }

@@ -171,7 +171,6 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& systemDatabaseFeature = getFeature<SystemDatabaseFeature>();
   auto& aqlFunctionFeature = getFeature<aql::AqlFunctionFeature>();
 
-  addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
   addFeature<LoggerFeature>(true, getOptions<LoggerOptionsProvider>(),
                             getOptions<LogApiOptionsProvider>());
   addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());

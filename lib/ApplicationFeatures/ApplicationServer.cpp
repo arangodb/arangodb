@@ -404,10 +404,9 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
     return;
   }
 
-  auto versionCmd = parser.versionCommand(argc, argv);
+  auto const versionCmd = parser.versionCommand(argc, argv);
   if (!versionCmd.empty()) {
     // user asked for --version or --version-json
-    
     if (versionCmd == "json") {
       printVersionJson(std::cout);
     } else {

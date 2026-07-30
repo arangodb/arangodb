@@ -20,10 +20,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/GreetingsFeature.h"
-#include "ApplicationFeatures/VersionOptionsProvider.h"
-
-#include <iostream>
 
 namespace arangodb {
 
