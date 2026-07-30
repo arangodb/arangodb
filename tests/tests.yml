@@ -15,6 +15,7 @@
       - permissions
       - paths_server
       - version
+      - version-cli
       - shell_client_large
       - shell_server_only
 
