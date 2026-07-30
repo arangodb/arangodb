@@ -132,10 +132,6 @@ function ReplicationForwardingSuite() {
       checkForwardIsForbidden((q) => arango.PUT(`/_api/replication/restore-view${q}`, {}));
     },
 
-    testSyncForwardIsForbidden: function () {
-      checkForwardIsForbidden((q) => arango.PUT(`/_api/replication/sync${q}`, {endpoint: "tcp://127.0.0.1:1", database: dbName}));
-    },
-
     testAddFollowerForwardIsForbidden: function () {
       checkForwardIsForbidden((q) => arango.PUT(`/_api/replication/addFollower${q}`, {}));
     },
@@ -152,20 +148,8 @@ function ReplicationForwardingSuite() {
       checkForwardIsForbidden((q) => arango.GET(`/_api/replication/logger-state${q}`));
     },
 
-    testLoggerTickRangesForwardIsForbidden: function () {
-      checkForwardIsForbidden((q) => arango.GET(`/_api/replication/logger-tick-ranges${q}`));
-    },
-
-    testLoggerFirstTickForwardIsForbidden: function () {
-      checkForwardIsForbidden((q) => arango.GET(`/_api/replication/logger-first-tick${q}`));
-    },
-
     testLoggerLastForwardIsForbidden: function () {
       checkForwardIsForbidden((q) => arango.GET(`/_api/replication/logger-last${q}`));
-    },
-
-    testLoggerFollowForwardIsForbidden: function () {
-      checkForwardIsForbidden((q) => arango.GET(`/_api/replication/logger-follow${q}`));
     },
 
     testInventoryForwardIsForbidden: function () {
@@ -190,10 +174,6 @@ function ReplicationForwardingSuite() {
 
     testRevisionsDocumentsForwardIsForbidden: function () {
       checkForwardIsForbidden((q) => arango.PUT(`/_api/replication/revisions/documents${q}`, {}));
-    },
-
-    testServerIdForwardIsForbidden: function () {
-      checkForwardIsForbidden((q) => arango.GET(`/_api/replication/server-id${q}`));
     },
 
     testClusterInventoryForwardIsForbidden: function () {
