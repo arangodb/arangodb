@@ -147,7 +147,6 @@ class StorageEngineMock : private StorageEngineMockBase,
   std::unique_ptr<arangodb::PhysicalCollection> createPhysicalCollection(
       arangodb::LogicalCollection& collection,
       arangodb::velocypack::Slice /*info*/) override;
-  arangodb::Result createTickRanges(VPackBuilder&) override;
   std::shared_ptr<arangodb::TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
       arangodb::transaction::Options const& options,
@@ -162,7 +161,6 @@ class StorageEngineMock : private StorageEngineMockBase,
   arangodb::Result dropDatabase(TRI_vocbase_t& vocbase) override;
   arangodb::Result dropView(TRI_vocbase_t const& vocbase,
                             arangodb::LogicalView const& view) override;
-  arangodb::Result firstTick(uint64_t&) override;
   std::vector<std::string> currentWalFiles() const override;
   arangodb::Result flushWal(bool waitForSync, bool waitForCollector) override;
   void getCollectionInfo(TRI_vocbase_t& vocbase, arangodb::DataSourceId cid,
