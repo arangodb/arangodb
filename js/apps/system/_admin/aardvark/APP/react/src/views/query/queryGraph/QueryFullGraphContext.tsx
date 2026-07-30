@@ -105,7 +105,7 @@ export const QueryFullGraphContextProvider = ({
       datasets?.edges.update(newEdges || []);
     }
     if (settings.edgeColorByCollection) {
-      let groupToColorMap: { [key: string]: string } = {};
+      const groupToColorMap: { [key: string]: string } = {};
       // add group to edges
       const newEdges = datasets?.edges.map(edge => {
         const group = edge.id.split("/")[0];

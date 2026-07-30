@@ -94,7 +94,7 @@ export const useNodeStartOptions = ({
   useEffect(() => {
     const db = getCurrentDB();
     const fetchGraphVertexCollection = async () => {
-      let data = await db.graph(graphName).listVertexCollections();
+      const data = await db.graph(graphName).listVertexCollections();
       const collectionOptions = data.map(collectionName => {
         return {
           value: `${collectionName}/`,
