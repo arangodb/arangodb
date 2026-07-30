@@ -38,6 +38,7 @@
 #include "ApplicationServer.h"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationFeatures/GreetingsFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/ScopeGuard.h"
@@ -181,8 +182,7 @@ void ApplicationServer::run(int argc, char* argv[]) {
   // file(s)
   parseOptions(argc, argv);
 
-  // a command type option (e.g. --help) already produced its output,
-  // so startup must stop
+  // --help / --version already produced output
   if (_commandCompleted) {
     return;
   }
@@ -191,12 +191,6 @@ void ApplicationServer::run(int argc, char* argv[]) {
   _options->seal();
 
   processOptions();
-
-  // a command type option (e.g. --version) already produced its output,
-  // so startup must stop
-  if (_commandCompleted) {
-    return;
-  }
 
   // validate options of all features
   _state.store(State::IN_VALIDATE_OPTIONS, std::memory_order_release);
@@ -407,6 +401,19 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
     }
     _options->printHelp(_helpSection);
     _commandCompleted = true;  // startup must stop
+    return;
+  }
+
+  auto versionCmd = parser.versionCommand(argc, argv);
+  if (!versionCmd.empty()) {
+    // user asked for --version or --version-json
+    
+    if (versionCmd == "json") {
+      printVersionJson(std::cout);
+    } else {
+      printVersion(std::cout);
+    }
+    _commandCompleted = true;
     return;
   }
 

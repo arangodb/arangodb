@@ -24,9 +24,6 @@
 
 namespace arangodb {
 
-struct VersionFeatureOptions {
-  bool printVersion = false;
-  bool printVersionJson = false;
-};
+struct VersionFeatureOptions {};
 
 }  // namespace arangodb

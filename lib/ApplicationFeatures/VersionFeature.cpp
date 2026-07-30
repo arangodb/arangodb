@@ -25,15 +25,10 @@
 
 namespace arangodb {
 
-VersionFeature::VersionFeature(application_features::ApplicationServer& server)
-    : VersionFeature(server, VersionFeatureOptions{}) {}
-
 VersionFeature::VersionFeature(application_features::ApplicationServer& server,
-                               VersionFeatureOptions options)
-    : application_features::ApplicationFeature{server, *this},
-      _options(std::move(options)) {
+                               VersionFeatureOptions /*options*/)
+    : application_features::ApplicationFeature{server, *this} {
   setOptional(false);
-
   startsAfter<ShellColorsFeature>();
 }
 

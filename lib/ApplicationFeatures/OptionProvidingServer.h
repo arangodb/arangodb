@@ -45,19 +45,6 @@ class OptionProvidingServer : public application_features::ApplicationServer {
 
   void processOptions() override {
     ApplicationServer::processOptions();
-
-    auto const& versionOpts = getOptions<VersionOptionsProvider>();
-    if (versionOpts.printVersionJson) {
-      printVersionJson(std::cout);
-      setCommandCompleted();  // startup must stop
-      return;
-    }
-    if (versionOpts.printVersion) {
-      printVersion(std::cout);
-      setCommandCompleted();  // startup must stop
-      return;
-    }
-
     _optionProviders.processOptions(options());
   }
 

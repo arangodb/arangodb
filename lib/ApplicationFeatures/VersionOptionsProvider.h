@@ -30,7 +30,7 @@ namespace arangodb {
 struct VersionOptionsProvider
     : OptionsProviderImpl<VersionOptionsProvider, VersionFeatureOptions> {
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                          VersionFeatureOptions& options);
+                          VersionFeatureOptions& options) {};
   void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
                            VersionFeatureOptions& /*options*/) {}
 };

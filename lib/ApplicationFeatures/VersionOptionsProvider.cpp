@@ -29,22 +29,4 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void VersionOptionsProvider::declareOptionsImpl(
-    std::shared_ptr<ProgramOptions> options, VersionFeatureOptions& opts) {
-  options->addOption(
-      "--version",
-      "Print the version and other related information, then exit.",
-      new BooleanParameter(&opts.printVersion),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Command));
-
-  options
-      ->addOption("--version-json",
-                  "Print the version and other related information in JSON "
-                  "format, then exit.",
-                  new BooleanParameter(&opts.printVersionJson),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Command))
-      .setIntroducedIn(30900);
-}
-
 }  // namespace arangodb

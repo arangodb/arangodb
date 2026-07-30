@@ -34,13 +34,7 @@ class VersionFeature final : public application_features::ApplicationFeature {
   static constexpr std::string_view name() noexcept { return "Version"; }
 
   explicit VersionFeature(application_features::ApplicationServer& server,
-                          VersionFeatureOptions options);
-  explicit VersionFeature(application_features::ApplicationServer& server);
-
-  bool printVersion() const { return _options.printVersion; }
-
- private:
-  VersionFeatureOptions _options;
+                          VersionFeatureOptions options = {});
 };
 
 }  // namespace arangodb
