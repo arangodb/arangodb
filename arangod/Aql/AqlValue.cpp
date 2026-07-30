@@ -1199,8 +1199,17 @@ AqlValue::AqlValue(int64_t low, int64_t high) {
 }
 
 AqlValue AqlValue::fromOwnedMallocSlice(uint8_t* data, size_t length) {
-  TRI_ASSERT(data != nullptr);
-  TRI_ASSERT(length > sizeof(_data.inlineSliceMeta.slice));
+  if (data == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "fromOwnedMallocSlice: data pointer must not be null");
+  }
+
+  if (length <= sizeof(_data.inlineSliceMeta.slice)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "fromOwnedMallocSlice: slice length is too small");
+  }
   AqlValue result;
   result.setManagedSliceData(MemoryOriginType::Malloc,
                              static_cast<velocypack::ValueLength>(length));
