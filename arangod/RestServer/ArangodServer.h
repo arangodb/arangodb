@@ -46,13 +46,12 @@ class ArangodServer : public OptionProvidingServer<ArangodOptionProviders> {
   void addFeatures();
 
  protected:
-  void processOptions() override final;
   // Called by server::run() after collect & validate.
   void addFeaturesWithOptionProvider() final;
 
-  // resolves ServerState's role before validateOptions() runs, since
+  // also resolves ServerState's role before validateOptions() runs, since
   // unmigrated features still read it there
-  void processOptions() final;
+  void processOptions() override final;
 
  private:
   // needs both options structs together to reject invalid combinations,
