@@ -36,7 +36,7 @@ class ArgumentParser {
 
   // get the name of the section for which help was requested, and "*" if only
   // --help was specified
-  static std::string helpSection(int argc, char* argv[]) {
+  std::string helpSection(int argc, char* argv[]) {
     for (int i = 1; i < argc; ++i) {
       std::string const current(argv[i]);
 

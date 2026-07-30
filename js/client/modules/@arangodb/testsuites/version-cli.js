@@ -69,16 +69,25 @@ function runCommand(binaryPath, args, options, rootDir) {
   return {output, rc};
 }
 
-function checkResult(name, expected, got, ok) {
-  if (ok) {
-    return {failed: 0, status: true, total: 1};
+function record(results, key, ok, message) {
+  results[key] = ok
+    ? {failed: 0, status: true, total: 1}
+    : {failed: 1, status: false, total: 1, message: message};
+  if (!ok) {
+    results.failed += 1;
   }
-  return {
-    failed: 1,
-    status: false,
-    total: 1,
-    message: `${name}: expected '${expected}', got '${got}'`
-  };
+}
+
+function versionPrinted(output, expected) {
+  return output.split('\n')[0] === expected;
+}
+
+function versionJsonPrinted(output, expected) {
+  try {
+    return JSON.parse(output).version === expected;
+  } catch (e) {
+    return false;
+  }
 }
 
 function versionCli(options) {
@@ -98,29 +107,80 @@ function versionCli(options) {
       const key = `${binary}--version`;
       print(`checking ${binary} --version`);
       const {output, rc} = runCommand(binaryPath, ['--version'], options, rootDir);
-      const firstLine = output.split('\n')[0];
-      const ok = rc.hasOwnProperty('exit') && rc.exit === 0 && firstLine === expected;
-      results[key] = checkResult(key, expected, `exit=${JSON.stringify(rc)} output=${output}`, ok);
-      if (!results[key].status) {
-        results.failed += 1;
-      }
+      const ok = rc.exit === 0 && versionPrinted(output, expected);
+      record(results, key, ok, `exit=${JSON.stringify(rc)} output=${output}`);
     }
 
     {
       const key = `${binary}--version-json`;
       print(`checking ${binary} --version-json`);
       const {output, rc} = runCommand(binaryPath, ['--version-json'], options, rootDir);
-      let version = null;
-      try {
-        version = JSON.parse(output).version;
-      } catch (e) {
-        version = `JSON parse error: ${e.message}; output=${output}`;
-      }
-      const ok = rc.hasOwnProperty('exit') && rc.exit === 0 && version === expected;
-      results[key] = checkResult(key, expected, `exit=${JSON.stringify(rc)} version=${version}`, ok);
-      if (!results[key].status) {
-        results.failed += 1;
-      }
+      const ok = rc.exit === 0 && versionJsonPrinted(output, expected);
+      record(results, key, ok, `exit=${JSON.stringify(rc)} output=${output}`);
+    }
+  }
+
+  // Boolean / '=' forms: one binary is enough
+  const probe = fs.join(pu.BIN_DIR, 'arangod' + pu.executableExt);
+  if (fs.exists(probe)) {
+    const printCases = [
+      ['--version', 'true'],
+      ['--version=true'],
+      ['--version', 'abc'],
+      ['--version-json', 'true'],
+      ['--version-json=true']
+    ];
+    for (const args of printCases) {
+      const key = `arangod${args.join('')}`;
+      print(`checking arangod ${args.join(' ')}`);
+      const {output, rc} = runCommand(probe, args, options, rootDir);
+      const wantJson = args[0].startsWith('--version-json');
+      const ok = rc.exit === 0 &&
+        (wantJson ? versionJsonPrinted(output, expected)
+                  : versionPrinted(output, expected));
+      record(results, key, ok, `exit=${JSON.stringify(rc)} output=${output}`);
+    }
+
+    const noPrintCases = [
+      ['--version', 'false'],
+      ['--version=false'],
+      ['--version-json', 'false'],
+      ['--version-json=false']
+    ];
+    for (const args of noPrintCases) {
+      const key = `arangod${args.join('')}`;
+      print(`checking arangod ${args.join(' ')}`);
+      const {output, rc} = runCommand(probe, args, options, rootDir);
+      const wantJson = args[0].startsWith('--version-json');
+      const printed = wantJson ? versionJsonPrinted(output, expected)
+                               : versionPrinted(output, expected);
+      record(results, key, !printed,
+             `version must not be printed; exit=${JSON.stringify(rc)} output=${output}`);
+    }
+
+    const invalidCases = [
+      ['--version=abc'],
+      ['--version-json=abc']
+    ];
+    for (const args of invalidCases) {
+      const key = `arangod${args.join('')}`;
+      print(`checking arangod ${args.join(' ')}`);
+      const {output, rc} = runCommand(probe, args, options, rootDir);
+      const printed = versionPrinted(output, expected) ||
+                      versionJsonPrinted(output, expected);
+      const ok = rc.exit !== 0 && !printed;
+      record(results, key, ok,
+             `expected parse failure without version output; exit=${JSON.stringify(rc)} output=${output}`);
+    }
+
+    {
+      const key = 'arangod--help-lists-version';
+      print('checking arangod --help lists --version');
+      const {output, rc} = runCommand(probe, ['--help'], options, rootDir);
+      const ok = rc.exit === 0 &&
+        output.indexOf('--version') !== -1 &&
+        output.indexOf('--version-json') !== -1;
+      record(results, key, ok, `exit=${JSON.stringify(rc)} output=${output}`);
     }
   }
 
