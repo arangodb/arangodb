@@ -56,6 +56,8 @@ RestStatus RestQueryPlanCacheHandler::execute() {
 }
 
 void RestQueryPlanCacheHandler::clearCache() {
+  // Note that contrary to versions up to and including 3.12.9 this is now
+  // forbidden if the server is in read-only mode. This is intentional.
   // TODO Should this get a separate admin action/permission?
   if (auto r = ExecContext::current().canUseDatabase(
           _vocbase.name(), DatabaseAccessLevel::Write);

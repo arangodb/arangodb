@@ -68,6 +68,8 @@ RestStatus RestAccessTokenHandler::execute() {
   auto const type = _request->requestType();
 
   auto& exec = ExecContext::current();
+  // Note that contrary to versions up to and including 3.12.9 writes are now
+  // forbidden if the server is in read-only mode. This is intentional.
   switch (type) {
     case RequestType::GET:
       if (auto r = exec.canReadUser(user); !r.ok()) {

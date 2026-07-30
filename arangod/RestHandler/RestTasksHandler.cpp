@@ -63,6 +63,8 @@ RestStatus RestTasksHandler::execute() {
 
   auto const type = _request->requestType();
 
+  // Note that contrary to versions up to and including 3.12.9 writes are now
+  // forbidden if the server is in read-only mode. This is intentional.
   switch (type) {
     case rest::RequestType::POST: {
       registerTask(false);

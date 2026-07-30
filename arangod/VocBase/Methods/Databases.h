@@ -42,11 +42,10 @@ namespace methods {
 
 struct Databases {
   static std::vector<std::string> list(
-      application_features::ApplicationServer& server,
-      std::string const& user = "");
+      application_features::ApplicationServer& server, bool onlyCurrentUser);
   static std::vector<std::string> list(DatabaseFeature& databaseFeature,
                                        ClusterFeature* clusterFeature,
-                                       std::string const& user = "");
+                                       bool onlyCurrentUser);
   static Result info(Database* vocbase, velocypack::Builder& result);
   static Result create(application_features::ApplicationServer& server,
                        StorageEngine& engine, ExecContext const& context,
