@@ -63,8 +63,8 @@ version: 2.1
 #                       unexpired entry does not count toward the gate.
 #                       Expiry is end-of-day and must fall inside the
 #                       severity's remediation window measured from
-#                       "detected" (CRITICAL 30d, HIGH/UNKNOWN 90d,
-#                       MEDIUM/LOW 180d, class design-acceptance 366d), with
+#                       "detected" (CRITICAL/HIGH/UNKNOWN 30d, MEDIUM 90d,
+#                       LOW 180d, class design-acceptance 366d), with
 #                       a 366-day renewal horizon; unknown keys are rejected
 #                       (validated in prepare-nightly, which stages the file
 #                       into the workspace); expired entries block again and
@@ -683,12 +683,14 @@ jobs:
             # an expiry inside that severity's remediation window measured
             # FROM THE DETECTION DATE:
             #
-            #   CRITICAL  30 days      MEDIUM  180 days
-            #   HIGH      90 days      LOW     180 days
-            #   UNKNOWN   90 days      class: design-acceptance  366 days
+            #   CRITICAL  30 days      MEDIUM   90 days
+            #   HIGH      30 days      LOW     180 days
+            #   UNKNOWN   30 days      class: design-acceptance  366 days
             #
-            # Same table as the trivy-scan orb's waiver-windows default, so
-            # the file migrates to the orb's structured schema unchanged. It
+            # These are the FedRAMP High remediation timelines (ConMon
+            # Performance Management Guide: High 30d, Moderate 90d, Low 180d
+            # from discovery; UNKNOWN gets the High clock until triaged),
+            # tighter than the orb's waiver-windows default (high=90). It
             # replaces a flat "90 days from today", which let a CRITICAL sit
             # for a quarter and let any entry be renewed indefinitely by
             # re-dating it; a window anchored to detection cannot be renewed
@@ -706,10 +708,10 @@ jobs:
                  def window($class; $sev):
                    if $class == "design-acceptance" then 366
                    elif $sev == "CRITICAL" then 30
-                   elif $sev == "HIGH" then 90
-                   elif $sev == "MEDIUM" then 180
+                   elif $sev == "HIGH" then 30
+                   elif $sev == "MEDIUM" then 90
                    elif $sev == "LOW" then 180
-                   elif $sev == "UNKNOWN" then 90
+                   elif $sev == "UNKNOWN" then 30
                    else null
                    end;
                  ["id", "package", "severity", "detected", "expires", "reason", "approved-by", "class"] as $allowed

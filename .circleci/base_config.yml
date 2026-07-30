@@ -568,10 +568,11 @@ jobs:
       # bare id and no expiry, this job goes red instead of the suppression
       # living forever. The severity windows are set to the same table
       # .circleci/trivy-gate-waivers.json is validated against in
-      # prepare-nightly (CRITICAL 30, HIGH 90, MEDIUM 180, LOW 180), so the
-      # repository has ONE remediation-window table rather than the orb
-      # default plus a local one; the orb keeps the two parameters separate on
-      # purpose so converging them is an explicit choice.
+      # prepare-nightly, which is the FedRAMP High remediation table
+      # (CRITICAL 30, HIGH 30, MEDIUM 90, LOW 180), so the repository has
+      # ONE remediation-window table rather than the orb default plus a
+      # local one; the orb keeps the two parameters separate on purpose so
+      # converging them is an explicit choice.
       #
       # nosem-exclude keeps the inline-suppression audit on FIRST-PARTY
       # source: 3rdParty/ and the committed node_modules trees are vendored
@@ -579,7 +580,7 @@ jobs:
       # is the orb's own default exclusion (a config discussing the
       # suppression mechanism would otherwise flag itself).
       - trivy-scan/disposition-check:
-          poam-windows: "critical=30,high=90,medium=180,low=180"
+          poam-windows: "critical=30,high=30,medium=90,low=180"
           nosem-exclude: ":!:.circleci/* :!:3rdParty/* :!:*/node_modules/*"
       - run:
           name: Compare required checks against the live configuration
