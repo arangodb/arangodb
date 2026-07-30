@@ -1,6 +1,6 @@
 /*jshint globalstrict:false, strict:false */
 /*global assertEqual, assertTrue, assertMatch, assertNotEqual
-  assertFalse, fail, SYS_IS_V8_BUILD */
+  assertFalse, fail, SYS_IS_V8_BUILD, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -51,6 +51,22 @@ function ReplicationLoggerSuite () {
     }
   };
 
+  var tailWal = function (from) {
+    var result = arango.GET_RAW(`/_api/wal/tail?from=${from}&includeSystem=true&chunkSize=33554432`);
+    if (result.error) {
+      throw new Error("WAL tailing failed: " + JSON.stringify(result));
+    }
+    if (result.code === 204) {
+      return [];
+    }
+    var body = result.body.utf8Slice(0, result.body.length);
+    return body.split('\n').filter(function (line) {
+      return line.length > 0;
+    }).map(function (line) {
+      return JSON.parse(line);
+    });
+  };
+
   var getLogEntries = function (tick, type) {
     var result = [ ];
     getLastLogTick();
@@ -63,7 +79,7 @@ function ReplicationLoggerSuite () {
               name === '_queues' ||
               name === '_sessions');
     };
-    var entries = replication.logger.lastLogTick(tick, "9999999999999999999");
+    var entries = tailWal(tick);
     if (Array.isArray(type)) {
       entries.forEach(function(e) {
         if ((e.type === 2300 || e.type === 2302) && e.cname && exclude(e.cname)) {

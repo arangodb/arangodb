@@ -278,8 +278,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
                            velocypack::Builder& builder) override;
   Result createTickRanges(velocypack::Builder& builder) override;
   Result firstTick(uint64_t& tick) override;
-  Result lastLogger(TRI_vocbase_t& vocbase, uint64_t tickStart,
-                    uint64_t tickEnd, velocypack::Builder& builder) override;
   WalAccess const* walAccess() const override;
 
   // database, collection and index management

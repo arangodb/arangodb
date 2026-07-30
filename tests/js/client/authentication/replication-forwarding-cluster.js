@@ -160,10 +160,6 @@ function ReplicationForwardingSuite() {
       checkForwardIsForbidden((q) => arango.GET(`/_api/replication/logger-first-tick${q}`));
     },
 
-    testLoggerLastForwardIsForbidden: function () {
-      checkForwardIsForbidden((q) => arango.GET(`/_api/replication/logger-last${q}`));
-    },
-
     testLoggerFollowForwardIsForbidden: function () {
       checkForwardIsForbidden((q) => arango.GET(`/_api/replication/logger-follow${q}`));
     },

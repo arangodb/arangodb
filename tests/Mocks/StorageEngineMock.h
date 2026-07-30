@@ -186,10 +186,6 @@ class StorageEngineMock : private StorageEngineMockBase,
   arangodb::RecoveryState recoveryState() override;
   TRI_voc_tick_t recoveryTick() override;
 
-  arangodb::Result lastLogger(
-      TRI_vocbase_t& vocbase, uint64_t tickStart, uint64_t tickEnd,
-      arangodb::velocypack::Builder& builderSPtr) override;
-
   std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::CreateDatabaseInfo&&,
                                               bool isUpgrade) override;
   using StorageEngine::registerCollection;
