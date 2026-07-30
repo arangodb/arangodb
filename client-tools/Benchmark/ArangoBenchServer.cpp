@@ -47,6 +47,14 @@
 #include <typeindex>
 #include <utility>
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief includes all the test cases
+///
+/// We use an evil global pointer here.
+////////////////////////////////////////////////////////////////////////////////
+
+#include "Benchmark/test-cases.h"
+
 namespace arangodb {
 
 using namespace arangodb::application_features;
@@ -55,7 +63,21 @@ ArangoBenchServer::ArangoBenchServer(
     std::shared_ptr<options::ProgramOptions> options, char const* binaryPath,
     std::string binaryName, int* ret)
     : OptionProvidingServer<ArangoBenchOptionProviders>(
-          options, binaryPath, std::move(binaryName), ret) {}
+          options, binaryPath, std::move(binaryName), ret) {
+  // the following is not awesome, as all test classes need to be repeated here.
+  // however, it works portably across different compilers.
+  arangobench::AqlInsertTest::registerTestcase();
+  arangobench::CollectionCreationTest::registerTestcase();
+  arangobench::CustomQueryTest::registerTestcase();
+  arangobench::DocumentCreationTest::registerTestcase();
+  arangobench::DocumentCrudAppendTest::registerTestcase();
+  arangobench::DocumentCrudTest::registerTestcase();
+  arangobench::DocumentCrudWriteReadTest::registerTestcase();
+  arangobench::DocumentImportTest::registerTestcase();
+  arangobench::EdgeCrudTest::registerTestcase();
+  arangobench::PersistentIndexTest::registerTestcase();
+  arangobench::VersionTest::registerTestcase();
+}
 
 void ArangoBenchServer::addFeatures() {
   addFeature<BasicFeaturePhaseClient>();

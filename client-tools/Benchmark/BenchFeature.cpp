@@ -61,14 +61,6 @@ using namespace arangodb::httpclient;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief includes all the test cases
-///
-/// We use an evil global pointer here.
-////////////////////////////////////////////////////////////////////////////////
-
-#include "Benchmark/test-cases.h"
-
 BenchFeature::BenchFeature(application_features::ApplicationServer& server,
                            int* result)
     : BenchFeature(server, result, BenchFeatureOptions{}) {}
@@ -80,20 +72,6 @@ BenchFeature::BenchFeature(application_features::ApplicationServer& server,
       _result(result) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
-
-  // the following is not awesome, as all test classes need to be repeated here.
-  // however, it works portably across different compilers.
-  AqlInsertTest::registerTestcase();
-  CollectionCreationTest::registerTestcase();
-  CustomQueryTest::registerTestcase();
-  DocumentCreationTest::registerTestcase();
-  DocumentCrudAppendTest::registerTestcase();
-  DocumentCrudTest::registerTestcase();
-  DocumentCrudWriteReadTest::registerTestcase();
-  DocumentImportTest::registerTestcase();
-  EdgeCrudTest::registerTestcase();
-  PersistentIndexTest::registerTestcase();
-  VersionTest::registerTestcase();
 
   if (!_options.customQueryBindVars.empty()) {
     try {
