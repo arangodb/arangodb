@@ -50,9 +50,9 @@ function ReplicationLoggerSuite () {
     }
   };
 
-  var tailWal = function (from) {
+  var tailWal = function (from, includeSystem) {
     const chunkSize = 32 * 1024 * 1024;
-    const result = arango.GET_RAW(`/_api/wal/tail?from=${from}&includeSystem=false&chunkSize=${chunkSize}`, {accept: "application/json"});
+    const result = arango.GET_RAW(`/_api/wal/tail?from=${from}&includeSystem=${!!includeSystem}&chunkSize=${chunkSize}`, {accept: "application/json"});
     if (result.error) {
       throw new Error("WAL tailing failed: " + JSON.stringify(result));
     }
@@ -67,11 +67,17 @@ function ReplicationLoggerSuite () {
     });
   };
 
-  var getLogEntries = function (tick, type) {
+  // capture the GUID before the collection can be dropped or renamed
+  var withGuid = function (c) {
+    c.guid = c.properties().globallyUniqueId;
+    return c;
+  };
+
+  var getLogEntries = function (tick, type, includeSystem) {
     var result = [ ];
     getLastLogTick();
 
-    var entries = tailWal(tick);
+    var entries = tailWal(tick, includeSystem);
     if (Array.isArray(type)) {
       entries.forEach(function(e) {
         if (type.indexOf(e.type) !== -1) {
@@ -246,12 +252,12 @@ function ReplicationLoggerSuite () {
     testLoggerCreateCollection : function () {
       var tick = getLastLogTick();
 
-      var c = db._create(cn);
+      var c = withGuid(db._create(cn));
       var entry = getLogEntries(tick, 2000)[0];
 
       assertEqual(2000, entry.type);
       assertEqual(2, entry.data.type);
-      assertEqual(c._id, entry.cid);
+      assertEqual(c.guid, entry.cuid);
       assertEqual(c._id, entry.data.cid);
       assertFalse(entry.data.deleted);
       assertEqual(cn, entry.data.name);
@@ -262,7 +268,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerDropCollection : function () {
-      var c = db._create(cn);
+      var c = withGuid(db._create(cn));
 
       var tick = getLastLogTick();
       db._drop(cn);
@@ -270,7 +276,7 @@ function ReplicationLoggerSuite () {
       var entry = getLogEntries(tick, 2001)[0];
 
       assertEqual(2001, entry.type);
-      assertEqual(c._id, entry.cid);
+      assertEqual(c.guid, entry.cuid);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -278,7 +284,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerRenameCollection : function () {
-      var c = db._create(cn);
+      var c = withGuid(db._create(cn));
 
       var tick = getLastLogTick();
       c.rename(cn2);
@@ -286,7 +292,7 @@ function ReplicationLoggerSuite () {
       var entry = getLogEntries(tick, 2002)[0];
 
       assertEqual(2002, entry.type);
-      assertEqual(c._id, entry.cid);
+      assertEqual(c.guid, entry.cuid);
       assertEqual(cn2, entry.data.name);
     },
 
@@ -295,7 +301,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerPropertiesCollection : function () {
-      var c = db._create(cn);
+      var c = withGuid(db._create(cn));
 
       var tick = getLastLogTick();
       c.properties({ waitForSync: true });
@@ -303,7 +309,7 @@ function ReplicationLoggerSuite () {
       var entry = getLogEntries(tick, 2003)[0];
 
       assertEqual(2003, entry.type);
-      assertEqual(c._id, entry.cid);
+      assertEqual(c.guid, entry.cuid);
       assertEqual(c._id, entry.data.cid);
       assertEqual(cn, entry.data.name);
       assertEqual(2, entry.data.type);
@@ -315,21 +321,21 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerIncludedSystemCollection1 : function () {
-      var c = db._collection("_graphs");
+      var c = withGuid(db._collection("_graphs"));
 
       var tick = getLastLogTick();
       var doc = c.save({ "test": 1 });
 
-      var entry = getLogEntries(tick, 2300)[0];
+      var entry = getLogEntries(tick, 2300, true)[0];
       assertEqual(2300, entry.type);
-      assertEqual(c._id, entry.cid);
+      assertEqual(c.guid, entry.cuid);
 
       tick = getLastLogTick();
       c.remove(doc._key);
 
-      entry = getLogEntries(tick, 2302)[0];
+      entry = getLogEntries(tick, 2302, true)[0];
       assertEqual(2302, entry.type);
-      assertEqual(c._id, entry.cid);
+      assertEqual(c.guid, entry.cuid);
       assertEqual(doc._key, entry.data._key);
     },
 
@@ -338,21 +344,21 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerIncludedSystemCollection2 : function () {
-      var c = db._collection("_users");
+      var c = withGuid(db._collection("_users"));
 
       var tick = getLastLogTick();
       var doc = c.save({ "test": 1 });
 
-      var entry = getLogEntries(tick, 2300)[0];
+      var entry = getLogEntries(tick, 2300, true)[0];
       assertEqual(2300, entry.type);
-      assertEqual(c._id, entry.cid);
+      assertEqual(c.guid, entry.cuid);
 
       tick = getLastLogTick();
       c.remove(doc._key);
 
-      entry = getLogEntries(tick, 2302)[0];
+      entry = getLogEntries(tick, 2302, true)[0];
       assertEqual(2302, entry.type);
-      assertEqual(c._id, entry.cid);
+      assertEqual(c.guid, entry.cuid);
       assertEqual(doc._key, entry.data._key);
     },
 
@@ -366,21 +372,21 @@ function ReplicationLoggerSuite () {
 
       var tick = getLastLogTick();
 
-      var c = db._create("_unittests", { isSystem : true });
+      var c = withGuid(db._create("_unittests", { isSystem : true }));
 
       try {
-        var entry = getLogEntries(tick, 2000)[0];
+        var entry = getLogEntries(tick, 2000, true)[0];
 
         assertEqual(2000, entry.type);
-        assertEqual(c._id, entry.cid);
+        assertEqual(c.guid, entry.cuid);
         assertEqual(c.name(), entry.data.name);
 
         tick = getLastLogTick();
         c.properties({ waitForSync : true });
 
-        entry = getLogEntries(tick, 2003)[0];
+        entry = getLogEntries(tick, 2003, true)[0];
         assertEqual(2003, entry.type);
-        assertEqual(c._id, entry.cid);
+        assertEqual(c.guid, entry.cuid);
         assertEqual(true, entry.data.waitForSync);
 
         tick = getLastLogTick();
@@ -395,7 +401,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerTruncateCollection1 : function () {
-      var c = db._create(cn);
+      var c = withGuid(db._create(cn));
       c.save({ "test": 1, "_key": "abc" });
 
       var tick = getLastLogTick();
@@ -404,7 +410,7 @@ function ReplicationLoggerSuite () {
       var entry = getLogEntries(tick, 2302);
       assertEqual(1, entry.length);
       assertNotEqual("0", entry[0].tid);
-      assertEqual(c._id, entry[0].cid);
+      assertEqual(c.guid, entry[0].cuid);
       assertEqual("abc", entry[0].data._key);
 
       c.save({ "test": 1, "_key": "abc" });
@@ -414,7 +420,7 @@ function ReplicationLoggerSuite () {
 
       entry = getLogEntries(tick, 2302);
       assertNotEqual("0", entry[0].tid);
-      assertEqual(c._id, entry[0].cid);
+      assertEqual(c.guid, entry[0].cuid);
       assertEqual("abc", entry[0].data._key);
     },
 
@@ -425,7 +431,7 @@ function ReplicationLoggerSuite () {
     testLoggerTruncateCollection2 : function () {
       var i;
 
-      var c = db._create(cn);
+      var c = withGuid(db._create(cn));
       for (i = 0; i < 100; ++i) {
         c.save({ "test": 1, "_key": "test" + i });
       }
@@ -446,7 +452,7 @@ function ReplicationLoggerSuite () {
       for (i = 0; i < 100; ++i) {
         assertEqual(2302, entry[i + 1].type);
         assertEqual(tid, entry[i + 1].tid);
-        assertEqual(c._id, entry[i + 1].cid);
+        assertEqual(c.guid, entry[i + 1].cuid);
         keys[entry[i + 1].data._key] = true;
       }
       assertEqual(100, Object.keys(keys).length);
@@ -508,7 +514,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerCreateIndexHash1 : function () {
-      var c = db._create(cn);
+      var c = withGuid(db._create(cn));
 
       var tick = getLastLogTick();
 
@@ -517,7 +523,7 @@ function ReplicationLoggerSuite () {
 
       var entry = getLogEntries(tick, 2100)[0];
       assertTrue(2100, entry.type);
-      assertEqual(c._id, entry.cid);
+      assertEqual(c.guid, entry.cuid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
       assertEqual("hash", entry.data.type);
       assertEqual(true, entry.data.unique);
@@ -530,7 +536,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerCreateIndexHash2 : function () {
-      var c = db._create(cn);
+      var c = withGuid(db._create(cn));
 
       var tick = getLastLogTick();
 
@@ -538,7 +544,7 @@ function ReplicationLoggerSuite () {
       var idx = c.indexes()[1];
 
       var entry = getLogEntries(tick, 2100)[0];
-      assertEqual(c._id, entry.cid);
+      assertEqual(c.guid, entry.cuid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
       assertEqual("hash", entry.data.type);
       assertEqual(false, entry.data.unique);
@@ -551,7 +557,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerCreateIndexSparseHash1 : function () {
-      var c = db._create(cn);
+      var c = withGuid(db._create(cn));
 
       var tick = getLastLogTick();
 
@@ -561,7 +567,7 @@ function ReplicationLoggerSuite () {
 
       var entry = getLogEntries(tick, 2100)[0];
       assertTrue(2100, entry.type);
-      assertEqual(c._id, entry.cid);
+      assertEqual(c.guid, entry.cuid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
       assertEqual("hash", entry.data.type);
       assertEqual(true, entry.data.unique);
@@ -574,7 +580,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerCreateIndexSparseHash2 : function () {
-      var c = db._create(cn);
+      var c = withGuid(db._create(cn));
 
       var tick = getLastLogTick();
 
@@ -583,7 +589,7 @@ function ReplicationLoggerSuite () {
       var idx = c.indexes()[1];
 
       var entry = getLogEntries(tick, 2100)[0];
-      assertEqual(c._id, entry.cid);
+      assertEqual(c.guid, entry.cuid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
       assertEqual("hash", entry.data.type);
       assertEqual(false, entry.data.unique);
@@ -596,7 +602,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerCreateIndexSkiplist1 : function () {
-      var c = db._create(cn);
+      var c = withGuid(db._create(cn));
 
       var tick = getLastLogTick();
 
@@ -606,7 +612,7 @@ function ReplicationLoggerSuite () {
       var entry = getLogEntries(tick, 2100)[0];
 
       assertTrue(2100, entry.type);
-      assertEqual(c._id, entry.cid);
+      assertEqual(c.guid, entry.cuid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
       assertEqual("skiplist", entry.data.type);
       assertEqual(false, entry.data.unique);
@@ -619,7 +625,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerCreateIndexSkiplist2 : function () {
-      var c = db._create(cn);
+      var c = withGuid(db._create(cn));
 
       var tick = getLastLogTick();
 
@@ -628,7 +634,7 @@ function ReplicationLoggerSuite () {
       var idx = c.indexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
 
-      assertEqual(c._id, entry.cid);
+      assertEqual(c.guid, entry.cuid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
       assertEqual("skiplist", entry.data.type);
       assertEqual(true, entry.data.unique);
@@ -641,7 +647,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerCreateIndexSparseSkiplist1 : function () {
-      var c = db._create(cn);
+      var c = withGuid(db._create(cn));
 
       var tick = getLastLogTick();
 
@@ -651,7 +657,7 @@ function ReplicationLoggerSuite () {
       var entry = getLogEntries(tick, 2100)[0];
 
       assertTrue(2100, entry.type);
-      assertEqual(c._id, entry.cid);
+      assertEqual(c.guid, entry.cuid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
       assertEqual("skiplist", entry.data.type);
       assertEqual(false, entry.data.unique);
@@ -664,7 +670,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerCreateIndexSparseSkiplist2 : function () {
-      var c = db._create(cn);
+      var c = withGuid(db._create(cn));
 
       var tick = getLastLogTick();
 
@@ -673,7 +679,7 @@ function ReplicationLoggerSuite () {
       var idx = c.indexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
 
-      assertEqual(c._id, entry.cid);
+      assertEqual(c.guid, entry.cuid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
       assertEqual("skiplist", entry.data.type);
       assertEqual(true, entry.data.unique);
@@ -686,7 +692,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerCreateIndexFulltext1 : function () {
-      var c = db._create(cn);
+      var c = withGuid(db._create(cn));
 
       var tick = getLastLogTick();
       c.ensureIndex({ type: "fulltext", fields: ["a"], minLength: 5 });
@@ -694,7 +700,7 @@ function ReplicationLoggerSuite () {
 
       var entry = getLogEntries(tick, 2100)[0];
       assertTrue(2100, entry.type);
-      assertEqual(c._id, entry.cid);
+      assertEqual(c.guid, entry.cuid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
       assertEqual("fulltext", entry.data.type);
       assertEqual(false, entry.data.unique);
@@ -707,7 +713,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerCreateIndexGeo1 : function () {
-      var c = db._create(cn);
+      var c = withGuid(db._create(cn));
 
       var tick = getLastLogTick();
 
@@ -716,7 +722,7 @@ function ReplicationLoggerSuite () {
       var entry = getLogEntries(tick, 2100)[0];
 
       assertTrue(2100, entry.type);
-      assertEqual(c._id, entry.cid);
+      assertEqual(c.guid, entry.cuid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
       assertEqual("geo", entry.data.type);
       assertEqual(false, entry.data.unique);
@@ -728,7 +734,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerCreateIndexGeo2 : function () {
-      var c = db._create(cn);
+      var c = withGuid(db._create(cn));
 
       var tick = getLastLogTick();
 
@@ -737,7 +743,7 @@ function ReplicationLoggerSuite () {
       var entry = getLogEntries(tick, 2100)[0];
 
       assertTrue(2100, entry.type);
-      assertEqual(c._id, entry.cid);
+      assertEqual(c.guid, entry.cuid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
       assertEqual("geo", entry.data.type);
       assertEqual(false, entry.data.unique);
@@ -750,7 +756,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerCreateIndexGeo3 : function () {
-      var c = db._create(cn);
+      var c = withGuid(db._create(cn));
 
       var tick = getLastLogTick();
 
@@ -759,7 +765,7 @@ function ReplicationLoggerSuite () {
       var entry = getLogEntries(tick, 2100)[0];
 
       assertTrue(2100, entry.type);
-      assertEqual(c._id, entry.cid);
+      assertEqual(c.guid, entry.cuid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
       assertEqual("geo", entry.data.type);
       assertEqual(false, entry.data.unique);
@@ -773,7 +779,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerCreateIndexGeo4 : function () {
-      var c = db._create(cn);
+      var c = withGuid(db._create(cn));
 
       var tick = getLastLogTick();
 
@@ -782,7 +788,7 @@ function ReplicationLoggerSuite () {
       var entry = getLogEntries(tick, 2100)[0];
 
       assertTrue(2100, entry.type);
-      assertEqual(c._id, entry.cid);
+      assertEqual(c.guid, entry.cuid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
       assertEqual("geo", entry.data.type);
       assertEqual(false, entry.data.unique);
@@ -796,7 +802,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerCreateIndexGeo5 : function () {
-      var c = db._create(cn);
+      var c = withGuid(db._create(cn));
 
       var tick = getLastLogTick();
 
@@ -805,7 +811,7 @@ function ReplicationLoggerSuite () {
       var entry = getLogEntries(tick, 2100)[0];
 
       assertTrue(2100, entry.type);
-      assertEqual(c._id, entry.cid);
+      assertEqual(c.guid, entry.cuid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
       assertEqual("geo", entry.data.type);
       assertEqual(false, entry.data.unique);
@@ -819,7 +825,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerDropIndex : function () {
-      var c = db._create(cn);
+      var c = withGuid(db._create(cn));
       c.ensureIndex({ type: "hash", fields: ["a", "b"], unique: true });
 
       var tick = getLastLogTick();
@@ -830,7 +836,7 @@ function ReplicationLoggerSuite () {
       var entry = getLogEntries(tick, 2101)[0];
 
       assertTrue(2101, entry.type);
-      assertEqual(c._id, entry.cid);
+      assertEqual(c.guid, entry.cuid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
     },
 
@@ -839,7 +845,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerSaveDocument : function () {
-      var c = db._create(cn);
+      var c = withGuid(db._create(cn));
 
       var tick = getLastLogTick();
 
@@ -848,7 +854,7 @@ function ReplicationLoggerSuite () {
       var entry = getLogEntries(tick, 2300)[0];
 
       assertEqual(2300, entry.type);
-      assertEqual(c._id, entry.cid);
+      assertEqual(c.guid, entry.cuid);
       assertEqual("abc", entry.data._key);
       assertEqual(rev, entry.data._rev);
       assertEqual(1, entry.data.test);
@@ -860,8 +866,7 @@ function ReplicationLoggerSuite () {
 
       entry = getLogEntries(tick, 2300)[0];
       assertEqual(2300, entry.type);
-      assertEqual(c._id, entry.cid);
-      assertEqual(c.name(), entry.cname);
+      assertEqual(c.guid, entry.cuid);
       assertEqual("12345", entry.data._key);
       assertEqual(rev, entry.data._rev);
       assertEqual(2, entry.data.test);
@@ -900,7 +905,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerDeleteDocument : function () {
-      var c = db._create(cn);
+      var c = withGuid(db._create(cn));
       c.save({ "test": 1, "_key": "abc" });
       c.save({ "test": 1, "_key": "12345" });
 
@@ -910,8 +915,7 @@ function ReplicationLoggerSuite () {
 
       var entry = getLogEntries(tick, 2302)[0];
       assertEqual(2302, entry.type);
-      assertEqual(c._id, entry.cid);
-      assertEqual(c.name(), entry.cname);
+      assertEqual(c.guid, entry.cuid);
       assertEqual("abc", entry.data._key);
 
       tick = getLastLogTick();
@@ -919,7 +923,7 @@ function ReplicationLoggerSuite () {
       entry = getLogEntries(tick, 2302)[0];
 
       assertEqual(2302, entry.type);
-      assertEqual(c._id, entry.cid);
+      assertEqual(c.guid, entry.cuid);
       assertEqual("12345", entry.data._key);
 
       tick = getLastLogTick();
@@ -940,7 +944,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerUpdateDocument : function () {
-      var c = db._create(cn);
+      var c = withGuid(db._create(cn));
       var tick = getLastLogTick();
       c.save({ "test": 2, "_key": "abc" });
       c.save({ "test": 1, "_key": "12345" });
@@ -949,14 +953,12 @@ function ReplicationLoggerSuite () {
       var entry = getLogEntries(tick, 2300);
 
       assertEqual(2300, entry[0].type);
-      assertEqual(c._id, entry[0].cid);
-      assertEqual(c.name(), entry[0].cname);
+      assertEqual(c.guid, entry[0].cuid);
       assertEqual("abc", entry[0].data._key);
       assertEqual(2, entry[0].data.test);
 
       assertEqual(2300, entry[1].type);
-      assertEqual(c._id, entry[1].cid);
-      assertEqual(c.name(), entry[1].cname);
+      assertEqual(c.guid, entry[1].cuid);
       assertEqual("12345", entry[1].data._key);
       assertEqual(1, entry[1].data.test);
 
@@ -966,8 +968,7 @@ function ReplicationLoggerSuite () {
       entry = getLogEntries(tick, 2300)[0];
 
       assertEqual(2300, entry.type);
-      assertEqual(c._id, entry.cid);
-      assertEqual(c.name(), entry.cname);
+      assertEqual(c.guid, entry.cuid);
       assertEqual("abc", entry.data._key);
       assertEqual(3, entry.data.test);
 
@@ -997,7 +998,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerReplaceDocument : function () {
-      var c = db._create(cn);
+      var c = withGuid(db._create(cn));
       var tick = getLastLogTick();
       c.save({ "test": 2, "_key": "abc" });
       c.save({ "test": 1, "_key": "12345" });
@@ -1005,14 +1006,12 @@ function ReplicationLoggerSuite () {
       c.replace("abc", { "test" : 2 });
       var entry = getLogEntries(tick, 2300);
       assertEqual(2300, entry[0].type);
-      assertEqual(c._id, entry[0].cid);
-      assertEqual(c.name(), entry[0].cname);
+      assertEqual(c.guid, entry[0].cuid);
       assertEqual("abc", entry[0].data._key);
       assertEqual(2, entry[0].data.test);
 
       assertEqual(2300, entry[1].type);
-      assertEqual(c._id, entry[1].cid);
-      assertEqual(c.name(), entry[1].cname);
+      assertEqual(c.guid, entry[1].cuid);
       assertEqual("12345", entry[1].data._key);
       assertEqual(1, entry[1].data.test);
 
@@ -1044,7 +1043,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerSaveEdge : function () {
       var c = db._create(cn);
-      var e = db._createEdgeCollection(cn2);
+      var e = withGuid(db._createEdgeCollection(cn2));
 
       var tick = getLastLogTick();
 
@@ -1052,8 +1051,7 @@ function ReplicationLoggerSuite () {
 
       var entry = getLogEntries(tick, 2300)[0];
       assertEqual(2300, entry.type);
-      assertEqual(e._id, entry.cid);
-      assertEqual(e.name(), entry.cname);
+      assertEqual(e.guid, entry.cuid);
       assertEqual("abc", entry.data._key);
       assertEqual(c.name() + "/test1", entry.data._from);
       assertEqual(c.name() + "/test2", entry.data._to);
@@ -1064,8 +1062,7 @@ function ReplicationLoggerSuite () {
       entry = getLogEntries(tick, 2300)[0];
 
       assertEqual(2300, entry.type);
-      assertEqual(e._id, entry.cid);
-      assertEqual(e.name(), entry.cname);
+      assertEqual(e.guid, entry.cuid);
       assertEqual("12345", entry.data._key);
       assertEqual(c.name() + "/test3", entry.data._from);
       assertEqual(c.name() + "/test4", entry.data._to);
@@ -1090,7 +1087,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerDeleteEdge : function () {
       db._create(cn);
-      var e = db._createEdgeCollection(cn2);
+      var e = withGuid(db._createEdgeCollection(cn2));
 
       e.save(cn + "/test1", cn + "/test2", { "test": 1, "_key": "abc" });
       e.save(cn + "/test3", cn + "/test4", { "test": 1, "_key": "12345" });
@@ -1101,8 +1098,7 @@ function ReplicationLoggerSuite () {
 
       var entry = getLogEntries(tick, 2302)[0];
       assertEqual(2302, entry.type);
-      assertEqual(e._id, entry.cid);
-      assertEqual(e.name(), entry.cname);
+      assertEqual(e.guid, entry.cuid);
       assertEqual("abc", entry.data._key);
 
       e.remove("12345");
@@ -1126,7 +1122,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerUpdateEdge : function () {
       var c = db._create(cn);
-      var e = db._createEdgeCollection(cn2);
+      var e = withGuid(db._createEdgeCollection(cn2));
       var tick = getLastLogTick();
       e.save(cn + "/test1", cn + "/test2", { "test": 2, "_key": "abc" });
       e.save(cn + "/test3", cn + "/test4", { "test": 1, "_key": "12345" });
@@ -1134,16 +1130,14 @@ function ReplicationLoggerSuite () {
       e.update("abc", { "test" : 2 });
       var entry = getLogEntries(tick, 2300);
       assertEqual(2300, entry[0].type);
-      assertEqual(e._id, entry[0].cid);
-      assertEqual(e.name(), entry[0].cname);
+      assertEqual(e.guid, entry[0].cuid);
       assertEqual("abc", entry[0].data._key);
       assertEqual(2, entry[0].data.test);
       assertEqual(c.name() + "/test1", entry[0].data._from);
       assertEqual(c.name() + "/test2", entry[0].data._to);
 
       assertEqual(2300, entry[1].type);
-      assertEqual(e._id, entry[1].cid);
-      assertEqual(e.name(), entry[1].cname);
+      assertEqual(e.guid, entry[1].cuid);
       assertEqual("12345", entry[1].data._key);
       assertEqual(1, entry[1].data.test);
       assertEqual(c.name() + "/test3", entry[1].data._from);
@@ -1177,7 +1171,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerReplaceEdge : function () {
       var c = db._create(cn);
-      var e = db._createEdgeCollection(cn2);
+      var e = withGuid(db._createEdgeCollection(cn2));
       var tick = getLastLogTick();
 
       e.save(cn + "/test1", cn + "/test2", { "test": 2, "_key": "abc" });
@@ -1186,16 +1180,14 @@ function ReplicationLoggerSuite () {
       e.replace("abc", { _from: c.name() + "/test1", _to: c.name() + "/test2", "test" : 2 });
       var entry = getLogEntries(tick, 2300);
       assertEqual(2300, entry[0].type);
-      assertEqual(e._id, entry[0].cid);
-      assertEqual(e.name(), entry[0].cname);
+      assertEqual(e.guid, entry[0].cuid);
       assertEqual("abc", entry[0].data._key);
       assertEqual(2, entry[0].data.test);
       assertEqual(c.name() + "/test1", entry[0].data._from);
       assertEqual(c.name() + "/test2", entry[0].data._to);
 
       assertEqual(2300, entry[1].type);
-      assertEqual(e._id, entry[1].cid);
-      assertEqual(e.name(), entry[1].cname);
+      assertEqual(e.guid, entry[1].cuid);
       assertEqual("12345", entry[1].data._key);
       assertEqual(1, entry[1].data.test);
       assertEqual(c.name() + "/test3", entry[1].data._from);
@@ -1397,7 +1389,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerTransactionWrite2 : function () {
-      var c = db._create(cn);
+      var c = withGuid(db._create(cn));
       var tick = getLastLogTick();
 
       if (SYS_IS_V8_BUILD) {
@@ -1432,9 +1424,8 @@ function ReplicationLoggerSuite () {
       assertEqual(entry[0].tid, entry[1].tid);
       assertEqual(entry[1].tid, entry[2].tid);
 
-      assertEqual(c._id, entry[1].cid);
+      assertEqual(c.guid, entry[1].cuid);
       assertEqual("abc", entry[1].data._key);
-      assertEqual(c._id, entry[1].cid);
       assertEqual(2, entry[1].data.test);
     },
 
@@ -1537,8 +1528,8 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerTransactionWrite6 : function () {
-      var c1 = db._create(cn);
-      var c2 = db._create(cn2);
+      var c1 = withGuid(db._create(cn));
+      var c2 = withGuid(db._create(cn2));
 
       var tick = getLastLogTick();
 
@@ -1580,8 +1571,8 @@ function ReplicationLoggerSuite () {
       assertEqual(entry[0].tid, entry[1].tid);
       assertEqual(entry[1].tid, entry[2].tid);
       assertEqual(entry[2].tid, entry[3].tid);
-      assertEqual(c1._id, entry[1].cid);
-      assertEqual(c2._id, entry[2].cid);
+      assertEqual(c1.guid, entry[1].cuid);
+      assertEqual(c2.guid, entry[2].cuid);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1589,7 +1580,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerTransactionUpdate : function () {
-      var c1 = db._create(cn);
+      var c1 = withGuid(db._create(cn));
 
       c1.insert({ _key: "foo", value: 1 });
 
@@ -1631,11 +1622,11 @@ function ReplicationLoggerSuite () {
       assertEqual(entry[1].tid, entry[2].tid);
       assertEqual(entry[2].tid, entry[3].tid);
 
-      assertEqual("UnitTestsReplication", entry[1].cname);
+      assertEqual(c1.guid, entry[1].cuid);
       assertEqual("foo", entry[1].data._key);
       assertEqual(2, entry[1].data.value);
 
-      assertEqual("UnitTestsReplication", entry[2].cname);
+      assertEqual(c1.guid, entry[2].cuid);
       assertEqual("foo2", entry[2].data._key);
       assertEqual(3, entry[2].data.value);
     },
@@ -1645,7 +1636,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerTransactionReplace : function () {
-      var c1 = db._create(cn);
+      var c1 = withGuid(db._create(cn));
 
       c1.insert({ _key: "foo", value: 1 });
 
@@ -1687,12 +1678,12 @@ function ReplicationLoggerSuite () {
       assertEqual(entry[1].tid, entry[2].tid);
       assertEqual(entry[2].tid, entry[3].tid);
 
-      assertEqual("UnitTestsReplication", entry[1].cname);
+      assertEqual(c1.guid, entry[1].cuid);
       assertEqual("foo", entry[1].data._key);
       assertEqual(2, entry[1].data.value2);
       assertFalse(entry[1].data.hasOwnProperty("value"));
 
-      assertEqual("UnitTestsReplication", entry[2].cname);
+      assertEqual(c1.guid, entry[2].cuid);
       assertEqual("foo2", entry[2].data._key);
       assertEqual(3, entry[2].data.value2);
       assertFalse(entry[2].data.hasOwnProperty("value"));
@@ -1703,7 +1694,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerTransactionRemove : function () {
-      var c1 = db._create(cn);
+      var c1 = withGuid(db._create(cn));
 
       c1.insert({ _key: "foo", value: 1 });
 
@@ -1745,12 +1736,12 @@ function ReplicationLoggerSuite () {
       assertEqual(entry[1].tid, entry[2].tid);
       assertEqual(entry[2].tid, entry[3].tid);
 
-      assertEqual("UnitTestsReplication", entry[1].cname);
+      assertEqual(c1.guid, entry[1].cuid);
       assertEqual("foo", entry[1].data._key);
       assertEqual(2, entry[1].data.value2);
       assertFalse(entry[1].data.hasOwnProperty("value"));
 
-      assertEqual("UnitTestsReplication", entry[2].cname);
+      assertEqual(c1.guid, entry[2].cuid);
       assertEqual("foo", entry[2].data._key);
     },
 
@@ -1759,7 +1750,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerTransactionMultiRemove : function () {
-      var c1 = db._create(cn), i;
+      var c1 = withGuid(db._create(cn)), i;
 
       let docs = [];
       for (i = 0; i < 100; ++i) {
@@ -1803,7 +1794,7 @@ function ReplicationLoggerSuite () {
       for (i = 1; i < 101; ++i) {
         assertEqual(2302, entry[i].type);
         assertEqual(entry[0].tid, entry[i].tid);
-        assertEqual("UnitTestsReplication", entry[i].cname);
+        assertEqual(c1.guid, entry[i].cuid);
         assertEqual("test" + (i - 1), entry[i].data._key);
       }
     },
@@ -1813,8 +1804,8 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerTransactionMultiCollectionUpdate : function () {
-      var c1 = db._create(cn);
-      var c2 = db._create(cn2);
+      var c1 = withGuid(db._create(cn));
+      var c2 = withGuid(db._create(cn2));
 
       c1.insert({ _key: "foo", value: 1 });
       c2.insert({ _key: "bar", value: "A" });
@@ -1870,19 +1861,19 @@ function ReplicationLoggerSuite () {
       assertEqual(entry[3].tid, entry[4].tid);
       assertEqual(entry[4].tid, entry[5].tid);
 
-      assertEqual("UnitTestsReplication", entry[1].cname);
+      assertEqual(c1.guid, entry[1].cuid);
       assertEqual("foo", entry[1].data._key);
       assertEqual(2, entry[1].data.value);
 
-      assertEqual("UnitTestsReplication", entry[2].cname);
+      assertEqual(c1.guid, entry[2].cuid);
       assertEqual("foo2", entry[2].data._key);
       assertEqual(3, entry[2].data.value);
 
-      assertEqual("UnitTestsReplication2", entry[3].cname);
+      assertEqual(c2.guid, entry[3].cuid);
       assertEqual("bar", entry[3].data._key);
       assertEqual("B", entry[3].data.value);
 
-      assertEqual("UnitTestsReplication2", entry[4].cname);
+      assertEqual(c2.guid, entry[4].cuid);
       assertEqual("bar2", entry[4].data._key);
       assertEqual("C", entry[4].data.value);
     },
@@ -1892,8 +1883,8 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerTransactionMultiCollectionRemove : function () {
-      var c1 = db._create(cn);
-      var c2 = db._create(cn2);
+      var c1 = withGuid(db._create(cn));
+      var c2 = withGuid(db._create(cn2));
 
       c1.insert({ _key: "foo", value: 1 });
       c2.insert({ _key: "bar", value: "A" });
@@ -1949,18 +1940,18 @@ function ReplicationLoggerSuite () {
       assertEqual(entry[3].tid, entry[4].tid);
       assertEqual(entry[4].tid, entry[5].tid);
 
-      assertEqual("UnitTestsReplication", entry[1].cname);
+      assertEqual(c1.guid, entry[1].cuid);
       assertEqual("foo", entry[1].data._key);
       assertEqual(2, entry[1].data.value);
 
-      assertEqual("UnitTestsReplication", entry[2].cname);
+      assertEqual(c1.guid, entry[2].cuid);
       assertEqual("foo", entry[2].data._key);
 
-      assertEqual("UnitTestsReplication2", entry[3].cname);
+      assertEqual(c2.guid, entry[3].cuid);
       assertEqual("bar", entry[3].data._key);
       assertEqual("B", entry[3].data.value);
 
-      assertEqual("UnitTestsReplication2", entry[4].cname);
+      assertEqual(c2.guid, entry[4].cuid);
       assertEqual("bar", entry[4].data._key);
     },
 
@@ -1969,8 +1960,8 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerTransactionMultiCollectionReplace : function () {
-      var c1 = db._create(cn);
-      var c2 = db._create(cn2);
+      var c1 = withGuid(db._create(cn));
+      var c2 = withGuid(db._create(cn2));
 
       c1.insert({ _key: "foo", value: 1 });
       c2.insert({ _key: "bar", value: "A" });
@@ -2026,22 +2017,22 @@ function ReplicationLoggerSuite () {
       assertEqual(entry[3].tid, entry[4].tid);
       assertEqual(entry[4].tid, entry[5].tid);
 
-      assertEqual("UnitTestsReplication", entry[1].cname);
+      assertEqual(c1.guid, entry[1].cuid);
       assertEqual("foo", entry[1].data._key);
       assertEqual(1, entry[1].data.value);
       assertEqual(2, entry[1].data.value2);
 
-      assertEqual("UnitTestsReplication", entry[2].cname);
+      assertEqual(c1.guid, entry[2].cuid);
       assertEqual("foo2", entry[2].data._key);
       assertEqual(3, entry[2].data.value2);
       assertFalse(entry[2].data.hasOwnProperty("value"));
 
-      assertEqual("UnitTestsReplication2", entry[3].cname);
+      assertEqual(c2.guid, entry[3].cuid);
       assertEqual("bar", entry[3].data._key);
       assertEqual("A", entry[3].data.value);
       assertEqual("B", entry[3].data.value2);
 
-      assertEqual("UnitTestsReplication2", entry[4].cname);
+      assertEqual(c2.guid, entry[4].cuid);
       assertEqual("bar2", entry[4].data._key);
       assertEqual("C", entry[4].data.value2);
       assertFalse(entry[4].data.hasOwnProperty("value"));
@@ -2052,7 +2043,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerTransactionExcluded : function () {
-      var c = db._create(cn);
+      var c = withGuid(db._create(cn));
 
       var tick = getLastLogTick();
 
@@ -2084,7 +2075,7 @@ function ReplicationLoggerSuite () {
         assertEqual(res.status, "committed", res);
       }
 
-      var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300, 2302 ]);
+      var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300, 2302 ], true);
       assertEqual(5, entry.length);
 
       assertEqual(2200, entry[0].type);
@@ -2095,7 +2086,7 @@ function ReplicationLoggerSuite () {
 
       assertEqual(entry[0].tid, entry[1].tid);
       assertEqual(entry[1].tid, entry[2].tid);
-      assertEqual(c._id, entry[1].cid);
+      assertEqual(c.guid, entry[1].cuid);
     }
 
   };
