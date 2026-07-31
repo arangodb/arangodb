@@ -1,29 +1,17 @@
-# Required status checks that must pass before a pull request can be merged
-# into devel, one context per line. This file is the committed expectation;
-# the security-governance job in base_config.yml compares it against the live
-# GitHub branch-protection/ruleset configuration and against the checks a real
-# recent pipeline actually emitted, and reports any drift.
+# Required status checks for merging into devel, one context per line. The
+# security-governance job compares this committed expectation against the
+# live GitHub branch-protection/ruleset configuration and against the
+# workflows a real pipeline emitted: a required context nothing emits blocks
+# every merge, one that silently matches a different workflow protects
+# nothing, and neither is visible unless something compares the two.
 #
-# Why a committed list exists: a workflow rename, a workflow split or a change
-# in the number of workflows changes the check names GitHub sees. A required
-# context that no job emits blocks every merge forever; a required context that
-# silently starts matching a different workflow protects nothing. Neither shows
-# up anywhere unless something compares the two.
+# Read off the live configuration and confirmed against a real PR pipeline;
+# do not hand-derive. GitHub sees ONE check per CircleCI workflow (not per
+# job), so these are workflow names.
 #
-# The strings below were read off the live configuration
-# (repos/arangodb/arangodb/branches/devel/protection -> required_status_checks)
-# and confirmed against the check runs of a real pull-request pipeline. Do not
-# hand-derive them. CircleCI reports ONE check per workflow here (not per job),
-# so these are workflow names; some pipelines additionally emit a
-# "<workflow> - <short-sha>" variant, which is the same workflow and is not
-# separately requirable.
-#
-# NOTE on the security gates: the Trivy scan/gate jobs live in the
-# nightly-packages pipeline (base_nightly_packages.yml), not in the pull-request
-# testing pipeline, so they cannot be GitHub required checks on devel. They gate
-# the publish instead, through publish-nightly's requires: edges. Adding a
-# merge-blocking security context is a separate change: it needs the gates
-# wired into the testing pipeline first.
+# The Trivy gates live in the nightly-packages pipeline, so they cannot be
+# required checks on devel; they gate the publish through publish-nightly's
+# requires: edges instead.
 
 aarch64-pr
 x64-pr
