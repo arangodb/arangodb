@@ -282,13 +282,6 @@ bool AuthMode::isUnauthenticated() const noexcept {
   return std::holds_alternative<Unauthenticated>(authMode);
 }
 
-uint32_t AuthMode::requestedApiVersion() const noexcept {
-  if (auto req = getIAuth().request(); req.has_value()) {
-    return req->get().requestedApiVersion();
-  }
-  return api_version::defaultApiVersion;
-}
-
 auto AuthMode::Superuser::username() const noexcept -> std::string_view {
   return "";
 }
