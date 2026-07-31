@@ -5,6 +5,8 @@
   was in its ingestion phase omitted the index, causing a restore to silently
   drop it. Vector indexes are now always included in dumps.
 
+* Fix authorization for /_admin/aardvark routes.
+
 * Updated ArangoDB Starter to v0.19.25.
 
 * COR-726/COR-787/COR-792: Removed the deprecated replication applier's REST API,
