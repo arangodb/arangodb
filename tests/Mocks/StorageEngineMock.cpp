@@ -403,13 +403,6 @@ TRI_voc_tick_t StorageEngineMock::recoveryTick() {
   return recoveryTickResult;
 }
 
-arangodb::Result StorageEngineMock::lastLogger(
-    TRI_vocbase_t& vocbase, uint64_t tickStart, uint64_t tickEnd,
-    arangodb::velocypack::Builder& builderSPtr) {
-  TRI_ASSERT(false);
-  return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
 std::unique_ptr<TRI_vocbase_t> StorageEngineMock::openDatabase(
     arangodb::CreateDatabaseInfo&& info, bool isUpgrade) {
   before();

@@ -25,15 +25,8 @@
 #endif
 
 #include "v8-replication.h"
-#include "Cluster/ClusterFeature.h"
-#include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "Transaction/OperationOrigin.h"
-#include "Transaction/V8Context.h"
-#include "Utils/DatabaseGuard.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
@@ -41,7 +34,6 @@
 #include "V8Server/v8-vocbaseprivate.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 
 using namespace arangodb;
@@ -77,50 +69,6 @@ static void JS_StateLoggerReplication(
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the last WAL entries
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_LastLoggerReplication(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  auto& vocbase = GetContextVocBase(isolate);
-
-  if (args.Length() != 2) {
-    TRI_V8_THROW_EXCEPTION_USAGE(
-        "REPLICATION_LOGGER_LAST(<fromTick>, <toTick>)");
-  }
-
-  TRI_voc_tick_t tickStart = TRI_ObjectToUInt64(isolate, args[0], true);
-  TRI_voc_tick_t tickEnd = TRI_ObjectToUInt64(isolate, args[1], true);
-  if (tickEnd <= tickStart) {
-    TRI_V8_THROW_EXCEPTION_USAGE("tickStart < tickEnd");
-  }
-
-  auto origin =
-      transaction::OperationOriginREST{"returning last documents from WAL"};
-  auto transactionContext =
-      transaction::V8Context::create(vocbase, origin, true);
-  VPackBuilder builder(transactionContext->getVPackOptions());
-  TRI_GET_GLOBALS();
-  StorageEngine& engine = v8g->server().getFeature<DatabaseFeature>().engine();
-  Result res = engine.lastLogger(vocbase, tickStart, tickEnd, builder);
-  v8::Handle<v8::Value> result;
-
-  if (res.fail()) {
-    result = v8::Null(isolate);
-    TRI_V8_THROW_EXCEPTION(res);
-  }
-
-  result = TRI_VPackToV8(isolate, builder.slice(),
-                         transactionContext->getVPackOptions());
-
-  TRI_V8_RETURN(result);
-  TRI_V8_TRY_CATCH_END
-}
-
 void TRI_InitV8Replication(v8::Isolate* isolate,
                            v8::Handle<v8::Context> context,
                            TRI_vocbase_t* vocbase, size_t threadNumber,
@@ -131,7 +79,4 @@ void TRI_InitV8Replication(v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "REPLICATION_LOGGER_STATE"),
       JS_StateLoggerReplication, true);
-  TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "REPLICATION_LOGGER_LAST"),
-      JS_LastLoggerReplication, true);
 }
