@@ -96,7 +96,7 @@ void MaintenanceOptionsProvider::declareOptionsImpl(
           arangodb::options::Flags::Uncommon));
 }
 
-void MaintenanceOptionsProvider::validateOptionsImpl(
+void MaintenanceOptionsProvider::processOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, MaintenanceOptions& options) {
   // There must always be at least 3 maintenance threads.
   // The first one only does actions which are labelled "fast track".
@@ -137,5 +137,9 @@ void MaintenanceOptionsProvider::validateOptionsImpl(
         << options.maintenanceThreadsSlowMax;
   }
 }
+
+void MaintenanceOptionsProvider::validateOptionsImpl(
+    std::shared_ptr<ProgramOptions> /*opts*/,
+    MaintenanceOptions const& /*options*/) {}
 
 }  // namespace arangodb

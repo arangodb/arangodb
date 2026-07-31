@@ -116,7 +116,6 @@ AgencyFeature::~AgencyFeature() = default;
 void AgencyFeature::prepare() {
   TRI_ASSERT(isEnabled());
 
-  // Available now that ClusterFeature is constructed with validated options.
   // Find the agency prefix:
   auto& feature = server().getFeature<ClusterFeature>();
   if (!feature.agencyPrefix().empty()) {

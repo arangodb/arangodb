@@ -93,7 +93,7 @@ void ReplicationOptionsProvider::declareOptionsImpl(
       true);
 }
 
-void ReplicationOptionsProvider::validateOptionsImpl(
+void ReplicationOptionsProvider::processOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, ReplicationOptions& options) {
   if (options.connectTimeout < 1.0) {
     options.connectTimeout = 1.0;
@@ -109,5 +109,9 @@ void ReplicationOptionsProvider::validateOptionsImpl(
     options.forceRequestTimeout = true;
   }
 }
+
+void ReplicationOptionsProvider::validateOptionsImpl(
+    std::shared_ptr<ProgramOptions> /*opts*/,
+    ReplicationOptions const& /*options*/) {}
 
 }  // namespace arangodb

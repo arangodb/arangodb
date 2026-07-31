@@ -81,23 +81,6 @@ ClusterFeature::ClusterFeature(ApplicationServer& server,
   setOptional(true);
   startsAfter<application_features::CommunicationFeaturePhase>();
   startsAfter<application_features::DatabaseFeaturePhase>();
-
-  if (!_options.enableCluster) {
-    ServerState::instance()->findHost("localhost");
-    return;
-  }
-
-  std::string fallback = _options.myEndpoint;
-  auto pos = fallback.find("://");
-  if (pos != std::string::npos) {
-    fallback = fallback.substr(pos + 3);
-  }
-  pos = fallback.rfind(':');
-  if (pos != std::string::npos) {
-    fallback.resize(pos);
-  }
-  auto ss = ServerState::instance();
-  ss->findHost(fallback);
 }
 
 ClusterFeature::~ClusterFeature() { shutdown(); }

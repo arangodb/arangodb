@@ -162,7 +162,7 @@ const useSetupKeyboardShortcuts = (
         mac: "Shift-Alt-Down"
       },
       exec: function () {
-        var newSize = `${
+        let newSize = `${
           parseInt(aceEditor.getFontSize().match(/\d+/)[0], 10) - 1
         }`;
         newSize = `${newSize}pt`;

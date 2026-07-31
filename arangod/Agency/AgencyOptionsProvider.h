@@ -32,8 +32,11 @@ struct AgencyOptionsProvider
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           AgencyOptions& options);
 
+  void processOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          AgencyOptions& options);
+
   void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                           AgencyOptions& options);
+                           AgencyOptions const& options);
 };
 
 }  // namespace arangodb

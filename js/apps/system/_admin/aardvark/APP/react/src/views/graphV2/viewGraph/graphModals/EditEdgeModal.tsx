@@ -45,7 +45,7 @@ const useUpdateEdgeAction = ({
         `The edge ${edgeId} was successfully updated`
       );
       onSuccess();
-    } catch (error) {
+    } catch {
       window.arangoHelper.arangoError("Graph", "Could not update this edge.");
       onFailure();
     }

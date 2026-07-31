@@ -79,10 +79,14 @@ This is less intrusive than setting the `--server.statistics` option to
       .setIntroducedIn(30800);
 }
 
-void StatisticsOptionsProvider::validateOptionsImpl(
+void StatisticsOptionsProvider::processOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, StatisticsFeatureOptions& options) {
   options.statisticsHistoryTouched =
       opts->processingResult().touched("server.statistics-history");
 }
+
+void StatisticsOptionsProvider::validateOptionsImpl(
+    std::shared_ptr<ProgramOptions> /*opts*/,
+    StatisticsFeatureOptions const& /*options*/) {}
 
 }  // namespace arangodb::statistics

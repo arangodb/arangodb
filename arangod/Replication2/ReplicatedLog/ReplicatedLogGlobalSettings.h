@@ -40,10 +40,10 @@ struct ReplicatedLogGlobalSettings {
                                                                         1024};
   static inline constexpr std::size_t defaultThresholdLogCompaction{1000};
 
-  std::size_t _thresholdNetworkBatchSize{defaultThresholdNetworkBatchSize};
-  std::size_t _thresholdRocksDBWriteBatchSize{
+  std::size_t thresholdNetworkBatchSize{defaultThresholdNetworkBatchSize};
+  std::size_t thresholdRocksDBWriteBatchSize{
       defaultThresholdRocksDBWriteBatchSize};
-  std::size_t _thresholdLogCompaction{defaultThresholdLogCompaction};
+  std::size_t thresholdLogCompaction{defaultThresholdLogCompaction};
 };
 
 }  // namespace arangodb::replication2

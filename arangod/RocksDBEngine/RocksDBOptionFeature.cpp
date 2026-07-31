@@ -26,8 +26,6 @@
 #include <memory>
 
 #include "RocksDBOptionFeature.h"
-#include "RocksDBEngine/RocksDBOptionFeatureOptionsProvider.h"
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/application-exit.h"
@@ -104,8 +102,7 @@ rocksdb::CompactionStyle compactionStyleFromString(std::string_view type) {
 
 RocksDBOptionFeature::RocksDBOptionFeature(
     application_features::ApplicationServer& server)
-    : RocksDBOptionFeature(server,
-                           RocksDBOptionFeatureOptionsProvider{}.options()) {}
+    : RocksDBOptionFeature(server, RocksDBOptionFeatureOptions{}) {}
 
 RocksDBOptionFeature::RocksDBOptionFeature(
     application_features::ApplicationServer& server,

@@ -3,7 +3,10 @@
 #include "Actions/ActionOptionsProvider.h"
 #include "Agency/AgencyOptionsProvider.h"
 #include "ApplicationFeatures/CoreOptionProviders.h"
+#include "ApplicationFeatures/ConfigOptionsProvider.h"
 #include "ApplicationFeatures/LanguageOptionsProvider.h"
+#include "ApplicationFeatures/TempOptionsProvider.h"
+#include "GeneralServer/ServerSecurityOptionsProvider.h"
 #include "Aql/OptimizerRulesOptionsProvider.h"
 #include "Aql/QueryInfoLoggerOptionsProvider.h"
 #include "Cluster/ClusterOptionsProvider.h"
@@ -16,16 +19,20 @@
 #include "Network/NetworkOptionsProvider.h"
 #include "Replication/ReplicationOptionsProvider.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogOptionsProvider.h"
+#include "RestServer/ApiRecordingOptionsProvider.h"
 #include "RestServer/BootstrapOptionsProvider.h"
 #include "RestServer/CheckVersionOptionsProvider.h"
 #include "RestServer/CrashHandlerOptionsProvider.h"
+#include "RestServer/DaemonOptionsProvider.h"
 #include "RestServer/DatabasePathOptionsProvider.h"
 #include "RestServer/DumpLimitsOptionsProvider.h"
 #include "RestServer/EndpointOptionsProvider.h"
 #include "RestServer/FlushOptionsProvider.h"
 #include "RestServer/FortuneOptionsProvider.h"
 #include "RestServer/InitDatabaseOptionsProvider.h"
+#include "RestServer/LogApiOptionsProvider.h"
 #include "RestServer/LogBufferOptionsProvider.h"
+#include "RestServer/LogRotateOptionsProvider.h"
 #include "RestServer/MaxMapCountOptionsProvider.h"
 #include "RestServer/NonceOptionsProvider.h"
 #include "RestServer/PrivilegeOptionsProvider.h"
@@ -38,6 +45,8 @@
 #include "RocksDBEngine/RocksDBIndexCacheRefillOptionsProvider.h"
 #include "RocksDBEngine/RocksDBOptionFeatureOptionsProvider.h"
 #include "Statistics/StatisticsOptionsProvider.h"
+#include "SystemMonitor/Activities/OptionsProvider.h"
+#include "SystemMonitor/AsyncRegistry/OptionsProvider.h"
 #include "Transaction/ManagerOptionsProvider.h"
 #include "V8/V8PlatformOptionsProvider.h"
 #include "V8/V8SecurityOptionsProvider.h"
@@ -57,30 +66,38 @@
 #endif
 
 #ifdef TRI_HAVE_GETRLIMIT
+#include "ApplicationFeatures/BumpFileDescriptorsOptionsProvider.h"
 #include "RestServer/FileDescriptorsOptionsProvider.h"
 #endif
 
+#ifdef ARANGODB_HAVE_FORK
+#include "RestServer/DaemonOptionsProvider.h"
+#include "RestServer/SupervisorOptionsProvider.h"
+#endif
+
 namespace arangodb {
-// arangod/RestServer/ArangodOptionProviders.h
+
 using ArangodOptionProviders = CoreOptionProviders<
-    ActionOptionsProvider, AgencyOptionsProvider, AuthenticationOptionsProvider,
-    bootstrap::BootstrapOptionsProvider,
+    ActionOptionsProvider, activities::OptionsProvider, AgencyOptionsProvider,
+    ApiRecordingOptionsProvider, async_registry::OptionsProvider,
+    AuthenticationOptionsProvider, bootstrap::BootstrapOptionsProvider,
     check_version::CheckVersionOptionsProvider, ClusterOptionsProvider,
-    upgrade::ClusterUpgradeOptionsProvider,
+    upgrade::ClusterUpgradeOptionsProvider, ConfigOptionsProvider,
     crash_handler::CrashHandlerOptionsProvider, DatabasePathOptionsProvider,
     DumpLimitsOptionsProvider, EndpointOptionsProvider, FlushOptionsProvider,
     fortune::FortuneOptionsProvider, FoxxOptionsProvider,
     GeneralServerOptionsProvider, InitDatabaseOptionsProvider,
-    LanguageOptionsProvider, LogBufferOptionsProvider,
-    MaintenanceOptionsProvider, MaxMapCountOptionsProvider,
-    NetworkOptionsProvider, NonceOptionsProvider,
+    LanguageOptionsProvider, LogApiOptionsProvider, LogBufferOptionsProvider,
+    LogRotateOptionsProvider, MaintenanceOptionsProvider,
+    MaxMapCountOptionsProvider, NetworkOptionsProvider, NonceOptionsProvider,
     aql::OptimizerRulesOptionsProvider, aql::QueryInfoLoggerOptionsProvider,
     PrivilegeOptionsProvider, QueryRegistryOptionsProvider,
     replication2::ReplicatedLogOptionsProvider, ReplicationOptionsProvider,
     ReplicationTimeoutOptionsProvider, RocksDBEngineOptionsProvider,
     RocksDBIndexCacheRefillOptionsProvider, RocksDBOptionFeatureOptionsProvider,
-    ServerOptionsProvider, SslServerOptionsProvider,
-    statistics::StatisticsOptionsProvider, TemporaryStorageOptionsProvider,
+    ServerOptionsProvider, security::ServerSecurityOptionsProvider,
+    SslServerOptionsProvider, statistics::StatisticsOptionsProvider,
+    TempOptionsProvider, TemporaryStorageOptionsProvider,
     transaction::ManagerOptionsProvider, TtlOptionsProvider,
     UpgradeOptionsProvider, V8PlatformOptionsProvider, V8SecurityOptionsProvider
 #ifdef USE_ENTERPRISE
@@ -95,7 +112,12 @@ using ArangodOptionProviders = CoreOptionProviders<
 #endif
 #ifdef TRI_HAVE_GETRLIMIT
     ,
-    file_descriptors::FileDescriptorsOptionsProvider
+    file_descriptors::FileDescriptorsOptionsProvider,
+    ServerBumpFileDescriptorsOptionsProvider
+#endif
+#ifdef ARANGODB_HAVE_FORK
+    ,
+    DaemonOptionsProvider, SupervisorOptionsProvider
 #endif
     >;
 }  // namespace arangodb

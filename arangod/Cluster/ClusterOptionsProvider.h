@@ -36,7 +36,7 @@ struct ClusterOptionsProvider
                           ClusterOptions& options);
 
   void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                           ClusterOptions& options);
+                           ClusterOptions const& options);
 };
 
 }  // namespace arangodb

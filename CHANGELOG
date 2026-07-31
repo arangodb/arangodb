@@ -1,9 +1,30 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* Fix authorization for /_admin/aardvark routes.
+
+* Updated ArangoDB Starter to v0.19.25.
+
+* COR-726/COR-787/COR-792: Removed the deprecated replication applier's REST API,
+  along with the arangosh client methods that used them.
+  Single-server-to-single-server replication is no longer supported.
+  Removed endpoints:
+  - `GET/PUT /_api/replication/applier-config`
+  - `PUT /_api/replication/applier-start`
+  - `PUT /_api/replication/applier-stop`
+  - `GET/DELETE /_api/replication/applier-state`
+  - `GET /_api/replication/applier-state-all`
+  - `PUT /_api/replication/make-follower`
+  - `PUT /_api/replication/sync`
+  - `GET /_api/replication/logger-follow`
+  - `GET /_api/replication/logger-first-tick`
+  - `GET /_api/replication/logger-last`
+  - `GET /_api/replication/logger-tick-ranges`
+  - `GET /_api/replication/server-id`
+
 * COR-784: Missing Variable in Collect Query
   Fixed an issue where certain invalid COLLECT statements could trigger an internal query planning error instead of reporting a user-facing query validation error.
-  
+
 * BTS-2400: Added the `--vector-index-build-retry-backoff` startup option (seconds) to
   configure the vector index build retry backoff (default: 60). Additionally, a
   DBServer now marks the database dirty when a vector index build reports or
@@ -28,8 +49,6 @@
   values. AQL: Fixed an issue where queries using unary operators (+ and -) with
   bind parameters could cause the server to terminate unexpectedly.
   These queries are now handled correctly and return the expected results.
-
-* Updated ArangoDB Starter to v0.19.24.
 
 * COR-613: Create Response Code Metrics
   arangodb_http_response_http_response_code_total{code="<response-code>"}
