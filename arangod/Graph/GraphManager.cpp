@@ -659,11 +659,21 @@ Result GraphManager::ensureCollections(
   if (createRequests.empty()) {
     // Nothing to do.
     if (leadingCollection.has_value() && graph.requiresInitialUpdate()) {
+      if (config.oneShardDBConfiguration.has_value()) {
+        auto defaultSharding = resolver.getCollection(
+            config.oneShardDBConfiguration.value().defaultDistributeShardsLike);
+        ADB_PROD_ASSERT(defaultSharding != nullptr)
+            << "We have lost the leading collection of a oneShardDatabase";
+        graph.updateInitial({std::move(defaultSharding)}, leadingCollection,
+                            getLeaderName);
+        return {};
+      }
       // We can only end up here if we have an existing collection
       TRI_ASSERT(anyExistingCollection != nullptr);
       TRI_ASSERT(pickedExisting);
       graph.updateInitial({anyExistingCollection}, leadingCollection,
                           getLeaderName);
+      return {};
     }
     return {};
   }
