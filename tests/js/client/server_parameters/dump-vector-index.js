@@ -25,15 +25,14 @@
 
 if (getOptions === true) {
   return {
-    'vector-index': 'true'
+    'vector-index': true
   };
 }
 
 const jsunity = require('jsunity');
-const { assertTrue, assertEqual, assertNotNull } = jsunity.jsUnity.assertions;
+const { assertTrue, assertFalse, assertEqual, assertNotNull } = jsunity.jsUnity.assertions;
 const arangodb = require('@arangodb');
 const fs = require('fs');
-const internal = require('internal');
 const pu = require('@arangodb/testutils/process-utils');
 const db = arangodb.db;
 const arango = arangodb.arango;
@@ -49,6 +48,8 @@ const FP_PAUSE_INGESTION = 'RocksDBVectorIndex::pauseBeforeIngestion';
 function dumpVectorIndexSuite() {
   'use strict';
   const cn = 'UnitTestsVectorIndexDump';
+  const dim = 4;
+  const docCount = 100;
   const arangodump = pu.ARANGODUMP_BIN;
 
   assertTrue(fs.isFile(arangodump), 'arangodump not found!');
@@ -56,17 +57,14 @@ function dumpVectorIndexSuite() {
   const vectorIndexOf = (indexes) =>
     indexes.filter((i) => i.type === 'vector')[0] || null;
 
-  const fillCollection = function (c, n, dim) {
+  const fillCollection = function () {
     let docs = [];
-    for (let i = 0; i < n; ++i) {
+    for (let i = 0; i < docCount; ++i) {
       let v = [];
-      for (let d = 0; d < dim; ++d) {
-        v.push((i + d) / (n + dim));
-      }
+      for (let d = 0; d < dim; ++d) { v.push((i + d) / (docCount + dim)); }
       docs.push({ value: i, vector: v });
-      if (docs.length >= 5000) { c.insert(docs); docs = []; }
     }
-    if (docs.length) { c.insert(docs); }
+    db._collection(cn).insert(docs);
   };
 
   // Dump the collection and return the vector index from its structure file,
@@ -103,46 +101,27 @@ function dumpVectorIndexSuite() {
     }
   };
 
-  const createBackgroundVectorIndex = function (nLists) {
+  const createBackgroundVectorIndex = function (name, nLists) {
     return db._collection(cn).ensureIndex({
-      name: 'vector',
+      name: name,
       type: 'vector',
       fields: ['vector'],
       inBackground: true,
-      params: { metric: 'l2', dimension: 4, nLists: nLists }
+      params: { metric: 'l2', dimension: dim, nLists: nLists }
     });
   };
 
-  const waitForState = function (indexName, states) {
-    assertTrue(
-      waitForVectorIndexState(db._collection(cn), indexName, states, 60),
-      'vector index did not reach state ' + JSON.stringify(states));
-  };
-
   // A dump in any phase must carry the vector index, else dump/restore loses it.
+  // The builder-only fields must not leak into the external (dump) shape.
   const assertVectorIndexInDump = function (phase) {
     let idx = dumpVectorIndex();
-    assertNotNull(idx, 'vector index missing from dump taken in phase: ' + phase);
+    assertNotNull(idx, `vector index missing from dump taken in phase: ${phase}`);
     assertEqual('vector', idx.type);
     assertEqual(['vector'], idx.fields);
-  };
-
-  // Wait until no background build is in flight (index in a terminal state, or
-  // gone) so we never drop the collection mid-build. indexes(false, true)
-  // includes the hidden builder wrapper present during ingestion.
-  const waitBuildSettled = function () {
-    const end = internal.time() + 60;
-    while (internal.time() < end) {
-      let c = db._collection(cn);
-      if (c === null) { return; }
-      let v = vectorIndexOf(c.indexes(false, true));
-      if (v === null ||
-          v.trainingState === VectorIndexTrainingState.kReady ||
-          v.trainingState === VectorIndexTrainingState.kUnusable) {
-        return;
-      }
-      internal.sleep(0.05);
-    }
+    assertFalse(idx.hasOwnProperty('_inprogress'),
+                `_inprogress leaked into dump in phase ${phase}: ${JSON.stringify(idx._inprogress)}`);
+    assertFalse(idx.hasOwnProperty('documentsProcessed'),
+                `documentsProcessed leaked into dump in phase ${phase}: ${JSON.stringify(idx.documentsProcessed)}`);
   };
 
   return {
@@ -158,39 +137,45 @@ function dumpVectorIndexSuite() {
 
     tearDown: function () {
       IM.debugClearFailAt();
-      waitBuildSettled();
       db._drop(cn);
     },
 
     testDumpWhileUnusable: function () {
-      let idx = createBackgroundVectorIndex(5);
-      waitForState(idx.name, VectorIndexTrainingState.kUnusable);
+      const idx = createBackgroundVectorIndex('vecIdxUnusable', 5);
+      assertTrue(waitForVectorIndexState(db._collection(cn), idx.name,
+                                         VectorIndexTrainingState.kUnusable, 60));
       assertVectorIndexInDump('unusable');
     },
 
     testDumpWhileTraining: function () {
-      fillCollection(db._collection(cn), 100, 4);
+      fillCollection();
+      assertEqual(db._collection(cn).count(), docCount);
       IM.debugSetFailAt(FP_PAUSE_TRAINING);
 
-      let idx = createBackgroundVectorIndex(1);
-      waitForState(idx.name, VectorIndexTrainingState.kTraining);
+      const idx = createBackgroundVectorIndex('vecIdxTraining', 1);
+      assertTrue(waitForVectorIndexState(db._collection(cn), idx.name,
+                                         VectorIndexTrainingState.kTraining, 60));
       assertVectorIndexInDump('training');
     },
 
     testDumpWhileIngesting: function () {
-      fillCollection(db._collection(cn), 100, 4);
+      fillCollection();
+      assertEqual(db._collection(cn).count(), docCount);
       IM.debugSetFailAt(FP_PAUSE_INGESTION);
 
-      let idx = createBackgroundVectorIndex(1);
-      waitForState(idx.name, VectorIndexTrainingState.kIngesting);
+      const idx = createBackgroundVectorIndex('vecIdxIngesting', 1);
+      assertTrue(waitForVectorIndexState(db._collection(cn), idx.name,
+                                         VectorIndexTrainingState.kIngesting, 60));
       assertVectorIndexInDump('ingesting');
     },
 
     testDumpWhileReady: function () {
-      fillCollection(db._collection(cn), 100, 4);
+      fillCollection();
+      assertEqual(db._collection(cn).count(), docCount);
 
-      let idx = createBackgroundVectorIndex(1);
-      waitForState(idx.name, VectorIndexTrainingState.kReady);
+      const idx = createBackgroundVectorIndex('vecIdxReady', 1);
+      assertTrue(waitForVectorIndexState(db._collection(cn), idx.name,
+                                         VectorIndexTrainingState.kReady));
       assertVectorIndexInDump('ready');
     }
   };
