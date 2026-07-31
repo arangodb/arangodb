@@ -874,6 +874,12 @@ Result VectorIndexBuilder::build(
     _rcoll->swapIndex(buildIdx, indexPtr);
   });
 
+  if (shouldAbort()) {
+    _index.resetTrainingState();
+    return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
+  }
+
+// This needs to happen after shouldAbort check
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   while (TRI_ShouldFailDebugging("RocksDBVectorIndex::pauseBeforeIngestion")) {
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
@@ -882,14 +888,6 @@ Result VectorIndexBuilder::build(
     }
   }
 #endif
-
-  // The collection may have been dropped while training/paused. Bail out before
-  // taking the write lock: lockWrite() on a dropped collection blocks and would
-  // wedge this (single) build thread, starving all later vector index builds.
-  if (shouldAbort()) {
-    _index.resetTrainingState();
-    return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
-  }
 
   RocksDBBuilderIndex::Locker locker(_rcoll);
   if (!locker.lock().waitAndGet()) {
