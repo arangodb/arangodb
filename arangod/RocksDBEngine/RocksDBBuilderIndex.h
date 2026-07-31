@@ -98,8 +98,10 @@ class RocksDBBuilderIndex final : public RocksDBIndex {
   bool isSorted() const override { return _wrapped->isSorted(); }
 
   /// @brief if true this index should not be shown externally
+  // do not show building indexes, except the vector index since it has multiple
+  // states in which it can exist, and this one is only the ingestion phase
   bool isHidden() const override {
-    return true;  // do not show building indexes
+    return _wrapped->type() != Index::TRI_IDX_TYPE_VECTOR_INDEX;
   }
 
   bool inProgress() const override {
