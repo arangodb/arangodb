@@ -659,7 +659,7 @@ void LogicalCollection::toVelocyPackForInventory(VPackBuilder& result) const {
           case Index::TRI_IDX_TYPE_EDGE_INDEX:
             return false;
           case Index::TRI_IDX_TYPE_VECTOR_INDEX:
-            // we always show vector index
+            // Always include the vector index
             flags = Index::makeFlags(Index::Serialize::Inventory);
             return true;
           default:

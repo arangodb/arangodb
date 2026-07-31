@@ -789,7 +789,8 @@ Result VectorIndexBuilder::build(
     metrics::Histogram<metrics::LogScale<double>>& trainingDuration,
     metrics::Histogram<metrics::LogScale<double>>& ingestionDuration,
     std::stop_token stopToken) {
-  // Keep the database and collection alive for the whole build
+  // Keep the database and collection from being dropped out from under the
+  // build
   auto& vocbase = _index.collection().vocbase();
   DatabaseGuard dbGuard(vocbase);
   CollectionGuard collGuard(&vocbase, _index.collection().id());
