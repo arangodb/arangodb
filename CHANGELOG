@@ -1,6 +1,10 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* BTS-2421: Fixed a bug where a dump taken while a background vector index build
+  was in its ingestion phase omitted the index, causing a restore to silently
+  drop it. Vector indexes now stay visible throughout the build.
+
 * Updated ArangoDB Starter to v0.19.25.
 
 * COR-726/COR-787/COR-792: Removed the deprecated replication applier's REST API,
