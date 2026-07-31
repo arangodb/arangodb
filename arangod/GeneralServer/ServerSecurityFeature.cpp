@@ -43,15 +43,6 @@ ServerSecurityFeature::ServerSecurityFeature(
   startsAfter<application_features::GreetingsFeaturePhase>();
 }
 
-void ServerSecurityFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  options->addOption(
-      "--server.harden",
-      "Lock down REST APIs that reveal version information or server "
-      "internals for non-admin users.",
-      new BooleanParameter(&_options.hardenedRestApi));
-}
-
 bool ServerSecurityFeature::isRestApiHardened() const noexcept {
   return _options.hardenedRestApi;
 }

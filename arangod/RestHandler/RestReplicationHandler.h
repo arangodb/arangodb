@@ -38,7 +38,6 @@ class ClusterInfo;
 class CollectionNameResolver;
 class DatabaseFeature;
 class LogicalCollection;
-class ReplicationApplier;
 class ReplicationFeature;
 class SingleCollectionTransaction;
 
@@ -74,7 +73,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief list of available commands
   //////////////////////////////////////////////////////////////////////////////
   static std::string const LoggerState;
-  static std::string const LoggerLast;
   static std::string const Batch;
   static std::string const Inventory;
   static std::string const Keys;
@@ -83,8 +81,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   static std::string const RestoreIndexes;
   static std::string const RestoreData;
   static std::string const RestoreView;
-  static std::string const Sync;
-  static std::string const ServerId;
   static std::string const ClusterInventory;
   static std::string const AddFollower;
   static std::string const RemoveFollower;
@@ -145,18 +141,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   void handleCommandRestoreView();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief handle a sync command
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandSync();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief handle a server-id command
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandServerId();
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief add a follower of a shard to the list of followers
   //////////////////////////////////////////////////////////////////////////////
 
@@ -203,8 +187,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void handleCommandLoggerState();
-
-  void handleCommandLoggerLast();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief rebuild the revision tree for a given collection, if allowed
@@ -253,11 +235,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   uint64_t determineChunkSize() const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Get correct replication applier, based on global paramerter
-  //////////////////////////////////////////////////////////////////////////////
-  ReplicationApplier* getApplier(bool& global);
 
  protected:
   struct RevisionOperationContext {

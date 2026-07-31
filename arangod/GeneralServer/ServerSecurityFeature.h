@@ -38,8 +38,6 @@ class ServerSecurityFeature final
   explicit ServerSecurityFeature(
       application_features::ApplicationServer& server);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-
   bool isRestApiHardened() const noexcept;
   bool canAccessHardenedApi() const noexcept;
 

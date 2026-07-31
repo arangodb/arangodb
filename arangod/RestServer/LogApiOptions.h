@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -22,17 +22,13 @@
 
 #pragma once
 
-#include "ApplicationFeatures/OptionsProvider.h"
-#include "SystemMonitor/Activities/FeatureOptions.h"
+#include <string>
 
-namespace arangodb::activities {
+namespace arangodb {
 
-struct OptionsProvider
-    : arangodb::OptionsProviderImpl<OptionsProvider, FeatureOptions> {
-  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                          FeatureOptions& options);
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                           FeatureOptions& options){};
+struct LogApiOptions {
+  std::string apiSwitch = "true";
+  bool apiEnabled = true;
 };
 
-}  // namespace arangodb::activities
+}  // namespace arangodb

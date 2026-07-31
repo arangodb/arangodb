@@ -51,15 +51,9 @@
 #include "Metrics/Counter.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
-#include "Replication/DatabaseInitialSyncer.h"
-#include "Replication/DatabaseReplicationApplier.h"
-#include "Replication/GlobalInitialSyncer.h"
-#include "Replication/GlobalReplicationApplier.h"
-#include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/ServerIdFeature.h"
 #include "VectorIndex/VectorIndexFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "Sharding/ShardingInfo.h"
@@ -461,7 +455,6 @@ bool RestReplicationHandler::isCoordinatorError() {
 }
 
 std::string const RestReplicationHandler::LoggerState = "logger-state";
-std::string const RestReplicationHandler::LoggerLast = "logger-last";
 std::string const RestReplicationHandler::Batch = "batch";
 std::string const RestReplicationHandler::Inventory = "inventory";
 std::string const RestReplicationHandler::Keys = "keys";
@@ -476,8 +469,6 @@ std::string const RestReplicationHandler::RestoreCollection =
 std::string const RestReplicationHandler::RestoreIndexes = "restore-indexes";
 std::string const RestReplicationHandler::RestoreData = "restore-data";
 std::string const RestReplicationHandler::RestoreView = "restore-view";
-std::string const RestReplicationHandler::Sync = "sync";
-std::string const RestReplicationHandler::ServerId = "server-id";
 std::string const RestReplicationHandler::ClusterInventory = "clusterInventory";
 std::string const RestReplicationHandler::AddFollower = "addFollower";
 std::string const RestReplicationHandler::RemoveFollower = "removeFollower";
@@ -506,14 +497,6 @@ auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
         goto BAD_CALL;
       }
       handleCommandLoggerState();
-    } else if (command == LoggerLast) {
-      if (type != rest::RequestType::GET) {
-        goto BAD_CALL;
-      }
-      if (isCoordinatorError()) {
-        co_return;
-      }
-      handleCommandLoggerLast();
     } else if (command == Batch) {
       // access batch context in context manager
       // example call: curl -XPOST --dump - --data '{}'
@@ -661,21 +644,6 @@ auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
       }
 
       handleCommandRestoreView();
-    } else if (command == Sync) {
-      if (type != rest::RequestType::PUT) {
-        goto BAD_CALL;
-      }
-
-      if (isCoordinatorError()) {
-        co_return;
-      }
-
-      handleCommandSync();
-    } else if (command == ServerId) {
-      if (type != rest::RequestType::GET) {
-        goto BAD_CALL;
-      }
-      handleCommandServerId();
     } else if (command == ClusterInventory) {
       if (type != rest::RequestType::GET) {
         goto BAD_CALL;
@@ -910,73 +878,6 @@ bool RestReplicationHandler::isDBserverForwardingAllowed() const {
   // authorization stripped; see forwardingTarget().
   return (command == Dump and method == rest::RequestType::GET) or
          command == Batch;
-}
-
-void RestReplicationHandler::handleCommandSync() {
-  bool isGlobal;
-  ReplicationApplier* applier = getApplier(isGlobal);
-  if (applier == nullptr) {
-    return;
-  }
-
-  bool success = false;
-  VPackSlice const body = this->parseVPackBody(success);
-  if (!success) {
-    // error already created
-    return;
-  }
-
-  std::string const endpoint =
-      VelocyPackHelper::getStringValue(body, "endpoint", "");
-  if (endpoint.empty()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "<endpoint> must be a valid endpoint");
-    return;
-  }
-
-  std::string dbname = isGlobal ? "" : _vocbase.name();
-  auto config = ReplicationApplierConfiguration::fromVelocyPack(
-      _vocbase.server(), body, dbname);
-
-  // will throw if invalid
-  config.validate();
-
-  std::shared_ptr<InitialSyncer> syncer;
-
-  if (isGlobal) {
-    syncer = GlobalInitialSyncer::create(config);
-  } else {
-    syncer = DatabaseInitialSyncer::create(_vocbase, config);
-  }
-
-  Result r = syncer->run(config._incremental);
-
-  if (r.fail()) {
-    LOG_TOPIC("c4818", ERR, Logger::REPLICATION)
-        << "failed to sync: " << r.errorMessage();
-    generateError(r);
-    return;
-  }
-
-  // FIXME: change response for databases
-  VPackBuilder result;
-  result.add(VPackValue(VPackValueType::Object));
-  result.add("collections", VPackValue(VPackValueType::Array));
-  for (auto const& it : syncer->getProcessedCollections()) {
-    std::string const cidString = StringUtils::itoa(it.first.id());
-    // Insert a collection
-    result.add(VPackValue(VPackValueType::Object));
-    result.add("id", VPackValue(cidString));
-    result.add("name", VPackValue(it.second));
-    result.close();  // one collection
-  }
-  result.close();  // collections
-
-  auto tickString = std::to_string(syncer->getLastLogTick());
-  result.add("lastLogTick", VPackValue(tickString));
-
-  result.close();  // base
-  generateResult(rest::ResponseCode::OK, result.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2147,15 +2048,6 @@ void RestReplicationHandler::handleCommandRestoreView() {
   generateResult(rest::ResponseCode::OK, result.slice());
 }
 
-void RestReplicationHandler::handleCommandServerId() {
-  VPackBuilder result;
-  result.add(VPackValue(VPackValueType::Object));
-  std::string const serverId = StringUtils::itoa(ServerIdFeature::getId().id());
-  result.add("serverId", VPackValue(serverId));
-  result.close();
-  generateResult(rest::ResponseCode::OK, result.slice());
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a follower of a shard to the list of followers
 ////////////////////////////////////////////////////////////////////////////////
@@ -2800,18 +2692,6 @@ void RestReplicationHandler::handleCommandLoggerState() {
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief return the first tick available in a logfile
-void RestReplicationHandler::handleCommandLoggerLast() {
-  VPackBuilder builder;
-  auto tickStart = _request->parsedValue("tickStart", uint64_t(0));
-  auto tickEnd = _request->parsedValue("tickEnd", uint64_t(0xbadbadbadbadULL));
-
-  Result res =
-      _vocbase.engine().lastLogger(_vocbase, tickStart, tickEnd, builder);
-  generateResult(rest::ResponseCode::OK, builder.slice());
-}
-
 bool RestReplicationHandler::prepareRevisionOperation(
     RevisionOperationContext& ctx) {
   LOG_TOPIC("253e2", TRACE, arangodb::Logger::REPLICATION)
@@ -3260,24 +3140,6 @@ uint64_t RestReplicationHandler::determineChunkSize() const {
   }
 
   return chunkSize;
-}
-
-ReplicationApplier* RestReplicationHandler::getApplier(bool& global) {
-  global = _request->parsedValue("global", false);
-
-  if (global && _request->databaseName() != StaticStrings::SystemDatabase) {
-    generateError(
-        rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
-        "global inventory can only be created from within _system database");
-    return nullptr;
-  }
-
-  if (global) {
-    auto& replicationFeature = _replicationFeature;
-    return replicationFeature.globalReplicationApplier();
-  } else {
-    return _vocbase.replicationApplier();
-  }
 }
 
 namespace {

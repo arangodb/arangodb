@@ -170,14 +170,17 @@ struct ConnectionTimeScale {
 GeneralServerFeature::GeneralServerFeature(
     application_features::ApplicationServer& server,
     metrics::MetricsFeature& metricsFeature)
-    : GeneralServerFeature(server, metricsFeature, GeneralServerOptions{}) {}
+    : GeneralServerFeature(server, metricsFeature, GeneralServerOptions{},
+                           LogApiOptions{}) {}
 
 GeneralServerFeature::GeneralServerFeature(
     application_features::ApplicationServer& server,
-    metrics::MetricsFeature& metrics, GeneralServerOptions options)
+    metrics::MetricsFeature& metrics, GeneralServerOptions options,
+    LogApiOptions logApiOptions)
     : ApplicationFeature{server, *this},
       _currentRequestsSize(metrics.add(arangodb_requests_memory_usage{})),
       _options(std::move(options)),
+      _logApiOptions(std::move(logApiOptions)),
       _requestBodySizeHttp1(metrics.add(arangodb_request_body_size_http1{})),
       _requestBodySizeHttp2(metrics.add(arangodb_request_body_size_http2{})),
       _histTotalTime(
@@ -861,7 +864,9 @@ void GeneralServerFeature::defineRemainingHandlers(
 
   f.addPrefixHandler(
       "/_admin/log",
-      RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData, {1});
+      RestHandlerCreator<arangodb::RestAdminLogHandler>::createData<
+          LogApiOptions const*>,
+      {1}, &_logApiOptions);
 
   f.addHandler(
       "/_admin/supervisionState",

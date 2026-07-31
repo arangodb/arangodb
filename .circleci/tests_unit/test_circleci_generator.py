@@ -869,8 +869,9 @@ class TestCreateTestJob:
     def test_create_test_job_bucket_override(self):
         """Test that bucket override is applied."""
         gen = self.create_generator()
+        gen.BUCKET_OVERRIDES = {"job_override": 5}
         job = TestJob(
-            name="replication_sync",  # Has bucket override to 5
+            name="job_override",
             suites=[SuiteConfig(name="suite1")],
             options=TestOptions(buckets=2),
         )

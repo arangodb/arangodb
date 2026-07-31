@@ -109,6 +109,7 @@ class ProgramOptions {
                  std::string const& more, char const* binaryPath);
 
   std::string progname() const;
+  char const* binaryPath() const noexcept;
 
   // sets a value translator
   void setTranslator(std::function<std::string(std::string const&,

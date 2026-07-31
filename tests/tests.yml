@@ -38,16 +38,6 @@
       type: single
     args:
       extraArgs:log.level: replication=trace
-- replication_sync:
-    options:
-      priority: 8000
-      buckets: 9
-      parallelity: 3
-      size: medium
-      type: single
-    args:
-      extraArgs:log.level: replication=trace
-
 
 - authentication_audit_endpoints_import_export_agency_fuerte:
     options:
