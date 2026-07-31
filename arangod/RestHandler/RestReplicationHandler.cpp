@@ -403,7 +403,6 @@ bool RestReplicationHandler::isCoordinatorError() {
 }
 
 std::string const RestReplicationHandler::LoggerState = "logger-state";
-std::string const RestReplicationHandler::LoggerLast = "logger-last";
 std::string const RestReplicationHandler::Batch = "batch";
 std::string const RestReplicationHandler::Inventory = "inventory";
 std::string const RestReplicationHandler::Keys = "keys";
@@ -446,14 +445,6 @@ auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
         goto BAD_CALL;
       }
       handleCommandLoggerState();
-    } else if (command == LoggerLast) {
-      if (type != rest::RequestType::GET) {
-        goto BAD_CALL;
-      }
-      if (isCoordinatorError()) {
-        co_return;
-      }
-      handleCommandLoggerLast();
     } else if (command == Batch) {
       // access batch context in context manager
       // example call: curl -XPOST --dump - --data '{}'
@@ -2674,16 +2665,6 @@ void RestReplicationHandler::handleCommandLoggerState() {
     return;
   }
 
-  generateResult(rest::ResponseCode::OK, builder.slice());
-}
-
-void RestReplicationHandler::handleCommandLoggerLast() {
-  VPackBuilder builder;
-  auto tickStart = _request->parsedValue("tickStart", uint64_t(0));
-  auto tickEnd = _request->parsedValue("tickEnd", uint64_t(0xbadbadbadbadULL));
-
-  Result res =
-      _vocbase.engine().lastLogger(_vocbase, tickStart, tickEnd, builder);
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
