@@ -195,7 +195,7 @@ Result ExecContext::canCreateDatabase(std::string_view db) const {
     return r;
   }
   if (auto r = checkNotReadOnly(); r.fail()) {
-    return r;
+    return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
   }
   return {};
 }
