@@ -125,6 +125,7 @@ function aqlFunctionApiAuthzSuite () {
       arango.POST_RAW(`/_db/${DB}/_api/aqlfunction`, fnBody);
       assertPermissions([
         "UseDatabase name=d level=read",
+        "IsReadOnly",
         "UseCollection db=d name=_aqlfunctions level=writedata",
         ...singleOnly([
           "UseCollection db=d name=_aqlfunctions level=read"
@@ -140,6 +141,7 @@ function aqlFunctionApiAuthzSuite () {
       arango.DELETE_RAW(`/_db/${DB}/_api/aqlfunction/${fnName}`);
       assertPermissions([
         "UseDatabase name=d level=read",
+        "IsReadOnly",
         "UseCollection db=d name=_aqlfunctions level=writedata",
         ...singleOnly([
           "UseCollection db=d name=_aqlfunctions level=read"
@@ -177,6 +179,7 @@ function aqlFunctionApiAuthzSuite () {
       assertPermissions([
         "UseDatabase name=_system level=read",
         "UseCollection db=_system name=_aqlfunctions level=read",
+        "IsReadOnly",
         "UseCollection db=_system name=_aqlfunctions level=writedata"
       ], endObserve());
     },
@@ -189,6 +192,7 @@ function aqlFunctionApiAuthzSuite () {
       arango.DELETE_RAW(`/_db/_system/_api/aqlfunction/${fnName}`);
       assertPermissions([
         "UseDatabase name=_system level=read",
+        "IsReadOnly",
         "UseCollection db=_system name=_aqlfunctions level=writedata",
         ...singleOnly([
           "UseCollection db=_system name=_aqlfunctions level=read"

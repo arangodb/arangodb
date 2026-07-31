@@ -124,6 +124,7 @@ function indexApiAuthzSuite () {
                                   { type: 'persistent', fields: ['value'] });
       assertPermissions([
         "UseDatabase name=d level=read",
+        "IsReadOnly",
         "UseCollection db=d name=c level=writemeta",
         ...singleOnly([
           "UseCollection db=d name=c level=read",
@@ -154,6 +155,7 @@ function indexApiAuthzSuite () {
       arango.DELETE_RAW(`/_db/${DB}/_api/index/${handle}`);
       assertPermissions([
         "UseDatabase name=d level=read",
+        "IsReadOnly",
         "UseDatabase name=d level=write",
         "UseCollection db=d name=c level=writemeta",
         ...singleOnly([

@@ -128,6 +128,7 @@ function simpleApiAuthzSuite () {
                      { collection: c, keys: ['nonexistent-key-apitester-99999'] });
       assertPermissions([
         "UseDatabase name=d level=read",
+        "IsReadOnly",
         "UseCollection db=d name=c level=writedata",
         ...singleOnly([
           "UseCollection db=d name=c level=read"

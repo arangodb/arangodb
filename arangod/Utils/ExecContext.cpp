@@ -173,6 +173,17 @@ Result ExecContext::can(auth::Permission permission) const {
   return _authMode.getIAuth().check(std::move(permission));
 }
 
+Result ExecContext::checkNotReadOnly() const {
+  // Note that this is logged unconditionally, i.e. also when the gate lets
+  // the operation pass: the trace documents that the question was asked, in
+  // the same way `can()` does.
+  LOG_TOPIC("5f9c2", TRACE, Logger::AUTHORIZATION) << "AUTHZ-CHECK IsReadOnly";
+  if (!isSuperuser() && ServerState::readOnly()) {
+    return {TRI_ERROR_ARANGO_READ_ONLY, "Server is in read-only mode."};
+  }
+  return {};
+}
+
 Result ExecContext::canSeeDatabase(std::string_view db) const {
   using namespace auth::perms;
   return can(SeeDatabase{.name{db}});
@@ -183,12 +194,12 @@ Result ExecContext::canCreateDatabase(std::string_view db) const {
   if (auto r = can(CreateDatabase{.name{db}}); r.fail()) {
     return r;
   }
-  if (!isSuperuser() && ServerState::readOnly()) {
-    if (_authMode.requestedApiVersion() > 0) {
-      return {TRI_ERROR_ARANGO_READ_ONLY, "Server is in read-only mode."};
-    } else {
+  if (auto r = checkNotReadOnly(); r.fail()) {
+    if (_authMode.requestedApiVersion() == 0) {
+      // API version 0 reported this as a plain 403, keep it that way.
       return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
     }
+    return r;
   }
   return {};
 }
@@ -198,8 +209,8 @@ Result ExecContext::canDropDatabase(std::string_view db) const {
   if (auto r = can(DropDatabase{.name{db}}); r.fail()) {
     return r;
   }
-  if (!isSuperuser() && ServerState::readOnly()) {
-    return {TRI_ERROR_ARANGO_READ_ONLY, "Server is in read-only mode."};
+  if (auto r = checkNotReadOnly(); r.fail()) {
+    return r;
   }
   return {};
 }
@@ -210,9 +221,10 @@ Result ExecContext::canUseDatabase(std::string_view db,
   if (auto r = can(UseDatabase{.name{db}, .level = level}); r.fail()) {
     return r;
   }
-  if (!isSuperuser() && ServerState::readOnly() &&
-      level >= DatabaseAccessLevel::Write) {
-    return {TRI_ERROR_ARANGO_READ_ONLY, "Server is in read-only mode."};
+  if (level >= DatabaseAccessLevel::Write) {
+    if (auto r = checkNotReadOnly(); r.fail()) {
+      return r;
+    }
   }
   return {};
 }
@@ -229,8 +241,8 @@ Result ExecContext::canCreateCollection(std::string_view db,
   if (auto r = can(CreateCollection{.db{db}, .name{coll}}); r.fail()) {
     return r;
   }
-  if (!isSuperuser() && ServerState::readOnly()) {
-    return {TRI_ERROR_ARANGO_READ_ONLY, "Server is in read-only mode."};
+  if (auto r = checkNotReadOnly(); r.fail()) {
+    return r;
   }
   return {};
 }
@@ -241,8 +253,8 @@ Result ExecContext::canDropCollection(std::string_view db,
   if (auto r = can(DropCollection{.db{db}, .name{coll}}); r.fail()) {
     return r;
   }
-  if (!isSuperuser() && ServerState::readOnly()) {
-    return {TRI_ERROR_ARANGO_READ_ONLY, "Server is in read-only mode."};
+  if (auto r = checkNotReadOnly(); r.fail()) {
+    return r;
   }
   return {};
 }
@@ -254,9 +266,10 @@ Result ExecContext::canUseCollection(std::string_view db, std::string_view coll,
       r.fail()) {
     return r;
   }
-  if (!isSuperuser() && ServerState::readOnly() &&
-      level >= CollectionAccessLevel::WriteData) {
-    return {TRI_ERROR_ARANGO_READ_ONLY, "Server is in read-only mode."};
+  if (level >= CollectionAccessLevel::WriteData) {
+    if (auto r = checkNotReadOnly(); r.fail()) {
+      return r;
+    }
   }
   return {};
 }
@@ -276,8 +289,8 @@ Result ExecContext::canRestoreCollection(std::string_view db,
       r.fail()) {
     return r;
   }
-  if (!isSuperuser() && ServerState::readOnly()) {
-    return {TRI_ERROR_ARANGO_READ_ONLY, "Server is in read-only mode."};
+  if (auto r = checkNotReadOnly(); r.fail()) {
+    return r;
   }
   return {};
 }
@@ -288,8 +301,8 @@ Result ExecContext::canRestoreCreateIndex(std::string_view db,
   if (auto r = can(RestoreCreateIndex{.db{db}, .collName{coll}}); r.fail()) {
     return r;
   }
-  if (!isSuperuser() && ServerState::readOnly()) {
-    return {TRI_ERROR_ARANGO_READ_ONLY, "Server is in read-only mode."};
+  if (auto r = checkNotReadOnly(); r.fail()) {
+    return r;
   }
   return {};
 }
@@ -305,8 +318,8 @@ Result ExecContext::canRestoreCreateView(
       r.fail()) {
     return r;
   }
-  if (!isSuperuser() && ServerState::readOnly()) {
-    return {TRI_ERROR_ARANGO_READ_ONLY, "Server is in read-only mode."};
+  if (auto r = checkNotReadOnly(); r.fail()) {
+    return r;
   }
   return {};
 }
@@ -317,8 +330,8 @@ Result ExecContext::canRestoreDropView(std::string_view db,
   if (auto r = can(RestoreDropView{.db{db}, .viewName{view}}); r.fail()) {
     return r;
   }
-  if (!isSuperuser() && ServerState::readOnly()) {
-    return {TRI_ERROR_ARANGO_READ_ONLY, "Server is in read-only mode."};
+  if (auto r = checkNotReadOnly(); r.fail()) {
+    return r;
   }
   return {};
 }
@@ -329,8 +342,8 @@ Result ExecContext::canRestoreWriteData(std::string_view db,
   if (auto r = can(RestoreWriteData{.db{db}, .collName{coll}}); r.fail()) {
     return r;
   }
-  if (!isSuperuser() && ServerState::readOnly()) {
-    return {TRI_ERROR_ARANGO_READ_ONLY, "Server is in read-only mode."};
+  if (auto r = checkNotReadOnly(); r.fail()) {
+    return r;
   }
   return {};
 }
@@ -343,8 +356,8 @@ Result ExecContext::canCreateIndex(std::string_view db,
       r.fail()) {
     return r;
   }
-  if (!isSuperuser() && ServerState::readOnly()) {
-    return {TRI_ERROR_ARANGO_READ_ONLY, "Server is in read-only mode."};
+  if (auto r = checkNotReadOnly(); r.fail()) {
+    return r;
   }
   return {};
 }
@@ -357,8 +370,8 @@ Result ExecContext::canDropIndex(std::string_view db,
       r.fail()) {
     return r;
   }
-  if (!isSuperuser() && ServerState::readOnly()) {
-    return {TRI_ERROR_ARANGO_READ_ONLY, "Server is in read-only mode."};
+  if (auto r = checkNotReadOnly(); r.fail()) {
+    return r;
   }
   return {};
 }
@@ -378,8 +391,8 @@ Result ExecContext::canCreateView(
       r.fail()) {
     return r;
   }
-  if (!isSuperuser() && ServerState::readOnly()) {
-    return {TRI_ERROR_ARANGO_READ_ONLY, "Server is in read-only mode."};
+  if (auto r = checkNotReadOnly(); r.fail()) {
+    return r;
   }
   return {};
 }
@@ -393,8 +406,8 @@ Result ExecContext::canModifyView(
       r.fail()) {
     return r;
   }
-  if (!isSuperuser() && ServerState::readOnly()) {
-    return {TRI_ERROR_ARANGO_READ_ONLY, "Server is in read-only mode."};
+  if (auto r = checkNotReadOnly(); r.fail()) {
+    return r;
   }
   return {};
 }
@@ -405,8 +418,8 @@ Result ExecContext::canDropView(std::string_view db,
   if (auto r = can(DropView{.db{db}, .name{view}}); r.fail()) {
     return r;
   }
-  if (!isSuperuser() && ServerState::readOnly()) {
-    return {TRI_ERROR_ARANGO_READ_ONLY, "Server is in read-only mode."};
+  if (auto r = checkNotReadOnly(); r.fail()) {
+    return r;
   }
   return {};
 }
@@ -418,9 +431,10 @@ Result ExecContext::canUseView(std::string_view db, std::string_view viewName,
       r.fail()) {
     return r;
   }
-  if (!isSuperuser() && ServerState::readOnly() &&
-      requested == ViewAccessLevel::Modify) {
-    return {TRI_ERROR_ARANGO_READ_ONLY, "Server is in read-only mode."};
+  if (requested == ViewAccessLevel::Modify) {
+    if (auto r = checkNotReadOnly(); r.fail()) {
+      return r;
+    }
   }
   return {};
 }
@@ -434,8 +448,8 @@ Result ExecContext::canRenameView(std::string_view db,
       r.fail()) {
     return r;
   }
-  if (!isSuperuser() && ServerState::readOnly()) {
-    return {TRI_ERROR_ARANGO_READ_ONLY, "Server is in read-only mode."};
+  if (auto r = checkNotReadOnly(); r.fail()) {
+    return r;
   }
   return {};
 }
@@ -452,8 +466,8 @@ Result ExecContext::canCreateAnalyzer(std::string_view db,
   if (auto r = can(CreateAnalyzer{.db{db}, .name{analyzer}}); r.fail()) {
     return r;
   }
-  if (!isSuperuser() && ServerState::readOnly()) {
-    return {TRI_ERROR_ARANGO_READ_ONLY, "Server is in read-only mode."};
+  if (auto r = checkNotReadOnly(); r.fail()) {
+    return r;
   }
   return {};
 }
@@ -464,8 +478,8 @@ Result ExecContext::canDropAnalyzer(std::string_view db,
   if (auto r = can(DropAnalyzer{.db{db}, .name{analyzer}}); r.fail()) {
     return r;
   }
-  if (!isSuperuser() && ServerState::readOnly()) {
-    return {TRI_ERROR_ARANGO_READ_ONLY, "Server is in read-only mode."};
+  if (auto r = checkNotReadOnly(); r.fail()) {
+    return r;
   }
   return {};
 }
@@ -478,9 +492,10 @@ Result ExecContext::canUseAnalyzer(std::string_view db,
       r.fail()) {
     return r;
   }
-  if (!isSuperuser() && ServerState::readOnly() &&
-      level == AnalyzerAccessLevel::Modify) {
-    return {TRI_ERROR_ARANGO_READ_ONLY, "Server is in read-only mode."};
+  if (level == AnalyzerAccessLevel::Modify) {
+    if (auto r = checkNotReadOnly(); r.fail()) {
+      return r;
+    }
   }
   return {};
 }
@@ -504,8 +519,8 @@ Result ExecContext::canCreateGraph(
       r.fail()) {
     return r;
   }
-  if (!isSuperuser() && ServerState::readOnly()) {
-    return {TRI_ERROR_ARANGO_READ_ONLY, "Server is in read-only mode."};
+  if (auto r = checkNotReadOnly(); r.fail()) {
+    return r;
   }
   return {};
 }
@@ -518,8 +533,8 @@ Result ExecContext::canDropGraph(std::string_view db, std::string_view graph,
       r.fail()) {
     return r;
   }
-  if (!isSuperuser() && ServerState::readOnly()) {
-    return {TRI_ERROR_ARANGO_READ_ONLY, "Server is in read-only mode."};
+  if (auto r = checkNotReadOnly(); r.fail()) {
+    return r;
   }
   return {};
 }
@@ -530,9 +545,10 @@ Result ExecContext::canUseGraph(std::string_view db, std::string_view graph,
   if (auto r = can(UseGraph{.db{db}, .name{graph}, .level = level}); r.fail()) {
     return r;
   }
-  if (!isSuperuser() && ServerState::readOnly() &&
-      level == GraphAccessLevel::Modify) {
-    return {TRI_ERROR_ARANGO_READ_ONLY, "Server is in read-only mode."};
+  if (level == GraphAccessLevel::Modify) {
+    if (auto r = checkNotReadOnly(); r.fail()) {
+      return r;
+    }
   }
   return {};
 }
@@ -556,8 +572,8 @@ Result ExecContext::canCreateUser(std::string_view userName) const {
   if (auto r = can(CreateUser{.name{userName}}); r.fail()) {
     return r;
   }
-  if (!isSuperuser() && ServerState::readOnly()) {
-    return {TRI_ERROR_ARANGO_READ_ONLY, "Server is in read-only mode."};
+  if (auto r = checkNotReadOnly(); r.fail()) {
+    return r;
   }
   return {};
 }
@@ -568,8 +584,8 @@ Result ExecContext::canDropUser(std::string_view userName) const {
   if (auto r = can(DropUser{.name{userName}}); r.fail()) {
     return r;
   }
-  if (!isSuperuser() && ServerState::readOnly()) {
-    return {TRI_ERROR_ARANGO_READ_ONLY, "Server is in read-only mode."};
+  if (auto r = checkNotReadOnly(); r.fail()) {
+    return r;
   }
   return {};
 }
@@ -590,8 +606,8 @@ Result ExecContext::canModifyUserProfile(std::string_view userName) const {
   if (r.fail()) {
     return r;
   }
-  if (!isSuperuser() && ServerState::readOnly()) {
-    return {TRI_ERROR_ARANGO_READ_ONLY, "Server is in read-only mode."};
+  if (r = checkNotReadOnly(); r.fail()) {
+    return r;
   }
   return {};
 }
@@ -603,8 +619,8 @@ Result ExecContext::canGrantUserPermissions(std::string_view userName) const {
   if (auto r = can(GrantUserPermissions{.name{userName}}); r.fail()) {
     return r;
   }
-  if (!isSuperuser() && ServerState::readOnly()) {
-    return {TRI_ERROR_ARANGO_READ_ONLY, "Server is in read-only mode."};
+  if (auto r = checkNotReadOnly(); r.fail()) {
+    return r;
   }
   return {};
 }

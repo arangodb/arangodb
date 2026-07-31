@@ -41,6 +41,9 @@
 // A pure read operation only loads the collection, so it asks read alone.
 // Every request additionally asks `UseDatabase name=d level=read` first
 // (RestHandler::checkUserCanAccess).
+//
+// The writedata question is accompanied by the server-wide read-only gate, which
+// shows up as the pseudo-question `IsReadOnly`; a pure read never triggers it.
 
 if (getOptions === true) {
   return {
@@ -116,6 +119,7 @@ function documentApiAuthzSuite () {
       arango.POST_RAW(`/_db/${DB}/_api/document/${c}`, { _key: key, value: 1 });
       assertPermissions([
         "UseDatabase name=d level=read",
+        "IsReadOnly",
         "UseCollection db=d name=c level=writedata",
         ...singleOnly([
           "UseCollection db=d name=c level=read"
@@ -130,6 +134,7 @@ function documentApiAuthzSuite () {
       arango.PUT_RAW(`/_db/${DB}/_api/document/${c}/${key}`, { value: 2 });
       assertPermissions([
         "UseDatabase name=d level=read",
+        "IsReadOnly",
         "UseCollection db=d name=c level=writedata",
         ...singleOnly([
           "UseCollection db=d name=c level=read"
@@ -144,6 +149,7 @@ function documentApiAuthzSuite () {
       arango.PUT_RAW(`/_db/${DB}/_api/document/${c}`, [{ _key: key, value: 2 }]);
       assertPermissions([
         "UseDatabase name=d level=read",
+        "IsReadOnly",
         "UseCollection db=d name=c level=writedata",
         ...singleOnly([
           "UseCollection db=d name=c level=read"
@@ -158,6 +164,7 @@ function documentApiAuthzSuite () {
       arango.PATCH_RAW(`/_db/${DB}/_api/document/${c}/${key}`, { value: 3 });
       assertPermissions([
         "UseDatabase name=d level=read",
+        "IsReadOnly",
         "UseCollection db=d name=c level=writedata",
         ...singleOnly([
           "UseCollection db=d name=c level=read"
@@ -172,6 +179,7 @@ function documentApiAuthzSuite () {
       arango.PATCH_RAW(`/_db/${DB}/_api/document/${c}`, [{ _key: key, value: 3 }]);
       assertPermissions([
         "UseDatabase name=d level=read",
+        "IsReadOnly",
         "UseCollection db=d name=c level=writedata",
         ...singleOnly([
           "UseCollection db=d name=c level=read"
@@ -186,6 +194,7 @@ function documentApiAuthzSuite () {
       arango.DELETE_RAW(`/_db/${DB}/_api/document/${c}/${key}`);
       assertPermissions([
         "UseDatabase name=d level=read",
+        "IsReadOnly",
         "UseCollection db=d name=c level=writedata",
         ...singleOnly([
           "UseCollection db=d name=c level=read"
@@ -200,6 +209,7 @@ function documentApiAuthzSuite () {
       arango.DELETE_RAW(`/_db/${DB}/_api/document/${c}`, [{ _key: key }]);
       assertPermissions([
         "UseDatabase name=d level=read",
+        "IsReadOnly",
         "UseCollection db=d name=c level=writedata",
         ...singleOnly([
           "UseCollection db=d name=c level=read"

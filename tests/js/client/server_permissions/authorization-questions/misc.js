@@ -339,6 +339,7 @@ function miscApiAuthzSuite () {
       arango.DELETE_RAW(`/_db/${DB}/_api/query-plan-cache`);
       assertPermissions([
         "UseDatabase name=d level=read",
+        "IsReadOnly",
         "UseDatabase name=d level=write"
       ], endObserve());
     },
@@ -517,6 +518,7 @@ function miscApiAuthzSuite () {
         { name: 'apitester-task', command: '1+1;', offset: 0 });
       assertPermissions([
         "UseDatabase name=d level=read",
+        "IsReadOnly",
         "UseDatabase name=d level=write"
       ], endObserve());
       if (res.parsedBody && res.parsedBody.id) {
@@ -532,6 +534,7 @@ function miscApiAuthzSuite () {
       arango.DELETE_RAW(`/_db/${DB}/_api/tasks/${id}`);
       assertPermissions([
         "UseDatabase name=d level=read",
+        "IsReadOnly",
         "UseDatabase name=d level=write"
       ], endObserve());
     },

@@ -79,6 +79,7 @@ function authorizationQuestionsSuite () {
       arango.POST_RAW(`/_api/document/${cn}`, { value: 1 });
       assertPermissions([
         "UseDatabase name=_system level=read",
+        "IsReadOnly",
         "UseCollection db=_system name=UnitTestsAuthzQuestions level=writedata",
         // the single server additionally asks for read access
         ...singleOnly([
@@ -94,6 +95,7 @@ function authorizationQuestionsSuite () {
       arango.DELETE_RAW(`/_api/collection/${cn}`);
       assertPermissions([
         "UseDatabase name=_system level=read",
+        "IsReadOnly",
         "DropCollection db=_system name=UnitTestsAuthzQuestions",
         "UseCollection db=_system name=UnitTestsAuthzQuestions level=read",
         "UseCollection db=_system name=_graphs level=read",

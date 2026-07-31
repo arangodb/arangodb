@@ -203,6 +203,7 @@ function gharialApiAuthzSuite () {
       assertPermissions([
         "UseDatabase name=d level=read",
         "UseCollection db=d name=_graphs level=read",
+        "IsReadOnly",
         "CreateGraph db=d name=g_apitest collectionNamesToCreate=[] collectionNamesToRead=[e_apitest,c]",
         "UseCollection db=d name=e_apitest level=read",
         "UseCollection db=d name=c level=read",
@@ -235,6 +236,7 @@ function gharialApiAuthzSuite () {
         "UseDatabase name=d level=read",
         "UseGraph db=d name=g_apitest level=read",
         "UseCollection db=d name=_graphs level=read",
+        "IsReadOnly",
         "DropGraph db=d name=g_apitest collectionNames=[]",
         "UseCollection db=d name=_graphs level=writedata"
       ], endObserve());
@@ -267,6 +269,7 @@ function gharialApiAuthzSuite () {
         "UseDatabase name=d level=read",
         "UseGraph db=d name=g_apitest level=read",
         "UseCollection db=d name=_graphs level=read",
+        "IsReadOnly",
         "UseGraph db=d name=g_apitest level=modify",
         "UseCollection db=d name=e_apitest level=read",
         "UseCollection db=d name=e2_apitest level=read",
@@ -301,6 +304,7 @@ function gharialApiAuthzSuite () {
         "UseGraph db=d name=g level=read",
         "UseCollection db=d name=_graphs level=read",
         "UseCollection db=d name=c level=read",
+        "IsReadOnly",
         "UseCollection db=d name=e level=writedata",
         ...singleOnly([
           "UseCollection db=d name=e level=read"
@@ -320,6 +324,7 @@ function gharialApiAuthzSuite () {
                      { collection: E_APITEST, from: [c], to: [c] });
       assertPermissions([
         "UseDatabase name=d level=read",
+        "IsReadOnly",
         "UseDatabase name=d level=write",
         "UseGraph db=d name=g_apitest level=read",
         "UseCollection db=d name=_graphs level=read",
@@ -343,6 +348,7 @@ function gharialApiAuthzSuite () {
         "UseDatabase name=d level=read",
         "UseGraph db=d name=g_apitest level=read",
         "UseCollection db=d name=_graphs level=read",
+        "IsReadOnly",
         "UseGraph db=d name=g_apitest level=modify",
         "UseCollection db=d name=_graphs level=writedata"
       ], endObserve());
@@ -360,6 +366,7 @@ function gharialApiAuthzSuite () {
         "UseGraph db=d name=g level=read",
         "UseCollection db=d name=_graphs level=read",
         "UseCollection db=d name=c level=read",
+        "IsReadOnly",
         "UseCollection db=d name=e level=writedata",
         ...singleOnly([
           "UseCollection db=d name=e level=read"
@@ -380,6 +387,7 @@ function gharialApiAuthzSuite () {
         "UseDatabase name=d level=read",
         "UseGraph db=d name=g level=read",
         "UseCollection db=d name=_graphs level=read",
+        "IsReadOnly",
         "UseCollection db=d name=e level=writedata",
         ...singleOnly([
           "UseCollection db=d name=e level=read"
@@ -400,6 +408,7 @@ function gharialApiAuthzSuite () {
         "UseDatabase name=d level=read",
         "UseGraph db=d name=g level=read",
         "UseCollection db=d name=_graphs level=read",
+        "IsReadOnly",
         "UseCollection db=d name=e level=writedata",
         ...singleOnly([
           "UseCollection db=d name=e level=read"
@@ -431,6 +440,7 @@ function gharialApiAuthzSuite () {
         "UseDatabase name=d level=read",
         "UseGraph db=d name=g_apitest level=read",
         "UseCollection db=d name=_graphs level=read",
+        "IsReadOnly",
         "UseGraph db=d name=g_apitest level=modify",
         "UseCollection db=d name=c level=read",
         "UseCollection db=d name=e_apitest level=read",
@@ -461,6 +471,7 @@ function gharialApiAuthzSuite () {
         "UseDatabase name=d level=read",
         "UseGraph db=d name=g level=read",
         "UseCollection db=d name=_graphs level=read",
+        "IsReadOnly",
         "UseCollection db=d name=c level=writedata",
         ...singleOnly([
           "UseCollection db=d name=c level=read"
@@ -478,6 +489,7 @@ function gharialApiAuthzSuite () {
         "UseDatabase name=d level=read",
         "UseGraph db=d name=g_apitest level=read",
         "UseCollection db=d name=_graphs level=read",
+        "IsReadOnly",
         "UseGraph db=d name=g_apitest level=modify",
         "UseCollection db=d name=c_orphan_apitest level=writemeta",
         "UseCollection db=d name=_graphs level=writedata"
@@ -494,6 +506,7 @@ function gharialApiAuthzSuite () {
         "UseDatabase name=d level=read",
         "UseGraph db=d name=g level=read",
         "UseCollection db=d name=_graphs level=read",
+        "IsReadOnly",
         "UseCollection db=d name=c level=writedata",
         ...singleOnly([
           "UseCollection db=d name=c level=read"
@@ -511,6 +524,7 @@ function gharialApiAuthzSuite () {
         "UseDatabase name=d level=read",
         "UseGraph db=d name=g level=read",
         "UseCollection db=d name=_graphs level=read",
+        "IsReadOnly",
         "UseCollection db=d name=c level=writedata",
         ...singleOnly([
           "UseCollection db=d name=c level=read"
@@ -531,6 +545,7 @@ function gharialApiAuthzSuite () {
         "UseDatabase name=d level=read",
         "UseGraph db=d name=g level=read",
         "UseCollection db=d name=_graphs level=read",
+        "IsReadOnly",
         "UseCollection db=d name=c level=writedata",
         "UseCollection db=d name=e level=writedata",
         ...singleOnly([

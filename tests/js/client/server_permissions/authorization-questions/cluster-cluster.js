@@ -28,14 +28,12 @@
 //
 // Handler: arangod/Cluster/RestClusterHandler.cpp
 //
-// IMPORTANT / AUDIT: cluster-only. The /_api/cluster prefix is ONLY registered
-// when cluster mode is enabled. On a single-server deployment the whole prefix is
-// unregistered, so every request returns 404 (routing miss) and NO authorization
-// question fires at all. The assertions below therefore document the questions the
-// handler asks on a COORDINATOR - each test is marked accordingly and is expected
-// to observe nothing on a single server.
+// The /_api/cluster prefix is only registered when cluster mode is enabled, so
+// this file carries the `-cluster` suffix that makes the test harness run it in
+// cluster configurations only (see filterTestcaseByOptions() in
+// js/client/modules/@arangodb/testutils/test-utils.js).
 //
-// On a coordinator, every request except `endpoints` first asks
+// Every request except `endpoints` first asks
 // `UseDatabase name=_system level=read` in RestHandler::checkUserCanAccess()
 // (the routes have no /_db/ prefix, so the database is the connected _system).
 // Per-route ExecContext::can() questions:
@@ -69,9 +67,7 @@ const {
 } = require('@arangodb/testutils/permissions-observer');
 const {
   setUpApiTestData,
-  tearDownApiTestData,
-  singleOnly,
-  clusterOnly
+  tearDownApiTestData
 } = require('@arangodb/testutils/apitest-fixtures');
 
 function clusterApiAuthzSuite () {
@@ -86,7 +82,6 @@ function clusterApiAuthzSuite () {
     },
 
     // GET /_api/cluster/agency-cache - canUseAdminAction(AdminReadAgency)
-    // AUDIT: cluster-only - route not registered on single server (404, no question).
     testAgencyCache: function () {
       beginObserve();
       arango.GET_RAW(`${base}/agency-cache`);
@@ -98,23 +93,16 @@ function clusterApiAuthzSuite () {
 
     // GET /_api/cluster/agency-dump - isCoordinator() then
     // canUseAdminAction(AdminReadAgency)
-    // AUDIT: cluster-only - route not registered on single server (404). On a
-    // non-coordinator the isCoordinator() check returns 501 before the auth check,
-    // so only the base UseDatabase question fires there.
     testAgencyDump: function () {
       beginObserve();
       arango.GET_RAW(`${base}/agency-dump`);
-      // the single server rejects the request before asking
       assertPermissions([
         "UseDatabase name=_system level=read",
-        ...clusterOnly([
-          "AdminReadAgency"
-        ])
+        "AdminReadAgency"
       ], endObserve());
     },
 
     // GET /_api/cluster/cluster-info - canUseAdminAction(AdminClusterInfo)
-    // AUDIT: cluster-only - route not registered on single server (404, no question).
     testClusterInfo: function () {
       beginObserve();
       arango.GET_RAW(`${base}/cluster-info`);
@@ -126,24 +114,17 @@ function clusterApiAuthzSuite () {
 
     // PUT /_api/cluster/cluster-info/flush - canUseAdminAction(AdminClusterInfo),
     // then (prod) isSuperuser() guard (no question)
-    // AUDIT: cluster-only - route not registered on single server (404, no question).
     testClusterInfoFlush: function () {
       beginObserve();
       arango.PUT_RAW(`${base}/cluster-info/flush`, {});
-      // on a single server flushing also reloads the statistics collections
       assertPermissions([
         "UseDatabase name=_system level=read",
-        "AdminClusterInfo",
-        ...singleOnly([
-          "UseCollection db=_system name=_statistics level=read",
-          "UseCollection db=_system name=_statisticsRaw level=read"
-        ])
+        "AdminClusterInfo"
       ], endObserve());
     },
 
     // GET /_api/cluster/cluster-info/get_collection_info/d/c
     // canUseAdminAction(AdminClusterInfo), then (prod) isSuperuser() guard.
-    // AUDIT: cluster-only - route not registered on single server (404, no question).
     testGetCollectionInfo: function () {
       beginObserve();
       arango.GET_RAW(`${base}/cluster-info/get_collection_info/d/c`);
@@ -154,7 +135,6 @@ function clusterApiAuthzSuite () {
     },
 
     // GET /_api/cluster/cluster-info/get_collection_info_current/d/c/s1
-    // AUDIT: cluster-only - route not registered on single server (404, no question).
     testGetCollectionInfoCurrent: function () {
       beginObserve();
       arango.GET_RAW(`${base}/cluster-info/get_collection_info_current/d/c/s1`);
@@ -165,7 +145,6 @@ function clusterApiAuthzSuite () {
     },
 
     // POST /_api/cluster/cluster-info/get_responsible_servers
-    // AUDIT: cluster-only - route not registered on single server (404, no question).
     testGetResponsibleServers: function () {
       beginObserve();
       arango.POST_RAW(`${base}/cluster-info/get_responsible_servers`, []);
@@ -176,7 +155,6 @@ function clusterApiAuthzSuite () {
     },
 
     // POST /_api/cluster/cluster-info/get_responsible_shard/d/c/true
-    // AUDIT: cluster-only - route not registered on single server (404, no question).
     testGetResponsibleShard: function () {
       beginObserve();
       arango.POST_RAW(`${base}/cluster-info/get_responsible_shard/d/c/true`,
@@ -188,7 +166,6 @@ function clusterApiAuthzSuite () {
     },
 
     // GET /_api/cluster/cluster-info/get_analyzers_revision/_system
-    // AUDIT: cluster-only - route not registered on single server (404, no question).
     testGetAnalyzersRevision: function () {
       beginObserve();
       arango.GET_RAW(`${base}/cluster-info/get_analyzers_revision/_system`);
@@ -199,7 +176,6 @@ function clusterApiAuthzSuite () {
     },
 
     // GET /_api/cluster/cluster-info/wait_for_plan_version/1
-    // AUDIT: cluster-only - route not registered on single server (404, no question).
     testWaitForPlanVersion: function () {
       beginObserve();
       arango.GET_RAW(`${base}/cluster-info/wait_for_plan_version/1`);
@@ -210,7 +186,6 @@ function clusterApiAuthzSuite () {
     },
 
     // GET /_api/cluster/cluster-info/get_max_number_of_shards
-    // AUDIT: cluster-only - route not registered on single server (404, no question).
     testGetMaxNumberOfShards: function () {
       beginObserve();
       arango.GET_RAW(`${base}/cluster-info/get_max_number_of_shards`);
@@ -221,7 +196,6 @@ function clusterApiAuthzSuite () {
     },
 
     // GET /_api/cluster/cluster-info/get_max_replication_factor
-    // AUDIT: cluster-only - route not registered on single server (404, no question).
     testGetMaxReplicationFactor: function () {
       beginObserve();
       arango.GET_RAW(`${base}/cluster-info/get_max_replication_factor`);
@@ -232,7 +206,6 @@ function clusterApiAuthzSuite () {
     },
 
     // GET /_api/cluster/cluster-info/get_min_replication_factor
-    // AUDIT: cluster-only - route not registered on single server (404, no question).
     testGetMinReplicationFactor: function () {
       beginObserve();
       arango.GET_RAW(`${base}/cluster-info/get_min_replication_factor`);
@@ -245,7 +218,6 @@ function clusterApiAuthzSuite () {
     // GET /_api/cluster/endpoints - allowed for any authenticated user; the
     // overridden checkUserCanAccess() returns OK without asking and the handler
     // needs no admin RBAC check, so NO authorization question is observed.
-    // AUDIT: cluster-only - route not registered on single server (404).
     testEndpoints: function () {
       beginObserve();
       arango.GET_RAW(`${base}/endpoints`);

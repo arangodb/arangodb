@@ -49,6 +49,12 @@
 // that returns OK without asking; our target is `testuser` (!= root), so the
 // question is always asked. NEVER target `root`.
 //
+// All of them except canReadUser also consult the server-wide read-only gate,
+// which is traced as the pseudo-question `IsReadOnly`. In canModifyUserProfile
+// the gate is consulted even when the self-exception skipped the permission
+// question, so modifying your own profile still traces `IsReadOnly` - just no
+// `ModifyUserProfile`.
+//
 // All requests go to the _system database (paths /_db/_system/_api/user/...).
 // Per-endpoint preconditions (testuser, database d2, collection c2 in d2,
 // grants) are recreated inline BEFORE beginObserve() with arango.*_RAW (they
@@ -133,6 +139,7 @@ function userApiAuthzSuite () {
                       { user: testuser, passwd: 'testpasswd' });
       assertPermissions([
         "UseDatabase name=_system level=read",
+        "IsReadOnly",
         "CreateUser name=testuser",
         ...singleOnly([
           "UseCollection db=_system name=_users level=read"
@@ -214,6 +221,7 @@ function userApiAuthzSuite () {
       arango.PUT_RAW(`/_db/_system/_api/user/${testuser}`,
                      { passwd: 'newpasswd' });
       assertPermissions([
+        "IsReadOnly",
         "ModifyUserProfile name=testuser",
         ...singleOnly([
           "UseCollection db=_system name=_users level=read"
@@ -227,6 +235,7 @@ function userApiAuthzSuite () {
       beginObserve();
       arango.PATCH_RAW(`/_db/_system/_api/user/${testuser}`, { active: true });
       assertPermissions([
+        "IsReadOnly",
         "ModifyUserProfile name=testuser",
         ...singleOnly([
           "UseCollection db=_system name=_users level=read"
@@ -241,6 +250,7 @@ function userApiAuthzSuite () {
       arango.PUT_RAW(`/_db/_system/_api/user/${testuser}/config/testkey`,
                      { value: 42 });
       assertPermissions([
+        "IsReadOnly",
         "ModifyUserProfile name=testuser",
         ...singleOnly([
           "UseCollection db=_system name=_users level=read"
@@ -256,6 +266,7 @@ function userApiAuthzSuite () {
       arango.PUT_RAW(`/_db/_system/_api/user/${testuser}/database/d2`,
                      { grant: 'ro' });
       assertPermissions([
+        "IsReadOnly",
         "GrantUserPermissions name=testuser",
         ...singleOnly([
           "UseCollection db=_system name=_users level=read"
@@ -273,6 +284,7 @@ function userApiAuthzSuite () {
       arango.PUT_RAW(`/_db/_system/_api/user/${testuser}/database/d2/c2`,
                      { grant: 'ro' });
       assertPermissions([
+        "IsReadOnly",
         "GrantUserPermissions name=testuser",
         ...singleOnly([
           "UseCollection db=_system name=_users level=read"
@@ -286,6 +298,7 @@ function userApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_api/user/${testuser}`);
       assertPermissions([
+        "IsReadOnly",
         "DropUser name=testuser",
         ...singleOnly([
           "UseCollection db=_system name=_users level=read"
@@ -301,6 +314,7 @@ function userApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_api/user/${testuser}/config/testkey`);
       assertPermissions([
+        "IsReadOnly",
         "ModifyUserProfile name=testuser",
         ...singleOnly([
           "UseCollection db=_system name=_users level=read"
@@ -317,6 +331,7 @@ function userApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_api/user/${testuser}/database/d2`);
       assertPermissions([
+        "IsReadOnly",
         "GrantUserPermissions name=testuser",
         ...singleOnly([
           "UseCollection db=_system name=_users level=read"
@@ -335,6 +350,7 @@ function userApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_api/user/${testuser}/database/d2/c2`);
       assertPermissions([
+        "IsReadOnly",
         "GrantUserPermissions name=testuser",
         ...singleOnly([
           "UseCollection db=_system name=_users level=read"
