@@ -58,6 +58,8 @@
 #include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBVectorIndexList.h"
 #include "Transaction/Helpers.h"
+#include "Utils/CollectionGuard.h"
+#include "Utils/DatabaseGuard.h"
 #include "VectorIndex/VectorIndexTrainingSampler.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -787,6 +789,11 @@ Result VectorIndexBuilder::build(
     metrics::Histogram<metrics::LogScale<double>>& trainingDuration,
     metrics::Histogram<metrics::LogScale<double>>& ingestionDuration,
     std::stop_token stopToken) {
+  // Keep the database and collection alive for the whole build
+  auto& vocbase = _index.collection().vocbase();
+  DatabaseGuard dbGuard(vocbase);
+  CollectionGuard collGuard(&vocbase, _index.collection().id());
+
   auto const shouldAbort = [&]() -> bool {
     return stopToken.stop_requested() || _index.collection().deleted();
   };
@@ -874,6 +881,14 @@ Result VectorIndexBuilder::build(
     }
   }
 #endif
+
+  // The collection may have been dropped while training/paused. Bail out before
+  // taking the write lock: lockWrite() on a dropped collection blocks and would
+  // wedge this (single) build thread, starving all later vector index builds.
+  if (shouldAbort()) {
+    _index.resetTrainingState();
+    return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
+  }
 
   RocksDBBuilderIndex::Locker locker(_rcoll);
   if (!locker.lock().waitAndGet()) {
