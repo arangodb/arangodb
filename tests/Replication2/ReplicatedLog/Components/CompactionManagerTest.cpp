@@ -52,7 +52,7 @@ struct CompactionManagerTest : ::testing::Test {
 
 TEST_F(CompactionManagerTest, no_compaction_after_release_index_update) {
   LogRange const range{LogIndex{0}, LogIndex{101}};
-  options->_thresholdLogCompaction = 0;
+  options->thresholdLogCompaction = 0;
 
   ON_CALL(storageManagerMock, transaction).WillByDefault([&] {
     auto trx = std::make_unique<testing::StrictMock<StorageTransactionMock>>();
@@ -76,7 +76,7 @@ TEST_F(CompactionManagerTest, no_compaction_after_release_index_update) {
 TEST_F(CompactionManagerTest,
        no_compaction_after_largest_index_to_keep_update) {
   LogRange const range{LogIndex{0}, LogIndex{101}};
-  options->_thresholdLogCompaction = 0;
+  options->thresholdLogCompaction = 0;
 
   ON_CALL(storageManagerMock, transaction).WillByDefault([&] {
     auto trx = std::make_unique<testing::StrictMock<StorageTransactionMock>>();
@@ -103,7 +103,7 @@ TEST_F(CompactionManagerTest,
 
 TEST_F(CompactionManagerTest, no_compaction_because_of_threshold) {
   LogRange const range{LogIndex{0}, LogIndex{101}};
-  options->_thresholdLogCompaction = 50;
+  options->thresholdLogCompaction = 50;
 
   ON_CALL(storageManagerMock, transaction).WillByDefault([&] {
     auto trx = std::make_unique<testing::StrictMock<StorageTransactionMock>>();
@@ -130,7 +130,7 @@ TEST_F(CompactionManagerTest, no_compaction_because_of_threshold) {
 }
 
 TEST_F(CompactionManagerTest, run_automatic_compaction) {
-  options->_thresholdLogCompaction = 0;
+  options->thresholdLogCompaction = 0;
 
   ON_CALL(storageManagerMock, transaction).WillByDefault([&] {
     auto trx = std::make_unique<testing::StrictMock<StorageTransactionMock>>();
@@ -224,7 +224,7 @@ TEST_F(CompactionManagerTest, manual_compaction_call_ok) {
   });
 
   // compaction possible upto 40, but threshold blocks
-  options->_thresholdLogCompaction = 100;
+  options->thresholdLogCompaction = 100;
   compactionManager->updateReleaseIndex(LogIndex{40});
   compactionManager->updateLowestIndexToKeep(LogIndex{40});
 
@@ -275,7 +275,7 @@ TEST_F(CompactionManagerTest, manual_compaction_call_ok) {
 }
 
 TEST_F(CompactionManagerTest, run_automatic_compaction_twice) {
-  options->_thresholdLogCompaction = 0;
+  options->thresholdLogCompaction = 0;
 
   EXPECT_CALL(storageManagerMock, transaction).WillOnce([&] {
     auto trx = std::make_unique<testing::StrictMock<StorageTransactionMock>>();
@@ -338,7 +338,7 @@ TEST_F(CompactionManagerTest, run_automatic_compaction_twice) {
 }
 
 TEST_F(CompactionManagerTest, run_automatic_compaction_twice_but_delayed) {
-  options->_thresholdLogCompaction = 0;
+  options->thresholdLogCompaction = 0;
 
   EXPECT_CALL(storageManagerMock, transaction).WillOnce([&] {
     auto trx = std::make_unique<testing::StrictMock<StorageTransactionMock>>();

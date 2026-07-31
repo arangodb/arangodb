@@ -640,6 +640,15 @@ StatisticsFeature::StatisticsFeature(
   startsAfter<AqlFeaturePhase>();
   startsAfter<NetworkFeature>();
 
+  if (_options.statistics) {
+    // initialize counters for all HTTP request types
+    ConnectionStatistics::initialize();
+    RequestStatistics::initialize();
+  } else {
+    // turn ourselves off
+    disable();
+  }
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool foundError = false;
   for (auto const& it : statBuilder) {
@@ -689,27 +698,6 @@ StatisticsFeature::StatisticsFeature(
 
 /*static*/ double StatisticsFeature::time() { return TRI_microtime(); }
 
-void StatisticsFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  statistics::StatisticsOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void StatisticsFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  if (_options.statistics) {
-    // initialize counters for all HTTP request types
-    ConnectionStatistics::initialize();
-    RequestStatistics::initialize();
-  } else {
-    // turn ourselves off
-    disable();
-  }
-
-  _statisticsHistoryTouched =
-      options->processingResult().touched("--server.statistics-history");
-}
-
 void StatisticsFeature::start() {
   TRI_ASSERT(isEnabled());
 
@@ -742,7 +730,7 @@ void StatisticsFeature::start() {
 
   // force history disable on Agents
   if (arangodb::ServerState::instance()->isAgent() &&
-      !_statisticsHistoryTouched) {
+      !_options.statisticsHistoryTouched) {
     _options.statisticsHistory = false;
   }
 
