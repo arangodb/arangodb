@@ -203,16 +203,6 @@ class CircleCIGenerator(OutputGenerator):
 
         preset += build_config.build_variant.get_suffix()
 
-        # Coverage has plain pr-*-coverage presets but no -no-v8 combos
-        # (coverage is a rare, CLI-only variant); when combined with
-        # arangod-without-v8 it keeps the coverage preset and gets USE_V8
-        # forced off via the Configure step's command-line override.
-        if (
-            not self.config.filter_criteria.v8
-            and not build_config.build_variant.is_coverage
-        ):
-            preset += "-no-v8"
-
         suffix = build_config.build_variant.get_suffix()
         name = f"build-{build_config.architecture.value}{suffix}"
 

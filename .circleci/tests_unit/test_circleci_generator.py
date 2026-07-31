@@ -167,53 +167,6 @@ class TestCreateBuildJob:
         assert params["name"] == "build-x64-tsan"
         assert params["preset"] == "pr-x64-tsan"
 
-    def test_create_build_job_no_v8_x64(self):
-        """arangod-without-v8 selects the dedicated no-v8 preset."""
-        config = GeneratorConfig(filter_criteria=FilterCriteria(v8=False))
-        gen = CircleCIGenerator(config, base_config={})
-        build_config = BuildConfig(architecture=Architecture.X64)
-
-        job = gen._create_build_job(build_config)
-
-        assert job["compile-linux"]["preset"] == "pr-x64-no-v8"
-
-    def test_create_build_job_no_v8_arm(self):
-        """arangod-without-v8 selects the ARM no-v8 preset."""
-        config = GeneratorConfig(filter_criteria=FilterCriteria(v8=False))
-        gen = CircleCIGenerator(config, base_config={})
-        build_config = BuildConfig(architecture=Architecture.AARCH64)
-
-        job = gen._create_build_job(build_config)
-
-        assert job["compile-linux"]["preset"] == "pr-arm64-no-v8"
-
-    def test_create_build_job_no_v8_with_tsan(self):
-        """arangod-without-v8 combined with TSAN selects the tsan-no-v8 preset."""
-        config = GeneratorConfig(filter_criteria=FilterCriteria(v8=False))
-        gen = CircleCIGenerator(config, base_config={})
-        build_config = BuildConfig(
-            architecture=Architecture.X64,
-            build_variant=BuildVariant.TSAN,
-        )
-
-        job = gen._create_build_job(build_config)
-
-        assert job["compile-linux"]["preset"] == "pr-x64-tsan-no-v8"
-
-    def test_create_build_job_no_v8_with_alubsan_arm(self):
-        """arangod-without-v8 combined with ALUBSAN on ARM selects the
-        alubsan-no-v8 ARM preset."""
-        config = GeneratorConfig(filter_criteria=FilterCriteria(v8=False))
-        gen = CircleCIGenerator(config, base_config={})
-        build_config = BuildConfig(
-            architecture=Architecture.AARCH64,
-            build_variant=BuildVariant.ALUBSAN,
-        )
-
-        job = gen._create_build_job(build_config)
-
-        assert job["compile-linux"]["preset"] == "pr-arm64-alubsan-no-v8"
-
     def test_create_build_job_coverage(self):
         """Coverage builds use the dedicated pr-*-coverage presets."""
         gen = self.create_generator()
@@ -227,21 +180,6 @@ class TestCreateBuildJob:
         params = job["compile-linux"]
         assert params["name"] == "build-aarch64-coverage"
         assert params["preset"] == "pr-arm64-coverage"
-
-    def test_create_build_job_no_v8_does_not_apply_to_coverage(self):
-        """Coverage has no -no-v8 preset combos (rare, CLI-only variant);
-        combined with arangod-without-v8 it keeps the plain coverage preset
-        (V8 is forced off via the Configure step's command-line override)."""
-        config = GeneratorConfig(filter_criteria=FilterCriteria(v8=False))
-        gen = CircleCIGenerator(config, base_config={})
-        build_config = BuildConfig(
-            architecture=Architecture.X64,
-            build_variant=BuildVariant.COVERAGE,
-        )
-
-        job = gen._create_build_job(build_config)
-
-        assert job["compile-linux"]["preset"] == "pr-x64-coverage"
 
     def test_create_non_maintainer_build_job_x64(self):
         """x64 non-maintainer smoke build uses the x64 preset/arch."""
