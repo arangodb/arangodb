@@ -499,11 +499,6 @@ void ClusterOptionsProvider::validateOptionsImpl(
     FATAL_ERROR_EXIT();
   }
 
-<<<<<<< HEAD
-  options.agencyPrefix = "arango";
-
-=======
->>>>>>> origin/devel
   if (options.systemReplicationFactor == 0) {
     LOG_TOPIC("cb945", FATAL, arangodb::Logger::CLUSTER)
         << "system replication factor must be greater 0";
@@ -546,56 +541,6 @@ void ClusterOptionsProvider::validateOptionsImpl(
   }
 
   if (!options.myRole.empty()) {
-    std::vector<ServerState::RoleEnum> const disallowedRoles = {
-        ServerState::ROLE_AGENT, ServerState::ROLE_UNDEFINED};
-
-    if (std::find(disallowedRoles.begin(), disallowedRoles.end(),
-                  options.requestedRole) != disallowedRoles.end()) {
-      LOG_TOPIC("198c3", FATAL, arangodb::Logger::CLUSTER)
-          << "Invalid role provided for `--cluster.my-role`. Possible values: "
-             "DBSERVER, PRIMARY, COORDINATOR";
-      FATAL_ERROR_EXIT();
-    }
-  }
-
-  if (!options.enableCluster) {
-    return;
-  }
-
-  // validate --cluster.agency-endpoint
-  if (options.agencyEndpoints.empty()) {
-    LOG_TOPIC("d283a", FATAL, Logger::CLUSTER)
-        << "must at least specify one endpoint in --cluster.agency-endpoint";
-    FATAL_ERROR_EXIT();
-  }
-
-  // validate --cluster.my-address
-  if (options.myEndpoint.empty()) {
-    LOG_TOPIC("c1532", FATAL, arangodb::Logger::CLUSTER)
-        << "unable to determine internal address for server '"
-        << ServerState::instance()->getId()
-        << "'. Please specify --cluster.my-address or configure the "
-           "address for this server in the agency.";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (Endpoint::unifiedForm(options.myEndpoint).empty()) {
-    LOG_TOPIC("41256", FATAL, arangodb::Logger::CLUSTER)
-        << "invalid endpoint '" << options.myEndpoint
-        << "' specified for --cluster.my-address";
-    FATAL_ERROR_EXIT();
-  }
-  if (!options.myAdvertisedEndpoint.empty() &&
-      Endpoint::unifiedForm(options.myAdvertisedEndpoint).empty()) {
-    LOG_TOPIC("ece6a", FATAL, arangodb::Logger::CLUSTER)
-        << "invalid endpoint '" << options.myAdvertisedEndpoint
-        << "' specified for --cluster.my-advertised-endpoint";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (!options.myRole.empty()) {
-    options.requestedRole = ServerState::stringToRole(options.myRole);
-
     std::vector<ServerState::RoleEnum> const disallowedRoles = {
         ServerState::ROLE_AGENT, ServerState::ROLE_UNDEFINED};
 

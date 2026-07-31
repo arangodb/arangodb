@@ -280,14 +280,6 @@ void AgencyOptionsProvider::validateOptionsImpl(
         << "' specified for --agency.my-address";
     FATAL_ERROR_EXIT();
   }
-
-  if (!options.agencyMyAddress.empty() &&
-      Endpoint::unifiedForm(options.agencyMyAddress).empty()) {
-    LOG_TOPIC("4faa0", FATAL, Logger::AGENCY)
-        << "invalid endpoint '" << options.agencyMyAddress
-        << "' specified for --agency.my-address";
-    FATAL_ERROR_EXIT();
-  }
 }
 
 }  // namespace arangodb
