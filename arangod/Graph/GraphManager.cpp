@@ -582,8 +582,10 @@ Result GraphManager::ensureCollections(
   std::optional<std::string> leadingCollection = std::nullopt;
   bool pickedExisting = false;
 
-  if (config.isOneShardDB) {
-    leadingCollection = config.defaultDistributeShardsLike;
+  if (config.oneShardDBConfiguration.has_value()) {
+    // here leading collection is set for one shard
+    leadingCollection =
+        config.oneShardDBConfiguration.value().defaultDistributeShardsLike;
     TRI_ASSERT(leadingCollection.has_value() &&
                !leadingCollection.value().empty());
     pickedExisting = true;
@@ -686,11 +688,11 @@ Result GraphManager::ensureCollections(
   if (finalResult.ok() && leadingCollection.has_value() &&
       graph.requiresInitialUpdate()) {
     if (pickedExisting) {
-      if (config.isOneShardDB) {
+      if (config.oneShardDBConfiguration.has_value()) {
         // We need to shard by the default sharding collection
         // Take initial from the selected existing one
-        auto defaultSharding =
-            resolver.getCollection(config.defaultDistributeShardsLike);
+        auto defaultSharding = resolver.getCollection(
+            config.oneShardDBConfiguration.value().defaultDistributeShardsLike);
         ADB_PROD_ASSERT(defaultSharding != nullptr)
             << "We have lost the leading collection of a oneShardDatabase";
         graph.updateInitial({std::move(defaultSharding)}, leadingCollection,
