@@ -33,6 +33,7 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/StaticStrings.h"
 #include "Graph/ShortestPathOptions.h"
+#include "Graph/WeightAttributeHelper.h"
 #include "Indexes/Index.h"
 
 #include <absl/strings/str_cat.h>
@@ -384,13 +385,12 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
               return previousWeight + defaultWeight;
             });
       } else {
-        std::string weightAttribute = opts->getWeightAttribute();
+        auto const& weightAttribute = opts->getWeightAttribute();
         forwardProviderOptions.setWeightEdgeCallback(
             [weightAttribute = weightAttribute, defaultWeight](
                 double previousWeight, VPackSlice edge) -> double {
               auto const weight =
-                  arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-                      edge, weightAttribute, defaultWeight);
+                  getEdgeWeight(edge, weightAttribute, defaultWeight);
               if (weight < 0.) {
                 THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
               }
@@ -401,8 +401,7 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
             [weightAttribute = weightAttribute, defaultWeight](
                 double previousWeight, VPackSlice edge) -> double {
               auto const weight =
-                  arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-                      edge, weightAttribute, defaultWeight);
+                  getEdgeWeight(edge, weightAttribute, defaultWeight);
               if (weight < 0.) {
                 THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
               }
