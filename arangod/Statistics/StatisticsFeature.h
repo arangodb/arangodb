@@ -100,8 +100,6 @@ class StatisticsFeature final
 
   static double time();
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
   void stop() override final;
   void toPrometheus(std::string& result, double now, std::string_view globals,
@@ -137,7 +135,6 @@ class StatisticsFeature final
                               bool ensureWhitespace);
 
   StatisticsFeatureOptions _options;
-  bool _statisticsHistoryTouched = false;
 
   stats::Descriptions _descriptions;
   std::unique_ptr<Thread> _statisticsThread;

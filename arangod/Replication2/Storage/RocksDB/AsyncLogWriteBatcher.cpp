@@ -128,7 +128,7 @@ void AsyncLogWriteBatcher::runPersistorWorker(Lane& lane) noexcept {
         // persisted log already has some entries that are not yet confirmed
         // (which may be overwritten later). This could still be improved upon a
         // little by reporting up to which entry was written successfully.
-        while (wb.GetDataSize() < _options->_thresholdRocksDBWriteBatchSize &&
+        while (wb.GetDataSize() < _options->thresholdRocksDBWriteBatchSize &&
                nextReqToWrite != std::end(pendingRequests)) {
           if (auto res = prepareRequest(*nextReqToWrite, wb); res.fail()) {
             return res;
