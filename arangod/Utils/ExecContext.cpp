@@ -195,10 +195,6 @@ Result ExecContext::canCreateDatabase(std::string_view db) const {
     return r;
   }
   if (auto r = checkNotReadOnly(); r.fail()) {
-    if (_authMode.requestedApiVersion() == 0) {
-      // API version 0 reported this as a plain 403, keep it that way.
-      return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
-    }
     return r;
   }
   return {};
