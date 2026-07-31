@@ -208,7 +208,7 @@ TEST_F(AppendEntriesFollowerTest, append_entries_no_match) {
 TEST_F(AppendEntriesFollowerTest, append_entries_update_syncIndex) {
   termInfo->leader = "leader";
   termInfo->term = LogTerm{1};
-  options->_thresholdLogCompaction = 0;
+  options->thresholdLogCompaction = 0;
 
   auto methods = std::unique_ptr<IReplicatedLogFollowerMethods>{};
   EXPECT_CALL(*stateHandle, becomeFollower)
@@ -259,7 +259,7 @@ TEST_F(AppendEntriesFollowerTest, append_entries_update_syncIndex) {
 TEST_F(AppendEntriesFollowerTest, append_entries_trigger_compaction) {
   termInfo->leader = "leader";
   termInfo->term = LogTerm{1};
-  options->_thresholdLogCompaction = 0;
+  options->thresholdLogCompaction = 0;
 
   auto methods = std::unique_ptr<IReplicatedLogFollowerMethods>{};
   EXPECT_CALL(*stateHandle, becomeFollower)
@@ -291,7 +291,7 @@ TEST_F(AppendEntriesFollowerTest, append_entries_trigger_compaction) {
 TEST_F(AppendEntriesFollowerTest, append_entries_trigger_snapshot) {
   termInfo->leader = "leader";
   termInfo->term = LogTerm{1};
-  options->_thresholdLogCompaction = 0;
+  options->thresholdLogCompaction = 0;
 
   auto methods = std::unique_ptr<IReplicatedLogFollowerMethods>{};
   EXPECT_CALL(*stateHandle, becomeFollower)
@@ -329,7 +329,7 @@ TEST_F(AppendEntriesFollowerTest, append_entries_trigger_snapshot) {
 TEST_F(AppendEntriesFollowerTest, append_entries_rewrite) {
   termInfo->leader = "leader";
   termInfo->term = LogTerm{2};
-  options->_thresholdLogCompaction = 0;
+  options->thresholdLogCompaction = 0;
 
   auto methods = std::unique_ptr<IReplicatedLogFollowerMethods>{};
   EXPECT_CALL(*stateHandle, becomeFollower)
@@ -365,7 +365,7 @@ TEST_F(AppendEntriesFollowerTest, append_entries_rewrite) {
 TEST_F(AppendEntriesFollowerTest, outdated_message_id) {
   termInfo->leader = "leader";
   termInfo->term = LogTerm{2};
-  options->_thresholdLogCompaction = 0;
+  options->thresholdLogCompaction = 0;
 
   auto methods = std::unique_ptr<IReplicatedLogFollowerMethods>{};
   EXPECT_CALL(*stateHandle, becomeFollower)
@@ -409,7 +409,7 @@ TEST_F(AppendEntriesFollowerTest, outdated_message_id) {
 TEST_F(AppendEntriesFollowerTest, resigned_follower) {
   termInfo->leader = "leader";
   termInfo->term = LogTerm{2};
-  options->_thresholdLogCompaction = 0;
+  options->thresholdLogCompaction = 0;
 
   auto methods = std::unique_ptr<IReplicatedLogFollowerMethods>{};
   EXPECT_CALL(*stateHandle, becomeFollower)

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Actions/ActionOptionsProvider.h"
+#include "Agency/AgencyOptionsProvider.h"
 #include "ApplicationFeatures/CoreOptionProviders.h"
 #include "ApplicationFeatures/ConfigOptionsProvider.h"
 #include "ApplicationFeatures/LanguageOptionsProvider.h"
@@ -8,11 +9,18 @@
 #include "GeneralServer/ServerSecurityOptionsProvider.h"
 #include "Aql/OptimizerRulesOptionsProvider.h"
 #include "Aql/QueryInfoLoggerOptionsProvider.h"
+#include "Cluster/ClusterOptionsProvider.h"
+#include "Cluster/ClusterUpgradeOptionsProvider.h"
+#include "Cluster/MaintenanceOptionsProvider.h"
+#include "Cluster/ReplicationTimeoutOptionsProvider.h"
 #include "GeneralServer/AuthenticationOptionsProvider.h"
 #include "GeneralServer/GeneralServerOptionsProvider.h"
 #include "GeneralServer/SslServerOptionsProvider.h"
 #include "Network/NetworkOptionsProvider.h"
+#include "Replication/ReplicationOptionsProvider.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogOptionsProvider.h"
 #include "RestServer/ApiRecordingOptionsProvider.h"
+#include "RestServer/BootstrapOptionsProvider.h"
 #include "RestServer/CheckVersionOptionsProvider.h"
 #include "RestServer/CrashHandlerOptionsProvider.h"
 #include "RestServer/DaemonOptionsProvider.h"
@@ -27,16 +35,19 @@
 #include "RestServer/LogRotateOptionsProvider.h"
 #include "RestServer/MaxMapCountOptionsProvider.h"
 #include "RestServer/NonceOptionsProvider.h"
+#include "RestServer/PrivilegeOptionsProvider.h"
 #include "RestServer/QueryRegistryOptionsProvider.h"
 #include "RestServer/ServerOptionsProvider.h"
 #include "RestServer/TemporaryStorageOptionsProvider.h"
+#include "RestServer/TtlOptionsProvider.h"
 #include "RestServer/UpgradeOptionsProvider.h"
 #include "RocksDBEngine/RocksDBEngineOptionsProvider.h"
 #include "RocksDBEngine/RocksDBIndexCacheRefillOptionsProvider.h"
 #include "RocksDBEngine/RocksDBOptionFeatureOptionsProvider.h"
-#include "RocksDBEngine/RocksDBEngineOptionsProvider.h"
+#include "Statistics/StatisticsOptionsProvider.h"
 #include "SystemMonitor/Activities/OptionsProvider.h"
 #include "SystemMonitor/AsyncRegistry/OptionsProvider.h"
+#include "Transaction/ManagerOptionsProvider.h"
 #include "V8/V8PlatformOptionsProvider.h"
 #include "V8/V8SecurityOptionsProvider.h"
 #include "V8Server/FoxxOptionsProvider.h"
@@ -67,24 +78,28 @@
 namespace arangodb {
 
 using ArangodOptionProviders = CoreOptionProviders<
-    ActionOptionsProvider, activities::OptionsProvider,
+    ActionOptionsProvider, activities::OptionsProvider, AgencyOptionsProvider,
     ApiRecordingOptionsProvider, async_registry::OptionsProvider,
-    AuthenticationOptionsProvider, ConfigOptionsProvider,
-    check_version::CheckVersionOptionsProvider,
+    AuthenticationOptionsProvider, bootstrap::BootstrapOptionsProvider,
+    check_version::CheckVersionOptionsProvider, ClusterOptionsProvider,
+    upgrade::ClusterUpgradeOptionsProvider, ConfigOptionsProvider,
     crash_handler::CrashHandlerOptionsProvider, DatabasePathOptionsProvider,
     DumpLimitsOptionsProvider, EndpointOptionsProvider, FlushOptionsProvider,
     fortune::FortuneOptionsProvider, FoxxOptionsProvider,
     GeneralServerOptionsProvider, InitDatabaseOptionsProvider,
     LanguageOptionsProvider, LogApiOptionsProvider, LogBufferOptionsProvider,
-    LogRotateOptionsProvider, MaxMapCountOptionsProvider,
-    NetworkOptionsProvider, NonceOptionsProvider,
+    LogRotateOptionsProvider, MaintenanceOptionsProvider,
+    MaxMapCountOptionsProvider, NetworkOptionsProvider, NonceOptionsProvider,
     aql::OptimizerRulesOptionsProvider, aql::QueryInfoLoggerOptionsProvider,
-    QueryRegistryOptionsProvider, RocksDBEngineOptionsProvider,
+    PrivilegeOptionsProvider, QueryRegistryOptionsProvider,
+    replication2::ReplicatedLogOptionsProvider, ReplicationOptionsProvider,
+    ReplicationTimeoutOptionsProvider, RocksDBEngineOptionsProvider,
     RocksDBIndexCacheRefillOptionsProvider, RocksDBOptionFeatureOptionsProvider,
     ServerOptionsProvider, security::ServerSecurityOptionsProvider,
-    SslServerOptionsProvider, TempOptionsProvider,
-    TemporaryStorageOptionsProvider, UpgradeOptionsProvider,
-    V8PlatformOptionsProvider, V8SecurityOptionsProvider
+    SslServerOptionsProvider, statistics::StatisticsOptionsProvider,
+    TempOptionsProvider, TemporaryStorageOptionsProvider,
+    transaction::ManagerOptionsProvider, TtlOptionsProvider,
+    UpgradeOptionsProvider, V8PlatformOptionsProvider, V8SecurityOptionsProvider
 #ifdef USE_ENTERPRISE
     ,
     AuditOptionsProvider, LicenseOptionsProvider, RCloneOptionsProvider,
