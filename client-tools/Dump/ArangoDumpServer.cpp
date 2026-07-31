@@ -59,14 +59,17 @@ ArangoDumpServer::ArangoDumpServer(
     std::shared_ptr<options::ProgramOptions> options, char const* binaryPath,
     std::string binaryName, int* ret)
     : OptionProvidingServer<ArangoDumpOptionProviders>(
-          options, binaryPath, std::move(binaryName), ret) {}
+          options, binaryPath, std::move(binaryName), ret) {
+  // Set a different default for the ClientFeature
+  mutableOptions<ClientOptionsProvider>().allowJwtSecret = true;
+  mutableOptions<ClientOptionsProvider>().maxNumEndpoints =
+      std::numeric_limits<size_t>::max();
+}
 
 void ArangoDumpServer::addFeatures() {
   addFeature<BasicFeaturePhaseClient>();
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
-  addFeature<HttpEndpointProvider, ClientFeature>(
-      true, std::numeric_limits<size_t>::max());
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(std::array{std::type_index(typeid(DumpFeature))});
@@ -90,7 +93,8 @@ void ArangoDumpServer::addFeaturesWithOptionProvider() {
   addFeature<BumpFileDescriptorsFeature>(
       getOptions<ClientBumpFileDescriptorsOptionsProvider>());
 #endif
-  auto& client = getFeature<HttpEndpointProvider, ClientFeature>();
+  auto& client = addFeature<HttpEndpointProvider, ClientFeature>(
+      getOptions<ClientOptionsProvider>());
   addFeature<DumpFeature>(client, *_ret, getOptions<DumpOptionsProvider>());
 }
 

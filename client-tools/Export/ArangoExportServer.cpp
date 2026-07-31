@@ -64,7 +64,6 @@ void ArangoExportServer::addFeatures() {
   addFeature<BasicFeaturePhaseClient>();
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
-  addFeature<HttpEndpointProvider, ClientFeature>(false);
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(
@@ -86,6 +85,8 @@ void ArangoExportServer::addFeaturesWithOptionProvider() {
 #ifdef USE_ENTERPRISE
   addFeature<EncryptionFeature>(getOptions<EncryptionOptionsProvider>());
 #endif
+  addFeature<HttpEndpointProvider, ClientFeature>(
+      getOptions<ClientOptionsProvider>());
   addFeature<ExportFeature>(_ret, getOptions<ExportOptionsProvider>());
 }
 

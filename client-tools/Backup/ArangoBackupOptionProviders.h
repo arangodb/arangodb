@@ -23,8 +23,10 @@
 #include "ApplicationFeatures/CoreOptionProviders.h"
 #include "ApplicationFeatures/ConfigOptionsProvider.h"
 #include "Backup/BackupOptionsProvider.h"
+#include "Shell/ClientOptionsProvider.h"
 
 namespace arangodb {
 using ArangoBackupOptionProviders =
-    CoreOptionProviders<BackupOptionsProvider, ConfigOptionsProvider>;
+    CoreOptionProviders<BackupOptionsProvider, ClientOptionsProvider,
+                        ConfigOptionsProvider>;
 }  // namespace arangodb

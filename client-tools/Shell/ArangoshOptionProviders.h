@@ -36,10 +36,10 @@
 
 namespace arangodb {
 using ArangoshOptionProviders =
-    CoreOptionProviders<ConfigOptionsProvider, LanguageOptionsProvider,
-                        ShellConsoleOptionsProvider, ShellOptionsProvider,
-                        TempOptionsProvider, V8SecurityOptionsProvider,
-                        V8PlatformOptionsProvider
+    CoreOptionProviders<ClientOptionsProvider, ConfigOptionsProvider,
+                        LanguageOptionsProvider, ShellConsoleOptionsProvider,
+                        ShellOptionsProvider, TempOptionsProvider,
+                        V8SecurityOptionsProvider, V8PlatformOptionsProvider
 #ifdef USE_ENTERPRISE
                         ,
                         EncryptionOptionsProvider
