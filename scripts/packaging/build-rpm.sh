@@ -23,6 +23,19 @@ if [ ! -d "${PROJECT_DIR}/build/install" ]; then
   exit 1
 fi
 
+# Preflight: the strip/verify toolchain must be complete. eu-strip is not
+# called by the spec itself (it strips explicitly with objcopy/strip, see
+# arangodb3e.spec.in), but a build image without eu-strip is one where
+# rpm's own debuginfo machinery is silently broken — that once shipped
+# unstripped client tools and an empty debuginfo package. Refuse to build
+# on such an image instead of relying on the machinery staying unused.
+for tool in eu-strip objcopy strip file readelf rpm2cpio cpio cmp; do
+  if ! command -v "${tool}" > /dev/null; then
+    echo "build-rpm: required tool '${tool}' is missing from the build image" >&2
+    exit 1
+  fi
+done
+
 if [ -z "${ARANGODB_RPM_UPSTREAM:-}" ]; then
   source "${SCRIPT_DIR}/../ci/helpers.bash"
   find_arangodb_version "${PROJECT_DIR}/CMakeLists.txt" > /dev/null
@@ -81,3 +94,69 @@ rpmbuild -bb -vv \
 mkdir -p "${PACKAGES_OUT}"
 mv "${TOPDIR}"/RPMS/*/*.rpm "${PACKAGES_OUT}/"
 ls -l "${PACKAGES_OUT}"
+
+# ── Verify the strip policy on the built packages ────────────────────────────
+# The outcome is asserted instead of trusting the toolchain: rpm's strip
+# machinery has failed silently before (find-debuginfo was a no-op without
+# eu-strip while brp-strip -g'ed every binary regardless of exec bits), and
+# wrong packages must fail the build here, not ship and fail RTA later.
+# Policy: client tools stripped with a .gnu_debuglink and their .debug in
+# the debuginfo package; arangod byte-identical to the install tree
+# (minimal debug info) unless PACKAGE_STRIP=All; the starter and rclone
+# always byte-identical; PACKAGE_STRIP=None leaves every binary untouched.
+CLIENT_TOOLS="arangobackup arangobench arangodump arangoexport arangoimport arangorestore arangosh arangovpack"
+
+SERVER_RPM="$(ls "${PACKAGES_OUT}"/*.rpm | grep -v -e '-client-' -e '-debuginfo-')"
+DEBUG_RPM="$(ls "${PACKAGES_OUT}"/*-debuginfo-*.rpm)"
+
+VER_TREE="${WORK}/verify"
+mkdir -p "${VER_TREE}/main" "${VER_TREE}/debug"
+( cd "${VER_TREE}/main"  && rpm2cpio "${SERVER_RPM}" | cpio -idm --quiet )
+( cd "${VER_TREE}/debug" && rpm2cpio "${DEBUG_RPM}"  | cpio -idm --quiet )
+
+fail_verify() { echo "build-rpm: STRIP POLICY VIOLATION: $*" >&2; exit 1; }
+
+expect_untouched() {
+  if ! cmp -s "${PROJECT_DIR}/build/install/$1" "${VER_TREE}/main/$1"; then
+    fail_verify "$1 differs from the install tree but must not be touched"
+  fi
+}
+
+expect_stripped() {
+  local f="${VER_TREE}/main/$1"
+  if [ ! -f "${f}" ]; then
+    fail_verify "$1 is missing from the package"
+  fi
+  if file -b "${f}" | grep -q ", not stripped"; then
+    fail_verify "$1 must be stripped, but it is not"
+  fi
+  if ! readelf -S "${f}" | grep -q '\.gnu_debuglink'; then
+    fail_verify "$1 lacks the .gnu_debuglink to its debug file"
+  fi
+  if [ ! -f "${VER_TREE}/debug/usr/lib/debug/$1.debug" ]; then
+    fail_verify "the debuginfo package lacks usr/lib/debug/$1.debug"
+  fi
+}
+
+expect_untouched usr/bin/arangodb
+expect_untouched usr/sbin/rclone-arangodb
+case "${PACKAGE_STRIP}" in
+  All)
+    expect_stripped usr/sbin/arangod
+    ;;
+  ExceptArangod)
+    expect_untouched usr/sbin/arangod
+    ;;
+  *)
+    expect_untouched usr/sbin/arangod
+    ;;
+esac
+for tool in ${CLIENT_TOOLS}; do
+  [ -f "${PROJECT_DIR}/build/install/usr/bin/${tool}" ] || continue
+  if [ "${PACKAGE_STRIP}" = "All" ] || [ "${PACKAGE_STRIP}" = "ExceptArangod" ]; then
+    expect_stripped "usr/bin/${tool}"
+  else
+    expect_untouched "usr/bin/${tool}"
+  fi
+done
+echo "build-rpm: strip policy verified (PACKAGE_STRIP=${PACKAGE_STRIP})"

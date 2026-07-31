@@ -172,8 +172,7 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& aqlFunctionFeature = getFeature<aql::AqlFunctionFeature>();
 
   addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
-  addFeature<LoggerFeature>(true, getOptions<LoggerOptionsProvider>(),
-                            getOptions<LogApiOptionsProvider>());
+  addFeature<LoggerFeature>(true, getOptions<LoggerOptionsProvider>());
   addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());
   addFeature<TempFeature>(std::string{_binaryName},
                           getOptions<TempOptionsProvider>());
@@ -185,9 +184,13 @@ void ArangodServer::addFeaturesWithOptionProvider() {
       _dataSourceRegistry, getOptions<async_registry::OptionsProvider>());
   addFeature<ActionFeature>(getOptions<ActionOptionsProvider>());
 
+  auto& databasePath = addFeature<DatabasePathFeature>(
+      getOptions<DatabasePathOptionsProvider>());
+
 #ifdef USE_ENTERPRISE
   addFeature<AuditFeature>(getOptions<AuditOptionsProvider>());
-  addFeature<LicenseFeature>(getOptions<LicenseOptionsProvider>());
+  addFeature<LicenseFeature>(databasePath,
+                             getOptions<LicenseOptionsProvider>());
   addFeature<RCloneFeature>(getOptions<RCloneOptionsProvider>());
   addFeature<HotBackupFeature>(getOptions<HotBackupOptionsProvider>());
   addFeature<EncryptionFeature>(getOptions<EncryptionOptionsProvider>());
@@ -212,7 +215,8 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   addFeature<AuthenticationFeature>(
       getOptions<AuthenticationOptionsProvider>());
   addFeature<GeneralServerFeature>(metrics,
-                                   getOptions<GeneralServerOptionsProvider>());
+                                   getOptions<GeneralServerOptionsProvider>(),
+                                   getOptions<LogApiOptionsProvider>());
   auto& networkFeature =
       addFeature<NetworkFeature>(metrics, getOptions<NetworkOptionsProvider>());
   addFeature<HttpEndpointProvider, EndpointFeature>(
@@ -262,9 +266,6 @@ void ArangodServer::addFeaturesWithOptionProvider() {
 
   auto& rocksdbOption = addFeature<RocksDBOptionFeature>(
       &agency, getOptions<RocksDBOptionFeatureOptionsProvider>());
-
-  auto& databasePath = addFeature<DatabasePathFeature>(
-      getOptions<DatabasePathOptionsProvider>());
 
   addFeature<TemporaryStorageFeature>(
       databasePath, getOptions<TemporaryStorageOptionsProvider>());
