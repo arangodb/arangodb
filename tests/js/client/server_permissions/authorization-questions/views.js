@@ -130,6 +130,7 @@ function viewApiAuthzSuite () {
       arango.POST_RAW(`/_db/${DB}/_api/view`, viewBody);
       assertPermissions([
         "UseDatabase name=d level=read",
+        "IsReadOnly",
         "CreateView db=d name=v_apitest linkedCollections=[c]",
         "UseCollection db=d name=c level=read",
         ...singleOnly([
@@ -183,6 +184,7 @@ function viewApiAuthzSuite () {
                        { cleanupIntervalStep: 2 });
       assertPermissions([
         "UseDatabase name=d level=read",
+        "IsReadOnly",
         "ModifyView db=d name=v_apitest linkedCollections=[]",
         "UseCollection db=d name=c level=read",
         ...singleOnly([
@@ -201,6 +203,7 @@ function viewApiAuthzSuite () {
       arango.PUT_RAW(`/_db/${DB}/_api/view/${TEST_VIEW}/properties`, {});
       assertPermissions([
         "UseDatabase name=d level=read",
+        "IsReadOnly",
         "ModifyView db=d name=v_apitest linkedCollections=[]",
         "UseCollection db=d name=c level=read",
         ...singleOnly([
@@ -222,6 +225,7 @@ function viewApiAuthzSuite () {
                        { name: TEST_VIEW_NEW });
       assertPermissions([
         "UseDatabase name=d level=read",
+        "IsReadOnly",
         "RenameView db=d oldName=v_apitest newName=v_apitest_new",
         "UseCollection db=d name=c level=read",
         ...singleOnly([
@@ -239,6 +243,7 @@ function viewApiAuthzSuite () {
                      { name: TEST_VIEW_NEW });
       assertPermissions([
         "UseDatabase name=d level=read",
+        "IsReadOnly",
         "RenameView db=d oldName=v_apitest newName=v_apitest_new",
         "UseCollection db=d name=c level=read",
         ...singleOnly([
@@ -254,6 +259,7 @@ function viewApiAuthzSuite () {
       arango.DELETE_RAW(`/_db/${DB}/_api/view/${TEST_VIEW}`);
       assertPermissions([
         "UseDatabase name=d level=read",
+        "IsReadOnly",
         "DropView db=d name=v_apitest",
         ...singleOnly([
           "UseCollection db=d name=c level=read"

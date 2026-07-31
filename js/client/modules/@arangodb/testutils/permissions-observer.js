@@ -31,6 +31,17 @@
 // /
 // /   AUTHZ-CHECK UseCollection db=_system name=foo level=read
 // /
+// / `ExecContext::checkNotReadOnly()` traces the server-wide read-only gate the
+// / same way, as the pseudo-question
+// /
+// /   AUTHZ-CHECK IsReadOnly
+// /
+// / It shows up in the observation of every modifying operation - the gate is
+// / consulted once the actual permission question has been answered positively,
+// / and is traced whether or not the server is in read-only mode. Read-only
+// / operations never trace it, and neither does an operation whose permission
+// / question was denied, because then the gate is never reached.
+// /
 // / This module raises that topic to TRACE and collects everything that was
 // / logged in between:
 // /
@@ -43,6 +54,8 @@
 // /   let observed = endObserve();
 // /   assertPermissions([`UseCollection db=_system name=${cn} level=read`,
 // /                      'UseDatabase name=_system level=read'], observed);
+// /
+// / On a mismatch the assertion prints both sets and the two-way diff.
 // /
 // / Requirements for the test that uses this:
 // /
@@ -201,8 +214,15 @@ function permissionSet (permissions) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function assertPermissions (expected, observed) {
-  assertEqual(permissionSet(expected), permissionSet(observed),
-              `observed permissions: ${JSON.stringify(observed)}`);
+  let exp = permissionSet(expected);
+  let obs = permissionSet(observed);
+  let missing = exp.filter((p) => !obs.includes(p));
+  let unexpected = obs.filter((p) => !exp.includes(p));
+  assertEqual(exp, obs,
+              `\nexpected permissions: ${JSON.stringify(exp)}` +
+              `\nobserved permissions: ${JSON.stringify(obs)}` +
+              `\nexpected but not observed: ${JSON.stringify(missing)}` +
+              `\nobserved but not expected: ${JSON.stringify(unexpected)}`);
 }
 
 exports.beginObserve = beginObserve;

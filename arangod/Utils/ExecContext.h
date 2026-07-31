@@ -138,6 +138,18 @@ class ExecContext {
   // see tests/js/client/server_permissions/authorization-questions.js.
   [[nodiscard]] Result can(auth::Permission permission) const;
 
+  // The server-wide read-only gate, which every modifying operation has to
+  // pass in addition to its permission question. It is consulted after that
+  // question has been answered positively. Like `can()`, it is traced on
+  // `Logger::AUTHORIZATION` (TRACE) as `AUTHZ-CHECK IsReadOnly` - the trace
+  // is emitted whenever the gate is consulted, no matter how it answers, so
+  // that the authorization-questions tests can see which operations are
+  // gated by it.
+  //
+  // Note that `arangod/Auth/UserManagerBase.cpp` has read-only checks of its
+  // own which are not routed through here and hence not traced.
+  [[nodiscard]] Result checkNotReadOnly() const;
+
   // New Result-returning permission check methods:
 
   // Check an admin-class action. This is a thin wrapper around can(); it is

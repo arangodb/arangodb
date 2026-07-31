@@ -234,6 +234,7 @@ function collectionApiAuthzSuite () {
       assertPermissions([
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c level=read",
+        "IsReadOnly",
         "UseCollection db=d name=c level=writemeta",
         ...singleOnly([
           "UseCollection db=d name=c level=writedata"
@@ -261,6 +262,7 @@ function collectionApiAuthzSuite () {
       assertPermissions([
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c level=read",
+        "IsReadOnly",
         "UseCollection db=d name=c level=writedata"
       ], endObserve());
       // re-insert the 100 setup documents that truncate removed
@@ -286,6 +288,9 @@ function collectionApiAuthzSuite () {
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c_apitest level=read",
         ...singleOnly([
+          // the read-only gate is only consulted where the writemeta
+          // question is asked, i.e. not on a coordinator
+          "IsReadOnly",
           "UseCollection db=d name=c_apitest level=writemeta",
           "UseCollection db=d name=_graphs level=read",
           "UseCollection db=d name=c_apitest_renamed level=read"
@@ -302,6 +307,7 @@ function collectionApiAuthzSuite () {
       arango.POST_RAW(`/_db/${DB}/_api/collection`, { name: tmp });
       assertPermissions([
         "UseDatabase name=d level=read",
+        "IsReadOnly",
         "CreateCollection db=d name=c_apitest",
         "UseCollection db=d name=c_apitest level=read",
         ...singleOnly([
@@ -320,6 +326,7 @@ function collectionApiAuthzSuite () {
       arango.DELETE_RAW(`/_db/${DB}/_api/collection/${tmp}`);
       assertPermissions([
         "UseDatabase name=d level=read",
+        "IsReadOnly",
         "DropCollection db=d name=c_apitest",
         "UseCollection db=d name=c_apitest level=read",
         "UseCollection db=d name=_graphs level=read",

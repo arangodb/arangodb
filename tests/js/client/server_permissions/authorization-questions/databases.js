@@ -135,6 +135,7 @@ function databaseApiAuthzSuite () {
       arango.POST_RAW(`/_db/_system/_api/database`, { name: 'd2' });
       assertPermissions([
         "UseDatabase name=_system level=read",
+        "IsReadOnly",
         "CreateDatabase name=d2",
         "CreateCollection db=d2 name=_analyzers",
         "CreateCollection db=d2 name=_appbundles",
@@ -162,6 +163,7 @@ function databaseApiAuthzSuite () {
       arango.DELETE_RAW(`/_db/_system/_api/database/d2`);
       assertPermissions([
         "UseDatabase name=_system level=read",
+        "IsReadOnly",
         "DropDatabase name=d2",
         ...singleOnly([
           "UseCollection db=_system name=_users level=read"

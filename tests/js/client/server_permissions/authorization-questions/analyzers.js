@@ -128,6 +128,7 @@ function analyzerApiAuthzSuite () {
       arango.POST_RAW(`/_db/${DB}/_api/analyzer`, { name: NAME, type: 'identity' });
       assertPermissions([
         "UseDatabase name=d level=read",
+        "IsReadOnly",
         "UseAnalyzer db=d name=apitest_analyzer level=modify",
         "UseCollection db=d name=_analyzers level=writedata",
         ...singleOnly([
@@ -145,6 +146,7 @@ function analyzerApiAuthzSuite () {
       arango.DELETE_RAW(`/_db/${DB}/_api/analyzer/${NAME}`);
       assertPermissions([
         "UseDatabase name=d level=read",
+        "IsReadOnly",
         "UseAnalyzer db=d name=apitest_analyzer level=modify",
         "UseCollection db=d name=_analyzers level=writedata",
         ...singleOnly([
@@ -181,6 +183,7 @@ function analyzerApiAuthzSuite () {
       arango.POST_RAW(`/_api/analyzer`, { name: NAME, type: 'identity' });
       assertPermissions([
         "UseDatabase name=_system level=read",
+        "IsReadOnly",
         "UseAnalyzer db=_system name=apitest_analyzer level=modify",
         "UseCollection db=_system name=_analyzers level=writedata",
         ...singleOnly([
@@ -198,6 +201,7 @@ function analyzerApiAuthzSuite () {
       arango.DELETE_RAW(`/_api/analyzer/${NAME}`);
       assertPermissions([
         "UseDatabase name=_system level=read",
+        "IsReadOnly",
         "UseAnalyzer db=_system name=apitest_analyzer level=modify",
         "UseCollection db=_system name=_analyzers level=writedata",
         ...singleOnly([

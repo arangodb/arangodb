@@ -339,6 +339,7 @@ function miscApiAuthzSuite () {
       arango.DELETE_RAW(`/_db/${DB}/_api/query-plan-cache`);
       assertPermissions([
         "UseDatabase name=d level=read",
+        "IsReadOnly",
         "UseDatabase name=d level=write"
       ], endObserve());
     },
@@ -517,6 +518,7 @@ function miscApiAuthzSuite () {
         { name: 'apitester-task', command: '1+1;', offset: 0 });
       assertPermissions([
         "UseDatabase name=d level=read",
+        "IsReadOnly",
         "UseDatabase name=d level=write"
       ], endObserve());
       if (res.parsedBody && res.parsedBody.id) {
@@ -532,6 +534,7 @@ function miscApiAuthzSuite () {
       arango.DELETE_RAW(`/_db/${DB}/_api/tasks/${id}`);
       assertPermissions([
         "UseDatabase name=d level=read",
+        "IsReadOnly",
         "UseDatabase name=d level=write"
       ], endObserve());
     },
@@ -543,6 +546,10 @@ function miscApiAuthzSuite () {
     // which equals the connected (authenticated) user, so both short-circuit
     // to OK WITHOUT calling can(). Reading the tokens hence asks NOTHING,
     // while creating/deleting one persists it and thus reads _users.
+    // canModifyUserProfile() consults the read-only gate after the (skipped)
+    // permission question, so POST/DELETE additionally ask `IsReadOnly` -
+    // on a coordinator as well, the gate is in the ExecContext, not in the
+    // storage path.
     testListAccessTokens: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/token/root`);
@@ -554,6 +561,7 @@ function miscApiAuthzSuite () {
       const res = arango.POST_RAW(`/_db/_system/_api/token/root`,
                                   { name: 'apitester-token' });
       assertPermissions([
+        "IsReadOnly",
         ...singleOnly([
           "UseCollection db=_system name=_users level=read"
         ])
@@ -570,6 +578,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_api/token/root/${id}`);
       assertPermissions([
+        "IsReadOnly",
         ...singleOnly([
           "UseCollection db=_system name=_users level=read"
         ])
