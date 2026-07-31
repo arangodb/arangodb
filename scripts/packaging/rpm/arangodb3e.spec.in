@@ -21,21 +21,24 @@
 # Use 'alldebug' to keep Build-ID links only in the debuginfo package.
 # This prevents the main packages from containing the /usr/lib/.build-id directory.
 %global _build_id_links alldebug
-%global _debuginfo_subpackages 0
-%undefine _unique_debug_names
-%undefine _unique_debug_srcs
-%undefine _debugsource_packages
 
-# Custom post-install macro to fix file permissions.
-# Since we 'hide' files from find-debuginfo using chmod -x, we must restore
-# the executable bit (+x) here so they are packaged correctly as binaries.
-%define __spec_install_post \
-    %{?__debug_package:%{__debug_install_post}} \
-    %{__arch_install_post} \
-    %{__os_install_post} \
-    find %{buildroot}/usr/bin -type f -exec chmod +x {} + \
-    find %{buildroot}/usr/sbin -type f -exec chmod +x {} + \
-    :
+# rpm's own strip machinery is unusable on the Ubuntu build image and is
+# disabled entirely:
+#   - find-debuginfo (via %%debug_package) needs eu-strip from elfutils,
+#     which the image does not carry; its per-file failures are masked by
+#     parallelism, leaving binaries unstripped and the debuginfo package
+#     empty, while debugedit still rewrites the Build-IDs,
+#   - brp-strip (in __os_install_post) ignores executable bits, so the
+#     historical chmod -x trick cannot protect arangod and the starter
+#     from it: it would strip their minimal (-g1) debug info.
+# All stripping is done explicitly in %%install instead (mirroring what
+# dh_strip does on the DEB side), so binaries end up identical across
+# DEB, RPM and TAR.GZ.
+%global __os_install_post \
+    /usr/lib/rpm/brp-compress /usr \
+    /usr/lib/rpm/brp-elfperms \
+    /usr/lib/rpm/brp-remove-la-files \
+    %{nil}
 
 %define _cfgdir %{_sysconfdir}/arangodb3
 %define _databasedir %{_localstatedir}/lib/arangodb3
@@ -57,7 +60,13 @@ Conflicts:      arangodb3, arangodb3-client, arangodb3e-client
 Url:            https://arango.ai
 Vendor:         ArangoDB
 
-%debug_package
+# Explicit debuginfo package instead of %%debug_package: it is filled by
+# the explicit strip loop in %%install, not by find-debuginfo (see the
+# __os_install_post comment above).
+%package debuginfo
+Summary:        Debug symbols for the stripped ArangoDB client tools
+Group:          Development/Debug
+AutoReqProv:    0
 
 %package client
 Summary:        ArangoDB shell as stand-alone package
@@ -76,6 +85,11 @@ Native graphs, an integrated search engine, and JSON support, via a single query
 
 %description client
 The ArangoDB shell as stand-alone program. It also contains the utility programs: arangobench (benchmark), arangorestore & arangodump (backup), arangoimport & arangoexport.
+
+%description debuginfo
+Debug symbols extracted from the stripped ArangoDB binaries (the client
+tools; arangod keeps its minimal debug info in the main package). Install
+this package to symbolize stack traces or debug the stripped binaries.
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                              prep
@@ -104,21 +118,37 @@ mkdir -p %{buildroot}%{_piddir}
 cp -a $INNERWORKDIR/ArangoDB/build/install/* %{buildroot}
 rm -f %{buildroot}/README
 
-# STRIP BYPASS LOGIC:
-# The 'find-debuginfo' script only processes files with the executable bit (+x).
-# We temporarily remove this bit to prevent 'strip' from removing internal symbols.
+# Strip policy (PACKAGE_STRIP, substituted by build-rpm.sh):
+#   None           nothing is stripped
+#   ExceptArangod  client tools are stripped, their debug info goes into
+#                  the debuginfo package; arangod keeps its minimal (-g1)
+#                  debug info  (the nightly/release default)
+#   All            like ExceptArangod, plus arangod itself
+# The starter (usr/bin/arangodb) and rclone (usr/sbin/rclone-arangodb)
+# are never touched. Symlinked tool names (arangoimp, arangoinspect,
+# foxx-manager, ...) are skipped via the -L test; the debuglink of their
+# target covers them. rpm's own strip machinery is disabled — see the
+# __os_install_post comment at the top of this file.
+mkdir -p %{buildroot}/usr/lib/debug
 
-# Always exclude Starter binary from stripping
-chmod -x %{buildroot}/usr/bin/arangodb
-
-# Optional stripping based on external build parameters
+STRIP_LIST=""
 if [ "@RPM_STRIP_NONE@" != "# " ]; then
-    # Disable stripping for everything by removing +x from all executables
-    find %{buildroot}/usr/*bin/ -type f -executable -exec chmod -x {} +
+    STRIP_LIST=""
 elif [ "@RPM_STRIP_EXCEPT_ARANGOD@" != "# " ]; then
-    # Disable stripping specifically for the main server binary
-    chmod -x %{buildroot}/usr/sbin/arangod 2>/dev/null || :
+    STRIP_LIST="usr/bin/arangobackup usr/bin/arangobench usr/bin/arangodump usr/bin/arangoexport usr/bin/arangoimport usr/bin/arangorestore usr/bin/arangosh usr/bin/arangovpack"
+else
+    STRIP_LIST="usr/bin/arangobackup usr/bin/arangobench usr/bin/arangodump usr/bin/arangoexport usr/bin/arangoimport usr/bin/arangorestore usr/bin/arangosh usr/bin/arangovpack usr/sbin/arangod"
 fi
+
+for rel in $STRIP_LIST; do
+    bin="%{buildroot}/$rel"
+    { [ -f "$bin" ] && [ ! -L "$bin" ]; } || continue
+    dbg="%{buildroot}/usr/lib/debug/$rel.debug"
+    mkdir -p "$(dirname "$dbg")"
+    objcopy --only-keep-debug "$bin" "$dbg"
+    strip --remove-section=.comment --remove-section=.note "$bin"
+    objcopy --add-gnu-debuglink="$dbg" "$bin"
+done
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                             check
@@ -184,6 +214,10 @@ echo check: We assume that there is nothing to check.
 %{_datadir}/arangodb3/js@JS_DIR@/client
 %{_datadir}/arangodb3/js@JS_DIR@/node
 %{_datadir}/arangodb3/icudtl*.dat
+
+%files debuginfo
+%defattr(-,root,root,0755)
+/usr/lib/debug
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                         changelog
