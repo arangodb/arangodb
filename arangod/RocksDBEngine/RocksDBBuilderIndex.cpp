@@ -250,6 +250,11 @@ RocksDBBuilderIndex::RocksDBBuilderIndex(std::shared_ptr<RocksDBIndex> wp,
 /// @brief return a VelocyPack representation of the index
 void RocksDBBuilderIndex::toVelocyPack(
     VPackBuilder& builder, std::underlying_type<Serialize>::type flags) const {
+  // If is Inventory just return the index defintion
+  if (Index::hasFlag(flags, Index::Serialize::Inventory)) {
+    _wrapped->toVelocyPack(builder, flags);
+    return;
+  }
   VPackBuilder inner;
   _wrapped->toVelocyPack(inner, flags);
   TRI_ASSERT(inner.slice().isObject());
@@ -874,6 +879,8 @@ futures::Future<Result> RocksDBBuilderIndex::fillIndexBackground(
       /*granularity*/ RocksDBMethodsMemoryTracker::kDefaultGranularity);
 
   Result res;
+  LOG_DEVEL << "WEDGEPROBE idx=" << internal->id().id()
+            << " fill1: starting snapshot fill";
   // Step 1. Capture with snapshot
   rocksdb::DB* db = engine.db()->GetRootDB();
   if (internal->unique()) {
@@ -900,6 +907,8 @@ futures::Future<Result> RocksDBBuilderIndex::fillIndexBackground(
                              _engine.idxPath(), std::move(progress));
   }
 
+  LOG_DEVEL << "WEDGEPROBE idx=" << internal->id().id()
+            << " fill2: snapshot fill done fail=" << res.fail();
   if (res.fail()) {
     co_return res;
   }
@@ -947,9 +956,13 @@ futures::Future<Result> RocksDBBuilderIndex::fillIndexBackground(
     scanFrom = lastScanned;
   } while (maxCatchups-- > 0 && numScanned > 5000);
 
+  LOG_DEVEL << "WEDGEPROBE idx=" << internal->id().id()
+            << " fill3: lockless catchup done -> re-acquiring exclusive lock";
   if (!co_await locker.lock()) {  // acquire exclusive collection lock
     co_return res.reset(TRI_ERROR_LOCK_TIMEOUT);
   }
+  LOG_DEVEL << "WEDGEPROBE idx=" << internal->id().id()
+            << " fill4: exclusive lock re-acquired -> final WAL scan";
 
   // Step 3. Scan the WAL for documents with a lock
 
