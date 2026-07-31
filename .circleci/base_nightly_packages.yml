@@ -48,24 +48,18 @@ version: 2.1
 #                       CRITICAL findings block; NONE = report-only; ALL =
 #                       any finding, incl. UNKNOWN). The EOL base-OS check on
 #                       images always fails regardless. Each scan asserts
-#                       which targets it found (expect-targets/min-targets),
-#                       so a packaging change cannot shrink the scanned
-#                       surface behind a green gate, and correlates findings
-#                       against CISA KEV / FIRST EPSS (report-only for now).
-#                       Waivers (time-boxed, signed off):
-#                       .circleci/trivy-gate-waivers.json, entries {id,
-#                       package (optional), severity (optional only for
-#                       class design-acceptance), detected, expires,
-#                       reason, approved-by, class (optional)}; a finding
-#                       matching an unexpired entry on id, package and
-#                       severity does not count toward the gate. Expiry is
-#                       end-of-day and must fall inside the severity's
-#                       FedRAMP High window measured from "detected"
-#                       (CRITICAL/HIGH/UNKNOWN 30d, MEDIUM 90d, LOW 180d,
-#                       class design-acceptance 366d, KEV-listed ids 14d);
-#                       unknown keys are rejected (validated in
-#                       prepare-nightly, which stages the
-#                       file); expired entries block again and
+#                       the targets it found (expect-targets/min-targets)
+#                       and correlates findings against CISA KEV / FIRST
+#                       EPSS (report-only). Waivers (validated in
+#                       prepare-nightly): .circleci/trivy-gate-waivers.json,
+#                       entries {id, package (optional), severity (optional
+#                       only for class design-acceptance), detected,
+#                       expires, reason, approved-by, class (optional)},
+#                       matched on id, package and severity. Expiry is
+#                       end-of-day, inside the FedRAMP High window from
+#                       "detected" (CRITICAL/HIGH/UNKNOWN 30d, MEDIUM 90d,
+#                       LOW 180d, design-acceptance 366d, KEV 14d); unknown
+#                       keys are rejected; expired entries block again and
 #                       warn. Secret findings are never waivable
 #                       here (dev-fixture allowlists belong in a trivy
 #                       secret config, by path). Published reports and SBOMs
@@ -245,9 +239,8 @@ commands:
     # other jobs work on the install tree / workspace and need just the
     # support files, so they default to a sparse blob-filtered checkout of
     # .circleci/ + scripts/ + CMakeLists.txt + VERSIONS + LICENSE, a few MB
-    # instead of the full tree. .circleci/ is needed by prepare-nightly
-    # (waiver validation) and publish-nightly (waiver count in the publish
-    # reports).
+    # instead of the full tree; prepare-nightly and publish-nightly need
+    # .circleci/ for the waiver file.
     parameters:
       destination:
         type: string
@@ -441,13 +434,9 @@ commands:
               -o install.tar.gz "${URL}"
 
   gate-trivy-findings:
-    # The scans run report-only (fail-on-findings: false) and this gate
-    # decides separately, from the JSON report, whether the job fails. It
-    # predates the orb's own gate and stays the authority so the
-    # security-check-fail-level bands (NONE through ALL) and the local
-    # waiver semantics keep working unchanged. The orb's trivy-gate.txt
-    # artifact shows the CRITICAL/HIGH view; this command decides whether
-    # the publish proceeds: only findings (vulnerabilities and
+    # The scans run report-only; this command is the gate. It predates the
+    # orb's own gate and keeps the security-check-fail-level bands and the
+    # local waiver semantics: only findings (vulnerabilities and
     # secrets) at or above security-check-fail-level do — minus
     # vulnerabilities covered by an unexpired entry in
     # .circleci/trivy-gate-waivers.json (staged into the workspace by
@@ -502,14 +491,10 @@ commands:
               echo "ERROR: ${WFILE} is not a valid waiver file — refusing to gate" >&2
               exit 1
             fi
-            # A vulnerability is waived iff an unexpired entry matches its
-            # VulnerabilityID, its PkgName (when the entry is
-            # package-scoped) and its severity: the declared severity sized
-            # the remediation window, so a mismatch is not honored
-            # (design-acceptance entries may omit severity). Secrets are
-            # never waived. Every applied waiver is logged so the job
-            # output shows exactly what was excused, by whom, and until
-            # when.
+            # Waived iff an unexpired entry matches id, package (when
+            # scoped) and severity, which sized the window; design-
+            # acceptance may omit severity. Secrets are never waived;
+            # applied waivers are logged.
             jq -r --arg gate "${GATE}" --arg today "${TODAY}" --slurpfile w "${WFILE}" '
               ([$w[0].waivers[]? | select(.expires >= $today)]) as $active
               | [.Results[]? | .Vulnerabilities[]?
@@ -693,12 +678,9 @@ jobs:
                 exit 1
               fi
             fi
-            # Structural + POA&M validation; fields and windows are
-            # documented in the file header. Two deliberate choices: the
-            # window is anchored to "detected" rather than today, so a
-            # waiver cannot be renewed by re-dating it, and unknown keys are
-            # rejected because Trivy's own ignorefile treats a misspelled
-            # expiry key as "no expiry", suppressing the finding forever.
+            # Windows anchor to "detected" so a waiver cannot be renewed by
+            # re-dating it; unknown keys are rejected because Trivy's own
+            # ignorefile fails open on a misspelled key.
             jq -r --arg today "${TODAY}" '
                  def days: (. + "T00:00:00Z") | fromdate;
                  # The roundtrip rejects calendar-invalid dates the regex
@@ -1188,9 +1170,8 @@ jobs:
   # One job instance per published item, so a finding in one item never
   # prevents the remaining items from being scanned; publish-nightly requires
   # every instance, so any gated finding still blocks the whole publish.
-  # The scans report over ALL severities while their gate band stays at the
-  # CRITICAL/HIGH industry standard (report-severity vs severity);
-  # gate-trivy-findings fails the job per security-check-fail-level.
+  # Reports carry ALL severities; the gate band stays CRITICAL/HIGH and
+  # gate-trivy-findings decides per security-check-fail-level.
   # EOL base-OS check on image
   # scans still fails unconditionally. detection-priority stays "precise" —
   # the orb explicitly recommends against "comprehensive" on blocking gates,
@@ -1264,12 +1245,9 @@ jobs:
               echo "No << parameters.target >> packages found in ${SRC}" >&2
               exit 1
             fi
-      # Report-only over ALL severities; gate-trivy-findings below decides
-      # whether the job (and with it the publish) fails. report-severity
-      # keeps /tmp/trivy-results.json full-band (the split steps below and
-      # the published reports are unaffected); severity is the orb's gate
-      # band (its trivy-gate.txt view), inert while fail-on-findings is
-      # false.
+      # Report-only; gate-trivy-findings decides. report-severity keeps
+      # /tmp/trivy-results.json full-band; severity only narrows the orb's
+      # trivy-gate.txt view, inert while fail-on-findings is false.
       - trivy-scan/scan:
           scan-type: rootfs
           scan-path: /tmp/scan-root
@@ -1278,12 +1256,9 @@ jobs:
           fail-on-findings: false
           ignore-unfixed: false
           store-junit-results: true
-          # The orb's default coverage floor is ONE target, so a packaging
-          # change that dropped the Go binaries or the Node tree would keep
-          # the gate green over less; these name the targets instead
-          # (substring match, read off nightly pipeline 53660). The OS layer
-          # is covered by the image scans, and arangod itself is C++, which
-          # no trivy mode analyzes.
+          # Named targets (substring match, read off nightly 53660): the
+          # orb's default floor of ONE would keep the gate green over a
+          # shrunken surface. arangod is C++, which no trivy mode analyzes.
           expect-targets: "Node.js,usr/bin/arangodb,usr/sbin/rclone-arangodb"
           # sbom-output makes the scan run with --list-all-pkgs so the JSON
           # report carries the FULL package inventory (not only vulnerable
@@ -1434,17 +1409,11 @@ jobs:
           root: /tmp/nightly
           paths:
             - trivy-reports/<< parameters.arch >>
-      # KEV/EPSS correlation over the full-band report: trivy reports
-      # neither signal, so a KEV-listed MEDIUM sits below every CVSS-banded
-      # gate in this pipeline. BOD 26-04 keys federal remediation deadlines
-      # on exploitation evidence (KEV), not CVSS; EPSS is the complementary
-      # likelihood signal, tracked here but mandated by nothing. Runs
-      # BEFORE the gate so the result is recorded even on a blocked run.
-      # Report-only: arming fail-on-match would let a feed update alone
-      # block a publish over findings the CVSS gate does not count, so
-      # that stays a deliberate call after triaging real output, not an
-      # automatic follow-up. strict-feeds stays false either way, so a
-      # CISA or FIRST outage cannot block a publish.
+      # KEV/EPSS over the full-band report: a KEV-listed MEDIUM sits below
+      # every CVSS band, and BOD 26-04 keys deadlines on KEV (EPSS is
+      # complementary, not mandated). Report-only: arming it would let a
+      # feed update alone block a publish. strict-feeds false, so a feed
+      # outage cannot.
       - trivy-scan/kev-epss-check:
           report-path: /tmp/trivy-results.json
           fail-on-match: false
@@ -1493,10 +1462,9 @@ jobs:
           ignore-unfixed: false
           exit-on-eol: "1"
           store-junit-results: true
-          # Same assertion as the package scans, plus the OS package
-          # database, unnamed because it embeds the scan re-tag and distro
-          # release, which a base-image bump changes by design; min-targets
-          # floors the count at four so losing it still fails.
+          # Package-scan targets plus the OS package database (unnamed: it
+          # embeds the re-tag and distro release); min-targets catches its
+          # loss.
           expect-targets: "Node.js,usr/bin/arangodb,usr/sbin/rclone-arangodb"
           min-targets: 4
           # Setting sbom-output makes the scan run with --list-all-pkgs so

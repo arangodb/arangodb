@@ -537,10 +537,8 @@ jobs:
               echo "Nothing to cancel"
             fi
 
-  # Lints the security-gate configuration at PR time. The Trivy scans and
-  # their gate live in the nightly-packages pipeline, next to the artifacts
-  # they scan; this job checks what governs them: disposition hygiene and
-  # the required-status-check inventory.
+  # PR-time lint of what governs the nightly security gates: disposition
+  # hygiene and the required-status-check inventory.
   security-governance:
     docker:
       - image: cimg/base:current
@@ -548,13 +546,9 @@ jobs:
     steps:
       - attach_workspace:
           at: .
-      # Suppression hygiene (.trivyignore, .trivyignore.yaml, inline SAST
-      # markers): everything must be dated, in-window and unexpired. No such
-      # files exist here today; this is what stops a bare undated suppression
-      # from ever landing. poam-windows mirrors the trivy-gate-waivers.json
-      # table (FedRAMP High) so the repository has one remediation-window
-      # table. nosem-exclude keeps the inline audit on first-party source;
-      # vendored trees are not ours to date.
+      # No suppression files exist here today; this keeps any future one
+      # dated and in-window. poam-windows matches the trivy-gate-waivers
+      # table; nosem-exclude skips vendored trees.
       - trivy-scan/disposition-check:
           poam-windows: "critical=30,high=30,medium=90,low=180"
           nosem-exclude: ":!:.circleci/* :!:3rdParty/* :!:*/node_modules/*"
@@ -600,10 +594,8 @@ jobs:
                      -H "Accept: application/vnd.github+json" \
                      -H "X-GitHub-Api-Version: 2022-11-28" \
                      -o /tmp/gh-rules.json "${GH_API}/${ENDPOINT}"; then
-                  # grep/sed, not jq or a heredoc: a literal double-less-than
-                  # is CircleCI parameter syntax and unsafe in command bodies.
-                  # "context" appears only inside required_status_checks
-                  # entries in either payload.
+                  # grep/sed: heredocs collide with CircleCI parameter
+                  # syntax; "context" only appears in required checks.
                   grep -oE '"context":[[:space:]]*"[^"]*"' /tmp/gh-rules.json \
                     | sed -e 's/.*"\([^"]*\)"$/\1/' | sort -u >> /tmp/required-live.txt || true
                   LIVE_SOURCE="${LIVE_SOURCE}${LIVE_SOURCE:+, }${ENDPOINT}"
@@ -675,11 +667,9 @@ jobs:
                 fi
               done < /tmp/required-expected.txt
               if [ "${FOUND}" = "0" ]; then
-                # Variant pipelines (sanitizer, full, repl2) and pipelines on
-                # the protected branch legitimately emit other workflow
-                # names. A DEFAULT head-branch pipeline emitting none of the
-                # committed contexts means they were all renamed at once,
-                # the case that blocks every merge.
+                # Variant and devel pipelines legitimately emit other names;
+                # a default head-branch pipeline emitting none means the
+                # workflows were renamed, which blocks every merge.
                 case "${PIPELINE_VARIANTS:-}" in *true*) VARIANT=1 ;; *) VARIANT=0 ;; esac
                 if [ "${VARIANT}" = "1" ] || [ "${CIRCLE_BRANCH:-}" = "${PROTECTED}" ]; then
                   echo "NOTICE: variant or ${PROTECTED} pipeline; none of the committed contexts is emitted here, nothing to compare." >&2
@@ -697,10 +687,9 @@ jobs:
                 [ "${DRIFT}" = "0" ] && echo "Every committed context is emitted by this pipeline."
               fi
             fi
-            # Confirmed drift and a broken inventory fail the job so they get
-            # seen; this workflow is not itself a required check, so red here
-            # cannot block the merge it reports on. A missing token only
-            # skips its half: forked PRs get no secrets and must stay green.
+            # Drift fails the job (lint is not a required check, so it
+            # cannot block a merge); missing tokens only skip their half,
+            # keeping forked PRs green.
             if [ "${DRIFT}" != "0" ]; then
               echo "ERROR: drift reported above. Fix the committed list or the branch protection." >&2
               exit 1
