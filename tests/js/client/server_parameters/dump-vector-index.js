@@ -146,15 +146,18 @@ function dumpVectorIndexSuite() {
   };
 
   return {
+    setUpAll: function () {
+      assertTrue(IM.debugCanUseFailAt(),
+                 'this test requires failure points to be enabled');
+    },
+
     setUp: function () {
       db._drop(cn);
       db._create(cn);
     },
 
     tearDown: function () {
-      if (IM.debugCanUseFailAt()) {
-        IM.debugClearFailAt();
-      }
+      IM.debugClearFailAt();
       waitBuildSettled();
       db._drop(cn);
     },
@@ -166,7 +169,6 @@ function dumpVectorIndexSuite() {
     },
 
     testDumpWhileTraining: function () {
-      assertTrue(IM.debugCanUseFailAt(), 'failure points must be enabled');
       fillCollection(db._collection(cn), 100, 4);
       IM.debugSetFailAt(FP_PAUSE_TRAINING);
 
@@ -176,7 +178,6 @@ function dumpVectorIndexSuite() {
     },
 
     testDumpWhileIngesting: function () {
-      assertTrue(IM.debugCanUseFailAt(), 'failure points must be enabled');
       fillCollection(db._collection(cn), 100, 4);
       IM.debugSetFailAt(FP_PAUSE_INGESTION);
 
