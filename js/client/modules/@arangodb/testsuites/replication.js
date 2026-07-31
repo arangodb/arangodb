@@ -26,7 +26,6 @@
 
 const functionsDocumentation = {
   'replication_static': 'replication static tests',
-  'replication_sync': 'replication sync tests',
   'shell_replication': 'shell replication tests',
   'http_replication': 'client replication API tests'
 };
@@ -42,7 +41,6 @@ const ct = require('@arangodb/testutils/client-tools');
 const testPaths = {
   'shell_replication': [tu.pathForTesting('common/replication')],
   'replication_static': [tu.pathForTesting('client/replication/static')],
-  'replication_sync': [tu.pathForTesting('client/replication/sync')],
   'http_replication': [tu.pathForTesting('common/replication_api')]
 };
 
@@ -153,22 +151,10 @@ function replicationStatic (options) {
   return ret;
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief TEST: replication_sync
-// //////////////////////////////////////////////////////////////////////////////
-
-function replicationSync (options) {
-  let testCases = tu.scanTestPaths(testPaths.replication_sync, options);
-  testCases = tu.splitBuckets(options, testCases);
-
-  return new replicationRunner(options, 'replication_sync', {"server.authentication": "true"}).run(testCases);
-}
-
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['shell_replication'] = shellReplication;
   testFns['replication_static'] = replicationStatic;
-  testFns['replication_sync'] = replicationSync;
   testFns['http_replication'] = shellClientReplicationApi;
   tu.CopyIntoObject(fnDocs, functionsDocumentation);
   tu.CopyIntoList(optionsDoc, optionsDocumentation);
