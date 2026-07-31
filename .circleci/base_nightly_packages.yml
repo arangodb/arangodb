@@ -54,15 +54,17 @@ version: 2.1
 #                       against CISA KEV / FIRST EPSS (report-only for now).
 #                       Waivers (time-boxed, signed off):
 #                       .circleci/trivy-gate-waivers.json, entries {id,
-#                       package (optional), severity, detected, expires,
+#                       package (optional), severity (optional only for
+#                       class design-acceptance), detected, expires,
 #                       reason, approved-by, class (optional)}; a finding
-#                       matching an unexpired entry does not count toward
-#                       the gate. Expiry is end-of-day and must fall inside
-#                       the severity's FedRAMP High window measured from
-#                       "detected" (CRITICAL/HIGH/UNKNOWN 30d, MEDIUM 90d,
-#                       LOW 180d, class design-acceptance 366d), with a
-#                       366-day renewal horizon; unknown keys are rejected
-#                       (validated in prepare-nightly, which stages the
+#                       matching an unexpired entry on id, package and
+#                       severity does not count toward the gate. Expiry is
+#                       end-of-day and must fall inside the severity's
+#                       FedRAMP High window measured from "detected"
+#                       (CRITICAL/HIGH/UNKNOWN 30d, MEDIUM 90d, LOW 180d,
+#                       class design-acceptance 366d, KEV-listed ids 14d);
+#                       unknown keys are rejected (validated in
+#                       prepare-nightly, which stages the
 #                       file); expired entries block again and
 #                       warn. Secret findings are never waivable
 #                       here (dev-fixture allowlists belong in a trivy
@@ -242,11 +244,10 @@ commands:
     # Only compile-nightly needs the real source tree (sparse: false). All
     # other jobs work on the install tree / workspace and need just the
     # support files, so they default to a sparse blob-filtered checkout of
-    # .circleci/ + scripts/ + CMakeLists.txt + VERSIONS + LICENSE +
-    # .github/CODEOWNERS, a few MB instead of the full tree. .circleci/ is
-    # needed by prepare-nightly (waiver validation) and publish-nightly
-    # (waiver count in the publish reports); CODEOWNERS is what waiver
-    # approvers are cross-checked against.
+    # .circleci/ + scripts/ + CMakeLists.txt + VERSIONS + LICENSE, a few MB
+    # instead of the full tree. .circleci/ is needed by prepare-nightly
+    # (waiver validation) and publish-nightly (waiver count in the publish
+    # reports).
     parameters:
       destination:
         type: string
@@ -265,7 +266,7 @@ commands:
             git init
             git remote add origin https://github.com/arangodb/arangodb.git
             if [ "<< parameters.sparse >>" = "true" ]; then
-              git sparse-checkout set --no-cone /.circleci/ /scripts/ /CMakeLists.txt /VERSIONS /LICENSE /.github/CODEOWNERS
+              git sparse-checkout set --no-cone /.circleci/ /scripts/ /CMakeLists.txt /VERSIONS /LICENSE
               git fetch --depth 1 --filter=blob:none origin << pipeline.git.revision >>
             else
               git fetch --depth 1 origin << pipeline.git.revision >>
@@ -441,12 +442,12 @@ commands:
 
   gate-trivy-findings:
     # The scans run report-only (fail-on-findings: false) and this gate
-    # decides separately, from the JSON report, whether the job fails: the
-    # gate band is the security-check-fail-level pipeline parameter,
-    # resolved at trigger time, while an orb parameter is fixed at config
-    # compile. The orb's trivy-gate.txt artifact shows the CRITICAL/HIGH
-    # view; this command stays the authority on whether the publish
-    # proceeds: only findings (vulnerabilities and
+    # decides separately, from the JSON report, whether the job fails. It
+    # predates the orb's own gate and stays the authority so the
+    # security-check-fail-level bands (NONE through ALL) and the local
+    # waiver semantics keep working unchanged. The orb's trivy-gate.txt
+    # artifact shows the CRITICAL/HIGH view; this command decides whether
+    # the publish proceeds: only findings (vulnerabilities and
     # secrets) at or above security-check-fail-level do — minus
     # vulnerabilities covered by an unexpired entry in
     # .circleci/trivy-gate-waivers.json (staged into the workspace by
@@ -502,10 +503,13 @@ commands:
               exit 1
             fi
             # A vulnerability is waived iff an unexpired entry matches its
-            # VulnerabilityID (and its PkgName, when the entry is
-            # package-scoped). Secrets are never waived. Every applied
-            # waiver is logged so the job output shows exactly what was
-            # excused, by whom, and until when.
+            # VulnerabilityID, its PkgName (when the entry is
+            # package-scoped) and its severity: the declared severity sized
+            # the remediation window, so a mismatch is not honored
+            # (design-acceptance entries may omit severity). Secrets are
+            # never waived. Every applied waiver is logged so the job
+            # output shows exactly what was excused, by whom, and until
+            # when.
             jq -r --arg gate "${GATE}" --arg today "${TODAY}" --slurpfile w "${WFILE}" '
               ([$w[0].waivers[]? | select(.expires >= $today)]) as $active
               | [.Results[]? | .Vulnerabilities[]?
@@ -513,7 +517,9 @@ commands:
                   | . as $v
                   | ($active[] | select(.id == $v.VulnerabilityID
                       and ((.package // $v.PkgName) == $v.PkgName))) as $m
-                  | "WAIVED: \($v.VulnerabilityID) (\($v.PkgName), \($v.Severity)) until \($m.expires) — \($m.reason) [approved by \($m."approved-by")]"
+                  | if (($m.severity // $v.Severity) == $v.Severity)
+                    then "WAIVED: \($v.VulnerabilityID) (\($v.PkgName), \($v.Severity)) until \($m.expires) — \($m.reason) [approved by \($m."approved-by")]"
+                    else "WARNING: waiver \($m.id) declares severity \($m.severity) but the finding is \($v.Severity); not applied" end
                 ] | unique | .[]' /tmp/trivy-results.json
             COUNT=$(jq --arg gate "${GATE}" --arg today "${TODAY}" --slurpfile w "${WFILE}" '
               ([$w[0].waivers[]? | select(.expires >= $today)]) as $active
@@ -521,7 +527,8 @@ commands:
                   | (.Vulnerabilities[]?
                       | select(. as $v
                           | [$active[] | select(.id == $v.VulnerabilityID
-                              and ((.package // $v.PkgName) == $v.PkgName))]
+                              and ((.package // $v.PkgName) == $v.PkgName)
+                              and ((.severity // $v.Severity) == $v.Severity))]
                           | length == 0)),
                     .Secrets[]?
                 ]
@@ -664,10 +671,27 @@ jobs:
             # Unparseable JSON is caught first: the validator below reads
             # fields, and jq failing on a syntax error must not be confused
             # with jq reporting no problems.
-            if ! jq -e . "${W}" >/dev/null 2>&1; then
+            if ! jq empty "${W}" 2>/dev/null; then
               echo "ERROR: ${W} is not valid JSON" >&2
               cat "${W}" >&2
               exit 1
+            fi
+            # Duplicate keys are last-wins in every parser, so the entry a
+            # reviewer read can differ from the entry that gates.
+            if command -v python3 >/dev/null 2>&1; then
+              printf '%s\n' \
+                'import json, sys' \
+                'from collections import Counter' \
+                'def hook(pairs):' \
+                '    dupes = sorted(k for k, n in Counter(k for k, _ in pairs).items() if n > 1)' \
+                '    if dupes:' \
+                '        raise SystemExit("duplicate JSON keys: " + ", ".join(dupes))' \
+                '    return dict(pairs)' \
+                'json.load(open(sys.argv[1]), object_pairs_hook=hook)' > /tmp/waiver-dupes.py
+              if ! python3 /tmp/waiver-dupes.py "${W}" >&2; then
+                echo "ERROR: ${W} failed the duplicate-key check" >&2
+                exit 1
+              fi
             fi
             # Structural + POA&M validation; fields and windows are
             # documented in the file header. Two deliberate choices: the
@@ -677,7 +701,11 @@ jobs:
             # expiry key as "no expiry", suppressing the finding forever.
             jq -r --arg today "${TODAY}" '
                  def days: (. + "T00:00:00Z") | fromdate;
-                 def isdate: (type == "string") and test("^[0-9]{4}-[0-9]{2}-[0-9]{2}$");
+                 # The roundtrip rejects calendar-invalid dates the regex
+                 # accepts (2026-13-01 would abort jq, 2026-02-30 would
+                 # silently normalize forward and stretch the window).
+                 def isdate: (type == "string") and test("^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
+                   and ((try (days | todate | .[0:10]) catch null) == .);
                  def nonempty: (type == "string") and (length > 0);
                  def window($class; $sev):
                    if $class == "design-acceptance" then 366
@@ -702,7 +730,7 @@ jobs:
                          else
                            ($w.id // "") as $id
                            | ("\($at)" + (if ($id | nonempty) then " (\($id))" else "" end)) as $at
-                           | ($w.class // "remediation-pending") as $class
+                           | (if ($w | has("class")) then $w.class else "remediation-pending" end) as $class
                            | ($w.severity // "") as $sev
                            | [ ( $w | keys_unsorted - $allowed | .[]
                                  | "\($at): unknown key \"\(.)\", allowed keys are \($allowed | join(", "))" ),
@@ -710,7 +738,9 @@ jobs:
                                  else "\($at): id is required and must be a non-empty string (the Trivy VulnerabilityID)" end ),
                                ( if ($classes | index($class)) then empty
                                  else "\($at): class \"\($class)\" is not one of \($classes | join(", "))" end ),
-                               ( if $class == "design-acceptance" then empty
+                               ( if $class == "design-acceptance" then
+                                   ( if ($w | has("severity") | not) or ($sevs | index($sev)) then empty
+                                     else "\($at): severity, when given, must be one of \($sevs | join(", "))" end )
                                  elif ($sevs | index($sev)) then empty
                                  else "\($at): severity is required (one of \($sevs | join(", "))) and drives the expiry window" end ),
                                ( if ($w.reason // "" | nonempty) then empty
@@ -720,13 +750,13 @@ jobs:
                                ( if ($w | has("package") | not) or ($w.package | nonempty) then empty
                                  else "\($at): package, when given, must be a non-empty string" end ),
                                ( if ($w.detected // null | isdate) then empty
-                                 else "\($at): detected is required and must be YYYY-MM-DD (the window runs from it)" end ),
+                                 else "\($at): detected is required and must be a real YYYY-MM-DD date (the window runs from it)" end ),
                                ( if ($w.detected // null | isdate)
                                     and ($w.detected > (($today | days) + 86400 | todate | .[0:10])) then
-                                   "\($at): detected \($w.detected) is in the future; post-dating detection would extend the remediation window"
+                                   "\($at): detected \($w.detected) is more than a day in the future; post-dating detection would extend the remediation window"
                                  else empty end ),
                                ( if ($w.expires // null | isdate) then empty
-                                 else "\($at): expires is required and must be YYYY-MM-DD" end ),
+                                 else "\($at): expires is required and must be a real YYYY-MM-DD date" end ),
                                ( if ($w.detected // null | isdate) and ($w.expires // null | isdate) then
                                    ( if $w.expires >= $w.detected then empty
                                      else "\($at): expires \($w.expires) is before detected \($w.detected)" end ),
@@ -751,19 +781,31 @@ jobs:
               sed -e "s/^/  /" /tmp/waiver-problems.txt >&2
               exit 1
             fi
-            # approved-by should name a code owner, the first thing an
-            # auditor asks about a risk acceptance. NOTICE, not a failure,
-            # while CODEOWNERS routes no security owner for this repository.
-            CO=.github/CODEOWNERS
-            if [ -f "${CO}" ]; then
-              jq -r ".waivers[].\"approved-by\"" "${W}" | sort -u | while IFS= read -r APPROVER; do
-                [ -n "${APPROVER}" ] || continue
-                if ! grep -qF -- "${APPROVER}" "${CO}"; then
-                  echo "NOTICE: waiver approver ${APPROVER} does not appear in ${CO}; a risk acceptance should come from a code owner" >&2
+            # KEV-listed ids get the BOD 26-04 clock (14 days from
+            # detection), not the severity window. Fail-open on feed
+            # errors: a CISA outage must not block the nightly.
+            if [ "$(jq -r '.waivers | length' "${W}")" != "0" ]; then
+              if curl -sSfL --retry 3 --retry-delay 2 --max-time 60 \
+                   -o /tmp/kev-catalog.json \
+                   https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json \
+                 && jq -e '.vulnerabilities | type == "array"' /tmp/kev-catalog.json >/dev/null 2>&1; then
+                jq -r --arg today "${TODAY}" --slurpfile kev /tmp/kev-catalog.json '
+                     ([$kev[0].vulnerabilities[]?.cveID]) as $ids
+                     | .waivers[]
+                     | select(.expires >= $today)
+                     | select(.id as $i | $ids | index($i))
+                     | ((.detected + "T00:00:00Z" | fromdate) + (14 * 86400) | todate | .[0:10]) as $cap
+                     | select(.expires > $cap)
+                     | "\(.id): KEV-listed, expires \(.expires) is beyond the 14-day KEV window (detected \(.detected), cap \($cap))"' \
+                  "${W}" > /tmp/kev-problems.txt
+                if [ -s /tmp/kev-problems.txt ]; then
+                  echo "ERROR: ${W} waives actively exploited vulnerabilities past the KEV window:" >&2
+                  sed -e "s/^/  /" /tmp/kev-problems.txt >&2
+                  exit 1
                 fi
-              done
-            else
-              echo "NOTICE: no ${CO} in the checkout, so waiver approvers could not be cross-checked" >&2
+              else
+                echo "NOTICE: KEV catalog unreachable; KEV expiry caps were not enforced on this run." >&2
+              fi
             fi
             # Expired entries are dead weight (the finding blocks again
             # regardless) — warn so they get cleaned up.
@@ -1226,8 +1268,8 @@ jobs:
       # whether the job (and with it the publish) fails. report-severity
       # keeps /tmp/trivy-results.json full-band (the split steps below and
       # the published reports are unaffected); severity is the orb's gate
-      # band (its trivy-gate.txt and junit views), inert while
-      # fail-on-findings is false.
+      # band (its trivy-gate.txt view), inert while fail-on-findings is
+      # false.
       - trivy-scan/scan:
           scan-type: rootfs
           scan-path: /tmp/scan-root
@@ -1397,11 +1439,12 @@ jobs:
       # gate in this pipeline. BOD 26-04 keys federal remediation deadlines
       # on exploitation evidence (KEV), not CVSS; EPSS is the complementary
       # likelihood signal, tracked here but mandated by nothing. Runs
-      # BEFORE the gate so the result is recorded even on a blocked run. Report-only: arming fail-on-match would let a feed
-      # update alone block a publish over findings the CVSS gate does not
-      # count, so that stays a deliberate call after triaging real output,
-      # not an automatic follow-up. strict-feeds stays false either way, so
-      # a CISA or FIRST outage cannot block a publish.
+      # BEFORE the gate so the result is recorded even on a blocked run.
+      # Report-only: arming fail-on-match would let a feed update alone
+      # block a publish over findings the CVSS gate does not count, so
+      # that stays a deliberate call after triaging real output, not an
+      # automatic follow-up. strict-feeds stays false either way, so a
+      # CISA or FIRST outage cannot block a publish.
       - trivy-scan/kev-epss-check:
           report-path: /tmp/trivy-results.json
           fail-on-match: false
@@ -1453,7 +1496,7 @@ jobs:
           # Same assertion as the package scans, plus the OS package
           # database, unnamed because it embeds the scan re-tag and distro
           # release, which a base-image bump changes by design; min-targets
-          # covers it.
+          # floors the count at four so losing it still fails.
           expect-targets: "Node.js,usr/bin/arangodb,usr/sbin/rclone-arangodb"
           min-targets: 4
           # Setting sbom-output makes the scan run with --list-all-pkgs so
