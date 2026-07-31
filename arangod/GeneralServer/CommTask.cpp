@@ -852,7 +852,9 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
         // mop: these paths are always callable...they will be able to check
         // req.user when it could be validated
         result = Flow::Continue;
-        vc->forceSuperuser();
+        if (!path.starts_with(::pathPrefixAdminAardvark)) {
+          vc->forceSuperuser();
+        }
       } else if (userAuthenticated && path == "/_api/cluster/endpoints") {
         // allow authenticated users to access cluster/endpoints
         result = Flow::Continue;
