@@ -33,9 +33,11 @@ const jsunity = require('jsunity');
 const { assertTrue, assertFalse, assertEqual, assertNotNull } = jsunity.jsUnity.assertions;
 const arangodb = require('@arangodb');
 const fs = require('fs');
+const internal = require('internal');
 const pu = require('@arangodb/testutils/process-utils');
 const db = arangodb.db;
 const arango = arangodb.arango;
+const isCluster = internal.isCluster();
 const { executeExternalAndWaitWithSanitizer } = require('@arangodb/test-helper');
 const { VectorIndexTrainingState, waitForVectorIndexState } =
   require('@arangodb/testutils/vector-index-common');
@@ -45,11 +47,16 @@ let IM = global.instanceManager;
 const FP_PAUSE_TRAINING = 'RocksDBVectorIndex::pauseBeforeTraining';
 const FP_PAUSE_INGESTION = 'RocksDBVectorIndex::pauseBeforeIngestion';
 
+// A dump must carry the vector index through every build phase. Single-server
+// dumps go through toVelocyPackForInventory(), cluster dumps through
+// toVelocyPackForClusterInventory(); this suite runs in both modes.
 function dumpVectorIndexSuite() {
   'use strict';
   const cn = 'UnitTestsVectorIndexDump';
   const dim = 4;
-  const docCount = 100;
+  const numberOfShards = isCluster ? 3 : 1;
+  const docCount = 100 * numberOfShards;
+  const buildRole = isCluster ? 'dbserver' : undefined;
   const arangodump = pu.ARANGODUMP_BIN;
 
   assertTrue(fs.isFile(arangodump), 'arangodump not found!');
@@ -67,8 +74,7 @@ function dumpVectorIndexSuite() {
     db._collection(cn).insert(docs);
   };
 
-  // Dump the collection and return the vector index from its structure file,
-  // or null if the dump does not contain one.
+  // Returns the vector index from the dump's structure file, or null.
   const dumpVectorIndex = function () {
     let path = fs.getTempFile();
     fs.makeDirectory(path);
@@ -111,7 +117,6 @@ function dumpVectorIndexSuite() {
     });
   };
 
-  // A dump in any phase must carry the vector index, else dump/restore loses it.
   // The builder-only fields must not leak into the external (dump) shape.
   const assertVectorIndexInDump = function (phase) {
     let idx = dumpVectorIndex();
@@ -132,7 +137,7 @@ function dumpVectorIndexSuite() {
 
     setUp: function () {
       db._drop(cn);
-      db._create(cn);
+      db._create(cn, { numberOfShards, replicationFactor: 1 });
     },
 
     tearDown: function () {
@@ -140,7 +145,13 @@ function dumpVectorIndexSuite() {
       db._drop(cn);
     },
 
+    // Single-server tests wait for a transient build phase, then dump. The
+    // per-shard state cannot be observed reliably in the cluster, so the
+    // paused-build tests below cover those phases there instead.
     testDumpWhileUnusable: function () {
+      if (isCluster) {
+        return;
+      }
       const idx = createBackgroundVectorIndex('vecIdxUnusable', 5);
       assertTrue(waitForVectorIndexState(db._collection(cn), idx.name,
                                          VectorIndexTrainingState.kUnusable, 60));
@@ -148,9 +159,12 @@ function dumpVectorIndexSuite() {
     },
 
     testDumpWhileTraining: function () {
+      if (isCluster) {
+        return;
+      }
       fillCollection();
       assertEqual(db._collection(cn).count(), docCount);
-      IM.debugSetFailAt(FP_PAUSE_TRAINING);
+      IM.debugSetFailAt(FP_PAUSE_TRAINING, buildRole);
 
       const idx = createBackgroundVectorIndex('vecIdxTraining', 1);
       assertTrue(waitForVectorIndexState(db._collection(cn), idx.name,
@@ -159,14 +173,44 @@ function dumpVectorIndexSuite() {
     },
 
     testDumpWhileIngesting: function () {
+      if (isCluster) {
+        return;
+      }
       fillCollection();
       assertEqual(db._collection(cn).count(), docCount);
-      IM.debugSetFailAt(FP_PAUSE_INGESTION);
+      IM.debugSetFailAt(FP_PAUSE_INGESTION, buildRole);
 
       const idx = createBackgroundVectorIndex('vecIdxIngesting', 1);
       assertTrue(waitForVectorIndexState(db._collection(cn), idx.name,
                                          VectorIndexTrainingState.kIngesting, 60));
       assertVectorIndexInDump('ingesting');
+    },
+
+    // In the cluster ensureIndex() returns once `isBuilding` clears (before the
+    // build finishes), so the dbserver failure point still holds the build
+    // paused at dump time.
+    testClusterDumpWhileBuildPausedBeforeTraining: function () {
+      if (!isCluster) {
+        return;
+      }
+      fillCollection();
+      assertEqual(db._collection(cn).count(), docCount);
+      IM.debugSetFailAt(FP_PAUSE_TRAINING, buildRole);
+
+      createBackgroundVectorIndex('vecIdxTraining', 1);
+      assertVectorIndexInDump('build paused before training');
+    },
+
+    testClusterDumpWhileBuildPausedBeforeIngestion: function () {
+      if (!isCluster) {
+        return;
+      }
+      fillCollection();
+      assertEqual(db._collection(cn).count(), docCount);
+      IM.debugSetFailAt(FP_PAUSE_INGESTION, buildRole);
+
+      createBackgroundVectorIndex('vecIdxIngesting', 1);
+      assertVectorIndexInDump('build paused before ingestion');
     },
 
     testDumpWhileReady: function () {
