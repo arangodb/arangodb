@@ -3,7 +3,7 @@
 
 * BTS-2421: Fixed a bug where a dump taken while a background vector index build
   was in its ingestion phase omitted the index, causing a restore to silently
-  drop it. Vector indexes now stay visible throughout the build.
+  drop it. Vector indexes are now always included in dumps.
 
 * Updated ArangoDB Starter to v0.19.25.
 
