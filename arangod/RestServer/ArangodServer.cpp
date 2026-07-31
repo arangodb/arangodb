@@ -172,8 +172,7 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& aqlFunctionFeature = getFeature<aql::AqlFunctionFeature>();
 
   addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
-  addFeature<LoggerFeature>(true, getOptions<LoggerOptionsProvider>(),
-                            getOptions<LogApiOptionsProvider>());
+  addFeature<LoggerFeature>(true, getOptions<LoggerOptionsProvider>());
   addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());
   addFeature<TempFeature>(std::string{_binaryName},
                           getOptions<TempOptionsProvider>());
@@ -212,7 +211,8 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   addFeature<AuthenticationFeature>(
       getOptions<AuthenticationOptionsProvider>());
   addFeature<GeneralServerFeature>(metrics,
-                                   getOptions<GeneralServerOptionsProvider>());
+                                   getOptions<GeneralServerOptionsProvider>(),
+                                   getOptions<LogApiOptionsProvider>());
   auto& networkFeature =
       addFeature<NetworkFeature>(metrics, getOptions<NetworkOptionsProvider>());
   addFeature<HttpEndpointProvider, EndpointFeature>(
