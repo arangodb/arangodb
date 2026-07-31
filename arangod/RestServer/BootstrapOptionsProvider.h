@@ -32,11 +32,12 @@ class ProgramOptions;
 
 namespace arangodb::bootstrap {
 
-struct BootstrapOptionsProvider : OptionsProvider<BootstrapFeatureOptions> {
-  BootstrapOptionsProvider() = default;
-
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      BootstrapFeatureOptions& options) override;
+struct BootstrapOptionsProvider
+    : OptionsProviderImpl<BootstrapOptionsProvider, BootstrapFeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          BootstrapFeatureOptions& options);
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
+                           BootstrapFeatureOptions& /*options*/) {}
 };
 
 }  // namespace arangodb::bootstrap

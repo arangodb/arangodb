@@ -32,7 +32,7 @@ namespace arangodb::statistics {
 
 using namespace arangodb::options;
 
-void StatisticsOptionsProvider::declareOptions(
+void StatisticsOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, StatisticsFeatureOptions& opts) {
   options->addOldOption("server.disable-statistics", "server.statistics");
 
@@ -78,5 +78,15 @@ This is less intrusive than setting the `--server.statistics` option to
               arangodb::options::Flags::OnCoordinator))
       .setIntroducedIn(30800);
 }
+
+void StatisticsOptionsProvider::processOptionsImpl(
+    std::shared_ptr<ProgramOptions> opts, StatisticsFeatureOptions& options) {
+  options.statisticsHistoryTouched =
+      opts->processingResult().touched("server.statistics-history");
+}
+
+void StatisticsOptionsProvider::validateOptionsImpl(
+    std::shared_ptr<ProgramOptions> /*opts*/,
+    StatisticsFeatureOptions const& /*options*/) {}
 
 }  // namespace arangodb::statistics
