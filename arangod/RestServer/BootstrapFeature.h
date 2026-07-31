@@ -60,7 +60,6 @@ class BootstrapFeature final : public application_features::ApplicationFeature {
 #endif
   );
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
   void stop() override final;
   void unprepare() override final;

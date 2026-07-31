@@ -262,7 +262,7 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
 #endif
 #ifdef USE_ENTERPRISE
   _server.addFeature<AuditFeature>();
-  _server.addFeature<LicenseFeature>();
+  _server.addFeature<LicenseFeature>(databasePath);
   _server.addFeature<RCloneFeature>();
   _server.addFeature<HotBackupFeature>();
   _server.addFeature<EncryptionFeature>();
