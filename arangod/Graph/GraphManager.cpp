@@ -562,22 +562,17 @@ Result GraphManager::ensureCollections(
 
   auto anyExistingCollection =
       std::invoke([&]() -> std::shared_ptr<LogicalCollection> {
-        if (!existentDocumentCollections.empty()) {
-          // Prefer Vertex collections
-          for (auto const& col : existentDocumentCollections) {
-            // We need to ignore satelliteCollections on SmartGraphs
-            if (!graph.isSmart() || !col->isSatellite()) {
-              return col;
-            }
+        // Prefer Vertex collections
+        for (auto const& col : existentDocumentCollections) {
+          // We need to ignore satelliteCollections on SmartGraphs
+          if (!graph.isSmart() || !col->isSatellite()) {
+            return col;
           }
         }
-        if (!existentEdgeCollections.empty()) {
-          // over edge collections
-          for (auto const& col : existentEdgeCollections) {
-            // We need to ignore satelliteCollections on SmartGraphs
-            if (!graph.isSmart() || !col->isSatellite()) {
-              return col;
-            }
+        for (auto const& col : existentEdgeCollections) {
+          // We need to ignore satelliteCollections on SmartGraphs
+          if (!graph.isSmart() || !col->isSatellite()) {
+            return col;
           }
         }
         return nullptr;
