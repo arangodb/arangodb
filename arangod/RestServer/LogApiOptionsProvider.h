@@ -23,7 +23,7 @@
 #pragma once
 
 #include "ApplicationFeatures/OptionsProvider.h"
-#include "Logger/LogApiOptions.h"
+#include "RestServer/LogApiOptions.h"
 
 namespace arangodb {
 

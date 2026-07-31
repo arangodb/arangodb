@@ -41,16 +41,5 @@ logger.state = function () {
   return requestResult;
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief return the last log tick
-// //////////////////////////////////////////////////////////////////////////////
-
-logger.lastLogTick = function (firstTick, lastTick) {
-  var requestResult = internal.db._connection.GET(`/_api/replication/logger-last?tickStart=${firstTick}&tickEnd=${lastTick}`);
-  arangosh.checkRequestResult(requestResult);
-
-  return requestResult;
-};
-
 exports.logger = logger;
 exports.compareTicks = rpc.compareTicks;

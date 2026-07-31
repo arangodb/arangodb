@@ -73,7 +73,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief list of available commands
   //////////////////////////////////////////////////////////////////////////////
   static std::string const LoggerState;
-  static std::string const LoggerLast;
   static std::string const Batch;
   static std::string const Inventory;
   static std::string const Keys;
@@ -188,8 +187,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void handleCommandLoggerState();
-
-  void handleCommandLoggerLast();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief rebuild the revision tree for a given collection, if allowed

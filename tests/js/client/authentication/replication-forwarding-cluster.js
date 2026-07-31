@@ -27,7 +27,7 @@
 // coordinator. For every other command the "DBserver" parameter is rejected.
 
 const jsunity = require("jsunity");
-const {assertEqual, assertTrue, assertFalse, assertNotUndefined} = jsunity.jsUnity.assertions;
+const { assertEqual, assertTrue, assertFalse, assertNotUndefined } = jsunity.jsUnity.assertions;
 const arango = require("@arangodb").arango;
 const db = require("internal").db;
 const users = require("@arangodb/users");
@@ -50,7 +50,7 @@ function ReplicationForwardingSuite() {
     const shards = db[cn].shards(true);
     const shard = Object.keys(shards)[0];
     const server = shards[shard][0];
-    return {shard, server};
+    return { shard, server };
   };
 
   // Helper used by the "other forwarded commands are forbidden" tests below:
@@ -58,7 +58,7 @@ function ReplicationForwardingSuite() {
   // (which receives the "?DBserver=...&collection=..." query string) and
   // asserts that it is rejected with a 403.
   const checkForwardIsForbidden = function (makeRequest) {
-    const {shard, server} = locateShard();
+    const { shard, server } = locateShard();
     const q = `?DBserver=${encodeURIComponent(server)}&collection=${encodeURIComponent(shard)}`;
 
     arango.reconnect(IM.endpoint, dbName, roUser, 'foobar');
@@ -70,9 +70,9 @@ function ReplicationForwardingSuite() {
 
   return {
     setUpAll: function () {
-      try { users.remove(roUser); } catch (err) {}
-      try { users.remove(rwUser); } catch (err) {}
-      try { db._dropDatabase(dbName); } catch (err) {}
+      try { users.remove(roUser); } catch (err) { }
+      try { users.remove(rwUser); } catch (err) { }
+      try { db._dropDatabase(dbName); } catch (err) { }
 
       db._createDatabase(dbName);
       db._useDatabase(dbName);
@@ -89,9 +89,9 @@ function ReplicationForwardingSuite() {
     },
 
     tearDownAll: function () {
-      try { users.remove(roUser); } catch (err) {}
-      try { users.remove(rwUser); } catch (err) {}
-      try { db._dropDatabase(dbName); } catch (err) {}
+      try { users.remove(roUser); } catch (err) { }
+      try { users.remove(rwUser); } catch (err) { }
+      try { db._dropDatabase(dbName); } catch (err) { }
     },
 
     // remember the (root) connection before each test and restore it
@@ -108,11 +108,11 @@ function ReplicationForwardingSuite() {
     // restore-data does not support the DBserver forward, so a user without
     // write access on the collection cannot use it to write to the shard.
     testRestoreDataForwardIsForbidden: function () {
-      const {shard, server} = locateShard();
+      const { shard, server } = locateShard();
 
       arango.reconnect(IM.endpoint, dbName, roUser, 'foobar');
       const url = `/_api/replication/restore-data?DBserver=${encodeURIComponent(server)}&collection=${encodeURIComponent(shard)}`;
-      const result = arango.PUT(url, [{_key: "someKey", _rev: "12312312312"}]);
+      const result = arango.PUT(url, [{ _key: "someKey", _rev: "12312312312" }]);
 
       assertTrue(result.error, JSON.stringify(result));
       assertEqual(403, result.code, JSON.stringify(result));
@@ -146,10 +146,6 @@ function ReplicationForwardingSuite() {
 
     testLoggerStateForwardIsForbidden: function () {
       checkForwardIsForbidden((q) => arango.GET(`/_api/replication/logger-state${q}`));
-    },
-
-    testLoggerLastForwardIsForbidden: function () {
-      checkForwardIsForbidden((q) => arango.GET(`/_api/replication/logger-last${q}`));
     },
 
     testInventoryForwardIsForbidden: function () {
@@ -196,7 +192,7 @@ function ReplicationForwardingSuite() {
     // replication batch on the hosting DBServer via ?DBserver= (this is what
     // arangodump uses).
     testBatchForward: function () {
-      const {server} = locateShard();
+      const { server } = locateShard();
 
       arango.reconnect(IM.endpoint, dbName, rwUser, 'foobar');
       const server_q = encodeURIComponent(server);
@@ -213,7 +209,7 @@ function ReplicationForwardingSuite() {
     // dump supports the DBserver forward: an authorized user can dump a shard
     // from the hosting DBServer via ?DBserver= (this is what arangodump uses).
     testDumpForward: function () {
-      const {shard, server} = locateShard();
+      const { shard, server } = locateShard();
 
       arango.reconnect(IM.endpoint, dbName, rwUser, 'foobar');
       const server_q = encodeURIComponent(server);
@@ -224,7 +220,7 @@ function ReplicationForwardingSuite() {
       assertNotUndefined(batch.id, JSON.stringify(batch));
 
       const url = `/_api/replication/dump?collection=${encodeURIComponent(shard)}` +
-                  `&batchId=${encodeURIComponent(batch.id)}&DBserver=${server_q}`;
+        `&batchId=${encodeURIComponent(batch.id)}&DBserver=${server_q}`;
       const result = arango.GET_RAW(url);
       // the collection is empty, so a successful dump replies 204 No Content
       assertEqual(204, result.code, JSON.stringify(result));
