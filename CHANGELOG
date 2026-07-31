@@ -1,6 +1,8 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* Fix authorization for /_admin/aardvark routes.
+
 * Updated ArangoDB Starter to v0.19.25.
 
 * COR-726/COR-787: Removed the deprecated replication applier's REST API,
