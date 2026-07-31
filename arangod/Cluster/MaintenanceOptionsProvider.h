@@ -32,8 +32,11 @@ struct MaintenanceOptionsProvider
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           MaintenanceOptions& options);
 
+  void processOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          MaintenanceOptions& options);
+
   void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                           MaintenanceOptions& options);
+                           MaintenanceOptions const& options);
 };
 
 }  // namespace arangodb

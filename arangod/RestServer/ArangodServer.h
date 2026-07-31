@@ -49,8 +49,6 @@ class ArangodServer : public OptionProvidingServer<ArangodOptionProviders> {
   // Called by server::run() after collect & validate.
   void addFeaturesWithOptionProvider() final;
 
-  // also resolves ServerState's role before validateOptions() runs, since
-  // unmigrated features still read it there
   void processOptions() override final;
 
  private:

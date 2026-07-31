@@ -63,10 +63,11 @@ bool ClusterEngine::Mocking = false;
 // create the storage engine
 ClusterEngine::ClusterEngine(application_features::ApplicationServer& server,
                              ClusterFeature& clusterFeature,
+                             DatabaseFeature& database,
                              metrics::IRegistry& metrics)
     : StorageEngine(server, EngineName, name(), typeid(ClusterEngine),
                     std::make_unique<ClusterIndexFactory>(server, *this),
-                    server.getFeature<DatabaseFeature>()),
+                    database),
       _clusterFeature(clusterFeature),
       _metrics(metrics),
       _actualEngine(nullptr) {

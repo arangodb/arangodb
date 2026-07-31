@@ -74,7 +74,8 @@ void ArangodServer::processOptions() {
       getOptions<LogRotateOptionsProvider>().keepLogRotate);
 
   // must run after the OptionProvidingServer::processOptions() call above,
-  // since ClusterOptions::enableCluster is only resolved there
+  // since ClusterOptions::enableCluster is only resolved there, and before
+  // validateOptions(), since unmigrated features still read the role there
   auto const& clusterOptions = getOptions<ClusterOptionsProvider>();
   ServerState::instance()->setRole(
       resolveRole(clusterOptions, getOptions<AgencyOptionsProvider>()));
@@ -293,7 +294,7 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& clusterFeature =
       addFeature<ClusterFeature>(metrics, getOptions<ClusterOptionsProvider>());
 
-  addFeature<ClusterEngine>(clusterFeature, metrics);
+  addFeature<ClusterEngine>(clusterFeature, database, metrics);
 
   addFeature<MaintenanceFeature>(&clusterFeature,
                                  getOptions<MaintenanceOptionsProvider>());

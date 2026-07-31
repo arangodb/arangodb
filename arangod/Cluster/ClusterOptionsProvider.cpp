@@ -435,22 +435,7 @@ void ClusterOptionsProvider::processOptionsImpl(
   if (options.forceOneShard) {
     options.maxNumberOfShards = 1;
   }
-}
 
-void ClusterOptionsProvider::validateOptionsImpl(
-    std::shared_ptr<ProgramOptions> opts, ClusterOptions& options) {
-  if (opts->processingResult().touched(
-          "cluster.disable-dispatcher-kickstarter") ||
-      opts->processingResult().touched("cluster.disable-dispatcher-frontend")) {
-    LOG_TOPIC("33707", FATAL, arangodb::Logger::CLUSTER)
-        << "The dispatcher feature isn't available anymore. Use "
-        << "ArangoDB Starter for this now! See "
-        << "https://github.com/arangodb-helper/arangodb/ for more "
-        << "details.";
-    FATAL_ERROR_EXIT();
-  }
-
-  TRI_ASSERT(options.minReplicationFactor > 0);
   if (!opts->processingResult().touched("cluster.default-replication-factor")) {
     // no default replication factor set. now use the minimum value, which is
     // guaranteed to be at least 1
@@ -465,6 +450,36 @@ void ClusterOptionsProvider::validateOptionsImpl(
       options.systemReplicationFactor = options.minReplicationFactor;
     }
   }
+
+  constexpr std::uint32_t minConnectivityCheckInterval = 10;  // seconds
+  if (options.connectivityCheckInterval > 0 &&
+      options.connectivityCheckInterval < minConnectivityCheckInterval) {
+    options.connectivityCheckInterval = minConnectivityCheckInterval;
+    LOG_TOPIC("08b46", WARN, Logger::CLUSTER)
+        << "configured value for `--cluster.connectivity-check-interval` is "
+           "too low and was automatically adjusted to minimum value "
+        << minConnectivityCheckInterval;
+  }
+
+  if (!options.myRole.empty()) {
+    options.requestedRole = ServerState::stringToRole(options.myRole);
+  }
+}
+
+void ClusterOptionsProvider::validateOptionsImpl(
+    std::shared_ptr<ProgramOptions> opts, ClusterOptions const& options) {
+  if (opts->processingResult().touched(
+          "cluster.disable-dispatcher-kickstarter") ||
+      opts->processingResult().touched("cluster.disable-dispatcher-frontend")) {
+    LOG_TOPIC("33707", FATAL, arangodb::Logger::CLUSTER)
+        << "The dispatcher feature isn't available anymore. Use "
+        << "ArangoDB Starter for this now! See "
+        << "https://github.com/arangodb-helper/arangodb/ for more "
+        << "details.";
+    FATAL_ERROR_EXIT();
+  }
+
+  TRI_ASSERT(options.minReplicationFactor > 0);
 
   if (options.defaultReplicationFactor > options.maxReplicationFactor ||
       options.defaultReplicationFactor < options.minReplicationFactor) {
@@ -484,22 +499,10 @@ void ClusterOptionsProvider::validateOptionsImpl(
     FATAL_ERROR_EXIT();
   }
 
-  options.agencyPrefix = "arango";
-
   if (options.systemReplicationFactor == 0) {
     LOG_TOPIC("cb945", FATAL, arangodb::Logger::CLUSTER)
         << "system replication factor must be greater 0";
     FATAL_ERROR_EXIT();
-  }
-
-  constexpr std::uint32_t minConnectivityCheckInterval = 10;  // seconds
-  if (options.connectivityCheckInterval > 0 &&
-      options.connectivityCheckInterval < minConnectivityCheckInterval) {
-    options.connectivityCheckInterval = minConnectivityCheckInterval;
-    LOG_TOPIC("08b46", WARN, Logger::CLUSTER)
-        << "configured value for `--cluster.connectivity-check-interval` is "
-           "too low and was automatically adjusted to minimum value "
-        << minConnectivityCheckInterval;
   }
 
   if (!options.enableCluster) {
@@ -538,8 +541,6 @@ void ClusterOptionsProvider::validateOptionsImpl(
   }
 
   if (!options.myRole.empty()) {
-    options.requestedRole = ServerState::stringToRole(options.myRole);
-
     std::vector<ServerState::RoleEnum> const disallowedRoles = {
         ServerState::ROLE_AGENT, ServerState::ROLE_UNDEFINED};
 

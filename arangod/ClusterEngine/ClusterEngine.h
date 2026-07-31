@@ -32,6 +32,7 @@
 namespace arangodb {
 
 class ClusterFeature;
+class DatabaseFeature;
 
 class ClusterEngine final : public StorageEngine {
  public:
@@ -40,6 +41,7 @@ class ClusterEngine final : public StorageEngine {
   // create the storage engine
   explicit ClusterEngine(application_features::ApplicationServer& server,
                          ClusterFeature& clusterFeature,
+                         DatabaseFeature& database,
                          metrics::IRegistry& metrics);
   ~ClusterEngine();
 
