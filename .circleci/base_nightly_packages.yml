@@ -1394,9 +1394,10 @@ jobs:
             - trivy-reports/<< parameters.arch >>
       # KEV/EPSS correlation over the full-band report: trivy reports
       # neither signal, so a KEV-listed MEDIUM sits below every CVSS-banded
-      # gate in this pipeline, and CISA BOD 26-04 gates on exactly these two
-      # signals. Runs BEFORE the gate so the result is recorded even on a
-      # blocked run. Report-only: arming fail-on-match would let a feed
+      # gate in this pipeline. BOD 26-04 keys federal remediation deadlines
+      # on exploitation evidence (KEV), not CVSS; EPSS is the complementary
+      # likelihood signal, tracked here but mandated by nothing. Runs
+      # BEFORE the gate so the result is recorded even on a blocked run. Report-only: arming fail-on-match would let a feed
       # update alone block a publish over findings the CVSS gate does not
       # count, so that stays a deliberate call after triaging real output,
       # not an automatic follow-up. strict-feeds stays false either way, so
