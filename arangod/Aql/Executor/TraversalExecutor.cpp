@@ -46,6 +46,8 @@
 
 #include "Graph/algorithm-aliases.h"
 
+#include "Graph/WeightAttributeHelper.h"
+
 #include <utility>
 
 namespace arangodb::aql {
@@ -56,17 +58,6 @@ namespace {
 auto toHashedStringRef(std::string const& id)
     -> arangodb::velocypack::HashedStringRef {
   return {id.data(), static_cast<uint32_t>(id.length())};
-}
-
-double getEdgeWeight(VPackSlice edge,
-                     std::vector<std::string> const& weightAttribute,
-                     double defaultWeight) {
-  if (weightAttribute.empty()) {
-    return defaultWeight;
-  }
-
-  return basics::VelocyPackHelper::getNumericValue<double>(
-      edge.get(weightAttribute), defaultWeight);
 }
 }  // namespace
 

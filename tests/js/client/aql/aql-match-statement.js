@@ -49,6 +49,11 @@ function aqlMatchStatementTestSuite() {
                 db.ec.save({_key: `e${i}`, i, j: i % 10, _from: `vc/v${2 * i}`, _to: `vc/v${2 * i + 1}`});
             }
 
+            db._createEdgeCollection("ec2");
+            for (let i = 50; i < 60; i++) {
+                db.ec2.save({_key: `e2${i}`, _from: `vc/v${i}`, _to: `vc/v${i + 1}`});
+            }
+
             db._createEdgeCollection("ec_loops");
             for (let i = 0; i < 10; i++) {
                 db.ec_loops.save({_key: `e${i}`, i, j: i % 10, _from: `vc/v${i}`, _to: `vc/v${i}`});
@@ -124,6 +129,49 @@ function aqlMatchStatementTestSuite() {
                 assertEqual(v._id, e._from);
                 assertEqual(w._id, e._to);
             }
+        },
+
+        testSelectEdgesWithMultipleEdgeTypes: function () {
+            const result = db._query("MATCH (v :vc) -[ e :ec | ec2 ]-> (w :vc) RETURN [v, e, w]", {}, options).toArray();
+            assertEqual(result.length, 60);
+
+            for (const [v, e, w] of result) {
+                assertEqual(v._id, e._from);
+                assertEqual(w._id, e._to);
+                assertTrue(e._id.startsWith("ec/") || e._id.startsWith("ec2/"));
+            }
+        },
+
+        testSelectEdgesWithCollectionBindParameterMultipleEdgeTypes: function () {
+            const result = db._query("MATCH (v :vc) -[ e :@@ec1 | @@ec2 ]-> (w :vc) RETURN [v, e, w]",
+                { "@ec1": "ec", "@ec2": "ec2" }, options).toArray();
+            assertEqual(result.length, 60);
+
+            for (const [v, e, w] of result) {
+                assertEqual(v._id, e._from);
+                assertEqual(w._id, e._to);
+            }
+        },
+
+        testSelectEdgesWithThreeEdgeTypes: function () {
+            // union over 3 edge collections == sum of the individual counts (disjoint)
+            const q3 = "MATCH (v :vc) -[ e :ec|ec2|ec_loops ]-> (w :vc) RETURN e._id";
+            const three = db._query(q3, {}, options).toArray();
+            const nEc = db._query("MATCH (v :vc) -[ e :ec ]-> (w :vc) RETURN e", {}, options).toArray().length;
+            const nEc2 = db._query("MATCH (v :vc) -[ e :ec2 ]-> (w :vc) RETURN e", {}, options).toArray().length;
+            const nLoops = db._query("MATCH (v :vc) -[ e :ec_loops ]-> (w :vc) RETURN e", {}, options).toArray().length;
+            assertEqual(three.length, nEc + nEc2 + nLoops);
+            const prefixes = new Set(three.map((id) => id.split("/")[0]));
+            assertTrue(prefixes.has("ec") && prefixes.has("ec2") && prefixes.has("ec_loops"),
+                       JSON.stringify([...prefixes]));
+        },
+
+        testSelectAnyEdgesWithMultipleEdgeTypes: function () {
+            // any-direction multi-type union == sum of the individual any-direction counts
+            const union = db._query("MATCH (v :vc) -[ e :ec|ec2 ]- (w :vc) RETURN e", {}, options).toArray().length;
+            const nEc = db._query("MATCH (v :vc) -[ e :ec ]- (w :vc) RETURN e", {}, options).toArray().length;
+            const nEc2 = db._query("MATCH (v :vc) -[ e :ec2 ]- (w :vc) RETURN e", {}, options).toArray().length;
+            assertEqual(union, nEc + nEc2);
         },
 
         testSelectInboundEdges: function () {
