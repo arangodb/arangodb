@@ -97,7 +97,8 @@ void ArangoshServer::addFeaturesWithOptionProvider() {
   addFeature<V8PlatformFeature>(getOptions<V8PlatformOptionsProvider>());
   auto& v8SecurityFeature = addFeature<V8SecurityFeature>(
       AllowListStrictness::NONSTRICT, getOptions<V8SecurityOptionsProvider>());
-  auto& v8ShellFeature = getFeature<V8ShellFeature>();
+  auto& v8ShellFeature = addFeature<V8ShellFeature>(
+      _binaryName, getOptions<V8ShellOptionsProvider>());
   addFeature<ProcessMonitoringFeature>(v8ShellFeature, v8SecurityFeature);
 
   addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
@@ -106,7 +107,6 @@ void ArangoshServer::addFeaturesWithOptionProvider() {
 #ifdef USE_ENTERPRISE
   addFeature<EncryptionFeature>(getOptions<EncryptionOptionsProvider>());
 #endif
-  addFeature<V8ShellFeature>(_binaryName, getOptions<V8ShellOptionsProvider>());
 }
 
 }  // namespace arangodb

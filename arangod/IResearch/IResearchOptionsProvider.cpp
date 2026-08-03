@@ -225,13 +225,12 @@ but the returned data may be incomplete.)");
                                             options::Flags::Enterprise))
       .setIntroducedIn(3'09'05);
   options
-      ->addOption(
-          IResearchOptionsProvider::CACHE_ONLY_LEADER,
-          "Cache ArangoSearch columns only for leader shards.",
-          new options::BooleanParameter(&opts.columnsCacheOnlyLeader),
-          options::makeDefaultFlags(options::Flags::DefaultNoComponents,
-                                    options::Flags::OnDBServer,
-                                    options::Flags::Enterprise))
+      ->addOption(IResearchOptionsProvider::CACHE_ONLY_LEADER,
+                  "Cache ArangoSearch columns only for leader shards.",
+                  new options::BooleanParameter(&opts.columnsCacheOnlyLeader),
+                  options::makeDefaultFlags(options::Flags::DefaultNoComponents,
+                                            options::Flags::OnDBServer,
+                                            options::Flags::Enterprise))
       .setIntroducedIn(3'10'06);
 #endif
 }
