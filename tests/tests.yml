@@ -187,6 +187,7 @@
       priority: 250
       type: single
       suffix: _large
+      buckets: 2
     args:
       # TODO: BTS-2283
       encryptionAtRest: false
@@ -375,7 +376,7 @@
       priority: 1000
       size: medium+
       type: cluster
-      buckets: 4
+      buckets: 5
       suffix: _large
     args:
       dumpAgencyOnError: true
