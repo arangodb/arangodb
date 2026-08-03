@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -30,7 +29,6 @@ namespace arangodb {
 class ClusterUpgradeFeature;
 class SystemDatabaseFeature;
 class DatabaseFeature;
-class EngineSelectorFeature;
 class ClusterFeature;
 
 class BootstrapFeature final : public application_features::ApplicationFeature {
@@ -39,7 +37,12 @@ class BootstrapFeature final : public application_features::ApplicationFeature {
 
   explicit BootstrapFeature(application_features::ApplicationServer& server,
                             ClusterFeature& clusterFeature,
-                            EngineSelectorFeature& engineSelectorFeature,
+                            DatabaseFeature& databaseFeature,
+                            SystemDatabaseFeature* systemDatabaseFeature,
+                            ClusterUpgradeFeature* clusterUpgradeFeature,
+                            BootstrapFeatureOptions options);
+  explicit BootstrapFeature(application_features::ApplicationServer& server,
+                            ClusterFeature& clusterFeature,
                             DatabaseFeature& databaseFeature,
                             SystemDatabaseFeature* systemDatabaseFeature,
                             ClusterUpgradeFeature* clusterUpgradeFeature);
@@ -52,7 +55,6 @@ class BootstrapFeature final : public application_features::ApplicationFeature {
   bool isReady() const;
 
   ClusterFeature& clusterFeature();
-  EngineSelectorFeature& engineSelectorFeature();
   DatabaseFeature& databaseFeature();
   SystemDatabaseFeature* systemDatabaseFeature();
   ClusterUpgradeFeature* clusterUpgradeFeature();
@@ -64,7 +66,6 @@ class BootstrapFeature final : public application_features::ApplicationFeature {
   void waitForDatabases() const;
 
   ClusterFeature& _clusterFeature;
-  EngineSelectorFeature& _engineSelectorFeature;
   DatabaseFeature& _databaseFeature;
   SystemDatabaseFeature* _systemDatabaseFeature{};
   ClusterUpgradeFeature* _clusterUpgradeFeature{};

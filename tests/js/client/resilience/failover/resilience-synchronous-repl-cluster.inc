@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Max Neunhoeffer
-/// @author Copyright 2016, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -34,13 +32,7 @@
   const ERRORS = arangodb.errors;
   const _ = require("lodash");
   const wait = require("internal").wait;
-  const suspendExternal = require("internal").suspendExternal;
-  const continueExternal = require("internal").continueExternal;
   const CI = require('@arangodb/cluster-info');
-  const {
-    getEndpointById,
-    getDBServers
-  } = require("@arangodb/test-helper");
   let cn = "UnitTestSyncRep";
   let c;
   let cinfo;

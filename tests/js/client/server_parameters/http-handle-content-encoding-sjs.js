@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertEqual, assertMatch, arango */
+/* global getOptions */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
 
 if (getOptions === true) {
@@ -32,10 +31,12 @@ if (getOptions === true) {
   };
 }
 const jsunity = require('jsunity');
+const {assertEqual, assertTrue, assertFalse, assertNotEqual, assertMatch} = jsunity.jsUnity.assertions;
 const crypto = require('@arangodb/crypto');
 const request = require('@arangodb/request');
 const internal = require('internal');
 const fs = require("fs");
+let IM = global.instanceManager;
 
 const jwtRoot = () => {
   const jwtSecret = 'haxxmann';
@@ -59,8 +60,8 @@ function HandleContentEncodingSuite() {
       ];
       headers.forEach((h) => {
         let res = request.post({
-          url: arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:') + "/_open/auth", 
-          body: "piff", 
+          url: IM.url + "/_open/auth",
+          body: "piff",
           headers: h
         });
         assertEqual(400, res.status);
@@ -77,8 +78,8 @@ function HandleContentEncodingSuite() {
       ];
       headers.forEach((h) => {
         let res = request.post({
-          url: arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:') + "/_open/auth", 
-          body: "piff", 
+          url: IM.url + "/_open/auth",
+          body: "piff",
           headers: h,
           auth: { bearer: jwtRoot() },
         });
@@ -98,8 +99,8 @@ function HandleContentEncodingSuite() {
       ];
       headers.forEach((h) => {
         let res = request.post({
-          url: arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:') + "/_api/version", 
-          body: "piff", 
+          url: IM.url + "/_api/version",
+          body: "piff",
           headers: h,
           auth: { bearer: jwtRoot() },
         });
@@ -116,8 +117,8 @@ function HandleContentEncodingSuite() {
       let uncompressedBuffer = fs.readGzip(compressedFile);
 
       let res = request.post({
-        url: arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:') + "/_admin/echo", 
-        body: compressedBuffer, 
+        url: IM.url + "/_admin/echo",
+        body: compressedBuffer,
         headers: {"Content-Encoding": "gzip"},
         auth: { bearer: jwtRoot() },
       });

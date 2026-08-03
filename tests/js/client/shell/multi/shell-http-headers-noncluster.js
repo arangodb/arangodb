@@ -1,5 +1,5 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global assertTrue, assertFalse, assertEqual, arango */
+/* global */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -21,14 +21,14 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 
 const jsunity = require("jsunity");
 const _ = require("lodash");
+const {assertEqual, assertTrue, assertFalse, assertNotEqual, assertUndefined, assertNotUndefined} = jsunity.jsUnity.assertions;
+const arango = require('@arangodb').arango;
 
 function headersSingleSuite () {
   'use strict';

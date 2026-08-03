@@ -87,7 +87,9 @@ defmodule ToastTest.SuiteResult do
           deployments: %{String.t() => deployment_meta()},
           coredumps: [coredump_report()],
           events: [map()],
-          warnings: [String.t()]
+          warnings: [String.t()],
+          traffic: [ToastTest.Traffic.Extraction.traffic_entry()],
+          pcap_path: Path.t() | nil
         }
 
   @type module_result :: %{
@@ -111,7 +113,7 @@ defmodule ToastTest.SuiteResult do
   @type scope :: :suite | {:module, module()} | {:test, module(), atom()}
 
   @type issue :: %{
-          type: :test_failure | :crash | :sanitizer_report | :timeout,
+          type: :test_failure | :crash | :sanitizer_report | :timeout | :infrastructure,
           scope: scope(),
           confidence: :high | :low | nil,
           detail: map()
@@ -130,7 +132,9 @@ defmodule ToastTest.SuiteResult do
     deployments: %{},
     coredumps: [],
     events: [],
-    warnings: []
+    warnings: [],
+    traffic: [],
+    pcap_path: nil
   ]
 
   @spec build(ToastTest.ResultCollector.test_data(), [issue()], keyword()) :: t()
@@ -146,7 +150,9 @@ defmodule ToastTest.SuiteResult do
       deployments: Keyword.get(opts, :deployments, %{}),
       coredumps: Keyword.get(opts, :coredumps, []),
       events: Keyword.get(opts, :events, []),
-      warnings: Keyword.get(opts, :warnings, [])
+      warnings: Keyword.get(opts, :warnings, []),
+      traffic: Keyword.get(opts, :traffic, []),
+      pcap_path: Keyword.get(opts, :pcap_path)
     }
   end
 

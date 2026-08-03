@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -26,8 +25,8 @@
 #include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
-class EngineSelectorFeature;
 class ServerSecurityFeature;
+class StorageEngine;
 
 class RestStatusHandler : public arangodb::RestBaseHandler {
  public:
@@ -44,6 +43,6 @@ class RestStatusHandler : public arangodb::RestBaseHandler {
   RestStatus executeOverview();
   RestStatus executeMemoryProfile();
 
-  EngineSelectorFeature& _engineSelector;
+  StorageEngine& _engine;
 };
 }  // namespace arangodb

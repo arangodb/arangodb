@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertTrue, assertEqual, assertNotUndefined */
+/*global */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -21,14 +21,15 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Lars Maier
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
+const {assertEqual, assertTrue, assertFalse, assertNotUndefined} = jsunity.jsUnity.assertions;
 const arango = require("@arangodb").arango;
 const db = require("internal").db;
 const users = require("@arangodb/users");
 const dump = require('@arangodb/arango-dump');
+let IM = global.instanceManager;
 
 function AuthSuite() {
   'use strict';
@@ -40,7 +41,7 @@ function AuthSuite() {
       
   return {
     setUpAll: function () {
-      arango.reconnect(arango.getEndpoint(), '_system', "root", "");
+      IM.rememberConnection();
 
       try {
         users.remove(user1);
@@ -72,7 +73,7 @@ function AuthSuite() {
     },
 
     tearDownAll: function () {
-      arango.reconnect(arango.getEndpoint(), '_system', "root", "");
+      IM.reconnectMe();
       try {
         users.remove(user1);
       } catch (err) {
@@ -89,41 +90,41 @@ function AuthSuite() {
     },
 
     testCreateContextNoPermission: function () {
-      arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', "root", "");
+      arango.reconnect(IM.endpoint, 'UnitTestsDatabase', "root", "");
 
       const shards = db[cn].shards(true);
       const shard = Object.keys(shards)[0];
       const server = shards[shard][0];
 
       // user2 should not be able to create a dump context
-      arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', user2, 'foobar');
+      arango.reconnect(IM.endpoint, 'UnitTestsDatabase', user2, 'foobar');
       let result = dump.start({shards: [shard]}, server);
       assertEqual(result.code, 403);
 
       // user1 can create a dump
-      arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', user1, 'foobar');
+      arango.reconnect(IM.endpoint, 'UnitTestsDatabase', user1, 'foobar');
       result = dump.start({shards: [shard]}, server);
       assertEqual(result.code, 201);
       let token = result.headers["x-arango-dump-id"];
       assertNotUndefined(token);
 
       // user2 should not be able to read from the collection using the handle
-      arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', user2, 'foobar');
+      arango.reconnect(IM.endpoint, 'UnitTestsDatabase', user2, 'foobar');
       result = dump.next(token, 1, undefined, server);
       assertEqual(result.code, 403);
 
       // user1 can read the dump
-      arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', user1, 'foobar');
+      arango.reconnect(IM.endpoint, 'UnitTestsDatabase', user1, 'foobar');
       result = dump.next(token, 1, undefined, server);
       assertEqual(result.code, 204); // collection is empty
 
       // user2 should not be able to delete the dump context
-      arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', user2, 'foobar');
+      arango.reconnect(IM.endpoint, 'UnitTestsDatabase', user2, 'foobar');
       result = dump.delete(token, server);
       assertEqual(result.code, 403);
 
       // user1 can delete the dump
-      arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', user1, 'foobar');
+      arango.reconnect(IM.endpoint, 'UnitTestsDatabase', user1, 'foobar');
       result = dump.delete(token, server);
       assertEqual(result.code, 200);
     },

@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -38,13 +36,11 @@
 #include "Rest/CommonDefines.h"
 #include "Metrics/Fwd.h"
 #include "RestServer/DatabaseFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 
 namespace arangodb {
 class Endpoint;
 class Result;
 class ClusterFeature;
-class EngineSelectorFeature;
 class DatabaseFeature;
 
 namespace application_features {
@@ -590,7 +586,7 @@ class AgencyComm {
       "dependency")]] explicit AgencyComm(application_features::
                                               ApplicationServer&);
   AgencyComm(application_features::ApplicationServer&, ClusterFeature&,
-             EngineSelectorFeature&, DatabaseFeature&);
+             DatabaseFeature&);
 
   AgencyCommResult sendServerState(double timeout);
 
@@ -668,7 +664,6 @@ class AgencyComm {
 
   application_features::ApplicationServer& _server;
   ClusterFeature& _clusterFeature;
-  EngineSelectorFeature& _engineSelectorFeature;
   DatabaseFeature& _databaseFeature;
   metrics::Histogram<metrics::LogScale<uint64_t>>& _agency_comm_request_time_ms;
 };

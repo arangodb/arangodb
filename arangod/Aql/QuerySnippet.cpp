@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "QuerySnippet.h"
@@ -375,7 +374,8 @@ void QuerySnippet::addNode(ExecutionNode* node) {
       // Materialize index node - true
       // Materialize view node - false
       if (collectionAccessingNode != nullptr) {
-        _expansions.emplace_back(node, true, false);
+        _expansions.emplace_back(node, true,
+                                 collectionAccessingNode->isUsedAsSatellite());
       }
       break;
     }

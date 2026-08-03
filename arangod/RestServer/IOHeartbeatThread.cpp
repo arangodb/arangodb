@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IOHeartbeatThread.h"
@@ -29,7 +28,7 @@
 #include "Logger/LogMacros.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/HistogramBuilder.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 #include "RestServer/DatabasePathFeature.h"
 
 using namespace arangodb;
@@ -49,13 +48,13 @@ DECLARE_COUNTER(arangodb_ioheartbeat_delays_total,
 /// The purpose of this thread is to try to perform a simple IO write
 /// operation on the database volume regularly. We need visibility in
 /// production if IO is slow or not possible at all.
-IOHeartbeatThread::IOHeartbeatThread(metrics::MetricsFeature& metricsFeature,
+IOHeartbeatThread::IOHeartbeatThread(metrics::IRegistry& metricsRegistry,
                                      DatabasePathFeature& databasePathFeature)
     : Thread("IOHeartbeat"),
       _databasePathFeature(databasePathFeature),
-      _exeTimeHistogram(metricsFeature.add(arangodb_ioheartbeat_duration{})),
-      _failures(metricsFeature.add(arangodb_ioheartbeat_failures_total{})),
-      _delays(metricsFeature.add(arangodb_ioheartbeat_delays_total{})) {}
+      _exeTimeHistogram(metricsRegistry.add(arangodb_ioheartbeat_duration{})),
+      _failures(metricsRegistry.add(arangodb_ioheartbeat_failures_total{})),
+      _delays(metricsRegistry.add(arangodb_ioheartbeat_delays_total{})) {}
 
 IOHeartbeatThread::~IOHeartbeatThread() { shutdown(); }
 

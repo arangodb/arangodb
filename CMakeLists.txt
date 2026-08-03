@@ -429,7 +429,6 @@ endif()
 set(MAKE make)
 
 find_package(PythonInterp 3 EXACT REQUIRED)
-get_filename_component(PYTHON_EXECUTABLE "${PYTHON_EXECUTABLE}" REALPATH)
 
 set($ENV{PYTHON_EXECUTABLE} ${PYTHON_EXECUTABLE})
 execute_process(
@@ -1278,3 +1277,11 @@ add_custom_target(arangodb
   DEPENDS arangod client-tools)
 
 add_subdirectory(utils/gdb-pretty-printers/immer/test)
+
+# Generate JS_SHA1SUM.txt over everything installed into the JS directory.
+# Declared last on purpose: install rules run in declaration order (CMP0082),
+# so this executes after every other install rule — including the client-tools
+# and enterprise JS files added by the add_subdirectory calls above — and the
+# checksum always matches the final installed tree.
+install(CODE "set(ARANGODB_INSTALLED_JS_DIR \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}\")")
+install(SCRIPT ${CMAKE_SOURCE_DIR}/cmake/GenerateJsSha1Sum.cmake)

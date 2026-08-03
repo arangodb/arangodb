@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -143,7 +142,7 @@ class VectorIndexBuilder {
                std::stop_token stopToken = {});
 
  private:
-  Result persistTrainedData(TrainedData const& trainedData);
+  Result persistVectorIndexMetadata(VectorIndexMetadata const& metadata);
 
   RocksDBVectorIndex& _index;
   ResourceMonitor& _resourceMonitor;

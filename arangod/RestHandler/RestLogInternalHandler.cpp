@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestLogInternalHandler.h"
@@ -26,6 +25,8 @@
 #include "Inspection/VPack.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
+#include "VocBase/vocbase.h"
+
 #include "absl/strings/str_cat.h"
 
 #include <Async/async.h>

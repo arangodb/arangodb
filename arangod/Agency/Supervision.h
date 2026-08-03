@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -95,7 +94,7 @@ class Supervision : public ServerThread {
 
   /// @brief Construct cluster consistency checking
   Supervision(application_features::ApplicationServer& server,
-              metrics::MetricsFeature& metrics);
+              metrics::IRegistry& metricsRegistry);
 
   /// @brief Default dtor
   ~Supervision();

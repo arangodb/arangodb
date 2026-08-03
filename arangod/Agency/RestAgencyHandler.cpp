@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAgencyHandler.h"
@@ -30,7 +29,7 @@
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
 #include "Rest/Version.h"
-#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Transaction/StandaloneContext.h"
 
 #include <Async/async.h>
@@ -705,9 +704,7 @@ void RestAgencyHandler::handleConfig() {
     LOG_TOPIC("ddeae", DEBUG, Logger::AGENCY)
         << "handleConfig after lastAckedAgo";
     body.add("configuration", _agent->config().toBuilder()->slice());
-    body.add(
-        "engine",
-        VPackValue(server().getFeature<EngineSelectorFeature>().engineName()));
+    body.add("engine", VPackValue(_vocbase.engine().typeName()));
     body.add("version", VPackValue(ARANGODB_VERSION));
   }
 

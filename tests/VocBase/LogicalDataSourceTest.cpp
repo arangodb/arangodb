@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
@@ -28,12 +26,10 @@
 #include "../Mocks/StorageEngineMock.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "RestServer/DatabaseFeature.h"
 #include "Metrics/MetricsFeature.h"
-#include "RestServer/arangod.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Sharding/ShardingFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "velocypack/Parser.h"
@@ -74,7 +70,7 @@ class LogicalViewImpl : public arangodb::LogicalView {
 
 class LogicalDataSourceTest : public ::testing::Test {
  protected:
-  arangodb::ArangodServer server;
+  arangodb::application_features::ApplicationServer server;
   StorageEngineMock engine;
   std::vector<
       std::pair<arangodb::application_features::ApplicationFeature&, bool>>
@@ -82,17 +78,15 @@ class LogicalDataSourceTest : public ::testing::Test {
 
   LogicalDataSourceTest() : server(nullptr, nullptr), engine(server) {
     // setup required application features
-    auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
-    features.emplace_back(selector, false);
-    selector.setEngineTesting(&engine);
-    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(),
-                          false);
+    auto& dbFeature = server.addFeature<arangodb::DatabaseFeature>();
+    features.emplace_back(dbFeature, false);
+    dbFeature.setEngineTesting(&engine);
     features.emplace_back(
         server.addFeature<arangodb::metrics::MetricsFeature>(
             arangodb::LazyApplicationFeatureReference<
                 arangodb::QueryRegistryFeature>(nullptr),
             arangodb::LazyApplicationFeatureReference<
-                arangodb::EngineSelectorFeature>(nullptr),
+                arangodb::DatabaseFeature>(nullptr),
             arangodb::LazyApplicationFeatureReference<
                 arangodb::metrics::ClusterMetricsFeature>(nullptr),
             arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
@@ -117,8 +111,7 @@ class LogicalDataSourceTest : public ::testing::Test {
   }
 
   ~LogicalDataSourceTest() {
-    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(
-        nullptr);
+    server.getFeature<arangodb::DatabaseFeature>().setEngineTesting(nullptr);
 
     // destroy application features
     for (auto& f : features) {

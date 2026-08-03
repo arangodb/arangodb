@@ -34,6 +34,9 @@ Thumbs.db
 cppcheck.xml
 
 enterprise
+# "enterprise" above (the submodule checkout) matches ANY dir of that name,
+# which would silently swallow the vendored debian packaging templates:
+!scripts/packaging/debian/enterprise/
 upgrade-data-tests
 compile_commands.json
 instanceinfo.json
@@ -117,7 +120,7 @@ js/node/node_modules/**/.nyc_output
 npm-debug.log
 
 /log-*
-data-*
+./data-*
 databases
 cluster-init
 
@@ -127,7 +130,6 @@ arangodb-linux-amd64
 last_compiled_version.sha
 
 scripts/perfanalysis
-perf*
 callgrind*
 
 cmake-build*/
@@ -141,3 +143,4 @@ swagger-ui.js
 swagger-ui.js.map
 
 *.local.*
+js/JS_SHA1SUM.txt

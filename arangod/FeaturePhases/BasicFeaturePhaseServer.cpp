@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "BasicFeaturePhaseServer.h"
@@ -33,7 +32,6 @@
 #include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/MaxMapCountFeature.h"
 #include "RestServer/PrivilegeFeature.h"
-#include "RestServer/SharedPRNGFeature.h"
 #include "RestServer/SupervisorFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingFeature.h"
@@ -65,7 +63,6 @@ BasicFeaturePhaseServer::BasicFeaturePhaseServer(
   startsAfter<MaxMapCountFeature>();
   startsAfter<PrivilegeFeature>();
   startsAfter<SchedulerFeature>();
-  startsAfter<SharedPRNGFeature>();
   startsAfter<ShardingFeature>();
   startsAfter<SslFeature>();
   startsAfter<TempFeature>();

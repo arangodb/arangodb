@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestDumpHandler.h"
@@ -35,7 +34,6 @@
 #include "Inspection/VPack.h"
 #include "RocksDBEngine/RocksDBDumpManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/ExecContext.h"
 
 #include <absl/strings/str_cat.h>
@@ -55,9 +53,7 @@ RestDumpHandler::RestDumpHandler(
       _clusterInfo(server.getFeature<ClusterFeature>().clusterInfo()) {
   if (ServerState::instance()->isDBServer() ||
       ServerState::instance()->isSingleServer()) {
-    _dumpManager = server.getFeature<EngineSelectorFeature>()
-                       .engine<RocksDBEngine>()
-                       .dumpManager();
+    _dumpManager = _vocbase.engine<RocksDBEngine>().dumpManager();
   }
 }
 

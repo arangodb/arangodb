@@ -18,19 +18,15 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
 
-#include "iresearch/tests/tests_config.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/directory_reader.hpp"
 #include "search/all_filter.hpp"
 #include "search/cost.hpp"
 #include "search/score.hpp"
-#include "search/scorers.hpp"
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
 #include "utils/type_limits.hpp"
@@ -59,7 +55,6 @@
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/VelocyPackHelper.h"
-#include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"
 #include "Cluster/MaintenanceFeature.h"
@@ -67,12 +62,10 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "VectorIndex/VectorIndexFeature.h"
 #include "Metrics/MetricsFeature.h"
-#include "RestServer/arangod.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Sharding/ShardingFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -228,7 +221,7 @@ struct IResearchExpressionFilterTest
       public arangodb::tests::LogSuppressor<arangodb::iresearch::TOPIC,
                                             arangodb::LogLevel::FATAL>,
       public arangodb::tests::IResearchLogSuppressor {
-  arangodb::ArangodServer server;
+  arangodb::application_features::ApplicationServer server;
   StorageEngineMock engine;
   std::unique_ptr<TRI_vocbase_t> system;
   std::vector<
@@ -254,13 +247,11 @@ struct IResearchExpressionFilterTest
     features.emplace_back(
         server.addFeature<arangodb::MaintenanceFeature>(nullptr), false);
 
-    auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
-    features.emplace_back(selector, false);
-    selector.setEngineTesting(&engine);
+    databaseFeature.setEngineTesting(&engine);
     auto& metrics = server.addFeature<arangodb::metrics::MetricsFeature>(
         arangodb::LazyApplicationFeatureReference<
             arangodb::QueryRegistryFeature>(server),
-        selector,
+        databaseFeature,
         arangodb::LazyApplicationFeatureReference<
             arangodb::metrics::ClusterMetricsFeature>(nullptr),
         arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
@@ -333,8 +324,7 @@ struct IResearchExpressionFilterTest
   ~IResearchExpressionFilterTest() {
     system.reset();  // destroy before reseting the 'ENGINE'
     arangodb::AqlFeature(server).stop();  // unset singleton instance
-    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(
-        nullptr);
+    server.getFeature<arangodb::DatabaseFeature>().setEngineTesting(nullptr);
 
     // destroy application features
     for (auto& f : features) {

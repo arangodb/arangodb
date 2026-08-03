@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
@@ -27,20 +26,17 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 
-#include "IResearch/RestHandlerMock.h"
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/StorageEngineMock.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Aql/QueryRegistry.h"
 #include "Basics/Result.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Logger/Logger.h"
 #include "Metrics/MetricsFeature.h"
-#include "RestServer/arangod.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/BatchOptions.h"
 #include "Transaction/Helpers.h"
@@ -50,7 +46,6 @@
 #include "Utils/OperationOptions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 
 using namespace arangodb;
 
@@ -65,7 +60,7 @@ class PhysicalCollectionTest
       arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
                                      arangodb::LogLevel::WARN> {
  protected:
-  arangodb::ArangodServer server;
+  arangodb::application_features::ApplicationServer server;
   StorageEngineMock engine;
   std::vector<std::reference_wrapper<
       arangodb::application_features::ApplicationFeature>>
@@ -76,12 +71,12 @@ class PhysicalCollectionTest
     features.emplace_back(
         server.addFeature<
             arangodb::AuthenticationFeature>());  // required for VocbaseContext
-    features.emplace_back(server.addFeature<DatabaseFeature>());
-    auto& selector = server.addFeature<EngineSelectorFeature>();
-    features.emplace_back(selector);
-    selector.setEngineTesting(&engine);
+    auto& dbFeature = server.addFeature<DatabaseFeature>();
+    features.emplace_back(dbFeature);
+    dbFeature.setEngineTesting(&engine);
     features.emplace_back(server.addFeature<metrics::MetricsFeature>(
-        LazyApplicationFeatureReference<QueryRegistryFeature>(server), selector,
+        LazyApplicationFeatureReference<QueryRegistryFeature>(server),
+        dbFeature,
         LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
             nullptr),
         LazyApplicationFeatureReference<ClusterFeature>(nullptr)));
@@ -95,7 +90,7 @@ class PhysicalCollectionTest
   }
 
   ~PhysicalCollectionTest() {
-    server.getFeature<EngineSelectorFeature>().setEngineTesting(nullptr);
+    server.getFeature<DatabaseFeature>().setEngineTesting(nullptr);
 
     for (auto& f : features) {
       f.get().unprepare();

@@ -18,8 +18,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Tobias Gödderz
-/// @author Copyright 2023, ArangoDB Inc, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
@@ -30,9 +28,10 @@ const rh = require('@arangodb/testutils/restart-helper');
 const lh = require("@arangodb/testutils/replicated-logs-helper");
 const lp = require("@arangodb/testutils/replicated-logs-predicates");
 const dh = require("@arangodb/testutils/document-state-helper");
-const {getCtrlDBServers} = require('@arangodb/test-helper');
 const {sleep} = require('internal');
 const _ = require('lodash');
+let { instanceRole } = require('@arangodb/testutils/instance');
+const IM = global.instanceManager;
 
 const disableMaintenanceMode = function () {
   const response = db._connection.PUT('/_admin/cluster/maintenance', '"off"');
@@ -108,7 +107,7 @@ function testSuite() {
       const expectedKeys = _.range(100).map(i => `${i}`);
       col.insert(expectedKeys.map(_key => ({_key})));
 
-      const dbServers = getCtrlDBServers();
+      const dbServers = IM.getInstancesRole(instanceRole.dbserver);
 
       enableMaintenanceMode();
       rh.shutdownServers(dbServers);
@@ -128,7 +127,7 @@ function testSuite() {
       const expectedKeys = _.range(100).map(i => `${i}`);
       col.insert(expectedKeys.map(_key => ({_key})));
 
-      const dbServers = getCtrlDBServers();
+      const dbServers = IM.getInstancesRole(instanceRole.dbserver);
 
       enableMaintenanceMode();
       rh.shutdownServers(dbServers);
@@ -152,7 +151,7 @@ function testSuite() {
       const logId = lh.getShardsToLogsMapping(databaseName, col._id)[shardId];
       const logStatus = db._replicatedLog(logId).status();
       const leaderId = logStatus.leaderId;
-      const dbServers = getCtrlDBServers();
+      const dbServers = IM.getInstancesRole(instanceRole.dbserver);
       const leader = dbServers.find(server => server.id === leaderId);
 
       enableMaintenanceMode();
@@ -177,7 +176,7 @@ function testSuite() {
       const logId = lh.getShardsToLogsMapping(databaseName, col._id)[shardId];
       const logStatus = db._replicatedLog(logId).status();
       const leaderId = logStatus.leaderId;
-      const dbServers = getCtrlDBServers();
+      const dbServers = IM.getInstancesRole(instanceRole.dbserver);
       const leader = dbServers.find(server => server.id === leaderId);
 
       // trigger a compaction to get rid of the create-collection entry

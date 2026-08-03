@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -27,7 +26,6 @@
 #include "Replication2/StateMachines/Document/DocumentStateErrorHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
-#include "Replication2/StateMachines/Document/ReplicatedOperation.h"
 
 #include "Actor/LocalActorPID.h"
 #include "Basics/UnshackledMutex.h"
@@ -47,7 +45,7 @@ struct SnapshotBatch;
 struct Handlers {
   Handlers(
       std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory,
-      TRI_vocbase_t& vocbase, GlobalLogIdentifier gid);
+      Database& vocbase, GlobalLogIdentifier gid);
   std::shared_ptr<IDocumentStateShardHandler> const shardHandler;
   std::shared_ptr<IDocumentStateTransactionHandler> const transactionHandler;
   std::shared_ptr<IDocumentStateErrorHandler> const errorHandler;

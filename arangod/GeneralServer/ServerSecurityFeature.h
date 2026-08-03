@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -33,6 +32,9 @@ class ServerSecurityFeature final
  public:
   static constexpr std::string_view name() noexcept { return "ServerSecurity"; }
 
+  explicit ServerSecurityFeature(
+      application_features::ApplicationServer& server,
+      ServerSecurityFeatureOptions options);
   explicit ServerSecurityFeature(
       application_features::ApplicationServer& server);
 

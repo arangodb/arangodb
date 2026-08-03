@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -34,7 +33,7 @@
 #include <mutex>
 
 namespace arangodb::metrics {
-class MetricsFeature;
+struct IRegistry;
 }  // namespace arangodb::metrics
 
 namespace arangodb::transaction {
@@ -47,7 +46,10 @@ class ManagerFeature final : public application_features::ApplicationFeature {
   }
 
   ManagerFeature(application_features::ApplicationServer& server,
-                 metrics::MetricsFeature& metrics);
+                 metrics::IRegistry& metricsRegistry,
+                 ManagerFeatureOptions options);
+  ManagerFeature(application_features::ApplicationServer& server,
+                 metrics::IRegistry& metricsRegistry);
   ~ManagerFeature();
 
   void collectOptions(
@@ -59,18 +61,12 @@ class ManagerFeature final : public application_features::ApplicationFeature {
   void beginShutdown() override;
   void unprepare() override;
 
-  size_t streamingMaxTransactionSize() const noexcept;
-  double streamingLockTimeout() const noexcept;
-  double streamingIdleTimeout() const noexcept;
   static transaction::Manager* manager() noexcept;
-
-  /// @brief track number of aborted managed transactions
-  void trackExpired(uint64_t numExpired) noexcept;
 
  private:
   void queueGarbageCollection();
 
-  static std::unique_ptr<transaction::Manager> MANAGER;
+  static std::shared_ptr<transaction::Manager> MANAGER;
 
   ManagerFeatureOptions _options;
 

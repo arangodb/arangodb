@@ -18,12 +18,10 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBPrimaryIndex.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/IndexStreamIterator.h"
@@ -35,12 +33,9 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cache/BinaryKeyHasher.h"
 #include "Cache/CachedValue.h"
-#include "Cache/CacheManagerFeature.h"
 #include "Cache/TransactionalCache.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
-#include "Logger/Logger.h"
-#include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -51,20 +46,13 @@
 #include "RocksDBEngine/RocksDBPrefixExtractor.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
-#include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBValue.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
-
-#ifdef USE_ENTERPRISE
-#include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
-#endif
 
 #include <absl/strings/str_cat.h>
 
@@ -606,8 +594,8 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(LogicalCollection& collection,
               ->cacheEnabled(),
           /*cacheManager*/
           collection.vocbase()
-              .server()
-              .getFeature<CacheManagerFeature>()
+              .engine<RocksDBEngine>()
+              .getCacheManagerProvider()
               .manager(),
           /*engine*/
           collection.vocbase().engine<RocksDBEngine>()),
@@ -657,16 +645,16 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
                                                std::string_view keyRef,
                                                ReadOwnWrites readOwnWrites,
                                                bool& foundInCache) const {
-  RocksDBKeyLeaser key(trx);
-  key->constructPrimaryIndexValue(objectId(), keyRef);
+  RocksDBKey key(ThreadLocalStringLeaser::lease());
+  key.constructPrimaryIndexValue(objectId(), keyRef);
 
   foundInCache = false;
   bool lockTimeout = false;
   auto cache = useCache();
   if (cache != nullptr) {
     // check cache first for fast path
-    auto f = cache->find(key->string().data(),
-                         static_cast<uint32_t>(key->string().size()));
+    auto f = cache->find(key.string().data(),
+                         static_cast<uint32_t>(key.string().size()));
     if (f.found()) {
       foundInCache = true;
       rocksdb::Slice s(reinterpret_cast<char const*>(f.value()->value()),
@@ -682,7 +670,7 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
   RocksDBMethods* mthds =
       RocksDBTransactionState::toMethods(trx, _collection.id());
   rocksdb::PinnableSlice val;
-  rocksdb::Status s = mthds->Get(_cf, key->string(), &val, readOwnWrites);
+  rocksdb::Status s = mthds->Get(_cf, key.string(), &val, readOwnWrites);
   if (!s.ok()) {
     return LocalDocumentId();
   }
@@ -690,8 +678,8 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
   if (cache != nullptr && !lockTimeout && val.size() <= _maxCacheValueSize) {
     // write entry back to cache
     cache::Cache::SimpleInserter<PrimaryIndexCacheType>{
-        static_cast<PrimaryIndexCacheType&>(*cache), key->string().data(),
-        static_cast<uint32_t>(key->string().size()), val.data(),
+        static_cast<PrimaryIndexCacheType&>(*cache), key.string().data(),
+        static_cast<uint32_t>(key.string().size()), val.data(),
         static_cast<uint64_t>(val.size())};
   }
 
@@ -715,8 +703,8 @@ Result RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx,
   documentId = LocalDocumentId::none();
   revisionId = RevisionId::none();
 
-  RocksDBKeyLeaser key(trx);
-  key->constructPrimaryIndexValue(objectId(), keyRef);
+  RocksDBKey key(ThreadLocalStringLeaser::lease());
+  key.constructPrimaryIndexValue(objectId(), keyRef);
 
   // acquire rocksdb transaction
   RocksDBMethods* mthds =
@@ -725,9 +713,9 @@ Result RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx,
   rocksdb::Status s;
   if (lockForUpdate) {
     TRI_ASSERT(readOwnWrites == ReadOwnWrites::yes);
-    s = mthds->GetForUpdate(_cf, key->string(), &val);
+    s = mthds->GetForUpdate(_cf, key.string(), &val);
   } else {
-    s = mthds->Get(_cf, key->string(), &val, readOwnWrites);
+    s = mthds->Get(_cf, key.string(), &val, readOwnWrites);
   }
   if (!s.ok()) {
     return rocksutils::convertStatus(s, rocksutils::StatusHint::document);
@@ -770,20 +758,20 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx,
   transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revision);
   TRI_ASSERT(keySlice.isString());
 
-  RocksDBKeyLeaser key(&trx);
-  key->constructPrimaryIndexValue(objectId(), keySlice.stringView());
+  RocksDBKey key(ThreadLocalStringLeaser::lease());
+  key.constructPrimaryIndexValue(objectId(), keySlice.stringView());
 
   // we do not need to perform any additional checks here since the document key
   // is already locked at the beginning of the insert operation
 
   // invalidate new index cache entry to avoid caching without committing first
-  invalidateCacheEntry(key->string().data(),
-                       static_cast<uint32_t>(key->string().size()));
+  invalidateCacheEntry(key.string().data(),
+                       static_cast<uint32_t>(key.string().size()));
 
   TRI_ASSERT(revision.isSet());
   auto value = RocksDBValue::PrimaryIndexValue(documentId, revision);
   rocksdb::Status s =
-      mthd->Put(_cf, key.ref(), value.string(), /*assume_tracked*/ true);
+      mthd->Put(_cf, key, value.string(), /*assume_tracked*/ true);
   if (!s.ok()) {
     Result res = rocksutils::convertStatus(s, rocksutils::index);
     addErrorMsg(res, keySlice.stringView());
@@ -817,20 +805,20 @@ Result RocksDBPrimaryIndex::update(
     return res;
   }
 
-  RocksDBKeyLeaser key(&trx);
+  RocksDBKey key(ThreadLocalStringLeaser::lease());
 
-  key->constructPrimaryIndexValue(objectId(), keySlice.stringView());
+  key.constructPrimaryIndexValue(objectId(), keySlice.stringView());
 
   RevisionId revision = transaction::helpers::extractRevFromDocument(newDoc);
   auto value = RocksDBValue::PrimaryIndexValue(newDocumentId, revision);
 
   // invalidate new index cache entry to avoid caching without committing first
-  invalidateCacheEntry(key->string().data(),
-                       static_cast<uint32_t>(key->string().size()));
+  invalidateCacheEntry(key.string().data(),
+                       static_cast<uint32_t>(key.string().size()));
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   {
-    rocksdb::Status s = mthd->GetForUpdate(_cf, key->string(), nullptr);
+    rocksdb::Status s = mthd->GetForUpdate(_cf, key.string(), nullptr);
     if (s.IsNotFound()) {
       // the key must have existed before in the primary index
       res.reset(TRI_ERROR_ARANGO_CONFLICT,
@@ -850,7 +838,7 @@ Result RocksDBPrimaryIndex::update(
 #endif
 
   rocksdb::Status s =
-      mthd->Put(_cf, key.ref(), value.string(), /*assume_tracked*/ false);
+      mthd->Put(_cf, key, value.string(), /*assume_tracked*/ false);
   if (!s.ok()) {
     res.reset(rocksutils::convertStatus(s, rocksutils::index));
     addErrorMsg(res, keySlice.stringView());
@@ -868,15 +856,15 @@ Result RocksDBPrimaryIndex::remove(transaction::Methods& trx,
   // TODO: deal with matching revisions?
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
   TRI_ASSERT(keySlice.isString());
-  RocksDBKeyLeaser key(&trx);
-  key->constructPrimaryIndexValue(objectId(), keySlice.stringView());
+  RocksDBKey key(ThreadLocalStringLeaser::lease());
+  key.constructPrimaryIndexValue(objectId(), keySlice.stringView());
 
-  invalidateCacheEntry(key->string().data(),
-                       static_cast<uint32_t>(key->string().size()));
+  invalidateCacheEntry(key.string().data(),
+                       static_cast<uint32_t>(key.string().size()));
 
   // acquire rocksdb transaction
   auto* mthds = RocksDBTransactionState::toMethods(&trx, _collection.id());
-  rocksdb::Status s = mthds->Delete(_cf, key.ref());
+  rocksdb::Status s = mthds->Delete(_cf, key);
   if (!s.ok()) {
     res.reset(rocksutils::convertStatus(s, rocksutils::index));
     addErrorMsg(res, keySlice.stringView());
@@ -1258,61 +1246,16 @@ void RocksDBPrimaryIndex::handleValNode(transaction::Methods* trx,
   }
 
   if (isId) {
-    // lookup by _id. now validate if the lookup is performed for the
-    // correct collection (i.e. _collection)
-    char const* key = nullptr;
-    size_t outLength = 0;
-    std::shared_ptr<LogicalCollection> collection;
-    Result res =
-        trx->resolveId(valNode->getStringValue(), valNode->getStringLength(),
-                       collection, key, outLength);
-
-    if (!res.ok()) {
+    // lookup by _id. validate that the lookup value refers to "our"
+    // collection (i.e. _collection) and extract the _key part from it
+    auto key = Index::extractKeyFromIdLookupValue(*trx, _collection,
+                                                  valNode->getStringView());
+    if (!key.has_value()) {
       return;
-    }
-
-    TRI_ASSERT(collection != nullptr);
-    TRI_ASSERT(key != nullptr);
-
-    bool isRunningInCluster = ServerState::instance()->isRunningInCluster();
-
-    if (!isRunningInCluster && collection->id() != _collection.id()) {
-      // only continue lookup if the id value is syntactically correct and
-      // refers to "our" collection, using local collection id
-      return;
-    }
-
-    if (isRunningInCluster) {
-#ifdef USE_ENTERPRISE
-      if (collection->isSmart() && collection->type() == TRI_COL_TYPE_EDGE) {
-        auto c = dynamic_cast<VirtualClusterSmartEdgeCollection const*>(
-            collection.get());
-        if (c == nullptr) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_INTERNAL, "unable to cast smart edge collection");
-        }
-
-        if (!c->isDisjoint() && (_collection.planId() != c->getLocalCid() &&
-                                 _collection.planId() != c->getFromCid() &&
-                                 _collection.planId() != c->getToCid())) {
-          // invalid planId
-          return;
-        } else if (c->isDisjoint() &&
-                   _collection.planId() != c->getLocalCid()) {
-          // invalid planId
-          return;
-        }
-      } else
-#endif
-          if (collection->planId() != _collection.planId()) {
-        // only continue lookup if the id value is syntactically correct and
-        // refers to "our" collection, using cluster collection id
-        return;
-      }
     }
 
     // use _key value from _id
-    keys.add(VPackValuePair(key, outLength, VPackValueType::String));
+    keys.add(VPackValuePair(key->data(), key->size(), VPackValueType::String));
   } else {
     keys.add(VPackValuePair(valNode->getStringValue(),
                             valNode->getStringLength(),

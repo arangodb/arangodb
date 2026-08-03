@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -100,8 +99,8 @@ struct ShortestPathOptions : public BaseOptions {
   auto setMaxDepth(uint64_t maxDepth) noexcept -> void;
   auto getMaxDepth() const noexcept -> uint64_t;
 
-  auto setWeightAttribute(std::string attribute) -> void;
-  auto getWeightAttribute() const& -> std::string;
+  auto setWeightAttribute(std::vector<std::string> attribute) -> void;
+  auto getWeightAttribute() const& -> std::vector<std::string> const&;
 
   auto setDefaultWeight(double weight) -> void;
   auto getDefaultWeight() const -> double;
@@ -113,7 +112,7 @@ struct ShortestPathOptions : public BaseOptions {
   /// These options come from the query's text
   uint64_t _minDepth;
   uint64_t _maxDepth;
-  std::string _weightAttribute;
+  std::vector<std::string> _weightAttribute;
   double _defaultWeight;
 
   /// @brief Lookup info to find all reverse edges.

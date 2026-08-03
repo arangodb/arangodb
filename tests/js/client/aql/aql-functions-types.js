@@ -20,8 +20,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
@@ -990,8 +988,8 @@ function ahuacatlTypesFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testToArray10 : function () {
-      var expected = [ [ null, -63, [ 1, 2 ], { "a" : "b" } ] ];
-      var actual = getQueryResults("RETURN TO_ARRAY({ \"a\" : null, \"b\" : -63, \"c\" : [ 1, 2 ], \"d\": { \"a\" : \"b\" } })");
+      var expected = [ [ -63, [ 1, 2 ], { "a" : "b" }, null ] ];
+      var actual = getQueryResults('RETURN TO_ARRAY({ "a" : null, "b" : -63, "c" : [ 1, 2 ], "d": { "a" : "b" } })').map(arr => arr.slice().sort());
       assertEqual(expected, actual);
     },
 
@@ -1110,8 +1108,8 @@ function ahuacatlTypesFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testToList10 : function () {
-      var expected = [ [ null, -63, [ 1, 2 ], { "a" : "b" } ] ];
-      var actual = getQueryResults("RETURN TO_LIST({ \"a\" : null, \"b\" : -63, \"c\" : [ 1, 2 ], \"d\": { \"a\" : \"b\" } })");
+      var expected = [ [ -63, [ 1, 2 ], { "a" : "b" }, null ] ];
+      var actual = getQueryResults("RETURN TO_LIST({ \"a\" : null, \"b\" : -63, \"c\" : [ 1, 2 ], \"d\": { \"a\" : \"b\" } })").map(arr =>  arr.slice().sort());
       assertEqual(expected, actual);
     },
 

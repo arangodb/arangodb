@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -46,6 +45,9 @@ class UpgradeFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Upgrade"; }
 
+  UpgradeFeature(application_features::ApplicationServer& server, int* result,
+                 std::span<const std::type_index> nonServerFeatures,
+                 UpgradeFeatureOptions options);
   UpgradeFeature(application_features::ApplicationServer& server, int* result,
                  std::span<const std::type_index> nonServerFeatures);
 

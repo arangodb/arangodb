@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <chrono>
@@ -104,7 +103,7 @@ void ProcessMonitoringFeature::validateOptions(
 
 void ProcessMonitoringFeature::start() {
   if (_enabled) {
-    _monitorThread = std::make_unique<ProcessMonitorThread>(server(), *this);
+    _monitorThread = std::make_unique<ProcessMonitorThread>(*this);
     if (!_monitorThread->start()) {
       LOG_TOPIC("33333", FATAL, Logger::SYSCALL)
           << "failed to launch monitoring background thread";

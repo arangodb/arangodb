@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -46,22 +45,11 @@ class ConfigFeature final : public application_features::ApplicationFeature {
   static constexpr std::string_view name() noexcept { return "Config"; }
 
   ConfigFeature(application_features::ApplicationServer& server,
+                std::string const& progname, std::string const& configFilename,
+                ConfigFeatureOptions options);
+  ConfigFeature(application_features::ApplicationServer& server,
                 std::string const& progname,
-                std::string const& configFilename = "")
-      : application_features::ApplicationFeature{server, *this},
-        _version{[&server]() {
-          return server.hasFeature<VersionFeature>()
-                     ? &server.getFeature<VersionFeature>()
-                     : nullptr;
-        }()} {
-    ADB_PROD_ASSERT(_version != nullptr);
-    _options.file = configFilename;
-    _options.progname = progname;
-
-    setOptional(false);
-    startsAfter<LoggerFeature>();
-    startsAfter<ShellColorsFeature>();
-  }
+                std::string const& configFilename = "");
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void loadOptions(std::shared_ptr<options::ProgramOptions>,

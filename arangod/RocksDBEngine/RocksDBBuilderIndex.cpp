@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBBuilderIndex.h"
@@ -34,7 +33,7 @@
 #include "Enterprise/RocksDBEngine/RocksDBBuilderIndexEE.h"
 #endif
 #include "Logger/LogMacros.h"
-#include "RestServer/FlushFeature.h"
+#include "RestServer/FlushSubscription.h"
 #include "RocksDBEngine/Methods/RocksDBBatchedBaseMethods.h"
 #include "RocksDBEngine/Methods/RocksDBBatchedMethods.h"
 #include "RocksDBEngine/Methods/RocksDBBatchedWithIndexMethods.h"
@@ -47,11 +46,8 @@
 #include "RocksDBEngine/RocksDBMethodsMemoryTracker.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
-#include "Statistics/TransactionStatistics.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ticks.h"
 
 #include <absl/strings/str_cat.h>
 
@@ -63,7 +59,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-#include <stdexcept>
 
 using namespace arangodb;
 using namespace arangodb::rocksutils;
@@ -234,8 +229,7 @@ Result fillIndexSingleThreaded(
 
 RocksDBBuilderIndex::RocksDBBuilderIndex(std::shared_ptr<RocksDBIndex> wp,
                                          uint64_t numDocsHint,
-                                         size_t numThreads,
-                                         TransactionStatistics& statistics)
+                                         size_t numThreads)
     : RocksDBIndex{wp->id(), wp->collection(), wp->name(), wp->fields(),
                    wp->unique(), wp->sparse(), wp->columnFamily(),
                    wp->objectId(), /*useCache*/ false,
@@ -244,7 +238,6 @@ RocksDBBuilderIndex::RocksDBBuilderIndex(std::shared_ptr<RocksDBIndex> wp,
                    static_cast<RocksDBEngine&>(
                        wp->collection().vocbase().engine())},
       _wrapped{std::move(wp)},
-      _statistics(statistics),
       _docsProcessed{0},
       _numDocsHint{numDocsHint},
       _numThreads{
@@ -393,8 +386,9 @@ Result RocksDBBuilderIndex::beforeCreate() {
   auto& engine = static_cast<RocksDBEngine&>(_collection.vocbase().engine());
   rocksdb::DB* db = engine.db()->GetRootDB();
 
+  auto& metric = engine.transactionStatistics()._restTransactionsMemoryUsage;
   RocksDBMethodsMemoryTracker memoryTracker(
-      nullptr, &_statistics._restTransactionsMemoryUsage,
+      nullptr, &metric,
       /*granularity*/ RocksDBMethodsMemoryTracker::kDefaultGranularity);
 
   rocksdb::WriteBatch batch(getBatchSize(_numDocsHint));
@@ -442,8 +436,9 @@ Result RocksDBBuilderIndex::fillIndexForeground(
   auto& engine = static_cast<RocksDBEngine&>(_collection.vocbase().engine());
   rocksdb::DB* db = engine.db()->GetRootDB();
 
+  auto& metric = engine.transactionStatistics()._restTransactionsMemoryUsage;
   RocksDBMethodsMemoryTracker memoryTracker(
-      nullptr, &_statistics._restTransactionsMemoryUsage,
+      nullptr, &metric,
       /*granularity*/ RocksDBMethodsMemoryTracker::kDefaultGranularity);
 
   Result res;
@@ -862,9 +857,7 @@ futures::Future<Result> RocksDBBuilderIndex::fillIndexBackground(
   // prevent WAL deletion from this tick
   auto lowerBoundTracker =
       std::make_shared<LowerBoundTracker>(snap->GetSequenceNumber(), name);
-  auto& flushFeature =
-      _collection.vocbase().server().getFeature<FlushFeature>();
-  flushFeature.registerFlushSubscription(lowerBoundTracker);
+  _engine.getFlushControl().registerFlushSubscription(lowerBoundTracker);
 
   locker.unlock();
 
@@ -875,8 +868,9 @@ futures::Future<Result> RocksDBBuilderIndex::fillIndexBackground(
   }
 #endif
 
+  auto& metric = engine.transactionStatistics()._restTransactionsMemoryUsage;
   RocksDBMethodsMemoryTracker memoryTracker(
-      nullptr, &_statistics._restTransactionsMemoryUsage,
+      nullptr, &metric,
       /*granularity*/ RocksDBMethodsMemoryTracker::kDefaultGranularity);
 
   Result res;

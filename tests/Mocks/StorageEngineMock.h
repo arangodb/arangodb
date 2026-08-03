@@ -18,18 +18,19 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "Basics/Result.h"
 #include "Futures/Future.h"
+#include "Mocks/FakeRegistry.h"
 #include "StorageEngine/HealthData.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
 #include "VocBase/Identifiers/IndexId.h"
+
+#include "RocksDBEngine/Mocks.h"
 
 #include <atomic>
 #include <memory>
@@ -105,7 +106,13 @@ class StorageEngineMockSnapshot final : public arangodb::StorageSnapshot {
   TRI_voc_tick_t _t;
 };
 
-class StorageEngineMock : public arangodb::StorageEngine {
+// Base ensures _mockRegistry outlives StorageEngine's _transactionStatistics.
+struct StorageEngineMockBase {
+  arangodb::metrics::FakeRegistry _mockRegistry;
+};
+
+class StorageEngineMock : private StorageEngineMockBase,
+                          public arangodb::StorageEngine {
  public:
   static std::function<void()> before;
   static arangodb::Result flushSubscriptionResult;
@@ -137,8 +144,6 @@ class StorageEngineMock : public arangodb::StorageEngine {
   std::unique_ptr<arangodb::PhysicalCollection> createPhysicalCollection(
       arangodb::LogicalCollection& collection,
       arangodb::velocypack::Slice /*info*/) override;
-  std::unique_ptr<arangodb::transaction::Manager> createTransactionManager(
-      arangodb::transaction::ManagerFeature&) override;
   std::shared_ptr<arangodb::TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
       arangodb::transaction::Options const& options,
@@ -230,7 +235,7 @@ class StorageEngineMock : public arangodb::StorageEngine {
   void incrementTick(uint64_t tick) { _engineTick.fetch_add(tick); }
 
  private:
+  ::testing::NiceMock<arangodb::tests::MockDatabaseProvider> _dbProvider;
   TRI_voc_tick_t _releasedTick;
   std::atomic_uint64_t _engineTick{100};
-  arangodb::VersionTracker _versionTracker;
 };

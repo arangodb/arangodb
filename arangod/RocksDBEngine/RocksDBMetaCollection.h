@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -140,6 +139,10 @@ class RocksDBMetaCollection : public PhysicalCollection {
 #endif
 
  private:
+  // The invariant the revision-tree code may safely assert: the collection
+  // either still uses sync-by-revision, or it is being dropped.
+  bool useSyncByRevisionOrDeleted() const noexcept;
+
   bool needToPersistRevisionTree(
       rocksdb::SequenceNumber maxCommitSeq,
       std::unique_lock<std::mutex> const& lock) const;

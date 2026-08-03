@@ -18,23 +18,26 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "Agency/AgencyOptions.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "RocksDBEngine/ISortingPolicy.h"
 
 namespace arangodb {
 namespace consensus {
 class Agent;
 }
 
-class AgencyFeature : public application_features::ApplicationFeature {
+class AgencyFeature : public application_features::ApplicationFeature,
+                      public ISortingPolicy {
  public:
   static constexpr std::string_view name() { return "Agency"; }
 
+  explicit AgencyFeature(application_features::ApplicationServer& server,
+                         AgencyOptions options);
   explicit AgencyFeature(application_features::ApplicationServer& server);
   ~AgencyFeature();
 
@@ -47,6 +50,16 @@ class AgencyFeature : public application_features::ApplicationFeature {
   void unprepare() override final;
 
   bool activated() const noexcept { return _options.activated; }
+
+  // Since agents have never used VPackIndexes before we fixed the sorting
+  // order, we might as well directly consider them to be migrated to the
+  // CORRECT sorting order. Other servers will use the LEGACY sorting order for
+  // backwards compatibility.
+  basics::VelocyPackHelper::SortingMethod getSortingMethod()
+      const noexcept override {
+    return activated() ? basics::VelocyPackHelper::SortingMethod::Correct
+                       : basics::VelocyPackHelper::SortingMethod::Legacy;
+  }
 
   consensus::Agent* agent() const;
 

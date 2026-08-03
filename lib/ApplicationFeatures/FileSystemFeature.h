@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -39,11 +38,9 @@ class FileSystemFeature final
  public:
   static constexpr std::string_view name() noexcept { return "FileSystem"; }
 
-  explicit FileSystemFeature(application_features::ApplicationServer& server)
-      : ApplicationFeature{server, *this} {
-    setOptional(false);
-    startsAfter<LoggerFeature>();
-  }
+  explicit FileSystemFeature(application_features::ApplicationServer& server,
+                             FileSystemFeatureOptions options);
+  explicit FileSystemFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;

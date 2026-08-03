@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -33,7 +32,6 @@
 #include <velocypack/Slice.h>
 
 namespace arangodb {
-class RocksDBKeyLeaser;
 
 namespace transaction {
 class Methods;

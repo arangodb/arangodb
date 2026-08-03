@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -31,9 +30,9 @@ class RocksDBTransactionMethods;
 class ReplicatedRocksDBTransactionState final : public RocksDBTransactionState {
  public:
   ReplicatedRocksDBTransactionState(
-      TRI_vocbase_t& vocbase, TransactionId tid,
-      transaction::Options const& options,
-      transaction::OperationOrigin operationOrigin);
+      Database& vocbase, TransactionId tid, transaction::Options const& options,
+      transaction::OperationOrigin operationOrigin,
+      transaction::Manager& manager);
 
   ~ReplicatedRocksDBTransactionState() override;
 

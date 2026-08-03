@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require("internal");
@@ -180,6 +178,8 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         [prefix + "{ order: 'weighted' } RETURN 1"],
         [prefix + "{ defaultWeight: 17 } RETURN 1"],
         [prefix + "{ weightAttribute: 'testi' } RETURN 1"],
+        [prefix + "{ weightAttribute: ['testi'] } RETURN 1"],
+        [prefix + "{ weightAttribute: ['testi', 'nested'] } RETURN 1"],
         [prefix + "{ uniqueVertices: 'path' } RETURN 1"],
         [prefix + "{ uniqueVertices: 'none' } RETURN 1"],
         [prefix + "{ parallelism: 4 } RETURN 1"],
@@ -188,7 +188,7 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         [prefix + "{ disableIndex: true } RETURN 1", "disableIndex"],
         [prefix + "{ lookahead: 0 } RETURN 1", "lookahead"],
         [prefix + "{ defaultWeight: true } RETURN 1", "defaultWeight"],
-        [prefix + "{ weightAttribute: ['testi'] } RETURN 1", "weightAttribute"],
+        [prefix + "{ weightAttribute: [['testi']] } RETURN 1", "weightAttribute"],
         [prefix + "{ uniqueVertices: true } RETURN 1", "uniqueVertices"],
         [prefix + "{ uniqueEdges: true } RETURN 1", "uniqueEdges"],
         [prefix + "{ waitForSync: true } RETURN 1", "waitForSync"],
@@ -216,9 +216,12 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
       const prefix = "FOR p IN OUTBOUND SHORTEST_PATH '" + cn + "/test0' TO '" + cn + "/test1' " + cn + "Edge OPTIONS ";
       const queries = [
         [prefix + "{ weightAttribute: 'testi' } RETURN 1"],
+        [prefix + "{ weightAttribute: ['testi'] } RETURN 1"],
+        [prefix + "{ weightAttribute: ['testi', 'nested'] } RETURN 1"],
         [prefix + "{ defaultWeight: 42.5 } RETURN 1"],
 
         [prefix + "{ weightAttribute: false } RETURN 1", "weightAttribute"],
+        [prefix + "{ weightAttribute: [['testi']] } RETURN 1", "weightAttribute"],
         [prefix + "{ defaultWeight: false } RETURN 1", "defaultWeight"],
         [prefix + "{ waitForSync: false } RETURN 1", "waitForSync"],
         [prefix + "{ waitForSync: true } RETURN 1", "waitForSync"],
@@ -244,9 +247,12 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         const prefix = "FOR p IN OUTBOUND " + type + " '" + cn + "/test0' TO '" + cn + "/test1' " + cn + "Edge OPTIONS ";
         const queries = [
           [prefix + "{ weightAttribute: 'testi' } RETURN 1"],
+          [prefix + "{ weightAttribute: ['testi'] } RETURN 1"],
+          [prefix + "{ weightAttribute: ['testi', 'nested'] } RETURN 1"],
           [prefix + "{ defaultWeight: 42.5 } RETURN 1"],
 
           [prefix + "{ weightAttribute: false } RETURN 1", "weightAttribute"],
+          [prefix + "{ weightAttribute: [['testi']] } RETURN 1", "weightAttribute"],
           [prefix + "{ defaultWeight: false } RETURN 1", "defaultWeight"],
           [prefix + "{ waitForSync: false } RETURN 1", "waitForSync"],
           [prefix + "{ waitForSync: true } RETURN 1", "waitForSync"],

@@ -18,18 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchExpressionContext.h"
 
 #include "Aql/AqlFunctionsInternalCache.h"
-#include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionNode/IResearchViewNode.h"
 #include "Aql/QueryContext.h"
-#include "Basics/StaticStrings.h"
-#include "Containers/HashSet.h"
 
 namespace arangodb::iresearch {
 
@@ -71,9 +66,7 @@ arangodb::ValidatorBase* ViewExpressionContextBase::buildValidator(
   return _aqlFunctionsInternalCache->buildValidator(params);
 }
 
-TRI_vocbase_t& ViewExpressionContextBase::vocbase() const {
-  return _trx->vocbase();
-}
+Database& ViewExpressionContextBase::vocbase() const { return _trx->vocbase(); }
 
 transaction::Methods& ViewExpressionContextBase::trx() const { return *_trx; }
 

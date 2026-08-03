@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -207,6 +206,10 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   // if true, force a refill of the in-memory cache after each
   // insert/update/replace operation
   bool const _forceCacheRefill;
+
+  // edge cache compression config — read once at construction, never changes
+  std::size_t const _minValueSizeForEdgeCompression;
+  std::uint32_t const _accelerationFactorForEdgeCompression;
 
   // fixed size buffer to estimate the selectivity of the index.
   // on insertion of a document we have to insert it into the estimator,

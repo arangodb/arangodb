@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
@@ -31,6 +29,7 @@ const db = require("@arangodb").db;
 const isCluster = require('internal').isCluster();
 const isEnterprise = require("internal").isEnterprise();
 const extendedName = "Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨";
+let IM = global.instanceManager;
 
 let sgm;
 let satgm;
@@ -97,9 +96,8 @@ function createUsers() {
   users.grantCollection("foobaruser", "_system", "*");
   users.grantDatabase("foobaruser", "UnitTestsDumpSrc");
   users.grantCollection("foobaruser", "UnitTestsDumpSrc", "*");
-  var endpoint = arango.getEndpoint();
 
-  arango.reconnect(endpoint, "UnitTestsDumpSrc", "foobaruser", "foobarpasswd");
+  arango.reconnect(IM.endpoint, "UnitTestsDumpSrc", "foobaruser", "foobarpasswd");
 }
 
 function createEmpty() {

@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "formats/columnstore2.hpp"
@@ -2179,6 +2178,49 @@ TEST_P(columnstore2_test_case, dense_column_range) {
       }
       ASSERT_FALSE(it->next());
       ASSERT_TRUE(irs::doc_limits::eof(it->value()));
+    }
+
+    // uninitialized range_column_iterator::seek (branch 2 must not run for
+    // target > max_doc_; doc_iterator contract requires eof)
+    {
+      auto assert_uninitialized_eof_seek = [&](irs::doc_id_t target) {
+        auto it = column->iterator(hint());
+        auto* document = irs::get<irs::document>(*it);
+        ASSERT_NE(nullptr, document);
+        auto* payload = irs::get<irs::payload>(*it);
+        ASSERT_NE(nullptr, payload);
+
+        // first call to seek()
+        ASSERT_EQ(irs::doc_limits::invalid(), it->value());
+        ASSERT_TRUE(irs::doc_limits::eof(it->seek(target)));
+        ASSERT_TRUE(irs::doc_limits::eof(it->value()));
+
+        // subsequent calls to seek()
+        ASSERT_TRUE(irs::IsNull(payload->value));
+        ASSERT_TRUE(irs::doc_limits::eof(it->seek(target)));
+        ASSERT_TRUE(irs::doc_limits::eof(it->value()));
+
+        // next() on an eof iterator
+        ASSERT_FALSE(it->next());
+        ASSERT_TRUE(irs::doc_limits::eof(it->value()));
+      };
+
+      assert_uninitialized_eof_seek(kMax + 1);
+      assert_uninitialized_eof_seek(irs::doc_limits::eof());
+
+      // below-range target on uninitialized iterator (branch 2)
+      {
+        auto it = column->iterator(hint());
+        auto* document = irs::get<irs::document>(*it);
+        ASSERT_NE(nullptr, document);
+        auto* payload = irs::get<irs::payload>(*it);
+        ASSERT_NE(nullptr, payload);
+
+        ASSERT_EQ(irs::doc_limits::invalid(), it->value());
+        ASSERT_EQ(kMin, it->seek(42));
+        ASSERT_EQ(kMin, it->value());
+        assert_payload(std::to_string(kMin), *payload);
+      }
     }
 
     {

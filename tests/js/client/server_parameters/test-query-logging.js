@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global getOptions, fail, arango, assertEqual, assertFalse, assertTrue, assertMatch, assertInstanceOf */
+/* global getOptions, fail */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -21,18 +21,19 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 const jsunity = require('jsunity');
+const {assertEqual, assertTrue, assertFalse, assertNotEqual, assertInstanceOf} = jsunity.jsUnity.assertions;
 const arangodb = require('@arangodb');
+const arango = arangodb.arango;
 const db = arangodb.db;
 const crypto = require('@arangodb/crypto');
-const request = require("@arangodb/request");
 const users = require("@arangodb/users");
 const internal = require('internal');
 const errors = internal.errors;
+let IM = global.instanceManager;
 
 const jwtSecret = 'haxxmann';
 const cn = "UnitTestsQueries";
@@ -54,28 +55,20 @@ const jwt = crypto.jwtEncode(jwtSecret, {
   "server_id": "ABCD",
   "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
 }, 'HS256');
-  
-const baseUrl = function (dbName = '_system') {
-  return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:') + `/_db/${dbName}`;
-};
-  
+
 const waitForCollection = () => {
   let tries = 0;
   while (++tries < 200) {
-    let result = request.post({
-      url: baseUrl() + "/_api/cursor",
-      body: {query:"FOR doc IN _queries LIMIT 1 RETURN doc"},
-      json: true,
-      auth: {bearer: jwt},
-    });
+    let result = arango.POST_RAW(
+      "/_api/cursor",
+      {query:"FOR doc IN _queries LIMIT 1 RETURN doc"});
 
-    assertInstanceOf(request.Response, result);
-    let body = JSON.parse(result.body);
-    if (!body.error) {
+    if (!result.parsedBody.error) {
       return;
     }
-    if (body.code !== 404 || body.errorNum !== errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
-      throw body;
+    if (result.parsedBody.code !== 404 ||
+      result.parsedBody.errorNum !== errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
+      throw result.parsedBody;
     }
     internal.sleep(0.25);
   }
@@ -86,6 +79,7 @@ const waitForCollection = () => {
 function QueryPermissionsSuite() { 
   return {
     setUpAll: function () {
+      IM.rememberConnection();
       waitForCollection();
 
       db._create(cn);
@@ -99,6 +93,7 @@ function QueryPermissionsSuite() {
     },
 
     tearDown: function () {
+      IM.reconnectMe();
       try {
         users.remove("test_user");
       } catch (err) {
@@ -106,69 +101,70 @@ function QueryPermissionsSuite() {
     },
 
     testNoAccessWithoutDatabasePermissions: function () {
-      users.save("test_user", "testi");
-      users.grantDatabase("test_user", "_system", "none");
-
-      let result = request.post({
-        url: baseUrl() + "/_api/cursor",
-        body: {query:"FOR doc IN _queries RETURN doc", batchSize, options: {batchSize}},
-        json: true,
-        auth: {username: "test_user", password: "testi"},
-      });
-      assertEqual(401, result.statusCode);
-      let body = JSON.parse(result.body);
-      assertTrue(body.error, body);
+      db._createDatabase("none");
+      try {
+        users.save("test_user", "testi");
+        users.grantDatabase("test_user", "none", "ro");
+        arango.reconnect(IM.endpoint, "none", "test_user", "testi");
+        arango.setDatabaseName("_system");
+        let result = arango.POST_RAW(
+          "/_api/cursor",
+          {query:"FOR doc IN _queries RETURN doc", batchSize, options: {batchSize}}
+        );
+        assertEqual(401, result.code);
+        assertTrue(result.parsedBody.error, result.parsedBody);
+      } finally {
+        IM.reconnectMe();
+        db._useDatabase("_system");
+        db._dropDatabase("none");
+      }
     },
     
     testAccessWithDatabaseReadOnlyPermissions: function () {
       users.save("test_user", "testi");
       users.grantDatabase("test_user", "_system", "ro");
       
-      let result = request.post({
-        url: baseUrl() + "/_api/cursor",
-        body: {query:"FOR doc IN _queries RETURN doc", batchSize, options: {batchSize}},
-        json: true,
-        auth: {username: "test_user", password: "testi"},
-      });
-      assertEqual(201, result.statusCode);
-      let body = JSON.parse(result.body);
-      assertFalse(body.error, body);
+      arango.reconnect(IM.endpoint, "_system", "test_user", "testi");
+      let result = arango.POST_RAW(
+        "/_api/cursor",
+        {query:"FOR doc IN _queries RETURN doc", batchSize, options: {batchSize}});
+      assertEqual(201, result.code);
+      assertFalse(result.parsedBody.error, result.parsedBody);
     },
     
     testAccessWithDatabaseReadWritePermissions: function () {
       users.save("test_user", "testi");
       users.grantDatabase("test_user", "_system", "rw");
 
-      let result = request.post({
-          url: baseUrl() + "/_api/cursor",
-          body: {query:"FOR doc IN _queries RETURN doc", batchSize, options: {batchSize}},
-          json: true,
-          auth: {username: "test_user", password: "testi"},
-        });
-      assertEqual(201, result.statusCode);
-      let body = JSON.parse(result.body);
-      assertFalse(body.error, body);
+      arango.reconnect(IM.endpoint, "_system", "test_user", "testi");
+      let result = arango.POST_RAW(
+        "/_api/cursor",
+        {query:"FOR doc IN _queries RETURN doc", batchSize, options: {batchSize}});
+      assertEqual(201, result.code);
+      assertFalse(result.parsedBody.error, result.parsedBody);
     },
 
     testDifferentDatabaseNoAccessWithoutDatabasePermissions: function () {
       db._createDatabase(cn);
+      db._createDatabase("none");
       try {
         db._useDatabase(cn);
         users.save("test_user", "testi");
         users.grantDatabase("test_user", cn, "none");
+        users.grantDatabase("test_user", "none", "ro");
 
-        let result = request.post({
-          url: baseUrl(cn) + "/_api/cursor",
-          body: {query:"FOR doc IN _queries RETURN doc", batchSize, options: {batchSize}},
-          json: true,
-          auth: {username: "test_user", password: "testi"},
-        });
-        assertEqual(401, result.statusCode);
-        let body = JSON.parse(result.body);
-        assertTrue(body.error, body);
+        arango.reconnect(IM.endpoint, "none", "test_user", "testi");
+        arango.setDatabaseName(cn);
+        let result = arango.POST_RAW(
+          "/_api/cursor",
+          {query:"FOR doc IN _queries RETURN doc", batchSize, options: {batchSize}});
+        assertEqual(401, result.code);
+        assertTrue(result.parsedBody.error, result.parsedBody);
       } finally {
+        IM.reconnectMe();
         db._useDatabase("_system");
         db._dropDatabase(cn);
+        db._dropDatabase("none");
       }
     },
     
@@ -179,15 +175,15 @@ function QueryPermissionsSuite() {
         users.save("test_user", "testi");
         users.grantDatabase("test_user", cn, "ro");
       
-        let result = request.post({
-          url: baseUrl(cn) + "/_api/cursor",
-          body: {query:"FOR doc IN _queries RETURN doc", batchSize, options: {batchSize}},
-          json: true,
-          auth: {username: "test_user", password: "testi"},
-        });
+      arango.reconnect(IM.endpoint, cn, "test_user", "testi");
+      let result = arango.POST_RAW(
+        "/_api/cursor",
+        {query:"FOR doc IN _queries RETURN doc", batchSize, options: {batchSize}});
         // no _queries collection in non-system database
-        assertEqual(404, result.statusCode);
+        assertEqual(404, result.code);
+        assertTrue(result.parsedBody.error, result.parsedBody);
       } finally {
+        IM.reconnectMe();
         db._useDatabase("_system");
         db._dropDatabase(cn);
       }
@@ -200,15 +196,14 @@ function QueryPermissionsSuite() {
         users.save("test_user", "testi");
         users.grantDatabase("test_user", cn, "rw");
 
-        let result = request.post({
-            url: baseUrl(cn) + "/_api/cursor",
-            body: {query:"FOR doc IN _queries RETURN doc", batchSize, options: {batchSize}},
-            json: true,
-            auth: {username: "test_user", password: "testi"},
-          });
+      arango.reconnect(IM.endpoint, cn, "test_user", "testi");
+      let result = arango.POST_RAW(
+        "/_api/cursor",
+        {query:"FOR doc IN _queries RETURN doc", batchSize, options: {batchSize}});
         // no _queries collection in non-system database
-        assertEqual(404, result.statusCode);
+        assertEqual(404, result.code);
       } finally {
+        IM.reconnectMe();
         db._useDatabase("_system");
         db._dropDatabase(cn);
       }
@@ -224,32 +219,23 @@ function QueryLoggerSuite() {
   };
   
   const clearQueries = () => {
-    let result = request.put({
-      url: baseUrl() + "/_api/collection/_queries/truncate",
-      body: {},
-      json: true,
-      auth: {bearer: jwt},
-    });
+    let result = arango.PUT_RAW("/_api/collection/_queries/truncate", {});
     
-    assertInstanceOf(request.Response, result);
-    if (result.statusCode !== 404) {
-      assertEqual(200, result.statusCode);
+    if (result.code !== 404) {
+      assertEqual(200, result.code);
     }
   };
   
   const getQueries = () => {
-    let result = request.post({
-      url: baseUrl() + "/_api/cursor",
-      body: {query:"FOR doc IN _queries RETURN doc", batchSize, options: {batchSize}},
-      json: true,
-      auth: {bearer: jwt},
-    });
-
-    assertInstanceOf(request.Response, result);
-    let body = JSON.parse(result.body);
-    assertEqual(201, result.statusCode);
-    assertTrue(Array.isArray(body.result));
-    return body.result;
+    IM.rememberConnection();
+    db._useDatabase("_system");
+    let result = arango.POST_RAW(
+      "/_api/cursor",
+      {query:"FOR doc IN _queries RETURN doc", batchSize, options: {batchSize}});
+    IM.reconnectMe();
+    assertEqual(201, result.code, result.parsedBody);
+    assertTrue(Array.isArray(result.parsedBody.result));
+    return result.parsedBody.result;
   };
       
   const checkForQuery = (n, values) => {
@@ -590,11 +576,10 @@ function QueryLoggerSuite() {
     },
 
     testDifferentUser: function () {
-      let endpoint = arango.getEndpoint();
       users.save("test_user", "testi");
       users.grantDatabase("test_user", "_system", "rw");
       try {
-        arango.reconnect(endpoint, db._name(), "test_user", "testi");
+        arango.reconnect(IM.endpoint, db._name(), "test_user", "testi");
         const query = `${uniqid()} FOR i IN 1..10000 RETURN i`;
         db._query(query).toArray();
 
@@ -609,22 +594,21 @@ function QueryLoggerSuite() {
           exitCode: 0
         });
       } finally {
-        arango.reconnect(endpoint, db._name(), "root", "");
+        arango.reconnect(IM.endpoint, db._name(), "root", "");
         try {
           users.remove("test_user");
         } catch (err) {
         }
       }
     },
-    
+
     testDifferentUserInDifferentDatabase: function () {
-      let endpoint = arango.getEndpoint();
       users.save("test_user", "testi");
       users.grantDatabase("test_user", cn, "ro");
       users.grantDatabase("test_user", "_system", "ro");
       db._createDatabase(cn);
       try {
-        arango.reconnect(endpoint, cn, "test_user", "testi");
+        arango.reconnect(IM.endpoint, cn, "test_user", "testi");
         const query = `${uniqid()} FOR i IN 1..10000 RETURN i`;
         db._query(query).toArray();
 
@@ -639,7 +623,7 @@ function QueryLoggerSuite() {
           exitCode: 0
         });
       } finally {
-        arango.reconnect(endpoint, "_system", "root", "");
+        arango.reconnect(IM.endpoint, "_system", "root", "");
         try {
           users.remove("test_user");
         } catch (err) {

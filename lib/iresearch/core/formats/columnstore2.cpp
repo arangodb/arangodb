@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "columnstore2.hpp"
@@ -213,6 +212,14 @@ class range_column_iterator : public resettable_doc_iterator,
     }
 
     if (!doc_limits::valid(value())) {
+      if (doc > max_doc_ || doc_limits::eof(doc)) {
+        max_doc_ = doc_limits::invalid();
+        min_doc_ = doc_limits::eof();
+        std::get<document>(attrs_).value = doc_limits::eof();
+        std::get<payload>(attrs_).value = {};
+        return doc_limits::eof();
+      }
+
       std::get<document>(attrs_).value = min_doc_++;
       std::get<payload>(attrs_).value = this->payload(value() - min_base_);
       return value();

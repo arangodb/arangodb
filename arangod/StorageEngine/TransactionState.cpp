@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TransactionState.h"
@@ -40,8 +39,7 @@
 #include "Logger/LoggerStream.h"
 #include "Metrics/Counter.h"
 #include "Metrics/CounterBuilder.h"
-#include "Statistics/TransactionStatistics.h"
-#include "StorageEngine/EngineSelectorFeature.h"
+#include "Metrics/MetricsFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Context.h"
@@ -53,7 +51,6 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ticks.h"
 
 #include <absl/strings/str_cat.h>
 #include <algorithm>
@@ -110,17 +107,11 @@ TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
     : _vocbase(vocbase),
       _serverRole(ServerState::instance()->getRole()),
       _options(options),
-      _transactionStatistics(
-          vocbase.server().hasFeature<metrics::MetricsFeature>()
-              ? &vocbase.server()
-                     .getFeature<metrics::MetricsFeature>()
-                     .transactionStatistics()
-              : nullptr),
       _id(tid),
       _operationOrigin(operationOrigin),
       // set usage tracking mode to disabled initially. this may be overriden
       // below
-      _usageTrackingMode(metrics::MetricsFeature::UsageTrackingMode::kDisabled),
+      _usageTrackingMode(metrics::UsageTrackingMode::kDisabled),
       _activity(
           activities::make<transaction::activity::TransactionActivity>()) {
 // patch intermediateCommitCount for testing
@@ -151,8 +142,7 @@ TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
 TransactionState::~TransactionState() {
   TRI_ASSERT(_status != transaction::Status::RUNNING);
 
-  if (_usageTrackingMode !=
-          metrics::MetricsFeature::UsageTrackingMode::kDisabled &&
+  if (_usageTrackingMode != metrics::UsageTrackingMode::kDisabled &&
       _shardBytesUnpublishedEvents > 0) {
     // some metrics updates to publish...
     try {
@@ -239,14 +229,12 @@ void TransactionState::trackShardRequest(
   TRI_ASSERT(!database.empty());
   TRI_ASSERT(!shard.empty());
 
-  if (_usageTrackingMode ==
-      metrics::MetricsFeature::UsageTrackingMode::kDisabled) {
+  if (_usageTrackingMode == metrics::UsageTrackingMode::kDisabled) {
     // no tracking required
     return;
   }
 
-  TRI_ASSERT(_usageTrackingMode !=
-             metrics::MetricsFeature::UsageTrackingMode::kDisabled);
+  TRI_ASSERT(_usageTrackingMode != metrics::UsageTrackingMode::kDisabled);
   TRI_ASSERT(isDBServer());
 
   if (user.empty()) {
@@ -256,8 +244,7 @@ void TransactionState::trackShardRequest(
   }
 
   bool includeUser =
-      _usageTrackingMode ==
-      metrics::MetricsFeature::UsageTrackingMode::kEnabledPerShardPerUser;
+      _usageTrackingMode == metrics::UsageTrackingMode::kEnabledPerShardPerUser;
 
   DataSourceId cid = resolver.getCollectionIdLocal(shard);
   std::string collection = resolver.getCollectionNameCluster(cid);
@@ -294,14 +281,12 @@ void TransactionState::trackShardUsage(
   TRI_ASSERT(!database.empty());
   TRI_ASSERT(!shard.empty());
 
-  if (_usageTrackingMode ==
-      metrics::MetricsFeature::UsageTrackingMode::kDisabled) {
+  if (_usageTrackingMode == metrics::UsageTrackingMode::kDisabled) {
     // no tracking required
     return;
   }
 
-  TRI_ASSERT(_usageTrackingMode !=
-             metrics::MetricsFeature::UsageTrackingMode::kDisabled);
+  TRI_ASSERT(_usageTrackingMode != metrics::UsageTrackingMode::kDisabled);
   TRI_ASSERT(isDBServer());
 
   if (nBytes == 0) {
@@ -352,15 +337,13 @@ void TransactionState::trackShardUsage(
 
 void TransactionState::publishShardMetrics(
     CollectionNameResolver const& resolver) {
-  TRI_ASSERT(_usageTrackingMode !=
-             metrics::MetricsFeature::UsageTrackingMode::kDisabled);
+  TRI_ASSERT(_usageTrackingMode != metrics::UsageTrackingMode::kDisabled);
   TRI_ASSERT(isDBServer());
 
   auto& mf = _vocbase.server().getFeature<metrics::MetricsFeature>();
 
   bool includeUser =
-      _usageTrackingMode ==
-      metrics::MetricsFeature::UsageTrackingMode::kEnabledPerShardPerUser;
+      _usageTrackingMode == metrics::UsageTrackingMode::kEnabledPerShardPerUser;
 
   auto user = username();
 
@@ -888,8 +871,7 @@ void TransactionState::coordinatorRerollTransactionId() {
 
 /// @brief return a reference to the global transaction statistics
 TransactionStatistics& TransactionState::statistics() const noexcept {
-  TRI_ASSERT(_transactionStatistics != nullptr);
-  return *_transactionStatistics;
+  return _vocbase.engine().transactionStatistics();
 }
 
 void TransactionState::chooseReplicasNolock(

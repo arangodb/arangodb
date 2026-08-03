@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -42,7 +41,7 @@ class IOHeartbeatThread final : public Thread {
   IOHeartbeatThread(IOHeartbeatThread const&) = delete;
   IOHeartbeatThread& operator=(IOHeartbeatThread const&) = delete;
 
-  explicit IOHeartbeatThread(metrics::MetricsFeature& metricsFeature,
+  explicit IOHeartbeatThread(metrics::IRegistry& metricsRegistry,
                              DatabasePathFeature& databasePathFeature);
   ~IOHeartbeatThread();
 

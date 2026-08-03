@@ -21,6 +21,7 @@
 
 #include "Activities/GenericActivity.h"
 #include "Activities/RegistryGlobalVariable.h"
+#include "Basics/SharedPRNG.h"
 #include "GeneralServer/RequestLane.h"
 #include "Mocks/Servers.h"
 #include "Scheduler/SupervisedScheduler.h"
@@ -30,21 +31,24 @@
 using namespace arangodb;
 
 struct ActivitiesSchedulerTest : ::testing::Test {
+  static void SetUpTestSuite() {
+    arangodb::activities::registry.garbageCollectAll();
+  }
+
   ActivitiesSchedulerTest()
       : metricsFeature(std::make_shared<arangodb::metrics::MetricsFeature>(
             mockApplicationServer.server(),
             arangodb::LazyApplicationFeatureReference<
                 arangodb::QueryRegistryFeature>(nullptr),
             arangodb::LazyApplicationFeatureReference<
-                arangodb::EngineSelectorFeature>(nullptr),
+                arangodb::DatabaseFeature>(nullptr),
             arangodb::LazyApplicationFeatureReference<
                 arangodb::metrics::ClusterMetricsFeature>(nullptr),
             arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
                 nullptr))),
         metrics(std::make_shared<arangodb::SchedulerMetrics>(*metricsFeature)),
         scheduler(mockApplicationServer.server(), 4, 4, 16, 16, 16, 16, 16,
-                  0.33, metrics) {}
-  void SetUp() override {
+                  0.33, metrics, sharedPRNG) {
     activityData["TestCase"] =
         ::testing::UnitTest::GetInstance()->current_test_info()->name();
     arangodb::activities::Registry::setCurrentlyExecutingActivity(
@@ -52,16 +56,21 @@ struct ActivitiesSchedulerTest : ::testing::Test {
     scheduler.start();
   }
 
-  void TearDown() override { arangodb::activities::registry.garbageCollect(); }
+  ~ActivitiesSchedulerTest() {
+    arangodb::activities::registry.garbageCollectAll();
+    EXPECT_EQ(arangodb::activities::registry.size(), 0);
+  }
 
   arangodb::tests::mocks::MockRestServer mockApplicationServer;
   std::shared_ptr<arangodb::metrics::MetricsFeature> metricsFeature;
   std::shared_ptr<arangodb::SchedulerMetrics> metrics;
+  basics::SharedPRNG sharedPRNG;
   SupervisedScheduler scheduler;
   activities::GenericActivityData activityData;
 };
 
-TEST_F(ActivitiesSchedulerTest, current_activity_persists) {
+TEST_F(ActivitiesSchedulerTest,
+       currently_executing_activity_persists_over_scheduled_executions) {
   auto outer_activity = arangodb::activities::make<activities::GenericActivity>(
       "TestActivity", this->activityData);
   auto guard = arangodb::activities::Registry::ScopedCurrentlyExecutingActivity(
@@ -121,7 +130,8 @@ TEST_F(ActivitiesSchedulerTest, multiple_queues) {
             outer_activity);
 }
 
-TEST_F(ActivitiesSchedulerTest, with_set_current_activity_works) {
+TEST_F(ActivitiesSchedulerTest,
+       scheduler_automatically_captures_currently_executing_activity) {
   auto outer_activity = arangodb::activities::make<activities::GenericActivity>(
       "TestActivity", this->activityData);
   auto guard = arangodb::activities::Registry::ScopedCurrentlyExecutingActivity(
@@ -133,13 +143,10 @@ TEST_F(ActivitiesSchedulerTest, with_set_current_activity_works) {
     auto new_guard =
         arangodb::activities::Registry::ScopedCurrentlyExecutingActivity(
             new_activity);
-    scheduler.queue(
-        arangodb::RequestLane::CLIENT_FAST,
-        arangodb::activities::withCurrentlyExecutingActivity([&new_activity]() {
-          EXPECT_EQ(
-              arangodb::activities::Registry::currentlyExecutingActivity(),
-              new_activity);
-        }));
+    scheduler.queue(arangodb::RequestLane::CLIENT_FAST, [&new_activity]() {
+      EXPECT_EQ(arangodb::activities::Registry::currentlyExecutingActivity(),
+                new_activity);
+    });
   }
 
   // TODO: Is there a way to know whether the queued thing ran?

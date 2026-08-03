@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
-/// @author Daniel Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBSettingsManager.h"
@@ -31,7 +29,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
-#include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -142,7 +139,7 @@ ResultT<bool> RocksDBSettingsManager::sync(bool force) {
     rocksdb::WriteBatch batch;
     _tmpBuilder.clear();  // recycle our builder
 
-    auto& dbfeature = _engine.getDatabaseFeature();
+    auto& dbProvider = _engine.getDatabaseProvider();
 
     bool didWork = false;
     auto mappings = _engine.collectionMappings();
@@ -158,7 +155,7 @@ ResultT<bool> RocksDBSettingsManager::sync(bool force) {
       TRI_voc_tick_t dbid = std::get<1>(triple);
       DataSourceId cid = std::get<2>(triple);
 
-      auto vocbase = dbfeature.useDatabase(dbid);
+      auto vocbase = dbProvider.useDatabase(dbid);
       if (!vocbase) {
         _engine.removeCollectionMapping(objectId);
         continue;

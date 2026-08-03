@@ -23,7 +23,6 @@
 ##
 ## Copyright holder is ArangoDB GmbH, Cologne, Germany
 ##
-## @author Andrey Abramov
 ################################################################################
 
 from arango import ArangoClient

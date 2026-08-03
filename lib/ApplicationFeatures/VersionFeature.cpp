@@ -18,14 +18,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/GreetingsFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
+#include "ApplicationFeatures/VersionOptionsProvider.h"
 
-#include "ProgramOptions/Option.h"
-#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Rest/Version.h"
 
@@ -36,21 +34,21 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-void VersionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption(
-      "--version",
-      "Print the version and other related information, then exit.",
-      new BooleanParameter(&_options.printVersion),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Command));
+VersionFeature::VersionFeature(application_features::ApplicationServer& server)
+    : VersionFeature(server, VersionFeatureOptions{}) {}
 
-  options
-      ->addOption("--version-json",
-                  "Print the version and other related information in JSON "
-                  "format, then exit.",
-                  new BooleanParameter(&_options.printVersionJson),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Command))
-      .setIntroducedIn(30900);
+VersionFeature::VersionFeature(application_features::ApplicationServer& server,
+                               VersionFeatureOptions options)
+    : application_features::ApplicationFeature{server, *this},
+      _options(std::move(options)) {
+  setOptional(false);
+
+  startsAfter<ShellColorsFeature>();
+}
+
+void VersionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+  VersionOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void VersionFeature::validateOptions(std::shared_ptr<ProgramOptions>) {

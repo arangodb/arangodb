@@ -1,5 +1,5 @@
 %define api.pure
-%name-prefix "Aql"
+%define api.prefix {Aql}
 %locations
 %defines
 %parse-param { arangodb::aql::Parser* parser }
@@ -61,10 +61,10 @@ using namespace arangodb::aql;
 #define scanner parser->scanner()
 
 /// @brief forward for lexer function defined in Aql/tokens.ll
-int Aqllex(YYSTYPE*, YYLTYPE*, void*);
+int Aqllex(AQLSTYPE*, AQLLTYPE*, void*);
 
 /// @brief register parse error (this will also abort the currently running query)
-void Aqlerror(YYLTYPE* locp,
+void Aqlerror(AQLLTYPE* locp,
               arangodb::aql::Parser* parser,
               char const* message) {
   parser->registerParseError(TRI_ERROR_QUERY_PARSE, message, locp->first_line, locp->first_column);
@@ -189,7 +189,7 @@ AstNode* buildShortestPathInfo(Parser* parser,
                                AstNode* endNode,
                                AstNode* graph,
                                AstNode* options,
-                               YYLTYPE const& yyloc) {
+                               AQLLTYPE const& yyloc) {
   if (!caseInsensitiveEqual(seperator, "TO")) {
     parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'TO'", seperator, yyloc.first_line, yyloc.first_column);
   }
@@ -210,7 +210,7 @@ void validateForOutVariables(Parser* parser,
                              size_t minVariables, size_t maxVariables,
                              bool allowDestructuring,
                              std::string_view nodeType,
-                             YYLTYPE const& yyloc) {
+                             AQLLTYPE const& yyloc) {
   TRI_ASSERT(variableNamesNode != nullptr);
   TRI_ASSERT(variableNamesNode->type == NODE_TYPE_ARRAY ||
              variableNamesNode->type == NODE_TYPE_DESTRUCTURING);
@@ -519,6 +519,19 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %token T_OR "or operator"
 
 %token T_NOT_IN "not in operator"
+%token T_NOT_LIKE "not like operator"
+%token T_ANY_LIKE "any like operator"
+%token T_ALL_LIKE "all like operator"
+%token T_NONE_LIKE "none like operator"
+%token T_ANY_NOT_LIKE "any not like operator"
+%token T_ALL_NOT_LIKE "all not like operator"
+%token T_NONE_NOT_LIKE "none not like operator"
+%token T_ANY_REGEX_MATCH "any regex match operator"
+%token T_ALL_REGEX_MATCH "all regex match operator"
+%token T_NONE_REGEX_MATCH "none regex match operator"
+%token T_ANY_REGEX_NON_MATCH "any regex non match operator"
+%token T_ALL_REGEX_NON_MATCH "all regex non match operator"
+%token T_NONE_REGEX_NON_MATCH "none regex non match operator"
 %token T_REGEX_MATCH "~= operator"
 %token T_REGEX_NON_MATCH "~! operator"
 
@@ -566,6 +579,8 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %token T_NONE "none modifier"
 %token T_AT_LEAST "at least modifier"
 
+%token T_PIPE "| operator"
+
 /* define operator precedence */
 %left T_COMMA
 %left T_DISTINCT
@@ -575,15 +590,23 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %nonassoc T_INTO
 %left T_OR
 %left T_AND
-%nonassoc T_OUTBOUND T_INBOUND T_ANY T_ALL T_NONE 
+/* Bare ANY/ALL/NONE stay with graph direction tokens so
+   FOR ... IN ANY / arr ALL == x keep working. Composite
+   ANY/ALL/NONE LIKE|=~|!~ tokens are below UNEGATION so
+   NOT arr ALL !~ / NOT arr ANY =~ bind as intended. */
+%nonassoc T_OUTBOUND T_INBOUND T_ANY T_ALL T_NONE
 %left T_AT_LEAST
 %left T_EQ T_NE T_LIKE T_REGEX_MATCH T_REGEX_NON_MATCH
-%left T_IN T_NOT T_NOT_IN 
+%left T_IN T_NOT T_NOT_IN T_NOT_LIKE
 %left T_LT T_GT T_LE T_GE
 %left T_RANGE
 %left T_PLUS T_MINUS
 %left T_TIMES T_DIV T_MOD
 %right UMINUS UPLUS UNEGATION
+%left T_ANY_LIKE T_ALL_LIKE T_NONE_LIKE
+%left T_ANY_NOT_LIKE T_ALL_NOT_LIKE T_NONE_NOT_LIKE
+%left T_ANY_REGEX_MATCH T_ALL_REGEX_MATCH T_NONE_REGEX_MATCH
+%left T_ANY_REGEX_NON_MATCH T_ALL_REGEX_NON_MATCH T_NONE_REGEX_NON_MATCH
 %left FUNCCALL
 %left REFERENCE
 %left INDEXED
@@ -1166,6 +1189,12 @@ pattern_label:
         auto const& resolver = parser->query().resolver();
         $$ = parser->ast()->createNodeDataSource(resolver, {$2.value, $2.length}, arangodb::AccessMode::Type::READ, true, false);
     }
+  | T_COLON T_DATA_SOURCE_PARAMETER {
+        // a collection bind parameter (@@name) injects the collection name used
+        // as a label / edge type. it is resolved during bind parameter injection.
+        std::string_view name($2.value, $2.length);
+        $$ = parser->ast()->createNodeParameterDatasource(name);
+    }
 
 %type <node> pattern_maybe_where_expression;
 pattern_maybe_where_expression:
@@ -1239,7 +1268,7 @@ pattern_close_relation:
 
 %type <node> pattern_edge;
 pattern_edge: pattern_open_relation[inbound] pattern_out_variable[variable]
-              pattern_label[label]
+              pattern_edge_label[label]
               pattern_maybe_property_key_value_expression[kv_expr]
               pattern_maybe_where_expression[where]
               pattern_maybe_projection[projection]
@@ -1248,9 +1277,39 @@ pattern_edge: pattern_open_relation[inbound] pattern_out_variable[variable]
                                               nullptr, $inbound, $outbound,
                                               $projection);
     }
-    | pattern_open_relation pattern_out_variable pattern_label pattern_variable_length_relationship pattern_close_relation {
+    | pattern_open_relation pattern_out_variable pattern_edge_label pattern_variable_length_relationship pattern_close_relation {
         $$ = parser->ast()->createPatternEdge($2, $3, nullptr, nullptr, $4, $1, $5);
     }
+
+%type <node> pattern_edge_label;
+pattern_edge_label:
+    T_COLON pattern_edge_collection_list { $$ = $2; }
+  ;
+
+%type <node> pattern_edge_collection_list;
+pattern_edge_collection_list:
+    pattern_edge_collection_name {
+        auto* list = parser->ast()->createNodeArray();
+        list->addMember($1);
+        $$ = list;
+    }
+  | pattern_edge_collection_list T_PIPE pattern_edge_collection_name {
+        $1->addMember($3);
+        $$ = $1;
+    }
+  ;
+
+%type <node> pattern_edge_collection_name;
+pattern_edge_collection_name:
+    T_STRING {
+        auto const& resolver = parser->query().resolver();
+        $$ = parser->ast()->createNodeDataSource(resolver, {$1.value, $1.length}, arangodb::AccessMode::Type::READ, true, false);
+    }
+  | T_DATA_SOURCE_PARAMETER {
+        std::string_view name($1.value, $1.length);
+        $$ = parser->ast()->createNodeParameterDatasource(name);
+    }
+  ;
 
 pattern_segment: pattern_edge pattern_node_pattern {
     auto node = parser->ast()->createPatternSegment($1, $2);
@@ -2143,10 +2202,10 @@ operator_binary:
   | expression T_NOT_IN expression {
       $$ = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_NIN, $1, $3);
     }
-  | expression T_NOT T_LIKE expression {
+  | expression T_NOT_LIKE expression {
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember($1);
-      arguments->addMember($4);
+      arguments->addMember($3);
       AstNode* expression = parser->ast()->createNodeFunctionCall("LIKE", arguments, false);
       $$ = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, expression);
     }
@@ -2237,6 +2296,70 @@ operator_binary:
   | expression T_AT_LEAST T_OPEN expression T_CLOSE T_NOT_IN expression {
       AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $4);
       $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN, $1, $7, quantifier);
+    }
+  | expression T_ANY_LIKE expression {
+      $$ = parser->ast()->createNodeArrayLikeOperator(
+          $1, $3, parser->ast()->createNodeQuantifier(Quantifier::Type::kAny), false);
+    }
+  | expression T_ALL_LIKE expression {
+      $$ = parser->ast()->createNodeArrayLikeOperator(
+          $1, $3, parser->ast()->createNodeQuantifier(Quantifier::Type::kAll), false);
+    }
+  | expression T_NONE_LIKE expression {
+      $$ = parser->ast()->createNodeArrayLikeOperator(
+          $1, $3, parser->ast()->createNodeQuantifier(Quantifier::Type::kNone), false);
+    }
+  | expression T_ANY_NOT_LIKE expression {
+      $$ = parser->ast()->createNodeArrayLikeOperator(
+          $1, $3, parser->ast()->createNodeQuantifier(Quantifier::Type::kAny), true);
+    }
+  | expression T_ALL_NOT_LIKE expression {
+      $$ = parser->ast()->createNodeArrayLikeOperator(
+          $1, $3, parser->ast()->createNodeQuantifier(Quantifier::Type::kAll), true);
+    }
+  | expression T_NONE_NOT_LIKE expression {
+      $$ = parser->ast()->createNodeArrayLikeOperator(
+          $1, $3, parser->ast()->createNodeQuantifier(Quantifier::Type::kNone), true);
+    }
+  | expression T_AT_LEAST T_OPEN expression T_CLOSE T_LIKE expression {
+      AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $4);
+      $$ = parser->ast()->createNodeArrayLikeOperator($1, $7, quantifier, false);
+    }
+  | expression T_AT_LEAST T_OPEN expression T_CLOSE T_NOT_LIKE expression {
+      AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $4);
+      $$ = parser->ast()->createNodeArrayLikeOperator($1, $7, quantifier, true);
+    }
+  | expression T_ANY_REGEX_MATCH expression {
+      $$ = parser->ast()->createNodeArrayRegexOperator(
+          $1, $3, parser->ast()->createNodeQuantifier(Quantifier::Type::kAny), false);
+    }
+  | expression T_ALL_REGEX_MATCH expression {
+      $$ = parser->ast()->createNodeArrayRegexOperator(
+          $1, $3, parser->ast()->createNodeQuantifier(Quantifier::Type::kAll), false);
+    }
+  | expression T_NONE_REGEX_MATCH expression {
+      $$ = parser->ast()->createNodeArrayRegexOperator(
+          $1, $3, parser->ast()->createNodeQuantifier(Quantifier::Type::kNone), false);
+    }
+  | expression T_ANY_REGEX_NON_MATCH expression {
+      $$ = parser->ast()->createNodeArrayRegexOperator(
+          $1, $3, parser->ast()->createNodeQuantifier(Quantifier::Type::kAny), true);
+    }
+  | expression T_ALL_REGEX_NON_MATCH expression {
+      $$ = parser->ast()->createNodeArrayRegexOperator(
+          $1, $3, parser->ast()->createNodeQuantifier(Quantifier::Type::kAll), true);
+    }
+  | expression T_NONE_REGEX_NON_MATCH expression {
+      $$ = parser->ast()->createNodeArrayRegexOperator(
+          $1, $3, parser->ast()->createNodeQuantifier(Quantifier::Type::kNone), true);
+    }
+  | expression T_AT_LEAST T_OPEN expression T_CLOSE T_REGEX_MATCH expression {
+      AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $4);
+      $$ = parser->ast()->createNodeArrayRegexOperator($1, $7, quantifier, false);
+    }
+  | expression T_AT_LEAST T_OPEN expression T_CLOSE T_REGEX_NON_MATCH expression {
+      AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $4);
+      $$ = parser->ast()->createNodeArrayRegexOperator($1, $7, quantifier, true);
     }
   ;
 
@@ -2566,6 +2689,9 @@ object_element:
       // [ attribute-name-expression ] : attribute-value
       parser->pushObjectElement($2, $5);
     }
+  | T_ELLIPSIS expression {
+      parser->pushObjectSplice($2);
+    }
   ;
 
 array_filter_operator:
@@ -2765,6 +2891,7 @@ reference:
         $$ = $2;
       }
     }
+  
   | T_OPEN {
       parser->lazyConditions().flushAssignments();
 

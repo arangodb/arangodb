@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SimplifyConditions.h"
@@ -81,11 +79,14 @@ void simplifyConditionsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
           std::string_view attributeName(node->getStringView());
           bool isDynamic = false;
           size_t const n = accessed->numMembers();
-          for (size_t i = 0; i < n; ++i) {
-            auto member = accessed->getMemberUnchecked(i);
+          for (size_t i = n; i > 0; --i) {
+            auto member = accessed->getMemberUnchecked(i - 1);
 
             if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
                 member->getStringView() == attributeName) {
+              if (isDynamic) {
+                return node;
+              }
               ast::ObjectElementNode objElem(member);
               AstNode* next = objElem.getValue();
               if (!next->isDeterministic()) {
@@ -93,7 +94,8 @@ void simplifyConditionsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
               }
               node = next;
               goto again;
-            } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
+            } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT ||
+                       member->type == NODE_TYPE_OBJECT_SPLICE) {
               isDynamic = true;
             }
           }
@@ -147,11 +149,14 @@ void simplifyConditionsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
 
           bool isDynamic = false;
           size_t const n = accessed->numMembers();
-          for (size_t i = 0; i < n; ++i) {
-            auto member = accessed->getMemberUnchecked(i);
+          for (size_t i = n; i > 0; --i) {
+            auto member = accessed->getMemberUnchecked(i - 1);
 
             if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
                 member->getStringView() == attributeName) {
+              if (isDynamic) {
+                return node;
+              }
               ast::ObjectElementNode objElem2(member);
               AstNode* next = objElem2.getValue();
               if (!next->isDeterministic()) {
@@ -159,7 +164,8 @@ void simplifyConditionsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
               }
               node = next;
               goto again;
-            } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
+            } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT ||
+                       member->type == NODE_TYPE_OBJECT_SPLICE) {
               isDynamic = true;
             }
           }

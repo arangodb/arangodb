@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -27,8 +26,8 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Result.h"
 #include "Containers/FlatHashSet.h"
+#include "Utils/OperationOptions.h"
 #include "VocBase/Identifiers/IndexId.h"
-#include "VocBase/vocbase.h"
 
 #include <s2/base/integral_types.h>
 
@@ -36,10 +35,12 @@
 #include <cstdint>
 #include <iosfwd>
 #include <memory>
+#include <optional>
 #include <string_view>
 #include <vector>
 
 namespace arangodb {
+class StorageEngine;
 class IndexIterator;
 class LogicalCollection;
 struct IndexIteratorOptions;
@@ -210,6 +211,13 @@ class Index {
   /// the function may modify the projections by setting the
   /// coveringIndexPosition value in it.
   virtual bool covers(aql::Projections& projections) const;
+
+  /// @brief translates an `_id` lookup value into a `_key` lookup value,
+  /// returning std::nullopt if the value cannot refer to a document of
+  /// `collection`
+  static std::optional<std::string_view> extractKeyFromIdLookupValue(
+      transaction::Methods& trx, LogicalCollection const& collection,
+      std::string_view id);
 
   virtual size_t numFieldsToConsiderInIndexSelection() const noexcept {
     return _fields.size();
@@ -450,13 +458,16 @@ class Index {
   virtual std::unique_ptr<AqlIndexDistinctScanIterator> distinctScanFor(
       transaction::Methods* trx, IndexDistinctScanOptions const&);
 
-  virtual vector::UserVectorIndexDefinition const& getVectorIndexDefinition();
+  virtual vector::UserVectorIndexDefinition const& getVectorIndexDefinition()
+      const;
 
   /// @brief Returns true if the vector index is trained and ready for queries.
   /// Default returns false. Overridden only by vector index implementations.
   // TODO(jbajic): This is a bit unfortunate, but we currently have no better
   // way to
   virtual bool isVectorIndexReady() const noexcept;
+
+  virtual bool isLinearScanEnabled() const noexcept;
 
   virtual StoredValues const& storedValues() const;
 

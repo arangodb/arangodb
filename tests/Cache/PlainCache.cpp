@@ -18,45 +18,35 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dan Larkin-York
-/// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
 
 #include <stdint.h>
-#include <string>
-#include <thread>
-#include <vector>
 
 #include "Basics/xoroshiro128plus.h"
 #include "Cache/BinaryKeyHasher.h"
+#include "Cache/Cache.h"
 #include "Cache/CacheOptionsProvider.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
-#include "Cache/PlainCache.h"
 #include "Random/RandomGenerator.h"
-#include "RestServer/SharedPRNGFeature.h"
 
-#include "Mocks/Servers.h"
 #include "MockScheduler.h"
 
 using namespace arangodb;
 using namespace arangodb::cache;
-using namespace arangodb::tests::mocks;
 
 struct CachePlainCacheTest : testing::Test {
-  CachePlainCacheTest() : sharedPRNG(server.getFeature<SharedPRNGFeature>()) {}
-
-  MockMetricsServer server;
-  SharedPRNGFeature& sharedPRNG;
+  CachePlainCacheTest() {}
+  basics::SharedPRNG prng;
 };
 
 TEST_F(CachePlainCacheTest, test_basic_cache_creation) {
   auto postFn = [](std::function<void()>) -> bool { return false; };
   CacheOptions co;
   co.cacheSize = 1024 * 1024;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(prng, postFn, co);
   auto cache1 =
       manager.createCache<BinaryKeyHasher>(CacheType::Plain, false, 256 * 1024);
   auto cache2 =
@@ -76,7 +66,7 @@ TEST_F(CachePlainCacheTest, check_that_insertion_works_as_expected) {
   auto postFn = [](std::function<void()>) -> bool { return false; };
   CacheOptions co;
   co.cacheSize = 4 * cacheLimit;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(prng, postFn, co);
   auto cache =
       manager.createCache<BinaryKeyHasher>(CacheType::Plain, false, cacheLimit);
 
@@ -130,7 +120,7 @@ TEST_F(CachePlainCacheTest, test_that_removal_works_as_expected) {
   auto postFn = [](std::function<void()>) -> bool { return false; };
   CacheOptions co;
   co.cacheSize = 4 * cacheLimit;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(prng, postFn, co);
   auto cache =
       manager.createCache<BinaryKeyHasher>(CacheType::Plain, false, cacheLimit);
 
@@ -200,7 +190,7 @@ TEST_F(
 
   CacheOptions co;
   co.cacheSize = 1024 * 1024 * 1024;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(prng, postFn, co);
   auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Plain);
   std::uint64_t minimumUsage = cache->usageLimit() * 2;
 
@@ -230,7 +220,7 @@ TEST_F(CachePlainCacheTest, test_behavior_under_mixed_load_LongRunning) {
 
   CacheOptions co;
   co.cacheSize = 1024 * 1024 * 1024;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(prng, postFn, co);
   std::size_t threadCount = 4;
   std::shared_ptr<Cache> cache =
       manager.createCache<BinaryKeyHasher>(CacheType::Plain);
@@ -330,7 +320,7 @@ TEST_F(CachePlainCacheTest, test_hit_rate_statistics_reporting) {
 
   CacheOptions co;
   co.cacheSize = 4 * cacheLimit;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(prng, postFn, co);
   auto cacheMiss =
       manager.createCache<BinaryKeyHasher>(CacheType::Plain, true, cacheLimit);
   auto cacheHit =

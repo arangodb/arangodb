@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -97,7 +96,7 @@ struct ReplicatedStateFeature {
     return createMetricsObject(impl);
   }
   virtual auto createMetricsObject(std::string_view impl)
-      -> std::shared_ptr<ReplicatedStateMetrics>;
+      -> std::shared_ptr<ReplicatedStateMetrics> = 0;
 
  private:
   static void assertWasInserted(std::string_view name, bool wasInserted);

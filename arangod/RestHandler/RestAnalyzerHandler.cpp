@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAnalyzerHandler.h"
@@ -37,8 +35,8 @@
 #include "IResearch/VelocyPackHelper.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "Transaction/Hints.h"
 #include "Utilities/NameValidator.h"
+#include "VocBase/vocbase.h"
 
 namespace {
 constexpr std::string_view moduleName("analyzers management");

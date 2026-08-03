@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -42,10 +41,10 @@
 #include "RocksDBEngine/RocksDBTtlIndex.h"
 #include "RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
+#include "VectorIndex/IVectorIndexProvider.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
-#include "VectorIndex/VectorIndexFeature.h"
 
 #include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
@@ -402,8 +401,10 @@ struct MdiPrefixedIndexFactory : public DefaultIndexFactory {
 
 struct VectorIndexFactory : public DefaultIndexFactory {
   explicit VectorIndexFactory(application_features::ApplicationServer& server,
-                              Index::IndexType type)
-      : DefaultIndexFactory(server, type) {}
+                              Index::IndexType type,
+                              IVectorIndexProvider const& vectorIndexProvider)
+      : DefaultIndexFactory(server, type),
+        _vectorIndexProvider(vectorIndexProvider) {}
 
   std::shared_ptr<arangodb::Index> instantiate(
       arangodb::LogicalCollection& collection,
@@ -417,7 +418,7 @@ struct VectorIndexFactory : public DefaultIndexFactory {
       bool isCreation, TRI_vocbase_t const& /*vocbase*/) const override {
     TRI_ASSERT(normalized.isOpenObject());
 
-    if (!_server.getFeature<VectorIndexFeature>().isVectorIndexEnabled()) {
+    if (!_vectorIndexProvider.isVectorIndexEnabled()) {
       return {TRI_ERROR_BAD_PARAMETER,
               "vector index feature is not enabled. Run ArangoDB with "
               "`--vector-index` flag turned on."};
@@ -439,6 +440,9 @@ struct VectorIndexFactory : public DefaultIndexFactory {
     return IndexFactory::enhanceJsonIndexVector(definition, normalized,
                                                 isCreation);
   }
+
+ private:
+  IVectorIndexProvider const& _vectorIndexProvider;
 };
 
 struct TtlIndexFactory : public DefaultIndexFactory {
@@ -509,7 +513,8 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
 }  // namespace
 
 RocksDBIndexFactory::RocksDBIndexFactory(
-    application_features::ApplicationServer& server)
+    application_features::ApplicationServer& server,
+    IVectorIndexProvider const& vectorIndexProvider)
     : IndexFactory(server) {
   static const EdgeIndexFactory edgeIndexFactory(server);
   static const FulltextIndexFactory fulltextIndexFactory(server);
@@ -533,7 +538,7 @@ RocksDBIndexFactory::RocksDBIndexFactory(
   static const MdiIndexFactory mdiIndexFactory(server,
                                                Index::TRI_IDX_TYPE_MDI_INDEX);
   static const VectorIndexFactory vectorIndexFactory(
-      server, Index::TRI_IDX_TYPE_VECTOR_INDEX);
+      server, Index::TRI_IDX_TYPE_VECTOR_INDEX, vectorIndexProvider);
   static const iresearch::IResearchRocksDBInvertedIndexFactory
       iresearchInvertedIndexFactory(server);
   static const MdiPrefixedIndexFactory mdiPrefixedIndexFactory(server);
@@ -557,13 +562,11 @@ RocksDBIndexFactory::RocksDBIndexFactory(
           iresearchInvertedIndexFactory);
 }
 
-/// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
-/// "hash") used to display storage engine capabilities
+/// @brief index name aliases (e.g. "zkd" => "mdi") used to display storage
+/// engine capabilities
 std::vector<std::pair<std::string_view, std::string_view>>
 RocksDBIndexFactory::indexAliases() const {
   return {
-      {"hash", "persistent"},
-      {"skiplist", "persistent"},
       {"zkd", "mdi"},
   };
 }

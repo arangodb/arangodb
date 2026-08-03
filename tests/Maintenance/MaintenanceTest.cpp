@@ -18,11 +18,9 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
-/// @author Matthew Von-Maszewski
-/// @author Copyright 2017-2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/SharedPRNG.h"
 #include "gtest/gtest.h"
 
 #include "ApplicationFeatures/ConfigFeature.h"
@@ -54,19 +52,18 @@
 #include "RestServer/DumpLimitsFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/SharedPRNGFeature.h"
 #include "VectorIndex/VectorIndexFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
 #include "RocksDBEngine/RocksDBOptionFeature.h"
 #include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
 
 #include <iostream>
-#include <iterator>
 #include <memory>
 #include <random>
 
@@ -139,7 +136,7 @@ class SharedMaintenanceTest : public ::testing::Test {
   NodePtr originalPlan;
   NodePtr supervision;
   NodePtr current;
-  ArangodServer server;
+  application_features::ApplicationServer server;
   StorageEngineMock engine;
 
   // map <shortId, UUID>
@@ -514,7 +511,8 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
  protected:
   int _dummy;
   std::shared_ptr<options::ProgramOptions> po;
-  ArangodServer as;
+  basics::SharedPRNG sharedPRNG;
+  application_features::ApplicationServer as;
   containers::FlatHashSet<DatabaseID> makeDirty;
   MaintenanceFeature::errors_t errors;
 
@@ -536,10 +534,10 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
     auto& roOptions = as.addFeature<RocksDBOptionFeature>(&agencyFeature);
     as.addFeature<application_features::GreetingsFeaturePhase>(
         std::false_type{});
-    auto& selector = as.addFeature<EngineSelectorFeature>();
+    auto& dbFeature = as.addFeature<DatabaseFeature>();
     auto& metrics = as.addFeature<metrics::MetricsFeature>(
         LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
-        selector,
+        dbFeature,
         LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
             nullptr),
         LazyApplicationFeatureReference<ClusterFeature>(nullptr));
@@ -548,18 +546,18 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
     auto& dbpath = as.addFeature<DatabasePathFeature>();
     auto& flush = as.addFeature<FlushFeature>(metrics);
     auto& dumpLimits = as.addFeature<DumpLimitsFeature>();
-    auto& schedulerFeature = as.addFeature<SchedulerFeature>(metrics);
+    auto& scheduler = as.addFeature<SchedulerFeature>(metrics, sharedPRNG);
 
-    auto& rocksDbRecoveryManager = as.addFeature<RocksDBRecoveryManager>();
-    auto& databaseFeature = as.addFeature<DatabaseFeature>();
-    auto& vectorIndex = as.addFeature<VectorIndexFeature>(databaseFeature);
+    auto& rocksDbRecoveryManager =
+        as.addFeature<RocksDBRecoveryManager>(dbFeature, dbFeature);
+    auto& vectorIndex = as.addFeature<VectorIndexFeature>(dbFeature);
     auto& rocksDbIndexCacheRefillFeature =
-        as.addFeature<RocksDBIndexCacheRefillFeature>(databaseFeature, nullptr,
+        as.addFeature<RocksDBIndexCacheRefillFeature>(dbFeature, nullptr,
                                                       metrics);
     auto& cacheOptions = as.addFeature<CacheOptionsFeature>();
     auto& sharedPrngFeature = as.addFeature<SharedPRNGFeature>();
-    auto& cacheManagerFeature =
-        as.addFeature<CacheManagerFeature>(cacheOptions, sharedPrngFeature);
+    auto& cacheManagerFeature = as.addFeature<CacheManagerFeature>(
+        cacheOptions, sharedPrngFeature.getPRNG());
     auto* replicatedLogFeature = replication2::EnableReplication2
                                      ? &as.addFeature<ReplicatedLogFeature>()
                                      : nullptr;
@@ -567,14 +565,13 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
     // server
     engine = std::make_unique<RocksDBEngine>(
         as, roOptions, metrics, dbpath, vectorIndex, flush, dumpLimits,
-        schedulerFeature, replicatedLogFeature, rocksDbRecoveryManager,
-        databaseFeature, rocksDbIndexCacheRefillFeature, cacheManagerFeature,
-        agencyFeature);
-    selector.setEngineTesting(engine.get());
+        replicatedLogFeature, scheduler, rocksDbRecoveryManager, dbFeature,
+        rocksDbIndexCacheRefillFeature, cacheManagerFeature, agencyFeature);
+    dbFeature.setEngineTesting(engine.get());
   }
 
   ~MaintenanceTestActionPhaseOne() {
-    as.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(nullptr);
+    as.getFeature<arangodb::DatabaseFeature>().setEngineTesting(nullptr);
   }
 
   auto dbName() const -> std::string {

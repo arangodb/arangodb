@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -35,6 +34,9 @@ class ReplicationTimeoutFeature
  public:
   static const std::string_view name() noexcept { return "ReplicationTimeout"; }
 
+  explicit ReplicationTimeoutFeature(
+      application_features::ApplicationServer& server,
+      ReplicationTimeoutFeatureOptions options);
   explicit ReplicationTimeoutFeature(
       application_features::ApplicationServer& server);
 

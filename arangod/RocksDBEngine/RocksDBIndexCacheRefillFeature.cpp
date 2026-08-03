@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBIndexCacheRefillFeature.h"
@@ -32,9 +31,10 @@
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
 #include "Metrics/CounterBuilder.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "RocksDBEngine/RocksDBIndexCacheRefillOptionsProvider.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -55,12 +55,22 @@ DECLARE_COUNTER(rocksdb_cache_full_index_refills_total,
 RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(
     application_features::ApplicationServer& server,
     DatabaseFeature& databaseFeature, ClusterFeature* clusterFeature,
-    metrics::MetricsFeature& metricsFeature)
+    metrics::IRegistry& metricsRegistry)
+    : RocksDBIndexCacheRefillFeature(server, databaseFeature, clusterFeature,
+                                     metricsRegistry,
+                                     RocksDBIndexCacheRefillFeatureOptions{}) {}
+
+RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(
+    application_features::ApplicationServer& server,
+    DatabaseFeature& databaseFeature, ClusterFeature* clusterFeature,
+    metrics::IRegistry& metricsRegistry,
+    RocksDBIndexCacheRefillFeatureOptions options)
     : application_features::ApplicationFeature{server, *this},
       _databaseFeature(databaseFeature),
       _clusterFeature(clusterFeature),
-      _metricsFeature(metricsFeature),
-      _totalFullIndexRefills(addTotalFullIndexRefills(metricsFeature)),
+      _metricsRegistry(metricsRegistry),
+      _options(std::move(options)),
+      _totalFullIndexRefills(addTotalFullIndexRefills(metricsRegistry)),
       _currentlyRunningIndexFillTasks(0) {
   setOptional(true);
   // we want to be late in the startup sequence
@@ -74,100 +84,6 @@ RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(
 
 RocksDBIndexCacheRefillFeature::~RocksDBIndexCacheRefillFeature() {
   stopThread();
-}
-
-void RocksDBIndexCacheRefillFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  options
-      ->addOption("--rocksdb.auto-fill-index-caches-on-startup",
-                  "Whether to automatically fill the in-memory index caches "
-                  "with entries from edge indexes and cache-enabled persistent "
-                  "indexes on server startup.",
-                  new options::BooleanParameter(&_options.fillOnStartup),
-                  arangodb::options::makeFlags(
-                      options::Flags::DefaultNoComponents,
-                      options::Flags::OnDBServer, options::Flags::OnSingle))
-      .setIntroducedIn(30906)
-      .setIntroducedIn(31002)
-      .setLongDescription(R"(Enabling this option may cause additional CPU and
-I/O load. You can limit how many index filling operations can execute
-concurrently with the `--rocksdb.max-concurrent-index-fill-tasks` startup
-option.)");
-
-  options
-      ->addOption("--rocksdb.auto-refill-index-caches-on-modify",
-                  "Whether to automatically (re-)fill the in-memory index "
-                  "caches with entries from edge indexes and cache-enabled "
-                  "persistent indexes on insert/update/replace/remove "
-                  "operations by default.",
-                  new options::BooleanParameter(&_options.autoRefill),
-                  arangodb::options::makeFlags(
-                      options::Flags::DefaultNoComponents,
-                      options::Flags::OnDBServer, options::Flags::OnSingle))
-      .setIntroducedIn(30906)
-      .setIntroducedIn(31002)
-      .setLongDescription(R"(When documents are added, modified, or removed,
-these changes are tracked and a background thread tries to update the index
-caches accordingly if the feature is enabled, by adding new, updating existing,
-or deleting and refilling cache entries.
-
-You can enable the feature for individual `INSERT`, `UPDATE`, `REPLACE`,  and
-`REMOVE` operations in AQL queries, for individual document API requests that
-insert, update, replace, or remove single or multiple documents, as well
-as enable it by default using this startup option.
-
-The background refilling is done on a best-effort basis and not guaranteed to
-succeed, for example, if there is no memory available for the cache subsystem,
-or during cache grow/shrink operations. A background thread is used so that
-foreground write operations are not slowed down by a lot. It may still cause
-additional I/O activity to look up data from the storage engine to repopulate
-the cache.)");
-
-  options
-      ->addOption(
-          "--rocksdb.auto-refill-index-caches-queue-capacity",
-          "How many changes can be queued at most for automatically refilling "
-          "the index caches.",
-          new options::SizeTParameter(&_options.maxCapacity),
-          options::makeFlags(options::Flags::DefaultNoComponents,
-                             options::Flags::OnDBServer,
-                             options::Flags::OnSingle))
-      .setIntroducedIn(30906)
-      .setIntroducedIn(31002)
-      .setLongDescription(R"(This option restricts how many cache entries
-the background thread for (re-)filling the in-memory index caches can queue at
-most. This limits the memory usage for the case of the background thread being
-slower than other operations that invalidate cache entries of edge indexes
-or cache-enabled persistent indexes.)");
-
-  options
-      ->addOption(
-          "--rocksdb.max-concurrent-index-fill-tasks",
-          "The maximum number of index fill tasks that can run concurrently on "
-          "server startup.",
-          new options::SizeTParameter(&_options.maxConcurrentIndexFillTasks,
-                                      /*minValue*/ 1),
-          options::makeFlags(options::Flags::DefaultNoComponents,
-                             options::Flags::OnDBServer,
-                             options::Flags::OnSingle, options::Flags::Dynamic))
-      .setIntroducedIn(30906)
-      .setIntroducedIn(31002)
-      .setLongDescription(R"(The lower this number, the lower the impact of the
-index cache filling, but the longer it takes to complete.)");
-
-  options
-      ->addOption(
-          "--rocksdb.auto-refill-index-caches-on-followers",
-          "Whether or not to automatically (re-)fill the in-memory index "
-          "caches on followers as well.",
-          new options::BooleanParameter(&_options.autoRefillOnFollowers),
-          arangodb::options::makeFlags(options::Flags::DefaultNoComponents,
-                                       options::Flags::OnDBServer,
-                                       options::Flags::OnSingle))
-      .setIntroducedIn(31005)
-      .setLongDescription(R"(Set this to `false` to only (re-)fill in-memory
-index caches on leaders and save memory on followers.
-Note that the value of this option should be identical for all DBServers.)");
 }
 
 void RocksDBIndexCacheRefillFeature::beginShutdown() {
@@ -187,7 +103,7 @@ void RocksDBIndexCacheRefillFeature::start() {
   }
 
   _refillThread = std::make_unique<RocksDBIndexCacheRefillThread>(
-      _databaseFeature, _metricsFeature, _options.maxCapacity);
+      _databaseFeature, _metricsRegistry, _options.maxCapacity);
 
   if (!_refillThread->start()) {
     LOG_TOPIC("836a6", FATAL, Logger::ENGINES)
@@ -381,6 +297,6 @@ Result RocksDBIndexCacheRefillFeature::warmupIndex(
 }
 
 metrics::Counter& RocksDBIndexCacheRefillFeature::addTotalFullIndexRefills(
-    metrics::MetricsFeature& metrics) {
-  return metrics.add(rocksdb_cache_full_index_refills_total{});
+    metrics::IRegistry& metricsRegistry) {
+  return metricsRegistry.add(rocksdb_cache_full_index_refills_total{});
 }

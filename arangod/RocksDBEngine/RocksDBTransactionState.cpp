@@ -18,44 +18,31 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBTransactionState.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
+#include "Cache/Manager.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
-#include "Basics/ThreadLocalLeaser.h"
-#include "Basics/system-compiler.h"
 #include "Basics/system-functions.h"
-#include "Cache/CacheManagerFeature.h"
-#include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
-#include "RocksDBEngine/Methods/RocksDBTrxBaseMethods.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBKey.h"
-#include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
-#include "Statistics/TransactionStatistics.h"
-#include "StorageEngine/EngineSelectorFeature.h"
+#include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "StorageEngine/TransactionCollection.h"
-#include "Transaction/Context.h"
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include "Transaction/History.h"
 #endif
 #include "Transaction/Manager.h"
-#include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
 #include <absl/strings/str_cat.h>
@@ -69,8 +56,9 @@ using namespace arangodb;
 /// @brief transaction type
 RocksDBTransactionState::RocksDBTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
-    transaction::Options const& options, transaction::OperationOrigin trxType)
-    : TransactionState(vocbase, tid, options, trxType) {}
+    transaction::Options const& options, transaction::OperationOrigin trxType,
+    transaction::Manager& manager)
+    : TransactionState(vocbase, tid, options, trxType), _manager(manager) {}
 
 /// @brief free a transaction container
 RocksDBTransactionState::~RocksDBTransactionState() {
@@ -127,25 +115,22 @@ futures::Future<Result> RocksDBTransactionState::beginTransaction(
     ++stats._transactionsStarted;
   }
 
-  transaction::Manager* mgr = transaction::ManagerFeature::manager();
-  TRI_ASSERT(mgr != nullptr);
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // track currently ongoing transactions in history.
   // we only do this in maintainer mode and not in production.
   // the reason we insert into the history is only for testing
   // purposes.
-  mgr->history().insert(*this);
+  _manager.history().insert(*this);
 #endif
 
-  _counterGuard = mgr->registerTransaction(id(), isReadOnlyTransaction(),
-                                           isFollowerTransaction());
+  _counterGuard = _manager.registerTransaction(id(), isReadOnlyTransaction(),
+                                               isFollowerTransaction());
 
   TRI_ASSERT(_cacheTx.term == cache::Transaction::kInvalidTerm);
 
   // start cache transaction
   auto* manager =
-      vocbase().server().getFeature<CacheManagerFeature>().manager();
+      vocbase().engine<RocksDBEngine>().getCacheManagerProvider().manager();
   if (manager != nullptr) {
     manager->beginTransaction(_cacheTx, isReadOnlyTransaction());
   }
@@ -156,7 +141,7 @@ futures::Future<Result> RocksDBTransactionState::beginTransaction(
 void RocksDBTransactionState::cleanupTransaction() noexcept {
   if (_cacheTx.term != cache::Transaction::kInvalidTerm) {
     auto* manager =
-        vocbase().server().getFeature<CacheManagerFeature>().manager();
+        vocbase().engine<RocksDBEngine>().getCacheManagerProvider().manager();
     TRI_ASSERT(manager != nullptr);
     manager->endTransaction(_cacheTx);
 
@@ -379,20 +364,3 @@ RocksDBTransactionStateGuard::~RocksDBTransactionStateGuard() {
   _state->unuse();
 }
 #endif
-
-/// @brief constructor, leases a builder
-RocksDBKeyLeaser::RocksDBKeyLeaser(transaction::Methods* trx)
-    : _ctx(trx->transactionContextPtr()),
-      _key(ThreadLocalStringLeaser::lease().release().release()) {
-  TRI_ASSERT(_ctx != nullptr);
-  TRI_ASSERT(_key.buffer() != nullptr);
-}
-
-/// @brief destructor
-RocksDBKeyLeaser::~RocksDBKeyLeaser() {
-  if (!_key.usesInlineBuffer()) {
-    // TODO: this is very ugly.
-    ThreadLocalStringLeaser::acquire(
-        std::unique_ptr<std::string>(_key.buffer()));
-  }
-}

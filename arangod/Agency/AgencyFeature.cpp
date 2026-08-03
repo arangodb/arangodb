@@ -18,10 +18,10 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AgencyFeature.h"
+#include "AgencyOptionsProvider.h"
 
 #include "Agency/Agent.h"
 #include "Agency/Job.h"
@@ -38,10 +38,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "Metrics/MetricsFeature.h"
-#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-
-#include <limits>
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -51,7 +48,11 @@ using namespace arangodb::rest;
 namespace arangodb {
 
 AgencyFeature::AgencyFeature(ApplicationServer& server)
-    : application_features::ApplicationFeature{server, *this} {
+    : AgencyFeature(server, AgencyOptions{}) {}
+
+AgencyFeature::AgencyFeature(ApplicationServer& server, AgencyOptions options)
+    : application_features::ApplicationFeature{server, *this},
+      _options(std::move(options)) {
   setOptional(true);
   startsAfter<application_features::ServerFeaturePhase>();
 }
@@ -238,45 +239,8 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   ServerState::instance()->setRole(ServerState::ROLE_AGENT);
 
-  if (result.touched("agency.size")) {
-    if (_options.size < 1) {
-      LOG_TOPIC("98510", FATAL, Logger::AGENCY)
-          << "agency must have size greater 0";
-      FATAL_ERROR_EXIT();
-    }
-  } else {
-    _options.size = 1;
-  }
-
-  // Size needs to be odd
-  if (_options.size % 2 == 0) {
-    LOG_TOPIC("0eab5", FATAL, Logger::AGENCY)
-        << "AGENCY: agency must have odd number of members";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (_options.minElectionTimeout < 0.15) {
-    LOG_TOPIC("0cce9", WARN, Logger::AGENCY)
-        << "very short agency.election-timeout-min!";
-  }
-
-  if (_options.maxElectionTimeout <= _options.minElectionTimeout) {
-    LOG_TOPIC("62fc3", FATAL, Logger::AGENCY)
-        << "agency.election-timeout-max must not be shorter than or"
-        << "equal to agency.election-timeout-min.";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (_options.maxElectionTimeout <= 2. * _options.minElectionTimeout) {
-    LOG_TOPIC("99f84", WARN, Logger::AGENCY)
-        << "agency.election-timeout-max should probably be chosen longer!";
-  }
-
-  if (_options.compactionKeepSize == 0) {
-    LOG_TOPIC("ca485", WARN, Logger::AGENCY)
-        << "agency.compaction-keep-size must not be 0, set to 50000";
-    _options.compactionKeepSize = 50000;
-  }
+  AgencyOptionsProvider provider;
+  provider.validateOptions(options, _options);
 
   if (!_options.agencyMyAddress.empty()) {
     std::string const unified = Endpoint::unifiedForm(_options.agencyMyAddress);
@@ -299,10 +263,6 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     }
     auto ss = ServerState::instance();
     ss->findHost(fallback);
-  }
-
-  if (result.touched("agency.supervision")) {
-    _options.supervisionTouched = true;
   }
 
   // turn off the following features, as they are not needed in an agency:

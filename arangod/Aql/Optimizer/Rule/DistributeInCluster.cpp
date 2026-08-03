@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DistributeInCluster.h"
@@ -378,7 +376,7 @@ DistributeNode* insertDistributeGatherSnippet(ExecutionPlan& plan,
   //       the vocbase is stored in plan (and this variable is actually used in)
   //       some code, so maybe this parameter could be removed?
   auto const* collection = distNode->collection();
-  TRI_vocbase_t* vocbase = collection->vocbase();
+  Database* vocbase = collection->vocbase();
 
   // insert a remote node
   ExecutionNode* remoteNode =

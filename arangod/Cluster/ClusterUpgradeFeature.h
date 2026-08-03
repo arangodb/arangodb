@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -41,6 +40,9 @@ class ClusterUpgradeFeature final
  public:
   static constexpr std::string_view name() noexcept { return "ClusterUpgrade"; }
 
+  ClusterUpgradeFeature(application_features::ApplicationServer& server,
+                        DatabaseFeature& databaseFeature,
+                        ClusterUpgradeFeatureOptions options);
   ClusterUpgradeFeature(application_features::ApplicationServer& server,
                         DatabaseFeature& databaseFeature);
 

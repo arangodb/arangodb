@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -41,9 +40,8 @@ class ProcessMonitoringFeature;
 
 class ProcessMonitorThread final : public arangodb::Thread {
  public:
-  ProcessMonitorThread(application_features::ApplicationServer& server,
-                       ProcessMonitoringFeature& processMonitorFeature)
-      : Thread(server, "ProcessMonitor"),
+  ProcessMonitorThread(ProcessMonitoringFeature& processMonitorFeature)
+      : Thread("ProcessMonitor"),
         _processMonitorFeature(processMonitorFeature) {}
   ~ProcessMonitorThread() final { shutdown(); }
 

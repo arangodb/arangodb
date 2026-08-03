@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
@@ -181,7 +180,8 @@ struct AsyncAgencyCommTest
                                             arangodb::LogLevel::FATAL> {
   AsyncAgencyCommTest() : server("CRDN_0001", false) {
     server.addFeature<SchedulerFeature>(
-        true, server.getFeature<arangodb::metrics::MetricsFeature>());
+        true, server.getFeature<arangodb::metrics::MetricsFeature>(),
+        sharedPRNG);
     server.startFeatures();
   }
 
@@ -198,6 +198,7 @@ struct AsyncAgencyCommTest
   }
 
  protected:
+  basics::SharedPRNG sharedPRNG;
   tests::mocks::MockCoordinator server;
 };
 

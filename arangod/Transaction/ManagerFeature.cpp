@@ -18,23 +18,26 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ManagerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ServerState.h"
+#include "ClusterEngine/ClusterEngine.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Metrics/IRegistry.h"
 #include "Metrics/MetricsFeature.h"
 #include "Metrics/CounterBuilder.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Manager.h"
+#include "Transaction/ManagerOptionsProvider.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -45,16 +48,21 @@ namespace arangodb::transaction {
 DECLARE_COUNTER(arangodb_transactions_expired_total,
                 "Total number of expired transactions");
 
-std::unique_ptr<transaction::Manager> ManagerFeature::MANAGER;
+std::shared_ptr<transaction::Manager> ManagerFeature::MANAGER;
 
 ManagerFeature::ManagerFeature(application_features::ApplicationServer& server,
-                               metrics::MetricsFeature& metrics)
+                               metrics::IRegistry& metricsRegistry)
+    : ManagerFeature(server, metricsRegistry, ManagerFeatureOptions{}) {}
+
+ManagerFeature::ManagerFeature(application_features::ApplicationServer& server,
+                               metrics::IRegistry& metricsRegistry,
+                               ManagerFeatureOptions options)
     : application_features::ApplicationFeature{server, *this},
+      _options(std::move(options)),
       _numExpiredTransactions(
-          metrics.add(arangodb_transactions_expired_total{})) {
+          metricsRegistry.add(arangodb_transactions_expired_total{})) {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
-  startsAfter<EngineSelectorFeature>();
   startsAfter<metrics::MetricsFeature>();
   startsAfter<SchedulerFeature>();
   startsBefore<DatabaseFeature>();
@@ -80,53 +88,25 @@ ManagerFeature::~ManagerFeature() {
 }
 
 void ManagerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("transaction", "transactions");
-
-  options->addOption(
-      "--transaction.streaming-lock-timeout",
-      "The lock timeout (in seconds) "
-      "in case of parallel access to the same Stream Transaction.",
-      new DoubleParameter(&_options.streamingLockTimeout),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
-
-  options
-      ->addOption(
-          "--transaction.streaming-idle-timeout",
-          "The idle timeout (in seconds) for Stream Transactions.",
-          new DoubleParameter(
-              &_options.streamingIdleTimeout, /*base*/ 1.0,
-              /*minValue*/ 0.0,
-              /*maxValue*/ ManagerFeatureOptions::maxStreamingIdleTimeout),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnCoordinator,
-              arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30800)
-      .setLongDescription(R"(Stream Transactions automatically expire after
-this period when no further operations are posted into them. Posting an
-operation into a non-expired Stream Transaction resets the transaction's
-timeout to the configured idle timeout.)");
-
-  options
-      ->addOption(
-          "--transaction.streaming-max-transaction-size",
-          "The maximum transaction size (in bytes) for Stream Transactions.",
-          new SizeTParameter(&_options.streamingMaxTransactionSize),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::Uncommon,
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnDBServer,
-              arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31200);
+  ManagerOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void ManagerFeature::prepare() {
   TRI_ASSERT(MANAGER.get() == nullptr);
-  TRI_ASSERT(server().getFeature<EngineSelectorFeature>().selected());
-  MANAGER = server()
-                .getFeature<EngineSelectorFeature>()
-                .engine()
-                .createTransactionManager(*this);
+  StorageEngine* engine = nullptr;
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  if (!server().hasFeature<RocksDBEngine>() &&
+      !server().hasFeature<ClusterEngine>()) {
+    engine = &server().getFeature<DatabaseFeature>().engine();
+  } else
+#endif
+      if (ServerState::instance()->isCoordinator()) {
+    engine = &server().getFeature<ClusterEngine>();
+  } else {
+    engine = &server().getFeature<RocksDBEngine>();
+  }
+  MANAGER = engine->createTransactionManager(_options, _numExpiredTransactions);
 }
 
 void ManagerFeature::start() {
@@ -182,18 +162,6 @@ void ManagerFeature::stop() {
 
 void ManagerFeature::unprepare() { MANAGER.reset(); }
 
-size_t ManagerFeature::streamingMaxTransactionSize() const noexcept {
-  return _options.streamingMaxTransactionSize;
-}
-
-double ManagerFeature::streamingLockTimeout() const noexcept {
-  return _options.streamingLockTimeout;
-}
-
-double ManagerFeature::streamingIdleTimeout() const noexcept {
-  return _options.streamingIdleTimeout;
-}
-
 /*static*/ transaction::Manager* ManagerFeature::manager() noexcept {
   return MANAGER.get();
 }
@@ -207,12 +175,6 @@ void ManagerFeature::queueGarbageCollection() {
       _gcfunc);
   std::lock_guard<std::mutex> guard(_workItemMutex);
   _workItem = std::move(workItem);
-}
-
-void ManagerFeature::trackExpired(uint64_t numExpired) noexcept {
-  if (numExpired > 0) {
-    _numExpiredTransactions.count(numExpired);
-  }
 }
 
 }  // namespace arangodb::transaction

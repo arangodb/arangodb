@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MaxMapCountFeature.h"
@@ -28,7 +27,6 @@
 #include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/StringUtils.h"
-#include "ProgramOptions/ProgramOptions.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

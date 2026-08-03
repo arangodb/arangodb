@@ -47,7 +47,8 @@ defmodule ToastTest.Config do
           coredump_timeout: pos_integer(),
           coredump_dir: Path.t() | nil,
           dump_agency_on_error: boolean(),
-          active_sanitizers: MapSet.t(String.t())
+          active_sanitizers: MapSet.t(String.t()),
+          capture_traffic: boolean()
         }
 
   defstruct base_dir: nil,
@@ -64,7 +65,8 @@ defmodule ToastTest.Config do
             coredump_timeout: 180_000,
             coredump_dir: nil,
             dump_agency_on_error: true,
-            active_sanitizers: MapSet.new()
+            active_sanitizers: MapSet.new(),
+            capture_traffic: false
 
   @doc """
   Build a test config from application env with optional overrides.

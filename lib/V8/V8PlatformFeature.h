@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -48,10 +47,9 @@ class ProgramOptions;
 class V8PlatformFeature final
     : public application_features::ApplicationFeature {
  public:
-  explicit V8PlatformFeature(application_features::ApplicationServer& server)
-      : ApplicationFeature{server, *this}, _binaryPath(server.getBinaryPath()) {
-    setOptional(true);
-  }
+  explicit V8PlatformFeature(application_features::ApplicationServer& server,
+                             V8PlatformFeatureOptions options);
+  explicit V8PlatformFeature(application_features::ApplicationServer& server);
 
   static constexpr std::string_view name() noexcept { return "V8Platform"; }
 

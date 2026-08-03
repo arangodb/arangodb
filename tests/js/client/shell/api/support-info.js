@@ -21,18 +21,18 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
-const request = require('@arangodb/request');
 const isCluster = require("internal").isCluster();
-const { getEndpointsByType, assertEndpointGetOnly } = require('@arangodb/test-helper');
+const { assertEndpointGetOnly } = require('@arangodb/test-helper');
+let { instanceRole } = require('@arangodb/testutils/instance');
+let IM = global.instanceManager;
 
 function supportInfoApiSuite() {
   'use strict';
 
-  let validateHost = function(host) {
+  let validateHost = function (host) {
     assertTrue(host.hasOwnProperty("maintenance"));
     assertEqual("boolean", typeof host.maintenance);
     assertFalse(host.maintenance);
@@ -52,7 +52,7 @@ function supportInfoApiSuite() {
     assertEqual("number", typeof host.processStats.numberOfThreads);
     assertEqual("number", typeof host.processStats.virtualSize);
     assertEqual("number", typeof host.processStats.residentSetSize);
-    
+
     if (host.hasOwnProperty("cpuStats")) {
       // cpuStats is not present on all OSes
       assertEqual("number", typeof host.cpuStats.userPercent);
@@ -80,7 +80,7 @@ function supportInfoApiSuite() {
         assertTrue(res.deployment.hasOwnProperty("servers"));
         Object.keys(res.deployment.servers).forEach((server) => {
           let host = res.deployment.servers[server];
-      
+
           assertTrue(host.hasOwnProperty("id"));
           assertTrue(host.hasOwnProperty("alias"));
           assertTrue(host.hasOwnProperty("endpoint"));
@@ -109,24 +109,22 @@ function supportInfoApiSuite() {
         return;
       }
 
-      const getUrl = endpoint => endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
-
-      let dbs = getEndpointsByType('dbserver');
+      let dbs = IM.getInstancesRole(instanceRole.dbserver);
       assertTrue(dbs.length > 1);
 
-      dbs.forEach((ep) => {
-        const res = request.get({
-          url: getUrl(ep) + '/_admin/support-info'
+      dbs.forEach((arangod) => {
+        const res = arangod.toThisInstance(() => {
+          return arango.GET_RAW('/_admin/support-info');
         });
-        assertFalse(res.json.hasOwnProperty("deployment"));
-        assertTrue(res.json.hasOwnProperty("host"));
-        assertTrue(res.json.host.hasOwnProperty("role"));
-        assertTrue(res.json.host.role === "PRIMARY");
-        validateHost(res.json.host);
+        assertFalse(res.parsedBody.hasOwnProperty("deployment"));
+        assertTrue(res.parsedBody.hasOwnProperty("host"));
+        assertTrue(res.parsedBody.host.hasOwnProperty("role"));
+        assertTrue(res.parsedBody.host.role === "PRIMARY");
+        validateHost(res.parsedBody.host);
       });
     },
 
-    testSupportInfoOnlyAcceptsGet : function() {
+    testSupportInfoOnlyAcceptsGet: function () {
       let url = "/_admin/support-info";
       assertEndpointGetOnly(url);
     },

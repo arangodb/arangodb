@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TraversalExecutor.h"
@@ -47,6 +46,8 @@
 
 #include "Graph/algorithm-aliases.h"
 
+#include "Graph/WeightAttributeHelper.h"
+
 #include <utility>
 
 namespace arangodb::aql {
@@ -69,7 +70,8 @@ TraversalExecutorInfos::TraversalExecutorInfos(
     traverser::TraverserOptions::UniquenessLevel vertexUniqueness,
     traverser::TraverserOptions::UniquenessLevel edgeUniqueness,
     traverser::TraverserOptions::Order order, double defaultWeight,
-    std::string weightAttribute, arangodb::aql::QueryContext& query,
+    std::vector<std::string> weightAttribute,
+    arangodb::aql::QueryContext& query,
     arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
     arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions,
     ClusterBaseProviderOptions&& clusterBaseProviderOptions, bool isSmart)
@@ -114,7 +116,8 @@ TraversalExecutorInfos::TraversalExecutorInfos(
     traverser::TraverserOptions::UniquenessLevel vertexUniqueness,
     traverser::TraverserOptions::UniquenessLevel edgeUniqueness,
     traverser::TraverserOptions::Order order, double defaultWeight,
-    std::string weightAttribute, arangodb::aql::QueryContext& query,
+    std::vector<std::string> weightAttribute,
+    arangodb::aql::QueryContext& query,
     arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
     arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions,
     graph::SingleServerBaseProviderOptions&& singleServerBaseProviderOptions,
@@ -262,7 +265,7 @@ auto TraversalExecutorInfos::parseTraversalEnumeratorSingleServer(
     TraverserOptions::Order order,
     TraverserOptions::UniquenessLevel uniqueVertices,
     TraverserOptions::UniquenessLevel uniqueEdges, double defaultWeight,
-    std::string const& weightAttribute, QueryContext& query,
+    std::vector<std::string> const& weightAttribute, QueryContext& query,
     SingleServerBaseProviderOptions&& baseProviderOptions,
     PathValidatorOptions&& pathValidatorOptions,
     OneSidedEnumeratorOptions&& enumeratorOptions, bool isSmart) -> void {
@@ -277,9 +280,7 @@ auto TraversalExecutorInfos::parseTraversalEnumeratorSingleServer(
       baseProviderOptions.setWeightEdgeCallback(
           [wa = weightAttribute, defaultWeight](double previousWeight,
                                                 VPackSlice edge) -> double {
-            auto const weight =
-                basics::VelocyPackHelper::getNumericValue<double>(
-                    edge, wa, defaultWeight);
+            auto const weight = getEdgeWeight(edge, wa, defaultWeight);
             if (weight < 0.) {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
             }
@@ -306,7 +307,7 @@ auto TraversalExecutorInfos::parseTraversalEnumeratorCluster(
     traverser::TraverserOptions::Order order,
     traverser::TraverserOptions::UniquenessLevel uniqueVertices,
     traverser::TraverserOptions::UniquenessLevel uniqueEdges,
-    double defaultWeight, const std::string& weightAttribute,
+    double defaultWeight, std::vector<std::string> const& weightAttribute,
     arangodb::aql::QueryContext& query,
     arangodb::graph::ClusterBaseProviderOptions&& baseProviderOptions,
     arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
@@ -323,9 +324,7 @@ auto TraversalExecutorInfos::parseTraversalEnumeratorCluster(
       baseProviderOptions.setWeightEdgeCallback(
           [wa = weightAttribute, defaultWeight](double previousWeight,
                                                 VPackSlice edge) -> double {
-            auto const weight =
-                basics::VelocyPackHelper::getNumericValue<double>(
-                    edge, wa, defaultWeight);
+            auto const weight = getEdgeWeight(edge, wa, defaultWeight);
             if (weight < 0.) {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
             }

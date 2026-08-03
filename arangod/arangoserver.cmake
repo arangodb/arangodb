@@ -12,6 +12,7 @@ add_library(arangoserver STATIC
   Cluster/AutoRebalance.cpp
   Cluster/ClusterCollectionCreationInfo.cpp
   Cluster/ClusterFeature.cpp
+  Cluster/ClusterOptionsProvider.cpp
   Cluster/ClusterHelpers.cpp
   Cluster/ClusterInfo.cpp
   Cluster/ClusterTrxMethods.cpp
@@ -30,10 +31,12 @@ add_library(arangoserver STATIC
   Cluster/HeartbeatThread.cpp
   Cluster/Maintenance.cpp
   Cluster/MaintenanceFeature.cpp
+  Cluster/MaintenanceOptionsProvider.cpp
   Cluster/MaintenanceRestHandler.cpp
   Cluster/MaintenanceWorker.cpp
   Cluster/RebootTracker.cpp
   Cluster/ReplicationTimeoutFeature.cpp
+  Cluster/ReplicationTimeoutOptionsProvider.cpp
   Cluster/ResignShardLeadership.cpp
   Cluster/RestAgencyCallbacksHandler.cpp
   Cluster/RestClusterHandler.cpp
@@ -55,10 +58,12 @@ add_library(arangoserver STATIC
   GeneralServer/AcceptorUnixDomain.cpp
   GeneralServer/AsyncJobManager.cpp
   GeneralServer/AuthenticationFeature.cpp
+  GeneralServer/AuthenticationOptionsProvider.cpp
   GeneralServer/CommTask.cpp
   GeneralServer/GeneralCommTask.cpp
   GeneralServer/GeneralServer.cpp
   GeneralServer/GeneralServerFeature.cpp
+  GeneralServer/GeneralServerOptionsProvider.cpp
   GeneralServer/GeneralServerOptions.cpp
   GeneralServer/H2CommTask.cpp
   GeneralServer/HttpCommTask.cpp
@@ -69,6 +74,7 @@ add_library(arangoserver STATIC
   GeneralServer/ServerSecurityFeature.cpp
   GeneralServer/ServerSecurityOptionsProvider.cpp
   GeneralServer/SslServerFeature.cpp
+  GeneralServer/SslServerOptionsProvider.cpp
   RestHandler/RestAccessTokenHandler.cpp
   RestHandler/RestAdminClusterHandler.cpp
   RestHandler/RestAdminDeploymentHandler.cpp
@@ -104,7 +110,6 @@ add_library(arangoserver STATIC
   RestHandler/RestSupervisionStateHandler.cpp
   RestHandler/RestSupportInfoHandler.cpp
   RestHandler/RestSystemReportHandler.cpp
-  RestHandler/RestTelemetricsHandler.cpp
   RestHandler/RestTimeHandler.cpp
   RestHandler/RestTransactionHandler.cpp
   RestHandler/RestTtlHandler.cpp
@@ -114,6 +119,7 @@ add_library(arangoserver STATIC
   RestHandler/RestViewHandler.cpp
   RestHandler/RestVocbaseBaseHandler.cpp
   RestHandler/RestWalAccessHandler.cpp
+  RestServer/ArangodServer.cpp
   RestServer/AqlFeature.cpp
   RestServer/BootstrapFeature.cpp
   RestServer/BootstrapOptionsProvider.cpp
@@ -123,10 +129,17 @@ add_library(arangoserver STATIC
   RestServer/CrashHandlerOptionsProvider.cpp
   RestServer/CpuUsageFeature.cpp
   RestServer/DaemonFeature.cpp
+  RestServer/DaemonOptionsProvider.cpp
   RestServer/DatabaseFeature.cpp
+  RestServer/DatabaseOptionsProvider.cpp
   RestServer/DatabasePathFeature.cpp
+  RestServer/DatabasePathOptionsProvider.cpp
   RestServer/DumpLimitsFeature.cpp
+  RestServer/DumpLimitsFeatureOptions.cpp
+  RestServer/DumpLimitsOptionsProvider.cpp
   RestServer/EndpointFeature.cpp
+  RestServer/EndpointFeatureOptions.cpp
+  RestServer/EndpointOptionsProvider.cpp
   RestServer/EnvironmentFeature.cpp
   RestServer/FileDescriptorsFeature.cpp
   RestServer/FileDescriptorsOptionsProvider.cpp
@@ -135,25 +148,36 @@ add_library(arangoserver STATIC
   RestServer/FortuneOptionsProvider.cpp
   RestServer/IOHeartbeatThread.cpp
   RestServer/InitDatabaseFeature.cpp
+  RestServer/InitDatabaseOptionsProvider.cpp
   RestServer/LanguageCheckFeature.cpp
   RestServer/LegacyOptionsFeature.cpp
   RestServer/LockfileFeature.cpp
   RestServer/LogBufferFeature.cpp
+  RestServer/LogBufferOptionsProvider.cpp
   RestServer/MaxMapCountFeature.cpp
   RestServer/ApiRecordingFeature.cpp
+  RestServer/ApiRecordingOptionsProvider.cpp
   RestServer/PrivilegeFeature.cpp
+  RestServer/PrivilegeOptionsProvider.cpp
   RestServer/QueryRegistryFeature.cpp
   RestServer/QueryRegistryFeatureOptions.cpp
+  RestServer/QueryRegistryOptionsProvider.cpp
   RestServer/ServerFeature.cpp
+  RestServer/ServerOptionsProvider.cpp
   RestServer/ServerIdFeature.cpp
   RestServer/SharedPRNGFeature.cpp
   RestServer/SoftShutdownFeature.cpp
   RestServer/SupervisorFeature.cpp
+  RestServer/SupervisorOptionsProvider.cpp
   RestServer/SystemDatabaseFeature.cpp
   RestServer/TemporaryStorageFeature.cpp
+  RestServer/TemporaryStorageOptionsProvider.cpp
   RestServer/TimeZoneFeature.cpp
   RestServer/TtlFeature.cpp
+  RestServer/TtlOptionsProvider.cpp
+  RestServer/TtlProperties.cpp
   RestServer/UpgradeFeature.cpp
+  RestServer/UpgradeOptionsProvider.cpp
   VectorIndex/VectorIndexFeature.cpp
   VectorIndex/VectorIndexBuildManager.cpp
   VectorIndex/VectorIndexTrainingSampler.cpp
@@ -164,7 +188,6 @@ add_library(arangoserver STATIC
   Sharding/ShardingInfo.cpp
   Sharding/ShardingStrategy.cpp
   Sharding/ShardingStrategyDefault.cpp
-  Statistics/TransactionStatistics.cpp
   Transaction/BatchOptions.cpp
   Transaction/ClusterUtils.cpp
   Transaction/Context.cpp
@@ -176,6 +199,7 @@ add_library(arangoserver STATIC
   Transaction/ManagedContext.cpp
   Transaction/Manager.cpp
   Transaction/ManagerFeature.cpp
+  Transaction/ManagerOptionsProvider.cpp
   Transaction/Methods.cpp
   Transaction/Options.cpp
   Transaction/ReplicatedContext.cpp
