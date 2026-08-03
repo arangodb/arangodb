@@ -250,6 +250,12 @@ RocksDBBuilderIndex::RocksDBBuilderIndex(std::shared_ptr<RocksDBIndex> wp,
 /// @brief return a VelocyPack representation of the index
 void RocksDBBuilderIndex::toVelocyPack(
     VPackBuilder& builder, std::underlying_type<Serialize>::type flags) const {
+  // inventory (dump/restore) gets the wrapped definition, without the
+  // builder-only fields below
+  if (Index::hasFlag(flags, Index::Serialize::Inventory)) {
+    _wrapped->toVelocyPack(builder, flags);
+    return;
+  }
   VPackBuilder inner;
   _wrapped->toVelocyPack(inner, flags);
   TRI_ASSERT(inner.slice().isObject());
