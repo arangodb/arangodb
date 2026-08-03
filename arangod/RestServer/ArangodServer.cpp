@@ -94,6 +94,17 @@ void ArangodServer::processOptions() {
     }
     ServerState::instance()->findHost(fallback);
   }
+
+#ifdef USE_V8
+  // Agents/DB-Servers don't need V8 unless the user explicitly asked for it.
+  // 'enableJS' can be only set after setRole() is called.
+  auto& v8Opts = mutableOptions<V8DealerOptionsProvider>();
+  if (!V8DealerFeature::javascriptRequestedViaOptions(options()) &&
+      (ServerState::instance()->isAgent() ||
+       ServerState::instance()->isDBServer())) {
+    v8Opts.enableJS = false;
+  }
+#endif
 }
 
 ServerState::RoleEnum ArangodServer::resolveRole(
@@ -157,7 +168,6 @@ void ArangodServer::addFeatures() {
   auto& database = addFeature<DatabaseFeature>();
 #ifdef USE_V8
   addFeature<ConsoleFeature>();
-  addFeature<V8DealerFeature>(metrics);
 #endif
   addFeature<CpuUsageFeature>();
   addFeature<SystemDatabaseFeature>();
@@ -170,9 +180,6 @@ void ArangodServer::addFeatures() {
   addFeature<ReplicationMetricsFeature>(metrics);
   addFeature<SchedulerFeature>(metrics, sharedPRNGFeature.getPRNG());
   addFeature<VectorIndexFeature>(database);
-#ifdef USE_V8
-  addFeature<ScriptFeature>(_ret);
-#endif
   addFeature<ServerIdFeature>();
   addFeature<ShardingFeature>();
   addFeature<ShellColorsFeature>();
@@ -188,7 +195,6 @@ void ArangodServer::addFeatures() {
   addFeature<ViewTypesFeature>();
   addFeature<aql::AqlFunctionFeature>();
   addFeature<RocksDBRecoveryManager>(database, database);
-  addFeature<iresearch::IResearchFeature>(metrics);
 }
 
 void ArangodServer::addFeaturesWithOptionProvider() {
@@ -200,9 +206,6 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& cacheManager = getFeature<CacheManagerFeature>();
   auto& systemDatabaseFeature = getFeature<SystemDatabaseFeature>();
   auto& aqlFunctionFeature = getFeature<aql::AqlFunctionFeature>();
-#ifdef USE_V8
-  auto& v8DealerFeature = getFeature<V8DealerFeature>();
-#endif
 
   addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
   addFeature<LoggerFeature>(true, getOptions<LoggerOptionsProvider>());
@@ -236,6 +239,9 @@ void ArangodServer::addFeaturesWithOptionProvider() {
 
 #ifdef USE_V8
   addFeature<FrontendFeature>(getOptions<FrontendOptionsProvider>());
+  addFeature<ScriptFeature>(_ret, getOptions<ScriptOptionsProvider>());
+  auto& v8DealerFeature = addFeature<V8DealerFeature>(
+      metrics, getOptions<V8DealerOptionsProvider>());
 #endif
 
 #ifdef TRI_HAVE_GETRLIMIT
@@ -381,6 +387,9 @@ void ArangodServer::addFeaturesWithOptionProvider() {
           .schedulerFeature = &scheduler,
           .aqlFunctionFeature = &aqlFunctionFeature,
       });
+
+  addFeature<iresearch::IResearchFeature>(
+      metrics, getOptions<iresearch::IResearchOptionsProvider>());
 
   addFeature<replication2::replicated_state::ReplicatedStateAppFeature>();
   addFeature<replication2::replicated_state::black_hole::
