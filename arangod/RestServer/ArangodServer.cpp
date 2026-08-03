@@ -299,10 +299,23 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   addFeature<QueryRegistryFeature>(metrics,
                                    getOptions<QueryRegistryOptionsProvider>());
 
-  auto& agency = addFeature<AgencyFeature>(getOptions<AgencyOptionsProvider>());
-
   auto& clusterFeature =
       addFeature<ClusterFeature>(metrics, getOptions<ClusterOptionsProvider>());
+
+  addFeature<iresearch::IResearchAnalyzerFeature>(
+      iresearch::IResearchAnalyzerFeature::Dependencies{
+          .databaseFeature = database,
+          .systemDatabase = systemDatabaseFeature,
+          .networkFeature = &networkFeature,
+          .clusterFeature = &clusterFeature,
+          .schedulerFeature = &scheduler,
+          .aqlFunctionFeature = &aqlFunctionFeature,
+      });
+
+  addFeature<iresearch::IResearchFeature>(
+      metrics, getOptions<iresearch::IResearchOptionsProvider>());
+
+  auto& agency = addFeature<AgencyFeature>(getOptions<AgencyOptionsProvider>());
 
   addFeature<ClusterEngine>(clusterFeature, database, metrics);
 
@@ -377,19 +390,6 @@ void ArangodServer::addFeaturesWithOptionProvider() {
 
   addFeature<UpgradeFeature>(_ret, kNonServerFeatures,
                              getOptions<UpgradeOptionsProvider>());
-
-  addFeature<iresearch::IResearchAnalyzerFeature>(
-      iresearch::IResearchAnalyzerFeature::Dependencies{
-          .databaseFeature = database,
-          .systemDatabase = systemDatabaseFeature,
-          .networkFeature = &networkFeature,
-          .clusterFeature = &clusterFeature,
-          .schedulerFeature = &scheduler,
-          .aqlFunctionFeature = &aqlFunctionFeature,
-      });
-
-  addFeature<iresearch::IResearchFeature>(
-      metrics, getOptions<iresearch::IResearchOptionsProvider>());
 
   addFeature<replication2::replicated_state::ReplicatedStateAppFeature>();
   addFeature<replication2::replicated_state::black_hole::
