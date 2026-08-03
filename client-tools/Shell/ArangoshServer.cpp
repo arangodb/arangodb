@@ -82,7 +82,6 @@ void ArangoshServer::addFeatures() {
   addFeature<SslFeature>();
   addFeature<V8ShellFeaturePhase>();
   addFeature<ShellFeature>(_ret);
-  addFeature<V8ShellFeature>(_binaryName);
 }
 
 void ArangoshServer::addFeaturesWithOptionProvider() {
@@ -107,6 +106,7 @@ void ArangoshServer::addFeaturesWithOptionProvider() {
 #ifdef USE_ENTERPRISE
   addFeature<EncryptionFeature>(getOptions<EncryptionOptionsProvider>());
 #endif
+  addFeature<V8ShellFeature>(_binaryName, getOptions<V8ShellOptionsProvider>());
 }
 
 }  // namespace arangodb
