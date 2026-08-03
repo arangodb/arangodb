@@ -449,6 +449,14 @@
     args:
       dumpAgencyOnError: true
 
+- shell_client_aql_vector_graph:
+    options:
+      parallelity: 5
+      size: medium+
+      type: cluster
+    args:
+      dumpAgencyOnError: true
+
 - hot_backup:
     options:
       type: cluster
