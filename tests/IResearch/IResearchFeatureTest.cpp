@@ -1780,8 +1780,8 @@ TEST_F(IResearchFeatureTest, test_start) {
   IResearchOptionsProvider provider;
   provider.declareOptions(opts);
   provider.validateOptions(opts);
-  auto& iresearch =
-      server.addFeatureUntracked<IResearchFeature>(_metrics, provider.options());
+  auto& iresearch = server.addFeatureUntracked<IResearchFeature>(
+      _metrics, provider.options());
 
   auto waitForNewStats = [&](std::tuple<size_t, size_t, size_t> oldStats,
                              arangodb::iresearch::ThreadGroup group,
@@ -2105,8 +2105,8 @@ TEST_F(IResearchFeatureTest, test_async_schedule_wait_indefinite) {
           "arangosearch.consolidation-threads")
       ->set("1");
   provider.validateOptions(server.server().options());
-  arangodb::iresearch::IResearchFeature feature(
-      server.server(), _metrics, provider.options());
+  arangodb::iresearch::IResearchFeature feature(server.server(), _metrics,
+                                                provider.options());
   feature.prepare();
   feature.start();  // start thread pool
   std::condition_variable cond;
@@ -2156,8 +2156,8 @@ TEST_F(IResearchFeatureTest, test_async_single_run_task) {
   arangodb::iresearch::IResearchOptionsProvider provider;
   provider.declareOptions(server.server().options());
   provider.validateOptions(server.server().options());
-  arangodb::iresearch::IResearchFeature feature(
-      server.server(), _metrics, provider.options());
+  arangodb::iresearch::IResearchFeature feature(server.server(), _metrics,
+                                                provider.options());
   feature.prepare();
   feature.start();  // start thread pool
   std::condition_variable cond;
@@ -2185,8 +2185,8 @@ TEST_F(IResearchFeatureTest, test_async_multi_run_task) {
   arangodb::iresearch::IResearchOptionsProvider provider;
   provider.declareOptions(server.server().options());
   provider.validateOptions(server.server().options());
-  arangodb::iresearch::IResearchFeature feature(
-      server.server(), _metrics, provider.options());
+  arangodb::iresearch::IResearchFeature feature(server.server(), _metrics,
+                                                provider.options());
   feature.prepare();
   feature.start();  // start thread pool
   std::mutex mutex;
@@ -2249,8 +2249,8 @@ TEST_F(IResearchFeatureTest, test_async_deallocate_with_running_tasks) {
     arangodb::iresearch::IResearchOptionsProvider provider;
     provider.declareOptions(server.server().options());
     provider.validateOptions(server.server().options());
-    arangodb::iresearch::IResearchFeature feature(
-        server.server(), _metrics, provider.options());
+    arangodb::iresearch::IResearchFeature feature(server.server(), _metrics,
+                                                  provider.options());
     feature.prepare();
     feature.start();  // start thread pool
     std::shared_ptr<std::atomic_bool> flag(
@@ -2294,8 +2294,8 @@ TEST_F(IResearchFeatureTest, test_async_schedule_task_resize_pool) {
       ->get<arangodb::options::UInt32Parameter>("arangosearch.threads")
       ->set("8");
   provider.validateOptions(server.server().options());
-  arangodb::iresearch::IResearchFeature feature(
-      server.server(), _metrics, provider.options());
+  arangodb::iresearch::IResearchFeature feature(server.server(), _metrics,
+                                                provider.options());
   feature.prepare();
   std::condition_variable cond;
   std::mutex mutex;
