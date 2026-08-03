@@ -296,8 +296,10 @@ void ApplicationServer::beginShutdown() {
                                          std::memory_order_release,
                                          std::memory_order_acquire));
 
-  LOG_TOPIC("c7911", TRACE, Logger::STARTUP)
-      << "ApplicationServer::beginShutdown";
+  LOG_TOPIC("c7911", WARN, Logger::STARTUP)
+      << "ApplicationServer::beginShutdown"
+      << " previousState=" << stringifyState(old)
+      << " (forwarding beginShutdown to all enabled features)";
 
   // make sure that we advance the state when we get out of here
   auto waitAborter = scopeGuard([this]() noexcept {
@@ -687,8 +689,9 @@ void ApplicationServer::start() {
     if (res.fail()) {
       LOG_TOPIC("4ec19", ERR, Logger::STARTUP)
           << res.errorMessage() << ". shutting down";
-      LOG_TOPIC("51732", TRACE, Logger::STARTUP)
-          << "aborting startup, now stopping and unpreparing all features";
+      LOG_TOPIC("51732", WARN, Logger::STARTUP)
+          << "aborting startup after failure in feature start"
+          << " (stopping and unpreparing all features)";
 
       // try to stop all feature that we just started
       for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend();
@@ -698,14 +701,14 @@ void ApplicationServer::start() {
           continue;
         }
         if (feature.state() == ApplicationFeature::State::STARTED) {
-          LOG_TOPIC("e5cfe", TRACE, Logger::STARTUP)
+          LOG_TOPIC("e5cfe", WARN, Logger::STARTUP)
               << "forcefully beginning stop of feature '" << feature.name()
-              << "'";
+              << "' (startup abort)";
           try {
             feature.beginShutdown();
           } catch (...) {
             // ignore errors on shutdown
-            LOG_TOPIC("13224", TRACE, Logger::STARTUP)
+            LOG_TOPIC("13224", WARN, Logger::STARTUP)
                 << "caught exception while stopping feature '" << feature.name()
                 << "'";
           }

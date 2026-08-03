@@ -698,6 +698,15 @@ IResearchDataStore::~IResearchDataStore() {
     _asyncFeature->untrackOutOfSyncLink();
   }
   // if triggered  - no unload was called prior to deleting index object
+  if (_dataStore) {
+    LOG_TOPIC("a7d01", ERR, TOPIC)
+        << "IResearchDataStore destroyed while data store still open"
+        << " indexId=" << index().id().id()
+        << " recoveryTickLow=" << _dataStore._recoveryTickLow
+        << " recoveryTickHigh=" << _dataStore._recoveryTickHigh
+        << " (missing unload() before destruction; often seen during"
+           " abrupt recovery_server / crash-path teardown)";
+  }
   TRI_ASSERT(!_dataStore);
 }
 
