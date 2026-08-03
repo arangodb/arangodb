@@ -1150,9 +1150,9 @@ pattern_projection_list:
 %type <node> pattern_maybe_projection;
 pattern_maybe_projection:
     T_RETURN {
-			auto node = parser->ast()->createNodeArray();
+      auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
-		} pattern_projection_list {
+    } pattern_projection_list {
       $$ = static_cast<AstNode*>(parser->popStack());
     }
   | /* empty */ { $$ = nullptr; }
@@ -1238,9 +1238,15 @@ pattern_close_relation:
   | T_ARRAY_CLOSE T_MINUS T_GT { $$ = true; }
 
 %type <node> pattern_edge;
-pattern_edge: pattern_open_relation pattern_out_variable pattern_label pattern_maybe_property_key_value_expression
-    pattern_maybe_where_expression pattern_close_relation {
-        $$ = parser->ast()->createPatternEdge($2, $3, $4, $5, nullptr, $1, $6);
+pattern_edge: pattern_open_relation[inbound] pattern_out_variable[variable]
+              pattern_label[label]
+              pattern_maybe_property_key_value_expression[kv_expr]
+              pattern_maybe_where_expression[where]
+              pattern_maybe_projection[projection]
+              pattern_close_relation[outbound] {
+        $$ = parser->ast()->createPatternEdge($variable, $label, $kv_expr, $where,
+                                              nullptr, $inbound, $outbound,
+                                              $projection);
     }
     | pattern_open_relation pattern_out_variable pattern_label pattern_variable_length_relationship pattern_close_relation {
         $$ = parser->ast()->createPatternEdge($2, $3, nullptr, nullptr, $4, $1, $5);

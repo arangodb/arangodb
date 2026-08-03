@@ -280,6 +280,61 @@ function aqlMatchStatementTestSuite() {
             }
         },
 
+
+        testSelectEdgesWithProjection: function () {
+            const result = db._query(
+                "MATCH (u :vc)-[e :ec RETURN i]->(v :vc) RETURN e",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 50);
+
+            for (const e of result) {
+                assertTrue(e.hasOwnProperty("_id"));
+                assertTrue(e.hasOwnProperty("_from"));
+                assertTrue(e.hasOwnProperty("_to"));
+                assertTrue(e.hasOwnProperty("i"));
+                assertFalse(e.hasOwnProperty("j"));
+                assertFalse(e.hasOwnProperty("_key"));
+            }
+        },
+
+        testSelectEdgesWithProjectionAndWhere: function () {
+            // WHERE may access attributes that are not projected on the bound variable.
+            const result = db._query(
+                "MATCH (u :vc)-[e :ec WHERE e.j == 0 RETURN i]->(v :vc) RETURN e",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 5);
+
+            for (const e of result) {
+                assertTrue(e.hasOwnProperty("_id"));
+                assertTrue(e.hasOwnProperty("_from"));
+                assertTrue(e.hasOwnProperty("_to"));
+                assertTrue(e.hasOwnProperty("i"));
+                assertFalse(e.hasOwnProperty("j"));
+            }
+        },
+
+        testMatchPathVariableWithEdgeProjection: function () {
+            const result = db._query(
+                "MATCH p = (v :vc) -[ e :ec RETURN i ]-> (w :vc) RETURN p",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 50);
+
+            for (const {edges, vertices} of result) {
+                assertEqual(edges.length, 1);
+                assertEqual(vertices.length, 2);
+                assertEqual(edges[0]._from, vertices[0]._id);
+                assertEqual(edges[0]._to, vertices[1]._id);
+                assertTrue(edges[0].hasOwnProperty("i"));
+                assertFalse(edges[0].hasOwnProperty("j"));
+            }
+        },
+
         testSelectEdgesWithVertexProjections: function () {
             const result = db._query(
                 "MATCH (v :vc RETURN i) -[ e :ec ]-> (w :vc RETURN i, j) RETURN [v, e, w]",
