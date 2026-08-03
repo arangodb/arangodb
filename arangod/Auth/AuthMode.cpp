@@ -382,9 +382,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                        effectiveLevel == auth::Level::NONE) {
               // User has no access to the database at all: report as not found
               // to avoid revealing its existence.
-              return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-                      failureMessage(database, "database not accessible: '" +
-                                                   database.name + "'")};
+              return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND};
             } else {
               return {TRI_ERROR_FORBIDDEN,
                       failureMessage(database,
@@ -448,12 +446,13 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                 if (effectiveLevel == auth::Level::NONE) {
                   // User has no access to this collection: report as not found
                   // to avoid revealing its existence.
-                  return {
-                      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                      failureMessage(collection,
-                                     "collection or view not found: '" +
-                                         collection.name + "' in database '" +
-                                         collection.db + "'")};
+
+                  if (ServerState::instance()->isSingleServer()) {
+                    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
+                  } else {
+                    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                            "collection not found"};
+                  }
                 }
               }
               if (requestedLevel == arangodb::auth::Level::RW &&
@@ -575,11 +574,9 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
               return {};
             } else if (_request.requestedApiVersion() > 0 &&
                        effectiveLevel == auth::Level::NONE) {
-              // No database access at all: report the view as not found.
-              return {
-                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                  failureMessage(view, "view not accessible: '" + view.name +
-                                           "' in database '" + view.db + "'")};
+              TRI_ASSERT(false);  // should never happen because database access
+                                  // is required to use view
+              return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
             } else {
               return {
                   TRI_ERROR_FORBIDDEN,
@@ -776,7 +773,6 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             // Creating a graph requires RW access to the database (to write
             // to _graphs), plus the ability to create/read any linked
             // collections.
-            // No write access to database, so we need to check the collections
             for (auto const& coll : graph.collectionNamesToCreate) {
               if (auto r = check(p::CreateCollection{graph.db, coll});
                   r.fail()) {
