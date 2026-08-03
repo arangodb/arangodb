@@ -1,5 +1,5 @@
-3.12.10-devel (XXXX-XX-XX)
---------------------------
+3.12.10 (2026-08-03)
+--------------------
 
 * BTS-2421: Fixed a bug where a dump taken while a background vector index build
   was in its ingestion phase omitted the index, causing a restore to silently
