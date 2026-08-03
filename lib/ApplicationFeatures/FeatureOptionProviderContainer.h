@@ -27,7 +27,7 @@
 namespace arangodb::application_features {
 
 namespace {
-template <class Provider>
+template<class Provider>
 concept HasValidateOptions =
     requires(Provider& provider,
              std::shared_ptr<options::ProgramOptions> programOptions) {
