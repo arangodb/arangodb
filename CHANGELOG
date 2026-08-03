@@ -1,10 +1,16 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* BTS-2421: Fixed a bug where a dump taken while a background vector index build
+  was in its ingestion phase omitted the index, causing a restore to silently
+  drop it. Vector indexes are now always included in dumps.
+
+* Fix authorization for /_admin/aardvark routes.
+
 * Updated ArangoDB Starter to v0.19.25.
 
-* COR-726/COR-787/COR-792: Removed the deprecated replication applier's REST API,
-  along with the arangosh client methods that used them.
+* COR-726/COR-787/COR-792: Removed the deprecated replication applier's REST
+  API, along with the arangosh client methods that used them.
   Single-server-to-single-server replication is no longer supported.
   Removed endpoints:
   - `GET/PUT /_api/replication/applier-config`
@@ -20,15 +26,17 @@
   - `GET /_api/replication/logger-tick-ranges`
   - `GET /_api/replication/server-id`
 
-* COR-784: Missing Variable in Collect Query
-  Fixed an issue where certain invalid COLLECT statements could trigger an internal query planning error instead of reporting a user-facing query validation error.
+* COR-784: Missing Variable in Collect Query.
+  Fixed an issue where certain invalid COLLECT statements could trigger an
+  internal query planning error instead of reporting a user-facing query
+  validation error.
 
-* BTS-2400: Added the `--vector-index-build-retry-backoff` startup option (seconds) to
-  configure the vector index build retry backoff (default: 60). Additionally, a
-  DBServer now marks the database dirty when a vector index build reports or
-  clears its training error, waking the maintenance loop so the index's
-  ready/error state is republished to the agency's `Current` promptly instead of
-  waiting for the next maintenance cycle.
+* BTS-2400: Added the `--vector-index-build-retry-backoff` startup option
+  (seconds) to configure the vector index build retry backoff (default: 60).
+  Additionally, a DBServer now marks the database dirty when a vector index
+  build reports or clears its training error, waking the maintenance loop so the
+  index's ready/error state is republished to the agency's `Current` promptly
+  instead of waiting for the next maintenance cycle.
 
 * Fixed a bug in the JavaScript API causing `allowImplicit` and
   `skipFastLockRound` to not be forwarded to the server for Stream Transactions.
@@ -71,17 +79,17 @@
 
 * Upgraded OpenSSL to 3.5.7.
 
-* COR-607: Fix a problem that causes cluster queries involving a materialize node
-  collection access that is used as a satellite to crash in maintainer mode,
-  and fail with an internal error with the message "Did not find a DBServer to
-  contact for RemoteNode" in production.
+* COR-607: Fix a problem that causes cluster queries involving a materialize
+  node collection access that is used as a satellite to crash in maintainer
+  mode, and fail with an internal error with the message "Did not find a
+  DBServer to contact for RemoteNode" in production.
 
-* COR-473: Enabled linear scanning of shards that are untrained and in
-  unusable state for having insufficient documents
+* COR-473: Enabled linear scanning of shards that are untrained and in unusable
+  state for having insufficient documents.
 
-* COR-616: Fixed a DB-Server error during rolling upgrades when deserializing a graph
-  traversal plan from an older coordinator that lacks the "protoCollection"
-  attribute.
+* COR-616: Fixed a DB-Server error during rolling upgrades when deserializing a
+  graph traversal plan from an older coordinator that lacks the
+  "protoCollection" attribute.
 
 * COR-584/OASIS-27899: Fixed an edge case in range_column_iterator::seek where
   executing a seek on an uninitialized iterator would return incorrect results
@@ -89,7 +97,8 @@
 
 * COR-573: Fix missing erase after std::ranges::remove.
 
-* COR-75: Removed RocksDBKeyLeaser, making RocksDBKey own its leased string buffer directly.
+* COR-75: Removed RocksDBKeyLeaser, making RocksDBKey own its leased string
+  buffer directly.
 
 * COR-471: Improved filter optimization, rewriting `x IN [a]` to `x == a`,
   removing always-false/true branches, and deduplicating identical conditions.
@@ -99,14 +108,14 @@
 
 * Upgraded FAISS to v1.14.2.
 
-* COR-320: Vector search now supports projections, allowing covered queries
-  to skip the document materialization step. Adds optimizer rule
+* COR-320: Vector search now supports projections, allowing covered queries to
+  skip the document materialization step. Adds optimizer rule
   `materialize-for-enumerate-near`.
 
-* [COR-546]: Fixed bug in the `remove-filter-covered-by-traversal`
-  optimizer rule where filters on path arrays with different quantifiers
-  (e.g. `ALL` vs `NONE`) were incorrectly treated as equivalent and one
-  of the filters could be dropped, producing wrong query results.
+* [COR-546]: Fixed bug in the `remove-filter-covered-by-traversal` optimizer
+  rule where filters on path arrays with different quantifiers (e.g. `ALL` vs
+  `NONE`) were incorrectly treated as equivalent and one of the filters could be
+  dropped, producing wrong query results.
 
 * COR-387: Synchronous vector index creation no longer throws when training
   fails. The index is created with `trainingState: "unusable"` and the
@@ -121,9 +130,9 @@
   supported and must agree with the resolved nLists, otherwise training fails.
 
 * COR-529: Track vector index training memory against the global resource
-  monitor and fail with `TRI_ERROR_RESOURCE_LIMIT` instead of OOM-killing
-  the process. New optional index parameter `numberOfDocsPerCentroid`
-  (default 100) caps the training reservoir size.
+  monitor and fail with `TRI_ERROR_RESOURCE_LIMIT` instead of OOM-killing the
+  process. New optional index parameter `numberOfDocsPerCentroid` (default 100)
+  caps the training reservoir size.
 
 * Updated node modules:
  - lodash to 4.18.0
@@ -132,7 +141,8 @@
  - @xmldom/xmldom@0.8.13
 
 * COR-467: Extended `compareAstNodes` to compare AST nodes that are not directly
-  VPack-serializable (references, attribute accesses, function calls, operators).
+  VPack-serializable (references, attribute accesses, function calls,
+  operators).
   `a == b` and `b == a` (and `!=`) compare as equal, as do NARY conditions and
   IN/NOT IN literal arrays regardless of operand order. Bind parameters and
   quantifiers are also handled.
@@ -143,9 +153,7 @@
   `x NOT IN []`, `[] ALL <op> x` and `[] NONE <op> x` are true, where
   `<op>` is `==`, `!=`, `<`, `<=`, `>`, `>=`, `IN` or `NOT IN`.
 
-* Upgraded FAISS to v1.14.1.
-
-* COR-439: Make --server.storage-engine option obsolete
+* COR-439: Make --server.storage-engine option obsolete.
   The MMF engine has been removed in 3.7 already, so there is only the rocksdb
   engine anymore, making this option pointless.
 
@@ -172,8 +180,6 @@
   `fillIndexBackground` path via `RocksDBBuilderIndex`. This ensures that WAL
   entries written during training are correctly ingested, preventing missed
   documents after index creation.
-
-* Upgraded OpenSSL to 3.5.6.
 
 * The vector index API now exposes a `resolvedNLists` field that shows the
   actual nLists value used by the trained index. When using a fixed `nLists`

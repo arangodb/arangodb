@@ -41,8 +41,6 @@ class AgencyFeature : public application_features::ApplicationFeature,
   explicit AgencyFeature(application_features::ApplicationServer& server);
   ~AgencyFeature();
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
   void beginShutdown() override final;

@@ -50,9 +50,6 @@ class ReplicationFeature final
       metrics::IRegistry& metricsRegistry);
   ~ReplicationFeature();
 
-  void collectOptions(
-      std::shared_ptr<options::ProgramOptions> options) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
 
   httpclient::ConnectionCache& connectionCache();

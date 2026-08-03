@@ -29,7 +29,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void ReplicationOptionsProvider::declareOptions(
+void ReplicationOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, ReplicationOptions& options) {
   opts->addSection("replication", "replication");
   opts->addObsoleteOption(
@@ -91,7 +91,7 @@ void ReplicationOptionsProvider::declareOptions(
       true);
 }
 
-void ReplicationOptionsProvider::validateOptions(
+void ReplicationOptionsProvider::processOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, ReplicationOptions& options) {
   if (options.connectTimeout < 1.0) {
     options.connectTimeout = 1.0;
@@ -107,5 +107,9 @@ void ReplicationOptionsProvider::validateOptions(
     options.forceRequestTimeout = true;
   }
 }
+
+void ReplicationOptionsProvider::validateOptionsImpl(
+    std::shared_ptr<ProgramOptions> /*opts*/,
+    ReplicationOptions const& /*options*/) {}
 
 }  // namespace arangodb
