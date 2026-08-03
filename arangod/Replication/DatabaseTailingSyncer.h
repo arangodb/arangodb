@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include "Replication/ReplicationApplierConfiguration.h"
+#include "Replication/ReplicationSyncConfiguration.h"
 #include "Replication/utilities.h"
 #include "TailingSyncer.h"
 
@@ -39,11 +39,11 @@ class DatabaseTailingSyncer : public TailingSyncer {
   // constructor is private, as DatabaseTailingSyncer uses shared_from_this()
   // and we must ensure that it is only created via make_shared.
   DatabaseTailingSyncer(Database& vocbase,
-                        ReplicationApplierConfiguration const& configuration);
+                        ReplicationSyncConfiguration const& configuration);
 
  public:
   static std::shared_ptr<DatabaseTailingSyncer> create(
-      Database& vocbase, ReplicationApplierConfiguration const& configuration);
+      Database& vocbase, ReplicationSyncConfiguration const& configuration);
 
   Database* resolveVocbase(velocypack::Slice /*slice*/) override {
     return _vocbase;

@@ -35,7 +35,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
-#include "Replication/ReplicationApplierConfiguration.h"
+#include "Replication/ReplicationSyncConfiguration.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication/Syncer.h"
 #include "Rest/Version.h"
@@ -170,7 +170,7 @@ namespace replutils {
 std::string const ReplicationUrl = "/_api/replication";
 
 Connection::Connection(Syncer* syncer,
-                       ReplicationApplierConfiguration const& applierConfig)
+                       ReplicationSyncConfiguration const& applierConfig)
     : _endpointString{applierConfig._endpoint},
       _localServerId{basics::StringUtils::itoa(ServerIdFeature::getId().id())},
       _clientInfo{applierConfig._clientInfoString} {
@@ -465,8 +465,7 @@ Result BatchInfo::finish(replutils::Connection& connection,
   }
 }
 
-LeaderInfo::LeaderInfo(
-    ReplicationApplierConfiguration const& /*applierConfig*/) {}
+LeaderInfo::LeaderInfo(ReplicationSyncConfiguration const& /*applierConfig*/) {}
 
 uint64_t LeaderInfo::version() const {
   return majorVersion * 10000 + minorVersion * 100 + patchVersion;

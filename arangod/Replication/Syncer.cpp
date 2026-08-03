@@ -548,13 +548,13 @@ SyncerId newSyncerId() {
 }
 
 Syncer::SyncerState::SyncerState(
-    Syncer* syncer, ReplicationApplierConfiguration const& configuration)
+    Syncer* syncer, ReplicationSyncConfiguration const& configuration)
     : syncerId{newSyncerId()},
       applier{configuration},
       connection{syncer, configuration},
       leader{configuration} {}
 
-Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
+Syncer::Syncer(ReplicationSyncConfiguration const& configuration)
     : _state{this, configuration} {
   if (!ServerState::instance()->isSingleServer() &&
       !ServerState::instance()->isDBServer()) {

@@ -40,7 +40,7 @@ namespace arangodb {
 struct Database;
 class LogicalCollection;
 class DatabaseInitialSyncer;
-class ReplicationApplierConfiguration;
+class ReplicationSyncConfiguration;
 
 class DatabaseInitialSyncer : public InitialSyncer {
   friend ::arangodb::Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
@@ -56,11 +56,11 @@ class DatabaseInitialSyncer : public InitialSyncer {
   // constructor is private, as DatabaseInitialSyncer uses shared_from_this()
   // and we must ensure that it is only created via make_shared.
   DatabaseInitialSyncer(Database& vocbase,
-                        ReplicationApplierConfiguration const& configuration);
+                        ReplicationSyncConfiguration const& configuration);
 
  public:
   static std::shared_ptr<DatabaseInitialSyncer> create(
-      Database& vocbase, ReplicationApplierConfiguration const& configuration);
+      Database& vocbase, ReplicationSyncConfiguration const& configuration);
 
   /// @brief apply phases
   typedef enum {
@@ -73,7 +73,7 @@ class DatabaseInitialSyncer : public InitialSyncer {
 
   struct Configuration {
     /// @brief replication applier config (from the base Syncer)
-    ReplicationApplierConfiguration const& applier;
+    ReplicationSyncConfiguration const& applier;
     /// @brief the dump batch state (from the base InitialSyncer)
     replutils::BatchInfo& batch;
     /// @brief the client connection (from the base Syncer)
@@ -87,7 +87,7 @@ class DatabaseInitialSyncer : public InitialSyncer {
     /// @brief the database to dump
     Database& vocbase;
 
-    explicit Configuration(ReplicationApplierConfiguration const&,
+    explicit Configuration(ReplicationSyncConfiguration const&,
                            replutils::BatchInfo&, replutils::Connection&,
                            replutils::LeaderInfo&, replutils::ProgressInfo&,
                            SyncerState& state, Database&);

@@ -20,7 +20,7 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ReplicationApplierConfiguration.h"
+#include "ReplicationSyncConfiguration.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/TokenCache.h"
@@ -39,7 +39,7 @@ using namespace arangodb;
 using application_features::ApplicationServer;
 
 /// @brief construct the configuration with default values
-ReplicationApplierConfiguration::ReplicationApplierConfiguration(
+ReplicationSyncConfiguration::ReplicationSyncConfiguration(
     ApplicationServer& server)
     : _server(server),
       _replicationFeature(server.hasFeature<ReplicationFeature>()
@@ -76,8 +76,8 @@ ReplicationApplierConfiguration::ReplicationApplierConfiguration(
       _restrictType(RestrictType::None) {}
 
 /// @brief construct the configuration with default values
-ReplicationApplierConfiguration& ReplicationApplierConfiguration::operator=(
-    ReplicationApplierConfiguration const& other) {
+ReplicationSyncConfiguration& ReplicationSyncConfiguration::operator=(
+    ReplicationSyncConfiguration const& other) {
   _endpoint = other._endpoint;
   _database = other._database;
   _username = other._username;
@@ -113,7 +113,7 @@ ReplicationApplierConfiguration& ReplicationApplierConfiguration::operator=(
 }
 
 /// @brief reset the configuration to defaults
-void ReplicationApplierConfiguration::reset() {
+void ReplicationSyncConfiguration::reset() {
   _endpoint.clear();
   _database.clear();
   _username.clear();
@@ -147,20 +147,20 @@ void ReplicationApplierConfiguration::reset() {
 }
 
 /// @brief create a configuration object from velocypack
-ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
+ReplicationSyncConfiguration ReplicationSyncConfiguration::fromVelocyPack(
     ApplicationServer& server, VPackSlice slice,
     std::string const& databaseName) {
-  return fromVelocyPack(ReplicationApplierConfiguration(server), slice,
+  return fromVelocyPack(ReplicationSyncConfiguration(server), slice,
                         databaseName);
 }
 
 /// @brief create a configuration object from velocypack, merging it with an
 /// existing one
-ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
-    ReplicationApplierConfiguration const& existing, VPackSlice slice,
+ReplicationSyncConfiguration ReplicationSyncConfiguration::fromVelocyPack(
+    ReplicationSyncConfiguration const& existing, VPackSlice slice,
     std::string const& databaseName) {
   // copy existing configuration
-  ReplicationApplierConfiguration configuration = existing;
+  ReplicationSyncConfiguration configuration = existing;
 
   // read the database name
   VPackSlice value = slice.get("database");
@@ -362,7 +362,7 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
 }
 
 /// @brief validate the configuration. will throw if the config is invalid
-void ReplicationApplierConfiguration::validate() const {
+void ReplicationSyncConfiguration::validate() const {
   if (_endpoint.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION,
@@ -377,9 +377,8 @@ void ReplicationApplierConfiguration::validate() const {
   }
 }
 
-ReplicationApplierConfiguration::RestrictType
-ReplicationApplierConfiguration::restrictTypeFromString(
-    std::string const& value) {
+ReplicationSyncConfiguration::RestrictType
+ReplicationSyncConfiguration::restrictTypeFromString(std::string const& value) {
   if (value.empty() || value == "none") {
     return RestrictType::None;
   }
@@ -395,8 +394,8 @@ ReplicationApplierConfiguration::restrictTypeFromString(
       "invalid value for <restrictType>");
 }
 
-std::string ReplicationApplierConfiguration::restrictTypeToString(
-    ReplicationApplierConfiguration::RestrictType type) {
+std::string ReplicationSyncConfiguration::restrictTypeToString(
+    ReplicationSyncConfiguration::RestrictType type) {
   switch (type) {
     case RestrictType::Include:
       return "include";

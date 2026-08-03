@@ -78,8 +78,7 @@ constexpr std::string_view dbRef("db");
 /// @brief base url of the replication API
 std::string const TailingSyncer::WalAccessUrl = "/_api/wal";
 
-TailingSyncer::TailingSyncer(
-    ReplicationApplierConfiguration const& configuration)
+TailingSyncer::TailingSyncer(ReplicationSyncConfiguration const& configuration)
     : Syncer(configuration),
       _initialTick(0),
       _usersModified(false),
@@ -212,7 +211,7 @@ bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick,
   }
 
   if (_state.applier._restrictType ==
-          ReplicationApplierConfiguration::RestrictType::None &&
+          ReplicationSyncConfiguration::RestrictType::None &&
       _state.applier._includeSystem) {
     return false;
   }
@@ -239,12 +238,12 @@ bool TailingSyncer::isExcludedCollection(
   bool found = (it != _state.applier._restrictCollections.end());
 
   if (_state.applier._restrictType ==
-          ReplicationApplierConfiguration::RestrictType::Include &&
+          ReplicationSyncConfiguration::RestrictType::Include &&
       !found) {
     // collection should not be included
     return true;
   } else if (_state.applier._restrictType ==
-                 ReplicationApplierConfiguration::RestrictType::Exclude &&
+                 ReplicationSyncConfiguration::RestrictType::Exclude &&
              found) {
     // collection should be excluded
     return true;

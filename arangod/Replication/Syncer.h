@@ -23,7 +23,7 @@
 #pragma once
 
 #include "Basics/ConditionVariable.h"
-#include "Replication/ReplicationApplierConfiguration.h"
+#include "Replication/ReplicationSyncConfiguration.h"
 #include "Replication/SyncerId.h"
 #include "Replication/common-defines.h"
 #include "Replication/utilities.h"
@@ -164,7 +164,7 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
     SyncerId syncerId;
 
     /// @brief configuration
-    ReplicationApplierConfiguration applier;
+    ReplicationSyncConfiguration applier;
 
     /// @brief object holding the HTTP client and all connection machinery
     replutils::Connection connection;
@@ -191,13 +191,13 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
     /// @brief lazy loaded list of vocbases
     std::unordered_map<std::string, DatabaseGuard> vocbases{};
 
-    SyncerState(Syncer*, ReplicationApplierConfiguration const&);
+    SyncerState(Syncer*, ReplicationSyncConfiguration const&);
   };
 
   Syncer(Syncer const&) = delete;
   Syncer& operator=(Syncer const&) = delete;
 
-  explicit Syncer(ReplicationApplierConfiguration const&);
+  explicit Syncer(ReplicationSyncConfiguration const&);
 
   virtual ~Syncer();
 

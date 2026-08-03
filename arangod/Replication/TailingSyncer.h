@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include "Replication/ReplicationApplierConfiguration.h"
+#include "Replication/ReplicationSyncConfiguration.h"
 #include "Replication/ReplicationMetricsFeature.h"
 #include "Replication/Syncer.h"
 #include "VocBase/Identifiers/TransactionId.h"
@@ -50,7 +50,7 @@ struct ApplyStats {
 
 class TailingSyncer : public Syncer {
  public:
-  explicit TailingSyncer(ReplicationApplierConfiguration const&);
+  explicit TailingSyncer(ReplicationSyncConfiguration const&);
 
   virtual ~TailingSyncer();
 

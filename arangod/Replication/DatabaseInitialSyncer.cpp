@@ -509,7 +509,7 @@ Result fetchRevisions(NetworkFeature& netFeature, transaction::Methods& trx,
 }  // namespace
 
 DatabaseInitialSyncer::Configuration::Configuration(
-    ReplicationApplierConfiguration const& a, replutils::BatchInfo& bat,
+    ReplicationSyncConfiguration const& a, replutils::BatchInfo& bat,
     replutils::Connection& c, replutils::LeaderInfo& l,
     replutils::ProgressInfo& p, SyncerState& s, TRI_vocbase_t& v)
     : applier{a},
@@ -521,8 +521,7 @@ DatabaseInitialSyncer::Configuration::Configuration(
       vocbase{v} {}
 
 DatabaseInitialSyncer::DatabaseInitialSyncer(
-    TRI_vocbase_t& vocbase,
-    ReplicationApplierConfiguration const& configuration)
+    TRI_vocbase_t& vocbase, ReplicationSyncConfiguration const& configuration)
     : InitialSyncer(
           configuration,
           [this](std::string const& msg) -> void { setProgress(msg); }),
@@ -543,12 +542,11 @@ DatabaseInitialSyncer::DatabaseInitialSyncer(
 }
 
 std::shared_ptr<DatabaseInitialSyncer> DatabaseInitialSyncer::create(
-    TRI_vocbase_t& vocbase,
-    ReplicationApplierConfiguration const& configuration) {
+    TRI_vocbase_t& vocbase, ReplicationSyncConfiguration const& configuration) {
   // enable make_shared on a class with a private constructor
   struct Enabler final : public DatabaseInitialSyncer {
     Enabler(TRI_vocbase_t& vocbase,
-            ReplicationApplierConfiguration const& configuration)
+            ReplicationSyncConfiguration const& configuration)
         : DatabaseInitialSyncer(vocbase, configuration) {}
   };
 
@@ -583,7 +581,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
     std::string patchCount;
     if (_config.applier._skipCreateDrop &&
         _config.applier._restrictType ==
-            ReplicationApplierConfiguration::RestrictType::Include &&
+            ReplicationSyncConfiguration::RestrictType::Include &&
         _config.applier._restrictCollections.size() == 1) {
       patchCount = *_config.applier._restrictCollections.begin();
     }
@@ -1011,7 +1009,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(LogicalCollection* coll,
   if (ServerState::instance()->isDBServer() &&
       _config.applier._skipCreateDrop &&
       _config.applier._restrictType ==
-          ReplicationApplierConfiguration::RestrictType::Include &&
+          ReplicationSyncConfiguration::RestrictType::Include &&
       _config.applier._restrictCollections.size() == 1 &&
       !hasDocuments(*coll)) {
     // DB server doing shard synchronization. now try to fetch everything in a
@@ -2490,7 +2488,7 @@ Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
   if (ServerState::instance()->isDBServer() &&
       _config.applier._skipCreateDrop &&
       _config.applier._restrictType ==
-          ReplicationApplierConfiguration::RestrictType::Include &&
+          ReplicationSyncConfiguration::RestrictType::Include &&
       _config.applier._restrictCollections.size() == 1) {
     url += "&collection=" + basics::StringUtils::urlEncode(*(
                                 _config.applier._restrictCollections.begin()));
@@ -2583,17 +2581,17 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(
     }
 
     if (_config.applier._restrictType !=
-        ReplicationApplierConfiguration::RestrictType::None) {
+        ReplicationSyncConfiguration::RestrictType::None) {
       auto const it = _config.applier._restrictCollections.find(leaderName);
       bool found = (it != _config.applier._restrictCollections.end());
 
       if (_config.applier._restrictType ==
-              ReplicationApplierConfiguration::RestrictType::Include &&
+              ReplicationSyncConfiguration::RestrictType::Include &&
           !found) {
         // collection should not be included
         continue;
       } else if (_config.applier._restrictType ==
-                     ReplicationApplierConfiguration::RestrictType::Exclude &&
+                     ReplicationSyncConfiguration::RestrictType::Exclude &&
                  found) {
         // collection should be excluded
         continue;

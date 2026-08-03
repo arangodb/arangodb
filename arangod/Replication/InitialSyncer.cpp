@@ -30,9 +30,8 @@
 
 namespace arangodb {
 
-InitialSyncer::InitialSyncer(
-    ReplicationApplierConfiguration const& configuration,
-    replutils::ProgressInfo::Setter setter)
+InitialSyncer::InitialSyncer(ReplicationSyncConfiguration const& configuration,
+                             replutils::ProgressInfo::Setter setter)
     : Syncer(configuration), _progress{setter} {}
 
 InitialSyncer::~InitialSyncer() {

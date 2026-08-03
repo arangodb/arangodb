@@ -57,8 +57,7 @@ constexpr std::string_view cuidRef("cuid");
 }
 
 DatabaseTailingSyncer::DatabaseTailingSyncer(
-    TRI_vocbase_t& vocbase,
-    ReplicationApplierConfiguration const& configuration)
+    TRI_vocbase_t& vocbase, ReplicationSyncConfiguration const& configuration)
     : TailingSyncer(configuration),
       _vocbase(&vocbase),
       _toTick(0),
@@ -73,12 +72,11 @@ DatabaseTailingSyncer::DatabaseTailingSyncer(
 }
 
 std::shared_ptr<DatabaseTailingSyncer> DatabaseTailingSyncer::create(
-    TRI_vocbase_t& vocbase,
-    ReplicationApplierConfiguration const& configuration) {
+    TRI_vocbase_t& vocbase, ReplicationSyncConfiguration const& configuration) {
   // enable make_shared on a class with a private constructor
   struct Enabler final : public DatabaseTailingSyncer {
     Enabler(TRI_vocbase_t& vocbase,
-            ReplicationApplierConfiguration const& configuration)
+            ReplicationSyncConfiguration const& configuration)
         : DatabaseTailingSyncer(vocbase, configuration) {}
   };
 

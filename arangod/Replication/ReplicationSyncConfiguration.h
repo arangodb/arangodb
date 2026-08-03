@@ -36,8 +36,8 @@ class Slice;
 class ReplicationFeature;
 class StorageEngine;
 
-/// @brief struct containing a replication apply configuration
-class ReplicationApplierConfiguration {
+/// @brief configuration shared by the replication syncers
+class ReplicationSyncConfiguration {
  public:
   enum class RestrictType { None, Include, Exclude };
 
@@ -76,16 +76,14 @@ class ReplicationApplierConfiguration {
   std::string _clientInfoString;
 
  public:
-  explicit ReplicationApplierConfiguration(
+  explicit ReplicationSyncConfiguration(
       application_features::ApplicationServer&);
-  ~ReplicationApplierConfiguration() = default;
+  ~ReplicationSyncConfiguration() = default;
 
-  ReplicationApplierConfiguration(ReplicationApplierConfiguration const&) =
-      default;
-  ReplicationApplierConfiguration& operator=(
-      ReplicationApplierConfiguration const&);
+  ReplicationSyncConfiguration(ReplicationSyncConfiguration const&) = default;
+  ReplicationSyncConfiguration& operator=(ReplicationSyncConfiguration const&);
 
-  ReplicationApplierConfiguration(ReplicationApplierConfiguration&&) = default;
+  ReplicationSyncConfiguration(ReplicationSyncConfiguration&&) = default;
 
   /// @brief reset the configuration to defaults
   void reset();
@@ -101,14 +99,14 @@ class ReplicationApplierConfiguration {
   }
 
   /// @brief create a configuration object from velocypack
-  static ReplicationApplierConfiguration fromVelocyPack(
+  static ReplicationSyncConfiguration fromVelocyPack(
       application_features::ApplicationServer&,
       arangodb::velocypack::Slice slice, std::string const& databaseName);
 
   /// @brief create a configuration object from velocypack, merging it with an
   /// existing one
-  static ReplicationApplierConfiguration fromVelocyPack(
-      ReplicationApplierConfiguration const& existing,
+  static ReplicationSyncConfiguration fromVelocyPack(
+      ReplicationSyncConfiguration const& existing,
       arangodb::velocypack::Slice slice, std::string const& databaseName);
 
   static RestrictType restrictTypeFromString(std::string const& value);
