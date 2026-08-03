@@ -97,9 +97,10 @@ class RocksDBBuilderIndex final : public RocksDBIndex {
   /// @brief whether or not the index is sorted
   bool isSorted() const override { return _wrapped->isSorted(); }
 
-  /// @brief if true this index should not be shown externally
+  /// @brief hide building indexes, except the vector index which stays visible
+  /// through its build phases
   bool isHidden() const override {
-    return true;  // do not show building indexes
+    return _wrapped->type() != Index::TRI_IDX_TYPE_VECTOR_INDEX;
   }
 
   bool inProgress() const override {

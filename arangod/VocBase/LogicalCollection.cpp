@@ -658,6 +658,10 @@ void LogicalCollection::toVelocyPackForInventory(VPackBuilder& result) const {
           case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
           case Index::TRI_IDX_TYPE_EDGE_INDEX:
             return false;
+          case Index::TRI_IDX_TYPE_VECTOR_INDEX:
+            // Always include the vector index
+            flags = Index::makeFlags(Index::Serialize::Inventory);
+            return true;
           default:
             flags = Index::makeFlags(Index::Serialize::Inventory);
             return !idx->isHidden();

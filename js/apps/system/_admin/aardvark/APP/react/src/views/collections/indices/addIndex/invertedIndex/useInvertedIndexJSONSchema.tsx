@@ -17,7 +17,7 @@ const invertedIndexJSONSchema: JSONSchemaType<InvertedIndexValuesType> = {
       nullable: true,
       anyOf: [
         {
-          // eslint-disable-next-line no-useless-escape
+           
           pattern: extendedNames ? "" : "^[a-zA-Z][a-zA-Z0-9-_]*$"
         },
         {
