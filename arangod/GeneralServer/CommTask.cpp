@@ -66,7 +66,6 @@ namespace {
 constexpr std::string_view pathPrefixApi("/_api/");
 constexpr std::string_view pathPrefixAdmin("/_admin/");
 constexpr std::string_view pathPrefixOpen("/_open/");
-constexpr std::string_view pathPrefixOpenAuth("/_open/auth");
 
 VocbasePtr lookupDatabaseFromRequest(DatabaseFeature& databaseFeature,
                                      GeneralRequest& req) {

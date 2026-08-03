@@ -58,7 +58,7 @@ RestAdminLogHandler::RestAdminLogHandler(
       _clusterFeature(server.getFeature<ClusterFeature>()),
       _connectionPool(server.getFeature<NetworkFeature>().pool()) {}
 
-arangodb::Result RestAdminLogHandler::verifyPermitted() {
+arangodb::Result RestAdminLogHandler::verifyPermitted(RequestType const type) {
   if (!_logApiOptions.apiEnabled) {
     return arangodb::Result(TRI_ERROR_HTTP_FORBIDDEN, "log API is disabled");
   }
