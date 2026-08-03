@@ -162,6 +162,10 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   void setDefaultParallelism(uint32_t v) noexcept {
     _options.defaultParallelism = v;
   }
+  void setMaintenanceThreads(uint32_t commit, uint32_t consolidation) noexcept {
+    _options.commitThreads = commit;
+    _options.consolidationThreads = consolidation;
+  }
 #endif
 
  private:
