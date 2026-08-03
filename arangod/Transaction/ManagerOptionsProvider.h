@@ -37,8 +37,6 @@ struct ManagerOptionsProvider
     : OptionsProviderImpl<ManagerOptionsProvider, ManagerFeatureOptions> {
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           ManagerFeatureOptions& options);
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
-                           ManagerFeatureOptions& /*options*/) {}
 };
 
 }  // namespace arangodb::transaction

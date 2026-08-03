@@ -138,8 +138,4 @@ void MaintenanceOptionsProvider::processOptionsImpl(
   }
 }
 
-void MaintenanceOptionsProvider::validateOptionsImpl(
-    std::shared_ptr<ProgramOptions> /*opts*/,
-    MaintenanceOptions const& /*options*/) {}
-
 }  // namespace arangodb
