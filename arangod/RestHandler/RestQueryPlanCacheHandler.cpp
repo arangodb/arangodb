@@ -86,16 +86,14 @@ void RestQueryPlanCacheHandler::readPlans() {
                     aql::QueryPlanCache::Key const& key,
                     aql::QueryPlanCache::Value const& value) -> bool {
     auto const& context = ExecContext::current();
-    if (!context.isSuperuserOrDisabled()) {
-      // check if non-superusers have at least read permissions on all
-      // collections/views used in the query
-      for (auto const& dataSource : value.dataSources) {
-        if (!context
-                 .canUseCollection(databaseName, dataSource.second.name,
-                                   AccessLevel::Read)
-                 .ok()) {
-          return false;
-        }
+    // check if non-superusers have at least read permissions on all
+    // collections/views used in the query
+    for (auto const& dataSource : value.dataSources) {
+      if (!context
+               .canUseCollection(databaseName, dataSource.second.name,
+                                 AccessLevel::Read)
+               .ok()) {
+        return false;
       }
     }
     return true;

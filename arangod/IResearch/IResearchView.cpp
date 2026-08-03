@@ -415,15 +415,13 @@ Result IResearchView::dropImpl() {
   }
   if (!stale.empty()) {
     // check link auth as per https://github.com/arangodb/backlog/issues/459
-    if (!ExecContext::current().isSuperuserOrDisabled()) {
-      for (auto& entry : stale) {
-        auto collection = vocbase().lookupCollection(entry);
-        if (collection) {
-          if (auto r = ExecContext::current().canUseCollection(
-                  vocbase().name(), collection->name(), AccessLevel::Read);
-              !r.ok()) {
-            return r;
-          }
+    for (auto& entry : stale) {
+      auto collection = vocbase().lookupCollection(entry);
+      if (collection) {
+        if (auto r = ExecContext::current().canUseCollection(
+                vocbase().name(), collection->name(), AccessLevel::Read);
+            !r.ok()) {
+          return r;
         }
       }
     }
@@ -599,17 +597,15 @@ Result IResearchView::updateProperties(velocypack::Slice slice,
     }
     boost::unique_lock uniqueLock{_mutex};
     // check link auth as per https://github.com/arangodb/backlog/issues/459
-    if (!ExecContext::current().isSuperuserOrDisabled()) {
-      for (auto& entry : _links) {
-        auto collection = vocbase().lookupCollection(entry.first);
-        if (collection) {
-          if (auto r = ExecContext::current().canUseCollection(
-                  vocbase().name(), collection->name(), AccessLevel::Read);
-              !r.ok()) {
-            return {TRI_ERROR_FORBIDDEN,
-                    absl::StrCat("while updating view definition: ",
-                                 r.errorMessage())};
-          }
+    for (auto& entry : _links) {
+      auto collection = vocbase().lookupCollection(entry.first);
+      if (collection) {
+        if (auto r = ExecContext::current().canUseCollection(
+                vocbase().name(), collection->name(), AccessLevel::Read);
+            !r.ok()) {
+          return {TRI_ERROR_FORBIDDEN,
+                  absl::StrCat("while updating view definition: ",
+                               r.errorMessage())};
         }
       }
     }
