@@ -17,21 +17,38 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include <gtest/gtest.h>
 
-#include "ApplicationFeatures/OptionsProvider.h"
-#include "RestServer/TemporaryStorageFeatureOptions.h"
+#include "RocksDBEngine/StorageEngineDataTest.h"
 
-namespace arangodb {
+#include "Basics/StaticStrings.h"
+#include "VocBase/vocbase.h"
 
-struct TemporaryStorageOptionsProvider
-    : OptionsProviderImpl<TemporaryStorageOptionsProvider,
-                          TemporaryStorageFeatureOptions> {
-  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                          TemporaryStorageFeatureOptions& options);
-};
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 
-}  // namespace arangodb
+using namespace arangodb;
+using namespace arangodb::tests;
+
+TEST_F(StorageEngineDataTest, CreatedDatabaseIsListedInInventory) {
+  auto database = makeDatabase("testDatabase", 42);
+  persistDatabase(*database);
+
+  VPackBuilder builder;
+  engine().getDatabases(builder);
+
+  auto slice = builder.slice();
+  ASSERT_TRUE(slice.isArray());
+
+  bool found = false;
+  for (auto db : VPackArrayIterator(slice)) {
+    if (db.get("name").stringView() == "testDatabase") {
+      found = true;
+      EXPECT_EQ(db.get(StaticStrings::DatabaseId).stringView(), "42");
+    }
+  }
+  EXPECT_TRUE(found) << "created database not reported by getDatabases()";
+}

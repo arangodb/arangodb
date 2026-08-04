@@ -85,8 +85,4 @@ void StatisticsOptionsProvider::processOptionsImpl(
       opts->processingResult().touched("server.statistics-history");
 }
 
-void StatisticsOptionsProvider::validateOptionsImpl(
-    std::shared_ptr<ProgramOptions> /*opts*/,
-    StatisticsFeatureOptions const& /*options*/) {}
-
 }  // namespace arangodb::statistics
