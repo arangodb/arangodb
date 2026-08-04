@@ -737,14 +737,6 @@ async<Result> RestHandler::checkUserCanAccess() const {
       canAccess = true;
     }
 #endif
-
-    if (not canAccess &&
-        auth->authenticationSystemOnly()) {  // TODO remove in 4.0
-      // check if path is / which is required for the web UI to get started
-      if (path == "/") {
-        canAccess = true;
-      }
-    }
   }
 
   co_return canAccess

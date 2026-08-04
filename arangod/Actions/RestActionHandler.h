@@ -57,5 +57,8 @@ class RestActionHandler : public RestVocbaseBaseHandler {
 
   // data for cancelation
   void* _data;
+
+  // Flag to remember to escalate to superuser:
+  bool _mustEscalateToSuperuser = false;
 };
 }  // namespace arangodb

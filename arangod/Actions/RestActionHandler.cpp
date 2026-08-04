@@ -26,6 +26,7 @@
 #include "Actions/actions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Statistics/RequestStatistics.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "VocBase/vocbase.h"
@@ -50,6 +51,8 @@ RestStatus RestActionHandler::execute() {
     generateNotImplemented(_request->fullUrl());
     return RestStatus::DONE;
   }
+
+  ExecContextSuperuserScope escope(_mustEscalateToSuperuser);
 
   // extract the sub-request type
   rest::RequestType type = _request->requestType();
@@ -132,12 +135,27 @@ bool isPublicAardvarkPath(std::string_view path) {
 }
 
 async<Result> RestActionHandler::checkUserCanAccess() const {
-  if (isPublicAardvarkPath(request()->requestPath())) {
+  auto const& path = request()->requestPath();
+  if (isPublicAardvarkPath(path)) {
     // Note that we do **not** escalate to superuser for these!
     co_return Result{};
   }
 
-  co_return co_await RestHandler::checkUserCanAccess();
+  auto r = co_await RestHandler::checkUserCanAccess();
+  if (r.ok()) {
+    co_return r;
+  }
+
+  auto const* const auth = AuthenticationFeature::instance();
+  ADB_PROD_ASSERT(auth->isActive());
+  if (auth->authenticationSystemOnly()) {  // TODO remove in 4.0
+    // check if path is / which is required for the web UI to get started
+    if (!path.empty() && !path.starts_with("/_")) {
+      _mustEscalateToSuperuser = true;
+      co_return Result{};
+    }
+  }
+  co_return r;
 }
 
 }  // namespace arangodb
