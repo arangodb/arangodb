@@ -27,9 +27,19 @@
 //
 // The grants are installed into a real auth::UserManagerTester, i.e. the
 // resolution rules of auth::User (wildcards, the _system fallback, the fixed
-// system-collection rules) are exercised for real. Two consequences worth
+// system-collection rules) are exercised for real. Three consequences worth
 // knowing when reading or extending these tests:
 //
+//   * A collection has no access level of its own unless one was granted
+//     explicitly: User::collectionAuthLevel() maxes in the *containing
+//     database's* level, so `grantDatabase(kDb, RW)` alone yields RW on every
+//     collection name in kDb -- including names that appear nowhere in the
+//     grants. Tests whose intent involves a collection being readable or
+//     writable therefore spell the collection grant out even where the
+//     database grant would already cover it; see
+//     CollectionLevelIsInheritedFromTheDatabaseLevel, which pins the rule.
+//     An explicit grant short-circuits the fallback and is the only way to get
+//     a collection *below* its database's level.
 //   * RW on _system leaks into every *collection*, because
 //     User::collectionAuthLevel() unconditionally maxes in the _system
 //     database level as a fallback. A specific grant on the target database
@@ -47,6 +57,11 @@
 
 #include "gtest/gtest.h"
 
+#include <algorithm>
+#include <array>
+#include <format>
+#include <optional>
+#include <ranges>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -85,6 +100,10 @@ struct CollGrant {
 struct ClassicAuthModeTest : ::testing::Test {
   static constexpr std::string_view kUser = "myuser";
   static constexpr std::string_view kDb = "mydb";
+  // The collection the grant-space sweep at the bottom of this file asks
+  // about. Deliberately not underscore-prefixed: the fixed system-collection
+  // rules would otherwise ignore the grants entirely.
+  static constexpr std::string_view kColl = "c";
 
   auth::UserManagerTester um;
   tests::mocks::FakeGeneralRequest req;
@@ -237,6 +256,61 @@ TEST_F(ClassicAuthModeTest, UseCollectionRead) {
                   .ok());
 }
 
+TEST_F(ClassicAuthModeTest, CollectionLevelIsInheritedFromTheDatabaseLevel) {
+  // The rule the rest of this file leans on: User::collectionAuthLevel() maxes
+  // in the containing database's own level for every non-system collection, so
+  // a database grant alone covers *every* collection name -- the name need not
+  // appear in the grants at all.
+  beUserWith(RW);
+  EXPECT_TRUE(check(p::UseCollection{.db = std::string{kDb},
+                                     .name = "never-granted-anywhere",
+                                     .level = CollectionAccessLevel::WriteData})
+                  .ok());
+
+  // An explicit collection grant short-circuits that fallback, and is the only
+  // way to put a collection *below* its database's level.
+  beUserWith(RW, {{std::string{kDb}, "c", RO}});
+  expectError(
+      check(p::UseCollection{.db = std::string{kDb},
+                             .name = "c",
+                             .level = CollectionAccessLevel::WriteData}),
+      TRI_ERROR_ARANGO_READ_ONLY);
+  beUserWith(RW, {{std::string{kDb}, "c", NONE}});
+  expectError(check(p::UseCollection{.db = std::string{kDb},
+                                     .name = "c",
+                                     .level = CollectionAccessLevel::Read}),
+              TRI_ERROR_FORBIDDEN);
+
+  // A wildcard collection grant raises every collection in that database above
+  // the database's own level, again for arbitrary names.
+  beUserWith(RO, {{std::string{kDb}, "*", RW}});
+  EXPECT_TRUE(check(p::UseCollection{.db = std::string{kDb},
+                                     .name = "anything",
+                                     .level = CollectionAccessLevel::WriteData})
+                  .ok());
+}
+
+TEST_F(ClassicAuthModeTest, CollectionGrantLeavesTheDatabaseLevelUndefined) {
+  // A collection grant is not inert with respect to the *database* level:
+  // grantCollection() for a database that has no grant of its own creates an
+  // entry whose database level is UNDEFINED, and databaseAuthLevel() applies
+  // the wildcard / _system fallbacks precisely when it resolves to UNDEFINED.
+  // So here kDb still picks up RO from the wildcard database grant.
+  setGrants({{"*", RO}}, {{std::string{kDb}, "c", RW}});
+  EXPECT_TRUE(check(p::UseDatabase{.name = std::string{kDb},
+                                   .level = DatabaseAccessLevel::Read})
+                  .ok());
+
+  // An explicit grant of NONE is *not* UNDEFINED, so it blocks the fallback.
+  // This is why the beUserWith() helpers always pin kDb and _system: it is the
+  // only way to keep an added collection grant from moving the database level.
+  setGrants({{"*", RO}, {std::string{kDb}, NONE}},
+            {{std::string{kDb}, "c", RW}});
+  expectError(check(p::UseDatabase{.name = std::string{kDb},
+                                   .level = DatabaseAccessLevel::Read}),
+              TRI_ERROR_FORBIDDEN);
+}
+
 TEST_F(ClassicAuthModeTest, UseCollectionWriteDataOnReadOnlyIsReadOnlyError) {
   beUserWith(RO);
   expectError(
@@ -295,11 +369,23 @@ TEST_F(ClassicAuthModeTest, UseCollectionWriteMetaAlsoNeedsDatabaseReadWrite) {
 }
 
 TEST_F(ClassicAuthModeTest, UseCollectionWriteMetaWithDatabaseReadWrite) {
-  beUserWith(RW);
+  beUserWith(RW, {{std::string{kDb}, "c", RW}});
   EXPECT_TRUE(check(p::UseCollection{.db = std::string{kDb},
                                      .name = "c",
                                      .level = CollectionAccessLevel::WriteMeta})
                   .ok());
+}
+
+TEST_F(ClassicAuthModeTest,
+       UseCollectionWriteMetaWithReadOnlyCollectionIsReadOnly) {
+  // The other half of the container principle: write access to the database
+  // does not compensate for a collection that was explicitly pinned to RO.
+  beUserWith(RW, {{std::string{kDb}, "c", RO}});
+  expectError(
+      check(p::UseCollection{.db = std::string{kDb},
+                             .name = "c",
+                             .level = CollectionAccessLevel::WriteMeta}),
+      TRI_ERROR_ARANGO_READ_ONLY);
 }
 
 TEST_F(ClassicAuthModeTest, SystemUsersCollectionIsForbiddenEvenForAdmins) {
@@ -383,7 +469,7 @@ TEST_F(ClassicAuthModeTest, CreateCollectionNeedsDatabaseReadWrite) {
 }
 
 TEST_F(ClassicAuthModeTest, DropCollectionNeedsDatabaseAndCollectionAccess) {
-  beUserWith(RW);
+  beUserWith(RW, {{std::string{kDb}, "c", RW}});
   EXPECT_TRUE(
       check(p::DropCollection{.db = std::string{kDb}, .name = "c"}).ok());
 }
@@ -456,7 +542,9 @@ TEST_F(ClassicAuthModeTest, SeeViewIsAlwaysGranted) {
 }
 
 TEST_F(ClassicAuthModeTest, CreateViewNeedsDatabaseWriteAndReadableLinks) {
-  beUserWith(RW);
+  // The link grants are spelled out although the database grant would already
+  // imply them -- otherwise this would pass for any collection name at all.
+  beUserWith(RW, {{std::string{kDb}, "c1", RO}, {std::string{kDb}, "c2", RO}});
   EXPECT_TRUE(check(p::CreateView{.db = std::string{kDb},
                                   .name = "v",
                                   .linkedCollections = {"c1", "c2"}})
@@ -464,11 +552,25 @@ TEST_F(ClassicAuthModeTest, CreateViewNeedsDatabaseWriteAndReadableLinks) {
 }
 
 TEST_F(ClassicAuthModeTest, CreateViewWithoutDatabaseWriteIsForbidden) {
+  // The degenerate case: with no links at all, the database check is the only
+  // one left. See CreateViewWithReadableLinksButNoDatabaseWriteIsForbidden for
+  // the case that actually isolates the missing database grant.
   beUserWith(RO);
   expectError(
       check(p::CreateView{
           .db = std::string{kDb}, .name = "v", .linkedCollections = {}}),
       TRI_ERROR_FORBIDDEN);
+}
+
+TEST_F(ClassicAuthModeTest,
+       CreateViewWithReadableLinksButNoDatabaseWriteIsForbidden) {
+  // The database grant is checked first and is not substitutable: even RW on
+  // every linked collection does not make up for a read-only database.
+  beUserWith(RO, {{std::string{kDb}, "c1", RW}});
+  expectError(check(p::CreateView{.db = std::string{kDb},
+                                  .name = "v",
+                                  .linkedCollections = {"c1"}}),
+              TRI_ERROR_FORBIDDEN);
 }
 
 TEST_F(ClassicAuthModeTest, CreateViewWithUnreadableLinkIsForbidden) {
@@ -493,7 +595,7 @@ TEST_F(ClassicAuthModeTest, CreateViewWrapsLinkFailuresAsForbiddenUnderV1) {
 }
 
 TEST_F(ClassicAuthModeTest, ModifyViewNeedsDatabaseWriteAndReadableLinks) {
-  beUserWith(RW);
+  beUserWith(RW, {{std::string{kDb}, "c1", RO}});
   EXPECT_TRUE(check(p::ModifyView{.db = std::string{kDb},
                                   .name = "v",
                                   .linkedCollections = {"c1"}})
@@ -503,6 +605,15 @@ TEST_F(ClassicAuthModeTest, ModifyViewNeedsDatabaseWriteAndReadableLinks) {
       check(p::ModifyView{
           .db = std::string{kDb}, .name = "v", .linkedCollections = {}}),
       TRI_ERROR_FORBIDDEN);
+}
+
+TEST_F(ClassicAuthModeTest,
+       ModifyViewWithReadableLinksButNoDatabaseWriteIsForbidden) {
+  beUserWith(RO, {{std::string{kDb}, "c1", RW}});
+  expectError(check(p::ModifyView{.db = std::string{kDb},
+                                  .name = "v",
+                                  .linkedCollections = {"c1"}}),
+              TRI_ERROR_FORBIDDEN);
 }
 
 TEST_F(ClassicAuthModeTest, ModifyViewPropagatesLinkFailuresUnverbatim) {
@@ -649,7 +760,11 @@ TEST_F(ClassicAuthModeTest, UseGraphFollowsTheDatabaseLevel) {
 }
 
 TEST_F(ClassicAuthModeTest, CreateGraphWithChildCollections) {
-  beUserWith(RW);
+  // "cr" gets an explicit read grant because that is what the permission
+  // requires of it. "cc" deliberately gets none: CreateCollection is a pure
+  // database-RW check, so a collection that does not exist yet cannot and need
+  // not carry a grant.
+  beUserWith(RW, {{std::string{kDb}, "cr", RO}});
   std::vector<std::string> toCreate{"cc"};
   std::vector<std::string> toRead{"cr"};
   EXPECT_TRUE(check(p::CreateGraph{.db = std::string{kDb},
@@ -708,12 +823,33 @@ TEST_F(ClassicAuthModeTest, CreateGraphWithUnreadableChildCollection) {
 }
 
 TEST_F(ClassicAuthModeTest, DropGraphWithListedCollections) {
-  beUserWith(RW);
+  beUserWith(RW, {{std::string{kDb}, "c1", RW}, {std::string{kDb}, "c2", RW}});
   std::vector<std::string> colls{"c1", "c2"};
   EXPECT_TRUE(
       check(p::DropGraph{
                 .db = std::string{kDb}, .name = "g", .collectionNames = colls})
           .ok());
+}
+
+TEST_F(ClassicAuthModeTest,
+       CreateGraphWithReadableChildrenButNoDatabaseWriteIsReadOnlyUnderV0) {
+  // The child collections are checked first and pass here, so the failure comes
+  // from the trailing database check -- which reports READ_ONLY under V0.
+  // RW on the child collection does not substitute for the database grant.
+  beUserWith(RO, {{std::string{kDb}, "cr", RW}});
+  std::vector<std::string> none;
+  std::vector<std::string> toRead{"cr"};
+  expectError(check(p::CreateGraph{.db = std::string{kDb},
+                                   .name = "g",
+                                   .collectionNamesToCreate = none,
+                                   .collectionNamesToRead = toRead}),
+              TRI_ERROR_ARANGO_READ_ONLY);
+  useApiVersion(1);
+  expectError(check(p::CreateGraph{.db = std::string{kDb},
+                                   .name = "g",
+                                   .collectionNamesToCreate = none,
+                                   .collectionNamesToRead = toRead}),
+              TRI_ERROR_FORBIDDEN);
 }
 
 TEST_F(ClassicAuthModeTest, DropGraphWithoutDatabaseWriteIsForbidden) {
@@ -722,6 +858,17 @@ TEST_F(ClassicAuthModeTest, DropGraphWithoutDatabaseWriteIsForbidden) {
   expectError(
       check(p::DropGraph{
           .db = std::string{kDb}, .name = "g", .collectionNames = none}),
+      TRI_ERROR_FORBIDDEN);
+}
+
+TEST_F(ClassicAuthModeTest,
+       DropGraphWithDroppableCollectionsButNoDatabaseWriteIsForbidden) {
+  // RW on every listed collection does not substitute for the database grant.
+  beUserWith(RO, {{std::string{kDb}, "c1", RW}});
+  std::vector<std::string> colls{"c1"};
+  expectError(
+      check(p::DropGraph{
+          .db = std::string{kDb}, .name = "g", .collectionNames = colls}),
       TRI_ERROR_FORBIDDEN);
 }
 
@@ -893,6 +1040,16 @@ TEST_F(ClassicAuthModeTest, RestoreCreateIndexBehavesLikeWriteMeta) {
           .ok());
 }
 
+TEST_F(ClassicAuthModeTest,
+       RestoreCreateIndexWithReadOnlyCollectionIsReadOnly) {
+  // The other half of RestoreCreateIndex's WriteMeta: database RW alone is not
+  // enough when the collection itself is pinned to RO.
+  beUserWith(RW, {{std::string{kDb}, "c", RO}});
+  expectError(
+      check(p::RestoreCreateIndex{.db = std::string{kDb}, .collName = "c"}),
+      TRI_ERROR_ARANGO_READ_ONLY);
+}
+
 TEST_F(ClassicAuthModeTest, RestoreCreateIndexIsGrantedToAdmins) {
   beAdminWithoutDb();
   EXPECT_TRUE(
@@ -901,7 +1058,7 @@ TEST_F(ClassicAuthModeTest, RestoreCreateIndexIsGrantedToAdmins) {
 }
 
 TEST_F(ClassicAuthModeTest, RestoreCreateViewBehavesLikeCreateView) {
-  beUserWith(RW);
+  beUserWith(RW, {{std::string{kDb}, "c1", RO}});
   EXPECT_TRUE(check(p::RestoreCreateView{.db = std::string{kDb},
                                          .viewName = "v",
                                          .linkedCollNames = {"c1"}})
@@ -911,6 +1068,15 @@ TEST_F(ClassicAuthModeTest, RestoreCreateViewBehavesLikeCreateView) {
       check(p::RestoreCreateView{
           .db = std::string{kDb}, .viewName = "v", .linkedCollNames = {}}),
       TRI_ERROR_FORBIDDEN);
+}
+
+TEST_F(ClassicAuthModeTest,
+       RestoreCreateViewWithReadableLinksButNoDatabaseWriteIsForbidden) {
+  beUserWith(RO, {{std::string{kDb}, "c1", RW}});
+  expectError(check(p::RestoreCreateView{.db = std::string{kDb},
+                                         .viewName = "v",
+                                         .linkedCollNames = {"c1"}}),
+              TRI_ERROR_FORBIDDEN);
 }
 
 TEST_F(ClassicAuthModeTest, RestoreCreateViewIsGrantedToAdmins) {
@@ -952,5 +1118,393 @@ TEST_F(ClassicAuthModeTest, RestoreWriteDataIsGrantedToAdmins) {
   EXPECT_TRUE(
       check(p::RestoreWriteData{.db = std::string{kDb}, .collName = "c"}).ok());
 }
+
+// ---------------------------------------------------------------------------
+// Grant-space properties
+//
+// The cases above each pick one interesting grant configuration by hand. The
+// two suites below instead sweep the grants that could possibly influence a
+// permission on kDb / kDb.kColl and assert two properties across all of them:
+//
+//   * necessity -- when no grant anywhere can supply a level the permission
+//     requires, the check must fail, whatever else is granted. This is the
+//     exhaustive form of the "one required grant alone is not enough" cases
+//     above: it also covers every *combination* of the remaining grants.
+//   * no-leak -- adding a grant the permission does not name never changes the
+//     answer, not even the reported error code.
+//
+// Both properties are deliberately one-sided: they never predict *which*
+// fallback wins, only that auth::User::databaseAuthLevel() and
+// collectionAuthLevel() are maxima over a fixed set of sources. So neither
+// suite re-implements the resolution rules, and neither needs updating when a
+// fallback changes -- only when a new *source* of access is added.
+//
+// Collections with fixed rules (_users, _queues, _frontend) are out of scope
+// here by construction: their level does not depend on the grants at all, and
+// grantCollection() rejects underscore-prefixed names anyway. They are covered
+// by the hand-written cases above. So is SeeView, which never fails.
+// ---------------------------------------------------------------------------
+
+// One point in the grant space. std::nullopt means "not granted at all", which
+// is not the same as an explicit NONE: NONE is a level and blocks the wildcard
+// and _system fallbacks, while an absent entry lets them through (see
+// CollectionGrantLeavesTheDatabaseLevelUndefined).
+struct GrantSpace {
+  std::optional<auth::Level> system;        // grantDatabase("_system", *)
+  std::optional<auth::Level> db;            // grantDatabase(kDb, *)
+  std::optional<auth::Level> dbStar;        // grantDatabase("*", *)
+  std::optional<auth::Level> coll;          // grantCollection(kDb, kColl, *)
+  std::optional<auth::Level> collStar;      // grantCollection(kDb, "*", *)
+  std::optional<auth::Level> collStarStar;  // grantCollection("*", "*", *)
+};
+
+// Which level a permission requires of what.
+enum class Scope { SystemDb, Db, Coll };
+
+struct Need {
+  Scope scope;
+  auth::Level level;
+};
+
+// A permission's requirements as a disjunction of conjunctions: it can succeed
+// only if *some* alternative has all of its needs met. Several Classic
+// permissions are "isAdmin() OR <ordinary check>", which is exactly a second
+// alternative -- isAdmin() being RW on _system.
+using Alternatives = std::vector<std::vector<Need>>;
+
+struct PermCase {
+  std::string_view name;  // for the gtest instance name
+  auth::Permission perm;
+  Alternatives alternatives;
+};
+
+// Without this gtest prints a failing parameter as a raw byte dump.
+void PrintTo(PermCase const& permCase, std::ostream* os) {
+  *os << permCase.perm;
+}
+
+// The largest level the resolution rules could possibly produce for `scope`,
+// derived only from the fact that both level lookups are maxima over a fixed
+// set of sources. This is an upper bound, never a prediction: it may say RW
+// where the real level is NONE (an explicit grant of NONE shadows a wildcard).
+// That is why the property below only ever asserts *failure*.
+auth::Level upperBound(GrantSpace const& gs, Scope scope) {
+  auto best = [](std::initializer_list<std::optional<auth::Level>> levels) {
+    auto max = NONE;
+    for (auto const& level : levels) {
+      if (level.has_value()) {
+        max = std::max(max, *level);
+      }
+    }
+    return max;
+  };
+  switch (scope) {
+    case Scope::SystemDb:
+      // databaseAuthLevel() skips the _system fallback when asked about
+      // _system itself, so only an explicit grant or the wildcard database
+      // grant can raise it.
+      return best({gs.system, gs.dbStar});
+    case Scope::Db:
+      return best({gs.db, gs.dbStar, gs.system});
+    case Scope::Coll:
+      // Every source collectionAuthLevel() consults for a non-system
+      // collection. Note that _system's *collection* grants are not among
+      // them; only its database level leaks.
+      return best({gs.coll, gs.collStar, gs.collStarStar, gs.db, gs.dbStar,
+                   gs.system});
+  }
+  ADD_FAILURE() << "unhandled scope";
+  return NONE;
+}
+
+// True when no grant in `gs` can supply what any alternative asks for, i.e.
+// when the permission cannot possibly be granted.
+bool cannotBeGranted(GrantSpace const& gs, Alternatives const& alternatives) {
+  return std::ranges::all_of(alternatives, [&](auto const& alternative) {
+    return std::ranges::any_of(alternative, [&](Need const& need) {
+      return need.level > upperBound(gs, need.scope);
+    });
+  });
+}
+
+std::vector<GrantSpace> allGrantSpaces() {
+  // 4^6 = 4096 points; a point costs one setAuthInfo() plus one check().
+  constexpr std::array kLevels{std::optional<auth::Level>{},
+                               std::optional{NONE}, std::optional{RO},
+                               std::optional{RW}};
+  std::vector<GrantSpace> result;
+  result.reserve(4096);
+  for (auto const& system : kLevels) {
+    for (auto const& db : kLevels) {
+      for (auto const& dbStar : kLevels) {
+        for (auto const& coll : kLevels) {
+          for (auto const& collStar : kLevels) {
+            for (auto const& collStarStar : kLevels) {
+              result.push_back(GrantSpace{.system = system,
+                                          .db = db,
+                                          .dbStar = dbStar,
+                                          .coll = coll,
+                                          .collStar = collStar,
+                                          .collStarStar = collStarStar});
+            }
+          }
+        }
+      }
+    }
+  }
+  return result;
+}
+
+std::string describe(GrantSpace const& gs) {
+  auto one = [](std::string_view label, std::optional<auth::Level> level) {
+    return std::format("{}={} ", label,
+                       level.has_value()
+                           ? auth::convertFromAuthLevel(*level)
+                           : std::string_view{"<ungranted>"});
+  };
+  auto const db = std::string{ClassicAuthModeTest::kDb};
+  return one(StaticStrings::SystemDatabase, gs.system) + one(db, gs.db) +
+         one("*", gs.dbStar) +
+         one(db + "/" + std::string{ClassicAuthModeTest::kColl}, gs.coll) +
+         one(db + "/*", gs.collStar) + one("*/*", gs.collStarStar);
+}
+
+// The permission set to sweep, with what Classic requires of each. Kept
+// explicit rather than derived from AuthMode.cpp so that a change in the
+// production rules has to be reflected here deliberately.
+std::vector<PermCase> permissionCases() {
+  auto const db = std::string{ClassicAuthModeTest::kDb};
+  auto const coll = std::string{ClassicAuthModeTest::kColl};
+
+  // CreateGraph/DropGraph hold std::span, i.e. they do not own their collection
+  // lists -- so the backing storage has to outlive the cases returned here.
+  static std::vector<std::string> links{coll};
+  static std::vector<std::string> nothing;
+
+  Alternatives const adminOnly{{{Scope::SystemDb, RW}}};
+  auto orAdmin = [&](std::vector<Need> ordinary) -> Alternatives {
+    return {{{Scope::SystemDb, RW}}, std::move(ordinary)};
+  };
+
+  return {
+      // Databases.
+      {"SeeDatabase", p::SeeDatabase{.name = db}, {{{Scope::Db, RO}}}},
+      {"UseDatabaseRead",
+       p::UseDatabase{.name = db, .level = DatabaseAccessLevel::Read},
+       {{{Scope::Db, RO}}}},
+      {"UseDatabaseWrite",
+       p::UseDatabase{.name = db, .level = DatabaseAccessLevel::Write},
+       {{{Scope::Db, RW}}}},
+      {"CreateDatabase", p::CreateDatabase{.name = "brandnew"}, adminOnly},
+      {"DropDatabase", p::DropDatabase{.name = db}, adminOnly},
+
+      // Collections.
+      {"UseCollectionRead",
+       p::UseCollection{
+           .db = db, .name = coll, .level = CollectionAccessLevel::Read},
+       {{{Scope::Coll, RO}}}},
+      {"UseCollectionWriteData",
+       p::UseCollection{
+           .db = db, .name = coll, .level = CollectionAccessLevel::WriteData},
+       {{{Scope::Coll, RW}}}},
+      {"UseCollectionWriteMeta",
+       p::UseCollection{
+           .db = db, .name = coll, .level = CollectionAccessLevel::WriteMeta},
+       {{{Scope::Coll, RW}, {Scope::Db, RW}}}},
+      {"CreateCollection",
+       p::CreateCollection{.db = db, .name = coll},
+       {{{Scope::Db, RW}}}},
+      {"DropCollection",
+       p::DropCollection{.db = db, .name = coll},
+       {{{Scope::Db, RW}, {Scope::Coll, RW}}}},
+      {"SeeCollection", p::SeeCollection{.db = db, .name = coll},
+       orAdmin({{Scope::Coll, RO}})},
+      {"DumpCollection", p::DumpCollection{.db = db, .name = coll},
+       orAdmin({{Scope::Coll, RO}})},
+
+      // Views.
+      {"CreateView",
+       p::CreateView{.db = db, .name = "v", .linkedCollections = links},
+       {{{Scope::Db, RW}, {Scope::Coll, RO}}}},
+      {"ModifyView",
+       p::ModifyView{.db = db, .name = "v", .linkedCollections = links},
+       {{{Scope::Db, RW}, {Scope::Coll, RO}}}},
+      {"RenameView",
+       p::RenameView{.db = db, .oldName = "v", .newName = "w"},
+       {{{Scope::Db, RW}}}},
+      {"DropView", p::DropView{.db = db, .name = "v"}, {{{Scope::Db, RW}}}},
+      {"UseViewRead",
+       p::UseView{.db = db, .name = "v", .level = ViewAccessLevel::Read},
+       {{{Scope::Db, RO}}}},
+      {"UseViewModify",
+       p::UseView{.db = db, .name = "v", .level = ViewAccessLevel::Modify},
+       {{{Scope::Db, RW}}}},
+
+      // Analyzers.
+      {"SeeAnalyzer", p::SeeAnalyzer{.db = db, .name = "a"},
+       orAdmin({{Scope::Db, RO}})},
+      {"CreateAnalyzer", p::CreateAnalyzer{.db = db, .name = "a"},
+       orAdmin({{Scope::Db, RW}})},
+      {"DropAnalyzer", p::DropAnalyzer{.db = db, .name = "a"},
+       orAdmin({{Scope::Db, RW}})},
+      {"UseAnalyzerModify",
+       p::UseAnalyzer{
+           .db = db, .name = "a", .level = AnalyzerAccessLevel::Modify},
+       orAdmin({{Scope::Db, RW}})},
+
+      // Graphs.
+      {"SeeGraph", p::SeeGraph{.db = db, .name = "g"}, {{{Scope::Db, RO}}}},
+      {"UseGraphModify",
+       p::UseGraph{.db = db, .name = "g", .level = GraphAccessLevel::Modify},
+       {{{Scope::Db, RW}}}},
+      {"CreateGraph",
+       p::CreateGraph{.db = db,
+                      .name = "g",
+                      .collectionNamesToCreate = nothing,
+                      .collectionNamesToRead = links},
+       {{{Scope::Db, RW}, {Scope::Coll, RO}}}},
+      {"DropGraph",
+       p::DropGraph{.db = db, .name = "g", .collectionNames = links},
+       {{{Scope::Db, RW}, {Scope::Coll, RW}}}},
+
+      // Users and admin actions.
+      {"ReadUser", p::ReadUser{.name = "someone"}, adminOnly},
+      {"CreateUser", p::CreateUser{.name = "someone"}, adminOnly},
+      {"DropUser", p::DropUser{.name = "someone"}, adminOnly},
+      // The "everybody may modify their own profile" exception lives in
+      // ExecContext, above this layer, so here it is a plain admin check.
+      {"ModifyUserProfile", p::ModifyUserProfile{.name = "someone"}, adminOnly},
+      {"GrantUserPermissions",
+       p::GrantUserPermissions{.name = "someone"},
+       adminOnly},
+      {"AdminBackup", p::AdminBackup{}, adminOnly},
+
+      // Dump / restore.
+      {"RestoreCollection",
+       p::RestoreCollection{.db = db, .name = coll, .overwrite = false},
+       orAdmin({{Scope::Coll, RW}})},
+      {"RestoreCollectionOverwrite",
+       p::RestoreCollection{.db = db, .name = coll, .overwrite = true},
+       orAdmin({{Scope::Db, RW}, {Scope::Coll, RW}})},
+      {"RestoreCreateIndex",
+       p::RestoreCreateIndex{.db = db, .collName = coll},
+       orAdmin({{Scope::Coll, RW}, {Scope::Db, RW}})},
+      {"RestoreCreateView",
+       p::RestoreCreateView{
+           .db = db, .viewName = "v", .linkedCollNames = links},
+       orAdmin({{Scope::Db, RW}, {Scope::Coll, RO}})},
+      {"RestoreDropView",
+       p::RestoreDropView{.db = db, .viewName = "v"},
+       orAdmin({{Scope::Db, RW}})},
+      {"RestoreWriteData",
+       p::RestoreWriteData{.db = db, .collName = coll},
+       orAdmin({{Scope::Coll, RW}})},
+  };
+}
+
+struct ClassicGrantSpaceTest
+    : ClassicAuthModeTest,
+      ::testing::WithParamInterface<PermCase> {
+  void installGrants(GrantSpace const& gs) {
+    std::vector<DbGrant> dbs;
+    std::vector<CollGrant> colls;
+    auto addDb = [&](std::string db, std::optional<auth::Level> level) {
+      if (level.has_value()) {
+        dbs.push_back({std::move(db), *level});
+      }
+    };
+    auto addColl = [&](std::string db, std::string coll,
+                       std::optional<auth::Level> level) {
+      if (level.has_value()) {
+        colls.push_back({std::move(db), std::move(coll), *level});
+      }
+    };
+    addDb(StaticStrings::SystemDatabase, gs.system);
+    addDb(std::string{kDb}, gs.db);
+    addDb("*", gs.dbStar);
+    addColl(std::string{kDb}, std::string{kColl}, gs.coll);
+    addColl(std::string{kDb}, "*", gs.collStar);
+    addColl("*", "*", gs.collStarStar);
+    setGrants(dbs, colls);
+  }
+};
+
+// Property 1: if nothing in the grant space can supply a required level, the
+// check fails -- no matter which other grants are present.
+TEST_P(ClassicGrantSpaceTest, RequiredGrantsAreNecessary) {
+  auto const& param = GetParam();
+  size_t denied = 0;
+  size_t granted = 0;
+  for (auto const& gs : allGrantSpaces()) {
+    installGrants(gs);
+    auto const result = check(param.perm);
+    if (cannotBeGranted(gs, param.alternatives)) {
+      EXPECT_FALSE(result.ok())
+          << param.name << " was granted although no grant could supply what "
+          << "it requires; grants: " << describe(gs);
+      ++denied;
+    } else if (result.ok()) {
+      ++granted;
+    }
+  }
+  // Non-vacuity, in both directions: an upper bound so loose that no grant
+  // space is ever unsatisfiable would make the property assert nothing, and a
+  // permission that denies everything would satisfy it trivially.
+  EXPECT_GT(denied, 0u) << param.name << ": no unsatisfiable grant space found";
+  EXPECT_GT(granted, 0u)
+      << param.name << ": not granted in any grant space at all";
+}
+
+// Property 2: a grant the permission does not name changes nothing -- not the
+// verdict and not the reported reason.
+TEST_P(ClassicGrantSpaceTest, UnrelatedGrantsChangeNothing) {
+  auto const& param = GetParam();
+
+  // Every baseline pins both kDb and _system explicitly, so that adding a
+  // collection grant cannot move a database level via the UNDEFINED path (see
+  // CollectionGrantLeavesTheDatabaseLevelUndefined).
+  std::vector<std::vector<DbGrant>> const baselines{
+      {{StaticStrings::SystemDatabase, NONE}, {std::string{kDb}, NONE}},
+      {{StaticStrings::SystemDatabase, NONE}, {std::string{kDb}, RO}},
+      {{StaticStrings::SystemDatabase, NONE}, {std::string{kDb}, RW}},
+      {{StaticStrings::SystemDatabase, RW}, {std::string{kDb}, NONE}},
+  };
+  // None of these is named by any permission under test: another database, a
+  // collection in another database, a sibling collection in kDb, and a
+  // collection grant on _system (of which only the *database* level leaks).
+  std::vector<DbGrant> const dbDecoys{{"otherdb", RW}};
+  std::vector<CollGrant> const collDecoys{
+      {"otherdb", "*", RW},
+      {std::string{kDb}, "unrelated", RW},
+      {StaticStrings::SystemDatabase, "unrelated", RW}};
+
+  for (auto const& baseline : baselines) {
+    setGrants(baseline);
+    auto const expected = check(param.perm).errorNumber();
+
+    for (auto const& decoy : dbDecoys) {
+      auto grants = baseline;
+      grants.push_back(decoy);
+      setGrants(grants);
+      EXPECT_EQ(check(param.perm).errorNumber(), expected)
+          << param.name << ": granting "
+          << auth::convertFromAuthLevel(decoy.level) << " on database '"
+          << decoy.db << "' changed the answer";
+    }
+    for (auto const& decoy : collDecoys) {
+      setGrants(baseline, {decoy});
+      EXPECT_EQ(check(param.perm).errorNumber(), expected)
+          << param.name << ": granting "
+          << auth::convertFromAuthLevel(decoy.level) << " on '" << decoy.db
+          << "/" << decoy.coll << "' changed the answer";
+    }
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(Permissions, ClassicGrantSpaceTest,
+                         ::testing::ValuesIn(permissionCases()),
+                         [](::testing::TestParamInfo<PermCase> const& info) {
+                           return std::string{info.param.name};
+                         });
 
 }  // namespace
