@@ -1,5 +1,13 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+* COR-742: AQL `MATCH` inline projections support aliasing / flattening via
+  `RETURN name = <expr>` in addition to bare attribute keeps. Alias expressions
+  use normal AQL scope (explicit pattern-variable references), e.g.
+  `MATCH (v:users RETURN name = v.profile.first_name) RETURN v` or
+  `MATCH (u:users)-[e:follows RETURN fromI = u.i]->(v:users) RETURN e`.
+  System attributes remain auto-retained. The `MATCH` statement remains
+  experimental (`matchStatement: "experimental"`).
+
 * COR-740: AQL `MATCH` relationship patterns now support an optional inline
   projection clause using `RETURN` (placeholder keyword, may change later).
   Example: `MATCH (u:users)-[e:follows RETURN since]->(v:users) RETURN e` binds
