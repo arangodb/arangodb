@@ -453,7 +453,7 @@
     options:
       parallelity: 5
       size: medium+
-      type: cluster
+      type: single
     args:
       dumpAgencyOnError: true
 
