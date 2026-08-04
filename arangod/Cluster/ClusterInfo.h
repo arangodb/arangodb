@@ -910,6 +910,8 @@ class ClusterInfo final {
   void setServerAdvertisedEndpoints(
       containers::FlatHashMap<ServerID, std::string> advertisedEndpoints);
 
+  void setServersKnown(ServersKnown serversKnown);
+
   void setShardToShardGroupLeader(
       containers::FlatHashMap<ShardID, ShardID> shardToShardGroupLeader);
 
@@ -1058,6 +1060,16 @@ class ClusterInfo final {
   // invoked.
   void updateCoordinatorCurrentShardMetrics();
 
+  /// @brief Sync arangodb_server_health gauges from ServersKnown (Coordinator
+  /// only). Creates/updates one labeled gauge per server (target_server,
+  /// target_shortname, target_role) for every ServersKnown entry — including
+  /// DBServers — and removes gauges for servers that disappeared. Agents do
+  /// not export this metric (no AgencyCache/ClusterInfo server sync).
+  void updateServerHealthMetrics(ServersKnown const& serversKnown);
+
+  /// @brief Remove all arangodb_server_health series.
+  void clearServerHealthMetrics();
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the timeout for reloading the server list
   //////////////////////////////////////////////////////////////////////////////
@@ -1156,6 +1168,11 @@ class ClusterInfo final {
   // So should we consider removing this member and use only rebootTracker?
   // Current/ServersKnown:
   ServersKnown _serversKnown;
+
+  /// @brief Per-server health gauges (Coordinator only). Keyed by ServerID.
+  /// Uses MetricsFeature::ensureMetric / remove for dynamic label sets.
+  containers::FlatHashMap<ServerID, metrics::Gauge<std::uint64_t>*>
+      _serverHealthMetrics;
 
   // Accounting drops of dangling links. We do not want to pollute
   // scheduler with drop requests. So we put only one per link at time.

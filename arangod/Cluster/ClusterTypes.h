@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <iosfwd>
 #include <limits>
 #include <memory>
@@ -43,6 +44,23 @@ typedef std::string ServerShortName;  // Short name of a server
 enum class ServerHealth { kGood, kBad, kFailed, kUnclear };
 
 std::ostream& operator<<(std::ostream& o, ServerHealth r);
+
+/// @brief Map ServerHealth to the arangodb_server_health gauge value.
+/// GOOD=2, BAD=1, FAILED=0. UNCLEAR (never persisted in the agency; used
+/// only when Status is missing) is mapped to 0 (FAILED) conservatively.
+[[nodiscard]] constexpr std::uint64_t serverHealthMetricValue(
+    ServerHealth status) noexcept {
+  switch (status) {
+    case ServerHealth::kGood:
+      return 2;
+    case ServerHealth::kBad:
+      return 1;
+    case ServerHealth::kFailed:
+    case ServerHealth::kUnclear:
+      return 0;
+  }
+  return 0;
+}
 
 struct ServerHealthState {
   RebootId rebootId;
