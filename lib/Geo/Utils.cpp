@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Utils.h"
@@ -93,7 +92,8 @@ void scanIntervals(QueryParams const& params,
     }
   }
 
-  if (!params.pointsOnly || params.filterType == FilterType::INTERSECTS) {
+  if (!params.pointsOnly || params.filterType == FilterType::INTERSECTS ||
+      params.filterType == FilterType::IS_CONTAINED) {
     // we need to find larger cells that may still contain (parts of) the cover,
     // these are parent cells, up to the minimum allowed cell level allowed in
     // the index. In that case we do not need to look at all sub-cells only

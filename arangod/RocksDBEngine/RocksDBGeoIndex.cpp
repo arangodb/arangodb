@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBGeoIndex.h"
@@ -28,6 +27,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
 #include "Aql/SortCondition.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "GeoIndex/Covering.h"
@@ -38,7 +38,6 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -96,13 +95,14 @@ using namespace arangodb;
 //      FOR d IN coll
 //        FILTER GEO_INTERSECTS(obj, d.geo)
 //        RETURN d
-// In principle, there could also be:
-//  (4) Find everything in the database, which contains a given object:
+//  (4) Find everything in the database whose indexed geometry contains a
+//      given object (point, polygon, ...):
 //      FOR d IN coll
 //        FILTER GEO_CONTAINS(d.geo, obj)
 //        RETURN d
-//      but we do not support this. It will be executed by steam without
-//      using the geo index.
+//
+//  (Previously (4) was described as unsupported; the geo index optimizer and
+//   iterator now handle it using FilterType::IS_CONTAINED.)
 //
 // All of these can get a LIMIT clause and we can take advantage of this
 // knowledge when the LIMIT is given in the QueryParams. Furthermore,
@@ -271,6 +271,8 @@ class RDBNearIterator final : public IndexIterator {
               TRI_ASSERT(res.ok());  // this should never fail here
               if (res.fail() ||
                   (ft == geo::FilterType::CONTAINS && !filter.contains(test)) ||
+                  (ft == geo::FilterType::IS_CONTAINED &&
+                   !test.contains(filter)) ||
                   (ft == geo::FilterType::INTERSECTS &&
                    !filter.intersects(test))) {
                 result = false;
@@ -308,6 +310,8 @@ class RDBNearIterator final : public IndexIterator {
               TRI_ASSERT(res.ok());  // this should never fail here
               if (res.fail() ||
                   (ft == geo::FilterType::CONTAINS && !filter.contains(test)) ||
+                  (ft == geo::FilterType::IS_CONTAINED &&
+                   !test.contains(filter)) ||
                   (ft == geo::FilterType::INTERSECTS &&
                    !filter.intersects(test))) {
                 result = false;
@@ -405,12 +409,12 @@ class RDBNearIterator final : public IndexIterator {
   void estimateDensity() {
     S2CellId cell = S2CellId(_near.origin());
 
-    RocksDBKeyLeaser key(_trx);
-    key->constructGeoIndexValue(_index->objectId(), cell.id(),
-                                LocalDocumentId(1));
-    _iter->Seek(key->string());
+    RocksDBKey key(ThreadLocalStringLeaser::lease());
+    key.constructGeoIndexValue(_index->objectId(), cell.id(),
+                               LocalDocumentId(1));
+    _iter->Seek(key.string());
     if (!_iter->Valid()) {
-      _iter->SeekForPrev(key->string());
+      _iter->SeekForPrev(key.string());
     }
     if (_iter->Valid()) {
       _near.estimateDensity(RocksDBValue::centroid(_iter->value()));
@@ -487,6 +491,8 @@ class RDBCoveringIterator final : public IndexIterator {
             TRI_ASSERT(res.ok());  // this should never fail here
             if (res.fail() ||
                 (ft == geo::FilterType::CONTAINS && !filter.contains(test)) ||
+                (ft == geo::FilterType::IS_CONTAINED &&
+                 !test.contains(filter)) ||
                 (ft == geo::FilterType::INTERSECTS &&
                  !filter.intersects(test))) {
               result = false;
@@ -522,6 +528,8 @@ class RDBCoveringIterator final : public IndexIterator {
               TRI_ASSERT(res.ok());  // this should never fail here
               if (res.fail() ||
                   (ft == geo::FilterType::CONTAINS && !filter.contains(test)) ||
+                  (ft == geo::FilterType::IS_CONTAINED &&
+                   !test.contains(filter)) ||
                   (ft == geo::FilterType::INTERSECTS &&
                    !filter.intersects(test))) {
                 result = false;
@@ -755,12 +763,13 @@ std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
 
   // First check if we can use the simpler method with a covering of the
   // target object:
-  // If we have a `GEO_CONTAINS` or `GEO_INTERSECTS` clause but no
-  // restriction on the `GEO_DISTANCE` and no sorting of results by
-  // `GEO_DISTANCE`, we use the simpler method:
+  // If we have a `GEO_CONTAINS` / `GEO_INTERSECTS` / inverted `GEO_CONTAINS`
+  // clause but no restriction on the `GEO_DISTANCE` and no sorting of results
+  // by `GEO_DISTANCE`, we use the simpler method:
   if (!params.sorted &&
       (params.filterType == geo::FilterType::CONTAINS ||
-       params.filterType == geo::FilterType::INTERSECTS) &&
+       params.filterType == geo::FilterType::INTERSECTS ||
+       params.filterType == geo::FilterType::IS_CONTAINED) &&
       !params.distanceRestricted) {
     LOG_TOPIC("54612", DEBUG, Logger::AQL)
         << "Using RDBCoveringIterator for geo index query: "
@@ -778,7 +787,8 @@ std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
     // centroid is not in the circumcircle of our bounding box.
     TRI_ASSERT(!params.filterShape.empty());
     params.filterShape.updateBounds(params);
-  } else if (params.filterType == geo::FilterType::INTERSECTS) {
+  } else if (params.filterType == geo::FilterType::INTERSECTS ||
+             params.filterType == geo::FilterType::IS_CONTAINED) {
     // We need to set the origin still:
     S2LatLng ll(params.filterShape.centroid());
     params.origin = ll;
@@ -833,18 +843,18 @@ Result RocksDBGeoIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
   TRI_ASSERT(S2::IsUnitLength(centroid));
 
   RocksDBValue val = RocksDBValue::S2Value(centroid);
-  RocksDBKeyLeaser key(&trx);
+  RocksDBKey key(ThreadLocalStringLeaser::lease());
 
   TRI_ASSERT(!_unique);
 
   for (S2CellId cell : cells) {
-    key->constructGeoIndexValue(objectId(), cell.id(), documentId);
-    TRI_ASSERT(key->containsLocalDocumentId(documentId));
+    key.constructGeoIndexValue(objectId(), cell.id(), documentId);
+    TRI_ASSERT(key.containsLocalDocumentId(documentId));
 
     rocksdb::Status s =
         mthd->PutUntracked(RocksDBColumnFamilyManager::get(
                                RocksDBColumnFamilyManager::Family::GeoIndex),
-                           key.ref(), val.string());
+                           key, val.string());
 
     if (!s.ok()) {
       res.reset(rocksutils::convertStatus(s, rocksutils::index));
@@ -877,16 +887,16 @@ Result RocksDBGeoIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
 
   TRI_ASSERT(!cells.empty());
 
-  RocksDBKeyLeaser key(&trx);
+  RocksDBKey key(ThreadLocalStringLeaser::lease());
 
   // FIXME: can we rely on the region coverer to return
   // the same cells everytime for the same parameters ?
   for (S2CellId cell : cells) {
-    key->constructGeoIndexValue(objectId(), cell.id(), documentId);
+    key.constructGeoIndexValue(objectId(), cell.id(), documentId);
     rocksdb::Status s =
         mthd->Delete(RocksDBColumnFamilyManager::get(
                          RocksDBColumnFamilyManager::Family::GeoIndex),
-                     key.ref());
+                     key);
     if (!s.ok()) {
       res.reset(rocksutils::convertStatus(s, rocksutils::index));
       addErrorMsg(res);

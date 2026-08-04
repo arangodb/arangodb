@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
@@ -33,25 +31,14 @@
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
 
-#include "ApplicationFeatures/CommunicationFeaturePhase.h"
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Containers/FlatHashSet.h"
 #include "Cluster/ClusterFeature.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
-#include "FeaturePhases/ClusterFeaturePhase.h"
-#include "FeaturePhases/DatabaseFeaturePhase.h"
-#include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchCommon.h"
-#include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/VelocyPackHelper.h"
-#include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "Sharding/ShardingFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/Methods/Collections.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"

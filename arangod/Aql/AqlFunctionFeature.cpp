@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlFunctionFeature.h"
@@ -190,6 +189,7 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"FIND_FIRST", ".,.|.,.", flags, &functions::FindFirst});
   add({"FIND_LAST", ".,.|.,.", flags, &functions::FindLast});
   add({"SPLIT", ".|.,.", flags, &functions::Split});
+  add({"PARTITION", ".,.|.", flags, &functions::Partition});
   add({"SUBSTITUTE", ".,.|.,.", flags, &functions::Substitute});
   add({"IPV4_TO_NUMBER", ".", flags, &functions::IpV4ToNumber});
   add({"IPV4_FROM_NUMBER", ".", flags, &functions::IpV4FromNumber});

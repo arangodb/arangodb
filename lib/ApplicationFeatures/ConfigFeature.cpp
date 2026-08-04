@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ConfigFeature.h"
@@ -40,6 +39,7 @@
 #include "ProgramOptions/Option.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "ApplicationFeatures/ConfigOptionsProvider.h"
 #include "ProgramOptions/Translator.h"
 
 #include <cstdlib>
@@ -55,37 +55,34 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
+ConfigFeature::ConfigFeature(application_features::ApplicationServer& server,
+                             std::string const& progname,
+                             std::string const& configFilename)
+    : ConfigFeature(server, progname, configFilename, ConfigFeatureOptions{}) {}
+
+ConfigFeature::ConfigFeature(application_features::ApplicationServer& server,
+                             std::string const& progname,
+                             std::string const& configFilename,
+                             ConfigFeatureOptions options)
+    : application_features::ApplicationFeature{server, *this},
+      _version{[&server]() {
+        return server.hasFeature<VersionFeature>()
+                   ? &server.getFeature<VersionFeature>()
+                   : nullptr;
+      }()},
+      _options(std::move(options)) {
+  ADB_PROD_ASSERT(_version != nullptr);
+  _options.file = configFilename;
+  _options.progname = progname;
+
+  setOptional(false);
+  startsAfter<LoggerFeature>();
+  startsAfter<ShellColorsFeature>();
+}
+
 void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption("--configuration,-c",
-                     "The configuration file or \"none\".",
-                     new StringParameter(&_options.file));
-
-  // add --config as an alias for --configuration. both point to the same
-  // variable!
-  options->addOption(
-      "--config", "The configuration file or \"none\".",
-      new StringParameter(&_options.file),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
-
-  options->addOption(
-      "--define,-D",
-      "Define a value for a `@key@` entry in the configuration file using the "
-      "syntax `\"key=value\"`.",
-      new VectorParameter<StringParameter>(&_options.defines),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
-
-  options->addOption(
-      "--check-configuration", "Check the configuration and exit.",
-      new BooleanParameter(&_options.checkConfiguration),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
-                                          arangodb::options::Flags::Command));
-
-  options->addOption(
-      "--honor-nsswitch",
-      "Allow hostname lookup configuration via /etc/nsswitch.conf if on "
-      "Linux/glibc.",
-      new BooleanParameter(&_options.honorNsswitch),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+  ConfigOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void ConfigFeature::loadOptions(std::shared_ptr<ProgramOptions> options,

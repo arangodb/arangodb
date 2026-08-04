@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -39,7 +37,6 @@ class ClusterFeature;
 class ClusterInfo;
 class CollectionNameResolver;
 class DatabaseFeature;
-class EngineSelectorFeature;
 class LogicalCollection;
 class ReplicationApplier;
 class ReplicationFeature;
@@ -102,6 +99,14 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
 
  protected:
   ResultT<std::pair<std::string, bool>> forwardingTarget() override final;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether the current command may be forwarded to a client-supplied
+  /// DBserver with the caller's authorization stripped. Only true for the
+  /// commands used by arangodump ("dump"/"batch").
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool isDBserverForwardingAllowed() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates an error if called on a coordinator server
@@ -318,6 +323,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   };
 
   bool prepareRevisionOperation(RevisionOperationContext&);
+  ReplicationFeature& replicationFeature() const { return _replicationFeature; }
 
  private:
   bool prepareCollectionForRevisionOperation(RevisionOperationContext&);
@@ -404,7 +410,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   ClusterFeature& _clusterFeature;
-  EngineSelectorFeature& _engineSelectorFeature;
   ReplicationFeature& _replicationFeature;
   DatabaseFeature& _databaseFeature;
 

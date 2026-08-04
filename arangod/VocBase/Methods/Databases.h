@@ -18,25 +18,22 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
-#include "VocBase/voc-types.h"
 #include "VocBase/VocbaseInfo.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }
+struct Database;
 class DatabaseFeature;
 class ClusterFeature;
 struct OperationOptions;
@@ -54,7 +51,7 @@ struct Databases {
                        StorageEngine& engine, ExecContext const& context,
                        std::string const& dbName, velocypack::Slice users,
                        velocypack::Slice options);
-  static Result drop(ExecContext const& context, TRI_vocbase_t* systemVocbase,
+  static Result drop(ExecContext const& context, Database* systemVocbase,
                      std::string const& dbName);
 
  private:

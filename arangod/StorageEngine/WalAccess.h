@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -35,6 +34,7 @@
 
 namespace arangodb {
 
+struct IDatabaseProvider;
 class MyWALDumper;
 
 struct WalAccessResult {
@@ -149,10 +149,10 @@ class WalAccess {
 /// @brief helper class used to resolve vocbases
 ///        and collections from wal markers in an efficient way
 struct WalAccessContext {
-  WalAccessContext(DatabaseFeature& databaseFeature,
+  WalAccessContext(IDatabaseProvider& databaseProvider,
                    WalAccess::Filter const& filter,
                    WalAccess::MarkerCallback const& c)
-      : _databaseFeature(databaseFeature),
+      : _databaseProvider(databaseProvider),
         _filter(filter),
         _callback(c),
         _responseSize(0) {}
@@ -175,7 +175,7 @@ struct WalAccessContext {
   LogicalCollection* loadCollection(TRI_voc_tick_t dbid, DataSourceId cid);
 
  private:
-  DatabaseFeature& _databaseFeature;
+  IDatabaseProvider& _databaseProvider;
 
  protected:
   friend class MyWALDumper;

@@ -18,25 +18,23 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-
-#include <algorithm>
-#include <chrono>
-#include <ctime>
-#include <future>
-#include <iomanip>
-#include <mutex>
-#include <numeric>
-#include <vector>
 
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+
+#include <algorithm>
+#include <chrono>
+#include <ctime>
+#include <iomanip>
+#include <mutex>
+#include <numeric>
+#include <vector>
 
 namespace arangodb {
 namespace import {
@@ -49,8 +47,8 @@ class QuickHistogram : public arangodb::Thread {
   QuickHistogram& operator=(QuickHistogram const&) = delete;
 
  public:
-  explicit QuickHistogram(application_features::ApplicationServer& server)
-      : Thread(server, "QuickHistogram"),
+  QuickHistogram()
+      : Thread("QuickHistogram"),
         _writingLatencies(nullptr),
         _readingLatencies(nullptr),
         _objectsWriting(0),

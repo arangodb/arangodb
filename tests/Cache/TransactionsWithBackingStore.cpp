@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dan Larkin-York
-/// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
@@ -30,20 +28,16 @@
 #include <thread>
 #include <vector>
 
-#include "RestServer/SharedPRNGFeature.h"
 #include "Cache/CacheOptionsProvider.h"
 #include "Cache/Manager.h"
 #include "Cache/Rebalancer.h"
-#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 
-#include "Mocks/Servers.h"
 #include "MockScheduler.h"
 #include "TransactionalStore.h"
 
 using namespace arangodb;
 using namespace arangodb::cache;
-using namespace arangodb::tests::mocks;
 
 struct ThreadGuard {
   ThreadGuard(ThreadGuard&& other) noexcept = default;
@@ -102,11 +96,10 @@ TEST(CacheWithBackingStoreTest,
     scheduler.post(fn);
     return true;
   };
-  MockMetricsServer server;
-  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  basics::SharedPRNG prng;
   CacheOptions co;
   co.cacheSize = 16 * 1024 * 1024;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(prng, postFn, co);
   TransactionalStore store(&manager);
   std::uint64_t totalDocuments = 1000000;
   std::uint64_t hotsetSize = 50000;
@@ -158,11 +151,10 @@ TEST(CacheWithBackingStoreTest, test_hit_rate_for_mixed_workload_LongRunning) {
     scheduler.post(fn);
     return true;
   };
-  MockMetricsServer server;
-  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  basics::SharedPRNG prng;
   CacheOptions co;
   co.cacheSize = 256 * 1024 * 1024;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(prng, postFn, co);
   TransactionalStore store(&manager);
   std::uint64_t totalDocuments = 1000000;
   std::uint64_t batchSize = 1000;
@@ -252,11 +244,10 @@ TEST(CacheWithBackingStoreTest,
     scheduler.post(fn);
     return true;
   };
-  MockMetricsServer server;
-  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  basics::SharedPRNG prng;
   CacheOptions co;
   co.cacheSize = 256 * 1024 * 1024;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(prng, postFn, co);
   TransactionalStore store(&manager);
   std::uint64_t totalDocuments = 1000000;
   std::uint64_t writeBatchSize = 1000;
@@ -340,11 +331,10 @@ TEST(CacheWithBackingStoreTest, test_rebalancing_in_the_wild_LongRunning) {
     scheduler.post(fn);
     return true;
   };
-  MockMetricsServer server;
-  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  basics::SharedPRNG prng;
   CacheOptions co;
   co.cacheSize = 16 * 1024 * 1024;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(prng, postFn, co);
   Rebalancer rebalancer(&manager);
   auto store1 = std::make_unique<TransactionalStore>(&manager);
   auto store2 = std::make_unique<TransactionalStore>(&manager);

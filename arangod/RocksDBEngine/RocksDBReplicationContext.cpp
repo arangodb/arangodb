@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBReplicationContext.h"
@@ -38,7 +36,6 @@
 #include "Replication/Syncer.h"
 #include "Replication/common-defines.h"
 #include "Replication/utilities.h"
-#include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -46,7 +43,6 @@
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Utils/DatabaseGuard.h"
@@ -91,8 +87,8 @@ bool RocksDBReplicationContext::findCollection(
     std::string const& dbName, T const& collection,
     std::function<void(TRI_vocbase_t& vocbase,
                        LogicalCollection& collection)> const& cb) {
-  auto& dbfeature = _engine.getDatabaseFeature();
-  auto vocbase = dbfeature.useDatabase(dbName);
+  auto& dbProvider = _engine.getDatabaseProvider();
+  auto vocbase = dbProvider.useDatabase(dbName);
   if (!vocbase) {
     return false;
   }
@@ -388,7 +384,7 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase,
 
   if (global) {
     // global inventory
-    _engine.getDatabaseFeature().inventory(inventory, tick, nameFilter);
+    _engine.getDatabaseProvider().inventory(inventory, tick, nameFilter);
   } else {
     // database-specific inventory
     inventory.openObject();

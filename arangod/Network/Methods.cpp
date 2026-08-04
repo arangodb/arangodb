@@ -18,11 +18,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Methods.h"
 
+#include "Activities/RegistryGlobalVariable.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Agency/AgencyFeature.h"
 #include "Basics/Exceptions.h"
@@ -36,7 +36,9 @@
 #include "Logger/LogMacros.h"
 #include "Network/ConnectionPool.h"
 #include "Network/NetworkFeature.h"
+#include "Network/RequestActivity.h"
 #include "Network/Utils.h"
+#include "Network/types.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/ticks.h"
@@ -239,11 +241,20 @@ struct Pack {
   RequestLane continuationLane;
   bool skipScheduler;
   bool handleContentEncoding;
-  Pack(DestinationId&& dest, RequestLane lane, bool skip, bool handle)
-      : dest(std::move(dest)),
-        continuationLane(lane),
-        skipScheduler(skip),
-        handleContentEncoding(handle) {}
+  RequestActivity::HandleType activity;
+  Pack(DestinationId&& destination, RestVerb method, std::string path,
+       bool hasPayload, RequestOptions const& options, Headers header)
+      : dest(std::move(destination)),
+        continuationLane(options.continuationLane),
+        skipScheduler(options.skipScheduler),
+        handleContentEncoding(options.handleContentEncoding),
+        activity(activities::make<RequestActivity>(
+            RequestActivityData{.destination = dest,
+                                .method = method,
+                                .path = std::move(path),
+                                .hasPayload = hasPayload,
+                                .options = options,
+                                .header = std::move(header)})) {}
 };
 
 void actuallySendRequest(std::shared_ptr<Pack>&& p, ConnectionPool* pool,
@@ -310,11 +321,12 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
   LOG_TOPIC("2713a", DEBUG, Logger::COMMUNICATION)
       << "request to '" << dest << "' '" << fuerte::to_string(type) << " "
       << path << "'";
+  auto hasPayload = !payload.empty();
 
   // FIXME build future.reset(..)
   try {
-    auto req = prepareRequest(pool, type, std::move(path), std::move(payload),
-                              options, std::move(headers));
+    auto req =
+        prepareRequest(pool, type, path, std::move(payload), options, headers);
     req->timeout(
         std::chrono::duration_cast<std::chrono::milliseconds>(options.timeout));
 
@@ -358,9 +370,8 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
     // fits in SSO of std::function
     static_assert(sizeof(std::shared_ptr<Pack>) <= 2 * sizeof(void*), "");
 
-    auto p = std::make_shared<Pack>(std::move(dest), options.continuationLane,
-                                    options.skipScheduler,
-                                    options.handleContentEncoding);
+    auto p = std::make_shared<Pack>(std::move(dest), type, std::move(path),
+                                    hasPayload, options, std::move(headers));
     FutureRes f = p->promise.getFuture();
     actuallySendRequest(std::move(p), pool, options, spec.endpoint,
                         std::move(req));
@@ -393,7 +404,15 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState>,
         _endTime(
             _startTime +
             std::chrono::duration_cast<std::chrono::steady_clock::duration>(
-                options.timeout)) {
+                options.timeout)),
+        _activity(activities::make<RequestActivity>(
+            RequestActivityData{.destination = _destination,
+                                .method = type,
+                                .path = path,
+                                .hasPayload = !payload.empty(),
+                                .options = options,
+                                .header = headers,
+                                .retryCount = {0}})) {
     _tmp_req = prepareRequest(pool, type, std::move(path), std::move(payload),
                               _options, std::move(headers));
 
@@ -638,6 +657,8 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState>,
     NetworkFeature& nf = server.getFeature<NetworkFeature>();
     nf.retryRequest(shared_from_this(), _options.continuationLane,
                     tryAgainAfter);
+    _activity->updateData(
+        [](auto&& data) { data.retryCount = data.retryCount.value() + 1; });
   }
 
  public:
@@ -662,6 +683,8 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState>,
   std::chrono::steady_clock::time_point const _endTime;
   network::EndpointSpec _spec;
   fuerte::Error _tmp_err;
+
+  RequestActivity::HandleType _activity;
 };
 
 /// @brief send a request to a given destination, retry until timeout is

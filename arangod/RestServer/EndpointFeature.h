@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -35,6 +34,8 @@ class EndpointFeature final : public HttpEndpointProvider {
  public:
   static constexpr std::string_view name() noexcept { return "Endpoint"; }
 
+  explicit EndpointFeature(application_features::ApplicationServer& server,
+                           EndpointFeatureOptions options);
   explicit EndpointFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

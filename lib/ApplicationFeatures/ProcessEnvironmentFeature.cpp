@@ -18,14 +18,15 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ProcessEnvironmentFeature.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/ProcessEnvironmentOptionsProvider.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
 using namespace arangodb::options;
@@ -34,12 +35,23 @@ extern char** environ;
 namespace arangodb {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+ProcessEnvironmentFeature::ProcessEnvironmentFeature(
+    application_features::ApplicationServer& server, std::string const& appname)
+    : ProcessEnvironmentFeature(server, appname,
+                                ProcessEnvironmentFeatureOptions{}) {}
+
+ProcessEnvironmentFeature::ProcessEnvironmentFeature(
+    application_features::ApplicationServer& server, std::string const& appname,
+    ProcessEnvironmentFeatureOptions options)
+    : ApplicationFeature{server, *this}, _options(std::move(options)) {
+  setOptional(false);
+  startsAfter<application_features::GreetingsFeaturePhase>();
+}
+
 void ProcessEnvironmentFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  options->addSection("temp", "temporary files");
-
-  options->addOption("--dump-env", "Dump the full environment to the logs.",
-                     new BooleanParameter(&_options.dumpEnv));
+  ProcessEnvironmentOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void ProcessEnvironmentFeature::prepare() {

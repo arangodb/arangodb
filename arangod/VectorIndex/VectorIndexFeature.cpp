@@ -94,7 +94,7 @@ void VectorIndexFeature::stop() {
   _buildManager->stop();
 }
 
-bool VectorIndexFeature::isVectorIndexEnabled() const { return true; }
+bool VectorIndexFeature::isVectorIndexEnabled() const noexcept { return true; }
 
 futures::Future<Result> VectorIndexFeature::waitForIndexReady(IndexId indexId) {
   if (!_buildManager.has_value()) {

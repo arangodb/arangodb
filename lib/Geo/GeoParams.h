@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -70,7 +69,10 @@ enum class FilterType {
   CONTAINS,
   // Select documents whose geospatial data intersects with a
   // specified GeoJSON object.
-  INTERSECTS
+  INTERSECTS,
+  // Select documents whose geospatial data fully contains a specified
+  // GeoJSON object (equivalent to FILTER GEO_CONTAINS(doc.field, shape)).
+  IS_CONTAINED
 };
 
 /// @brief contains parameters for s2 region coverer

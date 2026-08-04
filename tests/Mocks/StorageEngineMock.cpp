@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "StorageEngineMock.h"
@@ -48,7 +46,7 @@
 #include "Indexes/SortedIndexAttributeMatcher.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "RestServer/FlushFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
+#include "RestServer/IDatabaseProvider.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Manager.h"
@@ -77,9 +75,7 @@ struct IndexFactoryMock : arangodb::IndexFactory {
       : IndexFactory(server) {
     if (injectClusterIndexes) {
       arangodb::ClusterIndexFactory::linkIndexFactories(
-          server, *this,
-          server.getFeature<arangodb::EngineSelectorFeature>()
-              .engine<arangodb::ClusterEngine>());
+          server, *this, server.getFeature<arangodb::ClusterEngine>());
     }
   }
 
@@ -206,9 +202,13 @@ StorageEngineMock::StorageEngineMock(
     : StorageEngine(server, "Mock", "Mock",
                     std::type_index(typeid(StorageEngineMock)),
                     std::unique_ptr<arangodb::IndexFactory>(
-                        new IndexFactoryMock(server, injectClusterIndexes))),
+                        new IndexFactoryMock(server, injectClusterIndexes)),
+                    _dbProvider),
       vocbaseCount(1),
-      _releasedTick(0) {}
+      _releasedTick(0) {
+  initTransactionStatistics(_mockRegistry);
+  ON_CALL(_dbProvider, extendedNames()).WillByDefault(::testing::Return(true));
+}
 
 arangodb::HealthData StorageEngineMock::healthCheck() { return {}; }
 
@@ -263,12 +263,6 @@ StorageEngineMock::createPhysicalCollection(
     arangodb::velocypack::Slice /*info*/) {
   before();
   return std::make_unique<PhysicalCollectionMock>(collection);
-}
-
-std::unique_ptr<arangodb::transaction::Manager>
-StorageEngineMock::createTransactionManager(
-    arangodb::transaction::ManagerFeature& feature) {
-  return std::make_unique<arangodb::transaction::Manager>(feature);
 }
 
 std::shared_ptr<arangodb::TransactionState>
@@ -439,7 +433,7 @@ std::unique_ptr<TRI_vocbase_t> StorageEngineMock::openDatabase(
   new_info.setId(++vocbaseCount);
 
   return std::make_unique<TRI_vocbase_t>(std::move(new_info), *this,
-                                         _versionTracker, true);
+                                         _dbProvider);
 }
 
 TRI_voc_tick_t StorageEngineMock::releasedTick() const {

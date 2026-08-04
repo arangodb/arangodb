@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EdgeCache.h"
@@ -37,7 +36,6 @@
 #include "Cache/Manager.h"
 #include "Cache/CacheManagerFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
@@ -167,10 +165,7 @@ auto EdgeCache::Thread::report() const -> ThreadReport {
     data.add("freeMemoryTasks", VPackValue(stats.freeMemoryTasks));
     data.add("lifeTimeHitrate", VPackValue(rates.first));
 
-    auto& engine = _server.vocbase()
-                       ->server()
-                       .getFeature<EngineSelectorFeature>()
-                       .engine<RocksDBEngine>();
+    auto& engine = _server.vocbase()->engine<RocksDBEngine>();
     auto [entriesSizeTotal, entriesSizeEffective, inserts, compressedInserts,
           emptyInserts] = engine.getCacheMetrics();
     data.add("inserts", VPackValue(inserts));

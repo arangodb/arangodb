@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "StaticStrings.h"
@@ -161,6 +160,7 @@ std::string const StaticStrings::IndexHintOptionForce("forceIndexHint");
 std::string const StaticStrings::Filter("filter");
 std::string const StaticStrings::MaxProjections("maxProjections");
 std::string const StaticStrings::ProducesResult("producesResult");
+std::string const StaticStrings::ProtoCollection("protoCollection");
 std::string const StaticStrings::ReadOwnWrites("readOwnWrites");
 std::string const StaticStrings::UseCache("useCache");
 std::string const StaticStrings::Parallelism("parallelism");
@@ -272,6 +272,7 @@ std::string const StaticStrings::ComputedValues("computedValues");
 std::string const StaticStrings::SupportsRBAC("supportsRBAC");
 std::string const StaticStrings::DistributeShardsLike("distributeShardsLike");
 std::string const StaticStrings::Indexes("indexes");
+std::string const StaticStrings::IsLocalGraphNode("isLocalGraphNode");
 std::string const StaticStrings::IsSmart("isSmart");
 std::string const StaticStrings::IsSmartChild("isSmartChild");
 std::string const StaticStrings::GroupId("groupId");

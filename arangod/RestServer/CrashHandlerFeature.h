@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -39,6 +38,10 @@ class CrashHandlerFeature final
  public:
   static constexpr std::string_view name() noexcept { return "CrashHandler"; }
 
+  explicit CrashHandlerFeature(
+      application_features::ApplicationServer& server,
+      std::shared_ptr<crash_handler::DumpManager> dumpManager,
+      CrashHandlerFeatureOptions options);
   explicit CrashHandlerFeature(
       application_features::ApplicationServer& server,
       std::shared_ptr<crash_handler::DumpManager> dumpManager);

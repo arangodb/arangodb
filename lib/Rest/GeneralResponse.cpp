@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GeneralResponse.h"
@@ -317,6 +315,7 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE):
     case static_cast<int>(TRI_ERROR_QUERY_DIVISION_BY_ZERO):
     case static_cast<int>(TRI_ERROR_QUERY_ARRAY_EXPECTED):
+    case static_cast<int>(TRI_ERROR_QUERY_OBJECT_EXPECTED):
     case static_cast<int>(TRI_ERROR_QUERY_FAIL_CALLED):
     case static_cast<int>(TRI_ERROR_QUERY_INVALID_DATE_VALUE):
     case static_cast<int>(TRI_ERROR_QUERY_MULTI_MODIFY):
@@ -376,6 +375,9 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_VALIDATION_FAILED):
     case static_cast<int>(TRI_ERROR_VALIDATION_BAD_PARAMETER):
       return ResponseCode::BAD;
+
+    case static_cast<int>(TRI_ERROR_HTTP_UNAUTHORIZED):
+      return ResponseCode::UNAUTHORIZED;
 
     case static_cast<int>(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE):
     case static_cast<int>(TRI_ERROR_ARANGO_READ_ONLY):

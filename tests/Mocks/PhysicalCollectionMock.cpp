@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PhysicalCollectionMock.h"
@@ -35,7 +33,6 @@
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "Logger/LogMacros.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
@@ -1248,10 +1245,7 @@ void PhysicalCollectionMock::prepareIndexes(
     arangodb::velocypack::Slice indexesSlice) {
   before();
 
-  auto& engine = _logicalCollection.vocbase()
-                     .server()
-                     .getFeature<arangodb::EngineSelectorFeature>()
-                     .engine();
+  auto& engine = _logicalCollection.vocbase().engine();
   auto& idxFactory = engine.indexFactory();
 
   for (VPackSlice v : VPackArrayIterator(indexesSlice)) {

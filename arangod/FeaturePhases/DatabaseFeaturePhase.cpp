@@ -18,11 +18,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DatabaseFeaturePhase.h"
 #include "Cache/CacheManagerFeature.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/CheckVersionFeature.h"
@@ -36,8 +36,6 @@
 #include "RestServer/ViewTypesFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBRecoveryManager.h"
-#include "StorageEngine/StorageEngineFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/ManagerFeature.h"
 
 namespace arangodb::application_features {
@@ -52,7 +50,6 @@ DatabaseFeaturePhase::DatabaseFeaturePhase(
   startsAfter<CacheManagerFeature>();
   startsAfter<CheckVersionFeature>();
   startsAfter<DatabaseFeature>();
-  startsAfter<EngineSelectorFeature>();
   startsAfter<FlushFeature>();
   startsAfter<InitDatabaseFeature>();
   startsAfter<LockfileFeature>();
@@ -60,7 +57,6 @@ DatabaseFeaturePhase::DatabaseFeaturePhase(
   startsAfter<RocksDBEngine>();
   startsAfter<RocksDBRecoveryManager>();
   startsAfter<ServerIdFeature>();
-  startsAfter<StorageEngineFeature>();
   startsAfter<SystemDatabaseFeature>();
   startsAfter<transaction::ManagerFeature>();
   startsAfter<ViewTypesFeature>();

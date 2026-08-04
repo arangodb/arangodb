@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jure Bajic
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "UseVectorIndex.h"
@@ -32,7 +30,6 @@
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/Expression.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
-#include "Aql/ExecutionNode/MaterializeRocksDBNode.h"
 #include "Aql/ExecutionNode/LimitNode.h"
 #include "Aql/ExecutionNode/FilterNode.h"
 #include "Aql/ExecutionNode/SortNode.h"
@@ -47,7 +44,7 @@
 #include "Assertions/Assert.h"
 #include "Containers/SmallVector.h"
 #include "Indexes/Index.h"
-#include "VectorIndex/VectorIndexDefinition.h"
+#include "VectorIndex/VectorSearchStrategy.h"
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "Basics/ResourceUsage.h"
@@ -280,8 +277,8 @@ void useVectorIndexRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     };
     skipOverCalculationNodes();
 
-    // We tolerate post filtering
-    // For now we can handle only a single FILTER statement
+    // We detect filtering but do not handle it in this rule but in the
+    // pushFilterIntoEnumerateNear
     if (currentNode != nullptr && currentNode->getType() == EN::FILTER) {
       currentNode = currentNode->getFirstParent();
       triggerFilterOptimization = true;
@@ -305,7 +302,7 @@ void useVectorIndexRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
 
     auto const* limitNode =
         ExecutionNode::castTo<LimitNode const*>(maybeLimitNode);
-    // Offset cannot be handled, and there must be a limit which means topK
+    // And there must be a limit which means topK
     if (limitNode->limit() == 0) {
       LOG_RULE << "Limit not set";
       continue;
@@ -346,7 +343,7 @@ void useVectorIndexRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
         continue;
       }
 
-      if (!index->isVectorIndexReady()) {
+      if (!index->isVectorIndexReady() && !index->isLinearScanEnabled()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
             std::format(
@@ -360,10 +357,7 @@ void useVectorIndexRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
       // replace the collection enumeration with the enumerate near node
       // furthermore, we have to remove the calculation node
       auto const* documentVariable = enumerateCollectionNode->outVariable();
-
       auto const* distanceVariable = sortNode->elements()[0].var;
-      auto const* oldDocumentVariable = enumerateCollectionNode->outVariable();
-      auto const* documentIdVariable = oldDocumentVariable;
 
       auto limit = limitNode->limit();
       auto* inVariable = plan->getAst()->variables()->createTemporaryVariable();
@@ -375,20 +369,13 @@ void useVectorIndexRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
           inVariable);
 
       auto* enumerateNear = plan->createNode<EnumerateNearVectorNode>(
-          plan.get(), plan->nextId(), inVariable, oldDocumentVariable,
-          documentIdVariable, distanceVariable, limit, sortField->ascending,
-          limitNode->offset(), std::move(searchParameters),
-          enumerateCollectionNode->collection(), index, nullptr, false);
-
-      auto* materializer =
-          plan->createNode<materialize::MaterializeRocksDBNode>(
-              plan.get(), plan->nextId(), enumerateCollectionNode->collection(),
-              *documentIdVariable, *documentVariable, *documentVariable);
-      plan->excludeFromScatterGather(enumerateNear);
+          plan.get(), plan->nextId(), inVariable, documentVariable,
+          distanceVariable, limit, sortField->ascending, limitNode->offset(),
+          std::move(searchParameters), enumerateCollectionNode->collection(),
+          index);
 
       plan->replaceNode(enumerateCollectionNode, enumerateNear);
       plan->insertBefore(enumerateNear, queryPointCalculationNode);
-      plan->insertAfter(enumerateNear, materializer);
 
       // we don't need this sort node at all, because we produce sorted output
       plan->unlinkNode(sortNode);

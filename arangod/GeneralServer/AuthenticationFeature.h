@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andreas Streichardt <andreas@arangodb.com>
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -44,6 +43,9 @@ class AuthenticationFeature final
  public:
   static constexpr std::string_view name() noexcept { return "Authentication"; }
 
+  explicit AuthenticationFeature(
+      application_features::ApplicationServer& server,
+      AuthenticationOptions options);
   explicit AuthenticationFeature(
       application_features::ApplicationServer& server);
   ~AuthenticationFeature();

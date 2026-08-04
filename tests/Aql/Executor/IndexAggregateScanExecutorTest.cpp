@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <velocypack/Builder.h>
@@ -42,7 +41,6 @@
 #include "IResearch/common.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"

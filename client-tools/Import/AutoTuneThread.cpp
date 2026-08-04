@@ -18,20 +18,17 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <iostream>
-#include <thread>
-
 #include "AutoTuneThread.h"
-#include "ImportFeature.h"
-#include "ImportHelper.h"
 
 #include "Basics/ConditionVariable.h"
+#include "ImportHelper.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+
+#include <thread>
 
 using namespace arangodb;
 using namespace arangodb::import;
@@ -59,9 +56,8 @@ using namespace arangodb::import;
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-AutoTuneThread::AutoTuneThread(application_features::ApplicationServer& server,
-                               ImportHelper& importHelper)
-    : Thread(server, "AutoTuneThread"),
+AutoTuneThread::AutoTuneThread(ImportHelper& importHelper)
+    : Thread("AutoTuneThread"),
       _importHelper(importHelper),
       _nextSend(std::chrono::steady_clock::now()),
       _pace(std::chrono::milliseconds(1000 / importHelper.getThreadCount())) {}

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterRestCollectionHandler.h"
@@ -27,6 +26,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterAdminOperations.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 

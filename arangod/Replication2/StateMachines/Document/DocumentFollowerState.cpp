@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
@@ -27,13 +26,9 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/StateMachines/Document/Actor/Scheduler.h"
 #include "Replication2/StateMachines/Document/Actor/ApplyEntries.h"
-#include "Replication2/StateMachines/Document/DocumentLeaderState.h"
-#include "Replication2/StateMachines/Document/DocumentLogEntry.h"
-#include "Replication2/StateMachines/Document/DocumentStateErrorHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 #include "Replication2/StateMachines/Document/DocumentStateNetworkHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
-#include "Scheduler/SchedulerFeature.h"
 #include "VocBase/LogicalCollection.h"
 
 #include "Actor/LocalRuntime.h"
@@ -42,15 +37,13 @@
 #include <Futures/Future.h>
 #include <Logger/LogContextKeys.h>
 
-#include <chrono>
 #include <memory>
-#include <thread>
 
 namespace arangodb::replication2::replicated_state::document {
 
 Handlers::Handlers(
     std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory,
-    TRI_vocbase_t& vocbase, GlobalLogIdentifier gid)
+    Database& vocbase, GlobalLogIdentifier gid)
     : shardHandler(handlersFactory->createShardHandler(vocbase, gid)),
       transactionHandler(handlersFactory->createTransactionHandler(
           vocbase, gid, shardHandler)),

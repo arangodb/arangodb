@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Parser.h"
@@ -225,6 +224,15 @@ void Parser::pushObjectElement(AstNode* attributeName, AstNode* node) {
   TRI_ASSERT(object->type == NODE_TYPE_OBJECT);
   auto element = _ast.createNodeCalculatedObjectElement(attributeName, node);
   object->addMember(element);
+}
+
+void Parser::pushObjectSplice(AstNode* node) {
+  TRI_ASSERT(node != nullptr);
+  auto object = static_cast<AstNode*>(peekStack());
+  TRI_ASSERT(object != nullptr);
+  TRI_ASSERT(object->type == NODE_TYPE_OBJECT);
+  auto splice = _ast.createNodeObjectSplice(node);
+  object->addMember(splice);
 }
 
 void Parser::pushPatternNode(AstNode* element) {

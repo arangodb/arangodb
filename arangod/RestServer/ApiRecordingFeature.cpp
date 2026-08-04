@@ -18,19 +18,18 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApiRecordingFeature.h"
 
+#include "ApiRecordingOptionsProvider.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "CrashHandler/DataSource.h"
 #include "Inspection/VPack.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
-#include "Metrics/MetricsFeature.h"
-#include "ProgramOptions/Parameters.h"
+#include "Metrics/IRegistry.h"
 #include "ProgramOptions/ProgramOptions.h"
 
 #include <velocypack/Builder.h>
@@ -51,11 +50,21 @@ size_t AqlQueryRecord::memoryUsage() const noexcept {
 ApiRecordingFeature::ApiRecordingFeature(
     application_features::ApplicationServer& server,
     std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry,
-    metrics::MetricsFeature& metrics)
+    metrics::IRegistry& metricsRegistry)
+    : ApiRecordingFeature(server, std::move(dataSourceRegistry),
+                          metricsRegistry, ApiRecordingFeatureOptions{}) {}
+
+ApiRecordingFeature::ApiRecordingFeature(
+    application_features::ApplicationServer& server,
+    std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry,
+    metrics::IRegistry& metricsRegistry, ApiRecordingFeatureOptions options)
     : ApplicationFeature{server, *this},
       crash_handler::CrashHandlerDataSource(std::move(dataSourceRegistry)),
-      _recordApiCallTimes(metrics.add(arangodb_api_recording_call_time{})),
-      _recordAqlCallTimes(metrics.add(arangodb_aql_recording_call_time{})) {
+      _options(std::move(options)),
+      _recordApiCallTimes(
+          metricsRegistry.add(arangodb_api_recording_call_time{})),
+      _recordAqlCallTimes(
+          metricsRegistry.add(arangodb_aql_recording_call_time{})) {
   setOptional(false);
   startsAfter<application_features::GreetingsFeaturePhase>();
 }
@@ -70,75 +79,14 @@ ApiRecordingFeature::~ApiRecordingFeature() {
 
 void ApiRecordingFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  options->addOption(
-      "--server.api-call-recording",
-      "Whether to record recent API calls for debugging purposes.",
-      new BooleanParameter(&_options.enabledCalls),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
-
-  options->addOption(
-      "--server.api-recording-memory-limit",
-      "Size limit for the list of API call records.",
-      new UInt64Parameter(&_options.totalMemoryLimitCalls, 1,
-                          256 * (std::size_t{1} << 10),  // Min: 256 KiB
-                          256 * (std::size_t{1} << 30)   // Max: 256 GiB
-                          ),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
-
-  options->addOption(
-      "--server.aql-query-recording",
-      "Whether to record recent AQL queries for debugging purposes.",
-      new BooleanParameter(&_options.enabledQueries),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
-
-  options->addOption(
-      "--server.aql-recording-memory-limit",
-      "Size limit for the list of AQL query records.",
-      new UInt64Parameter(&_options.totalMemoryLimitQueries, 1,
-                          256 * (std::size_t{1} << 10),  // Min: 256 KiB
-                          256 * (std::size_t{1} << 30)   // Max: 256 GiB
-                          ),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
-
-  options
-      ->addOption(
-          "--log.recording-api-enabled",
-          "Whether the recording API is enabled (true) or not (false), or "
-          "only enabled for the superuser (jwt).",
-          new StringParameter(&_options.apiSwitch))
-      .setLongDescription(R"(The `/_admin/server/api-calls` and
-`/_admin/server/aql-queries` endpoints provide access to recorded API calls
-and AQL queries respectively. They are referred to as the recording API.
-
-Since this data might be sensitive depending on the context of the deployment,
-these endpoints need to be properly secured. By default, the recording API is
-accessible for admin users (users with administrative access to the `_system`
-database). However, you can restrict it further to the superuser or disable it
-altogether:
-
-- `true`: The recording API is accessible for admin users.
-- `jwt`: The recording API is accessible for the superuser only
-  (authentication with JWT superuser token and empty username).
-- `false`: The recording API is not accessible at all.
-
-Whether API calls and AQL queries are recorded is independent of this option.
-It is controlled by the `--server.api-call-recording` and
-`--server.aql-query-recording` startup options.)");
+  ApiRecordingOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void ApiRecordingFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  if (_options.apiSwitch == "true" || _options.apiSwitch == "on" ||
-      _options.apiSwitch == "On") {
-    _options.apiEnabled = true;
-    _options.apiSwitch = "true";
-  } else if (_options.apiSwitch == "jwt" || _options.apiSwitch == "JWT") {
-    _options.apiEnabled = true;
-    _options.apiSwitch = "jwt";
-  } else {
-    _options.apiEnabled = false;
-    _options.apiSwitch = "false";
-  }
+  ApiRecordingOptionsProvider provider;
+  provider.validateOptions(options, _options);
 }
 
 void ApiRecordingFeature::prepare() {

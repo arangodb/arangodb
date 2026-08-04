@@ -67,10 +67,10 @@ _Enterprise Edition only_
 ### faiss
 
 * Name: faiss
-* Version: 1.14.1
-* Date: 2026-04-28
+* Version: 1.14.2
+* Date: 2026-05-22
 * Project Home:https://github.com/facebookresearch/faiss/
-* License: https://github.com/facebookresearch/faiss/blob/main/LICENSE 
+* License: https://github.com/facebookresearch/faiss/blob/main/LICENSE
 * License Name: MIT License
 * License Id: MIT
 
@@ -98,7 +98,7 @@ _Enterprise Edition only_
 
 * Name: fastvalidate-utf8
 * Version: (none)
-* Date: 2017-02-28 13:11:35Z 
+* Date: 2017-02-28 13:11:35Z
 * Project Home: https://github.com/lemire/fastvalidate-utf-8
 * License: https://raw.githubusercontent.com/lemire/fastvalidate-utf-8/master/LICENSE-APACHE
 * License Name: Apache License 2.0
@@ -319,7 +319,7 @@ _Enterprise Edition only_
 * Version: 1.12.1
 * Date: 2022-06-30 10:14:00Z
 * Project Home: https://github.com/google/googletest
-* License: https://raw.githubusercontent.com/google/googletest/release-1.12.1/LICENSE 
+* License: https://raw.githubusercontent.com/google/googletest/release-1.12.1/LICENSE
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
 
@@ -481,7 +481,7 @@ _Enterprise Edition only_
 
 ## Libraries used by iresearch
 
-The ArangoDB software makes uses of the 
+The ArangoDB software makes uses of the
 [iresearch library](https://github.com/iresearch-toolkit/iresearch),
 which is mainly developed by ArangoDB, too.
 The iresearch library itself makes use of several other components with
@@ -512,7 +512,7 @@ can be found [here](https://github.com/arangodb/arangodb/blob/devel/lib/iresearc
 ### Fortran
 
 * Name: gfortran
-* Version: 11.4.0 
+* Version: 11.4.0
 * Date: 2023-05-29
 * Project Home: https://gcc.gnu.org/wiki/GFortran
 * License: https://moinmo.in/GPL
@@ -675,7 +675,7 @@ License Id: -
 #### @sinonjs/fake-timers
 
 * Name: @sinonjs/fake-timers
-* Version: 15.1.0
+* Version: 15.4.0
 * Project Home: <https://github.com/sinonjs/fake-timers>
 * License: <https://raw.githubusercontent.com/sinonjs/fake-timers/main/LICENSE>
 * License Name: BSD-style 3-Clause License
@@ -684,7 +684,7 @@ License Id: -
 #### @sinonjs/samsam
 
 * Name: @sinonjs/samsam
-* Version: 8.0.3
+* Version: 10.0.2
 * Project Home: <http://sinonjs.github.io/samsam/>
 * License: <https://raw.githubusercontent.com/sinonjs/samsam/main/LICENSE>
 * License Name: BSD-style 3-Clause License
@@ -711,7 +711,7 @@ License Id: -
 #### ajv
 
 * Name: ajv
-* Version: 8.18.0
+* Version: 8.20.0
 * Project Home: <https://ajv.js.org>
 * License: <https://raw.githubusercontent.com/ajv-validator/ajv/refs/heads/master/LICENSE>
 * License Name: MIT License
@@ -765,7 +765,7 @@ License Id: -
 #### argparse
 
 * Name: argparse
-* Version: 1.0.10
+* Version: 2.0.1
 * Project Home: <https://github.com/nodeca/argparse>
 * License: <https://raw.githubusercontent.com/nodeca/argparse/refs/heads/master/LICENSE>
 * License Name: MIT License
@@ -792,7 +792,7 @@ License Id: -
 #### balanced-match
 
 * Name: balanced-match
-* Version: 4.0.3
+* Version: 4.0.4
 * Project Home: <https://github.com/juliangruber/balanced-match>
 * License: <https://raw.githubusercontent.com/juliangruber/balanced-match/master/LICENSE.md>
 * License Name: MIT License
@@ -801,7 +801,7 @@ License Id: -
 #### brace-expansion
 
 * Name: brace-expansion
-* Version: 5.0.5
+* Version: 5.0.6
 * Project Home: <https://github.com/juliangruber/brace-expansion>
 * License: <https://raw.githubusercontent.com/juliangruber/brace-expansion/main/LICENSE>
 * License Name: MIT License
@@ -890,7 +890,7 @@ License Id: -
 #### diff
 
 * Name: diff
-* Version: 8.0.3
+* Version: 8.0.4
 * Project Home: <https://github.com/kpdecker/jsdiff>
 * License: <https://raw.githubusercontent.com/kpdecker/jsdiff/master/LICENSE>
 * License Name: BSD-style 3-Clause License
@@ -935,7 +935,7 @@ License Id: -
 #### es-object-atoms
 
 * Name: es-object-atoms
-* Version: 1.1.1
+* Version: 1.1.2
 * Project Home: <https://github.com/ljharb/es-object-atoms#readme>
 * License: <https://raw.githubusercontent.com/ljharb/es-object-atoms/main/LICENSE>
 * License Name: MIT License
@@ -949,15 +949,6 @@ License Id: -
 * License: <https://raw.githubusercontent.com/sindresorhus/escape-string-regexp/refs/heads/main/license>
 * License Name: MIT License
 * License Id: MIT
-
-#### esprima
-
-* Name: esprima
-* Version: 4.0.1
-* Project Home: <http://esprima.org>
-* License: <https://raw.githubusercontent.com/jquery/esprima/refs/heads/main/LICENSE.BSD>
-* License Name: BSD-style 2-Clause License
-* License Id: BSD-2-Clause
 
 #### esutils
 
@@ -989,7 +980,7 @@ License Id: -
 #### fast-uri
 
 * Name: fast-uri
-* Version: 3.1.0
+* Version: 3.1.2
 * Project Home: <https://github.com/fastify/fast-uri>
 * License: <https://raw.githubusercontent.com/fastify/fast-uri/main/LICENSE>
 * License Name: BSD-style 3-Clause License
@@ -1058,15 +1049,6 @@ License Id: -
 * License Name: MIT License
 * License Id: MIT
 
-#### has-flag
-
-* Name: has-flag
-* Version: 4.0.0
-* Project Home: <https://github.com/chalk/has-ansi>
-* License: <https://raw.githubusercontent.com/chalk/has-ansi/refs/heads/main/license>
-* License Name: MIT License
-* License Id: MIT
-
 #### has-symbols
 
 * Name: has-symbols
@@ -1079,7 +1061,7 @@ License Id: -
 #### hasown
 
 * Name: hasown
-* Version: 2.0.2
+* Version: 2.0.4
 * Project Home: <https://github.com/inspect-js/hasOwn#readme>
 * License: <https://raw.githubusercontent.com/inspect-js/hasOwn/main/LICENSE>
 * License Name: MIT License
@@ -1097,7 +1079,7 @@ License Id: -
 #### http-errors
 
 * Name: http-errors
-* Version: 1.8.0
+* Version: 1.8.1
 * Project Home: <https://github.com/jshttp/http-errors>
 * License: <https://raw.githubusercontent.com/jshttp/http-errors/refs/heads/master/LICENSE>
 * License Name: MIT License
@@ -1187,7 +1169,7 @@ License Id: -
 #### js-yaml
 
 * Name: js-yaml
-* Version: 3.14.2
+* Version: 4.2.0
 * Project Home: <https://github.com/nodeca/js-yaml>
 * License: <https://raw.githubusercontent.com/nodeca/js-yaml/refs/heads/master/LICENSE>
 * License Name: MIT License
@@ -1210,15 +1192,6 @@ License Id: -
 * License: <https://raw.githubusercontent.com/lodash/lodash/refs/heads/main/LICENSE>
 * License Name: MIT License
 * License Id: MIT
-
-#### lru-cache
-
-* Name: lru-cache
-* Version: 6.0.0
-* Project Home: <https://github.com/isaacs/node-lru-cache>
-* License: <https://raw.githubusercontent.com/isaacs/node-lru-cache/main/LICENSE.md>
-* License Name: ISC
-* License Id: ISC
 
 #### math-intrinsics
 
@@ -1259,7 +1232,7 @@ License Id: -
 #### minimatch
 
 * Name: minimatch
-* Version: 10.2.3
+* Version: 10.2.5
 * Project Home: <https://github.com/isaacs/minimatch>
 * License: <https://raw.githubusercontent.com/isaacs/minimatch/main/LICENSE.md>
 * License Name: BlueOak-1.0.0
@@ -1286,7 +1259,7 @@ License Id: -
 #### netmask
 
 * Name: netmask
-* Version: 2.0.2
+* Version: 2.1.1
 * Project Home: <https://github.com/rs/node-netmask>
 * License: <https://raw.githubusercontent.com/rs/node-netmask/master/LICENSE.md>
 * License Name: MIT License
@@ -1295,7 +1268,7 @@ License Id: -
 #### node-netstat
 
 * Name: node-netstat
-* Version: 1.8.0
+* Version: 1.9.0
 * Project Home: <https://github.com/danielkrainas/node-netstat>
 * License: <https://raw.githubusercontent.com/danielkrainas/node-netstat/refs/heads/master/UNLICENSE>
 * License Name: Unlicense
@@ -1331,7 +1304,7 @@ License Id: -
 #### qs
 
 * Name: qs
-* Version: 6.14.2
+* Version: 6.15.2
 * Project Home: <https://github.com/ljharb/qs>
 * License: <https://raw.githubusercontent.com/ljharb/qs/main/LICENSE.md>
 * License Name: BSD-style 3-Clause License
@@ -1376,7 +1349,7 @@ License Id: -
 #### semver
 
 * Name: semver
-* Version: 7.5.4
+* Version: 7.8.4
 * Project Home: <https://github.com/npm/node-semver>
 * License: <https://raw.githubusercontent.com/npm/node-semver/main/LICENSE>
 * License Name: ISC
@@ -1403,7 +1376,7 @@ License Id: -
 #### side-channel
 
 * Name: side-channel
-* Version: 1.1.0
+* Version: 1.1.1
 * Project Home: <https://github.com/ljharb/side-channel#readme>
 * License: <https://raw.githubusercontent.com/ljharb/side-channel/main/LICENSE>
 * License Name: MIT License
@@ -1412,7 +1385,7 @@ License Id: -
 #### side-channel-list
 
 * Name: side-channel-list
-* Version: 1.0.0
+* Version: 1.0.1
 * Project Home: <https://github.com/ljharb/side-channel-list#readme>
 * License: <https://raw.githubusercontent.com/ljharb/side-channel-list/main/LICENSE>
 * License Name: MIT License
@@ -1439,18 +1412,9 @@ License Id: -
 #### sinon
 
 * Name: sinon
-* Version: 21.0.1
+* Version: 21.1.2
 * Project Home: <https://sinonjs.org/>
 * License: <https://raw.githubusercontent.com/sinonjs/sinon/main/LICENSE>
-* License Name: BSD-style 3-Clause License
-* License Id: BSD-3-Clause
-
-#### sprintf-js
-
-* Name: sprintf-js
-* Version: 1.0.3
-* Project Home: <https://github.com/alexei/sprintf.js>
-* License: <https://raw.githubusercontent.com/alexei/sprintf.js/master/LICENSE>
 * License Name: BSD-style 3-Clause License
 * License Id: BSD-3-Clause
 
@@ -1490,15 +1454,6 @@ License Id: -
 * License Name: MIT License
 * License Id: MIT
 
-#### supports-color
-
-* Name: supports-color
-* Version: 7.2.0
-* Project Home: <https://github.com/chalk/supports-color>
-* License: <https://raw.githubusercontent.com/chalk/supports-color/refs/heads/main/license>
-* License Name: MIT License
-* License Id: MIT
-
 #### timezone
 
 * Name: timezone
@@ -1511,7 +1466,7 @@ License Id: -
 #### toidentifier
 
 * Name: toidentifier
-* Version: 1.0.0
+* Version: 1.0.1
 * Project Home: <https://github.com/component/toidentifier>
 * License: <https://raw.githubusercontent.com/component/toidentifier/refs/heads/master/LICENSE>
 * License Name: MIT License
@@ -1580,11 +1535,3 @@ License Id: -
 * License Name: MIT License
 * License Id: MIT
 
-#### yallist
-
-* Name: yallist
-* Version: 4.0.0
-* Project Home: <https://github.com/isaacs/yallist>
-* License: <https://raw.githubusercontent.com/isaacs/yallist/main/LICENSE.md>
-* License Name: ISC
-* License Id: ISC

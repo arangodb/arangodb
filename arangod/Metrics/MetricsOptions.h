@@ -37,7 +37,6 @@ enum class UsageTrackingMode {
 
 struct MetricsOptions {
   bool exportAPI = true;
-  bool exportReadWriteMetrics = false;
   bool ensureWhitespace = true;
   std::string usageTrackingModeString = "disabled";
 

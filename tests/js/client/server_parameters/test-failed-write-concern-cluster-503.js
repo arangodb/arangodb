@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Max Neunhoeffer
-/// @author Copyright 2023, ArangoDB Inc, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 if (getOptions === true) {
@@ -36,12 +34,7 @@ const cn = "UnitTestsCollection";
 let db = require('internal').db;
 let lh = require('@arangodb/testutils/replicated-logs-helper');
 let lpreds = require('@arangodb/testutils/replicated-logs-predicates');
-let reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
-
-let {
-  getEndpointById,
-  getCtrlDBServers
-} = require('@arangodb/test-helper');
+let IM = global.instanceManager;
 
 const replicationVersion = db._properties().replicationVersion;
 
@@ -57,18 +50,13 @@ function testSuite() {
     },
     
     testFailedBehaviour : function() {
-      let coordinator = arango.getEndpoint();
-
       let c = db._collection(cn);
       let shards = c.shards(true);
       let shard = Object.keys(shards)[0];
       let servers = shards[shard];
       assertEqual(2, servers.length);
 
-      let dbServers = getCtrlDBServers();
-      let followerId = servers[1];
-      let followerCtrl = dbServers.filter(s => s.id === followerId)[0];
-      let follower1 = getEndpointById(servers[1]);
+      let follower1 = IM.getInstanceByID(servers[1]);
 
       try {
         // Insert two documents:
@@ -76,15 +64,13 @@ function testSuite() {
         let d2 = c.insert({Hallo:2});
 
         if (replicationVersion === "1") {
-          reconnectRetry(follower1, "_system", "root", "");
-          arango.PUT_RAW("/_admin/debug/failat/LogicalCollection::insert", {});
-          arango.PUT_RAW("/_admin/debug/failat/SynchronizeShard::disable", {});
-          reconnectRetry(coordinator, "_system", "root", "");
+          follower1.debugSetFailAt("LogicalCollection::insert");
+          follower1.debugSetFailAt("SynchronizeShard::disable");
           let d = c.insert({Hallo:1});  // This drops the followers, but works
         } else {
           // stop the follower, causing a failed write concern
-          followerCtrl.suspend();
-          lh.waitFor(lpreds.serverFailed(followerId));
+          follower1.suspend();
+          lh.waitFor(lpreds.serverFailed(follower1.id));
         }
 
         // INSERT test, single document:
@@ -180,13 +166,11 @@ function testSuite() {
 
       } finally {
         if (replicationVersion === "1") {
-          reconnectRetry(follower1, "_system", "root", "");
-          arango.DELETE_RAW("/_admin/debug/failat/LogicalCollection::insert");
-          arango.DELETE_RAW("/_admin/debug/failat/SynchronizeShard::disable");
-          reconnectRetry(coordinator, "_system", "root", "");
+          follower1.debugClearFailAt("LogicalCollection::insert");
+          follower1.debugClearFailAt("SynchronizeShard::disable");
         } else {
-          followerCtrl.resume();
-          lh.waitFor(lpreds.serverHealthy(followerId));
+          follower1.resume();
+          lh.waitFor(lpreds.serverHealthy(follower1.id));
         }
       }
     },

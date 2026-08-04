@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const cn = 'UnitTestsCollection';
@@ -46,7 +44,6 @@ if (runSetup === true) {
 }
 
 const jsunity = require('jsunity');
-const getMetric = require('@arangodb/test-helper').getMetricSingle;
 const time = require('internal').time;
 
 function FillIndexCacheOnStartup() {

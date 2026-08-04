@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestHandler/RestDocumentStateHandler.h"
@@ -42,7 +41,7 @@ namespace {
  * CustomTypeHandler to parse the collection ID from snapshot batches.
  */
 struct SnapshotTypeHandler final : public VPackCustomTypeHandler {
-  explicit SnapshotTypeHandler(TRI_vocbase_t& vocbase)
+  explicit SnapshotTypeHandler(Database& vocbase)
       : resolver(CollectionNameResolver(vocbase)) {}
 
   void dump(VPackSlice const& value, VPackDumper* dumper,

@@ -21,13 +21,16 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Wilfried Goesgens
-/// @author Max Neunhoeffer
-/// @author Copyright 2020, ArangoDB Inc, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
+const jsunity = require("jsunity");
+const {assertEqual, assertTrue, assertFalse, assertNotEqual, assertUndefined, assertNotUndefined} = jsunity.jsUnity.assertions;
+const db = require('@arangodb').db;
+const arango = require('@arangodb').arango;
 const crypto = require('@arangodb/crypto');
 const request = require('@arangodb/request');
+const users = require("@arangodb/users");
+let IM = global.instanceManager;
 
 const jwtSecret = 'abc123';
 
@@ -53,16 +56,7 @@ if (runSetup === true) {
   return true;
 }
 
-var jsunity = require('jsunity');
-
 function testSuite() {
-  let endpoint = arango.getEndpoint();
-  let db = require("@arangodb").db;
-
-  let baseUrl = function () {
-    return endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
-  };
-
   const jwt = crypto.jwtEncode(jwtSecret, {
     "server_id": "ABCD",
     "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
@@ -70,7 +64,7 @@ function testSuite() {
 
   return {
     testCanAccessAdminLogEntriesRw : function() {
-      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_rw", "testi");
       let result = arango.GET("/_admin/log/entries");
       assertTrue(result.error);
       assertEqual(403, result.code);
@@ -79,7 +73,7 @@ function testSuite() {
     },
 
     testCanAccessAdminLogEntriesRo : function() {
-      arango.reconnect(endpoint, db._name(), "test_ro", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_ro", "testi");
       let result = arango.GET("/_admin/log/entries");
       assertTrue(result.error);
       assertEqual(403, result.code);
@@ -88,28 +82,28 @@ function testSuite() {
     },
 
     testCanAccessAdminLogLevelRw : function() {
-      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_rw", "testi");
       let result = arango.GET("/_admin/log/level");
       assertTrue(result.error);
       assertEqual(403, result.code);
     },
 
     testCanAccessAdminLogLevelRo : function() {
-      arango.reconnect(endpoint, db._name(), "test_ro", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_ro", "testi");
       let result = arango.GET("/_admin/log/level");
       assertTrue(result.error);
       assertEqual(403, result.code);
     },
 
     testCanChangeLogLevelRw : function() {
-      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_rw", "testi");
       let result = arango.PUT("/_admin/log/level",{"memory":"info"});
       assertTrue(result.error);
       assertEqual(403, result.code);
     },
 
     testCanChangeAdminLogLevelRo : function() {
-      arango.reconnect(endpoint, db._name(), "test_ro", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_ro", "testi");
       let result = arango.PUT("/_admin/log/level",{"memory":"info"});
       assertTrue(result.error);
       assertEqual(403, result.code);
@@ -117,7 +111,7 @@ function testSuite() {
 
     testCanAccessAdminLogEntriesJWT : function() {
       let res = request.get({
-        url: baseUrl() + "/_admin/log/entries",
+        url: IM.url + "/_admin/log/entries",
         auth: {
           bearer: jwt,
         }
@@ -140,7 +134,7 @@ function testSuite() {
 
     testCanAccessAdminLogLevelJWT : function() {
       let res = request.get({
-        url: baseUrl() + "/_admin/log/level",
+        url: IM.url + "/_admin/log/level",
         auth: {
           bearer: jwt,
         }
@@ -157,7 +151,7 @@ function testSuite() {
 
     testCanModifyAdminLogLevelJWT : function() {
       let res = request.put({
-        url: baseUrl() + "/_admin/log/level",
+        url: IM.url + "/_admin/log/level",
         auth: {
           bearer: jwt,
         },

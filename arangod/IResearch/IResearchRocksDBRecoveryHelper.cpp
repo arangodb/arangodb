@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <algorithm>
@@ -54,7 +53,6 @@
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBValue.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -92,8 +90,7 @@ IResearchRocksDBRecoveryHelper::IResearchRocksDBRecoveryHelper(
 
 void IResearchRocksDBRecoveryHelper::prepare() {
   TRI_ASSERT(_server);
-  _engine =
-      &_server->getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+  _engine = &_server->getFeature<RocksDBEngine>();
   _dbFeature = &_server->getFeature<DatabaseFeature>();
   _documentCF = RocksDBColumnFamilyManager::get(
                     RocksDBColumnFamilyManager::Family::Documents)

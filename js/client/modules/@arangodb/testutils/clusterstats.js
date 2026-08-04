@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global print, arango */
+/* global print */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -22,7 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal');

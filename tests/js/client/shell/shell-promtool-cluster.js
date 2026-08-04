@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global print, assertNotEqual, assertFalse, assertTrue, assertEqual, fail, arango */
+/* global print, fail */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -21,17 +21,17 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
+const {assertEqual, assertNotEqual, assertTrue, assertFalse} = jsunity.jsUnity.assertions;
 const internal = require('internal');
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const console = require('console');
-const request = require("@arangodb/request");
-const expect = require('chai').expect;
 const errors = require('@arangodb').errors;
+const arango = require('@arangodb').arango;
+let IM = global.instanceManager;
 
 // name of environment variable
 const PATH = 'PROMTOOL_PATH';
@@ -39,6 +39,9 @@ const PATH = 'PROMTOOL_PATH';
 // detect the path to promtool
 let promtoolPath = internal.env[PATH];
 if (!promtoolPath) {
+  promtoolPath='/usr/bin/promtool';
+}
+if (!fs.exists(promtoolPath)) {
   promtoolPath = '.';
 }
 if (fs.isDirectory(promtoolPath)) {
@@ -50,10 +53,13 @@ const serverIdPath = "/_admin/server/id";
 const healthUrl = "_admin/cluster/health";
 
 function getServerId(server) {
-  let res = request.get({
-    url: server.url + serverIdPath
+  IM.rememberConnection();
+  let res = "";
+  server.toThisInstance(() => {
+    res = arango.GET_RAW(serverIdPath).parsedBody.id;
   });
-  return res.json.id;
+  IM.reconnectMe();
+  return res;
 }
 
 function getServerShortName(server) {
@@ -68,22 +74,25 @@ function getServerShortName(server) {
 }
 
 function checkThatServerIsResponsive(server) {
+  IM.rememberConnection();
+  var result = false;
   try {
     let serverName = getServerShortName(server);
+    let res = "";
     print("Checking if server " + serverName + " is responsive.");
-    let res = request.get({
-      url: server.url + metricsUrlPath
+    server.toThisInstance(() => {
+      res = arango.GET_RAW(metricsUrlPath);
     });
-    if (res.body.includes(serverName) && res.statusCode === 200) {
+    if (res !== "" && res.code === 200 && res.parsedBody.includes(serverName)) {
       print("Server " + serverName + " is OK!");
-      return true;
+      result = true;
     } else {
       print("Server " + serverName + " doesn't respond properly to requests.");
-      return false;
     }
   } catch(error){
-    return false;
   }
+  IM.reconnectMe();
+  return result;
 }
 
 function checkThatAllDbServersAreHealthy() {
@@ -155,21 +164,27 @@ function checkMetricsBelongToServer(metrics, server) {
 
 function validateMetricsOnServer(server) {
   print("Querying server ", server.name);
-  let res = request.get({
-    url: server.url + metricsUrlPath
+  IM.rememberConnection();
+  let res = "";
+  server.toThisInstance(() => {
+    res = arango.GET_RAW(metricsUrlPath);
   });
-  expect(res).to.be.an.instanceof(request.Response);
-  expect(res).to.have.property('statusCode', 200);
+  IM.reconnectMe();
+  assertEqual(res.code, 200);
   let body = String(res.body);
   validateMetrics(body);
 }
 
 function validateMetricsViaCoordinator(coordinator, server) {
   let serverId = getServerId(server);
-  let metricsUrl = coordinator.url + metricsUrlPath + "?serverId=" + serverId;
-  let res = request.get({ url: metricsUrl });
-  expect(res).to.be.an.instanceof(request.Response);
-  expect(res).to.have.property('statusCode', 200);
+  let metricsUrl = metricsUrlPath + "?serverId=" + serverId;
+  let res = "";
+  IM.rememberConnection();
+  coordinator.toThisInstance(() => {
+    res = arango.GET_RAW(metricsUrl);
+  });
+  IM.reconnectMe();
+  assertEqual(res.code, 200);
   let body = String(res.body);
   validateMetrics(body);
   checkMetricsBelongToServer(body, server);
@@ -211,11 +226,15 @@ function promtoolClusterSuite() {
     testInvalidServerId: function () {
       //query metrics from coordinator, supplying invalid server id
       let coordinator = coordinators[0];
-      let metricsUrl = coordinator.url + metricsUrlPath + "?serverId=" + "invalid-server-id";
-      let res = request.get({ url: metricsUrl });
-      expect(res).to.be.an.instanceof(request.Response);
-      expect(res).to.have.property('statusCode', 404);
-      expect(res.json.errorNum).to.equal(errors.ERROR_HTTP_BAD_PARAMETER.code);
+      let metricsUrl = metricsUrlPath + "?serverId=" + "invalid-server-id";
+      let res = "";
+      IM.rememberConnection();
+      coordinator.toThisInstance(() => {
+        res = arango.GET_RAW(metricsUrl);
+      });
+      IM.reconnectMe();
+      assertEqual(res.code, 404);
+      assertEqual(res.parsedBody.errorNum, errors.ERROR_HTTP_BAD_PARAMETER.code);
     },
     testServerDoesntRespond: function () {
       //query metrics from coordinator, supplying id of a server, that is shut down

@@ -3,6 +3,7 @@ if (USE_ENTERPRISE)
   add_executable(${BIN_ARANGOBACKUP}
     ${ProductVersionFiles_arangobackup}
     BackupFeature.cpp
+    BackupOptionsProvider.cpp
     arangobackup.cpp
   )
   target_include_directories(${BIN_ARANGOBACKUP} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)

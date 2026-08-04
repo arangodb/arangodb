@@ -18,13 +18,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "Zkd/ZkdHelper.h"
 
 namespace arangodb {
 

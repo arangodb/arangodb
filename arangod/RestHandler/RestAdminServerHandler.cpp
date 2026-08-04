@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAdminServerHandler.h"
@@ -35,11 +34,11 @@
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/ApiRecordingFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Utils/ExecContext.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Utils/ExecContext.h"
 #include "VocBase/VocbaseInfo.h"
 
 using namespace arangodb;
@@ -50,6 +49,7 @@ RestAdminServerHandler::RestAdminServerHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
     : RestBaseHandler(server, request, response),
+      _engine(server.getFeature<DatabaseFeature>().engine()),
       _apiRecordingFeature(server.getFeature<ApiRecordingFeature>()) {}
 
 RestStatus RestAdminServerHandler::execute() {
@@ -161,9 +161,7 @@ void RestAdminServerHandler::handleAvailability() {
       }
       if (available) {
         // also ask storage engine for its health
-        StorageEngine& engine =
-            server().getFeature<EngineSelectorFeature>().engine();
-        available = engine.healthCheck().res.ok();
+        available = _engine.healthCheck().res.ok();
       }
       break;
     }

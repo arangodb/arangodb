@@ -18,22 +18,18 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include <memory>
 #include <utils/type_id.hpp>
-#include <unordered_set>
 
 #include "Basics/Result.h"
 #include "IResearch/IResearchCommon.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
-#include "VocBase/voc-types.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/IResearch/IResearchOptimizeTopK.h"
@@ -41,6 +37,7 @@
 
 namespace arangodb {
 
+struct Database;
 class LogicalCollection;
 class LogicalView;
 
@@ -99,7 +96,7 @@ struct IResearchLinkHelper {
   //////////////////////////////////////////////////////////////////////////////
   static Result normalize(
       velocypack::Builder& normalized, velocypack::Slice definition,
-      bool isCreation, TRI_vocbase_t const& vocbase, LinkVersion defaultVersion,
+      bool isCreation, Database const& vocbase, LinkVersion defaultVersion,
       IResearchViewSort const* primarySort = nullptr,
       irs::type_info::type_id const* primarySortCompression = nullptr,
       IResearchViewStoredValues const* storedValues = nullptr,
@@ -116,7 +113,7 @@ struct IResearchLinkHelper {
   ///        * collection permissions
   ///        * valid link meta
   //////////////////////////////////////////////////////////////////////////////
-  static Result validateLinks(TRI_vocbase_t& vocbase, velocypack::Slice links);
+  static Result validateLinks(Database& vocbase, velocypack::Slice links);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief visits all links in a collection

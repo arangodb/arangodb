@@ -21,23 +21,21 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Simon Grätzer
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 
 const arangodb = require("@arangodb");
 const db = arangodb.db;
-const ERRORS = arangodb.errors;
 const _ = require("lodash");
-const wait = require("internal").wait;
-const suspendExternal = require("internal").suspendExternal;
-const continueExternal = require("internal").continueExternal;
 const {
-  getDBServers,
-  getEndpointById,
-} = require("@arangodb/test-helper");
+  wait,
+  time,
+  wal,
+} = require("internal");
+let { instanceRole } = require('@arangodb/testutils/instance');
 const CI = require('@arangodb/cluster-info');
+let IM = global.instanceManager;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -94,17 +92,10 @@ function ClusterTransactionSuite() {
   ////////////////////////////////////////////////////////////////////////////////
 
   function failFollower() {
-    var follower = cinfo.shards[shards[0]][1];
-    var endpoint = getEndpointById(follower);
-    let arangods = getDBServers();
-
-    var pos = _.findIndex(arangods,
-                          x => x.url === endpoint);
-  
-    assertTrue(pos >= 0);
-    assertTrue(suspendExternal(arangods[pos].pid));
+    var followerID = cinfo.shards[shards[0]][1];
+    var follower = IM.getInstanceByID(followerID);
+    assertTrue(follower.suspend());
     console.info("Have failed follower", follower);
-    return pos;
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -112,15 +103,10 @@ function ClusterTransactionSuite() {
   ////////////////////////////////////////////////////////////////////////////////
 
   function healFollower() {
-    var follower = cinfo.shards[shards[0]][1];
-    var endpoint = getEndpointById(follower);
-    let arangods = getDBServers();
-
-    var pos = _.findIndex(arangods,
-                          x => x.url === endpoint);
-    assertTrue(pos >= 0);
-    assertTrue(continueExternal(arangods[pos].pid));
-    console.info("Have healed follower", follower);
+    var followerID = cinfo.shards[shards[0]][1];
+    var follower = IM.getInstanceByID(followerID);
+    assertTrue(follower.resume());
+    console.info("Have healed follower", followerID);
   }
 
 
@@ -167,29 +153,29 @@ function ClusterTransactionSuite() {
     /// @brief check if a synchronously replicated collection gets online
     ////////////////////////////////////////////////////////////////////////////////
 
-    testSetup : function () {
+    testSetup: function () {
       for (var count = 0; count < 120; ++count) {
-        let dbservers = getDBServers();
-        if (dbservers.length === 5) {
+        const dbServers = IM.getInstancesRole(instanceRole.dbserver);
+        if (dbServers.length === 5) {
           assertTrue(waitForSynchronousReplication("_system"));
           return;
         }
-        console.log("Waiting for 5 dbservers to be present:", JSON.stringify(dbservers));
+        console.log("Waiting for 5 dbservers to be present:", JSON.stringify(dbServers));
         wait(1.0);
       }
       assertTrue(false, "Timeout waiting for 5 dbservers.");
     },
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief fail the follower, transaction should succeed regardless
-  ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief fail the follower, transaction should succeed regardless
+    ////////////////////////////////////////////////////////////////////////////////
     testFailFollower: function () {
       assertTrue(waitForSynchronousReplication("_system"));
 
       let docs = [];
       let x = 0;
       while (x++ < 1000) {
-        docs.push({_key: 'test' + x});
+        docs.push({ _key: 'test' + x });
       }
       db._collection(cn).save(docs);
       assertEqual(db._collection(cn).count(), 1000);

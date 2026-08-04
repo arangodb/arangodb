@@ -16,17 +16,88 @@
   edges. The `MATCH` statement remains experimental (`matchStatement:
   "experimental"`).
 
+* COR-677: Modern WeightAttribute for kShortestPaths and ShortestPaths
+  Allow sub-attribute as weightAttribute for SHORTEST_PATH and
+  K_SHORTEST_PATHS (same semantics as COR-564 for weighted traversals).
+
+  The `weightAttribute` option for shortest-path queries now accepts nested
+  attribute paths. For an edge document like `{ "Data": { "Weight": 3 } }`:
+  `OPTIONS { weightAttribute: ["Data", "Weight"] }`
+
+  A `.` character is still interpreted as a literal top-level attribute name:
+  `OPTIONS { weightAttribute: "Data.Weight" }`
+
+* Upgraded included rclone to v1.74.4 with go1.25.12 and non-vulnerable
+  dependencies.
+
+* Updated ArangoDB Starter to v0.20.0-preview-13.
+
+* Removed the deprecated `hash` and `skiplist` index types from the index
+  aliases reported by the `GET /_api/engine` endpoint, as they can no longer
+  be created.
+
+* COR-679: Added AQL array `ALL`/`ANY`/`NONE`/`AT LEAST` support for the `=~` and
+  `!~` regex operators, e.g. `["foo", "bar"] ANY =~ "^ba"` and
+  `["foo1", "bar2", "baz3baz"] AT LEAST(2) =~ "\\w\\d$"`.
+
+* COR-419: Allow multiple edge type in relation.
+
+* COR-707 - CONTAINS(): Raise a warning for non-string inputs.
+  Improved validation for the AQL CONTAINS() function. When either argument is not a string,
+  CONTAINS() now emits a warning and returns null, aligning its behavior with the documented specification. This helps users identify unsupported input types and detect potential query issues more easily.
+
+* COR-564: Allow sub-attribute as weightAttribute for traversal.
+  
+  The `weightAttribute` option for weighted traversals is no longer limited to
+  top-level document attributes. For an edge document like
+  `{ "Data": { "Weight": 3 } }`, you can use the value of the inner object by
+  specifying an array of strings as follows:
+
+  `OPTIONS { order: "weighted", weightAttribute: ["Data", "Weight"] }`
+
+  A `.` character is still interpreted as a literal dot to select the value of
+  a top-level document attribute, like `{ "Data.Weight": 6 }`:
+
+  `OPTIONS { order: "weighted", weightAttribute: ["Data.Weight"] }`
+
+  You can still pass a string as before for backward compatibility, which is
+  equivalent to the above example that selects a top-level attribute:
+
+  `OPTIONS { order: "weighted", weightAttribute: "Data.Weight" }
+
+* COR-552: Added a new AQL string function PARTITION(input, separator [, occurrence]) that splits 
+  a string at the specified occurrence of the separator and returns an array of exactly three strings: the portion before the separator, the separator itself, and the portion after the separator. The optional occurrence parameter defaults to 1 (first match); positive values select the n-th match from the start, negative values select from the end (-1 is the last match).
+  
+* COR-688: BugFix - Fixed inconsistent handling of null in array and object spread operations. 
+  null spread operands now produce query warnings, matching the behavior of other unsupported operand types.
+
+* COR-553: Added AQL array `ALL`/`ANY`/`NONE`/`AT LEAST` support for the `LIKE`
+  operator, e.g. `["foo", "bar"] ANY LIKE "b%"` and
+  `["foo", "bar", "baz"] AT LEAST(2) LIKE "b%"`.
+
+* COR-379: Bind Parameters in Edge collection types.
+
+* COR-380: Bind Parameters in Vertex collection types.
+
+* COR-458: Supports dynamic object composition similar to JavaScript object spreading, 
+  enabling efficient object merging and extension with minimal effort, and now follows 
+  a last-key-wins strategy instead of the previous first-key-wins behavior.
+  
+* Upgraded OpenSSL to 3.5.7.
+
 * COR-572: BugFix - Resolved unintended warnings raised by eager evaluation in 
   the ternary operator during traversal and optimization.
-
-* Updated ArangoDB Starter to v0.20.0-preview-12.
-
-* Upgraded included rclone to v1.73.5 with go1.25.11 and non-vulnerable
-  dependencies.
 
 * COR-522: Use Distribute on repeated smart edge join.
 
 * COR-299: Upgrade ScatterNode to DistributeNode if shardkey is known
+
+* COR-539: The geo index optimizer and iterators now support
+  `GEO_CONTAINS` with the indexed field as the first argument
+  (e.g. `FILTER GEO_CONTAINS(doc.geometry, @shape)`), in addition to the
+  existing `GEO_CONTAINS(@shape, doc.geometry)` form. Previously such
+  queries did not use the geo index and were executed as a full collection
+  scan.
 
 * COR-540: When spreading arrays, register a warning when input is neither an array nor null.
 
@@ -74,8 +145,6 @@
   string, behavior is unchanged: `+` still applies the existing numeric coercion
   for `null`, booleans, arrays, objects, and numbers. Constant `+` expressions
   are constant-folded at optimization time using the same rules as at runtime.
-
-* Upgraded OpenSSL to 3.5.6.
 
 * COR-293: Removed ConnectionStatistics and replaced with MetricsFeature for connection tracking.
 
@@ -363,12 +432,82 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
-* Upgraded included rclone to v1.73.5 with go1.25.10 and non-vulnerable
+* COR-759: AQL unary plus/minus on bind parameters silently return incorrect values
+  AQL: Fixed an issue where queries using unary operators (+ and -) with bind parameters could cause the server to terminate unexpectedly. These queries are now handled correctly and return the expected results.
+  
+
+* Upgraded included rclone to v1.74.4 with go1.25.12 and non-vulnerable
   dependencies.
 
-* Updated node module fast-uri to 3.1.2.
+* Updated ArangoDB Starter to v0.19.24.
 
-* Updated ArangoDB Starter to v0.19.22.
+* COR-613: Create Response Code Metrics
+  arangodb_http_response_http_response_code_total{code="<response-code>"}
+
+* COR-728: Removed the telemetrics API and the arangosh telemetrics client.
+
+* GitHub issue #22532: Fixed query editor content becoming hidden after resizing
+  the editor pane in the web UI.
+
+* Add missing case to return 403 for error HTTP_UNAUTHORIZED.
+
+* COR-537, github issue #21843: Fixed incorrect sorting order bug when using
+  inverted indexes.
+
+* GitHub issue #22821: Fix overflow issues in LIFO and FIFO cursor queues.
+
+* COR-670: Fixed a crash when a vector query with covered projections ran while
+  its vector index was still being built.
+
+* Updated node modules:
+ - qs to 6.15.2
+ - brace-expansion to 5.0.6
+ - js-yaml to 4.2.0
+
+* Upgraded OpenSSL to 3.5.7.
+
+* COR-607: Fix a problem that causes cluster queries involving a materialize node
+  collection access that is used as a satellite to crash in maintainer mode,
+  and fail with an internal error with the message "Did not find a DBServer to
+  contact for RemoteNode" in production.
+
+* COR-473: Enabled linear scanning of shards that are untrained and in
+  unusable state for having insufficient documents
+
+* COR-616: Fixed a DB-Server error during rolling upgrades when deserializing a graph
+  traversal plan from an older coordinator that lacks the "protoCollection"
+  attribute.
+
+* COR-584/OASIS-27899: Fixed an edge case in range_column_iterator::seek where
+  executing a seek on an uninitialized iterator would return incorrect results
+  if the target is greater than the max value of that iterator.
+
+* COR-573: Fix missing erase after std::ranges::remove.
+
+* COR-75: Removed RocksDBKeyLeaser, making RocksDBKey own its leased string buffer directly.
+
+* COR-471: Improved filter optimization, rewriting `x IN [a]` to `x == a`,
+  removing always-false/true branches, and deduplicating identical conditions.
+  Fixed `==`/`!=` incorrectly using ICU comparison instead of byte comparison.
+
+* Fix shipped cmake file to make the build work on cmake >= 4.
+
+* Upgraded FAISS to v1.14.2.
+
+* COR-320: Vector search now supports projections, allowing covered queries
+  to skip the document materialization step. Adds optimizer rule
+  `materialize-for-enumerate-near`.
+
+* [COR-546]: Fixed bug in the `remove-filter-covered-by-traversal`
+  optimizer rule where filters on path arrays with different quantifiers
+  (e.g. `ALL` vs `NONE`) were incorrectly treated as equivalent and one
+  of the filters could be dropped, producing wrong query results.
+
+* COR-387: Synchronous vector index creation no longer throws when training
+  fails. The index is created with `trainingState: "unusable"` and the
+  training error returned in `errorMessage`.
+
+* Updated node module fast-uri to 3.1.2.
 
 * COR-519: Vector index `factory` strings may now be combined with the scaling
   `nLists` specification (previously rejected). A factory string can contain a
@@ -389,6 +528,12 @@
  - brace-expansion to 1.1.13
  - ajv to 8.18.0
  - @xmldom/xmldom@0.8.13
+
+* COR-467: Extended `compareAstNodes` to compare AST nodes that are not directly
+  VPack-serializable (references, attribute accesses, function calls, operators).
+  `a == b` and `b == a` (and `!=`) compare as equal, as do NARY conditions and
+  IN/NOT IN literal arrays regardless of operand order. Bind parameters and
+  quantifiers are also handled.
 
 * COR-466: Added constant folding empty array comparisons in `FILTER` nodes,
   allowing filter optimizations:

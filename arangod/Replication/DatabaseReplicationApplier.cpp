@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -36,7 +35,6 @@
 #include "Logger/LoggerStream.h"
 #include "Replication/DatabaseInitialSyncer.h"
 #include "Replication/DatabaseTailingSyncer.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/vocbase.h"
 

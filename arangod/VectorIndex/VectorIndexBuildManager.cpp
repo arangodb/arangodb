@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "VectorIndex/VectorIndexBuildManager.h"
@@ -35,7 +34,7 @@
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBIndex.h"
@@ -82,17 +81,18 @@ namespace arangodb::vector {
 
 VectorIndexBuildManager::VectorIndexBuildManager(
     DatabaseFeature& dbFeature, MaintenanceFeature& maintenance,
-    metrics::MetricsFeature& metrics, Scheduler& scheduler)
+    metrics::IRegistry& metricsRegistry, Scheduler& scheduler)
     : _dbFeature(dbFeature),
       _maintenance(maintenance),
       _scheduler(scheduler),
       _resourceMonitor(GlobalResourceMonitor::instance()),
-      _untrainedCount(metrics.add(arangodb_vector_index_unusable{})),
+      _untrainedCount(metricsRegistry.add(arangodb_vector_index_unusable{})),
       _trainingOngoingCount(
-          metrics.add(arangodb_vector_index_training_ongoing{})),
-      _trainingDuration(metrics.add(arangodb_vector_index_training_duration{})),
+          metricsRegistry.add(arangodb_vector_index_training_ongoing{})),
+      _trainingDuration(
+          metricsRegistry.add(arangodb_vector_index_training_duration{})),
       _ingestionDuration(
-          metrics.add(arangodb_vector_index_ingestion_duration{})) {}
+          metricsRegistry.add(arangodb_vector_index_ingestion_duration{})) {}
 
 void VectorIndexBuildManager::start() {
   _thread = std::jthread([this](std::stop_token stopToken) { run(stopToken); });

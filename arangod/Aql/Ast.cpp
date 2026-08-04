@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ast.h"
@@ -53,12 +52,14 @@
 #include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
+#include "VocBase/vocbase.h"
 
 #include <absl/strings/str_cat.h>
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <cstdint>
+#include <ranges>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -1337,6 +1338,57 @@ AstNode* Ast::createNodeBooleanExpansion(int64_t levels,
   return node;
 }
 
+namespace {
+AstNode* createNodeArrayMatchOperator(Ast* ast, AstNode const* lhs,
+                                      AstNode const* pattern,
+                                      AstNode const* quantifier, bool negate,
+                                      char const* functionName) {
+  TRI_ASSERT(lhs != nullptr);
+  TRI_ASSERT(pattern != nullptr);
+  TRI_ASSERT(quantifier != nullptr);
+
+  std::string const varName = ast->variables()->nextName() + "_";
+  AstNode* iterator =
+      ast->createNodeIterator(varName.c_str(), varName.size(), lhs);
+  auto* variableNode = iterator->getMember(0);
+  TRI_ASSERT(variableNode->type == NODE_TYPE_VARIABLE);
+  auto* variable = static_cast<Variable*>(variableNode->getData());
+
+  AstNode* arguments = ast->createNodeArray(2);
+  arguments->addMember(ast->createNodeReference(variable));
+  arguments->addMember(pattern);
+
+  AstNode* matchCall =
+      ast->createNodeFunctionCall(functionName, arguments, false);
+  AstNode* filter = negate ? ast->createNodeUnaryOperator(
+                                 NODE_TYPE_OPERATOR_UNARY_NOT, matchCall)
+                           : matchCall;
+
+  AstNode* arrayFilter = ast->createNodeArrayFilter(quantifier, filter);
+
+  return ast->createNodeBooleanExpansion(
+      1, iterator, ast->createNodeReference(variable), arrayFilter);
+}
+}  // namespace
+
+/// @brief create an AST node for array ALL|ANY|NONE|AT LEAST LIKE expressions
+AstNode* Ast::createNodeArrayLikeOperator(AstNode const* lhs,
+                                          AstNode const* pattern,
+                                          AstNode const* quantifier,
+                                          bool negate) {
+  return createNodeArrayMatchOperator(this, lhs, pattern, quantifier, negate,
+                                      "LIKE");
+}
+
+/// @brief create an AST node for array ALL|ANY|NONE|AT LEAST =~/!~ expressions
+AstNode* Ast::createNodeArrayRegexOperator(AstNode const* lhs,
+                                           AstNode const* pattern,
+                                           AstNode const* quantifier,
+                                           bool negate) {
+  return createNodeArrayMatchOperator(this, lhs, pattern, quantifier, negate,
+                                      "REGEX_TEST");
+}
+
 /// @brief create an AST expansion node, with or without a filter
 AstNode* Ast::createNodeExpansion(int64_t levels, AstNode const* iterator,
                                   AstNode const* expanded,
@@ -2082,6 +2134,12 @@ AstNode* Ast::createNodeVariableOrReference(std::string_view name) {
 
 AstNode* Ast::createNodeArraySplice(AstNode const* in) {
   AstNode* node = createNode(NODE_TYPE_ARRAY_SPLICE);
+  node->addMember(in);
+  return node;
+}
+
+AstNode* Ast::createNodeObjectSplice(AstNode const* in) {
+  AstNode* node = createNode(NODE_TYPE_OBJECT_SPLICE);
   node->addMember(in);
   return node;
 }
@@ -3494,6 +3552,18 @@ AstNode* Ast::optimizeUnaryOperatorArithmetic(AstNode* node) {
     return node;
   }
 
+  // Bind parameters report as constant (their eventual values are constant),
+  // but at parse time they are still NODE_TYPE_PARAMETER and cannot be cast
+  // via castToNumber() yet. This function is also invoked from the parser
+  // (grammar.y) before bind parameters are injected, so we must only fold
+  // operands that castToNumber() can handle without unresolved parameters.
+  // ATTRIBUTE_ACCESS is excluded here too: e.g. +@doc.attr is constant but
+  // still parameter-backed until bind injection.
+  if (operand->type != NODE_TYPE_VALUE && operand->type != NODE_TYPE_ARRAY &&
+      operand->type != NODE_TYPE_OBJECT) {
+    return node;
+  }
+
   // operand is a constant, now convert it into a number
   AstNode const* converted = operand->castToNumber(this);
 
@@ -3696,11 +3766,12 @@ AstNode* Ast::optimizeBinaryOperatorRelational(
 
   if (!lhsIsConst) {
     if (rhs->numMembers() >= AstNode::kSortNumberThreshold &&
-        rhs->type == NODE_TYPE_ARRAY &&
+        rhs->type == NODE_TYPE_ARRAY && rhs->isConstant() &&
         (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
          node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
-      // if the IN list contains a considerable amount of items, we will sort
-      // it, so we can find elements quicker later using a binary search
+      // only sort constant arrays; non-constant ones can't be sorted at compile
+      // time. if the IN list contains a considerable amount of items, we will
+      // sort it, so we can find elements quicker later using a binary search
       // note that sorting will also set a flag for the node
 
       // first copy the original node before sorting, as the node may be used
@@ -3925,7 +3996,7 @@ AstNode* Ast::optimizeAttributeAccess(
     std::string_view search = node->getStringView();
 
     ast::ObjectNode object(what);
-    for (auto member : object.getElements()) {
+    for (auto member : object.getElements() | std::views::reverse) {
       if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
           member->getStringView() == search) {
         // found matching member

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -26,12 +25,11 @@
 #include <gmock/gmock.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Utils/VersionTracker.h"
+#include "RestServer/DatabaseFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/VocbaseInfo.h"
 #include "Mocks/StorageEngineMock.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 
 namespace arangodb::replication2::tests {
 
@@ -56,10 +54,9 @@ struct MockVocbase : TRI_vocbase_t {
                        std::string const& name, std::uint64_t id)
       : TRI_vocbase_t(TRI_vocbase_t::mockConstruct,
                       createDatabaseInfo(server, name, id), storageEngine,
-                      versionTracker, true),
+                      dbProvider),
         storageEngine(server) {
-    server.addFeature<arangodb::EngineSelectorFeature>();
-    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(
+    server.getFeature<arangodb::DatabaseFeature>().setEngineTesting(
         &storageEngine);
   }
 
@@ -79,7 +76,7 @@ struct MockVocbase : TRI_vocbase_t {
   }
 
   StorageEngineMock storageEngine;
-  VersionTracker versionTracker;
+  ::testing::NiceMock<arangodb::tests::MockDatabaseProvider> dbProvider;
 };
 
 }  // namespace arangodb::replication2::tests

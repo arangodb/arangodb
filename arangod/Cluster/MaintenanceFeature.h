@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
-/// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -83,6 +81,9 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Maintenance"; }
 
+  explicit MaintenanceFeature(application_features::ApplicationServer& server,
+                              ClusterFeature* clusterFeature,
+                              MaintenanceOptions options);
   explicit MaintenanceFeature(application_features::ApplicationServer& server,
                               ClusterFeature* clusterFeature);
 

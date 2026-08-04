@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -41,12 +40,14 @@ class QueryInfoLoggerFeature final
   }
 
   explicit QueryInfoLoggerFeature(
+      application_features::ApplicationServer& server,
+      QueryInfoLoggerOptions options);
+  explicit QueryInfoLoggerFeature(
       application_features::ApplicationServer& server);
 
   ~QueryInfoLoggerFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
   void beginShutdown() override;
   void start() override;
   void stop() override;

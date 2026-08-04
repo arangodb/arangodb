@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertEqual, arango */
+/* global getOptions */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -21,9 +21,14 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
+
+const jsunity = require('jsunity');
+const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
+const arangodb = require('@arangodb');
+const arango = arangodb.arango;
+const request = require("@arangodb/request");
+let IM = global.instanceManager;
 
 if (getOptions === true) {
   return {
@@ -32,22 +37,16 @@ if (getOptions === true) {
     'server.jwt-secret': 'haxxmann',
   };
 }
-const jsunity = require('jsunity');
-const request = require('@arangodb/request');
 
 function testSuite() {
-  let baseUrl = function () {
-    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
-  };
-
   return {
     testSessionTimeout: function() {
-      let result = request.get(baseUrl() + "/_api/version");
+      let result = request.get(IM.url + "/_api/version");
       // no access
       assertEqual(401, result.statusCode);
 
       result = request.post({
-        url: baseUrl() + "/_open/auth", 
+        url: IM.url + "/_open/auth", 
         body: {
           username: "root",
           password: ""
@@ -59,7 +58,7 @@ function testSuite() {
       const jwt = result.json.jwt;
       
       result = request.get({
-        url: baseUrl() + "/_api/version",
+        url: IM.url + "/_api/version",
         auth: {
           bearer: jwt,
         }
@@ -71,7 +70,7 @@ function testSuite() {
       require("internal").sleep(6);
 
       result = request.get({
-        url: baseUrl() + "/_api/version",
+        url: IM.url + "/_api/version",
         auth: {
           bearer: jwt,
         }
@@ -86,7 +85,7 @@ function testSuite() {
       
       // Request JWT with custom 3-second expiry
       let result = request.post({
-        url: baseUrl() + "/_open/auth", 
+        url: IM.url + "/_open/auth", 
         body: {
           username: "root",
           password: "",
@@ -100,7 +99,7 @@ function testSuite() {
 
       // Token should work immediately
       result = request.get({
-        url: baseUrl() + "/_api/version",
+        url: IM.url + "/_api/version",
         auth: { bearer: jwt }
       });
       assertEqual(200, result.statusCode);
@@ -108,7 +107,7 @@ function testSuite() {
       internal.sleep(8);
 
       result = request.get({
-        url: baseUrl() + "/_api/version",
+        url: IM.url + "/_api/version",
         auth: { bearer: jwt }
       });
       
@@ -118,7 +117,7 @@ function testSuite() {
       internal.sleep(4);
 
       result = request.get({
-        url: baseUrl() + "/_api/version",
+        url: IM.url + "/_api/version",
         auth: { bearer: jwt }
       });
       
@@ -136,7 +135,7 @@ function arangoshTokenRenewalSuite() {
       const internal = require("internal");
       
       // Reconnect with username/password - gets JWT token with 5-second expiry
-      arango.reconnect(arango.getEndpoint(), "_system", "root", "");
+      arango.reconnect(IM.endpoint, "_system", "root", "");
       
       // Make requests over 12 seconds - token expires after 5 seconds
       // Automatic renewal should keep requests working
@@ -150,7 +149,7 @@ function arangoshTokenRenewalSuite() {
     testArangoshRenewalAfterExpiry: function() {
       const internal = require("internal");
       
-      arango.reconnect(arango.getEndpoint(), "_system", "root", "");
+      arango.reconnect(IM.endpoint, "_system", "root", "");
       
       let result = arango.GET_RAW("/_api/version");
       assertEqual(200, result.code);

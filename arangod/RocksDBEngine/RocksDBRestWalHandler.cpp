@@ -18,18 +18,17 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBRestWalHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
-#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterAdminOperations.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "StorageEngine/StorageEngine.h"
-#include "StorageEngine/EngineSelectorFeature.h"
+#include "Transaction/Manager.h"
 #include "Utils/ExecContext.h"
 
 #include <rocksdb/utilities/transaction_db.h>
@@ -39,8 +38,8 @@ using namespace arangodb::rest;
 
 RocksDBRestWalHandler::RocksDBRestWalHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
-    : RestBaseHandler(server, request, response) {}
+    GeneralResponse* response, StorageEngine* engine)
+    : RestBaseHandler(server, request, response), _engine(engine) {}
 
 RestStatus RocksDBRestWalHandler::execute() {
   std::vector<std::string> const& suffixes = _request->suffixes();
@@ -72,10 +71,7 @@ RestStatus RocksDBRestWalHandler::execute() {
       return RestStatus::DONE;
     }
 #endif
-    server()
-        .getFeature<EngineSelectorFeature>()
-        .engine()
-        .waitForEstimatorSync();
+    _engine->waitForEstimatorSync();
     generateResult(rest::ResponseCode::OK,
                    arangodb::velocypack::Slice::emptyObjectSlice());
     return RestStatus::DONE;
@@ -128,8 +124,7 @@ void RocksDBRestWalHandler::flush() {
     auto& feature = server().getFeature<ClusterFeature>();
     res = flushWalOnAllDBServers(feature, waitForSync, flushColumnFamilies);
   } else {
-    server().getFeature<EngineSelectorFeature>().engine().flushWal(
-        waitForSync, flushColumnFamilies);
+    _engine->flushWal(waitForSync, flushColumnFamilies);
   }
 
   if (res.fail()) {

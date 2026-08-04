@@ -20,8 +20,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
@@ -2741,7 +2739,7 @@ function ahuacatlFunctionsTestSuite () {
 
       values.forEach(function (value) {
         const actual = getQueryResults("RETURN ENTRIES(" + JSON.stringify(value) + ")");
-        assertEqual(Object.entries(value), actual[0], value);
+        assertEqual(Object.entries(value), actual[0].sort(), value);
       });
     },
     

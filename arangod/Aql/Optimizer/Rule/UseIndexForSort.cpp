@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "UseIndexForSort.h"
@@ -322,7 +320,15 @@ struct SortToIndexNode final
         _sortNode->setGroupedElements(numberOfCoveredAttributes);
         _modified = true;
       }
-    } else {
+    } else if (index->type() != Index::IndexType::TRI_IDX_TYPE_INVERTED_INDEX) {
+      //
+      //  For B-tree and skiplist based indexes that are
+      //  already sorted, we can kick the SortNode and prevent double sorting,
+      //  iff:
+      //  - there is only attribute access
+      //  - FILTER based only on equality matches (eg. doc.name == "John" and
+      //  doc.age == 20)
+      //  - the sort condition is based on an indexed attribute
       if (isOnlyAttributeAccess && indexes.size() == 1) {
         auto root = cond->root();
 

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Near.h"
@@ -250,7 +249,7 @@ void NearUtils<CMP>::reportFound(LocalDocumentId lid, S2Point const& center) {
   S1ChordAngle angle(_origin, center);
 
   // cheap rejections based on distance to target
-  if (!isFilterIntersects()) {
+  if (!isFilterIntersects() && !isFilterIsContained()) {
     if ((isAscending() && angle < _innerAngle) ||
         (isDescending() && angle > _outerAngle) || angle > _maxAngle ||
         angle < _minAngle) {

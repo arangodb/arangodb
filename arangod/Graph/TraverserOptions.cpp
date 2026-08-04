@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TraverserOptions.h"
@@ -33,6 +32,7 @@
 #include "Basics/tryEmplaceHelper.h"
 #include "Graph/Cursors/DBServerEdgeCursor.h"
 #include "Graph/Cursors/DBServerIndexCursor.h"
+#include "Graph/WeightAttributeHelper.h"
 #include "Indexes/Index.h"
 
 #include <velocypack/Iterator.h>
@@ -113,7 +113,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
     uniqueEdges = TraverserOptions::UniquenessLevel::PATH;
   }
 
-  weightAttribute = VPackHelper::getStringValue(obj, "weightAttribute", "");
+  weightAttribute = parseWeightAttribute(obj);
   defaultWeight = VPackHelper::getNumericValue<double>(obj, "defaultWeight", 1);
   if (defaultWeight < 0.) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT,
@@ -264,7 +264,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
                                      "The options require a uniqueEdges");
   }
 
-  weightAttribute = VPackHelper::getStringValue(info, "weightAttribute", "");
+  weightAttribute = parseWeightAttribute(info);
   defaultWeight =
       VPackHelper::getNumericValue<double>(info, "defaultWeight", 1);
   if (defaultWeight < 0.) {
@@ -474,7 +474,7 @@ void TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
       break;
   }
 
-  builder.add("weightAttribute", VPackValue(weightAttribute));
+  addWeightAttribute(builder, weightAttribute);
   builder.add("defaultWeight", VPackValue(defaultWeight));
 
   if (!vertexCollections.empty()) {
@@ -575,7 +575,7 @@ void TraverserOptions::buildEngineInfo(VPackBuilder& result) const {
       break;
   }
 
-  result.add("weightAttribute", VPackValue(weightAttribute));
+  addWeightAttribute(result, weightAttribute);
   result.add("defaultWeight", VPackValue(defaultWeight));
 
   if (!_depthLookupInfo.empty()) {

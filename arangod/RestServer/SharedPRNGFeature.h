@@ -18,13 +18,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/SharedPRNG.h"
 
 namespace arangodb {
 
@@ -35,9 +34,12 @@ class SharedPRNGFeature final
 
   explicit SharedPRNGFeature(application_features::ApplicationServer& server);
 
-  void prepare() override final;
-
   uint64_t rand() noexcept;
+
+  basics::SharedPRNG& getPRNG() noexcept { return _prng; }
+
+ private:
+  basics::SharedPRNG _prng;
 };
 
 }  // namespace arangodb

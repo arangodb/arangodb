@@ -18,19 +18,16 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBTrxBaseMethods.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 
 #include <absl/cleanup/cleanup.h>
 #include <absl/strings/str_cat.h>

@@ -18,11 +18,10 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestoreFeature.h"
+#include "Restore/RestoreOptionsProvider.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/BumpFileDescriptorsFeature.h"
@@ -1848,11 +1847,17 @@ Result RestoreFeature::RestoreSendJob::run(
 
 RestoreFeature::RestoreFeature(application_features::ApplicationServer& server,
                                ClientFeature& client, int& exitCode)
+    : RestoreFeature(server, client, exitCode, RestoreFeatureOptions{}) {}
+
+RestoreFeature::RestoreFeature(application_features::ApplicationServer& server,
+                               ClientFeature& client, int& exitCode,
+                               Options options)
     : ApplicationFeature{server, *this},
       _client(client),
       _clientManager{client, Logger::RESTORE},
-      _clientTaskQueue{server, ::processJob},
-      _exitCode{exitCode} {
+      _clientTaskQueue{::processJob},
+      _exitCode{exitCode},
+      _options(std::move(options)) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
 #ifdef TRI_HAVE_GETRLIMIT
@@ -1876,255 +1881,14 @@ RestoreFeature::RestoreFeature(application_features::ApplicationServer& server,
 
 void RestoreFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  using arangodb::options::BooleanParameter;
-  using arangodb::options::StringParameter;
-  using arangodb::options::UInt32Parameter;
-  using arangodb::options::UInt64Parameter;
-  using arangodb::options::VectorParameter;
-
-  options->addOption(
-      "--collection",
-      "Restrict the restore to this collection name (can be specified multiple "
-      "times).",
-      new VectorParameter<StringParameter>(&_options.collections));
-
-  options->addOption("--view",
-                     "Restrict the restore to this view name (can be specified "
-                     "multiple times).",
-                     new VectorParameter<StringParameter>(&_options.views));
-
-  options->addOption("--batch-size",
-                     "The maximum size for individual data batches (in bytes).",
-                     new UInt64Parameter(&_options.chunkSize));
-
-  options->addOption(
-      "--threads", "The maximum number of collections to process in parallel.",
-      new UInt32Parameter(&_options.threadCount),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
-
-  options
-      ->addOption("--initial-connect-retries",
-                  "The number of connect retries for the initial connection.",
-                  new UInt32Parameter(&_options.initialConnectRetries))
-      .setIntroducedIn(30713)
-      .setIntroducedIn(30801);
-
-  options->addOption("--include-system-collections",
-                     "Include system collections.",
-                     new BooleanParameter(&_options.includeSystemCollections));
-
-  options->addOption("--create-database",
-                     "Create the target database if it does not exist.",
-                     new BooleanParameter(&_options.createDatabase));
-
-  options
-      ->addOption("--max-unused-buffers-capacity",
-                  "Maximum cumulated size of spare in-memory buffers to keep.",
-                  new UInt64Parameter(&_options.maxUnusedBufferSize),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(31200)
-      .setLongDescription(
-          R"(Maximum cumulated size of in-memory buffers to keep around for
-sending batches.
-A value > 0 will increase the memory usage of arangorestore, but can help in
-avoiding repeated memory allocations for building new in-memory buffers.)");
-
-  options->addOption(
-      "--force-same-database",
-      "Force the same database name as in the source `dump.json` file.",
-      new BooleanParameter(&_options.forceSameDatabase));
-
-  options->addOption("--all-databases", "Restore the data of all databases.",
-                     new BooleanParameter(&_options.allDatabases));
-
-  options->addOption("--input-directory", "The input directory.",
-                     new StringParameter(&_options.inputPath));
-
-  options->addOption(
-      "--cleanup-duplicate-attributes",
-      "Clean up duplicate attributes (use first specified value) in input "
-      "documents instead of making the restore operation fail.",
-      new BooleanParameter(&_options.cleanupDuplicateAttributes),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
-
-  options->addOption("--import-data", "Import data into collection.",
-                     new BooleanParameter(&_options.importData));
-
-  options->addOption("--create-collection", "Create collection structure.",
-                     new BooleanParameter(&_options.importStructure));
-
-  options->addOption("--progress", "Show the progress.",
-                     new BooleanParameter(&_options.progress));
-
-  options->addOption("--overwrite", "Overwrite collections if they exist.",
-                     new BooleanParameter(&_options.overwrite));
-
-  options->addOption("--continue", "Continue the restore operation.",
-                     new BooleanParameter(&_options.continueRestore));
-
-  options
-      ->addOption("--enable-revision-trees",
-                  "Enable revision trees for new collections if the collection "
-                  "attributes `syncByRevision` and "
-                  "`usesRevisionsAsDocumentIds` are missing.",
-                  new BooleanParameter(&_options.enableRevisionTrees))
-      .setIntroducedIn(30807);
-
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  options->addOption(
-      "--fail-after-update-continue-file", "",
-      new BooleanParameter(&_options.failOnUpdateContinueFile),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
-#endif
-
-  options->addOption(
-      "--number-of-shards",
-      "Override the `numberOfShards` value (can be specified multiple "
-      "times, e.g. --number-of-shards 2 --number-of-shards "
-      "myCollection=3).",
-      new VectorParameter<StringParameter>(&_options.numberOfShards));
-
-  options->addOption(
-      "--replication-factor",
-      "Override the `replicationFactor` value (can be specified "
-      "multiple times, e.g. --replication-factor 2 "
-      "--replication-factor myCollection=3).",
-      new VectorParameter<StringParameter>(&_options.replicationFactor));
-
-  options
-      ->addOption("--write-concern",
-                  "Override the `writeConcern` value (can be specified "
-                  "multiple times, e.g. --write-concern 2 "
-                  "--write-concern myCollection=3).",
-                  new VectorParameter<StringParameter>(&_options.writeConcern))
-      .setIntroducedIn(31200);
-
-  options->addOption(
-      "--ignore-distribute-shards-like-errors",
-      "Continue the restore even if the sharding prototype collection is "
-      "missing.",
-      new BooleanParameter(&_options.ignoreDistributeShardsLikeErrors));
-
-  options->addOption(
-      "--force",
-      "Continue the restore even in the face of some server-side errors.",
-      new BooleanParameter(&_options.force));
-
-  // deprecated options
-  options
-      ->addOption(
-          "--default-number-of-shards",
-          "The default `numberOfShards` value if not specified in the dump.",
-          new UInt64Parameter(&_options.defaultNumberOfShards),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Uncommon))
-      .setDeprecatedIn(30322)
-      .setDeprecatedIn(30402);
-
-  options
-      ->addOption(
-          "--default-replication-factor",
-          "The default `replicationFactor` value if not specified in the dump.",
-          new UInt64Parameter(&_options.defaultReplicationFactor),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Uncommon))
-      .setDeprecatedIn(30322)
-      .setDeprecatedIn(30402);
+  RestoreOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void RestoreFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  using arangodb::basics::StringUtils::join;
-
-  auto const& positionals = options->processingResult()._positionals;
-  size_t n = positionals.size();
-
-  if (1 == n) {
-    _options.inputPath = positionals[0];
-  } else if (1 < n) {
-    LOG_TOPIC("d249a", FATAL, arangodb::Logger::RESTORE)
-        << "expecting at most one directory, got " + join(positionals, ", ");
-    FATAL_ERROR_EXIT();
-  }
-
-  if (_options.allDatabases) {
-    if (options->processingResult().touched("server.database")) {
-      LOG_TOPIC("94d22", FATAL, arangodb::Logger::RESTORE)
-          << "cannot use --server.database and --all-databases at the same "
-             "time";
-      FATAL_ERROR_EXIT();
-    }
-
-    if (_options.forceSameDatabase) {
-      LOG_TOPIC("fd66a", FATAL, arangodb::Logger::RESTORE)
-          << "cannot use --force-same-database and --all-databases at the same "
-             "time";
-      FATAL_ERROR_EXIT();
-    }
-  }
-
-  // use a minimum value for batches
-  if (_options.chunkSize < 1024 * 128) {
-    _options.chunkSize = 1024 * 128;
-  }
-
-  auto clamped = std::clamp(_options.threadCount, uint32_t(1),
-                            uint32_t(4 * NumberOfCores::getValue()));
-  if (_options.threadCount != clamped) {
-    LOG_TOPIC("53570", WARN, Logger::RESTORE)
-        << "capping --threads value to " << clamped;
-    _options.threadCount = clamped;
-  }
-
-  // validate shards and replication factor
-  if (_options.defaultNumberOfShards == 0) {
-    LOG_TOPIC("248ee", FATAL, arangodb::Logger::RESTORE)
-        << "invalid value for `--default-number-of-shards`, expecting at least "
-           "1";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (_options.defaultReplicationFactor == 0) {
-    LOG_TOPIC("daf22", FATAL, arangodb::Logger::RESTORE)
-        << "invalid value for `--default-replication-factor, expecting at "
-           "least 1";
-    FATAL_ERROR_EXIT();
-  }
-
-  for (auto& it : _options.numberOfShards) {
-    auto parts = basics::StringUtils::split(it, '=');
-    if (parts.size() == 1 && basics::StringUtils::int64(parts[0]) > 0) {
-      // valid
-      continue;
-    } else if (parts.size() == 2 && basics::StringUtils::int64(parts[1]) > 0) {
-      // valid
-      continue;
-    }
-    // invalid!
-    LOG_TOPIC("1951e", FATAL, arangodb::Logger::RESTORE)
-        << "got invalid value '" << it << "' for `--number-of-shards";
-    FATAL_ERROR_EXIT();
-  }
-
-  for (auto& it : _options.replicationFactor) {
-    auto parts = basics::StringUtils::split(it, '=');
-    if (parts.size() == 1) {
-      if (parts[0] == "satellite" || basics::StringUtils::int64(parts[0]) > 0) {
-        // valid
-        continue;
-      }
-    } else if (parts.size() == 2) {
-      if (parts[1] == "satellite" || basics::StringUtils::int64(parts[1]) > 0) {
-        // valid
-        continue;
-      }
-    }
-    // invalid!
-    LOG_TOPIC("d038e", FATAL, arangodb::Logger::RESTORE)
-        << "got invalid value '" << it << "' for `--replication-factor";
-    FATAL_ERROR_EXIT();
-  }
+  RestoreOptionsProvider provider;
+  provider.validateOptions(options, _options);
 }
 
 void RestoreFeature::prepare() {

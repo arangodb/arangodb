@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #include "Async/Registry/promise.h"
 #include "Async/Registry/registry_variable.h"
@@ -66,6 +65,7 @@ struct MyPromise : public AddToAsyncRegistry {
 }  // namespace
 
 struct AsyncRegistryTest : ::testing::Test {
+  static void SetUpTestSuite() { get_thread_registry().garbage_collect(); }
   void TearDown() override {
     // execute garbage collection on current thread
     get_thread_registry().garbage_collect();

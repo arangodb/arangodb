@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterCollection.h"
@@ -38,7 +37,6 @@
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "Logger/LogMacros.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/IndexesSnapshot.h"

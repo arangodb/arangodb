@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestCompactHandler.h"
@@ -26,7 +25,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
 #include "Cluster/ClusterMethods.h"
-#include "StorageEngine/EngineSelectorFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/ExecContext.h"
 
@@ -39,7 +38,8 @@ using namespace arangodb::rest;
 RestCompactHandler::RestCompactHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
-    : RestBaseHandler(server, request, response) {}
+    : RestBaseHandler(server, request, response),
+      _engine(server.getFeature<DatabaseFeature>().engine()) {}
 
 RestStatus RestCompactHandler::execute() {
   if (ExecContext::isAuthEnabled() && !ExecContext::current().isSuperuser()) {
@@ -58,9 +58,7 @@ RestStatus RestCompactHandler::execute() {
   bool compactBottomMostLevel =
       _request->parsedValue("compactBottomMostLevel", false);
 
-  TRI_ASSERT(server().hasFeature<EngineSelectorFeature>());
-  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
-  Result res = engine.compactAll(changeLevel, compactBottomMostLevel);
+  Result res = _engine.compactAll(changeLevel, compactBottomMostLevel);
   if (res.fail()) {
     generateError(GeneralResponse::responseCode(res.errorNumber()),
                   res.errorNumber(),

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IndexFactory.h"
@@ -40,6 +39,7 @@
 #include "VectorIndex/VectorIndexFeature.h"
 #include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -77,7 +77,7 @@ struct InvalidIndexFactory : public IndexTypeFactory {
   }
 
   Result normalize(velocypack::Builder&, velocypack::Slice definition, bool,
-                   TRI_vocbase_t const&) const override {
+                   Database const&) const override {
     std::string type = basics::VelocyPackHelper::getStringValue(
         definition, StaticStrings::IndexType, "");
     return Result(TRI_ERROR_BAD_PARAMETER, "invalid index type '" + type + "'");
@@ -278,7 +278,7 @@ Result IndexFactory::enhanceIndexDefinition(  // normalize definition
     velocypack::Slice definition,             // source definition
     velocypack::Builder& normalized,  // normalized definition (out-param)
     bool isCreation,                  // definition for index creation
-    TRI_vocbase_t const& vocbase      // index vocbase
+    Database const& vocbase           // index vocbase
 ) const {
   auto type = definition.get(StaticStrings::IndexType);
 

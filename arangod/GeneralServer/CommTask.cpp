@@ -18,9 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Achim Brandt
-/// @author Dr. Frank Celler
-/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CommTask.h"
@@ -31,6 +28,7 @@
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/DownCast.h"
 #include "Basics/dtrace-wrapper.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AsyncJobManager.h"
@@ -376,6 +374,8 @@ void CommTask::finishExecution(GeneralResponse& res,
               1000.0));
     }
   }
+
+  _generalServerFeature.countHttpResponseCode(res.responseCode());
 }
 
 /// Push this request into the execution pipeline

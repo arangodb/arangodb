@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -39,6 +38,9 @@ class OptimizerRulesFeature final
  public:
   static constexpr std::string_view name() noexcept { return "OptimizerRules"; }
 
+  explicit OptimizerRulesFeature(
+      application_features::ApplicationServer& server,
+      OptimizerRulesOptions options);
   explicit OptimizerRulesFeature(
       application_features::ApplicationServer& server);
 

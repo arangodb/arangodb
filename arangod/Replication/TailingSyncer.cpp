@@ -18,11 +18,10 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TailingSyncer.h"
+#include "Metrics/MetricsFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"

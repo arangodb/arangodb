@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestWalAccessHandler.h"
@@ -43,7 +42,6 @@
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerIdFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/WalAccess.h"
 #include "Transaction/Helpers.h"
@@ -203,8 +201,7 @@ RestStatus RestWalAccessHandler::execute() {
     return RestStatus::DONE;
   }
 
-  TRI_ASSERT(server().hasFeature<EngineSelectorFeature>());
-  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+  StorageEngine& engine = _vocbase.engine();
   WalAccess const* wal = engine.walAccess();
   TRI_ASSERT(wal != nullptr);
 
@@ -406,4 +403,13 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
         syncerId, clientId, clientInfo, filter.tickStart,
         replutils::BatchInfo::DefaultTimeoutForTailing);
   });
+}
+
+auto RestVocbaseBaseHandler::makeSharedLogContextValue() const
+    -> std::shared_ptr<LogContext::Values> {
+  return LogContext::makeValue()
+      .with<structuredParams::UrlName>(_request->fullUrl())
+      .with<structuredParams::UserName>(_request->user())
+      .with<structuredParams::DatabaseName>(_vocbase.name())
+      .share();
 }

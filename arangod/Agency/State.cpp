@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "State.h"
@@ -50,7 +49,7 @@
 #include "VocBase/vocbase.h"
 
 #include "Metrics/GaugeBuilder.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::aql;
@@ -68,7 +67,7 @@ DECLARE_GAUGE(arangodb_agency_client_lookup_table_size, uint64_t,
 namespace consensus {
 
 /// Constructor:
-State::State(metrics::MetricsFeature& metrics)
+State::State(metrics::IRegistry& metricsRegistry)
     : _agent(nullptr),
       _vocbase(nullptr),
       _ready(false),
@@ -76,9 +75,9 @@ State::State(metrics::MetricsFeature& metrics)
       _nextCompactionAfter(0),
       _lastCompactionAt(0),
       _cur(0),
-      _log_size(metrics.add(arangodb_agency_log_size_bytes{})),
+      _log_size(metricsRegistry.add(arangodb_agency_log_size_bytes{})),
       _clientIdLookupCount(
-          metrics.add(arangodb_agency_client_lookup_table_size{})) {}
+          metricsRegistry.add(arangodb_agency_client_lookup_table_size{})) {}
 
 /// Default dtor
 State::~State() = default;
