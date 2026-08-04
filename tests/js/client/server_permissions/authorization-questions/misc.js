@@ -488,7 +488,6 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/openapi.json`);
       assertPermissions([
-        "UseDatabase name=_system level=read"
       ], endObserve());
     },
 
