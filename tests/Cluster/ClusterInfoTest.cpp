@@ -63,9 +63,9 @@ struct ClusterInfoTest : public ::testing::Test {
                         "\",target_role=\"", targetRole, "\"");
   }
 
-  metrics::Gauge<uint64_t>* loadHealthGauge(
-      std::string_view targetServer, std::string_view targetShortName,
-      std::string_view targetRole) {
+  metrics::Gauge<uint64_t>* loadHealthGauge(std::string_view targetServer,
+                                            std::string_view targetShortName,
+                                            std::string_view targetRole) {
     auto* metric = metricsFeature().get(metrics::MetricKeyView{
         "arangodb_server_health",
         healthLabels(targetServer, targetShortName, targetRole)});
@@ -265,8 +265,7 @@ TEST_F(ClusterInfoTest, testServerHealthMetrics) {
 
   // update values and remove a disappeared DBServer
   {
-    setAliases(
-        {{"Coordinator0001", "CRDN-1"}, {"DBServer0001", "PRMR-1"}});
+    setAliases({{"Coordinator0001", "CRDN-1"}, {"DBServer0001", "PRMR-1"}});
 
     ServersKnown known;
     known.emplace("CRDN-1", ServerHealthState{.rebootId = RebootId{2},
@@ -299,9 +298,9 @@ TEST_F(ClusterInfoTest, testServerHealthMetrics) {
     EXPECT_EQ(nullptr, loadHealthGauge("PRMR-9", "DBServer0009", "PRIMARY"));
 
     setAliases({{"DBServer0009", "PRMR-9"}});
-    ci.setServersKnown(
-        ServersKnown{{"PRMR-9", ServerHealthState{.rebootId = RebootId{1},
-                                                  .status = ServerHealth::kGood}}});
+    ci.setServersKnown(ServersKnown{
+        {"PRMR-9", ServerHealthState{.rebootId = RebootId{1},
+                                     .status = ServerHealth::kGood}}});
 
     EXPECT_EQ(nullptr, loadHealthGauge("PRMR-9", "", "PRIMARY"));
     auto* withAlias = loadHealthGauge("PRMR-9", "DBServer0009", "PRIMARY");
@@ -416,10 +415,10 @@ TEST_F(ClusterInfoTest, testServerHealthMetricsUnknownServerType) {
   // empty unless an alias exists.
   constexpr std::string_view kUnknownId = "SomeRandomServer";
 
-  clusterInfo().setServersKnown(ServersKnown{
-      {std::string{kUnknownId},
-       ServerHealthState{.rebootId = RebootId{1},
-                         .status = ServerHealth::kGood}}});
+  clusterInfo().setServersKnown(
+      ServersKnown{{std::string{kUnknownId},
+                    ServerHealthState{.rebootId = RebootId{1},
+                                      .status = ServerHealth::kGood}}});
 
   auto* gauge = loadHealthGauge(kUnknownId, /*targetShortName*/ "",
                                 /*targetRole*/ "UNDEFINED");
@@ -430,14 +429,13 @@ TEST_F(ClusterInfoTest, testServerHealthMetricsUnknownServerType) {
 
   // With an alias, shortname is filled but role stays UNDEFINED.
   setAliases({{"WeirdAlias0001", std::string{kUnknownId}}});
-  clusterInfo().setServersKnown(ServersKnown{
-      {std::string{kUnknownId},
-       ServerHealthState{.rebootId = RebootId{1},
-                         .status = ServerHealth::kBad}}});
+  clusterInfo().setServersKnown(
+      ServersKnown{{std::string{kUnknownId},
+                    ServerHealthState{.rebootId = RebootId{1},
+                                      .status = ServerHealth::kBad}}});
 
   EXPECT_EQ(nullptr, loadHealthGauge(kUnknownId, "", "UNDEFINED"));
-  auto* withAlias =
-      loadHealthGauge(kUnknownId, "WeirdAlias0001", "UNDEFINED");
+  auto* withAlias = loadHealthGauge(kUnknownId, "WeirdAlias0001", "UNDEFINED");
   ASSERT_NE(nullptr, withAlias);
   EXPECT_EQ(1u, withAlias->load());
   expectPrometheusLine(serializeGauge(*withAlias), kUnknownId, "WeirdAlias0001",
@@ -452,8 +450,7 @@ TEST_F(ClusterInfoTest, testServerHealthMetricsAliasRename) {
       {"CRDN-1", ServerHealthState{.rebootId = RebootId{1},
                                    .status = ServerHealth::kGood}}});
 
-  auto* oldSeries =
-      loadHealthGauge("CRDN-1", "Coordinator0001", "COORDINATOR");
+  auto* oldSeries = loadHealthGauge("CRDN-1", "Coordinator0001", "COORDINATOR");
   ASSERT_NE(nullptr, oldSeries);
   EXPECT_EQ(2u, oldSeries->load());
 
@@ -465,8 +462,7 @@ TEST_F(ClusterInfoTest, testServerHealthMetricsAliasRename) {
   EXPECT_EQ(nullptr,
             loadHealthGauge("CRDN-1", "Coordinator0001", "COORDINATOR"))
       << "old shortname label must disappear after rename";
-  auto* newSeries =
-      loadHealthGauge("CRDN-1", "Coordinator0002", "COORDINATOR");
+  auto* newSeries = loadHealthGauge("CRDN-1", "Coordinator0002", "COORDINATOR");
   ASSERT_NE(nullptr, newSeries);
   // Do not compare raw pointers: MetricsFeature may recycle the same address
   // after remove()+ensureMetric(). Lifecycle is validated by label identity.
