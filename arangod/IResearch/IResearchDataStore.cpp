@@ -1357,8 +1357,7 @@ Result IResearchDataStore::initDataStore(
       initCallback ? initCallback() : irs::directory_attributes{},
       readerOptions.resource_manager);
 
-  switch (_engine->engineState()) {  // TODO could be just if
-                                     // (!_engine->isReady()) ...
+  switch (_engine->engineState()) {
     case EngineState::kPreRecovery:  // Link is being opened before recovery
       [[fallthrough]];
     case EngineState::kRunning: {  // Link is being created after recovery
