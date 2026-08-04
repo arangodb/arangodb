@@ -699,9 +699,12 @@ IResearchDataStore::~IResearchDataStore() {
   }
   // if triggered  - no unload was called prior to deleting index object
   if (_dataStore) {
+    // Do not call index() here: it is pure virtual and overrides are already
+    // destroyed by the time this base destructor runs. _path encodes
+    // arangosearch-<collectionId>_<indexId> and is set during initDataStore.
     LOG_TOPIC("a7d01", ERR, TOPIC)
         << "IResearchDataStore destroyed while data store still open"
-        << " indexId=" << index().id().id()
+        << " path=" << _dataStore._path.string()
         << " recoveryTickLow=" << _dataStore._recoveryTickLow
         << " recoveryTickHigh=" << _dataStore._recoveryTickHigh
         << " (missing unload() before destruction; often seen during"
