@@ -562,7 +562,8 @@ function miscApiAuthzSuite () {
       assertPermissions([
         "IsReadOnly",
         ...singleOnly([
-          "UseCollection db=_system name=_users level=read"
+          "UseCollection db=_system name=_users level=read",
+          "UseCollection db=_system name=_users level=writedata"
         ])
       ], endObserve());
       if (res.parsedBody && res.parsedBody.id) {
@@ -579,7 +580,8 @@ function miscApiAuthzSuite () {
       assertPermissions([
         "IsReadOnly",
         ...singleOnly([
-          "UseCollection db=_system name=_users level=read"
+          "UseCollection db=_system name=_users level=read",
+          "UseCollection db=_system name=_users level=writedata"
         ])
       ], endObserve());
     },
