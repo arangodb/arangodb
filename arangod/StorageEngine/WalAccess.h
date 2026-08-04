@@ -34,7 +34,7 @@
 
 namespace arangodb {
 
-struct IDatabaseResolver;
+struct IDatabaseProvider;
 class MyWALDumper;
 
 struct WalAccessResult {
@@ -152,7 +152,7 @@ class WalAccess {
 /// @brief helper class used to resolve vocbases
 ///        and collections from wal markers in an efficient way
 struct WalAccessContext {
-  WalAccessContext(IDatabaseResolver& databaseProvider,
+  WalAccessContext(IDatabaseProvider& databaseProvider,
                    WalAccess::Filter const& filter,
                    WalAccess::MarkerCallback const& c)
       : _databaseProvider(databaseProvider),
@@ -178,7 +178,7 @@ struct WalAccessContext {
   LogicalCollection* loadCollection(TRI_voc_tick_t dbid, DataSourceId cid);
 
  private:
-  IDatabaseResolver& _databaseProvider;
+  IDatabaseProvider& _databaseProvider;
 
  protected:
   friend class MyWALDumper;

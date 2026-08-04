@@ -24,7 +24,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"
 #include "Replication/common-defines.h"
-#include "RestServer/IDatabaseResolver.h"
+#include "RestServer/IDatabaseProvider.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
