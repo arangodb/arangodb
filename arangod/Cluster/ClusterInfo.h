@@ -1062,7 +1062,7 @@ class ClusterInfo final {
 
   /// @brief Sync arangodb_server_health gauges from ServersKnown (Coordinator
   /// only). Creates/updates one labeled gauge per server (target_server,
-  /// target_shortname, target_role) for every ServersKnown entry — including
+  /// target_shortname) for every ServersKnown entry — including
   /// DBServers — and removes gauges for servers that disappeared. Agents do
   /// not export this metric (no AgencyCache/ClusterInfo server sync).
   void updateServerHealthMetrics(ServersKnown const& serversKnown);

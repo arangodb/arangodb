@@ -463,14 +463,14 @@ DECLARE_GAUGE(arangodb_metadata_shard_followers_out_of_sync_number,
                           // catching up
 
 /// GaugeVec-style metric (one series per server via target_server /
-/// target_shortname / target_role). Values: 0=FAILED, 1=BAD, 2=GOOD.
+/// target_shortname). Values: 0=FAILED, 1=BAD, 2=GOOD.
 /// Updated from Supervision/Health via ClusterInfo::loadServers on
 /// Coordinators.
-DECLARE_GAUGE(arangodb_server_health, std::uint64_t,
-              "Cluster server health status (0=FAILED, 1=BAD, 2=GOOD). "
-              "Labeled by target_server (unique id), target_shortname and "
-              "target_role of the reported server. Exporter identity is "
-              "provided by the global shortname/role labels.");
+DECLARE_GAUGE(
+    arangodb_server_health, std::uint64_t,
+    "Cluster server health status (0=FAILED, 1=BAD, 2=GOOD). "
+    "Labeled by target_server (unique id), target_shortname."
+    "Exporter identity is provided by the global shortname/role labels.");
 
 ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
                          AgencyCache& agencyCache,
@@ -4437,38 +4437,17 @@ ServersKnown ClusterInfo::rebootIds() const {
 
 namespace {
 
-/// @brief Role string for a target server id. Uses the same vocabulary as
-/// ServerState::roleToString (PRIMARY for DB-Servers) so target_role matches
-/// the global exporter `role` label values.
-[[nodiscard]] std::string_view serverHealthTargetRole(
-    ServerID const& serverId) noexcept {
-  if (ClusterHelpers::isDBServerName(serverId)) {
-    return "PRIMARY";
-  }
-  if (ClusterHelpers::isCoordinatorName(serverId)) {
-    return "COORDINATOR";
-  }
-  if (serverId.starts_with("SNGL")) {
-    return "SINGLE";
-  }
-  if (serverId.starts_with("AGNT")) {
-    return "AGENT";
-  }
-  return "UNDEFINED";
-}
-
 [[nodiscard]] arangodb_server_health makeServerHealthBuilder(
     ServerID const& serverId, std::string_view targetShortName) {
   arangodb_server_health builder;
   // Reserve for variable label values plus ~80 bytes of fixed label overhead
-  // (label names, separators, and target_role value) to minimize reallocations.
+  // (label names and separators value) to minimize reallocations.
   builder.reserveSpaceForLabels(serverId.size() + targetShortName.size() + 80);
   // Metric-specific labels identify the *target* server. Exporter identity
   // (Coordinator shortname/role) is attached separately as MetricsFeature
   // global labels (`shortname`, `role`) — do not reuse those names here.
   builder.addLabel("target_server", serverId);
   builder.addLabel("target_shortname", targetShortName);
-  builder.addLabel("target_role", serverHealthTargetRole(serverId));
   return builder;
 }
 

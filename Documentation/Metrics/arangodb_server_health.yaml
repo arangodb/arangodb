@@ -18,13 +18,11 @@ description: |
 
   - `target_server`: unique server id (for example `PRMR-...` / `CRDN-...`)
   - `target_shortname`: human-readable short name from
-    `Target/MapUniqueToShortID` (for example `DBServer0001`)
-  - `target_role`: target role using the same vocabulary as the global
-    exporter `role` label (`PRIMARY` for DB-Servers, `COORDINATOR`, ...)
+    `Target/MapUniqueToShortID` (for example `DBServer0001`)  
 
   Exporter identity (the Coordinator being scraped) continues to come from
   the global Prometheus labels `shortname` and `role`. Those must not be
-  confused with `target_shortname` / `target_role`.
+  confused with `target_shortname`.
 
   Agents do not export this metric: AgencyCache / ClusterInfo server-list
   sync is not started for Agents, and Coordinators are the intended scrape

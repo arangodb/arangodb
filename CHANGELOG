@@ -4,7 +4,7 @@
 * COR-669: Server State Metric
   Added the arangodb_server_health gauge metric to report the health status of each
   server in a cluster. The metric is exported by Coordinators and labeled with
-  `target_server` (unique id), `target_shortname`, and `target_role` of the reported
+  `target_server` (unique id), and `target_shortname` of the reported
   server. Values are 0 (Failed), 1 (Bad), and 2 (Good). Exporter identity remains
   on the global Prometheus `shortname` / `role` labels.
 
