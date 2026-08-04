@@ -59,6 +59,7 @@ class index_profile_test_case : public tests::index_test_base {
   std::atomic_uint64_t tick_{irs::writer_limits::kMinTick + 1};
   std::mutex commit_mutex;
   bool onTick_{false};
+  irs::IndexWriter::ConsolidationProgress callbacks;
 
   void TransactionTick(irs::IndexWriter::Transaction& trx) {
     if (onTick_) {
@@ -77,6 +78,19 @@ class index_profile_test_case : public tests::index_test_base {
   }
 
  public:
+  index_profile_test_case() {
+    auto beginCons = [](const auto& ) {
+    };
+    auto endCons = [](const auto& ) {
+    };
+    auto flushProgress = []() {
+      return true;
+    };
+
+    callbacks = { .beginConsolidation = beginCons,
+      .endConsolidation = endCons, .flushProgress = flushProgress };
+  }
+
   void SetOnTick(bool value) noexcept { onTick_ = value; }
 
   void profile_bulk_index(size_t num_insert_threads, size_t num_import_threads,
@@ -542,9 +556,9 @@ class index_profile_test_case : public tests::index_test_base {
     auto writer = open_writer(irs::OM_CREATE, options);
 
     thread_pool.run(
-      [consolidate_interval, &working, &writer, &policy]() -> void {
+      [consolidate_interval, &working, &writer, &policy, &callbacks = this->callbacks]() -> void {
         while (working.load()) {
-          writer->Consolidate(policy);
+          writer->Consolidate(policy, callbacks);
           std::this_thread::sleep_for(
             std::chrono::milliseconds(consolidate_interval));
         }
@@ -563,7 +577,7 @@ class index_profile_test_case : public tests::index_test_base {
       writer->Commit({.tick = CommitTick()});
       EXPECT_FALSE(writer->Commit());
     }
-    ASSERT_TRUE(writer->Consolidate(policy));
+    ASSERT_TRUE(writer->Consolidate(policy, callbacks));
     {
       std::unique_lock commit_lock{commit_mutex};
       writer->Commit({.tick = CommitTick()});
