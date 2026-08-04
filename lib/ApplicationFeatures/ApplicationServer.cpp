@@ -182,11 +182,6 @@ void ApplicationServer::run(int argc, char* argv[]) {
   // file(s)
   parseOptions(argc, argv);
 
-  // --help / --version already produced output
-  if (_commandCompleted) {
-    return;
-  }
-
   // seal the options
   _options->seal();
 
@@ -413,8 +408,7 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
       _helpSection = ".";
     }
     _options->printHelp(_helpSection);
-    _commandCompleted = true;  // startup must stop
-    return;
+    exit(EXIT_SUCCESS);
   }
 
   if (!parser.parse(argc, argv)) {
@@ -426,15 +420,13 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
   // handle `--version-json` command
   if (_printVersionJson) {
     printVersionJson(std::cout);
-    _commandCompleted = true;
-    return;
+    exit(EXIT_SUCCESS);
   }
 
   // handle `--version` command
   if (_printVersion) {
     printVersion(std::cout);
-    _commandCompleted = true;
-    return;
+    exit(EXIT_SUCCESS);
   }
 
   if (_dumpDependencies) {

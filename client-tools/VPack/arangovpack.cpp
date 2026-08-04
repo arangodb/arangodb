@@ -51,10 +51,6 @@ int main(int argc, char* argv[]) {
 
     try {
       server.run(argc, argv);
-      if (server.commandCompleted()) {
-        // --help or --version was displayed
-        ret = EXIT_SUCCESS;
-      }
     } catch (std::exception const& ex) {
       LOG_TOPIC("f8d39", ERR, arangodb::Logger::FIXME)
           << "arangovpack terminated because of an unhandled exception: "

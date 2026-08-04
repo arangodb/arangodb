@@ -78,10 +78,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
 
     try {
       server.run(argc, argv);
-      if (server.commandCompleted()) {
-        // --help or --version was displayed
-        ret = EXIT_SUCCESS;
-      }
     } catch (std::exception const& ex) {
       LOG_TOPIC("5d508", ERR, Logger::FIXME)
           << "arangod terminated because of an exception: " << ex.what();
