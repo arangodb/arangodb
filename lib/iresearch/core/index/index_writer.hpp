@@ -472,17 +472,6 @@ class IndexWriter : private util::noncopyable {
   static_assert(std::is_nothrow_move_constructible_v<Transaction>);
   static_assert(std::is_nothrow_move_assignable_v<Transaction>);
 
-  struct ConsolidationProgress {
-    //  Called after candidates are assembled and consolidation is about to begin.
-    std::function<void(const std::vector<irs::SegmentInfo>& candidates)> beginConsolidation;
-
-    //  Called after segments merging operation is completed.
-    std::function<void(const ConsolidationResult&)> endConsolidation;
-
-    //  Stop token used to abort ongoing consolidation operation
-    MergeWriter::FlushProgress flushProgress;
-  };
-
   // Returns a context allowing index modification operations
   // All document insertions will be applied to the same segment on a
   // best effort basis, e.g. a flush_all() will cause a segment switch
@@ -523,8 +512,8 @@ class IndexWriter : private util::noncopyable {
   // commit, however, the resulting acceptor will only be segments not
   // yet marked for consolidation by other policies in the same commit
   ConsolidationResult Consolidate(
-    const ConsolidationPolicy& policy,
-    const ConsolidationProgress& progress, format::ptr codec = nullptr);
+    const ConsolidationPolicy& policy, format::ptr codec = nullptr,
+    const MergeWriter::FlushProgress& progress = {});
 
   // Imports index from the specified index reader into new segment
   // Reader the index reader to import.

@@ -168,23 +168,6 @@ typedef std::tuple<tests::dir_param_f, format_info> index_test_context;
 void AssertSnapshotEquality(irs::DirectoryReader lhs, irs::DirectoryReader rhs);
 
 class index_test_base : public virtual test_param_base<index_test_context> {
- protected:
-  irs::IndexWriter::ConsolidationProgress callbacks;
-
- public:
-  index_test_base() {
-    auto beginCons = [](const auto& ) {
-    };
-    auto endCons = [](const auto& ) {
-    };
-    auto flushProgress = []() {
-      return true;
-    };
-
-    callbacks = { .beginConsolidation = beginCons,
-      .endConsolidation = endCons, .flushProgress = flushProgress };
-  }
-
  public:
   static std::string to_string(
     const testing::TestParamInfo<index_test_context>& info);

@@ -62,7 +62,6 @@
 #include <absl/cleanup/cleanup.h>
 #include <absl/strings/str_cat.h>
 #include <filesystem>
-#include "arangosearch_activity.h"
 
 using namespace std::literals;
 
@@ -843,7 +842,8 @@ ResultT<IResearchDataStore::CommitResult> IResearchDataStore::commit(
 /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
 ////////////////////////////////////////////////////////////////////////////////
 IResearchDataStore::UnsafeOpResult IResearchDataStore::commitUnsafe(
-    bool wait, irs::ProgressReportCallback const progress, CommitResult& code) {
+    bool wait, irs::ProgressReportCallback const& progress,
+    CommitResult& code) {
   auto begin = std::chrono::steady_clock::now();
   auto result = commitUnsafeImpl(wait, progress, code);
   uint64_t timeMs = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -881,7 +881,8 @@ IResearchDataStore::UnsafeOpResult IResearchDataStore::commitUnsafe(
 /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
 ////////////////////////////////////////////////////////////////////////////////
 Result IResearchDataStore::commitUnsafeImpl(
-    bool wait, irs::ProgressReportCallback const progress, CommitResult& code) {
+    bool wait, irs::ProgressReportCallback const& progress,
+    CommitResult& code) {
   code = CommitResult::NO_CHANGES;
   // NOTE: assumes that '_asyncSelf' is read-locked (for use with async tasks)
   TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->get() is valid
@@ -1029,7 +1030,7 @@ Result IResearchDataStore::commitUnsafeImpl(
 ////////////////////////////////////////////////////////////////////////////////
 IResearchDataStore::UnsafeOpResult IResearchDataStore::consolidateUnsafe(
     IResearchDataStoreMeta::ConsolidationPolicy const& policy,
-    irs::MergeWriter::FlushProgress const progress, bool& emptyConsolidation) {
+    irs::MergeWriter::FlushProgress const& progress, bool& emptyConsolidation) {
   auto begin = std::chrono::steady_clock::now();
   auto result = consolidateUnsafeImpl(policy, progress, emptyConsolidation);
   uint64_t timeMs = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -1049,8 +1050,7 @@ IResearchDataStore::UnsafeOpResult IResearchDataStore::consolidateUnsafe(
 ////////////////////////////////////////////////////////////////////////////////
 Result IResearchDataStore::consolidateUnsafeImpl(
     IResearchDataStoreMeta::ConsolidationPolicy const& policy,
-    irs::MergeWriter::FlushProgress const flushProgress,
-    bool& emptyConsolidation) {
+    irs::MergeWriter::FlushProgress const& progress, bool& emptyConsolidation) {
   emptyConsolidation = false;  // TODO Why?
 
   if (!policy.policy()) {
@@ -1066,44 +1066,8 @@ Result IResearchDataStore::consolidateUnsafeImpl(
   TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->get() is valid
 
   try {
-    std::shared_ptr<SegmentConsolidationActivity> consolidationActivity;
-    //  Reporting consolidation activity relies on the IndexWriter's progress
-    //  callbacks. In the beginConsolidation callback we will use the
-    //  consolidation candidates information received from
-    //  IndexWriter::Consolidate to initialize the SegmentConsolidationActivity.
-    //  And in the endConsolidation callback we will use the ConsolidationResult
-    //  info and end the activity.
-    decltype(irs::IndexWriter::ConsolidationProgress::beginConsolidation)
-        beginConsolidation =
-            [&](const std::vector<irs::SegmentInfo>& candidates) {
-              SegmentConsolidationActivityData activityData;
-              for (const irs::SegmentInfo& segment : candidates) {
-                SegmentConsolidationActivityEntry entry;
-                entry.name = segment.name;
-                entry.byte_size = segment.byte_size;
-                entry.docs_count = segment.docs_count;
-                entry.live_docs_count = segment.live_docs_count;
-
-                activityData.candidates.push_back(std::move(entry));
-              }
-
-              consolidationActivity =
-                  arangodb::activities::make<SegmentConsolidationActivity>(
-                      activityData);
-            };
-
-    decltype(irs::IndexWriter::ConsolidationProgress::endConsolidation)
-        endConsolidation = [&](const irs::ConsolidationResult& result) {
-          consolidationActivity.reset();
-        };
-
-    irs::IndexWriter::ConsolidationProgress progress{
-        .beginConsolidation = std::move(beginConsolidation),
-        .endConsolidation = std::move(endConsolidation),
-        .flushProgress = std::move(flushProgress)};
-
     auto const res =
-        _dataStore._writer->Consolidate(policy.policy(), progress, nullptr);
+        _dataStore._writer->Consolidate(policy.policy(), nullptr, progress);
     if (!res) {
       return {
           TRI_ERROR_INTERNAL,

@@ -173,23 +173,6 @@ using namespace tests;
 
 struct merge_writer_test_case
   : public tests::directory_test_case_base<std::string> {
- protected:
-  irs::IndexWriter::ConsolidationProgress callbacks;
-
- public:
-  merge_writer_test_case() {
-    auto beginCons = [](const auto& ) {
-    };
-    auto endCons = [](const auto& ) {
-    };
-    auto flushProgress = []() {
-      return true;
-    };
-
-    callbacks = { .beginConsolidation = beginCons,
-      .endConsolidation = endCons, .flushProgress = flushProgress };
-  }
-
   std::shared_ptr<const irs::format> codec() const {
     const auto& p = tests::directory_test_case_base<std::string>::GetParam();
     const auto& codec_name = std::get<std::string>(p);
@@ -298,7 +281,7 @@ void merge_writer_test_case::EnsureDocBlocksNotMixed(bool primary_sort) {
   // 2: 21..30
   const irs::index_utils::ConsolidateCount consolidate_all;
   ASSERT_EQ(!primary_sort || supports_sort(),
-            writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all), callbacks));
+            writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
   ASSERT_EQ(!primary_sort || supports_sort(), writer->Commit());
   AssertSnapshotEquality(writer->GetSnapshot(),
                          irs::DirectoryReader(dir, codec_ptr));
