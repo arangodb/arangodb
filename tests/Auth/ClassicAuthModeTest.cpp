@@ -567,10 +567,10 @@ TEST_F(ClassicAuthModeTest,
   // The database grant is checked first and is not substitutable: even RW on
   // every linked collection does not make up for a read-only database.
   beUserWith(RO, {{std::string{kDb}, "c1", RW}});
-  expectError(check(p::CreateView{.db = std::string{kDb},
-                                  .name = "v",
-                                  .linkedCollections = {"c1"}}),
-              TRI_ERROR_FORBIDDEN);
+  expectError(
+      check(p::CreateView{
+          .db = std::string{kDb}, .name = "v", .linkedCollections = {"c1"}}),
+      TRI_ERROR_FORBIDDEN);
 }
 
 TEST_F(ClassicAuthModeTest, CreateViewWithUnreadableLinkIsForbidden) {
@@ -610,10 +610,10 @@ TEST_F(ClassicAuthModeTest, ModifyViewNeedsDatabaseWriteAndReadableLinks) {
 TEST_F(ClassicAuthModeTest,
        ModifyViewWithReadableLinksButNoDatabaseWriteIsForbidden) {
   beUserWith(RO, {{std::string{kDb}, "c1", RW}});
-  expectError(check(p::ModifyView{.db = std::string{kDb},
-                                  .name = "v",
-                                  .linkedCollections = {"c1"}}),
-              TRI_ERROR_FORBIDDEN);
+  expectError(
+      check(p::ModifyView{
+          .db = std::string{kDb}, .name = "v", .linkedCollections = {"c1"}}),
+      TRI_ERROR_FORBIDDEN);
 }
 
 TEST_F(ClassicAuthModeTest, ModifyViewPropagatesLinkFailuresUnverbatim) {
@@ -1073,10 +1073,10 @@ TEST_F(ClassicAuthModeTest, RestoreCreateViewBehavesLikeCreateView) {
 TEST_F(ClassicAuthModeTest,
        RestoreCreateViewWithReadableLinksButNoDatabaseWriteIsForbidden) {
   beUserWith(RO, {{std::string{kDb}, "c1", RW}});
-  expectError(check(p::RestoreCreateView{.db = std::string{kDb},
-                                         .viewName = "v",
-                                         .linkedCollNames = {"c1"}}),
-              TRI_ERROR_FORBIDDEN);
+  expectError(
+      check(p::RestoreCreateView{
+          .db = std::string{kDb}, .viewName = "v", .linkedCollNames = {"c1"}}),
+      TRI_ERROR_FORBIDDEN);
 }
 
 TEST_F(ClassicAuthModeTest, RestoreCreateViewIsGrantedToAdmins) {
@@ -1210,8 +1210,8 @@ auth::Level upperBound(GrantSpace const& gs, Scope scope) {
       // Every source collectionAuthLevel() consults for a non-system
       // collection. Note that _system's *collection* grants are not among
       // them; only its database level leaks.
-      return best({gs.coll, gs.collStar, gs.collStarStar, gs.db, gs.dbStar,
-                   gs.system});
+      return best(
+          {gs.coll, gs.collStar, gs.collStarStar, gs.db, gs.dbStar, gs.system});
   }
   ADD_FAILURE() << "unhandled scope";
   return NONE;
@@ -1258,9 +1258,8 @@ std::vector<GrantSpace> allGrantSpaces() {
 std::string describe(GrantSpace const& gs) {
   auto one = [](std::string_view label, std::optional<auth::Level> level) {
     return std::format("{}={} ", label,
-                       level.has_value()
-                           ? auth::convertFromAuthLevel(*level)
-                           : std::string_view{"<ungranted>"});
+                       level.has_value() ? auth::convertFromAuthLevel(*level)
+                                         : std::string_view{"<ungranted>"});
   };
   auto const db = std::string{ClassicAuthModeTest::kDb};
   return one(StaticStrings::SystemDatabase, gs.system) + one(db, gs.db) +
@@ -1374,8 +1373,7 @@ std::vector<PermCase> permissionCases() {
       // The "everybody may modify their own profile" exception lives in
       // ExecContext, above this layer, so here it is a plain admin check.
       {"ModifyUserProfile", p::ModifyUserProfile{.name = "someone"}, adminOnly},
-      {"GrantUserPermissions",
-       p::GrantUserPermissions{.name = "someone"},
+      {"GrantUserPermissions", p::GrantUserPermissions{.name = "someone"},
        adminOnly},
       {"AdminBackup", p::AdminBackup{}, adminOnly},
 
@@ -1386,25 +1384,21 @@ std::vector<PermCase> permissionCases() {
       {"RestoreCollectionOverwrite",
        p::RestoreCollection{.db = db, .name = coll, .overwrite = true},
        orAdmin({{Scope::Db, RW}, {Scope::Coll, RW}})},
-      {"RestoreCreateIndex",
-       p::RestoreCreateIndex{.db = db, .collName = coll},
+      {"RestoreCreateIndex", p::RestoreCreateIndex{.db = db, .collName = coll},
        orAdmin({{Scope::Coll, RW}, {Scope::Db, RW}})},
       {"RestoreCreateView",
        p::RestoreCreateView{
            .db = db, .viewName = "v", .linkedCollNames = links},
        orAdmin({{Scope::Db, RW}, {Scope::Coll, RO}})},
-      {"RestoreDropView",
-       p::RestoreDropView{.db = db, .viewName = "v"},
+      {"RestoreDropView", p::RestoreDropView{.db = db, .viewName = "v"},
        orAdmin({{Scope::Db, RW}})},
-      {"RestoreWriteData",
-       p::RestoreWriteData{.db = db, .collName = coll},
+      {"RestoreWriteData", p::RestoreWriteData{.db = db, .collName = coll},
        orAdmin({{Scope::Coll, RW}})},
   };
 }
 
-struct ClassicGrantSpaceTest
-    : ClassicAuthModeTest,
-      ::testing::WithParamInterface<PermCase> {
+struct ClassicGrantSpaceTest : ClassicAuthModeTest,
+                               ::testing::WithParamInterface<PermCase> {
   void installGrants(GrantSpace const& gs) {
     std::vector<DbGrant> dbs;
     std::vector<CollGrant> colls;
@@ -1451,8 +1445,8 @@ TEST_P(ClassicGrantSpaceTest, RequiredGrantsAreNecessary) {
   // space is ever unsatisfiable would make the property assert nothing, and a
   // permission that denies everything would satisfy it trivially.
   EXPECT_GT(denied, 0u) << param.name << ": no unsatisfiable grant space found";
-  EXPECT_GT(granted, 0u)
-      << param.name << ": not granted in any grant space at all";
+  EXPECT_GT(granted, 0u) << param.name
+                         << ": not granted in any grant space at all";
 }
 
 // Property 2: a grant the permission does not name changes nothing -- not the
