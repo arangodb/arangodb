@@ -35,8 +35,6 @@ struct ScriptOptionsProvider
     : OptionsProviderImpl<ScriptOptionsProvider, ScriptFeatureOptions> {
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           ScriptFeatureOptions& options);
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                           ScriptFeatureOptions& options){};
 };
 
 }  // namespace arangodb
