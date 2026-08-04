@@ -49,6 +49,8 @@
 #include <Containers/FlatHashMap.h>
 #include <Containers/ImmerMemoryPolicy.h>
 
+#include "Replication2/ReplicatedLog/ReplicatedLogGlobalSettings.h"
+
 namespace arangodb::velocypack {
 class Builder;
 class Slice;
@@ -260,26 +262,6 @@ auto inspect(Inspector& f, ParticipantFlags& x) {
 }
 
 auto operator<<(std::ostream&, ParticipantFlags const&) -> std::ostream&;
-
-// These settings are initialised by the ReplicatedLogFeature based on command
-// line arguments
-struct ReplicatedLogGlobalSettings {
- public:
-  static inline constexpr std::size_t defaultThresholdNetworkBatchSize{1024 *
-                                                                       1024};
-  static inline constexpr std::size_t minThresholdNetworkBatchSize{1024 * 1024};
-
-  static inline constexpr std::size_t defaultThresholdRocksDBWriteBatchSize{
-      1024 * 1024};
-  static inline constexpr std::size_t minThresholdRocksDBWriteBatchSize{1024 *
-                                                                        1024};
-  static inline constexpr std::size_t defaultThresholdLogCompaction{1000};
-
-  std::size_t _thresholdNetworkBatchSize{defaultThresholdNetworkBatchSize};
-  std::size_t _thresholdRocksDBWriteBatchSize{
-      defaultThresholdRocksDBWriteBatchSize};
-  std::size_t _thresholdLogCompaction{defaultThresholdLogCompaction};
-};
 
 namespace replicated_log {
 /*
