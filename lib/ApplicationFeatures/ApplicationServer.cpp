@@ -151,7 +151,10 @@ void ApplicationServer::disableFeatures(std::span<const std::type_index> types,
                                         bool force) {
   for (std::type_index type : types) {
     auto it = _features.find(type);
-    TRI_ASSERT(it != _features.end());
+    // temporarily disabled while we are in the process of migrating features to
+    // the new program options processing which also means that features are
+    // created later.
+    // TRI_ASSERT(it != _features.end());
     if (it != _features.end()) {
       TRI_ASSERT(it->second != nullptr);
       if (force) {
