@@ -208,7 +208,6 @@ void ArangodServer::addFeatures() {
   addFeature<SslFeature>();
   addFeature<ViewTypesFeature>();
   addFeature<aql::AqlFunctionFeature>();
-  addFeature<RocksDBRecoveryManager>(database, database);
   addFeature<iresearch::IResearchFeature>(metrics);
 }
 
@@ -217,7 +216,6 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& database = getFeature<DatabaseFeature>();
   auto& vectorIndex = getFeature<VectorIndexFeature>();
   auto& scheduler = getFeature<SchedulerFeature>();
-  auto& rocksdbRecovery = getFeature<RocksDBRecoveryManager>();
   auto& cacheManager = getFeature<CacheManagerFeature>();
   auto& systemDatabaseFeature = getFeature<SystemDatabaseFeature>();
   auto& aqlFunctionFeature = getFeature<aql::AqlFunctionFeature>();
@@ -376,8 +374,8 @@ void ArangodServer::addFeaturesWithOptionProvider() {
       rocksdbOption, metrics, databasePath, vectorIndex, flush, dumpLimits,
       replication2::EnableReplication2 ? &getFeature<ReplicatedLogFeature>()
                                        : nullptr,
-      scheduler, rocksdbRecovery, database, rocksdbCacheRefill, cacheManager,
-      agency, getOptions<RocksDBEngineOptionsProvider>());
+      scheduler, database, rocksdbCacheRefill, cacheManager, agency,
+      getOptions<RocksDBEngineOptionsProvider>());
 
   addFeature<FortuneFeature>(getOptions<fortune::FortuneOptionsProvider>());
 
