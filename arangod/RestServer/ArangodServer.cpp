@@ -101,6 +101,9 @@ void ArangodServer::addFeatures() {
   addFeature<ReplicationTimeoutFeature>();
   addFeature<SchedulerFeature>(metrics, sharedPRNGFeature.getPRNG());
   addFeature<VectorIndexFeature>(database);
+#ifdef USE_ENTERPRISE
+  addFeature<vector::VectorGraphIndexFeature>();
+#endif
   addFeature<ServerIdFeature>();
   addFeature<ShardingFeature>();
   addFeature<ShellColorsFeature>();
