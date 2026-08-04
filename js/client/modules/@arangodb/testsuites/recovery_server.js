@@ -131,39 +131,15 @@ function runArangodRecovery (params, useEncryption, exitSuccessOk, exitFailOk) {
   process.env["crash-log"] = params.crashLog;
   process.env["isSan"] = params.options.isSan;
   process.env["INSTANCEINFO"] = JSON.stringify(params['instance'].getStructure());
-  const phase = params.setup ? 'setup' : 'recovery';
-  const coreCheck = !params.setup && params.options.coreCheck;
-  print(BLUE + `[recovery_server] launching ${phase}` +
-        ` script=${params.script}` +
-        ` coreCheck=${coreCheck}` +
-        ` rootDir=${params.instance.rootDir}` +
-        ` crashLog=${params.crashLog}` +
-        ` binary=${binary}` + RESET);
   params.instanceInfo.pid = pu.executeAndWait(
     binary,
     argv,
     params.options,
     false,
     params.instance.rootDir,
-    coreCheck,
+    !params.setup && params.options.coreCheck,
     0,
     params.instanceInfo);
-  print(BLUE + `[recovery_server] finished ${phase}` +
-        ` script=${params.script}` +
-        ` exitStatus=${JSON.stringify(params.instanceInfo.exitStatus)}` +
-        ` runResult=${JSON.stringify(params.instanceInfo.pid)}` +
-        ` coreCheck=${coreCheck}` + RESET);
-  if (params.crashLog && fs.exists(params.crashLog)) {
-    try {
-      const crashTail = String(fs.readFileSync(params.crashLog)).split('\n').slice(-40).join('\n');
-      if (crashTail.length > 0) {
-        print(BLUE + `[recovery_server] crash-log tail (${params.crashLog}):\n` +
-              crashTail + RESET);
-      }
-    } catch (err) {
-      print(RED + `[recovery_server] failed to read crash-log ${params.crashLog}: ${err}` + RESET);
-    }
-  }
   if (params.setup) {
     if (params.cleanupCoreDump) {
       params.instance.pid = '*';
@@ -252,8 +228,7 @@ function recovery_server (options) {
         let params = {
           tempDir: tmpMgr.tempDir,
           instanceInfo: {
-            rootDir: fs.join(fs.getTempPath(), 'recovery', count.toString()),
-            getStructure: function () { return {}; }
+            rootDir: fs.join(fs.getTempPath(), 'recovery', count.toString())
           },
           options: _.cloneDeep(options),
           cleanupCoreDump: false,

@@ -183,13 +183,6 @@ void ArangodServer::addFeatures() {
   addFeature<ServerIdFeature>();
   addFeature<ShardingFeature>();
   addFeature<ShellColorsFeature>();
-#ifdef USE_V8
-  addFeature<ShutdownFeature>(
-      std::array{std::type_index(typeid(ScriptFeature))});
-#else
-  addFeature<ShutdownFeature>(
-      std::array{std::type_index(typeid(AgencyFeaturePhase))});
-#endif
   addFeature<SoftShutdownFeature>();
   addFeature<SslFeature>();
   addFeature<ViewTypesFeature>();
@@ -242,6 +235,11 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   addFeature<ScriptFeature>(_ret, getOptions<ScriptOptionsProvider>());
   auto& v8DealerFeature = addFeature<V8DealerFeature>(
       metrics, getOptions<V8DealerOptionsProvider>());
+  addFeature<ShutdownFeature>(
+      std::array{std::type_index(typeid(ScriptFeature))});
+#else
+  addFeature<ShutdownFeature>(
+      std::array{std::type_index(typeid(AgencyFeaturePhase))});
 #endif
 
 #ifdef TRI_HAVE_GETRLIMIT

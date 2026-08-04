@@ -28,7 +28,6 @@
 #include "Agency/Supervision.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
-#include "Basics/Thread.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
@@ -172,25 +171,6 @@ void AgencyFeature::start() {
   TRI_ASSERT(isEnabled());
 
   LOG_TOPIC("a77c8", DEBUG, Logger::AGENCY) << "Starting agency personality";
-  if (_agent == nullptr) {
-    LOG_TOPIC("a1b05", FATAL, Logger::AGENCY)
-        << "AgencyFeature::start called but Agent was never created "
-           "(prepare did not run or agency was disabled)";
-    FATAL_ERROR_EXIT();
-  }
-  auto const agentThreadState = _agent->Thread::state();
-  LOG_TOPIC("a1b03", INFO, Logger::AGENCY)
-      << "AgencyFeature::start"
-      << " agentThreadState=" << Thread::stringify(agentThreadState)
-      << " featureState=" << static_cast<int>(state())
-      << " serverState=" << server().stringifyState();
-  if (agentThreadState != Thread::ThreadState::CREATED) {
-    LOG_TOPIC("a1b04", FATAL, Logger::AGENCY)
-        << "refusing Agent::start: expected thread state CREATED, got "
-        << Thread::stringify(agentThreadState)
-        << " (beginShutdown likely ran after prepare and before start)";
-    FATAL_ERROR_EXIT();
-  }
   _agent->start();
 
   LOG_TOPIC("b481d", DEBUG, Logger::AGENCY) << "Loading agency";
@@ -199,26 +179,6 @@ void AgencyFeature::start() {
 
 void AgencyFeature::beginShutdown() {
   TRI_ASSERT(isEnabled());
-
-  LOG_TOPIC("a1b01", WARN, Logger::AGENCY)
-      << "AgencyFeature::beginShutdown"
-      << " agent=" << (_agent ? "yes" : "null")
-      << " agentThreadState="
-      << (_agent ? Thread::stringify(_agent->Thread::state()) : "n/a")
-      << " featureState=" << static_cast<int>(state())
-      << " serverState=" << server().stringifyState();
-
-  if (_agent == nullptr) {
-    return;
-  }
-  // Calling beginShutdown while the Agent thread is still CREATED moves it to
-  // STOPPED. A later AgencyFeature::start() would then FATAL in Thread::start.
-  if (_agent->Thread::state() == Thread::ThreadState::CREATED) {
-    LOG_TOPIC("a1b02", WARN, Logger::AGENCY)
-        << "AgencyFeature::beginShutdown on Agent still in CREATED "
-           "(CREATED→STOPPED); a later start() will fail unless Agent is "
-           "recreated";
-  }
 
   // pass shutdown event to _agent so it can notify all its sub-threads
   _agent->beginShutdown();

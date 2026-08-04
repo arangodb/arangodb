@@ -709,13 +709,6 @@ void registerViewFactory(application_features::ApplicationServer& server) {
         arangodb::iresearch::StaticStrings::ViewArangoSearchType,
         IResearchView::factory());
   } else {
-    auto* ss = ServerState::instance();
-    LOG_TOPIC("7b0e1", ERR, arangodb::iresearch::TOPIC)
-        << "IResearchFeature: refusing to register view factory"
-        << " role=" << (ss ? ServerState::roleToString(ss->getRole()) : "n/a")
-        << " serverId=" << (ss ? ss->getId() : "n/a")
-        << " (expected coordinator, single-server, or DB server;"
-           " agency/agent role means IResearchFeature was not disabled)";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,
                                    "Invalid role for view creation.");
   }
