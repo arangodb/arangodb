@@ -152,10 +152,10 @@ class WalAccess {
 /// @brief helper class used to resolve vocbases
 ///        and collections from wal markers in an efficient way
 struct WalAccessContext {
-  WalAccessContext(IDatabaseResolver& databaseProvider,
+  WalAccessContext(IDatabaseResolver& dbResolver,
                    WalAccess::Filter const& filter,
                    WalAccess::MarkerCallback const& c)
-      : _databaseProvider(databaseProvider),
+      : _dbResolver(dbResolver),
         _filter(filter),
         _callback(c),
         _responseSize(0) {}
@@ -178,7 +178,7 @@ struct WalAccessContext {
   LogicalCollection* loadCollection(TRI_voc_tick_t dbid, DataSourceId cid);
 
  private:
-  IDatabaseResolver& _databaseProvider;
+  IDatabaseResolver& _dbResolver;
 
  protected:
   friend class MyWALDumper;

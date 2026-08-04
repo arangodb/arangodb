@@ -44,7 +44,7 @@ class RocksDBRecoveryManager final {
   Result parseRocksWAL();
 
   RocksDBEngine& _engine;
-  IDatabaseResolver& _dbProvider;
+  IDatabaseResolver& _dbResolver;
   TickCallback _onTick;
 };
 
