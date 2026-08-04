@@ -950,10 +950,10 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
   // Every admin permission maps 1:1 onto its identically-named rbac::Action
   // and carries no resource. This mirrors the classic side, where all admin
   // actions collapse into a single `AnyAdmin` handler.
-  // Note: p::AdminReadUsers is deliberately absent here; it has no
-  // rbac::Action counterpart and is handled separately below.
   auto adminAction = []<typename T>(T const&) -> rbac::Action {
-    if constexpr (std::is_same_v<T, p::AdminMoveShards>) {
+    if constexpr (std::is_same_v<T, p::AdminReadUsers>) {
+      return rbac::Action::AdminReadUsers;
+    } else if constexpr (std::is_same_v<T, p::AdminMoveShards>) {
       return rbac::Action::AdminMoveShards;
     } else if constexpr (std::is_same_v<T, p::AdminMonitoring>) {
       return rbac::Action::AdminMonitoring;
@@ -1024,16 +1024,6 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
   return std::visit(
       overload{
           // -- Admin actions ---------------------------------------------
-          [&](p::AdminReadUsers const&) -> Result {
-            // TODO(COR-213): AdminReadUsers (the coarse gate on listing all
-            //   users) has no rbac::Action or resource counterpart yet, and
-            //   there is no way to express "all users" as a resource. The
-            //   intended mapping is still to be decided with the team; until
-            //   then we fail closed rather than silently granting access.
-            return {TRI_ERROR_NOT_IMPLEMENTED,
-                    "RBAC authorization for listing all users is not yet "
-                    "implemented"};
-          },
           [&](p::AnyAdmin auto const& admin) -> Result {
             return checkOne(adminAction(admin), rbac::resources::NoResource{});
           },
