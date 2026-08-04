@@ -33,7 +33,7 @@
 #include "Basics/files.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
-#include "RestServer/IDatabaseProvider.h"
+#include "RestServer/IDatabaseResolver.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -112,13 +112,13 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   RocksDBRecoveryManager::TickCallback const& _onTick;
 
   RocksDBEngine& _engine;
-  IDatabaseProvider& _dbProvider;
+  IDatabaseResolver& _dbProvider;
   // whether we are currently at the start of a batch
   bool _startOfBatch = false;
 
  public:
   /// @param seqs sequence number from which to count operations
-  explicit WBReader(RocksDBEngine& engine, IDatabaseProvider& dbProvider,
+  explicit WBReader(RocksDBEngine& engine, IDatabaseResolver& dbProvider,
                     rocksdb::SequenceNumber recoveryStartSequence,
                     rocksdb::SequenceNumber latestSequence,
                     RocksDBRecoveryManager::TickCallback const& onTick)

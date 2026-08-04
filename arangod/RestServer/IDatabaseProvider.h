@@ -23,6 +23,7 @@
 #pragma once
 
 #include "Replication2/Version.h"
+#include "RestServer/IDatabaseResolver.h"
 #include "Utils/DatabaseGuard.h"
 
 #include <velocypack/Slice.h>
@@ -37,8 +38,10 @@ namespace velocypack {
 class Builder;
 }
 
-struct IDatabaseProvider {
+struct IDatabaseProvider : public IDatabaseResolver {
   virtual ~IDatabaseProvider() = default;
+
+  using IDatabaseResolver::useDatabase;
 
   /// @brief record a DDL change so the global schema version is bumped
   /// (the version is used to notify listeners, e.g. the agency, about DDL
@@ -46,7 +49,6 @@ struct IDatabaseProvider {
   virtual void notifyDdlChange(char const* reason) = 0;
 
   virtual VocbasePtr useDatabase(std::string_view name) const = 0;
-  virtual VocbasePtr useDatabase(TRI_voc_tick_t id) const = 0;
 
   /// @brief open all databases described by the given inventory
   virtual void openDatabases(velocypack::Slice databases) = 0;

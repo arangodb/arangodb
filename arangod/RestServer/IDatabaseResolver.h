@@ -22,30 +22,14 @@
 
 #pragma once
 
-#include "Basics/Result.h"
-
-#include <functional>
-#include <rocksdb/types.h>
+#include "Utils/DatabaseGuard.h"
 
 namespace arangodb {
 
-class RocksDBEngine;
-struct IDatabaseResolver;
+struct IDatabaseResolver {
+  virtual ~IDatabaseResolver() = default;
 
-class RocksDBRecoveryManager final {
- public:
-  using TickCallback = std::function<void(rocksdb::SequenceNumber)>;
-
-  RocksDBRecoveryManager(RocksDBEngine& engine, TickCallback onTick);
-
-  void runRecovery();
-
- private:
-  Result parseRocksWAL();
-
-  RocksDBEngine& _engine;
-  IDatabaseResolver& _dbProvider;
-  TickCallback _onTick;
+  virtual VocbasePtr useDatabase(TRI_voc_tick_t id) const = 0;
 };
 
 }  // namespace arangodb
