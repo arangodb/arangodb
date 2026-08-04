@@ -1,42 +1,45 @@
 #!/usr/bin/env bash
-# Run clang-tidy over ArangoDB source files.
-#
-# pre-requisite: Linux-based system, Bash 4, Git 2.9+, jq
-# pre-requisite: clang-tidy + run-clang-tidy on PATH (the pinned toolchain
-#                ships clang-tidy 19.1.7; a matching version is strongly
-#                recommended so the C++20 dialect is parsed identically)
-# pre-requisite: a CONFIGURED and BUILT build directory containing
-#                compile_commands.json (clang-tidy reads the exact compile
-#                flags from there; it does not run the code)
-#
-# Usage:
-#   ./utils/clang-tidy.sh [options] [file-or-dir ...]
-#
-# With no file arguments, checks the files locally modified vs. HEAD in both
-# the main and the enterprise repository (same selection as clang-format.sh).
-# With arguments, checks exactly those files (directories are expanded to their
-# C/C++ source files).
-#
-# Only translation units (.cpp/.cc/.c) are handed to clang-tidy; headers are
-# analyzed transitively via HeaderFilterRegex in .clang-tidy when a TU that
-# includes them is checked. Files under 3rdParty/ are skipped.
-#
-# Options:
-#   -B, --build DIR   build directory with compile_commands.json (default: ./build)
-#   -j N              parallel jobs (default: number of CPUs)
-#       --fix         apply clang-tidy's suggested fixes in place
-#   -h, --help        show this help and exit
+# Run clang-tidy over ArangoDB source files. Run with --help for usage.
 
 set -euo pipefail
 
-adb_path="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )/.." &> /dev/null && pwd )"
+adb_path="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." &> /dev/null && pwd)"
 
-build_dir="build"
-jobs="$(nproc 2>/dev/null || echo 4)"
+build_dir="./build"
+jobs="$(nproc 2>/dev/null || echo 1)"
 fix=""
 files_from_args=()
 
-usage() { sed -n '2,28p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
+usage() {
+  cat <<'EOF'
+Run clang-tidy over ArangoDB source files.
+
+pre-requisite: Bash 4, Git 2.9+, jq, clang-tidy and run-clang-tidy in PATH. The
+               clang-tidy executable should preferably be from the same
+               toolchain as the clang compiler.
+pre-requisite: a configured and built build directory containing
+               compile_commands.json (we read the exact compile flags from
+               there).
+
+Usage:
+  ./utils/clang-tidy.sh [options] [file-or-dir ...]
+
+With no file arguments, checks the files locally modified vs. HEAD in both the
+main and the enterprise repository (same selection as clang-format.sh). With
+arguments, checks exactly those files (directories are expanded to their C/C++
+source files).
+
+Only translation units (.cpp/.cc/.c) are handed to clang-tidy; headers are
+analyzed transitively via HeaderFilterRegex in .clang-tidy when a TU that
+includes them is checked. Files under 3rdParty/ are skipped.
+
+Options:
+  -B, --build DIR   build directory with compile_commands.json (default: ./build)
+  -j N              parallel jobs (default: number of CPUs, needs nproc)
+      --fix         apply clang-tidy's suggested fixes in place
+  -h, --help        show this help and exit
+EOF
+}
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -54,7 +57,7 @@ done
 
 for tool in clang-tidy run-clang-tidy jq; do
   if ! command -v "$tool" >/dev/null 2>&1; then
-    echo "error: '$tool' not found on PATH." >&2
+    echo "error: '$tool' not found in PATH." >&2
     exit 1
   fi
 done
