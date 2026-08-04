@@ -286,10 +286,18 @@ struct ExecContextScope {
   std::shared_ptr<ExecContext const> _old;
 };
 
-struct [[deprecated(
-    "Upgrading to Superuser rights should not be necessary; instead, "
-    "authorization methods on ExecContext should handle the case properly on "
-    "their own.")]] ExecContextSuperuserScope {
+/// @brief scope guard installing a Superuser exec context
+///
+/// Use this to deliberately run an internal execution path with a clear
+/// purpose -- e.g. the startup thread, a dedicated background thread, or
+/// system-collection maintenance -- as Superuser. Prefer this named type over
+/// ExecContextScope(ExecContext::superuserAsShared()) so that all such places
+/// remain easy to find and enumerate.
+///
+/// Do NOT use this to escalate privileges during request handling in order to
+/// skip subsequent permission checks; authorization methods on ExecContext
+/// should handle such cases properly on their own.
+struct ExecContextSuperuserScope {
   explicit ExecContextSuperuserScope();
 
   explicit ExecContextSuperuserScope(bool cond);
