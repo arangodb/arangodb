@@ -119,6 +119,7 @@ class StorageEngineFixture : public ::testing::Test {
     ON_CALL(_suite->dbProvider, defaultReplicationVersion())
         .WillByDefault(Return(replication::Version::ONE));
 
+    _suite->engine.prepare();
     _suite->engine.start();
   }
 
