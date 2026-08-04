@@ -208,9 +208,36 @@
       type: single
     requires:
       coverage: false
+# without coverage this is fast enough:
 - rta_makedata:
     options:
       type: mixed
+    requires:
+      coverage: false
+    suites:
+      - rta_makedata:
+          args:
+            suffix: single
+      - rta_makedata:
+          args:
+            cluster: true
+            suffix: cluster
+            encryptionAtRest: true
+            ssl: true
+      - rta_makedata:
+          args:
+            cluster: true
+            forceOneShard: true
+            makedataDB: system_oneshard_makedata
+            suffix: cluster-oneshard
+# with coverage we need to bucketise:
+- rta_makedata:
+    options:
+      type: mixed
+      buckets: auto
+      parallelity: 3
+    requires:
+      coverage: true
     suites:
       - rta_makedata:
           args:
