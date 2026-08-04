@@ -31,8 +31,6 @@ struct RandomOptionsProvider
     : OptionsProviderImpl<RandomOptionsProvider, RandomFeatureOptions> {
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           RandomFeatureOptions& options);
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
-                           RandomFeatureOptions& /*options*/){};
 };
 
 }  // namespace arangodb
