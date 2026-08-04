@@ -34,6 +34,14 @@ concept HasProcessOptions =
   provider.processOptionsImpl(programOptions,
                               std::declval<typename Provider::Options&>());
 };
+
+template<class Provider>
+concept HasValidateOptions =
+    requires(Provider& provider,
+             std::shared_ptr<options::ProgramOptions> programOptions) {
+  provider.validateOptionsImpl(programOptions,
+                               std::declval<typename Provider::Options&>());
+};
 }  // namespace
 
 template<class... Providers>
@@ -59,7 +67,7 @@ class FeatureOptionProviderContainer final {
       std::shared_ptr<options::ProgramOptions> programOptions) {
     std::apply(
         [&](auto&... providers) {
-          (providers.validateOptions(programOptions), ...);
+          (validateProviderOptions(programOptions, providers), ...);
         },
         _providers);
   }
@@ -83,6 +91,16 @@ class FeatureOptionProviderContainer final {
       provider.processOptions(programOptions);
     }
   }
+
+  template<class Provider>
+  void validateProviderOptions(
+      std::shared_ptr<options::ProgramOptions> programOptions,
+      Provider& provider) {
+    if constexpr (HasValidateOptions<Provider>) {
+      provider.validateOptions(programOptions);
+    }
+  }
+
   std::tuple<Providers...> _providers{};
 };
 }  // namespace arangodb::application_features

@@ -35,8 +35,6 @@ struct ActionOptionsProvider
     : OptionsProviderImpl<ActionOptionsProvider, ActionFeatureOptions> {
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           ActionFeatureOptions& options);
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
-                           ActionFeatureOptions& /*options*/){};
 };
 
 }  // namespace arangodb
