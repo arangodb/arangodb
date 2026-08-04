@@ -134,7 +134,8 @@ function viewApiAuthzSuite () {
         "CreateView db=d name=v_apitest linkedCollections=[c]",
         "UseCollection db=d name=c level=read",
         ...singleOnly([
-          `UseCollection db=d name=${cId} level=read`
+          `UseCollection db=d name=${cId} level=read`,
+          "UseCollection db=d name=c level=writedata"
         ]),
         ...clusterOnly([
           "UseCollection db=d name=c level=writemeta"

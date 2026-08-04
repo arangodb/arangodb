@@ -142,7 +142,8 @@ function userApiAuthzSuite () {
         "IsReadOnly",
         "CreateUser name=testuser",
         ...singleOnly([
-          "UseCollection db=_system name=_users level=read"
+          "UseCollection db=_system name=_users level=read",
+          "UseCollection db=_system name=_users level=writedata"
         ])
       ], endObserve());
       dropTestuser();
@@ -224,7 +225,8 @@ function userApiAuthzSuite () {
         "IsReadOnly",
         "ModifyUserProfile name=testuser",
         ...singleOnly([
-          "UseCollection db=_system name=_users level=read"
+          "UseCollection db=_system name=_users level=read",
+          "UseCollection db=_system name=_users level=writedata"
         ])
       ], endObserve());
     },
@@ -238,7 +240,8 @@ function userApiAuthzSuite () {
         "IsReadOnly",
         "ModifyUserProfile name=testuser",
         ...singleOnly([
-          "UseCollection db=_system name=_users level=read"
+          "UseCollection db=_system name=_users level=read",
+          "UseCollection db=_system name=_users level=writedata"
         ])
       ], endObserve());
     },
@@ -253,7 +256,8 @@ function userApiAuthzSuite () {
         "IsReadOnly",
         "ModifyUserProfile name=testuser",
         ...singleOnly([
-          "UseCollection db=_system name=_users level=read"
+          "UseCollection db=_system name=_users level=read",
+          "UseCollection db=_system name=_users level=writedata"
         ])
       ], endObserve());
     },
@@ -269,7 +273,8 @@ function userApiAuthzSuite () {
         "IsReadOnly",
         "GrantUserPermissions name=testuser",
         ...singleOnly([
-          "UseCollection db=_system name=_users level=read"
+          "UseCollection db=_system name=_users level=read",
+          "UseCollection db=_system name=_users level=writedata"
         ])
       ], endObserve());
     },
@@ -287,7 +292,8 @@ function userApiAuthzSuite () {
         "IsReadOnly",
         "GrantUserPermissions name=testuser",
         ...singleOnly([
-          "UseCollection db=_system name=_users level=read"
+          "UseCollection db=_system name=_users level=read",
+          "UseCollection db=_system name=_users level=writedata"
         ])
       ], endObserve());
     },
@@ -301,7 +307,8 @@ function userApiAuthzSuite () {
         "IsReadOnly",
         "DropUser name=testuser",
         ...singleOnly([
-          "UseCollection db=_system name=_users level=read"
+          "UseCollection db=_system name=_users level=read",
+          "UseCollection db=_system name=_users level=writedata"
         ])
       ], endObserve());
     },
@@ -317,7 +324,8 @@ function userApiAuthzSuite () {
         "IsReadOnly",
         "ModifyUserProfile name=testuser",
         ...singleOnly([
-          "UseCollection db=_system name=_users level=read"
+          "UseCollection db=_system name=_users level=read",
+          "UseCollection db=_system name=_users level=writedata"
         ])
       ], endObserve());
     },
@@ -334,7 +342,8 @@ function userApiAuthzSuite () {
         "IsReadOnly",
         "GrantUserPermissions name=testuser",
         ...singleOnly([
-          "UseCollection db=_system name=_users level=read"
+          "UseCollection db=_system name=_users level=read",
+          "UseCollection db=_system name=_users level=writedata"
         ])
       ], endObserve());
     },
@@ -353,7 +362,8 @@ function userApiAuthzSuite () {
         "IsReadOnly",
         "GrantUserPermissions name=testuser",
         ...singleOnly([
-          "UseCollection db=_system name=_users level=read"
+          "UseCollection db=_system name=_users level=read",
+          "UseCollection db=_system name=_users level=writedata"
         ])
       ], endObserve());
     },

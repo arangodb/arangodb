@@ -102,7 +102,8 @@ function authorizationQuestionsSuite () {
         // the single server also revokes the collection's permissions from all
         // users; in the cluster that happens without an ExecContext
         ...singleOnly([
-          "UseCollection db=_system name=_users level=read"
+          "UseCollection db=_system name=_users level=read",
+          "UseCollection db=_system name=_users level=writedata"
         ])
       ], endObserve());
     },
