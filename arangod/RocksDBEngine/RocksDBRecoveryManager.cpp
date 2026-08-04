@@ -64,7 +64,7 @@ namespace arangodb {
 RocksDBRecoveryManager::RocksDBRecoveryManager(RocksDBEngine& engine,
                                                TickCallback onTick)
     : _engine(engine),
-      _dbResolver(engine.getDatabaseProvider()),
+      _dbProvider(engine.getDatabaseProvider()),
       _onTick(std::move(onTick)) {}
 
 void RocksDBRecoveryManager::runRecovery() {
@@ -112,13 +112,13 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   RocksDBRecoveryManager::TickCallback const& _onTick;
 
   RocksDBEngine& _engine;
-  IDatabaseResolver& _dbResolver;
+  IDatabaseResolver& _dbProvider;
   // whether we are currently at the start of a batch
   bool _startOfBatch = false;
 
  public:
   /// @param seqs sequence number from which to count operations
-  explicit WBReader(RocksDBEngine& engine, IDatabaseResolver& dbResolver,
+  explicit WBReader(RocksDBEngine& engine, IDatabaseResolver& dbProvider,
                     rocksdb::SequenceNumber recoveryStartSequence,
                     rocksdb::SequenceNumber latestSequence,
                     RocksDBRecoveryManager::TickCallback const& onTick)
@@ -131,7 +131,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         _batchStartSequence(0),
         _onTick(onTick),
         _engine(engine),
-        _dbResolver(dbResolver) {}
+        _dbProvider(dbProvider) {}
 
   void startNewBatch(rocksdb::SequenceNumber startSequence) {
     TRI_ASSERT(_currentSequence <= startSequence);
@@ -215,7 +215,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       // collection with this objectID not known.Skip.
       return nullptr;
     }
-    auto vocbase = _dbResolver.useDatabase(dbColPair.first);
+    auto vocbase = _dbProvider.useDatabase(dbColPair.first);
     if (vocbase == nullptr) {
       return nullptr;
     }
@@ -229,7 +229,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       return nullptr;
     }
 
-    auto vb = _dbResolver.useDatabase(std::get<0>(triple));
+    auto vb = _dbProvider.useDatabase(std::get<0>(triple));
     if (vb == nullptr) {
       return nullptr;
     }
@@ -630,7 +630,7 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
     }
 
     // Tell the WriteBatch reader the transaction markers to look for
-    WBReader handler(_engine, _dbResolver, recoveryStartSequence,
+    WBReader handler(_engine, _dbProvider, recoveryStartSequence,
                      latestSequenceNumber, _onTick);
 
     // prevent purging of WAL files while we are in here
