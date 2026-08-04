@@ -416,6 +416,11 @@ TEST_F(RbacAuthModeTest, RestoreCreateViewChecksViewThenLinkedCollections) {
 // Admin actions (map 1:1 to the identically-named action, no resource)
 // ---------------------------------------------------------------------------
 
+TEST_F(RbacAuthModeTest, AdminReadUsers) {
+  check(p::AdminReadUsers{});
+  expectSingle(rbac::Action::AdminReadUsers, "<none>");
+}
+
 TEST_F(RbacAuthModeTest, AdminMonitoring) {
   check(p::AdminMonitoring{});
   expectSingle(rbac::Action::AdminMonitoring, "<none>");
@@ -434,14 +439,6 @@ TEST_F(RbacAuthModeTest, AdminBackup) {
 TEST_F(RbacAuthModeTest, AdminQueryCache) {
   check(p::AdminQueryCache{});
   expectSingle(rbac::Action::AdminQueryCache, "<none>");
-}
-
-TEST_F(RbacAuthModeTest, AdminReadUsersIsNotImplementedAndAsksNothing) {
-  // AdminReadUsers has no rbac::Action counterpart yet (COR-213); it must fail
-  // closed without querying the service.
-  auto r = check(p::AdminReadUsers{});
-  EXPECT_EQ(r.errorNumber(), TRI_ERROR_NOT_IMPLEMENTED);
-  EXPECT_TRUE(svc.queries.empty());
 }
 
 // ---------------------------------------------------------------------------
