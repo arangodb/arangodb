@@ -737,22 +737,6 @@ async<Result> RestHandler::checkUserCanAccess() const {
       canAccess = true;
     }
 #endif
-
-    if (not canAccess &&
-        auth->authenticationSystemOnly()) {  // TODO remove in 4.0
-      // authentication required, but only for /_api, /_admin etc.
-      if (!path.empty()) {
-        // check if path starts with /_
-        // or path begins with /
-        if (path[0] != '/' || (path.size() > 1 && path[1] != '_')) {
-          // simon: upgrade rights for Foxx apps. FIXME
-          canAccess = true;
-          ec->forceSuperuser();
-          LOG_TOPIC("e2880", TRACE, Logger::AUTHORIZATION)
-              << "Upgrading rights for " << path;
-        }
-      }
-    }
   }
 
   co_return canAccess
