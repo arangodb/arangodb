@@ -1191,6 +1191,34 @@ for_statement:
     }
   ;
 
+
+
+%type <node> pattern_projection_list;
+pattern_projection_list:
+    object_element_name[elt] {
+        auto node = parser->ast()->createNodeValueString($elt.value, $elt.length);
+        parser->pushArrayElement(node);
+    }
+    | pattern_projection_list T_COMMA object_element_name[elt] 
+    {
+        auto node = parser->ast()->createNodeValueString($elt.value, $elt.length);
+        parser->pushArrayElement(node);
+    }
+		;
+
+%type <node> pattern_maybe_projection;
+pattern_maybe_projection:
+    T_RETURN {
+      auto node = parser->ast()->createNodeArray();
+      parser->pushStack(node);
+    } pattern_projection_list {
+      $$ = static_cast<AstNode*>(parser->popStack());
+    }
+  | /* empty */ { $$ = nullptr; }
+  ;
+
+
+
 %type <node> pattern_label;
 pattern_label:
     T_COLON T_STRING {
@@ -1244,10 +1272,19 @@ pattern_variable_length_relationship:
 
 %type <node> pattern_node_pattern;
 pattern_node_pattern:
-    T_OPEN pattern_out_variable pattern_label pattern_maybe_property_key_value_expression pattern_maybe_where_expression T_CLOSE {
-        $$ = parser->ast()->createPatternNodePattern($2, $3, $4, $5);
+    T_OPEN pattern_out_variable[variable]
+		       pattern_label[label]
+					 pattern_maybe_property_key_value_expression[kv_expr]
+					 pattern_maybe_where_expression[where]
+					 pattern_maybe_projection[projection]
+           T_CLOSE {
+        $$ = parser->ast()->createPatternNodePattern($variable, $label, $kv_expr, $where, $projection);
     }
-    | T_OPEN variable_name T_CLOSE { $$ = parser->ast()->createNodeReference({$2.value, $2.length}); }
+    | 
+		T_OPEN variable_name 
+		       T_CLOSE {
+			  $$ = parser->ast()->createNodeReference({$variable_name.value, $variable_name.length});
+		}
 
 %type <node> pattern_out_variable;
 pattern_out_variable:
@@ -1266,9 +1303,15 @@ pattern_close_relation:
   | T_ARRAY_CLOSE T_MINUS T_GT { $$ = true; }
 
 %type <node> pattern_edge;
-pattern_edge: pattern_open_relation pattern_out_variable pattern_edge_label pattern_maybe_property_key_value_expression
-    pattern_maybe_where_expression pattern_close_relation {
-        $$ = parser->ast()->createPatternEdge($2, $3, $4, $5, nullptr, $1, $6);
+pattern_edge: pattern_open_relation[inbound] pattern_out_variable[variable]
+              pattern_edge_label[label]
+              pattern_maybe_property_key_value_expression[kv_expr]
+              pattern_maybe_where_expression[where]
+              pattern_maybe_projection[projection]
+              pattern_close_relation[outbound] {
+        $$ = parser->ast()->createPatternEdge($variable, $label, $kv_expr, $where,
+                                              nullptr, $inbound, $outbound,
+                                              $projection);
     }
     | pattern_open_relation pattern_out_variable pattern_edge_label pattern_variable_length_relationship pattern_close_relation {
         $$ = parser->ast()->createPatternEdge($2, $3, nullptr, nullptr, $4, $1, $5);
