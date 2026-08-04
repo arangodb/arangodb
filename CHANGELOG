@@ -1,9 +1,13 @@
-3.12.10 (2026-08-03)
---------------------
+3.12.10.1 (XXXX-XX-XX)
+----------------------
 
 * BTS-2425: Updated node modules:
  - fast-uri to 3.1.5 to resolve CVE-2026-18446
  - brace-expansion to 5.0.9 to resolve CVE-2026-69152
+
+
+3.12.10 (2026-08-03)
+--------------------
 
 * BTS-2421: Fixed a bug where a dump taken while a background vector index build
   was in its ingestion phase omitted the index, causing a restore to silently
