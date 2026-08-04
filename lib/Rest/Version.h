@@ -24,6 +24,7 @@
 
 #include <map>
 #include <string>
+#include <iosfwd>
 
 #include "Basics/operating-system.h"
 

@@ -640,6 +640,7 @@ void Version::print(std::ostream& out) {
       << std::endl
       << getDetailed() << std::endl;
 }
+
 void Version::printJson(std::ostream& out) {
   VPackBuilder builder;
   {

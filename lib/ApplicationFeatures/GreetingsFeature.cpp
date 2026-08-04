@@ -30,11 +30,6 @@
 #include "Logger/LoggerStream.h"
 #include "Rest/Version.h"
 
-#include "velocypack/Builder.h"
-#include "velocypack/Slice.h"
-
-#include <ostream>
-
 namespace arangodb {
 
 void logLGPLNotice(void) {
