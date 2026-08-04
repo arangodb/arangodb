@@ -21,7 +21,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ReplicationFeature.h"
-#include "Replication/ReplicationOptionsProvider.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Cluster/ClusterFeature.h"
@@ -34,7 +33,6 @@
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/IRegistry.h"
-#include "ProgramOptions/ProgramOptions.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/GlobalReplicationApplier.h"
 #include "RestServer/DatabaseFeature.h"
@@ -44,7 +42,6 @@
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::application_features;
-using namespace arangodb::options;
 
 DECLARE_COUNTER(arangodb_replication_cluster_inventory_requests_total,
                 "(DC-2-DC only) Number of times the database and collection "
@@ -81,18 +78,6 @@ ReplicationFeature::ReplicationFeature(
 }
 
 ReplicationFeature::~ReplicationFeature() = default;
-
-void ReplicationFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  ReplicationOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void ReplicationFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  ReplicationOptionsProvider provider;
-  provider.validateOptions(options, _options);
-}
 
 void ReplicationFeature::prepare() {
   if (ServerState::instance()->isCoordinator()) {

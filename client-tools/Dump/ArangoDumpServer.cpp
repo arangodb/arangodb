@@ -67,20 +67,17 @@ void ArangoDumpServer::addFeatures() {
   addFeature<GreetingsFeaturePhase>(std::true_type{});
   auto& client = addFeature<HttpEndpointProvider, ClientFeature>(
       true, std::numeric_limits<size_t>::max());
-  addFeature<VersionFeature>();
-  addFeature<LoggerFeature>(false);
-  addFeature<ConfigFeature>(_binaryName);
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(std::array{std::type_index(typeid(DumpFeature))});
   addFeature<SslFeature>();
-#ifdef TRI_HAVE_GETRLIMIT
-  addFeature<BumpFileDescriptorsFeature>("--descriptors-minimum");
-#endif
   addFeature<DumpFeature>(client, *_ret);
 }
 
 void ArangoDumpServer::addFeaturesWithOptionProvider() {
+  addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
+  addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
+  addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());
   addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
   addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -89,6 +86,10 @@ void ArangoDumpServer::addFeaturesWithOptionProvider() {
 #endif
 #ifdef USE_ENTERPRISE
   addFeature<EncryptionFeature>(getOptions<EncryptionOptionsProvider>());
+#endif
+#ifdef TRI_HAVE_GETRLIMIT
+  addFeature<BumpFileDescriptorsFeature>(
+      getOptions<ClientBumpFileDescriptorsOptionsProvider>());
 #endif
 }
 

@@ -27,7 +27,7 @@
 
 namespace arangodb::activities {
 
-void OptionsProvider::declareOptions(
+void OptionsProvider::declareOptionsImpl(
     std::shared_ptr<options::ProgramOptions> opts, FeatureOptions& options) {
   opts->addSection("activities", "Options for activities");
 

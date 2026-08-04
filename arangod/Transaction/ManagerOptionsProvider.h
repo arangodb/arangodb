@@ -33,9 +33,12 @@ class ProgramOptions;
 
 namespace arangodb::transaction {
 
-struct ManagerOptionsProvider : OptionsProvider<ManagerFeatureOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      ManagerFeatureOptions& options) override;
+struct ManagerOptionsProvider
+    : OptionsProviderImpl<ManagerOptionsProvider, ManagerFeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          ManagerFeatureOptions& options);
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
+                           ManagerFeatureOptions& /*options*/) {}
 };
 
 }  // namespace arangodb::transaction

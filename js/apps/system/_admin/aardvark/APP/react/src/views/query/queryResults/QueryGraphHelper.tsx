@@ -63,8 +63,8 @@ export const convertToGraphData = ({
 const convertGraphObject = ({ data }: { data: ObjectDataInputType[] }) => {
   let nodes = [] as NodeDataType[];
   let edges = [] as EdgeDataType[];
-  let nodeIds = [] as string[];
-  let edgeIds = [] as string[];
+  const nodeIds = [] as string[];
+  const edgeIds = [] as string[];
   data.forEach(function (obj) {
     if (obj.edges && obj.vertices) {
       obj.vertices.forEach(function (node) {
@@ -103,8 +103,8 @@ const convertGraphObject = ({ data }: { data: ObjectDataInputType[] }) => {
 const convertEdgeArray = ({ data }: { data: EdgeDataInputType[] }) => {
   let nodes = [] as NodeDataType[];
   let edges = [] as EdgeDataType[];
-  let nodeIds = [] as string[];
-  let edgeIds = [] as string[];
+  const nodeIds = [] as string[];
+  const edgeIds = [] as string[];
 
   data.forEach(edge => {
     if (edge !== null) {

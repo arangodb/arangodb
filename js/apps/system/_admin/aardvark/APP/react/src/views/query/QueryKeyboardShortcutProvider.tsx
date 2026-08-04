@@ -18,8 +18,8 @@ export const QueryKeyboardShortcutProvider = ({
   } = useQueryContext();
   React.useEffect(() => {
     hotkeys.filter = function (event) {
-      var target = event.target;
-      var tagName = (target as any)?.tagName;
+      const target = event.target;
+      const tagName = (target as any)?.tagName;
       return tagName === "INPUT" || tagName === "TEXTAREA";
     };
 
