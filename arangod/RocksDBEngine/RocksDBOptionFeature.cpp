@@ -27,7 +27,6 @@
 
 #include "RocksDBOptionFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Agency/AgencyFeature.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/application-exit.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
@@ -102,38 +101,19 @@ rocksdb::CompactionStyle compactionStyleFromString(std::string_view type) {
 }  // namespace
 
 RocksDBOptionFeature::RocksDBOptionFeature(
-    application_features::ApplicationServer& server,
-    AgencyFeature const* agencyFeature)
-    : RocksDBOptionFeature(server, agencyFeature,
-                           RocksDBOptionFeatureOptions{}) {}
+    application_features::ApplicationServer& server)
+    : RocksDBOptionFeature(server, RocksDBOptionFeatureOptions{}) {}
 
 RocksDBOptionFeature::RocksDBOptionFeature(
     application_features::ApplicationServer& server,
-    AgencyFeature const* agencyFeature, RocksDBOptionFeatureOptions options)
-    : ApplicationFeature{server, *this},
-      _options(std::move(options)),
-      _agencyFeature(agencyFeature) {
+    RocksDBOptionFeatureOptions options)
+    : ApplicationFeature{server, *this}, _options(std::move(options)) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
 }
 
 void RocksDBOptionFeature::prepare() {
   ioUringEnabled = _options.ioUringEnabled;
-  // TODO (COR-760): remove this coupling; RocksDBOptionFeature should be
-  // agnostic of the agency
-  // behavioral: agency memory limits
-  if (_agencyFeature && _agencyFeature->activated()) {
-    auto const& opts = server().options();
-    if (!opts->processingResult().touched("--rocksdb.block-cache-size")) {
-      _options.blockCacheSize =
-          std::min<uint64_t>(_options.blockCacheSize, uint64_t(1) << 30);
-    }
-    if (!opts->processingResult().touched(
-            "--rocksdb.total-write-buffer-size")) {
-      _options.totalWriteBufferSize = std::min<uint64_t>(
-          _options.totalWriteBufferSize, uint64_t(512) << 20);
-    }
-  }
 
   if (_options.enableBlobFiles) {
     LOG_TOPIC("5e48f", WARN, Logger::ENGINES)
