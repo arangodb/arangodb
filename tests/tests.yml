@@ -315,11 +315,27 @@
       dumpAgencyOnError: true
       forceJson: true
 
+# coverage needs 2 buckets for this
 - load_balancing:
     options:
       priority: 500
       size: medium
       type: cluster
+      buckets: auto
+    requires:
+      coverage: true
+    args:
+      dumpAgencyOnError: true
+    suites:
+      - load_balancing
+      - load_balancing_auth
+- load_balancing:
+    options:
+      priority: 500
+      size: medium
+      type: cluster
+    requires:
+      coverage: false
     args:
       dumpAgencyOnError: true
     suites:
