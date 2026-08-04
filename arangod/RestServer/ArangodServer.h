@@ -22,43 +22,38 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationFeatures/OptionProvidingServer.h"
 #include "ApplicationFeatures/ApplicationFeaturePhase.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/FeatureOptionProviderContainer.h"
+#include "RestServer/ArangodOptionProviders.h"
 
 namespace arangodb {
 
 // ArangodServer - the main server class for arangod
-class ArangodServer : public application_features::ApplicationServer {
+class ArangodServer : public OptionProvidingServer<ArangodOptionProviders> {
  public:
   ArangodServer(
       std::shared_ptr<options::ProgramOptions> options, char const* binaryPath,
-      std::string_view binaryName,
+      std::string binaryName, int* ret,
       std::shared_ptr<crash_handler::DumpManager> dumpManager,
       std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry)
-      : ApplicationServer(options, binaryPath),
-        _programOptions(options),
-        _binaryName(binaryName),
+      : OptionProvidingServer<ArangodOptionProviders>(
+            options, binaryPath, std::move(binaryName), ret),
         _dumpManager(dumpManager),
         _dataSourceRegistry(dataSourceRegistry) {}
 
   // Adds all features to the server. Must be called before run().
   // @param ret pointer to return value (used by some features)
-  void addFeatures(int* ret);
+  void addFeatures();
 
  protected:
-  void collectOptions() final;
-  void validateOptions() final;
+  void processOptions() override final;
   // Called by server::run() after collect & validate.
   void addFeaturesWithOptionProvider() final;
 
  private:
-  std::shared_ptr<options::ProgramOptions> _programOptions;
-  std::string_view _binaryName;
   std::shared_ptr<crash_handler::DumpManager> _dumpManager;
   std::shared_ptr<crash_handler::DataSourceRegistry> _dataSourceRegistry;
-  application_features::FeatureOptionProviderContainer _optionProviders;
 };
 
 }  // namespace arangodb

@@ -22,9 +22,6 @@
 
 #pragma once
 
-#include <string>
-#include <vector>
-
 namespace arangodb {
 
 struct ServerFeatureOptions {

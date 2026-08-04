@@ -744,7 +744,7 @@ class instanceManager {
 
     while (true) {
       if (count > timeout) {
-        throw new Error(`FAILED to ${jobMessage} after TIMEOUT ${timeout} - ${jobStatus}`);
+        throw new Error(`FAILED to ${jobMessage} after TIMEOUT ${timeout} - ${JSON.stringify(jobStatus)}`);
       }
       sleep(0.1);
       jobStatus = arango.GET_RAW('/_admin/cluster/queryAgencyJob?id=' + jobId);
@@ -783,7 +783,7 @@ class instanceManager {
         throw new Error(`failed to resign ${dbServer.name} (${dbServer.shortName}) from leadership via ${frontend.name}: ${JSON.stringify(result)}`);
       }
       if (this.waitForAgencyJob(
-        result.parsedBody.id, 1000,
+        result.parsedBody.id, (this.options.isInstrumented) ? 10000 : 1000,
         `resign ${dbServer.name} from leadership via ${frontend.name}:`)) {
         return;
       }

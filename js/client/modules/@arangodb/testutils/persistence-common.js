@@ -665,6 +665,30 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
     }
   }
 
+  runRtaWaitData() {
+    let res = {};
+    let logFile = fs.join(fs.getTempPath(), `rta_out_waitdata.log`);
+    let rc = ct.run.rtaMakedata(this.secondRunOptions, this.instanceManager, 2, "waiting for the SUT to come in sync", logFile, this.rtaArgs);
+    if (!rc.status) {
+      this.results.RtaCheckdata = {
+        message: 'Waitdata:\n' + ct.run.readRtaErrorLog(logFile),
+        status: false,
+        failed: 1,
+        duration: rc.duration,
+      };
+      this.results.failed += 1;
+      return false;
+    } else {
+      fs.remove(logFile);
+      this.results.RtaCheckdata = {
+        status: true,
+        failed: 0,
+        duration: rc.duration,
+      };
+      return true;
+    }
+  }
+
   spawnStressArangosh(snippet, key, volume, args) {
     global.instanceManager = this.instanceManager;
     return ct.run.spawnStressArangoshInBG(this.clientInstances, snippet, key, volume, args);

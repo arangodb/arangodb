@@ -21,33 +21,68 @@
 #pragma once
 
 #include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/DatabasePathOptionsProvider.h"
-#include "RestServer/DumpLimitsOptionsProvider.h"
-#include "RestServer/FortuneOptionsProvider.h"
-#include "RestServer/TemporaryStorageOptionsProvider.h"
-#include "RocksDBEngine/RocksDBIndexCacheRefillOptionsProvider.h"
-#include "RocksDBEngine/RocksDBOptionFeatureOptionsProvider.h"
-#include "RocksDBEngine/RocksDBEngineOptionsProvider.h"
 
 #include <tuple>
 
 namespace arangodb::application_features {
+
+namespace {
+template<class Provider>
+concept HasProcessOptions =
+    requires(Provider& provider,
+             std::shared_ptr<options::ProgramOptions> programOptions) {
+  provider.processOptionsImpl(programOptions,
+                              std::declval<typename Provider::Options&>());
+};
+}  // namespace
+
+template<class... Providers>
 class FeatureOptionProviderContainer final {
  public:
-  void declareOptions(std::shared_ptr<options::ProgramOptions> programOptions);
-  void validateOptions(std::shared_ptr<options::ProgramOptions> programOptions);
+  void declareOptions(std::shared_ptr<options::ProgramOptions> programOptions) {
+    std::apply(
+        [&](auto&... providers) {
+          (providers.declareOptions(programOptions), ...);
+        },
+        _providers);
+  }
+
+  void processOptions(std::shared_ptr<options::ProgramOptions> programOptions) {
+    std::apply(
+        [&](auto&... providers) {
+          (processProviderOptions(programOptions, providers), ...);
+        },
+        _providers);
+  }
+
+  void validateOptions(
+      std::shared_ptr<options::ProgramOptions> programOptions) {
+    std::apply(
+        [&](auto&... providers) {
+          (providers.validateOptions(programOptions), ...);
+        },
+        _providers);
+  }
 
   template<typename ProviderType>
-  auto& getOptions() const {
+  auto const& getOptions() const {
     return std::get<ProviderType>(_providers).options();
   }
 
+  template<typename ProviderType>
+  auto& mutableOptions() {
+    return std::get<ProviderType>(_providers).mutableOptions();
+  }
+
  private:
-  std::tuple<DatabasePathOptionsProvider, DumpLimitsOptionsProvider,
-             fortune::FortuneOptionsProvider, RocksDBEngineOptionsProvider,
-             RocksDBIndexCacheRefillOptionsProvider,
-             RocksDBOptionFeatureOptionsProvider,
-             TemporaryStorageOptionsProvider>
-      _providers{};
+  template<class Provider>
+  void processProviderOptions(
+      std::shared_ptr<options::ProgramOptions> programOptions,
+      Provider& provider) {
+    if constexpr (HasProcessOptions<Provider>) {
+      provider.processOptions(programOptions);
+    }
+  }
+  std::tuple<Providers...> _providers{};
 };
 }  // namespace arangodb::application_features

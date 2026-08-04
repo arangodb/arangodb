@@ -151,6 +151,10 @@ void ApplicationServer::disableFeatures(std::span<const std::type_index> types,
                                         bool force) {
   for (std::type_index type : types) {
     auto it = _features.find(type);
+    // temporarily disabled while we are in the process of migrating features to
+    // the new program options processing which also means that features are
+    // created later.
+    // TRI_ASSERT(it != _features.end());
     if (it != _features.end()) {
       TRI_ASSERT(it->second != nullptr);
       if (force) {
@@ -188,6 +192,8 @@ void ApplicationServer::run(int argc, char* argv[]) {
 
   // seal the options
   _options->seal();
+
+  processOptions();
 
   // validate options of all features
   _state.store(State::IN_VALIDATE_OPTIONS, std::memory_order_release);
@@ -421,15 +427,6 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
     }
     std::cout << "}\n";
     exit(EXIT_SUCCESS);
-  }
-
-  for (auto it = _orderedFeatures.begin(); it != _orderedFeatures.end(); ++it) {
-    ApplicationFeature& feature = (*it).get();
-    if (feature.isEnabled()) {
-      LOG_TOPIC("5c642", TRACE, Logger::STARTUP)
-          << feature.name() << "::loadOptions";
-      feature.loadOptions(_options, _binaryPath);
-    }
   }
 
   if (_dumpOptions) {

@@ -35,7 +35,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void SslServerOptionsProvider::declareOptions(
+void SslServerOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, SslServerOptions& opts) {
   options->addSection("tls", "TLS communication");
 

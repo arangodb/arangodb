@@ -33,7 +33,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void GeneralServerOptionsProvider::declareOptions(
+void GeneralServerOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, GeneralServerOptions& options) {
   // options were removed in 3.12.10 as part of removing the telemetrics API
   // entirely.
@@ -133,7 +133,7 @@ uncompress incoming HTTP requests with Content-Encodings gzip and deflate
 even if the request is not authenticated.)");
 }
 
-void GeneralServerOptionsProvider::validateOptions(
+void GeneralServerOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions>, GeneralServerOptions& options) {
   if (!options.accessControlAllowOrigins.empty()) {
     // trim trailing slash from all members

@@ -424,14 +424,52 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
-* COR-759: AQL unary plus/minus on bind parameters silently return incorrect values
-  AQL: Fixed an issue where queries using unary operators (+ and -) with bind parameters could cause the server to terminate unexpectedly. These queries are now handled correctly and return the expected results.
-  
+* Updated ArangoDB Starter to v0.19.25.
+
+* COR-726/COR-787/COR-792: Removed the deprecated replication applier's REST API,
+  along with the arangosh client methods that used them.
+  Single-server-to-single-server replication is no longer supported.
+  Removed endpoints:
+  - `GET/PUT /_api/replication/applier-config`
+  - `PUT /_api/replication/applier-start`
+  - `PUT /_api/replication/applier-stop`
+  - `GET/DELETE /_api/replication/applier-state`
+  - `GET /_api/replication/applier-state-all`
+  - `PUT /_api/replication/make-follower`
+  - `PUT /_api/replication/sync`
+  - `GET /_api/replication/logger-follow`
+  - `GET /_api/replication/logger-first-tick`
+  - `GET /_api/replication/logger-last`
+  - `GET /_api/replication/logger-tick-ranges`
+  - `GET /_api/replication/server-id`
+
+* COR-784: Missing Variable in Collect Query
+  Fixed an issue where certain invalid COLLECT statements could trigger an internal query planning error instead of reporting a user-facing query validation error.
+
+* BTS-2400: Added the `--vector-index-build-retry-backoff` startup option (seconds) to
+  configure the vector index build retry backoff (default: 60). Additionally, a
+  DBServer now marks the database dirty when a vector index build reports or
+  clears its training error, waking the maintenance loop so the index's
+  ready/error state is republished to the agency's `Current` promptly instead of
+  waiting for the next maintenance cycle.
+
+* Fixed a bug in the JavaScript API causing `allowImplicit` and
+  `skipFastLockRound` to not be forwarded to the server for Stream Transactions.
+
+* Updated node modules:
+ - brace-expansion to 5.0.8
+
+* Updated node modules:
+ - fast-uri to 3.1.4
+ - js-yaml to 4.3.0
 
 * Upgraded included rclone to v1.74.4 with go1.25.12 and non-vulnerable
   dependencies.
 
-* Updated ArangoDB Starter to v0.19.24.
+* COR-759: AQL unary plus/minus on bind parameters silently return incorrect
+  values. AQL: Fixed an issue where queries using unary operators (+ and -) with
+  bind parameters could cause the server to terminate unexpectedly.
+  These queries are now handled correctly and return the expected results.
 
 * COR-613: Create Response Code Metrics
   arangodb_http_response_http_response_code_total{code="<response-code>"}
@@ -453,8 +491,6 @@
 
 * Updated node modules:
  - qs to 6.15.2
- - brace-expansion to 5.0.6
- - js-yaml to 4.2.0
 
 * Upgraded OpenSSL to 3.5.7.
 
@@ -515,9 +551,6 @@
 * Updated node modules:
  - lodash to 4.18.0
  - minimatch to 3.1.4
- - js-yaml to 3.14.2
- - qs to 6.14.2
- - brace-expansion to 1.1.13
  - ajv to 8.18.0
  - @xmldom/xmldom@0.8.13
 

@@ -50,8 +50,6 @@ class AuthenticationFeature final
       application_features::ApplicationServer& server);
   ~AuthenticationFeature();
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
   void stop() override final;
@@ -93,8 +91,6 @@ class AuthenticationFeature final
 
   /// load JWT secrets from folder
   [[nodiscard]] Result loadJwtSecretFolder();
-
-  static constexpr size_t kMaxSecretLength = 64;
 
   AuthenticationOptions _options;
   std::unique_ptr<auth::UserManager> _userManager;

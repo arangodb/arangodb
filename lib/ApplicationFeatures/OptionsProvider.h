@@ -28,13 +28,19 @@ namespace arangodb {
 
 template<class Derived, class OptionsT>
 struct OptionsProviderImpl {
+  using Options = OptionsT;
+
   void declareOptions(std::shared_ptr<options::ProgramOptions> prgOptions) {
     static_cast<Derived*>(this)->declareOptionsImpl(prgOptions, _options);
+  }
+  void processOptions(std::shared_ptr<options::ProgramOptions> prgOptions) {
+    static_cast<Derived*>(this)->processOptionsImpl(prgOptions, _options);
   }
   void validateOptions(std::shared_ptr<options::ProgramOptions> prgOptions) {
     static_cast<Derived*>(this)->validateOptionsImpl(prgOptions, _options);
   }
   [[nodiscard]] OptionsT const& options() const noexcept { return _options; }
+  [[nodiscard]] OptionsT& mutableOptions() noexcept { return _options; }
 
  private:
   OptionsT _options;

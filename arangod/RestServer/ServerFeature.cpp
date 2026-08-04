@@ -31,8 +31,8 @@
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
-#include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/ServerOptionsProvider.h"
+#include "Replication/ReplicationFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb::application_features;
@@ -51,15 +51,8 @@ ServerFeature::ServerFeature(ApplicationServer& server, int* res,
   setOptional(true);
   startsAfter<AqlFeaturePhase>();
   startsAfter<UpgradeFeature>();
-}
 
-void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  ServerOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
-  server().getFeature<ShutdownFeature>().disable();
+  server.getFeature<ShutdownFeature>().disable();
 }
 
 void ServerFeature::prepare() {

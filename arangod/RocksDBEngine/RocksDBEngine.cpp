@@ -96,7 +96,6 @@
 #include "RocksDBEngine/RocksDBOptionFeature.h"
 #include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
-#include "RocksDBEngine/RocksDBReplicationTailing.h"
 #include "RocksDBEngine/RocksDBRestHandlers.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBSyncThread.h"
@@ -3397,20 +3396,6 @@ Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase,
   builder.close();  // base
 
   return {};
-}
-
-Result RocksDBEngine::lastLogger(TRI_vocbase_t& vocbase, uint64_t tickStart,
-                                 uint64_t tickEnd, VPackBuilder& builder) {
-  bool includeSystem = true;
-  size_t chunkSize = 32 * 1024 * 1024;  // TODO: determine good default value?
-
-  builder.openArray();
-  RocksDBReplicationResult rep =
-      rocksutils::tailWal(&vocbase, tickStart, tickEnd, chunkSize,
-                          includeSystem, DataSourceId::none(), builder);
-  builder.close();
-
-  return std::move(rep).result();
 }
 
 WalAccess const* RocksDBEngine::walAccess() const {

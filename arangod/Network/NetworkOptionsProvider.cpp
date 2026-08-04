@@ -33,7 +33,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void NetworkOptionsProvider::declareOptions(
+void NetworkOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, NetworkOptions& opts) {
   options->addSection("network", "cluster-internal networking");
 
@@ -114,12 +114,8 @@ is set to value greater than zero. If the threshold is set to value of 0,
 then no compression will be performed.)");
 }
 
-void NetworkOptionsProvider::validateOptions(
+void NetworkOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, NetworkOptions& options) {
-  if (options.idleTtlMilli < 10000) {
-    options.idleTtlMilli = 10000;
-  }
-
   uint64_t clamped =
       std::clamp(options.maxInFlight, NetworkOptions::MinAllowedInFlight,
                  NetworkOptions::MaxAllowedInFlight);

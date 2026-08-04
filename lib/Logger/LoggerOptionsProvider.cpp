@@ -47,8 +47,8 @@ namespace arangodb {
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-void LoggerOptionsProvider::declareOptions(std::shared_ptr<ProgramOptions> opts,
-                                           LoggerOptions& options) {
+void LoggerOptionsProvider::declareOptionsImpl(
+    std::shared_ptr<ProgramOptions> opts, LoggerOptions& options) {
   opts->addSection("log", "logging");
 
   opts->addOption("--log",
@@ -341,29 +341,6 @@ contains a single character with the server's role. The roles are:
       "The mode to use for a new log file. The umask is applied as well.",
       new StringParameter(&options.fileMode));
 
-  if (options.threaded) {
-    // this option only makes sense for arangod, not for arangosh etc.
-    opts->addOption("--log.api-enabled",
-                    "Whether the log API is enabled (true) or not (false), or "
-                    "only enabled for the superuser (jwt).",
-                    new StringParameter(&options.apiSwitch))
-        .setLongDescription(R"(Credentials are not written to log files.
-Nevertheless, some logged data might be sensitive depending on the context of
-the deployment. For example, if request logging is switched on, user requests
-and corresponding data might end up in log files. Therefore, a certain care
-with log files is recommended.
-
-Since the database server offers an API to control logging and query logging
-data, this API has to be secured properly. By default, the API is accessible
-for admin users (administrative access to the `_system` database).
-However, you can restrict it further to the superuser or disable it altogether:
-
- - `true`: The `/_admin/log/entries` API is accessible for admin users.
- - `jwt`: The `/_admin/log/entries` API is accessible for the superuser only
-   (authentication with JWT superuser token and empty username).
- - `false`: The `/_admin/log/entries` API is not accessible at all.)");
-  }
-
   opts->addOption("--log.use-json-format",
                   "Use JSON as output format for logging.",
                   new BooleanParameter(&options.useJson))
@@ -453,15 +430,6 @@ If you set this option to `auto`, the hostname is automatically determined.)");
       new BooleanParameter(&options.threadName),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
-  if (options.threaded) {
-    // this option only makes sense for arangod, not for arangosh etc.
-    opts->addOption("--log.keep-logrotate",
-                    "Keep the old log file after receiving a SIGHUP.",
-                    new BooleanParameter(&options.keepLogRotate),
-                    arangodb::options::makeDefaultFlags(
-                        arangodb::options::Flags::Uncommon));
-  }
-
   opts->addOption(
       "--log.foreground-tty", "Also log to TTY if backgrounded.",
       new BooleanParameter(&options.foregroundTty),
@@ -502,7 +470,12 @@ full, log entries are written synchronously until the queue has space again.)");
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 
-void LoggerOptionsProvider::validateOptions(
+void LoggerOptionsProvider::processOptionsImpl(
+    std::shared_ptr<ProgramOptions> /*progOpts*/, LoggerOptions& options) {
+  Logger::setLogLevel(options.levels);
+}
+
+void LoggerOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, LoggerOptions& options) {
   if (opts->processingResult().touched("log.file")) {
     std::string definition;
@@ -516,16 +489,21 @@ void LoggerOptionsProvider::validateOptions(
     options.output.push_back(definition);
   }
 
-  if (options.apiSwitch == "true" || options.apiSwitch == "on" ||
-      options.apiSwitch == "On") {
-    options.apiEnabled = true;
-    options.apiSwitch = "true";
-  } else if (options.apiSwitch == "jwt" || options.apiSwitch == "JWT") {
-    options.apiEnabled = true;
-    options.apiSwitch = "jwt";
-  } else {
-    options.apiEnabled = false;
-    options.apiSwitch = "false";
+  if (opts->processingResult().touched("log.time-format") &&
+      (opts->processingResult().touched("log.use-microtime") ||
+       opts->processingResult().touched("log.use-local-time"))) {
+    LOG_TOPIC("c3f28", FATAL, arangodb::Logger::FIXME)
+        << "cannot combine `--log.time-format` with either "
+           "`--log.use-microtime` or `--log.use-local-time`";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (opts->processingResult().touched("log.use-local-time")) {
+    options.timeFormatString = "local-datestring";
+    LogTimeFormats::formatFromName(options.timeFormatString);
+  } else if (opts->processingResult().touched("log.use-microtime")) {
+    options.timeFormatString = "timestamp-micros";
+    LogTimeFormats::formatFromName(options.timeFormatString);
   }
 
   if (!options.fileMode.empty()) {
