@@ -242,18 +242,21 @@
       - rta_makedata:
           args:
             suffix: single
+          name: rta_makedata_single
       - rta_makedata:
           args:
             cluster: true
             suffix: cluster
             encryptionAtRest: true
             ssl: true
+          name: rta_makedata_cluster
       - rta_makedata:
           args:
             cluster: true
             forceOneShard: true
             makedataDB: system_oneshard_makedata
             suffix: cluster-oneshard
+          name: rta_makedata_cluster-oneshard
 
 - chaos:
     options:
