@@ -805,7 +805,7 @@ function ReplicationLoggerSuite() {
 
     testLoggerDropIndex: function () {
       var c = withGuid(db._create(cn));
-      c.ensureIndex({ type: "hash", fields: ["a", "b"], unique: true });
+      c.ensureIndex({ type: "persistent", fields: ["a", "b"], unique: true });
 
       var tick = getLastLogTick();
 
