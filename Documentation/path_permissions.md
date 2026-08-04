@@ -746,27 +746,27 @@ RBAC will only be considered if the switch is on `ADMIN`.
  
 Meanings of abbreviations:
 
-OPEN         - always open
+OPEN         - always open \
 AUTHEN       - some existing user (or SUPERUSER) has to be authenticated, no further authorization check
-               must have read access to the used database from /_db/<dbname
-canUseAdmin(X) - stands for canUseAdminAction(AdminX)
-canUseHard(X) - stands for canUseHardenedAction(AdminX)
-isSuperuser  - check for superuser
-canUseColl(l) - canUseCollection(AccessLevel::l)
-canUseDb(l)  - canUseDatabase(DatabaseAccessLevel::l)
-Admin*       - with RBAC, one needs that action, without RBAC, one needs RW on _system
+               must have read access to the used database from /_db/<dbname \
+canUseAdmin(X) - stands for canUseAdminAction(AdminX) \
+canUseHard(X) - stands for canUseHardenedAction(AdminX) \
+isSuperuser  - check for superuser \
+canUseColl(l) - canUseCollection(AccessLevel::l) \
+canUseDb(l)  - canUseDatabase(DatabaseAccessLevel::l) \
+Admin*       - with RBAC, one needs that action, without RBAC, one needs RW on _system \
 HARD         - without RBAC, one needs RW on _system (with RBAC, --server.hardened is always on)
-               (if Admin* and HARD are written, then AUTHEN holds when --server.hardened is off without RBAC)
-DB RW        - Read/write auth level for the database
-DB RO        - At least read-only auth level for the database
-COLL RO      - At least Read auth level for the collection
-`_system` RW - Read/write auth level for _system database
-?/S/A        - API is switchable between off, superuser and admin access, additionally, an Admin* is specified
-S/A          - API is switchable between superuser and admin access, additionally, an Admin* is specified
-S/A/AU       - API is switchable between superuser only and admin only and AUTHEN
+               (if Admin* and HARD are written, then AUTHEN holds when --server.hardened is off without RBAC) \
+DB RW        - Read/write auth level for the database \
+DB RO        - At least read-only auth level for the database \
+COLL RO      - At least Read auth level for the collection \
+`_system` RW - Read/write auth level for _system database \
+?/S/A        - API is switchable between off, superuser and admin access, additionally, an Admin* is specified \
+S/A          - API is switchable between superuser and admin access, additionally, an Admin* is specified \
+S/A/AU       - API is switchable between superuser only and admin only and AUTHEN \
 SA/SW/LEG    - API is switchable between SA (superuser needed for everything), SW (superuser needed for write
-               operations), LEG (legacy mode, superuser not needed, further authorization applies
-?/S/A/O      - API is switchable between off, superuser only, admin only and public (which is AUTHEN)
+               operations), LEG (legacy mode, superuser not needed, further authorization applies \
+?/S/A/O      - API is switchable between off, superuser only, admin only and public (which is AUTHEN) \
 
 
 |DONE|REVI|TEST| Method | Path                                                         | RestHandler                | Abstract auth call                       | Authorization                       | Comments                                 | Changes to before RBAC |
