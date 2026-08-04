@@ -384,7 +384,6 @@ function aqlMatchStatementTestSuite() {
             }
         },
 
-
         testSelectEdgesWithProjection: function () {
             const result = db._query(
                 "MATCH (u :vc)-[e :ec RETURN i]->(v :vc) RETURN e",
@@ -436,6 +435,110 @@ function aqlMatchStatementTestSuite() {
                 assertEqual(edges[0]._to, vertices[1]._id);
                 assertTrue(edges[0].hasOwnProperty("i"));
                 assertFalse(edges[0].hasOwnProperty("j"));
+            }
+        },
+
+        testSelectVerticesWithAlias: function () {
+            // Flatten / alias: expression is evaluated in normal query scope,
+            // so the projected variable must be referenced explicitly (v.i).
+            const result = db._query(
+                "MATCH (v :vc RETURN j, idx = v.i) RETURN v",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 100);
+
+            for (const v of result) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertTrue(v.hasOwnProperty("j"));
+                assertTrue(v.hasOwnProperty("idx"));
+                assertEqual(v.idx % 5, v.j);
+                assertFalse(v.hasOwnProperty("i"));
+                assertFalse(v.hasOwnProperty("_key"));
+            }
+        },
+
+        testSelectVerticesWithCrossVariableAlias: function () {
+            // Alias expressions may reference other already-bound pattern vars.
+            // Projection is on w so v and e are in scope when parsing the expr.
+            const result = db._query(
+                "MATCH (v :vc)-[e :ec]->(w :vc RETURN j, total = v.i + w.i) RETURN [v, w]",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 50);
+
+            for (const [v, w] of result) {
+                // v is full document (no projection); w is projected
+                assertTrue(v.hasOwnProperty("i"));
+                assertTrue(w.hasOwnProperty("_id"));
+                assertTrue(w.hasOwnProperty("j"));
+                assertTrue(w.hasOwnProperty("total"));
+                // fixture: edges connect vc/v{2k} -> vc/v{2k+1}
+                assertEqual(w.total, v.i + (v.i + 1));
+                assertFalse(w.hasOwnProperty("i"));
+                assertFalse(w.hasOwnProperty("_key"));
+            }
+        },
+
+        testSelectEdgesWithAlias: function () {
+            const result = db._query(
+                "MATCH (u :vc)-[e :ec RETURN j, num = e.i]->(v :vc) RETURN e",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 50);
+
+            for (const e of result) {
+                assertTrue(e.hasOwnProperty("_id"));
+                assertTrue(e.hasOwnProperty("_from"));
+                assertTrue(e.hasOwnProperty("_to"));
+                assertTrue(e.hasOwnProperty("j"));
+                assertTrue(e.hasOwnProperty("num"));
+                assertEqual(e.num % 10, e.j);
+                assertFalse(e.hasOwnProperty("i"));
+                assertFalse(e.hasOwnProperty("_key"));
+            }
+        },
+
+        testSelectEdgesWithAliasReferencingVertex: function () {
+            const result = db._query(
+                "MATCH (u :vc)-[e :ec RETURN fromI = u.i, edgeI = e.i]->(v :vc) RETURN e",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 50);
+
+            for (const e of result) {
+                assertTrue(e.hasOwnProperty("_id"));
+                assertTrue(e.hasOwnProperty("_from"));
+                assertTrue(e.hasOwnProperty("_to"));
+                assertTrue(e.hasOwnProperty("fromI"));
+                assertTrue(e.hasOwnProperty("edgeI"));
+                // fixture: edge i connects vc/v{2i} -> vc/v{2i+1}
+                assertEqual(e.fromI, 2 * e.edgeI);
+                assertFalse(e.hasOwnProperty("i"));
+                assertFalse(e.hasOwnProperty("j"));
+            }
+        },
+
+        testMatchPathVariableWithAlias: function () {
+            const result = db._query(
+                "MATCH p = (v :vc RETURN idx = v.i) -[ e :ec RETURN num = e.i ]-> (w :vc) RETURN p",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 50);
+
+            for (const {edges, vertices} of result) {
+                assertEqual(edges.length, 1);
+                assertEqual(vertices.length, 2);
+                assertEqual(edges[0]._from, vertices[0]._id);
+                assertEqual(edges[0]._to, vertices[1]._id);
+                assertTrue(vertices[0].hasOwnProperty("idx"));
+                assertFalse(vertices[0].hasOwnProperty("i"));
+                assertTrue(edges[0].hasOwnProperty("num"));
+                assertFalse(edges[0].hasOwnProperty("i"));
             }
         },
 
@@ -631,6 +734,7 @@ function aqlMatchStatementTestSuite() {
                 }
             }
         },
+
     };
 }
 
