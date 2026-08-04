@@ -2439,8 +2439,9 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
       };
 
   auto const createPatternProjection =
-      [&](AstNode const* member,
-          Variable const* fullDocumentVar) -> ExecutionNode* {
+      [&](AstNode const* member, Variable const* fullDocumentVar,
+          std::unordered_map<VariableId, Variable const*> const& subst)
+      -> ExecutionNode* {
     auto variable =
         static_cast<Variable const*>(member->getMember(0)->getData());
 
@@ -2467,6 +2468,11 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
         root->addMember(elt);
       };
 
+      auto isSystemAttribute = [&](std::string_view name) {
+        return name == "_id" ||
+               (isEdge && (name == "_from" || name == "_to"));
+      };
+
       // Implicit system attributes required for graph topology.
       addProjectedAttribute("_id");
       if (isEdge) {
@@ -2475,11 +2481,25 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
       }
 
       for (auto i = size_t{0}; i < projections->numMembers(); ++i) {
-        auto path = projections->getMemberUnchecked(i)->getStringView();
-        if (path == "_id" || (isEdge && (path == "_from" || path == "_to"))) {
-          continue;
+        AstNode* item = projections->getMemberUnchecked(i);
+        if (item->type == NODE_TYPE_OBJECT_ELEMENT) {
+          // alias = expression: evaluate in normal query scope (explicit
+          // variable references required, e.g. v.profile.first_name).
+          auto name = item->getStringView();
+          if (isSystemAttribute(name)) {
+            continue;
+          }
+          AstNode* expr =
+              Ast::replaceVariables(item->getMember(0), subst);
+          root->addMember(_ast->createNodeObjectElement(name, expr));
+        } else {
+          // bare keep: copy attribute from the full document
+          auto path = item->getStringView();
+          if (isSystemAttribute(path)) {
+            continue;
+          }
+          addProjectedAttribute(path);
         }
-        addProjectedAttribute(path);
       }
       auto* calc = createNode<CalculationNode>(
           this, nextId(), std::make_unique<Expression>(_ast, root), variable);
@@ -2753,7 +2773,8 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
         pathVertices.push_back(_ast->createNodeReference(destinationVariable));
 
         if (hasProjection) {
-          auto projection = createPatternProjection(member, prevVar);
+          auto projection =
+              createPatternProjection(member, prevVar, variableSubstitutions);
           projections.push_back(projection);
         }
       } else if (member->type == NODE_TYPE_PATTERN_PATH_VARIABLE) {
@@ -2801,8 +2822,8 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
           previous = en = lastNodeFilter;
 
           if (edgeHasProjection) {
-            auto edgeProjection =
-                createPatternProjection(edge, edgeEnumOutputVariable);
+            auto edgeProjection = createPatternProjection(
+                edge, edgeEnumOutputVariable, variableSubstitutions);
             projections.push_back(edgeProjection);
           }
 
@@ -2837,7 +2858,8 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
             en->addDependency(previous);
 
             if (vertexHasProjection) {
-              auto projection = createPatternProjection(node, rightVertexVar);
+              auto projection = createPatternProjection(
+                  node, rightVertexVar, variableSubstitutions);
               projections.push_back(projection);
             }
 

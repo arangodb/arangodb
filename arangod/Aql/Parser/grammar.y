@@ -1134,18 +1134,28 @@ for_statement:
 
 
 
+%type <node> pattern_projection_item;
+pattern_projection_item:
+    object_element_name[elt] {
+      /* bare keep: status */
+      $$ = parser->ast()->createNodeValueString($elt.value, $elt.length);
+    }
+  | object_element_name[elt] T_ASSIGN expression[expr] {
+      /* alias / flatten: name = v.profile.first_name (expr is normal query scope) */
+      $$ = parser->ast()->createNodeObjectElement(
+          {$elt.value, $elt.length}, $expr);
+    }
+  ;
+
 %type <node> pattern_projection_list;
 pattern_projection_list:
-    object_element_name[elt] {
-        auto node = parser->ast()->createNodeValueString($elt.value, $elt.length);
-        parser->pushArrayElement(node);
+    pattern_projection_item[item] {
+      parser->pushArrayElement($item);
     }
-    | pattern_projection_list T_COMMA object_element_name[elt] 
-    {
-        auto node = parser->ast()->createNodeValueString($elt.value, $elt.length);
-        parser->pushArrayElement(node);
+  | pattern_projection_list T_COMMA pattern_projection_item[item] {
+      parser->pushArrayElement($item);
     }
-		;
+  ;
 
 %type <node> pattern_maybe_projection;
 pattern_maybe_projection:
