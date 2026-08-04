@@ -53,6 +53,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/ClusterUtils.h"
 #include "Utils/Events.h"
+#include "Utils/ExecContext.h"
 #ifdef USE_V8
 #include "V8Server/FoxxFeature.h"
 #include "V8Server/V8DealerFeature.h"
@@ -71,7 +72,8 @@ namespace arangodb {
 class HeartbeatBackgroundJobThread : public Thread {
  public:
   explicit HeartbeatBackgroundJobThread(HeartbeatThread* heartbeatThread)
-      : Thread("Maintenance"),
+      // runs DBServerAgencySync, which executes maintenance actions
+      : Thread("Maintenance", ExecContext::superuserAsShared()),
         _heartbeatThread(heartbeatThread),
         _stop(false),
         _sleeping(false),
@@ -204,7 +206,8 @@ HeartbeatThread::HeartbeatThread(
     AgencyCallbackRegistry* agencyCallbackRegistry,
     std::chrono::microseconds interval, uint64_t maxFailsBeforeWarning,
     double noHeartbeatDelayBeforeShutdown, metrics::IRegistry& metricsRegistry)
-    : arangodb::ServerThread(server, "Heartbeat"),
+    : arangodb::ServerThread(server, "Heartbeat",
+                             ExecContext::superuserAsShared()),
       _agencyCallbackRegistry(agencyCallbackRegistry),
       _statusLock(std::make_shared<std::mutex>()),
       _agency(server),

@@ -23,7 +23,7 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
 #include "Metrics/GaugeBuilder.h"
@@ -33,6 +33,7 @@
 #include "RestServer/IDatabaseProvider.h"
 #include "RestServer/IRecoveryCallback.h"
 #include "Utils/DatabaseGuard.h"
+#include "Utils/Thread.h"
 #include "Utils/VersionTracker.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/Methods/Databases.h"

@@ -29,6 +29,7 @@
 #include "Metrics/Counter.h"
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
+#include "Utils/ExecContext.h"
 
 #include <thread>
 
@@ -39,7 +40,8 @@ namespace maintenance {
 MaintenanceWorker::MaintenanceWorker(
     arangodb::MaintenanceFeature& feature, int minimalPriorityAllowed,
     std::unordered_set<std::string> const& labels)
-    : Thread("MaintenanceWorker"),
+    // executes shard/database/index maintenance actions
+    : Thread("MaintenanceWorker", ExecContext::superuserAsShared()),
       _feature(feature),
       _curAction(nullptr),
       _loopState(eFIND_ACTION),
@@ -49,7 +51,8 @@ MaintenanceWorker::MaintenanceWorker(
 
 MaintenanceWorker::MaintenanceWorker(arangodb::MaintenanceFeature& feature,
                                      std::shared_ptr<Action>& directAction)
-    : Thread("MaintenanceWorker"),
+    // executes shard/database/index maintenance actions
+    : Thread("MaintenanceWorker", ExecContext::superuserAsShared()),
       _feature(feature),
       _curAction(directAction),
       _loopState(eRUN_FIRST),

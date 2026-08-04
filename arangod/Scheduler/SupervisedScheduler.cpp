@@ -31,7 +31,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/SharedPRNG.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/cpu-relax.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -42,6 +42,7 @@
 #include "Network/NetworkFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Cluster/ServerState.h"
+#include "Utils/Thread.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -117,7 +118,9 @@ class SupervisedSchedulerThread : public Thread {
  public:
   explicit SupervisedSchedulerThread(SupervisedScheduler& scheduler,
                                      std::string const& name = "Scheduler")
-      : Thread(name), _scheduler(scheduler) {}
+      // scheduler threads run without an ExecContext; work items carry
+      // their own context (COR-821)
+      : Thread(name, nullptr), _scheduler(scheduler) {}
 
   // shutdown is called by derived implementation!
   ~SupervisedSchedulerThread() = default;

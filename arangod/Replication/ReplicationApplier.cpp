@@ -26,7 +26,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/files.h"
@@ -39,6 +39,8 @@
 #include "Replication/common-defines.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerIdFeature.h"
+#include "Utils/ExecContext.h"
+#include "Utils/Thread.h"
 
 using namespace arangodb;
 namespace StringUtils = arangodb::basics::StringUtils;
@@ -47,7 +49,10 @@ namespace StringUtils = arangodb::basics::StringUtils;
 struct ApplierThread : public Thread {
  public:
   ApplierThread(ReplicationApplier* applier, std::shared_ptr<Syncer> syncer)
-      : Thread("ReplicationApplier"),
+      // replication appliers act as the server, applying remote operations
+      // across databases and collections: deliberately superuser and NOT the
+      // user that started the applier (the thread is long-lived)
+      : Thread("ReplicationApplier", ExecContext::superuserAsShared()),
         _applier(applier),
         _syncer(std::move(syncer)) {
     TRI_ASSERT(_syncer);

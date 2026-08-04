@@ -31,7 +31,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Basics/system-functions.h"
@@ -55,6 +55,8 @@
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/ExecContext.h"
+#include "Utils/Thread.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -115,7 +117,9 @@ class TtlThread final : public ServerThread {
  public:
   explicit TtlThread(application_features::ApplicationServer& server,
                      TtlFeature& ttlFeature)
-      : ServerThread(server, "TTL"), _ttlFeature(ttlFeature), _working(false) {}
+      : ServerThread(server, "TTL", ExecContext::superuserAsShared()),
+        _ttlFeature(ttlFeature),
+        _working(false) {}
 
   ~TtlThread() final { shutdown(); }
 

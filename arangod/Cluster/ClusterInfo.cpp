@@ -36,7 +36,7 @@
 #include "Basics/Result.h"
 #include "Basics/Result.tpp"
 #include "Basics/StaticStrings.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/TimeString.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
@@ -78,6 +78,8 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/CountCache.h"
 #include "Utils/Events.h"
+#include "Utils/ExecContext.h"
+#include "Utils/Thread.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/VocbaseInfo.h"
@@ -5996,7 +5998,8 @@ void ClusterInfo::waitForSyncersToStop() {
 ClusterInfo::SyncerThread::SyncerThread(
     std::string const& section, std::function<consensus::index_t()> const& f,
     AgencyCache& agencyCache)
-    : Thread(section + "Syncer"),
+    // loadPlan handling may create databases and other entities
+    : Thread(section + "Syncer", ExecContext::superuserAsShared()),
       _section(section),
       _f(f),
       _agencyCache(agencyCache) {}

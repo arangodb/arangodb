@@ -26,12 +26,13 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "GeneralServer/RestHandler.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Utils/Thread.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -42,7 +43,9 @@ class SchedulerThread : public Thread {
  public:
   explicit SchedulerThread(Scheduler& scheduler,
                            std::string const& name = "Scheduler")
-      : Thread(name), _scheduler(scheduler) {}
+      // scheduler threads run without an ExecContext; work items carry
+      // their own context (COR-821)
+      : Thread(name, nullptr), _scheduler(scheduler) {}
 
   // shutdown is called by derived implementation!
   ~SchedulerThread() = default;

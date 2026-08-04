@@ -31,6 +31,7 @@
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/DatabaseGuard.h"
+#include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/LogicalCollection.h"
@@ -49,7 +50,8 @@ using application_features::ApplicationServer;
 RocksDBIndexCacheRefillThread::RocksDBIndexCacheRefillThread(
     DatabaseFeature& databaseFeature, metrics::IRegistry& metricsRegistry,
     size_t maxCapacity)
-    : Thread("RocksDBCacheRefiller"),
+    // opens SingleCollectionTransactions to refill index caches
+    : Thread("RocksDBCacheRefiller", ExecContext::superuserAsShared()),
       _databaseFeature(databaseFeature),
       _maxCapacity(maxCapacity),
       _numQueued(0),

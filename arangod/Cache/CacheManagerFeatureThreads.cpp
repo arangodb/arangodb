@@ -20,7 +20,7 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/voc-errors.h"
 #include "Cache/CacheManagerFeatureThreads.h"
 #include "Cache/Manager.h"
@@ -33,7 +33,8 @@ using namespace arangodb;
 
 CacheRebalancerThread::CacheRebalancerThread(cache::Manager* manager,
                                              std::uint64_t interval)
-    : Thread("CacheRebalancerThread"),
+    // cache bookkeeping only, no authorization-relevant code
+    : Thread("CacheRebalancerThread", nullptr),
       _manager(manager),
       _rebalancer(_manager),
       _fullInterval(interval),

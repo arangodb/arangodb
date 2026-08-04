@@ -31,7 +31,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StringUtils.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/application-exit.h"
 #include "Basics/error.h"
 #include "Basics/voc-errors.h"
@@ -633,8 +633,8 @@ void LoggerOptionsProvider::validateOptions(
 #endif
 
   for (auto& output : options.output) {
-    output = StringUtils::replace(output, "$PID",
-                                  std::to_string(Thread::currentProcessId()));
+    output = StringUtils::replace(
+        output, "$PID", std::to_string(BasicThread::currentProcessId()));
   }
 }
 

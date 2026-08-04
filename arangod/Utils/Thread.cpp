@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -20,37 +20,16 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "Thread.h"
 
-#include "Basics/ConditionVariable.h"
-#include "Metrics/Fwd.h"
-#include "Utils/Thread.h"
+#include "Utils/ExecContext.h"
 
 namespace arangodb {
 
-class RocksDBEngine;
+void Thread::beforeRun() {
+  if (_execContext != nullptr) {
+    ExecContext::set(std::move(_execContext));
+  }
+}
 
-class RocksDBBackgroundThread final : public Thread {
- public:
-  RocksDBBackgroundThread(RocksDBEngine& eng, double interval,
-                          metrics::IRegistry& metrics);
-  ~RocksDBBackgroundThread();
-
-  void beginShutdown() override;
-
- protected:
-  void run() override;
-
- private:
-  /// @brief engine pointer
-  RocksDBEngine& _engine;
-
-  /// @brief interval in which we will run
-  double const _interval;
-
-  /// @brief condition variable for heartbeat
-  arangodb::basics::ConditionVariable _condition;
-
-  metrics::Gauge<uint64_t>& _metricsWalReleasedTickReplication;
-};
 }  // namespace arangodb

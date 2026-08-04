@@ -40,7 +40,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
@@ -64,6 +64,8 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Utilities/NameValidator.h"
+#include "Utils/ExecContext.h"
+#include "Utils/Thread.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/V8PlatformFeature.h"
 #include "V8/V8SecurityFeature.h"
@@ -92,7 +94,7 @@ namespace {
 class V8GcThread : public Thread {
  public:
   explicit V8GcThread(V8DealerFeature& dealer)
-      : Thread("V8GarbageCollector"),
+      : Thread("V8GarbageCollector", ExecContext::superuserAsShared()),
         _dealer(dealer),
         _lastGcStamp(static_cast<uint64_t>(TRI_microtime())) {}
 

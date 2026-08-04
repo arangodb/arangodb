@@ -121,7 +121,9 @@ void handleGossipResponse(arangodb::network::Response const& r,
 }  // namespace
 
 namespace arangodb::consensus {
-Inception::Inception(Agent& agent) : Thread("Inception"), _agent(agent) {}
+// gossip only, no authorization-relevant code
+Inception::Inception(Agent& agent)
+    : Thread("Inception", nullptr), _agent(agent) {}
 
 // Shutdown if not already
 Inception::~Inception() { shutdown(); }

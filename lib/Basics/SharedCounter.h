@@ -26,7 +26,7 @@
 #include <functional>
 
 #include "Basics/SharedAtomic.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/debugging.h"
 #include "Basics/fasthash.h"
 
@@ -37,7 +37,7 @@ template<uint64_t stripes = 64, bool everywhereNonNegative = false>
 struct SharedCounter {
   typedef std::function<uint64_t()> IdFunc;
   static uint64_t DefaultIdFunc() {
-    return fasthash64_uint64(Thread::currentThreadNumber(),
+    return fasthash64_uint64(BasicThread::currentThreadNumber(),
                              0xdeadbeefdeadbeefULL);
   }
 
