@@ -30,7 +30,7 @@
 namespace arangodb {
 
 class RocksDBEngine;
-struct IDatabaseResolver;
+struct IDatabaseProvider;
 
 class RocksDBRecoveryManager final {
  public:
@@ -44,7 +44,7 @@ class RocksDBRecoveryManager final {
   Result parseRocksWAL();
 
   RocksDBEngine& _engine;
-  IDatabaseResolver& _dbProvider;
+  IDatabaseProvider& _dbProvider;
   TickCallback _onTick;
 };
 
