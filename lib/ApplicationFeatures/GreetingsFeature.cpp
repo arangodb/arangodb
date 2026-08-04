@@ -34,7 +34,8 @@ namespace arangodb {
 
 void logLGPLNotice(void) {
 #ifdef __GLIBC__
-  LOG_TOPIC("11111", INFO, arangodb::Logger::FIXME) << rest::Version::getLGPLNotice();
+  LOG_TOPIC("11111", INFO, arangodb::Logger::FIXME)
+      << rest::Version::getLGPLNotice();
 #endif
 }
 
