@@ -29,7 +29,7 @@ namespace arangodb::aql {
 
 using namespace arangodb::options;
 
-void OptimizerRulesOptionsProvider::declareOptions(
+void OptimizerRulesOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, OptimizerRulesOptions& opts) {
   options
       ->addOption("--query.optimizer-rules",

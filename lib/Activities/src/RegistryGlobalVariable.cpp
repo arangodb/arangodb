@@ -25,7 +25,7 @@
 namespace arangodb::activities {
 
 Registry registry;
-thread_local ActivityHandle Registry::_currentlyExecutingActivity{nullptr};
+thread_local CurrentlyExecuting Registry::_currentlyExecutingActivity{nullptr};
 
 const ActivityHandle Root{nullptr};
 }  // namespace arangodb::activities

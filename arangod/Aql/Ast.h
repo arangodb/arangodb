@@ -474,11 +474,13 @@ class Ast {
                              AstNode const* properties,
                              AstNode const* filterExpression,
                              AstNode const* rangeExpression, bool isInbound,
-                             bool isOutbound);
+                             bool isOutbound,
+                             AstNode const* projections = nullptr);
   AstNode* createPatternNodePattern(AstNode const* outVariable,
                                     AstNode const* labels,
                                     AstNode const* properties,
-                                    AstNode const* filterExpression);
+                                    AstNode const* filterExpression,
+                                    AstNode const* projections);
 
   AstNode* createPatternSegment(AstNode const* edge, AstNode const* node);
   AstNode* createPatternPathVariable(std::string_view variable);

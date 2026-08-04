@@ -29,7 +29,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void ServerOptionsProvider::declareOptions(
+void ServerOptionsProvider::declareOptionsImpl(
     std::shared_ptr<options::ProgramOptions> options,
     ServerFeatureOptions& opts) {
   options->addSection("server", "server features");

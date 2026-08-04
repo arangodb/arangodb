@@ -55,8 +55,8 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         "For more information use:", SBIN_DIRECTORY);
 
     int ret{EXIT_FAILURE};
-    ArangodServer server{options, SBIN_DIRECTORY, name, crashDumpManager,
-                         dataSourceRegistry};
+    ArangodServer server{options, SBIN_DIRECTORY,   std::move(name),
+                         &ret,    crashDumpManager, dataSourceRegistry};
     ServerState state{server};
 
     server.addReporter(
@@ -71,7 +71,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
          },
          {}});
 
-    server.addFeatures(&ret);
+    server.addFeatures();
 
     try {
       server.run(argc, argv);

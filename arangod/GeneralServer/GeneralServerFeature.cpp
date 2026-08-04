@@ -170,14 +170,17 @@ struct ConnectionTimeScale {
 GeneralServerFeature::GeneralServerFeature(
     application_features::ApplicationServer& server,
     metrics::MetricsFeature& metricsFeature)
-    : GeneralServerFeature(server, metricsFeature, GeneralServerOptions{}) {}
+    : GeneralServerFeature(server, metricsFeature, GeneralServerOptions{},
+                           LogApiOptions{}) {}
 
 GeneralServerFeature::GeneralServerFeature(
     application_features::ApplicationServer& server,
-    metrics::MetricsFeature& metrics, GeneralServerOptions options)
+    metrics::MetricsFeature& metrics, GeneralServerOptions options,
+    LogApiOptions logApiOptions)
     : ApplicationFeature{server, *this},
       _currentRequestsSize(metrics.add(arangodb_requests_memory_usage{})),
       _options(std::move(options)),
+      _logApiOptions(std::move(logApiOptions)),
       _requestBodySizeHttp1(metrics.add(arangodb_request_body_size_http1{})),
       _requestBodySizeHttp2(metrics.add(arangodb_request_body_size_http2{})),
       _histTotalTime(
@@ -235,6 +238,12 @@ GeneralServerFeature::GeneralServerFeature(
   startsAfter<UpgradeFeature>();
 
   initResponseCodeCounters();
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  for (auto const& it : _options.failurePoints) {
+    TRI_AddFailurePointDebugging(it);
+  }
+#endif
 }
 
 void GeneralServerFeature::initResponseCodeCounters() {
@@ -376,24 +385,6 @@ void GeneralServerFeature::countHttpResponseCode(
   } catch (...) {
     // must not throw from this noexcept function
   }
-}
-
-void GeneralServerFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  GeneralServerOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void GeneralServerFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  GeneralServerOptionsProvider provider;
-  provider.validateOptions(options, _options);
-
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  for (auto const& it : _options.failurePoints) {
-    TRI_AddFailurePointDebugging(it);
-  }
-#endif
 }
 
 void GeneralServerFeature::prepare() {
@@ -873,7 +864,9 @@ void GeneralServerFeature::defineRemainingHandlers(
 
   f.addPrefixHandler(
       "/_admin/log",
-      RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData, {1});
+      RestHandlerCreator<arangodb::RestAdminLogHandler>::createData<
+          LogApiOptions const*>,
+      {1}, &_logApiOptions);
 
   f.addHandler(
       "/_admin/supervisionState",

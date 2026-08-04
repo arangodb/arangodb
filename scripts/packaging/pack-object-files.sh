@@ -10,7 +10,7 @@
 # rely on that name), plus lib/BuildId/BuildId.ld and the two helper files.
 #
 # Run from the repository root; requires:
-#   BUILD_DIR        build directory of the preset (e.g. build-presets/nightly-x86_64)
+#   BUILD_DIR        build directory of the preset (e.g. build-presets/nightly-package-x64)
 #   BUILDMODE        CMake build type used            (default RelWithDebInfo)
 #   PACKAGES_OUT     output directory                 (default ./packages)
 # ARANGODB_VERSION is derived from CMakeLists.txt when not already exported.

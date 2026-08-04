@@ -45,19 +45,13 @@ class BumpFileDescriptorsFeature
     return "BumpFileDescriptors";
   }
 
-  BumpFileDescriptorsFeature(application_features::ApplicationServer& server,
-                             std::string optionName,
-                             BumpFileDescriptorsFeatureOptions options);
-  BumpFileDescriptorsFeature(application_features::ApplicationServer& server,
-                             std::string optionName);
+  explicit BumpFileDescriptorsFeature(
+      application_features::ApplicationServer& server,
+      BumpFileDescriptorsFeatureOptions options = {});
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
 
  private:
-  std::string const _optionName;
-
   BumpFileDescriptorsFeatureOptions _options;
 };
 

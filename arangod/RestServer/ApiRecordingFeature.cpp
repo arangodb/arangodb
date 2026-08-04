@@ -77,18 +77,6 @@ ApiRecordingFeature::~ApiRecordingFeature() {
   }
 }
 
-void ApiRecordingFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  ApiRecordingOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void ApiRecordingFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  ApiRecordingOptionsProvider provider;
-  provider.validateOptions(options, _options);
-}
-
 void ApiRecordingFeature::prepare() {
   // Calculate per-list memory limit
   _memoryPerApiRecordList =

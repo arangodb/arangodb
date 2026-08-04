@@ -53,8 +53,6 @@ class LanguageFeature final : public application_features::ApplicationFeature {
 
   ~LanguageFeature();
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-
   void prepare() override final;
 
   static std::string prepareIcu(std::string const& binaryPath,
