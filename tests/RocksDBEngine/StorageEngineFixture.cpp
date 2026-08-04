@@ -17,16 +17,12 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <gtest/gtest.h>
+#include "RocksDBEngine/StorageEngineFixture.h"
 
-#include "StorageEngineFixture.h"
+namespace arangodb::tests {
 
-using namespace arangodb;
-using namespace arangodb::tests;
+std::unique_ptr<StorageEngineFixtureSuite> StorageEngineFixture::_suite;
 
-TEST_F(StorageEngineFixture, CanConstruct) {
-  EXPECT_EQ(engine().kEngineName, "rocksdb");
-}
+}  // namespace arangodb::tests
