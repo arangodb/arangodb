@@ -31,8 +31,6 @@ struct SupervisorOptionsProvider
     : OptionsProviderImpl<SupervisorOptionsProvider, SupervisorFeatureOptions> {
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> options,
                           SupervisorFeatureOptions& opts);
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*options*/,
-                           SupervisorFeatureOptions& /*opts*/){};
 };
 
 }  // namespace arangodb
