@@ -122,16 +122,21 @@ void RestActionHandler::executeAction() {
 // never be granted superuser rights - doing so previously allowed
 // unauthenticated AQL execution and other superuser-level operations via
 // any path merely prefixed with /_admin/aardvark/.
-constexpr std::string_view aardvarkIndexHtml("/_admin/aardvark/index.html");
-constexpr std::string_view aardvarkConfigJs("/_admin/aardvark/config.js");
-constexpr std::string_view aardvarkWhoAmI("/_admin/aardvark/whoAmI");
-constexpr std::string_view aardvarkStaticPrefix("/_admin/aardvark/static/");
-constexpr std::string_view aardvarkImgPrefix("/_admin/aardvark/img/");
 
 bool isPublicAardvarkPath(std::string_view path) {
-  return path == aardvarkIndexHtml || path == aardvarkConfigJs ||
-         path == aardvarkWhoAmI || path.starts_with(aardvarkStaticPrefix) ||
-         path.starts_with(aardvarkImgPrefix);
+  using namespace std::string_view_literals;
+  constexpr std::array exact = {
+      "/_admin/aardvark/index.html"sv,
+      "/_admin/aardvark/config.js"sv,
+      "/_admin/aardvark/whoAmI"sv,
+  };
+  constexpr std::array prefixes = {
+      "/_admin/aardvark/static/"sv,
+      "/_admin/aardvark/img/"sv,
+  };
+  return std::ranges::any_of(exact, [&](auto p) { return path == p; }) ||
+         std::ranges::any_of(prefixes,
+                             [&](auto p) { return path.starts_with(p); });
 }
 
 async<Result> RestActionHandler::checkUserCanAccess() const {
