@@ -250,9 +250,7 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<aql::QueryInfoLoggerFeature>();
   auto& rocksdbCacheRefill =
       _server.addFeature<RocksDBIndexCacheRefillFeature>();
-  _server.addFeature<RocksDBOptionFeature>(
-      _server.hasFeature<AgencyFeature>() ? &_server.getFeature<AgencyFeature>()
-                                          : nullptr);
+  _server.addFeature<RocksDBOptionFeature>();
 #ifdef TRI_HAVE_GETRLIMIT
   _server.addFeature<FileDescriptorsFeature>(metrics);
 #endif
