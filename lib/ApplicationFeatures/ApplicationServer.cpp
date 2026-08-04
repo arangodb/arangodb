@@ -54,6 +54,7 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Rest/Version.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -419,13 +420,13 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
 
   // handle `--version-json` command
   if (_printVersionJson) {
-    printVersionJson(std::cout);
+    rest::Version::printJson(std::cout);
     exit(EXIT_SUCCESS);
   }
 
   // handle `--version` command
   if (_printVersion) {
-    printVersion(std::cout);
+    rest::Version::print(std::cout);
     exit(EXIT_SUCCESS);
   }
 

@@ -37,34 +37,10 @@
 
 namespace arangodb {
 
-char const* LGPLNotice =
-    "This executable uses the GNU C library (glibc), which is licensed under "
-    "the GNU Lesser General Public License (LGPL), see "
-    "https://www.gnu.org/copyleft/lesser.html and "
-    "https://www.gnu.org/licenses/gpl.html";
-
 void logLGPLNotice(void) {
 #ifdef __GLIBC__
-  LOG_TOPIC("11111", INFO, arangodb::Logger::FIXME) << LGPLNotice;
+  LOG_TOPIC("11111", INFO, arangodb::Logger::FIXME) << rest::Version::getLGPLNotice();
 #endif
-}
-
-void printVersion(std::ostream& out) {
-  out << rest::Version::getServerVersion() << std::endl
-      << std::endl
-      << LGPLNotice << std::endl
-      << std::endl
-      << rest::Version::getDetailed() << std::endl;
-}
-
-void printVersionJson(std::ostream& out) {
-  VPackBuilder builder;
-  {
-    VPackObjectBuilder ob(&builder);
-    rest::Version::getVPack(builder);
-    builder.add("version", VPackValue(rest::Version::getServerVersion()));
-  }
-  out << builder.slice().toJson() << std::endl;
 }
 
 void GreetingsFeature::prepare() {

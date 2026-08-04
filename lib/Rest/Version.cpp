@@ -24,6 +24,7 @@
 
 #include <cstdint>
 #include <sstream>
+#include <ostream>
 
 #include <openssl/ssl.h>
 
@@ -623,4 +624,28 @@ void Version::getVPack(VPackBuilder& dst) {
       dst.add(it.first, VPackValue(value));
     }
   }
+}
+
+char const* Version::getLGPLNotice() {
+  return "This executable uses the GNU C library (glibc), which is licensed under "
+         "the GNU Lesser General Public License (LGPL), see "
+         "https://www.gnu.org/copyleft/lesser.html and "
+         "https://www.gnu.org/licenses/gpl.html";
+}
+
+void Version::print(std::ostream& out) {
+  out << getServerVersion() << std::endl
+      << std::endl
+      << getLGPLNotice() << std::endl
+      << std::endl
+      << getDetailed() << std::endl;
+}
+void Version::printJson(std::ostream& out) {
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder ob(&builder);
+    getVPack(builder);
+    builder.add("version", VPackValue(getServerVersion()));
+  }
+  out << builder.slice().toJson() << std::endl;
 }
