@@ -2469,8 +2469,7 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
       };
 
       auto isSystemAttribute = [&](std::string_view name) {
-        return name == "_id" ||
-               (isEdge && (name == "_from" || name == "_to"));
+        return name == "_id" || (isEdge && (name == "_from" || name == "_to"));
       };
 
       // Implicit system attributes required for graph topology.
@@ -2489,8 +2488,7 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
           if (isSystemAttribute(name)) {
             continue;
           }
-          AstNode* expr =
-              Ast::replaceVariables(item->getMember(0), subst);
+          AstNode* expr = Ast::replaceVariables(item->getMember(0), subst);
           root->addMember(_ast->createNodeObjectElement(name, expr));
         } else {
           // bare keep: copy attribute from the full document
@@ -2858,8 +2856,8 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
             en->addDependency(previous);
 
             if (vertexHasProjection) {
-              auto projection = createPatternProjection(
-                  node, rightVertexVar, variableSubstitutions);
+              auto projection = createPatternProjection(node, rightVertexVar,
+                                                        variableSubstitutions);
               projections.push_back(projection);
             }
 
