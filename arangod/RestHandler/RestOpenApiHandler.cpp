@@ -55,8 +55,6 @@ constexpr std::string_view kOpenApiJsonPath("/openapi.json");
 
 // The OpenAPI spec must be reachable without authentication, so that
 // clients (and the API documentation) can retrieve it before logging in.
-// It contains no sensitive information, so this does not need to escalate
-// to superuser rights either.
 async<Result> RestOpenApiHandler::checkUserCanAccess() const {
   if (request()->requestPath() == kOpenApiJsonPath) {
     co_return Result{};
