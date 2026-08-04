@@ -39,8 +39,6 @@ struct OptimizerRulesOptionsProvider
 
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           OptimizerRulesOptions& options);
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
-                           OptimizerRulesOptions& /*options*/) {}
 };
 
 }  // namespace arangodb::aql

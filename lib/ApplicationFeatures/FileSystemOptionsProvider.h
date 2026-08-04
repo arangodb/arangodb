@@ -35,8 +35,6 @@ struct FileSystemOptionsProvider
     : OptionsProviderImpl<FileSystemOptionsProvider, FileSystemFeatureOptions> {
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           FileSystemFeatureOptions& options);
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
-                           FileSystemFeatureOptions& /*options*/){};
 };
 
 }  // namespace arangodb
