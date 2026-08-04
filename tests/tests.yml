@@ -425,6 +425,7 @@
       - importing
       - export
       - shell_api
+
 - shell_client_aql_vector:
     options:
       parallelity: 5
@@ -432,6 +433,11 @@
       type: cluster
     args:
       dumpAgencyOnError: true
+- shell_client_aql_vector:
+    options:
+      parallelity: 5
+      size: medium+
+      type: single
 
 - hot_backup:
     options:
