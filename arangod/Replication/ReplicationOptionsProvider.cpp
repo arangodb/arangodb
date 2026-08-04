@@ -108,8 +108,4 @@ void ReplicationOptionsProvider::processOptionsImpl(
   }
 }
 
-void ReplicationOptionsProvider::validateOptionsImpl(
-    std::shared_ptr<ProgramOptions> /*opts*/,
-    ReplicationOptions const& /*options*/) {}
-
 }  // namespace arangodb

@@ -37,8 +37,6 @@ struct ClusterUpgradeOptionsProvider
                           ClusterUpgradeFeatureOptions> {
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           ClusterUpgradeFeatureOptions& options);
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
-                           ClusterUpgradeFeatureOptions& /*options*/) {}
 };
 
 }  // namespace arangodb::upgrade
