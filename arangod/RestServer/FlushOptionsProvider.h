@@ -32,8 +32,6 @@ struct FlushOptionsProvider
     : OptionsProviderImpl<FlushOptionsProvider, FlushFeatureOptions> {
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           FlushFeatureOptions& options);
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
-                           FlushFeatureOptions& /*options*/) {}
 };
 
 }  // namespace arangodb

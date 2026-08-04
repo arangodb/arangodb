@@ -204,7 +204,6 @@ TEST_F(ArangoLanguageFeatureTest, testResetLanguageDefault) {
       ->get<StringParameter>("default-language")
       ->set(language1.data());
 
-  langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
       langOpProvider.options());
 
@@ -241,7 +240,6 @@ TEST_F(ArangoLanguageFeatureTest, testResetLanguageIcu) {
       ->get<StringParameter>("icu-language")
       ->set(language1.data());
 
-  langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
       langOpProvider.options());
 
@@ -289,7 +287,6 @@ TEST_F(ArangoLanguageFeatureTest, testBothArgumentsSpecifiedLangCheckTrue) {
       ->get<StringParameter>("default-language")
       ->set(lang.data());
 
-  langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
       langOpProvider.options());
 
@@ -319,7 +316,6 @@ TEST_F(ArangoLanguageFeatureTest, testBothArgumentsSpecifiedLangCheckFalse) {
       ->get<StringParameter>("default-language")
       ->set(lang.data());
 
-  langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
       langOpProvider.options());
 
@@ -349,7 +345,6 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultLangCheckTrue) {
       ->get<StringParameter>(defaultParameter.data())
       ->set(firstLang.data());
 
-  langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
       langOpProvider.options());
   auto& langCheckFeature =
@@ -447,7 +442,6 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultLangCheckFalse) {
       ->get<StringParameter>(defaultParameter.data())
       ->set(firstLang.data());
 
-  langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
       langOpProvider.options());
   auto& langCheckFeature =
@@ -548,7 +542,6 @@ TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckTrue) {
       ->set("");
   server.server().options()->get<StringParameter>(icuParameter.data())->set("");
 
-  langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
       langOpProvider.options());
   auto& langCheckFeature =
@@ -650,7 +643,6 @@ TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckFalse) {
       ->set("");
   server.server().options()->get<StringParameter>(icuParameter.data())->set("");
 
-  langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
       langOpProvider.options());
   auto& langCheckFeature =
@@ -749,7 +741,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuLangCheckTrue) {
       ->get<StringParameter>(icuParameter.data())
       ->set(firstLang.data());
 
-  langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
       langOpProvider.options());
   auto& langCheckFeature =
@@ -846,7 +837,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuLangCheckFalse) {
       ->get<StringParameter>(icuParameter.data())
       ->set(firstLang.data());
 
-  langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
       langOpProvider.options());
   auto& langCheckFeature =
@@ -942,7 +932,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithVariantLangCheckTrue) {
       ->get<StringParameter>(icuParameter.data())
       ->set(inputFirstLang.data());
 
-  langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
       langOpProvider.options());
   auto& langCheckFeature =
@@ -1039,7 +1028,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithCollationLangCheckTrue) {
       ->get<StringParameter>(icuParameter.data())
       ->set(firstLang.data());
 
-  langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
       langOpProvider.options());
   auto& langCheckFeature =
@@ -1137,7 +1125,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry1WithCollationLangCheckTrue) {
       ->get<StringParameter>(icuParameter.data())
       ->set(inputFirstLang.data());
 
-  langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
       langOpProvider.options());
   auto& langCheckFeature =
@@ -1236,7 +1223,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry2WithCollationLangCheckTrue) {
       ->get<StringParameter>(icuParameter.data())
       ->set(inputFirstLang.data());
 
-  langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
       langOpProvider.options());
   auto& langCheckFeature =
@@ -1334,7 +1320,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry3WithCollationLangCheckTrue) {
       ->get<StringParameter>(icuParameter.data())
       ->set(firstLang.data());
 
-  langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
       langOpProvider.options());
   auto& langCheckFeature =
@@ -1433,7 +1418,6 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultWithCollationLangCheckTrue) {
       ->set(inputFirstLang.data());
   server.server().options()->get<StringParameter>(icuParameter.data())->set("");
 
-  langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
       langOpProvider.options());
   auto& langCheckFeature =
@@ -1537,7 +1521,6 @@ TEST_F(ArangoLanguageFeatureTest,
       ->set(inputFirstLang.data());
   server.server().options()->get<StringParameter>(icuParameter.data())->set("");
 
-  langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
       langOpProvider.options());
   auto& langCheckFeature =
@@ -1643,7 +1626,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithWrongCollationLangCheckTrue) {
       ->get<StringParameter>(icuParameter.data())
       ->set(inputFirstLang.data());
 
-  langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
       langOpProvider.options());
   auto& langCheckFeature =
@@ -1749,7 +1731,6 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultWithWrongCollationLangCheckTrue) {
       ->get<StringParameter>(icuParameter.data())
       ->set("");  // clear value for parameter
 
-  langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
       langOpProvider.options());
   auto& langCheckFeature =
