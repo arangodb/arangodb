@@ -56,6 +56,7 @@
 #include "Sharding/ShardingFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
+#include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
@@ -559,6 +560,9 @@ TEST_F(IResearchIndexTest, test_async_index) {
   // populate collections asynchronously
   {
     std::thread thread0([collection0, &resThread0]() -> void {
+      // COR-824: in production, transactions run on threads that
+      // have an ExecContext installed; this ad-hoc thread has none.
+      arangodb::ExecContextSuperuserScope execContextScope;
       arangodb::velocypack::Builder builder;
 
       try {
@@ -602,6 +606,9 @@ TEST_F(IResearchIndexTest, test_async_index) {
     });
 
     std::thread thread1([collection1, &resThread1]() -> void {
+      // COR-824: in production, transactions run on threads that
+      // have an ExecContext installed; this ad-hoc thread has none.
+      arangodb::ExecContextSuperuserScope execContextScope;
       arangodb::velocypack::Builder builder;
 
       try {

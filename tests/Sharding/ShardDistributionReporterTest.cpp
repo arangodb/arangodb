@@ -38,6 +38,7 @@
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Sharding/ShardDistributionReporter.h"
+#include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "Cluster/ClusterFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
@@ -121,6 +122,11 @@ class ShardDistributionReporterTest
       public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER,
                                             arangodb::LogLevel::FATAL> {
  protected:
+  // COR-824: this fixture drives production code (queries,
+  // transactions, vocbases) directly from the test thread, which
+  // in production always has an ExecContext installed; install an
+  // explicit superuser context for the whole fixture.
+  arangodb::ExecContextSuperuserScope execContextScope;
   arangodb::application_features::ApplicationServer server;
   StorageEngineMock engine;
   std::vector<

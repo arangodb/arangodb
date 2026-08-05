@@ -291,6 +291,8 @@ void RestTasksHandler::registerTask(bool byId) {
 
   auto res = TRI_ERROR_NO_ERROR;
   auto execShared = ExecContext::currentAsShared();
+  // since COR-811 request handling always has an ExecContext installed
+  TRI_ASSERT(execShared != nullptr);
   if (!execShared) {
     execShared = ExecContext::superuserAsShared();
   }

@@ -474,6 +474,9 @@ TYPED_TEST(GraphProviderTest, should_cancel_traversal_when_query_is_aborted) {
   }
 
   std::jthread abortThread([this]() {
+    // COR-824: in production, queries are killed from threads that have an
+    // ExecContext installed; this ad-hoc test thread has none.
+    arangodb::ExecContextSuperuserScope execContextScope;
     this->query->kill();
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
   });

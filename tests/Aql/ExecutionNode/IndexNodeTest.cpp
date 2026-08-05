@@ -66,7 +66,10 @@ class IndexNodeTest
 
 arangodb::CreateDatabaseInfo createInfo(
     arangodb::application_features::ApplicationServer& server) {
-  arangodb::CreateDatabaseInfo info(server, arangodb::ExecContext::current());
+  // COR-824: test setup runs without an installed ExecContext; use the
+  // superuser singleton explicitly instead of ExecContext::current().
+  arangodb::CreateDatabaseInfo info(server,
+                                    arangodb::ExecContext::superuser());
   auto rv = info.load("testVocbase", 2);
   if (rv.fail()) {
     throw std::runtime_error(rv.errorMessage().data());

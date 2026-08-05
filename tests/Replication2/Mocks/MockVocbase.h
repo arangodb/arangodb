@@ -47,7 +47,9 @@ struct MockVocbase : TRI_vocbase_t {
   static auto createDatabaseInfo(
       application_features::ApplicationServer& server, std::string const& name,
       std::uint64_t id) -> MockCreateDatabaseInfo {
-    return MockCreateDatabaseInfo(server, ExecContext::current(), name, id);
+    // COR-824: test setup runs without an installed ExecContext; use the
+    // superuser singleton explicitly instead of ExecContext::current().
+    return MockCreateDatabaseInfo(server, ExecContext::superuser(), name, id);
   }
 
   explicit MockVocbase(application_features::ApplicationServer& server,

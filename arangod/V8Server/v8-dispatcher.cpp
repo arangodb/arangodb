@@ -244,6 +244,9 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   command = "(function (params) { " + command + " } )(params);";
 
   auto exec = ExecContext::currentAsShared();
+  // since COR-811 every path executing JS has an ExecContext installed
+  // (requests, tasks, console, bootstrap)
+  TRI_ASSERT(exec != nullptr);
   if (!exec) {
     exec = ExecContext::superuserAsShared();
   }

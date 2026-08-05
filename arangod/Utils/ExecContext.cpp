@@ -44,9 +44,17 @@ std::shared_ptr<ExecContext const> const ExecContext::Superuser =
 
 /// Should always contain a reference to current user context
 ExecContext const& ExecContext::current() {
+  // Since COR-811 every execution path is expected to install an ExecContext
+  // explicitly (request handling, dedicated threads, scheduler work items,
+  // coroutine resumption, tasks). Reaching this function without one means
+  // either an infrastructure thread -- which deliberately has no context and
+  // must never run authorization-relevant code -- or a missed propagation
+  // path; both are bugs.
+  TRI_ASSERT(CURRENT != nullptr);
   if (CURRENT != nullptr) {
     return *CURRENT;
   }
+  // in production builds, fail towards the historical behavior
   return *Superuser;
 }
 

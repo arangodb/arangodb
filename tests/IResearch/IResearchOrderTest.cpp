@@ -31,6 +31,7 @@
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/StorageEngineMock.h"
+#include "Utils/ExecContext.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlFunctionFeature.h"
@@ -271,6 +272,11 @@ class IResearchOrderTest
                                             arangodb::LogLevel::FATAL>,
       public arangodb::tests::IResearchLogSuppressor {
  protected:
+  // COR-824: this fixture drives production code (queries,
+  // transactions, vocbases) directly from the test thread, which
+  // in production always has an ExecContext installed; install an
+  // explicit superuser context for the whole fixture.
+  arangodb::ExecContextSuperuserScope execContextScope;
   arangodb::application_features::ApplicationServer server;
   StorageEngineMock engine;
   std::vector<

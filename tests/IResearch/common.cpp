@@ -1259,7 +1259,9 @@ VPackBuilder getInvertedIndexPropertiesSlice(
 
 CreateDatabaseInfo createInfo(application_features::ApplicationServer& server,
                               std::string const& name, uint64_t id) {
-  CreateDatabaseInfo info(server, ExecContext::current());
+  // COR-824: test setup runs without an installed ExecContext; use the
+  // superuser singleton explicitly instead of ExecContext::current().
+  CreateDatabaseInfo info(server, ExecContext::superuser());
   auto rv = info.load(name, id);
   if (rv.fail()) {
     throw std::runtime_error(rv.errorMessage().data());

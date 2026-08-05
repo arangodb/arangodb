@@ -30,6 +30,7 @@
 #include "Cluster/ServerState.h"
 #include "IResearch/IResearchCommon.h"
 #include "Mocks/StorageEngineMock.h"
+#include "Utils/ExecContext.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 
 class StorageEngineMock;
@@ -123,6 +124,16 @@ class MockServer {
   void stopFeatures();
 
  protected:
+  // COR-824: ExecContext::current() asserts that a context is installed.
+  // In production every execution path installs one explicitly (COR-819 to
+  // COR-823); tests built on a mock server drive those production paths
+  // (feature startup, queries, transactions, maintenance actions) directly
+  // from the test thread. Install a superuser context for the lifetime of
+  // the mock server -- the analog of the startup thread's scope (COR-819) --
+  // instead of patching hundreds of fixtures. Tests that need a specific
+  // (or no) context install their own scope on top; see e.g.
+  // tests/Scheduler/SchedulerExecContextTest.cpp.
+  ExecContextSuperuserScope _execContextScope;
   arangodb::application_features::ApplicationServer::State
       _oldApplicationServerState = arangodb::application_features::
           ApplicationServer::State::UNINITIALIZED;
