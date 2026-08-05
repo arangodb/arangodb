@@ -884,7 +884,7 @@ Result AuthMode::Classic::isAdmin() const {
   auto r = check(auth::perms::UseDatabase{.name = StaticStrings::SystemDatabase,
                                           .level = DatabaseAccessLevel::Write});
   return r.ok() ? Result{}
-                : Result{TRI_ERROR_FORBIDDEN,
+                : Result{TRI_ERROR_HTTP_FORBIDDEN,
                          std::format("Failed admin-permission check: {}",
                                      r.errorMessage())};
 }
