@@ -42,8 +42,6 @@ struct StatisticsOptionsProvider
                           StatisticsFeatureOptions& options);
   void processOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           StatisticsFeatureOptions& options);
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                           StatisticsFeatureOptions const& options);
 };
 
 }  // namespace statistics

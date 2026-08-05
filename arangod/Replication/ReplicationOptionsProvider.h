@@ -33,8 +33,6 @@ struct ReplicationOptionsProvider
                           ReplicationOptions& options);
   void processOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           ReplicationOptions& options);
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                           ReplicationOptions const& options);
 };
 
 }  // namespace arangodb

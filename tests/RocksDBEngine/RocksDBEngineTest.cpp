@@ -17,21 +17,15 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include <gtest/gtest.h>
 
-#include "ApplicationFeatures/OptionsProvider.h"
-#include "RestServer/TemporaryStorageFeatureOptions.h"
+#include "RocksDBEngine/StorageEngineFixture.h"
 
-namespace arangodb {
+using namespace arangodb;
+using namespace arangodb::tests;
 
-struct TemporaryStorageOptionsProvider
-    : OptionsProviderImpl<TemporaryStorageOptionsProvider,
-                          TemporaryStorageFeatureOptions> {
-  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                          TemporaryStorageFeatureOptions& options);
-};
-
-}  // namespace arangodb
+TEST_F(StorageEngineFixture, CanConstruct) {
+  EXPECT_EQ(engine().kEngineName, "rocksdb");
+}
