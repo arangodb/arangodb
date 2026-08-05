@@ -352,19 +352,60 @@ function centerStr(s, width) {
   return ' '.repeat(left) + s + ' '.repeat(right);
 }
 
-// Column widths (matching the Rust implementation):
-//   regular columns  – 8-char content → "| <8chars> " = 11 chars total
-//   admin columns    – 10-char content → "| <10chars> " = 13 chars total
+/** Base column widths (matching the Rust implementation), widened as needed
+ *  to fit an "(errorNum)" suffix – see printTable(). */
+const REGULAR_MIN_WIDTH = 8;
+const ADMIN_MIN_WIDTH   = 10;
 
-function colCell(content)      { return `| ${content.padEnd(8)} `; }
-function codeCell(code)        { return `| ${centerStr(String(code), 8)} `; }
-function adminColCell(content) { return `| ${content.padEnd(10)} `; }
-function adminCodeCell(code)   { return `| ${centerStr(String(code), 10)} `; }
+function cell(content, width) { return `| ${centerStr(String(content), width)} `; }
 
-const COLL_SEP        = '----------------------|----------|----------|----------|----------|';
-const LEVEL_SEP       = '|----------|----------|----------|----------|';
-const ADMIN_SEP       = '|------------|------------|------------|------------|';
-const ADMIN_SEP_SUPER = '|------------|------------|------------|------------|------------|';
+/**
+ * Format the "status" cell for a response: the HTTP status code, plus the
+ * ArangoDB errorNum in brackets when the body is a JSON error response
+ * (error === true) with a non-zero errorNum.
+ */
+function formatStatusCell(resp) {
+  const b = resp.body;
+  if (b && typeof b === 'object' && b.error === true && b.errorNum) {
+    return `${resp.status} (${b.errorNum})`;
+  }
+  return String(resp.status);
+}
+
+/** Build a '|---|---|...' separator line for the given column widths. */
+function buildSeparator(colWidths, leadingWidth = 0) {
+  let s = leadingWidth > 0 ? '-'.repeat(leadingWidth) : '';
+  for (const w of colWidths) {
+    s += '|' + '-'.repeat(w + 2);
+  }
+  return s + '|';
+}
+
+/**
+ * Print a table whose column width is chosen wide enough to fit every
+ * header label and every cell value (so "404 (1203)" style entries still
+ * line up neatly), falling back to `minWidth` when everything is short.
+ *
+ * rows: [{ label?: string, cells: string[] }, ...]
+ * leadingWidth: width reserved for the row-label column (0 = none).
+ */
+function printTable({ headerLabels, minWidth, rows, leadingWidth = 0 }) {
+  let width = minWidth;
+  for (const lbl of headerLabels) width = Math.max(width, lbl.length);
+  for (const row of rows) {
+    for (const c of row.cells) width = Math.max(width, String(c).length);
+  }
+
+  const headerLine = (leadingWidth > 0 ? ' '.repeat(leadingWidth) : '')
+    + headerLabels.map(l => cell(l, width)).join('') + '|';
+  console.log(headerLine);
+  console.log(buildSeparator(new Array(headerLabels.length).fill(width), leadingWidth));
+
+  for (const row of rows) {
+    const rowLabel = leadingWidth > 0 ? (row.label || '').padEnd(leadingWidth) : '';
+    console.log(rowLabel + row.cells.map(c => cell(c, width)).join('') + '|');
+  }
+}
 
 // ─── Setup / Teardown ────────────────────────────────────────────────────────
 
@@ -643,15 +684,13 @@ async function runCollectionTest(endpoint, superuserToken, test) {
   console.log(`${method} ${path}`);
   if (Object.keys(headers).length > 0) console.log(JSON.stringify(headers));
 
-  const hdr = ' '.repeat(22)
-    + colCell('DB undef') + colCell('DB none') + colCell('DB ro') + colCell('DB rw') + '|';
-  console.log(hdr);
-  console.log(COLL_SEP);
+  const headerLabels = ['DB undef', 'DB none', 'DB ro', 'DB rw'];
+  const rows = [];
 
   for (const coll of LEVELS) {
     for (const wc of LEVELS) {
       const label = `COLL ${LEVEL_LABEL[coll]}, * ${LEVEL_LABEL[wc]}`;
-      let row = label.padEnd(22);
+      const cells = [];
 
       for (const db of LEVELS) {
         const username = `${db}${wc}${coll}`;
@@ -663,7 +702,7 @@ async function runCollectionTest(endpoint, superuserToken, test) {
 
         if (ctx.data && ctx.data.skipTest === true) {
           ctx.data = undefined;
-          row += codeCell('SKIP');
+          cells.push('SKIP');
           continue;
         }
 
@@ -682,13 +721,14 @@ async function runCollectionTest(endpoint, superuserToken, test) {
         ctx.data = undefined;
         ctx.response = undefined;
 
-        row += codeCell(resp.status);
+        cells.push(formatStatusCell(resp));
       }
 
-      row += '|';
-      console.log(row);
+      rows.push({ label, cells });
     }
   }
+
+  printTable({ headerLabels, minWidth: REGULAR_MIN_WIDTH, rows, leadingWidth: 22 });
 }
 
 /**
@@ -703,11 +743,9 @@ async function runDatabaseTest(endpoint, superuserToken, test) {
   console.log(`${method} ${path}`);
   if (Object.keys(headers).length > 0) console.log(JSON.stringify(headers));
 
-  const hdr = colCell('DB undef') + colCell('DB none') + colCell('DB ro') + colCell('DB rw') + '|';
-  console.log(hdr);
-  console.log(LEVEL_SEP);
+  const headerLabels = ['DB undef', 'DB none', 'DB ro', 'DB rw'];
+  const cells = [];
 
-  let row = '';
   for (const db of LEVELS) {
     const username = `${db}UU`;
     const authHeader = `Basic ${Buffer.from(`${username}:${username}`).toString('base64')}`;
@@ -718,7 +756,7 @@ async function runDatabaseTest(endpoint, superuserToken, test) {
 
     if (ctx.data && ctx.data.skipTest === true) {
       ctx.data = undefined;
-      row += codeCell('SKIP');
+      cells.push('SKIP');
       continue;
     }
 
@@ -737,10 +775,10 @@ async function runDatabaseTest(endpoint, superuserToken, test) {
     ctx.data = undefined;
     ctx.response = undefined;
 
-    row += codeCell(resp.status);
+    cells.push(formatStatusCell(resp));
   }
-  row += '|';
-  console.log(row);
+
+  printTable({ headerLabels, minWidth: REGULAR_MIN_WIDTH, rows: [{ cells }] });
 }
 
 /**
@@ -756,16 +794,8 @@ async function runAdminTest(endpoint, superuserToken, test) {
   console.log(`${method} ${path}`);
   if (Object.keys(headers).length > 0) console.log(JSON.stringify(headers));
 
-  const hdr = adminColCell('_sys undef')
-    + adminColCell('_sys none')
-    + adminColCell('_sys ro')
-    + adminColCell('_sys rw')
-    + adminColCell('superuser')
-    + '|';
-  console.log(hdr);
-  console.log(ADMIN_SEP_SUPER);
-
-  let row = '';
+  const headerLabels = ['_sys undef', '_sys none', '_sys ro', '_sys rw', 'superuser'];
+  const cells = [];
 
   // Four named admin users
   for (const username of ['AU', 'AN', 'AR', 'AW']) {
@@ -777,7 +807,7 @@ async function runAdminTest(endpoint, superuserToken, test) {
 
     if (ctx.data && ctx.data.skipTest === true) {
       ctx.data = undefined;
-      row += adminCodeCell('SKIP');
+      cells.push('SKIP');
       continue;
     }
 
@@ -796,7 +826,7 @@ async function runAdminTest(endpoint, superuserToken, test) {
     ctx.data = undefined;
     ctx.response = undefined;
 
-    row += adminCodeCell(resp.status);
+    cells.push(formatStatusCell(resp));
   }
 
   // Superuser column
@@ -806,7 +836,7 @@ async function runAdminTest(endpoint, superuserToken, test) {
 
   if (ctx.data && ctx.data.skipTest === true) {
     ctx.data = undefined;
-    row += adminCodeCell('SKIP') + '|';
+    cells.push('SKIP');
   } else {
     const resolvedPath    = resolveString(path, ctx);
     const resolvedBody    = resolveDeep(body, ctx);
@@ -823,9 +853,10 @@ async function runAdminTest(endpoint, superuserToken, test) {
     ctx.data = undefined;
     ctx.response = undefined;
 
-    row += adminCodeCell(suResp.status) + '|';
+    cells.push(formatStatusCell(suResp));
   }
-  console.log(row);
+
+  printTable({ headerLabels, minWidth: ADMIN_MIN_WIDTH, rows: [{ cells }] });
 }
 
 /**
