@@ -41,6 +41,9 @@ target_link_libraries(arangodbtests_rocksdb
   arango_rocksdb
   arango_metrics_base
   arango_vocbase
+  arango_scheduler
+  arango_rest_server
+  arango_sharding
   velocypack_utils
   gtest
   gmock)
