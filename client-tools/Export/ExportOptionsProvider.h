@@ -27,12 +27,13 @@
 
 namespace arangodb {
 
-struct ExportOptionsProvider : OptionsProvider<ExportFeatureOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      ExportFeatureOptions& options) override;
+struct ExportOptionsProvider
+    : OptionsProviderImpl<ExportOptionsProvider, ExportFeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          ExportFeatureOptions& options);
 
-  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
-                       ExportFeatureOptions& options) override;
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                           ExportFeatureOptions& options);
 };
 
 }  // namespace arangodb
