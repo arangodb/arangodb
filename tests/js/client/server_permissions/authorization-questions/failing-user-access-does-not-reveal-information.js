@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertFalse, assertTrue, arango */
+/*global assertEqual, assertFalse, assertTrue, arango, getOptions */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -29,6 +29,20 @@
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // //////////////////////////////////////////////////////////////////////////////
+
+// API version 1 is not yet in ApiVersion.h's supportedApiVersions, so it is
+// normally rejected before any handler runs (see GeneralRequest.cpp and
+// RestHandlerFactory.cpp). The 'ApiVersion::treatVersion1AsSupported' failure
+// point makes those two checks treat version 1 as supported, without
+// touching supportedApiVersions itself. It must be armed before the server
+// registers its REST routes at startup, so it is passed as a startup option
+// here rather than set later via the usual debugSetFailAt() runtime call.
+if (getOptions === true) {
+  return {
+    'server.failure-point': 'ApiVersion::treatVersion1AsSupported',
+    'server.authentication': 'true'
+  };
+}
 
 const jsunity = require("jsunity");
 const {db} = require('@arangodb');
