@@ -104,7 +104,7 @@ logged as `犬`.
 
 If you set this options to `true`, any Unicode characters are escaped, and the
 hex codes for all Unicode characters are logged instead. For example, `犬` is
-logged as `犬`.
+logged as `\u72AC`.
 
 The default value for this option is set to `false` for compatibility with
 previous versions.
