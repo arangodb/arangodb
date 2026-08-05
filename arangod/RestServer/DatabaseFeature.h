@@ -110,10 +110,10 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
   static constexpr std::string_view name() noexcept { return "Database"; }
 
   explicit DatabaseFeature(application_features::ApplicationServer& server);
+  DatabaseFeature(application_features::ApplicationServer& server,
+                  DatabaseFeatureOptions options);
   ~DatabaseFeature() final;
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) final;
   void start() final;
   void beginShutdown() final;
   void stop() final;

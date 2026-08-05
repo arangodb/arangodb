@@ -48,7 +48,6 @@
 #include "Metrics/MetricsFeature.h"
 #include "Metrics/Gauge.h"
 #include "Metrics/IRegistry.h"
-#include "ProgramOptions/ProgramOptions.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -270,7 +269,12 @@ void DatabaseManagerThread::run() {
 
 DatabaseFeature::DatabaseFeature(
     application_features::ApplicationServer& server)
-    : ApplicationFeature{server, *this} {
+    : DatabaseFeature(server, DatabaseFeatureOptions{}) {}
+
+DatabaseFeature::DatabaseFeature(
+    application_features::ApplicationServer& server,
+    DatabaseFeatureOptions options)
+    : ApplicationFeature{server, *this}, _options(std::move(options)) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 
@@ -283,24 +287,6 @@ DatabaseFeature::DatabaseFeature(
 }
 
 DatabaseFeature::~DatabaseFeature() = default;
-
-void DatabaseFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  DatabaseOptionsProvider::declareOptionsImpl(options, _options);
-}
-
-void DatabaseFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  DatabaseOptionsProvider::validateOptionsImpl(options, _options);
-
-  // check the misuse of startup options
-  if (_checkVersion && _upgrade) {
-    LOG_TOPIC("a25b0", FATAL, Logger::FIXME)
-        << "cannot specify both '--database.check-version' and "
-           "'--database.auto-upgrade'";
-    FATAL_ERROR_EXIT();
-  }
-}
 
 void DatabaseFeature::initCalculationVocbase() {
   calculationVocbase = std::make_unique<TRI_vocbase_t>(

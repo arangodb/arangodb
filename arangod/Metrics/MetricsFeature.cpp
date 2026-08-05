@@ -20,7 +20,6 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 #include "Metrics/MetricsFeature.h"
-#include "Metrics/MetricsOptionsProvider.h"
 
 #include <frozen/string.h>
 #include <frozen/unordered_set.h>
@@ -91,11 +90,6 @@ MetricsFeature::MetricsFeature(
     return 0.0;
   }
   return TRI_microtime() - _serverStartTime;
-}
-
-void MetricsFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  MetricsOptionsProvider::declareOptionsImpl(options, _options);
 }
 
 std::shared_ptr<Metric> MetricsFeature::doAdd(Builder& builder) {
@@ -169,11 +163,6 @@ bool MetricsFeature::ensureWhitespace() const noexcept {
 MetricsFeature::UsageTrackingMode MetricsFeature::usageTrackingMode()
     const noexcept {
   return _options.usageTrackingMode;
-}
-
-void MetricsFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  MetricsOptionsProvider::validateOptionsImpl(options, _options);
 }
 
 void MetricsFeature::toPrometheus(std::string& result,

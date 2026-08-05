@@ -172,17 +172,9 @@ void ArangodServer::addFeatures() {
 #endif
 
   // Adding the features - order matters for dependency resolution
-  // metrics::MetricsFeature must go first
-  auto& metrics = addFeature<metrics::MetricsFeature>(
-      LazyApplicationFeatureReference<QueryRegistryFeature>(*this),
-      LazyApplicationFeatureReference<StatisticsFeature>(*this),
-      LazyApplicationFeatureReference<DatabaseFeature>(*this),
-      LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(*this),
-      LazyApplicationFeatureReference<ClusterFeature>(*this));
   addFeature<AqlFeature>();
 
   auto& sharedPRNGFeature = addFeature<SharedPRNGFeature>();
-  auto& database = addFeature<DatabaseFeature>();
 #ifdef USE_V8
   addFeature<ConsoleFeature>();
 #endif
@@ -194,7 +186,6 @@ void ArangodServer::addFeatures() {
   addFeature<TimeZoneFeature>();
   addFeature<LockfileFeature>();
   addFeature<OptionsCheckFeature>();
-  addFeature<ReplicationMetricsFeature>(metrics);
   addFeature<ServerIdFeature>();
   addFeature<ShardingFeature>();
   addFeature<ShellColorsFeature>();
@@ -202,13 +193,21 @@ void ArangodServer::addFeatures() {
   addFeature<SslFeature>();
   addFeature<ViewTypesFeature>();
   addFeature<aql::AqlFunctionFeature>();
-  addFeature<RocksDBRecoveryManager>(database, database);
 }
 
 void ArangodServer::addFeaturesWithOptionProvider() {
-  auto& metrics = getFeature<metrics::MetricsFeature>();
-  auto& database = getFeature<DatabaseFeature>();
-  auto& rocksdbRecovery = getFeature<RocksDBRecoveryManager>();
+  auto& metrics = addFeature<metrics::MetricsFeature>(
+      LazyApplicationFeatureReference<QueryRegistryFeature>(*this),
+      LazyApplicationFeatureReference<StatisticsFeature>(*this),
+      LazyApplicationFeatureReference<DatabaseFeature>(*this),
+      LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(*this),
+      LazyApplicationFeatureReference<ClusterFeature>(*this),
+      getOptions<metrics::MetricsOptionsProvider>());
+  auto& database =
+      addFeature<DatabaseFeature>(getOptions<DatabaseOptionsProvider>());
+  addFeature<ReplicationMetricsFeature>(metrics);
+  auto& rocksdbRecovery =
+      addFeature<RocksDBRecoveryManager>(database, database);
   auto& systemDatabaseFeature = getFeature<SystemDatabaseFeature>();
   auto& aqlFunctionFeature = getFeature<aql::AqlFunctionFeature>();
 
@@ -416,6 +415,16 @@ void ArangodServer::addFeaturesWithOptionProvider() {
 
   addFeature<UpgradeFeature>(_ret, kNonServerFeatures,
                              getOptions<UpgradeOptionsProvider>());
+
+  // ClusterUpgradeFeature/CheckVersionFeature/UpgradeFeature all set these
+  // flags on DatabaseFeature from their own constructors, so this can only
+  // be checked once all three have been constructed
+  if (database.checkVersion() && database.upgrade()) {
+    LOG_TOPIC("a25b0", FATAL, Logger::FIXME)
+        << "cannot specify both '--database.check-version' and "
+           "'--database.auto-upgrade'";
+    FATAL_ERROR_EXIT();
+  }
 
   addFeature<replication2::replicated_state::ReplicatedStateAppFeature>();
   addFeature<replication2::replicated_state::black_hole::

@@ -35,7 +35,6 @@
 #include "Metrics/MetricKey.h"
 #include "Metrics/MetricsOptions.h"
 #include "Metrics/MetricsParts.h"
-#include "ProgramOptions/ProgramOptions.h"
 
 #include <map>
 #include <shared_mutex>
@@ -84,9 +83,6 @@ class MetricsFeature final : public application_features::ApplicationFeature,
   bool exportAPI() const noexcept;
   bool ensureWhitespace() const noexcept;
   UsageTrackingMode usageTrackingMode() const noexcept;
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) final;
 
   // tries to add the metric. If the metric already exists, it is returned
   // instead.
