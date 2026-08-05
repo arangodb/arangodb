@@ -34,7 +34,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void V8ShellOptionsProvider::declareOptions(
+void V8ShellOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, V8ShellFeatureOptions& options) {
   opts->addSection("javascript", "JavaScript engine");
 
@@ -83,7 +83,7 @@ void V8ShellOptionsProvider::declareOptions(
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 
-void V8ShellOptionsProvider::validateOptions(
+void V8ShellOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, V8ShellFeatureOptions& options) {
   if (options.startupDirectory.empty()) {
     LOG_TOPIC("6380f", FATAL, arangodb::Logger::FIXME)

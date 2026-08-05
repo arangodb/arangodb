@@ -34,8 +34,8 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void TtlOptionsProvider::declareOptions(std::shared_ptr<ProgramOptions> options,
-                                        TtlProperties& props) {
+void TtlOptionsProvider::declareOptionsImpl(
+    std::shared_ptr<ProgramOptions> options, TtlProperties& props) {
   options->addSection("ttl", "TTL index options");
 
   options
@@ -79,7 +79,7 @@ potential write-write conflicts can be reduced.)");
       "only consider already loaded collections for removal", false);
 }
 
-void TtlOptionsProvider::validateOptions(
+void TtlOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> /*options*/, TtlProperties& props) {
   if (props.maxCollectionRemoves == 0) {
     LOG_TOPIC("2ab82", FATAL, arangodb::Logger::STARTUP)

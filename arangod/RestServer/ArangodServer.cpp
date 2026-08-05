@@ -25,6 +25,10 @@
 
 #include <type_traits>
 
+#include "Basics/application-exit.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+
 // The list of includes for the features is defined in the following file -
 // please add new includes there!
 #include "RestServer/arangod_includes.h"
@@ -56,12 +60,103 @@ auto const kNonServerFeatures =
                std::type_index(typeid(ServerFeature)),
                std::type_index(typeid(SslServerFeature)),
                std::type_index(typeid(StatisticsFeature))};
+
+void applyAgencyRocksDBMemoryLimits(
+    options::ProgramOptions::ProcessingResult const& result,
+    RocksDBOptionFeatureOptions& rocksdbOptions) {
+  if (!result.touched("--rocksdb.block-cache-size")) {
+    rocksdbOptions.blockCacheSize =
+        std::min(rocksdbOptions.blockCacheSize, uint64_t{1} << 30);  // 1 GiB
+  }
+  if (!result.touched("--rocksdb.total-write-buffer-size")) {
+    rocksdbOptions.totalWriteBufferSize = std::min(
+        rocksdbOptions.totalWriteBufferSize, uint64_t{512} << 20);  // 512 MiB
+  }
+}
 }  // namespace
+
+void ArangodServer::processOptions() {
+  OptionProvidingServer<ArangodOptionProviders>::processOptions();
+
+#ifdef ARANGODB_HAVE_FORK
+  if (getOptions<SupervisorOptionsProvider>().supervisor) {
+    mutableOptions<DaemonOptionsProvider>().daemon = true;
+  }
+#endif
+  Logger::setKeepLogrotate(
+      getOptions<LogRotateOptionsProvider>().keepLogRotate);
+
+  // must run after the OptionProvidingServer::processOptions() call above,
+  // since ClusterOptions::enableCluster is only resolved there, and before
+  // validateOptions(), since unmigrated features still read the role there
+  auto const& clusterOptions = getOptions<ClusterOptionsProvider>();
+  ServerState::instance()->setRole(
+      resolveRole(clusterOptions, getOptions<AgencyOptionsProvider>()));
+
+  if (!clusterOptions.enableCluster) {
+    ServerState::instance()->findHost("localhost");
+  } else {
+    std::string fallback = clusterOptions.myEndpoint;
+    auto pos = fallback.find("://");
+    if (pos != std::string::npos) {
+      fallback = fallback.substr(pos + 3);
+    }
+    pos = fallback.rfind(':');
+    if (pos != std::string::npos) {
+      fallback.resize(pos);
+    }
+    ServerState::instance()->findHost(fallback);
+  }
+
+#ifdef USE_V8
+  // Agents/DB-Servers don't need V8 unless the user explicitly asked for it.
+  // 'enableJS' can be only set after setRole() is called.
+  auto& v8Opts = mutableOptions<V8DealerOptionsProvider>();
+  if (!V8DealerFeature::javascriptRequestedViaOptions(options()) &&
+      (ServerState::instance()->isAgent() ||
+       ServerState::instance()->isDBServer())) {
+    v8Opts.enableJS = false;
+  }
+#endif
+
+  // Cap RocksDB memory defaults on agency agents unless explicitly configured.
+  auto const& agencyOptions = getOptions<AgencyOptionsProvider>();
+  if (agencyOptions.activated) {
+    applyAgencyRocksDBMemoryLimits(
+        options()->processingResult(),
+        mutableOptions<RocksDBOptionFeatureOptionsProvider>());
+  }
+}
+
+ServerState::RoleEnum ArangodServer::resolveRole(
+    ClusterOptions const& clusterOptions, AgencyOptions const& agencyOptions) {
+  if (agencyOptions.activated && !clusterOptions.myRole.empty()) {
+    LOG_TOPIC("a3f61", FATAL, Logger::CLUSTER)
+        << "cannot specify both '--agency.activate true' and "
+           "'--cluster.my-role': an agent cannot also be assigned a "
+           "separate cluster role";
+    FATAL_ERROR_EXIT();
+  }
+  if (agencyOptions.activated) {
+    return ServerState::ROLE_AGENT;
+  }
+  if (!clusterOptions.enableCluster) {
+    return ServerState::ROLE_SINGLE;
+  }
+  if (!clusterOptions.myRole.empty()) {
+    return ServerState::stringToRole(clusterOptions.myRole);
+  }
+  LOG_TOPIC("26795", FATAL, Logger::CLUSTER)
+      << "unable to determine server role: cluster is enabled via "
+         "'--cluster.agency-endpoint' but '--cluster.my-role' was not "
+         "specified";
+  FATAL_ERROR_EXIT();
+}
 
 void ArangodServer::addFeatures() {
   // Adding the Phases - these must come first and in this order
   addFeature<AgencyFeaturePhase>();
-  auto& comm = addFeature<CommunicationFeaturePhase>();
+  addFeature<CommunicationFeaturePhase>();
   addFeature<AqlFeaturePhase>();
   addFeature<BasicFeaturePhaseServer>();
   addFeature<ClusterFeaturePhase>();
@@ -85,78 +180,35 @@ void ArangodServer::addFeatures() {
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(*this),
       LazyApplicationFeatureReference<ClusterFeature>(*this));
   addFeature<metrics::ClusterMetricsFeature>();
-  addFeature<AgencyFeature>();
   addFeature<AqlFeature>();
 
   addFeature<CacheOptionsFeature>();
   auto& cacheOptions = getFeature<CacheOptionsFeature>();
   auto& sharedPRNGFeature = addFeature<SharedPRNGFeature>();
   addFeature<CacheManagerFeature>(cacheOptions, sharedPRNGFeature.getPRNG());
-  auto& clusterFeature = addFeature<ClusterFeature>(metrics);
   auto& database = addFeature<DatabaseFeature>();
-  auto& clusterUpgradeFeature = addFeature<ClusterUpgradeFeature>(database);
 #ifdef USE_V8
   addFeature<ConsoleFeature>();
-  auto& v8DealerFeature = addFeature<V8DealerFeature>(metrics);
 #endif
   addFeature<CpuUsageFeature>();
-  auto& systemDatabaseFeature = addFeature<SystemDatabaseFeature>();
-  addFeature<BootstrapFeature>(clusterFeature, database, &systemDatabaseFeature,
-                               &clusterUpgradeFeature
-#ifdef USE_V8
-                               ,
-                               &v8DealerFeature
-#endif
-  );
+  addFeature<SystemDatabaseFeature>();
   addFeature<EnvironmentFeature>();
   addFeature<GreetingsFeature>();
   addFeature<LanguageCheckFeature>();
   addFeature<TimeZoneFeature>();
   addFeature<LockfileFeature>();
-  addFeature<MaintenanceFeature>(&clusterFeature);
   addFeature<OptionsCheckFeature>();
-  addFeature<PrivilegeFeature>();
-  addFeature<ReplicationFeature>(comm, metrics);
-  addFeature<ReplicatedLogFeature>();
   addFeature<ReplicationMetricsFeature>(metrics);
-  addFeature<ReplicationTimeoutFeature>();
   addFeature<SchedulerFeature>(metrics, sharedPRNGFeature.getPRNG());
   addFeature<VectorIndexFeature>(database);
-#ifdef USE_V8
-  addFeature<ScriptFeature>(_ret);
-#endif
   addFeature<ServerIdFeature>();
   addFeature<ShardingFeature>();
   addFeature<ShellColorsFeature>();
-#ifdef USE_V8
-  addFeature<ShutdownFeature>(
-      std::array{std::type_index(typeid(ScriptFeature))});
-#else
-  addFeature<ShutdownFeature>(
-      std::array{std::type_index(typeid(AgencyFeaturePhase))});
-#endif
   addFeature<SoftShutdownFeature>();
   addFeature<SslFeature>();
-  addFeature<StatisticsFeature>(metrics);
-  addFeature<TtlFeature>();
-  addFeature<transaction::ManagerFeature>(metrics);
   addFeature<ViewTypesFeature>();
   addFeature<aql::AqlFunctionFeature>();
   addFeature<RocksDBRecoveryManager>(database, database);
-  addFeature<iresearch::IResearchFeature>(metrics);
-  addFeature<ClusterEngine>(metrics);
-}
-
-void ArangodServer::processOptions() {
-#ifdef ARANGODB_HAVE_FORK
-  if (getOptions<SupervisorOptionsProvider>().supervisor) {
-    mutableOptions<DaemonOptionsProvider>().daemon = true;
-  }
-#endif
-  Logger::setKeepLogrotate(
-      getOptions<LogRotateOptionsProvider>().keepLogRotate);
-
-  OptionProvidingServer::processOptions();
 }
 
 void ArangodServer::addFeaturesWithOptionProvider() {
@@ -166,14 +218,11 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& scheduler = getFeature<SchedulerFeature>();
   auto& rocksdbRecovery = getFeature<RocksDBRecoveryManager>();
   auto& cacheManager = getFeature<CacheManagerFeature>();
-  auto& agency = getFeature<AgencyFeature>();
-  auto& clusterFeature = getFeature<ClusterFeature>();
   auto& systemDatabaseFeature = getFeature<SystemDatabaseFeature>();
   auto& aqlFunctionFeature = getFeature<aql::AqlFunctionFeature>();
 
   addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
-  addFeature<LoggerFeature>(true, getOptions<LoggerOptionsProvider>(),
-                            getOptions<LogApiOptionsProvider>());
+  addFeature<LoggerFeature>(true, getOptions<LoggerOptionsProvider>());
   addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());
   addFeature<TempFeature>(std::string{_binaryName},
                           getOptions<TempOptionsProvider>());
@@ -185,9 +234,13 @@ void ArangodServer::addFeaturesWithOptionProvider() {
       _dataSourceRegistry, getOptions<async_registry::OptionsProvider>());
   addFeature<ActionFeature>(getOptions<ActionOptionsProvider>());
 
+  auto& databasePath = addFeature<DatabasePathFeature>(
+      getOptions<DatabasePathOptionsProvider>());
+
 #ifdef USE_ENTERPRISE
   addFeature<AuditFeature>(getOptions<AuditOptionsProvider>());
-  addFeature<LicenseFeature>(getOptions<LicenseOptionsProvider>());
+  addFeature<LicenseFeature>(databasePath,
+                             getOptions<LicenseOptionsProvider>());
   addFeature<RCloneFeature>(getOptions<RCloneOptionsProvider>());
   addFeature<HotBackupFeature>(getOptions<HotBackupOptionsProvider>());
   addFeature<EncryptionFeature>(getOptions<EncryptionOptionsProvider>());
@@ -200,6 +253,14 @@ void ArangodServer::addFeaturesWithOptionProvider() {
 
 #ifdef USE_V8
   addFeature<FrontendFeature>(getOptions<FrontendOptionsProvider>());
+  addFeature<ScriptFeature>(_ret, getOptions<ScriptOptionsProvider>());
+  auto& v8DealerFeature = addFeature<V8DealerFeature>(
+      metrics, getOptions<V8DealerOptionsProvider>());
+  addFeature<ShutdownFeature>(
+      std::array{std::type_index(typeid(ScriptFeature))});
+#else
+  addFeature<ShutdownFeature>(
+      std::array{std::type_index(typeid(AgencyFeaturePhase))});
 #endif
 
 #ifdef TRI_HAVE_GETRLIMIT
@@ -212,7 +273,8 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   addFeature<AuthenticationFeature>(
       getOptions<AuthenticationOptionsProvider>());
   addFeature<GeneralServerFeature>(metrics,
-                                   getOptions<GeneralServerOptionsProvider>());
+                                   getOptions<GeneralServerOptionsProvider>(),
+                                   getOptions<LogApiOptionsProvider>());
   auto& networkFeature =
       addFeature<NetworkFeature>(metrics, getOptions<NetworkOptionsProvider>());
   addFeature<HttpEndpointProvider, EndpointFeature>(
@@ -256,15 +318,67 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   addFeature<QueryRegistryFeature>(metrics,
                                    getOptions<QueryRegistryOptionsProvider>());
 
+  auto& clusterFeature =
+      addFeature<ClusterFeature>(metrics, getOptions<ClusterOptionsProvider>());
+
+  addFeature<iresearch::IResearchAnalyzerFeature>(
+      iresearch::IResearchAnalyzerFeature::Dependencies{
+          .databaseFeature = database,
+          .systemDatabase = systemDatabaseFeature,
+          .networkFeature = &networkFeature,
+          .clusterFeature = &clusterFeature,
+          .schedulerFeature = &scheduler,
+          .aqlFunctionFeature = &aqlFunctionFeature,
+      });
+
+  addFeature<iresearch::IResearchFeature>(
+      metrics, getOptions<iresearch::IResearchOptionsProvider>());
+
+  auto& agency = addFeature<AgencyFeature>(getOptions<AgencyOptionsProvider>());
+
+  addFeature<ClusterEngine>(clusterFeature, database, metrics);
+
+  addFeature<MaintenanceFeature>(&clusterFeature,
+                                 getOptions<MaintenanceOptionsProvider>());
+
+  auto& clusterUpgradeFeature = addFeature<ClusterUpgradeFeature>(
+      database, getOptions<upgrade::ClusterUpgradeOptionsProvider>());
+
+  addFeature<BootstrapFeature>(
+      clusterFeature, database, &systemDatabaseFeature, &clusterUpgradeFeature
+#ifdef USE_V8
+      ,
+      &v8DealerFeature
+#endif
+      ,
+      getOptions<bootstrap::BootstrapOptionsProvider>());
+
+  addFeature<ReplicationTimeoutFeature>(
+      getOptions<ReplicationTimeoutOptionsProvider>());
+
+  auto& comm = getFeature<CommunicationFeaturePhase>();
+  addFeature<ReplicationFeature>(comm, metrics,
+                                 getOptions<ReplicationOptionsProvider>());
+
+  addFeature<ReplicatedLogFeature>(
+      getOptions<replication2::ReplicatedLogOptionsProvider>());
+
+  addFeature<TtlFeature>(getOptions<TtlOptionsProvider>());
+
+  addFeature<StatisticsFeature>(
+      metrics, getOptions<statistics::StatisticsOptionsProvider>());
+
+  addFeature<transaction::ManagerFeature>(
+      metrics, getOptions<transaction::ManagerOptionsProvider>());
+
+  addFeature<PrivilegeFeature>(getOptions<PrivilegeOptionsProvider>());
+
   auto& rocksdbCacheRefill = addFeature<RocksDBIndexCacheRefillFeature>(
       database, &clusterFeature, metrics,
       getOptions<RocksDBIndexCacheRefillOptionsProvider>());
 
   auto& rocksdbOption = addFeature<RocksDBOptionFeature>(
-      &agency, getOptions<RocksDBOptionFeatureOptionsProvider>());
-
-  auto& databasePath = addFeature<DatabasePathFeature>(
-      getOptions<DatabasePathOptionsProvider>());
+      getOptions<RocksDBOptionFeatureOptionsProvider>());
 
   addFeature<TemporaryStorageFeature>(
       databasePath, getOptions<TemporaryStorageOptionsProvider>());
@@ -295,16 +409,6 @@ void ArangodServer::addFeaturesWithOptionProvider() {
 
   addFeature<UpgradeFeature>(_ret, kNonServerFeatures,
                              getOptions<UpgradeOptionsProvider>());
-
-  addFeature<iresearch::IResearchAnalyzerFeature>(
-      iresearch::IResearchAnalyzerFeature::Dependencies{
-          .databaseFeature = database,
-          .systemDatabase = systemDatabaseFeature,
-          .networkFeature = &networkFeature,
-          .clusterFeature = &clusterFeature,
-          .schedulerFeature = &scheduler,
-          .aqlFunctionFeature = &aqlFunctionFeature,
-      });
 
   addFeature<replication2::replicated_state::ReplicatedStateAppFeature>();
   addFeature<replication2::replicated_state::black_hole::

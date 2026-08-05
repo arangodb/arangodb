@@ -32,8 +32,6 @@ struct QueryInfoLoggerOptionsProvider
                           QueryInfoLoggerOptions> {
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           QueryInfoLoggerOptions& options);
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
-                           QueryInfoLoggerOptions& /*options*/) {}
 };
 
 }  // namespace arangodb::aql

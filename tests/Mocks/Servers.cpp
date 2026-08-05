@@ -79,6 +79,7 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchOptionsProvider.h"
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/common.h"
 #include "Logger/LogMacros.h"
@@ -188,7 +189,8 @@ static void SetupDatabaseFeaturePhase(MockServer& server) {
 
 #if USE_ENTERPRISE
   // required for AuthenticationFeature with USE_ENTERPRISE
-  server.addFeature<LicenseFeature>(false);
+  server.addFeature<LicenseFeature>(false,
+                                    server.getFeature<DatabasePathFeature>());
   server.addFeature<EncryptionFeature>(false);
 #endif
 }
@@ -242,10 +244,11 @@ static void SetupAqlPhase(MockServer& server) {
       arangodb::iresearch::IResearchAnalyzerFeature::Dependencies::fromServer(
           server.server()));
   {
-    auto& feature =
-        server.addFeature<arangodb::iresearch::IResearchFeature>(true, metrics);
-    feature.collectOptions(server.server().options());
-    feature.validateOptions(server.server().options());
+    auto& provider = server.addOptionsProvider<
+        arangodb::iresearch::IResearchOptionsProvider>();
+    provider.validateOptions(server.server().options());
+    server.addFeature<arangodb::iresearch::IResearchFeature>(
+        true, metrics, provider.options());
   }
 
 #ifdef USE_ENTERPRISE
