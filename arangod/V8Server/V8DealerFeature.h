@@ -76,8 +76,6 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   V8DealerFeature(application_features::ApplicationServer& server,
                   metrics::IRegistry& metricsRegistry);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) final;
   void prepare() final;
   void start() final;
   void unprepare() final;

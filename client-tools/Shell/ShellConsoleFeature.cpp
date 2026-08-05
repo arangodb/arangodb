@@ -21,7 +21,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShellConsoleFeature.h"
-#include "ShellConsoleOptionsProvider.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
@@ -72,12 +71,6 @@ ShellConsoleFeature::ShellConsoleFeature(
   if (!_supportsColors) {
     _options.colors = false;
   }
-}
-
-void ShellConsoleFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  ShellConsoleOptionsProvider provider;
-  provider.declareOptions(options, _options);
 }
 
 void ShellConsoleFeature::start() { openLog(); }

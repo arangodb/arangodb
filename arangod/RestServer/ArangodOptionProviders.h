@@ -16,6 +16,7 @@
 #include "GeneralServer/AuthenticationOptionsProvider.h"
 #include "GeneralServer/GeneralServerOptionsProvider.h"
 #include "GeneralServer/SslServerOptionsProvider.h"
+#include "IResearch/IResearchOptionsProvider.h"
 #include "Network/NetworkOptionsProvider.h"
 #include "Replication/ReplicationOptionsProvider.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogOptionsProvider.h"
@@ -63,6 +64,8 @@
 
 #ifdef USE_V8
 #include "RestServer/FrontendOptionsProvider.h"
+#include "RestServer/ScriptOptionsProvider.h"
+#include "V8Server/V8DealerOptionsProvider.h"
 #endif
 
 #ifdef TRI_HAVE_GETRLIMIT
@@ -87,9 +90,10 @@ using ArangodOptionProviders = CoreOptionProviders<
     DumpLimitsOptionsProvider, EndpointOptionsProvider, FlushOptionsProvider,
     fortune::FortuneOptionsProvider, FoxxOptionsProvider,
     GeneralServerOptionsProvider, InitDatabaseOptionsProvider,
-    LanguageOptionsProvider, LogApiOptionsProvider, LogBufferOptionsProvider,
-    LogRotateOptionsProvider, MaintenanceOptionsProvider,
-    MaxMapCountOptionsProvider, NetworkOptionsProvider, NonceOptionsProvider,
+    iresearch::IResearchOptionsProvider, LanguageOptionsProvider,
+    LogApiOptionsProvider, LogBufferOptionsProvider, LogRotateOptionsProvider,
+    MaintenanceOptionsProvider, MaxMapCountOptionsProvider,
+    NetworkOptionsProvider, NonceOptionsProvider,
     aql::OptimizerRulesOptionsProvider, aql::QueryInfoLoggerOptionsProvider,
     PrivilegeOptionsProvider, QueryRegistryOptionsProvider,
     replication2::ReplicatedLogOptionsProvider, ReplicationOptionsProvider,
@@ -108,7 +112,7 @@ using ArangodOptionProviders = CoreOptionProviders<
 #endif
 #ifdef USE_V8
     ,
-    FrontendOptionsProvider
+    FrontendOptionsProvider, ScriptOptionsProvider, V8DealerOptionsProvider
 #endif
 #ifdef TRI_HAVE_GETRLIMIT
     ,
