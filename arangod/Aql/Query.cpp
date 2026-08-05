@@ -198,8 +198,11 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
   _resourceMonitor->memoryLimit(_queryOptions.memoryLimit);
   _warnings.updateFromOptions(_queryOptions);
 
-  // store name of user that started the query
+  // store name of user that started the query, plus the full ExecContext
+  // for the maintainer-mode identity assertion in the execution entry
+  // points (COR-821)
   _user = ExecContext::current().user();
+  _execContext = ExecContext::currentAsShared();
 
   _activity = activities::make<aql::query_activity::AqlQueryActivity>(
       query_activity::AqlQueryActivityData{
@@ -862,6 +865,15 @@ futures::Future<futures::Unit> Query::execute(
       << elapsedSince(_startTime) << " Query::execute"
       << " this: " << (uintptr_t)this;
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // the query must execute under the same identity it was created with; a
+  // mismatch means some spawn path failed to propagate the ExecContext
+  // (COR-821)
+  if (_execContext != nullptr) {
+    TRI_ASSERT(ExecContext::current().user() == _execContext->user());
+  }
+#endif
+
   try {
     if (killed()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
@@ -1116,6 +1128,16 @@ futures::Future<futures::Unit> Query::execute(
  */
 QueryResult Query::executeSync() {
   _queryApiSynchronicity = QueryApiSynchronicity::Synchronous;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // the query must execute under the same identity it was created with; a
+  // mismatch means some spawn path failed to propagate the ExecContext
+  // (COR-821)
+  if (_execContext != nullptr) {
+    TRI_ASSERT(ExecContext::current().user() == _execContext->user());
+  }
+#endif
+
   auto ss = sharedState();
   TRI_ASSERT(ss != nullptr);
 
@@ -1136,6 +1158,15 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
   LOG_TOPIC("6cac7", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " Query::executeV8"
       << " this: " << (uintptr_t)this;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // the query must execute under the same identity it was created with; a
+  // mismatch means some spawn path failed to propagate the ExecContext
+  // (COR-821)
+  if (_execContext != nullptr) {
+    TRI_ASSERT(ExecContext::current().user() == _execContext->user());
+  }
+#endif
 
   QueryResultV8 queryResult;
   try {

@@ -56,6 +56,7 @@ class Isolate;
 namespace arangodb {
 
 class CollectionNameResolver;
+class ExecContext;
 class LogicalDataSource;
 #ifdef USE_V8
 class V8Executor;
@@ -493,6 +494,13 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   /// @brief user that started the query
   std::string _user;
+
+  /// @brief the ExecContext that was installed on the thread that created
+  /// this query. Used (in maintainer mode) to assert that the query executes
+  /// under the same identity it was created with, so that any spawn path
+  /// that fails to propagate the ExecContext fails loudly instead of
+  /// silently running as a different (or no) user (COR-821).
+  std::shared_ptr<ExecContext const> _execContext;
 
   /// @brief optional plan cache key that was used to look up the query in the
   /// plan cache. this will be result for storing the query plan later in the

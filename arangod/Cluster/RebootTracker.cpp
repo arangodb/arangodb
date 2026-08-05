@@ -27,6 +27,7 @@
 #include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Utils/ExecContext.h"
 
 #include <absl/strings/str_cat.h>
 #include <algorithm>
@@ -158,6 +159,12 @@ void RebootTracker::queueCallbacks(std::string_view serverId, RebootId to) {
   auto schedule = [&](auto&& batch) noexcept {
     _scheduler->queue(RequestLane::CLUSTER_INTERNAL,
                       [batch = std::move(batch)]() mutable noexcept {
+                        // Reboot callbacks perform server-internal cleanup
+                        // (e.g. aborting transactions of failed servers) and
+                        // act as the server itself; they are queued from the
+                        // AgencyCache thread, which deliberately carries no
+                        // ExecContext (COR-821).
+                        ExecContextSuperuserScope superuserScope;
                         for (auto& callbacks : batch) {
                           safeInvokes(callbacks);
                         }
@@ -185,6 +192,9 @@ void RebootTracker::queueCallback(DescriptedCallback&& callback) noexcept {
   }
   _scheduler->queue(RequestLane::CLUSTER_INTERNAL,
                     [callback = std::move(callback)]() mutable noexcept {
+                      // See queueCallbacks(): reboot callbacks act as the
+                      // server itself (COR-821).
+                      ExecContextSuperuserScope superuserScope;
                       safeInvoke(callback);
                     });
 }
