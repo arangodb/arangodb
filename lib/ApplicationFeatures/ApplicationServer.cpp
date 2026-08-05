@@ -174,9 +174,6 @@ void ApplicationServer::run(int argc, char* argv[]) {
   reportServerProgress(State::IN_COLLECT_OPTIONS);
   collectOptions();
 
-  // setup dependency, but ignore any failure for now
-  setupDependencies(false);
-
   // parse the command line parameters and load any configuration
   // file(s)
   parseOptions(argc, argv);
@@ -201,7 +198,7 @@ void ApplicationServer::run(int argc, char* argv[]) {
   // setup and validate all feature dependencies
   // This is needed to also add the feature coming from
   // addFeaturesWithOptionProvider to the _orderedFeatures vector
-  setupDependencies(true);
+  setupDependencies();
 
   // turn off all features that depend on other features that have been
   // turned off
@@ -439,20 +436,20 @@ void ApplicationServer::validateOptions() {
   LOG_TOPIC("1ed27", TRACE, Logger::STARTUP)
       << "ApplicationServer::validateOptions";
 
-  for (ApplicationFeature& feature : _orderedFeatures) {
-    if (feature.isEnabled()) {
-      LOG_TOPIC("fa73c", TRACE, Logger::STARTUP)
-          << feature.name() << "::validateOptions";
-      reportFeatureProgress(_state.load(std::memory_order_relaxed),
-                            feature.name());
-      feature.validateOptions(_options);
-      feature.state(ApplicationFeature::State::VALIDATED);
-    }
-  }
+  apply(
+      [this](ApplicationFeature& feature) {
+        LOG_TOPIC("fa73c", TRACE, Logger::STARTUP)
+            << feature.name() << "::validateOptions";
+        reportFeatureProgress(_state.load(std::memory_order_relaxed),
+                              feature.name());
+        feature.validateOptions(_options);
+        feature.state(ApplicationFeature::State::VALIDATED);
+      },
+      true);
 }
 
 // setup and validate all feature dependencies, determine feature order
-void ApplicationServer::setupDependencies(bool failOnMissing) {
+void ApplicationServer::setupDependencies() {
   LOG_TOPIC("15559", TRACE, Logger::STARTUP)
       << "ApplicationServer::validateDependencies";
 
@@ -460,13 +457,11 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
   for (auto& [_id, feature] : _features) {
     for (auto const& other : feature->startsBefore()) {
       if (!hasFeature(other)) {
-        if (failOnMissing) {
-          _fail(std::string{"feature '"}
-                    .append(feature->name())
-                    .append("' depends on unknown feature '")
-                    .append(other.name())
-                    .append("'"));
-        }
+        _fail(std::string{"feature '"}
+                  .append(feature->name())
+                  .append("' depends on unknown feature '")
+                  .append(other.name())
+                  .append("'"));
         continue;
       }
       getFeature(other).startsAfter(feature->registration());
@@ -479,28 +474,27 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
   }
 
   // first check if a feature references an unknown other feature
-  if (failOnMissing) {
-    apply(
-        [this](ApplicationFeature& feature) {
-          for (auto& other : feature.dependsOn()) {
-            if (!hasFeature(other)) {
-              _fail(std::string{"feature '"}
-                        .append(feature.name())
-                        .append("' depends on unknown feature '")
-                        .append(other.name())
-                        .append("'"));
-            }
-            if (!getFeature(other).isEnabled()) {
-              _fail(std::string{"enabled feature '"}
-                        .append(feature.name())
-                        .append("' depends on other feature '")
-                        .append(getFeature(other).name())
-                        .append("', which is disabled"));
-            }
+
+  apply(
+      [this](ApplicationFeature& feature) {
+        for (auto& other : feature.dependsOn()) {
+          if (!hasFeature(other)) {
+            _fail(std::string{"feature '"}
+                      .append(feature.name())
+                      .append("' depends on unknown feature '")
+                      .append(other.name())
+                      .append("'"));
           }
-        },
-        true);
-  }
+          if (!getFeature(other).isEnabled()) {
+            _fail(std::string{"enabled feature '"}
+                      .append(feature.name())
+                      .append("' depends on other feature '")
+                      .append(getFeature(other).name())
+                      .append("', which is disabled"));
+          }
+        }
+      },
+      true);
 
   // first insert all features, even the inactive ones
   std::vector<std::reference_wrapper<ApplicationFeature>> features;
@@ -524,6 +518,20 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
     }
     features.insert(insertPosition, *us);
   }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // validate that features is totally ordered
+  for (std::size_t i = 0; i < features.size(); ++i) {
+    auto const& feature = features[i].get();
+    for (std::size_t j = i + 1; j < features.size(); ++j) {
+      auto const& other = features[j].get();
+      if (other.doesStartBefore(feature.registration())) {
+        LOG_DEVEL << "feature '" << feature.name() << "' is ordered BEFORE '"
+                  << other.name() << "' but should start AFTER it";
+      }
+    }
+  }
+#endif
 
   if (Logger::isEnabled(LogLevel::TRACE, Logger::STARTUP)) {
     LOG_TOPIC("0fafb", TRACE, Logger::STARTUP) << "ordered features:";

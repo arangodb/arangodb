@@ -210,7 +210,7 @@ class ApplicationServer {
   }
 
   // setup and validate all feature dependencies, determine feature order
-  void setupDependencies(bool failOnMissing);
+  void setupDependencies();
 
   std::span<std::reference_wrapper<ApplicationFeature>> getOrderedFeatures() {
     return _orderedFeatures;
