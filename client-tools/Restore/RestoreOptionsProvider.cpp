@@ -84,11 +84,10 @@ void RestoreOptionsProvider::declareOptions(
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
       .setIntroducedIn(31200)
-      .setLongDescription(
-          R"(Maximum cumulated size of in-memory buffers to keep around for
-sending batches.
-A value > 0 will increase the memory usage of arangorestore, but can help in
-avoiding repeated memory allocations for building new in-memory buffers.)");
+      .setLongDescription(R"(Maximum cumulated size of in-memory buffers to keep
+around for sending batches. A value greater than `0` increases the memory usage
+of arangorestore, but can help in avoiding repeated memory allocations for
+building new in-memory buffers.)");
 
   options->addOption(
       "--force-same-database",
