@@ -35,7 +35,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void ImportOptionsProvider::declareOptions(
+void ImportOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, ImportFeatureOptions& opts) {
   options->addOption("--file", "The file to import (\"-\" for stdin).",
                      new StringParameter(&opts.filename));
@@ -219,7 +219,7 @@ data once the server reported at least this many errors back.)");
                      new BooleanParameter(&opts.skipValidation));
 }
 
-void ImportOptionsProvider::validateOptions(
+void ImportOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> options, ImportFeatureOptions& opts) {
   auto const& positionals = options->processingResult()._positionals;
   size_t n = positionals.size();

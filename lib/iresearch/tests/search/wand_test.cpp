@@ -56,7 +56,7 @@ class Scorers {
 
 struct Doc {
   Doc(size_t segment, irs::doc_id_t doc) noexcept
-    : segment{segment}, doc{doc} {}
+      : segment{segment}, doc{doc} {}
 
   bool operator==(const Doc&) const = default;
 
@@ -66,7 +66,7 @@ struct Doc {
 
 struct ScoredDoc : Doc {
   ScoredDoc(size_t segment, irs::doc_id_t doc, float score) noexcept
-    : Doc{segment, doc}, score{score} {}
+      : Doc{segment, doc}, score{score} {}
 
   bool operator<(const ScoredDoc& rhs) const noexcept {
     if (score > rhs.score) {
@@ -163,7 +163,7 @@ std::vector<Doc> WandTestCase::Collect(const irs::DirectoryReader& index,
                                        irs::byte_type wand_idx,
                                        bool can_use_wand, size_t limit) {
   auto prepared = irs::Scorers::Prepare(std::span(
-    const_cast<const irs::Scorer**>(&scorers.front()), scorers.size()));
+      const_cast<const irs::Scorer**>(&scorers.front()), scorers.size()));
   EXPECT_FALSE(prepared.empty());
   auto query = filter.prepare({.index = index, .scorers = prepared});
   EXPECT_NE(nullptr, query);
@@ -173,9 +173,9 @@ std::vector<Doc> WandTestCase::Collect(const irs::DirectoryReader& index,
   std::vector<ScoredDoc> sorted;
   sorted.reserve(limit);
 
-  for (size_t left = limit, segment_id = 0; const auto& segment : index) {
+  for (size_t left = limit, segment_id = 0; const auto &segment : index) {
     auto docs = query->execute(irs::ExecutionContext{
-      .segment = segment, .scorers = prepared, .wand = mode});
+        .segment = segment, .scorers = prepared, .wand = mode});
     EXPECT_NE(nullptr, docs);
 
     const auto* doc = irs::get<irs::document>(*docs);
@@ -233,7 +233,7 @@ void WandTestCase::AssertResults(const irs::DirectoryReader& index,
                                  irs::byte_type scorer_idx, bool can_use_wand,
                                  size_t limit) {
   auto wand_result =
-    Collect(index, filter, scorers, scorer_idx, can_use_wand, limit);
+      Collect(index, filter, scorers, scorer_idx, can_use_wand, limit);
   auto result = Collect(index, filter, scorers, irs::WandContext::kDisable,
                         can_use_wand, limit);
   ASSERT_EQ(result, wand_result);
@@ -242,9 +242,9 @@ void WandTestCase::AssertResults(const irs::DirectoryReader& index,
 void WandTestCase::ConsolidateAll(irs::ScorersView scorers, bool write_norms) {
   const irs::index_utils::ConsolidateCount consolidate_all;
   auto writer =
-    open_writer(irs::OM_APPEND, GetWriterOptions(scorers, write_norms));
-  ASSERT_TRUE(
-    writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+      open_writer(irs::OM_APPEND, GetWriterOptions(scorers, write_norms));
+  ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all),
+                                  callbacks));
   ASSERT_TRUE(writer->Commit());
   ASSERT_EQ(1, writer->GetSnapshot().size());
 }
@@ -259,13 +259,13 @@ irs::IndexWriterOptions WandTestCase::GetWriterOptions(irs::ScorersView scorers,
   writer_options.features = [write_norms](irs::type_info::type_id id) {
     if (write_norms && irs::type<irs::Norm2>::id() == id) {
       return std::make_pair(
-        irs::ColumnInfo{irs::type<irs::compression::none>::get(), {}, false},
-        &irs::Norm2::MakeWriter);
+          irs::ColumnInfo{irs::type<irs::compression::none>::get(), {}, false},
+          &irs::Norm2::MakeWriter);
     }
 
     return std::make_pair(
-      irs::ColumnInfo{irs::type<irs::compression::none>::get(), {}, false},
-      irs::FeatureWriterFactory{});
+        irs::ColumnInfo{irs::type<irs::compression::none>::get(), {}, false},
+        irs::FeatureWriterFactory{});
   };
 
   return writer_options;
@@ -274,17 +274,17 @@ irs::IndexWriterOptions WandTestCase::GetWriterOptions(irs::ScorersView scorers,
 void WandTestCase::GenerateSegment(irs::ScorersView scorers, bool write_norms,
                                    bool append_data) {
   tests::json_doc_generator gen(
-    resource("simple_single_column_multi_term.json"),
-    [](tests::document& doc, std::string_view name,
-       const tests::json_doc_generator::json_value& data) {
-      using TextField = tests::text_field<std::string>;
+      resource("simple_single_column_multi_term.json"),
+      [](tests::document& doc, std::string_view name,
+         const tests::json_doc_generator::json_value& data) {
+        using TextField = tests::text_field<std::string>;
 
-      if (tests::json_doc_generator::ValueType::STRING == data.vt) {
-        doc.indexed.push_back(std::make_shared<TextField>(
-          std::string{name}, data.str, false,
-          std::vector{irs::type<irs::Norm2>::id()}));
-      }
-    });
+        if (tests::json_doc_generator::ValueType::STRING == data.vt) {
+          doc.indexed.push_back(std::make_shared<TextField>(
+              std::string{name}, data.str, false,
+              std::vector{irs::type<irs::Norm2>::id()}));
+        }
+      });
 
   auto open_mode = irs::OM_CREATE;
   if (append_data) {
@@ -296,17 +296,17 @@ void WandTestCase::GenerateSegment(irs::ScorersView scorers, bool write_norms,
 
 void WandTestCase::GenerateSegmentMinNorm(irs::ScorersView scorers) {
   tests::json_doc_generator gen(
-    resource("simple_single_column_multi_term_norm.json"),
-    [](tests::document& doc, std::string_view name,
-       const tests::json_doc_generator::json_value& data) {
-      using TextField = tests::text_field<std::string>;
+      resource("simple_single_column_multi_term_norm.json"),
+      [](tests::document& doc, std::string_view name,
+         const tests::json_doc_generator::json_value& data) {
+        using TextField = tests::text_field<std::string>;
 
-      if (tests::json_doc_generator::ValueType::STRING == data.vt) {
-        doc.indexed.push_back(std::make_shared<TextField>(
-          std::string{name}, data.str, false,
-          std::vector{irs::type<irs::Norm2>::id()}));
-      }
-    });
+        if (tests::json_doc_generator::ValueType::STRING == data.vt) {
+          doc.indexed.push_back(std::make_shared<TextField>(
+              std::string{name}, data.str, false,
+              std::vector{irs::type<irs::Norm2>::id()}));
+        }
+      });
 
   auto open_mode = irs::OM_CREATE;
   // if (append_data) {
@@ -325,7 +325,7 @@ void WandTestCase::AssertTermFilter(irs::ScorersView scorers,
   *filter.mutable_field() = kFieldName;
 
   auto reader = irs::DirectoryReader{
-    dir(), codec(), irs::IndexReaderOptions{.scorers = scorers}};
+      dir(), codec(), irs::IndexReaderOptions{.scorers = scorers}};
   ASSERT_NE(nullptr, reader);
 
   for (const auto& segment : reader) {
@@ -356,7 +356,7 @@ void WandTestCase::AssertConjunctionFilter(irs::ScorersView scorers,
   *filter2.mutable_field() = kFieldName;
 
   auto reader = irs::DirectoryReader{
-    dir(), codec(), irs::IndexReaderOptions{.scorers = scorers}};
+      dir(), codec(), irs::IndexReaderOptions{.scorers = scorers}};
   ASSERT_NE(nullptr, reader);
 
   for (const auto& segment : reader) {
@@ -391,7 +391,7 @@ void WandTestCase::AssertDisjunctionFilter(irs::ScorersView scorers,
   *filter3.mutable_field() = kFieldName;
 
   auto reader = irs::DirectoryReader{
-    dir(), codec(), irs::IndexReaderOptions{.scorers = scorers}};
+      dir(), codec(), irs::IndexReaderOptions{.scorers = scorers}};
   ASSERT_NE(nullptr, reader);
 
   for (const auto& segment : reader) {
@@ -547,9 +547,9 @@ TEST_P(WandTestCase, TermFilterBM11) {
 static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
 
 static const auto kTestValues =
-  ::testing::Combine(::testing::ValuesIn(kTestDirs),
-                     ::testing::Values(tests::format_info{"1_5", "1_0"},
-                                       tests::format_info{"1_5simd", "1_0"}));
+    ::testing::Combine(::testing::ValuesIn(kTestDirs),
+                       ::testing::Values(tests::format_info{"1_5", "1_0"},
+                                         tests::format_info{"1_5simd", "1_0"}));
 
 INSTANTIATE_TEST_SUITE_P(WandTest, WandTestCase, kTestValues,
                          WandTestCase::to_string);

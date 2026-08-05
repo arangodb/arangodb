@@ -59,6 +59,7 @@ class index_profile_test_case : public tests::index_test_base {
   std::atomic_uint64_t tick_{irs::writer_limits::kMinTick + 1};
   std::mutex commit_mutex;
   bool onTick_{false};
+  irs::IndexWriter::ConsolidationProgress callbacks;
 
   void TransactionTick(irs::IndexWriter::Transaction& trx) {
     if (onTick_) {
@@ -77,6 +78,16 @@ class index_profile_test_case : public tests::index_test_base {
   }
 
  public:
+  index_profile_test_case() {
+    auto beginCons = [](const auto&) {};
+    auto endCons = [](const auto&) {};
+    auto flushProgress = []() { return true; };
+
+    callbacks = {.beginConsolidation = beginCons,
+                 .endConsolidation = endCons,
+                 .flushProgress = flushProgress};
+  }
+
   void SetOnTick(bool value) noexcept { onTick_ = value; }
 
   void profile_bulk_index(size_t num_insert_threads, size_t num_import_threads,
@@ -117,10 +128,10 @@ class index_profile_test_case : public tests::index_test_base {
     std::atomic<size_t> parsed_docs_count(0);
     size_t update_skip = 1000;
     size_t writer_batch_size =
-      batch_size ? batch_size : (std::numeric_limits<size_t>::max)();
+        batch_size ? batch_size : (std::numeric_limits<size_t>::max)();
     std::atomic<size_t> local_writer_commit_count(0);
     std::atomic<size_t>& writer_commit_count =
-      commit_count ? *commit_count : local_writer_commit_count;
+        commit_count ? *commit_count : local_writer_commit_count;
     std::atomic<size_t> writer_import_count(0);
     auto thread_count = (std::max)((size_t)1, num_insert_threads);
     auto total_threads = thread_count + num_import_threads + num_update_threads;
@@ -138,13 +149,13 @@ class index_profile_test_case : public tests::index_test_base {
     // initialize reader data source for import threads
     if (num_import_threads != 0) {
       auto import_writer =
-        irs::IndexWriter::Make(import_dir, codec(), irs::OM_CREATE);
+          irs::IndexWriter::Make(import_dir, codec(), irs::OM_CREATE);
 
       {
         REGISTER_TIMER_NAMED_DETAILED("init - setup");
         tests::json_doc_generator import_gen{
-          resource("simple_sequential.json"),
-          &tests::generic_json_field_factory};
+            resource("simple_sequential.json"),
+            &tests::generic_json_field_factory};
 
         for (const tests::document* doc; (doc = import_gen.next());) {
           REGISTER_TIMER_NAMED_DETAILED("init - insert");
@@ -217,12 +228,12 @@ class index_profile_test_case : public tests::index_test_base {
               auto ctx = writer->GetBatch();
               {
                 auto d = ctx.Insert();
-                EXPECT_TRUE(
-                  d.Insert<irs::Action::INDEX>(csv_doc_template.indexed.begin(),
-                                               csv_doc_template.indexed.end()));
-                EXPECT_TRUE(
-                  d.Insert<irs::Action::STORE>(csv_doc_template.stored.begin(),
-                                               csv_doc_template.stored.end()));
+                EXPECT_TRUE(d.Insert<irs::Action::INDEX>(
+                    csv_doc_template.indexed.begin(),
+                    csv_doc_template.indexed.end()));
+                EXPECT_TRUE(d.Insert<irs::Action::STORE>(
+                    csv_doc_template.stored.begin(),
+                    csv_doc_template.stored.end()));
               }
               TransactionTick(ctx);
             }
@@ -279,7 +290,7 @@ class index_profile_test_case : public tests::index_test_base {
 
             ++writer_import_count;
             std::this_thread::sleep_for(
-              std::chrono::milliseconds(import_interval));
+                std::chrono::milliseconds(import_interval));
           } while (import_again.load());
         });
       }
@@ -332,24 +343,24 @@ class index_profile_test_case : public tests::index_test_base {
               irs::filter::ptr filter = std::make_unique<irs::by_term>();
               auto key_field = csv_doc_template.indexed.begin()->name();
               auto key_term =
-                csv_doc_template.indexed.get<tests::string_field>(key_field)
-                  ->value();
+                  csv_doc_template.indexed.get<tests::string_field>(key_field)
+                      ->value();
               auto value_field = (++(csv_doc_template.indexed.begin()))->name();
-              auto value_term =
-                csv_doc_template.indexed.get<tests::string_field>(value_field)
-                  ->value();
+              auto value_term = csv_doc_template.indexed
+                                    .get<tests::string_field>(value_field)
+                                    ->value();
               std::string updated_term(value_term.data(), value_term.size());
 
               auto& filter_impl = static_cast<irs::by_term&>(*filter);
               *filter_impl.mutable_field() = key_field;
               filter_impl.mutable_options()->term =
-                irs::ViewCast<irs::byte_type>(key_term);
+                  irs::ViewCast<irs::byte_type>(key_term);
               // double up term
               updated_term.append(value_term.data(), value_term.size());
               csv_doc_template.indexed.get<tests::string_field>(value_field)
-                ->value(updated_term);
+                  ->value(updated_term);
               csv_doc_template.insert(
-                std::make_shared<tests::string_field>("updated"));
+                  std::make_shared<tests::string_field>("updated"));
 
               REGISTER_TIMER_NAMED_DETAILED("update");
               {
@@ -357,11 +368,11 @@ class index_profile_test_case : public tests::index_test_base {
                 {
                   auto d = ctx.Replace(std::move(filter));
                   EXPECT_TRUE(d.Insert<irs::Action::INDEX>(
-                    csv_doc_template.indexed.begin(),
-                    csv_doc_template.indexed.end()));
+                      csv_doc_template.indexed.begin(),
+                      csv_doc_template.indexed.end()));
                   EXPECT_TRUE(d.Insert<irs::Action::STORE>(
-                    csv_doc_template.stored.begin(),
-                    csv_doc_template.stored.end()));
+                      csv_doc_template.stored.begin(),
+                      csv_doc_template.stored.end()));
                 }
                 TransactionTick(ctx);
               }
@@ -431,12 +442,12 @@ class index_profile_test_case : public tests::index_test_base {
     size_t imported_docs_count = 0;
     size_t updated_docs_count = 0;
     auto imported_visitor = [&imported_docs_count](
-                              irs::doc_id_t, const irs::bytes_view&) -> bool {
+                                irs::doc_id_t, const irs::bytes_view&) -> bool {
       ++imported_docs_count;
       return true;
     };
     auto updated_visitor = [&updated_docs_count](
-                             irs::doc_id_t, const irs::bytes_view&) -> bool {
+                               irs::doc_id_t, const irs::bytes_view&) -> bool {
       ++updated_docs_count;
       return true;
     };
@@ -458,7 +469,7 @@ class index_profile_test_case : public tests::index_test_base {
     }
 
     EXPECT_EQ(parsed_docs_count + imported_docs_count, indexed_docs_count)
-      << parsed_docs_count << " " << imported_docs_count;
+        << parsed_docs_count << " " << imported_docs_count;
     EXPECT_EQ(imported_docs_count, import_docs_count);
     // at least some imports took place if import enabled
     EXPECT_TRUE(imported_docs_count != 0 || num_import_threads == 0);
@@ -477,7 +488,7 @@ class index_profile_test_case : public tests::index_test_base {
       while (working.load()) {
         irs::directory_cleaner::clean(*directory);
         std::this_thread::sleep_for(
-          std::chrono::milliseconds(cleanup_interval));
+            std::chrono::milliseconds(cleanup_interval));
       }
     });
 
@@ -505,18 +516,18 @@ class index_profile_test_case : public tests::index_test_base {
 
     for (size_t i = 0; i < commit_threads; ++i) {
       thread_pool.run(
-        [commit_interval, &working, &writer, &writer_commit_count, this] {
-          while (working.load()) {
-            {
-              std::unique_lock commit_lock{commit_mutex};
-              REGISTER_TIMER_NAMED_DETAILED("commit");
-              writer->Commit({.tick = CommitTick()});
+          [commit_interval, &working, &writer, &writer_commit_count, this] {
+            while (working.load()) {
+              {
+                std::unique_lock commit_lock{commit_mutex};
+                REGISTER_TIMER_NAMED_DETAILED("commit");
+                writer->Commit({.tick = CommitTick()});
+              }
+              ++writer_commit_count;
+              std::this_thread::sleep_for(
+                  std::chrono::milliseconds(commit_interval));
             }
-            ++writer_commit_count;
-            std::this_thread::sleep_for(
-              std::chrono::milliseconds(commit_interval));
-          }
-        });
+          });
     }
 
     {
@@ -531,7 +542,7 @@ class index_profile_test_case : public tests::index_test_base {
                                                 size_t batch_size,
                                                 size_t consolidate_interval) {
     const auto policy =
-      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount());
+        irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount());
     irs::IndexWriterOptions options;
     std::atomic<bool> working(true);
     irs::async_utils::ThreadPool<> thread_pool(2);
@@ -541,14 +552,14 @@ class index_profile_test_case : public tests::index_test_base {
 
     auto writer = open_writer(irs::OM_CREATE, options);
 
-    thread_pool.run(
-      [consolidate_interval, &working, &writer, &policy]() -> void {
-        while (working.load()) {
-          writer->Consolidate(policy);
-          std::this_thread::sleep_for(
+    thread_pool.run([consolidate_interval, &working, &writer, &policy,
+                     &callbacks = this->callbacks]() -> void {
+      while (working.load()) {
+        writer->Consolidate(policy, callbacks);
+        std::this_thread::sleep_for(
             std::chrono::milliseconds(consolidate_interval));
-        }
-      });
+      }
+    });
 
     {
       irs::Finally finalizer = [&working]() noexcept { working = false; };
@@ -563,7 +574,7 @@ class index_profile_test_case : public tests::index_test_base {
       writer->Commit({.tick = CommitTick()});
       EXPECT_FALSE(writer->Commit());
     }
-    ASSERT_TRUE(writer->Consolidate(policy));
+    ASSERT_TRUE(writer->Consolidate(policy, callbacks));
     {
       std::unique_lock commit_lock{commit_mutex};
       writer->Commit({.tick = CommitTick()});
@@ -571,7 +582,7 @@ class index_profile_test_case : public tests::index_test_base {
     }
 
     struct dummy_doc_template_t
-      : public tests::csv_doc_generator::doc_template {
+        : public tests::csv_doc_generator::doc_template {
       virtual void init() {}
       virtual void value(size_t, const std::string_view&) {}
     };
@@ -735,7 +746,7 @@ TEST_P(index_profile_test_case,
 static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
 
 INSTANTIATE_TEST_SUITE_P(
-  index_profile_test, index_profile_test_case,
-  ::testing::Combine(::testing::ValuesIn(kTestDirs),
-                     ::testing::Values("1_0", "1_2", "1_3", "1_4", "1_5")),
-  index_profile_test_case::to_string);
+    index_profile_test, index_profile_test_case,
+    ::testing::Combine(::testing::ValuesIn(kTestDirs),
+                       ::testing::Values("1_0", "1_2", "1_3", "1_4", "1_5")),
+    index_profile_test_case::to_string);
