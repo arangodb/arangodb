@@ -361,15 +361,15 @@ function cell(content, width) { return `| ${centerStr(String(content), width)} `
 
 /**
  * Format the "status" cell for a response: the HTTP status code, plus the
- * ArangoDB errorNum in brackets when the body is a JSON error response
- * (error === true) with a non-zero errorNum.
+ * ArangoDB errorNum in brackets, e.g. "200 (  11)". The errorNum is always
+ * padded to 4 characters so that the column spacing never shifts between
+ * different error codes, making diffs easier to read. When the body is not
+ * a JSON error response (error !== true) or has no errorNum, "   0" is used.
  */
 function formatStatusCell(resp) {
   const b = resp.body;
-  if (b && typeof b === 'object' && b.error === true && b.errorNum) {
-    return `${resp.status} (${b.errorNum})`;
-  }
-  return String(resp.status);
+  const errorNum = (b && typeof b === 'object' && b.error === true && b.errorNum) ? b.errorNum : 0;
+  return `${resp.status} (${String(errorNum).padStart(4, ' ')})`;
 }
 
 /** Build a '|---|---|...' separator line for the given column widths. */
