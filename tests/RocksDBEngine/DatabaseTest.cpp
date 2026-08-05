@@ -17,27 +17,38 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include <gtest/gtest.h>
 
-#include "ApplicationFeatures/OptionsProvider.h"
-#include "IResearch/IResearchOptions.h"
+#include "RocksDBEngine/StorageEngineDataTest.h"
 
-namespace arangodb::iresearch {
+#include "Basics/StaticStrings.h"
+#include "VocBase/vocbase.h"
 
-struct IResearchOptionsProvider
-    : OptionsProviderImpl<IResearchOptionsProvider, IResearchOptions> {
-  static const std::string SKIP_RECOVERY;
-  static const std::string CACHE_LIMIT;
-  static const std::string CACHE_ONLY_LEADER;
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 
-  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                          IResearchOptions& options);
+using namespace arangodb;
+using namespace arangodb::tests;
 
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                           IResearchOptions& options);
-};
+TEST_F(StorageEngineDataTest, CreatedDatabaseIsListedInInventory) {
+  auto database = makeDatabase("testDatabase", 42);
+  persistDatabase(*database);
 
-}  // namespace arangodb::iresearch
+  VPackBuilder builder;
+  engine().getDatabases(builder);
+
+  auto slice = builder.slice();
+  ASSERT_TRUE(slice.isArray());
+
+  bool found = false;
+  for (auto db : VPackArrayIterator(slice)) {
+    if (db.get("name").stringView() == "testDatabase") {
+      found = true;
+      EXPECT_EQ(db.get(StaticStrings::DatabaseId).stringView(), "42");
+    }
+  }
+  EXPECT_TRUE(found) << "created database not reported by getDatabases()";
+}

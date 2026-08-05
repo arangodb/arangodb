@@ -17,27 +17,15 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include <gtest/gtest.h>
 
-#include "ApplicationFeatures/OptionsProvider.h"
-#include "IResearch/IResearchOptions.h"
+#include "RocksDBEngine/StorageEngineFixture.h"
 
-namespace arangodb::iresearch {
+using namespace arangodb;
+using namespace arangodb::tests;
 
-struct IResearchOptionsProvider
-    : OptionsProviderImpl<IResearchOptionsProvider, IResearchOptions> {
-  static const std::string SKIP_RECOVERY;
-  static const std::string CACHE_LIMIT;
-  static const std::string CACHE_ONLY_LEADER;
-
-  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                          IResearchOptions& options);
-
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                           IResearchOptions& options);
-};
-
-}  // namespace arangodb::iresearch
+TEST_F(StorageEngineFixture, CanConstruct) {
+  EXPECT_EQ(engine().kEngineName, "rocksdb");
+}
