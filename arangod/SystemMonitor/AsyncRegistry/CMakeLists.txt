@@ -10,4 +10,7 @@ target_include_directories(arango_system_monitor_async_registry PRIVATE
 
 target_link_libraries(arango_system_monitor_async_registry
   PUBLIC
-    arango_forest)
+    arango_forest
+    arango_basic_utils velocypack
+    arango::validation rocksdb_interface immer arango_actor
+    arango_iresearch arango_v8)

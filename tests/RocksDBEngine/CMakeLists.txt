@@ -44,6 +44,19 @@ target_link_libraries(arangodbtests_rocksdb
   arango_scheduler
   arango_rest_server
   arango_sharding
+  arango_auth
+  arango_statistics
+  arango_v8server
+  arango_enterprise_audit
+  arango_actions
+  arango_system_monitor_activities
+  arango_system_monitor_async_registry
+  arango_enterprise_storage_engine
+  arango_enterprise_rest_handler  
+  arango_enterprise_sharding
+  arango_enterprise_license
+  arango_vector_index
+  arango_enterprise_ssl
   velocypack_utils
   gtest
   gmock)
