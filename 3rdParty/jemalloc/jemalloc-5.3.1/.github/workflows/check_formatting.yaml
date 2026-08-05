@@ -1,0 +1,10 @@
+name: 'Check Formatting'
+on: [pull_request]
+jobs:
+  check-formatting:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Check for trailing whitespace
+        run: scripts/check_trailing_whitespace.sh

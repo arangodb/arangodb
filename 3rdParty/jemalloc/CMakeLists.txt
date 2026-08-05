@@ -3,9 +3,9 @@
 project(jemalloc C)
 include(ExternalProject)
 
-set(JEMALLOC_VERSION "5.3.0")
-set(JEMALLOC_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/jemalloc")
-set(JEMALLOC_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/jemalloc")
+set(JEMALLOC_VERSION "5.3.1")
+set(JEMALLOC_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/jemalloc-${JEMALLOC_VERSION}")
+set(JEMALLOC_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/jemalloc-${JEMALLOC_VERSION}")
 
 # copy files into binary directory
 file(

@@ -1,0 +1,68 @@
+name: 'Static Analysis'
+on: [pull_request]
+jobs:
+  static-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      # We build libunwind ourselves because sadly the version
+      # provided by Ubuntu via apt-get is much too old.
+      - name: Check out libunwind
+        uses: actions/checkout@v4
+        with:
+          repository: libunwind/libunwind
+          path: libunwind
+          ref: 'v1.6.2'
+          github-server-url: 'https://github.com'
+      - name: Install libunwind
+        run: |
+          cd libunwind
+          autoreconf -i
+          ./configure --prefix=/usr
+          make -s -j $(nproc) V=0
+          sudo make -s install V=0
+          cd ..
+          rm -rf libunwind
+      - name: Check out repository
+        uses: actions/checkout@v4
+      # We download LLVM directly from the latest stable release
+      # on GitHub, because this tends to be much newer than the
+      # version available via apt-get in Ubuntu.
+      - name: Download LLVM
+        uses: dsaltares/fetch-gh-release-asset@master
+        with:
+          repo: 'llvm/llvm-project'
+          version: 'tags/llvmorg-16.0.4'
+          file: 'clang[+]llvm-.*x86_64-linux-gnu.*'
+          regex: true
+          target: 'llvm_assets/'
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install prerequisites
+        id: install_prerequisites
+        run: |
+          tar -C llvm_assets -xaf llvm_assets/*.tar* &
+          sudo apt-get update
+          sudo apt-get install -y jq bear python3-pip
+          pip install codechecker
+          echo "Extracting LLVM from tar" 1>&2
+          wait
+          echo "LLVM_BIN_DIR=$(echo llvm_assets/clang*/bin)" >> "$GITHUB_OUTPUT"
+      - name: Run static analysis
+        id: run_static_analysis
+        run: >
+          PATH="${{ steps.install_prerequisites.outputs.LLVM_BIN_DIR }}:$PATH"
+          LDFLAGS='-L/usr/lib'
+          scripts/run_static_analysis.sh static_analysis_results "$GITHUB_OUTPUT"
+      - name: Upload static analysis results
+        if: ${{ steps.run_static_analysis.outputs.HAS_STATIC_ANALYSIS_RESULTS }} == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: static_analysis_results
+          path: static_analysis_results
+      - name: Check static analysis results
+        run: |
+          if [[ "${{ steps.run_static_analysis.outputs.HAS_STATIC_ANALYSIS_RESULTS }}" == '1' ]]
+          then
+              echo "::error::Static analysis found issues with your code. Download the 'static_analysis_results' artifact from this workflow and view the 'index.html' file contained within it in a web browser locally for detailed results."
+              exit 1
+          fi
+
