@@ -6,7 +6,8 @@
 # Additional sources are still contributed via target_sources() from
 # arangod/SystemMonitor/Activities/CMakeLists.txt and
 # arangod/SystemMonitor/AsyncRegistry/CMakeLists.txt.
-add_library(arangoserver STATIC)
+add_library(arangoserver STATIC
+  arangoserver-empty.cpp)
 
 target_link_libraries(arangoserver
         arango_actions
@@ -20,6 +21,8 @@ target_link_libraries(arangoserver
         arango_statistics
         arango_transaction
         arango_vector_index
+        arango_system_monitor_activities
+        arango_system_monitor_async_registry
         arango_agency
         arango_aql
         arango_cluster_engine
@@ -40,6 +43,16 @@ target_link_libraries(arangoserver
         arango_scheduler
         boost_boost
         ${MSVC_LIBS})
+
+if(USE_ENTERPRISE)
+  target_link_libraries(arangoserver
+    arango_enterprise_audit
+    arango_enterprise_license
+    arango_enterprise_sharding
+    arango_enterprise_ssl
+    arango_enterprise_rest_handler
+    arango_enterprise_storage_engine)
+endif()
 
 if(MSVC)
   target_link_libraries(arangoserver Bcrypt.lib)
