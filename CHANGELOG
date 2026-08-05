@@ -1,6 +1,10 @@
 3.12.11-devel (XXXX-XX-XX)
 --------------------------
 
+* COR-764: Added REST API to access ArangoSearch segment stats
+
+* COR-569: Added activity to report ArangoSearch consolidation
+
 * BTS-2425: Updated node modules:
  - fast-uri to 3.1.5 to resolve CVE-2026-18446
  - brace-expansion to 5.0.9 to resolve CVE-2026-69152

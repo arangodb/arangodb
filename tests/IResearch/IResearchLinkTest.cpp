@@ -2557,7 +2557,7 @@ arangodb_search_index_size{{db="testVocbase",view="h3039/42",collection="{0}",in
     // should increase numFiles in expected stat
     ++expectedStats.numFiles;
 
-    LinkStats actualStats = l->stats();
+    LinkStats actualStats = l->getStats();
     EXPECT_TRUE(expectedStats == actualStats);
   }
   {
@@ -2584,7 +2584,7 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics2) {
                        expectedStats.numFiles);
     ++expectedStats.numFiles;
     expectedStats.numSegments = 1;
-    LinkStats actualStats = l->stats();
+    LinkStats actualStats = l->getStats();
     EXPECT_TRUE(expectedStats == actualStats);
   }
   {
@@ -2599,7 +2599,7 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics2) {
 
     ++expectedStats.numFiles;
     expectedStats.numSegments = 2;
-    LinkStats actualStats = l->stats();
+    LinkStats actualStats = l->getStats();
     EXPECT_TRUE(expectedStats == actualStats);
   }
   {
@@ -2641,7 +2641,7 @@ arangodb_search_index_size{{db="testVocbase",view="h3039/42",collection="{0}",in
     expectedStats.numSegments = 2;  // we have 2 segments
     expectedStats.indexSize = 1561;
 
-    LinkStats actualStats = l->stats();
+    LinkStats actualStats = l->getStats();
     EXPECT_TRUE(expectedStats == actualStats);
   }
   {
@@ -2972,7 +2972,7 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
     EXPECT_NE(nullptr, link.get());
 
     // Data store should contain at least segments file
-    ASSERT_GT(link->stats().numFiles, 0);
+    ASSERT_GT(link->getStats().numFiles, 0);
 
     // collection in view on destruct
     {
@@ -3019,7 +3019,7 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest, test_init_in_recovery) {
     EXPECT_NE(nullptr, link.get());
 
     // Data store should contain at least segments file
-    ASSERT_GT(link->stats().numFiles, 0);
+    ASSERT_GT(link->getStats().numFiles, 0);
 
     // no collection in view after
     {
