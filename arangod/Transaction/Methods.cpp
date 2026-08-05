@@ -3382,7 +3382,12 @@ Future<Result> Methods::replicateOperations(
     std::shared_ptr<const std::vector<ServerID>> const& followerList,
     OperationOptions const& options, velocypack::Builder const& replicationData,
     TRI_voc_document_operation_e operation, std::string_view userName) {
-  auto const& collection = transactionCollection.collection();
+  // note: this is a coroutine. the reference parameters (and *this) belong
+  // to the caller's frame, which may already be gone when we resume after
+  // the co_await below. everything needed after the co_await must therefore
+  // be copied into the coroutine frame before suspending (this includes
+  // `collection`, which is why it is copied here).
+  auto collection = transactionCollection.collection();
   TRI_ASSERT(followerList != nullptr);
 
   // It is normal to have an empty followerList when using replication2
@@ -3393,7 +3398,7 @@ Future<Result> Methods::replicateOperations(
   TRI_ASSERT(replicationData.slice().isArray());
   TRI_ASSERT(!replicationData.slice().isEmptyArray());
 
-  TRI_IF_FAILURE("replicateOperations::skip") { return Result(); }
+  TRI_IF_FAILURE("replicateOperations::skip") { co_return Result(); }
 
   // index cache refilling...
   bool const refill = std::invoke([&]() {
@@ -3453,9 +3458,9 @@ Future<Result> Methods::replicateOperations(
     // TODO This shouldn't be synchronous
     auto replicationRes = replicationFut.waitAndGet();
     if (replicationRes.fail()) {
-      return replicationRes.result();
+      co_return replicationRes.result();
     }
-    return performIntermediateCommitIfRequired(collection->id());
+    co_return co_await performIntermediateCommitIfRequired(collection->id());
   }
 
   // path and requestType are different for insert/remove/modify.
@@ -3613,148 +3618,157 @@ Future<Result> Methods::replicateOperations(
         std::format("Database {} deleted during transaction {}",
                     vocbase().name(), tid().id()));
   }
-  auto cb = [followerList, startTimeReplication, opName, collection, count,
-             vocbase = std::move(vocbasePtr), state = _state](
-                std::vector<futures::Try<network::Response>>&& responses)
-      -> futures::Future<Result> {
-    auto duration = std::chrono::steady_clock::now() - startTimeReplication;
-    auto& replMetrics =
-        vocbase->server().getFeature<ReplicationMetricsFeature>();
-    replMetrics.synchronousOpsTotal() += 1;
-    replMetrics.synchronousTimeTotal() +=
-        std::chrono::nanoseconds(duration).count();
+  // copy everything we still need after the co_await into the coroutine
+  // frame: the reference parameters and *this belong to the caller's frame,
+  // which may be gone by the time we resume.
+  auto followers = followerList;
+  auto vocbase = std::move(vocbasePtr);
+  auto state = _state;
 
-    bool didRefuse = false;
-    // We drop all followers that were not successful:
-    for (size_t i = 0; i < followerList->size(); ++i) {
-      network::Response const& resp = responses[i].get();
-      ServerID const& follower = (*followerList)[i];
+  // note: resuming after the co_await replays the caller's arangodb::Context
+  // (including the ExecContext), so the intermediate commit below observes
+  // the transaction initiator's ExecContext and not whatever happens to be
+  // set on the thread that fulfills the last response (COR-822).
+  auto responses = co_await futures::collectAll(std::move(futures));
 
-      std::string replicationFailureReason;
-      if (resp.error == fuerte::Error::NoError) {
-        if (resp.statusCode() == fuerte::StatusAccepted ||
-            resp.statusCode() == fuerte::StatusCreated ||
-            resp.statusCode() == fuerte::StatusOK) {
-          bool found;
-          std::string const& errors = resp.response().header.metaByKey(
-              StaticStrings::ErrorCodes, found);
-          if (found) {
-            replicationFailureReason =
-                absl::StrCat("got error header from follower: ", errors);
-          }
+  auto duration = std::chrono::steady_clock::now() - startTimeReplication;
+  auto& replMetrics = vocbase->server().getFeature<ReplicationMetricsFeature>();
+  replMetrics.synchronousOpsTotal() += 1;
+  replMetrics.synchronousTimeTotal() +=
+      std::chrono::nanoseconds(duration).count();
 
-        } else {
-          auto r = resp.combinedResult();
+  bool didRefuse = false;
+  // We drop all followers that were not successful:
+  for (size_t i = 0; i < followers->size(); ++i) {
+    network::Response const& resp = responses[i].get();
+    ServerID const& follower = (*followers)[i];
 
-          // Special case if the follower has already aborted the transaction.
-          // This can happen if a query fails and causes the leaders to abort
-          // the transaction on the followers. However, if the followers have
-          // transactions that are shared with leaders of other shards and one
-          // of those leaders has not yet seen the error, then it will happily
-          // continue to replicate to that follower. But if the follower has
-          // already aborted the transaction, then it will reject the
-          // replication request. In this case we do not want to drop the
-          // follower, but simply return the error and abort our local
-          // transaction.
-          if (r.is(TRI_ERROR_TRANSACTION_ABORTED) &&
-              state->hasHint(Hints::Hint::FROM_TOPLEVEL_AQL)) {
-            return r;
-          }
-
-          bool followerRefused =
-              r.is(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
-          didRefuse = didRefuse || followerRefused;
-
+    std::string replicationFailureReason;
+    if (resp.error == fuerte::Error::NoError) {
+      if (resp.statusCode() == fuerte::StatusAccepted ||
+          resp.statusCode() == fuerte::StatusCreated ||
+          resp.statusCode() == fuerte::StatusOK) {
+        bool found;
+        std::string const& errors = resp.response().header.metaByKey(
+            StaticStrings::ErrorCodes, found);
+        if (found) {
           replicationFailureReason =
-              absl::StrCat("got error from follower: ", r.errorMessage());
-
-          if (followerRefused) {
-            ++vocbase->server()
-                  .getFeature<ClusterFeature>()
-                  .followersRefusedCounter();
-
-            LOG_TOPIC("3032c", WARN, Logger::REPLICATION)
-                << "synchronous replication of " << opName << " operation: "
-                << "follower " << follower << " for shard "
-                << collection->vocbase().name() << "/" << collection->name()
-                << " refused the operation: " << r.errorMessage();
-          }
+              absl::StrCat("got error header from follower: ", errors);
         }
+
       } else {
-        replicationFailureReason = "no response from follower";
-      }
+        auto r = resp.combinedResult();
 
-      TRI_IF_FAILURE("replicateOperationsDropFollower") {
-        replicationFailureReason = "intentional debug error";
-      }
+        // Special case if the follower has already aborted the transaction.
+        // This can happen if a query fails and causes the leaders to abort
+        // the transaction on the followers. However, if the followers have
+        // transactions that are shared with leaders of other shards and one
+        // of those leaders has not yet seen the error, then it will happily
+        // continue to replicate to that follower. But if the follower has
+        // already aborted the transaction, then it will reject the
+        // replication request. In this case we do not want to drop the
+        // follower, but simply return the error and abort our local
+        // transaction.
+        if (r.is(TRI_ERROR_TRANSACTION_ABORTED) &&
+            state->hasHint(Hints::Hint::FROM_TOPLEVEL_AQL)) {
+          co_return r;
+        }
 
-      if (!replicationFailureReason.empty()) {
-        if (!vocbase->server().isStopping()) {
-          LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
-              << "synchronous replication of " << opName << " operation "
-              << "(" << count << " doc(s)): "
-              << "dropping follower " << follower << " for shard "
-              << collection->vocbase().name() << "/" << collection->name()
-              << ": failure reason: " << replicationFailureReason
-              << ", http response code: " << (int)resp.statusCode()
-              << ", error message: " << resp.combinedResult().errorMessage();
+        bool followerRefused =
+            r.is(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
+        didRefuse = didRefuse || followerRefused;
 
-          Result res = collection->followers()->remove(follower);
-          // intentionally do NOT remove the follower from the list of
-          // known servers here. if we do, we will not be able to
-          // send the commit/abort to the follower later. However, we
-          // still need to send the commit/abort to the follower at
-          // transaction end, because the follower may be responsbile
-          // for _other_ shards as well.
-          // it does not matter if we later commit the writes of the shard
-          // from which we just removed the follower, because the follower
-          // is now dropped and will try to get back in sync anyway, so
-          // it will run the full shard synchronization process.
-          if (res.fail()) {
-            LOG_TOPIC("db473", ERR, Logger::REPLICATION)
-                << "synchronous replication of " << opName << " operation: "
-                << "could not drop follower " << follower << " for shard "
-                << collection->vocbase().name() << "/" << collection->name()
-                << ": " << res.errorMessage();
+        replicationFailureReason =
+            absl::StrCat("got error from follower: ", r.errorMessage());
 
-            // Note: it is safe here to exit the loop early. We are losing the
-            // leadership here. No matter what happens next, the Current entry
-            // in the agency is rewritten and thus replication is restarted
-            // from the new leader. There is no need to keep trying to drop
-            // followers at this point.
+        if (followerRefused) {
+          ++vocbase->server()
+                .getFeature<ClusterFeature>()
+                .followersRefusedCounter();
 
-            if (res.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
-              // In this case, we know that we are not or no longer
-              // the leader for this shard. Therefore we need to
-              // send a code which let's the coordinator retry.
-              THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
-            } else {
-              // In this case, some other error occurred and we
-              // most likely are still the proper leader, so
-              // the error needs to be reported and the local
-              // transaction must be rolled back.
-              THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
-            }
-          }
-        } else {
-          LOG_TOPIC("8921e", INFO, Logger::REPLICATION)
+          LOG_TOPIC("3032c", WARN, Logger::REPLICATION)
               << "synchronous replication of " << opName << " operation: "
               << "follower " << follower << " for shard "
               << collection->vocbase().name() << "/" << collection->name()
-              << " stopped as we're shutting down";
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+              << " refused the operation: " << r.errorMessage();
         }
       }
+    } else {
+      replicationFailureReason = "no response from follower";
     }
 
-    if (didRefuse) {  // case (1), caller may abort this transaction
-      return Result{TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED};
-    } else {
-      // execute a deferred intermediate commit, if required.
-      return state->performIntermediateCommitIfRequired(collection->id());
+    TRI_IF_FAILURE("replicateOperationsDropFollower") {
+      replicationFailureReason = "intentional debug error";
     }
-  };
-  return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
+
+    if (!replicationFailureReason.empty()) {
+      if (!vocbase->server().isStopping()) {
+        LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
+            << "synchronous replication of " << opName << " operation "
+            << "(" << count << " doc(s)): "
+            << "dropping follower " << follower << " for shard "
+            << collection->vocbase().name() << "/" << collection->name()
+            << ": failure reason: " << replicationFailureReason
+            << ", http response code: " << (int)resp.statusCode()
+            << ", error message: " << resp.combinedResult().errorMessage();
+
+        Result res = collection->followers()->remove(follower);
+        // intentionally do NOT remove the follower from the list of
+        // known servers here. if we do, we will not be able to
+        // send the commit/abort to the follower later. However, we
+        // still need to send the commit/abort to the follower at
+        // transaction end, because the follower may be responsbile
+        // for _other_ shards as well.
+        // it does not matter if we later commit the writes of the shard
+        // from which we just removed the follower, because the follower
+        // is now dropped and will try to get back in sync anyway, so
+        // it will run the full shard synchronization process.
+        if (res.fail()) {
+          LOG_TOPIC("db473", ERR, Logger::REPLICATION)
+              << "synchronous replication of " << opName << " operation: "
+              << "could not drop follower " << follower << " for shard "
+              << collection->vocbase().name() << "/" << collection->name()
+              << ": " << res.errorMessage();
+
+          // Note: it is safe here to exit the loop early. We are losing the
+          // leadership here. No matter what happens next, the Current entry
+          // in the agency is rewritten and thus replication is restarted
+          // from the new leader. There is no need to keep trying to drop
+          // followers at this point.
+
+          if (res.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
+            // In this case, we know that we are not or no longer
+            // the leader for this shard. Therefore we need to
+            // send a code which let's the coordinator retry.
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+          } else {
+            // In this case, some other error occurred and we
+            // most likely are still the proper leader, so
+            // the error needs to be reported and the local
+            // transaction must be rolled back.
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+          }
+        }
+      } else {
+        LOG_TOPIC("8921e", INFO, Logger::REPLICATION)
+            << "synchronous replication of " << opName << " operation: "
+            << "follower " << follower << " for shard "
+            << collection->vocbase().name() << "/" << collection->name()
+            << " stopped as we're shutting down";
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+      }
+    }
+  }
+
+  if (didRefuse) {  // case (1), caller may abort this transaction
+    co_return Result{TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED};
+  } else {
+    // execute a deferred intermediate commit, if required.
+    // note: this runs with the replayed ExecContext of the transaction
+    // initiator (see above).
+    co_return co_await state->performIntermediateCommitIfRequired(
+        collection->id());
+  }
 }
 
 Future<Result> Methods::commitInternal(MethodsApi api) noexcept try {
