@@ -113,12 +113,10 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   explicit IResearchFeature(application_features::ApplicationServer& server,
                             metrics::IRegistry& metricsRegistry);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
   void prepare() final;
   void start() final;
   void stop() final;
   void unprepare() final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) final;
 
   auto& getSearchPool() noexcept { return _searchExecutionPool; }
   //////////////////////////////////////////////////////////////////////////////
@@ -163,6 +161,10 @@ class IResearchFeature final : public application_features::ApplicationFeature {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   void setDefaultParallelism(uint32_t v) noexcept {
     _options.defaultParallelism = v;
+  }
+  void setMaintenanceThreads(uint32_t commit, uint32_t consolidation) noexcept {
+    _options.commitThreads = commit;
+    _options.consolidationThreads = consolidation;
   }
 #endif
 

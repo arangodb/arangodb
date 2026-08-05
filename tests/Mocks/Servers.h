@@ -98,6 +98,14 @@ class MockServer {
     return _server.addFeature<Type, As>(std::forward<Args>(args)...);
   }
 
+  template<typename Provider>
+  Provider& addOptionsProvider() {
+    auto provider = std::make_shared<Provider>();
+    _optionProviders.emplace_back(provider);
+    provider->declareOptions(_server.options());
+    return *provider;
+  }
+
   // make previously added feature untracked.
   // useful for successors of base mock servers
   // that want to exclude some standart features from
@@ -126,6 +134,9 @@ class MockServer {
   arangodb::application_features::ApplicationServer::State
       _oldApplicationServerState = arangodb::application_features::
           ApplicationServer::State::UNINITIALIZED;
+  // OpitionsProviders own the storage that ProgramOptions::addOption() binds
+  // raw pointes to, so they must live longer than _server.
+  std::vector<std::shared_ptr<void>> _optionProviders;
   arangodb::application_features::ApplicationServer _server;
   std::unique_ptr<StorageEngineMock> _engine;
   std::unordered_map<arangodb::application_features::ApplicationFeature*, bool>

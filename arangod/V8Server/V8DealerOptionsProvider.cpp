@@ -22,6 +22,11 @@
 
 #include "V8DealerOptionsProvider.h"
 
+#include "Basics/application-exit.h"
+#include "Basics/ArangoGlobalContext.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
@@ -29,7 +34,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void V8DealerOptionsProvider::declareOptions(
+void V8DealerOptionsProvider::declareOptionsImpl(
     std::shared_ptr<options::ProgramOptions> options,
     V8DealerFeatureOptions& opts) {
   options->addSection("javascript", "JavaScript engine and execution");
@@ -234,6 +239,50 @@ reduce the footprint of ArangoDB. Turning the V8 engine off on single servers or
 Coordinators will automatically render certain functionality unavailable or
 dysfunctional. The affected functionality includes JavaScript transactions, Foxx,
 AQL user-defined functions, the built-in web interface and some server APIs.)");
+}
+
+void V8DealerOptionsProvider::validateOptionsImpl(
+    std::shared_ptr<options::ProgramOptions> options,
+    V8DealerFeatureOptions& opts) {
+  if (!opts.enableJS) {
+    return;
+  }
+  // check the startup path
+  if (opts.startupDirectory.empty()) {
+    LOG_TOPIC("6330a", FATAL, arangodb::Logger::V8)
+        << "no 'javascript.startup-directory' has been supplied, giving up";
+    FATAL_ERROR_EXIT();
+  }
+
+  // remove trailing / from path and set path
+  auto ctx = ArangoGlobalContext::CONTEXT;
+
+  if (ctx == nullptr) {
+    LOG_TOPIC("ae845", FATAL, arangodb::Logger::V8)
+        << "failed to get global context";
+    FATAL_ERROR_EXIT();
+  }
+
+  ctx->normalizePath(opts.startupDirectory, "javascript.startup-directory",
+                     true);
+  ctx->normalizePath(opts.moduleDirectories, "javascript.module-directory",
+                     false);
+
+  // check whether app-path was specified
+  if (opts.appPath.empty()) {
+    LOG_TOPIC("a161b", FATAL, arangodb::Logger::V8)
+        << "no value has been specified for --javascript.app-path";
+    FATAL_ERROR_EXIT();
+  }
+
+  // Tests if this path is either a directory (ok) or does not exist (we create
+  // it in ::start) If it is something else this will throw an error.
+  ctx->normalizePath(opts.appPath, "javascript.app-path", false);
+
+  // use a minimum of 1 second for GC
+  if (opts.gcFrequency < 1) {
+    opts.gcFrequency = 1;
+  }
 }
 
 }  // namespace arangodb
