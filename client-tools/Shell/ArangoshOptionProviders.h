@@ -29,20 +29,20 @@
 #include "Shell/ClientOptionsProvider.h"
 #include "Shell/ShellConsoleOptionsProvider.h"
 #include "Shell/ShellOptionsProvider.h"
+#include "Shell/V8ShellOptionsProvider.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionOptionsProvider.h"
 #endif
 
 namespace arangodb {
-using ArangoshOptionProviders =
-    CoreOptionProviders<ClientOptionsProvider, ConfigOptionsProvider,
-                        LanguageOptionsProvider, ShellConsoleOptionsProvider,
-                        ShellOptionsProvider, TempOptionsProvider,
-                        V8SecurityOptionsProvider, V8PlatformOptionsProvider
+using ArangoshOptionProviders = CoreOptionProviders<
+    ClientOptionsProvider, ConfigOptionsProvider, LanguageOptionsProvider,
+    ShellConsoleOptionsProvider, ShellOptionsProvider, TempOptionsProvider,
+    V8PlatformOptionsProvider, V8SecurityOptionsProvider, V8ShellOptionsProvider
 #ifdef USE_ENTERPRISE
-                        ,
-                        EncryptionOptionsProvider
+    ,
+    EncryptionOptionsProvider
 #endif
-                        >;
+    >;
 }  // namespace arangodb
