@@ -20,39 +20,17 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "ClientFeatureOptions.h"
 
-#include <velocypack/Builder.h>
-
-#include <cstdint>
-#include <memory>
-#include <string>
-#include <vector>
+#include "Basics/StaticStrings.h"
+#include "Endpoint/Endpoint.h"
+#include "Ssl/ssl-helper.h"
 
 namespace arangodb {
 
-struct ExportFeatureOptions {
-  ExportFeatureOptions();
-
-  std::vector<std::string> collections;
-  std::string customQuery;
-  std::string customQueryFile;
-  std::string customQueryBindVars;
-  std::shared_ptr<VPackBuilder> customQueryBindVarsBuilder;
-  std::string graphName;
-  std::string xgmmlLabelAttribute = "label";
-  std::string typeExport = "jsonl";
-  std::string csvFieldOptions;
-  std::vector<std::string> csvFields;
-  std::string outputDirectory;
-  double customQueryMaxRuntime = 0.0;
-  bool useMaxRuntime = false;
-  bool escapeCsvFormulae = true;
-  bool xgmmlLabelOnly = false;
-  bool overwrite = false;
-  bool progress = true;
-  bool useGzip = false;
-  uint64_t documentsPerBatch = 1000;
-};
+ClientFeatureOptions::ClientFeatureOptions()
+    : endpoints{{Endpoint::defaultEndpoint()}},
+      databaseName{StaticStrings::SystemDatabase},
+      sslProtocol{TLS_V12} {}
 
 }  // namespace arangodb

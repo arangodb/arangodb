@@ -40,7 +40,6 @@ class ScriptFeature final : public application_features::ApplicationFeature {
   explicit ScriptFeature(application_features::ApplicationServer& server,
                          int* result);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
 
  private:

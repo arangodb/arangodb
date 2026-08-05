@@ -37,7 +37,7 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-void RestoreOptionsProvider::declareOptions(
+void RestoreOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, RestoreFeatureOptions& opts) {
   options->addOption(
       "--collection",
@@ -199,7 +199,7 @@ avoiding repeated memory allocations for building new in-memory buffers.)");
       .setDeprecatedIn(30402);
 }
 
-void RestoreOptionsProvider::validateOptions(
+void RestoreOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> options, RestoreFeatureOptions& opts) {
   using arangodb::basics::StringUtils::join;
 

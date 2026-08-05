@@ -27,12 +27,13 @@
 
 namespace arangodb {
 
-struct BenchOptionsProvider : OptionsProvider<BenchFeatureOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      BenchFeatureOptions& options) override;
+struct BenchOptionsProvider
+    : OptionsProviderImpl<BenchOptionsProvider, BenchFeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          BenchFeatureOptions& options);
 
-  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
-                       BenchFeatureOptions& options) override;
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                           BenchFeatureOptions& options);
 };
 
 }  // namespace arangodb

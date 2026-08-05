@@ -20,39 +20,32 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "RestoreFeatureOptions.h"
 
-#include <velocypack/Builder.h>
+#include "Basics/error.h"
+#include "Basics/Exceptions.h"
+#include "Basics/FileUtils.h"
+#include "Basics/NumberOfCores.h"
+#include "Basics/StringUtils.h"
+#include "Basics/voc-errors.h"
 
-#include <cstdint>
-#include <memory>
-#include <string>
-#include <vector>
+#include <filesystem>
 
 namespace arangodb {
 
-struct ExportFeatureOptions {
-  ExportFeatureOptions();
-
-  std::vector<std::string> collections;
-  std::string customQuery;
-  std::string customQueryFile;
-  std::string customQueryBindVars;
-  std::shared_ptr<VPackBuilder> customQueryBindVarsBuilder;
-  std::string graphName;
-  std::string xgmmlLabelAttribute = "label";
-  std::string typeExport = "jsonl";
-  std::string csvFieldOptions;
-  std::vector<std::string> csvFields;
-  std::string outputDirectory;
-  double customQueryMaxRuntime = 0.0;
-  bool useMaxRuntime = false;
-  bool escapeCsvFormulae = true;
-  bool xgmmlLabelOnly = false;
-  bool overwrite = false;
-  bool progress = true;
-  bool useGzip = false;
-  uint64_t documentsPerBatch = 1000;
-};
+RestoreFeatureOptions::RestoreFeatureOptions() {
+  using basics::FileUtils::buildFilename;
+  std::error_code ec;
+  std::filesystem::path const cwd = std::filesystem::current_path(ec);
+  if (ec) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_set_errno(TRI_ERROR_SYS_ERROR),
+        basics::StringUtils::concatT("cannot get current working directory: ",
+                                     ec.message()));
+  }
+  inputPath = buildFilename(cwd.string(), "dump");
+  threadCount =
+      std::max(threadCount, static_cast<uint32_t>(NumberOfCores::getValue()));
+}
 
 }  // namespace arangodb

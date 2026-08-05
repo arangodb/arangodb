@@ -1,5 +1,6 @@
 add_library(arango_shell STATIC
   ClientFeature.cpp
+  ClientFeatureOptions.cpp
   ClientOptionsProvider.cpp
   ShellConsoleFeature.cpp
   ShellConsoleOptionsProvider.cpp
