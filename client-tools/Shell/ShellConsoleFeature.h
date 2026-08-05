@@ -38,7 +38,6 @@ class ShellConsoleFeature final
                       ShellConsoleFeatureOptions options);
   explicit ShellConsoleFeature(application_features::ApplicationServer& server);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
   void unprepare() override final;
 

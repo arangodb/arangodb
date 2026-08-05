@@ -1338,8 +1338,8 @@ uint64_t IndexWriter::CurrentSegmentId() const noexcept {
 }
 
 ConsolidationResult IndexWriter::Consolidate(
-  const ConsolidationPolicy& policy, format::ptr codec,
-  const MergeWriter::FlushProgress& progress) {
+  const ConsolidationPolicy& policy,
+  const ConsolidationProgress& progress, format::ptr codec) {
   REGISTER_TIMER_DETAILED();
   if (!codec) {
     // use default codec if not specified
@@ -1396,8 +1396,21 @@ ConsolidationResult IndexWriter::Consolidate(
     // register for consolidation
     consolidating_segments_.reserve(consolidating_segments_.size() +
                                     candidates.size());
-    for (const auto* candidate : candidates) {
-      consolidating_segments_.emplace(candidate->Meta().name);
+
+    std::vector<irs::SegmentInfo> candidateSegments;
+    for (const auto& candidate : candidates) {
+      const auto& meta = candidate->Meta();
+      consolidating_segments_.emplace(meta.name);
+
+      //  Full SegmentInfo to be used with callbacks
+      irs::SegmentInfo segment(meta.name, meta.byte_size);
+      segment.docs_count = meta.docs_count;
+      segment.live_docs_count = meta.live_docs_count;
+      candidateSegments.push_back(segment);
+    }
+
+    if (progress.beginConsolidation) {
+      progress.beginConsolidation(candidateSegments);
     }
   }
 
@@ -1434,6 +1447,12 @@ ConsolidationResult IndexWriter::Consolidate(
 
   ConsolidationResult result{candidates.size(), ConsolidationError::FAIL};
 
+  Finally end_consolidation = [&]() noexcept {
+    if (progress.endConsolidation) {
+      progress.endConsolidation(result);
+    }
+  };
+
   IndexSegment consolidation_segment;
   consolidation_segment.meta.codec = codec;  // Should use new codec
   consolidation_segment.meta.version = 0;    // Reset version for new segment
@@ -1446,7 +1465,7 @@ ConsolidationResult IndexWriter::Consolidate(
   merger.Reset(candidates.begin(), candidates.end());
 
   // We do not persist segment meta since some removals may come later
-  if (!merger.Flush(consolidation_segment.meta, progress)) {
+  if (!merger.Flush(consolidation_segment.meta, progress.flushProgress)) {
     // Nothing to consolidate or consolidation failure
     return result;
   }

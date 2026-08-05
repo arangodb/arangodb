@@ -157,17 +157,6 @@ V8ShellFeature::V8ShellFeature(application_features::ApplicationServer& server,
   startsAfter<V8SecurityFeature>();
 }
 
-void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  V8ShellOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void V8ShellFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  V8ShellOptionsProvider provider;
-  provider.validateOptions(options, _options);
-}
-
 void V8ShellFeature::start() {
   auto& platform = server().getFeature<V8PlatformFeature>();
 

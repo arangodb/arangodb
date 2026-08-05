@@ -188,6 +188,8 @@ void RocksDBIndexCacheRefillFeature::buildStartupIndexRefillTasks() {
               _indexFillTasks.emplace_back(
                   IndexFillTask{database, collection->name(), index->id()});
             }
+
+            return true;
           });
     } catch (...) {
       // must ignore any errors here in case a database or collection
