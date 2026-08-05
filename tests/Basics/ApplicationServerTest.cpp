@@ -96,7 +96,7 @@ TEST(ApplicationServerTest, test_startsAfterValid) {
       std::vector<std::type_index>{std::type_index(typeid(TestFeatureA))},
       std::vector<std::type_index>{});
 
-  server.setupDependencies(true);
+  server.setupDependencies();
 
   EXPECT_FALSE(failed);
   EXPECT_TRUE(feature1.doesStartBefore<TestFeatureB>());
@@ -127,7 +127,7 @@ TEST(ApplicationServerTest, test_startsAfterCyclic) {
       std::vector<std::type_index>{});
 
   try {
-    server.setupDependencies(true);
+    server.setupDependencies();
   } catch (basics::Exception const& ex) {
     EXPECT_EQ(ex.code(), TRI_ERROR_INTERNAL);
     failed = true;
@@ -153,7 +153,7 @@ TEST(ApplicationServerTest, test_startsBeforeCyclic) {
       std::vector<std::type_index>{std::type_index(typeid(TestFeatureA))});
 
   try {
-    server.setupDependencies(true);
+    server.setupDependencies();
   } catch (basics::Exception const& ex) {
     EXPECT_EQ(ex.code(), TRI_ERROR_INTERNAL);
     failed = true;
