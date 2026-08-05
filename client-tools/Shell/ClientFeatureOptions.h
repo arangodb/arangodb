@@ -22,7 +22,6 @@
 
 #pragma once
 
-#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -30,26 +29,28 @@
 namespace arangodb {
 
 struct ClientFeatureOptions {
+  ClientFeatureOptions();
+
   std::vector<std::string> endpoints;
   std::string databaseName;
-  std::string username = "root";
+  std::string username{"root"};
   std::string password;
   std::string jwtSecretFile;
   std::string jwtToken;
-  double connectionTimeout;
-  double requestTimeout;
-  double jwtRenewalThreshold = 300.0;
-  uint64_t maxPacketSize = 1024 * 1024 * 1024;
-  uint64_t compressRequestThreshold = 0;
+  double connectionTimeout{5.0};
+  double requestTimeout{1200.0};
+  double jwtRenewalThreshold{300.0};
+  uint64_t maxPacketSize{1024 * 1024 * 1024};
+  uint64_t compressRequestThreshold{0};
   uint64_t sslProtocol;
-  bool authentication = true;
-  bool askJwtSecret = false;
-  bool forceJson = false;
-  bool compressTransfer = false;
-  bool haveServerPassword = false;
+  bool authentication{true};
+  bool askJwtSecret{false};
+  bool forceJson{false};
+  bool compressTransfer{false};
+  bool haveServerPassword{false};
 
-  bool allowJwtSecret = false;
-  size_t maxNumEndpoints = 1;
+  bool allowJwtSecret{false};
+  size_t maxNumEndpoints{1};
 };
 
 }  // namespace arangodb

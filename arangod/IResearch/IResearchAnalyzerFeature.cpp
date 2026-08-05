@@ -710,10 +710,11 @@ bool analyzerInUse(std::string_view dbName,
 
     bool found = false;
 
-    auto visitor = [&found, analyzer](
-                       std::shared_ptr<LogicalCollection> const& collection) {
+    auto visitor =
+        [&found, analyzer](
+            std::shared_ptr<LogicalCollection> const& collection) -> bool {
       if (!collection) {
-        return;
+        return true;
       }
 
       for (auto const& index : collection->getPhysical()->getAllIndexes()) {
@@ -733,9 +734,12 @@ bool analyzerInUse(std::string_view dbName,
         if (nullptr != link->findAnalyzer(*analyzer)) {
           // found referenced analyzer
           found = true;
-          return;
+
+          // abort collection enumeration
+          return false;
         }
       }
+      return true;
     };
 
     methods::Collections::enumerate(vocbase, visitor);
