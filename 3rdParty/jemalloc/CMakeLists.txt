@@ -16,16 +16,10 @@ file(
 )
 
 # generate external project
-if (LINUX OR DARWIN)
-  if (DARWIN)
-    set(JEMALLOC_CC "cc")
-    set(JEMALLOC_CXX "c++}")
-    set(JEMALLOC_CONFIG "background_thread:false")
-  else ()
-    set(JEMALLOC_CC "${CMAKE_C_COMPILER}")
-    set(JEMALLOC_CXX "${CMAKE_CXX_COMPILER}")
-    set(JEMALLOC_CONFIG "background_thread:true,cache_oblivious:false")
-  endif ()
+if (LINUX)
+  set(JEMALLOC_CC "${CMAKE_C_COMPILER}")
+  set(JEMALLOC_CXX "${CMAKE_CXX_COMPILER}")
+  set(JEMALLOC_CONFIG "background_thread:true,cache_oblivious:false")
 
   if (USE_JEMALLOC_CHECKS)
     set(JEMALLOC_CHECKS "--enable-opt-safety-checks" "--enable-opt-size-checks")
@@ -69,7 +63,7 @@ if (LINUX OR DARWIN)
 # it's fine to just commit the configure script to the arangodb repository.
 #      ./autogen.sh
 #      COMMAND
-      ./configure
+      ${JEMALLOC_SOURCE_DIR}/configure
         CC=${JEMALLOC_CC}
         CXX=${JEMALLOC_CXX}
         CFLAGS=${JEMALLOC_C_FLAGS}
