@@ -135,7 +135,7 @@ function gtestRunner (testfilename, name, opts, testoptions) {
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
 
-  const tests = [ 'arangodbtests_zkd' ];
+  const tests = [ 'arangodbtests_zkd', 'arangodbtests_rocksdb' ];
 
   for(const test of tests) {
     testFns[test] = x => gtestRunner(test, test, x);
