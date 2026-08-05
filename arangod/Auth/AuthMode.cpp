@@ -809,7 +809,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             if (auto r =
                     check(p::UseDatabase{graph.db, DatabaseAccessLevel::Write});
                 !r.ok()) {
-              return r;
+              return {TRI_ERROR_ARANGO_READ_ONLY, r.errorMessage()};
             }
             for (auto const& coll : graph.collectionNames) {
               if (auto r = check(p::DropCollection{graph.db, coll}); !r.ok()) {
@@ -827,8 +827,12 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                 return check(
                     p::UseDatabase{graph.db, DatabaseAccessLevel::Read});
               case GraphAccessLevel::Modify:
-                return check(
-                    p::UseDatabase{graph.db, DatabaseAccessLevel::Write});
+                if (auto r = check(
+                        p::UseDatabase{graph.db, DatabaseAccessLevel::Write});
+                    r.fail()) {
+                  return {TRI_ERROR_ARANGO_READ_ONLY, r.errorMessage()};
+                }
+                return {};
             }
             ADB_PROD_CRASH();
           },
