@@ -41,10 +41,6 @@ const cn = "UnitTestsWalCleanup";
 function WalCleanupSuite () {
   'use strict';
 
-  // Keeps inserting data and watching rocksdb_prunable_wal_files (the number
-  // of WAL files that are no longer needed but not yet deleted from disk)
-  // until it has both risen above 0 (files became prunable) and later
-  // dropped again (some of them were actually deleted).
   let run = function(insertData, getPrunableCount) {
     let seenGrowth = false;
     let seenShrinkage = false;
@@ -142,7 +138,7 @@ function WalCleanupSuite () {
       try {
         coordinator.toThisInstance(() => {
           db._drop(cn);
-          db._create(cn, { numberOfShards: dbservers.length }); // we must make sure that we insert data to each db server
+          db._create(cn, { numberOfShards: dbservers.length });
         });
         run(insertData, () => dbserver.getMetric("rocksdb_prunable_wal_files"));
       } finally {
