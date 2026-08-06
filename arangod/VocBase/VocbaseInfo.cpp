@@ -350,8 +350,7 @@ VocbaseOptions getVocbaseOptions(
 
   bool haveCluster = server.hasFeature<ClusterFeature>();
   {
-    ClusterFeature* cf =
-        haveCluster ? &server.getFeature<ClusterFeature>() : nullptr;
+    auto& cf = server.getFeature<ClusterFeature>();
     VPackSlice replicationSlice = options.get(StaticStrings::ReplicationFactor);
     bool isSatellite =
         (replicationSlice.isString() &&
@@ -360,7 +359,7 @@ VocbaseOptions getVocbaseOptions(
     isSatellite = isSatellite || (isNumber && replicationSlice.getUInt() == 0);
     if (!isSatellite && !isNumber) {
       if (haveCluster) {
-        vocbaseOptions.replicationFactor = cf->defaultReplicationFactor();
+        vocbaseOptions.replicationFactor = cf.defaultReplicationFactor();
       } else {
         LOG_TOPIC("eeeee", ERR, Logger::CLUSTER)
             << "Cannot access ClusterFeature to determine replicationFactor";
@@ -372,8 +371,8 @@ VocbaseOptions getVocbaseOptions(
           replicationSlice
               .getNumber<decltype(vocbaseOptions.replicationFactor)>();
       if (haveCluster && strictValidation) {
-        auto const minReplicationFactor = cf->minReplicationFactor();
-        auto const maxReplicationFactor = cf->maxReplicationFactor();
+        auto const minReplicationFactor = cf.minReplicationFactor();
+        auto const maxReplicationFactor = cf.maxReplicationFactor();
         // make sure the replicationFactor value is between the configured min
         // and max values
         if (0 < maxReplicationFactor &&
@@ -396,7 +395,7 @@ VocbaseOptions getVocbaseOptions(
 #ifndef USE_ENTERPRISE
     if (vocbaseOptions.replicationFactor == 0) {
       if (haveCluster) {
-        vocbaseOptions.replicationFactor = cf->defaultReplicationFactor();
+        vocbaseOptions.replicationFactor = cf.defaultReplicationFactor();
       } else {
         LOG_TOPIC("eeeef", ERR, Logger::CLUSTER)
             << "Cannot access ClusterFeature to determine replicationFactor";
