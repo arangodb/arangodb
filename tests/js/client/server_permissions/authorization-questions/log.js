@@ -28,7 +28,8 @@
 //
 // Handler: arangod/RestHandler/RestAdminLogHandler.cpp
 //
-// Every request first asks `UseDatabase name=_system level=read` in
+// Every request first asks `UseApiVersion version=0` and then
+// `UseDatabase name=_system level=read` in
 // RestHandler::checkUserCanAccess(). RestAdminLogHandler::verifyPermitted()
 // then, in the default configuration (--log.api-enabled=true,
 // --log.api-jwt-policy=true i.e. admin mode), asks:

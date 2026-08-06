@@ -39,7 +39,8 @@
 //   via the manager, so they ask no collection question.
 // - The JS transaction (POST /_api/transaction) runs its action inside a
 //   transaction over the declared read collections.
-// Every request additionally asks `UseDatabase name=d level=read` first.
+// Every request additionally asks `UseApiVersion version=0` and
+// `UseDatabase name=d level=read` first.
 // Transactions used as preconditions are created as root BEFORE beginObserve().
 
 if (getOptions === true) {

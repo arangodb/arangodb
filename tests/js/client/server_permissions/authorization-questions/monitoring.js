@@ -31,7 +31,8 @@
 // RestSupervisionStateHandler, RestSupportInfoHandler, RestSystemReportHandler,
 // RestTimeHandler, RestUsageMetricsHandler, RestVersionHandler.
 //
-// Every request first asks `UseDatabase name=_system level=read` in
+// Every request first asks `UseApiVersion version=0` and then
+// `UseDatabase name=_system level=read` in
 // RestHandler::checkUserCanAccess(). Beyond that:
 //   - Hardened actions (canUseHardenedAction) ask nothing without
 //     --server.harden=true (our suites do not set it), so only the base

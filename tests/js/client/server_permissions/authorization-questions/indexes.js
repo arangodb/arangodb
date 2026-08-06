@@ -42,7 +42,8 @@
 //   `UseDatabase ... level=write` and canUseCollection(WriteMeta) ->
 //   `UseCollection ... level=writemeta`, then begins an EXCLUSIVE transaction
 //   whose permission check maps to `UseCollection ... level=writedata`.
-// Every request additionally asks `UseDatabase name=d level=read` first.
+// Every request additionally asks `UseApiVersion version=0` and
+// `UseDatabase name=d level=read` first.
 
 if (getOptions === true) {
   return {

@@ -30,7 +30,8 @@
 // Handlers: RestAuthReloadHandler, RestAdminClusterHandler, RestCompactHandler,
 // RestCrashHandler, RestAdminDatabaseHandler, RestShutdownHandler.
 //
-// Every request first asks `UseDatabase name=<db> level=read` in
+// Every request first asks `UseApiVersion version=0` and then
+// `UseDatabase name=<db> level=read` in
 // RestHandler::checkUserCanAccess(). Beyond that, the cluster handler is the
 // interesting case: several sub-handlers reject non-coordinator requests BEFORE
 // they run the per-user auth check, so on a single server those endpoints emit

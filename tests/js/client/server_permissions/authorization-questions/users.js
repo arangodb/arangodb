@@ -35,9 +35,11 @@
 // check. Consequently:
 //   - GET  /_api/user           (path "/_api/user",  no trailing slash) and
 //   - POST /_api/user           (path "/_api/user")
-//     DO go through the base check -> `UseDatabase name=_system level=read`.
-//   - every /_api/user/<user>[/...] request SKIPS the base check, so the only
-//     questions observed are the ones the handler body asks itself.
+//     DO go through the base check -> `UseApiVersion version=0` and
+//     `UseDatabase name=_system level=read`.
+//   - every /_api/user/<user>[/...] request SKIPS the base check, but the
+//     override asks `UseApiVersion version=0` itself, so beyond that only
+//     the questions of the handler body are observed.
 //
 // Handler body questions (ExecContext helpers):
 //   canReadUser(u)            -> `ReadUser name=<u>`

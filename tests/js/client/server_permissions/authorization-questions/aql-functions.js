@@ -38,7 +38,8 @@
 // A WRITE transaction on a collection asks both the read and the writedata
 // question for that collection (cf. documents.js / authorization-questions.js
 // testInsertDocument). Every request additionally asks
-// `UseDatabase name=<db> level=read` first in RestHandler::checkUserCanAccess().
+// `UseApiVersion version=0` and `UseDatabase name=<db> level=read` first
+// in RestHandler::checkUserCanAccess().
 
 if (getOptions === true) {
   return {

@@ -29,7 +29,8 @@
 // Handler: arangod/RocksDBEngine/RocksDBRestWalHandler.cpp (single-server/DBServer)
 //          arangod/ClusterEngine/ClusterRestWalHandler.cpp   (coordinator)
 //
-// Every request first asks `UseDatabase name=_system level=read` in
+// Every request first asks `UseApiVersion version=0` and then
+// `UseDatabase name=_system level=read` in
 // RestHandler::checkUserCanAccess() (the routes have no /_db/ prefix, so the
 // database is the connected _system).
 //
