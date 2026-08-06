@@ -3382,12 +3382,8 @@ Future<Result> Methods::replicateOperations(
     std::shared_ptr<const std::vector<ServerID>> const& followerList,
     OperationOptions const& options, velocypack::Builder const& replicationData,
     TRI_voc_document_operation_e operation, std::string_view userName) {
-  // note: this is a coroutine. the reference parameters (and *this) belong
-  // to the caller's frame, which may already be gone when we resume after
-  // the co_await below. everything needed after the co_await must therefore
-  // be copied into the coroutine frame before suspending (this includes
-  // `collection`, which is why it is copied here).
-  auto collection = transactionCollection.collection();
+  // copy the shared_ptr to keep it alive across suspend/resume of this coroutine
+  auto const collection = transactionCollection.collection();
   TRI_ASSERT(followerList != nullptr);
 
   // It is normal to have an empty followerList when using replication2
@@ -3455,8 +3451,7 @@ Future<Result> Methods::replicateOperations(
     // be committed in the replicated log
     TRI_ASSERT(replicationFut.isReady());
 
-    // TODO This shouldn't be synchronous
-    auto replicationRes = replicationFut.waitAndGet();
+    auto replicationRes = co_await std::move(replicationFut);
     if (replicationRes.fail()) {
       co_return replicationRes.result();
     }
