@@ -839,23 +839,35 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
           [&](p::ReadUser const& /*readUser*/) -> Result {
             // Reading any user record requires at least RW access to the
             // _system database.
-            return check(
-                auth::perms::UseDatabase{.name = StaticStrings::SystemDatabase,
-                                         .level = DatabaseAccessLevel::Write});
+            if (auto r = check(auth::perms::UseDatabase{
+                    .name = StaticStrings::SystemDatabase,
+                    .level = DatabaseAccessLevel::Write});
+                r.fail()) {
+              return {TRI_ERROR_HTTP_FORBIDDEN, r.errorMessage()};
+            }
+            return {};
           },
           [&](p::CreateUser const& /*createUser*/) -> Result {
             // Creating a user requires RW access to the _system database
             // (equivalent to being an admin).
-            return check(
-                auth::perms::UseDatabase{.name = StaticStrings::SystemDatabase,
-                                         .level = DatabaseAccessLevel::Write});
+            if (auto r = check(auth::perms::UseDatabase{
+                    .name = StaticStrings::SystemDatabase,
+                    .level = DatabaseAccessLevel::Write});
+                r.fail()) {
+              return {TRI_ERROR_HTTP_FORBIDDEN, r.errorMessage()};
+            }
+            return {};
           },
           [&](p::DropUser const& /*dropUser*/) -> Result {
             // Dropping a user requires RW access to the _system database
             // (equivalent to being an admin).
-            return check(
-                auth::perms::UseDatabase{.name = StaticStrings::SystemDatabase,
-                                         .level = DatabaseAccessLevel::Write});
+            if (auto r = check(auth::perms::UseDatabase{
+                    .name = StaticStrings::SystemDatabase,
+                    .level = DatabaseAccessLevel::Write});
+                r.fail()) {
+              return {TRI_ERROR_HTTP_FORBIDDEN, r.errorMessage()};
+            }
+            return {};
           },
           [&](p::ModifyUserProfile const& /*modifyUserProfile*/) -> Result {
             // Modifying a user's own profile (password, active flag, config
@@ -863,9 +875,13 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             // to being an admin). Note that the self-exception is already
             // handled by ExecContext::canModifyUserProfile before this is
             // ever reached.
-            return check(
-                auth::perms::UseDatabase{.name = StaticStrings::SystemDatabase,
-                                         .level = DatabaseAccessLevel::Write});
+            if (auto r = check(auth::perms::UseDatabase{
+                    .name = StaticStrings::SystemDatabase,
+                    .level = DatabaseAccessLevel::Write});
+                r.fail()) {
+              return {TRI_ERROR_HTTP_FORBIDDEN, r.errorMessage()};
+            }
+            return {};
           },
           [&](p::GrantUserPermissions const& /*grantUserPermissions*/)
               -> Result {
@@ -1012,11 +1028,12 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
     }
   };
 
-  // Each permission maps to one or more (action, resource) pairs, all of which
-  // must be permitted. They are evaluated together in a single Service::check()
-  // call (one network round-trip). The common single-pair case is passed as a
-  // span over a stack-local pair and needs no allocation; only the composite
-  // permissions (create/modify view, create/drop graph) build a small vector.
+  // Each permission maps to one or more (action, resource) pairs, all of
+  // which must be permitted. They are evaluated together in a single
+  // Service::check() call (one network round-trip). The common single-pair
+  // case is passed as a span over a stack-local pair and needs no allocation;
+  // only the composite permissions (create/modify view, create/drop graph)
+  // build a small vector.
   auto checkAll = [&](std::span<rbac::ActionResource const> queries) -> Result {
     return _rbacService.check(rbac::JwtToken{_jwtToken}, queries);
   };
@@ -1148,9 +1165,9 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
                             rbac::resources::Graph{graph.db, graph.name});
           },
           [&](p::CreateGraph const& graph) -> Result {
-            // Creating a graph additionally requires the ability to create any
-            // collections it introduces and to read the ones it links (mirrors
-            // the classic behaviour).
+            // Creating a graph additionally requires the ability to create
+            // any collections it introduces and to read the ones it links
+            // (mirrors the classic behaviour).
             std::vector<rbac::ActionResource> queries;
             queries.reserve(1 + graph.collectionNamesToCreate.size() +
                             graph.collectionNamesToRead.size());
