@@ -56,6 +56,7 @@ class Future;
 template<typename>
 struct async;
 
+class AuthenticationFeature;
 class GeneralRequest;
 class RequestStatistics;
 class Result;

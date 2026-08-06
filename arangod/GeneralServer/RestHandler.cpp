@@ -25,6 +25,7 @@
 #include "Activities/GenericActivity.h"
 #include "Activities/RegistryGlobalVariable.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Assertions/ProdAssert.h"
 #include "Auth/TokenCache.h"
 #include "Basics/DownCast.h"
 #include "Basics/dtrace-wrapper.h"
@@ -704,6 +705,7 @@ void RestHandler::compressResponse() {
 
 async<Result> RestHandler::checkUserCanAccess() const {
   auto const* const auth = AuthenticationFeature::instance();
+  ADB_PROD_ASSERT(auth != nullptr);
   if (!auth->isActive()) {
     co_return Result();
   }

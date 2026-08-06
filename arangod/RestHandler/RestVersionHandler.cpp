@@ -22,7 +22,9 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ServerState.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
+#include "Logger/LogMacros.h"
 #include "Rest/ApiVersion.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerFeature.h"
@@ -112,7 +114,51 @@ async<Result> RestVersionHandler::checkUserCanAccess() const {
         : Result{TRI_ERROR_HTTP_UNAUTHORIZED, "Not authenticated."};
   }
 
-  co_return co_await RestBaseHandler::checkUserCanAccess();
+  auto const* const auth = AuthenticationFeature::instance();
+  ADB_PROD_ASSERT(auth != nullptr);
+  if (!auth->isActive()) {
+    co_return Result();
+  }
+
+#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
+  auto const& ci = request()->connectionInfo();
+  if (ci.endpointType == Endpoint::DomainType::UNIX &&
+      !auth->authenticationUnixSockets()) {
+    // no authentication required for unix domain socket connections
+    co_return Result{};
+  }
+#endif
+
+  if (not request()->authenticated()) {
+    Result(TRI_ERROR_HTTP_UNAUTHORIZED, "User not authenticated.");
+  }
+
+  auto ec = request()->requestContext();
+  TRI_ASSERT(ec != nullptr) << "no exec context in request: " << this->name();
+  // here we allow default version
+  auto version = request()->requestedApiVersion();
+  if (auto res = ec->canUseApiVersion(version); res.fail()) {
+    if (version != api_version::defaultApiVersion) {
+      LOG_TOPIC("3b1a7", TRACE, Logger::AUTHORIZATION)
+          << "API version forbidden for " << request()->requestPath();
+      co_return res;
+    }
+  }
+
+  auto canUseDB =
+      ec->canUseDatabase(request()->databaseName(), DatabaseAccessLevel::Read);
+  if (canUseDB.ok()) {
+    co_return Result{};
+  }
+
+  LOG_TOPIC("0898a", TRACE, Logger::AUTHORIZATION)
+      << "Access forbidden to " << request()->requestPath();
+  if (_request->requestedApiVersion() == 0 && ec->isClassic()) {
+    co_return Result(TRI_ERROR_HTTP_UNAUTHORIZED,
+                     "No read access to database.");
+  } else {
+    co_return canUseDB;
+  }
 }
 
 void RestVersionHandler::getVersion(
