@@ -234,7 +234,7 @@
 # with coverage we need to bucketise:
 - rta_makedata:
     requires:
-      coverage: true
+      coverage: false
     args:
       encryptionAtRest: true
       ssl: true
@@ -243,7 +243,7 @@
     options:
       type: cluster
     requires:
-      coverage: true
+      coverage: false
     args:
       forceOneShard: true
       makedataDB: system_oneshard_makedata
