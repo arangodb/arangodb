@@ -572,7 +572,7 @@ RequestFigures UserRequestFigures;
 
 class StatisticsThread final : public Thread {
  public:
-  // only processes request statistics, no authorization-relevant code
+  // only processes request statistics, no ExecContext required
   explicit StatisticsThread() : Thread("Statistics", nullptr) {}
   ~StatisticsThread() { shutdown(); }
 

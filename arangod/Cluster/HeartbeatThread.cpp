@@ -72,7 +72,8 @@ namespace arangodb {
 class HeartbeatBackgroundJobThread : public Thread {
  public:
   explicit HeartbeatBackgroundJobThread(HeartbeatThread* heartbeatThread)
-      // runs DBServerAgencySync, which executes maintenance actions
+      // needs superuser permissions for DBServerAgencySync, which executes
+      // maintenance actions
       : Thread("Maintenance", ExecContext::superuserAsShared()),
         _heartbeatThread(heartbeatThread),
         _stop(false),
