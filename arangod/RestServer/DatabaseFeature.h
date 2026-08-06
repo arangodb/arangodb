@@ -36,6 +36,8 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/Methods/Databases.h"
 
+#include <velocypack/Slice.h>
+
 #include <cstddef>
 #include <mutex>
 #include <memory>
@@ -131,7 +133,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
   void recoveryDone() override;
 
   /// @brief open all databases described by the given inventory
-  void openDatabases(velocypack::Slice databases) override;
+  void openDatabases(velocypack::Slice databases);
 
   /// @brief whether or not the DatabaseFeature has started (and thus has
   /// completely populated its lists of databases and collections from

@@ -289,9 +289,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   Result prepareDropDatabase(TRI_vocbase_t& vocbase) override;
   Result dropDatabase(TRI_vocbase_t& database) override;
 
-  void runRecovery();
-  void startBackgroundThread();
-
   // wal in recovery
   EngineState engineState() noexcept override {
     return _engineState.load(std::memory_order_acquire);
@@ -603,6 +600,9 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   bool checkExistingDB(
       std::vector<rocksdb::ColumnFamilyDescriptor> const& cfFamilies);
+
+  void runRecovery();
+  void startBackgroundThread();
 
   auto makeLogStorageMethods(replication2::LogId logId, uint64_t objectId,
                              std::uint64_t vocbaseId,

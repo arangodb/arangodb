@@ -322,6 +322,12 @@ void DatabaseFeature::start() {
   }
 #endif
 
+  // safe unconditionally: all prepare() calls finish before any start()
+  VPackBuilder builder;
+  _engine->getDatabases(builder);
+  TRI_ASSERT(builder.slice().isArray());
+  openDatabases(builder.slice());
+
   // start database manager thread
   _databaseManager =
       std::make_unique<DatabaseManagerThread>(server(), *this, *_engine);
@@ -501,9 +507,6 @@ void DatabaseFeature::unprepare() {
 }
 
 void DatabaseFeature::prepare() {
-  // only the real RocksDBEngine defers and calls openDatabases() itself
-  bool deferToStorageEngine = false;
-
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   if (_engine == nullptr) {
     // engine not injected by test code, inject it now
@@ -518,7 +521,6 @@ void DatabaseFeature::prepare() {
       auto& rocksdb = server().getFeature<RocksDBEngine>();
       rocksdb.enable();
       _engine = &rocksdb;
-      deferToStorageEngine = true;
     }
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   }
@@ -535,13 +537,6 @@ void DatabaseFeature::prepare() {
   if (ServerState::instance()->isSingleServer()) {
     auto& metrics = server().getFeature<metrics::MetricsFeature>();
     _metadataMetrics.emplace(metrics);
-  }
-
-  if (!deferToStorageEngine) {
-    VPackBuilder builder;
-    _engine->getDatabases(builder);
-    TRI_ASSERT(builder.slice().isArray());
-    openDatabases(builder.slice());
   }
 }
 

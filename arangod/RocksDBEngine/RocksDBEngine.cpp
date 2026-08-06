@@ -812,13 +812,6 @@ void RocksDBEngine::prepare() {
     addSystemDatabase();
   }
 
-  {
-    VPackBuilder builder;
-    getDatabases(builder);
-    TRI_ASSERT(builder.slice().isArray());
-    _databaseProvider.openDatabases(builder.slice());
-  }
-
   // to populate initial health check data
   HealthData hd = healthCheck();
   if (hd.res.fail()) {

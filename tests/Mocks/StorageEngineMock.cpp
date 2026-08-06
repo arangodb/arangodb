@@ -66,6 +66,7 @@
 
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 
 namespace {
 
