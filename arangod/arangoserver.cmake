@@ -38,6 +38,7 @@ target_link_libraries(arangoserver
         arango_network
         arango_replication
         arango_storage_engine
+        arango_rocksdb_with_rest
         arango_utils
         arango_vocbase
         arango_scheduler

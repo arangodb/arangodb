@@ -24,6 +24,7 @@
 
 #include "GeneralServer/RestHandlerFactory.h"
 #include "RestHandler/RestHandlerCreator.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBRestCollectionHandler.h"
 #include "RocksDBEngine/RocksDBRestReplicationHandler.h"
 #include "RocksDBEngine/RocksDBRestWalHandler.h"
@@ -43,4 +44,10 @@ void RocksDBRestHandlers::registerResources(
       "/_admin/wal",
       RestHandlerCreator<RocksDBRestWalHandler>::createData<StorageEngine*>,
       {0, 1}, &engine);
+}
+
+/// @brief Add engine-specific REST handlers
+void RocksDBEngine::addRestHandlers(
+    rest::RestHandlerFactory& handlerFactory) {
+  RocksDBRestHandlers::registerResources(&handlerFactory, *this);
 }
