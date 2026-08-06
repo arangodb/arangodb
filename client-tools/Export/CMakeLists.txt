@@ -19,6 +19,9 @@ PRIVATE
 if (USE_JEMALLOC)
   target_link_libraries(${BIN_ARANGOEXPORT} PUBLIC jemalloc)
 endif ()
+if (USE_MIMALLOC)
+  target_link_libraries(${BIN_ARANGOEXPORT} mimalloc)
+endif ()
 
 
 install(
