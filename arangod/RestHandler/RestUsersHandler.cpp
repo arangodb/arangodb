@@ -116,7 +116,11 @@ async<Result> RestUsersHandler::checkUserCanAccess() const {
   auto const& path = _request->requestPath();
 
   if (_request->authenticated() && path.starts_with(pathPrefixApiUser)) {
-    co_return Result{};
+    // No database access is required here (everybody may e.g. change their own
+    // password), but the API version gate still applies
+    auto const ec = _request->requestContext();
+    TRI_ASSERT(ec != nullptr);
+    co_return ec->canUseApiVersion(_request->requestedApiVersion());
   }
 
   co_return co_await RestBaseHandler::checkUserCanAccess();

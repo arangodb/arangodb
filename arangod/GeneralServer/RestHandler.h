@@ -191,7 +191,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   void compressResponse();
 
   /// @brief some rest handlers want specific user checks. by default,
-  ///        check db access
+  ///        check that user is authenticated, has db access and whether the
+  ///        identity may use the API version this request addresses.
   virtual async<Result> checkUserCanAccess() const;
 
   // The ValueBuilder, as it is, is unsuitable for composition. By composition,
