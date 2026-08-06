@@ -21,7 +21,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "VPackFeature.h"
-#include "VPackOptionsProvider.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
@@ -124,12 +123,6 @@ VPackFeature::VPackFeature(application_features::ApplicationServer& server,
       _result(result),
       _options(std::move(options)) {
   setOptional(false);
-}
-
-void VPackFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  VPackOptionsProvider provider;
-  provider.declareOptions(options, _options);
 }
 
 void VPackFeature::start() {

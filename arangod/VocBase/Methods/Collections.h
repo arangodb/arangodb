@@ -91,7 +91,7 @@ struct Collections {
 
   static void enumerate(
       Database* vocbase,
-      std::function<void(std::shared_ptr<LogicalCollection> const&)> const&);
+      std::function<bool(std::shared_ptr<LogicalCollection> const&)> const&);
 
   static std::vector<std::shared_ptr<LogicalCollection>> getNotDeleted(
       const Database& vocbase);
