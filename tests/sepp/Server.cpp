@@ -158,7 +158,6 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(_server),
       LazyApplicationFeatureReference<ClusterFeature>(_server));
   _server.addFeature<metrics::ClusterMetricsFeature>();
-  _server.addFeature<VersionFeature>();
   _server.addFeature<ActionFeature>();
   auto& agency = _server.addFeature<AgencyFeature>();
   _server.addFeature<ApiRecordingFeature>(nullptr, metrics);

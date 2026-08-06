@@ -31,7 +31,6 @@
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
-#include "ApplicationFeatures/VersionFeature.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "FeaturePhases/V8ShellFeaturePhase.h"
 #include "Logger/LogMacros.h"
@@ -65,7 +64,10 @@ ArangoshServer::ArangoshServer(std::shared_ptr<options::ProgramOptions> options,
                                char const* binaryPath, std::string binaryName,
                                int* ret)
     : OptionProvidingServer<ArangoshOptionProviders>(
-          options, binaryPath, std::move(binaryName), ret) {}
+          options, binaryPath, std::move(binaryName), ret) {
+  // Set a different default for the ClientFeature
+  mutableOptions<ClientOptionsProvider>().allowJwtSecret = true;
+}
 
 void ArangoshServer::addFeatures() {
   // Phases first
@@ -73,19 +75,15 @@ void ArangoshServer::addFeatures() {
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
 
-  addFeature<ShellConsoleFeature>();
-  addFeature<HttpEndpointProvider, ClientFeature>(true);
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(
       std::array{std::type_index(typeid(ShellFeature))});
   addFeature<SslFeature>();
   addFeature<V8ShellFeaturePhase>();
-  addFeature<ShellFeature>(_ret);
 }
 
 void ArangoshServer::addFeaturesWithOptionProvider() {
-  addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
   addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
   addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());
   addFeature<TempFeature>(_binaryName, getOptions<TempOptionsProvider>());
@@ -107,6 +105,12 @@ void ArangoshServer::addFeaturesWithOptionProvider() {
 #ifdef USE_ENTERPRISE
   addFeature<EncryptionFeature>(getOptions<EncryptionOptionsProvider>());
 #endif
+  auto& client = addFeature<HttpEndpointProvider, ClientFeature>(
+      getOptions<ClientOptionsProvider>());
+  auto& console = addFeature<ShellConsoleFeature>(
+      getOptions<ShellConsoleOptionsProvider>());
+  addFeature<ShellFeature>(_ret, client, console,
+                           getOptions<ShellOptionsProvider>());
 }
 
 }  // namespace arangodb

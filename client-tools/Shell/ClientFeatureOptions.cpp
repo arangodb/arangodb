@@ -20,19 +20,17 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "ClientFeatureOptions.h"
 
-#include "ApplicationFeatures/OptionsProvider.h"
-#include "VersionFeatureOptions.h"
+#include "Basics/StaticStrings.h"
+#include "Endpoint/Endpoint.h"
+#include "Ssl/ssl-helper.h"
 
 namespace arangodb {
 
-struct VersionOptionsProvider
-    : OptionsProviderImpl<VersionOptionsProvider, VersionFeatureOptions> {
-  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                          VersionFeatureOptions& options);
-  void processOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                          VersionFeatureOptions& options);
-};
+ClientFeatureOptions::ClientFeatureOptions()
+    : endpoints{{Endpoint::defaultEndpoint()}},
+      databaseName{StaticStrings::SystemDatabase},
+      sslProtocol{TLS_V12} {}
 
 }  // namespace arangodb

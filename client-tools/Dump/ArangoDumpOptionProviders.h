@@ -22,6 +22,8 @@
 
 #include "ApplicationFeatures/CoreOptionProviders.h"
 #include "ApplicationFeatures/ConfigOptionsProvider.h"
+#include "Dump/DumpOptionsProvider.h"
+#include "Shell/ClientOptionsProvider.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionOptionsProvider.h"
 #endif
@@ -31,7 +33,8 @@
 
 namespace arangodb {
 using ArangoDumpOptionProviders =
-    CoreOptionProviders<ConfigOptionsProvider
+    CoreOptionProviders<ClientOptionsProvider, ConfigOptionsProvider,
+                        DumpOptionsProvider
 #ifdef USE_ENTERPRISE
                         ,
                         EncryptionOptionsProvider
