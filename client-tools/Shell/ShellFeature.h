@@ -24,9 +24,8 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Shell/ShellFeatureOptions.h"
+#include "Shell/ShellConsoleFeature.h"
 
-#include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -37,14 +36,13 @@ class ShellFeature final : public application_features::ApplicationFeature {
   static constexpr std::string_view name() noexcept { return "Shell"; }
 
   ShellFeature(application_features::ApplicationServer& server, int* result,
+               ClientFeature& client, ShellConsoleFeature& console,
                ShellFeatureOptions options);
-  ShellFeature(application_features::ApplicationServer& server, int* result);
+  ShellFeature(application_features::ApplicationServer& server, int* result,
+               ClientFeature& client, ShellConsoleFeature& console);
 
-  ~ShellFeature();
+  ~ShellFeature() override;
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(
-      std::shared_ptr<options::ProgramOptions> options) override;
   void start() override;
 
   void setExitCode(int code) { *_result = code; }
