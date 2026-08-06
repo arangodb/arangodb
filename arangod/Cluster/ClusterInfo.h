@@ -1060,7 +1060,7 @@ class ClusterInfo final {
   // invoked.
   void updateCoordinatorCurrentShardMetrics();
 
-  /// @brief Sync arangodb_server_health gauges from ServersKnown (Coordinator
+  /// @brief Sync arangodb_server_health gauges from ServersKnown (Coordinators
   /// only). Creates/updates one labeled gauge per server (target_server,
   /// target_shortname) for every ServersKnown entry — including
   /// DBServers — and removes gauges for servers that disappeared. Agents do

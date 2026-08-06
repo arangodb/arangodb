@@ -1,5 +1,5 @@
 name: arangodb_server_health
-introducedIn: "3.12.10"
+introducedIn: "3.12.11"
 help: |
   Cluster server health status (0=FAILED, 1=BAD, 2=GOOD).
 unit: number
@@ -10,7 +10,7 @@ exposedBy:
   - coordinator
 description: |
   Reports the Agency Supervision health of every known cluster server
-  (Coordinators and DB-Servers). Values are `0` (FAILED / UNCLEAR),
+  (Coordinators and DB-Servers). Values are `0` (FAILED),
   `1` (BAD), and `2` (GOOD).
 
   Metric-specific labels identify the *target* server whose health is

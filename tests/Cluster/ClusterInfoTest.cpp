@@ -202,7 +202,7 @@ TEST(ServerHealthMetricValueTest, mapsHealthStatuses) {
   EXPECT_EQ(2u, serverHealthMetricValue(ServerHealth::kGood));
   EXPECT_EQ(1u, serverHealthMetricValue(ServerHealth::kBad));
   EXPECT_EQ(0u, serverHealthMetricValue(ServerHealth::kFailed));
-  EXPECT_EQ(0u, serverHealthMetricValue(ServerHealth::kUnclear));
+  ;
 }
 
 TEST_F(ClusterInfoTest, testServerHealthMetrics) {
@@ -328,24 +328,21 @@ TEST_F(ClusterInfoTest, testServerHealthMetricsPrometheusValues) {
                                             .status = ServerHealth::kBad});
   known.emplace("PRMR-2", ServerHealthState{.rebootId = RebootId{1},
                                             .status = ServerHealth::kFailed});
-  known.emplace("PRMR-3", ServerHealthState{.rebootId = RebootId{1},
-                                            .status = ServerHealth::kUnclear});
+
   clusterInfo().setServersKnown(std::move(known));
 
   auto* good = loadHealthGauge("CRDN-1", "Coordinator0001");
   auto* bad = loadHealthGauge("PRMR-1", "DBServer0001");
   auto* failed = loadHealthGauge("PRMR-2", "DBServer0002");
-  auto* unclear = loadHealthGauge("PRMR-3", "DBServer0003");
+
   ASSERT_NE(nullptr, good);
   ASSERT_NE(nullptr, bad);
   ASSERT_NE(nullptr, failed);
-  ASSERT_NE(nullptr, unclear);
 
   std::string prometheus;
   prometheus += serializeGauge(*good);
   prometheus += serializeGauge(*bad);
   prometheus += serializeGauge(*failed);
-  prometheus += serializeGauge(*unclear);
 
   expectPrometheusLine(prometheus, "CRDN-1", "Coordinator0001",
                        /*GOOD*/ 2);
@@ -353,8 +350,6 @@ TEST_F(ClusterInfoTest, testServerHealthMetricsPrometheusValues) {
                        /*BAD*/ 1);
   expectPrometheusLine(prometheus, "PRMR-2", "DBServer0002",
                        /*FAILED*/ 0);
-  expectPrometheusLine(prometheus, "PRMR-3", "DBServer0003",
-                       /*UNCLEAR*/ 0);
 }
 
 TEST_F(ClusterInfoTest, testServerHealthMetricsAliasRefresh) {

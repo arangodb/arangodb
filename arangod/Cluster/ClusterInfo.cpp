@@ -279,7 +279,7 @@ constexpr frozen::unordered_map<std::string_view, ServerHealth, 4>
       << "Supervision health is:" << supervisionHealth.toString();
   if (serversKnownSlice.isObject()) {
     for (auto const it : VPackObjectIterator(serversKnownSlice)) {
-      auto status = ServerHealth::kUnclear;
+      auto status = ServerHealth::kFailed;
       std::string serverId = it.key.copyString();
       if (ADB_LIKELY(supervisionHealth.isObject())) {
         auto serverKey = supervisionHealth.get(serverId);
@@ -462,7 +462,7 @@ DECLARE_GAUGE(arangodb_metadata_shard_followers_out_of_sync_number,
               "leader");  // No leaders have been elected yet or they are
                           // catching up
 
-/// GaugeVec-style metric (one series per server via target_server /
+/// Gauge-style metric (one series per server via target_server /
 /// target_shortname). Values: 0=FAILED, 1=BAD, 2=GOOD.
 /// Updated from Supervision/Health via ClusterInfo::loadServers on
 /// Coordinators.
@@ -4443,9 +4443,6 @@ namespace {
   // Reserve for variable label values plus ~80 bytes of fixed label overhead
   // (label names and separators value) to minimize reallocations.
   builder.reserveSpaceForLabels(serverId.size() + targetShortName.size() + 80);
-  // Metric-specific labels identify the *target* server. Exporter identity
-  // (Coordinator shortname/role) is attached separately as MetricsFeature
-  // global labels (`shortname`, `role`) — do not reuse those names here.
   builder.addLabel("target_server", serverId);
   builder.addLabel("target_shortname", targetShortName);
   return builder;
