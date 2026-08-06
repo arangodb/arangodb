@@ -66,6 +66,7 @@ function logApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/log`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "AdminReadLogs"
       ], endObserve());
@@ -76,6 +77,7 @@ function logApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/log/entries`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "AdminReadLogs"
       ], endObserve());
@@ -86,6 +88,7 @@ function logApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/log/level`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "AdminReadLogs"
       ], endObserve());
@@ -96,6 +99,7 @@ function logApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/log/structured`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "AdminReadLogs"
       ], endObserve());
@@ -106,6 +110,7 @@ function logApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_admin/log/level`, {});
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "AdminSetLogLevel"
       ], endObserve());
@@ -116,6 +121,7 @@ function logApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_admin/log/structured`, {});
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "AdminSetLogLevel"
       ], endObserve());
@@ -126,6 +132,7 @@ function logApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_admin/log`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "AdminSetLogLevel"
       ], endObserve());
@@ -136,6 +143,7 @@ function logApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_admin/log/entries`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "AdminSetLogLevel"
       ], endObserve());
@@ -146,6 +154,7 @@ function logApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_admin/log/level`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "AdminSetLogLevel"
       ], endObserve());

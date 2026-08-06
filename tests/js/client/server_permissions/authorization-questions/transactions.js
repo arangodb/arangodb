@@ -93,6 +93,7 @@ function transactionApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/transaction`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
     },
@@ -103,6 +104,7 @@ function transactionApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/transaction/${id}`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
       abortTrx(id);
@@ -118,6 +120,7 @@ function transactionApiAuthzSuite () {
         action: 'function () { return 1; }'
       });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c level=read"
       ], endObserve());
@@ -129,6 +132,7 @@ function transactionApiAuthzSuite () {
       const res = arango.POST_RAW(`/_db/${DB}/_api/transaction/begin`,
                                   { collections: { read: [c] } });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c level=read"
       ], endObserve());
@@ -146,6 +150,7 @@ function transactionApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/transaction/${id}`, {});
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
       // committed -> the document now exists; remove it again
@@ -158,6 +163,7 @@ function transactionApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/transaction/${id}`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
     },
@@ -167,6 +173,7 @@ function transactionApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/transaction/write`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
     },

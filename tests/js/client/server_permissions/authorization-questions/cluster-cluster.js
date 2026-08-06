@@ -86,6 +86,7 @@ function clusterApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`${base}/agency-cache`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "AdminReadAgency"
       ], endObserve());
@@ -97,6 +98,7 @@ function clusterApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`${base}/agency-dump`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "AdminReadAgency"
       ], endObserve());
@@ -107,6 +109,7 @@ function clusterApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`${base}/cluster-info`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "AdminClusterInfo"
       ], endObserve());
@@ -118,6 +121,7 @@ function clusterApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`${base}/cluster-info/flush`, {});
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "AdminClusterInfo"
       ], endObserve());
@@ -129,6 +133,7 @@ function clusterApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`${base}/cluster-info/get_collection_info/d/c`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "AdminClusterInfo"
       ], endObserve());
@@ -139,6 +144,7 @@ function clusterApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`${base}/cluster-info/get_collection_info_current/d/c/s1`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "AdminClusterInfo"
       ], endObserve());
@@ -149,6 +155,7 @@ function clusterApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`${base}/cluster-info/get_responsible_servers`, []);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "AdminClusterInfo"
       ], endObserve());
@@ -160,6 +167,7 @@ function clusterApiAuthzSuite () {
       arango.POST_RAW(`${base}/cluster-info/get_responsible_shard/d/c/true`,
                       { _key: 'testkey' });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "AdminClusterInfo"
       ], endObserve());
@@ -170,6 +178,7 @@ function clusterApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`${base}/cluster-info/get_analyzers_revision/_system`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "AdminClusterInfo"
       ], endObserve());
@@ -180,6 +189,7 @@ function clusterApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`${base}/cluster-info/wait_for_plan_version/1`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "AdminClusterInfo"
       ], endObserve());
@@ -190,6 +200,7 @@ function clusterApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`${base}/cluster-info/get_max_number_of_shards`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "AdminClusterInfo"
       ], endObserve());
@@ -200,6 +211,7 @@ function clusterApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`${base}/cluster-info/get_max_replication_factor`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "AdminClusterInfo"
       ], endObserve());
@@ -210,6 +222,7 @@ function clusterApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`${base}/cluster-info/get_min_replication_factor`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "AdminClusterInfo"
       ], endObserve());
@@ -221,7 +234,7 @@ function clusterApiAuthzSuite () {
     testEndpoints: function () {
       beginObserve();
       arango.GET_RAW(`${base}/endpoints`);
-      assertPermissions([], endObserve());
+      assertPermissions(["UseApiVersion version=0"], endObserve());
     },
   };
 }

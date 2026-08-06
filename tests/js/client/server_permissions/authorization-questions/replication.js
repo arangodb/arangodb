@@ -92,6 +92,7 @@ function replicationApiAuthzSuite () {
       const res = arango.POST_RAW(
         `/_db/_system/_api/replication/batch`, { ttl: 30 });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
       if (res.parsedBody && res.parsedBody.id) {
@@ -106,6 +107,7 @@ function replicationApiAuthzSuite () {
       arango.PUT_RAW(
         `/_db/_system/_api/replication/batch/${id}`, { ttl: 30 });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
       deleteBatch(id);
@@ -117,6 +119,7 @@ function replicationApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_api/replication/batch/${id}`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -131,6 +134,7 @@ function replicationApiAuthzSuite () {
       arango.GET_RAW(`/_db/_system/_api/replication/clusterInventory`);
       // a single server rejects the request before asking
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         ...clusterOnly([
           "AdminClusterInfo"

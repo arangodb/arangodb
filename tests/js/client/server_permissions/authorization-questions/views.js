@@ -113,6 +113,7 @@ function viewApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/view`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c level=read",
         "SeeView db=d name=v_apitest",
@@ -129,6 +130,7 @@ function viewApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/${DB}/_api/view`, viewBody);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "CreateView db=d name=v_apitest linkedCollections=[c]",
@@ -149,6 +151,7 @@ function viewApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/view/${TEST_VIEW}`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseView db=d name=v_apitest level=read",
         "UseCollection db=d name=c level=read",
@@ -164,6 +167,7 @@ function viewApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/view/${TEST_VIEW}/properties`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseView db=d name=v_apitest level=read",
         "UseCollection db=d name=c level=read",
@@ -184,6 +188,7 @@ function viewApiAuthzSuite () {
       arango.PATCH_RAW(`/_db/${DB}/_api/view/${TEST_VIEW}/properties`,
                        { cleanupIntervalStep: 2 });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "ModifyView db=d name=v_apitest linkedCollections=[]",
@@ -203,6 +208,7 @@ function viewApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/view/${TEST_VIEW}/properties`, {});
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "ModifyView db=d name=v_apitest linkedCollections=[]",
@@ -225,6 +231,7 @@ function viewApiAuthzSuite () {
       arango.PATCH_RAW(`/_db/${DB}/_api/view/${TEST_VIEW}/rename`,
                        { name: TEST_VIEW_NEW });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "RenameView db=d oldName=v_apitest newName=v_apitest_new",
@@ -243,6 +250,7 @@ function viewApiAuthzSuite () {
       arango.PUT_RAW(`/_db/${DB}/_api/view/${TEST_VIEW}/rename`,
                      { name: TEST_VIEW_NEW });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "RenameView db=d oldName=v_apitest newName=v_apitest_new",
@@ -259,6 +267,7 @@ function viewApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/view/${TEST_VIEW}`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "DropView db=d name=v_apitest",

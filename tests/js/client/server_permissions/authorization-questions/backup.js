@@ -94,6 +94,7 @@ function backupApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/_system/_admin/backup/list`, {});
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "AdminBackup"
       ], endObserve());
@@ -105,6 +106,7 @@ function backupApiAuthzSuite () {
       const res = arango.POST_RAW(`/_db/_system/_admin/backup/create`,
                                   { label: 'apitestcreate' });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "AdminBackup"
       ], endObserve());
@@ -121,6 +123,7 @@ function backupApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/_system/_admin/backup/delete`, { id: id });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "AdminBackup"
       ], endObserve());
