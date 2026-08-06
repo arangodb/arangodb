@@ -174,7 +174,7 @@ void ArangodServer::addFeatures() {
   // Adding the features - order matters for dependency resolution
   addFeature<AqlFeature>();
 
-  auto& sharedPRNGFeature = addFeature<SharedPRNGFeature>();
+  addFeature<SharedPRNGFeature>();
 #ifdef USE_V8
   addFeature<ConsoleFeature>();
 #endif
@@ -210,6 +210,7 @@ void ArangodServer::addFeaturesWithOptionProvider() {
       addFeature<RocksDBRecoveryManager>(database, database);
   auto& systemDatabaseFeature = getFeature<SystemDatabaseFeature>();
   auto& aqlFunctionFeature = getFeature<aql::AqlFunctionFeature>();
+  auto& sharedPRNGFeature = getFeature<SharedPRNGFeature>();
 
   addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
   addFeature<LoggerFeature>(true, getOptions<LoggerOptionsProvider>());
