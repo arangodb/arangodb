@@ -41,8 +41,8 @@ void VectorIndexOptionsProvider::declareOptions(
                             Flags::OnDBServer, Flags::OnSingle))
       .setIntroducedIn(31204)
       .setLongDescription(R"(This startup option should not be enabled for
-  Agents in a cluster as it has no effect on them other than that you need to
-  leave the option enabled.)");
+Agents in a cluster as it has no effect on them other than that you need to
+leave the option enabled.)");
 
   programOptions
       ->addOption(
