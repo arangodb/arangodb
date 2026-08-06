@@ -708,26 +708,34 @@ async<Result> RestHandler::checkUserCanAccess() const {
     co_return Result();
   }
 
+  auto const& ci = request()->connectionInfo();
+  auto hasUnixDomainSocketConnection =
+      [endpointType = ci.endpointType,
+       areAuthenticationUnixSockets = auth->authenticationUnixSockets()]() {
+#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
+        // no authentication required for unix domain socket connections
+        if (endpointType == Endpoint::DomainType::UNIX &&
+            !areAuthenticationUnixSockets) {
+          return true;
+        }
+#endif
+        return false;
+      };
+
+  if (not request()->authenticated()) {
+    co_return hasUnixDomainSocketConnection()
+        ? Result{}
+        : Result(TRI_ERROR_HTTP_UNAUTHORIZED, "User not authenticated.");
+  }
+
   auto ec = request()->requestContext();
   TRI_ASSERT(ec != nullptr) << "no exec context in request: " << this->name();
-
-#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
-  // no authentication required for unix domain socket connections
-  if (auto const& ci = request()->connectionInfo();
-      ci.endpointType == Endpoint::DomainType::UNIX &&
-      !auth->authenticationUnixSockets()) {
-    co_return Result{};
-  }
-#endif
-
-  bool const userAuthenticated = request()->authenticated();
-  if (not userAuthenticated) {
-    co_return Result(TRI_ERROR_HTTP_UNAUTHORIZED, "User not authenticated.");
-  }
-
   auto canUseDB =
       ec->canUseDatabase(request()->databaseName(), DatabaseAccessLevel::Read);
   if (canUseDB.ok()) {
+    co_return Result{};
+  }
+  if (hasUnixDomainSocketConnection()) {
     co_return Result{};
   }
   if (_request->requestedApiVersion() == 0 && ec->isClassic()) {
