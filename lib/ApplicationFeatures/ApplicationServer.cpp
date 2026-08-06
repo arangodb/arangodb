@@ -198,7 +198,7 @@ void ApplicationServer::run(int argc, char* argv[]) {
   // setup and validate all feature dependencies
   // This is needed to also add the feature coming from
   // addFeaturesWithOptionProvider to the _orderedFeatures vector
-  setupDependencies();
+  setupDependencies(true);
 
   // turn off all features that depend on other features that have been
   // turned off
@@ -449,7 +449,7 @@ void ApplicationServer::validateOptions() {
 }
 
 // setup and validate all feature dependencies, determine feature order
-void ApplicationServer::setupDependencies() {
+void ApplicationServer::setupDependencies(bool failOnMissing) {
   LOG_TOPIC("15559", TRACE, Logger::STARTUP)
       << "ApplicationServer::validateDependencies";
 
@@ -457,11 +457,13 @@ void ApplicationServer::setupDependencies() {
   for (auto& [_id, feature] : _features) {
     for (auto const& other : feature->startsBefore()) {
       if (!hasFeature(other)) {
-        _fail(std::string{"feature '"}
-                  .append(feature->name())
-                  .append("' depends on unknown feature '")
-                  .append(other.name())
-                  .append("'"));
+        if (failOnMissing) {
+          _fail(std::string{"feature '"}
+                    .append(feature->name())
+                    .append("' depends on unknown feature '")
+                    .append(other.name())
+                    .append("'"));
+        }
         continue;
       }
       getFeature(other).startsAfter(feature->registration());
@@ -474,27 +476,28 @@ void ApplicationServer::setupDependencies() {
   }
 
   // first check if a feature references an unknown other feature
-
-  apply(
-      [this](ApplicationFeature& feature) {
-        for (auto& other : feature.dependsOn()) {
-          if (!hasFeature(other)) {
-            _fail(std::string{"feature '"}
-                      .append(feature.name())
-                      .append("' depends on unknown feature '")
-                      .append(other.name())
-                      .append("'"));
+  if (failOnMissing) {
+    apply(
+        [this](ApplicationFeature& feature) {
+          for (auto& other : feature.dependsOn()) {
+            if (!hasFeature(other)) {
+              _fail(std::string{"feature '"}
+                        .append(feature.name())
+                        .append("' depends on unknown feature '")
+                        .append(other.name())
+                        .append("'"));
+            }
+            if (!getFeature(other).isEnabled()) {
+              _fail(std::string{"enabled feature '"}
+                        .append(feature.name())
+                        .append("' depends on other feature '")
+                        .append(getFeature(other).name())
+                        .append("', which is disabled"));
+            }
           }
-          if (!getFeature(other).isEnabled()) {
-            _fail(std::string{"enabled feature '"}
-                      .append(feature.name())
-                      .append("' depends on other feature '")
-                      .append(getFeature(other).name())
-                      .append("', which is disabled"));
-          }
-        }
-      },
-      true);
+        },
+        true);
+  }
 
   // first insert all features, even the inactive ones
   std::vector<std::reference_wrapper<ApplicationFeature>> features;

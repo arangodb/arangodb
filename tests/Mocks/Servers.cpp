@@ -305,7 +305,7 @@ void MockServer::startFeatures() {
   // to underlying server()
   _started = true;
 
-  _server.setupDependencies();
+  _server.setupDependencies(false);
   auto orderedFeatures = _server.getOrderedFeatures();
 
   if (_server.hasFeature<DatabaseFeature>()) {
