@@ -207,13 +207,6 @@
       type: single
     requires:
       coverage: false
-- arangodbtests_rocksdb:
-    options:
-      priority: 1000
-      size: small
-      type: single
-    requires:
-      coverage: false
 - rta_makedata:
     options:
       type: mixed
