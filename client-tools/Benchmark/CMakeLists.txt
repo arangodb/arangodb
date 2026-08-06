@@ -19,6 +19,9 @@ target_link_libraries(${BIN_ARANGOBENCH}
 if (USE_JEMALLOC)
   target_link_libraries(${BIN_ARANGOBENCH} jemalloc)
 endif ()
+if (USE_MIMALLOC)
+  target_link_libraries(${BIN_ARANGOBENCH} mimalloc)
+endif ()
 
 install(
   TARGETS ${BIN_ARANGOBENCH}

@@ -410,6 +410,17 @@ endif()
 
 option(USE_JEMALLOC "use jemalloc memory allocator" ON)
 
+option(USE_MIMALLOC "use mimalloc memory allocator (mutually exclusive with jemalloc)" OFF)
+
+# mimalloc and jemalloc both override the global malloc/free; only one can be
+# linked into the process. Selecting mimalloc therefore disables jemalloc.
+if(USE_MIMALLOC)
+  if(USE_JEMALLOC)
+    message(STATUS "USE_MIMALLOC is ON -> disabling USE_JEMALLOC (allocators are mutually exclusive)")
+  endif()
+  set(USE_JEMALLOC OFF CACHE BOOL "use jemalloc memory allocator" FORCE)
+endif()
+
 option(USE_LIBUNWIND "use libunwind for stack traces" ON)
 
 option(USE_BUILD_ID_READER "Add code to read arangod's build-id from within arangod" ON)
@@ -716,6 +727,10 @@ endif()
 
 if(USE_JEMALLOC_PROF)
   add_definitions("-DUSE_MEMORY_PROFILE=1")
+endif()
+
+if(USE_MIMALLOC)
+  add_definitions("-DARANGODB_HAVE_MIMALLOC=1")
 endif()
 
 # ------------------------------------------------------------------------------

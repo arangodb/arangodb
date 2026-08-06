@@ -289,6 +289,12 @@ void Version::initialize() {
   Values["jemalloc"] = "false";
 #endif
 
+#ifdef ARANGODB_HAVE_MIMALLOC
+  Values["mimalloc"] = "true";
+#else
+  Values["mimalloc"] = "false";
+#endif
+
 #ifdef USE_MEMORY_PROFILE
   Values["memory-profiler"] = "true";
 #else
@@ -575,6 +581,9 @@ std::string Version::getVerboseVersionString() {
   version << ", using ";
 #ifdef ARANGODB_HAVE_JEMALLOC
   version << "jemalloc, ";
+#endif
+#ifdef ARANGODB_HAVE_MIMALLOC
+  version << "mimalloc, ";
 #endif
 
 #ifdef HAVE_ARANGODB_BUILD_REPOSITORY
