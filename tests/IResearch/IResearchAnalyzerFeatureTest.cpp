@@ -3026,8 +3026,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_prepare) {
 TEST_F(IResearchAnalyzerFeatureTest, test_start) {
   auto vocbase = _systemDatabaseFeature.use();
 
-  // test feature start load configuration (engine !isReady(), no configuration
-  // collection)
+  // test feature start load configuration (!isReady(), no config collection)
   {
     // ensure no configuration collection
     {
@@ -3086,8 +3085,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
     feature.unprepare();
   }
 
-  // test feature start load configuration (engine !isReady(), with
-  // configuration collection)
+  // test feature start load configuration (!isReady(), with config collection)
   {
     // ensure there is an empty configuration collection
     {

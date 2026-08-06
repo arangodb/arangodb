@@ -825,9 +825,7 @@ void RocksDBEngine::prepare() {
     LOG_TOPIC("4cf5b", ERR, Logger::ENGINES) << hd.res.errorMessage();
   }
 
-  // make an initial inventory of WAL files, so that all WAL files
-  // metrics are correctly populated once the HTTP interface comes
-  // up
+  // inventory WAL files now so their metrics are ready before HTTP starts
   determineWalFilesInitial();
 }
 

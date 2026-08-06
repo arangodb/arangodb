@@ -1058,8 +1058,7 @@ Result Database::renameView(DataSourceId cid, std::string_view oldName) {
   // Important to save it here, before emplace in map
   auto dataSource = it1->second;
   TRI_ASSERT(std::dynamic_pointer_cast<LogicalView>(dataSource));
-  // skip persistence while engine not ready since definition already from
-  // engine
+  // not ready means this definition already came from the engine
   if (_engine.isReady()) {
     velocypack::Builder build;
     build.openObject();

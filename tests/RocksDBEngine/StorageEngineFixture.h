@@ -119,6 +119,8 @@ class StorageEngineFixture : public ::testing::Test {
     ON_CALL(_suite->dbProvider, defaultReplicationVersion())
         .WillByDefault(Return(replication::Version::ONE));
 
+    RocksDBEngine::cleanupStaleRecoveryHelpers();
+
     _suite->engine.prepare();
     _suite->engine.start();
   }

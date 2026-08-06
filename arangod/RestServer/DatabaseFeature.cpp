@@ -501,8 +501,7 @@ void DatabaseFeature::unprepare() {
 }
 
 void DatabaseFeature::prepare() {
-  // true only for the real, production RocksDBEngine, which calls
-  // openDatabases() itself once its storage is ready
+  // only the real RocksDBEngine defers and calls openDatabases() itself
   bool deferToStorageEngine = false;
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS

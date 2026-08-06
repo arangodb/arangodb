@@ -530,6 +530,11 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
     TRI_ASSERT(_recoveryStartSequence == 0);
     _recoveryStartSequence = value;
   }
+
+  // IResearchFeature could have left stale helpers from a previous test.
+  static void cleanupStaleRecoveryHelpers() noexcept {
+    _recoveryHelpers.clear();
+  }
 #endif
 
   class RocksDBSnapshot final : public StorageSnapshot {

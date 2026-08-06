@@ -46,8 +46,7 @@ ServerIdFeature::ServerIdFeature(
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 
-  // must run before DatabaseFeature::prepare() opens databases, since
-  // that constructs collections whose GUIDs embed the server id
+  // must run first: DatabaseFeature::prepare() embeds the server id in GUIDs
   startsBefore<DatabaseFeature>();
 }
 
