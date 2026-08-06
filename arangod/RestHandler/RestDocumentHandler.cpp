@@ -28,7 +28,6 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
@@ -154,7 +153,6 @@ void RestDocumentHandler::shutdownExecute(bool isFinalized) noexcept {
 }
 
 async<void> RestDocumentHandler::insertDocument() {
-  LOG_DEVEL << "Hans Wurst";
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.size() > 1) {
