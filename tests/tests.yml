@@ -239,7 +239,7 @@
       encryptionAtRest: true
       ssl: true
 
-- rta_makedata:
+- rta_makedata_cluster_oneshard:
     options:
       type: cluster
     requires:
@@ -248,7 +248,7 @@
       forceOneShard: true
       makedataDB: system_oneshard_makedata
       suffix: cluster-oneshard
-    name: rta_makedata_cluster-oneshard
+    name: rta_makedata
 
 - chaos:
     options:
