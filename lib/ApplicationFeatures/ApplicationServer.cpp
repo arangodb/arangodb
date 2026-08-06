@@ -174,9 +174,6 @@ void ApplicationServer::run(int argc, char* argv[]) {
   reportServerProgress(State::IN_COLLECT_OPTIONS);
   collectOptions();
 
-  // setup dependency, but ignore any failure for now
-  setupDependencies(false);
-
   // parse the command line parameters and load any configuration
   // file(s)
   parseOptions(argc, argv);
@@ -439,16 +436,16 @@ void ApplicationServer::validateOptions() {
   LOG_TOPIC("1ed27", TRACE, Logger::STARTUP)
       << "ApplicationServer::validateOptions";
 
-  for (ApplicationFeature& feature : _orderedFeatures) {
-    if (feature.isEnabled()) {
-      LOG_TOPIC("fa73c", TRACE, Logger::STARTUP)
-          << feature.name() << "::validateOptions";
-      reportFeatureProgress(_state.load(std::memory_order_relaxed),
-                            feature.name());
-      feature.validateOptions(_options);
-      feature.state(ApplicationFeature::State::VALIDATED);
-    }
-  }
+  apply(
+      [this](ApplicationFeature& feature) {
+        LOG_TOPIC("fa73c", TRACE, Logger::STARTUP)
+            << feature.name() << "::validateOptions";
+        reportFeatureProgress(_state.load(std::memory_order_relaxed),
+                              feature.name());
+        feature.validateOptions(_options);
+        feature.state(ApplicationFeature::State::VALIDATED);
+      },
+      true);
 }
 
 // setup and validate all feature dependencies, determine feature order
@@ -524,6 +521,20 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
     }
     features.insert(insertPosition, *us);
   }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // validate that features is totally ordered
+  for (std::size_t i = 0; i < features.size(); ++i) {
+    auto const& feature = features[i].get();
+    for (std::size_t j = i + 1; j < features.size(); ++j) {
+      auto const& other = features[j].get();
+      if (other.doesStartBefore(feature.registration())) {
+        LOG_DEVEL << "feature '" << feature.name() << "' is ordered BEFORE '"
+                  << other.name() << "' but should start AFTER it";
+      }
+    }
+  }
+#endif
 
   if (Logger::isEnabled(LogLevel::TRACE, Logger::STARTUP)) {
     LOG_TOPIC("0fafb", TRACE, Logger::STARTUP) << "ordered features:";
