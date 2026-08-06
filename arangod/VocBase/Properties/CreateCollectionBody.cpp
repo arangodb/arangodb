@@ -130,7 +130,7 @@ bool hasDistributeShardsLike(VPackSlice fullBody,
                              DatabaseConfiguration const& config) {
   // Only true if we have a non-empty string as DistributeShardsLike
   // Always false on SingleServer.
-  return config.isOneShardDB ||
+  return config.oneShardDBConfiguration.has_value() ||
          (fullBody.hasKey(StaticStrings::DistributeShardsLike) &&
           fullBody.get(StaticStrings::DistributeShardsLike).isString() &&
           !fullBody.get(StaticStrings::DistributeShardsLike)
@@ -357,7 +357,7 @@ auto handleDistributeShardsLike(std::string_view key, VPackSlice value,
     // We ignore the null.
     return;
   }
-  if (!config.isOneShardDB) {
+  if (!config.oneShardDBConfiguration.has_value()) {
     if (isSingleServer() && !isSmart(fullBody)) {
       // Community can not use distributeShardsLike on SingleServer
 
@@ -777,7 +777,7 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromRestoreAPIBody(
 
         if (!col.shardingStrategy.has_value() &&
             !col.distributeShardsLike.has_value() &&
-            config.defaultDistributeShardsLike.empty()) {
+            !config.oneShardDBConfiguration.has_value()) {
           col.shardingStrategy = "hash";
         }
       });
@@ -800,7 +800,7 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromRestoreAPIBody(
           col.id = config.idGenerator();
           if (!col.shardingStrategy.has_value() &&
               !col.distributeShardsLike.has_value() &&
-              config.defaultDistributeShardsLike.empty()) {
+              !config.oneShardDBConfiguration.has_value()) {
             const bool isSmart =
 #if USE_ENTERPRISE
                 col.isSmart;
