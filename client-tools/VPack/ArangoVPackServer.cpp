@@ -58,7 +58,6 @@ void ArangoVPackServer::addFeatures() {
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(
       std::array{std::type_index(typeid(VPackFeature))});
-  addFeature<VPackFeature>(_ret);
 }
 
 void ArangoVPackServer::addFeaturesWithOptionProvider() {
@@ -69,6 +68,7 @@ void ArangoVPackServer::addFeaturesWithOptionProvider() {
   addFeature<ProcessEnvironmentFeature>(
       _binaryName, getOptions<ProcessEnvironmentOptionsProvider>());
 #endif
+  addFeature<VPackFeature>(_ret, getOptions<VPackOptionsProvider>());
 }
 
 }  // namespace arangodb

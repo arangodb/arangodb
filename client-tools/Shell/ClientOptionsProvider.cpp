@@ -42,8 +42,8 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void ClientOptionsProvider::declareOptions(std::shared_ptr<ProgramOptions> opts,
-                                           ClientFeatureOptions& options) {
+void ClientOptionsProvider::declareOptionsImpl(
+    std::shared_ptr<ProgramOptions> opts, ClientFeatureOptions& options) {
   opts->addSection("server", "server connection");
 
   opts->addOption("--server.database",
@@ -193,7 +193,7 @@ request body size.
 Using the value 0 disables the automatic request compression.)");
 }
 
-void ClientOptionsProvider::validateOptions(
+void ClientOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, ClientFeatureOptions& options) {
   if (options.sslProtocol == SslProtocol::SSL_V2) {
     LOG_TOPIC("64f4f", FATAL, arangodb::Logger::SSL)
