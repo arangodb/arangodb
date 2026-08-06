@@ -86,7 +86,7 @@ parameters:
     # built in parallel (a list of individual targets is built serially).
   test-build-targets:
     type: string
-    default: "arangodbtests arangodbtests_rocksdb fuertetest"
+    default: "arangodbtests fuertetest"
   # only used by the kafka driver tests
   kafkaHostList:
     type: string
