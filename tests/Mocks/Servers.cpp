@@ -346,6 +346,14 @@ void MockServer::startFeatures() {
     }
   }
 
+  if (_server.hasFeature<DatabaseFeature>()) {
+    auto& dbFeature = _server.getFeature<DatabaseFeature>();
+    // Only add a database if we have the feature.
+    auto const databases = velocypack::Parser::fromJson(
+        R"([{"name": ")" + StaticStrings::SystemDatabase + R"("}])");
+    dbFeature.loadDatabases(databases->slice());
+  }
+
   for (ApplicationFeature& f : orderedFeatures) {
     auto info = _features.find(&f);
     // We only start those features...

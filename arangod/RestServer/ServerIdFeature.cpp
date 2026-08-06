@@ -31,6 +31,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Random/RandomGenerator.h"
+#include "RestServer/CheckVersionFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 
@@ -45,6 +46,8 @@ ServerIdFeature::ServerIdFeature(
     : ApplicationFeature{server, *this} {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
+  startsAfter<DatabasePathFeature>();
+  startsAfter<CheckVersionFeature>();
 
   // must run first: DatabaseFeature::prepare() embeds the server id in GUIDs
   startsBefore<DatabaseFeature>();

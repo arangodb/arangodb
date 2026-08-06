@@ -214,7 +214,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // perform a physical deletion of the database
   virtual Result dropDatabase(TRI_vocbase_t& database) = 0;
 
-  /// @brief is database in recovery
+  /// @brief true once recovery has finished and the engine is running
   bool isReady();
 
   /// @brief current recovery state

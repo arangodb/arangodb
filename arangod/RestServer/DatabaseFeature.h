@@ -132,9 +132,6 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
 
   void recoveryDone() override;
 
-  /// @brief open all databases described by the given inventory
-  void openDatabases(velocypack::Slice databases);
-
   /// @brief whether or not the DatabaseFeature has started (and thus has
   /// completely populated its lists of databases and collections from
   /// persistent storage)
@@ -240,6 +237,9 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
 
   /// @brief iterate over all databases in the databases directory and open them
   ErrorCode iterateDatabases(velocypack::Slice databases);
+
+  /// @brief open all databases described by the given inventory
+  void openDatabases(velocypack::Slice databases);
 
   /// @brief close all opened databases
   void closeOpenDatabases();
