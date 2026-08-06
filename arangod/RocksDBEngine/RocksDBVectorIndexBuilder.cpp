@@ -712,6 +712,62 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
     }
   };
 
+  // Periodically reports pipeline throughput, queue occupancy and how often
+  // each stage blocked in the last interval, so starvation can be diagnosed
+  // while the (potentially hours-long) ingestion is still running. Reading the
+  // queue occupancies tells us directly which stage is the bottleneck:
+  //   docChan near-empty  -> reader cannot keep encoders fed (reader-bound)
+  //   docChan near-full   -> encoders cannot drain it     (encoder-bound)
+  //   encChan near-empty  -> encoders cannot keep writers fed (encoder-bound)
+  //   encChan near-full   -> writers cannot drain it      (writer-bound)
+  constexpr auto monitorInterval = std::chrono::seconds{5};
+  auto monitorLoop = [&](std::stop_token st) {
+    using clock = std::chrono::steady_clock;
+    auto lastTime = clock::now();
+    std::size_t lastDocs = 0;
+    uint64_t lastRead = 0, lastEncCons = 0, lastEncProd = 0, lastWriteCons = 0;
+
+    auto interruptibleSleep = [&] {
+      auto const deadline = clock::now() + monitorInterval;
+      while (clock::now() < deadline && not st.stop_requested()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds{100});
+      }
+    };
+
+    while (not st.stop_requested()) {
+      interruptibleSleep();
+
+      auto const now = clock::now();
+      auto const secs = std::chrono::duration<double>(now - lastTime).count();
+      auto const docs = countDocuments.load();
+      auto const rd = counters.readProduceBlocked.load();
+      auto const ec = counters.encodeConsumeBlocked.load();
+      auto const ep = counters.encodeProduceBlocked.load();
+      auto const wc = counters.writeConsumeBlocked.load();
+      auto const docsPerSec =
+          secs > 0.0 ? static_cast<uint64_t>((docs - lastDocs) / secs) : 0;
+
+      LOG_TOPIC("d3a71", INFO, Logger::ENGINES)
+          << "[shard=" << shardName << ", index=" << indexId << "] "
+          << "Ingestion progress: " << docs << " docs @ " << docsPerSec
+          << " docs/s | queues docChan=" << documentChannel.approxSize() << "/"
+          << documentChannel.capacity()
+          << " encChan=" << encodedChannel.approxSize() << "/"
+          << encodedChannel.capacity()
+          << " | blocked/interval readProduce=" << (rd - lastRead)
+          << " encodeConsume=" << (ec - lastEncCons)
+          << " encodeProduce=" << (ep - lastEncProd)
+          << " writeConsume=" << (wc - lastWriteCons);
+
+      lastTime = now;
+      lastDocs = docs;
+      lastRead = rd;
+      lastEncCons = ec;
+      lastEncProd = ep;
+      lastWriteCons = wc;
+    }
+  };
+
   std::vector<std::jthread> threads;
 
   auto startNThreads = [&](auto& func, size_t n) {
@@ -726,11 +782,15 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
       << numReaders << " num-encoders=" << numEncoders
       << " numWriters=" << numWriters;
 
+  std::jthread monitorThread(monitorLoop);
+
   startNThreads(readDocuments, numReaders);
   startNThreads(encodeVectors, numEncoders);
   startNThreads(writeDocuments, numWriters);
 
   threads.clear();
+
+  monitorThread.request_stop();
 
   if (firstError.ok()) {
     LOG_TOPIC("41658", INFO, Logger::ENGINES)

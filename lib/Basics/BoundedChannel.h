@@ -99,6 +99,16 @@ struct BoundedChannel {
     return std::make_pair(true, blocked);
   }
 
+  // Maximum number of items the channel can hold. Fixed at construction.
+  [[nodiscard]] std::size_t capacity() const noexcept { return _queue.size(); }
+
+  // Approximate number of items currently queued. Intended for progress
+  // reporting; takes the lock briefly, so do not call it on a hot path.
+  [[nodiscard]] std::size_t approxSize() {
+    std::unique_lock guard(_mutex);
+    return _produceIndex - _consumeIndex;
+  }
+
   std::mutex _mutex;
   std::condition_variable _writeCv;
   std::condition_variable _readCv;
