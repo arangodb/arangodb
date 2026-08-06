@@ -136,8 +136,11 @@ async<Result> RestClusterHandler::checkUserCanAccess() const {
   auto const& suffixes = _request->suffixes();
   if (_request->authenticated() && suffixes.size() == 1 &&
       suffixes[0] == "endpoints") {
-    // endpoint shall be available to all authenticated users
-    co_return Result{};
+    // endpoint shall be available to all authenticated users - but still only
+    // via an API version they may use
+    auto const ec = _request->requestContext();
+    ADB_PROD_ASSERT(ec != nullptr);
+    co_return ec->canUseApiVersion(_request->requestedApiVersion());
   }
 
   co_return co_await RestBaseHandler::checkUserCanAccess();

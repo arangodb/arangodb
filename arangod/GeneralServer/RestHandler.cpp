@@ -730,6 +730,13 @@ async<Result> RestHandler::checkUserCanAccess() const {
 
   auto ec = request()->requestContext();
   TRI_ASSERT(ec != nullptr) << "no exec context in request: " << this->name();
+  if (auto res = ec->canUseApiVersion(request()->requestedApiVersion());
+      res.fail()) {
+    LOG_TOPIC("3b1a7", TRACE, Logger::AUTHORIZATION)
+        << "API version forbidden for " << request()->requestPath();
+    co_return res;
+  }
+
   auto canUseDB =
       ec->canUseDatabase(request()->databaseName(), DatabaseAccessLevel::Read);
   if (canUseDB.ok()) {

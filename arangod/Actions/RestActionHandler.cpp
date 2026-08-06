@@ -140,12 +140,24 @@ bool isPublicAardvarkPath(std::string_view path) {
 }
 
 async<Result> RestActionHandler::checkUserCanAccess() const {
+  auto const canUseApiVersion = [this]() -> Result {
+    // this function is reachable before logging in when there is no identity to
+    // check api version against
+    if (!request()->authenticated()) {
+      return {};
+    }
+    auto const ec = request()->requestContext();
+    TRI_ASSERT(ec != nullptr);
+    return ec->canUseApiVersion(request()->requestedApiVersion());
+  };
+
   auto const& path = request()->requestPath();
   if (isPublicAardvarkPath(path)) {
     // Note that we do **not** escalate to superuser for these!
-    co_return Result{};
+    co_return canUseApiVersion();
   }
 
+  // does api version check internally
   auto r = co_await RestHandler::checkUserCanAccess();
   if (r.ok()) {
     co_return r;
@@ -156,6 +168,11 @@ async<Result> RestActionHandler::checkUserCanAccess() const {
   if (auth->authenticationSystemOnly()) {  // TODO remove in 4.0
     // check if path is / which is required for the web UI to get started
     if (!path.empty() && !path.starts_with("/_")) {
+      // Escalating to superuser must not hand out an API version the identity
+      // is not allowed to use - `r` may well be that very denial.
+      if (auto res = canUseApiVersion(); res.fail()) {
+        co_return res;
+      }
       _mustEscalateToSuperuser = true;
       co_return Result{};
     }
