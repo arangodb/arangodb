@@ -188,6 +188,7 @@
       type: single
       suffix: _large
       buckets: 2
+      parallelity: 6
     args:
       # TODO: BTS-2283
       encryptionAtRest: false
@@ -233,15 +234,16 @@
 # with coverage we need to bucketise:
 - rta_makedata:
     requires:
-      coverage: false
+      coverage: true
     args:
       encryptionAtRest: true
       ssl: true
 
 - rta_makedata:
-    requires:
+    options:
       type: cluster
-      coverage: false
+    requires:
+      coverage: true
     args:
       forceOneShard: true
       makedataDB: system_oneshard_makedata
@@ -275,6 +277,7 @@
       priority: 1000
       type: mixed
       size: large
+      parallelity: 6
     suites:
       - deadlock:
           args:
@@ -353,6 +356,7 @@
       priority: 500
       size: large
       type: cluster
+      parallelity: 6
     args:
       dumpAgencyOnError: true
     suites:
@@ -414,6 +418,7 @@
       type: cluster
       buckets: 5
       suffix: _large
+      parallelity: 6
     args:
       dumpAgencyOnError: true
       # TODO: BTS-2283
@@ -465,7 +470,7 @@
 
 - shell_client_aql_vector:
     options:
-      parallelity: 5
+      parallelity: 6
       size: medium+
       type: cluster
     args:
