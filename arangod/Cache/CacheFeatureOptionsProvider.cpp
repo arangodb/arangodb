@@ -168,6 +168,19 @@ try to free up memory by evicting the oldest entries.)")
       .setIntroducedIn(31202);
 }
 
+void CacheFeatureOptionsProvider::processOptionsImpl(
+    std::shared_ptr<ProgramOptions>, CacheOptions& options) {
+  if (options.maxCacheValueSize == 0 && options.cacheSize > 0) {
+    options.cacheSize = 0;
+    LOG_TOPIC("9b1ae", WARN, arangodb::Logger::FIXME)
+        << "`--cache.max-value-size` was set to 0 via configuration, which "
+           "will "
+           "effectively disable caching in many cases. Please consider "
+           "adjusting the value or turn the cache off explicitly by setting "
+           "`--cache.size` to 0.";
+  }
+}
+
 void CacheFeatureOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions>, CacheOptions& options) {
   if (options.cacheSize > 0 && options.cacheSize < cache::Manager::kMinSize) {
@@ -182,16 +195,6 @@ void CacheFeatureOptionsProvider::validateOptionsImpl(
         << "invalid values for `--cache.ideal-lower-fill-ratio' and "
            "`--cache.ideal-upper-fill-ratio`";
     FATAL_ERROR_EXIT();
-  }
-
-  if (options.maxCacheValueSize == 0 && options.cacheSize > 0) {
-    options.cacheSize = 0;
-    LOG_TOPIC("9b1ae", WARN, arangodb::Logger::FIXME)
-        << "`--cache.max-value-size` was set to 0 via configuration, which "
-           "will "
-           "effectively disable caching in many cases. Please consider "
-           "adjusting the value or turn the cache off explicitly by setting "
-           "`--cache.size` to 0.";
   }
 }
 

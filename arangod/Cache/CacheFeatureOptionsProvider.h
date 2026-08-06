@@ -32,6 +32,9 @@ struct CacheFeatureOptionsProvider
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           CacheOptions& options);
 
+  void processOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          CacheOptions& options);
+
   void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                            CacheOptions& options);
 };

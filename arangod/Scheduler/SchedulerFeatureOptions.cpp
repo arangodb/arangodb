@@ -29,8 +29,8 @@
 namespace arangodb {
 
 /*static*/ uint64_t SchedulerFeatureOptions::getDefaultMaxThreads() noexcept {
-  // use two times the number of hardware threads as the default
-  // but only if higher than 64. otherwise use a default minimum value of 32
+  // use two times the number of hardware threads as the default,
+  // but never less than 32
   return (std::max)(static_cast<uint64_t>(32),
                     static_cast<uint64_t>(NumberOfCores::getValue()) * 2);
 }

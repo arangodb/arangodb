@@ -36,8 +36,8 @@ struct SchedulerOptionsProvider
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           SchedulerFeatureOptions& options);
 
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                           SchedulerFeatureOptions& options);
+  void processOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          SchedulerFeatureOptions& options);
 };
 
 }  // namespace arangodb

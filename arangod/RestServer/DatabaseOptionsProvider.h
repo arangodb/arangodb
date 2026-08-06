@@ -31,8 +31,6 @@ struct DatabaseOptionsProvider
     : OptionsProviderImpl<DatabaseOptionsProvider, DatabaseFeatureOptions> {
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           DatabaseFeatureOptions& options);
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
-                           DatabaseFeatureOptions& /*options*/) {}
 };
 
 }  // namespace arangodb

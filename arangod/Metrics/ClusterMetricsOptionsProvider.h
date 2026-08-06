@@ -37,8 +37,6 @@ struct ClusterMetricsOptionsProvider
                           ClusterMetricsOptions> {
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           ClusterMetricsOptions& options);
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
-                           ClusterMetricsOptions& /*options*/) {}
 };
 
 }  // namespace arangodb::metrics

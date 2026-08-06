@@ -417,10 +417,8 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   addFeature<UpgradeFeature>(_ret, kNonServerFeatures,
                              getOptions<UpgradeOptionsProvider>());
 
-  // ClusterUpgradeFeature/CheckVersionFeature/UpgradeFeature all set these
-  // flags on DatabaseFeature from their own constructors, so this can only
-  // be checked once all three have been constructed
-  if (database.checkVersion() && database.upgrade()) {
+  if (getOptions<check_version::CheckVersionOptionsProvider>().checkVersion &&
+      getOptions<UpgradeOptionsProvider>().upgrade) {
     LOG_TOPIC("a25b0", FATAL, Logger::FIXME)
         << "cannot specify both '--database.check-version' and "
            "'--database.auto-upgrade'";

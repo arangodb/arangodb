@@ -184,7 +184,7 @@ return HTTP 503 instead of HTTP 200 when their availability API is probed.)");
   options->addOldOption("scheduler.threads", "server.maximal-threads");
 }
 
-void SchedulerOptionsProvider::validateOptionsImpl(
+void SchedulerOptionsProvider::processOptionsImpl(
     std::shared_ptr<options::ProgramOptions> options,
     SchedulerFeatureOptions& opts) {
   auto const N = NumberOfCores::getValue();
