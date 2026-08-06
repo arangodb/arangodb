@@ -45,9 +45,3 @@ void RocksDBRestHandlers::registerResources(
       RestHandlerCreator<RocksDBRestWalHandler>::createData<StorageEngine*>,
       {0, 1}, &engine);
 }
-
-/// @brief Add engine-specific REST handlers
-void RocksDBEngine::addRestHandlers(
-    rest::RestHandlerFactory& handlerFactory) {
-  RocksDBRestHandlers::registerResources(&handlerFactory, *this);
-}

@@ -88,7 +88,8 @@ target_link_libraries(arango_rocksdb
     arango_health
     snappy)
 
-add_library(arango_rocksdb_rest OBJECT
+add_library(arango_rocksdb_rest STATIC
+  RocksDBEngineRest.cpp
   RocksDBRestCollectionHandler.cpp
   RocksDBRestHandlers.cpp
   RocksDBRestReplicationHandler.cpp
@@ -104,12 +105,6 @@ target_link_libraries(arango_rocksdb_rest
 target_include_directories(arango_rocksdb_rest PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}"
-)
-
-add_library(arango_rocksdb_with_rest INTERFACE)
-target_link_libraries(arango_rocksdb_with_rest INTERFACE
-  arango_rocksdb_rest
-  $<TARGET_OBJECTS:arango_rocksdb_rest>
 )
 
 set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")

@@ -26,6 +26,7 @@ target_link_libraries(arangoserver
         arango_agency
         arango_aql
         arango_cluster_engine
+        arango_cluster_engine_rest
         arango_cluster_methods
         arango_common_rest_handler
         arango_futures
@@ -38,7 +39,7 @@ target_link_libraries(arangoserver
         arango_network
         arango_replication
         arango_storage_engine
-        arango_rocksdb_with_rest
+        arango_rocksdb_rest
         arango_utils
         arango_vocbase
         arango_scheduler
