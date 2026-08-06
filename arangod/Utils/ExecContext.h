@@ -290,13 +290,11 @@ struct ExecContextScope {
 ///
 /// Use this to deliberately run an internal execution path with a clear
 /// purpose -- e.g. the startup thread, a dedicated background thread, or
-/// system-collection maintenance -- as Superuser. Prefer this named type over
-/// ExecContextScope(ExecContext::superuserAsShared()) so that all such places
-/// remain easy to find and enumerate.
+/// system-collection maintenance -- as Superuser.
 ///
-/// Do NOT use this to escalate privileges during request handling in order to
+/// Avoid using this to escalate privileges during request handling in order to
 /// skip subsequent permission checks; authorization methods on ExecContext
-/// should handle such cases properly on their own.
+/// should handle such cases properly on their own, whenever possible.
 struct ExecContextSuperuserScope {
   explicit ExecContextSuperuserScope();
 
