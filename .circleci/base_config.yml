@@ -5,7 +5,7 @@ orbs:
   aws-ecr: circleci/aws-ecr@9.0.1
   # Exact pin: a floating orb range silently changes what runs. Keep in
   # sync with base_nightly_packages.yml.
-  trivy-scan: arangodb/trivy-scan@1.5.0
+  trivy-scan: arangodb/trivy-scan@1.6.0
 
 parameters:
   enterprise-commit:
