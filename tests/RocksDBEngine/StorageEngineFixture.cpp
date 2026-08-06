@@ -25,4 +25,10 @@ namespace arangodb::tests {
 
 std::unique_ptr<StorageEngineFixtureSuite> StorageEngineFixture::_suite;
 
+StorageEngineFixtureSuite::~StorageEngineFixtureSuite() {
+  while (!scheduler.queueEmpty()) {
+    scheduler.runOnce();
+  }
+}
+
 }  // namespace arangodb::tests
