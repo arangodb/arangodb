@@ -121,6 +121,7 @@ function userApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/user`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "AdminReadUsers",
         "ReadUser name=root",
@@ -138,6 +139,7 @@ function userApiAuthzSuite () {
       arango.POST_RAW(`/_db/_system/_api/user`,
                       { user: testuser, passwd: 'testpasswd' });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "IsReadOnly",
         "CreateUser name=testuser",
@@ -158,7 +160,7 @@ function userApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/_system/_api/user/${testuser}`,
                       { passwd: 'testpasswd' });
-      assertPermissions([], endObserve());
+      assertPermissions(["UseApiVersion version=0"], endObserve());
     },
 
     // GET /_api/user/testuser - canReadUser(testuser)
@@ -167,6 +169,7 @@ function userApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/user/${testuser}`);
       assertPermissions([
+        "UseApiVersion version=0",
         "ReadUser name=testuser"
       ], endObserve());
     },
@@ -177,6 +180,7 @@ function userApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/user/${testuser}/config`);
       assertPermissions([
+        "UseApiVersion version=0",
         "ReadUser name=testuser"
       ], endObserve());
     },
@@ -188,6 +192,7 @@ function userApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/user/${testuser}/database`);
       assertPermissions([
+        "UseApiVersion version=0",
         "ReadUser name=testuser"
       ], endObserve());
     },
@@ -199,6 +204,7 @@ function userApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/user/${testuser}/database/d2`);
       assertPermissions([
+        "UseApiVersion version=0",
         "ReadUser name=testuser"
       ], endObserve());
     },
@@ -211,6 +217,7 @@ function userApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/user/${testuser}/database/d2/c2`);
       assertPermissions([
+        "UseApiVersion version=0",
         "ReadUser name=testuser"
       ], endObserve());
     },
@@ -222,6 +229,7 @@ function userApiAuthzSuite () {
       arango.PUT_RAW(`/_db/_system/_api/user/${testuser}`,
                      { passwd: 'newpasswd' });
       assertPermissions([
+        "UseApiVersion version=0",
         "IsReadOnly",
         "ModifyUserProfile name=testuser",
         ...singleOnly([
@@ -237,6 +245,7 @@ function userApiAuthzSuite () {
       beginObserve();
       arango.PATCH_RAW(`/_db/_system/_api/user/${testuser}`, { active: true });
       assertPermissions([
+        "UseApiVersion version=0",
         "IsReadOnly",
         "ModifyUserProfile name=testuser",
         ...singleOnly([
@@ -253,6 +262,7 @@ function userApiAuthzSuite () {
       arango.PUT_RAW(`/_db/_system/_api/user/${testuser}/config/testkey`,
                      { value: 42 });
       assertPermissions([
+        "UseApiVersion version=0",
         "IsReadOnly",
         "ModifyUserProfile name=testuser",
         ...singleOnly([
@@ -270,6 +280,7 @@ function userApiAuthzSuite () {
       arango.PUT_RAW(`/_db/_system/_api/user/${testuser}/database/d2`,
                      { grant: 'ro' });
       assertPermissions([
+        "UseApiVersion version=0",
         "IsReadOnly",
         "GrantUserPermissions name=testuser",
         ...singleOnly([
@@ -289,6 +300,7 @@ function userApiAuthzSuite () {
       arango.PUT_RAW(`/_db/_system/_api/user/${testuser}/database/d2/c2`,
                      { grant: 'ro' });
       assertPermissions([
+        "UseApiVersion version=0",
         "IsReadOnly",
         "GrantUserPermissions name=testuser",
         ...singleOnly([
@@ -304,6 +316,7 @@ function userApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_api/user/${testuser}`);
       assertPermissions([
+        "UseApiVersion version=0",
         "IsReadOnly",
         "DropUser name=testuser",
         ...singleOnly([
@@ -321,6 +334,7 @@ function userApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_api/user/${testuser}/config/testkey`);
       assertPermissions([
+        "UseApiVersion version=0",
         "IsReadOnly",
         "ModifyUserProfile name=testuser",
         ...singleOnly([
@@ -339,6 +353,7 @@ function userApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_api/user/${testuser}/database/d2`);
       assertPermissions([
+        "UseApiVersion version=0",
         "IsReadOnly",
         "GrantUserPermissions name=testuser",
         ...singleOnly([
@@ -359,6 +374,7 @@ function userApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_api/user/${testuser}/database/d2/c2`);
       assertPermissions([
+        "UseApiVersion version=0",
         "IsReadOnly",
         "GrantUserPermissions name=testuser",
         ...singleOnly([

@@ -69,6 +69,7 @@ function authorizationQuestionsSuite () {
       beginObserve();
       arango.GET_RAW(`/_api/collection/${cn}/count`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "UseCollection db=_system name=UnitTestsAuthzQuestions level=read"
       ], endObserve());
@@ -78,6 +79,7 @@ function authorizationQuestionsSuite () {
       beginObserve();
       arango.POST_RAW(`/_api/document/${cn}`, { value: 1 });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "IsReadOnly",
         "UseCollection db=_system name=UnitTestsAuthzQuestions level=writedata",
@@ -94,6 +96,7 @@ function authorizationQuestionsSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_api/collection/${cn}`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "IsReadOnly",
         "DropCollection db=_system name=UnitTestsAuthzQuestions",
@@ -114,6 +117,7 @@ function authorizationQuestionsSuite () {
       beginObserve();
       arango.GET_RAW('/_api/version');
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },

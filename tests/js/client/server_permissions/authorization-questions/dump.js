@@ -115,6 +115,7 @@ function dumpApiAuthzSuite () {
       // AUDIT: on a coordinator the question carries an empty collection
       // name, and AdminDump is not asked at all
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         ...singleOnly([
           "DumpCollection db=d name=c",
@@ -142,6 +143,7 @@ function dumpApiAuthzSuite () {
       arango.POST_RAW(
         `/_db/${DB}/_api/dump/next/${dumpId}?batchId=${batchId}`, {});
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
       abortDump(dumpId);
@@ -156,6 +158,7 @@ function dumpApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/dump/${dumpId}`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
       abortDump(dumpId);

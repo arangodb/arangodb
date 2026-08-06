@@ -74,6 +74,7 @@ function walApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/wal/properties`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -83,6 +84,7 @@ function walApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_admin/wal/properties`, {});
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -92,6 +94,7 @@ function walApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/wal/transactions`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -101,6 +104,7 @@ function walApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_admin/wal/flush`, {});
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -115,6 +119,7 @@ function walApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_admin/wal/wait_for_estimator_sync`, {});
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "AdminWalAccess"
       ], endObserve());

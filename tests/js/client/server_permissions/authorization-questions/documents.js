@@ -96,6 +96,7 @@ function documentApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/document/${c}/${key}`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c level=read"
       ], endObserve());
@@ -107,6 +108,7 @@ function documentApiAuthzSuite () {
       beginObserve();
       arango.HEAD_RAW(`/_db/${DB}/_api/document/${c}/${key}`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c level=read"
       ], endObserve());
@@ -118,6 +120,7 @@ function documentApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/${DB}/_api/document/${c}`, { _key: key, value: 1 });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "UseCollection db=d name=c level=writedata",
@@ -133,6 +136,7 @@ function documentApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/document/${c}/${key}`, { value: 2 });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "UseCollection db=d name=c level=writedata",
@@ -148,6 +152,7 @@ function documentApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/document/${c}`, [{ _key: key, value: 2 }]);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "UseCollection db=d name=c level=writedata",
@@ -163,6 +168,7 @@ function documentApiAuthzSuite () {
       beginObserve();
       arango.PATCH_RAW(`/_db/${DB}/_api/document/${c}/${key}`, { value: 3 });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "UseCollection db=d name=c level=writedata",
@@ -178,6 +184,7 @@ function documentApiAuthzSuite () {
       beginObserve();
       arango.PATCH_RAW(`/_db/${DB}/_api/document/${c}`, [{ _key: key, value: 3 }]);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "UseCollection db=d name=c level=writedata",
@@ -193,6 +200,7 @@ function documentApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/document/${c}/${key}`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "UseCollection db=d name=c level=writedata",
@@ -208,6 +216,7 @@ function documentApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/document/${c}`, [{ _key: key }]);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "UseCollection db=d name=c level=writedata",

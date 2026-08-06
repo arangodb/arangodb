@@ -90,6 +90,7 @@ function cursorApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/${DB}/_api/cursor`, { query: `FOR d IN ${c} RETURN d` });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c level=read"
       ], endObserve());
@@ -102,6 +103,7 @@ function cursorApiAuthzSuite () {
       const res = arango.POST_RAW(`/_db/${DB}/_api/cursor`,
                                   { query: `FOR d IN ${c} RETURN d`, batchSize: 10 });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c level=read"
       ], endObserve());
@@ -117,6 +119,7 @@ function cursorApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/${DB}/_api/cursor/${cur.id}`, {});
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
       dropCursor(cur.id);
@@ -129,6 +132,7 @@ function cursorApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/cursor/${cur.id}`, {});
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
       dropCursor(cur.id);
@@ -141,6 +145,7 @@ function cursorApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/${DB}/_api/cursor/${cur.id}/${cur.nextBatchId}`, {});
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
       dropCursor(cur.id);
@@ -152,6 +157,7 @@ function cursorApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/cursor/${cur.id}`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
     },

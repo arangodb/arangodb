@@ -72,6 +72,7 @@ function aqlApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/aql-builtin`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },

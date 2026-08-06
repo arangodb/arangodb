@@ -75,6 +75,7 @@ function debugApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/debug/failat`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -84,6 +85,7 @@ function debugApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/debug/failat/all`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -95,6 +97,7 @@ function debugApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_admin/debug/failat/${failPoint}`, {});
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
       arango.DELETE_RAW(`/_db/_system/_admin/debug/failat/${failPoint}`);
@@ -107,6 +110,7 @@ function debugApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_admin/debug/failat/${failPoint}`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -116,6 +120,7 @@ function debugApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_admin/debug/failat`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -125,6 +130,7 @@ function debugApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_admin/debug/raceControl`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
