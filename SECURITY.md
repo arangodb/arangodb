@@ -4,9 +4,11 @@
 
 Two ways to reach us. Either is fine, the first is preferred.
 
-1. **GitHub private reporting.** On the affected repository, open the Security tab and
-   use "Report a vulnerability". This creates a private advisory only our security team
-   can see, and it keeps the discussion attached to the code.
+1. **GitHub private reporting.** Use
+   [Report a vulnerability](https://github.com/arangodb/arangodb/security/advisories/new)
+   on this repository, or the Security tab of whichever repository is affected. This
+   creates a private advisory only our security team can see, and it keeps the discussion
+   attached to the code.
 2. **Email [security@arango.ai](mailto:security@arango.ai).** Use this for anything that
    is not tied to one repository, or if you would rather not use GitHub.
 
