@@ -26,7 +26,6 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
-#include "ApplicationFeatures/VersionFeature.h"
 #include "Logger/LoggerOptions.h"
 #include <velocypack/Builder.h>
 
@@ -39,7 +38,6 @@ class ProgramOptions;
 }
 
 class ShellColorsFeature;
-class VersionFeature;
 
 class LoggerFeature final : public application_features::ApplicationFeature {
  public:

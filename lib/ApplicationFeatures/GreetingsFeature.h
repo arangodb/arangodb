@@ -27,7 +27,6 @@
 
 namespace arangodb {
 
-extern char const* LGPLNotice;
 void logLGPLNotice(void);
 
 class LoggerFeature;
