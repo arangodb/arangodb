@@ -210,40 +210,40 @@
     requires:
       coverage: false
 # without coverage this is fast enough:
-#- rta_makedata:
-#    options:
-#      type: mixed
-#    requires:
-#      coverage: false
-#    suites:
-#      - rta_makedata:
-#          args:
-#            suffix: single
-#      - rta_makedata:
-#          args:
-#            cluster: true
-#            suffix: cluster
-#            encryptionAtRest: true
-#            ssl: true
-#      - rta_makedata:
-#          args:
-#            cluster: true
-#            forceOneShard: true
-#            makedataDB: system_oneshard_makedata
-#            suffix: cluster-oneshard
-# with coverage we need to bucketise:
 - rta_makedata:
+    options:
+      type: mixed
     requires:
       coverage: false
+    suites:
+      - rta_makedata:
+          args:
+            suffix: single
+      - rta_makedata:
+          args:
+            cluster: true
+            suffix: cluster
+            encryptionAtRest: true
+            ssl: true
+      - rta_makedata:
+          args:
+            cluster: true
+            forceOneShard: true
+            makedataDB: system_oneshard_makedata
+            suffix: cluster-oneshard
+# with coverage we need to have several jobs:
+- rta_makedata:
+    requires:
+      coverage: true
     args:
       encryptionAtRest: true
       ssl: true
 
-- rta_makedata_cluster_oneshard:
+- rta_makedata_oneshard:
     options:
       type: cluster
     requires:
-      coverage: false
+      coverage: true
     args:
       forceOneShard: true
       makedataDB: system_oneshard_makedata
