@@ -31,7 +31,8 @@
 //   arangod/SystemMonitor/Activities/RestHandler.cpp
 //   arangod/SystemMonitor/AsyncRegistry/RestHandler.cpp
 //
-// Every request first asks `UseDatabase name=_system level=read` in
+// Every request first asks `UseApiVersion version=0` and then
+// `UseDatabase name=_system level=read` in
 // RestHandler::checkUserCanAccess() (connected database is _system). Both
 // handlers then ask canUseAdminAction(AdminMonitoringInternal), so the
 // observed question is AdminMonitoringInternal.

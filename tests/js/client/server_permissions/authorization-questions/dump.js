@@ -28,7 +28,8 @@
 //
 // Handler: arangod/RestHandler/RestDumpHandler.cpp
 //
-// Every request first asks `UseDatabase name=d level=read` in
+// Every request first asks `UseApiVersion version=0` and then
+// `UseDatabase name=d level=read` in
 // RestHandler::checkUserCanAccess() (the paths carry the /_db/d/ prefix).
 //
 //   POST /_api/dump/start   validateRequest() iterates the requested shards and

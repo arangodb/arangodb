@@ -29,8 +29,9 @@
 // Handler: arangod/RestHandler/RestJobHandler.cpp
 //
 // RestJobHandler performs NO ExecContext checks of its own. The only
-// authorization question is the base `UseDatabase name=_system level=read`
-// asked by RestHandler::checkUserCanAccess() for every request (the job
+// authorization questions are the base `UseApiVersion version=0` and
+// `UseDatabase name=_system level=read` asked by
+// RestHandler::checkUserCanAccess() for every request (the job
 // endpoints carry no /_db prefix, so the connected database _system applies;
 // we spell it out explicitly). The per-job ownership filtering inside
 // AsyncJobManager uses exec.user()/exec.isSuperuser(), which do not call can()

@@ -34,7 +34,7 @@
 // StandaloneContext, so the collection access check happens in the transaction
 // layer (StorageEngine/TransactionState.cpp checkCollectionPermission): a READ
 // transaction asks `UseCollection ... level=read`. Every request additionally
-// asks `UseDatabase name=d level=read` first.
+// asks `UseApiVersion version=0` and `UseDatabase name=d level=read` first.
 
 if (getOptions === true) {
   return {

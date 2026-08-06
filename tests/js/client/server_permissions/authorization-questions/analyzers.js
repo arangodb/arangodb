@@ -29,7 +29,8 @@
 // Handler: arangod/RestHandler/RestAnalyzerHandler.cpp
 //          arangod/IResearch/IResearchAnalyzerFeature.cpp
 //
-// Every request first asks `UseDatabase name=<db> level=read` in
+// Every request first asks `UseApiVersion version=0` and then
+// `UseDatabase name=<db> level=read` in
 // RestHandler::checkUserCanAccess(), where <db> is the database in the path
 // (d for /_db/d/..., _system for the plain /_api/... routes).
 //

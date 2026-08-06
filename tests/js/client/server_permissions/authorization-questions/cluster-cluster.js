@@ -33,8 +33,9 @@
 // cluster configurations only (see filterTestcaseByOptions() in
 // js/client/modules/@arangodb/testutils/test-utils.js).
 //
-// Every request except `endpoints` first asks
-// `UseDatabase name=_system level=read` in RestHandler::checkUserCanAccess()
+// Every request first asks `UseApiVersion version=0`; every request
+// except `endpoints` then asks `UseDatabase name=_system level=read` in
+// RestHandler::checkUserCanAccess()
 // (the routes have no /_db/ prefix, so the database is the connected _system).
 // Per-route ExecContext::can() questions:
 //

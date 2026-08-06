@@ -28,7 +28,8 @@
 //
 // Handler: arangod/RestHandler/RestDatabaseHandler.cpp
 //
-// Every request first asks the base `UseDatabase name=<db> level=read` in
+// Every request first asks the base `UseApiVersion version=0` and then
+// `UseDatabase name=<db> level=read` in
 // RestHandler::checkUserCanAccess(), where <db> is the database in the request
 // path prefix. Beyond that:
 //   - GET (list / current / user / shardStatistics) go through

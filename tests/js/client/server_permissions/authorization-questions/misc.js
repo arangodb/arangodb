@@ -27,7 +27,8 @@
 //
 // Observation-based counterpart of tests/api/apitests/misc.mjs.
 //
-// Every request first asks `UseDatabase name=<db> level=read` in
+// Every request first asks `UseApiVersion version=0` and then
+// `UseDatabase name=<db> level=read` in
 // RestHandler::checkUserCanAccess() (the base check fires for any authenticated
 // request while authentication is on), where <db> is derived from the
 // /_db/<name>/ path prefix. Individual handlers then ask further questions:
@@ -515,12 +516,12 @@ function miscApiAuthzSuite () {
     },
 
     // ── /openapi.json ────────────────────────────────────────────────────
-    // RestOpenApiHandler (extends RestBaseHandler) does not override
-    // checkUserCanAccess, so the base UseDatabase check fires; the request has
-    // no /_db/ prefix, so it addresses the _system database. execute() itself
-    // asks no can().
-    // AUDIT: documented as OPEN (unauthenticated -> 200), but an authenticated
-    // root request still triggers the base UseDatabase(_system, read) check.
+    // RestOpenApiHandler::checkUserCanAccess returns early for exactly this
+    // path - the spec must be readable before logging in - so the base
+    // implementation never runs and neither the API version nor the database
+    // is asked about. execute() itself asks no can() either.
+    // AUDIT: nothing is observed even for an authenticated root request; for
+    // any other path of this handler the base questions would fire.
     testOpenApiSpec: function () {
       beginObserve();
       arango.GET_RAW(`/openapi.json`);

@@ -30,7 +30,8 @@
 //
 // These are OPEN (public) endpoints. RestAuthHandler overrides
 // checkUserCanAccess() to unconditionally forceSuperuser() and return OK, so
-// the universal `UseDatabase name=... level=read` base check is NOT asked.
+// neither the universal `UseApiVersion version=0` nor the
+// `UseDatabase name=... level=read` base check is asked.
 // execute() only inspects the request body / JWT and generates a token; it
 // never consults the ExecContext. Hence these endpoints ask NOTHING at all -
 // the observed set is empty for every request, regardless of the credentials
