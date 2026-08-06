@@ -30,7 +30,6 @@
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
-#include "ApplicationFeatures/VersionFeature.h"
 #include "Benchmark/BenchFeature.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/LogMacros.h"
@@ -94,7 +93,6 @@ void ArangoBenchServer::addFeatures() {
 }
 
 void ArangoBenchServer::addFeaturesWithOptionProvider() {
-  addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
   addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
   addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());
   addFeature<TempFeature>(_binaryName, getOptions<TempOptionsProvider>());

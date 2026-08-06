@@ -53,6 +53,7 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Rest/Version.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -177,11 +178,6 @@ void ApplicationServer::run(int argc, char* argv[]) {
   // parse the command line parameters and load any configuration
   // file(s)
   parseOptions(argc, argv);
-
-  if (!_helpSection.empty()) {
-    // help shown. we can exit early
-    return;
-  }
 
   // seal the options
   _options->seal();
@@ -372,6 +368,19 @@ void ApplicationServer::collectOptions() {
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Command));
 
+  _options->addOption(
+      "--version",
+      "Print the version and other related information, then exit.",
+      new BooleanParameter(&_printVersion), makeDefaultFlags(Flags::Command));
+
+  _options
+      ->addOption("--version-json",
+                  "Print the version and other related information in JSON "
+                  "format, then exit.",
+                  new BooleanParameter(&_printVersionJson),
+                  makeDefaultFlags(Flags::Command))
+      .setIntroducedIn(30900);
+
   apply(
       [this](ApplicationFeature& feature) {
         LOG_TOPIC("b2731", TRACE, Logger::STARTUP)
@@ -396,13 +405,25 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
       _helpSection = ".";
     }
     _options->printHelp(_helpSection);
-    return;
+    exit(EXIT_SUCCESS);
   }
 
   if (!parser.parse(argc, argv)) {
     // command-line option parsing failed. an error was already printed
     // by now, so we can exit
     FATAL_ERROR_EXIT_CODE(_options->processingResult().exitCodeOrFailure());
+  }
+
+  // handle `--version-json` command
+  if (_printVersionJson) {
+    rest::Version::printJson(std::cout);
+    exit(EXIT_SUCCESS);
+  }
+
+  // handle `--version` command
+  if (_printVersion) {
+    rest::Version::print(std::cout);
+    exit(EXIT_SUCCESS);
   }
 
   if (_dumpDependencies) {
