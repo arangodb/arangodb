@@ -50,7 +50,6 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer& server,
       _options(std::move(options)),
       _threaded(threaded) {
   startsAfter<ShellColorsFeature>();
-  startsAfter<VersionFeature>();
   setOptional(false);
 }
 

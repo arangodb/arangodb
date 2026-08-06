@@ -69,6 +69,7 @@ struct TestSchedulerProvider final : ISchedulerProvider {
 };
 
 struct StorageEngineFixtureSuite {
+  ~StorageEngineFixtureSuite();
   metrics::FakeRegistry metricsRegistry;
   application_features::ApplicationServer server{nullptr, nullptr};
   ScopedServerStateReset serverStateReset;
