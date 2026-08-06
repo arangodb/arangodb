@@ -66,8 +66,6 @@ class AqlQueryLimitsTest
 };
 
 TEST_F(AqlQueryLimitsTest, testManyNodes) {
-  // COR-824: test runs without an installed ExecContext; use the
-  // superuser singleton explicitly instead of ExecContext::current().
   arangodb::CreateDatabaseInfo testDBInfo(server.server(),
                                           arangodb::ExecContext::superuser());
   testDBInfo.load("testVocbase", 2);
@@ -112,8 +110,6 @@ TEST_F(AqlQueryLimitsTest, testTooManyNodes) {
 }
 
 TEST_F(AqlQueryLimitsTest, testDeepRecursion) {
-  // COR-824: test runs without an installed ExecContext; use the
-  // superuser singleton explicitly instead of ExecContext::current().
   arangodb::CreateDatabaseInfo testDBInfo(server.server(),
                                           arangodb::ExecContext::superuser());
   testDBInfo.load("testVocbase", 2);
@@ -136,8 +132,6 @@ TEST_F(AqlQueryLimitsTest, testDeepRecursion) {
 }
 
 TEST_F(AqlQueryLimitsTest, testTooDeepRecursion) {
-  // COR-824: test runs without an installed ExecContext; use the
-  // superuser singleton explicitly instead of ExecContext::current().
   arangodb::CreateDatabaseInfo testDBInfo(server.server(),
                                           arangodb::ExecContext::superuser());
   testDBInfo.load("testVocbase", 2);

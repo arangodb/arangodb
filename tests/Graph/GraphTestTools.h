@@ -63,9 +63,6 @@ namespace graph {
 struct GraphTestSetup
     : public arangodb::tests::LogSuppressor<arangodb::Logger::FIXME,
                                             arangodb::LogLevel::ERR> {
-  // COR-824: graph tests drive queries/transactions directly, without the
-  // request that would install an ExecContext in production; install an
-  // explicit superuser context for the whole fixture.
   arangodb::ExecContextSuperuserScope execContextScope;
   arangodb::application_features::ApplicationServer server;
   StorageEngineMock engine;

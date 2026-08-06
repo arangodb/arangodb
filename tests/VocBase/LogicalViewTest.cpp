@@ -109,10 +109,6 @@ class LogicalViewTest
       public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
                                             arangodb::LogLevel::ERR> {
  protected:
-  // COR-824: this fixture drives production code (queries,
-  // transactions, vocbases) directly from the test thread, which
-  // in production always has an ExecContext installed; install an
-  // explicit superuser context for the whole fixture.
   arangodb::ExecContextSuperuserScope execContextScope;
   arangodb::application_features::ApplicationServer server;
   StorageEngineMock engine;
@@ -181,7 +177,7 @@ TEST_F(LogicalViewTest, test_auth) {
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
 
-  // superuser (the fixture's ambient superuser context, see COR-824)
+  // superuser (the fixture's ambient superuser context)
   {
     TRI_vocbase_t vocbase(testDBInfo(server), engine);
     auto logicalView = vocbase.createView(viewJson->slice(), false);

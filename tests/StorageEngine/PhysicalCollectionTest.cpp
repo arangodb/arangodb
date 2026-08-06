@@ -62,10 +62,6 @@ class PhysicalCollectionTest
       arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
                                      arangodb::LogLevel::WARN> {
  protected:
-  // COR-824: this fixture drives production code (queries,
-  // transactions, vocbases) directly from the test thread, which
-  // in production always has an ExecContext installed; install an
-  // explicit superuser context for the whole fixture.
   arangodb::ExecContextSuperuserScope execContextScope;
   arangodb::application_features::ApplicationServer server;
   StorageEngineMock engine;

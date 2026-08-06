@@ -66,8 +66,6 @@ class IndexNodeTest
 
 arangodb::CreateDatabaseInfo createInfo(
     arangodb::application_features::ApplicationServer& server) {
-  // COR-824: test setup runs without an installed ExecContext; use the
-  // superuser singleton explicitly instead of ExecContext::current().
   arangodb::CreateDatabaseInfo info(server,
                                     arangodb::ExecContext::superuser());
   auto rv = info.load("testVocbase", 2);
