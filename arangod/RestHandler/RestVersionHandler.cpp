@@ -22,7 +22,9 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ServerState.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
+#include "Logger/LogMacros.h"
 #include "Rest/ApiVersion.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerFeature.h"
@@ -112,7 +114,45 @@ async<Result> RestVersionHandler::checkUserCanAccess() const {
         : Result{TRI_ERROR_HTTP_UNAUTHORIZED, "Not authenticated."};
   }
 
-  co_return co_await RestBaseHandler::checkUserCanAccess();
+  // TODO if default version: no version check
+
+  auto const* const auth = AuthenticationFeature::instance();
+  if (!auth->isActive()) {
+    co_return Result();
+  }
+
+  if (not request()->authenticated()) {
+    co_return hasUnixDomainSocketConnection(*auth)
+        ? Result{}
+        : Result(TRI_ERROR_HTTP_UNAUTHORIZED, "User not authenticated.");
+  }
+
+  auto ec = request()->requestContext();
+  TRI_ASSERT(ec != nullptr) << "no exec context in request: " << this->name();
+  // here we allow default version
+  auto version = request()->requestedApiVersion();
+  if (auto res = ec->canUseApiVersion(version); res.fail()) {
+    if (version != api_version::defaultApiVersion) {
+      LOG_TOPIC("3b1a7", TRACE, Logger::AUTHORIZATION)
+          << "API version forbidden for " << request()->requestPath();
+      co_return res;
+    }
+  }
+
+  auto canUseDB =
+      ec->canUseDatabase(request()->databaseName(), DatabaseAccessLevel::Read);
+  if (canUseDB.ok()) {
+    co_return Result{};
+  }
+  if (hasUnixDomainSocketConnection(*auth)) {
+    co_return Result{};
+  }
+  if (_request->requestedApiVersion() == 0 && ec->isClassic()) {
+    co_return Result(TRI_ERROR_HTTP_UNAUTHORIZED,
+                     "No read access to database.");
+  } else {
+    co_return canUseDB;
+  }
 }
 
 void RestVersionHandler::getVersion(

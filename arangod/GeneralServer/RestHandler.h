@@ -56,6 +56,7 @@ class Future;
 template<typename>
 struct async;
 
+class AuthenticationFeature;
 class GeneralRequest;
 class RequestStatistics;
 class Result;
@@ -282,6 +283,9 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   RequestLane _lane;
 
  protected:
+  bool hasUnixDomainSocketConnection(
+      AuthenticationFeature const& authFeature) const;
+
   metrics::GaugeCounterGuard<std::uint64_t> _currentRequestsSizeTracker;
 
   std::atomic<bool> _canceled;

@@ -25,6 +25,7 @@
 #include "Activities/GenericActivity.h"
 #include "Activities/RegistryGlobalVariable.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Assertions/ProdAssert.h"
 #include "Auth/TokenCache.h"
 #include "Basics/DownCast.h"
 #include "Basics/dtrace-wrapper.h"
@@ -702,28 +703,28 @@ void RestHandler::compressResponse() {
   }
 }
 
+bool RestHandler::hasUnixDomainSocketConnection(
+    AuthenticationFeature const& authFeature) const {
+#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
+  // no authentication required for unix domain socket connections
+  if (auto const& ci = request()->connectionInfo();
+      ci.endpointType == Endpoint::DomainType::UNIX &&
+      !authFeature.authenticationUnixSockets()) {
+    return true;
+  }
+#endif
+  return false;
+}
+
 async<Result> RestHandler::checkUserCanAccess() const {
   auto const* const auth = AuthenticationFeature::instance();
+  ADB_PROD_ASSERT(auth != nullptr);
   if (!auth->isActive()) {
     co_return Result();
   }
 
-  auto const& ci = request()->connectionInfo();
-  auto hasUnixDomainSocketConnection =
-      [endpointType = ci.endpointType,
-       areAuthenticationUnixSockets = auth->authenticationUnixSockets()]() {
-#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
-        // no authentication required for unix domain socket connections
-        if (endpointType == Endpoint::DomainType::UNIX &&
-            !areAuthenticationUnixSockets) {
-          return true;
-        }
-#endif
-        return false;
-      };
-
   if (not request()->authenticated()) {
-    co_return hasUnixDomainSocketConnection()
+    co_return hasUnixDomainSocketConnection(*auth)
         ? Result{}
         : Result(TRI_ERROR_HTTP_UNAUTHORIZED, "User not authenticated.");
   }
@@ -742,7 +743,7 @@ async<Result> RestHandler::checkUserCanAccess() const {
   if (canUseDB.ok()) {
     co_return Result{};
   }
-  if (hasUnixDomainSocketConnection()) {
+  if (hasUnixDomainSocketConnection(*auth)) {
     co_return Result{};
   }
   if (_request->requestedApiVersion() == 0 && ec->isClassic()) {
