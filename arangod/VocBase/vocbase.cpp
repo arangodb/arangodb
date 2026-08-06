@@ -1709,12 +1709,9 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
   config.defaultNumberOfShards = 1;
   config.defaultReplicationFactor = replicationFactor();
   config.defaultWriteConcern = writeConcern();
-
-  config.isOneShardDB = cl.forceOneShard() || isOneShard();
-  if (config.isOneShardDB) {
-    config.defaultDistributeShardsLike = shardingPrototypeName();
-  } else {
-    config.defaultDistributeShardsLike = "";
+  if (cl.forceOneShard() || isOneShard()) {
+    config.oneShardDBConfiguration =
+        OneShardDatabaseConfiguration{shardingPrototypeName()};
   }
 
   config.replicationVersion = replicationVersion();
