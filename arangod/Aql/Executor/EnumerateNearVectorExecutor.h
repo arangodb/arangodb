@@ -32,6 +32,7 @@
 #include "Containers/FlatHashMap.h"
 #include "Containers/NodeHashMap.h"
 #include "VectorIndex/VectorReadBatch.h"
+#include "Enterprise/VectorGraphIndex/SearchParameters.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -67,8 +68,12 @@ struct EnumerateNearVectorsExecutorInfos {
   QueryContext& queryContext;
   aql::Collection const* collection;
 
-  // search configuration -- passed by reference straight to readBatch
+  // TODO(jbajic) This is hacked, separate the executors!
+  // search configuration -- passed by reference straight to readBatch (IVF)
   vector::VectorSearchConfig searchConfig;
+
+  // search parameters for the vector-graph index path
+  vector::SearchParametersGraphVector searchParametersGraphVector;
 
   // output strategy
   Projections projections;

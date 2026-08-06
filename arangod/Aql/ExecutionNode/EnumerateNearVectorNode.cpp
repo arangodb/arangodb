@@ -55,7 +55,7 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
     ExecutionPlan* plan, arangodb::aql::ExecutionNodeId id,
     Variable const* inVariable, Variable const* outVariable,
     Variable const* distanceOutVariable, std::size_t limit, bool ascending,
-    std::size_t offset, vector::SearchParameters searchParameters,
+    std::size_t offset, vector::SearchParametersVariant searchParameters,
     aql::Collection const* collection,
     transaction::Methods::IndexHandle indexHandle,
     std::unique_ptr<Expression> filterExpression, vector::FilterMode filterMode,
@@ -147,6 +147,13 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
   vector::SearchStrategy searchStrategy{.filter = _filterMode,
                                         .projection = _projectionMode};
 
+  // Exactly one alternative is active, selected by the index family. Each
+  // search path reads only its own struct; the other stays default.
+  auto const* ivfParameters =
+      std::get_if<vector::SearchParameters>(&_searchParameters);
+  auto const* graphVectorParameters =
+      std::get_if<vector::SearchParametersGraphVector>(&_searchParameters);
+
   // produceFromIndex needs each projection's coveringIndexPosition set
   // against the index's storedValues. Do it on a copy so the node's own
   // projections list is left untouched.
@@ -170,13 +177,17 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
       .collection = _collectionAccess.collection(),
       .searchConfig =
           vector::VectorSearchConfig{
-              .searchParameters = _searchParameters,
+              .searchParameters =
+                  ivfParameters ? *ivfParameters : vector::SearchParameters{},
               .topK = _limit + _offset,
               .filterExpression = filter(),
               .filterVarsToRegs = std::move(filterVarsToRegs),
               .documentVariable = _outVariable,
               .strategy = searchStrategy,
           },
+      .searchParametersGraphVector =
+          graphVectorParameters ? *graphVectorParameters
+                                : vector::SearchParametersGraphVector{},
       .projections = std::move(projections),
       .projectionMode = _projectionMode,
   };

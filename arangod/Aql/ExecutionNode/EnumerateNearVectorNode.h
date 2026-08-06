@@ -27,6 +27,7 @@
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionNode/CollectionAccessingNode.h"
 #include "VectorIndex/VectorSearchStrategy.h"
+#include "Enterprise/VectorGraphIndex/SearchParameters.h"
 #include "Transaction/Methods.h"
 
 #include <memory>
@@ -47,7 +48,7 @@ class EnumerateNearVectorNode : public ExecutionNode,
       ExecutionPlan* plan, ExecutionNodeId id, Variable const* inVariable,
       Variable const* outVariable, Variable const* distanceOutVariable,
       std::size_t limit, bool ascending, std::size_t offset,
-      vector::SearchParameters searchParameters,
+      vector::SearchParametersVariant searchParameters,
       aql::Collection const* collection,
       transaction::Methods::IndexHandle indexHandle,
       std::unique_ptr<Expression> filterExpression = nullptr,
@@ -120,8 +121,8 @@ class EnumerateNearVectorNode : public ExecutionNode,
   /// @brief contains the offset, this skips offset number of results
   std::size_t _offset;
 
-  /// @brief contains search parameters used by faiss
-  vector::SearchParameters _searchParameters;
+  /// @brief search parameters, one alternative per vector index family
+  vector::SearchParametersVariant _searchParameters;
 
   /// @brief selected index for vector search
   /// guaranteed to always be a vector index

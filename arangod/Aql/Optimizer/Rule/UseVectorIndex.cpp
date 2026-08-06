@@ -45,6 +45,7 @@
 #include "Containers/SmallVector.h"
 #include "Indexes/Index.h"
 #include "VectorIndex/VectorSearchStrategy.h"
+#include "Enterprise/VectorGraphIndex/SearchParameters.h"
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "Basics/ResourceUsage.h"
@@ -133,35 +134,44 @@ bool checkApproxNearExpressionMatchesVectorIndex(
   return true;
 }
 
-// Currently this only returns nProbe, in the future it might be possible to
-// set other search parameters
-vector::SearchParameters getSearchParameters(
+// Parses the optional options object of the APPROX_NEAR_* call into the
+// parameter struct for the resolved index family. Deserialization is strict:
+// an option that does not belong to the selected family (e.g. `nProbe` on a
+// vector-graph index) is rejected, so each index only accepts its own knobs.
+vector::SearchParametersVariant getSearchParameters(
     auto const* calculationNodeExpressionNode,
-    ResourceMonitor& resourceMonitor) {
+    std::shared_ptr<Index> const& index, ResourceMonitor& resourceMonitor) {
+  bool const isGraphVector =
+      index->type() == Index::TRI_IDX_TYPE_VECTOR_GRAPH_INDEX;
+
   ast::FunctionCallNode fcall(calculationNodeExpressionNode);
   auto approxFunctionParameters = fcall.getArguments().getElements();
 
-  if (approxFunctionParameters.size() == 3 &&
-      approxFunctionParameters[2]->isObject()) {
-    auto const searchParametersNode = approxFunctionParameters[2];
+  bool const hasOptions = approxFunctionParameters.size() == 3 &&
+                          approxFunctionParameters[2]->isObject();
 
-    vector::SearchParameters searchParameters;
+  auto const parse = [&]<class T>(T params) -> vector::SearchParametersVariant {
+    if (!hasOptions) {
+      return params;
+    }
     // Buffer won't escape from this function's scope
     velocypack::SupervisedBuffer sb(resourceMonitor);
     VPackBuilder builder(sb);
-    searchParametersNode->toVelocyPackValue(builder);
-    if (auto const res = velocypack::deserializeWithStatus(builder.slice(),
-                                                           searchParameters);
+    approxFunctionParameters[2]->toVelocyPackValue(builder);
+    if (auto const res =
+            velocypack::deserializeWithStatus(builder.slice(), params);
         !res.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_PARSE,
           std::format("error parsing searchParameters: {}!", res.error()));
     }
+    return params;
+  };
 
-    return searchParameters;
+  if (isGraphVector) {
+    return parse(vector::SearchParametersGraphVector{});
   }
-
-  return {};
+  return parse(vector::SearchParameters{});
 }
 
 AstNode* getApproxNearAttributeExpression(
@@ -350,8 +360,9 @@ void useVectorIndexRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                 index->name(), enumerateCollectionNode->collection()->name()));
       }
 
-      auto searchParameters = getSearchParameters(
-          approxNearExpression, plan->getAst()->query().resourceMonitor());
+      auto searchParameters =
+          getSearchParameters(approxNearExpression, index,
+                              plan->getAst()->query().resourceMonitor());
 
       // replace the collection enumeration with the enumerate near node
       // furthermore, we have to remove the calculation node
