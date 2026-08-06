@@ -168,7 +168,7 @@ orbs:
   # Exact pin: a floating orb range silently changes what gates the nightly
   # publish. 1.2.0 is the floor: 1.1.2's kev-epss-check fails closed on a
   # clean report and fails open on an empty threshold.
-  trivy-scan: arangodb/trivy-scan@1.2.0
+  trivy-scan: arangodb/trivy-scan@1.5.0
 
 parameters:
   enterprise-branch:
