@@ -266,6 +266,11 @@ class ExecContext {
   /// collections may be granted/revoked.
   Result canGrantUserPermissions(std::string_view userName) const;
 
+  /// @brief returns whether the given REST API version may be used, e.g. 1 for
+  /// `/_arango/v1`. Note that this does not ask whether the version exists -
+  /// that is decided by the handler factory.
+  Result canUseApiVersion(uint32_t version) const;
+
   static std::shared_ptr<ExecContext const> set(
       std::shared_ptr<ExecContext const> ctx) {
     std::swap(CURRENT, ctx);

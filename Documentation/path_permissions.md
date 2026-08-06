@@ -270,6 +270,8 @@ return a `Result`, so that a decline can return the actual reason
  - `canModifyUserProfile(std::string_view user) -> Result`
  - `canGrantUserPermissions(std::string_view user) -> Result`
 
+ - `canUseApiVersion(uint32_t version) -> Result`
+
  - `isSuperuser() -> bool`
 
 Note that for now, `canSee*` is equivalent to `canUse*(RO)`. For
