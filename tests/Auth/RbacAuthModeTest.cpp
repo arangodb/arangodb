@@ -77,6 +77,10 @@ std::string resourceStr(rbac::Resource const& resource) {
                         [](rbac::resources::User const& r) {
                           return std::string{"user:"} + std::string{r.name};
                         },
+                        [](rbac::resources::ApiVersion const& r) {
+                          return std::string{"apiversion:"} +
+                                 std::to_string(r.version);
+                        },
                     },
                     resource);
 }
@@ -439,6 +443,26 @@ TEST_F(RbacAuthModeTest, AdminBackup) {
 TEST_F(RbacAuthModeTest, AdminQueryCache) {
   check(p::AdminQueryCache{});
   expectSingle(rbac::Action::AdminQueryCache, "<none>");
+}
+
+// ---------------------------------------------------------------------------
+// API versions
+// ---------------------------------------------------------------------------
+
+TEST_F(RbacAuthModeTest, UseApiVersionAsksForTheVersionAsResource) {
+  EXPECT_TRUE(check(p::UseApiVersion{.version = 1}).ok());
+  expectSingle(rbac::Action::UseApiVersion, "apiversion:1");
+}
+
+TEST_F(RbacAuthModeTest, UseApiVersionDistinguishesVersions) {
+  check(p::UseApiVersion{.version = 0});
+  expectSingle(rbac::Action::UseApiVersion, "apiversion:0");
+}
+
+TEST_F(RbacAuthModeTest, UseApiVersionDenialIsPropagated) {
+  svc.answer = {TRI_ERROR_FORBIDDEN, "nope"};
+  EXPECT_EQ(check(p::UseApiVersion{.version = 1}).errorNumber(),
+            TRI_ERROR_FORBIDDEN);
 }
 
 // ---------------------------------------------------------------------------

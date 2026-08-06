@@ -621,6 +621,14 @@ Result ExecContext::canGrantUserPermissions(std::string_view userName) const {
   return {};
 }
 
+/// @brief returns whether the given REST API version may be used
+Result ExecContext::canUseApiVersion(uint32_t version) const {
+  using namespace auth::perms;
+  // Using an API version never modifies anything, so the read-only gate does
+  // not apply here.
+  return can(UseApiVersion{.version = version});
+}
+
 /// @brief returns true for each user which can be read
 std::vector<bool> ExecContext::canReadUsers(
     std::span<std::string_view> users) const {

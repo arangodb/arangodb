@@ -24,6 +24,7 @@
 
 #include "Basics/Meta/TypeList.h"
 
+#include <cstdint>
 #include <iosfwd>
 #include <span>
 #include <string>
@@ -345,6 +346,15 @@ struct GrantUserPermissions {
   std::string name;
 };
 
+// ---------------------------------------------------------------------------
+// API versions
+// ---------------------------------------------------------------------------
+
+// Grant permission to a specific api version
+struct UseApiVersion {
+  uint32_t version;
+};
+
 namespace detail {
 // Currently there's no need to subdivide this list, but feel free to
 // do that when it becomes useful.
@@ -362,7 +372,9 @@ using NonAdminList = meta::TypeList<
     // graph permissions
     SeeGraph, CreateGraph, DropGraph, UseGraph,
     // user permissions
-    ReadUser, CreateUser, DropUser, ModifyUserProfile, GrantUserPermissions>;
+    ReadUser, CreateUser, DropUser, ModifyUserProfile, GrantUserPermissions,
+    // api version permissions
+    UseApiVersion>;
 
 using CompleteList = meta::detail::Union<AdminList, NonAdminList>::type;
 }  // namespace detail

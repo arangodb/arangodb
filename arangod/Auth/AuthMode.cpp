@@ -241,6 +241,9 @@ auto describe(auth::perms::ModifyUserProfile const& perm) -> std::string {
 auto describe(auth::perms::GrantUserPermissions const& perm) -> std::string {
   return std::format("grant permissions to user '{}'", perm.name);
 }
+auto describe(auth::perms::UseApiVersion const& perm) -> std::string {
+  return std::format("use API version '{}'", perm.version);
+}
 auto failureMessage(auto const& request, std::string_view reason)
     -> std::string {
   return std::format("Failed to {}. {}", describe(request), reason);
@@ -872,6 +875,10 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                 auth::perms::UseDatabase{.name = StaticStrings::SystemDatabase,
                                          .level = DatabaseAccessLevel::Write});
           },
+          [&](p::UseApiVersion const& /*apiVersion*/) -> Result {
+            // The classic system does not restrict API versions
+            return {};
+          },
       },
       permission);
 }
@@ -1235,6 +1242,11 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
           [&](p::GrantUserPermissions const& user) -> Result {
             return checkOne(rbac::Action::WriteMeta,
                             rbac::resources::User{user.name});
+          },
+          // -- API versions ----------------------------------------------
+          [&](p::UseApiVersion const& apiVersion) -> Result {
+            return checkOne(rbac::Action::UseApiVersion,
+                            rbac::resources::ApiVersion{apiVersion.version});
           },
       },
       permission);

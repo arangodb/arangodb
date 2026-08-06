@@ -262,6 +262,11 @@ std::ostream& operator<<(std::ostream& os, Permission const& permission) {
           [&](GrantUserPermissions const& p) {
             os << "GrantUserPermissions name=" << p.name;
           },
+
+          // api versions
+          [&](UseApiVersion const& p) {
+            os << "UseApiVersion version=" << p.version;
+          },
       },
       permission);
   return os;
