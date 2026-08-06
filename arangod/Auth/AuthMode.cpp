@@ -854,7 +854,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                     .name = StaticStrings::SystemDatabase,
                     .level = DatabaseAccessLevel::Write});
                 r.fail()) {
-              return {TRI_ERROR_HTTP_FORBIDDEN, r.errorMessage()};
+              return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
             }
             return {};
           },
@@ -865,7 +865,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                     .name = StaticStrings::SystemDatabase,
                     .level = DatabaseAccessLevel::Write});
                 r.fail()) {
-              return {TRI_ERROR_HTTP_FORBIDDEN, r.errorMessage()};
+              return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
             }
             return {};
           },
@@ -879,7 +879,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                     .name = StaticStrings::SystemDatabase,
                     .level = DatabaseAccessLevel::Write});
                 r.fail()) {
-              return {TRI_ERROR_HTTP_FORBIDDEN, r.errorMessage()};
+              return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
             }
             return {};
           },
