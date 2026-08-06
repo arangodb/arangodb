@@ -3037,12 +3037,9 @@ futures::Future<OperationResult> Methods::countCoordinatorHelper(
         DatabaseFeature& databaseFeature =
             vocbase().server().getFeature<DatabaseFeature>();
         // post a refresh operation onto the scheduler, with LOW priority.
-        // note: the scheduler captures the current ExecContext (COR-821),
+        // note: the scheduler captures the current ExecContext,
         // so the refresh below runs on behalf of the user whose count
-        // request bumped the cache expiry. that is semantically correct
-        // (the user must have read access to the collection to get here);
-        // if their permissions are revoked concurrently, the refresh is
-        // simply skipped -- it is best effort anyway.
+        // request bumped the cache expiry.
         SchedulerFeature::SCHEDULER->queue(
             RequestLane::CLIENT_SLOW,
             [&databaseFeature, databaseName = collinfo->vocbase().name(),
