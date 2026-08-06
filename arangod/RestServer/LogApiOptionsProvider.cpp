@@ -35,20 +35,20 @@ void LogApiOptionsProvider::declareOptionsImpl(
                   "only enabled for the superuser (jwt).",
                   new options::StringParameter(&apiOpts.apiSwitch))
       .setLongDescription(R"(Credentials are not written to log files.
-        Nevertheless, some logged data might be sensitive depending on the context of
-        the deployment. For example, if request logging is switched on, user requests
-        and corresponding data might end up in log files. Therefore, a certain care
-        with log files is recommended.
-        
-        Since the database server offers an API to control logging and query logging
-        data, this API has to be secured properly. By default, the API is accessible
-        for admin users (administrative access to the `_system` database).
-        However, you can restrict it further to the superuser or disable it altogether:
-        
-         - `true`: The `/_admin/log` API is accessible for admin users.
-         - `jwt`: The `/_admin/log` API is accessible for the superuser only
-           (authentication with JWT superuser token and empty username).
-         - `false`: The `/_admin/log` API is not accessible at all.)");
+Nevertheless, some logged data might be sensitive depending on the context of
+the deployment. For example, if request logging is switched on, user requests
+and corresponding data might end up in log files. Therefore, a certain care
+with log files is recommended.
+
+Since the database server offers an API to control logging and query logging
+data, this API has to be secured properly. By default, the API is accessible
+for admin users (administrative access to the `_system` database).
+However, you can restrict it further to the superuser or disable it altogether:
+
+  - `true`: The `/_admin/log` API is accessible for admin users.
+  - `jwt`: The `/_admin/log` API is accessible for the superuser only
+    (authentication with JWT superuser token and empty username).
+  - `false`: The `/_admin/log` API is not accessible at all.)");
 }
 
 void LogApiOptionsProvider::validateOptionsImpl(

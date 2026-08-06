@@ -82,7 +82,7 @@ void IResearchOptionsProvider::declareOptionsImpl(
                   "tasks (0 = auto-detect).",
                   new options::UInt32Parameter(&opts.threads))
       .setDeprecatedIn(30705)
-      .setLongDescription(R"(From version 3.7.5 on, you should set the commit
+      .setLongDescription(R"(From v3.7.5 onward, you should set the commit
 and consolidation thread counts separately via the following options instead:
 
 - `--arangosearch.commit-threads`
@@ -104,7 +104,7 @@ then the commit and consolidation thread counts are calculated as follows:
           "for asynchronous tasks (0 = use default).",
           new options::UInt32Parameter(&opts.threadsLimit))
       .setDeprecatedIn(30705)
-      .setLongDescription(R"(From version 3.7.5 on, you should set the commit
+      .setLongDescription(R"(From v3.7.5 onward, you should set the commit
 and consolidation thread counts separately via the following options instead:
 
 - `--arangosearch.commit-threads`
