@@ -408,9 +408,9 @@ endif()
 # user options
 # ------------------------------------------------------------------------------
 
-option(USE_JEMALLOC "use jemalloc memory allocator" ON)
+option(USE_JEMALLOC "use jemalloc memory allocator" OFF)
 
-option(USE_MIMALLOC "use mimalloc memory allocator (mutually exclusive with jemalloc)" OFF)
+option(USE_MIMALLOC "use mimalloc memory allocator (mutually exclusive with jemalloc)" ON)
 
 # mimalloc and jemalloc both override the global malloc/free; only one can be
 # linked into the process. Selecting mimalloc therefore disables jemalloc.
