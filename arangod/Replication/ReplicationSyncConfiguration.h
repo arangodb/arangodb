@@ -66,10 +66,8 @@ class ReplicationSyncConfiguration {
   bool _adaptivePolling;
   bool _autoResync;  /// resync completely if we miss updates
   bool _includeSystem;
-  bool _includeFoxxQueues;   /// sync the _jobs and _queues collection
-  bool _requireFromPresent;  /// while tailing WAL: leader must have the
-                             /// client's requested tick
-  bool _incremental;         /// use incremental sync if we got local data
+  bool _includeFoxxQueues;  /// sync the _jobs and _queues collection
+  bool _incremental;        /// use incremental sync if we got local data
   bool _verbose;
   RestrictType _restrictType;
   std::set<std::string> _restrictCollections;
