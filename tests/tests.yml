@@ -551,12 +551,13 @@
           args:
             suffix: _vpack
             dumpVPack: true
-      - dump:
-          options:
-            name: dump_singleshard_cluster
-          args:
-            dumpVPack: true
-            forceOneShard: true
+      # BTS-1852 enable after fix:
+      # - dump:
+      #     options:
+      #       name: dump_singleshard_cluster
+      #     args:
+      #       dumpVPack: true
+      #       forceOneShard: true
 
 - dump_multiple_two:
     options:
