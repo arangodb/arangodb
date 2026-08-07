@@ -27,9 +27,12 @@
 
 namespace arangodb {
 
-struct SupervisorOptionsProvider : OptionsProvider<SupervisorFeatureOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> options,
-                      SupervisorFeatureOptions& opts) override;
+struct SupervisorOptionsProvider
+    : OptionsProviderImpl<SupervisorOptionsProvider, SupervisorFeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> options,
+                          SupervisorFeatureOptions& opts);
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*options*/,
+                           SupervisorFeatureOptions& /*opts*/){};
 };
 
 }  // namespace arangodb

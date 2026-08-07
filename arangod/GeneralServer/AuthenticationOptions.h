@@ -28,6 +28,8 @@
 namespace arangodb {
 
 struct AuthenticationOptions {
+  static constexpr size_t kMaxSecretLength = 64;
+
   bool authenticationUnixSockets = true;
   bool active = true;
   std::string externalRBACservice = "";  // means deactivated RBAC

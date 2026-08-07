@@ -216,9 +216,12 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
       const prefix = "FOR p IN OUTBOUND SHORTEST_PATH '" + cn + "/test0' TO '" + cn + "/test1' " + cn + "Edge OPTIONS ";
       const queries = [
         [prefix + "{ weightAttribute: 'testi' } RETURN 1"],
+        [prefix + "{ weightAttribute: ['testi'] } RETURN 1"],
+        [prefix + "{ weightAttribute: ['testi', 'nested'] } RETURN 1"],
         [prefix + "{ defaultWeight: 42.5 } RETURN 1"],
 
         [prefix + "{ weightAttribute: false } RETURN 1", "weightAttribute"],
+        [prefix + "{ weightAttribute: [['testi']] } RETURN 1", "weightAttribute"],
         [prefix + "{ defaultWeight: false } RETURN 1", "defaultWeight"],
         [prefix + "{ waitForSync: false } RETURN 1", "waitForSync"],
         [prefix + "{ waitForSync: true } RETURN 1", "waitForSync"],
@@ -244,9 +247,12 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         const prefix = "FOR p IN OUTBOUND " + type + " '" + cn + "/test0' TO '" + cn + "/test1' " + cn + "Edge OPTIONS ";
         const queries = [
           [prefix + "{ weightAttribute: 'testi' } RETURN 1"],
+          [prefix + "{ weightAttribute: ['testi'] } RETURN 1"],
+          [prefix + "{ weightAttribute: ['testi', 'nested'] } RETURN 1"],
           [prefix + "{ defaultWeight: 42.5 } RETURN 1"],
 
           [prefix + "{ weightAttribute: false } RETURN 1", "weightAttribute"],
+          [prefix + "{ weightAttribute: [['testi']] } RETURN 1", "weightAttribute"],
           [prefix + "{ defaultWeight: false } RETURN 1", "defaultWeight"],
           [prefix + "{ waitForSync: false } RETURN 1", "waitForSync"],
           [prefix + "{ waitForSync: true } RETURN 1", "waitForSync"],

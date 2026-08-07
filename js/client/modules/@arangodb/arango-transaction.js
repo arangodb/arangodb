@@ -111,7 +111,15 @@ function ArangoTransaction (database, data) {
   this._collections = data.collections;
   let body = {collections: this._collections};
   // copy transaction options
-  [ 'lockTimeout', 'maxTransactionSize', 'intermediateCommitSize', 'intermediateCommitCount', 'waitForSync' ].forEach(function(o) {
+  [
+    'allowImplicit',
+    'intermediateCommitSize',
+    'intermediateCommitCount',
+    'lockTimeout',
+    'maxTransactionSize',
+    'skipFastLockRound',
+    'waitForSync'
+  ].forEach(function(o) {
     if (data.hasOwnProperty(o)) {
       body[o] = data[o];
     }
@@ -132,7 +140,7 @@ exports.ArangoTransaction = ArangoTransaction;
 
 function ArangoTransactionCollection(trx, coll) {
   if (!trx || !coll || !coll.isArangoCollection) {
-    throw "invaliid input";
+    throw "invalid input";
   }
   this._transaction = trx;
   this._collection = coll;
@@ -161,7 +169,11 @@ ArangoTransaction.prototype.collection = function(col) {
   if (col.isArangoCollection) {
     return new ArangoTransactionCollection(this, col);
   }
-  return new ArangoTransactionCollection(this, this._database._collection(col));
+  const maybeCol = this._database._collection(col);
+  if (maybeCol) {
+    return new ArangoTransactionCollection(this, maybeCol);
+  }
+  throw "collection not found";
 };
 
 ArangoTransaction.prototype.commit = function() {

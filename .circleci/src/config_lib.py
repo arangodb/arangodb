@@ -387,7 +387,7 @@ class TestArguments:
     arangosh_args: List[str] = field(default_factory=list)
 
     @staticmethod
-    def parse_args_string(args_str: str, add_skip_server_js: bool = False) -> List[str]:
+    def parse_args_string(args_str: str) -> List[str]:
         """
         Parse extra arguments string into list.
 
@@ -397,7 +397,6 @@ class TestArguments:
 
         Args:
             args_str: Space-separated argument string, or "A" for empty
-            add_skip_server_js: Whether to add --skipServerJS flag
 
         Returns:
             List of argument strings
@@ -409,9 +408,6 @@ class TestArguments:
             if args_str[0] in [" ", "A"]:
                 args_str = args_str[1:]
             args = args_str.split(" ") if args_str else []
-
-        if add_skip_server_js:
-            args.extend(["--skipServerJS", "true"])
 
         return args
 

@@ -460,8 +460,40 @@ std::unique_ptr<graph::BaseOptions> createPathsQueryOptions(
 
         TRI_ASSERT(value->isConstant());
 
-        if (name == "weightAttribute" && value->isStringValue()) {
-          options->setWeightAttribute(value->getString());
+        if (name == "weightAttribute") {
+          if (value->isStringValue()) {
+            std::string attribute = value->getString();
+            if (!attribute.empty()) {
+              options->setWeightAttribute({std::move(attribute)});
+            }
+          } else if (value->type == NODE_TYPE_ARRAY) {
+            std::vector<std::string> weightAttribute;
+            weightAttribute.reserve(value->numMembers());
+            bool valid = true;
+            size_t members = value->numMembers();
+            for (size_t j = 0; j < members; ++j) {
+              auto member = value->getMemberUnchecked(j);
+              if (member == nullptr || !member->isStringValue()) {
+                valid = false;
+                break;
+              }
+              weightAttribute.emplace_back(member->getString());
+            }
+            if (valid) {
+              options->setWeightAttribute(std::move(weightAttribute));
+            } else {
+              ExecutionPlan::invalidOptionAttribute(
+                  ast->query(),
+                  "'weightAttribute' must be either a string or an array of "
+                  "strings",
+                  arangodb::graph::PathType::toString(type), name);
+            }
+          } else {
+            ExecutionPlan::invalidOptionAttribute(
+                ast->query(),
+                "Invalid use of the OPTIONS attribute 'weightAttribute'.",
+                arangodb::graph::PathType::toString(type), name);
+          }
         } else if (name == "defaultWeight" && value->isNumericValue()) {
           options->setDefaultWeight(value->getDoubleValue());
         } else if (name == StaticStrings::IndexHintOptionForce) {
@@ -2460,46 +2492,126 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
     return std::make_tuple(calc, filter);
   };
 
-  auto const createCollectionAccess = [&](AstNode const* member) {
+  auto const createCollectionAccess =
+      [&](AstNode const* member, Variable const* fullDocumentVariable,
+          std::unordered_map<VariableId, Variable const*> const& subst) {
+        auto collectionName = member->getMember(1)->getString();
+        auto& collections = _ast->query().collections();
+        auto collection = collections.get(collectionName);
+        if (collection == nullptr) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_INTERNAL, "no collection for EnumerateCollection");
+        }
+        IndexHint hint(_ast->query(), _ast->createNodeNop(),
+                       IndexHint::FromCollectionOperation{});
+        auto enumCollection = createNode<EnumerateCollectionNode>(
+            this, nextId(), collection, fullDocumentVariable, false,
+            std::move(hint));
+
+        auto additionalFilter =
+            Ast::replaceVariables(member->getMember(3), subst);
+
+        auto [firstNode, lastNode] = createPropertiesFilter(
+            fullDocumentVariable, member->getMember(2), additionalFilter);
+        firstNode->addDependency(enumCollection);
+        return std::make_tuple(enumCollection, lastNode, fullDocumentVariable);
+      };
+
+  auto const createPatternProjection =
+      [&](AstNode const* member, Variable const* fullDocumentVar,
+          std::unordered_map<VariableId, Variable const*> const& subst)
+      -> ExecutionNode* {
     auto variable =
         static_cast<Variable const*>(member->getMember(0)->getData());
-    auto collectionName = member->getMember(1)->getString();
-    auto& collections = _ast->query().collections();
-    auto collection = collections.get(collectionName);
-    if (collection == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "no collection for EnumerateCollection");
+
+    // Vertices store projections at member 4 and edges store them at member 6
+    // (appended after direction/range by createPatternEdge).
+    AstNode const* projections = nullptr;
+    bool const isEdge = member->type == NODE_TYPE_PATTERN_EDGE;
+    if (isEdge) {
+      ADB_PROD_ASSERT(member->numMembers() > 6)
+          << "pattern edge missing projection member";
+      projections = member->getMember(6);
+    } else {
+      projections = member->getMember(4);
     }
-    IndexHint hint(_ast->query(), _ast->createNodeNop(),
-                   IndexHint::FromCollectionOperation{});
-    auto enumCollection = createNode<EnumerateCollectionNode>(
-        this, nextId(), collection, variable, false, std::move(hint));
-    auto [firstNode, lastNode] = createPropertiesFilter(
-        variable, member->getMember(2), member->getMember(3));
-    firstNode->addDependency(enumCollection);
-    return std::make_tuple(enumCollection, lastNode, variable);
+
+    if (projections->type != NODE_TYPE_NOP) {
+      auto* root = _ast->createNodeObject();
+
+      auto* ref = _ast->createNodeReference(fullDocumentVar);
+
+      auto addProjectedAttribute = [&](std::string_view path) {
+        auto* attrAccess = _ast->createNodeAttributeAccess(ref, path);
+        auto* elt = _ast->createNodeObjectElement(path, attrAccess);
+        root->addMember(elt);
+      };
+
+      auto isSystemAttribute = [&](std::string_view name) {
+        return name == "_id" || (isEdge && (name == "_from" || name == "_to"));
+      };
+
+      // Implicit system attributes required for graph topology.
+      addProjectedAttribute("_id");
+      if (isEdge) {
+        addProjectedAttribute("_from");
+        addProjectedAttribute("_to");
+      }
+
+      for (auto i = size_t{0}; i < projections->numMembers(); ++i) {
+        AstNode* item = projections->getMemberUnchecked(i);
+        if (item->type == NODE_TYPE_OBJECT_ELEMENT) {
+          // alias = expression: evaluate in normal query scope (explicit
+          // variable references required, e.g. v.profile.first_name).
+          auto name = item->getStringView();
+          if (isSystemAttribute(name)) {
+            continue;
+          }
+          AstNode* expr = Ast::replaceVariables(item->getMember(0), subst);
+          root->addMember(_ast->createNodeObjectElement(name, expr));
+        } else {
+          // bare keep: copy attribute from the full document
+          auto path = item->getStringView();
+          if (isSystemAttribute(path)) {
+            continue;
+          }
+          addProjectedAttribute(path);
+        }
+      }
+      auto* calc = createNode<CalculationNode>(
+          this, nextId(), std::make_unique<Expression>(_ast, root), variable);
+      return calc;
+    } else {
+      auto* root = _ast->createNodeReference(fullDocumentVar);
+      auto* calc = createNode<CalculationNode>(
+          this, nextId(), std::make_unique<Expression>(_ast, root), variable);
+      return calc;
+    }
   };
 
-  auto const createPatternEdgeEnumerateAccess = [&](AstNode const* edge) {
-    auto variable = static_cast<Variable const*>(edge->getMember(0)->getData());
-    auto const* collectionNode =
-        getPatternEdgeCollection(edge->getMember(1), 0);
-    auto collectionName = collectionNode->getString();
-    auto& collections = _ast->query().collections();
-    auto collection = collections.get(collectionName);
-    if (collection == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "no collection for EnumerateCollection");
-    }
-    IndexHint hint(_ast->query(), _ast->createNodeNop(),
-                   IndexHint::FromCollectionOperation{});
-    auto enumCollection = createNode<EnumerateCollectionNode>(
-        this, nextId(), collection, variable, false, std::move(hint));
-    auto [firstNode, lastNode] = createPropertiesFilter(
-        variable, edge->getMember(2), edge->getMember(3));
-    firstNode->addDependency(enumCollection);
-    return std::make_tuple(enumCollection, lastNode, variable);
-  };
+  auto const createPatternEdgeEnumerateAccess =
+      [&](AstNode const* edge, Variable const* outputVariable,
+          std::unordered_map<VariableId, Variable const*> const& subst) {
+        auto const* collectionNode =
+            getPatternEdgeCollection(edge->getMember(1), 0);
+        auto collectionName = collectionNode->getString();
+        auto& collections = _ast->query().collections();
+        auto collection = collections.get(collectionName);
+        if (collection == nullptr) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_INTERNAL, "no collection for EnumerateCollection");
+        }
+        IndexHint hint(_ast->query(), _ast->createNodeNop(),
+                       IndexHint::FromCollectionOperation{});
+        auto enumCollection = createNode<EnumerateCollectionNode>(
+            this, nextId(), collection, outputVariable, false, std::move(hint));
+        auto additionalFilter =
+            Ast::replaceVariables(edge->getMember(3), subst);
+        auto [firstNode, lastNode] = createPropertiesFilter(
+            outputVariable, edge->getMember(2), additionalFilter);
+        firstNode->addDependency(enumCollection);
+        return std::make_tuple(enumCollection, lastNode, outputVariable);
+      };
 
   auto const createVertexEdgeFilter = [&](Variable const* leftVertex,
                                           Variable const* edge,
@@ -2736,6 +2848,9 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
     Variable const* pathVariable = nullptr;
     std::vector<AstNode const*> pathVertices;
     std::vector<AstNode const*> pathEdges;
+    std::vector<ExecutionNode*> projections;
+
+    std::unordered_map<VariableId, Variable const*> variableSubstitutions;
 
     ADB_PROD_ASSERT(matchExpr->type == NODE_TYPE_PATTERN_MATCH_EXPRESSION);
 
@@ -2747,14 +2862,43 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
         // FOR <outvariable> IN <collection>
         //  FILTER <outvariable>.property1 == xxx && ....
         ExecutionNode* lastNode;
-        std::tie(en, lastNode, prevVar) = createCollectionAccess(member);
+        auto destinationVariable =
+            static_cast<Variable const*>(member->getMember(0)->getData());
+
+        // Without an inline projection we enumerate directly into the
+        // user-facing variable (as the non-projection lowering does), so that
+        // downstream rules and outputs observe the expected variable. With a
+        // projection we enumerate into a temporary full-document variable and
+        // copy the projected attributes into the user variable.
+        bool const hasProjection = member->getMember(4)->type != NODE_TYPE_NOP;
+        Variable const* enumOutputVariable =
+            hasProjection ? _ast->variables()->createTemporaryVariable()
+                          : destinationVariable;
+        if (hasProjection) {
+          variableSubstitutions.emplace(destinationVariable->id,
+                                        enumOutputVariable);
+        }
+
+        std::tie(en, lastNode, prevVar) = createCollectionAccess(
+            member, enumOutputVariable, variableSubstitutions);
         en->addDependency(previous);
         previous = en = lastNode;
-        pathVertices.push_back(_ast->createNodeReference(prevVar));
+
+        pathVertices.push_back(_ast->createNodeReference(destinationVariable));
+
+        if (hasProjection) {
+          auto projection =
+              createPatternProjection(member, prevVar, variableSubstitutions);
+          projections.push_back(projection);
+        }
       } else if (member->type == NODE_TYPE_PATTERN_PATH_VARIABLE) {
         pathVariable = static_cast<Variable const*>(member->getData());
       } else if (member->type == NODE_TYPE_REFERENCE) {
         prevVar = static_cast<Variable*>(member->getData());
+        if (auto it = variableSubstitutions.find(prevVar->id);
+            it != std::end(variableSubstitutions)) {
+          prevVar = it->second;
+        }
         pathVertices.push_back(_ast->createNodeReference(prevVar));
       } else if (member->type == NODE_TYPE_PATTERN_SEGMENT) {
         // generate code like
@@ -2789,21 +2933,72 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
         } else if (edge->getMember(5)->type == NODE_TYPE_NOP) {
           ExecutionNode* lastNodeFilter;
           Variable const* edgeVar;
+
+          auto edgeDestinationVariable =
+              static_cast<Variable const*>(edge->getMember(0)->getData());
+
+          // Same reasoning as for vertices: only introduce a temporary
+          // full-document variable plus a projection copy when an inline
+          // projection is actually requested. Otherwise enumerate straight
+          // into the user-facing edge variable.
+          bool const edgeHasProjection =
+              edge->getMember(6)->type != NODE_TYPE_NOP;
+          Variable const* edgeEnumOutputVariable =
+              edgeHasProjection ? _ast->variables()->createTemporaryVariable()
+                                : edgeDestinationVariable;
+          if (edgeHasProjection) {
+            variableSubstitutions.emplace(edgeDestinationVariable->id,
+                                          edgeEnumOutputVariable);
+          }
+
           std::tie(en, lastNodeFilter, edgeVar) =
-              createPatternEdgeEnumerateAccess(edge);
+              createPatternEdgeEnumerateAccess(edge, edgeEnumOutputVariable,
+                                               variableSubstitutions);
           en->addDependency(previous);
           previous = en = lastNodeFilter;
 
+          if (edgeHasProjection) {
+            auto edgeProjection = createPatternProjection(
+                edge, edgeEnumOutputVariable, variableSubstitutions);
+            projections.push_back(edgeProjection);
+          }
+
           Variable const* rightVertexVar;
+          Variable const* vertexDestinationVariable = nullptr;
 
           if (node->type == NODE_TYPE_REFERENCE) {
+            // todo: possibly replace?
             rightVertexVar = static_cast<Variable*>(node->getData());
+            vertexDestinationVariable = rightVertexVar;
           } else {
             ADB_PROD_ASSERT(node->type == NODE_TYPE_PATTERN_NODE_PATTERN)
                 << member->type;
+
+            vertexDestinationVariable =
+                static_cast<Variable const*>(node->getMember(0)->getData());
+
+            bool const vertexHasProjection =
+                node->getMember(4)->type != NODE_TYPE_NOP;
+            Variable const* vertexEnumOutputVariable =
+                vertexHasProjection
+                    ? _ast->variables()->createTemporaryVariable()
+                    : vertexDestinationVariable;
+            if (vertexHasProjection) {
+              variableSubstitutions.emplace(vertexDestinationVariable->id,
+                                            vertexEnumOutputVariable);
+            }
+
             std::tie(en, lastNodeFilter, rightVertexVar) =
-                createCollectionAccess(node);
+                createCollectionAccess(node, vertexEnumOutputVariable,
+                                       variableSubstitutions);
             en->addDependency(previous);
+
+            if (vertexHasProjection) {
+              auto projection = createPatternProjection(node, rightVertexVar,
+                                                        variableSubstitutions);
+              projections.push_back(projection);
+            }
+
             previous = en = lastNodeFilter;
           }
 
@@ -2814,8 +3009,11 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
           previous = en = lastNode;
           prevVar = rightVertexVar;
 
-          pathEdges.push_back(_ast->createNodeReference(edgeVar));
-          pathVertices.push_back(_ast->createNodeReference(prevVar));
+          pathEdges.push_back(
+              _ast->createNodeReference(edgeDestinationVariable));
+
+          pathVertices.push_back(
+              _ast->createNodeReference(vertexDestinationVariable));
         } else {
           auto [firstNode, lastNode, rightVertexVar] =
               createTraversalForPattern(prevVar,  // start node
@@ -2845,6 +3043,15 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
       } else {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "unexpected match expression member");
+      }
+    }
+
+    // insert projections
+    for (auto&& p : projections) {
+      // TODO don't insert into projections if nullptr?
+      if (p != nullptr) {
+        p->addDependency(previous);
+        previous = en = p;
       }
     }
 

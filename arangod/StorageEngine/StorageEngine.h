@@ -357,8 +357,6 @@ class StorageEngine : public application_features::ApplicationFeature {
                                 std::string const& keysId) = 0;
   virtual Result createLoggerState(TRI_vocbase_t* vocbase,
                                    velocypack::Builder& builder) = 0;
-  virtual Result lastLogger(TRI_vocbase_t& vocbase, uint64_t tickStart,
-                            uint64_t tickEnd, velocypack::Builder& builder) = 0;
   virtual WalAccess const* walAccess() const = 0;
 
   virtual void getCapabilities(velocypack::Builder& builder) const;
@@ -384,6 +382,10 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   TransactionStatistics& transactionStatistics() noexcept;
   TransactionStatistics const& transactionStatistics() const noexcept;
+
+#if USE_ENTERPRISE
+  virtual bool isEncryptionEnabled() const { return false; }
+#endif
 
  protected:
   void initTransactionStatistics(metrics::IRegistry& metrics);

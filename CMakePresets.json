@@ -8,34 +8,17 @@
   "configurePresets": [
     {
       "hidden": true,
-      "name": "pr-base",
-      "binaryDir": "${sourceDir}/build",
+      "name": "common-base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-        "CMAKE_C_FLAGS": "-fno-stack-protector",
-        "CMAKE_CXX_FLAGS": "-fno-stack-protector",
-        "CMAKE_EXE_LINKER_FLAGS": "-Wl,--build-id=sha1 -fuse-ld=lld",
-        "USE_STRICT_OPENSSL_VERSION": "On",
-        "STATIC_EXECUTABLES": "On"
+        "USE_ENTERPRISE": "On",
+        "STATIC_EXECUTABLES": "On",
+        "USE_JEMALLOC": "On"
       }
     },
     {
       "hidden": true,
-      "name": "release-base",
-      "binaryDir": "${sourceDir}/build-presets/${presetName}",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-        "USE_ENTERPRISE": "Off",
-        "USE_JEMALLOC": "On",
-        "USE_IPO": "On",
-        "USE_GOOGLE_TESTS": "Off",
-        "USE_FAILURE_TESTS": "Off",
-        "STATIC_EXECUTABLES": "On"
-      }
-    },
-    {
-      "hidden": true,
-      "name": "x86_64",
+      "name": "x64",
       "cacheVariables": {
         "TARGET_ARCHITECTURE": "haswell",
         "USE_IPO": "On"
@@ -43,29 +26,13 @@
     },
     {
       "hidden": true,
-      "name": "arm",
+      "name": "arm64",
       "cacheVariables": {
         "TARGET_ARCHITECTURE": "graviton2",
         "CMAKE_SYSTEM_PROCESSOR": "aarch64",
         "ASM_OPTIMIZATIONS": "Off",
         "USE_IPO": "Off"
       }
-    },
-    {
-      "hidden": true,
-      "name": "pr-x86_64",
-      "inherits": [
-        "pr-base",
-        "x86_64"
-      ]
-    },
-    {
-      "hidden": true,
-      "name": "pr-arm",
-      "inherits": [
-        "pr-base",
-        "arm"
-      ]
     },
     {
       "hidden": true,
@@ -78,13 +45,23 @@
     },
     {
       "hidden": true,
+      "name": "non-maintainer",
+      "cacheVariables": {
+        "USE_MAINTAINER_MODE": "Off",
+        "USE_GOOGLE_TESTS": "Off",
+        "USE_FAILURE_TESTS": "Off"
+      }
+    },
+    {
+      "hidden": true,
       "name": "tsan",
       "cacheVariables": {
         "USE_JEMALLOC": "Off",
         "STATIC_EXECUTABLES": "Off",
         "CMAKE_CXX_FLAGS": "-fsanitize=thread -fsanitize-blacklist=${sourceDir}/tsan_blacklist.txt",
         "CMAKE_C_FLAGS": "-fsanitize=thread",
-        "USE_MINIMAL_DEBUGINFO": "On"
+        "USE_MINIMAL_DEBUGINFO": "On",
+        "USE_IPO": "Off"
       }
     },
     {
@@ -96,7 +73,8 @@
         "CMAKE_CXX_FLAGS": "-fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize-address-use-after-return=never -fno-sanitize=vptr -fno-sanitize=alignment -fsanitize-blacklist=${sourceDir}/alubsan_blacklist.txt",
         "CMAKE_C_FLAGS": "-fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize-address-use-after-return=never -fno-sanitize=alignment -fsanitize-blacklist=${sourceDir}/alubsan_blacklist.txt",
         "CMAKE_EXE_LINKER_FLAGS": "-Wl,--build-id=sha1 -rtlib=compiler-rt -fuse-ld=lld",
-        "USE_MINIMAL_DEBUGINFO": "On"
+        "USE_MINIMAL_DEBUGINFO": "On",
+        "USE_IPO": "Off"
       }
     },
     {
@@ -104,30 +82,195 @@
       "name": "gcov",
       "cacheVariables": {
         "USE_COVERAGE": "On",
-        "USE_JEMALLOC": "On"
+        "USE_JEMALLOC": "On",
+        "USE_IPO": "Off"
       }
     },
     {
       "hidden": true,
       "name": "no-v8",
       "cacheVariables": {
-        "USE_V8": "Off"
+        "USE_V8": "Off",
+        "USE_FRONTEND": "Off"
       }
     },
     {
       "hidden": true,
-      "name": "nightly-base",
-      "binaryDir": "${sourceDir}/build-presets/${presetName}",
+      "name": "pr-base",
+      "binaryDir": "${sourceDir}/build",
+      "inherits": [
+        "common-base"
+      ],
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_C_FLAGS": "-fno-stack-protector",
+        "CMAKE_CXX_FLAGS": "-fno-stack-protector",
+        "CMAKE_EXE_LINKER_FLAGS": "-Wl,--build-id=sha1 -fuse-ld=lld",
+        "USE_STRICT_OPENSSL_VERSION": "On",
+        "USE_IPO": "Off"
+      }
+    },
+    {
+      "name": "pr-non-maintainer-x64",
+      "inherits": [
+        "pr-base",
+        "non-maintainer",
+        "x64"
+      ],
+      "displayName": "PR Build ArangoDB Enterprise Edition - x64"
+    },
+    {
+      "name": "pr-non-maintainer-arm64",
+      "inherits": [
+        "pr-base",
+        "non-maintainer",
+        "arm64"
+      ],
+      "displayName": "PR Build ArangoDB Enterprise Edition - ARM64"
+    },
+    {
+      "name": "pr-x64",
+      "inherits": [
+        "pr-base",
+        "maintainer",
+        "x64"
+      ],
+      "displayName": "PR Build ArangoDB Enterprise Edition Maintainer Mode - x64"
+    },
+    {
+      "name": "pr-arm64",
+      "inherits": [
+        "pr-base",
+        "maintainer",
+        "arm64"
+      ],
+      "displayName": "PR Build ArangoDB Enterprise Edition Maintainer Mode - ARM64"
+    },
+    {
+      "name": "pr-x64-tsan",
+      "inherits": [
+        "tsan",
+        "pr-x64"
+      ],
+      "displayName": "Build ArangoDB Enterprise Edition (TSAN Build) - x64"
+    },
+    {
+      "name": "pr-arm64-tsan",
+      "inherits": [
+        "tsan",
+        "pr-arm64"
+      ],
+      "displayName": "Build ArangoDB Enterprise Edition (TSAN Build) - ARM64"
+    },
+    {
+      "name": "pr-x64-alubsan",
+      "inherits": [
+        "alubsan",
+        "pr-x64"
+      ],
+      "displayName": "Build ArangoDB Enterprise Edition (ASAN and UBSAN Build) - x64"
+    },
+    {
+      "name": "pr-arm64-alubsan",
+      "inherits": [
+        "alubsan",
+        "pr-arm64"
+      ],
+      "displayName": "Build ArangoDB Enterprise Edition (ASAN and UBSAN Build) - ARM64"
+    },
+    {
+      "name": "pr-x64-no-v8",
+      "inherits": [
+        "no-v8",
+        "pr-x64"
+      ],
+      "displayName": "PR Build ArangoDB Enterprise Edition Maintainer Mode (No V8/Frontend) - x64"
+    },
+    {
+      "name": "pr-arm64-no-v8",
+      "inherits": [
+        "no-v8",
+        "pr-arm64"
+      ],
+      "displayName": "PR Build ArangoDB Enterprise Edition Maintainer Mode (No V8/Frontend) - ARM64"
+    },
+    {
+      "name": "pr-x64-tsan-no-v8",
+      "inherits": [
+        "no-v8",
+        "pr-x64-tsan"
+      ],
+      "displayName": "Build ArangoDB Enterprise Edition (TSAN Build, No V8/Frontend) - x64"
+    },
+    {
+      "name": "pr-arm64-tsan-no-v8",
+      "inherits": [
+        "no-v8",
+        "pr-arm64-tsan"
+      ],
+      "displayName": "Build ArangoDB Enterprise Edition (TSAN Build, No V8/Frontend) - ARM64"
+    },
+    {
+      "name": "pr-x64-alubsan-no-v8",
+      "inherits": [
+        "no-v8",
+        "pr-x64-alubsan"
+      ],
+      "displayName": "Build ArangoDB Enterprise Edition (ASAN and UBSAN Build, No V8/Frontend) - x64"
+    },
+    {
+      "name": "pr-arm64-alubsan-no-v8",
+      "inherits": [
+        "no-v8",
+        "pr-arm64-alubsan"
+      ],
+      "displayName": "Build ArangoDB Enterprise Edition (ASAN and UBSAN Build, No V8/Frontend) - ARM64"
+    },
+    {
+      "name": "pr-x64-coverage",
+      "inherits": [
+        "gcov",
+        "pr-x64"
+      ],
+      "displayName": "Build ArangoDB Enterprise Edition (Coverage Build) - x64"
+    },
+    {
+      "name": "pr-arm64-coverage",
+      "inherits": [
+        "gcov",
+        "pr-arm64"
+      ],
+      "displayName": "Build ArangoDB Enterprise Edition (Coverage Build) - ARM64"
+    },
+    {
+      "name": "test-docker-image-x64",
+      "inherits": [
+        "pr-x64"
+      ],
+      "cacheVariables": {
+        "USE_IPO": "On"
+      },
+      "displayName": "Test Docker image build (Enterprise, Maintainer Mode, IPO) - x64"
+    },
+    {
+      "name": "test-docker-image-arm64",
+      "inherits": [
+        "pr-arm64"
+      ],
+      "cacheVariables": {
+        "USE_IPO": "Off"
+      },
+      "displayName": "Test Docker image build (Enterprise, Maintainer Mode) - ARM64"
+    },
+    {
+      "hidden": true,
+      "name": "nightly-package-base",
+      "binaryDir": "${sourceDir}/build-presets/${presetName}",
+      "inherits": [
+        "common-base",
+        "non-maintainer"
+      ],
+      "cacheVariables": {
         "CMAKE_INSTALL_PREFIX": "/",
-        "STATIC_EXECUTABLES": "On",
-        "USE_ENTERPRISE": "On",
-        "USE_MAINTAINER_MODE": "Off",
-        "USE_GOOGLE_TESTS": "Off",
-        "USE_FAILURE_TESTS": "Off",
-        "USE_CATCH_TESTS": "Off",
-        "USE_JEMALLOC": "On",
         "USE_MINIMAL_DEBUGINFO": "On",
         "USE_STRICT_OPENSSL_VERSION": "On",
         "USE_V8": "On",
@@ -140,76 +283,28 @@
       }
     },
     {
-      "name": "nightly-x86_64",
+      "name": "nightly-package-x64",
       "inherits": [
-        "nightly-base",
-        "x86_64"
+        "nightly-package-base",
+        "x64"
       ],
-      "displayName": "Nightly package build (static release, Enterprise, x86_64)"
+      "displayName": "Nightly package build (static release, Enterprise, x64)"
     },
     {
-      "name": "nightly-arm",
+      "name": "nightly-package-arm64",
       "inherits": [
-        "nightly-base",
-        "arm"
+        "nightly-package-base",
+        "arm64"
       ],
-      "displayName": "Nightly package build (static release, Enterprise, ARM)"
-    },
-    {
-      "name": "enterprise",
-      "inherits": "release-base",
-      "displayName": "Build ArangoDB Enterprise Edition (Release Build)",
-      "cacheVariables": {
-        "USE_ENTERPRISE": "On"
-      }
-    },
-    {
-      "name": "enterprise-pr-x86_64-no-v8",
-      "inherits": [
-        "pr-x86_64",
-        "enterprise",
-        "no-v8"
-      ],
-      "displayName": "PR Build ArangoDB Enterprise Edition (without V8) - x86_64"
-    },
-    {
-      "name": "enterprise-pr-non-maintainer-x86_64",
-      "inherits": [
-        "pr-x86_64",
-        "enterprise"
-      ],
-      "displayName": "PR Build ArangoDB Enterprise Edition - x86_64"
-    },
-    {
-      "name": "enterprise-pr-non-maintainer-arm",
-      "inherits": [
-        "pr-arm",
-        "enterprise"
-      ],
-      "displayName": "PR Build ArangoDB Enterprise Edition - ARM"
-    },
-    {
-      "name": "enterprise-pr-x86_64",
-      "inherits": [
-        "maintainer",
-        "enterprise-pr-non-maintainer-x86_64"
-      ],
-      "displayName": "PR Build ArangoDB Enterprise Edition Maintainer Mode - x86_64"
-    },
-    {
-      "name": "enterprise-pr-arm",
-      "inherits": [
-        "maintainer",
-        "enterprise-pr-non-maintainer-arm"
-      ],
-      "displayName": "PR Build ArangoDB Enterprise Edition Maintainer Mode - ARM"
+      "displayName": "Nightly package build (static release, Enterprise, ARM64)"
     },
     {
       "hidden": true,
-      "name": "enterprise-developer-base",
+      "name": "developer-base",
+      "binaryDir": "${sourceDir}/build-presets/${presetName}",
       "inherits": [
         "maintainer",
-        "enterprise"
+        "common-base"
       ],
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
@@ -219,196 +314,200 @@
       }
     },
     {
-      "name": "enterprise-developer-x86_64",
+      "name": "developer-x64",
       "inherits": [
-        "enterprise-developer-base",
-        "x86_64"
+        "developer-base",
+        "x64"
       ],
-      "displayName": "Build ArangoDB Enterprise Edition (Developer Build) - x86_64"
+      "displayName": "Build ArangoDB Enterprise Edition (Developer Build) - x64"
     },
     {
-      "name": "enterprise-developer-arm",
+      "name": "developer-arm64",
       "inherits": [
-        "enterprise-developer-base",
-        "arm"
+        "developer-base",
+        "arm64"
       ],
-      "displayName": "Build ArangoDB Enterprise Edition (Developer Build) - ARM"
+      "displayName": "Build ArangoDB Enterprise Edition (Developer Build) - ARM64"
     },
     {
-      "name": "enterprise-developer-x86_64-tsan",
+      "name": "developer-x64-tsan",
       "inherits": [
         "tsan",
-        "enterprise-developer-x86_64"
+        "developer-x64"
       ],
-      "displayName": "Build ArangoDB Enterprise Edition (TSAN Build, Developer) - x86_64"
+      "displayName": "Build ArangoDB Enterprise Edition (TSAN Build, Developer) - x64"
     },
     {
-      "name": "enterprise-developer-arm-tsan",
+      "name": "developer-arm64-tsan",
       "inherits": [
         "tsan",
-        "enterprise-developer-arm"
+        "developer-arm64"
       ],
-      "displayName": "Build ArangoDB Enterprise Edition (TSAN Build, Developer) - ARM"
+      "displayName": "Build ArangoDB Enterprise Edition (TSAN Build, Developer) - ARM64"
     },
     {
-      "name": "enterprise-pr-x86_64-tsan",
-      "inherits": [
-        "tsan",
-        "enterprise-pr-x86_64"
-      ],
-      "displayName": "Build ArangoDB Enterprise Edition (TSAN Build) - x86_64"
-    },
-    {
-      "name": "enterprise-pr-arm-tsan",
-      "inherits": [
-        "tsan",
-        "enterprise-pr-arm"
-      ],
-      "displayName": "Build ArangoDB Enterprise Edition (TSAN Build) - ARM"
-    },
-    {
-      "name": "enterprise-developer-x86_64-alubsan",
+      "name": "developer-x64-alubsan",
       "inherits": [
         "alubsan",
-        "enterprise-developer-x86_64"
+        "developer-x64"
       ],
-      "displayName": "Build ArangoDB Enterprise Edition (ASAN and UBSAN Build, Developer) - x86_64"
+      "displayName": "Build ArangoDB Enterprise Edition (ASAN and UBSAN Build, Developer) - x64"
     },
     {
-      "name": "enterprise-developer-arm-alubsan",
+      "name": "developer-arm64-alubsan",
       "inherits": [
         "alubsan",
-        "enterprise-developer-arm"
+        "developer-arm64"
       ],
-      "displayName": "Build ArangoDB Enterprise Edition (ASAN and UBSAN Build, Developer) - ARM"
+      "displayName": "Build ArangoDB Enterprise Edition (ASAN and UBSAN Build, Developer) - ARM64"
     },
     {
-      "name": "enterprise-pr-x86_64-alubsan",
+      "name": "developer-x64-no-v8",
       "inherits": [
-        "alubsan",
-        "enterprise-pr-x86_64"
+        "no-v8",
+        "developer-x64"
       ],
-      "displayName": "Build ArangoDB Enterprise Edition (ASAN and UBSAN Build) - x86_64"
+      "displayName": "Build ArangoDB Enterprise Edition (No V8/Frontend, Developer) - x64"
     },
     {
-      "name": "enterprise-pr-arm-alubsan",
+      "name": "developer-arm64-no-v8",
       "inherits": [
-        "alubsan",
-        "enterprise-pr-arm"
+        "no-v8",
+        "developer-arm64"
       ],
-      "displayName": "Build ArangoDB Enterprise Edition (ASAN and UBSAN Build) - ARM"
-    },
-    {
-      "name": "enterprise-developer-x86_64-coverage",
-      "inherits": [
-        "gcov",
-        "enterprise-developer-x86_64"
-      ],
-      "displayName": "Build ArangoDB Enterprise Edition (Coverage Build, Developer) - x86_64"
-    },
-    {
-      "name": "enterprise-developer-arm-coverage",
-      "inherits": [
-        "gcov",
-        "enterprise-developer-arm"
-      ],
-      "displayName": "Build ArangoDB Enterprise Edition (Coverage Build, Developer) - ARM"
+      "displayName": "Build ArangoDB Enterprise Edition (No V8/Frontend, Developer) - ARM64"
     }
   ],
   "buildPresets": [
     {
-      "name": "nightly-x86_64",
-      "configurePreset": "nightly-x86_64"
+      "name": "pr-x64",
+      "configurePreset": "pr-x64"
     },
     {
-      "name": "nightly-arm",
-      "configurePreset": "nightly-arm"
+      "name": "pr-arm64",
+      "configurePreset": "pr-arm64"
     },
     {
-      "name": "enterprise",
-      "configurePreset": "enterprise"
+      "name": "pr-non-maintainer-x64",
+      "configurePreset": "pr-non-maintainer-x64"
     },
     {
-      "name": "enterprise-developer-x86_64",
-      "configurePreset": "enterprise-developer-x86_64"
+      "name": "pr-non-maintainer-arm64",
+      "configurePreset": "pr-non-maintainer-arm64"
     },
     {
-      "name": "enterprise-developer-arm",
-      "configurePreset": "enterprise-developer-arm"
+      "name": "pr-x64-tsan",
+      "configurePreset": "pr-x64-tsan"
     },
     {
-      "name": "enterprise-pr-x86_64",
-      "configurePreset": "enterprise-pr-x86_64"
+      "name": "pr-arm64-tsan",
+      "configurePreset": "pr-arm64-tsan"
     },
     {
-      "name": "enterprise-pr-arm",
-      "configurePreset": "enterprise-pr-arm"
+      "name": "pr-x64-alubsan",
+      "configurePreset": "pr-x64-alubsan"
     },
     {
-      "name": "enterprise-pr-x86_64-no-v8",
-      "configurePreset": "enterprise-pr-x86_64-no-v8"
+      "name": "pr-arm64-alubsan",
+      "configurePreset": "pr-arm64-alubsan"
     },
     {
-      "name": "enterprise-pr-non-maintainer-x86_64",
-      "configurePreset": "enterprise-pr-non-maintainer-x86_64"
+      "name": "pr-x64-no-v8",
+      "configurePreset": "pr-x64-no-v8"
     },
     {
-      "name": "enterprise-developer-x86_64-tsan",
-      "configurePreset": "enterprise-developer-x86_64-tsan"
+      "name": "pr-arm64-no-v8",
+      "configurePreset": "pr-arm64-no-v8"
     },
     {
-      "name": "enterprise-developer-arm-tsan",
-      "configurePreset": "enterprise-developer-arm-tsan"
+      "name": "pr-x64-tsan-no-v8",
+      "configurePreset": "pr-x64-tsan-no-v8"
     },
     {
-      "name": "enterprise-pr-x86_64-tsan",
-      "configurePreset": "enterprise-pr-x86_64-tsan"
+      "name": "pr-arm64-tsan-no-v8",
+      "configurePreset": "pr-arm64-tsan-no-v8"
     },
     {
-      "name": "enterprise-pr-arm-tsan",
-      "configurePreset": "enterprise-pr-arm-tsan"
+      "name": "pr-x64-alubsan-no-v8",
+      "configurePreset": "pr-x64-alubsan-no-v8"
     },
     {
-      "name": "enterprise-developer-x86_64-alubsan",
-      "configurePreset": "enterprise-developer-x86_64-alubsan"
+      "name": "pr-arm64-alubsan-no-v8",
+      "configurePreset": "pr-arm64-alubsan-no-v8"
     },
     {
-      "name": "enterprise-developer-arm-alubsan",
-      "configurePreset": "enterprise-developer-arm-alubsan"
+      "name": "pr-x64-coverage",
+      "configurePreset": "pr-x64-coverage"
     },
     {
-      "name": "enterprise-pr-x86_64-alubsan",
-      "configurePreset": "enterprise-pr-x86_64-alubsan"
+      "name": "pr-arm64-coverage",
+      "configurePreset": "pr-arm64-coverage"
     },
     {
-      "name": "enterprise-pr-arm-alubsan",
-      "configurePreset": "enterprise-pr-arm-alubsan"
+      "name": "test-docker-image-x64",
+      "configurePreset": "test-docker-image-x64"
     },
     {
-      "name": "enterprise-developer-x86_64-coverage",
-      "configurePreset": "enterprise-developer-x86_64-coverage"
+      "name": "test-docker-image-arm64",
+      "configurePreset": "test-docker-image-arm64"
     },
     {
-      "name": "enterprise-developer-arm-coverage",
-      "configurePreset": "enterprise-developer-arm-coverage"
+      "name": "nightly-package-x64",
+      "configurePreset": "nightly-package-x64"
+    },
+    {
+      "name": "nightly-package-arm64",
+      "configurePreset": "nightly-package-arm64"
+    },
+    {
+      "name": "developer-x64",
+      "configurePreset": "developer-x64"
+    },
+    {
+      "name": "developer-arm64",
+      "configurePreset": "developer-arm64"
+    },
+    {
+      "name": "developer-x64-tsan",
+      "configurePreset": "developer-x64-tsan"
+    },
+    {
+      "name": "developer-arm64-tsan",
+      "configurePreset": "developer-arm64-tsan"
+    },
+    {
+      "name": "developer-x64-alubsan",
+      "configurePreset": "developer-x64-alubsan"
+    },
+    {
+      "name": "developer-arm64-alubsan",
+      "configurePreset": "developer-arm64-alubsan"
+    },
+    {
+      "name": "developer-x64-no-v8",
+      "configurePreset": "developer-x64-no-v8"
+    },
+    {
+      "name": "developer-arm64-no-v8",
+      "configurePreset": "developer-arm64-no-v8"
     }
   ],
   "testPresets": [
     {
-      "name": "enterprise-developer-x86_64",
-      "configurePreset": "enterprise-developer-x86_64"
+      "name": "pr-x64",
+      "configurePreset": "pr-x64"
     },
     {
-      "name": "enterprise-developer-arm",
-      "configurePreset": "enterprise-developer-arm"
+      "name": "pr-arm64",
+      "configurePreset": "pr-arm64"
     },
     {
-      "name": "enterprise-pr-x86_64",
-      "configurePreset": "enterprise-pr-x86_64"
+      "name": "developer-x64",
+      "configurePreset": "developer-x64"
     },
     {
-      "name": "enterprise-pr-arm",
-      "configurePreset": "enterprise-pr-arm"
+      "name": "developer-arm64",
+      "configurePreset": "developer-arm64"
     }
   ]
 }

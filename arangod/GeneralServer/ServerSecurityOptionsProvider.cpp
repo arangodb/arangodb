@@ -29,7 +29,7 @@ namespace arangodb::security {
 
 using namespace arangodb::options;
 
-void ServerSecurityOptionsProvider::declareOptions(
+void ServerSecurityOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options,
     ServerSecurityFeatureOptions& opts) {
   options->addOption(

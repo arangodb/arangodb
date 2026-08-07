@@ -25,7 +25,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
-#include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
@@ -243,8 +242,13 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   bool includeSystem = _request->parsedValue("includeSystem", true);
 
   // produce inventory for all databases?
-  bool isGlobal = false;
-  getApplier(isGlobal);
+  bool isGlobal = _request->parsedValue("global", false);
+  if (isGlobal && _request->databaseName() != StaticStrings::SystemDatabase) {
+    generateError(
+        rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+        "global inventory can only be created from within _system database");
+    return;
+  }
 
   // "collection" is optional, and may in the DB server case contain the name of
   // a single shard for shard synchronization

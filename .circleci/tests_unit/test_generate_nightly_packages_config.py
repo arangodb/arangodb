@@ -23,6 +23,7 @@ ALL_TRUE = {
     "sign-packages": "true",
     "scan-viruses": "true",
     "security-check": "true",
+    "pr-run": "false",
 }
 
 
@@ -41,13 +42,19 @@ def run_generate(base_config, **overrides):
     return gen.generate(copy.deepcopy(base_config), args)
 
 
+def only_workflow(config):
+    [(name, workflow)] = config["workflows"].items()
+    return name, workflow
+
+
 def workflow_names(config):
-    jobs = config["workflows"][gen.WORKFLOW_NAME]["jobs"]
-    return {gen.entry_name(entry) for entry in jobs}
+    _, workflow = only_workflow(config)
+    return {gen.entry_name(entry) for entry in workflow["jobs"]}
 
 
 def requires_of(config, name):
-    for entry in config["workflows"][gen.WORKFLOW_NAME]["jobs"]:
+    _, workflow = only_workflow(config)
+    for entry in workflow["jobs"]:
         if gen.entry_name(entry) == name:
             [(_, job_config)] = entry.items()
             return (job_config or {}).get("requires", [])
@@ -234,3 +241,24 @@ def test_publish_requires_packaging_jobs_when_all_gates_disabled(base_config):
         if name.startswith("security-check-") or name in ("scan-packages", "sign-packages")
     }
     assert not gate_leftovers
+
+
+def test_pr_run_renames_workflow_and_keeps_job_graph(base_config):
+    """A PR test run is the same workflow under the nightly-packages-pr name:
+    identical job set, no leftover workflow under the real name."""
+    config = run_generate(base_config, **{"pr-run": "true"})
+    name, _ = only_workflow(config)
+    assert name == gen.PR_WORKFLOW_NAME
+    assert gen.WORKFLOW_NAME not in config["workflows"]
+    assert workflow_names(config) == workflow_names(base_config)
+
+
+def test_pr_run_combines_with_pruning(base_config):
+    config = run_generate(
+        base_config, **{"pr-run": "true", "security-check": "false"}
+    )
+    name, _ = only_workflow(config)
+    assert name == gen.PR_WORKFLOW_NAME
+    names = workflow_names(config)
+    assert not any(job.startswith("security-check-") for job in names)
+    assert "publish-nightly" in names

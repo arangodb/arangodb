@@ -2084,7 +2084,7 @@ AstNode* Ast::createPatternEdge(AstNode const* outVariable,
                                 AstNode const* label, AstNode const* properties,
                                 AstNode const* filterExpression,
                                 AstNode const* rangeExpression, bool isInbound,
-                                bool isOutbound) {
+                                bool isOutbound, AstNode const* projections) {
   auto node = createNode(NODE_TYPE_PATTERN_EDGE);
   node->addMember(outVariable ? outVariable : createNodeValueNull());
   node->addMember(label ? label : createNodeValueNull());
@@ -2098,17 +2098,22 @@ AstNode* Ast::createPatternEdge(AstNode const* outVariable,
 
   node->addMember(createNodeValueInt(!isInbound << 1 | !isOutbound));
   node->addMember(rangeExpression ? rangeExpression : createNodeNop());
+  // projections are appended last (member 6) so the existing member indices
+  // (direction=4, range=5) stay valid.
+  node->addMember(projections ? projections : createNodeNop());
   return node;
 }
 AstNode* Ast::createPatternNodePattern(AstNode const* outVariable,
                                        AstNode const* labels,
                                        AstNode const* properties,
-                                       AstNode const* filterExpression) {
+                                       AstNode const* filterExpression,
+                                       AstNode const* projections) {
   auto node = createNode(NODE_TYPE_PATTERN_NODE_PATTERN);
   node->addMember(outVariable ? outVariable : createNodeValueNull());
   node->addMember(labels ? labels : createNodeValueNull());
   node->addMember(properties ? properties : createNodeNop());
   node->addMember(filterExpression ? filterExpression : createNodeNop());
+  node->addMember(projections ? projections : createNodeNop());
   return node;
 }
 
