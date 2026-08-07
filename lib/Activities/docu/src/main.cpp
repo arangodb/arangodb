@@ -1,9 +1,7 @@
 #include "find_activity_subclasses.h"
 #include "markdown.h"
 
-#include <fstream>
 #include <iostream>
-#include <string>
 
 int main(int argc, char const** argv) {
   if (argc < 2) {

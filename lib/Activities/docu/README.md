@@ -2,7 +2,7 @@
 
 Looks at all files in a given path and finds every concrete subclass instance (either a field in a record or a local variable) of `arangodb::activities::Activity`.
 
-It walks the project's `compile_commands.json` with Clang LibTooling to find these instances and markdown output on stdout describing each activity's serialized shape and its owner.
+It walks the project's `compile_commands.json` with Clang LibTooling to find these instances and produces markdown output on stdout describing each activity's serialized shape and its owner.
 
 ## Prerequisites
 
@@ -19,7 +19,7 @@ this file is located at the repository root.
 ## Build
 
 ```sh
-cmake --build find-activity-subclasses
+cmake --build <build-dir> find-activity-subclasses
 ```
 
 ## Run

@@ -2,6 +2,7 @@
 #include <clang/AST/DeclCXX.h>
 
 #include "clang/AST/QualTypeNames.h"
+#include <optional>
 #include <ranges>
 #include <string>
 #include <unordered_set>

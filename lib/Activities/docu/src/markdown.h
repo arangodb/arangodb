@@ -14,14 +14,14 @@
 
  * ### <type_definition[0].name>
  * | Field                               | Type                                |
- * |-------------------------------------+-------------------------------------|
+ * |-------------------------------------|-------------------------------------|
  * | <type_definition[0].fields[0].name> | <type_definition[0].fields[0].type> |
  * | <type_definition[0].fields[1].name> | <type_definition[0].fields[1].type> |
  * ...
  *
  * ### <type_definition[1].name>
  * | Field                               | Type                                |
- * |-------------------------------------+-------------------------------------|
+ * |-------------------------------------|-------------------------------------|
  * | <type_definition[1].fields[0].name> | <type_definition[1].fields[0].type> |
  * | <type_definition[1].fields[1].name> | <type_definition[1].fields[1].type> |
  * ...

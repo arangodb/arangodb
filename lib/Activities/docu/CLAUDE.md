@@ -6,7 +6,7 @@ Concrete subclasses inherit via the CRTP intermediate `GuardedActivity<Self, Dat
 
 Intermediate representation of an activity (`ActivityDeclaration`):
 - `owner`: name of the declaration that holds the activity (FieldDecl or non-param VarDecl)
-- `type`: fully qualified `Data` type name
+- `type`: fully qualified Activity subclass type name
 - `data_type_definition`: description of the `Data` type (not the full Activity type as the envelope is the same for every activity)
 
 ## Tech Stack
