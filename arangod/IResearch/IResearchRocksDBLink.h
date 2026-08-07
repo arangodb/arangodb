@@ -99,7 +99,7 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
 
   size_t memory() const final {
     // FIXME return in memory size
-    return stats().indexSize;
+    return getStats().indexSize;
   }
 
   ////////////////////////////////////////////////////////////////////////////////

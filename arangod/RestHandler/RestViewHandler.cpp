@@ -33,6 +33,11 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "VocBase/LogicalView.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/Methods/Collections.h"
+#include "StorageEngine/PhysicalCollection.h"
+#include "Transaction/IndexesSnapshot.h"
+#include "IResearch/IResearchDataStore.h"
 #include "VocBase/vocbase.h"
 
 namespace {
