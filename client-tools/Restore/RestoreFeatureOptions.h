@@ -29,6 +29,8 @@
 namespace arangodb {
 
 struct RestoreFeatureOptions {
+  RestoreFeatureOptions();
+
   std::vector<std::string> collections{};
   std::vector<std::string> views{};
   std::string inputPath{};

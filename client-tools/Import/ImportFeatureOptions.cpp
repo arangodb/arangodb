@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -20,13 +20,15 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "ImportFeatureOptions.h"
+
+#include "Basics/NumberOfCores.h"
 
 namespace arangodb {
 
-struct VersionFeatureOptions {
-  bool printVersion = false;
-  bool printVersionJson = false;
-};
+ImportFeatureOptions::ImportFeatureOptions() {
+  threadCount =
+      std::max(threadCount, static_cast<uint32_t>(NumberOfCores::getValue()));
+}
 
 }  // namespace arangodb

@@ -44,9 +44,6 @@ class ImportFeature final : public application_features::ApplicationFeature {
   ImportFeature(application_features::ApplicationServer& server, int* result);
   ~ImportFeature();
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(
-      std::shared_ptr<options::ProgramOptions> options) override;
   void prepare() override;
   void start() override;
 

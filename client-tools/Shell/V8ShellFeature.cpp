@@ -393,7 +393,7 @@ bool V8ShellFeature::printHello() {
         << "Copyright (c) ArangoDB GmbH";
 
       console.printLine(s.str());
-      console.printLine(LGPLNotice);
+      console.printLine(rest::Version::getLGPLNotice());
       console.printLine("");
 
       console.printWelcomeInfo();

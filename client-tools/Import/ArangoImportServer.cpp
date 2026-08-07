@@ -30,7 +30,6 @@
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
-#include "ApplicationFeatures/VersionFeature.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Import/ImportFeature.h"
 #include "Logger/LogMacros.h"
@@ -64,17 +63,14 @@ void ArangoImportServer::addFeatures() {
   addFeature<BasicFeaturePhaseClient>();
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
-  addFeature<HttpEndpointProvider, ClientFeature>(false);
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(
       std::array{std::type_index(typeid(ImportFeature))});
   addFeature<SslFeature>();
-  addFeature<ImportFeature>(_ret);
 }
 
 void ArangoImportServer::addFeaturesWithOptionProvider() {
-  addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
   addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
   addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());
   addFeature<TempFeature>(_binaryName, getOptions<TempOptionsProvider>());
@@ -87,6 +83,9 @@ void ArangoImportServer::addFeaturesWithOptionProvider() {
 #ifdef USE_ENTERPRISE
   addFeature<EncryptionFeature>(getOptions<EncryptionOptionsProvider>());
 #endif
+  addFeature<HttpEndpointProvider, ClientFeature>(
+      getOptions<ClientOptionsProvider>());
+  addFeature<ImportFeature>(_ret, getOptions<ImportOptionsProvider>());
 }
 
 }  // namespace arangodb
