@@ -209,6 +209,7 @@
       type: single
     requires:
       coverage: false
+
 # without coverage this is fast enough:
 - rta_makedata:
     options:
@@ -238,17 +239,16 @@
     args:
       encryptionAtRest: true
       ssl: true
-
-- rta_makedata_oneshard:
+- rta_makedata:
     options:
       type: cluster
+      suffix: _oneshard
     requires:
       coverage: true
     args:
       forceOneShard: true
       makedataDB: system_oneshard_makedata
       suffix: cluster-oneshard
-    name: rta_makedata
 
 - chaos:
     options:
