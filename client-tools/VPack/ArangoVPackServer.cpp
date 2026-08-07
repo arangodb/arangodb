@@ -21,7 +21,6 @@
 
 #include "VPack/ArangoVPackServer.h"
 
-#include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/FileSystemFeature.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/OptionsCheckFeature.h"
@@ -54,14 +53,13 @@ ArangoVPackServer::ArangoVPackServer(
 void ArangoVPackServer::addFeaturesWithOptionProvider() {
   addFeature<BasicFeaturePhaseClient>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
+  addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
   addFeature<OptionsCheckFeature>();
+  addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
+  addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(
       std::array{std::type_index(typeid(VPackFeature))});
-
-  addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
-  addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
-  addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   addFeature<ProcessEnvironmentFeature>(
       _binaryName, getOptions<ProcessEnvironmentOptionsProvider>());
