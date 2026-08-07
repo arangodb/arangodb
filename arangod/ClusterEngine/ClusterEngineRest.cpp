@@ -27,8 +27,7 @@
 
 namespace arangodb {
 
-void ClusterEngine::addRestHandlers(
-    rest::RestHandlerFactory& handlerFactory) {
+void ClusterEngine::addRestHandlers(rest::RestHandlerFactory& handlerFactory) {
   ClusterRestHandlers::registerResources(&handlerFactory);
 }
 

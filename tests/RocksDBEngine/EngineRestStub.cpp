@@ -25,6 +25,11 @@
 
 namespace arangodb {
 
+// These no-op implementations are needed because arangodbtests_rocksdb takes
+// RocksDBEngine.h and ClusterEngine.h that have the declarations of these
+// methods, but doesn't link the actual implementation of these methods since it
+// only links arango_rocksdb (which lacks these methods' implementations).
+
 void RocksDBEngine::addRestHandlers(rest::RestHandlerFactory&) {}
 void ClusterEngine::addRestHandlers(rest::RestHandlerFactory&) {}
 

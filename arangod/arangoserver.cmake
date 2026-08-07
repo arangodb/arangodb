@@ -15,7 +15,6 @@ target_link_libraries(arangoserver INTERFACE
         arango_system_monitor_activities
         arango_system_monitor_async_registry
         arango_agency
-        arango_aql
         arango_cluster_engine
         arango_cluster_engine_rest
         arango_cluster_methods
