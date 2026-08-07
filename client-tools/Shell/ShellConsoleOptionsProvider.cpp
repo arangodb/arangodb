@@ -30,7 +30,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void ShellConsoleOptionsProvider::declareOptions(
+void ShellConsoleOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, ShellConsoleFeatureOptions& options) {
   opts->addOption("--quiet", "Silent startup.",
                   new BooleanParameter(&options.quiet));

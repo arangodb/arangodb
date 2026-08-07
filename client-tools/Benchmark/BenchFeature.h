@@ -59,7 +59,6 @@ class BenchFeature final : public application_features::ApplicationFeature {
                BenchFeatureOptions options);
   BenchFeature(application_features::ApplicationServer& server, int* result);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void prepare() override final;
   void start() override final;
 
@@ -82,7 +81,6 @@ class BenchFeature final : public application_features::ApplicationFeature {
   uint64_t replicationFactor() const { return _options.replicationFactor; }
   uint64_t numberOfShards() const { return _options.numberOfShards; }
   bool waitForSync() const { return _options.waitForSync; }
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
   std::string const& customQuery() const { return _options.customQuery; }
   std::string const& customQueryFile() const {
