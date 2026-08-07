@@ -30,7 +30,6 @@
 #include "ApplicationFeatures/ProcessEnvironmentFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
-#include "ApplicationFeatures/VersionFeature.h"
 #include "Dump/DumpFeature.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/LogMacros.h"
@@ -66,7 +65,7 @@ ArangoDumpServer::ArangoDumpServer(
       std::numeric_limits<size_t>::max();
 }
 
-void ArangoDumpServer::addFeatures() {
+void ArangoDumpServer::addFeaturesWithOptionProvider() {
   addFeature<BasicFeaturePhaseClient>();
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
@@ -74,10 +73,7 @@ void ArangoDumpServer::addFeatures() {
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(std::array{std::type_index(typeid(DumpFeature))});
   addFeature<SslFeature>();
-}
 
-void ArangoDumpServer::addFeaturesWithOptionProvider() {
-  addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
   addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
   addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());
   addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());

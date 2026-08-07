@@ -31,7 +31,6 @@
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
-#include "ApplicationFeatures/VersionFeature.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "FeaturePhases/V8ShellFeaturePhase.h"
 #include "Logger/LogMacros.h"
@@ -70,7 +69,7 @@ ArangoshServer::ArangoshServer(std::shared_ptr<options::ProgramOptions> options,
   mutableOptions<ClientOptionsProvider>().allowJwtSecret = true;
 }
 
-void ArangoshServer::addFeatures() {
+void ArangoshServer::addFeaturesWithOptionProvider() {
   // Phases first
   addFeature<BasicFeaturePhaseClient>();
   addFeature<CommunicationFeaturePhase>();
@@ -82,10 +81,7 @@ void ArangoshServer::addFeatures() {
       std::array{std::type_index(typeid(ShellFeature))});
   addFeature<SslFeature>();
   addFeature<V8ShellFeaturePhase>();
-}
 
-void ArangoshServer::addFeaturesWithOptionProvider() {
-  addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
   addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
   addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());
   addFeature<TempFeature>(_binaryName, getOptions<TempOptionsProvider>());

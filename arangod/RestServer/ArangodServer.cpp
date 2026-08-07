@@ -221,7 +221,7 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& systemDatabaseFeature = getFeature<SystemDatabaseFeature>();
   auto& aqlFunctionFeature = getFeature<aql::AqlFunctionFeature>();
 
-  addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
+
   addFeature<ActionFeature>(getOptions<ActionOptionsProvider>());
   addFeature<ApiRecordingFeature>(_dataSourceRegistry, metrics,
                                   getOptions<ApiRecordingOptionsProvider>());

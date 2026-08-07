@@ -29,7 +29,6 @@
 #include "ApplicationFeatures/ProcessEnvironmentFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
-#include "ApplicationFeatures/VersionFeature.h"
 #include "Backup/BackupFeature.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/LogMacros.h"
@@ -55,7 +54,7 @@ ArangoBackupServer::ArangoBackupServer(
     : OptionProvidingServer<ArangoBackupOptionProviders>(
           options, binaryPath, std::move(binaryName), ret) {}
 
-void ArangoBackupServer::addFeatures() {
+void ArangoBackupServer::addFeaturesWithOptionProvider() {
   addFeature<BasicFeaturePhaseClient>();
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
@@ -64,10 +63,7 @@ void ArangoBackupServer::addFeatures() {
   addFeature<ShutdownFeature>(
       std::array{std::type_index(typeid(BackupFeature))});
   addFeature<SslFeature>();
-}
 
-void ArangoBackupServer::addFeaturesWithOptionProvider() {
-  addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
   addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
   addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());
   addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());

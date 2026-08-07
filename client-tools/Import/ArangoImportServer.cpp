@@ -30,7 +30,6 @@
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
-#include "ApplicationFeatures/VersionFeature.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Import/ImportFeature.h"
 #include "Logger/LogMacros.h"
@@ -60,7 +59,7 @@ ArangoImportServer::ArangoImportServer(
     : OptionProvidingServer<ArangoImportOptionProviders>(
           options, binaryPath, std::move(binaryName), ret) {}
 
-void ArangoImportServer::addFeatures() {
+void ArangoImportServer::addFeaturesWithOptionProvider() {
   addFeature<BasicFeaturePhaseClient>();
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
@@ -69,10 +68,7 @@ void ArangoImportServer::addFeatures() {
   addFeature<ShutdownFeature>(
       std::array{std::type_index(typeid(ImportFeature))});
   addFeature<SslFeature>();
-}
 
-void ArangoImportServer::addFeaturesWithOptionProvider() {
-  addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
   addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
   addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());
   addFeature<TempFeature>(_binaryName, getOptions<TempOptionsProvider>());

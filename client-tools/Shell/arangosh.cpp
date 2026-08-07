@@ -51,14 +51,9 @@ int main(int argc, char* argv[]) {
     );
 
     ArangoshServer server(options, BIN_DIRECTORY, context.binaryName(), &ret);
-    server.addFeatures();
 
     try {
       server.run(argc, argv);
-      if (server.helpShown()) {
-        // --help was displayed
-        ret = EXIT_SUCCESS;
-      }
     } catch (std::exception const& ex) {
       LOG_TOPIC("da777", ERR, arangodb::Logger::FIXME)
           << "arangosh terminated because of an unhandled exception: "

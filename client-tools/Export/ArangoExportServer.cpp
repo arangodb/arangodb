@@ -30,7 +30,6 @@
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
-#include "ApplicationFeatures/VersionFeature.h"
 #include "Export/ExportFeature.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/LogMacros.h"
@@ -60,7 +59,7 @@ ArangoExportServer::ArangoExportServer(
     : OptionProvidingServer<ArangoExportOptionProviders>(
           options, binaryPath, std::move(binaryName), ret) {}
 
-void ArangoExportServer::addFeatures() {
+void ArangoExportServer::addFeaturesWithOptionProvider() {
   addFeature<BasicFeaturePhaseClient>();
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
@@ -69,10 +68,7 @@ void ArangoExportServer::addFeatures() {
   addFeature<ShutdownFeature>(
       std::array{std::type_index(typeid(ExportFeature))});
   addFeature<SslFeature>();
-}
 
-void ArangoExportServer::addFeaturesWithOptionProvider() {
-  addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
   addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
   addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());
   addFeature<TempFeature>(_binaryName, getOptions<TempOptionsProvider>());

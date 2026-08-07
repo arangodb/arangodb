@@ -104,9 +104,11 @@ class CreateCollectionBodyTest : public ::testing::Test {
     EXPECT_TRUE(p.fail()) << " On body " << body.toJson();
   }
 
+  /// @brief the sharding leader of a oneShard database, which is the only way
+  /// to get a default distributeShardsLike. Hence it has to have one shard.
   static UserInputCollectionProperties defaultLeaderProps() {
     UserInputCollectionProperties res;
-    res.numberOfShards = 12;
+    res.numberOfShards = 1;
     res.replicationFactor = 3;
     res.writeConcern = 2;
     res.id = DataSourceId{42};
@@ -278,13 +280,15 @@ TEST_F(CreateCollectionBodyTest, test_distributeShardsLike_default) {
   std::string defaultShardBy = "_graphs";
   auto leader = defaultLeaderProps();
   auto config = defaultDBConfig({{defaultShardBy, leader}});
-  config.defaultDistributeShardsLike = defaultShardBy;
+  config.oneShardDBConfiguration =
+      OneShardDatabaseConfiguration{defaultShardBy};
 
   VPackBuilder body;
   {
     VPackObjectBuilder bodyBuilder{&body};
     body.add("name", VPackValue("test"));
   }
+
   auto testee = parse(body.slice(), config);
   // Default value should be taken if none is set
   ASSERT_TRUE(testee.ok()) << "Failed on " << testee.errorMessage();
@@ -302,7 +306,8 @@ TEST_F(CreateCollectionBodyTest,
   std::string defaultShardBy = "_graphs";
   auto leader = defaultLeaderProps();
   auto config = defaultDBConfig({{defaultShardBy, leader}});
-  config.defaultDistributeShardsLike = defaultShardBy;
+  config.oneShardDBConfiguration =
+      OneShardDatabaseConfiguration{defaultShardBy};
 
   for (auto const& attribute : {"writeConcern", "replicationFactor",
                                 "numberOfShards", "minReplicationFactor"}) {
@@ -323,7 +328,8 @@ TEST_F(CreateCollectionBodyTest,
   std::string defaultShardBy = "_graphs";
   auto leader = defaultLeaderProps();
   auto config = defaultDBConfig({{defaultShardBy, leader}});
-  config.defaultDistributeShardsLike = defaultShardBy;
+  config.oneShardDBConfiguration =
+      OneShardDatabaseConfiguration{defaultShardBy};
 
   VPackBuilder body;
   {
@@ -349,9 +355,8 @@ TEST_F(CreateCollectionBodyTest, test_distributeShardsLike_default_ownValue) {
   // default is good enough
   std::string defaultShardBy = "_graphs";
   auto config = defaultDBConfig();
-  config.defaultDistributeShardsLike = defaultShardBy;
-  // OneShard and DistributeShardsLike only show up in pairs.
-  config.isOneShardDB = true;
+  config.oneShardDBConfiguration =
+      OneShardDatabaseConfiguration{defaultShardBy};
 
   auto body = createMinimumBodyWithOneValue("distributeShardsLike", "test");
   auto testee = parse(body.slice(), config);
@@ -365,8 +370,8 @@ TEST_F(CreateCollectionBodyTest, test_oneShard_forcesDistributeShardsLike) {
   // default is good enough
   std::string defaultShardBy = "_graphs";
   auto config = defaultDBConfig();
-  config.defaultDistributeShardsLike = defaultShardBy;
-  config.isOneShardDB = true;
+  config.oneShardDBConfiguration =
+      OneShardDatabaseConfiguration{defaultShardBy};
 
   // Specific shardKey is disallowed
   auto body = createMinimumBodyWithOneValue("distributeShardsLike", "test");
@@ -379,8 +384,8 @@ TEST_F(CreateCollectionBodyTest, test_oneShard_moreShards) {
   // Configure oneShardDB properly
   std::string defaultShardBy = "_graphs";
   auto config = defaultDBConfig();
-  config.defaultDistributeShardsLike = defaultShardBy;
-  config.isOneShardDB = true;
+  config.oneShardDBConfiguration =
+      OneShardDatabaseConfiguration{defaultShardBy};
 
   // Specific shardKey is disallowed
   auto body = createMinimumBodyWithOneValue("numberOfShards", 5);
