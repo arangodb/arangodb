@@ -28,7 +28,6 @@
 #include "ApplicationFeatures/ProcessEnvironmentFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
-#include "ApplicationFeatures/VersionFeature.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -59,11 +58,9 @@ void ArangoVPackServer::addFeatures() {
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(
       std::array{std::type_index(typeid(VPackFeature))});
-  addFeature<VPackFeature>(_ret);
 }
 
 void ArangoVPackServer::addFeaturesWithOptionProvider() {
-  addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
   addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
   addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
   addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
@@ -71,6 +68,7 @@ void ArangoVPackServer::addFeaturesWithOptionProvider() {
   addFeature<ProcessEnvironmentFeature>(
       _binaryName, getOptions<ProcessEnvironmentOptionsProvider>());
 #endif
+  addFeature<VPackFeature>(_ret, getOptions<VPackOptionsProvider>());
 }
 
 }  // namespace arangodb

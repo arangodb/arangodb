@@ -138,9 +138,6 @@ class ApplicationServer {
 
   virtual ~ApplicationServer();
 
-  std::string helpSection() const { return _helpSection; }
-  bool helpShown() const { return !_helpSection.empty(); }
-
   /// @brief stringify the internal state
   std::string_view stringifyState() const;
 
@@ -433,6 +430,11 @@ class ApplicationServer {
 
   // whether or not to dump configuration options
   bool _dumpOptions = false;
+
+  // declared only so they appear in --help and --dump-options;
+  // handled by ArgumentParser before options are parsed
+  bool _printVersion = false;
+  bool _printVersionJson = false;
 };
 
 }  // namespace application_features

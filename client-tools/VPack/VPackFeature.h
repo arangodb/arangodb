@@ -36,7 +36,6 @@ class VPackFeature final : public application_features::ApplicationFeature {
                VPackFeatureOptions options);
   VPackFeature(application_features::ApplicationServer& server, int* result);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void start() override;
 
  private:

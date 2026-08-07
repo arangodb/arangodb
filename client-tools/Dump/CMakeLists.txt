@@ -2,6 +2,7 @@ add_executable(${BIN_ARANGODUMP}
   ${ProductVersionFiles_arangodump}
   ArangoDumpServer.cpp
   DumpFeature.cpp
+  DumpFeatureOptions.cpp
   DumpOptionsProvider.cpp
   arangodump.cpp
 )

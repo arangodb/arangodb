@@ -53,7 +53,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void DumpOptionsProvider::declareOptions(
+void DumpOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, DumpFeatureOptions& opts) {
   options->addOption(
       "--collection",
@@ -229,7 +229,7 @@ single collection/shard from multiple files.)")
       .setIntroducedIn(31102);
 }
 
-void DumpOptionsProvider::validateOptions(
+void DumpOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> options, DumpFeatureOptions& opts) {
   auto const& positionals = options->processingResult()._positionals;
   size_t n = positionals.size();
