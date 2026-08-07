@@ -59,11 +59,6 @@ ScriptFeature::ScriptFeature(ApplicationServer& server, int* result,
   startsAfter<AgencyFeaturePhase>();
 }
 
-void ScriptFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  ScriptOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
 void ScriptFeature::start() {
   auto& serverFeature = server().getFeature<ServerFeature>();
   auto operationMode = serverFeature.operationMode();

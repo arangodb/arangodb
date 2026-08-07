@@ -177,15 +177,18 @@ static arangodb_http_response_code_total getBuilder(rest::ResponseCode code) {
 GeneralServerFeature::GeneralServerFeature(
     application_features::ApplicationServer& server,
     metrics::MetricsFeature& metricsFeature)
-    : GeneralServerFeature(server, metricsFeature, GeneralServerOptions{}) {}
+    : GeneralServerFeature(server, metricsFeature, GeneralServerOptions{},
+                           LogApiOptions{}) {}
 
 GeneralServerFeature::GeneralServerFeature(
     application_features::ApplicationServer& server,
-    metrics::MetricsFeature& metricsFeature, GeneralServerOptions options)
+    metrics::MetricsFeature& metricsFeature, GeneralServerOptions options,
+    LogApiOptions logApiOptions)
     : ApplicationFeature{server, *this},
       _currentRequestsSize(
           metricsFeature.add(arangodb_requests_memory_usage{})),
       _options(std::move(options)),
+      _logApiOptions(std::move(logApiOptions)),
       _requestBodySizeHttp1(
           metricsFeature.add(arangodb_request_body_size_http1{})),
       _requestBodySizeHttp2(
@@ -856,7 +859,9 @@ void GeneralServerFeature::defineRemainingHandlers(
 
   f.addPrefixHandler(
       "/_admin/log",
-      RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData, {0, 1});
+      RestHandlerCreator<arangodb::RestAdminLogHandler>::createData<
+          LogApiOptions const*>,
+      {0, 1}, &_logApiOptions);
 
 #ifdef USE_V8
   if (server().isEnabled<V8DealerFeature>()) {

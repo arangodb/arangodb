@@ -32,8 +32,6 @@ struct NonceOptionsProvider
     : OptionsProviderImpl<NonceOptionsProvider, NonceFeatureOptions> {
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           NonceFeatureOptions& options);
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
-                           NonceFeatureOptions& /*options*/){};
 };
 
 }  // namespace arangodb

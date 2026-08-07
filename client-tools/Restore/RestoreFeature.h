@@ -59,9 +59,6 @@ class RestoreFeature final : public application_features::ApplicationFeature {
                  ClientFeature& client, int& exitCode);
 
   // for documentation of virtual methods, see `ApplicationFeature`
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(
-      std::shared_ptr<options::ProgramOptions> options) override;
   void prepare() override;
   void start() override;
 
