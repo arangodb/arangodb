@@ -89,9 +89,11 @@ using ConsolidatingSegments = absl::flat_hash_set<std::string_view>;
 // Cleanup reclaims disk space of deleted documents whereas the merge
 // reduces the total no. of segment files on disk.
 using ConsolidationPolicy =
-    std::function<void(Consolidation& candidates, const IndexReader& index,
-                       const ConsolidatingSegments& consolidating_segments,
-                       bool favorCleanupOverMerge)>;
+  std::function<void(
+                  Consolidation& candidates,
+                  const IndexReader& index,
+                  const ConsolidatingSegments& consolidating_segments,
+                  bool favorCleanupOverMerge)>;
 
 enum class ConsolidationError : uint32_t {
   // Consolidation failed
@@ -138,7 +140,7 @@ struct SegmentOptions {
 
 // Progress report callback types for commits.
 using ProgressReportCallback =
-    std::function<void(std::string_view phase, size_t current, size_t total)>;
+  std::function<void(std::string_view phase, size_t current, size_t total)>;
 
 // Functor for creating payload. Operation tick is provided for
 // payload generation.
@@ -192,7 +194,7 @@ class IndexWriter : private util::noncopyable {
   struct FlushContext;
 
   using FlushContextPtr =
-      std::unique_ptr<FlushContext, void (*)(FlushContext*)>;
+    std::unique_ptr<FlushContext, void (*)(FlushContext*)>;
 
   // Disallow using public constructor
   struct ConstructToken {
@@ -203,12 +205,12 @@ class IndexWriter : private util::noncopyable {
    public:
     ActiveSegmentContext() = default;
     ActiveSegmentContext(
-        std::shared_ptr<SegmentContext> segment,
-        std::atomic_size_t& segments_active,
-        // the FlushContext the SegmentContext is currently registered with
-        FlushContext* flush = nullptr,
-        // the segment offset in flush->pending_segments_
-        size_t pending_segment_offset = writer_limits::kInvalidOffset) noexcept;
+      std::shared_ptr<SegmentContext> segment,
+      std::atomic_size_t& segments_active,
+      // the FlushContext the SegmentContext is currently registered with
+      FlushContext* flush = nullptr,
+      // the segment offset in flush->pending_segments_
+      size_t pending_segment_offset = writer_limits::kInvalidOffset) noexcept;
     ActiveSegmentContext(ActiveSegmentContext&& other) noexcept;
     ActiveSegmentContext& operator=(ActiveSegmentContext&& other) noexcept;
 
@@ -244,13 +246,13 @@ class IndexWriter : private util::noncopyable {
     static constexpr uintptr_t kReplace = std::numeric_limits<uintptr_t>::max();
 
     QueryContext(FilterPtr filter, uint64_t tick, uintptr_t data)
-        : filter{std::move(filter)}, tick{tick}, data{data} {
+      : filter{std::move(filter)}, tick{tick}, data{data} {
       IRS_ASSERT(this->filter != nullptr);
     }
     QueryContext(const irs::filter& filter, uint64_t tick, size_t data)
-        : QueryContext{{FilterPtr{}, &filter}, tick, data} {}
+      : QueryContext{{FilterPtr{}, &filter}, tick, data} {}
     QueryContext(irs::filter::ptr&& filter, uint64_t tick, size_t data)
-        : QueryContext{FilterPtr{std::move(filter)}, tick, data} {}
+      : QueryContext{FilterPtr{std::move(filter)}, tick, data} {}
 
     // keep a handle to the filter for the case when this object has ownership
     FilterPtr filter;
@@ -406,12 +408,12 @@ class IndexWriter : private util::noncopyable {
       UpdateSegment(disable_flush);
       auto& segment = *active_.Segment();
       auto& query = segment.queries_.emplace_back(
-          std::forward<Filter>(filter), queries_, QueryContext::kReplace);
+        std::forward<Filter>(filter), queries_, QueryContext::kReplace);
       segment.has_replace_ = true;
       return {
-          segment,
-          segment_writer::DocContext{++queries_, segment.queries_.size() - 1},
-          &query};
+        segment,
+        segment_writer::DocContext{++queries_, segment.queries_.size() - 1},
+        &query};
     }
 
     // Revert all pending document modifications and release resources
@@ -429,7 +431,7 @@ class IndexWriter : private util::noncopyable {
         return true;
       }
       const auto first_tick =
-          writer_->tick_.fetch_add(queries_, std::memory_order_relaxed);
+        writer_->tick_.fetch_add(queries_, std::memory_order_relaxed);
       return CommitImpl(first_tick + queries_);
     }
 
@@ -471,10 +473,8 @@ class IndexWriter : private util::noncopyable {
   static_assert(std::is_nothrow_move_assignable_v<Transaction>);
 
   struct ConsolidationProgress {
-    //  Called after candidates are assembled and consolidation is about to
-    //  begin.
-    std::function<void(const std::vector<irs::SegmentInfo>& candidates)>
-        beginConsolidation;
+    //  Called after candidates are assembled and consolidation is about to begin.
+    std::function<void(const std::vector<irs::SegmentInfo>& candidates)> beginConsolidation;
 
     //  Called after segments merging operation is completed.
     std::function<void(const ConsolidationResult&)> endConsolidation;
@@ -497,8 +497,8 @@ class IndexWriter : private util::noncopyable {
 
   // Returns current index snapshot
   DirectoryReader GetSnapshot() const noexcept {
-    return DirectoryReader{std::atomic_load_explicit(
-        &committed_reader_, std::memory_order_acquire)};
+    return DirectoryReader{
+      std::atomic_load_explicit(&committed_reader_, std::memory_order_acquire)};
   }
 
   // Returns overall number of buffered documents in a writer
@@ -522,9 +522,9 @@ class IndexWriter : private util::noncopyable {
   // given the exact same index_meta containing all segments in the
   // commit, however, the resulting acceptor will only be segments not
   // yet marked for consolidation by other policies in the same commit
-  ConsolidationResult Consolidate(const ConsolidationPolicy& policy,
-                                  const ConsolidationProgress& progress,
-                                  format::ptr codec = nullptr);
+  ConsolidationResult Consolidate(
+    const ConsolidationPolicy& policy,
+    const ConsolidationProgress& progress, format::ptr codec = nullptr);
 
   // Imports index from the specified index reader into new segment
   // Reader the index reader to import.
@@ -610,28 +610,28 @@ class IndexWriter : private util::noncopyable {
 
   struct ImportContext {
     ImportContext(
-        IndexSegment&& segment, uint64_t tick, FileRefs&& refs,
-        Consolidation&& consolidation_candidates,
-        std::shared_ptr<const SegmentReaderImpl>&& reader,
-        std::shared_ptr<const DirectoryReaderImpl>&& consolidation_reader,
-        MergeWriter&& merger) noexcept
-        : tick{tick},
-          segment{std::move(segment)},
-          refs{std::move(refs)},
-          reader{std::move(reader)},
-          consolidation_ctx{
-              .consolidation_reader = std::move(consolidation_reader),
-              .candidates = std::move(consolidation_candidates),
-              .merger = std::move(merger)} {}
+      IndexSegment&& segment, uint64_t tick, FileRefs&& refs,
+      Consolidation&& consolidation_candidates,
+      std::shared_ptr<const SegmentReaderImpl>&& reader,
+      std::shared_ptr<const DirectoryReaderImpl>&& consolidation_reader,
+      MergeWriter&& merger) noexcept
+      : tick{tick},
+        segment{std::move(segment)},
+        refs{std::move(refs)},
+        reader{std::move(reader)},
+        consolidation_ctx{
+          .consolidation_reader = std::move(consolidation_reader),
+          .candidates = std::move(consolidation_candidates),
+          .merger = std::move(merger)} {}
 
     ImportContext(IndexSegment&& segment, uint64_t tick, FileRefs&& refs,
                   std::shared_ptr<const SegmentReaderImpl>&& reader,
                   const ResourceManagementOptions& rm) noexcept
-        : tick{tick},
-          segment{std::move(segment)},
-          refs{std::move(refs)},
-          reader{std::move(reader)},
-          consolidation_ctx{.merger{*rm.consolidations}} {}
+      : tick{tick},
+        segment{std::move(segment)},
+        refs{std::move(refs)},
+        reader{std::move(reader)},
+        consolidation_ctx{.merger{*rm.consolidations}} {}
 
     ImportContext(ImportContext&&) = default;
 
@@ -652,12 +652,12 @@ class IndexWriter : private util::noncopyable {
     FlushedSegment() = default;
     explicit FlushedSegment(IndexSegment&& segment, DocMap&& old2new,
                             DocsMask&& docs_mask, size_t docs_begin) noexcept
-        : IndexSegment{std::move(segment)},
-          old2new{std::move(old2new)},
-          docs_mask{std::move(docs_mask)},
-          document_mask{{this->docs_mask.set.get_allocator()}},
-          docs_begin_{docs_begin},
-          docs_end_{docs_begin_ + meta.docs_count} {}
+      : IndexSegment{std::move(segment)},
+        old2new{std::move(old2new)},
+        docs_mask{std::move(docs_mask)},
+        document_mask{{this->docs_mask.set.get_allocator()}},
+        docs_begin_{docs_begin},
+        docs_end_{docs_begin_ + meta.docs_count} {}
 
     size_t GetDocsBegin() const noexcept { return docs_begin_; }
     size_t GetDocsEnd() const noexcept { return docs_end_; }
@@ -726,8 +726,8 @@ class IndexWriter : private util::noncopyable {
     bool has_replace_{false};
 
     static std::unique_ptr<SegmentContext> make(
-        directory& dir, segment_meta_generator_t&& meta_generator,
-        const SegmentWriterOptions& options);
+      directory& dir, segment_meta_generator_t&& meta_generator,
+      const SegmentWriterOptions& options);
 
     SegmentContext(directory& dir, segment_meta_generator_t&& meta_generator,
                    const SegmentWriterOptions& options);
@@ -768,9 +768,9 @@ class IndexWriter : private util::noncopyable {
     std::atomic_uint32_t segment_docs_max;
 
     explicit SegmentLimits(const SegmentOptions& opts) noexcept
-        : segment_count_max{ZeroMax(opts.segment_count_max, kSizeMax)},
-          segment_memory_max{ZeroMax(opts.segment_memory_max, kSizeMax)},
-          segment_docs_max{ZeroMax(opts.segment_docs_max, kDocsMax)} {}
+      : segment_count_max{ZeroMax(opts.segment_count_max, kSizeMax)},
+        segment_memory_max{ZeroMax(opts.segment_memory_max, kSizeMax)},
+        segment_docs_max{ZeroMax(opts.segment_docs_max, kDocsMax)} {}
 
     SegmentLimits& operator=(const SegmentOptions& opts) noexcept {
       segment_count_max.store(ZeroMax(opts.segment_count_max, kSizeMax));
@@ -789,15 +789,15 @@ class IndexWriter : private util::noncopyable {
 
     PendingSegmentContext(std::shared_ptr<SegmentContext> segment,
                           size_t pending_segment_context_offset)
-        : Freelist::node_type{.value = pending_segment_context_offset},
-          segment_{std::move(segment)} {
+      : Freelist::node_type{.value = pending_segment_context_offset},
+        segment_{std::move(segment)} {
       IRS_ASSERT(segment_ != nullptr);
     }
   };
 
   using CachedReaders =
-      absl::flat_hash_map<FlushedSegment*,
-                          std::shared_ptr<const SegmentReaderImpl>>;
+    absl::flat_hash_map<FlushedSegment*,
+                        std::shared_ptr<const SegmentReaderImpl>>;
 
   // The context containing data collected for the next commit() call
   // Note a 'segment_context' is tracked by at most 1 'flush_context', it is
@@ -919,7 +919,7 @@ class IndexWriter : private util::noncopyable {
 
   // Return options for segment_writer
   SegmentWriterOptions GetSegmentWriterOptions(
-      bool consolidation) const noexcept;
+    bool consolidation) const noexcept;
 
   // Return next segment identifier
   uint64_t NextSegmentId() noexcept;
@@ -946,11 +946,12 @@ class IndexWriter : private util::noncopyable {
   // (modification during commit()/defragment()), payload_buf_
   std::mutex commit_lock_;
   std::recursive_mutex consolidation_lock_;
-  // During consolidation, we can either perform segments merge or segments
-  // cleanup. When consolidation_merge_or_cleanup_ is true, we attempt merge
-  // operation first during consolidation. When false, we attempt cleanup first.
+  // During consolidation, we can either perform segments merge or segments cleanup.
+  // When consolidation_merge_or_cleanup_ is true, we attempt merge operation first
+  // during consolidation.
+  // When false, we attempt cleanup first.
   // We use this to alternate between merge and cleanup for fair execution
-  bool consolidation_merge_or_cleanup_{false};
+  bool consolidation_merge_or_cleanup_ { false };
   // segments that are under consolidation
   ConsolidatingSegments consolidating_segments_;
   // directory used for initialization of readers

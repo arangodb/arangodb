@@ -90,20 +90,20 @@ constexpr size_t DEFAULT_SEGMENT_MEM_MAX = 1 << 28;  // 256M
 constexpr size_t DEFAULT_CONSOLIDATION_INTERVAL_MSEC = 500;
 
 constexpr irs::IndexFeatures TEXT_INDEX_FEATURES =
-    irs::IndexFeatures::FREQ | irs::IndexFeatures::POS;
+  irs::IndexFeatures::FREQ | irs::IndexFeatures::POS;
 
 // legacy formats supportd only variable length norms, i.e. "norm" feature
 constexpr frozen::unordered_set<std::string_view, 6> LEGACY_FORMATS{
-    "1_0", "1_1", "1_2", "1_2simd", "1_3simd", "1_3"};
+  "1_0", "1_1", "1_2", "1_2simd", "1_3simd", "1_3"};
 
 // norm features supported by old format
 constexpr std::array<irs::type_info::type_id, 1> LEGACY_TEXT_FEATURES{
-    irs::type<irs::Norm>::id()};
+  irs::type<irs::Norm>::id()};
 // fixed length norm
 constexpr std::array<irs::type_info::type_id, 1> TEXT_FEATURES{
-    irs::type<irs::Norm2>::id()};
+  irs::type<irs::Norm2>::id()};
 constexpr std::array<irs::type_info::type_id, 1> NUMERIC_FEATURES{
-    irs::type<irs::granularity_prefix>::id()};
+  irs::type<irs::granularity_prefix>::id()};
 
 struct Scorer {
   std::string_view name;
@@ -111,15 +111,15 @@ struct Scorer {
 };
 
 constexpr frozen::unordered_map<std::string_view, Scorer, 3> WAND_TYPES{
-    {"maxfreq", Scorer{.name = "tfidf", .arg = {}}},
-    {"divnorm", Scorer{.name = "tfidf", .arg = "true"}},
-    {"minnorm", Scorer{.name = "bm25", .arg = {}}},
+  {"maxfreq", Scorer{.name = "tfidf", .arg = {}}},
+  {"divnorm", Scorer{.name = "tfidf", .arg = "true"}},
+  {"minnorm", Scorer{.name = "bm25", .arg = {}}},
 };
 
 constexpr frozen::unordered_set<std::string_view, 3> SORTED_FIELDS{
-    "id",
-    "title",
-    "date",
+  "id",
+  "title",
+  "date",
 };
 
 }  // namespace
@@ -148,9 +148,8 @@ struct Doc {
       tmp_value = value;
       value /= base;
       *ptr++ =
-          "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvw"
-          "xy"
-          "z"[35 + (tmp_value - value * base)];
+        "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxy"
+        "z"[35 + (tmp_value - value * base)];
     } while (value);
 
     // Apply negative sign
@@ -171,7 +170,7 @@ struct Doc {
 
     Field(const std::string_view& n, irs::IndexFeatures index_features,
           const irs::features_t& flags)
-        : _name(n), _features(flags), _index_features(index_features) {}
+      : _name(n), _features(flags), _index_features(index_features) {}
 
     std::string_view name() const noexcept { return _name; }
 
@@ -194,11 +193,11 @@ struct Doc {
 
     StringField(const std::string_view& n, irs::IndexFeatures index_features,
                 const irs::features_t& flags)
-        : Field(n, index_features, flags) {}
+      : Field(n, index_features, flags) {}
 
     StringField(const std::string_view& n, irs::IndexFeatures index_features,
                 const irs::features_t& flags, const std::string& a)
-        : Field(n, index_features, flags), f(a) {}
+      : Field(n, index_features, flags), f(a) {}
 
     irs::token_stream& get_tokens() const override {
       _stream.reset(f);
@@ -217,7 +216,7 @@ struct Doc {
 
     TextField(const std::string_view& n, irs::IndexFeatures index_features,
               const irs::features_t& flags, irs::analysis::analyzer::ptr stream)
-        : Field(n, index_features, flags), stream(std::move(stream)) {}
+      : Field(n, index_features, flags), stream(std::move(stream)) {}
 
     irs::token_stream& get_tokens() const override {
       stream->reset(f);
@@ -236,11 +235,11 @@ struct Doc {
 
     NumericField(const std::string_view& n, irs::IndexFeatures index_features,
                  const irs::features_t& flags)
-        : Field(n, index_features, flags) {}
+      : Field(n, index_features, flags) {}
 
     NumericField(const std::string_view& n, irs::IndexFeatures index_features,
                  const irs::features_t& flags, uint64_t v)
-        : Field(n, index_features, flags), value(v) {}
+      : Field(n, index_features, flags), value(v) {}
 
     irs::token_stream& get_tokens() const override {
       stream.reset(value);
@@ -304,8 +303,8 @@ struct WikiDoc : Doc {
 
     // date: uint64_t
     ndate = std::make_shared<NumericField>(
-        "timesecnum", irs::IndexFeatures::NONE,
-        irs::features_t{NUMERIC_FEATURES.data(), NUMERIC_FEATURES.size()});
+      "timesecnum", irs::IndexFeatures::NONE,
+      irs::features_t{NUMERIC_FEATURES.data(), NUMERIC_FEATURES.size()});
     elements.push_back(ndate);
 
     // body: text
@@ -335,7 +334,7 @@ struct WikiDoc : Doc {
 
     // +date: uint64_t
     uint64_t t =
-        0;  // boost::posix_time::microsec_clock::local_time().total_milliseconds();
+      0;  // boost::posix_time::microsec_clock::local_time().total_milliseconds();
     ndate->value = t;
 
     // body: text
@@ -378,7 +377,7 @@ int put(const std::string& path, const std::string& dir_type,
     if (it != WAND_TYPES.end()) {
       scorer = it->second;
       scr = irs::scorers::get(
-          scorer.name, irs::type<irs::text_format::json>::get(), scorer.arg);
+        scorer.name, irs::type<irs::text_format::json>::get(), scorer.arg);
     }
     if (!scr) {
       std::cerr << "Unable to instatiate wand from wand type: " << wand_type
@@ -409,8 +408,8 @@ int put(const std::string& path, const std::string& dir_type,
   }
   analyzer_factory_f analyzer_factory = [&analyzer_type, &analyzer_options]() {
     auto analyzer = irs::analysis::analyzers::get(
-        analyzer_type, irs::type<irs::text_format::json>::get(),
-        analyzer_options);
+      analyzer_type, irs::type<irs::text_format::json>::get(),
+      analyzer_options);
     if (!analyzer) {
       std::cerr << "Unable to load an analyzer of type '" << analyzer_type
                 << "', error 'NOT_FOUND'\n";
@@ -423,8 +422,8 @@ int put(const std::string& path, const std::string& dir_type,
   }
 
   indexer_threads = (std::min)(
-      indexer_threads, (std::numeric_limits<size_t>::max)() - 1 -
-                           consolidation_threads);  // -1 for commiter thread
+    indexer_threads, (std::numeric_limits<size_t>::max)() - 1 -
+                       consolidation_threads);  // -1 for commiter thread
   indexer_threads = (std::max)(size_t(1), indexer_threads);
 
   irs::IndexWriterOptions opts;
@@ -439,7 +438,7 @@ int put(const std::string& path, const std::string& dir_type,
   opts.segment_memory_max = segment_mem_max;
   opts.features = [](irs::type_info::type_id id) {
     const irs::ColumnInfo info{
-        irs::type<irs::compression::none>::get(), {}, false};
+      irs::type<irs::compression::none>::get(), {}, false};
 
     if (irs::type<irs::Norm>::id() == id) {
       return std::make_pair(info, &irs::Norm::MakeWriter);
@@ -455,7 +454,7 @@ int put(const std::string& path, const std::string& dir_type,
   auto writer = irs::IndexWriter::Make(*dir, codec, irs::OM_CREATE, opts);
 
   irs::async_utils::ThreadPool<> thread_pool(
-      indexer_threads + consolidation_threads + 1);  // +1 for commiter thread
+    indexer_threads + consolidation_threads + 1);  // +1 for commiter thread
 
   SCOPED_TIMER("Total Time");
   std::cout << "Configuration:\n"
@@ -565,7 +564,7 @@ int put(const std::string& path, const std::string& dir_type,
         }
 
         std::this_thread::sleep_for(
-            std::chrono::milliseconds(commit_interval_ms));
+          std::chrono::milliseconds(commit_interval_ms));
       }
     });
   }
@@ -585,7 +584,7 @@ int put(const std::string& path, const std::string& dir_type,
           auto lock = std::unique_lock(consolidation_mutex);
           if (std::cv_status::timeout ==
               consolidation_cv.wait_for(
-                  lock, std::chrono::milliseconds(consolidation_interval_ms))) {
+                lock, std::chrono::milliseconds(consolidation_interval_ms))) {
             continue;
           }
         }
@@ -655,8 +654,8 @@ int put(const std::string& path, const std::string& dir_type,
     std::cout << "Consolidating all segments:" << std::endl;
     irs::IndexWriter::ConsolidationProgress progress;
     writer->Consolidate(
-        irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
-        progress);
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      progress);
     writer->Commit();
   }
 
@@ -681,37 +680,37 @@ int put(const cmdline::parser& args) {
   }
 
   const auto batch_size =
-      args.exist(BATCH_SIZE) ? args.get<size_t>(BATCH_SIZE) : size_t(0);
+    args.exist(BATCH_SIZE) ? args.get<size_t>(BATCH_SIZE) : size_t(0);
   const auto consolidate =
-      args.exist(CONSOLIDATE_ALL) ? args.get<bool>(CONSOLIDATE_ALL) : false;
+    args.exist(CONSOLIDATE_ALL) ? args.get<bool>(CONSOLIDATE_ALL) : false;
   const auto commit_interval_ms =
-      args.exist(CPR) ? args.get<size_t>(CPR) : size_t(0);
+    args.exist(CPR) ? args.get<size_t>(CPR) : size_t(0);
   const auto indexer_threads =
-      args.exist(THR) ? args.get<size_t>(THR) : size_t(0);
+    args.exist(THR) ? args.get<size_t>(THR) : size_t(0);
   const auto consolidation_threads =
-      args.exist(CONS_THR) ? args.get<size_t>(CONS_THR) : size_t(0);
+    args.exist(CONS_THR) ? args.get<size_t>(CONS_THR) : size_t(0);
   const auto lines_max = args.exist(MAX) ? args.get<size_t>(MAX) : size_t(0);
   const auto dir_type = args.exist(DIR_TYPE) ? args.get<std::string>(DIR_TYPE)
                                              : std::string("mmap");
   const auto format =
-      args.exist(FORMAT) ? args.get<std::string>(FORMAT) : std::string("1_0");
+    args.exist(FORMAT) ? args.get<std::string>(FORMAT) : std::string("1_0");
   const auto analyzer_type = args.exist(ANALYZER_TYPE)
-                                 ? args.get<std::string>(ANALYZER_TYPE)
-                                 : DEFAULT_ANALYZER_TYPE;
+                               ? args.get<std::string>(ANALYZER_TYPE)
+                               : DEFAULT_ANALYZER_TYPE;
   const auto analyzer_options = args.exist(ANALYZER_TYPE)
-                                    ? args.get<std::string>(ANALYZER_OPTIONS)
-                                    : DEFAULT_ANALYZER_OPTIONS;
+                                  ? args.get<std::string>(ANALYZER_OPTIONS)
+                                  : DEFAULT_ANALYZER_OPTIONS;
   const auto segment_mem_max = args.exist(SEGMENT_MEM_MAX)
-                                   ? args.get<size_t>(SEGMENT_MEM_MAX)
-                                   : DEFAULT_SEGMENT_MEM_MAX;
+                                 ? args.get<size_t>(SEGMENT_MEM_MAX)
+                                 : DEFAULT_SEGMENT_MEM_MAX;
   const auto consolidation_internval_ms =
-      args.exist(CONSOLIDATION_INTERVAL)
-          ? args.get<size_t>(CONSOLIDATION_INTERVAL)
-          : DEFAULT_CONSOLIDATION_INTERVAL_MSEC;
+    args.exist(CONSOLIDATION_INTERVAL)
+      ? args.get<size_t>(CONSOLIDATION_INTERVAL)
+      : DEFAULT_CONSOLIDATION_INTERVAL_MSEC;
   auto wand_type =
-      args.exist(WAND_TYPE) ? args.get<std::string>(WAND_TYPE) : "";
+    args.exist(WAND_TYPE) ? args.get<std::string>(WAND_TYPE) : "";
   const auto sorted_field =
-      args.exist(SORTED_FIELD) ? args.get<std::string>(SORTED_FIELD) : "";
+    args.exist(SORTED_FIELD) ? args.get<std::string>(SORTED_FIELD) : "";
 
   std::fstream fin;
   std::istream* in;

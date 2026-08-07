@@ -103,7 +103,7 @@ class directory_mock : public irs::directory {
 
 struct blocking_directory : directory_mock {
   explicit blocking_directory(irs::directory& impl, const std::string& blocker)
-      : tests::directory_mock(impl), blocker(blocker) {}
+    : tests::directory_mock(impl), blocker(blocker) {}
 
   irs::index_output::ptr create(std::string_view name) noexcept final {
     auto stream = tests::directory_mock::create(name);
@@ -143,7 +143,7 @@ struct callback_directory : directory_mock {
   typedef std::function<void()> AfterCallback;
 
   explicit callback_directory(irs::directory& impl, AfterCallback&& p)
-      : tests::directory_mock(impl), after(p) {}
+    : tests::directory_mock(impl), after(p) {}
 
   irs::index_output::ptr create(std::string_view name) noexcept final {
     auto stream = tests::directory_mock::create(name);
@@ -157,7 +157,7 @@ struct callback_directory : directory_mock {
 struct format_info {
   constexpr format_info(const char* codec = "",
                         const char* module = "") noexcept
-      : codec(codec), module(module) {}
+    : codec(codec), module(module) {}
 
   const char* codec;
   const char* module;
@@ -173,18 +173,21 @@ class index_test_base : public virtual test_param_base<index_test_context> {
 
  public:
   index_test_base() {
-    auto beginCons = [](const auto&) {};
-    auto endCons = [](const auto&) {};
-    auto flushProgress = []() { return true; };
+    auto beginCons = [](const auto& ) {
+    };
+    auto endCons = [](const auto& ) {
+    };
+    auto flushProgress = []() {
+      return true;
+    };
 
-    callbacks = {.beginConsolidation = beginCons,
-                 .endConsolidation = endCons,
-                 .flushProgress = flushProgress};
+    callbacks = { .beginConsolidation = beginCons,
+      .endConsolidation = endCons, .flushProgress = flushProgress };
   }
 
  public:
   static std::string to_string(
-      const testing::TestParamInfo<index_test_context>& info);
+    const testing::TestParamInfo<index_test_context>& info);
 
  protected:
   std::shared_ptr<irs::directory> get_directory(const test_base& ctx) const;
@@ -203,19 +206,19 @@ class index_test_base : public virtual test_param_base<index_test_context> {
   }
 
   irs::IndexWriter::ptr open_writer(
-      irs::directory& dir, irs::OpenMode mode = irs::OM_CREATE,
-      const irs::IndexWriterOptions& options = {}) const {
+    irs::directory& dir, irs::OpenMode mode = irs::OM_CREATE,
+    const irs::IndexWriterOptions& options = {}) const {
     return irs::IndexWriter::Make(dir, codec_, mode, options);
   }
 
   irs::IndexWriter::ptr open_writer(
-      irs::OpenMode mode = irs::OM_CREATE,
-      const irs::IndexWriterOptions& options = {}) const {
+    irs::OpenMode mode = irs::OM_CREATE,
+    const irs::IndexWriterOptions& options = {}) const {
     return irs::IndexWriter::Make(*dir_, codec_, mode, options);
   }
 
   irs::DirectoryReader open_reader(
-      const irs::IndexReaderOptions& options = {}) const {
+    const irs::IndexReaderOptions& options = {}) const {
     return irs::DirectoryReader{*dir_, codec_, options};
   }
 

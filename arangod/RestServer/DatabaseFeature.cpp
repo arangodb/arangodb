@@ -22,8 +22,6 @@
 
 #include "DatabaseFeature.h"
 
-#include "DatabaseOptionsProvider.h"
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
