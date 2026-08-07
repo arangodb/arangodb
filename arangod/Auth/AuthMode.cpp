@@ -578,8 +578,6 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
               return {};
             } else if (_request.requestedApiVersion() > 0 &&
                        effectiveLevel == auth::Level::NONE) {
-              TRI_ASSERT(false);  // should never happen because database access
-                                  // is required to use view
               return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
             } else {
               return {
