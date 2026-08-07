@@ -657,6 +657,37 @@ TEST_F(ClassicAuthModeTest, DropViewNeedsDatabaseWrite) {
               TRI_ERROR_FORBIDDEN);
 }
 
+TEST_F(ClassicAuthModeTest, DropViewNeedsDatabaseWriteAndReadableLinks) {
+  // The link grants are spelled out although the database grant would already
+  // imply them -- otherwise this would pass for any collection name at all.
+  beUserWith(RW, {{std::string{kDb}, "c1", RO}, {std::string{kDb}, "c2", RO}});
+  EXPECT_TRUE(check(p::DropView{.db = std::string{kDb},
+                                .name = "v",
+                                .linkedCollections = {"c1", "c2"}})
+                  .ok());
+}
+
+TEST_F(ClassicAuthModeTest,
+       DropViewWithReadableLinksButNoDatabaseWriteIsForbidden) {
+  // The database grant is checked first and is not substitutable: even RW on
+  // every linked collection does not make up for a read-only database.
+  beUserWith(RO, {{std::string{kDb}, "c1", RW}});
+  expectError(
+      check(p::DropView{
+          .db = std::string{kDb}, .name = "v", .linkedCollections = {"c1"}}),
+      TRI_ERROR_FORBIDDEN);
+}
+
+TEST_F(ClassicAuthModeTest, DropViewWithUnreadableLinkIsForbidden) {
+  beUserWith(RW, {{std::string{kDb}, "secret", NONE}});
+  auto r = check(p::DropView{
+      .db = std::string{kDb}, .name = "v", .linkedCollections = {"secret"}});
+  expectError(r, TRI_ERROR_FORBIDDEN);
+  EXPECT_NE(r.errorMessage().find("Insufficient access to linked collection"),
+            std::string::npos)
+      << r.errorMessage();
+}
+
 // ---------------------------------------------------------------------------
 // Analyzers
 //
@@ -751,7 +782,7 @@ TEST_F(ClassicAuthModeTest, UseGraphFollowsTheDatabaseLevel) {
   expectError(check(p::UseGraph{.db = std::string{kDb},
                                 .name = "g",
                                 .level = GraphAccessLevel::Modify}),
-              TRI_ERROR_FORBIDDEN);
+              TRI_ERROR_ARANGO_READ_ONLY);
   beUserWith(RW);
   EXPECT_TRUE(check(p::UseGraph{.db = std::string{kDb},
                                 .name = "g",
@@ -858,7 +889,7 @@ TEST_F(ClassicAuthModeTest, DropGraphWithoutDatabaseWriteIsForbidden) {
   expectError(
       check(p::DropGraph{
           .db = std::string{kDb}, .name = "g", .collectionNames = none}),
-      TRI_ERROR_FORBIDDEN);
+      TRI_ERROR_ARANGO_READ_ONLY);
 }
 
 TEST_F(ClassicAuthModeTest,
@@ -899,7 +930,7 @@ TEST_F(ClassicAuthModeTest, UserOperationsNeedSystemReadWrite) {
 
 TEST_F(ClassicAuthModeTest, UserOperationsAreForbiddenWithoutSystemReadWrite) {
   setGrants({{StaticStrings::SystemDatabase, RO}});
-  expectError(check(p::ReadUser{.name = "alice"}), TRI_ERROR_FORBIDDEN);
+  expectError(check(p::ReadUser{.name = "alice"}), TRI_ERROR_HTTP_FORBIDDEN);
   expectError(check(p::CreateUser{.name = "alice"}), TRI_ERROR_FORBIDDEN);
   expectError(check(p::DropUser{.name = "alice"}), TRI_ERROR_FORBIDDEN);
   expectError(check(p::ModifyUserProfile{.name = "alice"}),
@@ -950,7 +981,7 @@ TEST_F(ClassicAuthModeTest, EveryAdminActionIsForbiddenWithoutSystemReadWrite) {
         auto expectDenied = [&](auto const& admin) {
           auto permission = auth::Permission{admin};
           auto r = check(permission);
-          EXPECT_EQ(r.errorNumber(), TRI_ERROR_FORBIDDEN) << permission;
+          EXPECT_EQ(r.errorNumber(), TRI_ERROR_HTTP_FORBIDDEN) << permission;
           EXPECT_NE(r.errorMessage().find("Failed admin-permission check"),
                     std::string::npos)
               << r.errorMessage();
@@ -1331,7 +1362,9 @@ std::vector<PermCase> permissionCases() {
       {"RenameView",
        p::RenameView{.db = db, .oldName = "v", .newName = "w"},
        {{{Scope::Db, RW}}}},
-      {"DropView", p::DropView{.db = db, .name = "v"}, {{{Scope::Db, RW}}}},
+      {"DropView",
+       p::DropView{.db = db, .name = "v", .linkedCollections = links},
+       {{{Scope::Db, RW}, {Scope::Coll, RO}}}},
       {"UseViewRead",
        p::UseView{.db = db, .name = "v", .level = ViewAccessLevel::Read},
        {{{Scope::Db, RO}}}},

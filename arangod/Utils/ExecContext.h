@@ -219,7 +219,8 @@ class ExecContext {
                        std::vector<std::string> const& linkedCollections) const;
   Result canModifyView(std::string_view db, std::string_view view,
                        std::vector<std::string> const& linkedCollections) const;
-  Result canDropView(std::string_view db, std::string_view view) const;
+  Result canDropView(std::string_view db, std::string_view view,
+                     std::vector<std::string> const& linkedCollections) const;
   Result canUseView(std::string_view db, std::string_view view,
                     ViewAccessLevel level) const;
 

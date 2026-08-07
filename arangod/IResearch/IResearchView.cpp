@@ -414,17 +414,6 @@ Result IResearchView::dropImpl() {
     }
   }
   if (!stale.empty()) {
-    // check link auth as per https://github.com/arangodb/backlog/issues/459
-    for (auto& entry : stale) {
-      auto collection = vocbase().lookupCollection(entry);
-      if (collection) {
-        if (auto r = ExecContext::current().canUseCollection(
-                vocbase().name(), collection->name(), AccessLevel::Read);
-            !r.ok()) {
-          return r;
-        }
-      }
-    }
     // TODO Why try lock?
     std::unique_lock lock{_updateLinksLock, std::try_to_lock};
     if (!lock.owns_lock()) {
