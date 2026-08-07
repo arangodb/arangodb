@@ -29,11 +29,20 @@ add_subdirectory(mimalloc EXCLUDE_FROM_ALL)
 # Linking the mimalloc-static target (rather than a hardcoded archive path)
 # propagates its public include directory and picks up the build-type dependent
 # library name (mimalloc vs. mimalloc-debug) automatically.
+# Only the mimalloc archive itself must sit inside the whole-archive region --
+# referenced by file, not by target, so mimalloc-static's transitive system
+# dependencies (pthread/atomic/rt) are NOT force-loaded. Force-loading them
+# breaks static (`-static`) links: e.g. `-latomic` resolves to libatomic.a and
+# --whole-archive pulls in members (init.o) that an on-demand -latomic elsewhere
+# on the line already provided -> duplicate __libat_* symbols. The plain
+# mimalloc-static target is linked afterwards to carry the include directory and
+# those transitive deps at a normal (non-whole-archive) position.
 add_library(mimalloc INTERFACE)
 if (APPLE)
   target_link_libraries(mimalloc INTERFACE
     -Wl,-force_load,$<TARGET_FILE:mimalloc-static> mimalloc-static)
 else ()
   target_link_libraries(mimalloc INTERFACE
-    -Wl,--whole-archive mimalloc-static -Wl,--no-whole-archive)
+    -Wl,--whole-archive $<TARGET_FILE:mimalloc-static> -Wl,--no-whole-archive
+    mimalloc-static)
 endif ()
