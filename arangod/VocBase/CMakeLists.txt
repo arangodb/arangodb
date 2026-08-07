@@ -19,6 +19,7 @@ add_library(arango_vocbase STATIC
   ${PROJECT_SOURCE_DIR}/arangod/Utils/SingleCollectionTransaction.cpp)
 
 target_link_libraries(arango_vocbase
+  arango_auth
   arango_agency
   arango_cluster_methods
   arango_indexes

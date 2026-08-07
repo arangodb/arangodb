@@ -81,9 +81,18 @@ endif()
 
 target_link_libraries(arango_rest_server
   PUBLIC
+    arango_actions arango_auth arango_statistics arango_v8server
     arango_basic_utils velocypack
     arango::validation rocksdb_interface immer arango_actor
     arango_iresearch arango_v8)
+
+if(USE_ENTERPRISE)
+  target_link_libraries(arango_rest_server
+    PUBLIC
+      arango_enterprise_storage_engine
+      arango_enterprise_license
+      arango_enterprise_ssl)
+endif()
 
 target_include_directories(arango_rest_server PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"

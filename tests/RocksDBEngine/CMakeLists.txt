@@ -42,22 +42,12 @@ target_link_libraries(arangodbtests_rocksdb
   arango_rocksdb
   arango_metrics_base
   arango_vocbase
-  arango_scheduler
-  arango_rest_server
-  arango_sharding
-  arango_auth
-  arango_statistics
-  arango_v8server
-  arango_enterprise_audit
-  arango_actions
-  arango_system_monitor_activities
-  arango_system_monitor_async_registry
-  arango_enterprise_storage_engine
-  arango_enterprise_rest_handler  
-  arango_enterprise_sharding
-  arango_enterprise_license
-  arango_vector_index
-  arango_enterprise_ssl
+  arango_scheduler  # FakeScheduler
+  arango_rest_server  # ServerIdFeature
+  arango_sharding # ShardingFeature
+  arango_system_monitor_activities  # main.cpp sets up registries
+  arango_system_monitor_async_registry  # main.cpp sets up registries
+  arango_vector_index # mock provider
   velocypack_utils
   gtest
   gmock)

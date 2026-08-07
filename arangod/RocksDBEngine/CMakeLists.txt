@@ -86,6 +86,7 @@ target_link_libraries(arango_rocksdb
     faiss
   PRIVATE
     arango_health
+    arango_v8server
     snappy)
 
 add_library(arango_rocksdb_rest STATIC
@@ -116,6 +117,10 @@ if (USE_ENTERPRISE)
     ${IRESEARCH_INCLUDE})
   target_link_libraries(arango_rocksdb PUBLIC
     arango_rclone
+    arango_enterprise_storage_engine
+  )
+  target_link_libraries(arango_rocksdb PRIVATE
+    arango_enterprise_audit
   )
 endif()
 
