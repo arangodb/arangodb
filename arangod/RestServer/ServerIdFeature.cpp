@@ -46,9 +46,7 @@ ServerIdFeature::ServerIdFeature(
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
   startsAfter<DatabasePathFeature>();
-
-  // must run first: DatabaseFeature::prepare() embeds the server id in GUIDs
-  startsBefore<DatabaseFeature>();
+  startsAfter<DatabaseFeature>();
 }
 
 ServerIdFeature::~ServerIdFeature() { SERVERID = ServerId::none(); }
