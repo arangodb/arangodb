@@ -18,6 +18,7 @@ target_link_libraries(arango_replication2
         arango_rest_handler
         arango_general_server
         arango_transaction
+        arango_aql
         arango_futures
         arango_actor
         immer)

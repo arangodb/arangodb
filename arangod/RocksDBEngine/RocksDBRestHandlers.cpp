@@ -24,7 +24,6 @@
 
 #include "GeneralServer/RestHandlerFactory.h"
 #include "RestHandler/RestHandlerCreator.h"
-#include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBRestCollectionHandler.h"
 #include "RocksDBEngine/RocksDBRestReplicationHandler.h"
 #include "RocksDBEngine/RocksDBRestWalHandler.h"
