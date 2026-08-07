@@ -139,7 +139,7 @@ async<Result> RestVersionHandler::checkUserCanAccess() const {
   auto version = request()->requestedApiVersion();
   if (auto res = ec->canUseApiVersion(version); res.fail()) {
     if (version != api_version::defaultApiVersion) {
-      LOG_TOPIC("3b1a7", TRACE, Logger::AUTHORIZATION)
+      LOG_TOPIC("4b1a7", TRACE, Logger::AUTHORIZATION)
           << "API version forbidden for " << request()->requestPath();
       co_return res;
     }

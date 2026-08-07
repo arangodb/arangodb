@@ -516,12 +516,9 @@ function miscApiAuthzSuite () {
     },
 
     // ── /openapi.json ────────────────────────────────────────────────────
-    // RestOpenApiHandler::checkUserCanAccess returns early for exactly this
-    // path - the spec must be readable before logging in - so the base
-    // implementation never runs and neither the API version nor the database
-    // is asked about. execute() itself asks no can() either.
-    // AUDIT: nothing is observed even for an authenticated root request; for
-    // any other path of this handler the base questions would fire.
+    // RestOpenApiHandler::checkUserCanAccess neither checks API version nor
+    // database for exactly this path - the spec must be readable before
+    // 1logging in.
     testOpenApiSpec: function () {
       beginObserve();
       arango.GET_RAW(`/openapi.json`);
