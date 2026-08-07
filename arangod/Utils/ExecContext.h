@@ -315,7 +315,7 @@ struct ExecContextSuperuserScope {
 
  private:
   static auto getSuperuserContextFrom(ExecContext const* old)
-      ->std::shared_ptr<ExecContext const>;
+      -> std::shared_ptr<ExecContext const>;
 
   std::shared_ptr<ExecContext const> _old;
 };
