@@ -282,13 +282,6 @@ bool AuthMode::isUnauthenticated() const noexcept {
   return std::holds_alternative<Unauthenticated>(authMode);
 }
 
-uint32_t AuthMode::requestedApiVersion() const noexcept {
-  if (auto req = getIAuth().request(); req.has_value()) {
-    return req->get().requestedApiVersion();
-  }
-  return api_version::defaultApiVersion;
-}
-
 auto AuthMode::Superuser::username() const noexcept -> std::string_view {
   return "";
 }
@@ -390,7 +383,8 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
               // User has no access to the database at all: report as not found
               // to avoid revealing its existence.
               return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-                      "database not accessible: '" + database.name + "'"};
+                      failureMessage(database, "database not accessible: '" +
+                                                   database.name + "'")};
             } else {
               return {TRI_ERROR_FORBIDDEN,
                       failureMessage(database,
@@ -454,9 +448,12 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                 if (effectiveLevel == auth::Level::NONE) {
                   // User has no access to this collection: report as not found
                   // to avoid revealing its existence.
-                  return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                          "collection or view not found: '" + collection.name +
-                              "' in database '" + collection.db + "'"};
+                  return {
+                      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                      failureMessage(collection,
+                                     "collection or view not found: '" +
+                                         collection.name + "' in database '" +
+                                         collection.db + "'")};
                 }
               }
               if (requestedLevel == arangodb::auth::Level::RW &&
@@ -579,9 +576,10 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             } else if (_request.requestedApiVersion() > 0 &&
                        effectiveLevel == auth::Level::NONE) {
               // No database access at all: report the view as not found.
-              return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                      "view not accessible: '" + view.name + "' in database '" +
-                          view.db + "'"};
+              return {
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                  failureMessage(view, "view not accessible: '" + view.name +
+                                           "' in database '" + view.db + "'")};
             } else {
               return {
                   TRI_ERROR_FORBIDDEN,
@@ -594,6 +592,12 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             // Without RBAC, database access is the only prerequisite for
             // using an analyzer. Reading analyzers requires RO database
             // access; modifying analyzers requires RW.
+            // The only exception is "Admin" (for backwards compatibility),
+            // which means that RW access to _system grants all analyzer
+            // permissions:
+            if (isAdmin().ok()) {
+              return {};
+            }
             auto const dbLevel = analyzer.level == AnalyzerAccessLevel::Modify
                                      ? DatabaseAccessLevel::Write
                                      : DatabaseAccessLevel::Read;
@@ -617,10 +621,16 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                 auth::perms::UseDatabase{.name = StaticStrings::SystemDatabase,
                                          .level = DatabaseAccessLevel::Write});
           },
-          [&](p::SeeCollection const& /*collection*/) -> Result {
-            // Database RO access is the only prerequisite and has already been
-            // checked; a collection is always visible if the database is.
-            return {};
+          [&](p::SeeCollection const& collection) -> Result {
+            // In Classic, seeing a collection is possible if and only if one
+            // can read it. However, there is no rule without exception: An
+            // Admin user must be able to run arangodump and thus must be
+            // able to see all collections:
+            if (isAdmin().ok()) {
+              return {};
+            }
+            return check(p::UseCollection{collection.db, collection.name,
+                                          CollectionAccessLevel::Read});
           },
           [&](p::CreateCollection const& collection) -> Result {
             // Creating a collection requires RW access to the database
@@ -725,17 +735,35 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
           [&](p::SeeAnalyzer const& analyzer) -> Result {
             // Database RO access is the only prerequisite and has already been
             // checked; an analyzer is always visible if the database is.
-            // For the sake of readabilty, we perform the check:
+            // For the sake of readability, we perform the check here.
+            // The only exception is "Admin" (for backwards compatibility),
+            // which means that RW access to _system grants all analyzer
+            // permissions:
+            if (isAdmin().ok()) {
+              return {};
+            }
             return check(
                 p::UseDatabase{analyzer.db, DatabaseAccessLevel::Read});
           },
           [&](p::CreateAnalyzer const& analyzer) -> Result {
             // Creating an analyzer requires RW access to the database.
+            // The only exception is "Admin" (for backwards compatibility),
+            // which means that RW access to _system grants all analyzer
+            // permissions:
+            if (isAdmin().ok()) {
+              return {};
+            }
             return check(
                 p::UseDatabase{analyzer.db, DatabaseAccessLevel::Write});
           },
           [&](p::DropAnalyzer const& analyzer) -> Result {
             // Dropping an analyzer requires RW access to the database.
+            // The only exception is "Admin" (for backwards compatibility),
+            // which means that RW access to _system grants all analyzer
+            // permissions:
+            if (isAdmin().ok()) {
+              return {};
+            }
             return check(
                 p::UseDatabase{analyzer.db, DatabaseAccessLevel::Write});
           },
@@ -748,11 +776,6 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             // Creating a graph requires RW access to the database (to write
             // to _graphs), plus the ability to create/read any linked
             // collections.
-            if (auto r =
-                    check(p::UseDatabase{graph.db, DatabaseAccessLevel::Write});
-                r.ok()) {
-              return r;
-            }
             // No write access to database, so we need to check the collections
             for (auto const& coll : graph.collectionNamesToCreate) {
               if (auto r = check(p::CreateCollection{graph.db, coll});
@@ -767,8 +790,18 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                 return r;
               }
             }
-            return {TRI_ERROR_ARANGO_READ_ONLY,
-                    failureMessage(graph, "Cannot write to database.")};
+            if (auto r =
+                    check(p::UseDatabase{graph.db, DatabaseAccessLevel::Write});
+                r.ok()) {
+              return {};
+            }
+            if (_request.requestedApiVersion() > 0) {
+              return {TRI_ERROR_FORBIDDEN,
+                      failureMessage(graph, "Cannot write to database.")};
+            } else {
+              return {TRI_ERROR_ARANGO_READ_ONLY,
+                      failureMessage(graph, "Cannot write to database.")};
+            }
           },
           [&](p::DropGraph const& graph) -> Result {
             // Dropping a graph requires RW access to the database (to write
@@ -917,10 +950,10 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
   // Every admin permission maps 1:1 onto its identically-named rbac::Action
   // and carries no resource. This mirrors the classic side, where all admin
   // actions collapse into a single `AnyAdmin` handler.
-  // Note: p::AdminReadUsers is deliberately absent here; it has no
-  // rbac::Action counterpart and is handled separately below.
   auto adminAction = []<typename T>(T const&) -> rbac::Action {
-    if constexpr (std::is_same_v<T, p::AdminMoveShards>) {
+    if constexpr (std::is_same_v<T, p::AdminReadUsers>) {
+      return rbac::Action::AdminReadUsers;
+    } else if constexpr (std::is_same_v<T, p::AdminMoveShards>) {
       return rbac::Action::AdminMoveShards;
     } else if constexpr (std::is_same_v<T, p::AdminMonitoring>) {
       return rbac::Action::AdminMonitoring;
@@ -991,16 +1024,6 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
   return std::visit(
       overload{
           // -- Admin actions ---------------------------------------------
-          [&](p::AdminReadUsers const&) -> Result {
-            // TODO(COR-213): AdminReadUsers (the coarse gate on listing all
-            //   users) has no rbac::Action or resource counterpart yet, and
-            //   there is no way to express "all users" as a resource. The
-            //   intended mapping is still to be decided with the team; until
-            //   then we fail closed rather than silently granting access.
-            return {TRI_ERROR_NOT_IMPLEMENTED,
-                    "RBAC authorization for listing all users is not yet "
-                    "implemented"};
-          },
           [&](p::AnyAdmin auto const& admin) -> Result {
             return checkOne(adminAction(admin), rbac::resources::NoResource{});
           },

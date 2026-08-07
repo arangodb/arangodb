@@ -29,8 +29,8 @@ namespace arangodb::async_registry {
 
 using namespace arangodb::options;
 
-void OptionsProvider::declareOptions(std::shared_ptr<ProgramOptions> opts,
-                                     FeatureOptions& options) {
+void OptionsProvider::declareOptionsImpl(std::shared_ptr<ProgramOptions> opts,
+                                         FeatureOptions& options) {
   opts->addSection("async-registry", "Options for the async-registry");
 
   opts->addOption(
@@ -39,11 +39,10 @@ void OptionsProvider::declareOptions(std::shared_ptr<ProgramOptions> opts,
           "swipes.",
           new SizeTParameter(&options.gc_timeout, /*base*/ 1,
                              /*minValue*/ 1))
-      .setLongDescription(
-          R"(Each thread that is involved in the async-registry needs to
-garbage collect its finished async function calls regularly. This option
-controls how often this is done in seconds. This can possibly be performance
-relevant because each involved thread acquires a lock.)");
+      .setLongDescription(R"(Each thread that is involved in the async-registry
+needs to garbage collect its finished async function calls regularly. This
+option controls how often this is done in seconds. This can possibly be
+performance relevant because each involved thread acquires a lock.)");
 }
 
 }  // namespace arangodb::async_registry

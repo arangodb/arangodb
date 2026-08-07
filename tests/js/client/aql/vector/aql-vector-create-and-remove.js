@@ -887,10 +887,96 @@ function VectorIndexInsertDuringTrainingSuite() {
     };
 }
 
+// Dropping a collection mid-build must not wedge the single build thread.
+function VectorIndexDropDuringBuildSuite() {
+    const IM = global.instanceManager;
+    const dim = 100;
+    const nLists = 10;
+    const numDocs = nLists + 500;
+    const indexName = "vec_l2";
+    const ingestionPauseFP = "RocksDBVectorIndex::pauseBeforeIngestion";
+    const docs = generateDocs(randomNumberGeneratorFloat(generateSeed()),
+        numDocs, dim);
+
+    function createIndexedCollection(name) {
+        const collection = db._create(name, {numberOfShards: 1});
+        collection.insert(docs);
+        collection.ensureIndex({
+            name: indexName,
+            type: "vector",
+            fields: ["vector"],
+            inBackground: true,
+            params: {metric: "l2", dimension: dim, nLists, trainingIterations: 10},
+        });
+        return collection;
+    }
+
+    function startPausedBuildAndDrop(name) {
+        IM.debugSetFailAt(ingestionPauseFP);
+        const collection = createIndexedCollection(name);
+        assertTrue(
+            waitForVectorIndexState(collection, indexName,
+                VectorIndexTrainingState.kIngesting),
+            "Index should reach ingesting state and pause at the FP");
+        db._drop(name);
+    }
+
+    return {
+        setUp: function() {
+            db._useDatabase("_system");
+            try { db._dropDatabase(dbName); } catch (e) {}
+            db._createDatabase(dbName);
+            db._useDatabase(dbName);
+        },
+
+        tearDown: function() {
+            if (IM && IM.debugCanUseFailAt()) {
+                IM.debugClearFailAt();
+            }
+            db._useDatabase("_system");
+            try { db._dropDatabase(dbName); } catch (e) {}
+        },
+
+        testReleaseFpAfterDropAllowsNewBuildToComplete: function() {
+            if (!IM || !IM.debugCanUseFailAt() || isCluster) {
+                return;
+            }
+            startPausedBuildAndDrop("pausedColl");
+            IM.debugClearFailAt();
+
+            const fresh = createIndexedCollection("freshColl");
+            assertTrue(
+                waitForVectorIndexState(fresh, indexName,
+                    VectorIndexTrainingState.kReady),
+                "New vector index must reach ready, proving the build thread " +
+                "was not wedged by the drop");
+        },
+
+        testKeepFpAfterDropStillPicksUpNewBuild: function() {
+            if (!IM || !IM.debugCanUseFailAt() || isCluster) {
+                return;
+            }
+            startPausedBuildAndDrop("pausedColl");
+
+            const fresh = createIndexedCollection("freshColl");
+            assertTrue(
+                waitForVectorIndexState(fresh, indexName,
+                    VectorIndexTrainingState.kIngesting),
+                "New vector index must reach ingesting, proving the build " +
+                "thread was not wedged by the drop");
+            assertFalse(
+                waitForVectorIndexState(fresh, indexName,
+                    VectorIndexTrainingState.kReady),
+                "New vector index must not reach ready while the FP is set");
+        },
+    };
+}
+
 jsunity.run(VectorIndexCreateAndRemoveTestSuite);
 jsunity.run(VectorIndexStoredValuesTestSuite);
 
 jsunity.run(VectorIndexTestCreationWithVectors);
 jsunity.run(VectorIndexInsertDuringTrainingSuite);
+jsunity.run(VectorIndexDropDuringBuildSuite);
 
 return jsunity.done();

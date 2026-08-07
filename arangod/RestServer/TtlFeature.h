@@ -61,10 +61,10 @@ class TtlFeature final : public application_features::ApplicationFeature {
   static constexpr std::string_view name() noexcept { return "Ttl"; }
 
   explicit TtlFeature(application_features::ApplicationServer& server);
+  TtlFeature(application_features::ApplicationServer& server,
+             TtlProperties properties);
   ~TtlFeature();
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void beginShutdown() override final;
   void start() override final;
   void stop() override final;

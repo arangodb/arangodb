@@ -84,6 +84,10 @@ class ExecContext {
   static ExecContext const& superuser();
   static std::shared_ptr<ExecContext const> superuserAsShared();
 
+  [[nodiscard]] bool isDisabled() const noexcept {
+    return _authMode.isDisabled();
+  }
+
   [[nodiscard]] bool isSuperuserOrDisabled() const noexcept {
     // This will report `true` if authentication is disabled!
     return _authMode.isSuperuser() || _authMode.isDisabled();
@@ -119,12 +123,6 @@ class ExecContext {
     return _authMode.getIAuth().username();
   }
 
-  /// @brief returns the API version requested by the associated
-  /// GeneralRequest, if any; otherwise returns the default API version.
-  [[nodiscard]] uint32_t requestedApiVersion() const noexcept {
-    return _authMode.requestedApiVersion();
-  }
-
   // Unified permission-check entry point. Prefer this over the canXxx()
   // methods below for new code; eventually they are going to be removed.
   //
@@ -135,9 +133,22 @@ class ExecContext {
   //   using namespace arangodb::auth::perms;
   //   if (auto r = ec.can(SeeCollection{.db = db, .name = coll});
   //       !r.ok()) { /* ... */ }
-  [[nodiscard]] Result can(auth::Permission permission) const {
-    return _authMode.getIAuth().check(std::move(permission));
-  }
+  //
+  // Every question asked here is traced on `Logger::AUTHORIZATION` (TRACE);
+  // see tests/js/client/server_permissions/authorization-questions.js.
+  [[nodiscard]] Result can(auth::Permission permission) const;
+
+  // The server-wide read-only gate, which every modifying operation has to
+  // pass in addition to its permission question. It is consulted after that
+  // question has been answered positively. Like `can()`, it is traced on
+  // `Logger::AUTHORIZATION` (TRACE) as `AUTHZ-CHECK IsReadOnly` - the trace
+  // is emitted whenever the gate is consulted, no matter how it answers, so
+  // that the authorization-questions tests can see which operations are
+  // gated by it.
+  //
+  // Note that `arangod/Auth/UserManagerBase.cpp` has read-only checks of its
+  // own which are not routed through here and hence not traced.
+  [[nodiscard]] Result checkNotReadOnly() const;
 
   // New Result-returning permission check methods:
 

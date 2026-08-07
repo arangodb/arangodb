@@ -888,23 +888,6 @@ class TestCreateTestJob:
         assert "opt1" in job_data["extraArgs"]
         assert "opt2" in job_data["extraArgs"]
 
-    def test_create_test_job_bucket_override(self):
-        """Test that bucket override is applied."""
-        gen = self.create_generator()
-        job = TestJob(
-            name="replication_sync",  # Has bucket override to 5
-            suites=[SuiteConfig(name="suite1")],
-            options=TestOptions(buckets=2),
-        )
-        build_config = BuildConfig(architecture=Architecture.X64)
-
-        result = gen._create_test_job(
-            job, DeploymentType.SINGLE, build_config, ["build-job"]
-        )
-
-        job_data = result["run-linux-tests"]
-        assert job_data["buckets"] == 5  # Override value
-
     def test_create_test_job_auto_buckets_with_filtering(self):
         """Test that auto buckets adjusts when suites are filtered."""
         gen = self.create_generator(full=False)  # Only PR tests

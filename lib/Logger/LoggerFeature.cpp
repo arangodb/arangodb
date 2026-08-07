@@ -21,7 +21,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LoggerFeature.h"
-#include "Logger/LoggerOptionsProvider.h"
 
 #include "Basics/operating-system.h"
 
@@ -30,20 +29,9 @@
 #endif
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/FileUtils.h"
-#include "Basics/NumberUtils.h"
-#include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
-#include "Basics/application-exit.h"
-#include "Basics/error.h"
-#include "Basics/voc-errors.h"
-#include "Logger/LogAppenderFile.h"
-#include "Logger/LogMacros.h"
 #include "Logger/LogTimeFormat.h"
 #include "Logger/Logger.h"
-#include "ProgramOptions/Option.h"
-#include "ProgramOptions/Parameters.h"
-#include "ProgramOptions/ProgramOptions.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::options;
@@ -57,11 +45,17 @@ void LogHackWriter(std::string_view msg) { LOG_DEVEL << msg; }
 namespace arangodb {
 
 LoggerFeature::LoggerFeature(application_features::ApplicationServer& server,
-                             bool threaded)
-    : LoggerFeature(server, typeid(LoggerFeature), threaded, LoggerOptions{}) {
+                             bool threaded, LoggerOptions options)
+    : ApplicationFeature(server, *this),
+      _options(std::move(options)),
+      _threaded(threaded) {
   startsAfter<ShellColorsFeature>();
-  startsAfter<VersionFeature>();
+  setOptional(false);
 }
+
+LoggerFeature::LoggerFeature(application_features::ApplicationServer& server,
+                             bool threaded)
+    : LoggerFeature(server, threaded, LoggerOptions{}) {}
 
 LoggerFeature::LoggerFeature(application_features::ApplicationServer& server,
                              std::type_index registration, bool threaded,
@@ -69,7 +63,6 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer& server,
     : ApplicationFeature(server, registration, name()),
       _options(std::move(options)),
       _threaded(threaded) {
-  _options.threaded = threaded;
   // note: we use the _threaded option to determine whether we are arangod
   // (_threaded = true) or one of the client tools (_threaded = false). in
   // the latter case we disable some options for the Logger, which only make
@@ -78,23 +71,6 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer& server,
 }
 
 LoggerFeature::~LoggerFeature() { Logger::shutdown(); }
-
-void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  LoggerOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void LoggerFeature::loadOptions(std::shared_ptr<options::ProgramOptions>,
-                                char const* binaryPath) {
-  // for debugging purpose, we set the log levels NOW
-  // this might be overwritten latter
-  Logger::setLogLevel(_options.levels);
-}
-
-void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  LoggerOptionsProvider provider;
-  provider.validateOptions(options, _options);
-}
 
 void LoggerFeature::prepare() {
   // set maximum length for each log entry
@@ -118,7 +94,6 @@ void LoggerFeature::prepare() {
   Logger::setShowThreadName(_options.threadName);
   Logger::setOutputPrefix(_options.prefix);
   Logger::setHostname(_options.hostname);
-  Logger::setKeepLogrotate(_options.keepLogRotate);
   Logger::setLogRequestParameters(_options.logRequestParameters);
   Logger::setUseJson(_options.useJson);
 

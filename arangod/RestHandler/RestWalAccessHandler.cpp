@@ -311,6 +311,15 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     return;
   }
 
+  // If we got here, we are either on a DBServer (and thus anyway
+  // superuser), or we are on a single server and have passed the
+  // authorization. This means we are Admin in Classic or have
+  // AdminWalAccess in RBAC. But deep inside the WAL-tailing code, we
+  // sometimes do `loadCollection` and thus `useCollection` and then
+  // another check happens if we can read the collection. Therefore, we
+  // must escalate to superuser here:
+  ExecContextSuperuserScope escope;
+
   bool found = false;
   size_t chunkSize = 1024 * 1024;
   std::string const& value5 = _request->value("chunkSize", found);

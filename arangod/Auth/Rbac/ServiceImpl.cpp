@@ -108,6 +108,8 @@ auto actionToWireString(Action action) -> std::string_view {
       return "db:AdminWriteAqlFunctions";
     case Action::AdminQueryCache:
       return "db:AdminQueryCache";
+    case Action::AdminReadUsers:
+      return "db:AdminReadUsers";
   }
   ADB_PROD_CRASH();
 }

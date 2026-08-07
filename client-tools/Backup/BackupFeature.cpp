@@ -21,7 +21,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "BackupFeature.h"
-#include "Backup/BackupOptionsProvider.h"
 
 #include <chrono>
 #include <regex>
@@ -701,6 +700,13 @@ BackupFeature::BackupFeature(application_features::ApplicationServer& server,
       _options(std::move(options)) {
   setOptional(false);
   startsAfter<HttpEndpointProvider>();
+
+  if (_client.databaseName() != StaticStrings::SystemDatabase) {
+    LOG_TOPIC("6b53c", FATAL, Logger::BACKUP)
+        << "hot backups are global and must be performed on the _system "
+           "database with super user privileges";
+    FATAL_ERROR_EXIT();
+  }
 }
 
 std::string BackupFeature::operationList(std::string const& separator) {
@@ -711,29 +717,6 @@ std::string BackupFeature::operationList(std::string const& separator) {
   std::sort(operations.begin(), operations.end());
 
   return basics::StringUtils::join(operations, separator);
-}
-
-void BackupFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  BackupOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void BackupFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  if (options->processingResult().touched("--version") ||
-      options->processingResult().touched("--version-json")) {
-    return;
-  }
-  BackupOptionsProvider provider;
-  provider.validateOptions(options, _options);
-
-  if (_client.databaseName() != StaticStrings::SystemDatabase) {
-    LOG_TOPIC("6b53c", FATAL, Logger::BACKUP)
-        << "hot backups are global and must be performed on the _system "
-           "database with super user privileges";
-    FATAL_ERROR_EXIT();
-  }
 }
 
 void BackupFeature::prepare() { logLGPLNotice(); }
