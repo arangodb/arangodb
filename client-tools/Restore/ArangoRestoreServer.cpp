@@ -66,7 +66,7 @@ ArangoRestoreServer::ArangoRestoreServer(
       std::numeric_limits<size_t>::max();
 }
 
-void ArangoRestoreServer::addFeatures() {
+void ArangoRestoreServer::addFeaturesWithOptionProvider() {
   addFeature<BasicFeaturePhaseClient>();
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
@@ -75,9 +75,7 @@ void ArangoRestoreServer::addFeatures() {
   addFeature<ShutdownFeature>(
       std::array{std::type_index(typeid(RestoreFeature))});
   addFeature<SslFeature>();
-}
 
-void ArangoRestoreServer::addFeaturesWithOptionProvider() {
   addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
   addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());
   addFeature<TempFeature>(_binaryName, getOptions<TempOptionsProvider>());
