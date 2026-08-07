@@ -59,7 +59,7 @@ ArangoExportServer::ArangoExportServer(
     : OptionProvidingServer<ArangoExportOptionProviders>(
           options, binaryPath, std::move(binaryName), ret) {}
 
-void ArangoExportServer::addFeatures() {
+void ArangoExportServer::addFeaturesWithOptionProvider() {
   addFeature<BasicFeaturePhaseClient>();
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
@@ -68,9 +68,7 @@ void ArangoExportServer::addFeatures() {
   addFeature<ShutdownFeature>(
       std::array{std::type_index(typeid(ExportFeature))});
   addFeature<SslFeature>();
-}
 
-void ArangoExportServer::addFeaturesWithOptionProvider() {
   addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
   addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());
   addFeature<TempFeature>(_binaryName, getOptions<TempOptionsProvider>());
