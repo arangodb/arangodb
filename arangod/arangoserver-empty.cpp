@@ -1,1 +1,0 @@
-// Intentionally empty. arangoserver collects its component libraries.

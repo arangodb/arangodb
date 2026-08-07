@@ -1,15 +1,6 @@
-# Source files from the 11 subdirs (Actions, Auth, Cluster, FeaturePhases,
-# GeneralServer, RestHandler, RestServer, Sharding, Statistics, Transaction,
-# VectorIndex) live in per-subdir CMakeLists.txt as separate archives
-# (arango_actions, arango_auth, ...). arangoserver aggregates them here.
-#
-# Additional sources are still contributed via target_sources() from
-# arangod/SystemMonitor/Activities/CMakeLists.txt and
-# arangod/SystemMonitor/AsyncRegistry/CMakeLists.txt.
-add_library(arangoserver STATIC
-  arangoserver-empty.cpp)
+add_library(arangoserver INTERFACE)
 
-target_link_libraries(arangoserver
+target_link_libraries(arangoserver INTERFACE
         arango_actions
         arango_auth
         arango_cluster
@@ -47,7 +38,7 @@ target_link_libraries(arangoserver
         ${MSVC_LIBS})
 
 if(USE_ENTERPRISE)
-  target_link_libraries(arangoserver
+  target_link_libraries(arangoserver INTERFACE
     arango_enterprise_audit
     arango_enterprise_license
     arango_enterprise_sharding
@@ -57,15 +48,11 @@ if(USE_ENTERPRISE)
 endif()
 
 if(MSVC)
-  target_link_libraries(arangoserver Bcrypt.lib)
+  target_link_libraries(arangoserver INTERFACE Bcrypt.lib)
 endif()
 
 if(USE_V8)
-  target_link_libraries(arangoserver arango_v8server)
+  target_link_libraries(arangoserver INTERFACE arango_v8server)
 endif()
-
-target_include_directories(arangoserver PRIVATE
-        "${PROJECT_SOURCE_DIR}/arangod"
-        "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
 add_dependencies(arangoserver tzdata)
