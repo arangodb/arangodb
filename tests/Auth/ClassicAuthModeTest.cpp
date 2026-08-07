@@ -782,7 +782,7 @@ TEST_F(ClassicAuthModeTest, UseGraphFollowsTheDatabaseLevel) {
   expectError(check(p::UseGraph{.db = std::string{kDb},
                                 .name = "g",
                                 .level = GraphAccessLevel::Modify}),
-              TRI_ERROR_FORBIDDEN);
+              TRI_ERROR_ARANGO_READ_ONLY);
   beUserWith(RW);
   EXPECT_TRUE(check(p::UseGraph{.db = std::string{kDb},
                                 .name = "g",
@@ -889,7 +889,7 @@ TEST_F(ClassicAuthModeTest, DropGraphWithoutDatabaseWriteIsForbidden) {
   expectError(
       check(p::DropGraph{
           .db = std::string{kDb}, .name = "g", .collectionNames = none}),
-      TRI_ERROR_FORBIDDEN);
+      TRI_ERROR_ARANGO_READ_ONLY);
 }
 
 TEST_F(ClassicAuthModeTest,
@@ -930,7 +930,7 @@ TEST_F(ClassicAuthModeTest, UserOperationsNeedSystemReadWrite) {
 
 TEST_F(ClassicAuthModeTest, UserOperationsAreForbiddenWithoutSystemReadWrite) {
   setGrants({{StaticStrings::SystemDatabase, RO}});
-  expectError(check(p::ReadUser{.name = "alice"}), TRI_ERROR_FORBIDDEN);
+  expectError(check(p::ReadUser{.name = "alice"}), TRI_ERROR_HTTP_FORBIDDEN);
   expectError(check(p::CreateUser{.name = "alice"}), TRI_ERROR_FORBIDDEN);
   expectError(check(p::DropUser{.name = "alice"}), TRI_ERROR_FORBIDDEN);
   expectError(check(p::ModifyUserProfile{.name = "alice"}),
@@ -981,7 +981,7 @@ TEST_F(ClassicAuthModeTest, EveryAdminActionIsForbiddenWithoutSystemReadWrite) {
         auto expectDenied = [&](auto const& admin) {
           auto permission = auth::Permission{admin};
           auto r = check(permission);
-          EXPECT_EQ(r.errorNumber(), TRI_ERROR_FORBIDDEN) << permission;
+          EXPECT_EQ(r.errorNumber(), TRI_ERROR_HTTP_FORBIDDEN) << permission;
           EXPECT_NE(r.errorMessage().find("Failed admin-permission check"),
                     std::string::npos)
               << r.errorMessage();
