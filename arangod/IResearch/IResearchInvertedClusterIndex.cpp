@@ -93,7 +93,7 @@ std::string IResearchInvertedClusterIndex::getCollectionName() const {
   return collection().name();
 }
 
-IResearchDataStore::Stats IResearchInvertedClusterIndex::stats() const {
+IResearchDataStore::Stats IResearchInvertedClusterIndex::getStats() const {
   auto& cmf = collection()
                   .vocbase()
                   .server()
