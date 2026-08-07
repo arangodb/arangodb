@@ -708,24 +708,17 @@ async<Result> RestHandler::checkUserCanAccess() const {
     co_return Result();
   }
 
-  auto const& ci = request()->connectionInfo();
-  auto hasUnixDomainSocketConnection =
-      [endpointType = ci.endpointType,
-       areAuthenticationUnixSockets = auth->authenticationUnixSockets()]() {
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
-        // no authentication required for unix domain socket connections
-        if (endpointType == Endpoint::DomainType::UNIX &&
-            !areAuthenticationUnixSockets) {
-          return true;
-        }
+  auto const& ci = request()->connectionInfo();
+  if (ci.endpointType == Endpoint::DomainType::UNIX &&
+      !auth->authenticationUnixSockets()) {
+    // no authentication required for unix domain socket connections
+    co_return Result{};
+  }
 #endif
-        return false;
-      };
 
   if (not request()->authenticated()) {
-    co_return hasUnixDomainSocketConnection()
-        ? Result{}
-        : Result(TRI_ERROR_HTTP_UNAUTHORIZED, "User not authenticated.");
+    Result(TRI_ERROR_HTTP_UNAUTHORIZED, "User not authenticated.");
   }
 
   auto ec = request()->requestContext();
@@ -733,9 +726,6 @@ async<Result> RestHandler::checkUserCanAccess() const {
   auto canUseDB =
       ec->canUseDatabase(request()->databaseName(), DatabaseAccessLevel::Read);
   if (canUseDB.ok()) {
-    co_return Result{};
-  }
-  if (hasUnixDomainSocketConnection()) {
     co_return Result{};
   }
 
