@@ -24,7 +24,7 @@
 
 #include "Basics/ConditionVariable.h"
 #include "Basics/Result.h"
-#include "Basics/Thread.h"
+#include "Utils/Thread.h"
 
 #include <rocksdb/types.h>
 

@@ -59,6 +59,7 @@
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
+#include "Utils/Thread.h"
 #ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
 #endif
@@ -571,7 +572,8 @@ RequestFigures UserRequestFigures;
 
 class StatisticsThread final : public Thread {
  public:
-  explicit StatisticsThread() : Thread("Statistics") {}
+  // only processes request statistics, no ExecContext required
+  explicit StatisticsThread() : Thread("Statistics", nullptr) {}
   ~StatisticsThread() { shutdown(); }
 
  public:

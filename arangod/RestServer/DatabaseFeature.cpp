@@ -119,7 +119,8 @@ std::unique_ptr<TRI_vocbase_t> calculationVocbase;
 DatabaseManagerThread::DatabaseManagerThread(
     application_features::ApplicationServer& server,
     DatabaseFeature& databaseFeature, StorageEngine& engine)
-    : ServerThread(server, "DatabaseManager"),
+    // engine-level cleanup of dropped databases, no ExecContext required
+    : ServerThread(server, "DatabaseManager", nullptr),
       _databaseFeature(databaseFeature),
       _engine(engine)
 #ifdef USE_V8
