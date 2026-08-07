@@ -2,6 +2,8 @@
 
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 
+#include <string_view>
+
 namespace matcher {
 
 auto activity_as_field(std::string_view activity_binding)

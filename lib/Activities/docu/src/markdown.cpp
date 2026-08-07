@@ -20,7 +20,7 @@ auto pad(std::string_view text, std::size_t width) -> std::string {
  * Render one record's fields as an org-style markdown table.
  *
  * Columns are padded to their widest cell so the pipes line up; the header
- * divider joins the columns with `+`.
+ * divider uses `|` between columns.
  */
 auto field_table(Struct const& record) -> std::string {
   auto const field_header = std::string_view{"Field"};

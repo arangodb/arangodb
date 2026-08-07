@@ -31,24 +31,34 @@ auto sources::get_sources(std::string const& path_name)
   auto path = fs::path(path_name);
   if (!fs::exists(path, ec) || ec) return {};
 
-  if (fs::is_directory(path)) {
+  if (fs::is_directory(path, ec) && !ec) {
     auto err = std::string{};
     auto db = clang::tooling::CompilationDatabase::autoDetectFromDirectory(
         path_name, err);
     if (!db) return Sources{};
 
-    auto prefix = fs::canonical(path).string();
+    ec.clear();
+    auto canonicalPath = fs::canonical(path, ec);
+    if (ec) return Sources{};
+    auto prefix = canonicalPath.string();
     if (!prefix.empty() && prefix.back() != '/') prefix += '/';
+
     auto files = std::vector<std::string>{};
     for (auto const& file : db->getAllFiles()) {
-      if (file.starts_with(prefix) && fs::is_regular_file(file)) {
+      ec.clear();
+      if (file.starts_with(prefix) && fs::is_regular_file(fs::path(file), ec) &&
+          !ec) {
         files.push_back(file);
       }
     }
     return Sources{.db = std::move(db), .files = files};
 
-  } else if (fs::is_regular_file(path)) {
-    auto source = resolve_source_file(fs::canonical(path));
+  } else if (fs::is_regular_file(path, ec) && !ec) {
+    ec.clear();
+    auto canonicalPath = fs::canonical(path, ec);
+    if (ec) return Sources{};
+
+    auto source = resolve_source_file(canonicalPath);
     auto err = std::string{};
     auto db = clang::tooling::CompilationDatabase::autoDetectFromSource(
         source.string(), err);
