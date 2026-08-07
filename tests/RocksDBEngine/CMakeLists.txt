@@ -28,8 +28,7 @@ target_link_libraries(arango_tests_rocksdb_engine
 # registries).
 add_executable(arangodbtests_rocksdb
   main.cpp
-  RocksDBEngineRestStub.cpp
-  ClusterEngineRestStub.cpp
+  EngineRestStub.cpp
   ${PROJECT_SOURCE_DIR}/tests/Mocks/FakeScheduler.cpp)
 
 target_include_directories(arangodbtests_rocksdb PRIVATE

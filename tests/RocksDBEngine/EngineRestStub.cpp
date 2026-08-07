@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -21,14 +21,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBEngine/RocksDBEngine.h"
-
-#include "GeneralServer/RestHandlerFactory.h"
-#include "RocksDBEngine/RocksDBRestHandlers.h"
+#include "ClusterEngine/ClusterEngine.h"
 
 namespace arangodb {
 
-/// @brief Add engine-specific REST handlers
-void RocksDBEngine::addRestHandlers(rest::RestHandlerFactory& handlerFactory) {
-  RocksDBRestHandlers::registerResources(&handlerFactory, *this);
-}
+void RocksDBEngine::addRestHandlers(rest::RestHandlerFactory&) {}
+void ClusterEngine::addRestHandlers(rest::RestHandlerFactory&) {}
+
 }  // namespace arangodb
