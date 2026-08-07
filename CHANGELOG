@@ -1,12 +1,13 @@
 3.12.11-devel (XXXX-XX-XX)
 --------------------------
 
+* Removed the obsolete "Replication" view and menu entry from the web UI.
+
 * BTS-2425: Updated node modules:
  - fast-uri to 3.1.5 to resolve CVE-2026-18446
  - brace-expansion to 5.0.9 to resolve CVE-2026-69152
 
 * COR-569: Added activity to report ArangoSearch consolidation.
-
 
 3.12.10 (2026-08-03)
 --------------------
