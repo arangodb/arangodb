@@ -408,10 +408,13 @@ Result ExecContext::canModifyView(
   return {};
 }
 
-Result ExecContext::canDropView(std::string_view db,
-                                std::string_view view) const {
+Result ExecContext::canDropView(
+    std::string_view db, std::string_view view,
+    std::vector<std::string> const& linkedCollections) const {
   using namespace auth::perms;
-  if (auto r = can(DropView{.db{db}, .name{view}}); r.fail()) {
+  if (auto r = can(DropView{
+          .db{db}, .name{view}, .linkedCollections{linkedCollections}});
+      r.fail()) {
     return r;
   }
   if (auto r = checkNotReadOnly(); r.fail()) {

@@ -464,7 +464,8 @@ Result IResearchViewCoordinator::dropImpl() {
   for (auto& it : _collections) {
     currentCids.emplace(it.first);
   }
-  if (auto r = ExecContext::current().canDropView(vocbase().name(), name());
+  if (auto r = ExecContext::current().canDropView(vocbase().name(), name(),
+                                                  linkedCollectionNames());
       !r.ok()) {
     return r;
   }

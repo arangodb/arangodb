@@ -657,6 +657,37 @@ TEST_F(ClassicAuthModeTest, DropViewNeedsDatabaseWrite) {
               TRI_ERROR_FORBIDDEN);
 }
 
+TEST_F(ClassicAuthModeTest, DropViewNeedsDatabaseWriteAndReadableLinks) {
+  // The link grants are spelled out although the database grant would already
+  // imply them -- otherwise this would pass for any collection name at all.
+  beUserWith(RW, {{std::string{kDb}, "c1", RO}, {std::string{kDb}, "c2", RO}});
+  EXPECT_TRUE(check(p::DropView{.db = std::string{kDb},
+                                .name = "v",
+                                .linkedCollections = {"c1", "c2"}})
+                  .ok());
+}
+
+TEST_F(ClassicAuthModeTest,
+       DropViewWithReadableLinksButNoDatabaseWriteIsForbidden) {
+  // The database grant is checked first and is not substitutable: even RW on
+  // every linked collection does not make up for a read-only database.
+  beUserWith(RO, {{std::string{kDb}, "c1", RW}});
+  expectError(
+      check(p::DropView{
+          .db = std::string{kDb}, .name = "v", .linkedCollections = {"c1"}}),
+      TRI_ERROR_FORBIDDEN);
+}
+
+TEST_F(ClassicAuthModeTest, DropViewWithUnreadableLinkIsForbidden) {
+  beUserWith(RW, {{std::string{kDb}, "secret", NONE}});
+  auto r = check(p::DropView{
+      .db = std::string{kDb}, .name = "v", .linkedCollections = {"secret"}});
+  expectError(r, TRI_ERROR_FORBIDDEN);
+  EXPECT_NE(r.errorMessage().find("Insufficient access to linked collection"),
+            std::string::npos)
+      << r.errorMessage();
+}
+
 // ---------------------------------------------------------------------------
 // Analyzers
 //
@@ -1331,7 +1362,9 @@ std::vector<PermCase> permissionCases() {
       {"RenameView",
        p::RenameView{.db = db, .oldName = "v", .newName = "w"},
        {{{Scope::Db, RW}}}},
-      {"DropView", p::DropView{.db = db, .name = "v"}, {{{Scope::Db, RW}}}},
+      {"DropView",
+       p::DropView{.db = db, .name = "v", .linkedCollections = links},
+       {{{Scope::Db, RW}, {Scope::Coll, RO}}}},
       {"UseViewRead",
        p::UseView{.db = db, .name = "v", .level = ViewAccessLevel::Read},
        {{{Scope::Db, RO}}}},

@@ -552,7 +552,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             if (isAdmin().ok()) {
               return {};
             }
-            return check(p::DropView{view.db, view.viewName});
+            return check(p::DropView{view.db, view.viewName, {}});
           },
           [&](p::RestoreWriteData const& data) -> Result {
             // Behaves like UseCollection(WriteData), but is additionally
@@ -730,7 +730,25 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
           },
           [&](p::DropView const& view) -> Result {
             // Dropping a view requires RW access to the database.
-            return check(p::UseDatabase{view.db, DatabaseAccessLevel::Write});
+            if (auto r =
+                    check(p::UseDatabase{view.db, DatabaseAccessLevel::Write});
+                r.fail()) {
+              return r;
+            }
+            // Also check read access to all linked collections.
+            for (auto const& coll : view.linkedCollections) {
+              if (auto r = check(p::UseCollection{view.db, coll,
+                                                  CollectionAccessLevel::Read});
+                  r.fail()) {
+                return Result(
+                    TRI_ERROR_FORBIDDEN,
+                    failureMessage(view,
+                                   std::format("Insufficient access to linked "
+                                               "collection '{}': {}",
+                                               coll, r.errorMessage())));
+              }
+            }
+            return {};
           },
           [&](p::SeeAnalyzer const& analyzer) -> Result {
             // Database RO access is the only prerequisite and has already been
@@ -1131,8 +1149,17 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
                             rbac::resources::View{view.db, view.oldName});
           },
           [&](p::DropView const& view) -> Result {
-            return checkOne(rbac::Action::Drop,
-                            rbac::resources::View{view.db, view.name});
+            // Dropping a view additionally requires read access to every
+            // linked collection (mirrors the classic behaviour).
+            std::vector<rbac::ActionResource> queries;
+            queries.reserve(1 + view.linkedCollections.size());
+            queries.push_back({rbac::Action::Drop,
+                               rbac::resources::View{view.db, view.name}});
+            for (auto const& coll : view.linkedCollections) {
+              queries.push_back({rbac::Action::Read,
+                                 rbac::resources::Collection{view.db, coll}});
+            }
+            return checkAll(queries);
           },
           // -- Analyzers -------------------------------------------------
           [&](p::UseAnalyzer const& analyzer) -> Result {
@@ -1228,7 +1255,7 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
                 p::CreateView{view.db, view.viewName, view.linkedCollNames});
           },
           [&](p::RestoreDropView const& view) -> Result {
-            return check(p::DropView{view.db, view.viewName});
+            return check(p::DropView{view.db, view.viewName, {}});
           },
           [&](p::RestoreWriteData const& data) -> Result {
             return check(p::UseCollection{data.db, data.collName,
