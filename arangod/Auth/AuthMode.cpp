@@ -824,15 +824,23 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
           [&](p::DropGraph const& graph) -> Result {
             // Dropping a graph requires RW access to the database (to write
             // to _graphs), plus the ability to drop any listed collections.
-            if (auto r =
-                    check(p::UseDatabase{graph.db, DatabaseAccessLevel::Write});
-                !r.ok()) {
-              return r;
-            }
+            // For legacy reasons, we must check the collections first:
             for (auto const& coll : graph.collectionNames) {
               if (auto r = check(p::DropCollection{graph.db, coll}); !r.ok()) {
                 return r;
               }
+            }
+            if (auto r =
+                    check(p::UseDatabase{graph.db, DatabaseAccessLevel::Write});
+                !r.ok()) {
+              // There is a legacy subtlety here: If we have no access to the
+              // database at all, we must return FORBIDDEN, if we have RO
+              // access, we must return READ_ONLY:
+              if (check(p::UseDatabase{graph.db, DatabaseAccessLevel::Read})
+                      .ok()) {
+                return {TRI_ERROR_ARANGO_READ_ONLY, r.errorMessage()};
+              }
+              return r;
             }
             return {};
           },

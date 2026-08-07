@@ -464,11 +464,6 @@ Result IResearchViewCoordinator::dropImpl() {
   for (auto& it : _collections) {
     currentCids.emplace(it.first);
   }
-  if (auto r = ExecContext::current().canDropView(vocbase().name(), name(),
-                                                  linkedCollectionNames());
-      !r.ok()) {
-    return r;
-  }
   containers::FlatHashSet<DataSourceId> collections;
   auto r = IResearchLinkHelper::updateLinks(
       collections, *this, velocypack::Slice::emptyObjectSlice(),
