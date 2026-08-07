@@ -738,6 +738,9 @@ async<Result> RestHandler::checkUserCanAccess() const {
   if (hasUnixDomainSocketConnection()) {
     co_return Result{};
   }
+
+  LOG_TOPIC("0898a", TRACE, Logger::AUTHORIZATION)
+      << "Access forbidden to " << request()->requestPath();
   if (_request->requestedApiVersion() == 0 && ec->isClassic()) {
     co_return Result(TRI_ERROR_HTTP_UNAUTHORIZED,
                      "No read access to database.");
