@@ -83,7 +83,7 @@ in the `VERSION` file, the server refuses to start.)");
                   "Perform a full RocksDB compaction after database upgrade.",
                   new BooleanParameter(&opts.upgradeFullCompaction))
       .setLongDescription(R"(If this option is specified together with
---database.auto-upgrade, the server will perform a full RocksDB compaction
+`--database.auto-upgrade`, the server performs a full RocksDB compaction
 after the database upgrade has completed successfully but before shutting down.
 
 This performs a complete compaction of all column families with both
