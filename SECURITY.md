@@ -94,5 +94,5 @@ We release security patches for versions listed as supported in the
 
 ## Published advisories
 
-Advisories are published on the affected repository's Security tab, and summarised at
-[arango.ai/alerts](https://arango.ai/alerts/).
+Advisories are published on the affected repository's Security tab. Once a CVE is
+assigned, they also appear in the GitHub Advisory Database.
