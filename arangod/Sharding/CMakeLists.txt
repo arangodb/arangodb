@@ -12,7 +12,7 @@ target_link_libraries(arango_sharding
     arango_iresearch arango_v8)
 
 if(USE_ENTERPRISE)
-  target_link_libraries(arango_rest_handler
+  target_link_libraries(arango_sharding
     PUBLIC
       arango_enterprise_sharding)
 endif()    
