@@ -552,7 +552,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             if (isAdmin().ok()) {
               return {};
             }
-            return check(p::DropView{view.db, view.viewName});
+            return check(p::DropView{view.db, view.viewName, {}});
           },
           [&](p::RestoreWriteData const& data) -> Result {
             // Behaves like UseCollection(WriteData), but is additionally
@@ -730,7 +730,25 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
           },
           [&](p::DropView const& view) -> Result {
             // Dropping a view requires RW access to the database.
-            return check(p::UseDatabase{view.db, DatabaseAccessLevel::Write});
+            if (auto r =
+                    check(p::UseDatabase{view.db, DatabaseAccessLevel::Write});
+                r.fail()) {
+              return r;
+            }
+            // Also check read access to all linked collections.
+            for (auto const& coll : view.linkedCollections) {
+              if (auto r = check(p::UseCollection{view.db, coll,
+                                                  CollectionAccessLevel::Read});
+                  r.fail()) {
+                return Result(
+                    TRI_ERROR_FORBIDDEN,
+                    failureMessage(view,
+                                   std::format("Insufficient access to linked "
+                                               "collection '{}': {}",
+                                               coll, r.errorMessage())));
+              }
+            }
+            return {};
           },
           [&](p::SeeAnalyzer const& analyzer) -> Result {
             // Database RO access is the only prerequisite and has already been
@@ -806,15 +824,23 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
           [&](p::DropGraph const& graph) -> Result {
             // Dropping a graph requires RW access to the database (to write
             // to _graphs), plus the ability to drop any listed collections.
-            if (auto r =
-                    check(p::UseDatabase{graph.db, DatabaseAccessLevel::Write});
-                !r.ok()) {
-              return r;
-            }
+            // For legacy reasons, we must check the collections first:
             for (auto const& coll : graph.collectionNames) {
               if (auto r = check(p::DropCollection{graph.db, coll}); !r.ok()) {
                 return r;
               }
+            }
+            if (auto r =
+                    check(p::UseDatabase{graph.db, DatabaseAccessLevel::Write});
+                !r.ok()) {
+              // There is a legacy subtlety here: If we have no access to the
+              // database at all, we must return FORBIDDEN, if we have RO
+              // access, we must return READ_ONLY:
+              if (check(p::UseDatabase{graph.db, DatabaseAccessLevel::Read})
+                      .ok()) {
+                return {TRI_ERROR_ARANGO_READ_ONLY, r.errorMessage()};
+              }
+              return r;
             }
             return {};
           },
@@ -827,31 +853,47 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                 return check(
                     p::UseDatabase{graph.db, DatabaseAccessLevel::Read});
               case GraphAccessLevel::Modify:
-                return check(
-                    p::UseDatabase{graph.db, DatabaseAccessLevel::Write});
+                if (auto r = check(
+                        p::UseDatabase{graph.db, DatabaseAccessLevel::Write});
+                    r.fail()) {
+                  return {TRI_ERROR_ARANGO_READ_ONLY, r.errorMessage()};
+                }
+                return {};
             }
             ADB_PROD_CRASH();
           },
           [&](p::ReadUser const& /*readUser*/) -> Result {
             // Reading any user record requires at least RW access to the
             // _system database.
-            return check(
-                auth::perms::UseDatabase{.name = StaticStrings::SystemDatabase,
-                                         .level = DatabaseAccessLevel::Write});
+            if (auto r = check(auth::perms::UseDatabase{
+                    .name = StaticStrings::SystemDatabase,
+                    .level = DatabaseAccessLevel::Write});
+                r.fail()) {
+              return {TRI_ERROR_HTTP_FORBIDDEN, r.errorMessage()};
+            }
+            return {};
           },
           [&](p::CreateUser const& /*createUser*/) -> Result {
             // Creating a user requires RW access to the _system database
             // (equivalent to being an admin).
-            return check(
-                auth::perms::UseDatabase{.name = StaticStrings::SystemDatabase,
-                                         .level = DatabaseAccessLevel::Write});
+            if (auto r = check(auth::perms::UseDatabase{
+                    .name = StaticStrings::SystemDatabase,
+                    .level = DatabaseAccessLevel::Write});
+                r.fail()) {
+              return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
+            }
+            return {};
           },
           [&](p::DropUser const& /*dropUser*/) -> Result {
             // Dropping a user requires RW access to the _system database
             // (equivalent to being an admin).
-            return check(
-                auth::perms::UseDatabase{.name = StaticStrings::SystemDatabase,
-                                         .level = DatabaseAccessLevel::Write});
+            if (auto r = check(auth::perms::UseDatabase{
+                    .name = StaticStrings::SystemDatabase,
+                    .level = DatabaseAccessLevel::Write});
+                r.fail()) {
+              return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
+            }
+            return {};
           },
           [&](p::ModifyUserProfile const& /*modifyUserProfile*/) -> Result {
             // Modifying a user's own profile (password, active flag, config
@@ -859,9 +901,13 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             // to being an admin). Note that the self-exception is already
             // handled by ExecContext::canModifyUserProfile before this is
             // ever reached.
-            return check(
-                auth::perms::UseDatabase{.name = StaticStrings::SystemDatabase,
-                                         .level = DatabaseAccessLevel::Write});
+            if (auto r = check(auth::perms::UseDatabase{
+                    .name = StaticStrings::SystemDatabase,
+                    .level = DatabaseAccessLevel::Write});
+                r.fail()) {
+              return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
+            }
+            return {};
           },
           [&](p::GrantUserPermissions const& /*grantUserPermissions*/)
               -> Result {
@@ -880,7 +926,7 @@ Result AuthMode::Classic::isAdmin() const {
   auto r = check(auth::perms::UseDatabase{.name = StaticStrings::SystemDatabase,
                                           .level = DatabaseAccessLevel::Write});
   return r.ok() ? Result{}
-                : Result{TRI_ERROR_FORBIDDEN,
+                : Result{TRI_ERROR_HTTP_FORBIDDEN,
                          std::format("Failed admin-permission check: {}",
                                      r.errorMessage())};
 }
@@ -1008,11 +1054,12 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
     }
   };
 
-  // Each permission maps to one or more (action, resource) pairs, all of which
-  // must be permitted. They are evaluated together in a single Service::check()
-  // call (one network round-trip). The common single-pair case is passed as a
-  // span over a stack-local pair and needs no allocation; only the composite
-  // permissions (create/modify view, create/drop graph) build a small vector.
+  // Each permission maps to one or more (action, resource) pairs, all of
+  // which must be permitted. They are evaluated together in a single
+  // Service::check() call (one network round-trip). The common single-pair
+  // case is passed as a span over a stack-local pair and needs no allocation;
+  // only the composite permissions (create/modify view, create/drop graph)
+  // build a small vector.
   auto checkAll = [&](std::span<rbac::ActionResource const> queries) -> Result {
     return _rbacService.check(rbac::JwtToken{_jwtToken}, queries);
   };
@@ -1110,8 +1157,17 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
                             rbac::resources::View{view.db, view.oldName});
           },
           [&](p::DropView const& view) -> Result {
-            return checkOne(rbac::Action::Drop,
-                            rbac::resources::View{view.db, view.name});
+            // Dropping a view additionally requires read access to every
+            // linked collection (mirrors the classic behaviour).
+            std::vector<rbac::ActionResource> queries;
+            queries.reserve(1 + view.linkedCollections.size());
+            queries.push_back({rbac::Action::Drop,
+                               rbac::resources::View{view.db, view.name}});
+            for (auto const& coll : view.linkedCollections) {
+              queries.push_back({rbac::Action::Read,
+                                 rbac::resources::Collection{view.db, coll}});
+            }
+            return checkAll(queries);
           },
           // -- Analyzers -------------------------------------------------
           [&](p::UseAnalyzer const& analyzer) -> Result {
@@ -1144,9 +1200,9 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
                             rbac::resources::Graph{graph.db, graph.name});
           },
           [&](p::CreateGraph const& graph) -> Result {
-            // Creating a graph additionally requires the ability to create any
-            // collections it introduces and to read the ones it links (mirrors
-            // the classic behaviour).
+            // Creating a graph additionally requires the ability to create
+            // any collections it introduces and to read the ones it links
+            // (mirrors the classic behaviour).
             std::vector<rbac::ActionResource> queries;
             queries.reserve(1 + graph.collectionNamesToCreate.size() +
                             graph.collectionNamesToRead.size());
@@ -1207,7 +1263,7 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
                 p::CreateView{view.db, view.viewName, view.linkedCollNames});
           },
           [&](p::RestoreDropView const& view) -> Result {
-            return check(p::DropView{view.db, view.viewName});
+            return check(p::DropView{view.db, view.viewName, {}});
           },
           [&](p::RestoreWriteData const& data) -> Result {
             return check(p::UseCollection{data.db, data.collName,

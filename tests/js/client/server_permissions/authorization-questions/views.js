@@ -262,12 +262,9 @@ function viewApiAuthzSuite () {
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "DropView db=d name=v_apitest",
-        ...singleOnly([
-          "UseCollection db=d name=c level=read"
-        ]),
         ...clusterOnly([
-          "UseCollection db=d name=c level=writemeta",
-          "UseDatabase name=d level=write"
+          "UseDatabase name=d level=write",
+          "UseCollection db=d name=c level=writemeta"
         ])
       ], endObserve());
     },

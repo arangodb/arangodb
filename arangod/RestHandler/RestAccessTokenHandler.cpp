@@ -79,13 +79,15 @@ RestStatus RestAccessTokenHandler::execute() {
       return showAccessTokens(um, user);
     case RequestType::POST:
       if (auto r = exec.canModifyUserProfile(user); !r.ok()) {
-        generateError(r);
+        generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                      r.errorMessage());
         return RestStatus::DONE;
       }
       return createAccessToken(um, user);
     case RequestType::DELETE_REQ:
       if (auto r = exec.canModifyUserProfile(user); !r.ok()) {
-        generateError(r);
+        generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                      r.errorMessage());
         return RestStatus::DONE;
       }
       return deleteAccessToken(um, user);

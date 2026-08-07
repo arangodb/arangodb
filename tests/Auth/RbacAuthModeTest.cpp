@@ -205,6 +205,21 @@ TEST_F(RbacAuthModeTest, DropView) {
   expectSingle(rbac::Action::Drop, "view:mydb:v");
 }
 
+TEST_F(RbacAuthModeTest, DropViewChecksViewThenLinkedCollections) {
+  std::vector<std::string> links{"c1", "c2"};
+  EXPECT_TRUE(
+      check(p::DropView{.db = "mydb", .name = "v", .linkedCollections = links})
+          .ok());
+  EXPECT_EQ(svc.checkCalls, 1);  // view + linked collections in one batch
+  ASSERT_EQ(svc.queries.size(), 3u);
+  EXPECT_EQ(svc.queries[0].action, rbac::Action::Drop);
+  EXPECT_EQ(svc.queries[0].resource, "view:mydb:v");
+  EXPECT_EQ(svc.queries[1].action, rbac::Action::Read);
+  EXPECT_EQ(svc.queries[1].resource, "collection:mydb:c1");
+  EXPECT_EQ(svc.queries[2].action, rbac::Action::Read);
+  EXPECT_EQ(svc.queries[2].resource, "collection:mydb:c2");
+}
+
 TEST_F(RbacAuthModeTest, UseViewRead) {
   check(p::UseView{.db = "mydb", .name = "v", .level = ViewAccessLevel::Read});
   expectSingle(rbac::Action::Read, "view:mydb:v");
