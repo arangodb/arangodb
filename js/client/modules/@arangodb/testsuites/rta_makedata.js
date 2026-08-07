@@ -94,6 +94,9 @@ function makeDataWrapper (options) {
         this.serverOptions["arangosearch.columns-cache-limit"] = "5000";
       }
       this.continueTesting = true;
+      if (this.options.isCov) {
+        this.options.oneTestTimeout = this.options.oneTestTimeout * 2;
+      }
     }
     filter(te, filtered) {
       return true;
