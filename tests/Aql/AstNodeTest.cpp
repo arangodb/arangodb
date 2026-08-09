@@ -54,10 +54,6 @@ struct AstObjectSpliceFoldingTestHelper {
       containers::SmallVector<AstNode*, 8>& out) {
     return ast->appendObjectElementsFromConstantObject(source, out);
   }
-
-  static AstNode* foldConstantObjectSplices(Ast* ast, AstNode* node) {
-    return ast->foldConstantObjectSplices(node);
-  }
 };
 }  // namespace arangodb::aql
 #endif
@@ -662,68 +658,6 @@ TEST_F(AstNodeTest, appendObjectElementsFromConstantObjectRollsBackOnFailure) {
   ASSERT_EQ(1, out.size());
   EXPECT_EQ(NODE_TYPE_OBJECT_ELEMENT, out[0]->type);
   EXPECT_EQ("sentinel", out[0]->getStringView());
-}
-
-TEST_F(AstNodeTest, foldConstantObjectSplicesRollsBackOnMidFoldFailure) {
-  AstNode* poisoned = makePoisonedConstantObject(_ast);
-
-  AstNode* outer = _ast->createNodeObject();
-  outer->addMember(
-      _ast->createNodeObjectElement("before", _ast->createNodeValueInt(7)));
-  AstNode* splice = _ast->createNodeObjectSplice(poisoned);
-  outer->addMember(splice);
-  outer->addMember(
-      _ast->createNodeObjectElement("keep", _ast->createNodeValueInt(99)));
-
-  ASSERT_EQ(3, outer->numMembers());
-  EXPECT_TRUE(objectHasObjectSplice(outer));
-
-  AstNode* folded =
-      AstObjectSpliceFoldingTestHelper::foldConstantObjectSplices(_ast, outer);
-  ASSERT_EQ(outer, folded);
-  ASSERT_EQ(3, folded->numMembers());
-  EXPECT_TRUE(objectHasObjectSplice(folded));
-
-  // Existing members around the failed splice must be untouched, and no
-  // partial members (a/b) from the poisoned object may leak into the parent.
-  expectObjectInt(folded, "before", 7);
-  expectObjectInt(folded, "keep", 99);
-  EXPECT_EQ(nullptr, getObjectElement(folded, "a"));
-  EXPECT_EQ(nullptr, getObjectElement(folded, "b"));
-
-  EXPECT_EQ(NODE_TYPE_OBJECT_SPLICE, folded->getMember(1)->type);
-  EXPECT_EQ(splice, folded->getMember(1));
-  EXPECT_EQ(poisoned, folded->getMember(1)->getMember(0));
-}
-
-TEST_F(AstNodeTest, foldConstantObjectSplicesRollsBackOnNestedMidFoldFailure) {
-  AstNode* nestedPoisoned = makePoisonedConstantObject(_ast);
-
-  AstNode* source = _ast->createNodeObject();
-  source->addMember(
-      _ast->createNodeObjectElement("ok", _ast->createNodeValueInt(1)));
-  source->addMember(_ast->createNodeObjectSplice(nestedPoisoned));
-  // Nested splice reports constant via cached flags on nestedPoisoned.
-  EXPECT_TRUE(source->isConstant());
-
-  AstNode* outer = _ast->createNodeObject();
-  AstNode* splice = _ast->createNodeObjectSplice(source);
-  outer->addMember(splice);
-  outer->addMember(
-      _ast->createNodeObjectElement("tail", _ast->createNodeValueInt(5)));
-
-  AstNode* folded =
-      AstObjectSpliceFoldingTestHelper::foldConstantObjectSplices(_ast, outer);
-  ASSERT_EQ(outer, folded);
-  ASSERT_EQ(2, folded->numMembers());
-  EXPECT_TRUE(objectHasObjectSplice(folded));
-
-  // Partial append of "ok"/"a"/"b" must not remain after rollback.
-  EXPECT_EQ(nullptr, getObjectElement(folded, "ok"));
-  EXPECT_EQ(nullptr, getObjectElement(folded, "a"));
-  EXPECT_EQ(nullptr, getObjectElement(folded, "b"));
-  expectObjectInt(folded, "tail", 5);
-  EXPECT_EQ(splice, folded->getMember(0));
 }
 
 TEST_F(AstNodeTest, toVelocyPackNull) {

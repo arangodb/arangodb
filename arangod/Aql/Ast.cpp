@@ -137,32 +137,6 @@ bool astNodeIsConstantObjectExpression(AstNode const* source) noexcept {
          source->type == NODE_TYPE_OBJECT;
 }
 
-bool astNodeObjectCanFullyConstantFold(AstNode const* node) noexcept {
-  if (astNodeObjectHasObjectSplice(node)) {
-    return false;
-  }
-
-  size_t const n = node->numMembers();
-  for (size_t i = 0; i < n; ++i) {
-    AstNode const* member = node->getMemberUnchecked(i);
-
-    // Computed attribute names cannot be resolved during constant folding.
-    if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
-      return false;
-    }
-
-    if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
-      if (!member->getMember(0)->isConstant()) {
-        return false;
-      }
-    } else {
-      return false;
-    }
-  }
-
-  return true;
-}
-
 auto doNothingVisitor = [](AstNode const*) {};
 
 [[noreturn]] void throwFormattedError(aql::QueryContext& query, ErrorCode code,
@@ -4288,52 +4262,6 @@ AstNode* Ast::flattenObjectLiteralSplices(AstNode* node) {
   return node;
 }
 
-/// @brief optimizes an object literal or an object expression
-AstNode* Ast::foldConstantObjectSplices(AstNode* node) {
-  if (!astNodeObjectHasObjectSplice(node)) {
-    return node;
-  }
-
-  size_t const n = node->numMembers();
-  containers::SmallVector<AstNode*, 8> newMembers;
-  bool changed = false;
-
-  for (size_t i = 0; i < n; ++i) {
-    AstNode* member = node->getMemberUnchecked(i);
-
-    if (member->type == NODE_TYPE_OBJECT_SPLICE) {
-      AstNode* source = member->getMemberUnchecked(0);
-      if (!source->isConstant() || !source->isDeterministic() ||
-          !astNodeIsConstantObjectExpression(source)) {
-        newMembers.push_back(member);
-        continue;
-      }
-      size_t const sizeBefore = newMembers.size();
-      if (!appendObjectElementsFromConstantObject(source, newMembers)) {
-        newMembers.resize(sizeBefore);
-        newMembers.push_back(member);
-        continue;
-      }
-      changed = true;
-    } else {
-      newMembers.push_back(member);
-    }
-  }
-
-  if (!changed) {
-    return node;
-  }
-
-  TEMPORARILY_UNLOCK_NODE(node);
-  node->clearMembers();
-  for (auto* member : newMembers) {
-    node->addMember(member);
-  }
-
-  clearObjectOptimizationFlags(node);
-  return node;
-}
-
 bool Ast::appendObjectElementsFromConstantObject(
     AstNode const* source, containers::SmallVector<AstNode*, 8>& out) {
   TRI_ASSERT(source != nullptr);
@@ -4371,9 +4299,10 @@ AstNode* Ast::optimizeObject(
     transaction::Methods& trx,
     AqlFunctionsInternalCache& aqlFunctionsInternalCache, AstNode* node) {
   node = flattenObjectLiteralSplices(node);
-  node = foldConstantObjectSplices(node);
+  // node = foldConstantObjectSplices(node);
 
-  if (astNodeObjectCanFullyConstantFold(node)) {
+  if (node->isConstant() && (!node->hasFlag(DETERMINED_NONDETERMINISTIC) ||
+                             !node->hasFlag(VALUE_NONDETERMINISTIC))) {
     Expression exp(this, node);
     FixedVarExpressionContext context(trx, _query, aqlFunctionsInternalCache);
     bool mustDestroy = false;
