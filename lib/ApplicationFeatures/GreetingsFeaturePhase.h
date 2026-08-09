@@ -28,7 +28,6 @@
 #include "ApplicationFeatures/FileSystemFeature.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
-#include "ApplicationFeatures/VersionFeature.h"
 #include "Logger/LoggerFeature.h"
 #include "Random/RandomFeature.h"
 
@@ -51,7 +50,6 @@ class GreetingsFeaturePhase final : public ApplicationFeaturePhase {
     startsAfter<LoggerFeature>();
     startsAfter<RandomFeature>();
     startsAfter<ShellColorsFeature>();
-    startsAfter<VersionFeature>();
 
     if constexpr (!IsClient) {
       // These are server only features

@@ -64,8 +64,8 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void BackupOptionsProvider::declareOptions(std::shared_ptr<ProgramOptions> opts,
-                                           BackupFeatureOptions& options) {
+void BackupOptionsProvider::declareOptionsImpl(
+    std::shared_ptr<ProgramOptions> opts, BackupFeatureOptions& options) {
   opts->addOption(
       "--operation",
       "The operation to perform (may be specified as positional "
@@ -151,7 +151,7 @@ void BackupOptionsProvider::declareOptions(std::shared_ptr<ProgramOptions> opts,
 #endif
 }
 
-void BackupOptionsProvider::validateOptions(
+void BackupOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, BackupFeatureOptions& options) {
   auto const& positionals = opts->processingResult()._positionals;
 

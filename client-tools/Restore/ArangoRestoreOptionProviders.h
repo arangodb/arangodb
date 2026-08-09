@@ -23,6 +23,8 @@
 #include "ApplicationFeatures/CoreOptionProviders.h"
 #include "ApplicationFeatures/ConfigOptionsProvider.h"
 #include "ApplicationFeatures/TempOptionsProvider.h"
+#include "Restore/RestoreOptionsProvider.h"
+#include "Shell/ClientOptionsProvider.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionOptionsProvider.h"
 #endif
@@ -32,7 +34,8 @@
 
 namespace arangodb {
 using ArangoRestoreOptionProviders =
-    CoreOptionProviders<ConfigOptionsProvider, TempOptionsProvider
+    CoreOptionProviders<ClientOptionsProvider, ConfigOptionsProvider,
+                        RestoreOptionsProvider, TempOptionsProvider
 #ifdef USE_ENTERPRISE
                         ,
                         EncryptionOptionsProvider
