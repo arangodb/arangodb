@@ -743,12 +743,16 @@ async<void> RestHandler::handleAuthorizationChecks() {
   if (auto res = co_await checkUserCanAccess(); res.fail()) {
     _state = HandlerState::FAILED;
     events::NotAuthorized(*_request);
-    // This one here is very special. Due to backwards compatibility
-    // requirements, we have to produce exactly the following combination
-    // here, which cannot be achieved with the `generateError` method
-    // which takes only a `Result`. Funny.
-    generateError(rest::ResponseCode::UNAUTHORIZED, TRI_ERROR_FORBIDDEN,
-                  res.errorMessage());
+    if (_request->requestedApiVersion() == 0) {
+      // This one here is very special. Due to backwards compatibility
+      // requirements, we have to produce exactly the following combination
+      // here, which cannot be achieved with the `generateError` method
+      // which takes only a `Result`. Funny.
+      generateError(rest::ResponseCode::UNAUTHORIZED, TRI_ERROR_FORBIDDEN,
+                    res.errorMessage());
+      co_return;
+    }
+    generateError(res);
   }
 }
 
