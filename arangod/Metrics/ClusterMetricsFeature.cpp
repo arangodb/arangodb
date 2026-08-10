@@ -31,7 +31,6 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
-#include "Metrics/ClusterMetricsOptionsProvider.h"
 #include "Metrics/Metric.h"
 #include "Metrics/MetricsFeature.h"
 #include "Metrics/Types.h"

@@ -41,7 +41,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/UpgradeOptionsProvider.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/DatabaseFeature.h"
