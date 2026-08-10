@@ -1012,7 +1012,62 @@ function AuthSuite() {
       } finally {
         db._dropDatabase("other");
       }
-    }
+    },
+
+    // access token that expires while it is in use
+    testAccessTokenExpiresWhileValid: function () {
+      const other = "other";
+      const version_url = `/_db/${other}/_api/version`;
+      const pw1 = "foobar";
+      const ok = 200;
+      const forbidden = 401;
+      // Short enough to keep the suite fast, long enough to survive the
+      // request round trip on a loaded CI machine.
+      const lifetimeSecs = 3;
+      try {
+        db._createDatabase(other);
+        users.save(user, pw1);
+        users.grantDatabase(user, other);
+        users.reload();
+        const auth = { username: user, password: pw1 };
+        const now = (new Date()) / 1000;
+        const name = "expires-while-valid";
+        let token;
+        // create a token that is valid right now
+        {
+          const res = request.post(`/_api/token/${user}`, {
+            body: JSON.stringify({name, "valid_until": Math.floor(now + lifetimeSecs)}),
+            auth
+          });
+          expect(res).to.be.an.instanceof(request.Response);
+          expect(res).to.have.property('statusCode', ok);
+          expect(res.body).to.be.an('string');
+          const obj = JSON.parse(res.body);
+          expect(obj.active).to.be.equal(true);
+          expect(obj.token).to.be.a('string');
+          token = obj.token;
+        }
+        // it authenticates while still valid
+        {
+          const res = request.get(version_url, {
+            auth: {username: user, password: token}
+          });
+          expect(res).to.be.an.instanceof(request.Response);
+          expect(res).to.have.property('statusCode', ok);
+        }
+        require('internal').wait(lifetimeSecs + 1, false);
+        // and stops authenticating once valid_until has passed
+        {
+          const res = request.get(version_url, {
+            auth: {username: user, password: token}
+          });
+          expect(res).to.be.an.instanceof(request.Response);
+          expect(res).to.have.property('statusCode', forbidden);
+        }
+      } finally {
+        db._dropDatabase(other);
+      }
+    },
   };
 }
 
