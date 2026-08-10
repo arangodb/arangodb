@@ -187,11 +187,6 @@ void Feature::start() {
 
 void Feature::stop() { _cleanupThread.reset(); }
 
-void Feature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
-  async_registry::OptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
 velocypack::Builder Feature::getData() const {
   auto promises = all_undeleted_promises().index_by_parent();
   return serialize(promises);

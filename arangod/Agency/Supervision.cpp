@@ -201,7 +201,7 @@ std::string Supervision::_agencyPrefix = "/arango";
 
 Supervision::Supervision(application_features::ApplicationServer& server,
                          metrics::IRegistry& metricsRegistry)
-    // operates on the agency store only, no ExecContext readers
+    // operates on the agency store only, no ExecContext required
     : arangodb::ServerThread(server, "Supervision", nullptr),
       _agent(nullptr),
       _snapshot(nullptr),

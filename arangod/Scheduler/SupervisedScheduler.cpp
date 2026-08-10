@@ -119,7 +119,7 @@ class SupervisedSchedulerThread : public Thread {
   explicit SupervisedSchedulerThread(SupervisedScheduler& scheduler,
                                      std::string const& name = "Scheduler")
       // scheduler threads run without an ExecContext; work items carry
-      // their own context (COR-821)
+      // their own context
       : Thread(name, nullptr), _scheduler(scheduler) {}
 
   // shutdown is called by derived implementation!

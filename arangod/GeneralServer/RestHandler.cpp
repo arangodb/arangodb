@@ -737,22 +737,6 @@ async<Result> RestHandler::checkUserCanAccess() const {
       canAccess = true;
     }
 #endif
-
-    if (not canAccess &&
-        auth->authenticationSystemOnly()) {  // TODO remove in 4.0
-      // authentication required, but only for /_api, /_admin etc.
-      if (!path.empty()) {
-        // check if path starts with /_
-        // or path begins with /
-        if (path[0] != '/' || (path.size() > 1 && path[1] != '_')) {
-          // simon: upgrade rights for Foxx apps. FIXME
-          canAccess = true;
-          ec->forceSuperuser();
-          LOG_TOPIC("e2880", TRACE, Logger::AUTHORIZATION)
-              << "Upgrading rights for " << path;
-        }
-      }
-    }
   }
 
   co_return canAccess
@@ -767,7 +751,12 @@ async<void> RestHandler::handleAuthorizationChecks() {
   if (auto res = co_await checkUserCanAccess(); res.fail()) {
     _state = HandlerState::FAILED;
     events::NotAuthorized(*_request);
-    generateError(res);
+    // This one here is very special. Due to backwards compatibility
+    // requirements, we have to produce exactly the following combination
+    // here, which cannot be achieved with the `generateError` method
+    // which takes only a `Result`. Funny.
+    generateError(rest::ResponseCode::UNAUTHORIZED, TRI_ERROR_FORBIDDEN,
+                  res.errorMessage());
   }
 }
 

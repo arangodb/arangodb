@@ -57,7 +57,7 @@ V8LineEditor* ConsoleThread::serverConsole = nullptr;
 std::mutex ConsoleThread::serverConsoleMutex;
 
 ConsoleThread::ConsoleThread(Server& applicationServer, TRI_vocbase_t* vocbase)
-    // operator REPL: runs with superuser privileges
+    // arangod --console REPL: runs with superuser privileges
     : ServerThread(applicationServer, "Console",
                    ExecContext::superuserAsShared()),
       _vocbase(vocbase),

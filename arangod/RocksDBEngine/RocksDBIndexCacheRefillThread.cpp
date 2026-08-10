@@ -50,7 +50,8 @@ using application_features::ApplicationServer;
 RocksDBIndexCacheRefillThread::RocksDBIndexCacheRefillThread(
     DatabaseFeature& databaseFeature, metrics::IRegistry& metricsRegistry,
     size_t maxCapacity)
-    // opens SingleCollectionTransactions to refill index caches
+    // needs superuser permissions to open SingleCollectionTransactions to
+    // refill index caches
     : Thread("RocksDBCacheRefiller", ExecContext::superuserAsShared()),
       _databaseFeature(databaseFeature),
       _maxCapacity(maxCapacity),

@@ -30,7 +30,6 @@
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
-#include "ApplicationFeatures/VersionFeature.h"
 #include "Export/ExportFeature.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/LogMacros.h"
@@ -64,20 +63,17 @@ void ArangoExportServer::addFeatures() {
   addFeature<BasicFeaturePhaseClient>();
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
-  addFeature<HttpEndpointProvider, ClientFeature>(false);
-  addFeature<VersionFeature>();
-  addFeature<LoggerFeature>(false);
-  addFeature<ConfigFeature>(_binaryName);
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(
       std::array{std::type_index(typeid(ExportFeature))});
   addFeature<SslFeature>();
-  addFeature<TempFeature>(_binaryName);
-  addFeature<ExportFeature>(_ret);
 }
 
 void ArangoExportServer::addFeaturesWithOptionProvider() {
+  addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
+  addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());
+  addFeature<TempFeature>(_binaryName, getOptions<TempOptionsProvider>());
   addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
   addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -87,6 +83,9 @@ void ArangoExportServer::addFeaturesWithOptionProvider() {
 #ifdef USE_ENTERPRISE
   addFeature<EncryptionFeature>(getOptions<EncryptionOptionsProvider>());
 #endif
+  addFeature<HttpEndpointProvider, ClientFeature>(
+      getOptions<ClientOptionsProvider>());
+  addFeature<ExportFeature>(_ret, getOptions<ExportOptionsProvider>());
 }
 
 }  // namespace arangodb

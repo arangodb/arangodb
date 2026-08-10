@@ -205,6 +205,21 @@ TEST_F(RbacAuthModeTest, DropView) {
   expectSingle(rbac::Action::Drop, "view:mydb:v");
 }
 
+TEST_F(RbacAuthModeTest, DropViewChecksViewThenLinkedCollections) {
+  std::vector<std::string> links{"c1", "c2"};
+  EXPECT_TRUE(
+      check(p::DropView{.db = "mydb", .name = "v", .linkedCollections = links})
+          .ok());
+  EXPECT_EQ(svc.checkCalls, 1);  // view + linked collections in one batch
+  ASSERT_EQ(svc.queries.size(), 3u);
+  EXPECT_EQ(svc.queries[0].action, rbac::Action::Drop);
+  EXPECT_EQ(svc.queries[0].resource, "view:mydb:v");
+  EXPECT_EQ(svc.queries[1].action, rbac::Action::Read);
+  EXPECT_EQ(svc.queries[1].resource, "collection:mydb:c1");
+  EXPECT_EQ(svc.queries[2].action, rbac::Action::Read);
+  EXPECT_EQ(svc.queries[2].resource, "collection:mydb:c2");
+}
+
 TEST_F(RbacAuthModeTest, UseViewRead) {
   check(p::UseView{.db = "mydb", .name = "v", .level = ViewAccessLevel::Read});
   expectSingle(rbac::Action::Read, "view:mydb:v");
@@ -416,6 +431,11 @@ TEST_F(RbacAuthModeTest, RestoreCreateViewChecksViewThenLinkedCollections) {
 // Admin actions (map 1:1 to the identically-named action, no resource)
 // ---------------------------------------------------------------------------
 
+TEST_F(RbacAuthModeTest, AdminReadUsers) {
+  check(p::AdminReadUsers{});
+  expectSingle(rbac::Action::AdminReadUsers, "<none>");
+}
+
 TEST_F(RbacAuthModeTest, AdminMonitoring) {
   check(p::AdminMonitoring{});
   expectSingle(rbac::Action::AdminMonitoring, "<none>");
@@ -434,14 +454,6 @@ TEST_F(RbacAuthModeTest, AdminBackup) {
 TEST_F(RbacAuthModeTest, AdminQueryCache) {
   check(p::AdminQueryCache{});
   expectSingle(rbac::Action::AdminQueryCache, "<none>");
-}
-
-TEST_F(RbacAuthModeTest, AdminReadUsersIsNotImplementedAndAsksNothing) {
-  // AdminReadUsers has no rbac::Action counterpart yet (COR-213); it must fail
-  // closed without querying the service.
-  auto r = check(p::AdminReadUsers{});
-  EXPECT_EQ(r.errorNumber(), TRI_ERROR_NOT_IMPLEMENTED);
-  EXPECT_TRUE(svc.queries.empty());
 }
 
 // ---------------------------------------------------------------------------

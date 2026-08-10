@@ -1,4 +1,4 @@
-/* global ArangoServerState, GLOBAL_REPLICATION_APPLIER_START, GLOBAL_REPLICATION_APPLIER_STOP, GLOBAL_REPLICATION_APPLIER_STATE, GLOBAL_REPLICATION_APPLIER_FORGET, GLOBAL_REPLICATION_APPLIER_CONFIGURE, GLOBAL_REPLICATION_SYNCHRONIZE, REPLICATION_APPLIER_START, REPLICATION_APPLIER_STOP, REPLICATION_APPLIER_STATE, REPLICATION_APPLIER_STATE_ALL, REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_CONFIGURE, REPLICATION_SYNCHRONIZE, GLOBAL_REPLICATION_APPLIER_FAILOVER_ENABLED */
+/* global ArangoServerState, GLOBAL_REPLICATION_APPLIER_START, GLOBAL_REPLICATION_APPLIER_STOP, GLOBAL_REPLICATION_APPLIER_STATE, GLOBAL_REPLICATION_APPLIER_FORGET, GLOBAL_REPLICATION_APPLIER_CONFIGURE, REPLICATION_APPLIER_START, REPLICATION_APPLIER_STOP, REPLICATION_APPLIER_STATE, REPLICATION_APPLIER_STATE_ALL, REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_CONFIGURE, GLOBAL_REPLICATION_APPLIER_FAILOVER_ENABLED */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -33,16 +33,6 @@ let globalApplier = { };
 // / @brief return the replication logger state
 logger.state = function () {
   return internal.getStateReplicationLogger();
-};
-
-// / @brief return the tick ranges provided by the replication logger
-logger.tickRanges = function () {
-  return internal.tickRangesReplicationLogger();
-};
-
-// / @brief return the first tick that can be provided by the replication logger
-logger.firstTick = function () {
-  return internal.firstTickReplicationLogger();
 };
 
 // / @brief starts the replication applier
@@ -106,78 +96,7 @@ globalApplier.failoverEnabled = function () {
   return GLOBAL_REPLICATION_APPLIER_FAILOVER_ENABLED();
 };
 
-// / @brief performs a one-time synchronization with a remote endpoint
-function sync (config) { return REPLICATION_SYNCHRONIZE(config); }
-
-// / @brief performs a one-time synchronization with a remote endpoint
-function syncGlobal (config) { return GLOBAL_REPLICATION_SYNCHRONIZE(config); }
-
-// / @brief performs a one-time synchronization with a remote endpoint
-function syncCollection (collection, config) {
-  config = config || { };
-  config.restrictType = 'include';
-  config.restrictCollections = [ collection ];
-  config.includeSystem = true;
-  if (!config.hasOwnProperty('verbose')) {
-    config.verbose = false;
-  }
-
-  return REPLICATION_SYNCHRONIZE(config);
-}
-
-// / @brief sets up the replication (all-in-one function for initial
-// / synchronization and continuous replication)
-function setup (global, config) {
-  config = config || { };
-  if (!config.hasOwnProperty('autoStart')) {
-    config.autoStart = true;
-  }
-  if (!config.hasOwnProperty('includeSystem')) {
-    config.includeSystem = true;
-  }
-  if (!config.hasOwnProperty('verbose')) {
-    config.verbose = false;
-  }
-  config.keepBarrier = true;
-
-  var worker = global ? globalApplier : applier;
-  try {
-    // stop previous instance
-    worker.stop();
-  } catch (err) {}
-  // remove existing configuration
-  worker.forget();
-
-  // run initial sync
-  var result = (global ? syncGlobal : sync)(config);
-
-  // store applier configuration
-  worker.properties(config);
-
-  worker.start(result.lastLogTick, result.barrierId);
-  return worker.state();
-}
-
-function setupReplication (config) {
-  return setup(false, config);
-}
-
-function setupReplicationGlobal (config) {
-  return setup(true, config);
-}
-
-// / @brief returns the server's id
-function serverId () {
-  return internal.serverId();
-}
-
 exports.logger = logger;
 exports.applier = applier;
 exports.globalApplier = globalApplier;
-exports.sync = sync;
-exports.syncGlobal = syncGlobal;
-exports.syncCollection = syncCollection;
-exports.setupReplication = setupReplication;
-exports.setupReplicationGlobal = setupReplicationGlobal;
-exports.serverId = serverId;
 exports.compareTicks = rpc.compareTicks;

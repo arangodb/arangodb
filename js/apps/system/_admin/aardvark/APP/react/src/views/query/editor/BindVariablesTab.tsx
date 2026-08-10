@@ -25,12 +25,14 @@ const detectType = (value: string) => {
       return "array";
     }
     return typeof parsedValue;
-  } catch (ignore) {}
+  } catch {
+    /* ignore */
+  }
 };
 const parseInput = (value: string) => {
   try {
     return JSON.parse(value);
-  } catch (e) {
+  } catch {
     return value;
   }
 };
