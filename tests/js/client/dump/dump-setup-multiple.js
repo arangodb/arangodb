@@ -38,9 +38,6 @@ const setup = require(base);
   setup.createModifyCollection();
   setup.createExtendedName();
   setup.createComputedValues();
-  setup.createAutoIncKeyGen();
-  setup.createPaddedKeyGen();
-  setup.createUUIDKeyGen();
   setup.createStrings();
   setup.createPersistent();
   setup.createView();
@@ -48,23 +45,9 @@ const setup = require(base);
   setup.createInvertedIndex();
   setup.createAnalyzers();
 
-  // those two are related to each other as createSmartArangoSearch depends on createSmartGraph
   setup.createSmartGraph();
-  setup.createSmartArangoSearch();
 
   setup.createSmartGraph3_11_compat();
-
-  // Enterprise-Only backbone graph creation tests
-  setup.createEmptySmartGraph();
-  setup.createEmptyEnterpriseGraph();
-  setup.createEmptySatelliteGraph();
-  setup.createEmptyDisjointGraph();
-
-  // Enterprise-Only graph creation tests without data
-  setup.createSmartGraphWithoutData();
-  setup.createEnterpriseGraphWithoutData();
-  setup.createSatelliteGraphWithoutData();
-  setup.createDisjointGraphWithoutData();
 
   // Enterprise-Only graph creation tests on single-server
   setup.createSmartGraphSingleServer();

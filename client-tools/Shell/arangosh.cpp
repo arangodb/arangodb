@@ -46,7 +46,6 @@ int main(int argc, char* argv[]) {
         "For more information use:", BIN_DIRECTORY);
 
     ArangoshServer server(options, BIN_DIRECTORY, context.binaryName(), &ret);
-    server.addFeatures();
 
     try {
       server.run(argc, argv);

@@ -198,8 +198,11 @@ function dumpMixedClusterSingle (options) {
   return dump_backend_two_instances(clusterOptions, singleOptions, {}, {},
                                     options, options, 'dump_mixed_cluster_single',
                                     tstFiles, function(){}, [
-                                      // BTS-1617: disable 404 for now
-                                      '--skip', '404'], true);
+                                      // BTS-1617: disable 404 for now.
+                                      // 120 (autoincrement key generator) is single-server-only: it is not
+                                      // created on the cluster source, so it cannot be verified on the single
+                                      // server destination.
+                                      '--skip', '404,120'], true);
 }
 
 function dumpMixedSingleCluster (options) {
@@ -226,7 +229,11 @@ function dumpMixedSingleCluster (options) {
   return dump_backend_two_instances(singleOptions, clusterOptions, {}, {},
                                     options, options, 'dump_mixed_single_cluster',
                                     tstFiles, function(){}, [
-                                      '--skip', '550,900,960'], true);
+                                      // 120 (autoincrement key generator) is single-server-only: it is
+                                      // created on the single server source but the cluster destination
+                                      // check would need cluster support, so keep make/check symmetric by
+                                      // skipping it in this mixed scenario as well.
+                                      '--skip', '550,900,960,120'], true);
 }
 
 function dumpMultipleTwo (options) {
