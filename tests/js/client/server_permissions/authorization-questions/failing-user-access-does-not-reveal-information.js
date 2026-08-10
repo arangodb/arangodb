@@ -30,6 +30,13 @@
 // /
 // //////////////////////////////////////////////////////////////////////////////
 
+
+// The location of this file is currently needed such that we create a new
+// arangod instance on startup with the specific failure point (routes are
+// registered with their allowed api versions already on startup).
+// Once the failure point goes away, we can move the test to
+// tests/js/client/authentication.
+
 // API version 1 is not yet in ApiVersion.h's supportedApiVersions, so it is
 // normally rejected before any handler runs (see GeneralRequest.cpp and
 // RestHandlerFactory.cpp). The 'ApiVersion::treatVersion1AsSupported' failure
@@ -56,13 +63,8 @@ const USER = "user";
 const PASSWORD = "password";
 
 function failingUserAccessDoesNotRevealInformationSuite () {
-  /**
-   * Makes all subsequent requests of the arangosh connection run as USER
-   *
-   * Connecting requires read access to the database that is connected to,
-   * therefore USER is granted read access on _system. This does not influence
-   * the requests below, they address their database explicitly via /_db/.
-   */
+   // Makes all subsequent requests of the arangosh connection run as USER
+   // Connecting requires read access to the database that is connected to.
   const connectAsUser = () => {
     arango.reconnect(arango.getEndpoint(), '_system', USER, PASSWORD);
   };
