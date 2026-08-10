@@ -118,6 +118,7 @@
 #include "RestHandler/RestVersionHandler.h"
 #include "RestHandler/RestOpenApiHandler.h"
 #include "RestHandler/RestViewHandler.h"
+#include "RestHandler/RestIResearchHandler.h"
 #include "RestHandler/RestWalAccessHandler.h"
 #include "RestServer/EndpointFeature.h"
 #include "Metrics/HistogramBuilder.h"
@@ -656,6 +657,10 @@ void GeneralServerFeature::defineRemainingHandlers(
 
   f.addPrefixHandler(RestVocbaseBaseHandler::VIEW_PATH,
                      RestHandlerCreator<RestViewHandler>::createNoData, {0, 1});
+
+  f.addPrefixHandler(RestVocbaseBaseHandler::STATS_ARANGOSEARCH_PATH,
+                     RestHandlerCreator<RestIResearchHandler>::createNoData,
+                     {api_version::experimentalApiVersion});
 
   if (::arangodb::replication2::EnableReplication2 && cluster.isEnabled()) {
     f.addPrefixHandler(std::string{StaticStrings::ApiLogExternal},
