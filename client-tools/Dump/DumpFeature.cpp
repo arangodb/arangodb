@@ -30,7 +30,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/InputProcessors.h"
-#include "Basics/NumberOfCores.h"
 #include "Basics/Result.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
@@ -39,7 +38,6 @@
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
-#include "Dump/DumpOptionsProvider.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/LogMacros.h"
 #include "Logger/LogTimeFormat.h"
@@ -772,32 +770,6 @@ DumpFeature::DumpFeature(application_features::ApplicationServer& server,
 #ifdef TRI_HAVE_GETRLIMIT
   startsAfter<BumpFileDescriptorsFeature>();
 #endif
-
-  using arangodb::basics::FileUtils::buildFilename;
-  std::error_code ec;
-  std::filesystem::path const cwd = std::filesystem::current_path(ec);
-  if (ec) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_set_errno(TRI_ERROR_SYS_ERROR),
-        basics::StringUtils::concatT("cannot get current working directory: ",
-                                     ec.message()));
-  }
-  _options.outputPath = buildFilename(cwd.string(), "dump");
-  _options.threadCount =
-      std::max(uint32_t(_options.threadCount),
-               static_cast<uint32_t>(NumberOfCores::getValue()));
-}
-
-void DumpFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  DumpOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void DumpFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  DumpOptionsProvider provider;
-  provider.validateOptions(options, _options);
 }
 
 // dump data from cluster via a coordinator

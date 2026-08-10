@@ -221,6 +221,21 @@ REGISTER_ATTRIBUTE(CustomFeature);
 
 class SortedIndexTestCase : public tests::index_test_base {
  protected:
+  irs::IndexWriter::ConsolidationProgress callbacks;
+ public:
+  SortedIndexTestCase() {
+    auto beginCons = [](const auto& ) {
+    };
+    auto endCons = [](const auto& ) {
+    };
+    auto flushProgress = []() {
+      return true;
+    };
+
+    callbacks = { .beginConsolidation = beginCons,
+      .endConsolidation = endCons, .flushProgress = flushProgress };
+  }
+ protected:
   bool supports_pluggable_features() const noexcept {
     // old formats don't support pluggable features
     constexpr std::string_view kOldFormats[]{"1_0", "1_1", "1_2", "1_3",
@@ -808,7 +823,7 @@ TEST_P(SortedIndexTestCase, simple_sequential_consolidate) {
   {
     irs::index_utils::ConsolidateCount consolidate_all;
     ASSERT_TRUE(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all), callbacks));
     writer->Commit();
     AssertSnapshotEquality(*writer);
 
@@ -1371,7 +1386,7 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_dense) {
   {
     irs::index_utils::ConsolidateCount consolidate_all;
     ASSERT_TRUE(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all), callbacks));
     writer->Commit();
     AssertSnapshotEquality(*writer);
   }
@@ -1659,7 +1674,7 @@ TEST_P(SortedIndexTestCase,
   {
     irs::index_utils::ConsolidateCount consolidate_all;
     ASSERT_TRUE(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all), callbacks));
     writer->Commit();
     AssertSnapshotEquality(*writer);
   }
@@ -2021,7 +2036,7 @@ TEST_P(SortedIndexTestCase,
   {
     irs::index_utils::ConsolidateCount consolidate_all;
     ASSERT_TRUE(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all), callbacks));
     writer->Commit();
     AssertSnapshotEquality(*writer);
   }
@@ -2240,7 +2255,7 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_sparse) {
   {
     irs::index_utils::ConsolidateCount consolidate_all;
     ASSERT_TRUE(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all), callbacks));
     writer->Commit();
     AssertSnapshotEquality(*writer);
   }
@@ -2489,7 +2504,7 @@ TEST_P(SortedIndexTestCase,
   {
     irs::index_utils::ConsolidateCount consolidate_all;
     ASSERT_TRUE(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all), callbacks));
     ASSERT_TRUE(writer->Commit());
     AssertSnapshotEquality(*writer);
   }
@@ -2730,7 +2745,7 @@ TEST_P(SortedIndexTestCase,
   {
     irs::index_utils::ConsolidateCount consolidate_all;
     ASSERT_TRUE(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all), callbacks));
     ASSERT_TRUE(writer->Commit());
     AssertSnapshotEquality(*writer);
   }
@@ -3015,7 +3030,7 @@ TEST_P(SortedIndexStressTestCase, commit_on_tick) {
       EXPECT_LE(in_store_count, reader->docs_count());
       EXPECT_LE(reader->docs_count(), kLen);
 
-      writer->Consolidate(MakePolicy(irs::index_utils::ConsolidateCount{}));
+      writer->Consolidate(MakePolicy(irs::index_utils::ConsolidateCount{}), callbacks);
       writer->Commit({.tick = insert_time});
       AssertSnapshotEquality(*writer);
 

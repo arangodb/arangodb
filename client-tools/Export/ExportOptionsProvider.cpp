@@ -39,7 +39,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void ExportOptionsProvider::declareOptions(
+void ExportOptionsProvider::declareOptionsImpl(
     std::shared_ptr<options::ProgramOptions> options,
     ExportFeatureOptions& opts) {
   options->addOption("--collection",
@@ -122,7 +122,7 @@ void ExportOptionsProvider::declareOptions(
                      new BooleanParameter(&opts.useGzip));
 }
 
-void ExportOptionsProvider::validateOptions(
+void ExportOptionsProvider::validateOptionsImpl(
     std::shared_ptr<options::ProgramOptions> options,
     ExportFeatureOptions& opts) {
   auto const& positionals = options->processingResult()._positionals;

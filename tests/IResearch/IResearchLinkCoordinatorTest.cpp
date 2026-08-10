@@ -96,8 +96,6 @@ class IResearchLinkCoordinatorTest : public ::testing::Test {
 
 TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
-  feature.validateOptions(server.server().options());
-  feature.collectOptions(server.server().options());
 
   arangodb::ServerState::instance()->setRebootId(
       arangodb::RebootId{1});  // Hack.

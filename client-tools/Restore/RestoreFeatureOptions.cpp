@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -20,27 +20,32 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "RestoreFeatureOptions.h"
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "ApplicationFeatures/VersionFeatureOptions.h"
+#include "Basics/error.h"
+#include "Basics/Exceptions.h"
+#include "Basics/FileUtils.h"
+#include "Basics/NumberOfCores.h"
+#include "Basics/StringUtils.h"
+#include "Basics/voc-errors.h"
+
+#include <filesystem>
 
 namespace arangodb {
 
-class ShellColorsFeature;
-
-class VersionFeature final : public application_features::ApplicationFeature {
- public:
-  static constexpr std::string_view name() noexcept { return "Version"; }
-
-  explicit VersionFeature(application_features::ApplicationServer& server,
-                          VersionFeatureOptions options);
-  explicit VersionFeature(application_features::ApplicationServer& server);
-
-  bool printVersion() const { return _options.printVersion; }
-
- private:
-  VersionFeatureOptions _options;
-};
+RestoreFeatureOptions::RestoreFeatureOptions() {
+  using basics::FileUtils::buildFilename;
+  std::error_code ec;
+  std::filesystem::path const cwd = std::filesystem::current_path(ec);
+  if (ec) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_set_errno(TRI_ERROR_SYS_ERROR),
+        basics::StringUtils::concatT("cannot get current working directory: ",
+                                     ec.message()));
+  }
+  inputPath = buildFilename(cwd.string(), "dump");
+  threadCount =
+      std::max(threadCount, static_cast<uint32_t>(NumberOfCores::getValue()));
+}
 
 }  // namespace arangodb

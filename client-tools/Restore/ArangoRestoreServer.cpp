@@ -31,7 +31,6 @@
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
-#include "ApplicationFeatures/VersionFeature.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -60,24 +59,23 @@ ArangoRestoreServer::ArangoRestoreServer(
     std::shared_ptr<options::ProgramOptions> options, char const* binaryPath,
     std::string binaryName, int* ret)
     : OptionProvidingServer<ArangoRestoreOptionProviders>(
-          options, binaryPath, std::move(binaryName), ret) {}
+          options, binaryPath, std::move(binaryName), ret) {
+  // Set a different default for the ClientFeature
+  mutableOptions<ClientOptionsProvider>().allowJwtSecret = true;
+  mutableOptions<ClientOptionsProvider>().maxNumEndpoints =
+      std::numeric_limits<size_t>::max();
+}
 
-void ArangoRestoreServer::addFeatures() {
+void ArangoRestoreServer::addFeaturesWithOptionProvider() {
   addFeature<BasicFeaturePhaseClient>();
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
-  auto& client = addFeature<HttpEndpointProvider, ClientFeature>(
-      true, std::numeric_limits<size_t>::max());
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(
       std::array{std::type_index(typeid(RestoreFeature))});
   addFeature<SslFeature>();
-  addFeature<RestoreFeature>(client, *_ret);
-}
 
-void ArangoRestoreServer::addFeaturesWithOptionProvider() {
-  addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
   addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
   addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());
   addFeature<TempFeature>(_binaryName, getOptions<TempOptionsProvider>());
@@ -94,6 +92,10 @@ void ArangoRestoreServer::addFeaturesWithOptionProvider() {
   addFeature<BumpFileDescriptorsFeature>(
       getOptions<ClientBumpFileDescriptorsOptionsProvider>());
 #endif
+  auto& client = addFeature<HttpEndpointProvider, ClientFeature>(
+      getOptions<ClientOptionsProvider>());
+  addFeature<RestoreFeature>(client, *_ret,
+                             getOptions<RestoreOptionsProvider>());
 }
 
 }  // namespace arangodb

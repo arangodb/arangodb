@@ -46,14 +46,8 @@ int main(int argc, char* argv[]) {
     int ret = EXIT_SUCCESS;
     ArangoExportServer server(options, BIN_DIRECTORY, context.binaryName(),
                               &ret);
-    server.addFeatures();
-
     try {
       server.run(argc, argv);
-      if (server.helpShown()) {
-        // --help was displayed
-        ret = EXIT_SUCCESS;
-      }
     } catch (std::exception const& ex) {
       LOG_TOPIC("c2ae7", ERR, Logger::STARTUP)
           << "arangoexport terminated because of an unhandled exception: "
