@@ -309,7 +309,7 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
   TRI_ASSERT(_state.leader.version() > 0);
 
   // print extra info for debugging
-  _state.applier._verbose = true;
+  _state.config._verbose = true;
   // we do not want to apply rename, create and drop collection operations
   _ignoreRenameCreateDrop = true;
 
@@ -337,7 +337,7 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
   std::string baseUrl =
       absl::StrCat(tailingBaseUrl("tail"),
                    "collection=", StringUtils::urlEncode(collectionName),
-                   "&chunkSize=", _state.applier._chunkSize,
+                   "&chunkSize=", _state.config._chunkSize,
                    "&serverId=", _state.localServerIdString);
 
   if (syncerId().value > 0) {
@@ -556,7 +556,7 @@ bool DatabaseTailingSyncer::skipMarker(VPackSlice slice) {
     try {
       VPackBuilder inventoryResponse;
 
-      auto syncer = DatabaseInitialSyncer::create(*_vocbase, _state.applier);
+      auto syncer = DatabaseInitialSyncer::create(*_vocbase, _state.config);
       Result res = syncer->getInventory(inventoryResponse);
       _queriedTranslations = true;
       if (res.fail()) {

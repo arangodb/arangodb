@@ -72,8 +72,8 @@ class DatabaseInitialSyncer : public InitialSyncer {
   } SyncPhase;
 
   struct Configuration {
-    /// @brief replication applier config (from the base Syncer)
-    ReplicationSyncConfiguration const& applier;
+    /// @brief replication sync config (from the base Syncer)
+    ReplicationSyncConfiguration const& syncConfig;
     /// @brief the dump batch state (from the base InitialSyncer)
     replutils::BatchInfo& batch;
     /// @brief the client connection (from the base Syncer)

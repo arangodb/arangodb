@@ -194,7 +194,7 @@ Result fetchRevisions(NetworkFeature& netFeature, transaction::Methods& trx,
 
   network::Headers headers;
   if (ServerState::instance()->isSingleServer() &&
-      config.applier._jwt.empty()) {
+      config.syncConfig._jwt.empty()) {
     // if we are the single-server replication and there is no JWT
     // present, inject the username/password credentials into the
     // requests.
@@ -202,9 +202,9 @@ Result fetchRevisions(NetworkFeature& netFeature, transaction::Methods& trx,
     // server replication when the leader uses authentication with
     // username/password
     headers.emplace(StaticStrings::Authorization,
-                    "Basic " + absl::Base64Escape(
-                                   absl::StrCat(config.applier._username, ":",
-                                                config.applier._password)));
+                    "Basic " + absl::Base64Escape(absl::StrCat(
+                                   config.syncConfig._username, ":",
+                                   config.syncConfig._password)));
   }
 
   config.progress.set(
@@ -512,7 +512,7 @@ DatabaseInitialSyncer::Configuration::Configuration(
     ReplicationSyncConfiguration const& a, replutils::BatchInfo& bat,
     replutils::Connection& c, replutils::LeaderInfo& l,
     replutils::ProgressInfo& p, SyncerState& s, TRI_vocbase_t& v)
-    : applier{a},
+    : syncConfig{a},
       batch{bat},
       connection{c},
       leader{l},
@@ -525,8 +525,8 @@ DatabaseInitialSyncer::DatabaseInitialSyncer(
     : InitialSyncer(
           configuration,
           [this](std::string const& msg) -> void { setProgress(msg); }),
-      _config{_state.applier, _batch,    _state.connection,
-              _state.leader,  _progress, _state,
+      _config{_state.config, _batch,    _state.connection,
+              _state.leader, _progress, _state,
               vocbase},
       _lastCancellationCheck(std::chrono::steady_clock::now()),
       _quickKeysNumDocsLimit(
@@ -579,11 +579,11 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
     Result r;
     // enable patching of collection count for ShardSynchronization Job
     std::string patchCount;
-    if (_config.applier._skipCreateDrop &&
-        _config.applier._restrictType ==
+    if (_config.syncConfig._skipCreateDrop &&
+        _config.syncConfig._restrictType ==
             ReplicationSyncConfiguration::RestrictType::Include &&
-        _config.applier._restrictCollections.size() == 1) {
-      patchCount = *_config.applier._restrictCollections.begin();
+        _config.syncConfig._restrictCollections.size() == 1) {
+      patchCount = *_config.syncConfig._restrictCollections.begin();
     }
 
     // with a 3.8 leader, this call combines fetching the leader state with
@@ -708,7 +708,7 @@ bool DatabaseInitialSyncer::isAborted() const {
 void DatabaseInitialSyncer::setProgress(std::string const& msg) {
   _config.progress.message = msg;
 
-  if (_config.applier._verbose) {
+  if (_config.syncConfig._verbose) {
     LOG_TOPIC("c6f5f", INFO, Logger::REPLICATION) << msg;
   } else {
     LOG_TOPIC("d15ed", DEBUG, Logger::REPLICATION) << msg;
@@ -1003,14 +1003,14 @@ Result DatabaseInitialSyncer::fetchCollectionDump(LogicalCollection* coll,
   std::string baseUrl = absl::StrCat(
       replutils::ReplicationUrl, "/dump?collection=", urlEncode(leaderColl),
       "&batchId=", _config.batch.id,
-      "&includeSystem=", (_config.applier._includeSystem ? "true" : "false"),
+      "&includeSystem=", (_config.syncConfig._includeSystem ? "true" : "false"),
       "&useEnvelope=false&serverId=", _state.localServerIdString);
 
   if (ServerState::instance()->isDBServer() &&
-      _config.applier._skipCreateDrop &&
-      _config.applier._restrictType ==
+      _config.syncConfig._skipCreateDrop &&
+      _config.syncConfig._restrictType ==
           ReplicationSyncConfiguration::RestrictType::Include &&
-      _config.applier._restrictCollections.size() == 1 &&
+      _config.syncConfig._restrictCollections.size() == 1 &&
       !hasDocuments(*coll)) {
     // DB server doing shard synchronization. now try to fetch everything in a
     // single VPack array. note: only servers >= 3.10 will honor this URL
@@ -1028,7 +1028,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(LogicalCollection* coll,
   // state variables for the dump
   TRI_voc_tick_t fromTick = 0;
   int batch = 1;
-  uint64_t chunkSize = _config.applier._chunkSize;
+  uint64_t chunkSize = _config.syncConfig._chunkSize;
 
   double const startTime = TRI_microtime();
 
@@ -1249,7 +1249,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(
   constexpr uint64_t lowerBoundForWaitTime = 180000000;
 
   // note: maxWaitTime has a unit of microseconds
-  uint64_t maxWaitTime = _config.applier._initialSyncMaxWaitTime;
+  uint64_t maxWaitTime = _config.syncConfig._initialSyncMaxWaitTime;
   maxWaitTime = std::max<uint64_t>(maxWaitTime, lowerBoundForWaitTime);
 
   // the following two variables can be modified by the "keysCall" lambda
@@ -1404,7 +1404,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(
 
     // there is an additional lower bound for the wait time as defined initially
     // in
-    //    _config.applier._initialSyncMaxWaitTime
+    //    _config.syncConfig._initialSyncMaxWaitTime
     // we also apply an additional lower bound of 180 seconds here, in case that
     // value is configured too low, for whatever reason
     maxWaitTime = std::max<uint64_t>(maxWaitTime, lowerBoundForWaitTime);
@@ -2327,7 +2327,7 @@ Result DatabaseInitialSyncer::handleCollection(velocypack::Slice parameters,
             }
           } else {
             // drop a regular collection
-            if (_config.applier._skipCreateDrop) {
+            if (_config.syncConfig._skipCreateDrop) {
               _config.progress.set("dropping " + collectionMsg +
                                    " skipped because of configuration");
               return Result();
@@ -2356,7 +2356,7 @@ Result DatabaseInitialSyncer::handleCollection(velocypack::Slice parameters,
     // When we get here, col is a nullptr anyway!
 
     std::string msg = "creating " + collectionMsg;
-    if (_config.applier._skipCreateDrop) {
+    if (_config.syncConfig._skipCreateDrop) {
       msg += " skipped because of configuration";
       _config.progress.set(msg);
       return Result();
@@ -2424,7 +2424,7 @@ Result DatabaseInitialSyncer::handleCollection(velocypack::Slice parameters,
     }
 
     // schmutz++ creates indexes on DBServers
-    if (_config.applier._skipCreateDrop) {
+    if (_config.syncConfig._skipCreateDrop) {
       _config.progress.set(absl::StrCat("creating indexes for ", collectionMsg,
                                         " skipped because of configuration"));
       return res;
@@ -2475,10 +2475,10 @@ Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
       absl::StrCat(replutils::ReplicationUrl,
                    "/inventory?serverId=", _state.localServerIdString,
                    "&batchId=", _config.batch.id);
-  if (_config.applier._includeSystem) {
+  if (_config.syncConfig._includeSystem) {
     url += "&includeSystem=true";
   }
-  if (_config.applier._includeFoxxQueues) {
+  if (_config.syncConfig._includeFoxxQueues) {
     url += "&includeFoxxQueues=true";
   }
 
@@ -2486,12 +2486,13 @@ Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
   // inventory including a single shard. this can greatly reduce the size of
   // the response.
   if (ServerState::instance()->isDBServer() &&
-      _config.applier._skipCreateDrop &&
-      _config.applier._restrictType ==
+      _config.syncConfig._skipCreateDrop &&
+      _config.syncConfig._restrictType ==
           ReplicationSyncConfiguration::RestrictType::Include &&
-      _config.applier._restrictCollections.size() == 1) {
-    url += "&collection=" + basics::StringUtils::urlEncode(*(
-                                _config.applier._restrictCollections.begin()));
+      _config.syncConfig._restrictCollections.size() == 1) {
+    url += "&collection=" +
+           basics::StringUtils::urlEncode(
+               *(_config.syncConfig._restrictCollections.begin()));
   }
 
   // send request
@@ -2568,9 +2569,9 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(
                     "collection name is missing in response");
     }
 
-    if (TRI_ExcludeCollectionReplication(leaderName,
-                                         _config.applier._includeSystem,
-                                         _config.applier._includeFoxxQueues)) {
+    if (TRI_ExcludeCollectionReplication(
+            leaderName, _config.syncConfig._includeSystem,
+            _config.syncConfig._includeFoxxQueues)) {
       continue;
     }
 
@@ -2580,17 +2581,17 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(
       continue;
     }
 
-    if (_config.applier._restrictType !=
+    if (_config.syncConfig._restrictType !=
         ReplicationSyncConfiguration::RestrictType::None) {
-      auto const it = _config.applier._restrictCollections.find(leaderName);
-      bool found = (it != _config.applier._restrictCollections.end());
+      auto const it = _config.syncConfig._restrictCollections.find(leaderName);
+      bool found = (it != _config.syncConfig._restrictCollections.end());
 
-      if (_config.applier._restrictType ==
+      if (_config.syncConfig._restrictType ==
               ReplicationSyncConfiguration::RestrictType::Include &&
           !found) {
         // collection should not be included
         continue;
-      } else if (_config.applier._restrictType ==
+      } else if (_config.syncConfig._restrictType ==
                      ReplicationSyncConfiguration::RestrictType::Exclude &&
                  found) {
         // collection should be excluded
@@ -2644,8 +2645,8 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(
   // yet
   // ----------------------------------------------------------------------------------
 
-  if (!_config.applier._skipCreateDrop &&
-      _config.applier._restrictCollections.empty() && viewSlices.isArray()) {
+  if (!_config.syncConfig._skipCreateDrop &&
+      _config.syncConfig._restrictCollections.empty() && viewSlices.isArray()) {
     // views are optional, and 3.3 and before will not send any view data
     auto r = handleViewCreation(viewSlices,
                                 iresearch::StaticStrings::ViewArangoSearchType);

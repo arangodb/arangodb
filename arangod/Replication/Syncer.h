@@ -164,7 +164,7 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
     SyncerId syncerId;
 
     /// @brief configuration
-    ReplicationSyncConfiguration applier;
+    ReplicationSyncConfiguration config;
 
     /// @brief object holding the HTTP client and all connection machinery
     replutils::Connection connection;

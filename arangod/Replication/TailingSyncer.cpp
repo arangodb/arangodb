@@ -84,7 +84,7 @@ TailingSyncer::TailingSyncer(ReplicationSyncConfiguration const& configuration)
       _usersModified(false),
       _ignoreRenameCreateDrop(false),
       _ignoreDatabaseMarkers(true),
-      _stats(_state.applier._server
+      _stats(_state.config._server
                  .getFeature<arangodb::ReplicationMetricsFeature>(),
              true) {}
 
@@ -95,9 +95,9 @@ std::string TailingSyncer::tailingBaseUrl(std::string const& cc) {
   return absl::StrCat(TailingSyncer::WalAccessUrl, "/", cc, "?");
 }
 
-/// @brief set the applier progress
+/// @brief set the sync progress
 void TailingSyncer::setProgress(std::string const& msg) {
-  if (_state.applier._verbose) {
+  if (_state.config._verbose) {
     LOG_TOPIC("cb1ba", INFO, Logger::REPLICATION) << msg;
   } else {
     LOG_TOPIC("452fc", DEBUG, Logger::REPLICATION) << msg;
@@ -205,14 +205,14 @@ bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick,
     }
   }
 
-  // the transient applier state is just used for one shard / collection
-  if (_state.applier._restrictCollections.empty()) {
+  // the transient sync config is just used for one shard / collection
+  if (_state.config._restrictCollections.empty()) {
     return false;
   }
 
-  if (_state.applier._restrictType ==
+  if (_state.config._restrictType ==
           ReplicationSyncConfiguration::RestrictType::None &&
-      _state.applier._includeSystem) {
+      _state.config._includeSystem) {
     return false;
   }
 
@@ -228,21 +228,21 @@ bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick,
 /// @brief whether or not a collection should be excluded
 bool TailingSyncer::isExcludedCollection(
     std::string const& collectionName) const {
-  if (collectionName.starts_with('_') && !_state.applier._includeSystem) {
+  if (collectionName.starts_with('_') && !_state.config._includeSystem) {
     // system collection
     return true;
   }
 
-  auto const it = _state.applier._restrictCollections.find(collectionName);
+  auto const it = _state.config._restrictCollections.find(collectionName);
 
-  bool found = (it != _state.applier._restrictCollections.end());
+  bool found = (it != _state.config._restrictCollections.end());
 
-  if (_state.applier._restrictType ==
+  if (_state.config._restrictType ==
           ReplicationSyncConfiguration::RestrictType::Include &&
       !found) {
     // collection should not be included
     return true;
-  } else if (_state.applier._restrictType ==
+  } else if (_state.config._restrictType ==
                  ReplicationSyncConfiguration::RestrictType::Exclude &&
              found) {
     // collection should be excluded
@@ -250,7 +250,7 @@ bool TailingSyncer::isExcludedCollection(
   }
 
   if (TRI_ExcludeCollectionReplication(collectionName, /*includeSystem*/ true,
-                                       _state.applier._includeFoxxQueues)) {
+                                       _state.config._includeFoxxQueues)) {
     return true;
   }
 
@@ -277,11 +277,11 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
             "illegal name: database named invalid"};
   }
 
-  if (!_state.applier._server.hasFeature<arangodb::SystemDatabaseFeature>()) {
+  if (!_state.config._server.hasFeature<arangodb::SystemDatabaseFeature>()) {
     return arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
   auto& sysDbFeature =
-      _state.applier._server.getFeature<arangodb::SystemDatabaseFeature>();
+      _state.config._server.getFeature<arangodb::SystemDatabaseFeature>();
 
   if (type == REPLICATION_DATABASE_CREATE) {
     VPackSlice const data = slice.get("data");
@@ -312,7 +312,7 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
       }
     }
 
-    auto& server = _state.applier._server;
+    auto& server = _state.config._server;
     auto& engine = server.getFeature<DatabaseFeature>().engine();
     VPackSlice users = VPackSlice::emptyArraySlice();
     Result res =
