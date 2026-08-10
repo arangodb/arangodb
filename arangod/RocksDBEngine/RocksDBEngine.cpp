@@ -200,8 +200,6 @@ DECLARE_COUNTER(
 // global flag to cancel all compactions. will be flipped to true on shutdown
 static std::atomic<bool> cancelCompactions{false};
 
-static constexpr uint64_t databaseIdForGlobalApplier = 0;
-
 // handles for recovery helpers
 std::vector<std::shared_ptr<RocksDBRecoveryHelper>>
     RocksDBEngine::_recoveryHelpers;
@@ -1264,103 +1262,6 @@ void RocksDBEngine::cleanupReplicationContexts() {
   if (_replicationManager != nullptr) {
     _replicationManager->dropAll();
   }
-}
-
-VPackBuilder RocksDBEngine::getReplicationApplierConfiguration(
-    TRI_vocbase_t& vocbase, ErrorCode& status) {
-  RocksDBKey key;
-
-  key.constructReplicationApplierConfig(vocbase.id());
-
-  return getReplicationApplierConfiguration(key, status);
-}
-
-VPackBuilder RocksDBEngine::getReplicationApplierConfiguration(
-    ErrorCode& status) {
-  RocksDBKey key;
-  key.constructReplicationApplierConfig(databaseIdForGlobalApplier);
-  return getReplicationApplierConfiguration(key, status);
-}
-
-VPackBuilder RocksDBEngine::getReplicationApplierConfiguration(
-    RocksDBKey const& key, ErrorCode& status) {
-  rocksdb::PinnableSlice value;
-
-  auto opts = rocksdb::ReadOptions();
-  auto s = _db->Get(opts,
-                    RocksDBColumnFamilyManager::get(
-                        RocksDBColumnFamilyManager::Family::Definitions),
-                    key.string(), &value);
-  if (!s.ok()) {
-    status = TRI_ERROR_FILE_NOT_FOUND;
-    return arangodb::velocypack::Builder();
-  }
-
-  status = TRI_ERROR_NO_ERROR;
-  VPackBuilder builder;
-  builder.add(RocksDBValue::data(value));
-  return builder;
-}
-
-ErrorCode RocksDBEngine::removeReplicationApplierConfiguration(
-    TRI_vocbase_t& vocbase) {
-  RocksDBKey key;
-
-  key.constructReplicationApplierConfig(vocbase.id());
-
-  return removeReplicationApplierConfiguration(key);
-}
-
-ErrorCode RocksDBEngine::removeReplicationApplierConfiguration() {
-  RocksDBKey key;
-  key.constructReplicationApplierConfig(databaseIdForGlobalApplier);
-  return removeReplicationApplierConfiguration(key);
-}
-
-ErrorCode RocksDBEngine::removeReplicationApplierConfiguration(
-    RocksDBKey const& key) {
-  auto status = rocksutils::convertStatus(
-      _db->Delete(rocksdb::WriteOptions(),
-                  RocksDBColumnFamilyManager::get(
-                      RocksDBColumnFamilyManager::Family::Definitions),
-                  key.string()));
-  if (!status.ok()) {
-    return status.errorNumber();
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-ErrorCode RocksDBEngine::saveReplicationApplierConfiguration(
-    TRI_vocbase_t& vocbase, velocypack::Slice slice, bool doSync) {
-  RocksDBKey key;
-
-  key.constructReplicationApplierConfig(vocbase.id());
-
-  return saveReplicationApplierConfiguration(key, slice, doSync);
-}
-
-ErrorCode RocksDBEngine::saveReplicationApplierConfiguration(
-    velocypack::Slice slice, bool doSync) {
-  RocksDBKey key;
-  key.constructReplicationApplierConfig(databaseIdForGlobalApplier);
-  return saveReplicationApplierConfiguration(key, slice, doSync);
-}
-
-ErrorCode RocksDBEngine::saveReplicationApplierConfiguration(
-    RocksDBKey const& key, velocypack::Slice slice, bool doSync) {
-  auto value = RocksDBValue::ReplicationApplierConfig(slice);
-
-  auto status = rocksutils::convertStatus(
-      _db->Put(rocksdb::WriteOptions(),
-               RocksDBColumnFamilyManager::get(
-                   RocksDBColumnFamilyManager::Family::Definitions),
-               key.string(), value.string()));
-  if (!status.ok()) {
-    return status.errorNumber();
-  }
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 // database, collection and index management
