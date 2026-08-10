@@ -18,14 +18,23 @@ this file is located at the repository root.
 
 ## Build
 
+Building is currently hidden behind the feature-flag `USE_ACTIVITY_DOCS`:
 ```sh
-cmake --build <build-dir> find-activity-subclasses
+cmake --build <build-dir> -DUSE_ACTIVITY_DOCS=On find-activity-subclasses
 ```
 
 ## Run
 
 ```sh
-./find-activity-subclasses <path in which to to search for activities (directory or file)>
+./find-activity-subclasses <path in which to search for activities (directory or file)>
 ```
 
 Output is written to stdout.
+
+## Test
+
+Building is currently hidden behind the feature-flag `USE_ACTIVITY_DOCS`:
+```sh
+cmake --build <build-dir> -DUSE_ACTIVITY_DOCS=On arangodbtests_activities_documentation
+./arangodbtests_activities_documentatio
+```

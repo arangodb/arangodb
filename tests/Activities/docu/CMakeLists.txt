@@ -8,4 +8,6 @@ target_link_libraries(arangodbtests_activities_documentation
   PRIVATE
     gtest_main
     activity-finder)
-target_compile_definitions(arangodbtests_activities_documentation PRIVATE PROJECT_ROOT="${PROJECT_ROOT}")
+target_compile_definitions(arangodbtests_activities_documentation
+  PRIVATE
+    PROJECT_ROOT="${PROJECT_ROOT}")

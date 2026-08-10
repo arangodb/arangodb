@@ -21,6 +21,4 @@ target_link_libraries(arangodbtests_activities
   arango_async
   gtest_main)
 
-if(USE_ACTIVITY_DOCS)
-  add_subdirectory(docu)
-endif()
+add_subdirectory(docu)

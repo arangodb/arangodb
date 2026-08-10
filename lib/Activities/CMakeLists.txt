@@ -1,22 +1,24 @@
 add_library(arango_activities_interface INTERFACE)
-target_include_directories(arango_activities_interface INTERFACE
-  ${PROJECT_SOURCE_DIR}/lib
-  include)
+target_include_directories(arango_activities_interface
+  INTERFACE
+    ${PROJECT_SOURCE_DIR}/lib
+    include)
 
 
 add_library(arango_activities STATIC)
-target_include_directories(arango_activities PUBLIC
-  include)
+target_include_directories(arango_activities
+  PUBLIC
+    include)
 target_link_libraries(arango_activities
-PUBLIC
-  arango_thread_owning_list
-  arango_shared
-  arango_inspection)
+  PUBLIC
+    arango_thread_owning_list
+    arango_shared
+    arango_inspection)
 
 add_library(arango_activities_global STATIC)
 target_link_libraries(arango_activities_global
-PUBLIC
-  arango_activities)
+  PUBLIC
+    arango_activities)
 
 option(USE_ACTIVITY_DOCS
   "build the activities documentation generator (requires the LLVM/Clang 19 development libraries, e.g. libclang-19-dev and llvm-19-dev)"
