@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBEngine/RocksDBVectorIndex.h"
@@ -267,7 +266,7 @@ void RocksDBVectorIndex::toVelocyPack(
 }
 
 bool RocksDBVectorIndex::getNormalizedVectorFromDocument(
-    const velocypack::Slice& docSlice, vector::Vector& vec) {
+    const velocypack::Slice& docSlice, vector::Vector& vec) const {
   if (readDocumentVectorData(docSlice, vec).fail()) {
     return false;
   }
@@ -280,7 +279,7 @@ bool RocksDBVectorIndex::getNormalizedVectorFromDocument(
 
 float RocksDBVectorIndex::computeDistance(const vector::Vector& vec1,
                                           const vector::Vector& vec2,
-                                          bool isDescending) {
+                                          bool isDescending) const {
   TRI_ASSERT(vec1.size() == vec2.size())
       << "Vector dimensions don't match, "
       << "[" << vec1 << "] != [" << vec2 << "]";
@@ -298,7 +297,7 @@ float RocksDBVectorIndex::computeDistance(const vector::Vector& vec1,
 
 bool RocksDBVectorIndex::filterDocuments(
     vector::VectorSearchConfig const& config,
-    vector::VectorSearchContext const& ctx, velocypack::Slice docSlice) {
+    vector::VectorSearchContext const& ctx, velocypack::Slice docSlice) const {
   TRI_ASSERT(ctx.queryContext != nullptr);
   TRI_ASSERT(config.filterExpression != nullptr);
   TRI_ASSERT(config.documentVariable != nullptr);
@@ -323,7 +322,7 @@ void RocksDBVectorIndex::captureDocument(
     vector::VectorSearchContext const& ctx,
     containers::NodeHashMap<LocalDocumentId, velocypack::SharedSlice>*
         captureSink,
-    LocalDocumentId docId, velocypack::Slice docSlice) {
+    LocalDocumentId docId, velocypack::Slice docSlice) const {
   if (captureSink == nullptr) {
     return;
   }
@@ -347,7 +346,7 @@ RocksDBVectorIndex::bruteForceSearch(
     vector::Vector& searchVector, vector::VectorSearchConfig const& config,
     vector::VectorSearchContext const& ctx,
     containers::NodeHashMap<LocalDocumentId, velocypack::SharedSlice>*
-        captureSink) {
+        captureSink) const {
   auto const dim = _definition.dimension;
   auto const topK = config.topK;
   auto* trx = ctx.trx;
@@ -444,7 +443,7 @@ RocksDBVectorIndex::bruteForceSearch(
 
 vector::SearchResult RocksDBVectorIndex::readBatch(
     vector::VectorSearchConfig const& config,
-    vector::VectorSearchContext const& ctx) {
+    vector::VectorSearchContext const& ctx) const {
   TRI_ASSERT(ctx.inputs != nullptr);
   TRI_ASSERT(ctx.trx != nullptr);
   // The on_heap_changed are not thread safe unless this is true
@@ -719,7 +718,7 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
 }
 
 vector::UserVectorIndexDefinition const&
-RocksDBVectorIndex::getVectorIndexDefinition() {
+RocksDBVectorIndex::getVectorIndexDefinition() const {
   return getDefinition();
 }
 

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "QueryInfoLoggerFeature.h"
@@ -26,7 +25,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Aql/Query.h"
-#include "Aql/QueryInfoLoggerOptionsProvider.h"
 #include "Aql/QueryOptions.h"
 #include "Aql/QueryString.h"
 #include "Basics/Exceptions.h"
@@ -488,7 +486,13 @@ class QueryInfoLoggerThread final : public Thread {
 
 QueryInfoLoggerFeature::QueryInfoLoggerFeature(
     application_features::ApplicationServer& server)
-    : application_features::ApplicationFeature{server, *this} {
+    : QueryInfoLoggerFeature(server, QueryInfoLoggerOptions{}) {}
+
+QueryInfoLoggerFeature::QueryInfoLoggerFeature(
+    application_features::ApplicationServer& server,
+    QueryInfoLoggerOptions options)
+    : application_features::ApplicationFeature{server, *this},
+      _options(std::move(options)) {
   setOptional(true);
   startsAfter<application_features::DatabaseFeaturePhase>();
   startsAfter<RocksDBEngine>();
@@ -496,12 +500,6 @@ QueryInfoLoggerFeature::QueryInfoLoggerFeature(
 }
 
 QueryInfoLoggerFeature::~QueryInfoLoggerFeature() { stopThread(); }
-
-void QueryInfoLoggerFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  QueryInfoLoggerOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
 
 void QueryInfoLoggerFeature::beginShutdown() {
   if (_loggerThread) {

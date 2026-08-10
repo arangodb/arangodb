@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -36,6 +35,12 @@ class BootstrapFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Bootstrap"; }
 
+  explicit BootstrapFeature(application_features::ApplicationServer& server,
+                            ClusterFeature& clusterFeature,
+                            DatabaseFeature& databaseFeature,
+                            SystemDatabaseFeature* systemDatabaseFeature,
+                            ClusterUpgradeFeature* clusterUpgradeFeature,
+                            BootstrapFeatureOptions options);
   explicit BootstrapFeature(application_features::ApplicationServer& server,
                             ClusterFeature& clusterFeature,
                             DatabaseFeature& databaseFeature,

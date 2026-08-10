@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <algorithm>
@@ -52,11 +51,6 @@ ApplicationFeature::ApplicationFeature(ApplicationServer& server,
 // add the feature's options to the global list of options. this method will be
 // called regardless of whether to feature is enabled or disabled
 void ApplicationFeature::collectOptions(std::shared_ptr<ProgramOptions>) {}
-
-// load options from somewhere. this method will only be called for enabled
-// features
-void ApplicationFeature::loadOptions(std::shared_ptr<ProgramOptions>,
-                                     char const* /*binaryPath*/) {}
 
 // validate the feature's options. this method will only be called for active
 // features, after the ApplicationServer has determined which features should be

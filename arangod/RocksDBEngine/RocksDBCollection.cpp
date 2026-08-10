@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBCollection.h"
@@ -27,13 +26,13 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/RecursiveLocker.h"
+#include "Basics/DownCast.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/ThreadLocalLeaser.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/debugging.h"
 #include "Cache/BinaryKeyHasher.h"
-#include "Cache/CacheManagerFeature.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/TransactionalCache.h"
@@ -49,7 +48,6 @@
 #include "Metrics/Counter.h"
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
-#include "Metrics/MetricsFeature.h"
 #include "RocksDBEngine/RocksDBMethodsMemoryTracker.h"
 #include "RocksDBEngine/RocksDBBuilderIndex.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
@@ -212,7 +210,7 @@ struct TimeTracker {
   TimeTracker(TimeTracker const&) = delete;
   TimeTracker& operator=(TimeTracker const&) = delete;
 
-  using Metrics = TransactionStatistics::ReadWriteMetrics;
+  using Metrics = RocksDBReadWriteMetrics;
   using Count = void (*)(Metrics& metrics, float time) noexcept;
 
   explicit TimeTracker(std::optional<Metrics>& metrics, Count count) noexcept
@@ -311,20 +309,16 @@ namespace arangodb {
 // from IResearchKludge
 void syncIndexOnCreate(Index&);
 
-RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
-                                     velocypack::Slice info)
+RocksDBCollection::RocksDBCollection(
+    LogicalCollection& collection, velocypack::Slice info,
+    cache::Manager* cacheManager,
+    std::optional<RocksDBReadWriteMetrics>& readWriteMetrics)
     : RocksDBMetaCollection(collection, info),
       _primaryIndex(nullptr),
-      _cacheManager(collection.vocbase()
-                        .server()
-                        .getFeature<CacheManagerFeature>()
-                        .manager()),
+      _cacheManager(cacheManager),
       _maxCacheValueSize(
           _cacheManager == nullptr ? 0 : _cacheManager->maxCacheValueSize()),
-      _statistics(collection.vocbase()
-                      .server()
-                      .getFeature<metrics::MetricsFeature>()
-                      .transactionStatistics()),
+      _readWriteMetrics(readWriteMetrics),
       _cacheEnabled(_cacheManager != nullptr && !collection.system() &&
                     !collection.isAStub() &&
                     !ServerState::instance()->isCoordinator() &&
@@ -558,7 +552,7 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
     // Step 3. add index to collection entry (for removal after a crash)
     auto buildIdx = std::make_shared<RocksDBBuilderIndex>(
         std::static_pointer_cast<RocksDBIndex>(newIdx), _meta.numberDocuments(),
-        getParallelism(info), _statistics);
+        getParallelism(info));
     if (!engine.inRecovery()) {
       // manually modify collection entry, other methods need lock
       RocksDBKey key;  // read collection info from database
@@ -783,9 +777,10 @@ Result RocksDBCollection::truncate(transaction::Methods& trx,
                                    OperationOptions& options,
                                    bool& usedRangeDelete) {
   ::TruncateTimeTracker timeTracker(
-      _statistics._readWriteMetrics, options,
-      [](TransactionStatistics::ReadWriteMetrics& metrics,
-         float time) noexcept { metrics.rocksdb_truncate_sec.count(time); });
+      _readWriteMetrics, options,
+      [](RocksDBReadWriteMetrics& metrics, float time) noexcept {
+        metrics.rocksdb_truncate_sec.count(time);
+      });
 
   auto state = RocksDBTransactionState::toState(&trx);
   TRI_ASSERT(!state->isReadOnlyTransaction());
@@ -1078,9 +1073,10 @@ Result RocksDBCollection::lookup(transaction::Methods* trx,
   TRI_IF_FAILURE("LogicalCollection::read") { return Result(TRI_ERROR_DEBUG); }
 
   ::ReadTimeTracker timeTracker(
-      _statistics._readWriteMetrics,
-      [](TransactionStatistics::ReadWriteMetrics& metrics,
-         float time) noexcept { metrics.rocksdb_read_sec.count(time); });
+      _readWriteMetrics,
+      [](RocksDBReadWriteMetrics& metrics, float time) noexcept {
+        metrics.rocksdb_read_sec.count(time);
+      });
 
   rocksdb::PinnableSlice ps;
   Result res;
@@ -1124,9 +1120,10 @@ Result RocksDBCollection::lookup(transaction::Methods* trx,
                                  LookupOptions options,
                                  StorageSnapshot const* snapshot) const {
   ::ReadTimeTracker timeTracker(
-      _statistics._readWriteMetrics,
-      [](TransactionStatistics::ReadWriteMetrics& metrics,
-         float time) noexcept { metrics.rocksdb_read_sec.count(time); });
+      _readWriteMetrics,
+      [](RocksDBReadWriteMetrics& metrics, float time) noexcept {
+        metrics.rocksdb_read_sec.count(time);
+      });
 
   if (!token.isSet()) {
     return Result{TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD,
@@ -1141,9 +1138,10 @@ Result RocksDBCollection::lookup(transaction::Methods* trx,
                                  MultiDocumentCallback const& cb,
                                  LookupOptions options) const {
   ::ReadTimeTracker timeTracker(
-      _statistics._readWriteMetrics,
-      [](TransactionStatistics::ReadWriteMetrics& metrics,
-         float time) noexcept { metrics.rocksdb_read_sec.count(time); });
+      _readWriteMetrics,
+      [](RocksDBReadWriteMetrics& metrics, float time) noexcept {
+        metrics.rocksdb_read_sec.count(time);
+      });
 
   RocksDBMethods* mthd =
       RocksDBTransactionState::toMethods(trx, _logicalCollection.id());
@@ -1208,9 +1206,10 @@ Result RocksDBCollection::insert(transaction::Methods& trx,
                                  velocypack::Slice newDocument,
                                  OperationOptions const& options) {
   ::WriteTimeTracker timeTracker(
-      _statistics._readWriteMetrics, options,
-      [](TransactionStatistics::ReadWriteMetrics& metrics,
-         float time) noexcept { metrics.rocksdb_insert_sec.count(time); });
+      _readWriteMetrics, options,
+      [](RocksDBReadWriteMetrics& metrics, float time) noexcept {
+        metrics.rocksdb_insert_sec.count(time);
+      });
 
   TRI_ASSERT(newRevisionId.isSet());
   TRI_ASSERT(newDocument.isObject());
@@ -1238,9 +1237,10 @@ Result RocksDBCollection::update(
     velocypack::Slice previousDocument, RevisionId newRevisionId,
     velocypack::Slice newDocument, OperationOptions const& options) {
   ::WriteTimeTracker timeTracker(
-      _statistics._readWriteMetrics, options,
-      [](TransactionStatistics::ReadWriteMetrics& metrics,
-         float time) noexcept { metrics.rocksdb_update_sec.count(time); });
+      _readWriteMetrics, options,
+      [](RocksDBReadWriteMetrics& metrics, float time) noexcept {
+        metrics.rocksdb_update_sec.count(time);
+      });
 
   return performUpdateOrReplace(trx, indexesSnapshot, previousDocumentId,
                                 previousRevisionId, previousDocument,
@@ -1254,9 +1254,10 @@ Result RocksDBCollection::replace(
     velocypack::Slice previousDocument, RevisionId newRevisionId,
     velocypack::Slice newDocument, OperationOptions const& options) {
   ::WriteTimeTracker timeTracker(
-      _statistics._readWriteMetrics, options,
-      [](TransactionStatistics::ReadWriteMetrics& metrics,
-         float time) noexcept { metrics.rocksdb_replace_sec.count(time); });
+      _readWriteMetrics, options,
+      [](RocksDBReadWriteMetrics& metrics, float time) noexcept {
+        metrics.rocksdb_replace_sec.count(time);
+      });
 
   return performUpdateOrReplace(trx, indexesSnapshot, previousDocumentId,
                                 previousRevisionId, previousDocument,
@@ -1299,9 +1300,10 @@ Result RocksDBCollection::remove(transaction::Methods& trx,
                                  velocypack::Slice previousDocument,
                                  OperationOptions const& options) {
   ::WriteTimeTracker timeTracker(
-      _statistics._readWriteMetrics, options,
-      [](TransactionStatistics::ReadWriteMetrics& metrics,
-         float time) noexcept { metrics.rocksdb_remove_sec.count(time); });
+      _readWriteMetrics, options,
+      [](RocksDBReadWriteMetrics& metrics, float time) noexcept {
+        metrics.rocksdb_remove_sec.count(time);
+      });
 
   TRI_ASSERT(previousDocumentId.isSet());
   TRI_ASSERT(previousDocument.isObject());

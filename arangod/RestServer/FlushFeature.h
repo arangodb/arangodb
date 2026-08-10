@@ -18,48 +18,34 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Metrics/Fwd.h"
-#include "VocBase/voc-types.h"
+#include "RestServer/FlushSubscription.h"
+#include "RestServer/IFlushControl.h"
 
 #include <cstdint>
 #include <memory>
 #include <mutex>
-#include <string>
 #include <tuple>
 #include <vector>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
 namespace metrics {
-class MetricsFeature;
+struct IRegistry;
 }  // namespace metrics
 class FlushThread;
 
-//////////////////////////////////////////////////////////////////////////////
-/// @struct FlushSubscription
-/// @brief subscription is intended to notify FlushFeature
-///        on the WAL tick which can be safely released
-//////////////////////////////////////////////////////////////////////////////
-struct FlushSubscription {
-  virtual ~FlushSubscription() = default;
-  virtual TRI_voc_tick_t tick() const = 0;
-  virtual std::string const& name() const = 0;
-};
-
-class FlushFeature final : public application_features::ApplicationFeature {
+class FlushFeature final : public application_features::ApplicationFeature,
+                           public IFlushControl {
  public:
   static constexpr std::string_view name() noexcept { return "Flush"; }
 
   FlushFeature(application_features::ApplicationServer& server,
-               metrics::MetricsFeature& metrics);
+               metrics::IRegistry& metricsRegistry);
 
   ~FlushFeature();
 
@@ -68,14 +54,18 @@ class FlushFeature final : public application_features::ApplicationFeature {
   ///        token commit
   /// @param subscription to register
   void registerFlushSubscription(
-      std::shared_ptr<FlushSubscription> const& subscription);
+      std::shared_ptr<FlushSubscription> const& subscription) override;
 
   /// @brief release all ticks not used by the flush subscriptions
   /// returns number of active flush subscriptions removed, the number of stale
   /// flush scriptions removed, and the tick value up to which the storage
   /// engine could release ticks. if no active or stale flush subscriptions were
   /// found, the returned tick value is 0.
-  std::tuple<size_t, size_t, TRI_voc_tick_t> releaseUnusedTicks();
+  bool isEnabled() const noexcept override {
+    return application_features::ApplicationFeature::isEnabled();
+  }
+  std::tuple<std::size_t, std::size_t, TRI_voc_tick_t> releaseUnusedTicks()
+      override;
 
   void stop() override;
 

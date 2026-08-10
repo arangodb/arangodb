@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBIndexCacheRefillFeature.h"
@@ -32,7 +31,7 @@
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
 #include "Metrics/CounterBuilder.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RocksDBEngine/RocksDBIndexCacheRefillOptionsProvider.h"
@@ -56,12 +55,22 @@ DECLARE_COUNTER(rocksdb_cache_full_index_refills_total,
 RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(
     application_features::ApplicationServer& server,
     DatabaseFeature& databaseFeature, ClusterFeature* clusterFeature,
-    metrics::MetricsFeature& metricsFeature)
+    metrics::IRegistry& metricsRegistry)
+    : RocksDBIndexCacheRefillFeature(server, databaseFeature, clusterFeature,
+                                     metricsRegistry,
+                                     RocksDBIndexCacheRefillFeatureOptions{}) {}
+
+RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(
+    application_features::ApplicationServer& server,
+    DatabaseFeature& databaseFeature, ClusterFeature* clusterFeature,
+    metrics::IRegistry& metricsRegistry,
+    RocksDBIndexCacheRefillFeatureOptions options)
     : application_features::ApplicationFeature{server, *this},
       _databaseFeature(databaseFeature),
       _clusterFeature(clusterFeature),
-      _metricsFeature(metricsFeature),
-      _totalFullIndexRefills(addTotalFullIndexRefills(metricsFeature)),
+      _metricsRegistry(metricsRegistry),
+      _options(std::move(options)),
+      _totalFullIndexRefills(addTotalFullIndexRefills(metricsRegistry)),
       _currentlyRunningIndexFillTasks(0) {
   setOptional(true);
   // we want to be late in the startup sequence
@@ -75,12 +84,6 @@ RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(
 
 RocksDBIndexCacheRefillFeature::~RocksDBIndexCacheRefillFeature() {
   stopThread();
-}
-
-void RocksDBIndexCacheRefillFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  RocksDBIndexCacheRefillOptionsProvider provider;
-  provider.declareOptions(options, _options);
 }
 
 void RocksDBIndexCacheRefillFeature::beginShutdown() {
@@ -100,7 +103,7 @@ void RocksDBIndexCacheRefillFeature::start() {
   }
 
   _refillThread = std::make_unique<RocksDBIndexCacheRefillThread>(
-      _databaseFeature, _metricsFeature, _options.maxCapacity);
+      _databaseFeature, _metricsRegistry, _options.maxCapacity);
 
   if (!_refillThread->start()) {
     LOG_TOPIC("836a6", FATAL, Logger::ENGINES)
@@ -294,6 +297,6 @@ Result RocksDBIndexCacheRefillFeature::warmupIndex(
 }
 
 metrics::Counter& RocksDBIndexCacheRefillFeature::addTotalFullIndexRefills(
-    metrics::MetricsFeature& metrics) {
-  return metrics.add(rocksdb_cache_full_index_refills_total{});
+    metrics::IRegistry& metricsRegistry) {
+  return metricsRegistry.add(rocksdb_cache_full_index_refills_total{});
 }

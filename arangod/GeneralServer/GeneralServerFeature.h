@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -39,10 +38,12 @@
 #include "Metrics/MetricsFeature.h"
 #include "Rest/ApiVersion.h"
 #include "Rest/CommonDefines.h"
+#include "RestServer/LogApiOptions.h"
 
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace arangodb {
@@ -55,10 +56,12 @@ class GeneralServerFeature final
   static constexpr std::string_view name() noexcept { return "GeneralServer"; }
 
   explicit GeneralServerFeature(application_features::ApplicationServer& server,
-                                metrics::MetricsFeature& metrics);
+                                metrics::MetricsFeature& metricsFeature,
+                                GeneralServerOptions options,
+                                LogApiOptions logApiOptions);
+  explicit GeneralServerFeature(application_features::ApplicationServer& server,
+                                metrics::MetricsFeature& metricsFeature);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
   void initiateSoftShutdown() override final;
@@ -90,14 +93,9 @@ class GeneralServerFeature final
 
   void countHttp2Connection() { _http2Connections.count(); }
 
-  void recordHttpRequestStatistics(RequestTimingData const& data) noexcept;
+  void countHttpResponseCode(rest::ResponseCode code) noexcept;
 
-  bool isTelemetricsEnabled() const noexcept {
-    return _options.enableTelemetrics;
-  }
-  uint64_t telemetricsMaxRequestsPerInterval() const noexcept {
-    return _options.telemetricsMaxRequestsPerInterval;
-  }
+  void recordHttpRequestStatistics(RequestTimingData const& data) noexcept;
 
   metrics::Gauge<std::uint64_t>& _currentRequestsSize;
 
@@ -124,13 +122,18 @@ class GeneralServerFeature final
   void defineInitialHandlers(rest::RestHandlerFactory& f);
   // define remaining REST handlers
   void defineRemainingHandlers(rest::RestHandlerFactory& f);
+  // register one Counter per rest::ResponseCode enumerator, once
+  void initResponseCodeCounters();
 
   void countHttpRequestByMethod(rest::RequestType requestType) noexcept;
 
   GeneralServerOptions _options;
+  LogApiOptions _logApiOptions;
   std::shared_ptr<rest::RestHandlerFactory> _handlerFactory;
   std::unique_ptr<rest::AsyncJobManager> _jobManager;
   std::vector<std::unique_ptr<rest::GeneralServer>> _servers;
+  std::unordered_map<rest::ResponseCode, metrics::Counter*>
+      _responseCodeCounters;
 
   // Some metrics about requests and connections
   metrics::Histogram<metrics::LogScale<uint64_t>>& _requestBodySizeHttp1;
@@ -160,6 +163,8 @@ class GeneralServerFeature final
 
   metrics::Histogram<metrics::FixScale<double>>& _connectionDuration;
   metrics::Gauge<double>& _connectionHttp;
+
+  metrics::MetricsFeature& _metricsFeature;
 };
 
 }  // namespace arangodb

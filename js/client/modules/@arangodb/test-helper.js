@@ -20,8 +20,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Wilfried Goesgens
-// / @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal'); // OK: processCsvFile
@@ -82,107 +80,27 @@ exports.getInstanceInfo = function() {
 
 let reconnectRetry = exports.reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
 
-
-
-
-exports.clearAllFailurePoints = function () {
-  const old = db._name();
-  try {
-    for (const server of exports.getDBServers()) {
-      exports.debugClearFailAt(exports.getEndpointById(server.id));
-    }
-    for (const server of exports.getCoordinators()) {
-      exports.debugClearFailAt(exports.getEndpointById(server.id));
-    }
-  } finally {
-    // need to restore original database, as debugFailAt() can 
-    // change into a different database...
-    db._useDatabase(old);
-  }
-};
-
-/// @brief set failure point
-exports.debugCanUseFailAt = function (endpoint) {
-  const primaryEndpoint = arango.getEndpoint();
-  try {
-    reconnectRetry(endpoint, db._name(), "root", "");
-    
-    let res = arango.GET_RAW('/_admin/debug/failat');
-    return res.code === 200;
-  } finally {
-    reconnectRetry(primaryEndpoint, db._name(), "root", "");
-  }
-};
-
-/// @brief set failure point
-exports.debugSetFailAt = function (endpoint, failAt) {
-  const primaryEndpoint = arango.getEndpoint();
-  try {
-    reconnectRetry(endpoint, db._name(), "root", "");
-    let res = arango.PUT_RAW('/_admin/debug/failat/' + failAt, {});
-    if (res.parsedBody !== true) {
-      throw `Error setting failure point ${failAt} on ${endpoint}: "${JSON.stringify(res)}"`;
-    }
-    return true;
-  } finally {
-    reconnectRetry(primaryEndpoint, db._name(), "root", "");
-  }
-};
-
-exports.debugResetRaceControl = function (endpoint) {
-  const primaryEndpoint = arango.getEndpoint();
-  try {
-    reconnectRetry(endpoint, db._name(), "root", "");
-    let res = arango.DELETE_RAW('/_admin/debug/raceControl');
-    if (res.code !== 200) {
-      throw "Error resetting race control.";
-    }
-    return false;
-  } finally {
-    reconnectRetry(primaryEndpoint, db._name(), "root", "");
-  }
-};
-
-/// @brief remove failure point
-exports.debugRemoveFailAt = function (endpoint, failAt) {
-  const primaryEndpoint = arango.getEndpoint();
-  try {
-    reconnectRetry(endpoint, db._name(), "root", "");
-    let res = arango.DELETE_RAW('/_admin/debug/failat/' + failAt);
-    if (res.code !== 200) {
-      throw "Error removing failure point";
-    }
-    return true;
-  } finally {
-    reconnectRetry(primaryEndpoint, db._name(), "root", "");
-  }
-};
-
-exports.debugClearFailAt = function (endpoint) {
-  const primaryEndpoint = arango.getEndpoint();
-  try {
-    reconnectRetry(endpoint, db._name(), "root", "");
-    let res = arango.DELETE_RAW('/_admin/debug/failat');
-    if (res.code !== 200) {
-      throw "Error removing failure points";
-    }
-    return true;
-  } finally {
-    reconnectRetry(primaryEndpoint, db._name(), "root", "");
-  }
-};
-
 exports.getChecksum = function (endpoint, name) {
-  const primaryEndpoint = arango.getEndpoint();
-  try {
-    reconnectRetry(endpoint, db._name(), "root", "");
-    let res = arango.GET_RAW('/_api/collection/' + name + '/checksum');
-    if (res.code !== 200) {
-      throw "Error getting collection checksum";
+  if (typeof(endpoint) === "string") {
+    const primaryEndpoint = arango.getEndpoint();
+    try {
+      reconnectRetry(endpoint, db._name(), "root", "");
+      let res = arango.GET_RAW('/_api/collection/' + name + '/checksum');
+      if (res.code !== 200) {
+        throw "Error getting collection checksum";
+      }
+      return res.parsedBody.checksum;
+    } finally {
+      reconnectRetry(primaryEndpoint, db._name(), "root", "");
     }
-    return res.parsedBody.checksum;
-  } finally {
-    reconnectRetry(primaryEndpoint, db._name(), "root", "");
+  } else {
+    return endpoint.toThisInstance(() => {
+      let res = arango.GET_RAW('/_api/collection/' + name + '/checksum');
+      if (res.code !== 200) {
+        throw "Error getting collection checksum";
+      }
+      return res.parsedBody.checksum;
+    });
   }
 };
 
@@ -228,11 +146,11 @@ exports.getMetric = function (endpoint, name) {
 
 // Eventually assert a metric from a single server endpoint.
 // compareFn takes the metric value and returns true if the assertion should pass.
-exports.eventuallyAssertMetric = function(endpoint, metricName, compareFn, errorMessage, maxIterations = 200) {
+exports.eventuallyAssertMetric = function(server, metricName, compareFn, errorMessage, maxIterations = 200) {
   let metricValue;
   for (let i = 0; i < maxIterations; i++) {
     internal.wait(0.1);
-    metricValue = exports.getMetric(endpoint, metricName);
+    metricValue = server.getMetric(metricName);
     if (compareFn(metricValue)) {
       break;
     }
@@ -249,7 +167,7 @@ exports.eventuallyAssertMetricSum = function(servers, metricName, compareFn, err
     internal.wait(0.1);
     metricValue = 0;
     for (let server of servers) {
-      metricValue += exports.getMetric(server.endpoint, metricName);
+      metricValue += server.getMetric(metricName);
     }
     if (compareFn(metricValue)) {
       break;
@@ -274,32 +192,17 @@ exports.assertEndpointGetOnly = function(url) {
   assertEqual(res.errorNum, code405);
 };
 
-exports.getMetricSingle = function (name) {
-  let res = arango.GET_RAW("/_admin/metrics");
-  if (res.code !== 200) {
-    throw "error fetching metric";
-  }
-  return getMetricName(res.body, name);
-};
-
 // Function for getting metric/metrics from either cluster or single server deployments.
 // - 'name' - can be either string or array of strings.
 //    If 'name' is string, we want to get the only one metric value with name 'name'
 //    If 'name' is array of strings, we want to get values for every metric which is defined in this array 
-// - 'roles' - string
-//    Specify which roles of arangod should be queried for particular metric/metrics.
-//    This argument will be used in function getAllMetricsFromEndpoints.
-//    Possible values are:
-//      "coordinators" - get metric/metrics only from coordinators.
-//      "dbservers" - get metric/metrics only from dbservers.
-//      "all" - get metric/metrics from dbservers and from coordinators.
-//    In case of single server deployment, this argument is ommited.
-exports.getCompleteMetricsValues = function (name, roles = "") {
+exports.getCompleteMetricsValues = function (name) {
   function transpose(matrix) {
     return matrix[0].map((col, i) => matrix.map(row => row[i]));
   };
+  const IM = exports.getInstanceInfo();
 
-  let metrics = exports.getMetricsByNameFromEndpoints(name, roles);
+  let metrics = IM.getAllMetricsByName(name);
 
   if (typeof name === "string") {
     // In case of "string", 'metrics' variable is an array with values of metric from each server
@@ -343,36 +246,6 @@ exports.getCompleteMetricsValues = function (name, roles = "") {
     // Result array shouldn't contain NaN at all
     assertTrue(result_metrics.every((val) => Number.isNaN(val) === false));
     return result_metrics;
-  }
-};
-
-function queryAgencyJob(id) {
-  return arango.GET(`/_admin/cluster/queryAgencyJob?id=${id}`);
-}
-
-exports.moveShard = function moveShard(database, collection, shard, fromServer, toServer, dontwait) {
-  let body = {database, collection, shard, fromServer, toServer};
-  let result;
-  result = arango.POST_RAW("/_admin/cluster/moveShard", body);
-  assertEqual(result.code, 202, `Move shard job rejected with code: ${result.code}`);
-
-  if (dontwait) {
-    return result;
-  }
-  // Now wait until the job we triggered is finished:
-  let count = 600;   // seconds
-  while (true) {
-    let job = queryAgencyJob(result.parsedBody.id);
-    if (job.error === false && job.status === "Finished") {
-      return result;
-    }
-    if (count-- < 0) {
-      console.error(
-        "Timeout in waiting for moveShard to complete: "
-        + JSON.stringify(body));
-      return false;
-    }
-    require("internal").wait(1.0);
   }
 };
 
@@ -619,187 +492,6 @@ exports.waitForShardsInSync = function (cn, timeout, minimumRequiredFollowers = 
   }
 };
 
-exports.getControleableServers = function (role) {
-  return global.theInstanceManager.arangods.filter((instance) => instance.isRole(role));
-};
-
-// These functions lean on special runners to export the actual instance object into the global namespace.
-exports.getCtrlAgents = function() {
-  return exports.getControleableServers(inst.instanceRole.agent);
-};
-exports.getCtrlDBServers = function() {
-  return exports.getControleableServers(inst.instanceRole.dbServer);
-};
-exports.getCtrlCoordinators = function() {
-  return exports.getControleableServers(inst.instanceRole.coordinator);
-};
-
-exports.getServers = function (role) {
-  let ret = exports.getInstanceInfo().arangods.filter(arangod => arangod.isRole(role));
-  if (ret.length === 0) {
-    throw new Error("No instance matched the type " + role);
-  }
-  return ret;
-};
-
-exports.getCoordinators = function () {
-  return exports.getServers(inst.instanceRole.coordinator);
-};
-exports.getDBServers = function () {
-  return exports.getServers(inst.instanceRole.dbServer);
-};
-exports.getAgents = function () {
-  return exports.getServers(inst.instanceRole.agent);
-};
-
-exports.getServerById = function (id) {
-  const instanceInfo = exports.getInstanceInfo();
-  return instanceInfo.arangods.find((d) => (d.id === id));
-};
-
-exports.getServersByType = function (type) {
-  const isType = (d) => (d.instanceRole.toLowerCase() === type);
-  const instanceInfo = exports.getInstanceInfo();
-  return instanceInfo.arangods.filter(isType);
-};
-
-exports.getEndpointById = function (id) {
-  const instanceInfo = exports.getInstanceInfo();
-  const instance = instanceInfo.arangods.find(d => d.id === id || id === d.shortName);
-  return instance.url;
-};
-
-exports.getUrlById = function (id) {
-  const toUrl = (d) => (d.url);
-  const instanceInfo = exports.getInstanceInfo();
-  return instanceInfo.arangods.filter((d) => (d.id === id))
-    .map(toUrl)[0];
-};
-
-exports.getEndpointsByType = function (type) {
-  const isType = (d) => (d.instanceRole.toLowerCase() === type);
-  const toEndpoint = (d) => (d.endpoint);
-
-  const instanceInfo = exports.getInstanceInfo();
-  return instanceInfo.arangods.filter(isType)
-    .map(toEndpoint)
-    .map(endpointToURL);
-};
-
-exports.triggerMetrics = function () {
-  let coordinators = exports.getEndpointsByType("coordinator");
-  exports.getRawMetric(coordinators[0], '?mode=write_global');
-  for (let i = 1; i < coordinators.length; i++) {
-    let c = coordinators[i];
-    exports.getRawMetric(c, '?mode=trigger_global');
-  }
-  require("internal").sleep(2);
-};
-
-exports.activateFailure = function (name) {
-  const isCluster = require("internal").isCluster();
-  let roles = [];
-  if (isCluster) {
-    roles.push("dbserver");
-    roles.push("coordinator");
-  } else {
-    roles.push("single");
-  }
-  
-  roles.forEach(role => {
-    exports.getEndpointsByType(role).forEach(ep => exports.debugSetFailAt(ep, name));
-  });
-
-};
-
-exports.deactivateFailure = function (name) {
-  const isCluster = require("internal").isCluster();
-  let roles = [];
-  if (isCluster) {
-    roles.push("dbserver");
-    roles.push("coordinator");
-  } else {
-    roles.push("single");
-  }
-
-  roles.forEach(role => {
-    exports.getEndpointsByType(role).forEach(ep => exports.debugClearFailAt(ep, name));
-  });
-};
-
-exports.getAllMetricsFromEndpoints = function (roles = "") {
-  const isCluster = require("internal").isCluster();
-  
-  let res = [];
-  let endpoints = [];
-  
-  if (isCluster) {
-    exports.triggerMetrics();
-
-    if (roles === "" || roles === "dbservers" || roles === "all") {
-      endpoints = endpoints.concat(exports.getDBServerEndpoints());
-    }
-    if (roles === "coordinators" || roles === "all") {
-      endpoints = endpoints.concat(exports.getCoordinatorEndpoints());
-    }
-  } else {
-    endpoints = endpoints.concat(exports.getSingleServerEndpoint());
-  }
-
-  endpoints.forEach(e => {
-    res.push(exports.getAllMetric(e, ''));
-  });
-  return res;
-};
-
-exports.getMetricsByNameFromEndpoints = function (name, roles = "") {
-  function func (text, name_str) {
-    let value;
-    try {
-      value = getMetricName(text, name_str);
-    } catch (e) {
-      value = NaN;
-    }
-    return value;
-  };
-  let result = [];
-
-  // This is an array with metrics from all required endpoints.
-  let all_server_metrics = exports.getAllMetricsFromEndpoints(roles);
-  // Now we need to parse every element from this array and extract
-  // required metrics.
-  all_server_metrics.forEach(server_metrics => {
-    if (typeof name === "string") {
-      result.push(func(server_metrics, name));
-    } else if (typeof name === "object") {
-      let res = [];
-      name.forEach(curr_metric_name => {
-        res.push(func(server_metrics, curr_metric_name));
-      });
-      result.push(res);
-    } else {
-      throw Error(`Unsupported ${typeof name} type`);
-    }   
-  });
-  return result;
-};
-
-exports.getEndpoints = function (role) {
-  return exports.getServers(role).map(instance => endpointToURL(instance.endpoint));
-};
-
-exports.getSingleServerEndpoint = function () {
-  return exports.getEndpoints(inst.instanceRole.single);
-};
-exports.getCoordinatorEndpoints = function () {
-  return exports.getEndpoints(inst.instanceRole.coordinator);
-};
-exports.getDBServerEndpoints = function () {
-  return exports.getEndpoints(inst.instanceRole.dbServer);
-};
-exports.getAgentEndpoints = function () {
-  return exports.getEndpoints(inst.instanceRole.agent);
-};
 
 const shardIdToLogId = function (shardId) {
   return shardId.slice(1);

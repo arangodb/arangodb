@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -58,11 +57,14 @@ namespace application_features {
 // to feature is enabled or disabled. There is no defined order in
 // which the features are traversed.
 //
-// `loadOptions`
+// `parseOptions`
 //
-// Allows a feature to load more options from somewhere. This method
-// will only be called for enabled features. There is no defined
-// order in which the features are traversed.
+// `processOptions`
+//
+// Runs after the command line has been parsed but before `validateOptions`.
+// Option providers that define `processOptionsImpl` are called here, in the
+// order they are listed in the provider container. This is where options
+// that pull in further options are handled.
 //
 // `validateOptions`
 //
@@ -338,13 +340,18 @@ class ApplicationServer {
 
   // collects the program options from all features,
   // without validating them
-  void collectOptions();
+  virtual void collectOptions();
 
   // parse options
   void parseOptions(int argc, char* argv[]);
 
+  virtual void processOptions() {}
+
   // allows features to cross-validate their program options
-  void validateOptions();
+  virtual void validateOptions();
+
+  // adds the features that receive their options as a c-tor dependency.
+  virtual void addFeaturesWithOptionProvider(){};
 
   // allows process control
   void daemonize();

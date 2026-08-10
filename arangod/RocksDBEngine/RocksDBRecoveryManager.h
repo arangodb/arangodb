@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
-/// @author Daniel Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -38,13 +36,18 @@ class TransactionDB;
 
 namespace arangodb {
 
+class RocksDBEngine;
+struct IDatabaseProvider;
+struct IRecoveryCallback;
+
 class RocksDBRecoveryManager final
     : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() { return "RocksDBRecoveryManager"; }
 
   explicit RocksDBRecoveryManager(
-      application_features::ApplicationServer& server);
+      application_features::ApplicationServer& server,
+      IDatabaseProvider& dbProvider, IRecoveryCallback& recoveryCallback);
 
   void start() override;
 
@@ -60,6 +63,9 @@ class RocksDBRecoveryManager final
 
   std::atomic<rocksdb::SequenceNumber> _currentSequenceNumber;
   std::atomic<RecoveryState> _recoveryState;
+  IDatabaseProvider& _dbProvider;
+  IRecoveryCallback& _recoveryCallback;
+  RocksDBEngine* _engine = nullptr;
 };
 
 }  // namespace arangodb

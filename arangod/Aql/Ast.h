@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -362,6 +361,12 @@ class Ast {
                                        AstNode const* pattern,
                                        AstNode const* quantifier, bool negate);
 
+  /// @brief create an AST node for array ALL|ANY|NONE|AT LEAST =~/!~
+  /// expressions
+  AstNode* createNodeArrayRegexOperator(AstNode const* lhs,
+                                        AstNode const* pattern,
+                                        AstNode const* quantifier, bool negate);
+
   /// @brief create an AST expansion node
   AstNode* createNodeExpansion(int64_t, AstNode const*, AstNode const*,
                                AstNode const*, AstNode const*, AstNode const*);
@@ -469,11 +474,13 @@ class Ast {
                              AstNode const* properties,
                              AstNode const* filterExpression,
                              AstNode const* rangeExpression, bool isInbound,
-                             bool isOutbound);
+                             bool isOutbound,
+                             AstNode const* projections = nullptr);
   AstNode* createPatternNodePattern(AstNode const* outVariable,
                                     AstNode const* labels,
                                     AstNode const* properties,
-                                    AstNode const* filterExpression);
+                                    AstNode const* filterExpression,
+                                    AstNode const* projections);
 
   AstNode* createPatternSegment(AstNode const* edge, AstNode const* node);
   AstNode* createPatternPathVariable(std::string_view variable);

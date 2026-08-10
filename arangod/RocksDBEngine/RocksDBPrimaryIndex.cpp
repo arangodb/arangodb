@@ -18,12 +18,10 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBPrimaryIndex.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/IndexStreamIterator.h"
@@ -35,12 +33,9 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cache/BinaryKeyHasher.h"
 #include "Cache/CachedValue.h"
-#include "Cache/CacheManagerFeature.h"
 #include "Cache/TransactionalCache.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
-#include "Logger/Logger.h"
-#include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -51,19 +46,13 @@
 #include "RocksDBEngine/RocksDBPrefixExtractor.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
-#include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBValue.h"
-#include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
-
-#ifdef USE_ENTERPRISE
-#include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
-#endif
 
 #include <absl/strings/str_cat.h>
 
@@ -605,8 +594,8 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(LogicalCollection& collection,
               ->cacheEnabled(),
           /*cacheManager*/
           collection.vocbase()
-              .server()
-              .getFeature<CacheManagerFeature>()
+              .engine<RocksDBEngine>()
+              .getCacheManagerProvider()
               .manager(),
           /*engine*/
           collection.vocbase().engine<RocksDBEngine>()),
@@ -1257,61 +1246,16 @@ void RocksDBPrimaryIndex::handleValNode(transaction::Methods* trx,
   }
 
   if (isId) {
-    // lookup by _id. now validate if the lookup is performed for the
-    // correct collection (i.e. _collection)
-    char const* key = nullptr;
-    size_t outLength = 0;
-    std::shared_ptr<LogicalCollection> collection;
-    Result res =
-        trx->resolveId(valNode->getStringValue(), valNode->getStringLength(),
-                       collection, key, outLength);
-
-    if (!res.ok()) {
+    // lookup by _id. validate that the lookup value refers to "our"
+    // collection (i.e. _collection) and extract the _key part from it
+    auto key = Index::extractKeyFromIdLookupValue(*trx, _collection,
+                                                  valNode->getStringView());
+    if (!key.has_value()) {
       return;
-    }
-
-    TRI_ASSERT(collection != nullptr);
-    TRI_ASSERT(key != nullptr);
-
-    bool isRunningInCluster = ServerState::instance()->isRunningInCluster();
-
-    if (!isRunningInCluster && collection->id() != _collection.id()) {
-      // only continue lookup if the id value is syntactically correct and
-      // refers to "our" collection, using local collection id
-      return;
-    }
-
-    if (isRunningInCluster) {
-#ifdef USE_ENTERPRISE
-      if (collection->isSmart() && collection->type() == TRI_COL_TYPE_EDGE) {
-        auto c = dynamic_cast<VirtualClusterSmartEdgeCollection const*>(
-            collection.get());
-        if (c == nullptr) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_INTERNAL, "unable to cast smart edge collection");
-        }
-
-        if (!c->isDisjoint() && (_collection.planId() != c->getLocalCid() &&
-                                 _collection.planId() != c->getFromCid() &&
-                                 _collection.planId() != c->getToCid())) {
-          // invalid planId
-          return;
-        } else if (c->isDisjoint() &&
-                   _collection.planId() != c->getLocalCid()) {
-          // invalid planId
-          return;
-        }
-      } else
-#endif
-          if (collection->planId() != _collection.planId()) {
-        // only continue lookup if the id value is syntactically correct and
-        // refers to "our" collection, using cluster collection id
-        return;
-      }
     }
 
     // use _key value from _id
-    keys.add(VPackValuePair(key, outLength, VPackValueType::String));
+    keys.add(VPackValuePair(key->data(), key->size(), VPackValueType::String));
   } else {
     keys.add(VPackValuePair(valNode->getStringValue(),
                             valNode->getStringLength(),

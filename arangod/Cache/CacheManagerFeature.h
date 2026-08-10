@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -26,6 +25,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cache/CacheManagerFeatureThreads.h"
 #include "Cache/CacheOptionsProvider.h"
+#include "Cache/ICacheManagerProvider.h"
 
 namespace arangodb {
 class CacheOptionsFeature;
@@ -40,7 +40,8 @@ class Manager;
 }
 
 class CacheManagerFeature final
-    : public application_features::ApplicationFeature {
+    : public application_features::ApplicationFeature,
+      public ICacheManagerProvider {
  public:
   static constexpr std::string_view name() { return "CacheManager"; }
 
@@ -54,10 +55,10 @@ class CacheManagerFeature final
   void stop() override final;
 
   /// @brief Pointer to global instance; Can be null if cache is disabled
-  cache::Manager* manager();
+  cache::Manager* manager() override;
 
-  std::size_t minValueSizeForEdgeCompression() const noexcept;
-  std::uint32_t accelerationFactorForEdgeCompression() const noexcept;
+  std::size_t minValueSizeForEdgeCompression() const noexcept override;
+  std::uint32_t accelerationFactorForEdgeCompression() const noexcept override;
 
  private:
   std::unique_ptr<cache::Manager> _manager;

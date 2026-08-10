@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -28,9 +27,8 @@
 #include <string_view>
 #include <unicode/regex.h>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
+struct Database;
 struct ValidatorBase;
 namespace transaction {
 class Methods;
@@ -65,7 +63,7 @@ class ExpressionContext {
       bool& isEmptyExpression) = 0;
   virtual arangodb::ValidatorBase* buildValidator(velocypack::Slice) = 0;
 
-  virtual TRI_vocbase_t& vocbase() const = 0;
+  virtual Database& vocbase() const = 0;
   virtual transaction::Methods& trx() const = 0;
   virtual bool killed() const = 0;
 

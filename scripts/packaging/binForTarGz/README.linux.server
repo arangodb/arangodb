@@ -1,0 +1,37 @@
+ArangoDB
+--------
+
+In order to use a tar installation simply add the `@ARANGODB_PACKAGE_NAME@/bin`
+directory to your path.
+
+For bash, use
+
+    unix> export PATH="/full/path/to/unpacked/@ARANGODB_PACKAGE_NAME@/bin:$PATH"
+
+If you have additionally installed arangodb as Debian or RPM package,
+you need to ensure that `@ARANGODB_PACKAGE_NAME@` comes first in the PATH
+variable. Otherwise the binaries from the installed `arangodb` package 
+will be used and not the ones from the tar file.
+
+
+Single Server
+=============
+
+Use
+
+    arangodb --starter.mode single --starter.data-dir /tmp/mydata
+
+where `/tmp/mydata` should point to the directory containing the
+data. The database itself will be in `/tmp/mydata/single8529/data`.
+The apps will be stored in `/tmp/mydata/single8529/apps`.
+
+Cluster
+=======
+
+A cluster can be started using
+
+    arangodb --starter.mode cluster --starter.data-dir /tmp/mydata
+
+Please then read the instructions printed on screen for starting the
+additional servers.
+

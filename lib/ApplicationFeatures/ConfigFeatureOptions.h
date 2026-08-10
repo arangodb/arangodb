@@ -29,7 +29,6 @@ namespace arangodb {
 
 struct ConfigFeatureOptions {
   std::string file;
-  std::string progname;
   std::vector<std::string> defines;
   bool checkConfiguration = false;
   // If this is set to true, the internal override is deactivated.

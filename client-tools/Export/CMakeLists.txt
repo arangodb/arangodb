@@ -1,6 +1,8 @@
 add_executable(${BIN_ARANGOEXPORT}
   ${ProductVersionFiles_arangoexport}
+  ArangoExportServer.cpp
   ExportFeature.cpp
+  ExportOptionsProvider.cpp
   arangoexport.cpp
 )
 target_include_directories(${BIN_ARANGOEXPORT} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)

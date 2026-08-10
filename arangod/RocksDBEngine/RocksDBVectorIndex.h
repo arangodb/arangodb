@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -82,9 +81,10 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   }
 
   vector::SearchResult readBatch(vector::VectorSearchConfig const& config,
-                                 vector::VectorSearchContext const& ctx);
+                                 vector::VectorSearchContext const& ctx) const;
 
-  vector::UserVectorIndexDefinition const& getVectorIndexDefinition() override;
+  vector::UserVectorIndexDefinition const& getVectorIndexDefinition()
+      const override;
 
   bool isVectorIndexReady() const noexcept override;
 
@@ -164,23 +164,23 @@ class RocksDBVectorIndex final : public RocksDBIndex {
       vector::VectorSearchContext const& ctx,
       containers::NodeHashMap<LocalDocumentId, velocypack::SharedSlice>*
           captureSink,
-      LocalDocumentId docId, velocypack::Slice docSlice);
+      LocalDocumentId docId, velocypack::Slice docSlice) const;
 
   bool filterDocuments(vector::VectorSearchConfig const& config,
                        vector::VectorSearchContext const& ctx,
-                       velocypack::Slice docSlice);
+                       velocypack::Slice docSlice) const;
 
   float computeDistance(const vector::Vector& vec1, const vector::Vector& vec2,
-                        bool isDescending);
+                        bool isDescending) const;
 
   bool getNormalizedVectorFromDocument(const velocypack::Slice& docSlice,
-                                       vector::Vector& vec);
+                                       vector::Vector& vec) const;
 
   std::pair<vector::Labels, vector::Distances> bruteForceSearch(
       vector::Vector& searchVector, vector::VectorSearchConfig const& config,
       vector::VectorSearchContext const& ctx,
       containers::NodeHashMap<LocalDocumentId, velocypack::SharedSlice>*
-          captureSink);
+          captureSink) const;
 
   vector::VectorIndexMetadata loadVectorIndexMetadata(
       velocypack::Slice info) const;

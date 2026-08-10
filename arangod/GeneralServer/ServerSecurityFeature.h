@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -34,9 +33,10 @@ class ServerSecurityFeature final
   static constexpr std::string_view name() noexcept { return "ServerSecurity"; }
 
   explicit ServerSecurityFeature(
+      application_features::ApplicationServer& server,
+      ServerSecurityFeatureOptions options);
+  explicit ServerSecurityFeature(
       application_features::ApplicationServer& server);
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
   bool isRestApiHardened() const noexcept;
   bool canAccessHardenedApi() const noexcept;

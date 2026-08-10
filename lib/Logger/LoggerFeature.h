@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -46,30 +45,22 @@ class LoggerFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() { return "Logger"; }
 
-  LoggerFeature(application_features::ApplicationServer& server, bool threaded)
-      : LoggerFeature(server, typeid(LoggerFeature), threaded) {
-    startsAfter<ShellColorsFeature>();
-    startsAfter<VersionFeature>();
-  }
+  LoggerFeature(application_features::ApplicationServer& server, bool threaded,
+                LoggerOptions options);
+  LoggerFeature(application_features::ApplicationServer& server, bool threaded);
 
   ~LoggerFeature();
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void loadOptions(std::shared_ptr<options::ProgramOptions>,
-                   char const* binaryPath) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void unprepare() override final;
 
   void disableThreaded() noexcept { _threaded = false; }
   void setSupervisor(bool supervisor) noexcept { _supervisor = supervisor; }
 
-  bool isAPIEnabled() const noexcept { return _options.apiEnabled; }
-  bool onlySuperUser() const noexcept { return _options.apiSwitch == "jwt"; }
-
  private:
   LoggerFeature(application_features::ApplicationServer& server,
-                std::type_index registration, bool threaded);
+                std::type_index registration, bool threaded,
+                LoggerOptions options);
 
   LoggerOptions _options;
   bool _supervisor = false;

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TemporaryStorageFeature.h"
@@ -27,7 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryOptions.h"
-#include "StorageEngine/StorageEngineFeature.h"
+#include "RestServer/IDatabasePathProvider.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
@@ -38,8 +37,7 @@
 #include "Basics/files.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
-#include "ProgramOptions/Parameters.h"
-#include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/TemporaryStorageOptionsProvider.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RocksDBEngine/RocksDBTempStorage.h"
 
@@ -111,10 +109,49 @@ void StorageUsageTracker::decreaseUsage(std::uint64_t value) noexcept {
 }
 
 TemporaryStorageFeature::TemporaryStorageFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature{server, *this}, _cleanedUpDirectory(false) {
-  startsAfter<StorageEngineFeature>();
+    application_features::ApplicationServer& server,
+    IDatabasePathProvider& databasePathProvider)
+    : TemporaryStorageFeature(server, databasePathProvider,
+                              TemporaryStorageFeatureOptions{}) {}
+
+TemporaryStorageFeature::TemporaryStorageFeature(
+    application_features::ApplicationServer& server,
+    IDatabasePathProvider& databasePathProvider,
+    TemporaryStorageFeatureOptions options)
+    : ApplicationFeature{server, *this},
+      _options(std::move(options)),
+      _cleanedUpDirectory(false),
+      _databasePathProvider(databasePathProvider) {
   startsAfter<RocksDBEngine>();
+  startsAfter<DatabasePathFeature>();
+
+  if (!canBeUsed() || ServerState::instance()->isAgent()) {
+    return;  // no basePath configured, or on agent (prepare() will clear it)
+  }
+
+  // replace $PID with current process id
+  _options.basePath = basics::StringUtils::replace(
+      _options.basePath, "$PID", std::to_string(Thread::currentProcessId()));
+
+  // configure defaults for query options
+  aql::QueryOptions::defaultSpillOverThresholdNumRows =
+      _options.spillOverThresholdNumRows;
+  aql::QueryOptions::defaultSpillOverThresholdMemoryUsage =
+      _options.spillOverThresholdMemoryUsage;
+
+  // Verify that the intermediate-results path is not identical to or inside
+  // the database directory.
+  auto const currentDir = std::filesystem::current_path();
+  _options.basePath = normalizePath(currentDir, _options.basePath);
+  std::string dbPath =
+      normalizePath(currentDir, _databasePathProvider.directory());
+  if (dbPath == _options.basePath || _options.basePath.starts_with(dbPath)) {
+    LOG_TOPIC("58b44", FATAL, Logger::STARTUP)
+        << "path for intermediate results ('" << _options.basePath
+        << "') must not be identical to or inside the database directory ('"
+        << dbPath << "')";
+    FATAL_ERROR_EXIT();
+  }
 }
 
 TemporaryStorageFeature::~TemporaryStorageFeature() {
@@ -125,123 +162,6 @@ TemporaryStorageFeature::~TemporaryStorageFeature() {
     }
     _cleanedUpDirectory = true;
   }
-}
-
-void TemporaryStorageFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  options
-      ->addOption(
-          "--temp.intermediate-results-path",
-          "The path for storing ephemeral, intermediate results on disk "
-          "(empty = not used).",
-          new StringParameter(&_options.basePath),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Experimental))
-      .setIntroducedIn(31000)
-      .setLongDescription(R"(Queries can store intermediate and final results
-temporarily on disk if a specified threshold is exceeded, to decrease the memory
-usage. Specify a path to a directory for the temporary data to activate the
-spillover feature. The directory must not be located underneath the instance's
-database directory.
-
-The threshold value to start spilling data onto disk is either a number of rows
-produced by a query or an amount of memory used in bytes, which you can set as
-query options (`spillOverThresholdNumRows` and `spillOverThresholdMemoryUsage`).
-
-**Note**: This feature is experimental and is turned off by default.
-Also, the query results are still built up entirely in memory on Coordinators
-and single servers for non-streaming queries. To avoid the buildup of the entire
-query result in RAM, use a streaming query.)");
-
-  options
-      ->addOption("--temp.intermediate-results-capacity",
-                  "The maximum capacity (in bytes) to use for ephemeral, "
-                  "intermediate results on disk (0 = unlimited).",
-                  new UInt64Parameter(&_options.maxDiskCapacity),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Experimental))
-      .setIntroducedIn(31000);
-
-  options
-      ->addOption(
-          "--temp.intermediate-results-spillover-threshold-num-rows",
-          "The number of result rows after which a spillover from RAM to disk "
-          "happens for intermediate results (threshold per query executor).",
-          new SizeTParameter(&_options.spillOverThresholdNumRows),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Experimental))
-      .setIntroducedIn(31000);
-
-  options
-      ->addOption(
-          "--temp.intermediate-results-spillover-threshold-memory-usage",
-          "The memory usage threshold (in bytes) after which a spillover from "
-          "RAM to disk happens for intermediate results "
-          "(threshold per query executor).",
-          new SizeTParameter(&_options.spillOverThresholdMemoryUsage),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Experimental))
-      .setIntroducedIn(31000);
-
-#ifdef USE_ENTERPRISE
-  options
-      ->addOption("--temp.intermediate-results-encryption",
-                  "Encrypt ephemeral, intermediate results on disk.",
-                  new BooleanParameter(&_options.useEncryption),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Enterprise,
-                      arangodb::options::Flags::Experimental))
-      .setIntroducedIn(31000);
-
-  options
-      ->addOption(
-          "--temp.intermediate-results-encryption-hardware-acceleration",
-          "Use Intel intrinsics-based encryption, requiring a CPU with "
-          "the AES-NI instruction set. "
-          "If turned off, then OpenSSL is used, which may use "
-          "hardware-accelerated encryption, too.",
-          new BooleanParameter(&_options.allowHWAcceleration),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Enterprise,
-              arangodb::options::Flags::Experimental))
-      .setIntroducedIn(31000);
-#endif
-}
-
-void TemporaryStorageFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  if (!canBeUsed()) {
-    // feature not used. this is fine (TM)
-    return;
-  }
-
-  // replace $PID in basepath with current process id
-  _options.basePath = basics::StringUtils::replace(
-      _options.basePath, "$PID", std::to_string(Thread::currentProcessId()));
-
-  auto const currentDir = std::filesystem::current_path();
-
-  // get regular database path
-  std::string dbPath = normalizePath(
-      currentDir, server().getFeature<DatabasePathFeature>().directory());
-  std::string ourPath = normalizePath(currentDir, _options.basePath);
-
-  if (dbPath == ourPath || ourPath.starts_with(dbPath)) {
-    // if our path is the same as the database directory or inside it,
-    // we refuse to start
-    LOG_TOPIC("58b44", FATAL, Logger::STARTUP)
-        << "path for intermediate results ('" << ourPath
-        << "') must not be identical to or inside the database directory ('"
-        << dbPath << "')";
-    FATAL_ERROR_EXIT();
-  }
-
-  _options.basePath = ourPath;
-  // configure defaults for query options
-  aql::QueryOptions::defaultSpillOverThresholdNumRows =
-      _options.spillOverThresholdNumRows;
-  aql::QueryOptions::defaultSpillOverThresholdMemoryUsage =
-      _options.spillOverThresholdMemoryUsage;
 }
 
 void TemporaryStorageFeature::prepare() {

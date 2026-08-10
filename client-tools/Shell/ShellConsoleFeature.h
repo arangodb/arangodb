@@ -18,12 +18,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "ShellConsoleFeatureOptions.h"
 
 namespace arangodb {
 
@@ -34,33 +34,27 @@ class ShellConsoleFeature final
  public:
   static constexpr std::string_view name() noexcept { return "Console"; }
 
+  ShellConsoleFeature(application_features::ApplicationServer& server,
+                      ShellConsoleFeatureOptions options);
   explicit ShellConsoleFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
   void unprepare() override final;
 
-  bool quiet() const { return _quiet; }
-  void setQuiet(bool value) { _quiet = value; }
-  bool colors() const { return _colors; }
-  bool useHistory() const { return _useHistory; }
-  bool autoComplete() const { return _autoComplete; }
-  bool prettyPrint() const { return _prettyPrint; }
-  bool pager() const { return _pager; }
-  void setPager(bool value) { _pager = value; }
-  std::string const& pagerCommand() const { return _pagerCommand; }
-  std::string const& prompt() const { return _prompt; }
+  bool quiet() const { return _options.quiet; }
+  void setQuiet(bool value) { _options.quiet = value; }
+  bool colors() const { return _options.colors; }
+  bool useHistory() const { return _options.useHistory; }
+  bool autoComplete() const { return _options.autoComplete; }
+  bool prettyPrint() const { return _options.prettyPrint; }
+  bool pager() const { return _options.pager; }
+  void setPager(bool value) { _options.pager = value; }
+  std::string const& pagerCommand() const { return _options.pagerCommand; }
+  std::string const& prompt() const { return _options.prompt; }
 
  private:
-  bool _quiet;
-  bool _colors;
-  bool _useHistory;
-  bool _autoComplete;
-  bool _prettyPrint;
-  std::string _auditFile;
-  bool _pager;
-  std::string _pagerCommand;
-  std::string _prompt;
+  ShellConsoleFeatureOptions _options;
 
  public:
   void setPromptError(bool value) { _promptError = value; }

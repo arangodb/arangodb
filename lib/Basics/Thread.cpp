@@ -18,46 +18,35 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
-
-#include <errno.h>
-#include <signal.h>
-#include <chrono>
-#include <thread>
-
-#include "Basics/operating-system.h"
-#include "Basics/threads-posix.h"
-
-#ifdef TRI_HAVE_UNISTD_H
-#include <unistd.h>
-#endif
 
 #include "Thread.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ConditionVariable.h"
-#include "Basics/Exceptions.h"
-#include "Basics/ScopeGuard.h"
 #include "Basics/application-exit.h"
-#include "Basics/debugging.h"
+#include "Basics/ConditionVariable.h"
 #include "Basics/error.h"
-#include "Logger/LogMacros.h"
+#include "Basics/operating-system.h"
+#include "Basics/ScopeGuard.h"
+#include "Basics/threads-posix.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Logger/LogMacros.h"
 
 #ifdef TRI_HAVE_PROCESS_H
 #include <process.h>
+#endif
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
 #endif
 
 #ifdef TRI_HAVE_SYS_PRCTL_H
 #include <sys/prctl.h>
 #endif
 
-using namespace arangodb;
-using namespace arangodb::application_features;
-using namespace arangodb::basics;
+#include <cstring>
+
+namespace arangodb {
 
 namespace {
 
@@ -79,7 +68,7 @@ struct ThreadNumber {
 }  // namespace
 
 /// @brief local thread number
-static thread_local ::ThreadNumber LOCAL_THREAD_NUMBER{};
+static thread_local ThreadNumber LOCAL_THREAD_NUMBER{};
 static thread_local char const* LOCAL_THREAD_NAME = nullptr;
 
 ThreadNameFetcher::ThreadNameFetcher(TRI_tid_t id) noexcept {
@@ -193,11 +182,6 @@ std::string Thread::stringify(ThreadState state) {
   return "unknown";
 }
 
-/// @brief constructs a thread
-Thread::Thread(application_features::ApplicationServer&,
-               std::string const& name, bool deleteOnExit,
-               std::uint32_t terminationTimeout)
-    : Thread(name, deleteOnExit, terminationTimeout) {}
 Thread::Thread(std::string const& name, bool deleteOnExit,
                std::uint32_t terminationTimeout)
     : _threadStructInitialized(false),
@@ -281,7 +265,7 @@ bool Thread::isStopping() const noexcept {
 }
 
 /// @brief starts the thread
-bool Thread::start(ConditionVariable* finishedCondition) {
+bool Thread::start(basics::ConditionVariable* finishedCondition) {
   _finishedCondition = finishedCondition;
   ThreadState state = _state.load();
 
@@ -365,3 +349,5 @@ void Thread::releaseRef() noexcept {
     delete this;
   }
 }
+
+}  // namespace arangodb

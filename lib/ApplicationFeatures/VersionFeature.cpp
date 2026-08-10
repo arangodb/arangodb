@@ -18,50 +18,23 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationFeatures/GreetingsFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
-#include "ApplicationFeatures/VersionOptionsProvider.h"
-
-#include "ProgramOptions/ProgramOptions.h"
-#include "Rest/Version.h"
-
-#include <iostream>
-
-using namespace arangodb::rest;
-using namespace arangodb::options;
+#include "ApplicationFeatures/ShellColorsFeature.h"
 
 namespace arangodb {
 
-void VersionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  VersionOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
+VersionFeature::VersionFeature(application_features::ApplicationServer& server)
+    : VersionFeature(server, VersionFeatureOptions{}) {}
 
-void VersionFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
-  if (_options.printVersionJson) {
-    VPackBuilder builder;
-    {
-      VPackObjectBuilder ob(&builder);
-      Version::getVPack(builder);
+VersionFeature::VersionFeature(application_features::ApplicationServer& server,
+                               VersionFeatureOptions options)
+    : application_features::ApplicationFeature{server, *this},
+      _options(std::move(options)) {
+  setOptional(false);
 
-      builder.add("version", VPackValue(Version::getServerVersion()));
-    }
-
-    std::cout << builder.slice().toJson() << std::endl;
-    exit(EXIT_SUCCESS);
-  }
-
-  if (_options.printVersion) {
-    std::cout << Version::getServerVersion() << std::endl
-              << std::endl
-              << LGPLNotice << std::endl
-              << std::endl
-              << Version::getDetailed() << std::endl;
-    exit(EXIT_SUCCESS);
-  }
+  startsAfter<ShellColorsFeature>();
 }
 
 }  // namespace arangodb

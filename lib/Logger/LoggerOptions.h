@@ -37,7 +37,6 @@ struct LoggerOptions {
   std::string fileMode;
   std::string fileGroup;
   std::string timeFormatString;
-  std::string apiSwitch = "true";
   std::vector<std::string> structuredLogParams;
   uint32_t maxEntryLength = 128U * 1048576U;
   uint32_t maxQueuedLogMessages = 16384;
@@ -50,15 +49,11 @@ struct LoggerOptions {
   bool processId = true;
   bool threadId = true;
   bool threadName = false;
-  bool keepLogRotate = false;
   bool foregroundTty = false;
   bool forceDirect = false;
   bool showIds = true;
   bool showRole = false;
   bool logRequestParameters = true;
-
-  // Computed during validation
-  bool apiEnabled = true;
 
   LoggerOptions();
 };

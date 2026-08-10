@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -1127,6 +1126,7 @@ AqlValue functions::RTrim(ExpressionContext* expressionContext, AstNode const&,
 /// @brief function CONTAINS
 AqlValue functions::Contains(ExpressionContext* ctx, AstNode const&,
                              VPackFunctionParametersView parameters) {
+  static char const* AFN = "CONTAINS";
   auto* trx = &ctx->trx();
   auto const& vopts = trx->vpackOptions();
   AqlValue const& value =
@@ -1135,6 +1135,13 @@ AqlValue functions::Contains(ExpressionContext* ctx, AstNode const&,
       aql::functions::extractFunctionParameterValue(parameters, 1);
   AqlValue const& returnIndex =
       aql::functions::extractFunctionParameterValue(parameters, 2);
+
+  // CONTAINS is intended for string inputs. If either the value or the search
+  // argument is not a string, emit a warning and return null.
+  if (!value.isString() || !search.isString()) {
+    registerInvalidArgumentWarning(ctx, AFN);
+    return AqlValue(AqlValueHintNull());
+  }
 
   bool const willReturnIndex = returnIndex.toBoolean();
 

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -94,6 +93,7 @@
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/CheckVersionFeature.h"
 #include "RestServer/CpuUsageFeature.h"
+#include "RestServer/CrashHandlerFeature.h"
 #include "RestServer/DaemonFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -130,7 +130,6 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "Ssl/SslFeature.h"
-#include "StorageEngine/StorageEngineFeature.h"
 #include "Transaction/ManagerFeature.h"
 #include "VectorIndex/VectorIndexFeature.h"
 

@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -40,7 +38,6 @@ class ClusterInfo;
 class CollectionNameResolver;
 class DatabaseFeature;
 class LogicalCollection;
-class ReplicationApplier;
 class ReplicationFeature;
 class SingleCollectionTransaction;
 
@@ -76,7 +73,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief list of available commands
   //////////////////////////////////////////////////////////////////////////////
   static std::string const LoggerState;
-  static std::string const LoggerLast;
   static std::string const Batch;
   static std::string const Inventory;
   static std::string const Keys;
@@ -85,14 +81,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   static std::string const RestoreIndexes;
   static std::string const RestoreData;
   static std::string const RestoreView;
-  static std::string const Sync;
-  static std::string const MakeFollower;
-  static std::string const ServerId;
-  static std::string const ApplierConfig;
-  static std::string const ApplierStart;
-  static std::string const ApplierStop;
-  static std::string const ApplierState;
-  static std::string const ApplierStateAll;
   static std::string const ClusterInventory;
   static std::string const AddFollower;
   static std::string const RemoveFollower;
@@ -103,16 +91,18 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   ResultT<std::pair<std::string, bool>> forwardingTarget() override final;
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether the current command may be forwarded to a client-supplied
+  /// DBserver with the caller's authorization stripped. Only true for the
+  /// commands used by arangodump ("dump"/"batch").
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool isDBserverForwardingAllowed() const;
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief creates an error if called on a coordinator server
   //////////////////////////////////////////////////////////////////////////////
 
   bool isCoordinatorError();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief turn the server into a follower of another
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandMakeFollower();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief forward a command in the coordinator case
@@ -149,60 +139,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void handleCommandRestoreView();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief handle a server-id command
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandServerId();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief handle a sync command
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandSync();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the configuration of the the replication applier
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandApplierGetConfig();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief configure the replication applier
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandApplierSetConfig();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief start the replication applier
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandApplierStart();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief stop the replication applier
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandApplierStop();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the state of the replication applier
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandApplierGetState();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the state of the all replication applier
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandApplierGetStateAll();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief delete the replication applier state
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandApplierDeleteState();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add a follower of a shard to the list of followers
@@ -252,8 +188,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
 
   void handleCommandLoggerState();
 
-  void handleCommandLoggerLast();
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief rebuild the revision tree for a given collection, if allowed
   /// @response 204 No Content if all goes well
@@ -302,11 +236,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
 
   uint64_t determineChunkSize() const;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Get correct replication applier, based on global paramerter
-  //////////////////////////////////////////////////////////////////////////////
-  ReplicationApplier* getApplier(bool& global);
-
  protected:
   struct RevisionOperationContext {
     uint64_t batchId;
@@ -317,6 +246,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   };
 
   bool prepareRevisionOperation(RevisionOperationContext&);
+  ReplicationFeature& replicationFeature() const { return _replicationFeature; }
 
  private:
   bool prepareCollectionForRevisionOperation(RevisionOperationContext&);

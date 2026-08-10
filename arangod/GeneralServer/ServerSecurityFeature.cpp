@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -34,18 +33,14 @@ using namespace arangodb::options;
 
 ServerSecurityFeature::ServerSecurityFeature(
     application_features::ApplicationServer& server)
-    : ApplicationFeature{server, *this} {
+    : ServerSecurityFeature(server, ServerSecurityFeatureOptions{}) {}
+
+ServerSecurityFeature::ServerSecurityFeature(
+    application_features::ApplicationServer& server,
+    ServerSecurityFeatureOptions options)
+    : ApplicationFeature{server, *this}, _options(std::move(options)) {
   setOptional(false);
   startsAfter<application_features::GreetingsFeaturePhase>();
-}
-
-void ServerSecurityFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  options->addOption(
-      "--server.harden",
-      "Lock down REST APIs that reveal version information or server "
-      "internals for non-admin users.",
-      new BooleanParameter(&_options.hardenedRestApi));
 }
 
 bool ServerSecurityFeature::isRestApiHardened() const noexcept {

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBEngine/RocksDBVectorIndexBuilder.h"
@@ -859,8 +858,7 @@ Result VectorIndexBuilder::build(
 
   // Create RocksDBBuilderIndex wrapper
   auto buildIdx = std::make_shared<RocksDBBuilderIndex>(
-      indexPtr, numDocsHint, IndexFactory::kMaxParallelism,
-      _rcoll->statistics());
+      indexPtr, numDocsHint, IndexFactory::kMaxParallelism);
 
   _rcoll->swapIndex(indexPtr, buildIdx);
   auto swapGuard = ScopeGuard([&]() noexcept {

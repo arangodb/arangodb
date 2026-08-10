@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -114,11 +113,6 @@ class ApplicationFeature {
   // add the feature's options to the global list of options. this method will
   // be called regardless of whether to feature is enabled or disabled
   virtual void collectOptions(std::shared_ptr<options::ProgramOptions>);
-
-  // load options from somewhere. this method will only be called for enabled
-  // features
-  virtual void loadOptions(std::shared_ptr<options::ProgramOptions>,
-                           char const* binaryPath);
 
   // validate the feature's options. this method will only be called for active
   // features, after the ApplicationServer has determined which features should

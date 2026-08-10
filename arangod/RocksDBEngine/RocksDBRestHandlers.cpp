@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBRestHandlers.h"
@@ -28,11 +27,12 @@
 #include "RocksDBEngine/RocksDBRestCollectionHandler.h"
 #include "RocksDBEngine/RocksDBRestReplicationHandler.h"
 #include "RocksDBEngine/RocksDBRestWalHandler.h"
+#include "StorageEngine/StorageEngine.h"
 
 using namespace arangodb;
 
 void RocksDBRestHandlers::registerResources(
-    rest::RestHandlerFactory* handlerFactory) {
+    rest::RestHandlerFactory* handlerFactory, StorageEngine& engine) {
   handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::COLLECTION_PATH,
       RestHandlerCreator<RocksDBRestCollectionHandler>::createNoData, {1});
@@ -40,6 +40,7 @@ void RocksDBRestHandlers::registerResources(
       "/_api/replication",
       RestHandlerCreator<RocksDBRestReplicationHandler>::createNoData, {1});
   handlerFactory->addPrefixHandler(
-      "/_admin/wal", RestHandlerCreator<RocksDBRestWalHandler>::createNoData,
-      {1});
+      "/_admin/wal",
+      RestHandlerCreator<RocksDBRestWalHandler>::createData<StorageEngine*>,
+      {1}, &engine);
 }

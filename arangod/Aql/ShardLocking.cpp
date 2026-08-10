@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShardLocking.h"
@@ -31,13 +30,13 @@
 #include "Aql/ExecutionNode/IResearchViewNode.h"
 #include "Aql/ExecutionNode/JoinNode.h"
 #include "Aql/ExecutionNode/ModificationNode.h"
-#include "Aql/OptimizerRule.h"
 #include "Aql/Query.h"
 #include "Cluster/ClusterFeature.h"
 #include "Logger/LogMacros.h"
 #include "Metrics/Counter.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utilities/NameValidator.h"
+#include "VocBase/vocbase.h"
 
 #include <absl/strings/str_cat.h>
 

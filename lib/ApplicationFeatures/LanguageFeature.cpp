@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LanguageFeature.h"
@@ -115,13 +114,23 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-LanguageFeature::~LanguageFeature() = default;
+LanguageFeature::LanguageFeature(
+    application_features::ApplicationServer& server)
+    : LanguageFeature(server, LanguageFeatureOptions{}) {}
 
-void LanguageFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  LanguageOptionsProvider provider;
-  provider.declareOptions(options, _options);
+LanguageFeature::LanguageFeature(
+    application_features::ApplicationServer& server,
+    LanguageFeatureOptions options)
+    : application_features::ApplicationFeature{server, *this},
+      _options(std::move(options)),
+      _binaryPath(server.getBinaryPath()),
+      _locale(),
+      _langType(basics::LanguageType::INVALID) {
+  setOptional(false);
+  startsAfter<application_features::GreetingsFeaturePhase>();
 }
+
+LanguageFeature::~LanguageFeature() = default;
 
 std::string LanguageFeature::prepareIcu(std::string const& binaryPath,
                                         std::string const& binaryExecutionPath,

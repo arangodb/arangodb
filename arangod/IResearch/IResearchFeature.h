@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasily Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -28,7 +26,6 @@
 #include "Aql/AstNode.h"
 #include "IResearch/IResearchOptions.h"
 #include "Metrics/Fwd.h"
-#include "VocBase/voc-types.h"
 #include "resource_manager.hpp"
 #include "function2.hpp"
 
@@ -39,10 +36,11 @@
 #include <filesystem>
 
 namespace arangodb {
+struct Database;
 class DatabasePathFeature;
 struct IndexTypeFactory;
 namespace metrics {
-class MetricsFeature;
+struct IRegistry;
 }  // namespace metrics
 
 namespace aql {
@@ -98,9 +96,9 @@ inline bool isOffsetInfo(aql::AstNode const& node) noexcept {
 }
 
 std::filesystem::path getPersistedPath(DatabasePathFeature const& dbPathFeature,
-                                       TRI_vocbase_t& database);
+                                       Database& database);
 
-void cleanupDatabase(TRI_vocbase_t& database);
+void cleanupDatabase(Database& database);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class IResearchFeature
@@ -110,7 +108,10 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   static constexpr std::string_view name() noexcept { return "ArangoSearch"; }
 
   explicit IResearchFeature(application_features::ApplicationServer& server,
-                            metrics::MetricsFeature& metrics);
+                            metrics::IRegistry& metricsRegistry,
+                            IResearchOptions options);
+  explicit IResearchFeature(application_features::ApplicationServer& server,
+                            metrics::IRegistry& metricsRegistry);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
   void prepare() final;

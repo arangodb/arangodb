@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Julia Puget
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
@@ -116,6 +115,7 @@ const wordListForKeys = [
 
 const messages = [
   "creating data",
+  "waiting for database to settle",
   "cleaning up"
 ];
 
@@ -154,13 +154,19 @@ function httpRequestsFuzzerTestSuite() {
         throw("http_fuzz: failed to create testdatas:\n" + fs.read(logFile).replace(rx, '\n'));
       }
 
+      rc = ct.run.rtaMakedata(IM.options, IM, 2, messages[1], logFile, moreargv);
+      if (!rc.status) {
+        let rx = new RegExp(/\\n/g);
+        throw("http_fuzz: failed to wait for testdatas:\n" + fs.read(logFile).replace(rx, '\n'));
+      }
+
       IM.rememberConnection();
       gatherResources();
     },
     tearDownAll: function () {
       let moreargv = ['--testFoxx', 'false'];
       let logFile = fs.join(fs.getTempPath(), `rta_out_clean.log`);
-      let rc = ct.run.rtaMakedata(IM.options, IM, 2, messages[1], logFile, moreargv);
+      let rc = ct.run.rtaMakedata(IM.options, IM, 3, messages[2], logFile, moreargv);
       if (!rc.status) {
         let rx = new RegExp(/\\n/g);
         print("http_fuzz: failed to clear testdatas:\n" + fs.read(logFile).replace(rx, '\n'));

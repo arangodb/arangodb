@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBMetricsListener.h"
@@ -26,7 +25,7 @@
 #include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
 #include "Metrics/CounterBuilder.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 
 DECLARE_COUNTER(
     arangodb_rocksdb_write_stalls_total,
@@ -37,10 +36,9 @@ DECLARE_COUNTER(arangodb_rocksdb_write_stops_total,
 namespace arangodb {
 
 /// @brief Setup the object, clearing variables, but do no real work
-RocksDBMetricsListener::RocksDBMetricsListener(
-    metrics::MetricsFeature& metricsFeature)
-    : _writeStalls(metricsFeature.add(arangodb_rocksdb_write_stalls_total{})),
-      _writeStops(metricsFeature.add(arangodb_rocksdb_write_stops_total{})) {}
+RocksDBMetricsListener::RocksDBMetricsListener(metrics::IRegistry& metrics)
+    : _writeStalls(metrics.add(arangodb_rocksdb_write_stalls_total{})),
+      _writeStops(metrics.add(arangodb_rocksdb_write_stops_total{})) {}
 
 void RocksDBMetricsListener::OnFlushBegin(rocksdb::DB*,
                                           rocksdb::FlushJobInfo const& info) {

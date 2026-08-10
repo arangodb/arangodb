@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -32,6 +31,8 @@
 namespace arangodb::replication2::replicated_log {
 
 struct ReplicatedLogMetrics {
+  explicit ReplicatedLogMetrics(metrics::IRegistry& metricsRegistry);
+
   metrics::Gauge<uint64_t>* replicatedLogNumber{nullptr};
   metrics::Histogram<metrics::LogScale<std::uint64_t>>*
       replicatedLogAppendEntriesRttUs{nullptr};
@@ -63,17 +64,6 @@ struct ReplicatedLogMetrics {
   metrics::Counter* replicatedLogNumberMetaEntries{nullptr};
   // TODO This metric currently isn't populated
   metrics::Counter* replicatedLogNumberCompactedEntries{nullptr};
-};
-
-template<bool Mock>
-struct ReplicatedLogMetricsIndirect : ReplicatedLogMetrics {
-  explicit ReplicatedLogMetricsIndirect(
-      metrics::MetricsFeature* metricsFeature);
-
- private:
-  template<typename Builder>
-  static auto createMetric(metrics::MetricsFeature* metricsFeature) ->
-      typename Builder::MetricT*;
 };
 
 }  // namespace arangodb::replication2::replicated_log

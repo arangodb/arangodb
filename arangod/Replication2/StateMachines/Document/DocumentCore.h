@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -28,15 +27,13 @@
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
-struct TRI_vocbase_t;
-
 namespace arangodb::replication2::replicated_state::document {
 
 struct IDocumentStateShardHandler;
 
 struct DocumentCore {
   explicit DocumentCore(
-      TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
+      Database& vocbase, GlobalLogIdentifier gid,
       DocumentCoreParameters coreParameters,
       std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory,
       LoggerContext loggerContext);
@@ -44,11 +41,11 @@ struct DocumentCore {
   GlobalLogIdentifier const gid;
   LoggerContext const loggerContext;
 
-  auto getVocbase() -> TRI_vocbase_t&;
+  auto getVocbase() -> Database&;
   void drop() noexcept;
 
  private:
-  TRI_vocbase_t& _vocbase;
+  Database& _vocbase;
   DocumentCoreParameters _params;
   std::shared_ptr<IDocumentStateShardHandler> _shardHandler;
 };

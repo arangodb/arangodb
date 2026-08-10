@@ -18,12 +18,10 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestServer/FortuneFeature.h"
 
-#include "RestServer/FortuneOptionsProvider.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "RestServer/BootstrapFeature.h"
 #include "Logger/LogMacros.h"
@@ -67,13 +65,12 @@ static char const* cookies[] = {
 }  // namespace
 
 FortuneFeature::FortuneFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature{server, *this} {
-  startsAfter<BootstrapFeature>();
-}
+    : FortuneFeature(server, FortuneFeatureOptions{}) {}
 
-void FortuneFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  arangodb::fortune::FortuneOptionsProvider provider;
-  provider.declareOptions(options, _options);
+FortuneFeature::FortuneFeature(application_features::ApplicationServer& server,
+                               FortuneFeatureOptions options)
+    : ApplicationFeature{server, *this}, _options(std::move(options)) {
+  startsAfter<BootstrapFeature>();
 }
 
 void FortuneFeature::start() {

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LogBufferFeature.h"
@@ -32,7 +31,7 @@
 #include "Logger/LoggerFeature.h"
 #include "Logger/Logger.h"
 #include "Metrics/CounterBuilder.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/LogBufferOptionsProvider.h"
 
@@ -159,12 +158,12 @@ class LogAppenderRingBuffer final : public LogAppender {
 /// in our metrics
 class LogAppenderMetricsCounter final : public LogAppender {
  public:
-  LogAppenderMetricsCounter(metrics::MetricsFeature& metrics)
+  LogAppenderMetricsCounter(metrics::IRegistry& metricsRegistry)
       : LogAppender(),
-        _warningsCounter(metrics.add(arangodb_logger_warnings_total{})),
-        _errorsCounter(metrics.add(arangodb_logger_errors_total{})),
+        _warningsCounter(metricsRegistry.add(arangodb_logger_warnings_total{})),
+        _errorsCounter(metricsRegistry.add(arangodb_logger_errors_total{})),
         _droppedMessagesCounter(
-            metrics.add(arangodb_logger_messages_dropped_total{})) {}
+            metricsRegistry.add(arangodb_logger_messages_dropped_total{})) {}
 
   void logMessage(LogMessage const& message) override {
     // only handle WARN and ERR log messages
@@ -187,12 +186,18 @@ class LogAppenderMetricsCounter final : public LogAppender {
 
 LogBufferFeature::LogBufferFeature(
     application_features::ApplicationServer& server,
-    metrics::MetricsFeature& metrics)
-    : ApplicationFeature{server, *this} {
+    metrics::IRegistry& metricsRegistry)
+    : LogBufferFeature(server, metricsRegistry, LogBufferFeatureOptions{}) {}
+
+LogBufferFeature::LogBufferFeature(
+    application_features::ApplicationServer& server,
+    metrics::IRegistry& metricsRegistry, LogBufferFeatureOptions options)
+    : ApplicationFeature{server, *this}, _options(std::move(options)) {
   setOptional(true);
   startsAfter<LoggerFeature>();
 
-  _metricsCounter = std::make_shared<LogAppenderMetricsCounter>(metrics);
+  _metricsCounter =
+      std::make_shared<LogAppenderMetricsCounter>(metricsRegistry);
 
   Logger::addGlobalAppender(Logger::defaultLogGroup(), _metricsCounter);
 
@@ -200,12 +205,6 @@ LogBufferFeature::LogBufferFeature(
     std::static_pointer_cast<LogAppenderMetricsCounter>(mc)
         ->trackDroppedMessage();
   });
-}
-
-void LogBufferFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  LogBufferOptionsProvider provider;
-  provider.declareOptions(options, _options);
 }
 
 void LogBufferFeature::prepare() {

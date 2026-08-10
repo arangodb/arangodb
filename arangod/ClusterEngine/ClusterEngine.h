@@ -18,12 +18,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "ClusterEngine/Common.h"
+#include "Metrics/IRegistry.h"
 #include "StorageEngine/StorageEngine.h"
 
 #include <velocypack/Builder.h>
@@ -38,7 +38,8 @@ class ClusterEngine final : public StorageEngine {
   static constexpr std::string_view name() noexcept { return "ClusterEngine"; }
 
   // create the storage engine
-  explicit ClusterEngine(application_features::ApplicationServer& server);
+  explicit ClusterEngine(application_features::ApplicationServer& server,
+                         metrics::IRegistry& metrics);
   ~ClusterEngine();
 
   void setActualEngine(StorageEngine* e);
@@ -64,8 +65,6 @@ class ClusterEngine final : public StorageEngine {
 
   HealthData healthCheck() override;
 
-  std::unique_ptr<transaction::Manager> createTransactionManager(
-      transaction::ManagerFeature&) override;
   std::shared_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TransactionId tid,
       transaction::Options const& options,
@@ -127,10 +126,6 @@ class ClusterEngine final : public StorageEngine {
   }
   Result createLoggerState(TRI_vocbase_t* vocbase,
                            velocypack::Builder& builder) override {
-    return {TRI_ERROR_NOT_IMPLEMENTED};
-  }
-  Result lastLogger(TRI_vocbase_t& vocbase, uint64_t tickStart,
-                    uint64_t tickEnd, velocypack::Builder& builder) override {
     return {TRI_ERROR_NOT_IMPLEMENTED};
   }
   WalAccess const* walAccess() const override {
@@ -230,6 +225,7 @@ class ClusterEngine final : public StorageEngine {
 
  private:
   ClusterFeature& _clusterFeature;
+  metrics::IRegistry& _metrics;
   /// path to arangodb data dir
   std::string _basePath;
   StorageEngine* _actualEngine;

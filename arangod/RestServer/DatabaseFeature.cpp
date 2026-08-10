@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DatabaseFeature.h"
@@ -32,7 +30,6 @@
 #include "Aql/QueryPlanCache.h"
 #include "Aql/QueryRegistry.h"
 #include "Auth/UserManager.h"
-#include "Basics/FeatureFlags.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
@@ -50,11 +47,10 @@
 #include "Logger/LoggerStream.h"
 #include "Metrics/MetricsFeature.h"
 #include "Metrics/Gauge.h"
+#include "Metrics/IRegistry.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
-#include "Replication2/Version.h"
-#include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/IOHeartbeatThread.h"
@@ -63,7 +59,6 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "StorageEngine/StorageEngineFeature.h"
 #include "Transaction/OperationOrigin.h"
 #include "Utilities/NameValidator.h"
 #include "Utils/CollectionNameResolver.h"
@@ -258,7 +253,12 @@ void DatabaseManagerThread::run() {
 
 DatabaseFeature::DatabaseFeature(
     application_features::ApplicationServer& server)
-    : ApplicationFeature{server, *this} {
+    : DatabaseFeature(server, DatabaseFeatureOptions{}) {}
+
+DatabaseFeature::DatabaseFeature(
+    application_features::ApplicationServer& server,
+    DatabaseFeatureOptions options)
+    : ApplicationFeature{server, *this}, _options(std::move(options)) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 
@@ -267,7 +267,6 @@ DatabaseFeature::DatabaseFeature(
   startsAfter<ClusterEngine>();
   startsAfter<RocksDBEngine>();
   startsAfter<InitDatabaseFeature>();
-  startsAfter<StorageEngineFeature>();
   startsAfter<metrics::MetricsFeature>();
 }
 
@@ -292,8 +291,8 @@ void DatabaseFeature::validateOptions(
 
 void DatabaseFeature::initCalculationVocbase() {
   calculationVocbase = std::make_unique<TRI_vocbase_t>(
-      createExpressionVocbaseInfo(server()), engine(), versionTracker(),
-      extendedNames(), /*isInternal*/ true);
+      createExpressionVocbaseInfo(server()), engine(), *this,
+      /*isInternal*/ true);
 }
 
 void DatabaseFeature::start() {
@@ -692,7 +691,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
 
   result = vocbase.release();
 
-  versionTracker().track("create database");
+  notifyDdlChange("create database");
 
   // Update metadata metrics on single server only after successful creation
   if (res.ok() && ServerState::instance()->isSingleServer()) {
@@ -789,7 +788,7 @@ ErrorCode DatabaseFeature::dropDatabase(std::string_view name) {
   // must not use the database after here, as it may now be
   // deleted by the DatabaseManagerThread!
 
-  versionTracker().track("drop database");
+  notifyDdlChange("drop database");
 
   // Update metadata metrics on single server only after successful drop
   if (res == TRI_ERROR_NO_ERROR && ServerState::instance()->isSingleServer()) {
@@ -1211,10 +1210,11 @@ void DatabaseFeature::closeDroppedDatabases() {
 }
 
 DatabaseFeature::MetadataMetrics::MetadataMetrics(
-    metrics::MetricsFeature& metrics)
+    metrics::IRegistry& metricsRegistry)
     : numberOfCollections(
-          metrics.add(arangodb_metadata_number_of_collections{})),
-      numberOfDatabases(metrics.add(arangodb_metadata_number_of_databases{})) {
+          metricsRegistry.add(arangodb_metadata_number_of_collections{})),
+      numberOfDatabases(
+          metricsRegistry.add(arangodb_metadata_number_of_databases{})) {
   TRI_ASSERT(ServerState::instance()->isSingleServer())
       << "DatabaseFeature::MetadataMetrics should be exposed only on a single "
          "server";

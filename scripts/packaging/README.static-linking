@@ -1,0 +1,27 @@
+Instructions to relink the published static executables
+=======================================================
+
+With this archive you can relink the static executables published by
+ArangoDB against your version of the LGPL libraries we link against.
+After extracting the archive in an empty directory, you will have
+all the needed object files (.a and .o files). The scripts directory
+has an example script for linking.
+
+This has been tested on Ubuntu 24.04, since you need glibc in version 
+at least 2.39. Install the following packages as tools:
+
+    apt install build-essential clang-16 lld-16 liburing-dev
+
+Then run the script `scripts/link_executables.sh` and you will find
+the following executables in the `build/bin` directory:
+
+  - arangod
+  - arangobench
+  - arangodump
+  - arangorestore
+  - arangosh
+  - arangovpack
+  - arangoexport
+  - arangoimport
+  - arangobackup
+

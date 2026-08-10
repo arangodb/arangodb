@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -26,10 +25,9 @@
 #include "Replication/ReplicationApplier.h"
 #include "VocBase/voc-types.h"
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
 
+struct Database;
 class StorageEngine;
 
 /// @brief replication applier for a single database
@@ -38,11 +36,10 @@ class DatabaseReplicationApplier final : public ReplicationApplier {
   friend class RestReplicationHandler;
 
  public:
-  explicit DatabaseReplicationApplier(TRI_vocbase_t& vocbase);
+  explicit DatabaseReplicationApplier(Database& vocbase);
 
   DatabaseReplicationApplier(
-      ReplicationApplierConfiguration const& configuration,
-      TRI_vocbase_t& vocbase);
+      ReplicationApplierConfiguration const& configuration, Database& vocbase);
 
   ~DatabaseReplicationApplier();
 
@@ -64,11 +61,10 @@ class DatabaseReplicationApplier final : public ReplicationApplier {
 
   /// @brief factory function for creating a database-specific replication
   /// applier
-  static DatabaseReplicationApplier* create(TRI_vocbase_t& vocbase);
+  static DatabaseReplicationApplier* create(Database& vocbase);
 
   /// @brief load a persisted configuration for the applier
-  static ReplicationApplierConfiguration loadConfiguration(
-      TRI_vocbase_t& vocbase);
+  static ReplicationApplierConfiguration loadConfiguration(Database& vocbase);
 
   std::shared_ptr<InitialSyncer> buildInitialSyncer() const override;
   std::shared_ptr<TailingSyncer> buildTailingSyncer(
@@ -78,7 +74,7 @@ class DatabaseReplicationApplier final : public ReplicationApplier {
   std::string getStateFilename() const override;
 
  private:
-  TRI_vocbase_t& _vocbase;
+  Database& _vocbase;
 };
 
 }  // namespace arangodb

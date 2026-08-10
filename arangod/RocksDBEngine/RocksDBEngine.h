@@ -18,17 +18,18 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
+
+#include "RocksDBEngine/RocksDBEngineOptions.h"
 
 #include <chrono>
 #include <deque>
 #include <map>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -37,9 +38,19 @@
 
 #include "Basics/ReadWriteLock.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Cache/CacheManagerFeature.h"
 #include "Containers/FlatHashSet.h"
 #include "Metrics/Fwd.h"
+#include "ISortingPolicy.h"
+#include "RocksDBEngine/RocksDBReadWriteMetrics.h"
+#include "Cache/ICacheManagerProvider.h"
+#include "Metrics/IRegistry.h"
+#include "Replication2/ReplicatedLog/IReplicatedLogProvider.h"
+#include "RestServer/IDatabasePathProvider.h"
+#include "RestServer/IDatabaseProvider.h"
+#include "RestServer/IDumpLimitsProvider.h"
+#include "RestServer/IFlushControl.h"
+#include "RocksDBEngine/IIndexCacheRefill.h"
+#include "VectorIndex/IVectorIndexProvider.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/Identifiers/DataSourceId.h"
@@ -74,17 +85,10 @@ struct WalManager;
 }
 }  // namespace replication2::storage
 
-class AgencyFeature;
-class CacheManagerFeature;
-class DatabasePathFeature;
-class DumpLimitsFeature;
-class FlushFeature;
 class PhysicalCollection;
-class ReplicatedLogFeature;
 class RocksDBBackgroundErrorListener;
 class RocksDBBackgroundThread;
 class RocksDBDumpManager;
-class RocksDBIndexCacheRefillFeature;
 class RocksDBKey;
 class RocksDBLogValue;
 class RocksDBRecoveryHelper;
@@ -94,10 +98,8 @@ class RocksDBSettingsManager;
 class RocksDBSyncThread;
 class RocksDBThrottle;  // breaks tons if RocksDBThrottle.h included here
 class RocksDBWalAccess;
-class SchedulerFeature;
 class TransactionCollection;
 class TransactionState;
-class VectorIndexFeature;
 
 namespace rest {
 class RestHandlerFactory;
@@ -108,6 +110,7 @@ struct Options;
 }  // namespace transaction
 
 class RocksDBEngine;  // forward
+struct ISchedulerProvider;
 struct RocksDBOptionsProvider;
 
 /// @brief helper class to make file-purging thread-safe
@@ -172,38 +175,41 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   // create the storage engine
   RocksDBEngine(application_features::ApplicationServer& server,
                 RocksDBOptionsProvider& optionsProvider,
-                metrics::MetricsFeature& metrics,
-                DatabasePathFeature const& databasePathFeature,
-                VectorIndexFeature const& vectorIndexFeature,
-                FlushFeature& flushFeature,
-                DumpLimitsFeature const& dumpLimitsFeature,
-                SchedulerFeature& schedulerFeature,
-                ReplicatedLogFeature* replicatedLogFeature,
+                metrics::IRegistry& metrics,
+                IDatabasePathProvider const& databasePathProvider,
+                IVectorIndexProvider const& vectorIndexProvider,
+                IFlushControl& flushControl,
+                IDumpLimitsProvider const& dumpLimitsProvider,
+                replication2::IReplicatedLogProvider* replicatedLogProvider,
+                ISchedulerProvider const& schedulerProvider,
                 RocksDBRecoveryManager const& rocksDbRecoveryManager,
-                DatabaseFeature& databaseFeature,
-                RocksDBIndexCacheRefillFeature& rocksDbIndexCacheRefillFeature,
-                CacheManagerFeature& cacheManagerFeature,
-                AgencyFeature const& agencyFeature);
+                IDatabaseProvider& databaseProvider,
+                IIndexCacheRefill& indexCacheRefill,
+                ICacheManagerProvider& cacheManagerProvider,
+                ISortingPolicy const& sortingPolicy,
+                RocksDBEngineOptions options);
+  RocksDBEngine(application_features::ApplicationServer& server,
+                RocksDBOptionsProvider& optionsProvider,
+                metrics::IRegistry& metrics,
+                IDatabasePathProvider const& databasePathProvider,
+                IVectorIndexProvider const& vectorIndexProvider,
+                IFlushControl& flushControl,
+                IDumpLimitsProvider const& dumpLimitsProvider,
+                replication2::IReplicatedLogProvider* replicatedLogProvider,
+                ISchedulerProvider const& schedulerProvider,
+                RocksDBRecoveryManager const& rocksDbRecoveryManager,
+                IDatabaseProvider& databaseProvider,
+                IIndexCacheRefill& indexCacheRefill,
+                ICacheManagerProvider& cacheManagerProvider,
+                ISortingPolicy const& sortingPolicy);
   ~RocksDBEngine();
 
-  // Temporary, for easier refactoring:
-  template<typename Type>
-  auto getFeature() const -> Type&;
+  auto getDatabaseProvider() const -> IDatabaseProvider&;
 
-  auto getDatabaseFeature() const -> DatabaseFeature&;
-
-  auto getMetricsFeature() const -> metrics::MetricsFeature&;
-
-  auto getFlushFeature() const -> FlushFeature&;
+  auto getFlushControl() const -> IFlushControl&;
 
   // inherited from ApplicationFeature
   // ---------------------------------
-
-  // add the storage engine's specific options to the global list of options
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  // validate the storage engine's specific options
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
-
   // preparation phase for storage engine. can be used for internal setup.
   // the storage engine must not start any threads here or write any files
   void prepare() override;
@@ -215,8 +221,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   void flushOpenFilesIfRequired();
   HealthData healthCheck() override;
 
-  std::unique_ptr<transaction::Manager> createTransactionManager(
-      transaction::ManagerFeature&) override;
   std::shared_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TransactionId,
       transaction::Options const& options,
@@ -272,8 +276,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
                         std::string const& keysId) override;
   Result createLoggerState(TRI_vocbase_t* vocbase,
                            velocypack::Builder& builder) override;
-  Result lastLogger(TRI_vocbase_t& vocbase, uint64_t tickStart,
-                    uint64_t tickEnd, velocypack::Builder& builder) override;
   WalAccess const* walAccess() const override;
 
   // database, collection and index management
@@ -403,7 +405,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   void determinePrunableWalFiles(TRI_voc_tick_t minTickToKeep);
   void pruneWalFiles();
 
-  double pruneWaitTimeInitial() const { return _pruneWaitTimeInitial; }
+  double pruneWaitTimeInitial() const { return _options.pruneWaitTimeInitial; }
 
   // management methods for synchronizing with external persistent stores
   TRI_voc_tick_t currentTick() const override;
@@ -416,6 +418,10 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   bool autoRefillIndexCaches() const override;
   bool autoRefillIndexCachesOnFollowers() const override;
+
+  IIndexCacheRefill& getIndexCacheRefill() noexcept {
+    return _indexCacheRefill;
+  }
 
   void syncIndexCaches() override;
 
@@ -441,6 +447,10 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
     return _metricsIndexEstimatorMemoryUsage;
   }
 
+  ICacheManagerProvider& getCacheManagerProvider() noexcept {
+    return _cacheManagerProvider;
+  }
+
   std::string getSortingMethodFile() const;
 
   std::string getLanguageFile() const;
@@ -448,7 +458,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 #ifdef USE_ENTERPRISE
   bool encryptionKeyRotationEnabled() const;
 
-  bool isEncryptionEnabled() const;
+  bool isEncryptionEnabled() const override;
 
   std::string const& getEncryptionKey();
 
@@ -472,10 +482,10 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 #endif
 
   // returns whether sha files are created or not
-  bool getCreateShaFiles() const { return _createShaFiles; }
+  bool getCreateShaFiles() const { return _options.createShaFiles; }
 
   // enabled or disable sha file creation. Requires feature not be started.
-  void setCreateShaFiles(bool create) { _createShaFiles = create; }
+  void setCreateShaFiles(bool create) { _options.createShaFiles = create; }
 
   rocksdb::EncryptionProvider* encryptionProvider() const noexcept {
 #ifdef USE_ENTERPRISE
@@ -574,8 +584,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   [[nodiscard]] bool isVectorIndexEnabled() const;
 
 #ifdef USE_ENTERPRISE
-  void collectEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
-  void validateEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
   void prepareEnterprise();
 
   void validateJournalFiles() const;
@@ -596,8 +604,8 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   auto makeLogStorageMethods(replication2::LogId logId, uint64_t objectId,
                              std::uint64_t vocbaseId,
-                             ::rocksdb::ColumnFamilyHandle* const logCf,
-                             ::rocksdb::ColumnFamilyHandle* const metaCf)
+                             rocksdb::ColumnFamilyHandle* const logCf,
+                             rocksdb::ColumnFamilyHandle* const metaCf)
       -> std::unique_ptr<replication2::storage::IStorageEngineMethods>;
 
  public:
@@ -613,20 +621,21 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   }
 
  private:
-  DatabasePathFeature const& _databasePathFeature;
-  VectorIndexFeature const& _vectorIndexFeature;
-  FlushFeature& _flushFeature;
-  DumpLimitsFeature const& _dumpLimitsFeature;
-  SchedulerFeature& _schedulerFeature;
-  ReplicatedLogFeature* _replicatedLogFeature;
+  IDatabasePathProvider const& _databasePathProvider;
+  IVectorIndexProvider const& _vectorIndexProvider;
+  IFlushControl& _flushControl;
+  IDumpLimitsProvider const& _dumpLimitsProvider;
+  replication2::IReplicatedLogProvider* _replicatedLogProvider;
+  ISchedulerProvider const& _schedulerProvider;
   RocksDBRecoveryManager const& _rocksDbRecoveryManager;
-  DatabaseFeature& _databaseFeature;
-  RocksDBIndexCacheRefillFeature& _rocksDbIndexCacheRefillFeature;
-  CacheManagerFeature& _cacheManagerFeature;
-  AgencyFeature const& _agencyFeature;
+  IIndexCacheRefill& _indexCacheRefill;
+  ICacheManagerProvider& _cacheManagerProvider;
+  ISortingPolicy const& _sortingPolicy;
   RocksDBOptionsProvider& _optionsProvider;
 
-  metrics::MetricsFeature& _metrics;
+  metrics::IRegistry& _metrics;
+  // only set if startup option `--server.export-read-write-metrics` is enabled
+  std::optional<RocksDBReadWriteMetrics> _readWriteMetrics;
 
   /// single rocksdb database used in this storage engine
   rocksdb::TransactionDB* _db;
@@ -648,14 +657,8 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   /// Background thread handling garbage collection etc
   std::unique_ptr<RocksDBBackgroundThread> _backgroundThread;
-  uint64_t _maxTransactionSize;       // maximum allowed size for a transaction
-  uint64_t _intermediateCommitSize;   // maximum size for a
-                                      // transaction before an
-                                      // intermediate commit is performed
-  uint64_t _intermediateCommitCount;  // limit of transaction count
-                                      // for intermediate commit
 
-  uint64_t _maxParallelCompactions;
+  RocksDBEngineOptions _options;
 
   // hook-ins for recovery process
   static std::vector<std::shared_ptr<RocksDBRecoveryHelper>> _recoveryHelpers;
@@ -674,16 +677,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   /// configured size
   std::unordered_map<std::string, double> _prunableWalFiles;
 
-  // number of seconds to wait before an obsolete WAL file is actually pruned
-  double _pruneWaitTime;
-
-  // number of seconds to wait initially after server start before WAL file
-  // deletion kicks in
-  double _pruneWaitTimeInitial;
-
-  /// @brief maximum total size (in bytes) of archived WAL files
-  uint64_t _maxWalArchiveSizeLimit;
-
   // do not release walfiles containing writes later than this
   TRI_voc_tick_t _releasedTick;
 
@@ -691,39 +684,9 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   /// note: this is a nullptr if automatic syncing is turned off!
   std::unique_ptr<RocksDBSyncThread> _syncThread;
 
-  // WAL sync interval, specified in milliseconds by end user, but uses
-  // microseconds internally
-  uint64_t _syncInterval;
-
-  // WAL sync delay threshold. Any WAL disk sync longer ago than this value
-  // will trigger a warning (in milliseconds)
-  uint64_t _syncDelayThreshold;
-
-  /// @brief minimum required percentage of free disk space for considering the
-  /// server "healthy". this is expressed as a floating point value between 0
-  /// and 1! if set to 0.0, the % amount of free disk is ignored in checks.
-  double _requiredDiskFreePercentage;
-
-  /// @brief minimum number of free bytes on disk for considering the server
-  /// healthy. if set to 0, the number of free bytes on disk is ignored in
-  /// checks.
-  uint64_t _requiredDiskFreeBytes;
-
-  // use write-throttling
-  bool _useThrottle;
-
   /// @brief whether or not to use _releasedTick when determining the WAL files
   /// to prune
   bool _useReleasedTick;
-
-  /// @brief activate rocksdb's debug logging
-  bool _debugLogging;
-
-  /// @brief whether or not to verify the sst files present in the db path
-  bool _verifySst;
-
-  /// @brief activate generation of SHA256 files for .sst and .blob files
-  bool _createShaFiles;
 
   /// @brief whether or not the last health check was successful.
   /// this is used to determine when to execute the potentially expensive
@@ -778,25 +741,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   containers::FlatHashSet<rocksdb::ColumnFamilyHandle*>
       _runningCompactionsColumnFamilies;
 
-  // frequency for throttle in milliseconds between iterations
-  uint64_t _throttleFrequency = 1000;
-
-  // number of historic data slots to keep around for throttle
-  uint64_t _throttleSlots = 120;
-  // adaptiveness factor for throttle
-  // following is a heuristic value, determined by trial and error.
-  // its job is slow down the rate of change in the current throttle.
-  // we do not want sudden changes in one or two intervals to swing
-  // the throttle value wildly. the goal is a nice, even throttle value.
-  uint64_t _throttleScalingFactor = 17;
-  // max write rate enforced by throttle
-  uint64_t _throttleMaxWriteRate = 0;
-  // trigger point where level-0 file is considered "too many pending"
-  // (from original Google leveldb db/dbformat.h)
-  uint64_t _throttleSlowdownWritesTrigger = 8;
-  // Lower bound for computed write bandwidth of throttle:
-  uint64_t _throttleLowerBoundBps = 10 * 1024 * 1024;
-
   // sequence number from which WAL recovery was started. used only
   // for testing
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -805,13 +749,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   // last point in time when an auto-flush happened
   std::chrono::steady_clock::time_point _autoFlushLastExecuted;
-  // interval (in s) in which auto-flushing is tried
-  double _autoFlushCheckInterval;
-  // minimum number of live WAL files that need to be present to trigger
-  // an auto-flush
-  uint64_t _autoFlushMinWalFiles;
-
-  bool _forceLittleEndianKeys;  // force new database to use old format
 
   metrics::Gauge<uint64_t>& _metricsIndexEstimatorMemoryUsage;
   metrics::Gauge<uint64_t>& _metricsWalReleasedTickFlush;
@@ -856,9 +793,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   std::unique_ptr<RocksDBDumpManager> _dumpManager;
 
   std::shared_ptr<replication2::storage::wal::WalManager> _walManager;
-
-  // For command line option to force legacy even for new databases.
-  bool _forceLegacySortingMethod;
 
   arangodb::basics::VelocyPackHelper::SortingMethod
       _sortingMethod;  // Detected at startup in the prepare method

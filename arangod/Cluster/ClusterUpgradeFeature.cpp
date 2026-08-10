@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Cluster/ClusterUpgradeFeature.h"
@@ -49,7 +48,14 @@ static std::string const upgradeExecutedByKey = "ClusterUpgradeExecutedBy";
 ClusterUpgradeFeature::ClusterUpgradeFeature(
     application_features::ApplicationServer& server,
     DatabaseFeature& databaseFeature)
+    : ClusterUpgradeFeature(server, databaseFeature,
+                            ClusterUpgradeFeatureOptions{}) {}
+
+ClusterUpgradeFeature::ClusterUpgradeFeature(
+    application_features::ApplicationServer& server,
+    DatabaseFeature& databaseFeature, ClusterUpgradeFeatureOptions options)
     : application_features::ApplicationFeature{server, *this},
+      _options(std::move(options)),
       _databaseFeature(databaseFeature) {
   startsAfter<application_features::FinalFeaturePhase>();
 }

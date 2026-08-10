@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Inspection/VPack.h"
@@ -147,9 +146,6 @@ struct DeferredPool final : network::ConnectionPool {
 
 auto requestActivitiesInRegistry()
     -> std::vector<network::RequestActivityData> {
-  // make sure that all dangling activities are gone
-  activities::registry.garbageCollect();
-
   auto snap = activities::registry.snapshot();
   if (!snap.ok()) {
     return std::vector<network::RequestActivityData>{};
@@ -171,8 +167,13 @@ auto requestActivitiesInRegistry()
 }  // namespace
 
 struct InternalRequestActivityTest : ::testing::Test {
+  static void SetUpTestSuite() { activities::registry.garbageCollectAll(); }
+  static void TearDownTestSuite() {
+    activities::registry.garbageCollectAll();
+    EXPECT_EQ(activities::registry.size(), 0);
+  }
+
   InternalRequestActivityTest() : server("CRDN_0001", false) {
-    activities::Registry::setCurrentlyExecutingActivity(activities::Root);
     server.addFeature<SchedulerFeature>(
         true, server.getFeature<metrics::MetricsFeature>(), sharedPRNG);
     server.startFeatures();
@@ -181,11 +182,6 @@ struct InternalRequestActivityTest : ::testing::Test {
             server.getFeature<metrics::MetricsFeature>(), "mock-network"),
         .clusterInfo = &server.getFeature<ClusterFeature>().clusterInfo(),
     });
-    activities::registry.garbageCollect();
-  }
-
-  ~InternalRequestActivityTest() override {
-    activities::registry.garbageCollect();
   }
 
   basics::SharedPRNG sharedPRNG;

@@ -33,7 +33,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void EndpointOptionsProvider::declareOptions(
+void EndpointOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, EndpointFeatureOptions& opts) {
   options
       ->addOption("--server.endpoint",
@@ -138,7 +138,7 @@ may also be silently truncated on some platforms (this happens inside the
 `listen` system call).)");
 }
 
-void EndpointOptionsProvider::validateOptions(
+void EndpointOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> /*options*/, EndpointFeatureOptions& opts) {
   if (opts.backlogSize > SOMAXCONN) {
     LOG_TOPIC("b4d44", WARN, arangodb::Logger::FIXME)

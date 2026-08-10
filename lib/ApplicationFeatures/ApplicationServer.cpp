@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <atomic>
@@ -152,6 +151,10 @@ void ApplicationServer::disableFeatures(std::span<const std::type_index> types,
                                         bool force) {
   for (std::type_index type : types) {
     auto it = _features.find(type);
+    // temporarily disabled while we are in the process of migrating features to
+    // the new program options processing which also means that features are
+    // created later.
+    // TRI_ASSERT(it != _features.end());
     if (it != _features.end()) {
       TRI_ASSERT(it->second != nullptr);
       if (force) {
@@ -190,12 +193,18 @@ void ApplicationServer::run(int argc, char* argv[]) {
   // seal the options
   _options->seal();
 
+  processOptions();
+
   // validate options of all features
   _state.store(State::IN_VALIDATE_OPTIONS, std::memory_order_release);
   reportServerProgress(State::IN_VALIDATE_OPTIONS);
   validateOptions();
 
+  addFeaturesWithOptionProvider();
+
   // setup and validate all feature dependencies
+  // This is needed to also add the feature coming from
+  // addFeaturesWithOptionProvider to the _orderedFeatures vector
   setupDependencies(true);
 
   // turn off all features that depend on other features that have been
@@ -373,7 +382,7 @@ void ApplicationServer::collectOptions() {
   apply(
       [this](ApplicationFeature& feature) {
         LOG_TOPIC("b2731", TRACE, Logger::STARTUP)
-            << feature.name() << "::loadOptions";
+            << feature.name() << "::collectOptions";
         reportFeatureProgress(_state.load(std::memory_order_relaxed),
                               feature.name());
         feature.collectOptions(_options);
@@ -418,15 +427,6 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
     }
     std::cout << "}\n";
     exit(EXIT_SUCCESS);
-  }
-
-  for (auto it = _orderedFeatures.begin(); it != _orderedFeatures.end(); ++it) {
-    ApplicationFeature& feature = (*it).get();
-    if (feature.isEnabled()) {
-      LOG_TOPIC("5c642", TRACE, Logger::STARTUP)
-          << feature.name() << "::loadOptions";
-      feature.loadOptions(_options, _binaryPath);
-    }
   }
 
   if (_dumpOptions) {

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -556,7 +555,7 @@ bool ClusterIndex::isVectorIndexReady() const noexcept {
 }
 
 vector::UserVectorIndexDefinition const&
-ClusterIndex::getVectorIndexDefinition() {
+ClusterIndex::getVectorIndexDefinition() const {
   TRI_ASSERT(_vectorIndexDefinition != nullptr);
   if (!_vectorIndexDefinition) {
     THROW_ARANGO_EXCEPTION_MESSAGE(

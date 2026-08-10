@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <errno.h>
@@ -62,7 +61,12 @@ namespace arangodb {
 
 PrivilegeFeature::PrivilegeFeature(
     application_features::ApplicationServer& server)
-    : ApplicationFeature{server, *this} {
+    : PrivilegeFeature(server, PrivilegeFeatureOptions{}) {}
+
+PrivilegeFeature::PrivilegeFeature(
+    application_features::ApplicationServer& server,
+    PrivilegeFeatureOptions options)
+    : ApplicationFeature{server, *this}, _options(std::move(options)) {
   setOptional(true);
   startsAfter<application_features::GreetingsFeaturePhase>();
 }

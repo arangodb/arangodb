@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TraverserOptions.h"
@@ -33,6 +32,7 @@
 #include "Basics/tryEmplaceHelper.h"
 #include "Graph/Cursors/DBServerEdgeCursor.h"
 #include "Graph/Cursors/DBServerIndexCursor.h"
+#include "Graph/WeightAttributeHelper.h"
 #include "Indexes/Index.h"
 
 #include <velocypack/Iterator.h>
@@ -41,48 +41,6 @@ using namespace arangodb;
 using namespace arangodb::graph;
 using namespace arangodb::traverser;
 using VPackHelper = arangodb::basics::VelocyPackHelper;
-
-namespace {
-
-std::vector<std::string> parseWeightAttribute(VPackSlice obj) {
-  VPackSlice weightAttribute = obj.get("weightAttribute");
-  if (weightAttribute.isString()) {
-    auto value = weightAttribute.stringView();
-    if (!value.empty()) {
-      return {std::string(value)};
-    }
-  } else if (weightAttribute.isArray()) {
-    std::vector<std::string> path;
-    path.reserve(weightAttribute.length());
-    for (VPackSlice part : VPackArrayIterator(weightAttribute)) {
-      if (!part.isString()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_BAD_PARAMETER,
-            "The options require weightAttribute to be a string or array of "
-            "strings");
-      }
-      auto value = part.stringView();
-      path.emplace_back(value.data(), value.size());
-    }
-    return path;
-  } else if (!weightAttribute.isNone()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        "The option require weightAttribute to be a string or array of "
-        "strings");
-  }
-  return {};
-}
-
-void addWeightAttribute(VPackBuilder& builder,
-                        std::vector<std::string> const& weightAttribute) {
-  VPackArrayBuilder guard(&builder, "weightAttribute");
-  for (auto const& part : weightAttribute) {
-    builder.add(VPackValue(part));
-  }
-}
-
-}  // namespace
 
 TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query)
     : BaseOptions(query),

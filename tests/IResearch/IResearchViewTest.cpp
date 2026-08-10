@@ -18,10 +18,9 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Metrics/MetricsFeature.h"
 #include "gtest/gtest.h"
 
 #include "analysis/token_attributes.hpp"
@@ -5302,9 +5301,8 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
              .ok()));
     ASSERT_TRUE((false == !logicalView));
     _engine.createView(vocbase, logicalView->id(),
-                       *logicalView);  // ensure link can find view
-    StorageEngineMock(server.server())
-        .registerView(vocbase, logicalView);  // ensure link can find view
+                       *logicalView);            // ensure link can find view
+    _engine.registerView(vocbase, logicalView);  // ensure link can find view
     auto* viewImpl =
         dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
     ASSERT_TRUE((nullptr != viewImpl));
@@ -5348,9 +5346,8 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
              .ok()));
     ASSERT_TRUE((false == !logicalView));
     _engine.createView(vocbase, logicalView->id(),
-                       *logicalView);  // ensure link can find view
-    StorageEngineMock(server.server())
-        .registerView(vocbase, logicalView);  // ensure link can find view
+                       *logicalView);            // ensure link can find view
+    _engine.registerView(vocbase, logicalView);  // ensure link can find view
     auto* viewImpl =
         dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
     ASSERT_TRUE((nullptr != viewImpl));

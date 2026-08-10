@@ -246,6 +246,30 @@ class Parser;
   return T_NONE_LIKE;
 }
 
+(?i:ALL[ \t\r\n]+!~)/[^(_a-zA-Z0-9] {
+  return T_ALL_REGEX_NON_MATCH;
+}
+
+(?i:ANY[ \t\r\n]+!~)/[^(_a-zA-Z0-9] {
+  return T_ANY_REGEX_NON_MATCH;
+}
+
+(?i:NONE[ \t\r\n]+!~)/[^(_a-zA-Z0-9] {
+  return T_NONE_REGEX_NON_MATCH;
+}
+
+(?i:ALL[ \t\r\n]+=~)/[^(_a-zA-Z0-9] {
+  return T_ALL_REGEX_MATCH;
+}
+
+(?i:ANY[ \t\r\n]+=~)/[^(_a-zA-Z0-9] {
+  return T_ANY_REGEX_MATCH;
+}
+
+(?i:NONE[ \t\r\n]+=~)/[^(_a-zA-Z0-9] {
+  return T_NONE_REGEX_MATCH;
+}
+
 (?i:ANY) {
   yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
   yylval->strval.length = yyleng;
@@ -380,6 +404,10 @@ class Parser;
 
 "||" {
   return T_OR;
+}
+
+"|" {
+  return T_PIPE;
 }
 
 "+" {

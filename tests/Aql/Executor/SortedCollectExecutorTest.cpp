@@ -18,11 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Goedderz
-/// @author Michael Hackstein
-/// @author Heiko Kernbach
-/// @author Jan Christoph Uhde
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/AqlItemBlockHelper.h"

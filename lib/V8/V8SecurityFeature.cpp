@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <stdlib.h>
@@ -53,7 +52,6 @@
 #include "ProgramOptions/Option.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "V8/V8SecurityOptionsProvider.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-globals.h"
 
@@ -89,14 +87,20 @@ auto optionToRegex(std::vector<std::string> values, std::string optionName,
 
 }  // namespace
 
-void V8SecurityFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  V8SecurityOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
+V8SecurityFeature::V8SecurityFeature(
+    application_features::ApplicationServer& server,
+    AllowListStrictness strictness)
+    : V8SecurityFeature(server, strictness, V8SecurityFeatureOptions{}) {}
 
-void V8SecurityFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> /*options*/) {
+V8SecurityFeature::V8SecurityFeature(
+    application_features::ApplicationServer& server,
+    AllowListStrictness strictness, V8SecurityFeatureOptions options)
+    : ApplicationFeature{server, *this},
+      _options(std::move(options)),
+      _strictness(strictness) {
+  setOptional(false);
+  startsAfter<TempFeature>();
+  startsAfter<V8PlatformFeature>();
   {
     if (_strictness == AllowListStrictness::NONSTRICT &&
         _options.startupOptionsAllowList.empty()) {
@@ -145,8 +149,7 @@ void V8SecurityFeature::validateOptions(
       _options.filesAllowList.emplace_back(".*");
     }
 
-    // file access (a denylist for file access does not exist (yet))
-    auto denyRegex = std::nullopt;
+    auto denyRegex = optionToRegex(_options.filesDenyList, "files", "deny");
     auto allowRegex = optionToRegex(_options.filesAllowList, "files", "allow");
 
     _files = DenyAllow(denyRegex, allowRegex);
@@ -163,6 +166,7 @@ void V8SecurityFeature::prepare() {
 void V8SecurityFeature::dumpAccessLists() const {
   LOG_TOPIC("2cafe", DEBUG, Logger::V8)
       << "files allowed by user:" << _options.filesAllowList
+      << ", files denied by user:" << _options.filesDenyList
       << ", internal read allow list:" << inspection::json(_internalReadAllow)
       << ", internal write allow list:" << inspection::json(_internalWriteAllow)
       << ", internal startup options allow list:"
@@ -237,9 +241,8 @@ bool V8SecurityFeature::shouldExposeEnvironmentVariable(
   return _environmentVariables.check(name) == DenyAllowResult::ALLOWED;
 }
 
-bool V8SecurityFeature::isAllowedToConnectToEndpoint(
-    v8::Isolate* isolate, std::string const& endpoint,
-    std::string const& originalEndpoint) const {
+bool V8SecurityFeature::isAllowedToConnectToUrl(v8::Isolate* isolate,
+                                                std::string const& url) const {
   TRI_GET_GLOBALS();
   TRI_ASSERT(v8g != nullptr);
   if (v8g->_securityContext.isInternal()) {
@@ -248,14 +251,8 @@ bool V8SecurityFeature::isAllowedToConnectToEndpoint(
     return true;
   }
 
-  // The distinction between endpoint and originalEndpoint is used
-  // in the context of redirects in JS_download: if accessing the original
-  // endpoint redirects, we check every redirect for permission too
-  auto endpointCheck = _endpoints.check(endpoint);
-  auto originalEndpointCheck = _endpoints.check(originalEndpoint);
-
-  return (endpointCheck == DenyAllowResult::ALLOWED) &&
-         (originalEndpointCheck == DenyAllowResult::ALLOWED);
+  auto urlCheck = _endpoints.check(url);
+  return (urlCheck == DenyAllowResult::ALLOWED);
 }
 
 bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -66,7 +65,8 @@ class HeartbeatThread : public ServerThread,
   HeartbeatThread(application_features::ApplicationServer&,
                   AgencyCallbackRegistry*, std::chrono::microseconds,
                   uint64_t maxFailsBeforeWarning,
-                  double noHeartbeatDelayBeforeShutdown);
+                  double noHeartbeatDelayBeforeShutdown,
+                  metrics::IRegistry& metricsRegistry);
   ~HeartbeatThread();
 
   //////////////////////////////////////////////////////////////////////////////

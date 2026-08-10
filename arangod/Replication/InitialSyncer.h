@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -32,8 +31,6 @@
 #include <velocypack/Slice.h>
 
 #include <mutex>
-
-struct TRI_vocbase_t;
 
 namespace arangodb {
 

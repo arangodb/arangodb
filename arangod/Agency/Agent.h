@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -59,7 +58,7 @@ class Agent final : public arangodb::ServerThread, public AgentInterface {
  public:
   /// @brief Construct with program options
   Agent(application_features::ApplicationServer& server,
-        metrics::MetricsFeature& metrics, config_t const&);
+        metrics::IRegistry& metricsRegistry, config_t const&);
 
   /// @brief Clean up
   ~Agent();

@@ -12,7 +12,9 @@ target_link_libraries(arangoimport_utils
 
 add_executable(${BIN_ARANGOIMPORT}
   ${ProductVersionFiles_arangoimport}
+  ArangoImportServer.cpp
   ImportFeature.cpp
+  ImportOptionsProvider.cpp
   arangoimport.cpp
 )
 target_include_directories(${BIN_ARANGOIMPORT} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)

@@ -18,9 +18,9 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Metrics/MetricsFeature.h"
 #include "Server.h"
 
 #include <chrono>
@@ -156,8 +156,7 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<AuthenticationFeature>();
   _server.addFeature<BootstrapFeature>();
 #ifdef TRI_HAVE_GETRLIMIT
-  _server.addFeature<BumpFileDescriptorsFeature>(
-      "--server.descriptors-minimum");
+  _server.addFeature<BumpFileDescriptorsFeature>();
 #endif
   _server.addFeature<CacheOptionsFeature>();
   auto& cacheManager =
@@ -166,7 +165,7 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   auto& clusterFeature = _server.addFeature<ClusterFeature>(metrics);
   auto& database = _server.addFeature<DatabaseFeature>();
   _server.addFeature<ClusterUpgradeFeature>(database);
-  _server.addFeature<ConfigFeature>(name);
+  _server.addFeature<ConfigFeature>();
   _server.addFeature<CpuUsageFeature>();
   auto& databasePath = _server.addFeature<DatabasePathFeature>();
   auto& dumpLimits = _server.addFeature<DumpLimitsFeature>();
@@ -211,10 +210,9 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
       std::array{std::type_index(typeid(AgencyFeaturePhase))});
   _server.addFeature<SoftShutdownFeature>();
   _server.addFeature<SslFeature>();
-  _server.addFeature<StorageEngineFeature>();
   _server.addFeature<SystemDatabaseFeature>();
   _server.addFeature<TempFeature>(name);
-  _server.addFeature<TemporaryStorageFeature>();
+  _server.addFeature<TemporaryStorageFeature>(databasePath);
   _server.addFeature<TtlFeature>();
   _server.addFeature<UpgradeFeature>(&result, kNonServerFeatures);
   _server.addFeature<transaction::ManagerFeature>(metrics);
@@ -227,7 +225,8 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<RocksDBOptionFeature>(
       _server.hasFeature<AgencyFeature>() ? &_server.getFeature<AgencyFeature>()
                                           : nullptr);
-  auto& rocksdbRecovery = _server.addFeature<RocksDBRecoveryManager>();
+  auto& rocksdbRecovery =
+      _server.addFeature<RocksDBRecoveryManager>(database, database);
 #ifdef TRI_HAVE_GETRLIMIT
   _server.addFeature<FileDescriptorsFeature>(metrics);
 #endif
@@ -236,14 +235,13 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
 #endif
 #ifdef USE_ENTERPRISE
   _server.addFeature<AuditFeature>();
-  _server.addFeature<LicenseFeature>();
+  _server.addFeature<LicenseFeature>(databasePath);
   _server.addFeature<RCloneFeature>();
   _server.addFeature<HotBackupFeature>();
   _server.addFeature<EncryptionFeature>();
 #endif
   _server.addFeature<RocksDBEngine>(
       _optionsProvider, metrics, databasePath, vectorIndex, flush, dumpLimits,
-      scheduler,
       replication2::EnableReplication2
           ? &_server.getFeature<ReplicatedLogFeature>()
           : nullptr,

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -37,7 +36,7 @@ using namespace arangodb;
 RocksDBSyncThread::RocksDBSyncThread(RocksDBEngine& engine,
                                      std::chrono::milliseconds interval,
                                      std::chrono::milliseconds delayThreshold)
-    : Thread(engine.server(), "RocksDBSync"),
+    : Thread("RocksDBSync"),
       _engine(engine),
       _interval(interval),
       _lastSyncTime(std::chrono::steady_clock::now()),

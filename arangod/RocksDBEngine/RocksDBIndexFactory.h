@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -28,9 +27,12 @@
 
 namespace arangodb {
 
+struct IVectorIndexProvider;
+
 class RocksDBIndexFactory final : public IndexFactory {
  public:
-  explicit RocksDBIndexFactory(application_features::ApplicationServer&);
+  explicit RocksDBIndexFactory(application_features::ApplicationServer&,
+                               IVectorIndexProvider const&);
 
   /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
   /// "hash") used to display storage engine capabilities

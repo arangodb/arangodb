@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, arango */
+/* global fail */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -21,19 +21,17 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
 const {assertTrue, assertFalse, assertEqual, assertNotEqual, assertInstanceOf} = jsunity.jsUnity.assertions;
-const internal = require('internal');
 const arangodb = require('@arangodb');
+const arango = arangodb.arango;
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const db = arangodb.db;
 const isCluster = require("internal").isCluster();
 const { executeExternalAndWaitWithSanitizer, dumpUtils } = require('@arangodb/test-helper');
-const { versionHas } = require("@arangodb/test-helper");
 const dbs = [{"name": "maçã", "id": "9999994", "isUnicode": true}, {
   "name": "cachorro",
   "id": "9999995",
@@ -68,6 +66,7 @@ const validatorJson = {
   }
 };
 
+let IM = global.instanceManager;
 
 function restoreIntegrationSuite() {
   'use strict';
@@ -77,9 +76,8 @@ function restoreIntegrationSuite() {
   assertTrue(fs.isFile(arangorestore), "arangorestore not found!");
 
   let addConnectionArgs = function (args) {
-    let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^h2:/, 'tcp:');
     args.push('--server.endpoint');
-    args.push(endpoint);
+    args.push(IM.endpoint);
     if (args.indexOf("--all-databases") === -1 && args.indexOf("--server.database") === -1) {
       args.push('--server.database');
       args.push(arango.getDatabaseName());
@@ -101,6 +99,7 @@ function restoreIntegrationSuite() {
   return {
 
     setUp: function () {
+      IM.rememberConnection();
       db._drop(cn);
     },
 
@@ -111,6 +110,7 @@ function restoreIntegrationSuite() {
           db._dropDatabase(database);
         }
       });
+      IM.reconnectMe();
     },
 
     testRestoreAutoIncrementKeyGenerator: function () {
@@ -1387,9 +1387,8 @@ function restoreIntegrationVectorSuite() {
   assertTrue(fs.isFile(arangorestore), "arangorestore not found!");
 
   let addConnectionArgs = function (args) {
-    let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^h2:/, 'tcp:');
     args.push('--server.endpoint');
-    args.push(endpoint);
+    args.push(IM.endpoint);
     if (args.indexOf("--all-databases") === -1 && args.indexOf("--server.database") === -1) {
       args.push('--server.database');
       args.push(arango.getDatabaseName());
@@ -1411,6 +1410,7 @@ function restoreIntegrationVectorSuite() {
   return {
 
     setUp: function () {
+      IM.rememberConnection();
       db._drop(cn);
     },
 
@@ -1421,6 +1421,7 @@ function restoreIntegrationVectorSuite() {
           db._dropDatabase(database);
         }
       });
+      IM.reconnectMe();
     },
 
     testRestoreVectorIndex: function () {

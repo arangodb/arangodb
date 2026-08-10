@@ -22,7 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
@@ -497,6 +496,8 @@ class testRunner {
       print('done.');
     }
     this.instanceManager.destructor(this.continueTesting && this.results.failed === 0);
+    delete(global.instanceManager);
+    delete(this.instanceManager);
     return this.results;
   }
 }

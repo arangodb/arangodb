@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 5000 */
-/* global assertTrue, assertFalse, assertEqual */
+/* global assertTrue, assertFalse, assertEqual, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -21,20 +21,15 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 
 const jsunity = require("jsunity");
-const request = require("@arangodb/request");
 const db = require("@arangodb").db;
-const {
-  getCoordinators,
-  getDBServers,
-  waitForShardsInSync,
-} = require('@arangodb/test-helper');
+const { waitForShardsInSync } = require('@arangodb/test-helper');
+let { instanceRole } = require('@arangodb/testutils/instance');
+let IM = global.instanceManager;
 
 const cn = "UnitTestsCollection";
 
@@ -59,18 +54,20 @@ function UpdateKeepNullSuite() {
       let shard = Object.keys(shards)[0]; 
       let servers = Object.values(shards)[0];
 
-      getDBServers().forEach((server) => {
+      IM.getInstancesRole(instanceRole.dbserver).forEach((server) => {
         if (!servers.includes(server.id)) {
           return;
         }
-        let result = request({ method: "POST", url: server.url + "/_api/cursor", body: { query: "FOR doc IN @@cn RETURN doc", bindVars: { "@cn" : shard } }, json: true });
-        assertEqual(201, result.status);
+        server.toThisInstance(() => {
+          let result = arango.POST_RAW("/_api/cursor", { query: "FOR doc IN @@cn RETURN doc", bindVars: { "@cn" : shard } });
+          assertEqual(201, result.code);
         
-        result = result.json.result[0];
-        assertFalse(result.hasOwnProperty("a"));
-        assertEqual(3, result.b);
-        assertEqual(4, result.c);
-        assertFalse(result.hasOwnProperty("d"));
+          result = result.parsedBody.result[0];
+          assertFalse(result.hasOwnProperty("a"));
+          assertEqual(3, result.b);
+          assertEqual(4, result.c);
+          assertFalse(result.hasOwnProperty("d"));
+        });
       });
           
       waitForShardsInSync(cn, 60, 1); 
@@ -87,18 +84,20 @@ function UpdateKeepNullSuite() {
       let shard = Object.keys(shards)[0]; 
       let servers = Object.values(shards)[0];
 
-      getDBServers().forEach((server) => {
+      IM.getInstancesRole(instanceRole.dbserver).forEach((server) => {
         if (!servers.includes(server.id)) {
           return;
         }
-        let result = request({ method: "POST", url: server.url + "/_api/cursor", body: { query: "FOR doc IN @@cn RETURN doc", bindVars: { "@cn" : shard } }, json: true });
-        assertEqual(201, result.status);
+        server.toThisInstance(() => {
+          let result = arango.POST_RAW("/_api/cursor", { query: "FOR doc IN @@cn RETURN doc", bindVars: { "@cn" : shard } });
+          assertEqual(201, result.code);
         
-        result = result.json.result[0];
-        assertFalse(result.hasOwnProperty("a"));
-        assertEqual(3, result.b);
-        assertEqual(4, result.c);
-        assertFalse(result.hasOwnProperty("d"));
+          result = result.parsedBody.result[0];
+          assertFalse(result.hasOwnProperty("a"));
+          assertEqual(3, result.b);
+          assertEqual(4, result.c);
+          assertFalse(result.hasOwnProperty("d"));
+        });
       });
           
       waitForShardsInSync(cn, 60, 1); 

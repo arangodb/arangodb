@@ -30,26 +30,32 @@
 #include "RestServer/DatabaseFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "VectorIndex/VectorIndexOptionsProvider.h"
+
+#include <chrono>
 
 namespace arangodb {
 
 VectorIndexFeature::VectorIndexFeature(
     application_features::ApplicationServer& server,
     DatabaseFeature& databaseFeature)
-    : ApplicationFeature{server, *this}, _databaseFeature{databaseFeature} {
+    : VectorIndexFeature(server, databaseFeature, VectorIndexFeatureOptions{}) {
+}
+
+VectorIndexFeature::VectorIndexFeature(
+    application_features::ApplicationServer& server,
+    DatabaseFeature& databaseFeature, VectorIndexFeatureOptions options)
+    : ApplicationFeature{server, *this},
+      _databaseFeature{databaseFeature},
+      _options{std::move(options)} {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 }
 
 void VectorIndexFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  options->addObsoleteOption(
-      "--vector-index",
-      "Enable the vector index feature. "
-      "Once in use, this option cannot be turned off again.",
-      true);
-
-  options->addOldOption("--experimental-vector-index", "--vector-index");
+  vector_index::VectorIndexOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 bool VectorIndexFeature::shouldRunBuildManager() const {
@@ -73,10 +79,11 @@ void VectorIndexFeature::start() {
     return;
   }
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  _buildManager.emplace(_databaseFeature,
-                        server().getFeature<MaintenanceFeature>(),
-                        server().getFeature<metrics::MetricsFeature>(),
-                        *SchedulerFeature::SCHEDULER);
+  _buildManager.emplace(
+      _databaseFeature, server().getFeature<MaintenanceFeature>(),
+      server().getFeature<metrics::MetricsFeature>(),
+      *SchedulerFeature::SCHEDULER,
+      std::chrono::duration<double>(_options.buildRetryBackoffSecs));
   _buildManager->start();
 }
 
@@ -94,7 +101,7 @@ void VectorIndexFeature::stop() {
   _buildManager->stop();
 }
 
-bool VectorIndexFeature::isVectorIndexEnabled() const { return true; }
+bool VectorIndexFeature::isVectorIndexEnabled() const noexcept { return true; }
 
 futures::Future<Result> VectorIndexFeature::waitForIndexReady(IndexId indexId) {
   if (!_buildManager.has_value()) {

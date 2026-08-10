@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Valery Mironov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -83,6 +82,8 @@ class ClusterMetricsFeature final
     LeaderResponse packed;
     Metrics metrics;
   };
+  ClusterMetricsFeature(application_features::ApplicationServer& server,
+                        ClusterMetricsOptions options);
   explicit ClusterMetricsFeature(
       application_features::ApplicationServer& server);
 

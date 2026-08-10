@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Servers.h"
@@ -103,7 +102,6 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "Servers.h"
 #include "Sharding/ShardingFeature.h"
-#include "StorageEngine/StorageEngineFeature.h"
 #include "TemplateSpecializer.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
@@ -167,7 +165,6 @@ static void SetupDatabaseFeaturePhase(MockServer& server) {
   server.addFeature<AuthenticationFeature>(true);
   server.addFeature<transaction::ManagerFeature>(false, metrics);
   auto& databaseFeature = server.addFeature<DatabaseFeature>(false);
-  server.addFeature<StorageEngineFeature>(false);
   server.addFeature<SystemDatabaseFeature>(true);
   server.addFeature<InitDatabaseFeature>(true,
                                          std::span<const std::type_index>{});
@@ -178,7 +175,8 @@ static void SetupDatabaseFeaturePhase(MockServer& server) {
 
 #if USE_ENTERPRISE
   // required for AuthenticationFeature with USE_ENTERPRISE
-  server.addFeature<LicenseFeature>(false);
+  server.addFeature<LicenseFeature>(false,
+                                    server.getFeature<DatabasePathFeature>());
   server.addFeature<EncryptionFeature>(false);
 #endif
 }
@@ -210,7 +208,8 @@ static void SetupAqlPhase(MockServer& server) {
   auto& metrics = server.getFeature<metrics::MetricsFeature>();
   server.addFeature<application_features::AqlFeaturePhase>(false);
   server.addFeature<QueryRegistryFeature>(false, metrics);
-  server.addFeature<TemporaryStorageFeature>(false);
+  auto& dbPath = server.getFeature<DatabasePathFeature>();
+  server.addFeature<TemporaryStorageFeature>(false, dbPath);
   server.addFeature<aql::AqlFunctionFeature>(true);
   server.addFeature<aql::OptimizerRulesFeature>(true);
   server.addFeature<aql::QueryInfoLoggerFeature>(true);
@@ -257,7 +256,9 @@ MockServer::~MockServer() {
   ServerState::instance()->setRebootId(_oldRebootId);
 }
 
-ArangodServer& MockServer::server() { return _server; }
+application_features::ApplicationServer& MockServer::server() {
+  return _server;
+}
 
 void MockServer::init() {
   _oldApplicationServerState = _server.state();

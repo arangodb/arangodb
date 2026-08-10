@@ -18,13 +18,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SenderThread.h"
 
 #include "Basics/StringBuffer.h"
-#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "ImportHelper.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
@@ -36,11 +34,10 @@
 using namespace arangodb;
 using namespace arangodb::import;
 
-SenderThread::SenderThread(application_features::ApplicationServer& server,
-                           std::unique_ptr<httpclient::SimpleHttpClient> client,
+SenderThread::SenderThread(std::unique_ptr<httpclient::SimpleHttpClient> client,
                            ImportStatistics* stats,
                            std::function<void()> const& wakeup)
-    : Thread(server, "Import Sender"),
+    : Thread("Import Sender"),
       _client(std::move(client)),
       _wakeup(wakeup),
       _data(false),

@@ -18,11 +18,10 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TailingSyncer.h"
+#include "Metrics/MetricsFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
@@ -1923,7 +1922,7 @@ Result TailingSyncer::processLeaderLog(
                   absl::StrCat("got invalid response from leader at ",
                                _state.leader.endpoint, ": required header ",
                                StaticStrings::ReplicationHeaderLastIncluded,
-                               " is missing in logger-follow response"));
+                               " is missing in tailing response"));
   }
 
   TRI_voc_tick_t lastIncludedTick =
@@ -1961,7 +1960,7 @@ Result TailingSyncer::processLeaderLog(
                   absl::StrCat("got invalid response from leader at ",
                                _state.leader.endpoint, ": required header ",
                                StaticStrings::ReplicationHeaderLastTick,
-                               " is missing in logger-follow response"));
+                               " is missing in tailing response"));
   }
 
   bool bumpTick = false;

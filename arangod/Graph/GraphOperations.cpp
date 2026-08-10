@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz & Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GraphOperations.h"
@@ -30,18 +29,14 @@
 #include <boost/range/join.hpp>
 #include <utility>
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Cluster/ClusterFeature.h"
 #include "Graph/Graph.h"
 #include "Graph/GraphManager.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Transaction/Methods.h"
-#include "Transaction/SmartContext.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
@@ -49,6 +44,7 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;

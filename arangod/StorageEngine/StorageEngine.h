@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -28,7 +26,8 @@
 #include "Basics/Result.h"
 #include "Indexes/IndexFactory.h"
 #include "StorageEngine/HealthData.h"
-#include "Transaction/ManagerFeature.h"
+#include "StorageEngine/TransactionStatistics.h"
+#include "Transaction/ManagerFeatureOptions.h"
 #include "Transaction/OperationOrigin.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
@@ -69,6 +68,7 @@ class Result;
 class TransactionCollection;
 class TransactionState;
 class WalAccess;
+struct IDatabaseProvider;
 
 namespace rest {
 class RestHandlerFactory;
@@ -78,11 +78,14 @@ namespace replication2::storage {
 struct PersistedStateInfo;
 }
 
+namespace metrics {
+class Counter;
+}  // namespace metrics
+
 namespace transaction {
 
 class Context;
 class Manager;
-class ManagerFeature;
 class Methods;
 struct Options;
 
@@ -104,16 +107,26 @@ class StorageEngine : public application_features::ApplicationFeature {
   StorageEngine(application_features::ApplicationServer& server,
                 std::string_view engineName, std::string_view featureName,
                 std::type_index registration,
-                std::unique_ptr<IndexFactory>&& indexFactory);
+                std::unique_ptr<IndexFactory>&& indexFactory,
+                IDatabaseProvider& databaseProvider);
 
   virtual HealthData healthCheck() = 0;
 
-  virtual std::unique_ptr<transaction::Manager> createTransactionManager(
-      transaction::ManagerFeature&) = 0;
+  // creates the transaction manager and retains a non-owning handle to it, so
+  // that transactions created by this engine can be handed the manager directly
+  // instead of reaching for the global singleton. The returned manager is owned
+  // by the caller (the ManagerFeature).
+  std::shared_ptr<transaction::Manager> createTransactionManager(
+      transaction::ManagerFeatureOptions options,
+      metrics::Counter& expiredTransactions);
   virtual std::shared_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TransactionId,
       transaction::Options const& options,
       transaction::OperationOrigin operationOrigin) = 0;
+
+  // the transaction manager created by this engine (see
+  // createTransactionManager). Must only be called once the manager exists.
+  transaction::Manager& transactionManager() const;
 
   // when a new collection is created, this method is called to augment the
   // collection creation data with engine-specific information
@@ -344,8 +357,6 @@ class StorageEngine : public application_features::ApplicationFeature {
                                 std::string const& keysId) = 0;
   virtual Result createLoggerState(TRI_vocbase_t* vocbase,
                                    velocypack::Builder& builder) = 0;
-  virtual Result lastLogger(TRI_vocbase_t& vocbase, uint64_t tickStart,
-                            uint64_t tickEnd, velocypack::Builder& builder) = 0;
   virtual WalAccess const* walAccess() const = 0;
 
   virtual void getCapabilities(velocypack::Builder& builder) const;
@@ -369,7 +380,16 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual bool autoRefillIndexCachesOnFollowers() const = 0;
   virtual void syncIndexCaches();
 
+  TransactionStatistics& transactionStatistics() noexcept;
+  TransactionStatistics const& transactionStatistics() const noexcept;
+
+#if USE_ENTERPRISE
+  virtual bool isEncryptionEnabled() const { return false; }
+#endif
+
  protected:
+  void initTransactionStatistics(metrics::IRegistry& metrics);
+
   void registerCollection(
       TRI_vocbase_t& vocbase,
       std::shared_ptr<arangodb::LogicalCollection> const& collection);
@@ -381,9 +401,17 @@ class StorageEngine : public application_features::ApplicationFeature {
       TRI_vocbase_t& vocbase, arangodb::replication2::LogId,
       std::unique_ptr<replication2::storage::IStorageEngineMethods>);
 
+  // provides access to the database catalog (database objects, version tracker,
+  // name settings).
+  IDatabaseProvider& _databaseProvider;
+
  private:
   std::unique_ptr<IndexFactory> const _indexFactory;
   std::string_view _typeName;
+  std::unique_ptr<TransactionStatistics> _transactionStatistics;
+  // non-owning handle to the manager created in createTransactionManager;
+  // owned by the ManagerFeature.
+  std::weak_ptr<transaction::Manager> _transactionManager;
 };
 
 }  // namespace arangodb

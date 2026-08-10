@@ -18,13 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
 #include <velocypack/SharedSlice.h>
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "CrashHandler/DataSource.h"
+#include "SystemMonitor/Activities/FeatureOptions.h"
 #include "SystemMonitor/Activities/Metrics.h"
 
 namespace arangodb::activities {
@@ -32,12 +32,15 @@ namespace arangodb::activities {
 class Feature final : public application_features::ApplicationFeature,
                       public crash_handler::CrashHandlerDataSource {
  private:
-  static auto create_metrics(metrics::MetricsFeature& metrics_feature)
+  static auto create_metrics(metrics::IRegistry& registry)
       -> std::shared_ptr<RegistryMetrics>;
 
  public:
   static constexpr std::string_view name() { return "Activities"; }
 
+  Feature(application_features::ApplicationServer& server,
+          std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry,
+          FeatureOptions options);
   Feature(
       application_features::ApplicationServer& server,
       std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry);
@@ -45,7 +48,6 @@ class Feature final : public application_features::ApplicationFeature,
   void prepare() override final;
   void start() override final;
   void stop() override final;
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
   velocypack::SharedSlice getData() const;
   velocypack::SharedSlice getCrashData() const override;
@@ -53,11 +55,7 @@ class Feature final : public application_features::ApplicationFeature,
   bool isOnlySuperUserEnabled() { return _options.isOnlySuperUserEnabled; }
 
  private:
-  struct Options {
-    size_t gc_timeout{1};
-    bool isOnlySuperUserEnabled{false};
-  };
-  Options _options;
+  FeatureOptions _options;
 
   std::shared_ptr<RegistryMetrics> _metrics;
 

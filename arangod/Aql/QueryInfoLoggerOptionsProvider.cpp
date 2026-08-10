@@ -29,7 +29,7 @@ namespace arangodb::aql {
 
 using namespace arangodb::options;
 
-void QueryInfoLoggerOptionsProvider::declareOptions(
+void QueryInfoLoggerOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, QueryInfoLoggerOptions& opts) {
   options
       ->addOption("--query.collection-logger-max-buffered-queries",

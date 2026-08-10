@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DatabasePathFeature.h"
@@ -38,7 +37,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/DatabasePathOptionsProvider.h"
 #include "RestServer/FileDescriptorsFeature.h"
 
 using namespace arangodb::application_features;
@@ -49,7 +47,12 @@ namespace arangodb {
 
 DatabasePathFeature::DatabasePathFeature(
     application_features::ApplicationServer& server)
-    : ApplicationFeature{server, *this} {
+    : DatabasePathFeature(server, DatabasePathFeatureOptions{}) {}
+
+DatabasePathFeature::DatabasePathFeature(
+    application_features::ApplicationServer& server,
+    DatabasePathFeatureOptions options)
+    : ApplicationFeature{server, *this}, _options(std::move(options)) {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
 
@@ -58,18 +61,6 @@ DatabasePathFeature::DatabasePathFeature(
 #endif
   startsAfter<LanguageFeature>();
   startsAfter<TempFeature>();
-}
-
-void DatabasePathFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  DatabasePathOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void DatabasePathFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  DatabasePathOptionsProvider provider;
-  provider.validateOptions(options, _options);
 }
 
 void DatabasePathFeature::prepare() {

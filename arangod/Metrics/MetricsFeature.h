@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -31,12 +30,12 @@
 #include "Metrics/Builder.h"
 #include "Metrics/CollectMode.h"
 #include "Metrics/IBatch.h"
+#include "Metrics/IRegistry.h"
 #include "Metrics/Metric.h"
 #include "Metrics/MetricKey.h"
 #include "Metrics/MetricsOptions.h"
 #include "Metrics/MetricsParts.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "Statistics/TransactionStatistics.h"
 
 #include <map>
 #include <shared_mutex>
@@ -50,13 +49,23 @@ namespace arangodb::metrics {
 
 class ClusterMetricsFeature;
 
-class MetricsFeature final : public application_features::ApplicationFeature {
+class MetricsFeature final : public application_features::ApplicationFeature,
+                             public IRegistry {
  public:
   // Maintain backward compatibility for existing code
   using UsageTrackingMode = metrics::UsageTrackingMode;
 
   static constexpr std::string_view name() noexcept { return "Metrics"; }
 
+  MetricsFeature(
+      application_features::ApplicationServer& server,
+      LazyApplicationFeatureReference<QueryRegistryFeature>
+          lazyQueryRegistryFeatureRef,
+      LazyApplicationFeatureReference<DatabaseFeature> lazyDatabaseFeatureRef,
+      LazyApplicationFeatureReference<ClusterMetricsFeature>
+          lazyClusterMetricsFeatureRef,
+      LazyApplicationFeatureReference<ClusterFeature> lazyClusterFeatureRef,
+      MetricsOptions options);
   explicit MetricsFeature(
       application_features::ApplicationServer& server,
       LazyApplicationFeatureReference<QueryRegistryFeature>
@@ -73,12 +82,6 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) final;
 
-  // tries to add metric. throws if such metric already exists
-  template<typename MetricBuilder>
-  auto add(MetricBuilder&& builder) -> typename MetricBuilder::MetricT& {
-    return static_cast<typename MetricBuilder::MetricT&>(*doAdd(builder));
-  }
-
   // tries to add the metric. If the metric already exists, it is returned
   // instead.
   template<typename MetricBuilder>
@@ -86,13 +89,6 @@ class MetricsFeature final : public application_features::ApplicationFeature {
       typename MetricBuilder::MetricT& {
     return static_cast<typename MetricBuilder::MetricT&>(
         *doEnsureMetric(builder));
-  }
-
-  template<typename MetricBuilder>
-  auto addShared(MetricBuilder&& builder)  // TODO(MBkkt) Remove this method
-      -> std::shared_ptr<typename MetricBuilder::MetricT> {
-    return std::static_pointer_cast<typename MetricBuilder::MetricT>(
-        doAdd(builder));
   }
 
   // tries to add dynamic metric. does not fail if such metric already exists
@@ -115,9 +111,6 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   //////////////////////////////////////////////////////////////////////////////
   void toVPack(velocypack::Builder& builder, MetricsParts metricsParts) const;
 
-  TransactionStatistics& transactionStatistics() noexcept;
-  double uptime() const noexcept;
-
   template<typename MetricType>
   MetricType& batchAdd(std::string_view name, std::string_view labels) {
     std::unique_lock lock{_mutex};
@@ -133,8 +126,12 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
   void prepare() override;
 
+  static double serverUptime() noexcept;
+
+ protected:
+  std::shared_ptr<Metric> doAdd(Builder& builder) override;
+
  private:
-  std::shared_ptr<Metric> doAdd(Builder& builder);
   std::shared_ptr<Metric> doAddDynamic(Builder& builder);
   std::shared_ptr<Metric> doEnsureMetric(Builder& builder);
   std::shared_lock<std::shared_mutex> initGlobalLabels() const;
@@ -158,14 +155,13 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
   containers::FlatHashMap<std::string_view, std::unique_ptr<IBatch>> _batch;
 
-  std::unique_ptr<TransactionStatistics> _transactionStatistics;
-  double _startTime = 0.0;
-
   mutable std::string _globals;
   mutable bool hasShortname = false;
   mutable bool hasRole = false;
 
   MetricsOptions _options;
+
+  static double _serverStartTime;
 };
 
 }  // namespace arangodb::metrics

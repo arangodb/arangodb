@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -34,15 +33,9 @@ class VersionFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Version"; }
 
-  explicit VersionFeature(application_features::ApplicationServer& server)
-      : application_features::ApplicationFeature{server, *this}, _options() {
-    setOptional(false);
-
-    startsAfter<ShellColorsFeature>();
-  }
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  explicit VersionFeature(application_features::ApplicationServer& server,
+                          VersionFeatureOptions options);
+  explicit VersionFeature(application_features::ApplicationServer& server);
 
   bool printVersion() const { return _options.printVersion; }
 

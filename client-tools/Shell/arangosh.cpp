@@ -18,48 +18,19 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/signals.h"
-#include "Basics/directories.h"
-
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/CommunicationFeaturePhase.h"
-#include "ApplicationFeatures/ConfigFeature.h"
-#include "ApplicationFeatures/FileSystemFeature.h"
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "ApplicationFeatures/ProcessEnvironmentFeature.h"
-#include "ApplicationFeatures/LanguageFeature.h"
-#include "ApplicationFeatures/OptionsCheckFeature.h"
-#include "ApplicationFeatures/ShellColorsFeature.h"
-#include "ApplicationFeatures/ShutdownFeature.h"
-#include "ApplicationFeatures/TempFeature.h"
-#include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
-#include "FeaturePhases/BasicFeaturePhaseClient.h"
-#include "FeaturePhases/V8ShellFeaturePhase.h"
+#include "Basics/directories.h"
+#include "Basics/signals.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Logger/LoggerFeature.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "Random/RandomFeature.h"
+#include "Shell/ArangoshServer.h"
 #include "Shell/ClientFeature.h"
-#include "Shell/ShellConsoleFeature.h"
-#include "Shell/ShellFeature.h"
-#include "Shell/V8ShellFeature.h"
-#include "Shell/ProcessMonitoringFeature.h"
-#include "Ssl/SslFeature.h"
-#include "V8/V8PlatformFeature.h"
-#include "V8/V8SecurityFeature.h"
-
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Encryption/EncryptionFeature.h"
-#endif
 
 using namespace arangodb;
-using namespace arangodb::application_features;
 
 int main(int argc, char* argv[]) {
   TRI_GET_ARGV(argc, argv);
@@ -70,46 +41,12 @@ int main(int argc, char* argv[]) {
     arangodb::signals::maskAllSignalsClient();
     context.installHup();
 
-    std::shared_ptr<options::ProgramOptions> options(
-        new options::ProgramOptions(
-            argv[0], "Usage: " + context.binaryName() + " [<options>]",
-            "For more information use:", BIN_DIRECTORY));
-    application_features::ApplicationServer server(options, BIN_DIRECTORY);
+    auto options = std::make_shared<options::ProgramOptions>(
+        argv[0], "Usage: " + context.binaryName() + " [<options>]",
+        "For more information use:", BIN_DIRECTORY);
 
-    // Add features in order (based on ArangoshFeaturesList)
-    // Phases first
-    server.addFeature<BasicFeaturePhaseClient>();
-    server.addFeature<CommunicationFeaturePhase>();
-    server.addFeature<GreetingsFeaturePhase>(std::true_type{});
-    // Features
-    server.addFeature<VersionFeature>();
-#ifdef USE_ENTERPRISE
-    server.addFeature<EncryptionFeature>();
-#endif
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    server.addFeature<ProcessEnvironmentFeature>(context.binaryName());
-#endif
-    server.addFeature<ShellConsoleFeature>();
-    server.addFeature<HttpEndpointProvider, ClientFeature>(true);
-    server.addFeature<ConfigFeature>(context.binaryName());
-    server.addFeature<LoggerFeature>(false);
-    server.addFeature<OptionsCheckFeature>();
-    server.addFeature<FileSystemFeature>();
-    server.addFeature<RandomFeature>();
-    server.addFeature<ShellColorsFeature>();
-    server.addFeature<ShutdownFeature>(
-        std::array{std::type_index(typeid(ShellFeature))});
-    server.addFeature<SslFeature>();
-    server.addFeature<V8ShellFeaturePhase>();
-    server.addFeature<ShellFeature>(&ret);
-    server.addFeature<V8PlatformFeature>();
-
-    auto& v8ShellFeature =
-        server.addFeature<V8ShellFeature>(context.binaryName());
-    server.addFeature<LanguageFeature>();
-    server.addFeature<V8SecurityFeature>(AllowListStrictness::NONSTRICT);
-    server.addFeature<ProcessMonitoringFeature>(v8ShellFeature);
-    server.addFeature<TempFeature>(context.binaryName());
+    ArangoshServer server(options, BIN_DIRECTORY, context.binaryName(), &ret);
+    server.addFeatures();
 
     try {
       server.run(argc, argv);

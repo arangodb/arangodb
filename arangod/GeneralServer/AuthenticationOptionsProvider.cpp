@@ -34,7 +34,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void AuthenticationOptionsProvider::declareOptions(
+void AuthenticationOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, AuthenticationOptions& options) {
   opts->addOption("--server.authentication",
                   "Whether to use authentication for all client requests.",
@@ -179,8 +179,22 @@ of a cluster deployment via the `POST /_admin/server/jwt` HTTP API endpoint.
 You can use this feature to roll out new JWT secrets throughout a cluster.)");
 }
 
-void AuthenticationOptionsProvider::validateOptions(
+void AuthenticationOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, AuthenticationOptions& options) {
+  if (!options.jwtSecretKeyfileProgramOption.empty() &&
+      !options.jwtSecretFolderProgramOption.empty()) {
+    LOG_TOPIC("d3515", FATAL, Logger::STARTUP)
+        << "please specify either '--server.jwt-"
+           "secret-keyfile' or '--server.jwt-secret-folder' but not both.";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (opts->processingResult().touched("server.jwt-secret")) {
+    LOG_TOPIC("1aaae", WARN, arangodb::Logger::AUTHENTICATION)
+        << "--server.jwt-secret is insecure. Use --server.jwt-secret-keyfile "
+           "instead.";
+  }
+
   if (options.minimalJwtExpiryTime > options.maximalJwtExpiryTime) {
     LOG_TOPIC("a4b5c", FATAL, Logger::STARTUP)
         << "--auth.minimal-jwt-expiry-time (" << options.minimalJwtExpiryTime

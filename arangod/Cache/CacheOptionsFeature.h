@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -34,6 +33,8 @@ class CacheOptionsFeature final
  public:
   static constexpr std::string_view name() { return "CacheOptions"; }
 
+  explicit CacheOptionsFeature(application_features::ApplicationServer& server,
+                               CacheOptions options);
   explicit CacheOptionsFeature(application_features::ApplicationServer& server);
   ~CacheOptionsFeature() = default;
 
@@ -43,8 +44,6 @@ class CacheOptionsFeature final
   CacheOptions getOptions() const override final;
 
  private:
-  static constexpr std::uint64_t minRebalancingInterval = 500 * 1000;
-
   CacheOptions _options;
 };
 
