@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -20,17 +20,17 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBEngine/RocksDBEngine.h"
-#include "ClusterEngine/ClusterEngine.h"
+#include "RocksDBEngine/RocksDBRestHandlers.h"
+#include "ClusterEngine/ClusterRestHandlers.h"
 
 namespace arangodb {
 
-// These no-op implementations are needed because arangodbtests_rocksdb takes
-// RocksDBEngine.h and ClusterEngine.h that have the declarations of these
-// methods, but doesn't link the actual implementation of these methods since it
-// only links arango_rocksdb (which lacks these methods' implementations).
-
-void RocksDBEngine::addRestHandlers(rest::RestHandlerFactory&) {}
-void ClusterEngine::addRestHandlers(rest::RestHandlerFactory&) {}
+// These no-op implementations are needed because of GeneralServerFeature.cpp.
+// It calls registerResources for both RocksDBEngine and ClusterEngine, but
+// this test only links arango_rocksdb (which lacks these methods'
+// implementations).
+void RocksDBRestHandlers::registerResources(rest::RestHandlerFactory*,
+                                            StorageEngine&) {}
+void ClusterRestHandlers::registerResources(rest::RestHandlerFactory*) {}
 
 }  // namespace arangodb

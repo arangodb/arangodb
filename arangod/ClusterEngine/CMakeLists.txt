@@ -28,7 +28,6 @@ target_include_directories(arango_cluster_engine PRIVATE
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
 add_library(arango_cluster_engine_rest STATIC
-  ClusterEngineRest.cpp
   ClusterRestCollectionHandler.cpp
   ClusterRestHandlers.cpp
   ClusterRestReplicationHandler.cpp

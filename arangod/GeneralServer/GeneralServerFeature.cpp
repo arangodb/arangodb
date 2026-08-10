@@ -41,6 +41,8 @@
 #include "Cluster/MaintenanceRestHandler.h"
 #include "Cluster/RestAgencyCallbacksHandler.h"
 #include "Cluster/RestClusterHandler.h"
+#include "ClusterEngine/ClusterEngine.h"
+#include "ClusterEngine/ClusterRestHandlers.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServer.h"
@@ -120,6 +122,8 @@
 #include "RestHandler/RestViewHandler.h"
 #include "RestHandler/RestWalAccessHandler.h"
 #include "RestServer/EndpointFeature.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBRestHandlers.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
@@ -944,7 +948,11 @@ void GeneralServerFeature::defineRemainingHandlers(
 
   // engine specific handlers
   StorageEngine& engine = server().getFeature<DatabaseFeature>().engine();
-  engine.addRestHandlers(f);
+  if (auto* rocksdbEngine = dynamic_cast<RocksDBEngine*>(&engine)) {
+    RocksDBRestHandlers::registerResources(&f, *rocksdbEngine);
+  } else if (dynamic_cast<ClusterEngine*>(&engine)) {
+    ClusterRestHandlers::registerResources(&f);
+  }
 }
 
 }  // namespace arangodb

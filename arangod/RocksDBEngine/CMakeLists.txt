@@ -90,7 +90,6 @@ target_link_libraries(arango_rocksdb
     snappy)
 
 add_library(arango_rocksdb_rest STATIC
-  RocksDBEngineRest.cpp
   RocksDBRestCollectionHandler.cpp
   RocksDBRestHandlers.cpp
   RocksDBRestReplicationHandler.cpp
