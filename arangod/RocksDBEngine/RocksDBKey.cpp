@@ -368,17 +368,6 @@ void RocksDBKey::constructSettingsValue(RocksDBSettingsType st) {
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 
-void RocksDBKey::constructReplicationApplierConfig(TRI_voc_tick_t databaseId) {
-  // databaseId may be 0 for global applier config
-  _type = RocksDBEntryType::ReplicationApplierConfig;
-  size_t keyLength = sizeof(char) + sizeof(uint64_t);
-  _buffer->clear();
-  _buffer->reserve(keyLength);
-  _buffer->push_back(static_cast<char>(_type));
-  uint64ToPersistent(*_buffer, databaseId);
-  TRI_ASSERT(_buffer->size() == keyLength);
-}
-
 void RocksDBKey::constructIndexEstimateValue(uint64_t collectionObjectId) {
   TRI_ASSERT(collectionObjectId != 0);
   _type = RocksDBEntryType::IndexEstimateValue;
