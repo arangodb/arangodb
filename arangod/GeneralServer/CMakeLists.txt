@@ -24,9 +24,17 @@ add_library(arango_general_server STATIC
 
 target_link_libraries(arango_general_server
   PUBLIC
-    arango_statistics arango_actions arango_auth arango_v8server
-    arango_basic_utils velocypack arango::validation rocksdb_interface
-    immer arango_actor arango_iresearch arango_v8)
+    arango_auth
+    arango_actions
+    arango_statistics
+    arango_actor
+    arango_basic_utils
+    arango_iresearch arango_v8
+    arango::validation
+    arango_v8server
+    rocksdb_interface
+    velocypack
+    immer)
 
 if(USE_ENTERPRISE)
   target_link_libraries(arango_general_server
