@@ -62,7 +62,7 @@ class PathResultInterface {
   virtual auto lastEdgeToVelocyPack(velocypack::Builder& builder) -> void = 0;
 };
 
-class TraversalEnumerator {
+class ITraversalEnumerator {
  public:
   template<class Provider>
   static auto createEnumerator(
@@ -73,10 +73,10 @@ class TraversalEnumerator {
       typename Provider::Options&& baseProviderOptions,
       graph::PathValidatorOptions&& pathValidatorOptions,
       graph::OneSidedEnumeratorOptions&& enumeratorOptions)
-      -> std::unique_ptr<TraversalEnumerator>;
+      -> std::unique_ptr<ITraversalEnumerator>;
 
-  TraversalEnumerator() {}
-  virtual ~TraversalEnumerator() {}
+  ITraversalEnumerator() {}
+  virtual ~ITraversalEnumerator() {}
 
   virtual void clear(bool keepPathStore) = 0;
   [[nodiscard]] virtual bool isDone() const = 0;

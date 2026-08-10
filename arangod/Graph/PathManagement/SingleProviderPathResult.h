@@ -25,7 +25,7 @@
 #include <velocypack/HashedStringRef.h>
 #include "Containers/HashSet.h"
 
-#include "Graph/Enumerators/OneSidedEnumeratorInterface.h"
+#include "Graph/Enumerators/ITraversalEnumerator.h"
 #include "Graph/Providers/TypeAliases.h"
 #include "Graph/TraverserOptions.h"
 
