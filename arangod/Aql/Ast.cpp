@@ -132,11 +132,6 @@ bool astNodeObjectHasObjectSplice(AstNode const* node) noexcept {
   return false;
 }
 
-bool astNodeIsConstantObjectExpression(AstNode const* source) noexcept {
-  return source != nullptr && source->isConstant() &&
-         source->type == NODE_TYPE_OBJECT;
-}
-
 auto doNothingVisitor = [](AstNode const*) {};
 
 [[noreturn]] void throwFormattedError(aql::QueryContext& query, ErrorCode code,
@@ -4211,6 +4206,7 @@ void Ast::flattenObjectLiteralMemberValues(AstNode* node) {
 }
 
 /// @brief flatten object literal splices into the parent object
+/// Always mutates the node in place and returns the same node.
 AstNode* Ast::flattenObjectLiteralSplices(AstNode* node) {
   if (node == nullptr || node->type != NODE_TYPE_OBJECT) {
     return node;
@@ -4262,44 +4258,11 @@ AstNode* Ast::flattenObjectLiteralSplices(AstNode* node) {
   return node;
 }
 
-bool Ast::appendObjectElementsFromConstantObject(
-    AstNode const* source, containers::SmallVector<AstNode*, 8>& out) {
-  TRI_ASSERT(source != nullptr);
-  TRI_ASSERT(source->isConstant());
-
-  if (source->type != NODE_TYPE_OBJECT) {
-    return false;
-  }
-
-  size_t const n = source->numMembers();
-  for (size_t i = 0; i < n; ++i) {
-    AstNode const* member = source->getMemberUnchecked(i);
-    if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
-      char const* name = _resources.registerString(member->getStringView());
-      out.push_back(createNodeObjectElement(
-          std::string_view(name, member->getStringLength()),
-          clone(member->getMember(0))));
-    } else if (member->type == NODE_TYPE_OBJECT_SPLICE) {
-      AstNode const* spliceSource = member->getMemberUnchecked(0);
-      if (!astNodeIsConstantObjectExpression(spliceSource)) {
-        return false;
-      }
-      if (!appendObjectElementsFromConstantObject(spliceSource, out)) {
-        return false;
-      }
-    } else {
-      return false;
-    }
-  }
-  return true;
-}
-
 /// @brief optimizes an object literal or an object expression
 AstNode* Ast::optimizeObject(
     transaction::Methods& trx,
     AqlFunctionsInternalCache& aqlFunctionsInternalCache, AstNode* node) {
   node = flattenObjectLiteralSplices(node);
-  // node = foldConstantObjectSplices(node);
 
   if (node->isConstant() && (!node->hasFlag(DETERMINED_NONDETERMINISTIC) ||
                              !node->hasFlag(VALUE_NONDETERMINISTIC))) {

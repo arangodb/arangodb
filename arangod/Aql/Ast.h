@@ -713,18 +713,11 @@ class Ast {
   AstNode* optimizeObject(transaction::Methods&, AqlFunctionsInternalCache&,
                           AstNode*);
 
-  /// @brief expand constant object splices into object element nodes
-  AstNode* foldConstantObjectSplices(AstNode* node);
-
   /// @brief flatten object literal splices into the parent object
   AstNode* flattenObjectLiteralSplices(AstNode* node);
 
   /// @brief flatten object literal member values
   void flattenObjectLiteralMemberValues(AstNode* node);
-
-  /// @brief append object elements from a constant object expression
-  bool appendObjectElementsFromConstantObject(
-      AstNode const* source, containers::SmallVector<AstNode*, 8>& out);
 
   /// @brief clear optimization flags on object literals and object expressions
   void clearObjectOptimizationFlags(AstNode* node);

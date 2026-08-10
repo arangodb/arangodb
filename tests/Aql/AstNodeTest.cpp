@@ -46,18 +46,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-namespace arangodb::aql {
-struct AstObjectSpliceFoldingTestHelper {
-  static bool appendObjectElementsFromConstantObject(
-      Ast* ast, AstNode const* source,
-      containers::SmallVector<AstNode*, 8>& out) {
-    return ast->appendObjectElementsFromConstantObject(source, out);
-  }
-};
-}  // namespace arangodb::aql
-#endif
-
 namespace {
 
 class AstNodeTest : public ::testing::Test {
@@ -224,27 +212,6 @@ bool objectHasObjectSplice(AstNode const* object) {
     }
   }
   return false;
-}
-
-/// @brief Build an object that still reports isConstant() because the constant
-/// flags were cached before a calculated key was appended. This models a
-/// mid-fold failure inside appendObjectElementsFromConstantObject(): some
-/// OBJECT_ELEMENT members are appended successfully, then folding fails.
-AstNode* makePoisonedConstantObject(Ast* ast) {
-  AstNode* obj = ast->createNodeObject();
-  obj->addMember(ast->createNodeObjectElement("a", ast->createNodeValueInt(1)));
-  obj->addMember(ast->createNodeObjectElement("b", ast->createNodeValueInt(2)));
-  EXPECT_TRUE(obj->isConstant());
-
-  // Keep the cached DETERMINED_CONSTANT/VALUE_CONSTANT flags while mutating
-  // the member list so isConstant() still returns true.
-  TEMPORARILY_UNLOCK_NODE(obj);
-  obj->addMember(ast->createNodeCalculatedObjectElement(
-      ast->createNodeValueString("dyn", 3),
-      ast->createNodeValueString("x", 1)));
-  EXPECT_TRUE(obj->isConstant());
-  EXPECT_EQ(3, obj->numMembers());
-  return obj;
 }
 
 TEST_F(AstNodeTest, constantLetObjectSpliceIsFoldedDuringOptimization) {
@@ -637,27 +604,6 @@ TEST_F(AstNodeTest, emptyInlineObjectLiteralSpliceIsFoldedDuringOptimization) {
   EXPECT_FALSE(objectHasObjectSplice(objectNode));
   ASSERT_EQ(1, objectNode->numMembers());
   expectObjectInt(objectNode, "x", 1);
-}
-
-TEST_F(AstNodeTest, appendObjectElementsFromConstantObjectRollsBackOnFailure) {
-  AstNode* poisoned = makePoisonedConstantObject(_ast);
-
-  containers::SmallVector<AstNode*, 8> out;
-  out.push_back(
-      _ast->createNodeObjectElement("sentinel", _ast->createNodeValueInt(0)));
-  size_t const sizeBefore = out.size();
-
-  EXPECT_FALSE(
-      AstObjectSpliceFoldingTestHelper::appendObjectElementsFromConstantObject(
-          _ast, poisoned, out));
-  // The helper intentionally does not roll back partial appends.
-  // The caller is responsible for restoring the original state.
-  EXPECT_GT(out.size(), sizeBefore);
-
-  out.resize(sizeBefore);
-  ASSERT_EQ(1, out.size());
-  EXPECT_EQ(NODE_TYPE_OBJECT_ELEMENT, out[0]->type);
-  EXPECT_EQ("sentinel", out[0]->getStringView());
 }
 
 TEST_F(AstNodeTest, toVelocyPackNull) {
