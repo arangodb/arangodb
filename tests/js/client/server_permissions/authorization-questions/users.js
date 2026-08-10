@@ -37,9 +37,8 @@
 //   - POST /_api/user           (path "/_api/user")
 //     DO go through the base check -> `UseApiVersion version=0` and
 //     `UseDatabase name=_system level=read`.
-//   - every /_api/user/<user>[/...] request SKIPS the base check, but the
-//     override asks `UseApiVersion version=0` itself, so beyond that only
-//     the questions of the handler body are observed.
+//   - every /_api/user/<user>[/...] request SKIPS the base check, so the
+//     only quesions observed are the ones the handler body asks itself.
 //
 // Handler body questions (ExecContext helpers):
 //   canReadUser(u)            -> `ReadUser name=<u>`

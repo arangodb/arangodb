@@ -30,8 +30,7 @@
 //          arangod/ClusterEngine/ClusterRestWalHandler.cpp   (coordinator)
 //
 // Every request first asks `UseApiVersion version=0` and then
-// `UseDatabase name=_system level=read` in
-// RestHandler::checkUserCanAccess() (the routes have no /_db/ prefix, so the
+// `UseDatabase name=_system level=read` (the routes have no /_db/ prefix, so the
 // database is the connected _system).
 //
 //   GET  /properties               no in-handler auth check (returns 501)

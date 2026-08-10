@@ -30,8 +30,7 @@
 //
 // RestAqlFunctionsHandler just serialises the list of built-in AQL functions
 // and returns it; it performs no in-handler authorization check. The only
-// questions are the universal base checks in
-// RestHandler::checkUserCanAccess(): `UseApiVersion version=0` and
+// questions are the universal base checks: `UseApiVersion version=0` and
 // `UseDatabase name=<db> level=read` for the database in the request path.
 // The endpoint has no /_db/ prefix in the apitest and runs in the connected
 // database context; here we address it explicitly in _system.

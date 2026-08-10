@@ -40,7 +40,7 @@
 //                registered in the transaction with write access.
 // A pure read operation only loads the collection, so it asks read alone.
 // Every request additionally asks `UseApiVersion version=0` and
-// `UseDatabase name=d level=read` first (RestHandler::checkUserCanAccess).
+// `UseDatabase name=d level=read` first.
 //
 // The writedata question is accompanied by the server-wide read-only gate, which
 // shows up as the pseudo-question `IsReadOnly`; a pure read never triggers it.

@@ -29,11 +29,10 @@
 //
 // Handlers: RestAdminStatisticsHandler, RestAdminStatusHandler,
 // RestSupervisionStateHandler, RestSupportInfoHandler, RestSystemReportHandler,
-// RestTimeHandler, RestUsageMetricsHandler, RestVersionHandler.
+// RestTimeHandler, RestUsageMetricsHandler.
 //
 // Every request first asks `UseApiVersion version=0` and then
-// `UseDatabase name=_system level=read` in
-// RestHandler::checkUserCanAccess(). Beyond that:
+// `UseDatabase name=_system level=read`. Beyond that:
 //   - Hardened actions (canUseHardenedAction) ask nothing without
 //     --server.harden=true (our suites do not set it), so only the base
 //     question remains.
@@ -179,19 +178,6 @@ function monitoringApiAuthzSuite () {
     testUsageMetrics: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/usage-metrics`);
-      assertPermissions([
-        "UseApiVersion version=0",
-        "UseDatabase name=_system level=read"
-      ], endObserve());
-    },
-
-    // GET /_admin/version - RestVersionHandler always returns 200 and only uses
-    // canUseHardenedAction(AdminMonitoringInternal) internally to decide whether
-    // to include the version field.
-    // hardened action -> no question without --server.harden
-    testVersion: function () {
-      beginObserve();
-      arango.GET_RAW(`/_db/_system/_admin/version`);
       assertPermissions([
         "UseApiVersion version=0",
         "UseDatabase name=_system level=read"

@@ -99,12 +99,9 @@ RestStatus RestAccessTokenHandler::execute() {
 }
 
 async<Result> RestAccessTokenHandler::checkUserCanAccess() const {
-  // This API only requires the user to be authenticated and use an allowed
-  // api version
+  // This API only requires the user to be authenticated
   if (request()->authenticated()) {
-    auto const ec = request()->requestContext();
-    ADB_PROD_ASSERT(ec != nullptr);
-    co_return ec->canUseApiVersion(request()->requestedApiVersion());
+    co_return Result{};
   }
 
   co_return Result{TRI_ERROR_HTTP_UNAUTHORIZED, "Not authenticated."};

@@ -30,9 +30,7 @@
 //
 // RestDebugHandler contains NO ExecContext permission check at all (auth level
 // is AUTHEN: any authenticated user), so the only observed questions are
-// the base `UseApiVersion version=0` and
-// `UseDatabase name=_system level=read` from
-// RestHandler::checkUserCanAccess().
+// the base `UseApiVersion version=0` and `UseDatabase name=_system level=read`.
 //
 // AUDIT: RestDebugHandler is only compiled in when ARANGODB_ENABLE_FAILURE_TESTS
 // is defined at build time. On a release build every /_admin/debug route is

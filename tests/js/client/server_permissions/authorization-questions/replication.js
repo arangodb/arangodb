@@ -30,8 +30,7 @@
 //          arangod/RocksDBEngine/RocksDBRestReplicationHandler.cpp (batch)
 //
 // Every request first asks `UseApiVersion version=0` and then
-// `UseDatabase name=_system level=read` in
-// RestHandler::checkUserCanAccess() (the paths carry the /_db/_system/ prefix).
+// `UseDatabase name=_system level=read` (the paths carry the /_db/_system/ prefix).
 //
 //   batch (POST/PUT/DELETE)  RestReplicationHandler::testPermissions() does not
 //                            check the batch command (only Dump GET and

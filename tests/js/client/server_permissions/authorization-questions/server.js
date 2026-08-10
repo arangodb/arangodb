@@ -33,8 +33,7 @@
 // RestAdminRoutingHandler, RestAdminServerHandler.
 //
 // Every request first asks `UseApiVersion version=0` and then
-// `UseDatabase name=_system level=read` in
-// RestHandler::checkUserCanAccess(). Beyond that:
+// `UseDatabase name=_system level=read`. Beyond that:
 //   - Hardened actions (license, metrics) ask nothing without --server.harden.
 //   - isSuperuser / isSuperuserOrDisabled checks do not call can().
 //   - The real extra questions come from RestAdminServerHandler:

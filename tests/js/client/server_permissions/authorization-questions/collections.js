@@ -32,8 +32,7 @@
 // Handler: arangod/RestHandler/RestCollectionHandler.cpp
 //
 // Every request first asks `UseApiVersion version=0` and then
-// `UseDatabase name=d level=read` in
-// RestHandler::checkUserCanAccess(). Read metadata endpoints then look the
+// `UseDatabase name=d level=read`. Read metadata endpoints then look the
 // collection up via methods::Collections::lookup(), which asks
 // `UseCollection ... level=read`. Write/metadata endpoints additionally ask a
 // higher level (writedata/writemeta), and drop revokes permissions + cleans up

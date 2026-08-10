@@ -34,8 +34,7 @@
 // js/client/modules/@arangodb/testutils/test-utils.js).
 //
 // Every request first asks `UseApiVersion version=0`; every request
-// except `endpoints` then asks `UseDatabase name=_system level=read` in
-// RestHandler::checkUserCanAccess()
+// except `endpoints` then asks `UseDatabase name=_system level=read`
 // (the routes have no /_db/ prefix, so the database is the connected _system).
 // Per-route ExecContext::can() questions:
 //

@@ -29,8 +29,7 @@
 // Handler: arangod/RestHandler/RestViewHandler.cpp
 //
 // Every request first asks `UseApiVersion version=0` and then
-// `UseDatabase name=d level=read` in
-// RestHandler::checkUserCanAccess(). The view handler then asks one dedicated
+// `UseDatabase name=d level=read`. The view handler then asks one dedicated
 // ExecContext question per operation (arangod/Utils/ExecContext.cpp):
 //   getViews (list)     -> canSeeView()   -> SeeView    (per visible view)
 //   getView             -> canUseView(RO) -> UseView ... level=read

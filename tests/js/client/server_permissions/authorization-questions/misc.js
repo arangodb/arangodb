@@ -28,13 +28,12 @@
 // Observation-based counterpart of tests/api/apitests/misc.mjs.
 //
 // Every request first asks `UseApiVersion version=0` and then
-// `UseDatabase name=<db> level=read` in
-// RestHandler::checkUserCanAccess() (the base check fires for any authenticated
+// `UseDatabase name=<db> level=read` (the base check fires for any authenticated
 // request while authentication is on), where <db> is derived from the
 // /_db/<name>/ path prefix. Individual handlers then ask further questions:
 //   - canUseAdminAction(X)   -> logs X (always, RBAC not required)
 //   - canUseHardenedAction(X) -> logs X ONLY with --server.harden=true; we do
-//     not set harden, so those handlers (engine, version) ask nothing extra.
+//     not set harden, so those handlers (engine) ask nothing extra.
 //   - canUseDatabase(db, Write) -> `UseDatabase name=<db> level=write`
 //   - a read/write transaction over a collection -> UseCollection questions in
 //     StorageEngine/TransactionState.cpp checkCollectionPermission.
@@ -412,19 +411,6 @@ function miscApiAuthzSuite () {
       ], endObserve());
     },
 
-    // ── /_api/version ────────────────────────────────────────────────────
-    // RestVersionHandler falls through to the base check, then
-    // canUseHardenedAction(MonitoringInternal) for full details. Not hardened
-    // here -> asks nothing beyond the base check.
-    testVersion: function () {
-      beginObserve();
-      arango.GET_RAW(`/_db/${DB}/_api/version`);
-      assertPermissions([
-        "UseApiVersion version=0",
-        "UseDatabase name=d level=read"
-      ], endObserve());
-    },
-
     // ── /_api/wal/* ──────────────────────────────────────────────────────
     // RestWalAccessHandler: canUseAdminAction(AdminWalAccess) (always logged).
     // AUDIT: on a coordinator the handler returns 501 before the check; on a
@@ -516,9 +502,9 @@ function miscApiAuthzSuite () {
     },
 
     // ── /openapi.json ────────────────────────────────────────────────────
-    // RestOpenApiHandler::checkUserCanAccess neither checks API version nor
-    // database for exactly this path - the spec must be readable before
-    // 1logging in.
+    // RestOpenApiHandler::checkUserCanAccess does not check database
+    // for exactly this path - the spec must be readable before
+    // logging in.
     testOpenApiSpec: function () {
       beginObserve();
       arango.GET_RAW(`/openapi.json`);

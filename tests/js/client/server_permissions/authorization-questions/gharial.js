@@ -31,8 +31,7 @@
 //           arangod/Graph/GraphOperations.cpp
 //
 // Every request first asks `UseApiVersion version=0` and then
-// `UseDatabase name=d level=read`
-// (RestHandler::checkUserCanAccess).
+// `UseDatabase name=d level=read`.
 //
 // Any request that names a graph in the path first runs RestGraphHandler::
 // getGraph() -> GraphManager::lookupGraphByName(), which asks:

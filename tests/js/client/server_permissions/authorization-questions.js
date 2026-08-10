@@ -112,12 +112,13 @@ function authorizationQuestionsSuite () {
     },
 
     // a handler that asks nothing beyond the database access every request
-    // checks - proves the observer does not pick up ambient traffic
+    // checks - proves the observer does not pick up ambient traffic.
+    // RestVersionHandler exempts the default API version from the api-version
+    // question, so not even that one shows up here (see api-version.js).
     testVersion: function () {
       beginObserve();
       arango.GET_RAW('/_api/version');
       assertPermissions([
-        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },

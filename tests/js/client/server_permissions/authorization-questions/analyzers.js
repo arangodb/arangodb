@@ -30,8 +30,7 @@
 //          arangod/IResearch/IResearchAnalyzerFeature.cpp
 //
 // Every request first asks `UseApiVersion version=0` and then
-// `UseDatabase name=<db> level=read` in
-// RestHandler::checkUserCanAccess(), where <db> is the database in the path
+// `UseDatabase name=<db> level=read`, where <db> is the database in the path
 // (d for /_db/d/..., _system for the plain /_api/... routes).
 //
 // getAnalyzers (list): visits static analyzers (no question - null vocbase),

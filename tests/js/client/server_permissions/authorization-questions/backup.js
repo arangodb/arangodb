@@ -34,8 +34,7 @@
 // In jwt mode (--backup.api-enabled=jwt) it instead does an isSuperuserOrDisabled()
 // check which asks NOTHING. Our suites run in the default mode, so `AdminBackup`
 // is asked. Every request additionally asks `UseApiVersion version=0` and
-// `UseDatabase name=_system level=read` first in
-// RestHandler::checkUserCanAccess() (the routes have no /_db/ prefix, so
+// `UseDatabase name=_system level=read` first (the routes have no /_db/ prefix, so
 // the database is the connected _system).
 //
 // AUDIT: enterprise-only endpoints. On a Community Edition build the /_admin/backup

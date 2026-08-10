@@ -32,6 +32,7 @@ class RestVersionHandler : public arangodb::RestBaseHandler {
 
  protected:
   async<Result> checkUserCanAccess() const override;
+  async<Result> checkApiVersionAccess() const override;
 
  public:
   static void getVersion(application_features::ApplicationServer& server,

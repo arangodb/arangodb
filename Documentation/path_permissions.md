@@ -206,20 +206,9 @@ enabled:
  - Every other change is an exception, which we (grudgingly) make because we
    found some issue with the current system.
  - There is an additional action `db:UseApiVersion` to configure, which roles
-   are allowed to use which API versions.
-   Every request of an authenticated identity is gated. It is asked in
-   `RestHandler::checkUserCanAccess`, right next to the database question, so
-   that the two can later be merged into a single question and hence a single
-   call to the RBAC service. Handlers that override `checkUserCanAccess` and
-   let an authenticated identity through without calling the base
-   implementation ask `ExecContext::canUseApiVersion` themselves
-   (`RestUsersHandler`, `RestClusterHandler`, `RestAccessTokenHandler`). 
-	 Requests without an identity are exempt: a login
-   via `/_open/auth`, a public path such as the Aardvark entry points or
-   `/_api/openapi.json`, and any request served while the server is still
-   starting up or in maintenance mode. There is no identity whose roles could
-   grant them a version, and whether they may proceed at all is decided by the
-   handler.
+   are allowed to use which API versions. Every request of an authenticated 
+	 identity is gated by an api version check. It is asked in
+   `RestHandler::checkApiVersionAccess`.
  
 This philosophy helps in the following ways:
  
