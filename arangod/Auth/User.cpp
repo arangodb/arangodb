@@ -330,7 +330,7 @@ bool auth::User::checkAccessToken(std::string const& token) const {
 
     VPackSlice e = doc.get("valid_until");
 
-    if (!e.isNumber() && e.getNumericValue<uint64_t>() > now) {
+    if (!e.isNumber() || e.getNumericValue<double>() < now) {
       continue;
     }
 
