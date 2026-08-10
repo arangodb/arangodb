@@ -718,7 +718,7 @@ async<Result> RestHandler::checkUserCanAccess() const {
 #endif
 
   if (not request()->authenticated()) {
-    Result(TRI_ERROR_HTTP_UNAUTHORIZED, "User not authenticated.");
+    co_return Result(TRI_ERROR_HTTP_UNAUTHORIZED, "User not authenticated.");
   }
 
   auto ec = request()->requestContext();
