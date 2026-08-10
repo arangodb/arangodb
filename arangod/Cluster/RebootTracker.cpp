@@ -192,8 +192,7 @@ void RebootTracker::queueCallback(DescriptedCallback&& callback) noexcept {
   }
   _scheduler->queue(RequestLane::CLUSTER_INTERNAL,
                     [callback = std::move(callback)]() mutable noexcept {
-                      // See queueCallbacks(): reboot callbacks act as the
-                      // server itself (COR-821).
+                      // See queueCallbacks()
                       ExecContextSuperuserScope superuserScope;
                       safeInvoke(callback);
                     });
