@@ -1,6 +1,11 @@
 3.12.10.1 (XXXX-XX-XX)
 ----------------------
 
+* Upgraded included rclone to v1.75.0 with go1.25.12 and non-vulnerable
+  dependencies.
+
+* Updated node module js-yaml to 4.3.1 to resolve GHSA-5p4m-2wfm-xmqj.
+
 * Removed the obsolete "Replication" view and menu entry from the web UI.
 
 * BTS-2425: Updated node modules:
