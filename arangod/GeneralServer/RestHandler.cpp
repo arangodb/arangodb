@@ -708,55 +708,51 @@ async<Result> RestHandler::checkUserCanAccess() const {
     co_return Result();
   }
 
-  bool const userAuthenticated = request()->authenticated();
-  bool canAccess = userAuthenticated;
-  auto const& path = request()->requestPath();
+#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
+  auto const& ci = request()->connectionInfo();
+  if (ci.endpointType == Endpoint::DomainType::UNIX &&
+      !auth->authenticationUnixSockets()) {
+    // no authentication required for unix domain socket connections
+    co_return Result{};
+  }
+#endif
+
+  if (not request()->authenticated()) {
+    co_return Result(TRI_ERROR_HTTP_UNAUTHORIZED, "User not authenticated.");
+  }
 
   auto ec = request()->requestContext();
   TRI_ASSERT(ec != nullptr) << "no exec context in request: " << this->name();
-  // deny access to database with NONE
-  if (canAccess &&
-      ec->canUseDatabase(request()->databaseName(), DatabaseAccessLevel::Read)
-          .fail()) {
-    canAccess = false;
-    LOG_TOPIC("0898a", TRACE, Logger::AUTHORIZATION)
-        << "Access forbidden to " << path;
+  auto canUseDB =
+      ec->canUseDatabase(request()->databaseName(), DatabaseAccessLevel::Read);
+  if (canUseDB.ok()) {
+    co_return Result{};
   }
 
-  // we need to check for some special cases, where users may be allowed
-  // to proceed even unauthorized
-  if (not canAccess) {
-#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
-    // check if we need to run authentication for this type of
-    // endpoint
-    auto const& ci = request()->connectionInfo();
-
-    if (ci.endpointType == Endpoint::DomainType::UNIX &&
-        !auth->authenticationUnixSockets()) {
-      // no authentication required for unix domain socket connections
-      canAccess = true;
-    }
-#endif
+  LOG_TOPIC("0898a", TRACE, Logger::AUTHORIZATION)
+      << "Access forbidden to " << request()->requestPath();
+  if (_request->requestedApiVersion() == 0 && ec->isClassic()) {
+    co_return Result(TRI_ERROR_HTTP_UNAUTHORIZED,
+                     "No read access to database.");
+  } else {
+    co_return canUseDB;
   }
-
-  co_return canAccess
-      ? Result()
-      : (userAuthenticated
-             ? Result(TRI_ERROR_HTTP_UNAUTHORIZED,
-                      "No read access to database.")
-             : Result(TRI_ERROR_HTTP_UNAUTHORIZED, "User not authenticated."));
 }
 
 async<void> RestHandler::handleAuthorizationChecks() {
   if (auto res = co_await checkUserCanAccess(); res.fail()) {
     _state = HandlerState::FAILED;
     events::NotAuthorized(*_request);
-    // This one here is very special. Due to backwards compatibility
-    // requirements, we have to produce exactly the following combination
-    // here, which cannot be achieved with the `generateError` method
-    // which takes only a `Result`. Funny.
-    generateError(rest::ResponseCode::UNAUTHORIZED, TRI_ERROR_FORBIDDEN,
-                  res.errorMessage());
+    if (_request->requestedApiVersion() == 0) {
+      // This one here is very special. Due to backwards compatibility
+      // requirements, we have to produce exactly the following combination
+      // here, which cannot be achieved with the `generateError` method
+      // which takes only a `Result`. Funny.
+      generateError(rest::ResponseCode::UNAUTHORIZED, TRI_ERROR_FORBIDDEN,
+                    res.errorMessage());
+      co_return;
+    }
+    generateError(res);
   }
 }
 

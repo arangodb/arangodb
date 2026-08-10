@@ -210,6 +210,7 @@ struct AuthMode {
 
   Any authMode;
 
+  [[nodiscard]] bool isClassic() const noexcept;
   [[nodiscard]] bool isRbac() const noexcept;
   [[nodiscard]] bool isSuperuser() const noexcept;
   [[nodiscard]] bool isDisabled() const noexcept;

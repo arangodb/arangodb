@@ -96,6 +96,9 @@ class ExecContext {
   [[nodiscard]] bool isSuperuser() const noexcept {
     return _authMode.isSuperuser();
   }
+  [[nodiscard]] bool isClassic() const noexcept {
+    return _authMode.isClassic();
+  }
 
   /// @brief tells you if this execution was canceled
   bool isCanceled() const noexcept {
