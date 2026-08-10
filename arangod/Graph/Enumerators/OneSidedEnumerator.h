@@ -24,7 +24,7 @@
 
 #include "Aql/TraversalStats.h"
 #include "Basics/ResourceUsage.h"
-#include "Graph/Enumerators/OneSidedEnumeratorInterface.h"
+#include "Graph/Enumerators/ITraversalEnumerator.h"
 #include "Graph/Options/OneSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/SingleProviderPathResult.h"
 #include "Graph/Types/VertexRef.h"
@@ -55,7 +55,7 @@ struct OneSidedEnumeratorOptions;
 class PathValidatorOptions;
 
 template<class Configuration>
-class OneSidedEnumerator final : public TraversalEnumerator {
+class OneSidedEnumerator final : public ITraversalEnumerator {
  public:
   using Step = typename Configuration::Step;  // public due to tracer access
   using Provider = typename Configuration::Provider;
