@@ -172,6 +172,7 @@ class StorageEngineMock : private StorageEngineMockBase,
                                      bool isUpgrade) override;
   void getDatabases(arangodb::velocypack::Builder& result) override;
   void cleanupReplicationContexts() override;
+  void onDatabasesLoaded() override {}
   arangodb::velocypack::Builder getReplicationApplierConfiguration(
       TRI_vocbase_t& vocbase, ErrorCode& result) override;
   arangodb::velocypack::Builder getReplicationApplierConfiguration(

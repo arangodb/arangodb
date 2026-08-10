@@ -908,7 +908,9 @@ void RocksDBEngine::start() {
     }
   }
 #endif
+}
 
+void RocksDBEngine::onDatabasesLoaded() {
   runRecovery();
   startBackgroundThread();
   _databaseProvider.recoveryDone();

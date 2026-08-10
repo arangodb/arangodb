@@ -103,6 +103,9 @@ class ClusterEngine final : public StorageEngine {
 
   void cleanupReplicationContexts() override {}
 
+  // coordinators have no local WAL to recover, nothing to do
+  void onDatabasesLoaded() override {}
+
   velocypack::Builder getReplicationApplierConfiguration(
       TRI_vocbase_t& vocbase, ErrorCode& status) override;
   velocypack::Builder getReplicationApplierConfiguration(

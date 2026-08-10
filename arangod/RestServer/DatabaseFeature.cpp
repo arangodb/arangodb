@@ -284,9 +284,8 @@ DatabaseFeature::DatabaseFeature(
   startsAfter<InitDatabaseFeature>();
   startsAfter<metrics::MetricsFeature>();
 
-  // engine selection must happen before RocksDBEngine::prepare()
-  startsBefore<ClusterEngine>();
-  startsBefore<RocksDBEngine>();
+  startsAfter<ClusterEngine>();
+  startsAfter<RocksDBEngine>();
 }
 
 DatabaseFeature::~DatabaseFeature() = default;
@@ -327,6 +326,7 @@ void DatabaseFeature::start() {
   _engine->getDatabases(builder);
   TRI_ASSERT(builder.slice().isArray());
   openDatabases(builder.slice());
+  _engine->onDatabasesLoaded();
 
   // start database manager thread
   _databaseManager =
