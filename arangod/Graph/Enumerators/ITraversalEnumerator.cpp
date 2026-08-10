@@ -115,7 +115,7 @@ auto ITraversalEnumerator::createEnumerator(
       ProviderName::Options && baseProviderOptions,                    \
       arangodb::graph::PathValidatorOptions && pathValidatorOptions,   \
       arangodb::graph::OneSidedEnumeratorOptions && enumeratorOptions) \
-      -> std::unique_ptr<ITraversalEnumerator>;
+      ->std::unique_ptr<ITraversalEnumerator>;
 
 INSTANTIATE_FACTORY(
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>)
