@@ -81,7 +81,7 @@ ArangoBenchServer::ArangoBenchServer(
       std::numeric_limits<size_t>::max();
 }
 
-void ArangoBenchServer::addFeatures() {
+void ArangoBenchServer::addFeaturesWithOptionProvider() {
   addFeature<BasicFeaturePhaseClient>();
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
@@ -90,9 +90,7 @@ void ArangoBenchServer::addFeatures() {
   addFeature<ShutdownFeature>(
       std::array{std::type_index(typeid(BenchFeature))});
   addFeature<SslFeature>();
-}
 
-void ArangoBenchServer::addFeaturesWithOptionProvider() {
   addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
   addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());
   addFeature<TempFeature>(_binaryName, getOptions<TempOptionsProvider>());

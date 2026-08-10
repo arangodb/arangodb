@@ -214,66 +214,6 @@ function createComputedValues() {
     c.insert(docs);
 }
 
-function createAutoIncKeyGen() {
-  db._useDatabase("UnitTestsDumpSrc");
-  let c = db._create("UnitTestsDumpKeygen", {
-    keyOptions: {
-      type: "autoincrement",
-      allowUserKeys: false,
-      offset: 7,
-      increment: 42
-    }
-  });
-  let docs = [];
-  for (let i = 0; i < 1000; ++i) {
-    docs.push({value: i, more: {value: [i, i]}});
-  }
-  c.save(docs);
-  let d = c.save({});
-  c.save({}); // create another one inbetween...
-  c.remove(d);
-}
-
-function createPaddedKeyGen() {
-  db._useDatabase("UnitTestsDumpSrc");
-
-  let c = db._create("UnitTestsDumpKeygenPadded", {
-    keyOptions: {
-      type: "padded",
-      allowUserKeys: false
-    },
-    numberOfShards: getNoShards(2)
-  });
-
-  let docs = [];
-  for (let i = 0; i < 1000; ++i) {
-    docs.push({value: i, more: {value: [i, i]}});
-  }
-  c.save(docs);
-  let d = c.save({});
-  c.save({}); // create another one inbetween...
-  c.remove(d);
-}
-
-function createUUIDKeyGen() {
-  db._useDatabase("UnitTestsDumpSrc");
-  let c = db._create("UnitTestsDumpKeygenUuid", {
-    keyOptions: {
-      type: "uuid",
-      allowUserKeys: false
-    },
-    numberOfShards: getNoShards(2)
-  });
-  let docs = [];
-  for (let i = 0; i < 1000; ++i) {
-    docs.push({value: i});
-  }
-  c.save(docs);
-  let d = c.save({});
-  c.save({}); // create another one inbetween...
-  c.remove(d);
-}
-
 function createStrings() {
   db._useDatabase("UnitTestsDumpSrc");
 
@@ -599,92 +539,6 @@ function chooseGraphModule(kind) {
     default:
       throw "A wrong parameter in the test!";
   }
-}
-
-/**
- * @brief Only if enterprise mode:
- *        Creates an empty SmartGraph with no edge relations with given options.
- *        @param kind: one of "SmartGraph", "Disjoint", "Satellite"
- *        @param options: a document
- */
-function createEmptyGraph(kind, options) {
-  if (!isEnterprise) {
-    return;
-  }
-
-  db._useDatabase("UnitTestsDumpSrc");
-
-  let graphModule = chooseGraphModule(kind);
-
-  let graphName;
-  switch (kind) {
-    case "SmartGraph":
-      graphName = "UnitTestsDumpEmptySmartGraph";
-      break;
-    case "Satellite":
-      graphName = "UnitTestsDumpEmptySatelliteGraph";
-      break;
-    case "Disjoint":
-      graphName = "UnitTestsDumpEmptyDisjointGraph";
-      break;
-    case "EnterpriseGraph":
-      graphName = "UnitTestsDumpEmptyEnterpriseGraph";
-  }
-
-  if (graphModule._exists(graphName)) {
-    assertTrue(false, "Graph already exists. Please check setup configuration.");
-  }
-
-  graphModule._create(graphName, [], [], options);
-}
-
-
-/**
- * @brief Only if enterprise mode:
- *        Creates an empty SmartGraph sharded by `value`, with no edge relations.
- */
-function createEmptySmartGraph() {
-  createEmptyGraph("SmartGraph", {
-    numberOfShards: getNoShards(5),
-    replicationFactor: 2,
-    smartGraphAttribute: "value"
-  });
-}
-
-/**
- * @brief Only if enterprise mode:
- *        Creates an empty EnterpriseGraph, with no edge relations.
- */
-function createEmptyEnterpriseGraph() {
-  createEmptyGraph("EnterpriseGraph", {
-    numberOfShards: getNoShards(5),
-    replicationFactor: 2,
-    isSmart: true
-  });
-}
-
-/**
- * @brief Only if enterprise mode:
- *        Creates an empty Satellite with no edge relations.
- */
-function createEmptySatelliteGraph() {
-  createEmptyGraph("Satellite", {
-    numberOfShards: getNoShards(5),
-    replicationFactor: 'satellite'
-  });
-}
-
-/**
- * @brief Only if enterprise mode:
- *        Creates an empty disjoint SmartGraph with no edge relations.
- */
-function createEmptyDisjointGraph() {
-  createEmptyGraph("Disjoint", {
-    numberOfShards: getNoShards(5),
-    replicationFactor: 2,
-    smartGraphAttribute: "value",
-    isDisjoint: true
-  });
 }
 
 /**
@@ -1052,38 +906,6 @@ function createHybridDisjointSmartGraphSingleServer() {
 }
 
 
-function createSatelliteGraphWithoutData() {
-  if (!isEnterprise) {
-    return;
-  }
-
-  createGraphWithoutData({
-      smartGraphName: "UnitTestDumpSatelliteGraphWithoutData",
-      edges: "UnitTestDumpSatelliteEdgesWithoutData",
-      fromVertices: ["UnitTestDumpSatelliteVerticesWithoutData"],
-      toVertices: ["UnitTestDumpSatelliteVerticesWithoutData"],
-      orphans: ["UnitTestDumpSatelliteOrphansWithoutData"]
-    },
-    {isSatellite: true}
-  );
-}
-
-function createDisjointGraphWithoutData() {
-  if (!isEnterprise) {
-    return;
-  }
-
-  createGraphWithoutData({
-      smartGraphName: "UnitTestDumpDisjointGraphWithoutData",
-      edges: "UnitTestDumpDisjointEdgesWithoutData",
-      fromVertices: ["UnitTestDumpDisjointVerticesWithoutData"],
-      toVertices: ["UnitTestDumpDisjointVerticesWithoutData"],
-      orphans: ["UnitTestDumpDisjointOrphansWithoutData"]
-    },
-    {isDisjoint: true, replicationFactor: 2}
-  );
-}
-
 /**
  * Fill the \a vDocs returned array with numbers from 0 to \a size, save them
  * into \a db under \a verticesName and return the object {saved: <saved array>, vDocs: <the values>>}
@@ -1213,88 +1035,6 @@ function createGraphWithoutData(names, options = undefined, kind) {
   );
 }
 
-function createSmartGraphWithoutData() {
-  // External method for dump-setup-mixed.js to create a default SmartGraph
-  // Using helper graph creation method defined above: createGraphWithoutData
-  if (!isEnterprise) {
-    return;
-  }
-
-  const smartGraphName = "UnitTestDumpSmartGraphWithoutData";
-  const edges = "UnitTestDumpSmartEdgesWithoutData";
-  const vertices = "UnitTestDumpSmartVerticesWithoutData";
-  const orphans = "UnitTestDumpSmartOrphansWithoutData";
-
-  const names = {
-    smartGraphName: smartGraphName,
-    edges: edges,
-    fromVertices: [vertices],
-    toVertices: [vertices],
-    orphans: [orphans]
-  };
-
-  createGraphWithoutData(names);
-}
-
-function createEnterpriseGraphWithoutData() {
-  // External method for dump-setup-mixed.js to create a default SmartGraph
-  // Using helper graph creation method defined above: createGraphWithoutData
-  if (!isEnterprise) {
-    return;
-  }
-
-  const enterpriseGraphName = "UnitTestDumpEnterpriseGraphWithoutData";
-  const edges = "UnitTestDumpEnterpriseEdgesWithoutData";
-  const vertices = "UnitTestDumpEnterpriseVerticesWithoutData";
-  const orphans = "UnitTestDumpEnterpriseOrphansWithoutData";
-
-  const names = {
-    smartGraphName: enterpriseGraphName,
-    edges: edges,
-    fromVertices: [vertices],
-    toVertices: [vertices],
-    orphans: [orphans]
-  };
-
-  createGraphWithoutData(names, undefined, "EnterpriseGraph");
-}
-
-/**
- * @brief Only if enterprise mode:
- *        Creates an arangosearch over smart edge collection
- */
-function createSmartArangoSearch() {
-  db._useDatabase("UnitTestsDumpSrc");
-  if (!isEnterprise) {
-    return;
-  }
-
-  db._dropView("UnitTestsDumpSmartView");
-
-  let analyzers = require("@arangodb/analyzers");
-  const countBefore = db["_analyzers"].count();
-  analyzers.save("smartCustom", "delimiter", {delimiter: "smart"}, ["frequency"]);
-  assertEqual(db["_analyzers"].count(), countBefore + 1);
-
-  db._createView("UnitTestsDumpSmartView", "arangosearch", {
-    // choose non default values to check if they are correctly dumped and imported
-    cleanupIntervalStep: 456,
-    consolidationPolicy: {
-      threshold: 0.3,
-      type: "bytes_accum"
-    },
-    consolidationIntervalMsec: 0,
-    links: {
-      "UnitTestDumpSmartEdges": {
-        includeAllFields: true,
-        fields: {
-          text: {analyzers: ["text_en", "smartCustom"]}
-        }
-      }
-    }
-  });
-}
-
 function assertCollectionsAreNew(collectionNames) {
   for (let existingCollection of db._collections()) {
     const existingCollectionName = existingCollection.name();
@@ -1409,16 +1149,6 @@ function createSatelliteGraphs() {
   assertEqual(expected, res.toArray());
 }
 
-exports.createEmptySmartGraph = createEmptySmartGraph;
-exports.createEmptyEnterpriseGraph = createEmptyEnterpriseGraph;
-exports.createEmptySatelliteGraph = createEmptySatelliteGraph;
-exports.createEmptyDisjointGraph = createEmptyDisjointGraph;
-
-exports.createSmartGraphWithoutData = createSmartGraphWithoutData;
-exports.createEnterpriseGraphWithoutData = createEnterpriseGraphWithoutData;
-exports.createSatelliteGraphWithoutData = createSatelliteGraphWithoutData;
-exports.createDisjointGraphWithoutData = createDisjointGraphWithoutData;
-
 exports.createSmartGraph = createSmartGraph;
 exports.createSmartGraph3_11_compat = createSmartGraph3_11_compat;
 
@@ -1429,7 +1159,6 @@ exports.createDisjointGraphSingleServer = createDisjointGraphSingleServer;
 exports.createHybridSmartGraphSingleServer = createHybridSmartGraphSingleServer;
 exports.createHybridDisjointSmartGraphSingleServer = createHybridDisjointSmartGraphSingleServer;
 
-exports.createSmartArangoSearch = createSmartArangoSearch;
 exports.createSatelliteCollections = createSatelliteCollections;
 exports.createSatelliteGraphs = createSatelliteGraphs;
 
@@ -1442,9 +1171,6 @@ exports.createModifyCollection = createModifyCollection;
 exports.createExtendedName = createExtendedName;
 exports.createMultiShard = createMultiShard;
 exports.createComputedValues = createComputedValues;
-exports.createAutoIncKeyGen = createAutoIncKeyGen;
-exports.createPaddedKeyGen = createPaddedKeyGen;
-exports.createUUIDKeyGen = createUUIDKeyGen;
 exports.createStrings = createStrings;
 exports.createTransactional = createTransactional;
 exports.createPersistent = createPersistent;

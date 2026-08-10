@@ -56,13 +56,6 @@ jsunity.run(function dump_single_testsuite() {
       removedModulo: 10,
       // testIndexes
       indexesCount: 9,
-      // testKeygenAutoInc
-      keygenAutoInc: 42049,
-      autoIncDocCount: 1001,
-      // testKeygenPadded
-      paddedDocCount: 1001,
-      // testKeygenUuid
-      uuidDocCount: 1001,
     }),
     suite,
     "_multiple",
@@ -75,8 +68,6 @@ jsunity.run(function dump_single_testsuite() {
       "testReplicationFactor",
 
       // TODO: should we also have these tests in this scenario?
-      "testKeygenPadded",
-      "testKeygenUuid",
       "testAnalyzers",
       "testIndexAnalyzerCollection",
       "testJobsAndQueues",
@@ -99,7 +90,6 @@ jsunity.run(function dump_single_testsuite() {
       "testAqlGraphQueryOutbound",
       "testAqlGraphQueryAny",
       "testSmartGraphSharding",
-      "testViewOnSmartEdgeCollection",
       "testSmartGraphAttribute"
     ]
   );

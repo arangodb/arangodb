@@ -293,7 +293,14 @@ class IResearchDataStore {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get index stats for current snapshot
   ////////////////////////////////////////////////////////////////////////////////
-  virtual Stats stats() const;
+  virtual Stats getStats() const;
+
+  struct DatastoreStats {
+    Stats summary;
+    std::vector<irs::SegmentInfo> segments;
+  };
+
+  virtual DatastoreStats getDatastoreStats() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set the data store to out of sync. if a data store is out of sync,
@@ -472,7 +479,14 @@ class IResearchDataStore {
   /// @brief Update index stats for current snapshot
   /// @note Unsafe, can only be called is _asyncSelf is locked
   ////////////////////////////////////////////////////////////////////////////////
-  Stats updateStatsUnsafe(DataSnapshotPtr data) const;
+  void updateStatsUnsafe(DataSnapshotPtr data) const;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Fetch index stats for current snapshot
+  /// @note Unsafe, can only be called is _asyncSelf is locked
+  ////////////////////////////////////////////////////////////////////////////////
+  virtual DatastoreStats getDatastoreStatsUnsafe(DataSnapshotPtr data) const;
+  virtual Stats getStatsUnsafe(DataSnapshotPtr data) const;
 
   void initClusterMetrics() const;
 
