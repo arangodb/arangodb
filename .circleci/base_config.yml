@@ -5,7 +5,7 @@ orbs:
   aws-ecr: circleci/aws-ecr@9.0.1
   # Exact pin: a floating orb range silently changes what runs. Keep in
   # sync with base_nightly_packages.yml.
-  trivy-scan: arangodb/trivy-scan@1.2.0
+  trivy-scan: arangodb/trivy-scan@1.6.0
 
 parameters:
   enterprise-commit:
@@ -695,6 +695,35 @@ jobs:
               exit 1
             fi
 
+  # PR-time CVE scan of the vendored JS dependency trees the PR path
+  # builds but nothing scans (the nightly gates cover packages and images,
+  # not these lockfiles). Warn-only until a measured baseline justifies a
+  # gate. scan-path stays pinned inside js/: the workspace also carries
+  # the enterprise checkout.
+  js-dependency-scan:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: .
+      - trivy-scan/scan:
+          scan-type: fs
+          scan-path: js/apps/system/_admin/aardvark/APP/react
+          scanners: vuln
+          expect-targets: yarn.lock
+          report-severity: "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
+          db-cache-fallback-branch: devel
+          output-prefix: aardvark-
+      - trivy-scan/scan:
+          scan-type: fs
+          scan-path: js/node
+          scanners: vuln
+          expect-targets: package-lock.json
+          report-severity: "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
+          db-cache-fallback-branch: devel
+          output-prefix: js-node-
+
   build-frontend:
     docker:
       - image: << pipeline.parameters.build-docker-image >>
@@ -1306,6 +1335,10 @@ workflows:
       - security-governance:
           name: security-governance
           context: [circleci-token]
+          requires:
+            - minimal-checkout
+      - js-dependency-scan:
+          name: js-dependency-scan
           requires:
             - minimal-checkout
 # all other workflows are defined in generate_config.py
