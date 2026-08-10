@@ -3379,7 +3379,8 @@ Future<Result> Methods::replicateOperations(
     std::shared_ptr<const std::vector<ServerID>> const followerList,
     OperationOptions const& options, velocypack::Builder const& replicationData,
     TRI_voc_document_operation_e operation, std::string_view userName) {
-  // copy the shared_ptr to keep it alive across suspend/resume of this coroutine
+  // copy the shared_ptr to keep it alive across suspend/resume of this
+  // coroutine
   auto const collection = transactionCollection.collection();
   TRI_ASSERT(followerList != nullptr);
 
@@ -3635,8 +3636,8 @@ Future<Result> Methods::replicateOperations(
           resp.statusCode() == fuerte::StatusCreated ||
           resp.statusCode() == fuerte::StatusOK) {
         bool found;
-        std::string const& errors = resp.response().header.metaByKey(
-            StaticStrings::ErrorCodes, found);
+        std::string const& errors =
+            resp.response().header.metaByKey(StaticStrings::ErrorCodes, found);
         if (found) {
           replicationFailureReason =
               absl::StrCat("got error header from follower: ", errors);
