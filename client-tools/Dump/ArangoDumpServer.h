@@ -37,8 +37,6 @@ class ArangoDumpServer final
   ArangoDumpServer(std::shared_ptr<options::ProgramOptions> options,
                    char const* binaryPath, std::string binaryName, int* ret);
 
-  void addFeatures();
-
  protected:
   void addFeaturesWithOptionProvider() final;
 };
