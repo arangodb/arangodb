@@ -43,15 +43,18 @@ class ArangodServer : public OptionProvidingServer<ArangodOptionProviders> {
         _dataSourceRegistry(dataSourceRegistry) {}
 
   // Adds all features to the server. Must be called before run().
-  // @param ret pointer to return value (used by some features)
   void addFeatures();
 
  protected:
-  void processOptions() override final;
   // Called by server::run() after collect & validate.
   void addFeaturesWithOptionProvider() final;
 
+  void processOptions() override final;
+
  private:
+  static ServerState::RoleEnum resolveRole(ClusterOptions const& clusterOptions,
+                                           AgencyOptions const& agencyOptions);
+
   std::shared_ptr<crash_handler::DumpManager> _dumpManager;
   std::shared_ptr<crash_handler::DataSourceRegistry> _dataSourceRegistry;
 };

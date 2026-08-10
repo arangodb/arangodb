@@ -17,24 +17,18 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "RocksDBEngine/StorageEngineFixture.h"
 
-#include "ApplicationFeatures/OptionsProvider.h"
-#include "VersionFeatureOptions.h"
+namespace arangodb::tests {
 
-namespace arangodb {
+std::unique_ptr<StorageEngineFixtureSuite> StorageEngineFixture::_suite;
 
-struct VersionOptionsProvider
-    : OptionsProviderImpl<VersionOptionsProvider, VersionFeatureOptions> {
-  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                          VersionFeatureOptions& options);
-  void processOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                          VersionFeatureOptions& options);
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
-                           VersionFeatureOptions& /*options*/) {}
-};
+StorageEngineFixtureSuite::~StorageEngineFixtureSuite() {
+  while (!scheduler.queueEmpty()) {
+    scheduler.runOnce();
+  }
+}
 
-}  // namespace arangodb
+}  // namespace arangodb::tests

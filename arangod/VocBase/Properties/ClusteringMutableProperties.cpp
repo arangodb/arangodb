@@ -139,7 +139,7 @@ ClusteringMutableProperties::validateDatabaseConfiguration(
     }
   }
 
-  if (config.isOneShardDB && isSatellite()) {
+  if (config.oneShardDBConfiguration.has_value() && isSatellite()) {
     return {TRI_ERROR_BAD_PARAMETER,
             "Collection in a OneShard database cannot have replicationFactor "
             "'satellite'"};

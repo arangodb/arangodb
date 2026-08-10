@@ -212,8 +212,6 @@ add_library(arango_basic_features STATIC
         ApplicationFeatures/ShutdownFeature.cpp
         ApplicationFeatures/TempFeature.cpp
         ApplicationFeatures/TempOptionsProvider.cpp
-        ApplicationFeatures/VersionFeature.cpp
-        ApplicationFeatures/VersionOptionsProvider.cpp
         ApplicationFeatures/ProcessEnvironmentFeature.cpp
         ApplicationFeatures/ProcessEnvironmentOptionsProvider.cpp
 )

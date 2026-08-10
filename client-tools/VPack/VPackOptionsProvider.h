@@ -31,9 +31,12 @@ class ProgramOptions;
 
 namespace arangodb {
 
-struct VPackOptionsProvider : OptionsProvider<VPackFeatureOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      VPackFeatureOptions& options) override;
+struct VPackOptionsProvider
+    : OptionsProviderImpl<VPackOptionsProvider, VPackFeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          VPackFeatureOptions& options);
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
+                           VPackFeatureOptions& /*options*/){};
 };
 
 }  // namespace arangodb

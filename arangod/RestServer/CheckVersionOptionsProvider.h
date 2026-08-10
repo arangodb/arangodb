@@ -39,8 +39,6 @@ struct CheckVersionOptionsProvider
                           CheckVersionFeatureOptions> {
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           CheckVersionFeatureOptions& options);
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
-                           CheckVersionFeatureOptions& /*options*/){};
 };
 
 }  // namespace arangodb::check_version
