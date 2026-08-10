@@ -46,7 +46,8 @@ DECLARE_GAUGE(arangodb_agency_cache_callback_number, uint64_t,
 AgencyCache::AgencyCache(application_features::ApplicationServer& server,
                          AgencyCallbackRegistry& callbackRegistry,
                          ErrorCode shutdownCode)
-    // agency polling only; callbacks do not run authorization-relevant code
+    // agency polling only; callbacks do not require an ExecContext
+    // (and if one needs it in the future, should bring their own)
     : ServerThread(server, "AgencyCache", nullptr),
       _commitIndex(0),
       _readDB("readDB"),

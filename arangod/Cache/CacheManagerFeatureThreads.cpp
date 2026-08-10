@@ -33,7 +33,7 @@ using namespace arangodb;
 
 CacheRebalancerThread::CacheRebalancerThread(cache::Manager* manager,
                                              std::uint64_t interval)
-    // cache bookkeeping only, no authorization-relevant code
+    // cache bookkeeping only, no ExecContext required
     : Thread("CacheRebalancerThread", nullptr),
       _manager(manager),
       _rebalancer(_manager),

@@ -68,6 +68,8 @@ RestStatus RestAccessTokenHandler::execute() {
   auto const type = _request->requestType();
 
   auto& exec = ExecContext::current();
+  // Note that contrary to versions up to and including 3.12.9 writes are now
+  // forbidden if the server is in read-only mode. This is intentional.
   switch (type) {
     case RequestType::GET:
       if (auto r = exec.canReadUser(user); !r.ok()) {
@@ -77,13 +79,15 @@ RestStatus RestAccessTokenHandler::execute() {
       return showAccessTokens(um, user);
     case RequestType::POST:
       if (auto r = exec.canModifyUserProfile(user); !r.ok()) {
-        generateError(r);
+        generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                      r.errorMessage());
         return RestStatus::DONE;
       }
       return createAccessToken(um, user);
     case RequestType::DELETE_REQ:
       if (auto r = exec.canModifyUserProfile(user); !r.ok()) {
-        generateError(r);
+        generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                      r.errorMessage());
         return RestStatus::DONE;
       }
       return deleteAccessToken(um, user);

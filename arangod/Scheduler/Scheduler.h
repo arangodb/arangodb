@@ -165,7 +165,7 @@ class Scheduler {
         // Install the ExecContext captured at queueDelayed() time, so the
         // WorkItem created by queue() below captures it in turn. This runs
         // on the cron thread or on an arbitrary cancelling thread, so the
-        // previous context is restored afterwards (COR-821).
+        // previous context is restored afterwards.
         ExecContextScope execContextGuard(std::move(_execContext));
         // The following code moves the _handler into the Scheduler.
         // Thus any reference to class to self in the _handler will be released
@@ -214,9 +214,9 @@ class Scheduler {
       // Install the ExecContext captured at enqueue time for the duration
       // of the job, and restore the previous thread-local afterwards (also
       // on exceptions): executing a work item must leave the executing
-      // thread's ExecContext exactly as it found it (COR-821). On dedicated
-      // worker threads the previous state is always nullptr, so a work item
-      // can never leak its ExecContext into the next job; when run inline
+      // thread's ExecContext exactly as it found it. On dedicated worker
+      // threads the previous state is always nullptr, so a work item can
+      // never leak its ExecContext into the next job; when run inline
       // (e.g. tests), the caller's context is not clobbered.
       ExecContextScope execContextGuard(std::move(execContext));
       this->operator()();

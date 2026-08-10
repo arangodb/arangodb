@@ -31,7 +31,8 @@ namespace arangodb::consensus {
 
 // @brief Construct with agent
 Compactor::Compactor(Agent* agent)
-    // log compaction: AQL queries and transactions
+    // needs superuser permissions for log compaction: AQL queries and
+    // transactions
     : Thread("Compactor", ExecContext::superuserAsShared()),
       _agent(agent),
       _wakeupCompactor(false),

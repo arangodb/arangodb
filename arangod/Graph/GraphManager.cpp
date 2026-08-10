@@ -569,22 +569,17 @@ Result GraphManager::ensureCollections(
 
   auto anyExistingCollection =
       std::invoke([&]() -> std::shared_ptr<LogicalCollection> {
-        if (!existentDocumentCollections.empty()) {
-          // Prefer Vertex collections
-          for (auto const& col : existentDocumentCollections) {
-            // We need to ignore satelliteCollections on SmartGraphs
-            if (!graph.isSmart() || !col->isSatellite()) {
-              return col;
-            }
+        // Prefer Vertex collections
+        for (auto const& col : existentDocumentCollections) {
+          // We need to ignore satelliteCollections on SmartGraphs
+          if (!graph.isSmart() || !col->isSatellite()) {
+            return col;
           }
         }
-        if (!existentEdgeCollections.empty()) {
-          // over edge collections
-          for (auto const& col : existentEdgeCollections) {
-            // We need to ignore satelliteCollections on SmartGraphs
-            if (!graph.isSmart() || !col->isSatellite()) {
-              return col;
-            }
+        for (auto const& col : existentEdgeCollections) {
+          // We need to ignore satelliteCollections on SmartGraphs
+          if (!graph.isSmart() || !col->isSatellite()) {
+            return col;
           }
         }
         return nullptr;
@@ -594,8 +589,10 @@ Result GraphManager::ensureCollections(
   std::optional<std::string> leadingCollection = std::nullopt;
   bool pickedExisting = false;
 
-  if (config.isOneShardDB) {
-    leadingCollection = config.defaultDistributeShardsLike;
+  if (config.oneShardDBConfiguration.has_value()) {
+    // here leading collection is set for one shard
+    leadingCollection =
+        config.oneShardDBConfiguration.value().defaultDistributeShardsLike;
     TRI_ASSERT(leadingCollection.has_value() &&
                !leadingCollection.value().empty());
     pickedExisting = true;
@@ -669,11 +666,21 @@ Result GraphManager::ensureCollections(
   if (createRequests.empty()) {
     // Nothing to do.
     if (leadingCollection.has_value() && graph.requiresInitialUpdate()) {
+      if (config.oneShardDBConfiguration.has_value()) {
+        auto defaultSharding = resolver.getCollection(
+            config.oneShardDBConfiguration.value().defaultDistributeShardsLike);
+        ADB_PROD_ASSERT(defaultSharding != nullptr)
+            << "We have lost the leading collection of a oneShardDatabase";
+        graph.updateInitial({std::move(defaultSharding)}, leadingCollection,
+                            getLeaderName);
+        return {};
+      }
       // We can only end up here if we have an existing collection
       TRI_ASSERT(anyExistingCollection != nullptr);
       TRI_ASSERT(pickedExisting);
       graph.updateInitial({anyExistingCollection}, leadingCollection,
                           getLeaderName);
+      return {};
     }
     return {};
   }
@@ -698,11 +705,11 @@ Result GraphManager::ensureCollections(
   if (finalResult.ok() && leadingCollection.has_value() &&
       graph.requiresInitialUpdate()) {
     if (pickedExisting) {
-      if (config.isOneShardDB) {
+      if (config.oneShardDBConfiguration.has_value()) {
         // We need to shard by the default sharding collection
         // Take initial from the selected existing one
-        auto defaultSharding =
-            resolver.getCollection(config.defaultDistributeShardsLike);
+        auto defaultSharding = resolver.getCollection(
+            config.oneShardDBConfiguration.value().defaultDistributeShardsLike);
         ADB_PROD_ASSERT(defaultSharding != nullptr)
             << "We have lost the leading collection of a oneShardDatabase";
         graph.updateInitial({std::move(defaultSharding)}, leadingCollection,

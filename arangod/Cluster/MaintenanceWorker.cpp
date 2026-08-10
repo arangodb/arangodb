@@ -40,7 +40,7 @@ namespace maintenance {
 MaintenanceWorker::MaintenanceWorker(
     arangodb::MaintenanceFeature& feature, int minimalPriorityAllowed,
     std::unordered_set<std::string> const& labels)
-    // executes shard/database/index maintenance actions
+    // needs superuser permissions to execute maintenance actions
     : Thread("MaintenanceWorker", ExecContext::superuserAsShared()),
       _feature(feature),
       _curAction(nullptr),
@@ -51,7 +51,7 @@ MaintenanceWorker::MaintenanceWorker(
 
 MaintenanceWorker::MaintenanceWorker(arangodb::MaintenanceFeature& feature,
                                      std::shared_ptr<Action>& directAction)
-    // executes shard/database/index maintenance actions
+    // needs superuser permissions to execute maintenance actions
     : Thread("MaintenanceWorker", ExecContext::superuserAsShared()),
       _feature(feature),
       _curAction(directAction),

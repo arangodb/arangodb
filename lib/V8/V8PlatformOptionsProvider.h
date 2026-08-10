@@ -31,8 +31,6 @@ struct V8PlatformOptionsProvider
     : OptionsProviderImpl<V8PlatformOptionsProvider, V8PlatformFeatureOptions> {
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           V8PlatformFeatureOptions& options);
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
-                           V8PlatformFeatureOptions& /*options*/) {}
 };
 
 }  // namespace arangodb

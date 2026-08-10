@@ -499,7 +499,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// this query. Used (in maintainer mode) to assert that the query executes
   /// under the same identity it was created with, so that any spawn path
   /// that fails to propagate the ExecContext fails loudly instead of
-  /// silently running as a different (or no) user (COR-821).
+  /// silently running as a different (or no) user.
   std::shared_ptr<ExecContext const> _execContext;
 
   /// @brief optional plan cache key that was used to look up the query in the

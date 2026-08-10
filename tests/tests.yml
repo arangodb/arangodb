@@ -39,16 +39,6 @@
       type: single
     args:
       extraArgs:log.level: replication=trace
-- replication_sync:
-    options:
-      priority: 8000
-      buckets: 9
-      parallelity: 3
-      size: medium
-      type: single
-    args:
-      extraArgs:log.level: replication=trace
-
 
 - authentication_audit_endpoints_import_export_agency_fuerte:
     options:
@@ -444,6 +434,7 @@
       - importing
       - export
       - shell_api
+
 - shell_client_aql_vector:
     options:
       parallelity: 5
@@ -451,6 +442,11 @@
       type: cluster
     args:
       dumpAgencyOnError: true
+- shell_client_aql_vector:
+    options:
+      parallelity: 5
+      size: medium+
+      type: single
 
 - hot_backup:
     options:
@@ -685,14 +681,6 @@
     options:
       type: cluster
       priority: 500
-    requires:
-      full: true
-    args:
-      dumpAgencyOnError: true
-- wal_cleanup:
-    options:
-      type: cluster
-      priority: 2500
     requires:
       full: true
     args:

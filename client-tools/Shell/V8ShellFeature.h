@@ -44,9 +44,6 @@ class V8ShellFeature final : public application_features::ApplicationFeature {
   V8ShellFeature(application_features::ApplicationServer& server,
                  std::string const& name);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(
-      std::shared_ptr<options::ProgramOptions> options) override;
   void start() override final;
   void unprepare() override final;
   void stop() override final;

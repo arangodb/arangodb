@@ -14,7 +14,7 @@
   },
   "summary": "The HTTP API of the ArangoDB graph database system",
   "title": "ArangoDB Core API",
-  "version": "3.12.9 (API v0)"
+  "version": "3.12.11-devel (API v0)"
  },
  "openapi": "3.1.0",
  "paths": {
@@ -14257,7 +14257,7 @@
       }
      },
      {
-      "description": "Whether to additionally include the complete previous document under the\n`old` attribute in the result. Only available if the `overwriteMode`\nparameter is to `\"update\"` or `\"replace\"`, or if `overwrite` is set to `true`.\n",
+      "description": "Whether to additionally include the complete previous document under the\n`old` attribute in the result. Only available if the `overwriteMode`\nparameter is set to `\"update\"` or `\"replace\"`, or if `overwrite` is set to `true`.\n",
       "in": "query",
       "name": "returnOld",
       "required": false,
@@ -14672,7 +14672,7 @@
       }
      },
      {
-      "description": "Whether to additionally include the complete previous document under the\n`old` attribute in the result. Only available if the `overwriteMode`\nparameter is to `\"update\"` or `\"replace\"`, or if `overwrite` is set to `true`.\n",
+      "description": "Whether to additionally include the complete previous document under the\n`old` attribute in the result. Only available if the `overwriteMode`\nparameter is set to `\"update\"` or `\"replace\"`, or if `overwrite` is set to `true`.\n",
       "in": "query",
       "name": "returnOld",
       "required": false,
@@ -16909,7 +16909,7 @@
                 "type": "boolean"
                },
                "isSmart": {
-                "description": "Whether the graph is a SmartGraph.\n",
+                "description": "Whether the graph is a SmartGraph (`smartGraphAttribute` is set)\nor EnterpriseGraph (`isSmart` is `true` but `smartGraphAttribute` is not set).\n",
                 "type": "boolean"
                },
                "name": {
@@ -17015,14 +17015,14 @@
              "type": "string"
             },
             "from": {
-             "description": "A list of node collection names.\nEdges you later insert into `collection` can only reference vertices\nfrom these collections in their `_from` attribute (if you use the\ninterface for named graphs).\n",
+             "description": "A list of node collection names.\nEdges you later insert into `collection` can only reference nodes\nfrom these collections in their `_from` attribute (if you use the\ninterface for named graphs).\n",
              "items": {
               "type": "string"
              },
              "type": "array"
             },
             "to": {
-             "description": "A list of node collection names.\nEdges you later insert into `collection` can only reference vertices\nfrom these collections in their `_to` attribute (if you use the\ninterface for named graphs).\n",
+             "description": "A list of node collection names.\nEdges you later insert into `collection` can only reference nodes\nfrom these collections in their `_to` attribute (if you use the\ninterface for named graphs).\n",
              "items": {
               "type": "string"
              },
@@ -17045,7 +17045,7 @@
          },
          "isSmart": {
           "default": false,
-          "description": "Define if the created graph should be smart.\n",
+          "description": "Define if the created graph should be smart.\n- Setting `options.smartGraphAttribute` creates a SmartGraph (`isSmart` is automatically `true`).\n- Setting `isSmart` to `true` but no `options.smartGraphAttribute` creates an EnterpriseGraph.\n",
           "type": "boolean"
          },
          "name": {
@@ -17072,7 +17072,7 @@
             "type": "array"
            },
            "smartGraphAttribute": {
-            "description": "Required to create a SmartGraph.\n\nThe attribute name that is used to smartly shard the nodes of a graph.\nEvery node in this SmartGraph has to have this attribute.\nCannot be modified later.\n",
+            "description": "Setting this option creates a SmartGraph.\n\nThe attribute name that is used to smartly shard the nodes of a graph.\nEvery node in this SmartGraph has to have this attribute.\nCannot be modified later.\n",
             "type": "string"
            },
            "writeConcern": {
@@ -17166,7 +17166,7 @@
              "type": "boolean"
             },
             "isSmart": {
-             "description": "Whether the graph is a SmartGraph.\n",
+             "description": "Whether the graph is a SmartGraph (`smartGraphAttribute` is set)\nor EnterpriseGraph (`isSmart` is `true` but `smartGraphAttribute` is not set).\n",
              "type": "boolean"
             },
             "name": {
@@ -17290,7 +17290,7 @@
              "type": "boolean"
             },
             "isSmart": {
-             "description": "Whether the graph is a SmartGraph.\n",
+             "description": "Whether the graph is a SmartGraph (`smartGraphAttribute` is set)\nor EnterpriseGraph (`isSmart` is `true` but `smartGraphAttribute` is not set).\n",
              "type": "boolean"
             },
             "name": {
@@ -17700,7 +17700,7 @@
              "type": "boolean"
             },
             "isSmart": {
-             "description": "Whether the graph is a SmartGraph.\n",
+             "description": "Whether the graph is a SmartGraph (`smartGraphAttribute` is set)\nor EnterpriseGraph (`isSmart` is `true` but `smartGraphAttribute` is not set).\n",
              "type": "boolean"
             },
             "name": {
@@ -18041,7 +18041,7 @@
              "type": "boolean"
             },
             "isSmart": {
-             "description": "Whether the graph is a SmartGraph.\n",
+             "description": "Whether the graph is a SmartGraph (`smartGraphAttribute` is set)\nor EnterpriseGraph (`isSmart` is `true` but `smartGraphAttribute` is not set).\n",
              "type": "boolean"
             },
             "name": {
@@ -18165,7 +18165,7 @@
              "type": "boolean"
             },
             "isSmart": {
-             "description": "Whether the graph is a SmartGraph.\n",
+             "description": "Whether the graph is a SmartGraph (`smartGraphAttribute` is set)\nor EnterpriseGraph (`isSmart` is `true` but `smartGraphAttribute` is not set).\n",
              "type": "boolean"
             },
             "name": {
@@ -18458,7 +18458,7 @@
              "type": "boolean"
             },
             "isSmart": {
-             "description": "Whether the graph is a SmartGraph.\n",
+             "description": "Whether the graph is a SmartGraph (`smartGraphAttribute` is set)\nor EnterpriseGraph (`isSmart` is `true` but `smartGraphAttribute` is not set).\n",
              "type": "boolean"
             },
             "name": {
@@ -18582,7 +18582,7 @@
              "type": "boolean"
             },
             "isSmart": {
-             "description": "Whether the graph is a SmartGraph.\n",
+             "description": "Whether the graph is a SmartGraph (`smartGraphAttribute` is set)\nor EnterpriseGraph (`isSmart` is `true` but `smartGraphAttribute` is not set).\n",
              "type": "boolean"
             },
             "name": {
@@ -19306,7 +19306,7 @@
              "type": "boolean"
             },
             "isSmart": {
-             "description": "Whether the graph is a SmartGraph.\n",
+             "description": "Whether the graph is a SmartGraph (`smartGraphAttribute` is set)\nor EnterpriseGraph (`isSmart` is `true` but `smartGraphAttribute` is not set).\n",
              "type": "boolean"
             },
             "name": {
@@ -19430,7 +19430,7 @@
              "type": "boolean"
             },
             "isSmart": {
-             "description": "Whether the graph is a SmartGraph.\n",
+             "description": "Whether the graph is a SmartGraph (`smartGraphAttribute` is set)\nor EnterpriseGraph (`isSmart` is `true` but `smartGraphAttribute` is not set).\n",
              "type": "boolean"
             },
             "name": {
@@ -21541,7 +21541,7 @@
              "type": "boolean"
             },
             "isSmart": {
-             "description": "Whether the graph is a SmartGraph.\n",
+             "description": "Whether the graph is a SmartGraph (`smartGraphAttribute` is set)\nor EnterpriseGraph (`isSmart` is `true` but `smartGraphAttribute` is not set).\n",
              "type": "boolean"
             },
             "name": {
@@ -21665,7 +21665,7 @@
              "type": "boolean"
             },
             "isSmart": {
-             "description": "Whether the graph is a SmartGraph.\n",
+             "description": "Whether the graph is a SmartGraph (`smartGraphAttribute` is set)\nor EnterpriseGraph (`isSmart` is `true` but `smartGraphAttribute` is not set).\n",
              "type": "boolean"
             },
             "name": {
@@ -21949,7 +21949,7 @@
              "type": "boolean"
             },
             "isSmart": {
-             "description": "Whether the graph is a SmartGraph.\n",
+             "description": "Whether the graph is a SmartGraph (`smartGraphAttribute` is set)\nor EnterpriseGraph (`isSmart` is `true` but `smartGraphAttribute` is not set).\n",
              "type": "boolean"
             },
             "name": {
@@ -22073,7 +22073,7 @@
              "type": "boolean"
             },
             "isSmart": {
-             "description": "Whether the graph is a SmartGraph.\n",
+             "description": "Whether the graph is a SmartGraph (`smartGraphAttribute` is set)\nor EnterpriseGraph (`isSmart` is `true` but `smartGraphAttribute` is not set).\n",
              "type": "boolean"
             },
             "name": {
@@ -24372,7 +24372,7 @@
       }
      },
      {
-      "description": "Whether to include hidden indexes in the result. Internal indexes\n(such as `arangosearch`) and ones that are currently built in the\nbackground are hidden.\n",
+      "description": "Whether to include hidden indexes in the result. Internal indexes\n(such as `arangosearch`) and ones that are currently built in the\nbackground are hidden.\n\nFrom v3.12.10 onward, this option additionally makes vector indexes\nreport a `shards` attribute with the per-shard `trainingState`,\n`error`, and `resolvedNLists`. See\n[Check the number of centroids of a trained index](https://docs.arango.ai/arangodb/3.12/indexes-and-search/indexing/working-with-indexes/vector-indexes/#check-the-number-of-centroids-of-a-trained-index).\n",
       "in": "query",
       "name": "withHidden",
       "required": false,
@@ -25365,7 +25365,7 @@
        "schema": {
         "properties": {
          "fields": {
-          "description": "A list with exactly one attribute path to specify\nwhere the vector embedding is stored in each document.\n\nIf you want to index another vector embedding attribute, you need to create a\nseparate vector index.\n\nUp to ArangoDB v3.12.8, the vector data needs to be populated before creating\nthe index. From v3.12.9 onward, you can create the vector index first and then\npopulate the collection with vector data. However, it is still recommended to\nload the data first and then create the index to ensure that all documents\nparticipate in the training process as the training is only executed once.\nThe training is triggered automatically if the vector index hasn't been\ntrained yet and the number of documents to index exceeds the threshold of\n`nLists` documents. If `sparse` is set to `true`, documents without the\nvector embedding field are not counted toward this threshold.\nCheck the `trainingState` to see if the index is\n`\"ready\"` and `errorMessage` for the reason if it's not.\n",
+          "description": "A list with exactly one attribute path to specify\nwhere the vector embedding is stored in each document.\n\nIf you want to index another vector embedding attribute, you need to create a\nseparate vector index.\n\nUp to ArangoDB v3.12.8, the vector data needs to be populated before creating\nthe index. From v3.12.9 onward, you can create the vector index first and then\npopulate the collection with vector data. However, it is still recommended to\nload the data first and then create the index to ensure that all documents\nparticipate in the training process as the training is only executed once.\nThe training is triggered automatically if the vector index hasn't been\ntrained yet and the number of documents to index exceeds a threshold.\nThe threshold is the `nLists` value if you set a fixed number of\ncentroids, and the `minNLists` value if you use the scaling mode of\n`nLists` (from v3.12.10 onward). If `sparse` is set to `true`, documents\nwithout the vector embedding field are not counted toward this threshold.\nCheck the `trainingState` to see if the index is\n`\"ready\"` and `errorMessage` for the reason if it's not.\n",
           "items": {
            "type": "string"
           },
@@ -25400,7 +25400,8 @@
             "type": "integer"
            },
            "factory": {
-            "description": "You can specify an index factory string that is\nforwarded to the underlying Faiss library, allowing you to combine different\nadvanced options. Examples:\n- `\"IVF100_HNSW10,Flat\"`\n- `\"IVF100,SQ4\"`\n- `\"IVF10_HNSW5,Flat\"`\n- `\"IVF100_HNSW5,PQ256x16\"`\n\nThe base index must be an inverted file (IVF) to work with ArangoDB.\nIf you don't specify an index factory, the value is equivalent to\n`IVF\u003cnLists\u003e,Flat`. For more information on how to create these custom\nindexes, see the [Faiss Wiki](https://github.com/facebookresearch/faiss/wiki/The-index-factory).\n",
+            "description": "You can specify an index factory string that is\nforwarded to the underlying Faiss library, allowing you to combine different\nadvanced options. Examples:\n- `\"IVF100_HNSW10,Flat\"`\n- `\"IVF100,SQ4\"`\n- `\"IVF10_HNSW5,Flat\"`\n- `\"IVF100_HNSW5,PQ256x16\"`\n\nThe base index must be an inverted file (IVF) to work with ArangoDB.\nIf you don't specify an index factory, the value is equivalent to\n`IVF\u003cnLists\u003e,Flat`. For more information on how to create these custom\nindexes, see the [Faiss Wiki](https://github.com/facebookresearch/faiss/wiki/The-index-factory).\n\nThe number of centroids that the factory string specifies needs to match\nthe `nLists` value, otherwise the training fails and the index stays\n`\"unusable\"`. From v3.12.10 onward, you can use a `{}` placeholder in\nplace of the number to avoid this problem, like `\"IVF{},SQ4\"`. It is\nsubstituted with the number of centroids that `nLists` resolves to, per\nshard in cluster deployments. A factory string with a fixed number of\ncentroids can be combined with the scaling mode of `nLists`, but only if\nthe resolved value happens to match the number in the factory string.\n",
+            "example": "IVF{}_HNSW32,SQ8",
             "type": "string"
            },
            "metric": {
@@ -25412,7 +25413,12 @@
             ]
            },
            "nLists": {
-            "description": "The number of Voronoi cells to partition the vector space\ninto, respectively the number of centroids in the index. What value to choose\ndepends on the data distribution and chosen metric. According to\n[The Faiss library paper](https://arxiv.org/abs/2401.08281), it should scale\nsublinearly with the document count. The recommendation for ArangoDB is to use\napproximately `15 * sqrt(N)` where `N` is the number of documents in the collection,\nrespectively the number of documents in the shard for cluster deployments.\nA bigger value produces more correct results but increases the training time\nand thus how long it takes to build the index. It cannot be bigger than the\nnumber of documents.\n",
+            "description": "The number of Voronoi cells to partition the vector space\ninto, respectively the number of centroids in the index. What value to choose\ndepends on the data distribution and chosen metric. According to\n[The Faiss library paper](https://arxiv.org/abs/2401.08281), it should scale\nsublinearly with the document count.\nA bigger value produces more correct results but increases the training time\nand thus how long it takes to build the index. It cannot be bigger than the\nnumber of documents.\n\nUp to v3.12.9, you need to set this attribute to a number and it is\nrequired. From v3.12.10 onward, it is optional and you can either set a\nfixed number of centroids or let ArangoDB compute the number from the\ndocument count:\n\n- **Fixed mode** (number): Use exactly this number of centroids, for\n  example `100`. The recommendation for ArangoDB is to use approximately\n  `15 * sqrt(N)` where `N` is the number of documents in the collection,\n  respectively the number of documents in the shard for cluster deployments.\n- **Scaling mode** (object, introduced in v3.12.10): Compute the number of\n  centroids from the number of documents at training time. In cluster\n  deployments, the computation is done per shard using the document count\n  of the respective shard. This is especially useful if the data\n  distribution across shards is unequal. The attributes of the object are\n  the following:\n  - `strategy` (string): How to compute the number of centroids if no tier\n    applies. The only available value is `\"autoSqrt\"`, which computes\n    `max(minNLists, multiplier * sqrt(N))` where `N` is the number of\n    documents of the shard.\n  - `multiplier` (number): The factor to use in the `autoSqrt` strategy.\n    It must be `1` or greater.\n  - `minNLists` (number): The lower bound for the number of centroids\n    computed by the `autoSqrt` strategy. It must be `1` or greater.\n    It is also the number of documents required to trigger the training.\n  - `tiers` (array of objects, _optional_): Fixed numbers of centroids for\n    large document counts. The tier with the highest `threshold` that is\n    less than or equal to the number of documents wins and its `fixedValue`\n    is used instead of computing a value with the `strategy`. Each tier has\n    a `threshold` and a `fixedValue` attribute, both of which must be `1`\n    or greater.\n\n  If you specify `nLists` as an object, you need to set `strategy`,\n  `multiplier`, and `minNLists`. Only `tiers` is optional.\n\nIf you don't specify `nLists` at all, the following scaling specification\nis used:\n\n```json\n{\n  \"nLists\": {\n    \"strategy\": \"autoSqrt\",\n    \"multiplier\": 4,\n    \"minNLists\": 2,\n    \"tiers\": [\n      { \"threshold\": 1000000,   \"fixedValue\": 16384 },\n      { \"threshold\": 10000000,  \"fixedValue\": 65536 },\n      { \"threshold\": 300000000, \"fixedValue\": 131072 }\n    ]\n  }\n}\n```\n\nIt resolves to the following numbers of centroids for `N` documents:\n\n- `N` \u003c 1,000,000: `max(2, 4 * sqrt(N))`\n- 1,000,000 ≤ `N` \u003c 10,000,000: `16384`\n- 10,000,000 ≤ `N` \u003c 300,000,000: `65536`\n- `N` ≥ 300,000,000: `131072`\n\nNote that the scaling mode cannot resolve a number of centroids for an\nempty collection respectively shard. The index stays `\"unusable\"` in\nthis case.\n"
+           },
+           "numberOfDocsPerCentroid": {
+            "default": 100,
+            "description": "How many vectors per centroid to include in the random sample used for\ntraining. It must be `1` or greater.\n\nUp to v3.12.9, this is not configurable and a fixed value of `256` per\ncentroid is used instead.\n\nThe training does not use the full dataset but a sample bounded to\n`nLists` × `numberOfDocsPerCentroid` vectors. A larger value can improve the\ntraining quality but increases the memory and time required for training.\nSee [Resource usage during index creation](https://docs.arango.ai/arangodb/3.12/indexes-and-search/indexing/working-with-indexes/vector-indexes/#resource-usage-during-index-creation)\nfor details.\n",
+            "minimum": 1,
             "type": "integer"
            },
            "trainingIterations": {
@@ -25423,8 +25429,7 @@
           },
           "required": [
            "metric",
-           "dimension",
-           "nLists"
+           "dimension"
           ],
           "type": "object"
          },
@@ -25434,7 +25439,7 @@
           "type": "boolean"
          },
          "storedValues": {
-          "description": "Store additional attributes in the index (introduced in v3.12.7).\nUnlike with other index types, this is not for covering projections\nwith the index but for adding attributes that you filter on.\nThis lets you make the lookup in the vector index more efficient\nbecause it avoids materializing documents twice, once for the\nfiltering and once for the matches.\n\nThe maximum number of attributes that you can use in `storedValues` is 32.\n",
+          "description": "Store additional attributes in the index (introduced in v3.12.7).\n\nThe maximum number of attributes that you can use in `storedValues` is 32.\n\n- Up to v3.12.9, these are not for covering projections with the index but for\n  adding attributes that you filter on. This lets you make the lookup in the\n  vector index more efficient because it avoids materializing documents twice,\n  once for the filtering and once for the matches.\n- From v3.12.10 onward, these are also used to cover projections. This lets\n  you return the attributes directly from the index without materialization.\n",
           "items": {
            "description": "A list of attribute paths. The `.` character denotes sub-attributes.\ntype: string\n",
            "type": "string"
@@ -25513,7 +25518,7 @@
              "type": "integer"
             },
             "factory": {
-             "description": "The Faiss index factory string, if one was specified\nduring index creation.\n",
+             "description": "The Faiss index factory string, if one was specified\nduring index creation. It is reported as specified,\nincluding a `{}` placeholder if you used one.\n",
              "type": "string"
             },
             "metric": {
@@ -25526,7 +25531,10 @@
              "type": "string"
             },
             "nLists": {
-             "description": "The number of Voronoi cells.\n",
+             "description": "The number of Voronoi cells, respectively centroids.\n\nIt is a number if a fixed number of centroids is configured.\nFrom v3.12.10 onward, it can also be an object with the\nscaling specification that the number of centroids is\ncomputed from at training time. In this case, the\n`resolvedNLists` attribute of the per-shard details tells you\nwhat number the index has been trained with. See\n[Check the number of centroids of a trained index](https://docs.arango.ai/arangodb/3.12/indexes-and-search/indexing/working-with-indexes/vector-indexes/#check-the-number-of-centroids-of-a-trained-index).\n"
+            },
+            "numberOfDocsPerCentroid": {
+             "description": "How many vectors per centroid are included in the random\nsample used for training (introduced in v3.12.10).\n",
              "type": "integer"
             },
             "trainingIterations": {
@@ -25539,7 +25547,8 @@
             "dimension",
             "nLists",
             "trainingIterations",
-            "defaultNProbe"
+            "defaultNProbe",
+            "numberOfDocsPerCentroid"
            ],
            "type": "object"
           },
@@ -25648,7 +25657,7 @@
              "type": "integer"
             },
             "factory": {
-             "description": "The Faiss index factory string, if one was specified\nduring index creation.\n",
+             "description": "The Faiss index factory string, if one was specified\nduring index creation. It is reported as specified,\nincluding a `{}` placeholder if you used one.\n",
              "type": "string"
             },
             "metric": {
@@ -25661,7 +25670,10 @@
              "type": "string"
             },
             "nLists": {
-             "description": "The number of Voronoi cells.\n",
+             "description": "The number of Voronoi cells, respectively centroids.\n\nIt is a number if a fixed number of centroids is configured.\nFrom v3.12.10 onward, it can also be an object with the\nscaling specification that the number of centroids is\ncomputed from at training time. In this case, the\n`resolvedNLists` attribute of the per-shard details tells you\nwhat number the index has been trained with. See\n[Check the number of centroids of a trained index](https://docs.arango.ai/arangodb/3.12/indexes-and-search/indexing/working-with-indexes/vector-indexes/#check-the-number-of-centroids-of-a-trained-index).\n"
+            },
+            "numberOfDocsPerCentroid": {
+             "description": "How many vectors per centroid are included in the random\nsample used for training (introduced in v3.12.10).\n",
              "type": "integer"
             },
             "trainingIterations": {
@@ -25674,7 +25686,8 @@
             "dimension",
             "nLists",
             "trainingIterations",
-            "defaultNProbe"
+            "defaultNProbe",
+            "numberOfDocsPerCentroid"
            ],
            "type": "object"
           },
@@ -25763,7 +25776,7 @@
         }
        }
       },
-      "description": "The request body or its content is invalid, for example,\nbecause of a missing or malformed `params` attribute.\n"
+      "description": "The request body or its content is invalid, for example,\nbecause of a missing or malformed `params` attribute,\nor the vector index feature is not enabled. You need to run ArangoDB\nwith the `--vector-index` startup option.\n"
      },
      "404": {
       "content": {
@@ -27861,342 +27874,6 @@
     ]
    }
   },
-  "/_db/{database-name}/_api/replication/applier-config": {
-   "get": {
-    "description": "Returns the configuration of the replication applier.\n\nThe body of the response is a JSON object with the configuration. The\nfollowing attributes may be present in the configuration:\n\n- `endpoint`: the logger server to connect to (e.g. \"tcp://192.168.173.13:8529\").\n\n- `database`: the name of the database to connect to (e.g. \"_system\").\n\n- `username`: an optional ArangoDB username to use when connecting to the endpoint.\n\n- `password`: the password to use when connecting to the endpoint.\n\n- `maxConnectRetries`: the maximum number of connection attempts the applier\n  will make in a row. If the applier cannot establish a connection to the\n  endpoint in this number of attempts, it will stop itself.\n\n- `connectTimeout`: the timeout (in seconds) when attempting to connect to the\n  endpoint. This value is used for each connection attempt.\n\n- `requestTimeout`: the timeout (in seconds) for individual requests to the endpoint.\n\n- `chunkSize`: the requested maximum size for log transfer packets that\n  is used when the endpoint is contacted.\n\n- `autoStart`: whether or not to auto-start the replication applier on\n  (next and following) server starts\n\n- `adaptivePolling`: whether or not the replication applier will use\n  adaptive polling.\n\n- `includeSystem`: whether or not system collection operations will be applied\n\n- `autoResync`: whether or not the follower should perform a full automatic\n  resynchronization with the leader in case the leader cannot serve log data\n  requested by the follower, or when the replication is started and no tick\n  value\n  can be found.\n\n- `autoResyncRetries`: number of resynchronization retries that will be performed\n  in a row when automatic resynchronization is enabled and kicks in. Setting this\n  to `0` will effectively disable `autoResync`. Setting it to some other value\n  will limit the number of retries that are performed. This helps preventing endless\n  retries in case resynchronizations always fail.\n\n- `initialSyncMaxWaitTime`: the maximum wait time (in seconds) that the initial\n  synchronization will wait for a response from the leader when fetching initial\n  collection data.\n  This wait time can be used to control after what time the initial synchronization\n  will give up waiting for a response and fail. This value is relevant even\n  for continuous replication when `autoResync` is set to `true` because this\n  may re-start the initial synchronization when the leader cannot provide\n  log data the follower requires.\n  This value will be ignored if set to `0`.\n\n- `connectionRetryWaitTime`: the time (in seconds) that the applier will\n  intentionally idle before it retries connecting to the leader in case of\n  connection problems.\n  This value will be ignored if set to `0`.\n\n- `idleMinWaitTime`: the minimum wait time (in seconds) that the applier will\n  intentionally idle before fetching more log data from the leader in case\n  the leader has already sent all its log data. This wait time can be used\n  to control the frequency with which the replication applier sends HTTP log\n  fetch requests to the leader in case there is no write activity on the leader.\n  This value will be ignored if set to `0`.\n\n- `idleMaxWaitTime`: the maximum wait time (in seconds) that the applier will\n  intentionally idle before fetching more log data from the leader in case the\n  leader has already sent all its log data and there have been previous log\n  fetch attempts that resulted in no more log data. This wait time can be used\n  to control the maximum frequency with which the replication applier sends HTTP\n  log fetch requests to the leader in case there is no write activity on the\n  leader for longer periods. This configuration value will only be used if the\n  option `adaptivePolling` is set to `true`.\n  This value will be ignored if set to `0`.\n\n- `requireFromPresent`: if set to `true`, then the replication applier will check\n  at start whether the start tick from which it starts or resumes replication is\n  still present on the leader. If not, then there would be data loss. If\n  `requireFromPresent` is `true`, the replication applier will abort with an\n  appropriate error message. If set to `false`, then the replication applier will\n  still start, and ignore the data loss.\n\n- `verbose`: if set to `true`, then a log line will be emitted for all operations\n  performed by the replication applier. This should be used for debugging\n  replication\n  problems only.\n\n- `restrictType`: the configuration for `restrictCollections`\n\n- `restrictCollections`: the optional array of collections to include or exclude,\n  based on the setting of `restrictType`\n",
-    "operationId": "getReplicationApplierConfig",
-    "parameters": [
-     {
-      "description": "The name of the database.\n",
-      "example": "_system",
-      "in": "path",
-      "name": "database-name",
-      "required": true,
-      "schema": {
-       "type": "string"
-      }
-     },
-     {
-      "description": "If set to `true`, returns the configuration of the global replication applier for all\ndatabases. If set to `false`, returns the configuration of the replication applier in the\nselected database.\n",
-      "in": "query",
-      "name": "global",
-      "required": false,
-      "schema": {
-       "type": "boolean"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "description": "is returned if the request was executed successfully.\n"
-     },
-     "405": {
-      "description": "is returned when an invalid HTTP method is used.\n"
-     },
-     "500": {
-      "description": "is returned if an error occurred while assembling the response.\n"
-     }
-    },
-    "summary": "Get the replication applier configuration",
-    "tags": [
-     "Replication"
-    ]
-   },
-   "put": {
-    "description": "Sets the configuration of the replication applier. The configuration can\nonly be changed while the applier is not running. The updated configuration\nwill be saved immediately but only become active with the next start of the\napplier.\n\nIn case of success, the body of the response is a JSON object with the updated\nconfiguration.\n",
-    "operationId": "updateReplicationApplierConfig",
-    "parameters": [
-     {
-      "description": "The name of the database.\n",
-      "example": "_system",
-      "in": "path",
-      "name": "database-name",
-      "required": true,
-      "schema": {
-       "type": "string"
-      }
-     },
-     {
-      "description": "If set to `true`, adjusts the configuration of the global replication applier for all\ndatabases. If set to `false`, adjusts the configuration of the replication applier in the\nselected database.\n",
-      "in": "query",
-      "name": "global",
-      "required": false,
-      "schema": {
-       "type": "boolean"
-      }
-     }
-    ],
-    "requestBody": {
-     "content": {
-      "application/json": {
-       "schema": {
-        "properties": {
-         "adaptivePolling": {
-          "description": "if set to `true`, the replication applier will fall\nto sleep for an increasingly long period in case the logger server at the\nendpoint does not have any more replication events to apply. Using\nadaptive polling is thus useful to reduce the amount of work for both the\napplier and the logger server for cases when there are only infrequent\nchanges. The downside is that when using adaptive polling, it might take\nlonger for the replication applier to detect that there are new replication\nevents on the logger server.\n\nSetting `adaptivePolling` to false will make the replication applier\ncontact the logger server in a constant interval, regardless of whether\nthe logger server provides updates frequently or seldom.\n",
-          "type": "boolean"
-         },
-         "autoResync": {
-          "description": "whether or not the follower should perform a full automatic resynchronization\nwith the leader in case the leader cannot serve log data requested by the\nfollower, or when the replication is started and no tick value can be found.\n",
-          "type": "boolean"
-         },
-         "autoResyncRetries": {
-          "description": "number of resynchronization retries that will be performed in a row when\nautomatic resynchronization is enabled and kicks in. Setting this to `0`\nwill\neffectively disable `autoResync`. Setting it to some other value will limit\nthe number of retries that are performed. This helps preventing endless\nretries\nin case resynchronizations always fail.\n",
-          "type": "integer"
-         },
-         "autoStart": {
-          "description": "whether or not to auto-start the replication applier on\n(next and following) server starts\n",
-          "type": "boolean"
-         },
-         "chunkSize": {
-          "description": "the requested maximum size for log transfer packets that\nis used when the endpoint is contacted.\n",
-          "type": "integer"
-         },
-         "connectTimeout": {
-          "description": "the timeout (in seconds) when attempting to connect to the\nendpoint. This value is used for each connection attempt.\n",
-          "type": "integer"
-         },
-         "connectionRetryWaitTime": {
-          "description": "the time (in seconds) that the applier will intentionally idle before\nit retries connecting to the leader in case of connection problems.\nThis value will be ignored if set to `0`.\n",
-          "type": "integer"
-         },
-         "database": {
-          "description": "the name of the database on the endpoint. If not specified, defaults to the current local database name.\n",
-          "type": "string"
-         },
-         "endpoint": {
-          "description": "the logger server to connect to (e.g. \"tcp://192.168.173.13:8529\"). The endpoint must be specified.\n",
-          "type": "string"
-         },
-         "idleMaxWaitTime": {
-          "description": "the maximum wait time (in seconds) that the applier will intentionally idle\nbefore fetching more log data from the leader in case the leader has\nalready sent all its log data and there have been previous log fetch attempts\nthat resulted in no more log data. This wait time can be used to control the\nmaximum frequency with which the replication applier sends HTTP log fetch\nrequests to the leader in case there is no write activity on the leader for\nlonger periods. This configuration value will only be used if the option\n`adaptivePolling` is set to `true`.\nThis value will be ignored if set to `0`.\n",
-          "type": "integer"
-         },
-         "idleMinWaitTime": {
-          "description": "the minimum wait time (in seconds) that the applier will intentionally idle\nbefore fetching more log data from the leader in case the leader has\nalready sent all its log data. This wait time can be used to control the\nfrequency with which the replication applier sends HTTP log fetch requests\nto the leader in case there is no write activity on the leader.\nThis value will be ignored if set to `0`.\n",
-          "type": "integer"
-         },
-         "includeSystem": {
-          "description": "whether or not system collection operations will be applied\n",
-          "type": "boolean"
-         },
-         "initialSyncMaxWaitTime": {
-          "description": "the maximum wait time (in seconds) that the initial synchronization will\nwait for a response from the leader when fetching initial collection data.\nThis wait time can be used to control after what time the initial\nsynchronization\nwill give up waiting for a response and fail. This value is relevant even\nfor continuous replication when `autoResync` is set to `true` because this\nmay re-start the initial synchronization when the leader cannot provide\nlog data the follower requires.\nThis value will be ignored if set to `0`.\n",
-          "type": "integer"
-         },
-         "maxConnectRetries": {
-          "description": "the maximum number of connection attempts the applier\nwill make in a row. If the applier cannot establish a connection to the\nendpoint in this number of attempts, it will stop itself.\n",
-          "type": "integer"
-         },
-         "password": {
-          "description": "the password to use when connecting to the endpoint.\n",
-          "type": "string"
-         },
-         "requestTimeout": {
-          "description": "the timeout (in seconds) for individual requests to the endpoint.\n",
-          "type": "integer"
-         },
-         "requireFromPresent": {
-          "description": "if set to `true`, then the replication applier will check\nat start whether the start tick from which it starts or resumes replication is\nstill present on the leader. If not, then there would be data loss. If\n`requireFromPresent` is `true`, the replication applier will abort with an\nappropriate error message. If set to `false`, then the replication applier will\nstill start, and ignore the data loss.\n",
-          "type": "boolean"
-         },
-         "restrictCollections": {
-          "description": "the array of collections to include or exclude,\nbased on the setting of `restrictType`\n",
-          "items": {
-           "type": "string"
-          },
-          "type": "array"
-         },
-         "restrictType": {
-          "description": "the configuration for `restrictCollections`; Has to be either `include` or `exclude`\n",
-          "type": "string"
-         },
-         "username": {
-          "description": "an optional ArangoDB username to use when connecting to the endpoint.\n",
-          "type": "string"
-         },
-         "verbose": {
-          "description": "if set to `true`, then a log line will be emitted for all operations\nperformed by the replication applier. This should be used for debugging replication\nproblems only.\n",
-          "type": "boolean"
-         }
-        },
-        "required": [
-         "endpoint",
-         "database",
-         "password",
-         "maxConnectRetries",
-         "connectTimeout",
-         "requestTimeout",
-         "chunkSize",
-         "autoStart",
-         "adaptivePolling",
-         "includeSystem",
-         "requireFromPresent",
-         "verbose",
-         "restrictType"
-        ],
-        "type": "object"
-       }
-      }
-     }
-    },
-    "responses": {
-     "200": {
-      "description": "is returned if the request was executed successfully.\n"
-     },
-     "400": {
-      "description": "is returned if the configuration is incomplete or malformed, or if the\nreplication applier is currently running.\n"
-     },
-     "405": {
-      "description": "is returned when an invalid HTTP method is used.\n"
-     },
-     "500": {
-      "description": "is returned if an error occurred while assembling the response.\n"
-     }
-    },
-    "summary": "Update the replication applier configuration",
-    "tags": [
-     "Replication"
-    ]
-   }
-  },
-  "/_db/{database-name}/_api/replication/applier-start": {
-   "put": {
-    "description": "Starts the replication applier. This will return immediately if the\nreplication applier is already running.\n\nIf the replication applier is not already running, the applier configuration\nwill be checked, and if it is complete, the applier will be started in a\nbackground thread. This means that even if the applier will encounter any\nerrors while running, they will not be reported in the response to this\nmethod.\n\nTo detect replication applier errors after the applier was started, use the\n`/_api/replication/applier-state` API instead.\n",
-    "operationId": "startReplicationApplier",
-    "parameters": [
-     {
-      "description": "The name of the database.\n",
-      "example": "_system",
-      "in": "path",
-      "name": "database-name",
-      "required": true,
-      "schema": {
-       "type": "string"
-      }
-     },
-     {
-      "description": "If set to `true`, starts the global replication applier for all\ndatabases. If set to `false`, starts the replication applier in the\nselected database.\n",
-      "in": "query",
-      "name": "global",
-      "required": false,
-      "schema": {
-       "type": "boolean"
-      }
-     },
-     {
-      "description": "The remote `lastLogTick` value from which to start applying. If not specified,\nthe last saved tick from the previous applier run is used. If there is no\nprevious applier state saved, the applier will start at the beginning of the\nlogger server's log.\n",
-      "in": "query",
-      "name": "from",
-      "required": false,
-      "schema": {
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "description": "is returned if the request was executed successfully.\n"
-     },
-     "400": {
-      "description": "is returned if the replication applier is not fully configured or the\nconfiguration is invalid.\n"
-     },
-     "405": {
-      "description": "is returned when an invalid HTTP method is used.\n"
-     },
-     "500": {
-      "description": "is returned if an error occurred while assembling the response.\n"
-     }
-    },
-    "summary": "Start the replication applier",
-    "tags": [
-     "Replication"
-    ]
-   }
-  },
-  "/_db/{database-name}/_api/replication/applier-state": {
-   "get": {
-    "description": "Returns the state of the replication applier, regardless of whether the\napplier is currently running or not.\n\nThe response is a JSON object with the following attributes:\n\n- `state`: a JSON object with the following sub-attributes:\n\n  - `running`: whether or not the applier is active and running\n\n  - `lastAppliedContinuousTick`: the last tick value from the continuous\n    replication log the applier has applied.\n\n  - `lastProcessedContinuousTick`: the last tick value from the continuous\n    replication log the applier has processed.\n\n    Regularly, the last applied and last processed tick values should be\n    identical. For transactional operations, the replication applier will first\n    process incoming log events before applying them, so the processed tick\n    value might be higher than the applied tick value. This will be the case\n    until the applier encounters the *transaction commit* log event for the\n    transaction.\n\n  - `lastAvailableContinuousTick`: the last tick value the remote server can\n    provide, for all databases.\n\n  - `ticksBehind`: this attribute will be present only if the applier is currently\n    running. It will provide the number of log ticks between what the applier\n    has applied/seen and the last log tick value provided by the remote server.\n    If this value is zero, then both servers are in sync. If this is non-zero,\n    then the remote server has additional data that the applier has not yet\n    fetched and processed, or the remote server may have more data that is not\n    applicable to the applier.\n\n    Client applications can use it to determine approximately how far the applier\n    is behind the remote server, and can periodically check if the value is\n    increasing (applier is falling behind) or decreasing (applier is catching up).\n\n    Please note that as the remote server will only keep one last log tick value\n    for all of its databases, but replication may be restricted to just certain\n    databases on the applier, this value is more meaningful when the global applier\n    is used.\n    Additionally, the last log tick provided by the remote server may increase\n    due to writes into system collections that are not replicated due to replication\n    configuration. So the reported value may exaggerate the reality a bit for\n    some scenarios.\n\n  - `time`: the time on the applier server.\n\n  - `totalRequests`: the total number of requests the applier has made to the\n    endpoint.\n\n  - `totalFailedConnects`: the total number of failed connection attempts the\n    applier has made.\n\n  - `totalEvents`: the total number of log events the applier has processed.\n\n  - `totalOperationsExcluded`: the total number of log events excluded because\n    of `restrictCollections`.\n\n  - `progress`: a JSON object with details about the replication applier progress.\n    It contains the following sub-attributes if there is progress to report:\n\n    - `message`: a textual description of the progress\n\n    - `time`: the date and time the progress was logged\n\n    - `failedConnects`: the current number of failed connection attempts\n\n  - `lastError`: a JSON object with details about the last error that happened on\n    the applier. It contains the following sub-attributes if there was an error:\n\n    - `errorNum`: a numerical error code\n\n    - `errorMessage`: a textual error description\n\n    - `time`: the date and time the error occurred\n\n    In case no error has occurred, `lastError` will be empty.\n\n- `server`: a JSON object with the following sub-attributes:\n\n  - `version`: the applier server's version\n\n  - `serverId`: the applier server's id\n\n- `endpoint`: the endpoint the applier is connected to (if applier is\n  active) or will connect to (if applier is currently inactive)\n\n- `database`: the name of the database the applier is connected to (if applier is\n  active) or will connect to (if applier is currently inactive)\n\nPlease note that all \"tick\" values returned do not have a specific unit. Tick\nvalues are only meaningful when compared to each other. Higher tick values mean\n\"later in time\" than lower tick values.\n",
-    "operationId": "getReplicationApplierState",
-    "parameters": [
-     {
-      "description": "The name of the database.\n",
-      "example": "_system",
-      "in": "path",
-      "name": "database-name",
-      "required": true,
-      "schema": {
-       "type": "string"
-      }
-     },
-     {
-      "description": "If set to `true`, returns the state of the global replication applier for all\ndatabases. If set to `false`, returns the state of the replication applier in the\nselected database.\n",
-      "in": "query",
-      "name": "global",
-      "required": false,
-      "schema": {
-       "type": "boolean"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "description": "is returned if the request was executed successfully.\n"
-     },
-     "405": {
-      "description": "is returned when an invalid HTTP method is used.\n"
-     },
-     "500": {
-      "description": "is returned if an error occurred while assembling the response.\n"
-     }
-    },
-    "summary": "Get the replication applier state",
-    "tags": [
-     "Replication"
-    ]
-   }
-  },
-  "/_db/{database-name}/_api/replication/applier-stop": {
-   "put": {
-    "description": "Stops the replication applier. This will return immediately if the\nreplication applier is not running.\n",
-    "operationId": "stopReplicationApplier",
-    "parameters": [
-     {
-      "description": "The name of the database.\n",
-      "example": "_system",
-      "in": "path",
-      "name": "database-name",
-      "required": true,
-      "schema": {
-       "type": "string"
-      }
-     },
-     {
-      "description": "If set to `true`, stops the global replication applier for all\ndatabases. If set to `false`, stops the replication applier in the\nselected database.\n",
-      "in": "query",
-      "name": "global",
-      "required": false,
-      "schema": {
-       "type": "boolean"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "description": "is returned if the request was executed successfully.\n"
-     },
-     "405": {
-      "description": "is returned when an invalid HTTP method is used.\n"
-     },
-     "500": {
-      "description": "is returned if an error occurred while assembling the response.\n"
-     }
-    },
-    "summary": "Stop the replication applier",
-    "tags": [
-     "Replication"
-    ]
-   }
-  },
   "/_db/{database-name}/_api/replication/batch": {
    "post": {
     "description": "\u003e **INFO:**\nThis is an internally used endpoint.\n\n\nCreates a new dump batch and returns the batch's id.\n\nThe response is a JSON object with the following attributes:\n\n- `id`: the id of the batch\n- `lastTick`: snapshot tick value using when creating the batch\n- `state`: additional leader state information (only present if the\n  `state` URL parameter was set to `true` in the request)\n\n\u003e **INFO:**\nOn a Coordinator, this request must have a `DBserver`\nquery parameter which must be an ID of a DB-Server.\nThe very same request is forwarded synchronously to that DB-Server.\nIt is an error if this attribute is not bound in the Coordinator case.\n",
@@ -28537,123 +28214,6 @@
     ]
    }
   },
-  "/_db/{database-name}/_api/replication/logger-first-tick": {
-   "get": {
-    "deprecated": true,
-    "description": "\u003e **WARNING:**\nThis endpoint is deprecated and removed in ArangoDB v4.0.\n\n\nReturns the first available tick value that can be served from the server's\nreplication log. This method can be called by replication clients after to\ndetermine if certain data (identified by a tick value) is still available\nfor replication.\n\nThe result is a JSON object containing the attribute `firstTick`. This\nattribute contains the minimum tick value available in the server's\nreplication\nlog.\n\n\u003e **INFO:**\nThis method is not supported on a Coordinator in a cluster deployment.\n",
-    "operationId": "getReplicationLoggerFirstTick",
-    "parameters": [
-     {
-      "description": "The name of the database.\n",
-      "example": "_system",
-      "in": "path",
-      "name": "database-name",
-      "required": true,
-      "schema": {
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "description": "is returned if the request was executed successfully.\n"
-     },
-     "405": {
-      "description": "is returned when an invalid HTTP method is used.\n"
-     },
-     "500": {
-      "description": "is returned if an error occurred while assembling the response.\n"
-     },
-     "501": {
-      "description": "is returned when this operation is called on a Coordinator in a cluster deployment.\n"
-     }
-    },
-    "summary": "Get the first available replication tick value",
-    "tags": [
-     "Replication"
-    ]
-   }
-  },
-  "/_db/{database-name}/_api/replication/logger-follow": {
-   "get": {
-    "deprecated": true,
-    "description": "\u003e **WARNING:**\nThis route should no longer be used.\nIt is considered as deprecated from version 3.4.0 on. Client applications\nshould use the REST API endpoint `/_api/wal/tail` instead.\n\n\nReturns data from the server's replication log. This method can be called\nby replication clients after an initial synchronization of data. The method\nwill return all \"recent\" log entries from the logger server, and the clients\ncan replay and apply these entries locally so they get to the same data\nstate as the logger server.\n\nClients can call this method repeatedly to incrementally fetch all changes\nfrom the logger server. In this case, they should provide the `from` value so\nthey will only get returned the log events since their last fetch.\n\nWhen the `from` query parameter is not used, the logger server will return log\nentries starting at the beginning of its replication log. When the `from`\nparameter is used, the logger server will only return log entries which have\nhigher tick values than the specified `from` value (note: the log entry with a\ntick value equal to `from` will be excluded). Use the `from` value when\nincrementally fetching log data.\n\nThe `to` query parameter can be used to optionally restrict the upper bound of\nthe result to a certain tick value. If used, the result will contain only log events\nwith tick values up to (including) `to`. In incremental fetching, there is no\nneed to use the `to` parameter. It only makes sense in special situations,\nwhen only parts of the change log are required.\n\nThe `chunkSize` query parameter can be used to control the size of the result.\nIt must be specified in bytes. The `chunkSize` value will only be honored\napproximately. Otherwise a too low `chunkSize` value could cause the server\nto not be able to put just one log entry into the result and return it.\nTherefore, the `chunkSize` value will only be consulted after a log entry has\nbeen written into the result. If the result size is then greater than\n`chunkSize`, the server will respond with as many log entries as there are\nin the response already. If the result size is still less than `chunkSize`,\nthe server will try to return more data if there's more data left to return.\n\nIf `chunkSize` is not specified, some server-side default value will be used.\n\nThe `Content-Type` of the result is `application/x-arango-dump`. This is an\neasy-to-process format, with all log events going onto separate lines in the\nresponse body. Each log event itself is a JSON object, with at least the\nfollowing attributes:\n\n- `tick`: the log event tick value\n\n- `type`: the log event type\n\nIndividual log events will also have additional attributes, depending on the\nevent type. A few common attributes which are used for multiple events types\nare:\n\n- `cid`: id of the collection the event was for\n\n- `tid`: id of the transaction the event was contained in\n\n- `key`: document key\n\n- `rev`: document revision id\n\n- `data`: the original document data\n\nThe response will also contain the following HTTP headers:\n\n- `x-arango-replication-active`: whether or not the logger is active. Clients\n  can use this flag as an indication for their polling frequency. If the\n  logger is not active and there are no more replication events available, it\n  might be sensible for a client to abort, or to go to sleep for a long time\n  and try again later to check whether the logger has been activated.\n\n- `x-arango-replication-lastincluded`: the tick value of the last included\n  value in the result. In incremental log fetching, this value can be used\n  as the `from` value for the following request. **Note** that if the result is\n  empty, the value will be `0`. This value should not be used as `from` value\n  by clients in the next request (otherwise the server would return the log\n  events from the start of the log again).\n\n- `x-arango-replication-lasttick`: the last tick value the logger server has\n  logged (not necessarily included in the result). By comparing the last\n  tick and last included tick values, clients have an approximate indication of\n  how many events there are still left to fetch.\n\n- `x-arango-replication-checkmore`: whether or not there already exists more\n  log data which the client could fetch immediately. If there is more log data\n  available, the client could call `logger-follow` again with an adjusted `from`\n  value to fetch remaining log entries until there are no more.\n\n  If there isn't any more log data to fetch, the client might decide to go\n  to sleep for a while before calling the logger again.\n\n\u003e **INFO:**\nThis method is not supported on a Coordinator in a cluster deployment.\n",
-    "operationId": "getReplicationLoggerFollow",
-    "parameters": [
-     {
-      "description": "The name of the database.\n",
-      "example": "_system",
-      "in": "path",
-      "name": "database-name",
-      "required": true,
-      "schema": {
-       "type": "string"
-      }
-     },
-     {
-      "description": "Exclusive lower bound tick value for results.\n",
-      "in": "query",
-      "name": "from",
-      "required": false,
-      "schema": {
-       "type": "number"
-      }
-     },
-     {
-      "description": "Inclusive upper bound tick value for results.\n",
-      "in": "query",
-      "name": "to",
-      "required": false,
-      "schema": {
-       "type": "number"
-      }
-     },
-     {
-      "description": "Approximate maximum size of the returned result.\n",
-      "in": "query",
-      "name": "chunkSize",
-      "required": false,
-      "schema": {
-       "type": "number"
-      }
-     },
-     {
-      "description": "Include system collections in the result.\n",
-      "in": "query",
-      "name": "includeSystem",
-      "required": false,
-      "schema": {
-       "default": true,
-       "type": "boolean"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "description": "is returned if the request was executed successfully, and there are log\nevents available for the requested range. The response body will not be empty\nin this case.\n"
-     },
-     "204": {
-      "description": "is returned if the request was executed successfully, but there are no log\nevents available for the requested range. The response body will be empty\nin this case.\n"
-     },
-     "400": {
-      "description": "is returned if either the `from` or `to` values are invalid.\n"
-     },
-     "405": {
-      "description": "is returned when an invalid HTTP method is used.\n"
-     },
-     "500": {
-      "description": "is returned if an error occurred while assembling the response.\n"
-     },
-     "501": {
-      "description": "is returned when this operation is called on a Coordinator in a cluster deployment.\n"
-     }
-    },
-    "summary": "Get replication log entries (deprecated)",
-    "tags": [
-     "Replication"
-    ]
-   }
-  },
   "/_db/{database-name}/_api/replication/logger-state": {
    "get": {
     "description": "Returns the current state of the server's replication logger. The state will\ninclude information about whether the logger is running and about the last\nlogged tick value. This tick value is important for incremental fetching of\ndata.\n\nThe body of the response contains a JSON object with the following\nattributes:\n\n- `state`: the current logger state as a JSON object with the following\n  sub-attributes:\n\n  - `running`: whether or not the logger is running\n\n  - `lastLogTick`: the tick value of the latest tick the logger has logged.\n    This value can be used for incremental fetching of log data.\n\n  - `totalEvents`: total number of events logged since the server was started.\n    The value is not reset between multiple stops and re-starts of the logger.\n\n  - `time`: the current date and time on the logger server\n\n- `server`: a JSON object with the following sub-attributes:\n\n  - `version`: the logger server's version\n\n  - `serverId`: the logger server's id\n\n- `clients`: returns the last fetch status by replication clients connected to\n  the logger. Each client is returned as a JSON object with the following attributes:\n\n  - `syncerId`: id of the client syncer\n\n  - `serverId`: server id of client\n\n  - `lastServedTick`: last tick value served to this client via the WAL tailing API\n\n  - `time`: date and time when this client last called the WAL tailing API\n",
@@ -28682,182 +28242,6 @@
      }
     },
     "summary": "Get the replication logger state",
-    "tags": [
-     "Replication"
-    ]
-   }
-  },
-  "/_db/{database-name}/_api/replication/logger-tick-ranges": {
-   "get": {
-    "deprecated": true,
-    "description": "\u003e **WARNING:**\nThis endpoint is deprecated and removed in ArangoDB v4.0.\n\n\nReturns the currently available ranges of tick values for all currently\navailable WAL logfiles. The tick values can be used to determine if certain\ndata (identified by tick value) are still available for replication.\n\nThe body of the response contains a JSON array. Each array member is an\nobject\nthat describes a single logfile. Each object has the following attributes:\n\n- `datafile`: name of the logfile\n\n- `status`: status of the datafile, in textual form (e.g. \"sealed\", \"open\")\n\n- `tickMin`: minimum tick value contained in logfile\n\n- `tickMax`: maximum tick value contained in logfile\n",
-    "operationId": "getReplicationLoggerTickRanges",
-    "parameters": [
-     {
-      "description": "The name of the database.\n",
-      "example": "_system",
-      "in": "path",
-      "name": "database-name",
-      "required": true,
-      "schema": {
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "description": "is returned if the tick ranges could be determined successfully.\n"
-     },
-     "405": {
-      "description": "is returned when an invalid HTTP method is used.\n"
-     },
-     "500": {
-      "description": "is returned if the logger state could not be determined.\n"
-     },
-     "501": {
-      "description": "is returned when this operation is called on a Coordinator in a cluster deployment.\n"
-     }
-    },
-    "summary": "Get the tick ranges available in the WAL logfiles",
-    "tags": [
-     "Replication"
-    ]
-   }
-  },
-  "/_db/{database-name}/_api/replication/make-follower": {
-   "put": {
-    "description": "\u003e **WARNING:**\nCalling this endpoint will synchronize data from the collections found on the\nremote leader to the local ArangoDB database. All data in the local collections\nwill be purged and replaced with data from the leader. Use with caution!\n\n\n\u003e **INFO:**\nThis command may take a long time to complete and return. This is because it\nwill first do a full data synchronization with the leader, which will take time\nroughly proportional to the amount of data.\n\n\nChanges the role to a follower and starts a full data synchronization from a\nremote endpoint into the local ArangoDB database and afterwards starts the\ncontinuous replication.\n\nThe operation works on a per-database level.\n\nAll local database data will be removed prior to the synchronization.\n\nIn case of success, the body of the response is a JSON object with the following\nattributes:\n\n- `state`: a JSON object with the following sub-attributes:\n\n  - `running`: whether or not the applier is active and running\n\n  - `lastAppliedContinuousTick`: the last tick value from the continuous\n    replication log the applier has applied.\n\n  - `lastProcessedContinuousTick`: the last tick value from the continuous\n    replication log the applier has processed.\n\n    Regularly, the last applied and last processed tick values should be\n    identical. For transactional operations, the replication applier will first\n    process incoming log events before applying them, so the processed tick\n    value might be higher than the applied tick value. This will be the case\n    until the applier encounters the *transaction commit* log event for the\n    transaction.\n\n  - `lastAvailableContinuousTick`: the last tick value the remote server can\n    provide.\n\n  - `ticksBehind`: this attribute will be present only if the applier is currently\n    running. It will provide the number of log ticks between what the applier\n    has applied/seen and the last log tick value provided by the remote server.\n    If this value is zero, then both servers are in sync. If this is non-zero,\n    then the remote server has additional data that the applier has not yet\n    fetched and processed, or the remote server may have more data that is not\n    applicable to the applier.\n\n    Client applications can use it to determine approximately how far the applier\n    is behind the remote server, and can periodically check if the value is\n    increasing (applier is falling behind) or decreasing (applier is catching up).\n\n    Please note that as the remote server will only keep one last log tick value\n    for all of its databases, but replication may be restricted to just certain\n    databases on the applier, this value is more meaningful when the global applier\n    is used.\n    Additionally, the last log tick provided by the remote server may increase\n    due to writes into system collections that are not replicated due to replication\n    configuration. So the reported value may exaggerate the reality a bit for\n    some scenarios.\n\n  - `time`: the time on the applier server.\n\n  - `totalRequests`: the total number of requests the applier has made to the\n    endpoint.\n\n  - `totalFailedConnects`: the total number of failed connection attempts the\n    applier has made.\n\n  - `totalEvents`: the total number of log events the applier has processed.\n\n  - `totalOperationsExcluded`: the total number of log events excluded because\n    of `restrictCollections`.\n\n  - `progress`: a JSON object with details about the replication applier progress.\n    It contains the following sub-attributes if there is progress to report:\n\n    - `message`: a textual description of the progress\n\n    - `time`: the date and time the progress was logged\n\n    - `failedConnects`: the current number of failed connection attempts\n\n  - `lastError`: a JSON object with details about the last error that happened on\n    the applier. It contains the following sub-attributes if there was an error:\n\n    - `errorNum`: a numerical error code\n\n    - `errorMessage`: a textual error description\n\n    - `time`: the date and time the error occurred\n\n    In case no error has occurred, `lastError` will be empty.\n\n- `server`: a JSON object with the following sub-attributes:\n\n  - `version`: the applier server's version\n\n  - `serverId`: the applier server's id\n\n- `endpoint`: the endpoint the applier is connected to (if applier is\n  active) or will connect to (if applier is currently inactive)\n\n- `database`: the name of the database the applier is connected to (if applier is\n  active) or will connect to (if applier is currently inactive)\n\nPlease note that all \"tick\" values returned do not have a specific unit. Tick\nvalues are only meaningful when compared to each other. Higher tick values mean\n\"later in time\" than lower tick values.\n\n\u003e **INFO:**\nThis endpoint is not supported on a Coordinator in a cluster deployment.\n",
-    "operationId": "makeReplicationFollower",
-    "parameters": [
-     {
-      "description": "The name of the database.\n",
-      "example": "_system",
-      "in": "path",
-      "name": "database-name",
-      "required": true,
-      "schema": {
-       "type": "string"
-      }
-     }
-    ],
-    "requestBody": {
-     "content": {
-      "application/json": {
-       "schema": {
-        "properties": {
-         "adaptivePolling": {
-          "description": "whether or not the replication applier will use adaptive polling.\n",
-          "type": "boolean"
-         },
-         "autoResync": {
-          "description": "whether or not the follower should perform an automatic resynchronization with\nthe leader in case the leader cannot serve log data requested by the follower,\nor when the replication is started and no tick value can be found.\n",
-          "type": "boolean"
-         },
-         "autoResyncRetries": {
-          "description": "number of resynchronization retries that will be performed in a row when\nautomatic resynchronization is enabled and kicks in. Setting this to `0` will\neffectively disable `autoResync`. Setting it to some other value will limit\nthe number of retries that are performed. This helps preventing endless retries\nin case resynchronizations always fail.\n",
-          "type": "integer"
-         },
-         "chunkSize": {
-          "description": "the requested maximum size for log transfer packets that\nis used when the endpoint is contacted.\n",
-          "type": "integer"
-         },
-         "connectTimeout": {
-          "description": "the timeout (in seconds) when attempting to connect to the\nendpoint. This value is used for each connection attempt.\n",
-          "type": "integer"
-         },
-         "connectionRetryWaitTime": {
-          "description": "the time (in seconds) that the applier will intentionally idle before\nit retries connecting to the leader in case of connection problems.\nThis value will be ignored if set to `0`.\n",
-          "type": "integer"
-         },
-         "database": {
-          "description": "the database name on the leader (if not specified, defaults to the\nname of the local current database).\n",
-          "type": "string"
-         },
-         "endpoint": {
-          "description": "the leader endpoint to connect to (e.g. \"tcp://192.168.173.13:8529\").\n",
-          "type": "string"
-         },
-         "idleMaxWaitTime": {
-          "description": "the maximum wait time (in seconds) that the applier will intentionally idle\nbefore fetching more log data from the leader in case the leader has\nalready sent all its log data and there have been previous log fetch attempts\nthat resulted in no more log data. This wait time can be used to control the\nmaximum frequency with which the replication applier sends HTTP log fetch\nrequests to the leader in case there is no write activity on the leader for\nlonger periods. This configuration value will only be used if the option\n`adaptivePolling` is set to `true`.\nThis value will be ignored if set to `0`.\n",
-          "type": "integer"
-         },
-         "idleMinWaitTime": {
-          "description": "the minimum wait time (in seconds) that the applier will intentionally idle\nbefore fetching more log data from the leader in case the leader has\nalready sent all its log data. This wait time can be used to control the\nfrequency with which the replication applier sends HTTP log fetch requests\nto the leader in case there is no write activity on the leader.\nThis value will be ignored if set to `0`.\n",
-          "type": "integer"
-         },
-         "includeSystem": {
-          "description": "whether or not system collection operations will be applied\n",
-          "type": "boolean"
-         },
-         "initialSyncMaxWaitTime": {
-          "description": "the maximum wait time (in seconds) that the initial synchronization will\nwait for a response from the leader when fetching initial collection data.\nThis wait time can be used to control after what time the initial synchronization\nwill give up waiting for a response and fail. This value is relevant even\nfor continuous replication when `autoResync` is set to `true` because this\nmay re-start the initial synchronization when the leader cannot provide\nlog data the follower requires.\nThis value will be ignored if set to `0`.\n",
-          "type": "integer"
-         },
-         "maxConnectRetries": {
-          "description": "the maximum number of connection attempts the applier\nwill make in a row. If the applier cannot establish a connection to the\nendpoint in this number of attempts, it will stop itself.\n",
-          "type": "integer"
-         },
-         "password": {
-          "description": "the password to use when connecting to the leader.\n",
-          "type": "string"
-         },
-         "requestTimeout": {
-          "description": "the timeout (in seconds) for individual requests to the endpoint.\n",
-          "type": "integer"
-         },
-         "requireFromPresent": {
-          "description": "if set to `true`, then the replication applier will check\nat start of its continuous replication if the start tick from the dump phase\nis still present on the leader. If not, then there would be data loss. If\n`requireFromPresent` is `true`, the replication applier will abort with an\nappropriate error message. If set to `false`, then the replication applier will\nstill start, and ignore the data loss.\n",
-          "type": "boolean"
-         },
-         "restrictCollections": {
-          "description": "an optional array of collections for use with `restrictType`.\nIf `restrictType` is `include`, only the specified collections\nwill be synchronized. If `restrictType` is `exclude`, all but the specified\ncollections will be synchronized.\n",
-          "items": {
-           "type": "string"
-          },
-          "type": "array"
-         },
-         "restrictType": {
-          "description": "an optional string value for collection filtering. When\nspecified, the allowed values are `include` or `exclude`.\n",
-          "type": "string"
-         },
-         "username": {
-          "description": "an optional ArangoDB username to use when connecting to the leader.\n",
-          "type": "string"
-         },
-         "verbose": {
-          "description": "if set to `true`, then a log line will be emitted for all operations\nperformed by the replication applier. This should be used for debugging\nreplication\nproblems only.\n",
-          "type": "boolean"
-         }
-        },
-        "required": [
-         "endpoint",
-         "database",
-         "password",
-         "includeSystem"
-        ],
-        "type": "object"
-       }
-      }
-     }
-    },
-    "responses": {
-     "200": {
-      "description": "is returned if the request was executed successfully.\n"
-     },
-     "400": {
-      "description": "is returned if the configuration is incomplete or malformed.\n"
-     },
-     "405": {
-      "description": "is returned when an invalid HTTP method is used.\n"
-     },
-     "500": {
-      "description": "is returned if an error occurred during synchronization or when starting the\ncontinuous replication.\n"
-     },
-     "501": {
-      "description": "is returned when this operation is called on a Coordinator in a cluster deployment.\n"
-     }
-    },
-    "summary": "Turn a server into a follower of another",
     "tags": [
      "Replication"
     ]
@@ -29096,132 +28480,6 @@
      }
     },
     "summary": "Rebuild the replication revision tree",
-    "tags": [
-     "Replication"
-    ]
-   }
-  },
-  "/_db/{database-name}/_api/replication/server-id": {
-   "get": {
-    "description": "Returns the servers id. The id is also returned by other replication API\nmethods, and this method is an easy means of determining a server's id.\n\nThe body of the response is a JSON object with the attribute `serverId`. The\nserver id is returned as a string.\n",
-    "operationId": "getReplicationServerId",
-    "parameters": [
-     {
-      "description": "The name of the database.\n",
-      "example": "_system",
-      "in": "path",
-      "name": "database-name",
-      "required": true,
-      "schema": {
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "description": "is returned if the request was executed successfully.\n"
-     },
-     "405": {
-      "description": "is returned when an invalid HTTP method is used.\n"
-     },
-     "500": {
-      "description": "is returned if an error occurred while assembling the response.\n"
-     }
-    },
-    "summary": "Get the replication server ID",
-    "tags": [
-     "Replication"
-    ]
-   }
-  },
-  "/_db/{database-name}/_api/replication/sync": {
-   "put": {
-    "description": "Starts a full data synchronization from a remote endpoint into the local\nArangoDB database.\n\nThe *sync* method can be used by replication clients to connect an ArangoDB database\nto a remote endpoint, fetch the remote list of collections and indexes, and collection\ndata. It will thus create a local backup of the state of data at the remote ArangoDB\ndatabase. *sync* works on a per-database level.\n\n*sync* will first fetch the list of collections and indexes from the remote endpoint.\nIt does so by calling the *inventory* API of the remote database. It will then purge\ndata in the local ArangoDB database, and after start will transfer collection data\nfrom the remote database to the local ArangoDB database. It will extract data from the\nremote database by calling the remote database's *dump* API until all data are fetched.\n\nIn case of success, the body of the response is a JSON object with the following\nattributes:\n\n- *collections*: an array of collections that were transferred from the endpoint\n\n- *lastLogTick*: the last log tick on the endpoint at the time the transfer\n  was started. Use this value as the *from* value when starting the continuous\n  synchronization later.\n\nWARNING: calling this method will synchronize data from the collections found\non the remote endpoint to the local ArangoDB database. All data in the local\ncollections will be purged and replaced with data from the endpoint.\n\nUse with caution!\n\n\u003e **INFO:**\nThis method is not supported on a Coordinator in a cluster deployment.\n",
-    "operationId": "startReplicationSync",
-    "parameters": [
-     {
-      "description": "The name of the database.\n",
-      "example": "_system",
-      "in": "path",
-      "name": "database-name",
-      "required": true,
-      "schema": {
-       "type": "string"
-      }
-     }
-    ],
-    "requestBody": {
-     "content": {
-      "application/json": {
-       "schema": {
-        "properties": {
-         "database": {
-          "description": "the database name on the leader (if not specified, defaults to the\nname of the local current database).\n",
-          "type": "string"
-         },
-         "endpoint": {
-          "description": "the leader endpoint to connect to (e.g. \"tcp://192.168.173.13:8529\").\n",
-          "type": "string"
-         },
-         "includeSystem": {
-          "description": "whether or not system collection operations will be applied\n",
-          "type": "boolean"
-         },
-         "incremental": {
-          "description": "if set to *true*, then an incremental synchronization method will be used\nfor synchronizing data in collections. This method is useful when\ncollections already exist locally, and only the remaining differences need\nto be transferred from the remote endpoint. In this case, the incremental\nsynchronization can be faster than a full synchronization.\nThe default value is *false*, meaning that the complete data from the remote\ncollection will be transferred.\n",
-          "type": "boolean"
-         },
-         "initialSyncMaxWaitTime": {
-          "description": "the maximum wait time (in seconds) that the initial synchronization will\nwait for a response from the leader when fetching initial collection data.\nThis wait time can be used to control after what time the initial synchronization\nwill give up waiting for a response and fail.\nThis value will be ignored if set to *0*.\n",
-          "type": "integer"
-         },
-         "password": {
-          "description": "the password to use when connecting to the endpoint.\n",
-          "type": "string"
-         },
-         "restrictCollections": {
-          "description": "an optional array of collections for use with\n*restrictType*. If *restrictType* is *include*, only the specified collections\nwill be synchronized. If *restrictType* is *exclude*, all but the specified\ncollections will be synchronized.\n",
-          "items": {
-           "type": "string"
-          },
-          "type": "array"
-         },
-         "restrictType": {
-          "description": "an optional string value for collection filtering. When\nspecified, the allowed values are *include* or *exclude*.\n",
-          "type": "string"
-         },
-         "username": {
-          "description": "an optional ArangoDB username to use when connecting to the endpoint.\n",
-          "type": "string"
-         }
-        },
-        "required": [
-         "endpoint",
-         "password"
-        ],
-        "type": "object"
-       }
-      }
-     }
-    },
-    "responses": {
-     "200": {
-      "description": "is returned if the request was executed successfully.\n"
-     },
-     "400": {
-      "description": "is returned if the configuration is incomplete or malformed.\n"
-     },
-     "405": {
-      "description": "is returned when an invalid HTTP method is used.\n"
-     },
-     "500": {
-      "description": "is returned if an error occurred during synchronization.\n"
-     },
-     "501": {
-      "description": "is returned when this operation is called on a Coordinator in a cluster deployment.\n"
-     }
-    },
-    "summary": "Start replication from a remote endpoint",
     "tags": [
      "Replication"
     ]
@@ -29738,7 +28996,7 @@
   },
   "/_db/{database-name}/_api/transaction": {
    "get": {
-    "description": "The result is an object with the `transactions` attribute, which contains\nan array of transactions.\nIn a cluster, the array contains the transactions from all Coordinators.\n\nEach array entry contains an object with the following attributes:\n\n- `id`: the transaction's id\n- `state`: the transaction's status\n",
+    "description": "List the currently running Stream Transactions.\nIn a cluster, the list contains the transactions from all Coordinators.\n",
     "operationId": "listStreamTransactions",
     "parameters": [
      {
@@ -29754,7 +29012,41 @@
     ],
     "responses": {
      "200": {
-      "description": "If the list of transactions can be retrieved successfully, *HTTP 200* will be returned.\n"
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "transactions": {
+           "description": "An array of currently running transactions. In a cluster, this\ncontains the transactions from all Coordinators.\n",
+           "items": {
+            "properties": {
+             "id": {
+              "description": "The identifier of the transaction.\n",
+              "type": "string"
+             },
+             "state": {
+              "const": "running",
+              "description": "The status of the transaction. Always `running`\nif it's in the list of running transactions.\n",
+              "type": "string"
+             }
+            },
+            "required": [
+             "id",
+             "state"
+            ],
+            "type": "object"
+           },
+           "type": "array"
+          }
+         },
+         "required": [
+          "transactions"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The list of transactions can be retrieved successfully.\n"
      }
     },
     "summary": "List the running Stream Transactions",
@@ -29856,7 +29148,7 @@
   },
   "/_db/{database-name}/_api/transaction/begin": {
    "post": {
-    "description": "Begin a Stream Transaction that allows clients to call selected APIs over a\nshort period of time, referencing the transaction ID, and have the server\nexecute the operations transactionally.\n\nCommitting or aborting a running transaction must be done by the client.\nIt is bad practice to not commit or abort a transaction once you are done\nusing it. It forces the server to keep resources and collection locks\nuntil the entire transaction times out.\n\nThe transaction description must be passed in the body of the POST request.\nIf the transaction can be started on the server, *HTTP 201* is returned.\n\nFor successfully started transactions, the returned JSON object has the\nfollowing properties:\n\n- `error`: boolean flag to indicate if an error occurred (`false`\n  in this case)\n\n- `code`: the HTTP status code\n\n- `result`: result containing\n    - `id`: the identifier of the transaction\n    - `status`: containing the string 'running'\n\nIf the transaction specification is either missing or malformed, the server\nresponds with *HTTP 400* or *HTTP 404*.\n\nThe body of the response then contains a JSON object with additional error\ndetails. The object has the following attributes:\n\n- `error`: boolean flag to indicate that an error occurred (`true` in this case)\n\n- `code`: the HTTP status code\n\n- `errorNum`: the server error number\n\n- `errorMessage`: a descriptive error message\n",
+    "description": "Begin a Stream Transaction that allows clients to call selected APIs over a\nshort period of time, referencing the transaction ID, and have the server\nexecute the operations transactionally.\n\nCommitting or aborting a running transaction must be done by the client.\nIt is bad practice to not commit or abort a transaction once you are done\nusing it. It forces the server to keep resources and collection locks\nuntil the entire transaction times out.\n\nThe transaction description must be passed in the body of the POST request.\n",
     "operationId": "beginStreamTransaction",
     "parameters": [
      {
@@ -29890,7 +29182,7 @@
           "type": "boolean"
          },
          "collections": {
-          "description": "Must be a JSON object that can have one or all sub-attributes\n`read`, `write` or `exclusive`, each being an array of collection names or a\nsingle collection name as string. Collections that will be written to in the\ntransaction must be declared with the `write` or `exclusive` attribute or it\nwill fail, whereas non-declared collections from which is solely read will be\nadded lazily.\n",
+          "description": "Must be a JSON object that can have the sub-attributes\n`read`, `write`, and `exclusive`, each being an array of collection names or a\nsingle collection name as string. Collections that will be written to in the\ntransaction must be declared with the `write` or `exclusive` attribute or the\nrespective write operations will fail (but not automatically abort the\nStream Transaction), whereas non-declared collections from which is solely\nread will be added lazily.\n",
           "properties": {
            "exclusive": {
             "description": "A single collection or a list of collections to acquire\nexclusive write access for.\n"
@@ -29933,13 +29225,122 @@
     },
     "responses": {
      "201": {
-      "description": "If the transaction is running on the server,\n*HTTP 201* will be returned.\n"
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 201,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that no error occurred.\n",
+           "example": false,
+           "type": "boolean"
+          },
+          "result": {
+           "description": "An object describing the started transaction.\n",
+           "properties": {
+            "id": {
+             "description": "The identifier of the transaction.\n",
+             "type": "string"
+            },
+            "status": {
+             "const": "running",
+             "description": "The status of the transaction. Always `running` for a\nsuccessfully started transaction.\n",
+             "type": "string"
+            }
+           },
+           "required": [
+            "id",
+            "status"
+           ],
+           "type": "object"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "result"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The transaction has been started on the server.\n"
      },
      "400": {
-      "description": "If the transaction specification is either missing or malformed, the server\nwill respond with *HTTP 400*.\n"
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 400,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The transaction specification is either missing or malformed.\n"
      },
      "404": {
-      "description": "If the transaction specification contains an unknown collection, the server\nwill respond with *HTTP 404*.\n"
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 404,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The transaction specification contains an unknown collection.\n"
      }
     },
     "summary": "Begin a Stream Transaction",
@@ -29950,7 +29351,7 @@
   },
   "/_db/{database-name}/_api/transaction/{transaction-id}": {
    "delete": {
-    "description": "Abort a running server-side transaction. Aborting is an idempotent operation.\nIt is not an error to abort a transaction more than once.\n\nIf the transaction can be aborted, *HTTP 200* is returned.\nThe returned JSON object has the following properties:\n\n- `error`: boolean flag to indicate if an error occurred (`false`\n  in this case)\n\n- `code`: the HTTP status code\n\n- `result`: result containing\n    - `id`: the identifier of the transaction\n    - `status`: containing the string 'aborted'\n\nIf the transaction cannot be found, aborting is not allowed or the\ntransaction was already committed, the server\nresponds with *HTTP 400*, *HTTP 404* or *HTTP 409*.\n\nThe body of the response then contains a JSON object with additional error\ndetails. The object has the following attributes:\n\n- `error`: boolean flag to indicate that an error occurred (`true` in this case)\n\n- `code`: the HTTP status code\n\n- `errorNum`: the server error number\n\n- `errorMessage`: a descriptive error message\n",
+    "description": "Abort a running server-side transaction. Aborting is an idempotent operation.\nIt is not an error to abort a transaction more than once.\n\nThe server remembers a transaction's final state for a limited time after\nit ends. As a result, the response can vary depending on when you call\nthis endpoint:\n\n- While the transaction is still tracked: aborting an already-aborted\n  transaction returns `200` (idempotent), and aborting an already-committed\n  transaction returns `400`.\n- The first abort against an unknown identifier returns `404` and records\n  it as aborted. Subsequent aborts for the same identifier return `200`\n  until the record is garbage-collected, after which the identifier is\n  again unknown and the next abort once more returns `404`.\n",
     "operationId": "abortStreamTransaction",
     "parameters": [
      {
@@ -29975,16 +29376,122 @@
     ],
     "responses": {
      "200": {
-      "description": "If the transaction was aborted,\n*HTTP 200* will be returned.\n"
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 200,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that no error occurred.\n",
+           "example": false,
+           "type": "boolean"
+          },
+          "result": {
+           "description": "An object describing the aborted transaction.\n",
+           "properties": {
+            "id": {
+             "description": "The identifier of the transaction.\n",
+             "type": "string"
+            },
+            "status": {
+             "const": "aborted",
+             "description": "The status of the transaction. Always `aborted` for a\nsuccessfully aborted transaction.\n",
+             "type": "string"
+            }
+           },
+           "required": [
+            "id",
+            "status"
+           ],
+           "type": "object"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "result"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The transaction has been aborted.\n"
      },
      "400": {
-      "description": "If the transaction cannot be aborted, the server\nwill respond with *HTTP 400*.\n"
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 400,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The transaction identifier is malformed, or the transaction is in\na state that does not allow aborting (for example, it was\nalready committed).\n"
      },
      "404": {
-      "description": "If the transaction was not found, the server\nwill respond with *HTTP 404*.\n"
-     },
-     "409": {
-      "description": "If the transaction was already committed, the server\nwill respond with *HTTP 409*.\n"
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 404,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "No transaction is known under the specified identifier.\n"
      }
     },
     "summary": "Abort a Stream Transaction",
@@ -29993,7 +29500,7 @@
     ]
    },
    "get": {
-    "description": "The result is an object describing the status of the transaction.\nIt has at least the following attributes:\n\n- `id`: the identifier of the transaction\n\n- `status`: the status of the transaction. One of \"running\", \"committed\" or \"aborted\".\n",
+    "description": "Retrieve the status of a Stream Transaction by its identifier.\n\nAfter a transaction is committed or aborted, the server remembers its\nfinal state for a limited time. During this window, querying the\ntransaction returns its final status (`committed` or `aborted`). Once\nthe server garbage-collects this record, the same identifier becomes\nunknown and the endpoint returns `404`.\n",
     "operationId": "getStreamTransaction",
     "parameters": [
      {
@@ -30018,13 +29525,126 @@
     ],
     "responses": {
      "200": {
-      "description": "If the transaction is fully executed and committed on the server,\n*HTTP 200* will be returned.\n"
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 200,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that no error occurred.\n",
+           "example": false,
+           "type": "boolean"
+          },
+          "result": {
+           "description": "An object describing the status of the transaction.\n",
+           "properties": {
+            "id": {
+             "description": "The identifier of the transaction.\n",
+             "type": "string"
+            },
+            "status": {
+             "description": "The status of the transaction.\n",
+             "enum": [
+              "running",
+              "committed",
+              "aborted"
+             ],
+             "type": "string"
+            }
+           },
+           "required": [
+            "id",
+            "status"
+           ],
+           "type": "object"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "result"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The transaction is found and its status returned.\n"
      },
      "400": {
-      "description": "If the transaction identifier specified is either missing or malformed, the server\nwill respond with *HTTP 400*.\n"
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 400,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The transaction identifier is either missing or malformed.\n"
      },
      "404": {
-      "description": "If the transaction was not found with the specified identifier, the server\nwill respond with *HTTP 404*.\n"
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 404,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "No transaction was found with the specified identifier.\n"
      }
     },
     "summary": "Get the status of a Stream Transaction",
@@ -30033,7 +29653,7 @@
     ]
    },
    "put": {
-    "description": "Commit a running server-side transaction. Committing is an idempotent operation.\nIt is not an error to commit a transaction more than once.\n\nIf the transaction can be committed, *HTTP 200* is returned.\nThe returned JSON object has the following properties:\n\n- `error`: boolean flag to indicate if an error occurred (`false`\n  in this case)\n\n- `code`: the HTTP status code\n\n- `result`: result containing\n    - `id`: the identifier of the transaction\n    - `status`: containing the string 'committed'\n\nIf the transaction cannot be found, committing is not allowed or the\ntransaction was aborted, the server\nresponds with *HTTP 400*, *HTTP 404* or *HTTP 409*.\n\nThe body of the response then contains a JSON object with additional error\ndetails. The object has the following attributes:\n\n- `error`: boolean flag to indicate that an error occurred (`true` in this case)\n\n- `code`: the HTTP status code\n\n- `errorNum`: the server error number\n\n- `errorMessage`: a descriptive error message\n",
+    "description": "Commit a running server-side transaction. Committing is an idempotent operation.\nIt is not an error to commit a transaction more than once.\n\nThe server remembers a transaction's final state for a limited time after\nit ends. As a result, the response can vary depending on when you call\nthis endpoint:\n\n- While the transaction is still tracked: committing an already-committed\n  transaction returns `200` (idempotent), and committing an already-aborted\n  transaction returns `400`.\n- Once the server has garbage-collected the transaction's record, the\n  identifier is no longer known and the endpoint returns `404`.\n",
     "operationId": "commitStreamTransaction",
     "parameters": [
      {
@@ -30058,16 +29678,122 @@
     ],
     "responses": {
      "200": {
-      "description": "If the transaction was committed,\n*HTTP 200* will be returned.\n"
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 200,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that no error occurred.\n",
+           "example": false,
+           "type": "boolean"
+          },
+          "result": {
+           "description": "An object describing the committed transaction.\n",
+           "properties": {
+            "id": {
+             "description": "The identifier of the transaction.\n",
+             "type": "string"
+            },
+            "status": {
+             "const": "committed",
+             "description": "The status of the transaction. Always `committed` for a\nsuccessfully committed transaction.\n",
+             "type": "string"
+            }
+           },
+           "required": [
+            "id",
+            "status"
+           ],
+           "type": "object"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "result"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The transaction has been committed.\n"
      },
      "400": {
-      "description": "If the transaction cannot be committed, the server\nwill respond with *HTTP 400*.\n"
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 400,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The transaction identifier is malformed, or the transaction is in\na state that does not allow committing (for example, it was\nalready aborted).\n"
      },
      "404": {
-      "description": "If the transaction was not found, the server\nwill respond with *HTTP 404*.\n"
-     },
-     "409": {
-      "description": "If the transaction was already aborted, the server\nwill respond with *HTTP 409*.\n"
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 404,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "No transaction is known under the specified identifier.\n"
      }
     },
     "summary": "Commit a Stream Transaction",

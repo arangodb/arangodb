@@ -1,0 +1,181 @@
+/*jshint globalstrict:false, strict:false */
+/* global getOptions, arango */
+
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
+
+// Authorization questions asked by the /_api/database endpoint family.
+//
+// Observation-based counterpart of tests/api/apitests/databases.mjs.
+//
+// Handler: arangod/RestHandler/RestDatabaseHandler.cpp
+//
+// Every request first asks the base `UseDatabase name=<db> level=read` in
+// RestHandler::checkUserCanAccess(), where <db> is the database in the request
+// path prefix. Beyond that:
+//   - GET (list / current / user / shardStatistics) go through
+//     methods::Databases::list()/toVelocyPack(), which do NOT call the
+//     ExecContext (they read stored auth levels directly), so only the base
+//     question is observed.
+//   - POST create -> methods::Databases::create() -> canCreateDatabase(name)
+//     -> `CreateDatabase name=<name>`.
+//   - DELETE -> methods::Databases::drop() -> canDropDatabase(name)
+//     -> `DropDatabase name=<name>`.
+//
+// Create/drop operate on a scratch database 'd2' (recreated inline per test),
+// so the fixture database 'd' used by the GET tests is never touched.
+
+if (getOptions === true) {
+  return {
+    'server.authentication': 'true',
+    'log.force-direct': 'true',
+    // keep background threads from asking questions of their own
+    'foxx.queues': 'false'
+  };
+}
+
+const jsunity = require('jsunity');
+const {
+  beginObserve,
+  endObserve,
+  disableObserve,
+  assertPermissions
+} = require('@arangodb/testutils/permissions-observer');
+const {
+  setUpApiTestData,
+  tearDownApiTestData,
+  DB,
+  singleOnly
+} = require('@arangodb/testutils/apitest-fixtures');
+
+function databaseApiAuthzSuite () {
+
+  function dropD2 () {
+    arango.DELETE_RAW(`/_db/_system/_api/database/d2`);
+  }
+  function createD2 () {
+    dropD2();
+    arango.POST_RAW(`/_db/_system/_api/database`, { name: 'd2' });
+  }
+
+  return {
+    setUpAll: setUpApiTestData,
+    tearDownAll: tearDownApiTestData,
+
+    tearDown: function () {
+      disableObserve();
+      dropD2();
+    },
+
+    // GET /_db/_system/_api/database - list all databases (_system only);
+    // methods::Databases::list() asks nothing, only the base check.
+    testListDatabases: function () {
+      beginObserve();
+      arango.GET_RAW(`/_db/_system/_api/database`);
+      assertPermissions([
+        "UseDatabase name=_system level=read"
+      ], endObserve());
+    },
+
+    // GET /_db/d/_api/database/current - _vocbase.toVelocyPack(), no can()
+    testCurrentDatabase: function () {
+      beginObserve();
+      arango.GET_RAW(`/_db/${DB}/_api/database/current`);
+      assertPermissions([
+        "UseDatabase name=d level=read"
+      ], endObserve());
+    },
+
+    // GET /_db/d/_api/database/user - Databases::list(user) asks
+    // canSeeDatabase() for every database it enumerates
+    testUserDatabases: function () {
+      beginObserve();
+      arango.GET_RAW(`/_db/${DB}/_api/database/user`);
+      assertPermissions([
+        "UseDatabase name=d level=read",
+        "SeeDatabase name=_system",
+        "SeeDatabase name=d"
+      ], endObserve());
+    },
+
+    // GET /_db/d/_api/database/shardStatistics - on a single server this
+    // returns CLUSTER_ONLY_ON_COORDINATOR before any can() is asked.
+    // AUDIT: on a cluster coordinator this path reaches ClusterInfo and may
+    // ask additional questions.
+    testShardStatistics: function () {
+      beginObserve();
+      arango.GET_RAW(`/_db/${DB}/_api/database/shardStatistics`);
+      assertPermissions([
+        "UseDatabase name=d level=read"
+      ], endObserve());
+    },
+
+    // POST /_db/_system/_api/database - create d2 -> canCreateDatabase(d2)
+    testCreateDatabase: function () {
+      dropD2();
+      beginObserve();
+      arango.POST_RAW(`/_db/_system/_api/database`, { name: 'd2' });
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "IsReadOnly",
+        "CreateDatabase name=d2",
+        "CreateCollection db=d2 name=_analyzers",
+        "CreateCollection db=d2 name=_appbundles",
+        "CreateCollection db=d2 name=_apps",
+        "CreateCollection db=d2 name=_aqlfunctions",
+        "CreateCollection db=d2 name=_frontend",
+        "CreateCollection db=d2 name=_graphs",
+        "CreateCollection db=d2 name=_jobs",
+        "CreateCollection db=d2 name=_queues",
+        "UseCollection db=d2 name=_apps level=writemeta",
+        "UseCollection db=d2 name=_jobs level=writemeta",
+        ...singleOnly([
+          "UseCollection db=_system name=_users level=read",
+          "UseCollection db=_system name=_users level=writedata",
+          "UseCollection db=d2 name=_apps level=read",
+          "UseCollection db=d2 name=_apps level=writedata",
+          "UseCollection db=d2 name=_jobs level=read",
+          "UseCollection db=d2 name=_jobs level=writedata"
+        ])
+      ], endObserve());
+      dropD2();
+    },
+
+    // DELETE /_db/_system/_api/database/d2 - drop d2 -> canDropDatabase(d2)
+    testDropDatabase: function () {
+      createD2();
+      beginObserve();
+      arango.DELETE_RAW(`/_db/_system/_api/database/d2`);
+      assertPermissions([
+        "UseDatabase name=_system level=read",
+        "IsReadOnly",
+        "DropDatabase name=d2",
+        ...singleOnly([
+          "UseCollection db=_system name=_users level=read",
+          "UseCollection db=_system name=_users level=writedata"
+        ])
+      ], endObserve());
+    },
+  };
+}
+
+jsunity.run(databaseApiAuthzSuite);
+return jsunity.done();

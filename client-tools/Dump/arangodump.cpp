@@ -60,10 +60,6 @@ int main(int argc, char* argv[]) {
 
     try {
       server.run(argc, argv);
-      if (server.helpShown()) {
-        // --help was displayed
-        ret = EXIT_SUCCESS;
-      }
     } catch (std::exception const& ex) {
       LOG_TOPIC("8363a", ERR, arangodb::Logger::FIXME)
           << "arangodump terminated because of an unhandled exception: "

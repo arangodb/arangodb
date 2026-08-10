@@ -722,7 +722,10 @@ async<void> RestCollectionHandler::handleCommandDelete() {
       _request->parsedValue(StaticStrings::DataSourceSystem, false);
   _builder.clear();
 
-  // Check if we are allowed to drop the collection:
+  // Note that this check will be done in methods::Collections::drop below
+  // again. However, we need to check before the lookup, or else somebody
+  // without access permissions could read off from the result code, if
+  // a collection exists or not!
   if (auto r = ExecContext::current().canDropCollection(_vocbase.name(), name);
       r.fail()) {
     events::DropCollection(_vocbase.name(), name, TRI_ERROR_FORBIDDEN);

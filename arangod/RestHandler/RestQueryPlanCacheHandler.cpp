@@ -56,6 +56,8 @@ RestStatus RestQueryPlanCacheHandler::execute() {
 }
 
 void RestQueryPlanCacheHandler::clearCache() {
+  // Note that contrary to versions up to and including 3.12.9 this is now
+  // forbidden if the server is in read-only mode. This is intentional.
   // TODO Should this get a separate admin action/permission?
   if (auto r = ExecContext::current().canUseDatabase(
           _vocbase.name(), DatabaseAccessLevel::Write);
@@ -84,16 +86,14 @@ void RestQueryPlanCacheHandler::readPlans() {
                     aql::QueryPlanCache::Key const& key,
                     aql::QueryPlanCache::Value const& value) -> bool {
     auto const& context = ExecContext::current();
-    if (!context.isSuperuserOrDisabled()) {
-      // check if non-superusers have at least read permissions on all
-      // collections/views used in the query
-      for (auto const& dataSource : value.dataSources) {
-        if (!context
-                 .canUseCollection(databaseName, dataSource.second.name,
-                                   AccessLevel::Read)
-                 .ok()) {
-          return false;
-        }
+    // check if non-superusers have at least read permissions on all
+    // collections/views used in the query
+    for (auto const& dataSource : value.dataSources) {
+      if (!context
+               .canUseCollection(databaseName, dataSource.second.name,
+                                 AccessLevel::Read)
+               .ok()) {
+        return false;
       }
     }
     return true;

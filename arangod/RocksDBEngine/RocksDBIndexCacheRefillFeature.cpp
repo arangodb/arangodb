@@ -168,8 +168,8 @@ void RocksDBIndexCacheRefillFeature::buildStartupIndexRefillTasks() {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   // get names of all databases
-  for (auto const& database :
-       methods::Databases::list(_databaseFeature, _clusterFeature, "")) {
+  for (auto const& database : methods::Databases::list(
+           _databaseFeature, _clusterFeature, /* onlyCurrentUser = */ false)) {
     try {
       DatabaseGuard guard(_databaseFeature, database);
 
@@ -188,6 +188,8 @@ void RocksDBIndexCacheRefillFeature::buildStartupIndexRefillTasks() {
               _indexFillTasks.emplace_back(
                   IndexFillTask{database, collection->name(), index->id()});
             }
+
+            return true;
           });
     } catch (...) {
       // must ignore any errors here in case a database or collection
