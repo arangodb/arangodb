@@ -509,6 +509,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/openapi.json`);
       assertPermissions([
+        "UseApiVersion version=0",
       ], endObserve());
     },
 

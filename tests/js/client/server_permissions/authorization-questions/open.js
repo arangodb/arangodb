@@ -67,7 +67,9 @@ function openApiAuthzSuite () {
     testObtainToken: function () {
       beginObserve();
       arango.POST_RAW(`/_open/auth`, { username: 'AR', password: 'AR' });
-      assertPermissions([], endObserve());
+      assertPermissions([
+        "UseApiVersion version=0",
+      ], endObserve());
     },
 
     // POST /_open/auth/renew with a bearer token - still OPEN, asks nothing.
@@ -84,7 +86,9 @@ function openApiAuthzSuite () {
     testRenewWithoutToken: function () {
       beginObserve();
       arango.POST_RAW(`/_open/auth/renew`, {});
-      assertPermissions([], endObserve());
+      assertPermissions([
+        "UseApiVersion version=0",
+      ], endObserve());
     },
   };
 }

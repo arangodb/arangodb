@@ -747,6 +747,15 @@ async<Result> RestHandler::checkApiVersionAccess() const {
     // the allowed api version
     co_return Result{};
   }
+
+  // During startup (or in maintenance mode) the AuthenticationFeature might not
+  // yet be available for authorization, and must not be consulted.
+  if (auto const mode = ServerState::instance()->mode();
+      mode == ServerState::Mode::STARTUP ||
+      mode == ServerState::Mode::MAINTENANCE) {
+    co_return Result{};
+  }
+
   auto ec = request()->requestContext();
   TRI_ASSERT(ec != nullptr) << "no exec context in request: " << this->name();
   auto res = ec->canUseApiVersion(request()->requestedApiVersion());
