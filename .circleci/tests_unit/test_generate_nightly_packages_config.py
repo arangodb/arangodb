@@ -61,6 +61,12 @@ def requires_of(config, name):
     raise AssertionError(f"job {name} not in workflow")
 
 
+def required_names(config, name):
+    """requires entries reduced to job names: status-qualified entries
+    ({"job": [statuses]}) and plain strings compare alike."""
+    return {gen.dep_name(dep) for dep in requires_of(config, name)}
+
+
 def test_all_enabled_keeps_every_job(base_config):
     config = run_generate(base_config)
     assert workflow_names(config) == workflow_names(base_config)
@@ -71,7 +77,8 @@ def test_no_security_check_drops_all_trivy_jobs(base_config):
     names = workflow_names(config)
     assert not any(name.startswith("security-check-") for name in names)
     assert not any(
-        dep.startswith("security-check-") for dep in requires_of(config, "publish-nightly")
+        dep.startswith("security-check-")
+        for dep in required_names(config, "publish-nightly")
     )
 
 
@@ -121,12 +128,12 @@ def test_docker_only_drops_package_pipeline(base_config):
     assert "sign-packages" not in names
     # docker builds, their security checks, and both compiles remain
     assert "compile-enterprise-amd64" in names
-    assert set(requires_of(config, "publish-nightly")) == {
+    assert required_names(config, "publish-nightly") == {
         f"{kind}-{distro}-{arch}"
         for kind in ("docker-enterprise", "security-check-docker")
         for distro in ("alpine", "deb")
         for arch in ("amd64", "arm64")
-    }
+    } | {"security-gate"}
 
 
 def test_packages_only_drops_docker_jobs(base_config):
@@ -193,7 +200,27 @@ def test_every_generated_graph_is_consistent(base_config):
         except ValueError as err:
             assert "nothing selected" in str(err)
             continue
-        assert "publish-nightly" in workflow_names(config)
+        names = workflow_names(config)
+        assert "publish-nightly" in names
+        # The tolerated-failure exemption must hold whatever is pruned:
+        # exactly security-gate when the scans run, nothing otherwise.
+        gated = "security-gate" in names
+        assert gated == (values["security-check"] == "true")
+        tolerated = [
+            gen.dep_name(dep)
+            for dep in requires_of(config, "publish-nightly")
+            if not gen.blocks_on(dep)
+        ]
+        assert tolerated == (["security-gate"] if gated else [])
+        if gated:
+            # a gate with nothing to collect would fail on an empty
+            # verdict set and be tolerated into a silent publish
+            gate_requires = requires_of(config, "security-gate")
+            assert gate_requires
+            assert all(
+                gen.dep_name(dep).startswith("security-check-")
+                for dep in gate_requires
+            )
 
 
 def test_check_workflow_rejects_dangling_requires():
@@ -222,7 +249,7 @@ def test_publish_requires_packaging_jobs_when_all_gates_disabled(base_config):
             "security-check": "false",
         },
     )
-    requires = set(requires_of(config, "publish-nightly"))
+    requires = required_names(config, "publish-nightly")
     for job in (
         "deb-enterprise-amd64",
         "rpm-enterprise-amd64",
@@ -241,6 +268,112 @@ def test_publish_requires_packaging_jobs_when_all_gates_disabled(base_config):
         if name.startswith("security-check-") or name in ("scan-packages", "sign-packages")
     }
     assert not gate_leftovers
+
+
+def test_publish_tolerates_only_the_security_gate(base_config):
+    """A finding must red the workflow without blocking the publish, so
+    publish-nightly tolerates security-gate failing. It must tolerate
+    NOTHING else: the scan jobs produce the reports and SBOMs published
+    next to the artifacts, so a scan that died has to keep blocking.
+    "canceled" is not tolerated either, since it means the workflow is
+    being torn down."""
+    config = run_generate(base_config)
+    deps = requires_of(config, "publish-nightly")
+    assert {"security-gate": ["success", "failed"]} in deps
+    for dep in deps:
+        if gen.dep_name(dep) != "security-gate":
+            assert dep == gen.dep_name(dep), f"{dep} must be a success-only requires"
+    # the scan jobs are still waited for, just not tolerated
+    names = required_names(config, "publish-nightly")
+    assert len([n for n in names if n.startswith("security-check-")]) == 10
+
+
+def test_security_gate_collects_every_scan(base_config):
+    config = run_generate(base_config)
+    assert required_names(config, "security-gate") == {
+        f"security-check-{fmt}-{arch}"
+        for fmt in ("deb", "rpm", "tar")
+        for arch in ("amd64", "arm64")
+    } | {
+        f"security-check-docker-{distro}-{arch}"
+        for distro in ("alpine", "deb")
+        for arch in ("amd64", "arm64")
+    }
+
+
+def test_no_security_check_drops_the_gate_job(base_config):
+    config = run_generate(base_config, **{"security-check": "false"})
+    names = workflow_names(config)
+    assert "security-gate" not in names
+    assert "security-gate" not in required_names(config, "publish-nightly")
+
+
+def _tolerance_config(publish_requires, gate_requires=None):
+    """Minimal graph exercising check_workflow's tolerated-requires rule."""
+    return {
+        "workflows": {
+            gen.WORKFLOW_NAME: {
+                "jobs": [
+                    {"deb-enterprise-amd64": {}},
+                    {"security-gate": {"requires": gate_requires or []}},
+                    {"publish-nightly": {"requires": publish_requires}},
+                ]
+            }
+        }
+    }
+
+
+def test_check_workflow_rejects_tolerating_anything_but_the_gate():
+    """Only the verdict may fail. A tolerated packaging job would let
+    publish run on missing artifacts."""
+    config = _tolerance_config(
+        ["security-gate", {"deb-enterprise-amd64": ["success", "failed"]}]
+    )
+    with pytest.raises(ValueError, match="only publish-nightly may tolerate"):
+        gen.check_workflow(config)
+
+
+def test_check_workflow_rejects_tolerance_on_another_job():
+    """A security-gate that tolerated a failed scan would vote on a
+    partial verdict set."""
+    config = _tolerance_config(
+        ["deb-enterprise-amd64", {"security-gate": ["success", "failed"]}],
+        gate_requires=[{"deb-enterprise-amd64": ["success", "failed"]}],
+    )
+    with pytest.raises(ValueError, match="only publish-nightly may tolerate"):
+        gen.check_workflow(config)
+
+
+@pytest.mark.parametrize(
+    "statuses",
+    [
+        ["failed"],  # success dropped: publish would run ONLY on a red gate
+        "failed",
+        ["success", "failed", "canceled"],  # torn-down workflow must not publish
+        ["success", "canceled"],
+        [],
+    ],
+)
+def test_check_workflow_pins_the_tolerated_status_set(statuses):
+    """CircleCI accepts every one of these, and the wrong one inverts the
+    publish instead of just relaxing it."""
+    config = _tolerance_config(
+        ["deb-enterprise-amd64", {"security-gate": statuses}]
+    )
+    with pytest.raises(ValueError, match="exactly"):
+        gen.check_workflow(config)
+
+
+def test_check_workflow_accepts_the_intended_tolerance():
+    config = _tolerance_config(
+        ["deb-enterprise-amd64", {"security-gate": ["success", "failed"]}]
+    )
+    gen.check_workflow(config)
+
+
+def test_dep_statuses_rejects_a_malformed_entry():
+    with pytest.raises(ValueError, match="malformed status list"):
+        gen.dep_statuses({"security-gate": None})
 
 
 def test_pr_run_renames_workflow_and_keeps_job_graph(base_config):
