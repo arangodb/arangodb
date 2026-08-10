@@ -77,20 +77,19 @@ db._create('c1')
 db.c1.insert({ name: 'Hutch', address: { country: 'USA', city: 'Boston' }})
 db.c1.insert({ name: 'John', address: { country: 'Germany', city: 'Hamburg' }})
 db._createView('v1', 'arangosearch')
-db.v1.properties(
- {
+db.v1.properties({
   links: {
     c1: {
       fields: {
-        name: {},
         address: {
           fields: {
-            city: {}
+            city: {
+              analyzers : [ 'text_en' ]
+              }
+            }
           }
         }
-      },
-      storeValues: 'id',
-      includeAllFields: true
+      }
     }
-  }})
+  })
 ```

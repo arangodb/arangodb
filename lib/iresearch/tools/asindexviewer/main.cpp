@@ -1,29 +1,25 @@
-/*
-clang++-19 -std=c++20   -DBOOST_TEXT_DISABLE_CONCEPTS   -DUNICODE -D_UNICODE \
--DNDEBUG   -I/home/kkawade/projects/arangodb/3rdParty/iresearch/core \
--I/home/kkawade/projects/arangodb/3rdParty/abseil-cpp \
--I/home/kkawade/projects/arangodb/3rdParty/lz4/lib \
--I/home/kkawade/projects/arangodb/3rdParty/iresearch/external/simdcomp/include \
--isystem /home/kkawade/projects/arangodb/3rdParty/iresearch/external   -isystem \
-/home/kkawade/projects/arangodb/3rdParty/boost/1.78.0   -isystem \
-/home/kkawade/projects/arangodb/3rdParty/iresearch/external/frozen/include \
--isystem /home/kkawade/projects/arangodb/3rdParty/iresearch/external/highway \
--isystem /home/kkawade/projects/arangodb/3rdParty/iresearch/external/openfst \
--isystem /home/kkawade/projects/arangodb/3rdParty/iresearch/external/kaldi/src \
--O2 -g   -msse4.2 -mavx   -fsized-deallocation   -o read_index   read_index.cpp \
--L/home/kkawade/projects/arangodb/build/bin   -Wl,--whole-archive   -liresearch-s \
--lformat-1_0-s   -labsl_crc32c   -labsl_base   -labsl_time -Wl,--no-whole-archive   -lscorer-bm25-s   -lscorer-tfidf-s   -llz4   -lsimdcomp-static \
--labsl_crc_internal   -labsl_crc_cpu_detect \
--labsl_crc_cord_state   -labsl_raw_hash_set   -labsl_hash   -labsl_city \
--labsl_low_level_hash   -labsl_strings   -labsl_strings_internal \
--labsl_str_format_internal   -labsl_int128   -labsl_throw_delegate \
--labsl_spinlock_wait   -labsl_raw_logging_internal   -labsl_log_severity \
--labsl_synchronization   -labsl_graphcycles_internal \
--labsl_time_zone   -labsl_civil_time   -labsl_kernel_timeout_internal \
--labsl_stacktrace   -labsl_symbolize   -labsl_malloc_internal \
--labsl_debugging_internal   -labsl_demangle_internal   -lpthread \
--latomic -lvelocypack
-*/
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Business Source License 1.1 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Koushal Kawade
+////////////////////////////////////////////////////////////////////////////////
 
 #include <algorithm>
 #include <cstring>
@@ -43,10 +39,9 @@ clang++-19 -std=c++20   -DBOOST_TEXT_DISABLE_CONCEPTS   -DUNICODE -D_UNICODE \
 #include "utils/string.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/numeric_utils.hpp"  // Add this include at the top
-#include "velocypack/Builder.h"
 #include "Basics/ScopeGuard.h"
+#include "index_inspection.h"
 using std::cout, std::endl;
-#include "VPackObjectWrapper.h"
 
 // Mirrors arangodb::iresearch::kludge::kAnalyzerDelimiter and ArangoDB
 // field-name suffixes (IResearchKludge.cpp).
@@ -174,18 +169,18 @@ struct ArangoFieldTypeInfo {
 
 void printArangoFieldHeader(std::string_view const storage_name,
                             ArangoFieldTypeInfo const& t,
-                          VPackBuilder& bField) {
+                            FieldHeader& bField) {
 
-  bField.add("type", VPackValue(arangoFieldKindLabel(t.kind)));
-  bField.add("logicalField", VPackValue(escapeLogicalFieldName(t.logical_name)));
+  bField.type = arangoFieldKindLabel(t.kind);
+  bField.logicalField = escapeLogicalFieldName(t.logical_name);
   if (t.kind == ArangoFieldKind::AnalyzedString && t.type_suffix.size() > 1) {
-    bField.add("analyzer", VPackValue(escapeLogicalFieldName(t.type_suffix.substr(1))));
+    bField.analyzer = escapeLogicalFieldName(t.type_suffix.substr(1));
   }
   auto val = hexBytes(
               irs::bytes_view(reinterpret_cast<irs::byte_type const*>(
                                   storage_name.data()),
                               storage_name.size()));
-  bField.add("storageNameBytes", VPackValue(val));
+  bField.storageNameBytes = val;
 }
 
 // Decode bytes produced by irs::numeric_token_stream (Arango numeric fields).
@@ -325,80 +320,33 @@ std::string printSegmentLocalDocId(size_t const segment_index,
   return oss.str();
 }
 
-void printSegmentLocalDocTable(size_t const segment_index,
-                               DocPkMap const& pk_by_doc,
-                               irs::SubReader const& segment,
-                               VPackBuilder& b) {
-  // cout << "  Documents in this segment (local ids; repeat 1..N each segment):\n";
-  b.add("documents", VPackValue(VPackValueType::Object));
-  arangodb::ScopeGuard closeDocumentsGuard([&]() noexcept {
-    b.close();
-  });
-
-  b.add("count", VPackValue(pk_by_doc.size()));
-
-  if (pk_by_doc.empty()) {
-    return;
-  }
-
-  std::vector<irs::doc_id_t> ids;
-  ids.reserve(pk_by_doc.size());
-  for (auto const& e : pk_by_doc) {
-    ids.push_back(e.first);
-  }
-  
-  std::sort(ids.begin(), ids.end());
-  b.add("docs", VPackValue(VPackValueType::Array));
-  for (irs::doc_id_t const id : ids) {
-    std::ostringstream oss;
-    oss << "S" << segment_index << "/d" << id << " -> "
-         << pk_by_doc.at(id);
-    b.add(VPackValue(oss.str()));
-  }
-  b.close();  //  Close docs []
-
-  // auto const live = static_cast<size_t>(segment.live_docs_count());
-  // if (pk_by_doc.size() != live) {
-  //   cout << "    (note: @_PK rows=" << pk_by_doc.size()
-  //        << " vs segment.live_docs_count=" << live << ")\n";
-  // }
-}
-
 // After next()/read(), prints attributes on the term iterator. See IResearch
 // `term_meta`, `version10::term_meta` (formats_10_attributes.hpp), and
 // burst-trie `term_iterator_base`.
 void printTermLine(irs::term_iterator const& term,
                    ArangoFieldKind const field_kind,
-                  VPackObjectWrapper<VPackBuilder>& termObj) {
+                  FieldTerms& fieldTerm) {
 
   irs::bytes_view const v = term.value();
-  termObj["display"] = VPackValue(formatTermForField(field_kind, v));
-  termObj["raw_bytes"] = VPackValue(hexBytes(v));
+  fieldTerm.display = formatTermForField(field_kind, v);
+  fieldTerm.rawBytes = hexBytes(v);
 
-  {
-    VPackObjectWrapper termMetaObj(termObj.get(), "term_meta");
-
-    if (auto const* tm = irs::get<irs::term_meta>(term)) {
-      termMetaObj["docs_with_term"] = VPackValue(tm->docs_count);
-      //  freq = sum of within-doc occurrences across all postings
-      termMetaObj["freq"] = VPackValue(tm->freq);
-    }
+  //  Term meta
+  auto& fieldTermMeta = fieldTerm.termMeta;
+  if (auto const* tm = irs::get<irs::term_meta>(term)) {
+    fieldTermMeta.docsWithTerm = tm->docs_count;
+    //  freq = sum of within-doc occurrences across all postings
+    fieldTermMeta.freq = tm->freq;
   }
 
-  // if (auto const* ta = irs::get<irs::term_attribute>(term)) {
-  //   if (ta->value.data() != v.data() || ta->value.size() != v.size()) {
-  //     cout << "      term_attribute.bytes: " << hexBytes(ta->value)
-  //          << "  (differs from iterator.value — unusual)\n";
-  //   }
-  // }
-
+  //  Term payload
   std::string payload { "(empty)" };
   if (auto const* pl = irs::get<irs::payload>(term)) {
     if (!irs::IsNull(pl->value)) {
       payload = hexBytes(pl->value);
     }
   }
-  termObj["payload"] = VPackValue(payload);
+  fieldTerm.payload = payload;
 }
 
 // Postings use segment-local doc ids. When `pk_by_doc` is non-null, annotate
@@ -407,7 +355,7 @@ void printTermPostings(irs::field_meta const& meta,
                        irs::term_iterator const& term,
                        size_t const segment_index,
                        DocPkMap const* pk_by_doc,
-                       VPackArrayWrapper<VPackBuilder>& postingsArr) {
+                       std::vector<TermPostings>& postingsArr) {
   irs::IndexFeatures const ff = meta.index_features;
 
   // bool const field_has_pos =
@@ -442,27 +390,21 @@ void printTermPostings(irs::field_meta const& meta,
   */
   //  postings (per doc: in-doc frequency, 1-based term positions in field)
   while (posts->next()) {
-    VPackObjectWrapper postingObj(postingsArr.get());
 
-    std::string docId;
-    std::string docFreq;
+    postingsArr.push_back({});
+    auto& postingsArrItem = *postingsArr.rbegin();
 
     //  document id
-    postingObj["docId"] = VPackValue(
-        printSegmentLocalDocId(segment_index, posts->value(), pk_by_doc));
+    postingsArrItem.docId = printSegmentLocalDocId(segment_index, posts->value(), pk_by_doc);
 
     //  frequency
     if (freq != nullptr) {
-      postingObj["in_doc_frequency"] = VPackValue(freq->value);
+      postingsArrItem.inDocFreq = freq->value;
     }
 
-    //  positions []
+    //  TODO: positions []
+    #if 0
     {
-      VPackArrayWrapper positionsArr(postingObj.get(), "positions");
-      if (pos == nullptr) {
-        continue;
-      }
-
       while (pos->next()) {
         VPackObjectWrapper posObj(positionsArr.get());
         posObj["position"] = VPackValue(pos->value());
@@ -474,22 +416,25 @@ void printTermPostings(irs::field_meta const& meta,
         }
       }
     }
+    #endif
   }
 }
 
 void processSegmentField(irs::field_iterator::ptr& fields, size_t segmentIndex,
                          DocPkMap const* pk_by_doc,
-                         VPackArrayWrapper<VPackBuilder>& fieldsArray) {
+                         IndexedField& indexedField) {
 
   /*
     fields: [
       {
         name: "",
+        fieldHeader: {
+           ..
+        }
         fieldIndexFeatures: [
            ..
         ],
-        terms: [
-          {
+        terms: [{
             term: "Boston",
             postings: [
               {
@@ -499,152 +444,131 @@ void processSegmentField(irs::field_iterator::ptr& fields, size_t segmentIndex,
               {
                 docId: "d2",
                 prop1: "p2"
-              }
-            ]
-          }
-        ]
-      }
-    ]
+              }]
+          }]
+        }
+      ]
   */
-  VPackObjectWrapper fieldWrapper(fieldsArray.get());
   auto& field = fields->value();
   auto& meta = field.meta();
   std::string_view const storage_name{meta.name};
   ArangoFieldTypeInfo const detected = detectArangoFieldType(storage_name);
 
-  fieldWrapper["name"] = VPackValue(storage_name);
-  //  TODO
-  // printArangoFieldHeader(storage_name, detected, b);
-  {
-    VPackObjectWrapper fieldIndexFeatures(fieldsArray.get(), "fieldIndexFeatures");
-    {
-      auto minTerm = irs::ViewCast<char>(field.min());
-      auto maxTerm = irs::ViewCast<char>(field.max());
+  indexedField.name = meta.name;
+  printArangoFieldHeader(storage_name, detected, indexedField.fieldHeader);
 
-      fieldIndexFeatures["minTerm"] = VPackValue(minTerm);
-      fieldIndexFeatures["maxTerm"] = VPackValue(maxTerm);
-      fieldIndexFeatures["termsCount"] = VPackValue(field.size());
-      fieldIndexFeatures["docsCount"] = VPackValue(field.docs_count());
-    }
-  }
+  //  FieldIndexFeatures
+  auto minTerm = irs::ViewCast<char>(field.min());
+  auto maxTerm = irs::ViewCast<char>(field.max());
+
+  auto& fieldIndexFeatures = indexedField.fieldIndexFeatures;
+  fieldIndexFeatures.minTerm = minTerm;
+  fieldIndexFeatures.maxTerm = maxTerm;
+  fieldIndexFeatures.termsCount = field.size();
+  fieldIndexFeatures.docsCount = field.docs_count();
 
   auto term = field.iterator(irs::SeekMode::NORMAL);
-  {
-    VPackArrayWrapper termsArr(fieldWrapper.get(), "terms");
-    for (; term->next();) {
-      VPackObjectWrapper termObj(termsArr.get());
-      term->read();
+  auto& indexedTerms = indexedField.terms;
 
-      //  Term info
-      printTermLine(*term, detected.kind, termObj);
+  for (; term->next();) {
+    indexedTerms.push_back({});
+    term->read();
 
-      VPackArrayWrapper postingsArr(termObj.get(), "postings");
-      {
-        printTermPostings(meta, *term, segmentIndex, pk_by_doc, postingsArr);
-      }
-    }
+    //  Term info
+    printTermLine(*term, detected.kind, *indexedTerms.rbegin());
+    printTermPostings(meta, *term, segmentIndex, pk_by_doc, indexedTerms.rbegin()->postings);
   }
 }
 
-void processSegment(const irs::SubReader& segment, size_t segmentIndex, VPackArrayWrapper<VPackBuilder>& b) {
+void processSegment(const irs::SubReader& segment, size_t segmentIndex, SegmentInfo& segmentInfo) {
 
-    DocPkMap const pk_by_doc = loadArangoPkByIresearchDoc(segment);
+  DocPkMap const pk_by_doc = loadArangoPkByIresearchDoc(segment);
 
+  {
+    auto& meta = segment.Meta();
+    segmentInfo.byteSize = meta.byte_size;
+    segmentInfo.segmentId = segmentIndex;
+    segmentInfo.numDocs = meta.docs_count;
+    segmentInfo.numLiveDocs = meta.live_docs_count;
+    segmentInfo.name = meta.name;
+
+    //--------------------------------
+    //  Fields array
+    //--------------------------------
     {
-      VPackObjectWrapper object(b.get());
-      object["segmentId"] = VPackValue(segmentIndex);
-      object["docsCount"] = VPackValue(segment.docs_count());
-      object["liveDocsCount"] = VPackValue(segment.live_docs_count());
-      // // cout
-      // //     << "  IResearch assigns doc ids 1..liveDocs independently in EACH "
-      // //        "segment (not global, not Arango _key).\n"
-      // //     << "  Use S<segment>/d<id> below; same d1 in S0 vs S1 is two different "
-      // //        "Arango rows if PKs differ.\n"
-      // //     << "  @_PK column rows loaded=" << pk_by_doc.size() << "\n";
-      // printSegmentLocalDocTable(segmentIndex, pk_by_doc, segment, b);
-      
-      //--------------------------------
-      //  Fields array
-      //--------------------------------
-      {
-        VPackArrayWrapper fieldsWrapper(object.get(), "fields");
-        for (auto fields = segment.fields(); fields->next();) {
-          processSegmentField(fields, segmentIndex, &pk_by_doc, fieldsWrapper);
-        }
+      for (auto fields = segment.fields(); fields->next();) {
+        segmentInfo.fields.push_back({});
+        processSegmentField(fields, segmentIndex, &pk_by_doc, *segmentInfo.fields.rbegin());
       }
-      //--------------------------------
-      
-      // //--------------------------------
-      // //  Column store [TODO]
-      // //  Enable this code again
-      // //--------------------------------
-      // b.add("columns", VPackValue(VPackValueType::Array));
-      // for (auto columns = segment.columns(); columns->next();) {
-        
-      //   b.add(VPackValue(VPackValueType::Object));
-      //   auto& columnReader = columns->value();
-        
-      //   b.add("id", VPackValue(columnReader.id()));
-      //   b.add("name", VPackValue(columnReader.name()));
-        
-      //   auto it = columnReader.iterator(irs::ColumnHint::kConsolidation);
-      //   auto* payload = irs::get<irs::payload>(*it);
-      //   auto* doc = irs::get<irs::document>(*it);
-        
-      //   if (!payload || !doc) {
-      //     return;
-      //   }
-        
-      //   b.add("documents", VPackValue(VPackValueType::Array));
-      //   while (it->next()) {
-      //     b.add(VPackValue(VPackValueType::Object));
-      //     b.add("id", VPackValue(doc->value));
-      //     b.add("payload", VPackValue(irs::ViewCast<char>(payload->value)));
-      //     b.close();
-      //   }
-      //   b.close();
-      //   b.close();
-      // }
-      // b.close(); // Close columns array
-      // //--------------------------------
-      
-      // b.close(); // Close Segment array element
     }
+    //--------------------------------
+    
+    // //--------------------------------
+    // //  Column store [TODO]
+    // //  Enable this code again
+    // //--------------------------------
+    // b.add("columns", VPackValue(VPackValueType::Array));
+    // for (auto columns = segment.columns(); columns->next();) {
+      
+    //   b.add(VPackValue(VPackValueType::Object));
+    //   auto& columnReader = columns->value();
+      
+    //   b.add("id", VPackValue(columnReader.id()));
+    //   b.add("name", VPackValue(columnReader.name()));
+      
+    //   auto it = columnReader.iterator(irs::ColumnHint::kConsolidation);
+    //   auto* payload = irs::get<irs::payload>(*it);
+    //   auto* doc = irs::get<irs::document>(*it);
+      
+    //   if (!payload || !doc) {
+    //     return;
+    //   }
+      
+    //   b.add("documents", VPackValue(VPackValueType::Array));
+    //   while (it->next()) {
+    //     b.add(VPackValue(VPackValueType::Object));
+    //     b.add("id", VPackValue(doc->value));
+    //     b.add("payload", VPackValue(irs::ViewCast<char>(payload->value)));
+    //     b.close();
+    //   }
+    //   b.close();
+    //   b.close();
+    // }
+    // b.close(); // Close columns array
+    // //--------------------------------
+    
+    // b.close(); // Close Segment array element
   }
+}
 
-void readIndexData(const std::filesystem::path& indexPath, VPackBuilder& b) {
+void readIndexData(const std::filesystem::path& indexPath, IndexInfo& indexInfo) {
   irs::FSDirectory dir(indexPath);
   auto reader = irs::DirectoryReader(dir);
 
-  {
-    VPackObjectWrapper obj(b, "index");
+    indexInfo.segmentsCount = reader.size();
+    indexInfo.numDocs = reader.docs_count();
+    indexInfo.numLiveDocs = reader.live_docs_count();
 
-    obj["segmentsCount"] = VPackValue(reader.size());
-    obj["docsCount"] = VPackValue(reader.docs_count());
-    obj["liveDocsCount"] = VPackValue(reader.live_docs_count());
-
-    {
-      VPackArrayWrapper segments(b, "segments");
-      size_t segmentId = 0;
-      for (auto& segment : reader) {
-        processSegment(segment, segmentId++, segments);
-      }
+    size_t segmentId = 0;
+    indexInfo.segments.reserve(reader.size());
+    for (auto& segment : reader) {
+      indexInfo.segments.push_back({});
+      processSegment(segment, segmentId++, *indexInfo.segments.rbegin());
     }
-  }
 }
 
 int main(int argc, char* argv[]) {
-  VPackBuilder b;
-  {
-    if (argc < 2) {
-      cout << "index path missing" << endl;
-      return 0;
-    }
 
-    VPackObjectWrapper obj(b);
-    readIndexData(argv[1], obj.get());
+  if (argc < 2) {
+    cout << "index path missing" << endl;
+    return 0;
   }
 
+  IndexInfo indexInfo;
+  readIndexData(argv[1], indexInfo);
+
+  VPackBuilder b;
+  toVelocyPack(indexInfo, b);
   cout << b.toJson() << endl;
   return 0;
 }

@@ -101,4 +101,5 @@ target_link_libraries(asindexviewer PRIVATE
     scorer-tfidf-s
 
     velocypack
+    arango_inspection
 )
