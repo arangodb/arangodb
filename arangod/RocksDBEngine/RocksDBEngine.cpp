@@ -34,7 +34,7 @@
 #include "Basics/Result.h"
 #include "Basics/RocksDBLogger.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"

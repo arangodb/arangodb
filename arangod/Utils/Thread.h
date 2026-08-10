@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -22,39 +22,49 @@
 
 #pragma once
 
-#include "Basics/ConditionVariable.h"
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <utility>
+
 #include "Basics/BasicThread.h"
 
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }
+class ExecContext;
 
-namespace import {
-
-class ImportHelper;
-
-class AutoTuneThread final : public arangodb::BasicThread {
- private:
-  AutoTuneThread(AutoTuneThread const&) = delete;
-  AutoTuneThread& operator=(AutoTuneThread const&) = delete;
-
+class Thread : public BasicThread {
  public:
-  explicit AutoTuneThread(ImportHelper& importHelper);
-
-  ~AutoTuneThread();
-
-  void beginShutdown() override;
-
-  void paceSends();
+  Thread(std::string const& name,
+         std::shared_ptr<ExecContext const> execContext,
+         bool deleteOnExit = false, std::uint32_t terminationTimeout = INFINITE)
+      : BasicThread(name, deleteOnExit, terminationTimeout),
+        _execContext(std::move(execContext)) {}
 
  protected:
-  void run() override;
+  void beforeRun() override;
 
-  ImportHelper& _importHelper;
-  basics::ConditionVariable _condition;
-  std::chrono::steady_clock::time_point _nextSend;
-  std::chrono::microseconds _pace;
+ private:
+  std::shared_ptr<ExecContext const> _execContext;
 };
-}  // namespace import
+
+class ServerThread : public Thread {
+ public:
+  using Server = application_features::ApplicationServer;
+
+  ServerThread(Server& server, std::string const& name,
+               std::shared_ptr<ExecContext const> execContext,
+               bool deleteOnExit = false,
+               std::uint32_t terminationTimeout = INFINITE)
+      : Thread(name, std::move(execContext), deleteOnExit, terminationTimeout),
+        _server(server) {}
+
+  Server& server() noexcept { return _server; }
+
+ protected:
+  Server& _server;
+};
+
 }  // namespace arangodb
