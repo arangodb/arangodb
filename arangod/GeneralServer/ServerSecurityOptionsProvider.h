@@ -24,20 +24,16 @@
 
 #include "ApplicationFeatures/OptionsProvider.h"
 #include "ServerSecurityFeatureOptions.h"
-#include <memory>
-
-namespace arangodb::options {
-class ProgramOptions;
-}
 
 namespace arangodb::security {
 
 struct ServerSecurityOptionsProvider
-    : OptionsProvider<ServerSecurityFeatureOptions> {
+    : OptionsProviderImpl<ServerSecurityOptionsProvider,
+                          ServerSecurityFeatureOptions> {
   ServerSecurityOptionsProvider() = default;
 
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      ServerSecurityFeatureOptions& options) override;
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          ServerSecurityFeatureOptions& options);
 };
 
 }  // namespace arangodb::security

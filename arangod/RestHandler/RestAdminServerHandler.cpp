@@ -201,7 +201,8 @@ void RestAdminServerHandler::handleMode() {
     if (auto r = ExecContext::current().canUseAdminAction(
             auth::perms::AdminMaintenance{});
         r.fail()) {
-      generateError(r);
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                    r.errorMessage());
       return;
     }
 

@@ -210,14 +210,11 @@ struct AuthMode {
 
   Any authMode;
 
+  [[nodiscard]] bool isClassic() const noexcept;
   [[nodiscard]] bool isRbac() const noexcept;
   [[nodiscard]] bool isSuperuser() const noexcept;
   [[nodiscard]] bool isDisabled() const noexcept;
   [[nodiscard]] bool isUnauthenticated() const noexcept;
-
-  /// @brief returns the API version requested by the associated
-  /// GeneralRequest, if any; otherwise returns the default API version.
-  [[nodiscard]] uint32_t requestedApiVersion() const noexcept;
 
   template<typename T, typename... Args>
   void reset(Args&&... args) {

@@ -121,7 +121,7 @@ void handleGossipResponse(arangodb::network::Response const& r,
 }  // namespace
 
 namespace arangodb::consensus {
-// gossip only, no authorization-relevant code
+// gossip only, no ExecContext required
 Inception::Inception(Agent& agent)
     : Thread("Inception", nullptr), _agent(agent) {}
 

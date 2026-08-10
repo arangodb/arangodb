@@ -29,7 +29,7 @@ namespace arangodb::upgrade {
 
 using namespace arangodb::options;
 
-void ClusterUpgradeOptionsProvider::declareOptions(
+void ClusterUpgradeOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options,
     ClusterUpgradeFeatureOptions& opts) {
   options->addOption(

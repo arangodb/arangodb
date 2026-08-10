@@ -35,22 +35,6 @@ class ApplicationServer;
 }
 class ExecContext;
 
-/// @brief Thread base classes that make the decision which ExecContext a
-/// dedicated thread runs under explicit, once, at thread construction.
-///
-/// The execContext constructor argument is deliberately REQUIRED. Pass
-/// - ExecContext::superuserAsShared() for threads that execute
-///   authorization-relevant code (AQL queries, transactions,
-///   Collections::/Indexes::/Databases:: methods, V8, ...),
-/// - nullptr as an explicit statement "infrastructure thread -- must never
-///   run authorization-relevant code" (the ExecContext::set() call is then
-///   skipped entirely),
-/// - a captured context (e.g. ExecContext::currentAsShared()) if the thread
-///   deliberately acts on behalf of whoever constructs it.
-///
-/// beforeRun() installs the context once on the new thread; no scope/guard
-/// is needed because the thread-local dies with the thread.
-
 class Thread : public BasicThread {
  public:
   Thread(std::string const& name,

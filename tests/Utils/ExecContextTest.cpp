@@ -75,7 +75,7 @@ TEST(ExecContextTest, disabled_is_not_superuser_authmode) {
   EXPECT_FALSE(ctx->isSuperuser());
 }
 
-TEST(ExecContextTest, classic_ro_ro_is_not_superuser) {
+TEST(ExecContextTest, classic_rw_rw_is_not_superuser) {
   // "Normal" classic ExecContexts are not superuser or disabled:
   auto cec = makeClassicExecContext("", "db", auth::Level::RW, auth::Level::RW);
 

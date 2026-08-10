@@ -200,7 +200,7 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
 
   // store name of user that started the query, plus the full ExecContext
   // for the maintainer-mode identity assertion in the execution entry
-  // points (COR-821)
+  // points
   _user = ExecContext::current().user();
   _execContext = ExecContext::currentAsShared();
 
@@ -417,14 +417,12 @@ bool Query::tryLoadPlanFromCache() {
         // check if the current user has permissions on all the collections
         ExecContext const& exec = ExecContext::current();
 
-        if (!exec.isSuperuserOrDisabled()) {
-          for (auto const& dataSource : cacheEntry->dataSources) {
-            if (exec.canUseCollection(_vocbase.name(), dataSource.second.name,
-                                      dataSource.second.level)
-                    .fail()) {
-              // cannot use query cache result because of permissions
-              return false;
-            }
+        for (auto const& dataSource : cacheEntry->dataSources) {
+          if (exec.canUseCollection(_vocbase.name(), dataSource.second.name,
+                                    dataSource.second.level)
+                  .fail()) {
+            // cannot use query cache result because of permissions
+            return false;
           }
         }
 
@@ -868,7 +866,6 @@ futures::Future<futures::Unit> Query::execute(
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // the query must execute under the same identity it was created with; a
   // mismatch means some spawn path failed to propagate the ExecContext
-  // (COR-821)
   if (_execContext != nullptr) {
     TRI_ASSERT(ExecContext::current().user() == _execContext->user());
   }
@@ -1132,7 +1129,6 @@ QueryResult Query::executeSync() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // the query must execute under the same identity it was created with; a
   // mismatch means some spawn path failed to propagate the ExecContext
-  // (COR-821)
   if (_execContext != nullptr) {
     TRI_ASSERT(ExecContext::current().user() == _execContext->user());
   }
@@ -1162,7 +1158,6 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // the query must execute under the same identity it was created with; a
   // mismatch means some spawn path failed to propagate the ExecContext
-  // (COR-821)
   if (_execContext != nullptr) {
     TRI_ASSERT(ExecContext::current().user() == _execContext->user());
   }

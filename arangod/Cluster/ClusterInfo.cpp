@@ -6000,7 +6000,7 @@ void ClusterInfo::waitForSyncersToStop() {
 ClusterInfo::SyncerThread::SyncerThread(
     std::string const& section, std::function<consensus::index_t()> const& f,
     AgencyCache& agencyCache)
-    // loadPlan handling may create databases and other entities
+    // needs superuser permissions for loadPlan: it may create databases etc.
     : Thread(section + "Syncer", ExecContext::superuserAsShared()),
       _section(section),
       _f(f),

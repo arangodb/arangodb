@@ -89,20 +89,8 @@ class IResearchLinkTest
     arangodb::tests::init();
 
     // ensure ArangoSearch start 1 maintenance for each group
-    auto opts = server.server().options();
     auto& ars = server.getFeature<arangodb::iresearch::IResearchFeature>();
-    ars.collectOptions(opts);
-    auto* commitThreads = opts->get<arangodb::options::UInt32Parameter>(
-        "--arangosearch.commit-threads");
-    opts->processingResult().touch("arangosearch.commit-threads");
-    EXPECT_NE(nullptr, commitThreads);
-    *commitThreads->ptr = 1;
-    auto* consolidationThreads = opts->get<arangodb::options::UInt32Parameter>(
-        "--arangosearch.consolidation-threads");
-    opts->processingResult().touch("arangosearch.consolidation-threads");
-    EXPECT_NE(nullptr, consolidationThreads);
-    *consolidationThreads->ptr = 1;
-    ars.validateOptions(opts);
+    ars.setMaintenanceThreads(1, 1);
 
     auto& metrics = server.getFeature<arangodb::metrics::MetricsFeature>();
     server.addFeature<arangodb::FlushFeature>(false, metrics);
@@ -2781,20 +2769,8 @@ class IResearchLinkInRecoveryDBServerOnUpgradeTest
     arangodb::tests::init();
 
     // ensure ArangoSearch start 1 maintenance for each group
-    auto opts = server.server().options();
     auto& ars = server.getFeature<arangodb::iresearch::IResearchFeature>();
-    ars.collectOptions(opts);
-    auto* commitThreads = opts->get<arangodb::options::UInt32Parameter>(
-        "--arangosearch.commit-threads");
-    opts->processingResult().touch("arangosearch.commit-threads");
-    EXPECT_NE(nullptr, commitThreads);
-    *commitThreads->ptr = 1;
-    auto* consolidationThreads = opts->get<arangodb::options::UInt32Parameter>(
-        "--arangosearch.consolidation-threads");
-    opts->processingResult().touch("arangosearch.consolidation-threads");
-    EXPECT_NE(nullptr, consolidationThreads);
-    *consolidationThreads->ptr = 1;
-    ars.validateOptions(opts);
+    ars.setMaintenanceThreads(1, 1);
     server.getFeature<arangodb::ClusterFeature>().disable();
     server.startFeatures();
     EXPECT_EQ((std::pair<size_t, size_t>{1, 1}),

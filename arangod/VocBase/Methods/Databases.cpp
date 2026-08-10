@@ -69,19 +69,19 @@ using namespace arangodb::methods;
 using namespace arangodb::velocypack;
 
 std::vector<std::string> Databases::list(
-    application_features::ApplicationServer& server, std::string const& user) {
+    application_features::ApplicationServer& server, bool onlyCurrentUser) {
   if (!server.hasFeature<DatabaseFeature>()) {
     return std::vector<std::string>();
   }
 
   return list(server.getFeature<DatabaseFeature>(),
-              &server.getFeature<ClusterFeature>(), user);
+              &server.getFeature<ClusterFeature>(), onlyCurrentUser);
 }
 
 std::vector<std::string> Databases::list(DatabaseFeature& databaseFeature,
                                          ClusterFeature* clusterFeature,
-                                         std::string const& user) {
-  if (user.empty()) {
+                                         bool onlyCurrentUser) {
+  if (!onlyCurrentUser) {
     if (ServerState::instance()->isCoordinator()) {
       ADB_PROD_ASSERT(clusterFeature != nullptr);
       ClusterInfo& ci = clusterFeature->clusterInfo();
@@ -92,7 +92,7 @@ std::vector<std::string> Databases::list(DatabaseFeature& databaseFeature,
     }
   } else {
     // slow path for user case
-    return databaseFeature.getDatabaseNamesForUser(user);
+    return databaseFeature.getDatabaseNamesForCurrentUser();
   }
 }
 

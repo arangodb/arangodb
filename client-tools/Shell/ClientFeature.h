@@ -52,18 +52,12 @@ struct SimpleHttpClientParams;
 
 class ClientFeature final : public HttpEndpointProvider {
  public:
-  constexpr static double DEFAULT_REQUEST_TIMEOUT = 1200.0;
-  constexpr static double DEFAULT_CONNECTION_TIMEOUT = 5.0;
   constexpr static std::string_view name() noexcept { return "Client"; }
 
-  ClientFeature(application_features::ApplicationServer& server,
-                bool allowJwtSecret, size_t maxNumEndpoints = 1,
-                double connectionTimeout = DEFAULT_CONNECTION_TIMEOUT,
-                double requestTimeout = DEFAULT_REQUEST_TIMEOUT);
+  ClientFeature(ApplicationServer& server);
+  ClientFeature(ApplicationServer& server, ClientFeatureOptions options);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void prepare() override final;
+  void prepare() override;
 
   std::string databaseName() const;
   void setDatabaseName(std::string_view databaseName);
@@ -129,9 +123,7 @@ class ClientFeature final : public HttpEndpointProvider {
 
  private:
   ClientFeature(ApplicationServer& server, CommunicationFeaturePhase& comm,
-                std::type_index registration, bool allowJwtSecret,
-                size_t maxNumEndpoints, double connectionTimeout,
-                double requestTimeout, ClientFeatureOptions options);
+                std::type_index registration, ClientFeatureOptions options);
 
   void readPassword();
   void readJwtSecret();

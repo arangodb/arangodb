@@ -163,7 +163,7 @@ void RebootTracker::queueCallbacks(std::string_view serverId, RebootId to) {
                         // (e.g. aborting transactions of failed servers) and
                         // act as the server itself; they are queued from the
                         // AgencyCache thread, which deliberately carries no
-                        // ExecContext (COR-821).
+                        // ExecContext.
                         ExecContextSuperuserScope superuserScope;
                         for (auto& callbacks : batch) {
                           safeInvokes(callbacks);
@@ -192,8 +192,7 @@ void RebootTracker::queueCallback(DescriptedCallback&& callback) noexcept {
   }
   _scheduler->queue(RequestLane::CLUSTER_INTERNAL,
                     [callback = std::move(callback)]() mutable noexcept {
-                      // See queueCallbacks(): reboot callbacks act as the
-                      // server itself (COR-821).
+                      // See queueCallbacks()
                       ExecContextSuperuserScope superuserScope;
                       safeInvoke(callback);
                     });

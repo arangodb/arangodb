@@ -96,8 +96,8 @@ using namespace arangodb;
 using namespace arangodb::statistics;
 
 StatisticsWorker::StatisticsWorker(TRI_vocbase_t& vocbase)
-    // runs AQL queries and transactions on the _statistics* system
-    // collections
+    // needs superuser permissions to run AQL queries and transactions on the
+    // _statistics* system collections
     : ServerThread(vocbase.server(), "StatisticsWorker",
                    ExecContext::superuserAsShared()),
       _gcTask(GC_STATS),

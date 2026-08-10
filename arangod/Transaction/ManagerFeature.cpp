@@ -37,7 +37,6 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Manager.h"
-#include "Transaction/ManagerOptionsProvider.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -85,11 +84,6 @@ ManagerFeature::ManagerFeature(application_features::ApplicationServer& server,
 ManagerFeature::~ManagerFeature() {
   std::lock_guard<std::mutex> guard(_workItemMutex);
   _workItem.reset();
-}
-
-void ManagerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  ManagerOptionsProvider provider;
-  provider.declareOptions(options, _options);
 }
 
 void ManagerFeature::prepare() {

@@ -67,8 +67,8 @@ void Constituent::configure(Agent* agent) {
 
 // Default ctor
 Constituent::Constituent(application_features::ApplicationServer& server)
-    // election persistence: AQL queries and transactions on agency
-    // collections
+    // needs superuser permissions for election persistence: AQL queries and
+    // transactions on agency collections
     : Thread("Constituent", ExecContext::superuserAsShared()),
       _vocbase(nullptr),
       _term(0),

@@ -26,6 +26,7 @@
 #include "Actions/actions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Statistics/RequestStatistics.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "VocBase/vocbase.h"
@@ -50,6 +51,8 @@ RestStatus RestActionHandler::execute() {
     generateNotImplemented(_request->fullUrl());
     return RestStatus::DONE;
   }
+
+  ExecContextSuperuserScope escope(_mustEscalateToSuperuser);
 
   // extract the sub-request type
   rest::RequestType type = _request->requestType();
@@ -112,12 +115,52 @@ void RestActionHandler::executeAction() {
   }
 }
 
+// The aardvark web UI serves a handful of static assets and harmless
+// metadata that must be reachable before the user has logged in (so the
+// UI itself can load and offer a login form). Unlike the rest of
+// /_admin/aardvark/, none of these need any database access, so they must
+// never be granted superuser rights - doing so previously allowed
+// unauthenticated AQL execution and other superuser-level operations via
+// any path merely prefixed with /_admin/aardvark/.
+
+bool isPublicAardvarkPath(std::string_view path) {
+  using namespace std::string_view_literals;
+  constexpr std::array exact = {
+      "/_admin/aardvark/index.html"sv,
+      "/_admin/aardvark/config.js"sv,
+      "/_admin/aardvark/whoAmI"sv,
+  };
+  constexpr std::array prefixes = {
+      "/_admin/aardvark/static/"sv,
+      "/_admin/aardvark/img/"sv,
+  };
+  return std::ranges::any_of(exact, [&](auto p) { return path == p; }) ||
+         std::ranges::any_of(prefixes,
+                             [&](auto p) { return path.starts_with(p); });
+}
+
 async<Result> RestActionHandler::checkUserCanAccess() const {
-  if (request()->requestPath().starts_with("/_admin/aardvark/")) {
+  auto const& path = request()->requestPath();
+  if (isPublicAardvarkPath(path)) {
+    // Note that we do **not** escalate to superuser for these!
     co_return Result{};
   }
 
-  co_return co_await RestHandler::checkUserCanAccess();
+  auto r = co_await RestHandler::checkUserCanAccess();
+  if (r.ok()) {
+    co_return r;
+  }
+
+  auto const* const auth = AuthenticationFeature::instance();
+  ADB_PROD_ASSERT(auth->isActive());
+  if (auth->authenticationSystemOnly()) {  // TODO remove in 4.0
+    // check if path is / which is required for the web UI to get started
+    if (!path.empty() && !path.starts_with("/_")) {
+      _mustEscalateToSuperuser = true;
+      co_return Result{};
+    }
+  }
+  co_return r;
 }
 
 }  // namespace arangodb

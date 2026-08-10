@@ -32,7 +32,6 @@
 #include "Logger/LogMacros.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabaseFeature.h"
-#include "Cluster/ClusterUpgradeOptionsProvider.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/Methods/Upgrade.h"
 #include "VocBase/Methods/Version.h"
@@ -58,16 +57,7 @@ ClusterUpgradeFeature::ClusterUpgradeFeature(
       _options(std::move(options)),
       _databaseFeature(databaseFeature) {
   startsAfter<application_features::FinalFeaturePhase>();
-}
 
-void ClusterUpgradeFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  arangodb::upgrade::ClusterUpgradeOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void ClusterUpgradeFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
   if (!ServerState::instance()->isCoordinator()) {
     return;
   }

@@ -31,7 +31,6 @@
 #include "Inspection/VPack.h"
 #include "Logger/LogLevel.h"
 #include "Logger/Logger.h"
-#include "Logger/LoggerFeature.h"
 #include "Logger/LogTopic.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
@@ -52,21 +51,20 @@ using namespace basics;
 
 RestAdminLogHandler::RestAdminLogHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+    GeneralResponse* response, LogApiOptions const* logApiOptions)
     : RestBaseHandler(server, request, response),
+      _logApiOptions(*logApiOptions),
       _logBufferFeature(server.getFeature<LogBufferFeature>()),
       _clusterFeature(server.getFeature<ClusterFeature>()),
       _connectionPool(server.getFeature<NetworkFeature>().pool()) {}
 
 arangodb::Result RestAdminLogHandler::verifyPermitted(RequestType const type) {
-  auto& loggerFeature = server().getFeature<arangodb::LoggerFeature>();
-
-  if (!loggerFeature.isAPIEnabled()) {
+  if (!_logApiOptions.apiEnabled) {
     return arangodb::Result(TRI_ERROR_HTTP_FORBIDDEN, "log API is disabled");
   }
 
   // do we have admin rights (if rights are active)
-  if (loggerFeature.onlySuperUser()) {
+  if (_logApiOptions.apiSwitch == "jwt") {
     if (!ExecContext::current().isSuperuserOrDisabled()) {
       return arangodb::Result(TRI_ERROR_HTTP_FORBIDDEN,
                               "you need super user rights for log operations");

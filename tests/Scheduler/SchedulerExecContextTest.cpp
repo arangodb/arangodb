@@ -98,9 +98,8 @@ TEST_F(SchedulerExecContextTest,
   std::unique_ptr<Scheduler::WorkItemBase> item;
   {
     ExecContextScope scope(ctxA.execContext);
-    item = FakeScheduler::makeWorkItem([&seenByJob]() {
-      seenByJob = ExecContext::currentAsShared();
-    });
+    item = FakeScheduler::makeWorkItem(
+        [&seenByJob]() { seenByJob = ExecContext::currentAsShared(); });
   }
 
   {
@@ -123,9 +122,8 @@ TEST_F(SchedulerExecContextTest,
   std::unique_ptr<Scheduler::WorkItemBase> item;
   {
     ExecContextScope scope(ctxA.execContext);
-    item = FakeScheduler::makeWorkItem([&seenByJob]() {
-      seenByJob = ExecContext::currentAsShared();
-    });
+    item = FakeScheduler::makeWorkItem(
+        [&seenByJob]() { seenByJob = ExecContext::currentAsShared(); });
   }
 
   // A real scheduler worker never has an ExecContext of its own; restoring

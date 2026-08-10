@@ -29,7 +29,7 @@ namespace arangodb::security {
 
 using namespace arangodb::options;
 
-void ServerSecurityOptionsProvider::declareOptions(
+void ServerSecurityOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options,
     ServerSecurityFeatureOptions& opts) {
   options->addOption(
@@ -53,7 +53,7 @@ void ServerSecurityOptionsProvider::declareOptions(
   options
       ->addOption(
           "--foxx.allow-install-from-remote",
-          "Allow installing Foxx apps from remote URLs other than Github.",
+          "Allow installing Foxx apps from remote URLs other than GitHub.",
           new BooleanParameter(&opts.foxxAllowInstallFromRemote),
           makeFlags(Flags::DefaultNoComponents, Flags::OnCoordinator,
                     Flags::OnSingle))
