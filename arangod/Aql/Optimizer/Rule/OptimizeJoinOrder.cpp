@@ -22,215 +22,135 @@
 #include "OptimizeJoinOrder.h"
 
 #include "Aql/Ast.h"
-#include "Aql/Collection.h"
+#include "Aql/AstNode.h"
 #include "Aql/Condition.h"
+#include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Optimizer.h"
-#include "Aql/QueryContext.h"
-#include "Aql/TypedAstNodes.h"
+#include "Aql/Variable.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNode/FilterNode.h"
-#include "Indexes/Index.h"
+#include "Assertions/ProdAssert.h"
 #include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
 
-#include <ranges>
+#include <algorithm>
+#include <optional>
+#include <tuple>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
 
 namespace arangodb::aql {
 
-using AttributePath = std::vector<std::string_view>;
+// -----------------------------------------------------------------------------
+// JoinGraph
+// -----------------------------------------------------------------------------
 
-template<typename Operator>
-auto findBestSelectivity(Operator op, double initial,
-                         Collection const* collection,
-                         std::vector<AttributePath> attributes) -> double {
-  for (auto& index : collection->indexes()) {
-    if (index->type() != Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX &&
-        index->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX &&
-        index->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
-      continue;
-    }
-
-    if (not index->hasSelectivityEstimate()) {
-      continue;
-    }
-
-    bool covers = true;
-    auto indexAttributes = index->fieldNames();
-
-    for (auto& attr : indexAttributes) {
-      AttributePath path;
-      std::copy(attr.begin(), attr.end(), std::back_inserter(path));
-      if (std::find(attributes.begin(), attributes.end(), path) ==
-          attributes.end()) {
-        // index attribute is not part of the join, we can't use this index
-        covers = false;
-        break;
-      }
-    }
-
-    if (!covers) {
-      continue;
-    }
-
-    double current = index->selectivityEstimate();
-    LOG_DEVEL << "INDEX SELECTIVITY " << index->id()
-              << " fields = " << indexAttributes << " -> " << current;
-    initial = op(initial, current);
+auto JoinGraph::nodeForVariable(Variable const* variable) -> Node* {
+  auto iter = nodes.find(variable);
+  if (iter == nodes.end()) {
+    return nullptr;
   }
-
-  return initial;
+  return &iter->second;
 }
 
-auto computeAttributeSetApproxDistinctValues(
-    ExecutionPlan const* plan, Collection const* collection,
-    std::vector<AttributePath> attributes) -> double {
-  auto& trx = plan->getAst()->query().trxForOptimization();
-
-  LOG_DEVEL << "COMPUTING SELECTIVITY FOR ATTRIBUTE SET " << collection->name()
-            << " " << attributes;
-
-  auto documentCount =
-      collection->count(&trx, transaction::CountType::kTryCache);
-  // we want to compute the approximate number of distinct tuples of this
-  // attribute set. For that we search for indexes that index a subset
-  // of our attributes. We take the best estimate.
-  // number of distinct values = count * selectivity
-  double best =
-      findBestSelectivity(std::less<double>{}, 0, collection, attributes);
-
-  return static_cast<double>(documentCount) * best;
+void JoinGraph::addNode(EnumerateCollectionNode* en) {
+  nodes.emplace(en->outVariable(), en);
 }
 
-struct JoinGraph {
-  struct Node {
-    EnumerateCollectionNode* executionNode;
+auto JoinGraph::ensureEdge(Variable const* v, Variable const* w) -> Edge& {
+  // find vertices for variables
+  auto* from = nodeForVariable(v);
+  auto* to = nodeForVariable(w);
+  ADB_PROD_ASSERT(from != nullptr && to != nullptr);
 
-    std::vector<AttributePath> conditions;
-    double relevantDocumentCount = 0;
-
-    Node(EnumerateCollectionNode* executionNode)
-        : executionNode(executionNode) {}
-  };
-
-  using NodeId = uint32_t;
-
-  struct Edge {
-    Node *from, *to;
-
-    double selectivity = 1.0;
-
-    std::vector<AttributePath> fromAttributes;
-    std::vector<AttributePath> toAttributes;
-  };
-
-  auto nodeForVariable(Variable const* variable) -> Node* {
-    auto iter = nodes.find(variable);
-    if (iter == nodes.end()) {
-      return nullptr;
-    } else {
-      return &iter->second;
-    }
+  // now find the edge (undirected: match either orientation)
+  auto iter = std::find_if(edges.begin(), edges.end(), [&](auto const& e) {
+    return (e.from == from && e.to == to) || (e.from == to && e.to == from);
+  });
+  if (iter == edges.end()) {
+    edges.emplace_back(from, to);
+    return edges.back();
   }
-
-  void addNode(EnumerateCollectionNode* en) {
-    nodes.emplace(en->outVariable(), en);
-  }
-
-  auto ensureEdge(Variable const* v, Variable const* w) -> Edge& {
-    // find vertices for variables
-    auto* from = nodeForVariable(v);
-    auto* to = nodeForVariable(w);
-    ADB_PROD_ASSERT(from != nullptr && to != nullptr);
-
-    // now find the edge
-    auto iter = std::find_if(edges.begin(), edges.end(), [&](auto const& e) {
-      return e.from == from && e.to == to;
-    });
-    if (iter == edges.end()) {
-      edges.emplace_back(from, to);
-      return edges.back();
-    } else {
-      return *iter;
-    }
-  }
-
-  auto addJoinCondition(Variable const* v, AttributePath vAttributes,
-                        Variable const* w, AttributePath wAttributes) -> Edge& {
-    auto& edge = ensureEdge(v, w);
-    if (edge.from->executionNode->outVariable() == v) {
-      edge.fromAttributes.emplace_back(std::move(vAttributes));
-      edge.toAttributes.emplace_back(std::move(wAttributes));
-    } else {
-      edge.toAttributes.emplace_back(std::move(vAttributes));
-      edge.fromAttributes.emplace_back(std::move(wAttributes));
-    }
-    return edge;
-  }
-
-  auto getEdgesForNode(Node* node) -> std::vector<Edge*> {
-    std::vector<Edge*> result;
-    for (auto& e : edges) {
-      if (e.from == node || e.to == node) {
-        result.emplace_back(&e);
-      }
-    }
-    return result;
-  }
-
-  std::map<Variable const*, Node> nodes;
-  std::vector<Edge> edges;
-};
-
-auto gatherEstimates(ExecutionPlan* plan, JoinGraph& graph) {
-  // compute selectivity for all edges
-  for (auto& e : graph.edges) {
-    auto fromAttributes = e.fromAttributes;
-    std::copy(e.from->conditions.begin(), e.from->conditions.end(),
-              std::back_inserter(fromAttributes));
-    auto fromSelectivity = computeAttributeSetApproxDistinctValues(
-        plan, e.from->executionNode->collection(), fromAttributes);
-    auto toAttributes = e.toAttributes;
-    std::copy(e.to->conditions.begin(), e.to->conditions.end(),
-              std::back_inserter(toAttributes));
-    auto toSelectivity = computeAttributeSetApproxDistinctValues(
-        plan, e.to->executionNode->collection(), toAttributes);
-
-    e.selectivity = 1. / std::max(fromSelectivity, toSelectivity);
-
-    LOG_DEVEL << "EDGE SELECTIVITY "
-              << e.from->executionNode->outVariable()->name << " -> "
-              << e.to->executionNode->outVariable()->name << " = "
-              << e.selectivity;
-  }
-
-  for (auto& [var, node] : graph.nodes) {
-    auto selectivity = computeAttributeSetApproxDistinctValues(
-        plan, node.executionNode->collection(), node.conditions);
-
-    node.relevantDocumentCount =
-        node.executionNode->collection()->count(
-            &plan->getAst()->query().trxForOptimization(),
-            transaction::CountType::kTryCache) *
-        selectivity;
-    LOG_DEVEL << "NODE SELECTIVITY " << node.executionNode->outVariable()->name
-              << " = " << node.relevantDocumentCount;
-  }
+  return *iter;
 }
 
-auto optimize(ExecutionPlan* plan, JoinGraph& graph)
-    -> std::vector<ExecutionNode*> {
-  gatherEstimates(plan, graph);
+auto JoinGraph::addJoinCondition(Variable const* v, AttributePath vAttributes,
+                                 Variable const* w, AttributePath wAttributes)
+    -> Edge& {
+  auto& edge = ensureEdge(v, w);
+  if (edge.from->executionNode->outVariable() == v) {
+    edge.fromAttributes.emplace_back(std::move(vAttributes));
+    edge.toAttributes.emplace_back(std::move(wAttributes));
+  } else {
+    edge.toAttributes.emplace_back(std::move(vAttributes));
+    edge.fromAttributes.emplace_back(std::move(wAttributes));
+  }
+  return edge;
+}
 
-  std::vector<ExecutionNode*> result;
-  for (auto& [var, n] : graph.nodes) {
-    result.push_back(n.executionNode);
+void JoinGraph::addResidual(AstNode const* node) {
+  residuals.emplace_back(node);
+}
+
+auto JoinGraph::getEdgesForNode(Node* node) -> std::vector<Edge*> {
+  std::vector<Edge*> result;
+  for (auto& e : edges) {
+    if (e.from == node || e.to == node) {
+      result.emplace_back(&e);
+    }
   }
   return result;
 }
 
-auto extractAttributeAccess(AstNode const* n,
-                            std::vector<std::string_view>& path)
+auto JoinGraph::connectedComponents() const
+    -> std::vector<std::vector<Variable const*>> {
+  // build undirected adjacency keyed by the (stable) Node addresses in `nodes`.
+  std::unordered_map<Node const*, std::vector<Node const*>> adjacency;
+  for (auto const& [var, node] : nodes) {
+    adjacency.try_emplace(&node);
+  }
+  for (auto const& e : edges) {
+    adjacency[e.from].emplace_back(e.to);
+    adjacency[e.to].emplace_back(e.from);
+  }
+
+  std::vector<std::vector<Variable const*>> components;
+  std::unordered_set<Node const*> visited;
+  for (auto const& [var, node] : nodes) {
+    Node const* start = &node;
+    if (visited.contains(start)) {
+      continue;
+    }
+    // BFS/DFS over this component
+    std::vector<Variable const*> component;
+    std::vector<Node const*> stack{start};
+    visited.insert(start);
+    while (!stack.empty()) {
+      Node const* current = stack.back();
+      stack.pop_back();
+      component.emplace_back(current->executionNode->outVariable());
+      for (Node const* neighbour : adjacency[current]) {
+        if (visited.insert(neighbour).second) {
+          stack.emplace_back(neighbour);
+        }
+      }
+    }
+    components.emplace_back(std::move(component));
+  }
+  return components;
+}
+
+// -----------------------------------------------------------------------------
+// attribute-access extraction
+// -----------------------------------------------------------------------------
+
+namespace {
+
+auto extractAttributeAccess(AstNode const* n, AttributePath& path)
     -> Variable const* {
   if (n->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     auto var = extractAttributeAccess(n->getMemberUnchecked(0), path);
@@ -244,9 +164,8 @@ auto extractAttributeAccess(AstNode const* n,
     return var;
   } else if (n->type == NODE_TYPE_REFERENCE) {
     return static_cast<Variable const*>(n->getData());
-  } else {
-    return nullptr;
   }
+  return nullptr;
 }
 
 auto extractAttributeAccess(AstNode const* n)
@@ -259,136 +178,188 @@ auto extractAttributeAccess(AstNode const* n)
   return std::nullopt;
 }
 
-void handleExpression(JoinGraph& graph, ExecutionPlan* plan,
-                      AstNode const* root) {
+// @brief classify the predicates of a filter expression into the join graph:
+// equijoins between two graph variables become edges, constant restrictions on
+// a single graph variable become node conditions, everything else is recorded
+// verbatim as a residual.
+void handleExpression(JoinGraph& graph, ExecutionPlan const* plan,
+                      AstNode const* original) {
   Condition cond{plan->getAst()};
-  cond.andCombine(root);
+  cond.andCombine(original);
   cond.normalize();
-  root = cond.root();
+  AstNode const* root = cond.root();
 
-  // check if the expression has a single or branch
-  if (root->type != AstNodeType::NODE_TYPE_OPERATOR_NARY_OR ||
-      root->numMembers() != 1) {
-    // add as residual
+  // normalize() produces disjunctive normal form: OR( AND(...), AND(...), ...
+  // ). We can only reason about a single conjunction of predicates; anything
+  // with a real disjunction is kept as a residual for later stages.
+  if (root->type != NODE_TYPE_OPERATOR_NARY_OR || root->numMembers() != 1) {
+    graph.addResidual(original);
     return;
   }
 
   auto ands = root->getMemberUnchecked(0);
-  if (ands->type != AstNodeType::NODE_TYPE_OPERATOR_NARY_AND) {
-    // add as residual
+  if (ands->type != NODE_TYPE_OPERATOR_NARY_AND) {
+    graph.addResidual(original);
     return;
   }
 
-  for (size_t i = 0; i < ands->numMembers(); i++) {
-    auto cond = ands->getMemberUnchecked(i);
+  auto checkIsGraphVariableAccess =
+      [&](std::optional<std::pair<Variable const*, AttributePath>> maybeAccess)
+      -> std::optional<
+          std::tuple<Variable const*, JoinGraph::Node*, AttributePath>> {
+    if (maybeAccess.has_value()) {
+      auto& [var, path] = *maybeAccess;
+      if (auto node = graph.nodeForVariable(var); node != nullptr) {
+        return std::make_tuple(var, node, std::move(path));
+      }
+    }
+    return std::nullopt;
+  };
 
-    // check if this is a equijoin
-    if (cond->type != NODE_TYPE_OPERATOR_BINARY_EQ) {
-      // no - add as residual
+  for (size_t i = 0; i < ands->numMembers(); i++) {
+    auto predicate = ands->getMemberUnchecked(i);
+
+    // only equijoins (`==`) are understood; anything else is a residual
+    if (predicate->type != NODE_TYPE_OPERATOR_BINARY_EQ) {
+      graph.addResidual(predicate);
       continue;
     }
 
-    auto checkIsGraphVariableAccess =
-        [&](std::optional<std::pair<Variable const*, AttributePath>>
-                maybeAccess)
-        -> std::optional<
-            std::tuple<Variable const*, JoinGraph::Node*, AttributePath>> {
-      if (maybeAccess.has_value()) {
-        auto& [var, path] = *maybeAccess;
-        if (auto node = graph.nodeForVariable(var); node != nullptr) {
-          return std::make_tuple(var, node, std::move(path));
-        }
-      }
-
-      return std::nullopt;
-    };
-
-    auto lhs = cond->getMemberUnchecked(0);
+    auto lhs = predicate->getMemberUnchecked(0);
     auto maybeLhsAccess =
         checkIsGraphVariableAccess(extractAttributeAccess(lhs));
 
-    auto rhs = cond->getMemberUnchecked(1);
+    auto rhs = predicate->getMemberUnchecked(1);
     auto maybeRhsAccess =
         checkIsGraphVariableAccess(extractAttributeAccess(rhs));
 
-    if (maybeRhsAccess.has_value() and not maybeLhsAccess.has_value()) {
+    // canonicalize: if only one side is a graph variable, keep it on the left
+    if (maybeRhsAccess.has_value() && !maybeLhsAccess.has_value()) {
       std::swap(maybeLhsAccess, maybeRhsAccess);
     }
 
     if (maybeLhsAccess.has_value() && maybeRhsAccess.has_value()) {
-      auto& [lshVar, lhsNode, lhsPath] = maybeLhsAccess.value();
-      auto& [rshVar, rhsNode, rhsPath] = maybeRhsAccess.value();
-
-      graph.addJoinCondition(lshVar, lhsPath, rshVar, rhsPath);
+      // `a.x == b.y` with both a and b in the graph -> join edge
+      [[maybe_unused]] auto& [lhsVar, lhsNode, lhsPath] =
+          maybeLhsAccess.value();
+      [[maybe_unused]] auto& [rhsVar, rhsNode, rhsPath] =
+          maybeRhsAccess.value();
+      graph.addJoinCondition(lhsVar, lhsPath, rhsVar, rhsPath);
     } else if (maybeLhsAccess.has_value()) {
-      auto& [lshVar, lhsNode, lhsPath] = maybeLhsAccess.value();
+      // `a.x == <constant>` -> constant restriction on node a
+      [[maybe_unused]] auto& [lhsVar, lhsNode, lhsPath] =
+          maybeLhsAccess.value();
       lhsNode->conditions.emplace_back(std::move(lhsPath));
+    } else {
+      // neither side references a graph variable -> residual
+      graph.addResidual(predicate);
     }
   }
 }
 
-void optimizeJoinOrder(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-                       OptimizerRule const& rule) {
-  plan->show();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+void traceJoinGraph(JoinGraph const& graph) {
+  auto components = graph.connectedComponents();
+  LOG_TOPIC("a7f01", TRACE, Logger::AQL)
+      << "optimize-join-order: join graph with " << graph.nodes.size()
+      << " node(s), " << graph.edges.size() << " edge(s), "
+      << graph.residuals.size() << " residual(s), " << components.size()
+      << " component(s)";
+  for (auto const& e : graph.edges) {
+    LOG_TOPIC("a7f02", TRACE, Logger::AQL)
+        << "optimize-join-order:   edge "
+        << e.from->executionNode->outVariable()->name << " <-> "
+        << e.to->executionNode->outVariable()->name;
+  }
+}
+#endif
 
-  std::unique_ptr<JoinGraph> graph;
+}  // namespace
 
-  ExecutionNode* firstDependency = nullptr;
+// -----------------------------------------------------------------------------
+// graph construction
+// -----------------------------------------------------------------------------
+
+auto buildJoinGraph(ExecutionPlan const* plan, ExecutionNode* firstEnumeration,
+                    ExecutionNode*& next) -> JoinGraph {
+  JoinGraph graph;
+  next = nullptr;
+
   ExecutionNode* nextNode = nullptr;
-  for (ExecutionNode* n = plan->root()->getSingleton(); n != nullptr;
-       n = nextNode) {
+  for (ExecutionNode* n = firstEnumeration; n != nullptr; n = nextNode) {
     nextNode = n->getFirstParent();
 
     switch (n->getType()) {
       case ExecutionNode::ENUMERATE_COLLECTION: {
-        auto* en = ExecutionNode::castTo<EnumerateCollectionNode*>(n);
-        if (graph == nullptr) {  // create new graph if necessary
-          // TODO record variables available here, so that we know what is
-          // _constant_ for this join
-          graph = std::make_unique<JoinGraph>();
-          firstDependency = n->getFirstDependency();
-        }
-        graph->addNode(en);
-        plan->unlinkNode(n);
+        graph.addNode(ExecutionNode::castTo<EnumerateCollectionNode*>(n));
+        break;
+      }
+
+      case ExecutionNode::CALCULATION: {
+        // calculations feeding filters are inspected via the FILTER case; the
+        // calculation node itself is part of the run but carries no join info.
         break;
       }
 
       case ExecutionNode::FILTER: {
-        if (graph == nullptr) {
-          continue;
-        }
-
         auto* filter = ExecutionNode::castTo<FilterNode*>(n);
-        auto* calc = ExecutionNode::castTo<CalculationNode*>(
-            plan->getVarSetBy(filter->inVariable()->id));
-
-        auto* root = calc->expression()->node();
-        handleExpression(*graph, plan.get(), root);
+        auto* setter = plan->getVarSetBy(filter->inVariable()->id);
+        // the filter's condition is only analyzable when it is produced by a
+        // calculation; otherwise we simply leave it in place (it keeps
+        // executing, so nothing is lost) and do not model it.
+        if (setter == nullptr ||
+            setter->getType() != ExecutionNode::CALCULATION) {
+          break;
+        }
+        auto* calc = ExecutionNode::castTo<CalculationNode*>(setter);
+        handleExpression(graph, plan, calc->expression()->node());
+        break;
       }
 
-      case ExecutionNode::CALCULATION:
-        break;  // nothing to do here
       default:
-        // finalize current graph
-        if (graph != nullptr) {
-          // compute the correct join order, place filter statements and
-          // residuals
-          auto nodes = optimize(plan.get(), *graph);
-
-          // insert all enumerate collection nodes in the optimized order
-          // after first dependency
-          TRI_ASSERT(firstDependency != nullptr);
-          for (auto& node : std::views::reverse(nodes)) {
-            plan->insertAfter(firstDependency, node);
-          }
-
-          graph = nullptr;
-        }
+        // any other node type terminates the run of adjacent enumerations
+        next = n;
+        return graph;
     }
   }
 
-  plan->show();
-  opt->addPlan(std::move(plan), rule, true);
+  return graph;
+}
+
+// -----------------------------------------------------------------------------
+// the optimizer rule
+// -----------------------------------------------------------------------------
+
+void optimizeJoinOrder(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+                       OptimizerRule const& rule) {
+  // Scaffolding: construct the join graph(s) for the plan. This does
+  // NOT reorder joins and does NOT modify the plan yet; the reordering
+  // algorithm is a follow-up task. We report the rule as "applied" only when we
+  // actually discovered a join so that it is observable via `explain`.
+  bool foundJoin = false;
+
+  ExecutionNode* n = plan->root()->getSingleton();
+  while (n != nullptr) {
+    if (n->getType() == ExecutionNode::ENUMERATE_COLLECTION) {
+      ExecutionNode* next = nullptr;
+
+      // This graph is discarded now, but will be retained and used for join
+      // reordering later.
+      JoinGraph graph = buildJoinGraph(plan.get(), n, next);
+      if (graph.hasJoin()) {
+        foundJoin = true;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        traceJoinGraph(graph);
+#endif
+      }
+      // continue scanning after the run that we just consumed
+      n = next;
+    } else {
+      n = n->getFirstParent();
+    }
+  }
+
+  opt->addPlan(std::move(plan), rule, foundJoin);
 }
 
 }  // namespace arangodb::aql
