@@ -23,7 +23,6 @@
 #include "ReplicationFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
-#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
@@ -33,13 +32,11 @@
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/IRegistry.h"
-#include "Replication/DatabaseReplicationApplier.h"
-#include "Replication/GlobalReplicationApplier.h"
+#include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "VocBase/vocbase.h"
 
 using namespace arangodb::application_features;
 
@@ -84,58 +81,6 @@ void ReplicationFeature::prepare() {
     setEnabled(false);
     return;
   }
-}
-
-void ReplicationFeature::start() {
-  auto& engine = server().getFeature<DatabaseFeature>().engine();
-  _globalReplicationApplier =
-      std::make_unique<GlobalReplicationApplier>(server(), engine);
-
-  try {
-    _globalReplicationApplier->loadState();
-  } catch (...) {
-    // :snake:
-  }
-
-  LOG_TOPIC("1214b", DEBUG, Logger::REPLICATION)
-      << "checking global applier startup. autoStart: "
-      << _globalReplicationApplier->autoStart()
-      << ", hasState: " << _globalReplicationApplier->hasState();
-
-  if (_globalReplicationApplier->autoStart() &&
-      _globalReplicationApplier->hasState() &&
-      _options.replicationApplierAutoStart) {
-    _globalReplicationApplier->startTailing(/*initialTick*/ 0,
-                                            /*useTick*/ false);
-  }
-}
-
-void ReplicationFeature::beginShutdown() {
-  try {
-    if (_globalReplicationApplier != nullptr) {
-      _globalReplicationApplier->stop();
-    }
-  } catch (...) {
-    // ignore any error
-  }
-}
-
-void ReplicationFeature::stop() {
-  try {
-    if (_globalReplicationApplier != nullptr) {
-      _globalReplicationApplier->stop();
-      _globalReplicationApplier->stopAndJoin();
-    }
-  } catch (...) {
-    // ignore any error
-  }
-}
-
-void ReplicationFeature::unprepare() {
-  if (_globalReplicationApplier != nullptr) {
-    _globalReplicationApplier->stopAndJoin();
-  }
-  _globalReplicationApplier.reset();
 }
 
 httpclient::ConnectionCache& ReplicationFeature::connectionCache() {
@@ -194,53 +139,6 @@ void ReplicationFeature::autoRepairRevisionTrees(bool value) noexcept {
   _options.autoRepairRevisionTrees = value;
 }
 #endif
-
-// start the replication applier for a single database
-void ReplicationFeature::startApplier(TRI_vocbase_t* vocbase) {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  TRI_ASSERT(vocbase->replicationApplier() != nullptr);
-
-  if (!ServerState::instance()->isClusterRole() &&
-      vocbase->replicationApplier()->autoStart()) {
-    if (!_options.replicationApplierAutoStart) {
-      LOG_TOPIC("c5378", INFO, arangodb::Logger::REPLICATION)
-          << "replication applier explicitly deactivated for database '"
-          << vocbase->name() << "'";
-    } else {
-      try {
-        vocbase->replicationApplier()->startTailing(/*initialTick*/ 0,
-                                                    /*useTick*/ false);
-      } catch (std::exception const& ex) {
-        LOG_TOPIC("2038f", WARN, arangodb::Logger::REPLICATION)
-            << "unable to start replication applier for database '"
-            << vocbase->name() << "': " << ex.what();
-      } catch (...) {
-        LOG_TOPIC("76ad6", WARN, arangodb::Logger::REPLICATION)
-            << "unable to start replication applier for database '"
-            << vocbase->name() << "'";
-      }
-    }
-  }
-}
-
-GlobalReplicationApplier* ReplicationFeature::globalReplicationApplier() const {
-  TRI_ASSERT(_globalReplicationApplier != nullptr);
-  return _globalReplicationApplier.get();
-}
-
-void ReplicationFeature::disableReplicationApplier() {
-  _options.replicationApplierAutoStart = false;
-}
-
-// stop the replication applier for a single database
-void ReplicationFeature::stopApplier(TRI_vocbase_t* vocbase) {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-
-  if (!ServerState::instance()->isClusterRole() &&
-      vocbase->replicationApplier() != nullptr) {
-    vocbase->replicationApplier()->stopAndJoin();
-  }
-}
 
 /// @brief returns the connect timeout for replication requests
 double ReplicationFeature::connectTimeout() const {

@@ -106,26 +106,6 @@ class ClusterEngine final : public StorageEngine {
   // coordinators have no local WAL to recover, nothing to do
   void onDatabasesLoaded() override {}
 
-  velocypack::Builder getReplicationApplierConfiguration(
-      TRI_vocbase_t& vocbase, ErrorCode& status) override;
-  velocypack::Builder getReplicationApplierConfiguration(
-      ErrorCode& status) override;
-  ErrorCode removeReplicationApplierConfiguration(
-      TRI_vocbase_t& vocbase) override {
-    return TRI_ERROR_NOT_IMPLEMENTED;
-  }
-  ErrorCode removeReplicationApplierConfiguration() override {
-    return TRI_ERROR_NOT_IMPLEMENTED;
-  }
-  ErrorCode saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                                velocypack::Slice slice,
-                                                bool doSync) override {
-    return TRI_ERROR_NOT_IMPLEMENTED;
-  }
-  ErrorCode saveReplicationApplierConfiguration(
-      arangodb::velocypack::Slice slice, bool doSync) override {
-    return TRI_ERROR_NOT_IMPLEMENTED;
-  }
   Result handleSyncKeys(DatabaseInitialSyncer& syncer, LogicalCollection& col,
                         std::string const& keysId) override {
     return {TRI_ERROR_NOT_IMPLEMENTED};

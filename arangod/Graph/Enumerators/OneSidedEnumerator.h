@@ -25,6 +25,7 @@
 #include "Aql/TraversalStats.h"
 #include "Basics/ResourceUsage.h"
 #include "Graph/Enumerators/ITraversalEnumerator.h"
+#include "Graph/PathManagement/IPathResult.h"
 #include "Graph/Options/OneSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/SingleProviderPathResult.h"
 #include "Graph/Types/VertexRef.h"
@@ -121,7 +122,7 @@ class OneSidedEnumerator final : public ITraversalEnumerator {
    * @return true Found and written a path, result is modified.
    * @return false No path found, result has not been changed.
    */
-  auto getNextPath() -> std::unique_ptr<PathResultInterface> override;
+  auto getNextPath() -> std::unique_ptr<IPathResult> override;
 
 #ifdef USE_ENTERPRISE
   auto smartSearch(size_t amountOfExpansions, velocypack::Builder&)
