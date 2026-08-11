@@ -27,6 +27,9 @@
   A `.` character is still interpreted as a literal top-level attribute name:
   `OPTIONS { weightAttribute: "Data.Weight" }`
 
+* COR-675: Constant-Folding for Object splice, enhanced AQL constant folding 
+  for object literals. Object literals with constant object splices and constant computed attribute names are now precomputed during query optimization, reducing runtime overhead and improving query performance
+
 * Upgraded included rclone to v1.74.4 with go1.25.12 and non-vulnerable
   dependencies.
 

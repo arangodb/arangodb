@@ -149,6 +149,12 @@ class Expression {
   // prepare the expression for execution
   void prepareForExecution();
 
+  /// @brief for constant JSON expressions, transfer the prepared buffer to an
+  /// AqlValue without copying. memory usage remains tracked on the query's
+  /// resource monitor and will be accounted to the variable via
+  /// Variable::setConstantValue().
+  AqlValue stealConstantValue();
+
  private:
   // free the internal data structures
   void freeInternals() noexcept;
