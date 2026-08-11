@@ -154,6 +154,7 @@ void ApplicationServer::disableFeatures(std::span<const std::type_index> types,
     auto it = _features.find(type);
     TRI_ASSERT(it != _features.end());
     if (it != _features.end()) {
+      // TODO (COR-861): remove this function by conditional registration logic
       TRI_ASSERT(it->second != nullptr);
       if (force) {
         it->second->forceDisable();
