@@ -187,18 +187,10 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
       bool lockUsage);
 
   /// @brief check that the current user may access the given collection in the
-  /// requested mode when the collection is used by an operation on a
-  /// coordinator. Collections are normally permission-checked when they are
-  /// added to the transaction (on the coordinator, against the real user).
-  /// Operations that run within an already existing transaction may however
-  /// target a collection that was never declared, in which case that check is
-  /// skipped: on the coordinator the collection is not added at runtime, and on
-  /// the DB server it is only added lazily in superuser context, where the
-  /// permission check is a no-op. This performs the missing check for such
-  /// collections; it is a no-op for collections that are already declared
-  /// members of the transaction (they were checked when they were added).
-  [[nodiscard]] Result checkCollectionPermissionOnCoordinator(
-      DataSourceId cid, std::string_view cname, AccessMode::Type accessType);
+  /// requested mode
+  [[nodiscard]] Result checkCollectionPermission(DataSourceId cid,
+                                                 std::string_view cname,
+                                                 AccessMode::Type accessType);
 
   /// @brief use all participating collections of a transaction
   [[nodiscard]] futures::Future<Result> useCollections();
@@ -427,10 +419,6 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
     }
     callbacks.clear();
   }
-
-  /// @brief check if current user can access this collection
-  Result checkCollectionPermission(DataSourceId cid, std::string_view cname,
-                                   AccessMode::Type);
 
   /// @brief helper function for addCollection
   futures::Future<Result> addCollectionInternal(DataSourceId cid,

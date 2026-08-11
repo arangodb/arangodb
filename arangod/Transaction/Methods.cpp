@@ -2208,16 +2208,19 @@ Future<OperationResult> Methods::documentAsync(
                           MethodsApi::Asynchronous);
 }
 
-Result Methods::checkCollectionPermissionOnCoordinator(
-    std::string const& collectionName, AccessMode::Type accessType) {
-  TRI_ASSERT(_state->isCoordinator());
+Result Methods::checkCollectionPermission(std::string const& collectionName,
+                                          AccessMode::Type accessType) {
   DataSourceId cid = resolver()->getCollectionId(collectionName);
   if (cid.empty()) {
     // unknown collection: leave the not-found reporting to the operation itself
     return {};
   }
-  return _state->checkCollectionPermissionOnCoordinator(cid, collectionName,
-                                                        accessType);
+  if (trxCollection(cid, accessType) != nullptr) {
+    // the collection is already a declared member of the transaction with
+    // sufficient access; it was permission-checked when it was added
+    return {};
+  }
+  return _state->checkCollectionPermission(cid, collectionName, accessType);
 }
 
 /// @brief read one or multiple documents in a collection, coordinator
@@ -3880,14 +3883,12 @@ Future<OperationResult> Methods::documentInternal(
     OperationOptions const& options, MethodsApi api) {
   TRI_ASSERT(_state->status() == Status::RUNNING);
 
-  if (_state->isCoordinator()) {
-    if (Result res = checkCollectionPermissionOnCoordinator(
-            collectionName, AccessMode::Type::READ);
-        res.fail()) {
-      events::ReadDocument(vocbase().name(), collectionName, value, options,
-                           res.errorNumber());
-      co_return OperationResult(std::move(res), options);
-    }
+  if (Result res =
+          checkCollectionPermission(collectionName, AccessMode::Type::READ);
+      res.fail()) {
+    events::ReadDocument(vocbase().name(), collectionName, value, options,
+                         res.errorNumber());
+    co_return OperationResult(std::move(res), options);
   }
 
   if (!value.isObject() && !value.isArray()) {
@@ -3914,14 +3915,12 @@ Future<OperationResult> Methods::insertInternal(
     OperationOptions const& options, MethodsApi api) {
   TRI_ASSERT(_state->status() == Status::RUNNING);
 
-  if (_state->isCoordinator()) {
-    if (Result res = checkCollectionPermissionOnCoordinator(
-            collectionName, AccessMode::Type::WRITE);
-        res.fail()) {
-      events::CreateDocument(vocbase().name(), collectionName, value, options,
-                             res.errorNumber());
-      co_return OperationResult(std::move(res), options);
-    }
+  if (Result res =
+          checkCollectionPermission(collectionName, AccessMode::Type::WRITE);
+      res.fail()) {
+    events::CreateDocument(vocbase().name(), collectionName, value, options,
+                           res.errorNumber());
+    co_return OperationResult(std::move(res), options);
   }
 
   if (!value.isObject() && !value.isArray()) {
@@ -3959,14 +3958,12 @@ Future<OperationResult> Methods::updateInternal(
     OperationOptions const& options, MethodsApi api) {
   TRI_ASSERT(_state->status() == Status::RUNNING);
 
-  if (_state->isCoordinator()) {
-    if (Result res = checkCollectionPermissionOnCoordinator(
-            collectionName, AccessMode::Type::WRITE);
-        res.fail()) {
-      events::ModifyDocument(vocbase().name(), collectionName, newValue,
-                             options, res.errorNumber());
-      co_return OperationResult(std::move(res), options);
-    }
+  if (Result res =
+          checkCollectionPermission(collectionName, AccessMode::Type::WRITE);
+      res.fail()) {
+    events::ModifyDocument(vocbase().name(), collectionName, newValue, options,
+                           res.errorNumber());
+    co_return OperationResult(std::move(res), options);
   }
 
   if (!newValue.isObject() && !newValue.isArray()) {
@@ -4002,14 +3999,12 @@ Future<OperationResult> Methods::replaceInternal(
     OperationOptions const& options, MethodsApi api) {
   TRI_ASSERT(_state->status() == Status::RUNNING);
 
-  if (_state->isCoordinator()) {
-    if (Result res = checkCollectionPermissionOnCoordinator(
-            collectionName, AccessMode::Type::WRITE);
-        res.fail()) {
-      events::ReplaceDocument(vocbase().name(), collectionName, newValue,
-                              options, res.errorNumber());
-      co_return OperationResult(std::move(res), options);
-    }
+  if (Result res =
+          checkCollectionPermission(collectionName, AccessMode::Type::WRITE);
+      res.fail()) {
+    events::ReplaceDocument(vocbase().name(), collectionName, newValue, options,
+                            res.errorNumber());
+    co_return OperationResult(std::move(res), options);
   }
 
   if (!newValue.isObject() && !newValue.isArray()) {
@@ -4046,14 +4041,12 @@ Future<OperationResult> Methods::removeInternal(
     OperationOptions const& options, MethodsApi api) {
   TRI_ASSERT(_state->status() == Status::RUNNING);
 
-  if (_state->isCoordinator()) {
-    if (Result res = checkCollectionPermissionOnCoordinator(
-            collectionName, AccessMode::Type::WRITE);
-        res.fail()) {
-      events::DeleteDocument(vocbase().name(), collectionName, value, options,
-                             res.errorNumber());
-      co_return OperationResult(std::move(res), options);
-    }
+  if (Result res =
+          checkCollectionPermission(collectionName, AccessMode::Type::WRITE);
+      res.fail()) {
+    events::DeleteDocument(vocbase().name(), collectionName, value, options,
+                           res.errorNumber());
+    co_return OperationResult(std::move(res), options);
   }
 
   if (!value.isObject() && !value.isArray() && !value.isString()) {
@@ -4087,12 +4080,10 @@ Future<OperationResult> Methods::truncateInternal(
     MethodsApi api) {
   TRI_ASSERT(_state->status() == Status::RUNNING);
 
-  if (_state->isCoordinator()) {
-    if (Result res = checkCollectionPermissionOnCoordinator(
-            collectionName, AccessMode::Type::WRITE);
-        res.fail()) {
-      co_return OperationResult(std::move(res), options);
-    }
+  if (Result res =
+          checkCollectionPermission(collectionName, AccessMode::Type::WRITE);
+      res.fail()) {
+    co_return OperationResult(std::move(res), options);
   }
   auto opRes = co_await [&] {
     if (_state->isCoordinator()) {
@@ -4112,12 +4103,13 @@ futures::Future<OperationResult> Methods::countInternal(
     OperationOptions const& options, MethodsApi api) {
   TRI_ASSERT(_state->status() == Status::RUNNING);
 
+  if (Result res =
+          checkCollectionPermission(collectionName, AccessMode::Type::READ);
+      res.fail()) {
+    return {OperationResult(std::move(res), options)};
+  }
+
   if (_state->isCoordinator()) {
-    if (Result res = checkCollectionPermissionOnCoordinator(
-            collectionName, AccessMode::Type::READ);
-        res.fail()) {
-      return {OperationResult(std::move(res), options)};
-    }
     return countCoordinator(collectionName, type, options, api);
   }
 
