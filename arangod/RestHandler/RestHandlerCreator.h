@@ -22,6 +22,10 @@
 
 #pragma once
 
+#include "Rest/GeneralRequest.h"
+#include "SystemMonitor/Activities/RestHandler.h"
+#include "Utils/ExecContext.h"
+
 #include <memory>
 
 namespace arangodb {
@@ -31,17 +35,34 @@ class ApplicationServer;
 namespace rest {
 class RestHandler;
 }
-class GeneralRequest;
 class GeneralResponse;
 
 template<typename H>
 class RestHandlerCreator : public H {
- public:
+  template<typename... Args>
+  static auto createUnique(application_features::ApplicationServer& server, GeneralRequest* request,
+      GeneralResponse* response, Args&&... args) -> std::shared_ptr<rest::RestHandler> {
+    using Deleter = decltype([](H* h) {
+      auto* request = h->request();
+      // Call the destructor under the user's ExecContext, if any.
+      auto guard = ExecContextScope(request != nullptr ? request->requestContext() : nullptr);
+      delete h;
+    });
+
+    // Call the constructor under the user's ExecContext, if any.
+    auto guard = ExecContextScope(request != nullptr ? request->requestContext() : nullptr);
+
+    // use the ExecContext-aware deleter
+    return std::unique_ptr<H, Deleter>(new H(server, request, response, std::forward<Args>(args)...));
+  }
+
+public:
   template<typename D>
   static std::shared_ptr<rest::RestHandler> createData(
       application_features::ApplicationServer& server, GeneralRequest* request,
       GeneralResponse* response, void* data) {
-    auto h = std::make_shared<H>(server, request, response, (D)data);
+    // The shared_ptr inherits the unique_ptr's Deleter.
+    auto h = std::shared_ptr(createUnique(server, request, response, (D)data));
     h->startActivity();
     return h;
   }
@@ -49,7 +70,8 @@ class RestHandlerCreator : public H {
   static std::shared_ptr<rest::RestHandler> createNoData(
       application_features::ApplicationServer& server, GeneralRequest* request,
       GeneralResponse* response, void*) {
-    auto h = std::make_shared<H>(server, request, response);
+    // The shared_ptr inherits the unique_ptr's Deleter.
+    auto h = std::shared_ptr(createUnique(server, request, response));
     h->startActivity();
     return h;
   }

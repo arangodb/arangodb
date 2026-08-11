@@ -645,12 +645,15 @@ std::vector<bool> ExecContext::canReadUsers(
   return std::vector<bool>{view.begin(), view.end()};
 }
 
-ExecContextScope::ExecContextScope(std::shared_ptr<ExecContext const> exe)
+ExecContextScope::ExecContextScope(
+    std::shared_ptr<ExecContext const> exe) noexcept
     : _old(std::move(exe)) {
   std::swap(ExecContext::CURRENT, _old);
 }
 
-ExecContextScope::~ExecContextScope() { std::swap(ExecContext::CURRENT, _old); }
+ExecContextScope::~ExecContextScope() noexcept {
+  std::swap(ExecContext::CURRENT, _old);
+}
 
 ExecContextSuperuserScope::ExecContextSuperuserScope()
     : _old(ExecContext::CURRENT) {
