@@ -1169,7 +1169,7 @@ License Id: -
 #### js-yaml
 
 * Name: js-yaml
-* Version: 4.3.0
+* Version: 4.3.1
 * Project Home: <https://github.com/nodeca/js-yaml>
 * License: <https://raw.githubusercontent.com/nodeca/js-yaml/refs/heads/master/LICENSE>
 * License Name: MIT License

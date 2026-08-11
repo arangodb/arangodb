@@ -1,5 +1,11 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+
+* Upgraded included rclone to v1.75.0 with go1.25.12 and non-vulnerable
+  dependencies.
+
+* Updated node module js-yaml to 4.3.1 to resolve GHSA-5p4m-2wfm-xmqj.
+
 * COR-742: AQL `MATCH` inline projections support aliasing / flattening via
   `RETURN name = <expr>` in addition to bare attribute keeps. Alias expressions
   use normal AQL scope (explicit pattern-variable references), e.g.
