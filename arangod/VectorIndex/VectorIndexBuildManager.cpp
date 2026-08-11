@@ -97,7 +97,10 @@ VectorIndexBuildManager::VectorIndexBuildManager(
           metricsRegistry.add(arangodb_vector_index_ingestion_duration{})) {}
 
 void VectorIndexBuildManager::start() {
-  _thread = std::jthread([this](std::stop_token stopToken) { run(stopToken); });
+  _thread = std::jthread([this](std::stop_token stopToken) {
+    auto scope = ExecContextScope(ExecContext::superuserAsShared());
+    run(stopToken);
+  });
 }
 
 void VectorIndexBuildManager::beginShutdown() { _thread.request_stop(); }
