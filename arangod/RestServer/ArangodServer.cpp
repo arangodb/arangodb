@@ -128,6 +128,18 @@ void ArangodServer::processOptions() {
   }
 }
 
+void ArangodServer::validateOptions() {
+  OptionProvidingServer<ArangodOptionProviders>::validateOptions();
+
+  if (getOptions<check_version::CheckVersionOptionsProvider>().checkVersion &&
+      getOptions<UpgradeOptionsProvider>().upgrade) {
+    LOG_TOPIC("a25b0", FATAL, Logger::FIXME)
+        << "cannot specify both '--database.check-version' and "
+           "'--database.auto-upgrade'";
+    FATAL_ERROR_EXIT();
+  }
+}
+
 ServerState::RoleEnum ArangodServer::resolveRole(
     ClusterOptions const& clusterOptions, AgencyOptions const& agencyOptions) {
   if (agencyOptions.activated && !clusterOptions.myRole.empty()) {
@@ -415,14 +427,6 @@ void ArangodServer::addFeaturesWithOptionProvider() {
 
   addFeature<UpgradeFeature>(_ret, kNonServerFeatures,
                              getOptions<UpgradeOptionsProvider>());
-
-  if (getOptions<check_version::CheckVersionOptionsProvider>().checkVersion &&
-      getOptions<UpgradeOptionsProvider>().upgrade) {
-    LOG_TOPIC("a25b0", FATAL, Logger::FIXME)
-        << "cannot specify both '--database.check-version' and "
-           "'--database.auto-upgrade'";
-    FATAL_ERROR_EXIT();
-  }
 
   addFeature<replication2::replicated_state::ReplicatedStateAppFeature>();
   addFeature<replication2::replicated_state::black_hole::
