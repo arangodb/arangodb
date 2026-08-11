@@ -20,7 +20,6 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 #include "Metrics/MetricsFeature.h"
-#include "Metrics/MetricsOptionsProvider.h"
 
 #include <frozen/string.h>
 #include <frozen/unordered_set.h>
@@ -38,7 +37,6 @@
 #include "Logger/LoggerFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/Metric.h"
-#include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -91,12 +89,6 @@ MetricsFeature::MetricsFeature(
     return 0.0;
   }
   return TRI_microtime() - _serverStartTime;
-}
-
-void MetricsFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  metrics::MetricsOptionsProvider provider;
-  provider.declareOptions(options, _options);
 }
 
 std::shared_ptr<Metric> MetricsFeature::doAdd(Builder& builder) {
@@ -170,12 +162,6 @@ bool MetricsFeature::ensureWhitespace() const noexcept {
 MetricsFeature::UsageTrackingMode MetricsFeature::usageTrackingMode()
     const noexcept {
   return _options.usageTrackingMode;
-}
-
-void MetricsFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  metrics::MetricsOptionsProvider provider;
-  provider.validateOptions(options, _options);
 }
 
 void MetricsFeature::toPrometheus(std::string& result,

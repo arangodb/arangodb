@@ -234,6 +234,8 @@
             suffix: cluster-oneshard
 # with coverage we need to have several jobs:
 - rta_makedata:
+    options:
+      priority: 3500
     requires:
       coverage: true
     args:
@@ -241,6 +243,7 @@
       ssl: true
 - rta_makedata:
     options:
+      priority: 3000
       type: cluster
       suffix: _oneshard
     requires:

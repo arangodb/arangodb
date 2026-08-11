@@ -29,7 +29,7 @@ namespace arangodb::vector_index {
 
 using namespace arangodb::options;
 
-void VectorIndexOptionsProvider::declareOptions(
+void VectorIndexOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> programOptions,
     VectorIndexFeatureOptions& opts) {
   programOptions
