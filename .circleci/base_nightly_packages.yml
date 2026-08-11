@@ -174,7 +174,7 @@ parameters:
   enterprise-branch:
     type: string
     default: ""
-    description: "Enterprise repo branch to use. Defaults to the same branch as arangodb, falling back to devel. Only read by the setup config, which resolves it to enterprise-commit."
+    description: "Enterprise repo branch to use. Defaults to the same branch as arangodb, falling back to 4.0. Only read by the setup config, which resolves it to enterprise-commit."
   enterprise-commit:
     type: string
     default: ""
