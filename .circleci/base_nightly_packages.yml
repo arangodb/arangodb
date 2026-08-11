@@ -41,13 +41,23 @@ version: 2.1
 #                       one job per package format+arch (contents extracted,
 #                       then rootfs-scanned) and per Docker image (image scan).
 #                       The reports always cover ALL severities (unfixed CVEs
-#                       included, secret scanning on); whether a job fails —
-#                       and with it the publish — is decided separately by
+#                       included, secret scanning on); which findings count
+#                       is decided separately by
 #                       [security-check-fail-level] (default HIGH — the
 #                       industry standard for published artifacts: HIGH and
-#                       CRITICAL findings block; NONE = report-only; ALL =
-#                       any finding, incl. UNKNOWN). The EOL base-OS check on
-#                       images always fails regardless. Each scan asserts
+#                       CRITICAL findings count; NONE = report-only; ALL =
+#                       any finding, incl. UNKNOWN). Findings at or above
+#                       the level fail the job — AFTER its reports, SBOMs
+#                       and gate verdict are persisted — which reds the
+#                       workflow (the alert) without stopping the publish:
+#                       publish-nightly tolerates these jobs failing and
+#                       instead verifies itself that every one of them
+#                       delivered its verdict, so a scan that died still
+#                       blocks the publish while a scan that merely found
+#                       something does not (nightlies are pre-release and
+#                       feed the nightly RTA; enforcement belongs on the
+#                       release path, which gates the stable Docker images
+#                       separately). Each scan asserts
 #                       the targets it found (expect-targets/min-targets)
 #                       and correlates findings against CISA KEV / FIRST
 #                       EPSS (report-only). Waivers (validated in
@@ -59,7 +69,7 @@ version: 2.1
 #                       end-of-day, inside the FedRAMP High window from
 #                       "detected" (CRITICAL/HIGH/UNKNOWN 30d, MEDIUM 90d,
 #                       LOW 180d, design-acceptance 366d, KEV 14d); unknown
-#                       keys are rejected; expired entries block again and
+#                       keys are rejected; expired entries gate again and
 #                       warn. Secret findings are never waivable
 #                       here (dev-fixture allowlists belong in a trivy
 #                       secret config, by path). Published reports and SBOMs
@@ -83,8 +93,13 @@ version: 2.1
 #                       fetched with the same SSH key as enterprise. No
 #                       embedded deb/rpm signing: that belongs to apt/yum
 #                       repository builds, which nightlies are not
-#   publish-nightly     THE ONLY JOB THAT PUBLISHES ANYTHING; runs only when
-#                       every selected job succeeded. Split into a stage
+#   publish-nightly     THE ONLY JOB THAT PUBLISHES ANYTHING; runs when
+#                       every selected job succeeded, with the single
+#                       exception of the security-check jobs, whose
+#                       failure means "findings were reported" and must
+#                       not stop a pre-release nightly; its first step
+#                       verifies every expected gate verdict was actually
+#                       recorded and fails otherwise. Split into a stage
 #                       phase (upload packages + ClamAV reports +
 #                       sourceInfo.(log|json) to a GCS staging prefix, push
 #                       only the dated per-arch Docker tags) and a commit
@@ -165,9 +180,9 @@ version: 2.1
 orbs:
   aws-cli: circleci/aws-cli@4.1.1
   aws-ecr: circleci/aws-ecr@9.0.1
-  # Exact pin: a floating orb range silently changes what gates the nightly
-  # publish. 1.2.0 is the floor: 1.1.2's kev-epss-check fails closed on a
-  # clean report and fails open on an empty threshold.
+  # Exact pin: a floating orb range silently changes what the nightly
+  # security checks flag. 1.2.0 is the floor: 1.1.2's kev-epss-check fails
+  # closed on a clean report and fails open on an empty threshold.
   trivy-scan: arangodb/trivy-scan@1.2.0
 
 parameters:
@@ -222,12 +237,12 @@ parameters:
   security-check:
     type: boolean
     default: true
-    description: "Trivy scan (CVEs + secrets) of every package and Docker image before publishing; findings at or above security-check-fail-level block the publish."
+    description: "Trivy scan (CVEs + secrets) of every package and Docker image before publishing; findings at or above security-check-fail-level fail the scan jobs and with them the workflow, but not the publish."
   security-check-fail-level:
     type: enum
     enum: ["NONE", "LOW", "MEDIUM", "HIGH", "CRITICAL", "ALL"]
     default: "HIGH"
-    description: "Minimum Trivy finding severity that fails the security-check jobs (findings at or above this level block the publish). The HIGH default is the industry standard for published artifacts; time-boxed signed-off exceptions belong in .circleci/trivy-gate-waivers.json, not in a lowered gate. The stored reports always contain ALL severities. NONE = report-only, never fail; ALL = fail on any finding incl. UNKNOWN severity. The EOL base-OS check on Docker images fails regardless of this level."
+    description: "Minimum Trivy finding severity that fails a security-check job. Findings at or above it red the job and with it the workflow, which is the nightly's alert signal, but they do NOT block the publish: publish-nightly tolerates the security-check jobs failing (after verifying each one delivered its reports and verdict), so the nightly still ships (nightlies are pre-release and feed the nightly RTA) while the findings stay loud. Enforcement belongs on the release path. The HIGH default is the industry standard for published artifacts; time-boxed signed-off exceptions belong in .circleci/trivy-gate-waivers.json, not in a lowered gate. The stored reports always contain ALL severities. NONE = report-only, never fail; ALL = fail on any finding incl. UNKNOWN severity. The EOL base-OS check on Docker images is separate from this level: it fails the scan before the reports are delivered, and that DOES block the publish."
   pr-run:
     type: boolean
     default: false
@@ -436,16 +451,28 @@ commands:
   gate-trivy-findings:
     # The scans run report-only; this command is the gate. It predates the
     # orb's own gate and keeps the security-check-fail-level bands and the
-    # local waiver semantics: only findings (vulnerabilities and
-    # secrets) at or above security-check-fail-level do — minus
-    # vulnerabilities covered by an unexpired entry in
-    # .circleci/trivy-gate-waivers.json (staged into the workspace by
-    # prepare-nightly, which validated it). Waivers change gating only:
-    # the published trivy report is always complete, however lax the gate
-    # is, and secrets are never waivable here.
+    # local waiver semantics: it counts findings (vulnerabilities and
+    # secrets) at or above security-check-fail-level, minus vulnerabilities
+    # covered by an unexpired entry in .circleci/trivy-gate-waivers.json
+    # (staged into the workspace by prepare-nightly, which validated it).
+    # Waivers change gating only: the published trivy report is always
+    # complete, however lax the gate is, and secrets are never waivable
+    # here.
+    #
+    # A FAIL verdict fails the job, but only AFTER the verdict is written
+    # and persisted (the reports and SBOMs were staged by earlier steps):
+    # publish-nightly tolerates a failed security-check job and checks the
+    # persisted verdicts instead, so it can tell "found something" (job
+    # red, verdict present, publish anyway) from "scan never delivered"
+    # (no verdict, publish blocked) — CircleCI's status-qualified requires
+    # alone cannot make that distinction. Integrity problems fail before
+    # the verdict exists: an unevaluated gate is not a pass.
+    parameters:
+      item:
+        type: string
     steps:
       - run:
-          name: Gate on findings at or above << pipeline.parameters.security-check-fail-level >>
+          name: Evaluate findings at or above << pipeline.parameters.security-check-fail-level >>
           command: |
             case "<< pipeline.parameters.security-check-fail-level >>" in
               NONE)     GATE="" ;;
@@ -465,8 +492,14 @@ commands:
               NONE|CRITICAL)
                 echo "NOTICE: gate level << pipeline.parameters.security-check-fail-level >> is below the industry standard (HIGH). Exceptions belong in .circleci/trivy-gate-waivers.json; the published reports record this level." ;;
             esac
+            # One verdict line per scanned item, collected by
+            # publish-nightly and published with the artifacts:
+            # "<PASS|FAIL|SKIP> <item> <unwaived count>".
+            VERDICT=/tmp/nightly/trivy-gate/<< parameters.item >>.txt
+            mkdir -p "$(dirname "${VERDICT}")"
             if [ -z "${GATE}" ]; then
               echo "security-check-fail-level=NONE: report-only, not gating"
+              echo "SKIP << parameters.item >> 0" > "${VERDICT}"
               exit 0
             fi
             # A missing or malformed report must never gate as zero
@@ -531,7 +564,23 @@ commands:
             esac
             echo "Findings at or above << pipeline.parameters.security-check-fail-level >> (unwaived): ${COUNT}"
             if [ "${COUNT}" -gt 0 ]; then
-              echo "Blocking the publish (full report of all severities in the job artifacts). Fix the dependency or add a time-boxed, signed-off entry to .circleci/trivy-gate-waivers.json."
+              echo "FAIL << parameters.item >> ${COUNT}" > "${VERDICT}"
+            else
+              echo "PASS << parameters.item >> 0" > "${VERDICT}"
+            fi
+      # Persisted before the verdict is acted on: publish-nightly reads the
+      # verdicts (its reports and its delivered-or-not check), so they have
+      # to reach the workspace exactly when this job goes red.
+      - persist_to_workspace:
+          root: /tmp/nightly
+          paths:
+            - trivy-gate
+      - run:
+          name: Fail on the recorded verdict
+          command: |
+            set -eu
+            if grep -q '^FAIL ' /tmp/nightly/trivy-gate/<< parameters.item >>.txt; then
+              echo "Unwaived findings at or above << pipeline.parameters.security-check-fail-level >>: this job goes red as the alert, but the nightly still publishes (publish-nightly tolerates this failure), with the full report of all severities next to the artifacts. Fix the dependency or add a time-boxed, signed-off entry to .circleci/trivy-gate-waivers.json." >&2
               exit 1
             fi
 
@@ -637,7 +686,7 @@ jobs:
             fi
             cat /tmp/nightly/sourceInfo.log
       - run:
-          name: Validate and stage security-gate waivers
+          name: Validate and stage Trivy gate waivers
           command: |
             set -eu
             cd /home/circleci/project
@@ -1168,10 +1217,14 @@ jobs:
 
   # ── Trivy security check ─────────────────────────────────────────────────────
   # One job instance per published item, so a finding in one item never
-  # prevents the remaining items from being scanned; publish-nightly requires
-  # every instance, so any gated finding still blocks the whole publish.
+  # prevents the remaining items from being scanned. Findings at or above
+  # security-check-fail-level fail the instance — after its reports, SBOMs
+  # and verdict are persisted — and publish-nightly tolerates exactly that,
+  # verifying the persisted verdicts itself: a scan that did not deliver
+  # still blocks the publish, a scan that found something only reds the
+  # workflow.
   # Reports carry ALL severities; the gate band stays CRITICAL/HIGH and
-  # gate-trivy-findings decides per security-check-fail-level.
+  # gate-trivy-findings evaluates per security-check-fail-level.
   # EOL base-OS check on image
   # scans still fails unconditionally. detection-priority stays "precise" —
   # the orb explicitly recommends against "comprehensive" on blocking gates,
@@ -1266,8 +1319,21 @@ jobs:
           # report. The combined file itself is not stored — per-package is
           # the deliverable shape.
           sbom-output: /tmp/<< parameters.target >>-<< parameters.arch >>.sbom.cdx.json
-      # Staged and persisted before the gate so the full reports reach the
-      # workspace even when the gate fails (publish is blocked then anyway).
+      # KEV/EPSS over the full-band report: a KEV-listed MEDIUM sits below
+      # every CVSS band, and BOD 26-04 keys deadlines on KEV (EPSS is
+      # complementary, not mandated). Report-only: arming it would let a
+      # feed update alone redden the nightly. strict-feeds false, so a
+      # feed outage cannot. It runs before the staging step because it can
+      # still fail on an orb error, and everything able to fail this job
+      # has to do so before the reports are persisted (see below).
+      - trivy-scan/kev-epss-check:
+          report-path: /tmp/trivy-results.json
+          fail-on-match: false
+          strict-feeds: false
+      # Staged and persisted before the gate: the nightly publishes on a
+      # FAIL verdict, so these files are exactly what the published tree
+      # gets. A failure here leaves them unpublishable and fails the job,
+      # which does block the publish.
       - run:
           name: Stage per-package Trivy reports for publishing
           command: |
@@ -1409,21 +1475,14 @@ jobs:
           root: /tmp/nightly
           paths:
             - trivy-reports/<< parameters.arch >>
-      # KEV/EPSS over the full-band report: a KEV-listed MEDIUM sits below
-      # every CVSS band, and BOD 26-04 keys deadlines on KEV (EPSS is
-      # complementary, not mandated). Report-only: arming it would let a
-      # feed update alone block a publish. strict-feeds false, so a feed
-      # outage cannot.
-      - trivy-scan/kev-epss-check:
-          report-path: /tmp/trivy-results.json
-          fail-on-match: false
-          strict-feeds: false
-      - gate-trivy-findings
+      - gate-trivy-findings:
+          item: << parameters.target >>-<< parameters.arch >>
 
   security-check-docker-image:
     # Loads one exported per-arch image (per distro) into the remote Docker
     # daemon and scans it before publish-nightly is allowed to push it
-    # anywhere.
+    # anywhere. Findings red this job but do not stop the push; a scan
+    # that fails to deliver its report, EOL base OS included, still does.
     parameters:
       arch:
         type: string
@@ -1449,9 +1508,9 @@ jobs:
             LOADED="$(docker load -i /tmp/nightly/docker/enterprise-preview-<< parameters.distro >>-<< parameters.arch >>.tar | sed -n 's/^Loaded image: //p')"
             docker tag "${LOADED}" nightly-security-scan:<< parameters.distro >>-<< parameters.arch >>
       # Report-only over ALL severities; gate-trivy-findings below decides
-      # whether the job (and with it the publish) fails. Only the EOL
-      # base-OS check still fails the scan itself, independently of
-      # security-check-fail-level.
+      # once the reports are delivered. Only the EOL base-OS check fails
+      # the scan step itself, independently of security-check-fail-level,
+      # and so still blocks the publish.
       - trivy-scan/scan:
           scan-type: image
           image-ref: nightly-security-scan:<< parameters.distro >>-<< parameters.arch >>
@@ -1474,8 +1533,17 @@ jobs:
           # rewritten to the pushed image ref (this orb-rendered file would
           # name the internal scan re-tag as its subject).
           sbom-output: /tmp/trivy-sbom.cdx.json
-      # Staged and persisted before the gate so the full report reaches the
-      # workspace even when the gate fails (publish is blocked then anyway).
+      # See the package job for rationale and flip criterion, including
+      # why this runs before the staging step. Reads the untouched orb
+      # report; the correlation only needs vulnerability ids.
+      - trivy-scan/kev-epss-check:
+          report-path: /tmp/trivy-results.json
+          fail-on-match: false
+          strict-feeds: false
+      # Staged and persisted before the gate: the nightly publishes on a
+      # FAIL verdict, so these files are exactly what the published tree
+      # gets. A failure here leaves them unpublishable and fails the job,
+      # which does block the publish.
       - run:
           name: Stage Trivy report for publishing
           command: |
@@ -1584,13 +1652,8 @@ jobs:
           root: /tmp/nightly
           paths:
             - trivy-reports/docker
-      # See the package job for rationale and flip criterion. Reads the
-      # untouched orb report; the correlation only needs vulnerability ids.
-      - trivy-scan/kev-epss-check:
-          report-path: /tmp/trivy-results.json
-          fail-on-match: false
-          strict-feeds: false
-      - gate-trivy-findings
+      - gate-trivy-findings:
+          item: docker-<< parameters.distro >>-<< parameters.arch >>
 
   # ── GPG signing ──────────────────────────────────────────────────────────────
   sign-packages:
@@ -1683,7 +1746,15 @@ jobs:
 
   # ── Publish (the only job that releases anything) ────────────────────────────
   publish-nightly:
-    # Runs only when every selected packaging/scan/sign job succeeded.
+    # Runs when every selected job succeeded, except the security-check
+    # jobs, which this job tolerates failing: their failure means findings
+    # were reported, and a pre-release nightly must still reach the RTA.
+    # A tolerated status cannot say WHY the job failed, so the first step
+    # below re-checks that every expected scan recorded its verdict (the
+    # last thing a scan job does, after staging its reports and SBOMs) and
+    # fails otherwise: a scan that did not deliver still blocks the
+    # publish. Everything else — packaging, ClamAV, signing — stays a hard
+    # requirement.
     #
     # A real transaction across GCS and two Docker registries doesn't exist,
     # so the publish is split into two phases to get as close to
@@ -1714,6 +1785,14 @@ jobs:
     #
     # Needs the coredb-nightly-packages context (GCLOUD_SERVICE_KEY_BASE64, DOCKER_USER,
     # DOCKER_PASS).
+    parameters:
+      expected-gate-items:
+        # Space-separated verdict items, one per security-check job this
+        # job tolerates failing. Set in the workflow entry (pruned by the
+        # config generator alongside the jobs, and checked against them),
+        # so the verification below cannot drift from the job graph.
+        type: string
+        default: ""
     docker:
       - image: cimg/base:current
     resource_class: large
@@ -1724,6 +1803,62 @@ jobs:
           destination: /home/circleci/project
       - setup_remote_docker
       - setup-gcloud
+      - run:
+          name: Verify the security scans delivered, resolve the gate line
+          command: |
+            set -eu
+            # The security-check jobs are the only requires this job
+            # tolerates failing, and a tolerated status cannot say WHY the
+            # job failed. Each scan records its verdict as its final step,
+            # after staging its reports and SBOMs, so a missing verdict
+            # means the scan died before delivering — that must still
+            # block the publish, while a recorded FAIL (findings) must
+            # not. The item list is pinned to the job graph by the config
+            # generator.
+            D=/tmp/nightly/trivy-gate
+            S=/tmp/nightly/trivy-gate-summary.txt
+            if [ "<< pipeline.parameters.security-check >>" != "true" ]; then
+              printf 'Sec. gate: not run, security-check was disabled for this pipeline\n' \
+                > /tmp/gate-status-line.txt
+              cp /tmp/gate-status-line.txt "${S}"
+              cat /tmp/gate-status-line.txt
+              exit 0
+            fi
+            MISSING=""
+            for item in << parameters.expected-gate-items >>; do
+              if ! grep -Eq "^(PASS|FAIL|SKIP) " "${D}/${item}.txt" 2>/dev/null; then
+                MISSING="${MISSING} ${item}"
+              fi
+            done
+            if [ -n "${MISSING}" ]; then
+              echo "ERROR: no gate verdict recorded for:${MISSING}" >&2
+              echo "The security-check jobs for these items died before delivering their reports (a failed job is tolerated only for findings). Not publishing." >&2
+              exit 1
+            fi
+            cat "${D}"/*.txt | sort > "${S}"
+            echo "Security gate at level << pipeline.parameters.security-check-fail-level >>:"
+            sed -e "s/^/  /" "${S}"
+            # A publish no longer implies every gate passed, so the reports
+            # have to say which it was. Written once here and pasted into
+            # all three of them. The active-waiver count comes from the
+            # checkout because the gate level is picked per run and the
+            # waivers change per commit; each publish records both.
+            W=/home/circleci/project/.circleci/trivy-gate-waivers.json
+            WAIVERS="$(jq -r --arg today "$(date -u +%F)" '[.waivers[]? | select(.expires >= $today)] | length' "${W}" 2>/dev/null || echo "?")"
+            if grep -q '^FAIL ' "${S}"; then
+              RESULT="FAILED on $(grep -c '^FAIL ' "${S}") of $(wc -l < "${S}" | tr -d ' ') scanned items, see the per-item reports"
+            elif grep -q '^SKIP ' "${S}"; then
+              RESULT="report-only, not gated"
+            else
+              RESULT="passed on all $(wc -l < "${S}" | tr -d ' ') scanned items"
+            fi
+            printf 'Sec. gate: %s %s (active waivers: %s — see .circleci/trivy-gate-waivers.json)\n' \
+              "<< pipeline.parameters.security-check-fail-level >>" "${RESULT}" "${WAIVERS}" \
+              > /tmp/gate-status-line.txt
+            cat /tmp/gate-status-line.txt
+      - store_artifacts:
+          path: /tmp/nightly/trivy-gate-summary.txt
+          destination: reports/trivy-gate-summary.txt
       - run:
           name: Stage packages and sourceInfo in GCS (not yet visible)
           command: |
@@ -1806,9 +1941,7 @@ jobs:
               echo "Version:   ${VERSION}"
               echo "Published: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
               echo "Workflow:  ${CIRCLE_WORKFLOW_ID}"
-              # Audit trail: the gate level is picked per run and waivers
-              # change per commit, so each publish records both.
-              echo "Sec. gate: << pipeline.parameters.security-check-fail-level >> (findings at or above this level block a publish unless waived; NONE = report-only; active waivers: $(jq -r --arg today "$(date -u +%F)" '[.waivers[]? | select(.expires >= $today)] | length' /home/circleci/project/.circleci/trivy-gate-waivers.json 2>/dev/null || echo "?") — see .circleci/trivy-gate-waivers.json)"
+              cat /tmp/gate-status-line.txt
               echo
               cat "${SECTION}"
             } > "${STAGE}/arangodb3e-${VERSION}.txt"
@@ -2114,7 +2247,7 @@ jobs:
                 if [ "${PR_RUN}" = "true" ]; then
                   echo "Mode:      PR TEST RUN (dry run - image was NOT published)"
                 fi
-                echo "Sec. gate: << pipeline.parameters.security-check-fail-level >> (findings at or above this level block a publish unless waived; NONE = report-only; active waivers: $(jq -r --arg today "$(date -u +%F)" '[.waivers[]? | select(.expires >= $today)] | length' /home/circleci/project/.circleci/trivy-gate-waivers.json 2>/dev/null || echo "?") — see .circleci/trivy-gate-waivers.json)"
+                cat /tmp/gate-status-line.txt
                 echo
                 echo "Dated per-arch tags (stage phase):"
                 cat "/tmp/docker-stage-${DISTRO}.txt"
@@ -2169,7 +2302,7 @@ jobs:
               if [ "${PR_RUN}" = "true" ]; then
                 echo "Mode:      PR TEST RUN - dry run, NOTHING was actually published"
               fi
-              echo "Sec. gate: << pipeline.parameters.security-check-fail-level >> (findings at or above this level block a publish unless waived; NONE = report-only; active waivers: $(jq -r --arg today "$(date -u +%F)" '[.waivers[]? | select(.expires >= $today)] | length' /home/circleci/project/.circleci/trivy-gate-waivers.json 2>/dev/null || echo "?") — see .circleci/trivy-gate-waivers.json)"
+              cat /tmp/gate-status-line.txt
             } > "${REPORT}"
 
             if [ -s /tmp/package-publish-section.txt ]; then
@@ -2412,6 +2545,14 @@ workflows:
 
       - publish-nightly:
           context: [ coredb-nightly-packages ]
+          # One item per tolerated security-check job below; the config
+          # generator prunes this list together with the jobs and rejects
+          # any drift between the two.
+          expected-gate-items: >-
+            deb-amd64 rpm-amd64 tar-amd64
+            deb-arm64 rpm-arm64 tar-arm64
+            docker-alpine-amd64 docker-deb-amd64
+            docker-alpine-arm64 docker-deb-arm64
           requires:
             # The packaging jobs are required DIRECTLY, not only transitively
             # via the scan/sign/security gates: all three gates can be
@@ -2425,16 +2566,45 @@ workflows:
             - tar-enterprise-arm64
             - scan-packages
             - sign-packages
-            - security-check-deb-amd64
-            - security-check-rpm-amd64
-            - security-check-tar-amd64
-            - security-check-deb-arm64
-            - security-check-rpm-arm64
-            - security-check-tar-arm64
-            - security-check-docker-alpine-amd64
-            - security-check-docker-deb-amd64
-            - security-check-docker-alpine-arm64
-            - security-check-docker-deb-arm64
+            # The only tolerated failures in the whole graph: a
+            # security-check job fails on findings, which reds the
+            # workflow (the alert) without stopping the nightly, because
+            # nightlies are pre-release and feed the nightly RTA. The
+            # verify step inside publish-nightly tells that failure mode
+            # apart from a scan that died before delivering its reports,
+            # which still blocks. Deliberately not "canceled": that means
+            # the workflow is being torn down, and publish must not run
+            # on a half-built workspace.
+            - security-check-deb-amd64:
+                - success
+                - failed
+            - security-check-rpm-amd64:
+                - success
+                - failed
+            - security-check-tar-amd64:
+                - success
+                - failed
+            - security-check-deb-arm64:
+                - success
+                - failed
+            - security-check-rpm-arm64:
+                - success
+                - failed
+            - security-check-tar-arm64:
+                - success
+                - failed
+            - security-check-docker-alpine-amd64:
+                - success
+                - failed
+            - security-check-docker-deb-amd64:
+                - success
+                - failed
+            - security-check-docker-alpine-arm64:
+                - success
+                - failed
+            - security-check-docker-deb-arm64:
+                - success
+                - failed
             - docker-enterprise-alpine-amd64
             - docker-enterprise-deb-amd64
             - docker-enterprise-alpine-arm64
