@@ -94,7 +94,6 @@ class Future;
 class CursorRepository;
 struct DatabaseConfiguration;
 struct DatabaseJavaScriptCache;
-class DatabaseReplicationApplier;
 class LogicalCollection;
 class LogicalDataSource;
 class LogicalView;
@@ -187,7 +186,6 @@ struct Database {
 
   std::unique_ptr<arangodb::VocbaseMetrics> _metrics;
 
-  std::unique_ptr<arangodb::DatabaseReplicationApplier> _replicationApplier;
   std::unique_ptr<arangodb::ReplicationClientsProgressTracker>
       _replicationClients;
 
@@ -283,11 +281,6 @@ struct Database {
   arangodb::ReplicationClientsProgressTracker& replicationClients() {
     return *_replicationClients;
   }
-
-  arangodb::DatabaseReplicationApplier* replicationApplier() const {
-    return _replicationApplier.get();
-  }
-  void addReplicationApplier();
 
   arangodb::aql::QueryList* queryList() const { return _queries.get(); }
   arangodb::aql::QueryPlanCache& queryPlanCache() const {
