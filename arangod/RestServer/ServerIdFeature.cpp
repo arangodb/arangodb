@@ -33,6 +33,8 @@
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/InitDatabaseFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 
 using namespace arangodb::options;
 
@@ -47,6 +49,8 @@ ServerIdFeature::ServerIdFeature(
   startsAfter<application_features::BasicFeaturePhaseServer>();
   startsAfter<DatabasePathFeature>();
   startsAfter<DatabaseFeature>();
+  startsAfter<InitDatabaseFeature>();
+  startsAfter<SystemDatabaseFeature>();
 }
 
 ServerIdFeature::~ServerIdFeature() { SERVERID = ServerId::none(); }

@@ -906,11 +906,19 @@ void RocksDBEngine::start() {
     }
   }
 #endif
+
+  double const counterSyncSeconds = 2.5;
+  _backgroundThread = std::make_unique<RocksDBBackgroundThread>(
+      *this, counterSyncSeconds, _metrics);
+  if (!_backgroundThread->start()) {
+    LOG_TOPIC("a5e96", FATAL, Logger::ENGINES)
+        << "could not start rocksdb counter manager thread";
+    FATAL_ERROR_EXIT();
+  }
 }
 
 void RocksDBEngine::onDatabasesLoaded() {
   runRecovery();
-  startBackgroundThread();
   _databaseProvider.recoveryDone();
 }
 
@@ -921,17 +929,6 @@ void RocksDBEngine::runRecovery() {
   });
   manager.runRecovery();
   _engineState.store(EngineState::kRunning, std::memory_order_release);
-}
-
-void RocksDBEngine::startBackgroundThread() {
-  double const counterSyncSeconds = 2.5;
-  _backgroundThread = std::make_unique<RocksDBBackgroundThread>(
-      *this, counterSyncSeconds, _metrics);
-  if (!_backgroundThread->start()) {
-    LOG_TOPIC("a5e96", FATAL, Logger::ENGINES)
-        << "could not start rocksdb counter manager thread";
-    FATAL_ERROR_EXIT();
-  }
 }
 
 void RocksDBEngine::beginShutdown() {

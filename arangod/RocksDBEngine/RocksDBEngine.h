@@ -585,7 +585,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
       std::vector<rocksdb::ColumnFamilyDescriptor> const& cfFamilies);
 
   void runRecovery();
-  void startBackgroundThread();
 
   auto makeLogStorageMethods(replication2::LogId logId, uint64_t objectId,
                              std::uint64_t vocbaseId,
