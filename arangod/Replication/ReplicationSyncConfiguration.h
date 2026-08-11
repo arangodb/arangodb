@@ -36,8 +36,8 @@ class Slice;
 class ReplicationFeature;
 class StorageEngine;
 
-/// @brief struct containing a replication apply configuration
-class ReplicationApplierConfiguration {
+/// @brief configuration shared by the replication syncers
+class ReplicationSyncConfiguration {
  public:
   enum class RestrictType { None, Include, Exclude };
 
@@ -63,41 +63,31 @@ class ReplicationApplierConfiguration {
   uint64_t _maxPacketSize;
   uint32_t _sslProtocol;
   bool _skipCreateDrop;  /// shards/indexes/views are created by schmutz++
-  bool _autoStart;       /// start applier after server start
   bool _adaptivePolling;
   bool _autoResync;  /// resync completely if we miss updates
   bool _includeSystem;
-  bool _includeFoxxQueues;   /// sync the _jobs and _queues collection
-  bool _requireFromPresent;  /// while tailing WAL: leader must have the
-                             /// client's requested tick
-  bool _incremental;         /// use incremental sync if we got local data
+  bool _includeFoxxQueues;  /// sync the _jobs and _queues collection
+  bool _incremental;        /// use incremental sync if we got local data
   bool _verbose;
   RestrictType _restrictType;
   std::set<std::string> _restrictCollections;
   std::string _clientInfoString;
 
  public:
-  explicit ReplicationApplierConfiguration(
+  explicit ReplicationSyncConfiguration(
       application_features::ApplicationServer&);
-  ~ReplicationApplierConfiguration() = default;
+  ~ReplicationSyncConfiguration() = default;
 
-  ReplicationApplierConfiguration(ReplicationApplierConfiguration const&) =
-      default;
-  ReplicationApplierConfiguration& operator=(
-      ReplicationApplierConfiguration const&);
+  ReplicationSyncConfiguration(ReplicationSyncConfiguration const&) = default;
+  ReplicationSyncConfiguration& operator=(ReplicationSyncConfiguration const&);
 
-  ReplicationApplierConfiguration(ReplicationApplierConfiguration&&) = default;
+  ReplicationSyncConfiguration(ReplicationSyncConfiguration&&) = default;
 
   /// @brief reset the configuration to defaults
   void reset();
 
   /// @brief validate the configuration. will throw if the config is invalid
   void validate() const;
-
-  /// @brief get a VelocyPack representation
-  /// expects builder to be in an open Object state
-  void toVelocyPack(arangodb::velocypack::Builder&, bool includePassword,
-                    bool includeJwt) const;
 
   void setClientInfo(std::string&& clientInfo) {
     _clientInfoString = std::move(clientInfo);
@@ -107,14 +97,14 @@ class ReplicationApplierConfiguration {
   }
 
   /// @brief create a configuration object from velocypack
-  static ReplicationApplierConfiguration fromVelocyPack(
+  static ReplicationSyncConfiguration fromVelocyPack(
       application_features::ApplicationServer&,
       arangodb::velocypack::Slice slice, std::string const& databaseName);
 
   /// @brief create a configuration object from velocypack, merging it with an
   /// existing one
-  static ReplicationApplierConfiguration fromVelocyPack(
-      ReplicationApplierConfiguration const& existing,
+  static ReplicationSyncConfiguration fromVelocyPack(
+      ReplicationSyncConfiguration const& existing,
       arangodb::velocypack::Slice slice, std::string const& databaseName);
 
   static RestrictType restrictTypeFromString(std::string const& value);

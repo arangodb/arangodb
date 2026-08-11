@@ -20,7 +20,7 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ReplicationApplierConfiguration.h"
+#include "ReplicationSyncConfiguration.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/TokenCache.h"
@@ -39,7 +39,7 @@ using namespace arangodb;
 using application_features::ApplicationServer;
 
 /// @brief construct the configuration with default values
-ReplicationApplierConfiguration::ReplicationApplierConfiguration(
+ReplicationSyncConfiguration::ReplicationSyncConfiguration(
     ApplicationServer& server)
     : _server(server),
       _replicationFeature(server.hasFeature<ReplicationFeature>()
@@ -66,19 +66,17 @@ ReplicationApplierConfiguration::ReplicationApplierConfiguration(
       _maxPacketSize(512 * 1024 * 1024),
       _sslProtocol(0),
       _skipCreateDrop(false),
-      _autoStart(false),
       _adaptivePolling(true),
       _autoResync(false),
       _includeSystem(true),
       _includeFoxxQueues(false),
-      _requireFromPresent(true),
       _incremental(false),
       _verbose(false),
       _restrictType(RestrictType::None) {}
 
 /// @brief construct the configuration with default values
-ReplicationApplierConfiguration& ReplicationApplierConfiguration::operator=(
-    ReplicationApplierConfiguration const& other) {
+ReplicationSyncConfiguration& ReplicationSyncConfiguration::operator=(
+    ReplicationSyncConfiguration const& other) {
   _endpoint = other._endpoint;
   _database = other._database;
   _username = other._username;
@@ -98,12 +96,10 @@ ReplicationApplierConfiguration& ReplicationApplierConfiguration::operator=(
   _maxPacketSize = other._maxPacketSize;
   _sslProtocol = other._sslProtocol;
   _skipCreateDrop = other._skipCreateDrop;
-  _autoStart = other._autoStart;
   _adaptivePolling = other._adaptivePolling;
   _autoResync = other._autoResync;
   _includeSystem = other._includeSystem;
   _includeFoxxQueues = other._includeFoxxQueues;
-  _requireFromPresent = other._requireFromPresent;
   _incremental = other._incremental;
   _verbose = other._verbose;
   _restrictType = other._restrictType;
@@ -115,7 +111,7 @@ ReplicationApplierConfiguration& ReplicationApplierConfiguration::operator=(
 }
 
 /// @brief reset the configuration to defaults
-void ReplicationApplierConfiguration::reset() {
+void ReplicationSyncConfiguration::reset() {
   _endpoint.clear();
   _database.clear();
   _username.clear();
@@ -137,98 +133,31 @@ void ReplicationApplierConfiguration::reset() {
   _maxPacketSize = 512 * 1024 * 1024;
   _sslProtocol = 0;
   _skipCreateDrop = false;
-  _autoStart = false;
   _adaptivePolling = true;
   _autoResync = false;
   _includeSystem = true;
   _includeFoxxQueues = false;
-  _requireFromPresent = true;
   _incremental = false;
   _verbose = false;
   _restrictType = RestrictType::None;
   _restrictCollections.clear();
 }
 
-/// @brief get a VelocyPack representation
-/// expects builder to be in an open Object state
-void ReplicationApplierConfiguration::toVelocyPack(VPackBuilder& builder,
-                                                   bool includePassword,
-                                                   bool includeJwt) const {
-  if (!_endpoint.empty()) {
-    builder.add("endpoint", VPackValue(_endpoint));
-  }
-  if (!_database.empty()) {
-    builder.add("database", VPackValue(_database));
-  }
-
-  bool hasUsernamePassword = false;
-  if (!_username.empty()) {
-    hasUsernamePassword = true;
-    builder.add("username", VPackValue(_username));
-  }
-  if (includePassword && !_password.empty()) {
-    hasUsernamePassword = true;
-    builder.add("password", VPackValue(_password));
-  }
-  if (includeJwt && !hasUsernamePassword && !_jwt.empty()) {
-    builder.add("jwt", VPackValue(_jwt));
-  }
-
-  builder.add("requestTimeout", VPackValue(_requestTimeout));
-  builder.add("connectTimeout", VPackValue(_connectTimeout));
-  builder.add("ignoreErrors", VPackValue(_ignoreErrors));
-  builder.add("maxConnectRetries", VPackValue(_maxConnectRetries));
-  builder.add("lockTimeoutRetries", VPackValue(_lockTimeoutRetries));
-  builder.add("sslProtocol", VPackValue(_sslProtocol));
-  builder.add("chunkSize", VPackValue(_chunkSize));
-  builder.add("skipCreateDrop", VPackValue(_skipCreateDrop));
-  builder.add("autoStart", VPackValue(_autoStart));
-  builder.add("adaptivePolling", VPackValue(_adaptivePolling));
-  builder.add("autoResync", VPackValue(_autoResync));
-  builder.add("autoResyncRetries", VPackValue(_autoResyncRetries));
-  builder.add("maxPacketSize", VPackValue(_maxPacketSize));
-  builder.add("includeSystem", VPackValue(_includeSystem));
-  builder.add("includeFoxxQueues", VPackValue(_includeFoxxQueues));
-  builder.add("requireFromPresent", VPackValue(_requireFromPresent));
-  builder.add("verbose", VPackValue(_verbose));
-  builder.add("incremental", VPackValue(_incremental));
-  builder.add("restrictType", VPackValue(restrictTypeToString(_restrictType)));
-
-  builder.add("restrictCollections", VPackValue(VPackValueType::Array));
-  for (std::string const& it : _restrictCollections) {
-    builder.add(VPackValue(it));
-  }
-  builder.close();  // restrictCollections
-
-  builder.add("connectionRetryWaitTime",
-              VPackValue(static_cast<double>(_connectionRetryWaitTime) /
-                         (1000.0 * 1000.0)));
-  builder.add("initialSyncMaxWaitTime",
-              VPackValue(static_cast<double>(_initialSyncMaxWaitTime) /
-                         (1000.0 * 1000.0)));
-  builder.add(
-      "idleMinWaitTime",
-      VPackValue(static_cast<double>(_idleMinWaitTime) / (1000.0 * 1000.0)));
-  builder.add(
-      "idleMaxWaitTime",
-      VPackValue(static_cast<double>(_idleMaxWaitTime) / (1000.0 * 1000.0)));
-}
-
 /// @brief create a configuration object from velocypack
-ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
+ReplicationSyncConfiguration ReplicationSyncConfiguration::fromVelocyPack(
     ApplicationServer& server, VPackSlice slice,
     std::string const& databaseName) {
-  return fromVelocyPack(ReplicationApplierConfiguration(server), slice,
+  return fromVelocyPack(ReplicationSyncConfiguration(server), slice,
                         databaseName);
 }
 
 /// @brief create a configuration object from velocypack, merging it with an
 /// existing one
-ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
-    ReplicationApplierConfiguration const& existing, VPackSlice slice,
+ReplicationSyncConfiguration ReplicationSyncConfiguration::fromVelocyPack(
+    ReplicationSyncConfiguration const& existing, VPackSlice slice,
     std::string const& databaseName) {
   // copy existing configuration
-  ReplicationApplierConfiguration configuration = existing;
+  ReplicationSyncConfiguration configuration = existing;
 
   // read the database name
   VPackSlice value = slice.get("database");
@@ -312,11 +241,6 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
     configuration._skipCreateDrop = value.getBoolean();
   }
 
-  value = slice.get("autoStart");
-  if (value.isBoolean()) {
-    configuration._autoStart = value.getBoolean();
-  }
-
   value = slice.get("adaptivePolling");
   if (value.isBoolean()) {
     configuration._adaptivePolling = value.getBoolean();
@@ -335,11 +259,6 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
   value = slice.get("includeFoxxQueues");
   if (value.isBoolean()) {
     configuration._includeFoxxQueues = value.getBoolean();
-  }
-
-  value = slice.get("requireFromPresent");
-  if (value.isBoolean()) {
-    configuration._requireFromPresent = value.getBoolean();
   }
 
   value = slice.get("verbose");
@@ -427,20 +346,15 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
 
   // read the endpoint
   value = slice.get("endpoint");
-  if (!value.isNone()) {
-    if (!value.isString()) {
-      // we haven't found an endpoint. now don't let the start fail but continue
-      configuration._autoStart = false;
-    } else {
-      configuration._endpoint = value.copyString();
-    }
+  if (value.isString()) {
+    configuration._endpoint = value.copyString();
   }
 
   return configuration;
 }
 
 /// @brief validate the configuration. will throw if the config is invalid
-void ReplicationApplierConfiguration::validate() const {
+void ReplicationSyncConfiguration::validate() const {
   if (_endpoint.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION,
@@ -455,9 +369,8 @@ void ReplicationApplierConfiguration::validate() const {
   }
 }
 
-ReplicationApplierConfiguration::RestrictType
-ReplicationApplierConfiguration::restrictTypeFromString(
-    std::string const& value) {
+ReplicationSyncConfiguration::RestrictType
+ReplicationSyncConfiguration::restrictTypeFromString(std::string const& value) {
   if (value.empty() || value == "none") {
     return RestrictType::None;
   }
@@ -473,8 +386,8 @@ ReplicationApplierConfiguration::restrictTypeFromString(
       "invalid value for <restrictType>");
 }
 
-std::string ReplicationApplierConfiguration::restrictTypeToString(
-    ReplicationApplierConfiguration::RestrictType type) {
+std::string ReplicationSyncConfiguration::restrictTypeToString(
+    ReplicationSyncConfiguration::RestrictType type) {
   switch (type) {
     case RestrictType::Include:
       return "include";

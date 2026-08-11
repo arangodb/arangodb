@@ -183,16 +183,6 @@ ErrorCode ClusterEngine::getViews(TRI_vocbase_t& vocbase,
   return TRI_ERROR_NO_ERROR;
 }
 
-VPackBuilder ClusterEngine::getReplicationApplierConfiguration(
-    TRI_vocbase_t& vocbase, ErrorCode& status) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-VPackBuilder ClusterEngine::getReplicationApplierConfiguration(
-    ErrorCode& status) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
 // database, collection and index management
 // -----------------------------------------
 
