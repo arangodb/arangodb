@@ -109,6 +109,13 @@ class UserManager {
   virtual bool checkCredentials(std::string const& username,
                                 std::string const& token, std::string& un,
                                 std::optional<double>& tokenValidUntil) = 0;
+  bool checkCredentials(std::string const& username, std::string const& token,
+                        std::string& un) {
+    // Legacy method if we do not care for the expiration time of the access
+    // token:
+    std::optional<double> ignored;
+    return checkCredentials(username, token, un, ignored);
+  }
 
   virtual Level databaseAuthLevel(std::string const& username,
                                   std::string const& dbname,

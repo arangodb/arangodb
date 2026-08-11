@@ -82,6 +82,8 @@ class UserManagerImpl final : public UserManager {
   bool checkCredentials(std::string const& username, std::string const& token,
                         std::string& un,
                         std::optional<double>& tokenValidUntil) override;
+  bool checkCredentials(std::string const& username, std::string const& token,
+                        std::string& un);
 
   Level databaseAuthLevel(std::string const& username,
                           std::string const& dbname, bool configured) override;

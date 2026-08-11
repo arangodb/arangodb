@@ -337,8 +337,7 @@ RestStatus RestUsersHandler::postRequest(auth::UserManager* um) {
       password = s.copyString();
     }
     std::string un;
-    std::optional<double> tokenValidUntil;  // intentionally ignored here!
-    if (um->checkCredentials(user, password, un, tokenValidUntil)) {
+    if (um->checkCredentials(user, password, un)) {
       generateOk(rest::ResponseCode::OK, VPackSlice::trueSlice());
     } else {
       generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_USER_NOT_FOUND);
