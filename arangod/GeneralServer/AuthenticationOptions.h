@@ -38,6 +38,8 @@ struct AuthenticationOptions {
   double sessionTimeout = static_cast<double>(1 * 3600);  // 1 hour in seconds
   double minimalJwtExpiryTime = 10.0;                     // 10 seconds
   double maximalJwtExpiryTime = 3600.0;                   // 3600 seconds
+  double maximalAccessTokenExpiryTime =
+      static_cast<double>(7 * 24 * 3600);  // 1 week in seconds
 
   std::string jwtSecretProgramOption;
   std::string jwtSecretKeyfileProgramOption;
