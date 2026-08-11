@@ -1068,6 +1068,78 @@ function AuthSuite() {
         db._dropDatabase(other);
       }
     },
+
+    // access token valid_until must be capped at the server's configured
+    // maximum TTL (--auth.maximal-access-token-expiry-time, default 1 week),
+    // even if a much longer expiry is requested.
+    testAccessTokenExpiryCapped: function () {
+      const other = "other";
+      const pw1 = "foobar";
+      const ok = 200;
+      // matches the built-in default for
+      // --auth.maximal-access-token-expiry-time
+      const maxTtlSecs = 7 * 24 * 3600;
+      // generous slack to account for the time the requests themselves take
+      const slackSecs = 60;
+
+      try {
+        db._createDatabase(other);
+
+        users.save(user, pw1);
+        users.grantDatabase(user, other);
+        users.reload();
+
+        const auth = {
+          username: user,
+          password: pw1
+        };
+
+        // ask for a token that would be valid for a whole year
+        const now = (new Date()) / 1000;
+        const name = "testme-capped";
+        const oneYearSecs = 365 * 24 * 3600;
+        const requested = Math.floor(now + oneYearSecs);
+        const expectedCap = Math.floor(now + maxTtlSecs);
+        let id;
+
+        {
+          const res = request.post(`/_api/token/${user}`, {
+            body: JSON.stringify({name, "valid_until": requested}),
+            auth
+          });
+          expect(res).to.be.an.instanceof(request.Response);
+          expect(res).to.have.property('statusCode', ok);
+          expect(res.body).to.be.an('string');
+          const obj = JSON.parse(res.body);
+          expect(obj.id).to.be.a('number');
+          expect(obj.valid_until).to.be.a('number');
+
+          // the requested year-long expiry must have been capped down
+          expect(obj.valid_until).to.be.below(requested);
+          expect(obj.valid_until).to.be.within(expectedCap - slackSecs, expectedCap + slackSecs);
+
+          id = obj.id;
+        }
+
+        // retrieve the token list again and make sure the capped
+        // valid_until was actually persisted, not just returned once
+        {
+          const res = request.get(`/_api/token/${user}`, {auth});
+          expect(res).to.be.an.instanceof(request.Response);
+          expect(res).to.have.property('statusCode', ok);
+          expect(res.body).to.be.an('string');
+          const obj = JSON.parse(res.body);
+          expect(obj.tokens).to.be.a('array');
+
+          const found = obj.tokens.find((t) => t.id === id);
+          expect(found).to.not.be.equal(undefined);
+          expect(found.valid_until).to.be.below(requested);
+          expect(found.valid_until).to.be.within(expectedCap - slackSecs, expectedCap + slackSecs);
+        }
+      } finally {
+        db._dropDatabase(other);
+      }
+    },
   };
 }
 
