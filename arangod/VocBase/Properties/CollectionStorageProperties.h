@@ -24,6 +24,7 @@
 
 #include "Basics/StaticStrings.h"
 #include "Inspection/Access.h"
+#include "Inspection/Status.h"
 
 #include <cstdint>
 #include <string>
@@ -31,11 +32,22 @@
 namespace arangodb {
 
 struct CollectionStorageProperties {
-  // RocksDB object id; 0 means "not assigned yet" / coordinator stub
+  struct Transformers {
+    /// VPack stores objectId as a string; memory uses uint64_t (same as today).
+    struct ObjectIdAsString {
+      using MemoryType = uint64_t;
+      using SerializedType = std::string;
+
+      static inspection::Status toSerialized(MemoryType v,
+                                             SerializedType& result);
+      static inspection::Status fromSerialized(SerializedType const& v,
+                                               MemoryType& result);
+    };
+  };
+
+  /// RocksDB object id; 0 means not assigned yet / coordinator stub.
+  /// cacheEnabled lives only on CollectionMutableProperties.
   uint64_t objectId{0};
-  // Same flag as mutable.cacheEnabled; physical reads this.
-  // Alternative: don't duplicate — physical reads descriptor.mutableProps.cacheEnabled
-  // bool cacheEnabled{false};
 
   bool operator==(CollectionStorageProperties const&) const = default;
 };
@@ -44,7 +56,8 @@ template<class Inspector>
 auto inspect(Inspector& f, CollectionStorageProperties& props) {
   return f.object(props).fields(
       f.field(StaticStrings::ObjectId, props.objectId)
-          .transformWith(/* string <-> uint64 transformer, like today */)
+          .transformWith(
+              CollectionStorageProperties::Transformers::ObjectIdAsString{})
           .fallback(f.keep()));
 }
 

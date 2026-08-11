@@ -7,6 +7,7 @@ add_library(arango_vocbase_api STATIC
         CollectionIndexesProperties.cpp
         CollectionInternalProperties.cpp
         CollectionMutableProperties.cpp
+        CollectionStorageProperties.cpp
         CreateCollectionBody.cpp
         DatabaseConfiguration.cpp
         KeyGeneratorProperties.cpp

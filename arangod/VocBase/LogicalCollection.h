@@ -33,6 +33,7 @@
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/LogicalDataSource.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 #include "VocBase/Validators.h"
 #include "VocBase/voc-types.h"
 
@@ -412,6 +413,10 @@ class LogicalCollection : public LogicalDataSource {
       -> arangodb::replication2::agency::CollectionGroupId;
   auto replicatedStateId() const noexcept -> arangodb::replication2::LogId;
 
+  CollectionDescriptor const& properties() const noexcept {
+    return _properties;
+  }
+
  private:
   void initializeSmartAttributesBefore(velocypack::Slice info);
   void initializeSmartAttributesAfter(velocypack::Slice info);
@@ -421,6 +426,8 @@ class LogicalCollection : public LogicalDataSource {
   bool determineSyncByRevision() const;
 
   void decorateWithInternalValidators();
+
+  CollectionDescriptor _properties;
 
  protected:
   void addInternalValidator(std::unique_ptr<ValidatorBase>);
