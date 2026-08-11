@@ -36,28 +36,16 @@ parameters:
     description: "Enterprise repo branch to use. Defaults to the same branch as arangodb, falling back to devel."
   build-docker-image:
     type: string
-    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-312:24.04-f7032bef0"
+    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-40:24.04-d2eb28e68"
     description: "Ubuntu build image (compiler toolchain + packaging/scan tools) the compile, packaging, scan, and sign jobs run in. The tag is bumped automatically by the infrastructure pipeline's build-image rebuild; override only to try a new build image."
-  build-debian-packages:
-    type: boolean
-    default: true
-    description: "Build the DEB packages (server, client, dbg) for amd64 and arm64."
-  build-rpm-packages:
-    type: boolean
-    default: true
-    description: "Build the RPM packages (server, client, debuginfo) for amd64 and arm64."
   build-tarballs:
     type: boolean
     default: true
-    description: "Build the TAR.GZ server and client bundles for amd64 and arm64."
-  build-alpine-images:
+    description: "Build the TAR.GZ server and client bundles for amd64 and arm64 (the only package format of 4.0)."
+  build-ubuntu-images:
     type: boolean
     default: true
-    description: "Build the Alpine-based Docker images (one per architecture: amd64 and arm64); the publish job pushes them and creates their multi-arch manifests at the end. The default image with suffix-less tags."
-  build-deb-images:
-    type: boolean
-    default: true
-    description: "Build the Ubuntu-based Docker images (one per architecture: amd64 and arm64); the publish job pushes them and creates their multi-arch manifests at the end. Tags carry -deb between version and arch."
+    description: "Build the Ubuntu-based Docker images (per architecture: amd64 and arm64), always producing TWO images: arangodb/core-preview (server, including the client tools) and arangodb/client-tools-preview (client tools only); the publish job pushes them and creates their multi-arch manifests at the end."
   push-images-to-gcr-also:
     type: boolean
     default: true
@@ -196,11 +184,8 @@ jobs:
             set -x
             python3 .circleci/generate_nightly_packages_config.py \
               --base .circleci/base_nightly_packages.yml \
-              --build-debian-packages "<< pipeline.parameters.build-debian-packages >>" \
-              --build-rpm-packages "<< pipeline.parameters.build-rpm-packages >>" \
               --build-tarballs "<< pipeline.parameters.build-tarballs >>" \
-              --build-alpine-images "<< pipeline.parameters.build-alpine-images >>" \
-              --build-deb-images "<< pipeline.parameters.build-deb-images >>" \
+              --build-ubuntu-images "<< pipeline.parameters.build-ubuntu-images >>" \
               --sign-packages "<< pipeline.parameters.sign-packages >>" \
               --scan-viruses "<< pipeline.parameters.scan-viruses >>" \
               --security-check "<< pipeline.parameters.security-check >>" \

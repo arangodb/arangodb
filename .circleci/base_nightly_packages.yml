@@ -10,12 +10,11 @@ version: 2.1
 # Disabled jobs therefore never occupy an executor at all.
 #
 # Produces for the enterprise edition, on x86_64 and arm64:
-#   - DEB packages (server, -client, -dbg)        [build-debian-packages]
-#   - RPM packages (server, client, debuginfo)    [build-rpm-packages]
 #   - TAR.GZ bundles (server, client)             [build-tarballs]
-#   - Docker images + multi-arch manifests
-#     (Alpine [build-alpine-images] and Ubuntu [build-deb-images] based;
-#     Ubuntu tags carry -deb)
+#   - Docker images + multi-arch manifests        [build-ubuntu-images]
+#     (Ubuntu 26.04 based, always TWO images: arangodb/core-preview —
+#     the server, client tools included — and arangodb/client-tools-preview
+#     — the client tools only)
 #
 # Build flow (packaging scripts live in scripts/packaging/):
 #   prepare-nightly     derives the nightly version files and creates
@@ -25,13 +24,14 @@ version: 2.1
 #   compile-nightly     static release build via the "nightly-package-{x64,arm64}" CMake
 #                       preset + make install + starter/rclone download;
 #                       the install tree is shared with all packaging jobs
-#   build-*-package     one job per package format and architecture, all
-#                       running inside the regular Ubuntu build image (which
-#                       also carries debhelper/rpmbuild/clamav)
+#   build-package       one TAR.GZ packaging job per architecture, running
+#                       inside the regular Ubuntu build image (which also
+#                       carries clamav)
 #   build-nightly-docker-image
-#                       one job per distro (Alpine/Ubuntu) and arch;
-#                       builds the image and exports it via "docker save"
-#                       into the workspace (no push here)
+#                       one job per arch; builds BOTH Ubuntu-based images
+#                       (core-preview and client-tools-preview) and exports
+#                       them via "docker save" into the workspace (no push
+#                       here)
 #   scan-packages       ClamAV scan of all packages [scan-viruses]; the AV
 #                       database is cached in ${CLAMAV_BUCKET} (S3, from the
 #                       clamav-aws-bucket context); one <file>.clamav report
@@ -47,20 +47,15 @@ version: 2.1
 #                       industry standard for published artifacts: HIGH and
 #                       CRITICAL findings block; NONE = report-only; ALL =
 #                       any finding, incl. UNKNOWN). The EOL base-OS check on
-#                       images always fails regardless. Each scan asserts
-#                       the targets it found (expect-targets/min-targets)
-#                       and correlates findings against CISA KEV / FIRST
-#                       EPSS (report-only). Waivers (validated in
-#                       prepare-nightly): .circleci/trivy-gate-waivers.json,
-#                       entries {id, package (optional), severity (optional
-#                       only for class design-acceptance), detected,
-#                       expires, reason, approved-by, class (optional)},
-#                       matched on id, package and severity. Expiry is
-#                       end-of-day, inside the FedRAMP High window from
-#                       "detected" (CRITICAL/HIGH/UNKNOWN 30d, MEDIUM 90d,
-#                       LOW 180d, design-acceptance 366d, KEV 14d); unknown
-#                       keys are rejected; expired entries block again and
-#                       warn. Secret findings are never waivable
+#                       images always fails regardless. Waivers (time-boxed,
+#                       signed off): .circleci/trivy-gate-waivers.json —
+#                       entries {id, package (optional), expires YYYY-MM-DD,
+#                       reason, approved-by}; a vulnerability finding
+#                       matching an unexpired entry does not count toward
+#                       the gate. Expiry is end-of-day and capped at 90 days
+#                       out (validated in prepare-nightly, which stages the
+#                       file into the workspace); expired entries block
+#                       again and warn. Secret findings are never waivable
 #                       here (dev-fixture allowlists belong in a trivy
 #                       secret config, by path). Published reports and SBOMs
 #                       always keep ALL findings — waivers change gating
@@ -80,9 +75,8 @@ version: 2.1
 #                       objectfiles archive [sign-packages]; keys come from a
 #                       sparse checkout of the private arangodb-helper/
 #                       package-signing repo (.gnupg4, the current key home),
-#                       fetched with the same SSH key as enterprise. No
-#                       embedded deb/rpm signing: that belongs to apt/yum
-#                       repository builds, which nightlies are not
+#                       fetched with the same SSH key as enterprise;
+#                       detached signatures only
 #   publish-nightly     THE ONLY JOB THAT PUBLISHES ANYTHING; runs only when
 #                       every selected job succeeded. Split into a stage
 #                       phase (upload packages + ClamAV reports +
@@ -94,9 +88,10 @@ version: 2.1
 #                       possible. Pushes to docker.io (always) and
 #                       gcr.io/gcr-for-testing [push-images-to-gcr-also].
 #                       Afterwards <major.minor>/Docker/ gets one
-#                       arangodb_enterprise-preview_<VERSION>[-<distro>].txt
-#                       publish report per image (pushed refs + digests) with
-#                       the per-arch Trivy reports next to it.
+#                       arangodb_<image>_<VERSION>.txt publish report per
+#                       image name (core-preview and client-tools-preview;
+#                       pushed refs + digests) with the per-arch Trivy
+#                       reports next to it.
 #                       [pr-run] degrades this job to a dry run: staging is
 #                       uploaded and verified, then discarded; no Docker
 #                       pushes, no promotion, no index upload — the workflow
@@ -108,15 +103,15 @@ version: 2.1
 # that actually run.
 #
 # Docker tag scheme (scripts/ci/helpers.bash: set_nightly_version → find_arangodb_version):
-#   per-arch:  arangodb/enterprise-preview:<VERSION>-<ARCH>              e.g. 3.12.10-nightly.20260702-amd64
-#   manifests: arangodb/enterprise-preview:<VERSION>                     e.g. 3.12.10-nightly.20260702
-#              arangodb/enterprise-preview:<MAJOR_MINOR>-nightly         e.g. 3.12-nightly
-#              arangodb/enterprise-preview:devel-nightly                 (only when the tree was "devel")
+#   (identical for both image names, arangodb/core-preview and
+#   arangodb/client-tools-preview; <IMAGE> below stands for either)
+#   per-arch:  arangodb/<IMAGE>:<VERSION>-<ARCH>              e.g. 4.0.0-nightly.20260727-amd64
+#   manifests: arangodb/<IMAGE>:<VERSION>                     e.g. 4.0.0-nightly.20260727
+#              arangodb/<IMAGE>:<MAJOR_MINOR>-nightly         e.g. 4.0-nightly
+#              arangodb/<IMAGE>:<MAJOR>-nightly               e.g. 4-nightly
+#              arangodb/<IMAGE>:devel-nightly                 (only when the tree was "devel")
 #   Every manifest references the dated per-arch images directly; no
 #   rolling per-arch tags are pushed.
-#   The Ubuntu images insert -deb after the version part and before the
-#   arch suffix, e.g. 3.12.10-nightly.20260702-deb-amd64, and form
-#   <TAG>-deb manifests, e.g. 3.12-nightly-deb. Alpine stays suffix-less.
 #
 # Required environment (contexts / project settings):
 #   clamav-aws-bucket context:      AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
@@ -165,10 +160,7 @@ version: 2.1
 orbs:
   aws-cli: circleci/aws-cli@4.1.1
   aws-ecr: circleci/aws-ecr@9.0.1
-  # Exact pin: a floating orb range silently changes what gates the nightly
-  # publish. 1.2.0 is the floor: 1.1.2's kev-epss-check fails closed on a
-  # clean report and fails open on an empty threshold.
-  trivy-scan: arangodb/trivy-scan@1.2.0
+  trivy-scan: arangodb/trivy-scan@1.0
 
 parameters:
   enterprise-branch:
@@ -185,28 +177,16 @@ parameters:
     description: "Nightly date (YYYYMMDD), pinned once by the setup config so all jobs derive the same version even when the workflow runs across midnight. Cannot be set at trigger time (the setup config does not declare it)."
   build-docker-image:
     type: string
-    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-312:24.04-f7032bef0"
+    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-40:24.04-d2eb28e68"
     description: "Ubuntu build image (compiler toolchain + packaging/scan tools) the compile, packaging, scan, and sign jobs run in. The tag is bumped automatically by the infrastructure pipeline's build-image rebuild; override only to try a new build image."
-  build-debian-packages:
-    type: boolean
-    default: true
-    description: "Build the DEB packages (server, client, dbg) for amd64 and arm64."
-  build-rpm-packages:
-    type: boolean
-    default: true
-    description: "Build the RPM packages (server, client, debuginfo) for amd64 and arm64."
   build-tarballs:
     type: boolean
     default: true
-    description: "Build the TAR.GZ server and client bundles for amd64 and arm64."
-  build-alpine-images:
+    description: "Build the TAR.GZ server and client bundles for amd64 and arm64 (the only package format of 4.0)."
+  build-ubuntu-images:
     type: boolean
     default: true
-    description: "Build the Alpine-based Docker images (one per architecture: amd64 and arm64); the publish job pushes them and creates their multi-arch manifests at the end. The default image with suffix-less tags."
-  build-deb-images:
-    type: boolean
-    default: true
-    description: "Build the Ubuntu-based Docker images (one per architecture: amd64 and arm64); the publish job pushes them and creates their multi-arch manifests at the end. Tags carry -deb between version and arch."
+    description: "Build the Ubuntu-based Docker images (per architecture: amd64 and arm64), always producing TWO images: arangodb/core-preview (server, including the client tools) and arangodb/client-tools-preview (client tools only); the publish job pushes them and creates their multi-arch manifests at the end."
   push-images-to-gcr-also:
     type: boolean
     default: true
@@ -238,9 +218,10 @@ commands:
     # Only compile-nightly needs the real source tree (sparse: false). All
     # other jobs work on the install tree / workspace and need just the
     # support files, so they default to a sparse blob-filtered checkout of
-    # .circleci/ + scripts/ + CMakeLists.txt + VERSIONS + LICENSE, a few MB
-    # instead of the full tree; prepare-nightly and publish-nightly need
-    # .circleci/ for the waiver file.
+    # .circleci/ + scripts/ + CMakeLists.txt + VERSIONS + LICENSE — a few
+    # MB instead of the full tree. .circleci/ is needed by prepare-nightly
+    # (validates and stages trivy-gate-waivers.json) and by publish-nightly
+    # (records the active waiver count in the publish reports).
     parameters:
       destination:
         type: string
@@ -434,9 +415,10 @@ commands:
               -o install.tar.gz "${URL}"
 
   gate-trivy-findings:
-    # The scans run report-only; this command is the gate. It predates the
-    # orb's own gate and keeps the security-check-fail-level bands and the
-    # local waiver semantics: only findings (vulnerabilities and
+    # The trivy-scan orb couples what is reported and what fails the job in
+    # one severity filter, so the scans run report-only over ALL severities
+    # (fail-on-findings: false) and this gate decides separately, from the
+    # JSON report, whether the job fails: only findings (vulnerabilities and
     # secrets) at or above security-check-fail-level do — minus
     # vulnerabilities covered by an unexpired entry in
     # .circleci/trivy-gate-waivers.json (staged into the workspace by
@@ -491,10 +473,11 @@ commands:
               echo "ERROR: ${WFILE} is not a valid waiver file — refusing to gate" >&2
               exit 1
             fi
-            # Waived iff an unexpired entry matches id, package (when
-            # scoped) and severity, which sized the window; design-
-            # acceptance may omit severity. Secrets are never waived;
-            # applied waivers are logged.
+            # A vulnerability is waived iff an unexpired entry matches its
+            # VulnerabilityID (and its PkgName, when the entry is
+            # package-scoped). Secrets are never waived. Every applied
+            # waiver is logged so the job output shows exactly what was
+            # excused, by whom, and until when.
             jq -r --arg gate "${GATE}" --arg today "${TODAY}" --slurpfile w "${WFILE}" '
               ([$w[0].waivers[]? | select(.expires >= $today)]) as $active
               | [.Results[]? | .Vulnerabilities[]?
@@ -502,9 +485,7 @@ commands:
                   | . as $v
                   | ($active[] | select(.id == $v.VulnerabilityID
                       and ((.package // $v.PkgName) == $v.PkgName))) as $m
-                  | if (($m.severity // $v.Severity) == $v.Severity)
-                    then "WAIVED: \($v.VulnerabilityID) (\($v.PkgName), \($v.Severity)) until \($m.expires) — \($m.reason) [approved by \($m."approved-by")]"
-                    else "WARNING: waiver \($m.id) declares severity \($m.severity) but the finding is \($v.Severity); not applied" end
+                  | "WAIVED: \($v.VulnerabilityID) (\($v.PkgName), \($v.Severity)) until \($m.expires) — \($m.reason) [approved by \($m."approved-by")]"
                 ] | unique | .[]' /tmp/trivy-results.json
             COUNT=$(jq --arg gate "${GATE}" --arg today "${TODAY}" --slurpfile w "${WFILE}" '
               ([$w[0].waivers[]? | select(.expires >= $today)]) as $active
@@ -512,8 +493,7 @@ commands:
                   | (.Vulnerabilities[]?
                       | select(. as $v
                           | [$active[] | select(.id == $v.VulnerabilityID
-                              and ((.package // $v.PkgName) == $v.PkgName)
-                              and ((.severity // $v.Severity) == $v.Severity))]
+                              and ((.package // $v.PkgName) == $v.PkgName))]
                           | length == 0)),
                     .Secrets[]?
                 ]
@@ -615,6 +595,7 @@ jobs:
             echo "${ARANGODB_VERSION_MAJOR_MINOR}" > /tmp/nightly/nightly-major-minor.txt
 
             echo "${ARANGODB_VERSION_MAJOR_MINOR}-nightly" > /tmp/nightly/rolling-tags.txt
+            echo "${ARANGODB_VERSION_MAJOR}-nightly"      >> /tmp/nightly/rolling-tags.txt
             if [ "${ORIG_RELEASE_TYPE}" = "devel" ]; then
               echo "devel-nightly" >> /tmp/nightly/rolling-tags.txt
             fi
@@ -653,141 +634,24 @@ jobs:
               exit 1
             fi
             TODAY=$(date -u +%F)
-            # Unparseable JSON is caught first: the validator below reads
-            # fields, and jq failing on a syntax error must not be confused
-            # with jq reporting no problems.
-            if ! jq empty "${W}" 2>/dev/null; then
-              echo "ERROR: ${W} is not valid JSON" >&2
-              cat "${W}" >&2
+            CAP=$(date -u -d "today + 90 days" +%F 2>/dev/null || date -u -v+90d +%F)
+            # Structural validation: every entry needs a non-empty id,
+            # reason and approved-by, an ISO expiry date no more than 90
+            # days out (time-boxed means time-boxed), and — if present —
+            # a non-empty package scope.
+            if ! jq -e --arg cap "${CAP}" '
+                 (.waivers | type == "array")
+                 and ([.waivers[] | select(
+                       ((.id? // "") | type == "string" and length > 0)
+                       and ((.expires? // "") | test("^[0-9]{4}-[0-9]{2}-[0-9]{2}$"))
+                       and (.expires <= $cap)
+                       and ((.reason? // "") | type == "string" and length > 0)
+                       and ((."approved-by"? // "") | type == "string" and length > 0)
+                       and (if has("package") then (.package | type == "string" and length > 0) else true end)
+                     )] | length) == (.waivers | length)' "${W}" >/dev/null; then
+              echo "ERROR: ${W} failed validation — every waiver needs id, reason, approved-by, and an expires date (YYYY-MM-DD) at most 90 days out (${CAP}); package, when given, must be non-empty" >&2
+              jq . "${W}" >&2 || cat "${W}" >&2
               exit 1
-            fi
-            # Duplicate keys are last-wins in every parser, so the entry a
-            # reviewer read can differ from the entry that gates.
-            if command -v python3 >/dev/null 2>&1; then
-              printf '%s\n' \
-                'import json, sys' \
-                'from collections import Counter' \
-                'def hook(pairs):' \
-                '    dupes = sorted(k for k, n in Counter(k for k, _ in pairs).items() if n > 1)' \
-                '    if dupes:' \
-                '        raise SystemExit("duplicate JSON keys: " + ", ".join(dupes))' \
-                '    return dict(pairs)' \
-                'json.load(open(sys.argv[1]), object_pairs_hook=hook)' > /tmp/waiver-dupes.py
-              if ! python3 /tmp/waiver-dupes.py "${W}" >&2; then
-                echo "ERROR: ${W} failed the duplicate-key check" >&2
-                exit 1
-              fi
-            fi
-            # Windows anchor to "detected" so a waiver cannot be renewed by
-            # re-dating it; unknown keys are rejected because Trivy's own
-            # ignorefile fails open on a misspelled key.
-            jq -r --arg today "${TODAY}" '
-                 def days: (. + "T00:00:00Z") | fromdate;
-                 # The roundtrip rejects calendar-invalid dates the regex
-                 # accepts (2026-13-01 would abort jq, 2026-02-30 would
-                 # silently normalize forward and stretch the window).
-                 def isdate: (type == "string") and test("^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
-                   and ((try (days | todate | .[0:10]) catch null) == .);
-                 def nonempty: (type == "string") and (length > 0);
-                 def window($class; $sev):
-                   if $class == "design-acceptance" then 366
-                   elif $sev == "CRITICAL" then 30
-                   elif $sev == "HIGH" then 30
-                   elif $sev == "MEDIUM" then 90
-                   elif $sev == "LOW" then 180
-                   elif $sev == "UNKNOWN" then 30
-                   else null
-                   end;
-                 ["id", "package", "severity", "detected", "expires", "reason", "approved-by", "class"] as $allowed
-                 | ["CRITICAL", "HIGH", "MEDIUM", "LOW", "UNKNOWN"] as $sevs
-                 | ["remediation-pending", "design-acceptance"] as $classes
-                 | if (type != "object") or (has("waivers") | not) or ((.waivers | type) != "array")
-                   then ["the file must be a JSON object with a \"waivers\" array"]
-                   else
-                     [ .waivers
-                       | to_entries[]
-                       | ("waiver #" + (.key + 1 | tostring)) as $at
-                       | .value as $w
-                       | if ($w | type) != "object" then "\($at): must be an object"
-                         else
-                           ($w.id // "") as $id
-                           | ("\($at)" + (if ($id | nonempty) then " (\($id))" else "" end)) as $at
-                           | (if ($w | has("class")) then $w.class else "remediation-pending" end) as $class
-                           | ($w.severity // "") as $sev
-                           | [ ( $w | keys_unsorted - $allowed | .[]
-                                 | "\($at): unknown key \"\(.)\", allowed keys are \($allowed | join(", "))" ),
-                               ( if ($id | nonempty) then empty
-                                 else "\($at): id is required and must be a non-empty string (the Trivy VulnerabilityID)" end ),
-                               ( if ($classes | index($class)) then empty
-                                 else "\($at): class \"\($class)\" is not one of \($classes | join(", "))" end ),
-                               ( if $class == "design-acceptance" then
-                                   ( if ($w | has("severity") | not) or ($sevs | index($sev)) then empty
-                                     else "\($at): severity, when given, must be one of \($sevs | join(", "))" end )
-                                 elif ($sevs | index($sev)) then empty
-                                 else "\($at): severity is required (one of \($sevs | join(", "))) and drives the expiry window" end ),
-                               ( if ($w.reason // "" | nonempty) then empty
-                                 else "\($at): reason is required and must be a non-empty string" end ),
-                               ( if ($w["approved-by"] // "" | nonempty) then empty
-                                 else "\($at): approved-by is required and must be a non-empty string" end ),
-                               ( if ($w | has("package") | not) or ($w.package | nonempty) then empty
-                                 else "\($at): package, when given, must be a non-empty string" end ),
-                               ( if ($w.detected // null | isdate) then empty
-                                 else "\($at): detected is required and must be a real YYYY-MM-DD date (the window runs from it)" end ),
-                               ( if ($w.detected // null | isdate)
-                                    and ($w.detected > (($today | days) + 86400 | todate | .[0:10])) then
-                                   "\($at): detected \($w.detected) is more than a day in the future; post-dating detection would extend the remediation window"
-                                 else empty end ),
-                               ( if ($w.expires // null | isdate) then empty
-                                 else "\($at): expires is required and must be a real YYYY-MM-DD date" end ),
-                               ( if ($w.detected // null | isdate) and ($w.expires // null | isdate) then
-                                   ( if $w.expires >= $w.detected then empty
-                                     else "\($at): expires \($w.expires) is before detected \($w.detected)" end ),
-                                   ( window($class; $sev) as $win
-                                     | if $win == null then empty
-                                       else (($w.detected | days) + ($win * 86400) | todate | .[0:10]) as $cap
-                                         | if $w.expires <= $cap then empty
-                                           else "\($at): expires \($w.expires) is beyond the \($win)-day \(if $class == "design-acceptance" then "design-acceptance" else $sev end) window (detected \($w.detected), cap \($cap))" end
-                                       end ),
-                                   ( (($today | days) + (366 * 86400) | todate | .[0:10]) as $horizon
-                                     | if $w.expires <= $horizon then empty
-                                       else "\($at): expires \($w.expires) is past the \($horizon) renewal horizon, that is a parking lot, not a deadline" end )
-                                 else empty end )
-                             ]
-                           | .[]
-                         end
-                     ]
-                   end
-                 | .[]' "${W}" > /tmp/waiver-problems.txt
-            if [ -s /tmp/waiver-problems.txt ]; then
-              echo "ERROR: ${W} failed validation:" >&2
-              sed -e "s/^/  /" /tmp/waiver-problems.txt >&2
-              exit 1
-            fi
-            # KEV-listed ids get the BOD 26-04 clock (14 days from
-            # detection), not the severity window. Fail-open on feed
-            # errors: a CISA outage must not block the nightly.
-            if [ "$(jq -r '.waivers | length' "${W}")" != "0" ]; then
-              if curl -sSfL --retry 3 --retry-delay 2 --max-time 60 \
-                   -o /tmp/kev-catalog.json \
-                   https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json \
-                 && jq -e '.vulnerabilities | type == "array"' /tmp/kev-catalog.json >/dev/null 2>&1; then
-                jq -r --arg today "${TODAY}" --slurpfile kev /tmp/kev-catalog.json '
-                     ([$kev[0].vulnerabilities[]?.cveID]) as $ids
-                     | .waivers[]
-                     | select(.expires >= $today)
-                     | select(.id as $i | $ids | index($i))
-                     | ((.detected + "T00:00:00Z" | fromdate) + (14 * 86400) | todate | .[0:10]) as $cap
-                     | select(.expires > $cap)
-                     | "\(.id): KEV-listed, expires \(.expires) is beyond the 14-day KEV window (detected \(.detected), cap \($cap))"' \
-                  "${W}" > /tmp/kev-problems.txt
-                if [ -s /tmp/kev-problems.txt ]; then
-                  echo "ERROR: ${W} waives actively exploited vulnerabilities past the KEV window:" >&2
-                  sed -e "s/^/  /" /tmp/kev-problems.txt >&2
-                  exit 1
-                fi
-              else
-                echo "NOTICE: KEV catalog unreachable; KEV expiry caps were not enforced on this run." >&2
-              fi
             fi
             # Expired entries are dead weight (the finding blocks again
             # regardless) — warn so they get cleaned up.
@@ -911,17 +775,11 @@ jobs:
 
   # ── Packages (DEB / RPM / TAR.GZ) ────────────────────────────────────────────
   build-package:
-    # Builds one package format from the install tree, executed directly
-    # inside the build image, which also carries the packaging toolchain:
-    #   deb  "debian/rules binary" with the templates from
-    #        scripts/packaging/debian/
-    #   rpm  rpmbuild with the spec from scripts/packaging/rpm/
-    #   tar  server + client tar.gz bundles with the launcher wrappers
-    #        from scripts/packaging/binForTarGz/
+    # Builds the TAR.GZ bundles (the only 4.0 package format) from the
+    # install tree, executed directly inside the build image: server +
+    # client tar.gz with the launcher wrappers from
+    # scripts/packaging/binForTarGz/.
     parameters:
-      format:
-        type: enum
-        enum: ["deb", "rpm", "tar"]
       arch:
         type: string
       resource-class:
@@ -942,38 +800,32 @@ jobs:
           edition: enterprise
       - extract-install-tree
       - run:
-          name: Build << parameters.format >> packages
+          name: Build tar packages
           command: |
             export EDITION=enterprise
             export PACKAGE_STRIP=ExceptArangod
             export ARCH=<< parameters.arch >>
             export PACKAGES_OUT=/tmp/nightly/packages/<< parameters.arch >>
-            case "<< parameters.format >>" in
-              deb) scripts/packaging/build-deb.sh ;;
-              rpm) scripts/packaging/build-rpm.sh ;;
-              tar) scripts/packaging/build-targz.sh ;;
-            esac
+            scripts/packaging/build-targz.sh
       - persist_to_workspace:
           root: /tmp/nightly
           paths:
             - packages/<< parameters.arch >>
       - store_artifacts:
           path: /tmp/nightly/packages/<< parameters.arch >>
-          destination: packages/<< parameters.format >>/<< parameters.arch >>
+          destination: packages/tar/<< parameters.arch >>
 
   # ── Docker images ─────────────────────────────────────────────────────────────
   build-nightly-docker-image:
-    # Builds one nightly image (Alpine or Ubuntu based) and exports it via
-    # "docker save" into the workspace. Nothing is pushed here;
-    # publish-nightly pushes. Tag scheme: the Ubuntu images insert -deb
-    # between version and arch suffix (e.g. 3.12.10-nightly.20260708-deb-amd64).
+    # Builds BOTH Ubuntu-based nightly images for one architecture —
+    # arangodb/core-preview (server, client tools included) and
+    # arangodb/client-tools-preview (client tools only, pruned from the
+    # same install tree the way build-targz.sh builds the client bundle) —
+    # and exports them via "docker save" into the workspace. Nothing is
+    # pushed here; publish-nightly pushes.
     parameters:
       arch:
         type: string        # amd64 | arm64
-      distro:
-        type: enum
-        enum: ["alpine", "deb"]
-        default: "alpine"
       resource-class:
         type: string
     docker:
@@ -1013,84 +865,103 @@ jobs:
             /home/circleci/project/scripts/packaging/strip-install-tree.sh \
               /home/circleci/project/scripts/docker/deploy/install
       - run:
-          name: Build and export Docker image
+          name: Prune client-tools install tree
+          command: |
+            # The client image ships the same tree as the TAR.GZ client
+            # bundle (build-targz.sh): client tools present, server bits
+            # removed — no arangod, no starter, no server-side JS, no
+            # server config/data/service files.
+            set -eu
+            cd /home/circleci/project/scripts/docker/deploy
+            cp -a install install-client
+            rm -rf install-client/usr/sbin \
+                   install-client/usr/bin/arangodb \
+                   install-client/usr/share/arangodb3/js/server \
+                   install-client/usr/share/arangodb3/arangodb-update-db \
+                   install-client/etc \
+                   install-client/var
+            find install-client/usr/share/man -type f \
+              \( -name 'arangod.8' -o -name 'arangodb.8' -o -name 'arango-dfdb.8' -o -name 'rcarangod.8' \) \
+              -delete 2>/dev/null || true
+      - run:
+          name: Build and export Docker images
           command: |
             set -x
             VERSION="$(cat /tmp/nightly/nightly-version.txt)"
-            IMAGE="arangodb/enterprise-preview"
 
-            DISTRO="<< parameters.distro >>"
-            SUFFIX=""
-            if [ "${DISTRO}" != "alpine" ]; then
-              SUFFIX="-${DISTRO}"
-            fi
             if [ "<< parameters.arch >>" = "arm64" ]; then
               TAG_ARCH="arm64v8"
             else
               TAG_ARCH="<< parameters.arch >>"
             fi
-            VERSION_TAG="${IMAGE}:${VERSION}${SUFFIX}-${TAG_ARCH}"
 
             cd /home/circleci/project/scripts/docker/deploy
-
-            docker build \
-              --platform "linux/<< parameters.arch >>" \
-              --build-arg arch=<< parameters.arch >> \
-              --no-cache \
-              --pull \
-              -t "${VERSION_TAG}" \
-              --file deploy-${DISTRO}.dockerfile .
-
             mkdir -p /tmp/nightly/docker
-            docker save -o /tmp/nightly/docker/enterprise-preview-${DISTRO}-<< parameters.arch >>.tar "${VERSION_TAG}"
+
+            for IMAGE_NAME in core-preview client-tools-preview; do
+              if [ "${IMAGE_NAME}" = "core-preview" ]; then
+                DOCKERFILE=deploy-ubuntu.dockerfile
+              else
+                DOCKERFILE=deploy-ubuntu-client.dockerfile
+              fi
+              VERSION_TAG="arangodb/${IMAGE_NAME}:${VERSION}-${TAG_ARCH}"
+
+              docker build \
+                --platform "linux/<< parameters.arch >>" \
+                --build-arg arch=<< parameters.arch >> \
+                --no-cache \
+                --pull \
+                -t "${VERSION_TAG}" \
+                --file "${DOCKERFILE}" .
+
+              docker save -o /tmp/nightly/docker/${IMAGE_NAME}-<< parameters.arch >>.tar "${VERSION_TAG}"
+            done
       - run:
           name: Write image build report
           command: |
             VERSION="$(cat /tmp/nightly/nightly-version.txt)"
-            IMAGE="arangodb/enterprise-preview"
-            DISTRO="<< parameters.distro >>"
-            SUFFIX=""
-            if [ "${DISTRO}" != "alpine" ]; then
-              SUFFIX="-${DISTRO}"
-            fi
             if [ "<< parameters.arch >>" = "arm64" ]; then
               TAG_ARCH="arm64v8"
             else
               TAG_ARCH="<< parameters.arch >>"
             fi
-            VERSION_TAG="${IMAGE}:${VERSION}${SUFFIX}-${TAG_ARCH}"
             mkdir -p /tmp/reports
-            {
-              echo "ArangoDB nightly Docker image build report"
-              echo "=========================================="
-              echo "Image:     ${VERSION_TAG}"
-              echo "Distro:    ${DISTRO}"
-              echo "Platform:  linux/<< parameters.arch >>"
-              echo "Image ID:  $(docker image inspect --format '{{.Id}}' "${VERSION_TAG}")"
-              echo "Created:   $(docker image inspect --format '{{.Created}}' "${VERSION_TAG}")"
-              echo "Size:      $(docker image inspect --format '{{.Size}}' "${VERSION_TAG}") bytes"
-              echo "Built by:  ${CIRCLE_BUILD_URL}"
-              echo
-              echo "Tags applied by publish-nightly (docker.io, plus GCR when selected):"
-              echo "  ${VERSION_TAG}"
-              echo
-              echo "Multi-arch manifest tags (both architectures, referencing the dated per-arch images):"
-              echo "  ${IMAGE}:${VERSION}${SUFFIX}"
-              while read -r ROLLING_TAG; do
-                echo "  ${IMAGE}:${ROLLING_TAG}${SUFFIX}"
-              done < /tmp/nightly/rolling-tags.txt
-              echo
-              echo "Source revisions:"
-              sed -n 's/^\(VERSION\|Community\|Enterprise\|Starter\|Rclone\): */  \1: /p' /tmp/nightly/sourceInfo.log
-            } > /tmp/reports/docker-image-${DISTRO}-<< parameters.arch >>.txt
-            cat /tmp/reports/docker-image-${DISTRO}-<< parameters.arch >>.txt
+            for IMAGE_NAME in core-preview client-tools-preview; do
+              IMAGE="arangodb/${IMAGE_NAME}"
+              VERSION_TAG="${IMAGE}:${VERSION}-${TAG_ARCH}"
+              {
+                echo "ArangoDB nightly Docker image build report"
+                echo "=========================================="
+                echo "Image:     ${VERSION_TAG}"
+                echo "Base:      ubuntu:26.04"
+                echo "Platform:  linux/<< parameters.arch >>"
+                echo "Image ID:  $(docker image inspect --format '{{.Id}}' "${VERSION_TAG}")"
+                echo "Created:   $(docker image inspect --format '{{.Created}}' "${VERSION_TAG}")"
+                echo "Size:      $(docker image inspect --format '{{.Size}}' "${VERSION_TAG}") bytes"
+                echo "Built by:  ${CIRCLE_BUILD_URL}"
+                echo
+                echo "Tags applied by publish-nightly (docker.io, plus GCR when selected):"
+                echo "  ${VERSION_TAG}"
+                echo
+                echo "Multi-arch manifest tags (both architectures, referencing the dated per-arch images):"
+                echo "  ${IMAGE}:${VERSION}"
+                while read -r ROLLING_TAG; do
+                  echo "  ${IMAGE}:${ROLLING_TAG}"
+                done < /tmp/nightly/rolling-tags.txt
+                echo
+                echo "Source revisions:"
+                sed -n 's/^\(VERSION\|Community\|Enterprise\|Starter\|Rclone\): */  \1: /p' /tmp/nightly/sourceInfo.log
+              } > /tmp/reports/docker-image-${IMAGE_NAME}-<< parameters.arch >>.txt
+              cat /tmp/reports/docker-image-${IMAGE_NAME}-<< parameters.arch >>.txt
+            done
       - store_artifacts:
           path: /tmp/reports
           destination: reports
       - persist_to_workspace:
           root: /tmp/nightly
           paths:
-            - docker/enterprise-preview-<< parameters.distro >>-<< parameters.arch >>.tar
+            - docker/core-preview-<< parameters.arch >>.tar
+            - docker/client-tools-preview-<< parameters.arch >>.tar
 
   # ── ClamAV scan ──────────────────────────────────────────────────────────────
   scan-packages:
@@ -1170,9 +1041,10 @@ jobs:
   # One job instance per published item, so a finding in one item never
   # prevents the remaining items from being scanned; publish-nightly requires
   # every instance, so any gated finding still blocks the whole publish.
-  # Reports carry ALL severities; the gate band stays CRITICAL/HIGH and
-  # gate-trivy-findings decides per security-check-fail-level.
-  # EOL base-OS check on image
+  # The orb couples reporting and failing in one severity filter, so the
+  # scans run report-only over ALL severities (unfixed CVEs included, secret
+  # scanning kept enabled — orb default) and the gate-trivy-findings command
+  # fails the job per security-check-fail-level. EOL base-OS check on image
   # scans still fails unconditionally. detection-priority stays "precise" —
   # the orb explicitly recommends against "comprehensive" on blocking gates,
   # and these scans still feed one.
@@ -1180,15 +1052,11 @@ jobs:
   # save_cache/restore_cache, which the self-hosted runner classes do not
   # support (the same reason the ClamAV database lives in S3).
   security-check-package:
-    # Trivy does not look inside .deb/.rpm/.tar.gz files, so the packages of
-    # one format+arch are extracted first and the extracted contents are
-    # rootfs-scanned (CVEs in bundled dependencies INCLUDING compiled Go
-    # binaries — fs mode reads lockfiles only and misses them — plus
-    # committed secrets).
+    # Trivy does not look inside .tar.gz files, so the packages of one arch
+    # are extracted first and the extracted contents are rootfs-scanned
+    # (CVEs in bundled dependencies INCLUDING compiled Go binaries — fs
+    # mode reads lockfiles only and misses them — plus committed secrets).
     parameters:
-      target:
-        type: enum
-        enum: ["deb", "rpm", "tar"]
       arch:
         type: string
     docker:
@@ -1202,70 +1070,44 @@ jobs:
       - attach_workspace:
           at: /tmp/nightly
       - run:
-          name: Extract << parameters.target >> packages for scanning
+          name: Extract tar packages for scanning
           command: |
             set -eu
             SRC=/tmp/nightly/packages/<< parameters.arch >>
             OUT=/tmp/scan-root
             mkdir -p "${OUT}"
             FOUND=0
-            case "<< parameters.target >>" in
-              deb)
-                for f in "${SRC}"/*.deb; do
-                  [ -e "$f" ] || continue
-                  FOUND=1
-                  dpkg-deb -x "$f" "${OUT}/$(basename "$f")"
-                done
-                ;;
-              rpm)
-                for f in "${SRC}"/*.rpm; do
-                  [ -e "$f" ] || continue
-                  FOUND=1
-                  d="${OUT}/$(basename "$f")"
-                  mkdir -p "$d"
-                  (cd "$d" && rpm2cpio "$f" | cpio -idm --quiet)
-                done
-                ;;
-              tar)
-                for f in "${SRC}"/*.tar.gz; do
-                  [ -e "$f" ] || continue
-                  FOUND=1
-                  # Full basename (incl. .tar.gz), so the per-package report
-                  # names derived from these directories match the published
-                  # package files exactly, like for deb/rpm.
-                  d="${OUT}/$(basename "$f")"
-                  mkdir -p "$d"
-                  tar -xzf "$f" -C "$d"
-                done
-                ;;
-            esac
-            # No files while this format is enabled means a broken workspace,
+            for f in "${SRC}"/*.tar.gz; do
+              [ -e "$f" ] || continue
+              FOUND=1
+              # Full basename (incl. .tar.gz), so the per-package report
+              # names derived from these directories match the published
+              # package files exactly.
+              d="${OUT}/$(basename "$f")"
+              mkdir -p "$d"
+              tar -xzf "$f" -C "$d"
+            done
+            # No files while tarballs are enabled means a broken workspace,
             # not a clean scan — fail loudly instead of false-passing.
             if [ "${FOUND}" = "0" ]; then
-              echo "No << parameters.target >> packages found in ${SRC}" >&2
+              echo "No tar packages found in ${SRC}" >&2
               exit 1
             fi
-      # Report-only; gate-trivy-findings decides. report-severity keeps
-      # /tmp/trivy-results.json full-band; severity only narrows the orb's
-      # trivy-gate.txt view, inert while fail-on-findings is false.
+      # Report-only over ALL severities; gate-trivy-findings below decides
+      # whether the job (and with it the publish) fails.
       - trivy-scan/scan:
           scan-type: rootfs
           scan-path: /tmp/scan-root
-          severity: "CRITICAL,HIGH"
-          report-severity: "CRITICAL,HIGH,MEDIUM,LOW,UNKNOWN"
+          severity: "CRITICAL,HIGH,MEDIUM,LOW,UNKNOWN"
           fail-on-findings: false
           ignore-unfixed: false
           store-junit-results: true
-          # Named targets (substring match, read off nightly 53660): the
-          # orb's default floor of ONE would keep the gate green over a
-          # shrunken surface. arangod is C++, which no trivy mode analyzes.
-          expect-targets: "Node.js,usr/bin/arangodb,usr/sbin/rclone-arangodb"
           # sbom-output makes the scan run with --list-all-pkgs so the JSON
           # report carries the FULL package inventory (not only vulnerable
           # ones); the PER-PACKAGE SBOMs below are rendered from that
           # report. The combined file itself is not stored — per-package is
           # the deliverable shape.
-          sbom-output: /tmp/<< parameters.target >>-<< parameters.arch >>.sbom.cdx.json
+          sbom-output: /tmp/tar-<< parameters.arch >>.sbom.cdx.json
       # Staged and persisted before the gate so the full reports reach the
       # workspace even when the gate fails (publish is blocked then anyway).
       - run:
@@ -1409,28 +1251,18 @@ jobs:
           root: /tmp/nightly
           paths:
             - trivy-reports/<< parameters.arch >>
-      # KEV/EPSS over the full-band report: a KEV-listed MEDIUM sits below
-      # every CVSS band, and BOD 26-04 keys deadlines on KEV (EPSS is
-      # complementary, not mandated). Report-only: arming it would let a
-      # feed update alone block a publish. strict-feeds false, so a feed
-      # outage cannot.
-      - trivy-scan/kev-epss-check:
-          report-path: /tmp/trivy-results.json
-          fail-on-match: false
-          strict-feeds: false
       - gate-trivy-findings
 
   security-check-docker-image:
-    # Loads one exported per-arch image (per distro) into the remote Docker
-    # daemon and scans it before publish-nightly is allowed to push it
-    # anywhere.
+    # Loads one exported per-arch image (per image name) into the remote
+    # Docker daemon and scans it before publish-nightly is allowed to push
+    # it anywhere.
     parameters:
       arch:
         type: string
-      distro:
+      image:
         type: enum
-        enum: ["alpine", "deb"]
-        default: "alpine"
+        enum: ["core-preview", "client-tools-preview"]
     docker:
       - image: cimg/base:current
     # medium suffices: the image is Alpine-sized and the daemon runs on the
@@ -1446,27 +1278,20 @@ jobs:
             set -eu
             # Orb parameters are static, so the dynamically versioned tag is
             # re-tagged to a fixed reference the scan step can name.
-            LOADED="$(docker load -i /tmp/nightly/docker/enterprise-preview-<< parameters.distro >>-<< parameters.arch >>.tar | sed -n 's/^Loaded image: //p')"
-            docker tag "${LOADED}" nightly-security-scan:<< parameters.distro >>-<< parameters.arch >>
+            LOADED="$(docker load -i /tmp/nightly/docker/<< parameters.image >>-<< parameters.arch >>.tar | sed -n 's/^Loaded image: //p')"
+            docker tag "${LOADED}" nightly-security-scan:<< parameters.image >>-<< parameters.arch >>
       # Report-only over ALL severities; gate-trivy-findings below decides
       # whether the job (and with it the publish) fails. Only the EOL
       # base-OS check still fails the scan itself, independently of
       # security-check-fail-level.
       - trivy-scan/scan:
           scan-type: image
-          image-ref: nightly-security-scan:<< parameters.distro >>-<< parameters.arch >>
-          # Same report/gate split as the package scans.
-          severity: "CRITICAL,HIGH"
-          report-severity: "CRITICAL,HIGH,MEDIUM,LOW,UNKNOWN"
+          image-ref: nightly-security-scan:<< parameters.image >>-<< parameters.arch >>
+          severity: "CRITICAL,HIGH,MEDIUM,LOW,UNKNOWN"
           fail-on-findings: false
           ignore-unfixed: false
           exit-on-eol: "1"
           store-junit-results: true
-          # Package-scan targets plus the OS package database (unnamed: it
-          # embeds the re-tag and distro release); min-targets catches its
-          # loss.
-          expect-targets: "Node.js,usr/bin/arangodb,usr/sbin/rclone-arangodb"
-          min-targets: 4
           # Setting sbom-output makes the scan run with --list-all-pkgs so
           # the JSON report carries the FULL package inventory. The
           # published SBOMs are NOT this file: they are rendered in the
@@ -1481,8 +1306,8 @@ jobs:
           command: |
             set -eu
             # The report pair is named after the pushed per-arch image
-            # reference (arangodb/enterprise-preview:<VERSION>[-<distro>]-
-            # <amd64|arm64v8>, with / and : mapped to _), so on
+            # reference (arangodb/<image>:<VERSION>-<amd64|arm64v8>,
+            # with / and : mapped to _), so on
             # download.arangodb.com it reads as "the scan of exactly this
             # image". publish-nightly puts these into the Docker/ directory
             # of the nightly tree, next to the per-image publish reports —
@@ -1499,17 +1324,12 @@ jobs:
                   -e 's/╚/+/g' -e 's/╩/+/g' -e 's/╝/+/g' "$1"
             }
             VERSION="$(cat /tmp/nightly/nightly-version.txt)"
-            if [ "<< parameters.distro >>" = "alpine" ]; then
-              SUFFIX=""
-            else
-              SUFFIX="-<< parameters.distro >>"
-            fi
             case "<< parameters.arch >>" in
               amd64) TAG_ARCH="amd64" ;;
               arm64) TAG_ARCH="arm64v8" ;;
             esac
-            IMAGE_REF="arangodb/enterprise-preview:${VERSION}${SUFFIX}-${TAG_ARCH}"
-            NAME="arangodb_enterprise-preview_${VERSION}${SUFFIX}-${TAG_ARCH}"
+            IMAGE_REF="arangodb/<< parameters.image >>:${VERSION}-${TAG_ARCH}"
+            NAME="arangodb_<< parameters.image >>_${VERSION}-${TAG_ARCH}"
             OUT=/tmp/nightly/trivy-reports/docker
             mkdir -p "${OUT}"
             STAGE_FAILED=0
@@ -1584,12 +1404,6 @@ jobs:
           root: /tmp/nightly
           paths:
             - trivy-reports/docker
-      # See the package job for rationale and flip criterion. Reads the
-      # untouched orb report; the correlation only needs vulnerability ids.
-      - trivy-scan/kev-epss-check:
-          report-path: /tmp/trivy-results.json
-          fail-on-match: false
-          strict-feeds: false
       - gate-trivy-findings
 
   # ── GPG signing ──────────────────────────────────────────────────────────────
@@ -1727,9 +1541,7 @@ jobs:
       - run:
           name: Stage packages and sourceInfo in GCS (not yet visible)
           command: |
-            if [ "<< pipeline.parameters.build-debian-packages >>" = "false" ] && \
-               [ "<< pipeline.parameters.build-rpm-packages >>" = "false" ] && \
-               [ "<< pipeline.parameters.build-tarballs >>" = "false" ]; then
+            if [ "<< pipeline.parameters.build-tarballs >>" = "false" ]; then
               echo "No packages selected, skipping GCS staging"
               exit 0
             fi
@@ -1789,9 +1601,7 @@ jobs:
               for arch in amd64 arm64; do
                 printf '\n%s:\n' "${GCS_ARCH[$arch]}"
                 printf '  %-84s %9s  %s\n' "FILE" "SIZE (MB)" "SHA256"
-                for f in /tmp/nightly/packages/${arch}/*.deb \
-                         /tmp/nightly/packages/${arch}/*.rpm \
-                         /tmp/nightly/packages/${arch}/*.tar.gz \
+                for f in /tmp/nightly/packages/${arch}/*.tar.gz \
                          /tmp/nightly/objectfiles/${arch}/*.tar.gz; do
                   [ -e "$f" ] || continue
                   SIZE_MB="$(awk -v b="$(stat -c%s "$f")" 'BEGIN{printf "%.1f", b/1048576}')"
@@ -1842,25 +1652,27 @@ jobs:
             # workspace artifacts) but never logs in or pushes.
             PR_RUN="<< pipeline.parameters.pr-run >>"
             REPORT=/tmp/docker-publish-report.txt
-            # Alpine is the suffix-less default image; Ubuntu images
-            # carry -deb between version and arch.
-            DISTROS=()
-            if [ "<< pipeline.parameters.build-alpine-images >>" = "true" ]; then DISTROS+=("alpine"); fi
-            if [ "<< pipeline.parameters.build-deb-images >>" = "true" ]; then DISTROS+=("deb"); fi
-            if [ ${#DISTROS[@]} -eq 0 ]; then
+            # Both Ubuntu-based images (core-preview: server incl. client
+            # tools; client-tools-preview: client tools only) share one
+            # pipeline parameter and one tag scheme (suffix-less).
+            IMAGES=()
+            if [ "<< pipeline.parameters.build-ubuntu-images >>" = "true" ]; then
+              IMAGES=("core-preview" "client-tools-preview")
+            fi
+            if [ ${#IMAGES[@]} -eq 0 ]; then
               echo "Docker images not selected, nothing was pushed." > "${REPORT}"
               echo "Docker images not selected, skipping push"
               exit 0
             fi
             # Uploads all image blobs under the dated per-arch tags (e.g.
-            # 3.12.10-nightly.20260702-amd64), which no user consumes.
+            # 4.0.0-nightly.20260727-amd64), which no user consumes.
             # Nothing that users pull changes until the commit step updates
             # the multi-arch manifests.
             VERSION="$(cat /tmp/nightly/nightly-version.txt)"
-            # The image is always arangodb/enterprise-preview; the registry
-            # prefix selects where it is pushed (docker.io always, GCR when
+            # The image names are always arangodb/core-preview and
+            # arangodb/client-tools-preview; the registry prefix selects
+            # where they are pushed (docker.io always, GCR when
             # push-images-to-gcr-also is set).
-            IMAGE="arangodb/enterprise-preview"
             REG_PREFIXES=("docker.io/")
 
             if [ "${PR_RUN}" = "true" ]; then
@@ -1881,13 +1693,11 @@ jobs:
               REG_PREFIXES+=("${NIGHTLY_GCR_PREFIX:-gcr.io/gcr-for-testing/}")
             fi
 
-            distro_suffix() { if [ "$1" = "alpine" ]; then echo ""; else echo "-$1"; fi; }
-
             {
               echo "ArangoDB nightly Docker publish report"
               echo "======================================"
               echo "Version:    ${VERSION}"
-              echo "Distros:    ${DISTROS[*]}"
+              echo "Images:     ${IMAGES[*]}"
               echo "Registries: ${REG_PREFIXES[*]}"
               echo "Workflow:   ${CIRCLE_WORKFLOW_ID}"
               if [ "${PR_RUN}" = "true" ]; then
@@ -1900,29 +1710,29 @@ jobs:
             set -x
             retry() { "$@" || { sleep 5; "$@"; } || { sleep 15; "$@"; } || { sleep 30; "$@"; }; }
 
-            for DISTRO in "${DISTROS[@]}"; do
-              docker load -i /tmp/nightly/docker/enterprise-preview-${DISTRO}-amd64.tar
-              docker load -i /tmp/nightly/docker/enterprise-preview-${DISTRO}-arm64.tar
+            for IMG in "${IMAGES[@]}"; do
+              docker load -i /tmp/nightly/docker/${IMG}-amd64.tar
+              docker load -i /tmp/nightly/docker/${IMG}-arm64.tar
             done
 
             # Next to the combined report, the pushed refs are also collected
-            # per distro (/tmp/docker-stage-<distro>.txt): the "Publish
+            # per image (/tmp/docker-stage-<image>.txt): the "Publish
             # per-image Docker reports" step folds them into the per-image
             # <image>.txt reports in the Docker/ directory.
-            for DISTRO in "${DISTROS[@]}"; do
-              SUFFIX="$(distro_suffix "${DISTRO}")"
-              FRAG="/tmp/docker-stage-${DISTRO}.txt"
+            for IMG in "${IMAGES[@]}"; do
+              IMAGE="arangodb/${IMG}"
+              FRAG="/tmp/docker-stage-${IMG}.txt"
               : > "${FRAG}"
               for REG_PREFIX in "${REG_PREFIXES[@]}"; do
                 REPO="${REG_PREFIX}${IMAGE}"
                 for TAG_ARCH in amd64 arm64v8; do
-                  docker tag "${IMAGE}:${VERSION}${SUFFIX}-${TAG_ARCH}" "${REPO}:${VERSION}${SUFFIX}-${TAG_ARCH}"
+                  docker tag "${IMAGE}:${VERSION}-${TAG_ARCH}" "${REPO}:${VERSION}-${TAG_ARCH}"
                   if [ "${PR_RUN}" = "true" ]; then
                     DIGEST="pr-run: not pushed"
                   else
-                    DIGEST="$(retry docker push "${REPO}:${VERSION}${SUFFIX}-${TAG_ARCH}" | sed -n 's/.*digest: \(sha256:[0-9a-f]*\).*/\1/p' | tail -1)"
+                    DIGEST="$(retry docker push "${REPO}:${VERSION}-${TAG_ARCH}" | sed -n 's/.*digest: \(sha256:[0-9a-f]*\).*/\1/p' | tail -1)"
                   fi
-                  LINE="  ${REPO}:${VERSION}${SUFFIX}-${TAG_ARCH} (${DIGEST})"
+                  LINE="  ${REPO}:${VERSION}-${TAG_ARCH} (${DIGEST})"
                   echo "${LINE}" >> "${REPORT}"
                   echo "${LINE}" >> "${FRAG}"
                 done
@@ -1945,9 +1755,7 @@ jobs:
 
             PR_RUN="<< pipeline.parameters.pr-run >>"
             PACKAGES_SELECTED=true
-            if [ "<< pipeline.parameters.build-debian-packages >>" = "false" ] && \
-               [ "<< pipeline.parameters.build-rpm-packages >>" = "false" ] && \
-               [ "<< pipeline.parameters.build-tarballs >>" = "false" ]; then
+            if [ "<< pipeline.parameters.build-tarballs >>" = "false" ]; then
               PACKAGES_SELECTED=false
             fi
 
@@ -1963,7 +1771,7 @@ jobs:
               # at least one package file of some format.
               STAGE_LISTING="$(gsutil ls -r "${STAGE_GCS}/${PACKAGES}/Linux" 2>/dev/null || true)"
               for arch_dir in x86_64 aarch64; do
-                if ! echo "${STAGE_LISTING}" | grep -E "/Linux/${arch_dir}/[^/]+\.(deb|rpm|tar\.gz)$" > /dev/null; then
+                if ! echo "${STAGE_LISTING}" | grep -E "/Linux/${arch_dir}/[^/]+\.tar\.gz$" > /dev/null; then
                   echo "Staging tree ${STAGE_GCS}/${PACKAGES}/Linux/${arch_dir} contains no package files; refusing to promote over the live tree."
                   echo "The stage step probably did not complete — investigate and rerun from failed."
                   exit 1
@@ -2002,56 +1810,55 @@ jobs:
               fi
             fi
 
-            DISTROS=()
-            if [ "<< pipeline.parameters.build-alpine-images >>" = "true" ]; then DISTROS+=("alpine"); fi
-            if [ "<< pipeline.parameters.build-deb-images >>" = "true" ]; then DISTROS+=("deb"); fi
-            if [ "${PR_RUN}" = "true" ] && [ ${#DISTROS[@]} -gt 0 ]; then
+            IMAGES=()
+            if [ "<< pipeline.parameters.build-ubuntu-images >>" = "true" ]; then
+              IMAGES=("core-preview" "client-tools-preview")
+            fi
+            if [ "${PR_RUN}" = "true" ] && [ ${#IMAGES[@]} -gt 0 ]; then
               # dry run: the dated per-arch tags were never pushed, so there
               # is nothing to assemble manifests from. Write the report
-              # placeholders (the per-image reports step cats the per-distro
+              # placeholders (the per-image reports step cats the per-image
               # fragments) and skip the manifest block below.
               REPORT=/tmp/docker-publish-report.txt
               printf '\nMulti-arch manifest tags (what users pull):\n' >> "${REPORT}"
               echo "  (pr-run: not created - the dated per-arch tags were never pushed)" >> "${REPORT}"
-              for DISTRO in "${DISTROS[@]}"; do
-                echo "  (pr-run: manifests not created)" > "/tmp/docker-commit-${DISTRO}.txt"
+              for IMG in "${IMAGES[@]}"; do
+                echo "  (pr-run: manifests not created)" > "/tmp/docker-commit-${IMG}.txt"
               done
-              DISTROS=()
+              IMAGES=()
             fi
-            if [ ${#DISTROS[@]} -gt 0 ]; then
+            if [ ${#IMAGES[@]} -gt 0 ]; then
               set -x
               VERSION="$(cat /tmp/nightly/nightly-version.txt)"
-              # Rolling tags from prepare-nightly: <major.minor>-nightly, plus
-              # devel-nightly when the tree was a devel tree.
+              # Rolling tags from prepare-nightly: <major.minor>-nightly and
+              # <major>-nightly, plus devel-nightly when the tree was a
+              # devel tree.
               mapfile -t ROLLING_TAGS < /tmp/nightly/rolling-tags.txt
-              IMAGE="arangodb/enterprise-preview"
               REG_PREFIXES=("docker.io/")
               if [ "<< pipeline.parameters.push-images-to-gcr-also >>" = "true" ]; then
                 REG_PREFIXES+=("${NIGHTLY_GCR_PREFIX:-gcr.io/gcr-for-testing/}")
               fi
-
-              distro_suffix() { if [ "$1" = "alpine" ]; then echo ""; else echo "-$1"; fi; }
 
               # No rolling per-arch tags: every manifest (dated and rolling)
               # references the dated per-arch images pushed in the stage
               # phase directly.
               REPORT=/tmp/docker-publish-report.txt
               printf '\nMulti-arch manifest tags (what users pull):\n' >> "${REPORT}"
-              # As in the stage step, the refs are also collected per distro
-              # (/tmp/docker-commit-<distro>.txt) for the per-image reports.
-              for DISTRO in "${DISTROS[@]}"; do
-                SUFFIX="$(distro_suffix "${DISTRO}")"
-                FRAG="/tmp/docker-commit-${DISTRO}.txt"
+              # As in the stage step, the refs are also collected per image
+              # (/tmp/docker-commit-<image>.txt) for the per-image reports.
+              for IMG in "${IMAGES[@]}"; do
+                IMAGE="arangodb/${IMG}"
+                FRAG="/tmp/docker-commit-${IMG}.txt"
                 : > "${FRAG}"
                 for REG_PREFIX in "${REG_PREFIXES[@]}"; do
                   REPO="${REG_PREFIX}${IMAGE}"
                   for MANIFEST_TAG in "${VERSION}" "${ROLLING_TAGS[@]}"; do
-                    docker manifest rm "${REPO}:${MANIFEST_TAG}${SUFFIX}" 2>/dev/null || true
-                    retry docker manifest create "${REPO}:${MANIFEST_TAG}${SUFFIX}" \
-                      --amend "${REPO}:${VERSION}${SUFFIX}-amd64" \
-                      --amend "${REPO}:${VERSION}${SUFFIX}-arm64v8"
-                    DIGEST="$(retry docker manifest push --purge "${REPO}:${MANIFEST_TAG}${SUFFIX}" | tail -1)"
-                    LINE="  ${REPO}:${MANIFEST_TAG}${SUFFIX} (${DIGEST})"
+                    docker manifest rm "${REPO}:${MANIFEST_TAG}" 2>/dev/null || true
+                    retry docker manifest create "${REPO}:${MANIFEST_TAG}" \
+                      --amend "${REPO}:${VERSION}-amd64" \
+                      --amend "${REPO}:${VERSION}-arm64v8"
+                    DIGEST="$(retry docker manifest push --purge "${REPO}:${MANIFEST_TAG}" | tail -1)"
+                    LINE="  ${REPO}:${MANIFEST_TAG} (${DIGEST})"
                     echo "${LINE}" >> "${REPORT}"
                     echo "${LINE}" >> "${FRAG}"
                   done
@@ -2071,7 +1878,7 @@ jobs:
           name: Publish per-image Docker reports (Docker/ directory)
           command: |
             # One <image>.txt per published image name — arangodb/
-            # enterprise-preview:<VERSION>[-<distro>] with / and : mapped to
+            # {core,client-tools}-preview:<VERSION> with / and : mapped to
             # _ — carrying that image's slice of nightly-publish-report.txt:
             # the dated per-arch pushes and the multi-arch manifest tags,
             # each with digests. The per-arch Trivy scan reports and SBOMs
@@ -2087,10 +1894,11 @@ jobs:
             OUT=/tmp/docker-reports
             mkdir -p "${OUT}"
 
-            DISTROS=()
-            if [ "<< pipeline.parameters.build-alpine-images >>" = "true" ]; then DISTROS+=("alpine"); fi
-            if [ "<< pipeline.parameters.build-deb-images >>" = "true" ]; then DISTROS+=("deb"); fi
-            if [ ${#DISTROS[@]} -eq 0 ]; then
+            IMAGES=()
+            if [ "<< pipeline.parameters.build-ubuntu-images >>" = "true" ]; then
+              IMAGES=("core-preview" "client-tools-preview")
+            fi
+            if [ ${#IMAGES[@]} -eq 0 ]; then
               echo "Docker images not selected, skipping Docker reports"
               exit 0
             fi
@@ -2099,16 +1907,13 @@ jobs:
             PACKAGES="$(cat /tmp/nightly/nightly-major-minor.txt)"
             DST="${NIGHTLY_GCS_DEST:-gs://download.arangodb.com/nightly}"
 
-            distro_suffix() { if [ "$1" = "alpine" ]; then echo ""; else echo "-$1"; fi; }
-
-            for DISTRO in "${DISTROS[@]}"; do
-              SUFFIX="$(distro_suffix "${DISTRO}")"
-              NAME="arangodb_enterprise-preview_${VERSION}${SUFFIX}"
+            for IMG in "${IMAGES[@]}"; do
+              NAME="arangodb_${IMG}_${VERSION}"
               {
                 echo "ArangoDB nightly Docker image publish report"
                 echo "============================================"
-                echo "Image:     arangodb/enterprise-preview:${VERSION}${SUFFIX}"
-                echo "Base:      ${DISTRO}"
+                echo "Image:     arangodb/${IMG}:${VERSION}"
+                echo "Base:      ubuntu:26.04"
                 echo "Published: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
                 echo "Workflow:  ${CIRCLE_WORKFLOW_ID}"
                 if [ "${PR_RUN}" = "true" ]; then
@@ -2117,10 +1922,10 @@ jobs:
                 echo "Sec. gate: << pipeline.parameters.security-check-fail-level >> (findings at or above this level block a publish unless waived; NONE = report-only; active waivers: $(jq -r --arg today "$(date -u +%F)" '[.waivers[]? | select(.expires >= $today)] | length' /home/circleci/project/.circleci/trivy-gate-waivers.json 2>/dev/null || echo "?") — see .circleci/trivy-gate-waivers.json)"
                 echo
                 echo "Dated per-arch tags (stage phase):"
-                cat "/tmp/docker-stage-${DISTRO}.txt"
+                cat "/tmp/docker-stage-${IMG}.txt"
                 echo
                 echo "Multi-arch manifest tags (what users pull):"
-                cat "/tmp/docker-commit-${DISTRO}.txt"
+                cat "/tmp/docker-commit-${IMG}.txt"
               } > "${OUT}/${NAME}.txt"
             done
 
@@ -2194,11 +1999,8 @@ jobs:
             # Created unconditionally so the store_artifacts step below
             # always has a path to store.
             mkdir -p /tmp/nightly-index
-            if [ "<< pipeline.parameters.build-debian-packages >>" = "false" ] && \
-               [ "<< pipeline.parameters.build-rpm-packages >>" = "false" ] && \
-               [ "<< pipeline.parameters.build-tarballs >>" = "false" ] && \
-               [ "<< pipeline.parameters.build-alpine-images >>" = "false" ] && \
-               [ "<< pipeline.parameters.build-deb-images >>" = "false" ]; then
+            if [ "<< pipeline.parameters.build-tarballs >>" = "false" ] && \
+               [ "<< pipeline.parameters.build-ubuntu-images >>" = "false" ]; then
               echo "Nothing was published to GCS, skipping index regeneration"
               exit 0
             fi
@@ -2231,7 +2033,7 @@ workflows:
       - prepare-nightly:
           name: prepare-nightly
 
-      # ── x64 enterprise ───────────────────────────────────────────────────
+      # ── x64 enterprise ─────────────────────────────────────────────────────────────────────
       - compile-nightly:
           name: compile-enterprise-amd64
           arch: amd64
@@ -2241,43 +2043,19 @@ workflows:
           requires: [prepare-nightly]
 
       - build-package:
-          name: deb-enterprise-amd64
-          format: deb
-          arch: amd64
-          resource-class: arangodb/large-amd64
-          requires: [compile-enterprise-amd64]
-
-      - build-package:
-          name: rpm-enterprise-amd64
-          format: rpm
-          arch: amd64
-          resource-class: arangodb/large-amd64
-          requires: [compile-enterprise-amd64]
-
-      - build-package:
           name: tar-enterprise-amd64
-          format: tar
           arch: amd64
           resource-class: arangodb/large-amd64
           requires: [compile-enterprise-amd64]
 
       - build-nightly-docker-image:
-          name: docker-enterprise-alpine-amd64
+          name: docker-enterprise-amd64
           arch: amd64
-          distro: alpine
           resource-class: large
           context: [ circleci-token, coredb-workspace-aws-bucket ]
           requires: [compile-enterprise-amd64]
 
-      - build-nightly-docker-image:
-          name: docker-enterprise-deb-amd64
-          arch: amd64
-          distro: deb
-          resource-class: large
-          context: [ circleci-token, coredb-workspace-aws-bucket ]
-          requires: [compile-enterprise-amd64]
-
-      # ── ARM64 enterprise ─────────────────────────────────────────────────────
+      # ── ARM64 enterprise ─────────────────────────────────────────────────────────────────
       - compile-nightly:
           name: compile-enterprise-arm64
           arch: arm64
@@ -2287,52 +2065,24 @@ workflows:
           requires: [prepare-nightly]
 
       - build-package:
-          name: deb-enterprise-arm64
-          format: deb
-          arch: arm64
-          resource-class: arangodb/large-arm64
-          requires: [compile-enterprise-arm64]
-
-      - build-package:
-          name: rpm-enterprise-arm64
-          format: rpm
-          arch: arm64
-          resource-class: arangodb/large-arm64
-          requires: [compile-enterprise-arm64]
-
-      - build-package:
           name: tar-enterprise-arm64
-          format: tar
           arch: arm64
           resource-class: arangodb/large-arm64
           requires: [compile-enterprise-arm64]
 
       - build-nightly-docker-image:
-          name: docker-enterprise-alpine-arm64
+          name: docker-enterprise-arm64
           arch: arm64
-          distro: alpine
           resource-class: arm.large
           context: [ circleci-token, coredb-workspace-aws-bucket ]
           requires: [compile-enterprise-arm64]
 
-      - build-nightly-docker-image:
-          name: docker-enterprise-deb-arm64
-          arch: arm64
-          distro: deb
-          resource-class: arm.large
-          context: [ circleci-token, coredb-workspace-aws-bucket ]
-          requires: [compile-enterprise-arm64]
-
-      # ── Scan, sign, publish ──────────────────────────────────────────────────
+      # ── Scan, sign, publish ───────────────────────────────────────────────────────────────
       - scan-packages:
           context: [ clamav-aws-bucket ]
           resource-class: arangodb/large-amd64
           requires:
-            - deb-enterprise-amd64
-            - rpm-enterprise-amd64
             - tar-enterprise-amd64
-            - deb-enterprise-arm64
-            - rpm-enterprise-arm64
             - tar-enterprise-arm64
 
       - sign-packages:
@@ -2342,73 +2092,43 @@ workflows:
           context: [ coredb-nightly-packages ]
           resource-class: arangodb/large-amd64
           requires:
-            - deb-enterprise-amd64
-            - rpm-enterprise-amd64
             - tar-enterprise-amd64
-            - deb-enterprise-arm64
-            - rpm-enterprise-arm64
             - tar-enterprise-arm64
 
       # ── Trivy security gates: one per published item ─────────────────────────
       - security-check-package:
-          name: security-check-deb-amd64
-          target: deb
-          arch: amd64
-          requires: [deb-enterprise-amd64]
-
-      - security-check-package:
-          name: security-check-rpm-amd64
-          target: rpm
-          arch: amd64
-          requires: [rpm-enterprise-amd64]
-
-      - security-check-package:
           name: security-check-tar-amd64
-          target: tar
           arch: amd64
           requires: [tar-enterprise-amd64]
 
       - security-check-package:
-          name: security-check-deb-arm64
-          target: deb
-          arch: arm64
-          requires: [deb-enterprise-arm64]
-
-      - security-check-package:
-          name: security-check-rpm-arm64
-          target: rpm
-          arch: arm64
-          requires: [rpm-enterprise-arm64]
-
-      - security-check-package:
           name: security-check-tar-arm64
-          target: tar
           arch: arm64
           requires: [tar-enterprise-arm64]
 
       - security-check-docker-image:
-          name: security-check-docker-alpine-amd64
+          name: security-check-docker-core-amd64
           arch: amd64
-          distro: alpine
-          requires: [docker-enterprise-alpine-amd64]
+          image: core-preview
+          requires: [docker-enterprise-amd64]
 
       - security-check-docker-image:
-          name: security-check-docker-deb-amd64
+          name: security-check-docker-client-tools-amd64
           arch: amd64
-          distro: deb
-          requires: [docker-enterprise-deb-amd64]
+          image: client-tools-preview
+          requires: [docker-enterprise-amd64]
 
       - security-check-docker-image:
-          name: security-check-docker-alpine-arm64
+          name: security-check-docker-core-arm64
           arch: arm64
-          distro: alpine
-          requires: [docker-enterprise-alpine-arm64]
+          image: core-preview
+          requires: [docker-enterprise-arm64]
 
       - security-check-docker-image:
-          name: security-check-docker-deb-arm64
+          name: security-check-docker-client-tools-arm64
           arch: arm64
-          distro: deb
-          requires: [docker-enterprise-deb-arm64]
+          image: client-tools-preview
+          requires: [docker-enterprise-arm64]
 
       - publish-nightly:
           context: [ coredb-nightly-packages ]
@@ -2417,25 +2137,15 @@ workflows:
             # via the scan/sign/security gates: all three gates can be
             # disabled by pipeline parameters, and publish must still wait
             # for the packages themselves.
-            - deb-enterprise-amd64
-            - rpm-enterprise-amd64
             - tar-enterprise-amd64
-            - deb-enterprise-arm64
-            - rpm-enterprise-arm64
             - tar-enterprise-arm64
             - scan-packages
             - sign-packages
-            - security-check-deb-amd64
-            - security-check-rpm-amd64
             - security-check-tar-amd64
-            - security-check-deb-arm64
-            - security-check-rpm-arm64
             - security-check-tar-arm64
-            - security-check-docker-alpine-amd64
-            - security-check-docker-deb-amd64
-            - security-check-docker-alpine-arm64
-            - security-check-docker-deb-arm64
-            - docker-enterprise-alpine-amd64
-            - docker-enterprise-deb-amd64
-            - docker-enterprise-alpine-arm64
-            - docker-enterprise-deb-arm64
+            - security-check-docker-core-amd64
+            - security-check-docker-client-tools-amd64
+            - security-check-docker-core-arm64
+            - security-check-docker-client-tools-arm64
+            - docker-enterprise-amd64
+            - docker-enterprise-arm64

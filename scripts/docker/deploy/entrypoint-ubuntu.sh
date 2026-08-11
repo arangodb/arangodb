@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -e
 
 if [ -z "$ARANGO_INIT_PORT" ] ; then
@@ -34,7 +34,7 @@ if [ -d /sys/devices/system/node/node1 -a -f /proc/self/numa_maps ]; then
 fi
 
 if [ "$1" = 'arangod' ]; then
-    # /var/lib/arangodb3 must exist and
+    # /var/lib/arangodb3 and /var/lib/arangodb3-apps must exist and
     # be writable by the user under which we run the container.
 
     # Make a copy of the configuration file to patch it, note that this
@@ -73,7 +73,7 @@ if [ "$1" = 'arangod' ]; then
 
         if [ ! -z "${ARANGO_ROOT_PASSWORD+x}" ]; then
             echo "Initializing root user...Hang on..."
-            ARANGODB_DEFAULT_ROOT_PASSWORD="$ARANGO_ROOT_PASSWORD" /usr/sbin/arango-init-database -c /tmp/arangod.conf --log.level error --database.init-database true || true
+            ARANGODB_DEFAULT_ROOT_PASSWORD="$ARANGO_ROOT_PASSWORD" /usr/sbin/arango-init-database -c /tmp/arangod.conf --server.rest-server false --log.level error --database.init-database true || true
             export ARANGO_ROOT_PASSWORD
 
             if [ ! -z "${ARANGO_ROOT_PASSWORD}" ]; then

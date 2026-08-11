@@ -33,11 +33,15 @@ parameters:
     type: boolean
     default: false
     description: "Whether to run the full test set (e.g., for nightly builds) or reduced set (e.g., for normal PR builds)"
+  arangod-without-v8:
+    type: boolean
+    default: false
+    description: "Build arangod without serverside JS (also excludes frontend)"
   config-definitions:
     type: string
-    default: tests.yml
+    default: tests.yml ui.yml
     description: Space separated list of YAML files with test definitions. Available files
-      arangojs.yml java.yml spark-ds.yml go.yml kafka.yml spring-data.yml tinkerpop.yml py-async.yml py.yml tests.yml
+      arangojs.yml java.yml spark-ds.yml ui.yml go.yml kafka.yml spring-data.yml tinkerpop.yml py-async.yml py.yml tests.yml
   config-definitions-branches:
     type: string
     default: ""
@@ -48,15 +52,15 @@ parameters:
     description: "filter to be executed testuite names for containing this string"
   create-test-docker-images:
     type: enum
-    enum: [none, alpine, deb]
+    enum: [none, ubuntu]
     default: none
-    description: "Build and publish a multi-arch (amd64 + arm64) test Docker image
-      of the Enterprise Edition from this commit's build results. Selects the image
-      base: 'alpine' or 'deb' (Debian-based); 'none' disables. The image is pushed
-      to public ECR as public.ecr.aws/b0b8h2r4/arangodb/enterprise-test, tagged with
-      the community commit short SHA; Debian-based images get an extra -deb suffix
-      (<sha>[-deb] multi-arch manifest, <sha>[-deb]-amd64 / <sha>[-deb]-arm64v8
-      per-arch tags)."
+    description: "Build and publish multi-arch (amd64 + arm64) test Docker images
+      of the Enterprise Edition from this commit's build results; 'ubuntu' builds
+      TWO Ubuntu-26.04-based images: arangodb/core-test (server, client tools
+      included) and arangodb/client-tools-test (client tools only); 'none'
+      disables. Both are pushed to public ECR under public.ecr.aws/b0b8h2r4/,
+      tagged <community sha7>_<enterprise sha7> (multi-arch manifest) with
+      -amd64 / -arm64v8 per-arch tags."
   extra_args:
     type: string
     default: ""
@@ -71,7 +75,7 @@ parameters:
     description: "Docker image to use for testing ArangoDB - only relevant when trying new test images"
   build-docker-image:
     type: string
-    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-312:24.04-f7032bef0"
+    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-40:24.04-d2eb28e68"
     description: "Docker image to use for building ArangoDB - only relevant when trying new build images"
   # Rarely used options
   replication-two:
@@ -103,7 +107,6 @@ jobs:
             not:
               or:
                 - equal: [devel, << pipeline.git.branch >>]
-                - equal: ["4.0", << pipeline.git.branch >>]
                 - equal: [api, << pipeline.trigger_source >>]
                 - equal: [scheduled_pipeline, << pipeline.trigger_source >>]
           steps:
@@ -167,7 +170,7 @@ jobs:
       config-definitions-branches:
         type: string
         default: ""
-
+      
     steps:
       - run:
           name: Print pipeline parameters
@@ -177,6 +180,7 @@ jobs:
             echo "with-tsan: << pipeline.parameters.with-tsan >>"
             echo "with-alubsan: << pipeline.parameters.with-alubsan >>"
             echo "full: << pipeline.parameters.full >>"
+            echo "arangod-without-v8: << pipeline.parameters.arangod-without-v8 >>"
             echo "config-definitions: << pipeline.parameters.config-definitions >>"
             echo "config-definitions-branches: << pipeline.parameters.config-definitions-branches >>"
             echo "create-test-docker-images: << pipeline.parameters.create-test-docker-images >>"
@@ -213,7 +217,7 @@ jobs:
               if [ "$?" == "0" ] ; then
                 ENTERPRISE_BRANCH=$CIRCLE_BRANCH
               else
-                ENTERPRISE_BRANCH=<< parameters.default-enterprise-branch >>
+                ENTERPRISE_BRANCH=devel
               fi
               set -e
               echo "Actually using this for ENTERPRISE_BRANCH: $ENTERPRISE_BRANCH"
@@ -247,6 +251,7 @@ jobs:
               --arangosh-args "A<< pipeline.parameters.arangosh_args >>" \
               --extra-args "A<< pipeline.parameters.extra_args >>" \
               --test-image "<< pipeline.parameters.test-docker-image >>" \
+              <<# pipeline.parameters.arangod-without-v8 >> --arangod-without-v8  <</ pipeline.parameters.arangod-without-v8 >>\
               <<# pipeline.parameters.full >> --full <</ pipeline.parameters.full >> \
               --create-test-docker-images << pipeline.parameters.create-test-docker-images >> \
               <<# pipeline.parameters.replication-two >> -rt <</ pipeline.parameters.replication-two >> \
@@ -274,6 +279,5 @@ workflows:
       - generate-config:
           definitions: << pipeline.parameters.config-definitions >>
           config-definitions-branches: << pipeline.parameters.config-definitions-branches >>
-          default-enterprise-branch: "4.0"
           requires:
             - cancel-redundant-pipelines

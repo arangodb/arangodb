@@ -35,6 +35,13 @@ class CircleCIGenerator(OutputGenerator):
     # YAML definitions or need runtime-dependent adjustments.
     # ========================================================================
 
+    # Job-specific bucket overrides
+    # replication_sync: YAML specifies 2 buckets (for Jenkins compatibility),
+    # but CircleCI needs 5 for better parallelization. See tests/tests.yml:74
+    BUCKET_OVERRIDES = {
+        "replication_sync": 5,
+    }
+
     # Job-specific size overrides (applied conditionally)
     # shell_client_aql: Nightly single-server runs need more memory due to
     # extended test coverage and data volume
@@ -170,7 +177,7 @@ class CircleCIGenerator(OutputGenerator):
         self, workflow: Dict[str, Any], build_config: BuildConfig
     ) -> List[str]:
         """
-        Add compilation build job.
+        Add compilation build jobs.
 
         Returns:
             List of build job names that tests depend on
@@ -199,6 +206,16 @@ class CircleCIGenerator(OutputGenerator):
             preset += "-x64"
 
         preset += build_config.build_variant.get_suffix()
+
+        # Coverage has plain pr-*-coverage presets but no -no-v8 combos
+        # (coverage is a rare, CLI-only variant); when combined with
+        # arangod-without-v8 it keeps the coverage preset and gets USE_V8
+        # forced off via the Configure step's command-line override.
+        if (
+            not self.config.filter_criteria.v8
+            and not build_config.build_variant.is_coverage
+        ):
+            preset += "-no-v8"
 
         suffix = build_config.build_variant.get_suffix()
         name = f"build-{build_config.architecture.value}{suffix}"
@@ -259,23 +276,21 @@ class CircleCIGenerator(OutputGenerator):
                 {"run-cppcheck": {"name": "cppcheck", "requires": [build_jobs[0]]}}
             )
 
-    # Architecture -> (docker --platform arch, workspace tarball name)
+    # Architecture -> docker --platform arch
     _DOCKER_IMAGE_ARCHES = (
-        (Architecture.X64, "amd64", "docker-amd64.tar"),
-        (Architecture.AARCH64, "arm64", "docker-arm64.tar"),
+        (Architecture.X64, "amd64"),
+        (Architecture.AARCH64, "arm64"),
     )
 
     def _add_docker_images_workflow(self, workflows: Dict[str, Any]) -> None:
         """
-        Add a dedicated workflow that builds and publishes a multi-arch
-        arangodb/enterprise-test Docker image to public ECR (maintainer-mode,
-        Alpine- or Debian-based per create-test-docker-images).
+        Add a dedicated workflow that builds and publishes the multi-arch
+        arangodb/core-test and arangodb/client-tools-test Docker images
+        (Ubuntu 26.04 based, maintainer-mode) to public ECR.
 
-        Tagging follows the nightly-packages convention: the tag is
-        <community sha7>_<enterprise sha7>, Alpine is the suffix-less
-        default, and Debian-based images carry an extra -deb suffix before
-        the per-arch suffix (<tag>[-deb][-amd64|-arm64v8], manifest
-        <tag>[-deb]).
+        Tagging follows the nightly-packages convention: the manifest tag is
+        <community sha7>_<enterprise sha7>, per-arch tags append
+        -amd64/-arm64v8; both image names share the same tags.
 
         This has to be a separate workflow rather than a job tacked onto the
         per-architecture pr workflows: creating a multi-arch manifest needs
@@ -287,17 +302,14 @@ class CircleCIGenerator(OutputGenerator):
         workflow: Dict[str, Any] = {"jobs": []}
         workflows["docker-images"] = workflow
 
-        distro = self.config.circleci.create_test_docker_images
         # ENTERPRISE_COMMIT is exported by the setup pipeline's "Determine
         # enterprise branch" step (config.yml).
         community = (self.env_getter("CIRCLE_SHA1", "") or "unknown-sha1")[:7]
         enterprise = (self.env_getter("ENTERPRISE_COMMIT", "") or "unknown-sha1")[:7]
         tag = f"{community}_{enterprise}"
-        if distro != "alpine":
-            tag += f"-{distro}"
 
         image_job_names = []
-        for architecture, docker_arch, output in self._DOCKER_IMAGE_ARCHES:
+        for architecture, docker_arch in self._DOCKER_IMAGE_ARCHES:
             build_config = BuildConfig(
                 architecture=architecture, build_variant=BuildVariant.NORMAL
             )
@@ -307,7 +319,7 @@ class CircleCIGenerator(OutputGenerator):
             compile_job_name = compile_job["compile-linux"]["name"]
 
             image_job = self._create_docker_build_job(
-                build_config, distro, docker_arch, output, [compile_job_name]
+                build_config, docker_arch, [compile_job_name]
             )
             workflow["jobs"].append(image_job)
             image_job_names.append(image_job["build-docker-image"]["name"])
@@ -349,22 +361,19 @@ class CircleCIGenerator(OutputGenerator):
     def _create_docker_build_job(
         self,
         build_config: BuildConfig,
-        distro: str,
         docker_arch: str,
-        output: str,
         requires: List[str],
     ) -> Dict[str, Any]:
-        """Create the job that builds and locally saves one architecture's Docker image."""
+        """Create the job that builds and locally saves one architecture's
+        pair of Docker images (core-test and client-tools-test)."""
         return {
             "build-docker-image": {
                 "name": f"build-{build_config.architecture.value}-docker-image",
                 "resource-class": self.sizer.get_resource_class(
                     ResourceSize.CIRCLECI_LARGE, build_config.architecture
                 ),
-                "distro": distro,
                 "arch": docker_arch,
                 "build-arch": build_config.architecture.value,
-                "output": output,
                 "requires": requires,
             }
         }
@@ -372,7 +381,8 @@ class CircleCIGenerator(OutputGenerator):
     def _create_docker_manifest_job(
         self, tag: str, requires: List[str]
     ) -> Dict[str, Any]:
-        """Create the job that pushes the multi-arch arangodb/enterprise-test manifest to ECR."""
+        """Create the job that pushes the multi-arch core-test and
+        client-tools-test manifests to ECR."""
         return {
             "push-docker-manifest": {
                 "name": "push-docker-manifest",
@@ -421,10 +431,15 @@ class CircleCIGenerator(OutputGenerator):
         A single TestJob may result in multiple CircleCI jobs if:
         - Deployment type is None (both single and cluster)
         - Replication version 2 is enabled (additional cluster job)
+        - RTA UI tests (one job per deployment: SG, CL)
 
         Returns:
             List of job definitions (excludes jobs with no suites after filtering)
         """
+        # Handle RTA UI tests specially - they generate multiple jobs
+        if job.job_type == "run-rta-tests":
+            return self._create_rta_test_jobs(job, build_config, build_jobs)
+
         result = []
         deployment_type = job.options.deployment_type
         add_job_to_result = lambda job_def: result.append(job_def) if job_def else None
@@ -589,6 +604,9 @@ class CircleCIGenerator(OutputGenerator):
         if job.options.buckets == "auto" and len(filtered_suites) != len(job.suites):
             bucket_count = len(filtered_suites)
 
+        if job.name in self.BUCKET_OVERRIDES:
+            bucket_count = self.BUCKET_OVERRIDES[job.name]
+
         if bucket_count and bucket_count != 1:
             job_dict["buckets"] = bucket_count
 
@@ -689,6 +707,60 @@ class CircleCIGenerator(OutputGenerator):
         elif build_config.build_variant.is_alubsan:
             return "alubsan"
         return ""
+
+    def _create_rta_test_jobs(
+        self,
+        job: TestJob,
+        build_config: BuildConfig,
+        build_jobs: List[str],
+    ) -> List[Dict[str, Any]]:
+        """
+        Create RTA UI test job definitions.
+
+        RTA tests use run-rta-tests job with different parameters than regular tests.
+
+        Returns:
+            List of job definitions (one per deployment).
+        """
+        # Build filter string with trailing space (matches old generator behavior)
+        ui_filter = "".join(
+            f"--ui-include-test-suite {suite.name} " for suite in job.suites
+        )
+        # Ensure trailing space is preserved (old generator compatibility)
+        if ui_filter and not ui_filter.endswith(" "):
+            ui_filter += " "
+
+        # Calculate bucket count
+        bucket_count = job.get_bucket_count()
+        if bucket_count is None or bucket_count == "auto":
+            bucket_count = len(job.suites)
+
+        # Get RTA branch from repository config
+        rta_branch = "main"
+        if job.repository and job.repository.git_branch:
+            rta_branch = job.repository.git_branch
+
+        deployments = ["single", "cluster"]
+        sanitizer_suffix = build_config.build_variant.get_suffix()
+
+        result_jobs = []
+        for deployment in deployments:
+            job_dict = {
+                "name": f"test-{deployment}-UI-{build_config.architecture.value}{sanitizer_suffix}",
+                "suiteName": f"{deployment}-UI",
+                "arangosh_args": "",
+                "deployment": "SG" if deployment == "single" else "CL",
+                "browser": "Remote_CHROME",
+                "enterprise": "EP",
+                "filterStatement": ui_filter,
+                "requires": build_jobs,
+                "rta-branch": rta_branch,
+                "buckets": bucket_count,
+                "sanitizer": self._get_sanitizer_param(build_config),
+            }
+            result_jobs.append({"run-rta-tests": job_dict})
+
+        return result_jobs
 
     def _add_repository_config(self, job_dict: Dict[str, Any], job: TestJob) -> None:
         """Add repository configuration to job dict if job has external repo."""

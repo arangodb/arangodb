@@ -1,10 +1,11 @@
-FROM alpine:3.24
+FROM ubuntu:26.04
 MAINTAINER Max Neunhoeffer <hackers@arangodb.com>
 
 ARG arch
 
-RUN apk update --no-cache && apk upgrade --no-cache
-RUN apk add --no-cache pwgen numactl numactl-tools elfutils
+RUN apt-get update && apt-get install -y --no-install-recommends curl jq pwgen numactl elfutils sysstat ca-certificates vim lsof && apt-get autoremove -y && apt-get clean
+
+ENV GLIBCXX_FORCE_NEW=1
 
 COPY ./install/ /
 COPY setup.sh /setup.sh
@@ -17,10 +18,10 @@ RUN echo "UTC" > /etc/timezone
 # Containers in OpenShift by default run with a random UID but with GID 0,
 # and we want that they can access the database and doc directories even
 # without a volume mount:
-RUN chgrp 0 /var/lib/arangodb3 && \
-    chmod 775 /var/lib/arangodb3
+RUN chgrp 0 /var/lib/arangodb3 /var/lib/arangodb3-apps && \
+    chmod 775 /var/lib/arangodb3 /var/lib/arangodb3-apps
 
-COPY entrypoint.sh /entrypoint.sh
+COPY entrypoint-ubuntu.sh /entrypoint.sh
 RUN ["chmod", "+x", "/entrypoint.sh"]
 ENTRYPOINT [ "/entrypoint.sh" ]
 

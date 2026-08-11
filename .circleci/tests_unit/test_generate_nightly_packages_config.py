@@ -15,11 +15,8 @@ import generate_nightly_packages_config as gen
 BASE_PATH = Path(__file__).parent.parent / "base_nightly_packages.yml"
 
 ALL_TRUE = {
-    "build-debian-packages": "true",
-    "build-rpm-packages": "true",
     "build-tarballs": "true",
-    "build-alpine-images": "true",
-    "build-deb-images": "true",
+    "build-ubuntu-images": "true",
     "sign-packages": "true",
     "scan-viruses": "true",
     "security-check": "true",
@@ -75,19 +72,6 @@ def test_no_security_check_drops_all_trivy_jobs(base_config):
     )
 
 
-def test_disabled_format_drops_build_and_scan_jobs(base_config):
-    config = run_generate(base_config, **{"build-debian-packages": "false"})
-    names = workflow_names(config)
-    assert "deb-enterprise-amd64" not in names
-    assert "deb-enterprise-arm64" not in names
-    assert "security-check-deb-amd64" not in names
-    assert "security-check-deb-arm64" not in names
-    # the other formats stay, and no requires list still mentions deb jobs
-    assert "rpm-enterprise-amd64" in names
-    assert "deb-enterprise-amd64" not in requires_of(config, "scan-packages")
-    assert "deb-enterprise-amd64" not in requires_of(config, "sign-packages")
-
-
 def test_sign_and_scan_can_be_disabled(base_config):
     config = run_generate(
         base_config, **{"sign-packages": "false", "scan-viruses": "false"}
@@ -101,67 +85,48 @@ def test_sign_and_scan_can_be_disabled(base_config):
 
 
 def test_docker_only_drops_package_pipeline(base_config):
-    config = run_generate(
-        base_config,
-        **{
-            "build-debian-packages": "false",
-            "build-rpm-packages": "false",
-            "build-tarballs": "false",
-        },
-    )
+    config = run_generate(base_config, **{"build-tarballs": "false"})
     names = workflow_names(config)
     # nothing package-related is left, incl. scan/sign which would have
-    # nothing to work on ("deb" also names the Ubuntu docker distro, so
-    # check the package jobs explicitly)
-    for fmt in ("deb", "rpm", "tar"):
-        for arch in ("amd64", "arm64"):
-            assert f"{fmt}-enterprise-{arch}" not in names
-            assert f"security-check-{fmt}-{arch}" not in names
+    # nothing to work on
+    for arch in ("amd64", "arm64"):
+        assert f"tar-enterprise-{arch}" not in names
+        assert f"security-check-tar-{arch}" not in names
     assert "scan-packages" not in names
     assert "sign-packages" not in names
     # docker builds, their security checks, and both compiles remain
     assert "compile-enterprise-amd64" in names
     assert set(requires_of(config, "publish-nightly")) == {
-        f"{kind}-{distro}-{arch}"
-        for kind in ("docker-enterprise", "security-check-docker")
-        for distro in ("alpine", "deb")
+        f"docker-enterprise-{arch}" for arch in ("amd64", "arm64")
+    } | {
+        f"security-check-docker-{image}-{arch}"
+        for image in ("core", "client-tools")
         for arch in ("amd64", "arm64")
     }
 
 
 def test_packages_only_drops_docker_jobs(base_config):
-    config = run_generate(
-        base_config,
-        **{
-            "build-alpine-images": "false",
-            "build-deb-images": "false",
-        },
-    )
+    config = run_generate(base_config, **{"build-ubuntu-images": "false"})
     names = workflow_names(config)
-    for distro in ("alpine", "deb"):
-        for arch in ("amd64", "arm64"):
-            assert f"docker-enterprise-{distro}-{arch}" not in names
-            assert f"security-check-docker-{distro}-{arch}" not in names
+    for arch in ("amd64", "arm64"):
+        assert f"docker-enterprise-{arch}" not in names
+        for image in ("core", "client-tools"):
+            assert f"security-check-docker-{image}-{arch}" not in names
     assert "scan-packages" in names
     assert "sign-packages" in names
 
 
-def test_per_distro_image_flags(base_config):
-    config = run_generate(base_config, **{"build-deb-images": "false"})
-    names = workflow_names(config)
-    for distro in ("deb",):
-        for arch in ("amd64", "arm64"):
-            assert f"docker-enterprise-{distro}-{arch}" not in names
-            assert f"security-check-docker-{distro}-{arch}" not in names
-    for arch in ("amd64", "arm64"):
-        assert f"docker-enterprise-alpine-{arch}" in names
-        assert f"security-check-docker-alpine-{arch}" in names
-
-    config = run_generate(base_config, **{"build-alpine-images": "false"})
+def test_ubuntu_images_always_come_in_pairs(base_config):
+    """One flag, two images: each per-arch docker job feeds one Trivy gate
+    per image name (core and client-tools)."""
+    config = run_generate(base_config)
     names = workflow_names(config)
     for arch in ("amd64", "arm64"):
-        assert f"docker-enterprise-alpine-{arch}" not in names
-        assert f"docker-enterprise-deb-{arch}" in names
+        assert f"docker-enterprise-{arch}" in names
+        for image in ("core", "client-tools"):
+            gate = f"security-check-docker-{image}-{arch}"
+            assert gate in names
+            assert requires_of(config, gate) == [f"docker-enterprise-{arch}"]
 
 
 def test_nothing_selected_is_an_error(base_config):
@@ -169,11 +134,8 @@ def test_nothing_selected_is_an_error(base_config):
         run_generate(
             base_config,
             **{
-                "build-debian-packages": "false",
-                "build-rpm-packages": "false",
                 "build-tarballs": "false",
-                "build-alpine-images": "false",
-                "build-deb-images": "false",
+                "build-ubuntu-images": "false",
             },
         )
 
@@ -224,14 +186,10 @@ def test_publish_requires_packaging_jobs_when_all_gates_disabled(base_config):
     )
     requires = set(requires_of(config, "publish-nightly"))
     for job in (
-        "deb-enterprise-amd64",
-        "rpm-enterprise-amd64",
         "tar-enterprise-amd64",
-        "deb-enterprise-arm64",
-        "rpm-enterprise-arm64",
         "tar-enterprise-arm64",
-        "docker-enterprise-alpine-amd64",
-        "docker-enterprise-alpine-arm64",
+        "docker-enterprise-amd64",
+        "docker-enterprise-arm64",
     ):
         assert job in requires
     # ... and the disabled gate jobs must be gone from the list.

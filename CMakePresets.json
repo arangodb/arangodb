@@ -20,7 +20,7 @@
       "hidden": true,
       "name": "x64",
       "cacheVariables": {
-        "TARGET_ARCHITECTURE": "haswell",
+        "TARGET_ARCHITECTURE": "sandy-bridge",
         "USE_IPO": "On"
       }
     },
@@ -28,7 +28,7 @@
       "hidden": true,
       "name": "arm64",
       "cacheVariables": {
-        "TARGET_ARCHITECTURE": "graviton2",
+        "TARGET_ARCHITECTURE": "graviton1",
         "CMAKE_SYSTEM_PROCESSOR": "aarch64",
         "ASM_OPTIMIZATIONS": "Off",
         "USE_IPO": "Off"

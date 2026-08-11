@@ -1,12 +1,8 @@
----
 version: 2.1
 
 orbs:
   aws-cli: circleci/aws-cli@4.1.1
   aws-ecr: circleci/aws-ecr@9.0.1
-  # Exact pin: a floating orb range silently changes what runs. Keep in
-  # sync with base_nightly_packages.yml.
-  trivy-scan: arangodb/trivy-scan@1.2.0
 
 parameters:
   enterprise-commit:
@@ -18,12 +14,15 @@ parameters:
   use-minimal-debug-info:
     type: boolean
     default: true
+  arangod-without-v8:
+    type: boolean
+    default: false
   extra_args:
     type: string
     default: ""
   build-docker-image:
     type: string
-    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-312:24.04-f7032bef0"
+    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-40:24.04-d2eb28e68"
     description: "Docker image to use for building ArangoDB - only relevant when trying new build images"
   test-docker-image:
     type: string
@@ -37,7 +36,7 @@ parameters:
     default: false
   create-test-docker-images:
     type: enum
-    enum: [none, alpine, deb]
+    enum: [none, ubuntu]
     default: none
   rebuild-test-docker-images:
     type: boolean
@@ -79,7 +78,7 @@ parameters:
     default: "arangodb"
     # The arangodb target consists of arangod and the list of client-tools which already
     # conditionally contains arangobackup and arangosh, depending on whether we build in
-    # enterprise mode
+    # enterprise mode, and whether we build with V8 or not.
     # This should also improve build times because this way the individual targets can be
     # built in parallel (a list of individual targets is built serially).
   test-build-targets:
@@ -280,10 +279,7 @@ commands:
             curl -s -L -o <<parameters.repo-path>>/build/bin/arangodb "https://github.com/arangodb-helper/arangodb/releases/download/$STARTER_REV/arangodb-linux-$arch"
             chmod a+x <<parameters.repo-path>>/build/bin/arangodb
 
-            # Temporary hack to use the 3.12 version of rclone until we
-            # have a 4.0 version:
-            #curl -s -L -o <<parameters.repo-path>>/build/bin/rclone-arangodb "https://github.com/arangodb/rclone-arangodb/releases/download/golang-${RCLONE_GO}/golang-${RCLONE_GO}_${ARANGO_MAJOR_MINOR_VERSION}_v${RCLONE_VERSION}_rclone-arangodb-linux-$arch"
-            curl -s -L -o <<parameters.repo-path>>/build/bin/rclone-arangodb "https://github.com/arangodb/rclone-arangodb/releases/download/golang-${RCLONE_GO}/golang-${RCLONE_GO}_3.12_v${RCLONE_VERSION}_rclone-arangodb-linux-$arch"
+            curl -s -L -o <<parameters.repo-path>>/build/bin/rclone-arangodb "https://github.com/arangodb/rclone-arangodb/releases/download/golang-${RCLONE_GO}/golang-${RCLONE_GO}_${ARANGO_MAJOR_MINOR_VERSION}_v${RCLONE_VERSION}_rclone-arangodb-linux-$arch"
             chmod a+x <<parameters.repo-path>>/build/bin/rclone-arangodb
   run-test:
     parameters:
@@ -535,164 +531,6 @@ jobs:
               echo "Nothing to cancel"
             fi
 
-  # PR-time lint of what governs the nightly security gates: disposition
-  # hygiene and the required-status-check inventory.
-  security-governance:
-    docker:
-      - image: cimg/base:current
-    resource_class: small
-    steps:
-      - attach_workspace:
-          at: .
-      # No suppression files exist here today; this keeps any future one
-      # dated and in-window. poam-windows matches the trivy-gate-waivers
-      # table; nosem-exclude skips vendored trees.
-      - trivy-scan/disposition-check:
-          poam-windows: "critical=30,high=30,medium=90,low=180"
-          nosem-exclude: ":!:.circleci/* :!:3rdParty/* :!:*/node_modules/*"
-      - run:
-          name: Compare required checks against the live configuration
-          environment:
-            # "true" anywhere in here marks a variant pipeline, which renames
-            # the build workflows by design (generate_config.py appends the
-            # variant to the workflow name).
-            PIPELINE_VARIANTS: "<< pipeline.parameters.with-tsan >>,<< pipeline.parameters.with-alubsan >>,<< pipeline.parameters.full >>,<< pipeline.parameters.replication-two >>"
-          command: |
-            set -eu
-            set -o pipefail
-            LIST=.circleci/required-checks.txt
-            # PR pipelines run on the head branch, so the protected branch
-            # cannot be derived from CIRCLE_BRANCH.
-            PROTECTED=devel
-            DRIFT=0
-            if [ ! -s "${LIST}" ]; then
-              echo "ERROR: ${LIST} is missing or empty. Commit the required-check inventory." >&2
-              exit 1
-            fi
-            # || true: grep exits 1 on a comments-only list; that is reported
-            # as an error on the next line, not as a pipefail abort here.
-            grep -vE '^[[:space:]]*(#|$)' "${LIST}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' | sort -u > /tmp/required-expected.txt || true
-            if [ ! -s /tmp/required-expected.txt ]; then
-              echo "ERROR: ${LIST} lists no contexts." >&2
-              exit 1
-            fi
-            echo "Committed required contexts (${LIST}):"
-            sed -e 's/^/  /' /tmp/required-expected.txt
-            # Live GitHub side. Branch protection needs an administration:read
-            # token, rulesets only a repo token, so both are consulted. No
-            # token means UNVERIFIED, never "no drift".
-            : > /tmp/required-live.txt
-            LIVE_SOURCE=""
-            PROT_OK=0
-            if [ -n "${GITHUB_TOKEN:-}" ]; then
-              GH_API="https://api.github.com/repos/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}"
-              for ENDPOINT in "branches/${PROTECTED}/protection" "rules/branches/${PROTECTED}"; do
-                if curl -sSfL --retry 3 --retry-delay 2 --max-time 60 \
-                     -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-                     -H "Accept: application/vnd.github+json" \
-                     -H "X-GitHub-Api-Version: 2022-11-28" \
-                     -o /tmp/gh-rules.json "${GH_API}/${ENDPOINT}"; then
-                  # grep/sed: heredocs collide with CircleCI parameter
-                  # syntax; "context" only appears in required checks.
-                  grep -oE '"context":[[:space:]]*"[^"]*"' /tmp/gh-rules.json \
-                    | sed -e 's/.*"\([^"]*\)"$/\1/' | sort -u >> /tmp/required-live.txt || true
-                  LIVE_SOURCE="${LIVE_SOURCE}${LIVE_SOURCE:+, }${ENDPOINT}"
-                  if [ "${ENDPOINT}" = "branches/${PROTECTED}/protection" ]; then
-                    PROT_OK=1
-                  fi
-                else
-                  echo "NOTICE: could not read ${ENDPOINT} (token scope?), that surface is unverified on this run." >&2
-                fi
-              done
-            elif [ -n "${CIRCLE_PR_REPONAME:-}" ]; then
-              echo "NOTICE: forked PR, no GITHUB_TOKEN; the live GitHub configuration is unverified on this run." >&2
-            else
-              echo "NOTICE: GITHUB_TOKEN is not set; the live GitHub configuration stays UNVERIFIED until a context with a read-only administration:read token is attached." >&2
-            fi
-            # Compare only when a surface that can carry required contexts
-            # answered: an empty read off the rulesets endpoint alone is a
-            # token-scope gap, not proof that nothing is required.
-            if [ -n "${LIVE_SOURCE}" ] && { [ "${PROT_OK}" = "1" ] || [ -s /tmp/required-live.txt ]; }; then
-              sort -u /tmp/required-live.txt -o /tmp/required-live.txt
-              echo "Live required contexts for ${PROTECTED} (${LIVE_SOURCE}):"
-              sed -e 's/^/  /' /tmp/required-live.txt
-              MISSING="$(comm -23 /tmp/required-expected.txt /tmp/required-live.txt)" || true
-              EXTRA="$(comm -13 /tmp/required-expected.txt /tmp/required-live.txt)" || true
-              PARTIAL=0
-              if [ -n "${MISSING}" ]; then
-                # Only branch protection proves absence; a rulesets-only
-                # read may be a partial view of the live configuration.
-                if [ "${PROT_OK}" = "1" ]; then
-                  echo "DRIFT: committed but NOT required by GitHub, so these checks do not block a merge:" >&2
-                  printf '%s\n' "${MISSING}" | sed -e 's/^/  /' >&2
-                  DRIFT=1
-                else
-                  echo "NOTICE: branch protection was unreadable, so it is unknown whether these committed contexts are live:" >&2
-                  printf '%s\n' "${MISSING}" | sed -e 's/^/  /' >&2
-                  PARTIAL=1
-                fi
-              fi
-              if [ -n "${EXTRA}" ]; then
-                echo "DRIFT: required by GitHub but NOT in the committed list:" >&2
-                printf '%s\n' "${EXTRA}" | sed -e 's/^/  /' >&2
-                DRIFT=1
-              fi
-              if [ "${DRIFT}" = "0" ] && [ "${PARTIAL}" = "0" ]; then
-                echo "GitHub configuration matches the committed list."
-              fi
-            elif [ -n "${LIVE_SOURCE}" ]; then
-              echo "NOTICE: the readable surfaces carried no required-context data; merge-gate drift is unverified on this run." >&2
-            fi
-            # Emitted side, read off this live pipeline: GitHub sees one
-            # check per CircleCI WORKFLOW, and deriving the names from the
-            # config instead is how they go stale.
-            if [ -z "${CIRCLECI_TOKEN:-}" ]; then
-              echo "NOTICE: CIRCLECI_TOKEN is not set; emitted workflow names are unverified on this run." >&2
-            elif ! curl -sSfL --retry 3 --retry-delay 2 --max-time 60 \
-                 -H "Circle-Token: ${CIRCLECI_TOKEN}" \
-                 -o /tmp/wf.json \
-                 "https://circleci.com/api/v2/pipeline/${CIRCLE_PIPELINE_ID}/workflow"; then
-              echo "NOTICE: could not list this pipeline's workflows; the emitted-context check is unverified on this run." >&2
-            else
-              grep -oE '"name"[[:space:]]*:[[:space:]]*"[^"]*"' /tmp/wf.json \
-                | sed -e 's/.*"\([^"]*\)"$/\1/' | sort -u > /tmp/required-emitted.txt || true
-              echo "Workflows emitted by this pipeline (${CIRCLE_PIPELINE_ID}):"
-              sed -e 's/^/  /' /tmp/required-emitted.txt
-              FOUND=0
-              while IFS= read -r CTX; do
-                if grep -qxF -- "${CTX}" /tmp/required-emitted.txt; then
-                  FOUND=$((FOUND + 1))
-                fi
-              done < /tmp/required-expected.txt
-              if [ "${FOUND}" = "0" ]; then
-                # Variant and devel pipelines legitimately emit other names;
-                # a default head-branch pipeline emitting none means the
-                # workflows were renamed, which blocks every merge.
-                case "${PIPELINE_VARIANTS:-}" in *true*) VARIANT=1 ;; *) VARIANT=0 ;; esac
-                if [ "${VARIANT}" = "1" ] || [ "${CIRCLE_BRANCH:-}" = "${PROTECTED}" ]; then
-                  echo "NOTICE: variant or ${PROTECTED} pipeline; none of the committed contexts is emitted here, nothing to compare." >&2
-                else
-                  echo "DRIFT: this default pipeline emits none of the committed contexts; if the workflows were renamed, every merge into ${PROTECTED} is blocked by checks nothing emits." >&2
-                  DRIFT=1
-                fi
-              else
-                while IFS= read -r CTX; do
-                  if ! grep -qxF -- "${CTX}" /tmp/required-emitted.txt; then
-                    echo "DRIFT: required context '${CTX}' is not emitted by this pipeline; a required check nothing emits blocks every merge." >&2
-                    DRIFT=1
-                  fi
-                done < /tmp/required-expected.txt
-                [ "${DRIFT}" = "0" ] && echo "Every committed context is emitted by this pipeline."
-              fi
-            fi
-            # Drift fails the job (lint is not a required check, so it
-            # cannot block a merge); missing tokens only skip their half,
-            # keeping forked PRs green.
-            if [ "${DRIFT}" != "0" ]; then
-              echo "ERROR: drift reported above. Fix the committed list or the branch protection." >&2
-              exit 1
-            fi
-
   compile-linux:
     parameters:
       preset:
@@ -700,6 +538,9 @@ jobs:
       enterprise:
         type: boolean
       build-tests:
+        type: boolean
+        default: true
+      build-v8:
         type: boolean
         default: true
       publish-artifacts:
@@ -747,6 +588,11 @@ jobs:
             if [ << pipeline.parameters.use-minimal-debug-info >> = true ]; then
               MINIMAL_DEBUGINFO="ON"
             fi
+            if [ << pipeline.parameters.arangod-without-v8 >> = true ]; then
+              BUILD_V8_ARANGOD="OFF"
+            else
+              BUILD_V8_ARANGOD="ON"
+            fi
 
             cmake --preset << parameters.preset >> \
               -G Ninja \
@@ -756,6 +602,7 @@ jobs:
               -DCMAKE_C_COMPILER_LAUNCHER=sccache \
               -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
               -DOPENSSL_ROOT_DIR=/opt \
+              -DUSE_V8=$BUILD_V8_ARANGOD \
               -DUSE_MINIMAL_DEBUGINFO=$MINIMAL_DEBUGINFO \
               -DCMAKE_INSTALL_PREFIX=/
       - run:
@@ -780,7 +627,7 @@ jobs:
                   DESTDIR=`pwd`/install cmake --build --preset << parameters.preset >> --parallel 16 --target install
                   cp build/bin/arangodb ./install/usr/bin/
                   if [ << parameters.enterprise >> = true ]; then
-                  cp build/bin/rclone-arangodb ./install/usr/bin/
+                    cp build/bin/rclone-arangodb ./install/usr/bin/
                   fi
                   strip ./install/usr/bin/arango*
                   strip ./install/usr/sbin/arangod
@@ -835,7 +682,6 @@ jobs:
                   - enterprise/js
                   - etc/
                   - tests/js
-                  - tests/fixtures
                   - enterprise/tests/js
                   - utils
                   - lib/iresearch/tests/resources
@@ -880,10 +726,6 @@ jobs:
     parameters:
       resource-class:
         type: string
-      # Image base: selects deploy-<distro>.dockerfile (alpine | deb)
-      distro:
-        type: enum
-        enum: [alpine, deb]
       # Docker platform architecture (amd64 | arm64), used for --platform
       # and the image's arch build-arg
       arch:
@@ -892,8 +734,6 @@ jobs:
       # install tarball and docker build context persisted by the matching
       # compile-linux job
       build-arch:
-        type: string
-      output:
         type: string
     docker:
       - image: cimg/base:current
@@ -904,21 +744,38 @@ jobs:
       - attach_workspace:
           at: .
       - run:
-          name: Build Docker Image
+          name: Build Docker Images
           command: |
+            # Two Ubuntu-based (26.04) test images per architecture:
+            # core-test (server, client tools included) and
+            # client-tools-test (client tools only, pruned from the same
+            # install tree the way build-targz.sh builds the client bundle).
+            set -eu
             cd docker-context-<< parameters.build-arch >>
             mkdir install
             tar -xzf ../install-<< parameters.build-arch >>.tar.gz -C install
-            docker build --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t arangodb/enterprise-test:local-<< parameters.arch >> --file deploy-<< parameters.distro >>.dockerfile .
-            docker save -o /tmp/<< parameters.output >> arangodb/enterprise-test:local-<< parameters.arch >>
+            cp -a install install-client
+            rm -rf install-client/usr/sbin \
+                   install-client/usr/bin/arangodb \
+                   install-client/usr/share/arangodb3/js/server \
+                   install-client/usr/share/arangodb3/arangodb-update-db \
+                   install-client/etc \
+                   install-client/var
+
+            docker build --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t arangodb/core-test:local-<< parameters.arch >> --file deploy-ubuntu.dockerfile .
+            docker save -o /tmp/docker-core-<< parameters.build-arch >>.tar arangodb/core-test:local-<< parameters.arch >>
+            docker build --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t arangodb/client-tools-test:local-<< parameters.arch >> --file deploy-ubuntu-client.dockerfile .
+            docker save -o /tmp/docker-client-tools-<< parameters.build-arch >>.tar arangodb/client-tools-test:local-<< parameters.arch >>
       - persist_to_workspace:
           root: /tmp
           paths:
-            - << parameters.output >>
+            - docker-core-<< parameters.build-arch >>.tar
+            - docker-client-tools-<< parameters.build-arch >>.tar
 
-  # Loads both architectures' locally-built images, pushes each as an
-  # arch-suffixed tag, then creates and pushes a multi-arch manifest under
-  # the bare tag (the community commit short SHA). ECR only, using the
+  # Loads both architectures' locally-built images (two image names each:
+  # core-test and client-tools-test), pushes each as an arch-suffixed tag,
+  # then creates and pushes one multi-arch manifest per image name under
+  # the bare tag (<community sha7>_<enterprise sha7>). ECR only, using the
   # same OIDC role assumption as before - no stored credentials/context.
   push-docker-manifest:
     parameters:
@@ -938,29 +795,35 @@ jobs:
           docker_layer_caching: true
       - attach_workspace:
           at: /tmp/workspace
+    # build-arch tarball names (x64/aarch64) come from the compile-side
+    # architecture; the docker-side arch pair is amd64/arm64.
       - run:
-          name: Push multi-arch Docker manifest
+          name: Push multi-arch Docker manifests
           command: |
-            docker load -i /tmp/workspace/docker-amd64.tar
-            docker load -i /tmp/workspace/docker-arm64.tar
+            declare -A BUILD_ARCH=( [amd64]="x64" [arm64]="aarch64" )
+            declare -A TAG_ARCH=( [amd64]="amd64" [arm64]="arm64v8" )
 
-            IMAGE="public.ecr.aws/b0b8h2r4/arangodb/enterprise-test"
+            for NAME in core client-tools; do
+              for ARCH in amd64 arm64; do
+                docker load -i /tmp/workspace/docker-${NAME}-${BUILD_ARCH[$ARCH]}.tar
+              done
+            done
 
             set -x
             retry() { "$@" || { sleep 5; "$@"; } || { sleep 15; "$@"; } || { sleep 30; "$@"; }; }
 
-            declare -A LOCAL_TAG=( [amd64]="arangodb/enterprise-test:local-amd64" [arm64]="arangodb/enterprise-test:local-arm64" )
-            declare -A TAG_ARCH=( [amd64]="amd64" [arm64]="arm64v8" )
-
-            for ARCH in amd64 arm64; do
-              docker tag "${LOCAL_TAG[$ARCH]}" "${IMAGE}:<< parameters.tag >>-${TAG_ARCH[$ARCH]}"
-              retry docker push "${IMAGE}:<< parameters.tag >>-${TAG_ARCH[$ARCH]}"
+            for NAME in core client-tools; do
+              IMAGE="public.ecr.aws/b0b8h2r4/arangodb/${NAME}-test"
+              for ARCH in amd64 arm64; do
+                docker tag "arangodb/${NAME}-test:local-${ARCH}" "${IMAGE}:<< parameters.tag >>-${TAG_ARCH[$ARCH]}"
+                retry docker push "${IMAGE}:<< parameters.tag >>-${TAG_ARCH[$ARCH]}"
+              done
+              docker manifest rm "${IMAGE}:<< parameters.tag >>" 2>/dev/null || true
+              retry docker manifest create "${IMAGE}:<< parameters.tag >>" \
+                --amend "${IMAGE}:<< parameters.tag >>-amd64" \
+                --amend "${IMAGE}:<< parameters.tag >>-arm64v8"
+              retry docker manifest push --purge "${IMAGE}:<< parameters.tag >>"
             done
-            docker manifest rm "${IMAGE}:<< parameters.tag >>" 2>/dev/null || true
-            retry docker manifest create "${IMAGE}:<< parameters.tag >>" \
-              --amend "${IMAGE}:<< parameters.tag >>-amd64" \
-              --amend "${IMAGE}:<< parameters.tag >>-arm64v8"
-            retry docker manifest push --purge "${IMAGE}:<< parameters.tag >>"
 
   run-linux-tests:
     parameters:
@@ -1106,6 +969,104 @@ jobs:
           extraArgs: << parameters.extraArgs >>
           use-s3-workspace: false
 
+  run-rta-tests:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large
+    parameters:
+      suiteName:
+        type: string
+      enterprise:
+        type: string
+      deployment:
+        type: string
+      filterStatement:
+        type: string
+      browser:
+        type: string
+      rta-branch:
+        type: string
+        default: "main"
+      arangosh_args:
+        type: string
+        default: ""
+      docker_image:
+        type: string
+        default: "<< pipeline.parameters.test-docker-image >>"
+      buckets:
+        type: integer
+        default: 1
+      sanitizer:
+        type: string
+        default: ""
+    parallelism: << parameters.buckets >>
+    steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
+      - attach_workspace:
+          at: work/ArangoDB
+      - fetch-aux-binaries:
+          arch: x64 # rta tests should only run on x64
+          repo-path: work/ArangoDB
+      - run:
+          name: Clone RTA
+          command: |
+            set + x
+            mkdir work/release-test-automation
+            cd work/release-test-automation
+            git clone git@github.com:arangodb/release-test-automation.git .
+            git checkout << parameters.rta-branch >>
+      - run:
+          name: Run << parameters.suiteName >> tests
+          no_output_timeout: 20m
+          command: |
+            set +x
+            pwd
+            export SOURCE=nightlypublic
+            export RTA_EDITION=<< parameters.enterprise >>
+            if [ "<< parameters.sanitizer >>" = "alubsan" ]; then
+              export ASAN_OPTIONS="log_exe_name=true:log_path=/work/alubsan.log:handle_ioctl=true:check_initialization_order=true:detect_container_overflow=true:detect_stack_use_after_return=false:detect_odr_violation=1:strict_init_order=true:external_symbolizer_path=/utils/llvm-symbolizer-client.py"
+              export LSAN_OPTIONS="log_exe_name=true:log_path=/work/alubsan.log:suppressions=lsan_arangodb_suppressions.txt:print_suppressions=0"
+              export UBSAN_OPTIONS="log_exe_name=true:log_path=/work/alubsan.log:print_stacktrace=1:suppressions=ubsan_arangodb_suppressions.txt:print_suppressions=0:external_symbolizer_path=/utils/llvm-symbolizer-client.py"
+              export SAN_MODE=alubsan
+              cp work/ArangoDB/ubsan_arangodb_suppressions.txt work/ArangoDB/build/bin/ubsan_arangodb_suppressions.txt
+              cp work/ArangoDB/tsan_arangodb_suppressions.txt work/ArangoDB/build/bin/tsan_arangodb_suppressions.txt
+              cp work/ArangoDB/lsan_arangodb_suppressions.txt work/ArangoDB/build/bin/lsan_arangodb_suppressions.txt
+            elif [ "<< parameters.sanitizer >>" = "tsan" ]; then
+              sudo sysctl vm.mmap_rnd_bits=28
+              export TSAN_OPTIONS="log_exe_name=true:log_path=/work/tsan.log:detect_deadlocks=true:second_deadlock_stack=1:suppressions=tsan_arangodb_suppressions.txt:print_suppressions=0:external_symbolizer_path=/utils/llvm-symbolizer-client.py"
+              export SAN_MODE=tsan
+              cp work/ArangoDB/ubsan_arangodb_suppressions.txt work/ArangoDB/build/bin/ubsan_arangodb_suppressions.txt
+              cp work/ArangoDB/tsan_arangodb_suppressions.txt work/ArangoDB/build/bin/tsan_arangodb_suppressions.txt
+              cp work/ArangoDB/lsan_arangodb_suppressions.txt work/ArangoDB/build/bin/lsan_arangodb_suppressions.txt
+            fi
+            mkdir -p  work/release-test-automation/allure-results work/release-test-automation/allure-config
+            cd work/release-test-automation
+            export DOCKER_CONTAINER="<< parameters.docker_image >>"
+            bash -x ./jenkins/circleci_tar.sh \
+              --no-checkdata \
+              --no-run-upgrade  \
+              --selenium << parameters.browser >> \
+              --starter-mode << parameters.deployment >> \
+              --buckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
+              << parameters.filterStatement >>
+            exit_code=$?
+            docker run \
+             -v $(pwd)/allure-report:/allure-report \
+             -v $(pwd)/allure-results:/allure-results \
+             -v $(pwd)/allure-config:/allure-config \
+             smartcosmos/allure-commandline generate /allure-results -o /allure-report --clean
+             exit $(($exit_code + $(cat ./test_dir/status.json) ))
+      - store_artifacts:
+          destination: << parameters.suiteName >>
+          path: ./work/release-test-automation/test_dir
+      - store_artifacts:
+          destination: << parameters.suiteName >>
+          path: ./work/release-test-automation/allure-report
+      - store_test_results:
+          path: ./test-results/
+
   run-cppcheck:
     docker:
       - image: << pipeline.parameters.build-docker-image >>
@@ -1168,11 +1129,6 @@ workflows:
             - minimal-checkout
       - eslint:
           name: eslint
-          context: [circleci-token]
-          requires:
-            - minimal-checkout
-      - security-governance:
-          name: security-governance
           context: [circleci-token]
           requires:
             - minimal-checkout

@@ -150,27 +150,23 @@ class TestBuildVariantWorkflows:
 
         workflows = result["workflows"]
 
-        # Check non-sanitizer x64 workflow
+        # Check non-sanitizer x64 workflow (4.0 has no frontend build)
         x64_pr_jobs = workflows["x64-nightly"]["jobs"]
-        build_jobs = [
-            j for j in x64_pr_jobs if "compile-linux" in j
-        ]
         assert any(
             j["compile-linux"]["name"] == "build-x64"
-            for j in build_jobs
+            for j in x64_pr_jobs
             if "compile-linux" in j
         )
+        assert not any("build-frontend" in j for j in x64_pr_jobs)
 
         # Check TSAN x64 workflow
         x64_tsan_jobs = workflows["x64-nightly-tsan"]["jobs"]
-        build_jobs_tsan = [
-            j for j in x64_tsan_jobs if "compile-linux" in j
-        ]
         assert any(
             j["compile-linux"]["name"] == "build-x64-tsan"
-            for j in build_jobs_tsan
+            for j in x64_tsan_jobs
             if "compile-linux" in j
         )
+        assert not any("build-frontend" in j for j in x64_tsan_jobs)
 
     def test_workflows_have_independent_test_jobs(self):
         """Test that test jobs are created independently for each workflow."""
@@ -198,6 +194,15 @@ class TestBuildVariantWorkflows:
 
         assert len(x64_pr_test_jobs) > 0, "Non-sanitizer workflow should have test jobs"
         assert len(x64_tsan_test_jobs) > 0, "TSAN workflow should have test jobs"
+
+        # Test jobs should require their respective build jobs
+        for job in x64_pr_test_jobs:
+            requires = job["run-linux-tests"]["requires"]
+            assert requires == ["build-x64"]
+
+        for job in x64_tsan_test_jobs:
+            requires = job["run-linux-tests"]["requires"]
+            assert requires == ["build-x64-tsan"]
 
     def test_nightly_workflows_with_multiple_sanitizers(self):
         """Test that nightly builds work correctly with multiple sanitizers."""
