@@ -42,10 +42,10 @@ parameters:
     type: boolean
     default: true
     description: "Build the TAR.GZ server and client bundles for amd64 and arm64 (the only package format of 4.0)."
-  build-ubuntu-images:
+  build-alpine-images:
     type: boolean
     default: true
-    description: "Build the Ubuntu-based Docker images (per architecture: amd64 and arm64), always producing TWO images: arangodb/core-preview (server, including the client tools) and arangodb/client-tools-preview (client tools only); the publish job pushes them and creates their multi-arch manifests at the end."
+    description: "Build the Alpine-based Docker images (per architecture: amd64 and arm64), always producing TWO images: arangodb/core-preview (server only, no client tools) and arangodb/client-tools-preview (client tools only); the publish job pushes them and creates their multi-arch manifests at the end."
   push-images-to-gcr-also:
     type: boolean
     default: true
@@ -185,7 +185,7 @@ jobs:
             python3 .circleci/generate_nightly_packages_config.py \
               --base .circleci/base_nightly_packages.yml \
               --build-tarballs "<< pipeline.parameters.build-tarballs >>" \
-              --build-ubuntu-images "<< pipeline.parameters.build-ubuntu-images >>" \
+              --build-alpine-images "<< pipeline.parameters.build-alpine-images >>" \
               --sign-packages "<< pipeline.parameters.sign-packages >>" \
               --scan-viruses "<< pipeline.parameters.scan-viruses >>" \
               --security-check "<< pipeline.parameters.security-check >>" \

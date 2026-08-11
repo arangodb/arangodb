@@ -16,7 +16,7 @@ BASE_PATH = Path(__file__).parent.parent / "base_nightly_packages.yml"
 
 ALL_TRUE = {
     "build-tarballs": "true",
-    "build-ubuntu-images": "true",
+    "build-alpine-images": "true",
     "sign-packages": "true",
     "scan-viruses": "true",
     "security-check": "true",
@@ -106,7 +106,7 @@ def test_docker_only_drops_package_pipeline(base_config):
 
 
 def test_packages_only_drops_docker_jobs(base_config):
-    config = run_generate(base_config, **{"build-ubuntu-images": "false"})
+    config = run_generate(base_config, **{"build-alpine-images": "false"})
     names = workflow_names(config)
     for arch in ("amd64", "arm64"):
         assert f"docker-enterprise-{arch}" not in names
@@ -116,7 +116,7 @@ def test_packages_only_drops_docker_jobs(base_config):
     assert "sign-packages" in names
 
 
-def test_ubuntu_images_always_come_in_pairs(base_config):
+def test_alpine_images_always_come_in_pairs(base_config):
     """One flag, two images: each per-arch docker job feeds one Trivy gate
     per image name (core and client-tools)."""
     config = run_generate(base_config)
@@ -135,7 +135,7 @@ def test_nothing_selected_is_an_error(base_config):
             base_config,
             **{
                 "build-tarballs": "false",
-                "build-ubuntu-images": "false",
+                "build-alpine-images": "false",
             },
         )
 

@@ -39,7 +39,7 @@ def parse_bool(value: str) -> bool:
 
 def disabled_jobs(
     tar: bool,
-    ubuntu_images: bool,
+    alpine_images: bool,
     sign: bool,
     scan: bool,
     security: bool,
@@ -55,10 +55,10 @@ def disabled_jobs(
     # One docker job per architecture builds BOTH Ubuntu-based images
     # (core-preview and client-tools-preview); each built image gets its
     # own Trivy job.
-    if not ubuntu_images:
+    if not alpine_images:
         drop.update(f"docker-enterprise-{arch}" for arch in ARCHES)
     for image in DOCKER_IMAGES:
-        if not ubuntu_images or not security:
+        if not alpine_images or not security:
             drop.update(
                 f"security-check-docker-{image}-{arch}" for arch in ARCHES
             )
@@ -156,14 +156,14 @@ def check_workflow(config: Dict[str, Any], name: str = WORKFLOW_NAME) -> None:
 
 
 def generate(base: Dict[str, Any], args: argparse.Namespace) -> Dict[str, Any]:
-    if not any((args.build_tarballs, args.build_ubuntu_images)):
+    if not any((args.build_tarballs, args.build_alpine_images)):
         raise ValueError(
             "nothing selected: enable at least one of build-tarballs, "
-            "build-ubuntu-images"
+            "build-alpine-images"
         )
     drop = disabled_jobs(
         tar=args.build_tarballs,
-        ubuntu_images=args.build_ubuntu_images,
+        alpine_images=args.build_alpine_images,
         sign=args.sign_packages,
         scan=args.scan_viruses,
         security=args.security_check,
@@ -182,7 +182,7 @@ def parse_args(argv: List[str]) -> Tuple[argparse.ArgumentParser, argparse.Names
     parser.add_argument("-o", "--output", required=True, help="continuation config to write")
     for option in (
         "build-tarballs",
-        "build-ubuntu-images",
+        "build-alpine-images",
         "sign-packages",
         "scan-viruses",
         "security-check",

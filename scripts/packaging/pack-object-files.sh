@@ -52,7 +52,7 @@ INCLUSION_LIST="$(mktemp)"
 trap 'rm -f "${INCLUSION_LIST}"' EXIT
 
 find "${BUILD_DIR}" -name "*.a" > "${INCLUSION_LIST}"
-for obj in arangovpack arangobackup arangobench arangosh arangodump \
+for obj in arangovpack arangobackup arangosh arangodump \
            arangoexport arangorestore arangoimport arangod; do
   find "${BUILD_DIR}" -name "${obj}.cpp.o" >> "${INCLUSION_LIST}"
 done
@@ -65,7 +65,7 @@ echo "scripts/link_executables.sh" >> "${INCLUSION_LIST}"
 echo "README.static-linking" >> "${INCLUSION_LIST}"
 
 mkdir -p "${PACKAGES_OUT}"
-ARCHIVE="${PACKAGES_OUT}/arangodb3e-linux-object_files_${BUILDMODE}-${ARANGODB_VERSION}_${ARCH}.tar.gz"
+ARCHIVE="${PACKAGES_OUT}/arangodb4e-linux-object_files_${BUILDMODE}-${ARANGODB_VERSION}_${ARCH}.tar.gz"
 rm -f "${ARCHIVE}"
 tar -czf "${ARCHIVE}" \
   --transform "s|^${BUILD_DIR}|build|" \

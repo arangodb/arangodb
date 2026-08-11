@@ -149,7 +149,6 @@ def create_generator_config(
     test_image: str,
     arangosh_args: str,
     extra_args: str,
-    arangod_without_v8: bool,
     gtest: bool,
     full: bool,
     replication_two: bool,
@@ -185,16 +184,12 @@ def create_generator_config(
     filter_criteria = FilterCriteria(
         gtest=gtest,
         full=full,
-        v8=not arangod_without_v8,
         test_suite=test_suite,
     )
 
     # Create test execution config
     arangosh_args_list = TestArguments.parse_args_string(arangosh_args or "")
-    extra_args_list = TestArguments.parse_args_string(
-        extra_args or "",
-        add_skip_server_js=arangod_without_v8,
-    )
+    extra_args_list = TestArguments.parse_args_string(extra_args or "")
 
     test_execution = TestExecutionConfig(
         arangosh_args=arangosh_args_list,
@@ -267,11 +262,6 @@ def create_generator_config(
     help="Additional arguments to append to testing.js",
 )
 @click.option(
-    "--arangod-without-v8",
-    is_flag=True,
-    help="Run without JavaScript (V8 disabled)",
-)
-@click.option(
     "--gtest",
     is_flag=True,
     help="Only run gtest tests",
@@ -289,10 +279,10 @@ def create_generator_config(
 )
 @click.option(
     "--create-test-docker-images",
-    type=click.Choice(["none", "ubuntu"]),
+    type=click.Choice(["none", "alpine"]),
     default="none",
     help="Build and publish the multi-arch arangodb/core-test and "
-    "arangodb/client-tools-test Docker images (Ubuntu 26.04 based) to "
+    "arangodb/client-tools-test Docker images (Alpine 3.24 based) to "
     "public ECR from the build results",
 )
 @click.option(
@@ -316,7 +306,6 @@ def main(
     driver_branch_overrides: str,
     arangosh_args: str,
     extra_args: str,
-    arangod_without_v8: bool,
     gtest: bool,
     full: bool,
     replication_two: bool,
@@ -350,7 +339,6 @@ def main(
             test_image=test_image,
             arangosh_args=arangosh_args,
             extra_args=extra_args,
-            arangod_without_v8=arangod_without_v8,
             gtest=gtest,
             full=full,
             replication_two=replication_two,

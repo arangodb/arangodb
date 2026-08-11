@@ -33,15 +33,11 @@ parameters:
     type: boolean
     default: false
     description: "Whether to run the full test set (e.g., for nightly builds) or reduced set (e.g., for normal PR builds)"
-  arangod-without-v8:
-    type: boolean
-    default: false
-    description: "Build arangod without serverside JS (also excludes frontend)"
   config-definitions:
     type: string
-    default: tests.yml ui.yml
+    default: tests.yml
     description: Space separated list of YAML files with test definitions. Available files
-      arangojs.yml java.yml spark-ds.yml ui.yml go.yml kafka.yml spring-data.yml tinkerpop.yml py-async.yml py.yml tests.yml
+      arangojs.yml java.yml spark-ds.yml go.yml kafka.yml spring-data.yml tinkerpop.yml py-async.yml py.yml tests.yml
   config-definitions-branches:
     type: string
     default: ""
@@ -52,12 +48,12 @@ parameters:
     description: "filter to be executed testuite names for containing this string"
   create-test-docker-images:
     type: enum
-    enum: [none, ubuntu]
+    enum: [none, alpine]
     default: none
     description: "Build and publish multi-arch (amd64 + arm64) test Docker images
-      of the Enterprise Edition from this commit's build results; 'ubuntu' builds
-      TWO Ubuntu-26.04-based images: arangodb/core-test (server, client tools
-      included) and arangodb/client-tools-test (client tools only); 'none'
+      of the Enterprise Edition from this commit's build results; 'alpine' builds
+      TWO Alpine-3.24-based images: arangodb/core-test (server only, no client
+      tools) and arangodb/client-tools-test (client tools only); 'none'
       disables. Both are pushed to public ECR under public.ecr.aws/b0b8h2r4/,
       tagged <community sha7>_<enterprise sha7> (multi-arch manifest) with
       -amd64 / -arm64v8 per-arch tags."
@@ -180,7 +176,6 @@ jobs:
             echo "with-tsan: << pipeline.parameters.with-tsan >>"
             echo "with-alubsan: << pipeline.parameters.with-alubsan >>"
             echo "full: << pipeline.parameters.full >>"
-            echo "arangod-without-v8: << pipeline.parameters.arangod-without-v8 >>"
             echo "config-definitions: << pipeline.parameters.config-definitions >>"
             echo "config-definitions-branches: << pipeline.parameters.config-definitions-branches >>"
             echo "create-test-docker-images: << pipeline.parameters.create-test-docker-images >>"
@@ -251,7 +246,6 @@ jobs:
               --arangosh-args "A<< pipeline.parameters.arangosh_args >>" \
               --extra-args "A<< pipeline.parameters.extra_args >>" \
               --test-image "<< pipeline.parameters.test-docker-image >>" \
-              <<# pipeline.parameters.arangod-without-v8 >> --arangod-without-v8  <</ pipeline.parameters.arangod-without-v8 >>\
               <<# pipeline.parameters.full >> --full <</ pipeline.parameters.full >> \
               --create-test-docker-images << pipeline.parameters.create-test-docker-images >> \
               <<# pipeline.parameters.replication-two >> -rt <</ pipeline.parameters.replication-two >> \

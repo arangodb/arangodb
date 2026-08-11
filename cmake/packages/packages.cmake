@@ -3,7 +3,6 @@ set(CPACK_SET_DESTDIR ON)
 set(CPACK_PACKAGE_VENDOR  ${ARANGODB_PACKAGE_VENDOR})
 set(CPACK_PACKAGE_CONTACT ${ARANGODB_PACKAGE_CONTACT})
 
-# TODO just for rpm?
 set(CPACK_PACKAGING_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
 
 if (USE_ENTERPRISE)
@@ -15,94 +14,20 @@ endif ()
 set(CPACK_STRIP_FILES "ON")
 
 if (${USE_ENTERPRISE})
-  set(CPACKG_PACKAGE_CONFLICTS "arangodb3")
-  set(CPACK_PACKAGE_NAME "arangodb3e")
+  set(CPACKG_PACKAGE_CONFLICTS "arangodb4")
+  set(CPACK_PACKAGE_NAME "arangodb4e")
 else ()
-  set(CPACK_PACKAGE_NAME "arangodb3")
-  set(CPACKG_PACKAGE_CONFLICTS "arangodb3e")
+  set(CPACK_PACKAGE_NAME "arangodb4")
+  set(CPACKG_PACKAGE_CONFLICTS "arangodb4e")
 endif ()
 set(ARANGODB_PACKAGE_ARCHITECTURE ${CMAKE_SYSTEM_PROCESSOR})
-# eventually the package string will be modified later on:
 
-set(LOGROTATE_GROUP "arangodb")
-
-if ("${PACKAGING}" STREQUAL "DEB")
-  set(CPACK_PACKAGE_VERSION "${ARANGODB_DEBIAN_UPSTREAM}")
-
-  if(CMAKE_TARGET_ARCHITECTURES MATCHES ".*x86_64.*")
-    set(ARANGODB_PACKAGE_ARCHITECTURE "amd64")
-  elseif(CMAKE_TARGET_ARCHITECTURES MATCHES "aarch64")
-    set(ARANGODB_PACKAGE_ARCHITECTURE "arm64")
-  elseif(CMAKE_TARGET_ARCHITECTURES MATCHES "armv7")
-    set(ARANGODB_PACKAGE_ARCHITECTURE "armhf")
-  else()
-    set(ARANGODB_PACKAGE_ARCHITECTURE "i386")
-  endif()
-  
-  set(CPACK_PACKAGE_FILE_NAME
-    "${CPACK_PACKAGE_NAME}-${ARANGODB_DEBIAN_UPSTREAM}-${ARANGODB_DEBIAN_REVISION}_${ARANGODB_PACKAGE_ARCHITECTURE}")
-
-  include(packages/deb)
-  include(packages/tar)
-
-  if (USE_SNAPCRAFT)
-    if(NOT DEFINED SNAP_PORT)
-      set(SNAP_PORT 8529)
-    endif()
-    include(packages/snap)
-  endif ()
-elseif ("${PACKAGING}" STREQUAL "RPM")
-  set(CPACK_PACKAGE_VERSION "${ARANGODB_RPM_UPSTREAM}")
-
-  set(PACKAGE_VERSION "-${CPACK_PACKAGE_VERSION}-${ARANGODB_RPM_REVISION}.${ARANGODB_PACKAGE_ARCHITECTURE}")
-  set(CPACK_PACKAGE_FILE_NAME  "${CPACK_PACKAGE_NAME}${PACKAGE_VERSION}")
-  include(packages/rpm)
-  include(packages/tar)
-elseif ("${PACKAGING}" STREQUAL "Bundle")
-  set(CPACK_PACKAGE_VERSION "${ARANGODB_DARWIN_UPSTREAM}")
-
-  if ("${ARANGODB_DARWIN_REVISION}" STREQUAL "")
-    set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}.x86_64")
-  else()
-    set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${ARANGODB_DARWIN_REVISION}.x86_64")
-  endif()
-  include(packages/bundle)
-  include(packages/tar)
-else ()
-  set(CPACK_PACKAGE_VERSION "${ARANGODB_VERSION}")
-  set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-1_${ARANGODB_PACKAGE_ARCHITECTURE}")
-  include(packages/tar)
-endif ()
-
-if (UNIX)
-  if (SYSTEMD_FOUND)
-    # configure and install logrotate file
-    configure_file (
-      ${ARANGODB_SOURCE_DIR}/Installation/logrotate.d/arangod.systemd
-      ${PROJECT_BINARY_DIR}/arangod.systemd
-      NEWLINE_STYLE UNIX
-      )
-    install(
-      FILES ${PROJECT_BINARY_DIR}/arangod.systemd
-      PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
-      DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/logrotate.d
-      RENAME ${SERVICE_NAME}
-      )
-  else ()
-    configure_file (
-      ${ARANGODB_SOURCE_DIR}/Installation/logrotate.d/arangod.sysv
-      ${PROJECT_BINARY_DIR}/arangod.sysv
-      NEWLINE_STYLE UNIX
-      )
-  endif ()
-endif ()
-
-
-configure_file(
-  "${CMAKE_SOURCE_DIR}/Installation/cmake/CMakeCPackOptions.cmake.in"
-  "${CMAKE_BINARY_DIR}/CMakeCPackOptions.cmake" @ONLY)
-set(CPACK_PROJECT_CONFIG_FILE "${CMAKE_BINARY_DIR}/CMakeCPackOptions.cmake")
-
+# 4.0 ships TAR.GZ bundles and Docker images only (built by
+# scripts/packaging/); the generic CPack TGZ target below is kept for
+# developer convenience.
+set(CPACK_PACKAGE_VERSION "${ARANGODB_VERSION}")
+set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-1_${ARANGODB_PACKAGE_ARCHITECTURE}")
+include(packages/tar)
 
 # Finally: user cpack
 include(CPack)

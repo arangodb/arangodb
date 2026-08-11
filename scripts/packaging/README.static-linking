@@ -16,7 +16,6 @@ Then run the script `scripts/link_executables.sh` and you will find
 the following executables in the `build/bin` directory:
 
   - arangod
-  - arangobench
   - arangodump
   - arangorestore
   - arangosh

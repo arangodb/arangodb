@@ -35,13 +35,6 @@ class CircleCIGenerator(OutputGenerator):
     # YAML definitions or need runtime-dependent adjustments.
     # ========================================================================
 
-    # Job-specific bucket overrides
-    # replication_sync: YAML specifies 2 buckets (for Jenkins compatibility),
-    # but CircleCI needs 5 for better parallelization. See tests/tests.yml:74
-    BUCKET_OVERRIDES = {
-        "replication_sync": 5,
-    }
-
     # Job-specific size overrides (applied conditionally)
     # shell_client_aql: Nightly single-server runs need more memory due to
     # extended test coverage and data volume
@@ -207,16 +200,6 @@ class CircleCIGenerator(OutputGenerator):
 
         preset += build_config.build_variant.get_suffix()
 
-        # Coverage has plain pr-*-coverage presets but no -no-v8 combos
-        # (coverage is a rare, CLI-only variant); when combined with
-        # arangod-without-v8 it keeps the coverage preset and gets USE_V8
-        # forced off via the Configure step's command-line override.
-        if (
-            not self.config.filter_criteria.v8
-            and not build_config.build_variant.is_coverage
-        ):
-            preset += "-no-v8"
-
         suffix = build_config.build_variant.get_suffix()
         name = f"build-{build_config.architecture.value}{suffix}"
 
@@ -286,7 +269,7 @@ class CircleCIGenerator(OutputGenerator):
         """
         Add a dedicated workflow that builds and publishes the multi-arch
         arangodb/core-test and arangodb/client-tools-test Docker images
-        (Ubuntu 26.04 based, maintainer-mode) to public ECR.
+        (Alpine 3.24 based, maintainer-mode) to public ECR.
 
         Tagging follows the nightly-packages convention: the manifest tag is
         <community sha7>_<enterprise sha7>, per-arch tags append
@@ -603,9 +586,6 @@ class CircleCIGenerator(OutputGenerator):
 
         if job.options.buckets == "auto" and len(filtered_suites) != len(job.suites):
             bucket_count = len(filtered_suites)
-
-        if job.name in self.BUCKET_OVERRIDES:
-            bucket_count = self.BUCKET_OVERRIDES[job.name]
 
         if bucket_count and bucket_count != 1:
             job_dict["buckets"] = bucket_count
