@@ -1892,7 +1892,7 @@ void IResearchDataStore::truncateCommit(TruncateGuard&& guard,
   }
 }
 
-IResearchDataStore::Stats IResearchDataStore::stats() const {
+IResearchDataStore::Stats IResearchDataStore::getStats() const {
   auto linkLock = _asyncSelf->lock();
   if (!linkLock) {
     return {};
@@ -1901,10 +1901,18 @@ IResearchDataStore::Stats IResearchDataStore::stats() const {
     return _metricStats->load();
   }
   TRI_ASSERT(_dataStore);
-  return updateStatsUnsafe(_dataStore.loadSnapshot());
+  return getStatsUnsafe(_dataStore.loadSnapshot());
 }
 
-IResearchDataStore::Stats IResearchDataStore::updateStatsUnsafe(
+void IResearchDataStore::updateStatsUnsafe(DataSnapshotPtr data) const {
+  if (!_metricStats) {
+    return;
+  }
+  auto stats = getStatsUnsafe(data);
+  _metricStats->store(stats);
+}
+
+IResearchDataStore::Stats IResearchDataStore::getStatsUnsafe(
     DataSnapshotPtr data) const {
   TRI_ASSERT(data);
   auto& reader = data->_reader;
@@ -1931,16 +1939,43 @@ IResearchDataStore::Stats IResearchDataStore::updateStatsUnsafe(
     stats.indexSize += meta.byte_size;
     stats.numFiles += meta.files.size();
   }
-  if (_metricStats) {
-    _metricStats->store(stats);
-  }
   return stats;
+}
+
+IResearchDataStore::DatastoreStats IResearchDataStore::getDatastoreStatsUnsafe(
+    DataSnapshotPtr data) const {
+  TRI_ASSERT(data);
+  auto& reader = data->_reader;
+  TRI_ASSERT(reader);
+
+  DatastoreStats dsStats;
+  dsStats.summary = getStatsUnsafe(data);
+  const auto& segments = reader->Meta().index_meta.segments;
+  std::for_each(segments.begin(), segments.end(),
+                [&dsStats](const irs::IndexSegment& segment) {
+                  irs::SegmentInfo segInfo;
+                  segInfo = segment.meta;
+                  dsStats.segments.push_back(segInfo);
+                });
+
+  return dsStats;
+}
+
+IResearchDataStore::DatastoreStats IResearchDataStore::getDatastoreStats()
+    const {
+  auto linkLock = _asyncSelf->lock();
+  if (!linkLock) {
+    return {};
+  }
+
+  TRI_ASSERT(_dataStore);
+  return getDatastoreStatsUnsafe(_dataStore.loadSnapshot());
 }
 
 void IResearchDataStore::toVelocyPackStats(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
 
-  auto const stats = this->stats();
+  auto const stats = this->getStats();
 
   builder.add("numDocs", VPackValue(stats.numDocs));
   builder.add("numPrimaryDocs", VPackValue(stats.numPrimaryDocs));

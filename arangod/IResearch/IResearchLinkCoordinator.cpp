@@ -69,7 +69,7 @@ Result IResearchLinkCoordinator::init(velocypack::Slice definition) {
   return r;
 }
 
-IResearchDataStore::Stats IResearchLinkCoordinator::stats() const {
+IResearchDataStore::Stats IResearchLinkCoordinator::getStats() const {
   auto& cmf = collection()
                   .vocbase()
                   .server()

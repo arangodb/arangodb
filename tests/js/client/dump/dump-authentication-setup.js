@@ -33,7 +33,6 @@ const setup = require(base);
   setup.cleanup();
   setup.createEmpty();
   setup.createExtendedName();
-  setup.createAutoIncKeyGen();
   setup.createUsers();
   setup.createMany();
   setup.createOrder();

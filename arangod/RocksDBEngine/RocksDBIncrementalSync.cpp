@@ -690,10 +690,8 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
   }
 
-  if (!syncer._state.isChildSyncer) {
-    syncer._batch.extend(syncer._state.connection, syncer._progress,
-                         syncer._state.syncerId);
-  }
+  syncer._batch.extend(syncer._state.connection, syncer._progress,
+                       syncer._state.syncerId);
 
   TRI_voc_tick_t const chunkSize = 5000;
   std::string const baseUrl = replutils::ReplicationUrl + "/keys";
@@ -821,10 +819,8 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     auto indexesSnapshot = physical->getIndexesSnapshot();
 
     auto resetChunk = [&]() -> void {
-      if (!syncer._state.isChildSyncer) {
-        syncer._batch.extend(syncer._state.connection, syncer._progress,
-                             syncer._state.syncerId);
-      }
+      syncer._batch.extend(syncer._state.connection, syncer._progress,
+                           syncer._state.syncerId);
 
       syncer.setProgress(std::string("processing keys chunk ") +
                          std::to_string(currentChunkId) + " of " +
