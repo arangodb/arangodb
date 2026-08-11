@@ -46,8 +46,6 @@ int main(int argc, char* argv[]) {
     int ret = EXIT_SUCCESS;
     ArangoBenchServer server(options, BIN_DIRECTORY, context.binaryName(),
                              &ret);
-    server.addFeatures();
-
     try {
       server.run(argc, argv);
     } catch (std::exception const& ex) {

@@ -37,12 +37,8 @@ class ArangoshServer final
   ArangoshServer(std::shared_ptr<options::ProgramOptions> options,
                  char const* binaryPath, std::string binaryName, int* ret);
 
-  // Adds all features that do not (yet) receive their options via a
-  // provider. Must be called before run().
-  void addFeatures();
-
  protected:
-  void addFeaturesWithOptionProvider() final;
+  void addFeaturesWithOptionProvider() override;
 };
 
 }  // namespace arangodb

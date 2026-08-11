@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -17,28 +17,27 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
-#include "ApplicationFeatures/OptionProvidingServer.h"
-#include "Benchmark/ArangoBenchOptionProviders.h"
-
-#include <memory>
-#include <string>
-
 namespace arangodb {
-namespace options {
-class ProgramOptions;
-}
+namespace velocypack {
+class HashedStringRef;
+class Builder;
+}  // namespace velocypack
 
-class ArangoBenchServer final
-    : public OptionProvidingServer<ArangoBenchOptionProviders> {
+namespace graph {
+class IPathResult {
  public:
-  ArangoBenchServer(std::shared_ptr<options::ProgramOptions> options,
-                    char const* binaryPath, std::string binaryName, int* ret);
+  IPathResult() {}
+  virtual ~IPathResult() = default;
 
- protected:
-  void addFeaturesWithOptionProvider() final;
+  virtual auto toVelocyPack(velocypack::Builder& builder) -> void = 0;
+  virtual auto lastVertexToVelocyPack(velocypack::Builder& builder) -> void = 0;
+  virtual auto lastEdgeToVelocyPack(velocypack::Builder& builder) -> void = 0;
 };
 
+}  // namespace graph
 }  // namespace arangodb
