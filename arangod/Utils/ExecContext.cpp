@@ -55,7 +55,8 @@ ExecContext const& ExecContext::current() {
   if (CURRENT != nullptr) {
     return *CURRENT;
   }
-  // in production builds, fail towards the historical behavior
+  // in production builds, fail towards the historical behavior, for now.
+  // change this into a prod assert later.
   return *Superuser;
 }
 

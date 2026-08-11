@@ -81,9 +81,6 @@ TEST(RocksDBTransactionManager, test_overlapping) {
   std::atomic<bool> done;
 
   auto getReadLock = [&]() -> void {
-    // COR-824: in production, managed transactions are committed from
-    // threads that have an ExecContext installed; this ad-hoc test thread
-    // has none.
     ExecContextSuperuserScope execContextScope;
     tm.commitManagedTrx(trxId, "foo").waitAndGet();
     done = true;

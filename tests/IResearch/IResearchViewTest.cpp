@@ -2640,8 +2640,6 @@ TEST_F(IResearchViewTest, test_drop_database) {
   StorageEngineMock::before = [&beforeCount]() -> void { ++beforeCount; };
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
-  // COR-824: test runs without an installed ExecContext; use the
-  // superuser singleton explicitly instead of ExecContext::current().
   arangodb::CreateDatabaseInfo testDBInfo(server.server(),
                                           arangodb::ExecContext::superuser());
   testDBInfo.load("testDatabase" IRS_TO_STRING(__LINE__), 3);
@@ -10384,8 +10382,6 @@ TEST_F(IResearchViewTest, test_remove_referenced_analyzer) {
       server.server().getFeature<arangodb::DatabaseFeature>();
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
-  // COR-824: test runs without an installed ExecContext; use the
-  // superuser singleton explicitly instead of ExecContext::current().
   arangodb::CreateDatabaseInfo testDBInfo(server.server(),
                                           arangodb::ExecContext::superuser());
   testDBInfo.load("testDatabase" IRS_TO_STRING(__LINE__), 3);

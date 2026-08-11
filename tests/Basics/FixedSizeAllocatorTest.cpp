@@ -261,8 +261,6 @@ TEST(FixedSizeAllocatorTest, test_AstNodesRollbackDuringCreation) {
 
   // create a query object so we have an AST object to mess with
   arangodb::tests::mocks::MockAqlServer server(true);
-  // COR-824: test runs without an installed ExecContext; use the
-  // superuser singleton explicitly instead of ExecContext::current().
   arangodb::CreateDatabaseInfo testDBInfo(server.server(),
                                           arangodb::ExecContext::superuser());
   testDBInfo.load("testVocbase", 2);
