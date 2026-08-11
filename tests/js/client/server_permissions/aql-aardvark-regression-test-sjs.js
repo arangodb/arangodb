@@ -22,9 +22,12 @@
 // /
 // //////////////////////////////////////////////////////////////////////////////
 
+const jwtSecret = 'abc123';
+
 if (getOptions === true) {
   return {
     'server.authentication': 'true',
+    'server.jwt-secret': jwtSecret,
   };
 }
 
