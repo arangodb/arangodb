@@ -745,6 +745,25 @@ function AuthSuite() {
       }
     },
 
+    // a malformed access token (valid "v1." prefix, but the hex-decoded
+    // payload is not valid JSON) must be rejected as bad credentials
+    // (401), not crash the request handler with an unhandled exception
+    // (which used to surface as an HTTP 500).
+    testAccessTokenMalformedPayload: function () {
+      const version_url = `/_api/version`;
+      const forbidden = 401;
+
+      // hex encoding of the string "not valid json", which is not
+      // parseable as JSON
+      const malformedToken = "v1.6e6f742076616c6964206a736f6e";
+
+      const res = request.get(version_url, {
+        auth: {username: "root", password: malformedToken}
+      });
+      expect(res).to.be.an.instanceof(request.Response);
+      expect(res).to.have.property('statusCode', forbidden);
+    },
+
     // access token and JWT
     testAccessTokenJWT: function () {
       const other = "other";
