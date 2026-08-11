@@ -8,7 +8,7 @@ var _toString       = Object.prototype.toString;
 function resolveYamlOmap(data) {
   if (data === null) return true;
 
-  var objectKeys = [], index, length, pair, pairKey, pairHasKey,
+  var objectKeys = {}, index, length, pair, pairKey, pairHasKey,
       object = data;
 
   for (index = 0, length = object.length; index < length; index += 1) {
@@ -26,8 +26,8 @@ function resolveYamlOmap(data) {
 
     if (!pairHasKey) return false;
 
-    if (objectKeys.indexOf(pairKey) === -1) objectKeys.push(pairKey);
-    else return false;
+    if (_hasOwnProperty.call(objectKeys, pairKey)) return false;
+    Object.defineProperty(objectKeys, pairKey, { value: true });
   }
 
   return true;
