@@ -40,23 +40,28 @@ class GeneralResponse;
 template<typename H>
 class RestHandlerCreator : public H {
   template<typename... Args>
-  static auto createUnique(application_features::ApplicationServer& server, GeneralRequest* request,
-      GeneralResponse* response, Args&&... args) -> std::shared_ptr<rest::RestHandler> {
+  static auto createUnique(application_features::ApplicationServer& server,
+                           GeneralRequest* request, GeneralResponse* response,
+                           Args&&... args)
+      -> std::shared_ptr<rest::RestHandler> {
     using Deleter = decltype([](H* h) {
       auto* request = h->request();
       // Call the destructor under the user's ExecContext, if any.
-      auto guard = ExecContextScope(request != nullptr ? request->requestContext() : nullptr);
+      auto guard = ExecContextScope(
+          request != nullptr ? request->requestContext() : nullptr);
       delete h;
     });
 
     // Call the constructor under the user's ExecContext, if any.
-    auto guard = ExecContextScope(request != nullptr ? request->requestContext() : nullptr);
+    auto guard = ExecContextScope(request != nullptr ? request->requestContext()
+                                                     : nullptr);
 
     // use the ExecContext-aware deleter
-    return std::unique_ptr<H, Deleter>(new H(server, request, response, std::forward<Args>(args)...));
+    return std::unique_ptr<H, Deleter>(
+        new H(server, request, response, std::forward<Args>(args)...));
   }
 
-public:
+ public:
   template<typename D>
   static std::shared_ptr<rest::RestHandler> createData(
       application_features::ApplicationServer& server, GeneralRequest* request,
