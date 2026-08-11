@@ -1,6 +1,9 @@
 v3.11.14.5 (XXXX-XX-XX)
 -----------------------
 
+* Upgraded included rclone to v1.75.0 with go1.25.12 and non-vulnerable
+  dependencies.
+
 * Updated node modules:
  - js-yaml to 3.15.1 to resolve GHSA-52cp-r559-cp3m, GHSA-h67p-54hq-rp68 and
    GHSA-5p4m-2wfm-xmqj
@@ -11,9 +14,6 @@ v3.11.14.5 (XXXX-XX-XX)
  - qs to 6.15.3 to resolve GHSA-q8mj-m7cp-5q26
 
 * Updated ArangoDB Starter to v0.18.28.
-
-* Upgraded included rclone to v1.74.4 with go1.25.12 and non-vulnerable
-  dependencies.
 
 * Upgraded OpenSSL to 3.5.7.
 
