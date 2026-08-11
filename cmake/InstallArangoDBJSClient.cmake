@@ -37,6 +37,7 @@ install(
   DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}
   REGEX "^.*/.bin"                                         EXCLUDE
   REGEX "^.*/.npmignore"                                   EXCLUDE
+  REGEX "^.*/.package-lock.json"                           EXCLUDE
   REGEX "^.*/.*-no-eslint"                                 EXCLUDE
   REGEX "^.*/@sinonjs"                                     EXCLUDE
   REGEX "^.*/@xmldom"                                      EXCLUDE
