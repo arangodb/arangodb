@@ -22,29 +22,22 @@
 
 #pragma once
 
-#include <cstdint>
-
 namespace arangodb {
+namespace velocypack {
+class HashedStringRef;
+class Builder;
+}  // namespace velocypack
 
-struct ReplicationOptions {
-  /// maximum number of parallel tailing operations invocations
-  uint64_t maxParallelTailingInvocations = 0;
+namespace graph {
+class IPathResult {
+ public:
+  IPathResult() {}
+  virtual ~IPathResult() = default;
 
-  /// quick replication keys limit
-  uint64_t quickKeysLimit = 1000000;
-
-  /// Use the revision-based replication protocol
-  bool syncByRevision = true;
-
-  /// automatically repair revision trees of shards after too many failed
-  /// shard synchronization attempts
-  bool autoRepairRevisionTrees = true;
-
-  double connectTimeout = 10.0;
-  double requestTimeout = 600.0;
-
-  bool forceConnectTimeout = false;
-  bool forceRequestTimeout = false;
+  virtual auto toVelocyPack(velocypack::Builder& builder) -> void = 0;
+  virtual auto lastVertexToVelocyPack(velocypack::Builder& builder) -> void = 0;
+  virtual auto lastEdgeToVelocyPack(velocypack::Builder& builder) -> void = 0;
 };
 
+}  // namespace graph
 }  // namespace arangodb
