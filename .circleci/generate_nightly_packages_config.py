@@ -76,10 +76,6 @@ def disabled_jobs(
     if not sign or not any_packages:
         drop.add("sign-packages")
 
-    # The verdict job has nothing to collect once the scans are gone.
-    if not security:
-        drop.add("security-gate")
-
     return drop
 
 
@@ -145,6 +141,15 @@ def prune_workflow(
                 ]
                 if not job_config["requires"]:
                     del job_config["requires"]
+            # publish-nightly verifies one gate verdict per security-check
+            # job; the list has to shrink with the jobs, or the publish
+            # would fail waiting for verdicts of pruned scans.
+            if job_config and "expected-gate-items" in job_config:
+                job_config["expected-gate-items"] = " ".join(
+                    item
+                    for item in job_config["expected-gate-items"].split()
+                    if f"security-check-{item}" not in drop
+                )
         kept.append(entry)
     workflow["jobs"] = kept
 
@@ -181,11 +186,13 @@ def check_workflow(config: Dict[str, Any], name: str = WORKFLOW_NAME) -> None:
         "docker-enterprise",
     )
     publish_requires: Dict[str, JobEntry] = {}
+    publish_config: Dict[str, Any] = {}
     for entry in workflow["jobs"]:
         if entry_name(entry) == "publish-nightly" and isinstance(entry, dict):
             [(_, job_config)] = entry.items()
+            publish_config = job_config or {}
             publish_requires = {
-                dep_name(dep): dep for dep in (job_config or {}).get("requires", [])
+                dep_name(dep): dep for dep in publish_config.get("requires", [])
             }
     missing = sorted(
         name
@@ -198,13 +205,15 @@ def check_workflow(config: Dict[str, Any], name: str = WORKFLOW_NAME) -> None:
             f"job in the workflow; missing: {missing}"
         )
 
-    # security-gate failing is the one failure the publish tolerates: a
-    # finding must alert without stopping a pre-release nightly. Anything
-    # else tolerated anywhere in the graph would let a job run on missing
-    # artifacts or missing reports, so both the edge and its status set
-    # are pinned here rather than left to whoever edits a requires list
-    # next. CircleCI accepts "failed" alone just as happily, which would
-    # invert the publish into running ONLY on a red gate.
+    # The security-check jobs failing (on findings, recorded after their
+    # reports are delivered) are the only failures the publish tolerates:
+    # a finding must alert without stopping a pre-release nightly.
+    # Anything else tolerated anywhere in the graph would let a job run
+    # on missing artifacts or missing reports, so both the edges and
+    # their status set are pinned here rather than left to whoever edits
+    # a requires list next. CircleCI accepts "failed" alone just as
+    # happily, which would invert the publish into running ONLY on red
+    # scans.
     for entry in workflow["jobs"]:
         if not isinstance(entry, dict):
             continue
@@ -213,18 +222,51 @@ def check_workflow(config: Dict[str, Any], name: str = WORKFLOW_NAME) -> None:
             if blocks_on(dep):
                 continue
             edge = f"{entry_name(entry)} -> {dep_name(dep)}"
-            if edge != "publish-nightly -> security-gate":
+            if entry_name(entry) != "publish-nightly" or not dep_name(
+                dep
+            ).startswith("security-check-"):
                 raise ValueError(
                     "only publish-nightly may tolerate a failing "
-                    f"security-gate; {edge} tolerates "
+                    f"security-check job; {edge} tolerates "
                     f"{dep_statuses(dep)}"
                 )
             if dep_statuses(dep) != ["success", "failed"]:
                 raise ValueError(
-                    "publish-nightly must require security-gate with "
+                    f"publish-nightly must require {dep_name(dep)} with "
                     "exactly ['success', 'failed'], got "
                     f"{dep_statuses(dep)}"
                 )
+
+    # ... and the tolerance must hold for EVERY scan job: one required
+    # with the plain success-only default would silently turn its
+    # findings back into a publish blocker.
+    security_checks = sorted(n for n in known if n.startswith("security-check-"))
+    for name in security_checks:
+        dep = publish_requires.get(name)
+        if dep is None:
+            raise ValueError(
+                f"publish-nightly must directly require {name} "
+                "(with ['success', 'failed'])"
+            )
+        if dep_statuses(dep) != ["success", "failed"]:
+            raise ValueError(
+                f"publish-nightly must require {name} with exactly "
+                f"['success', 'failed'], got {dep_statuses(dep)}"
+            )
+
+    # publish-nightly can only tell a red-on-findings scan from a dead one
+    # by checking the recorded verdicts, so its expected-gate-items list
+    # must name exactly the security-check jobs still in the workflow:
+    # an extra item deadlocks the publish, a missing one would let a dead
+    # scan publish unreported artifacts.
+    expected = sorted(publish_config.get("expected-gate-items", "").split())
+    items = sorted(name[len("security-check-") :] for name in security_checks)
+    if expected != items:
+        raise ValueError(
+            "publish-nightly's expected-gate-items must match the "
+            f"security-check jobs in the workflow: expected {items}, got "
+            f"{expected}"
+        )
 
 
 def generate(base: Dict[str, Any], args: argparse.Namespace) -> Dict[str, Any]:
