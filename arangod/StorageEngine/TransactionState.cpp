@@ -715,11 +715,6 @@ Result TransactionState::checkCollectionPermission(
   TRI_ASSERT(!cname.empty());
   ExecContext const& exec = ExecContext::current();
 
-  // no need to check for superuser, cluster_sync tests break otherwise
-  if (exec.isSuperuserOrDisabled()) {
-    return {};
-  }
-
   if (accessType == AccessMode::Type::READ) {
     if (auto r =
             exec.canUseCollection(_vocbase.name(), cname, AccessLevel::Read);

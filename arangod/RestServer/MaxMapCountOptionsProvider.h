@@ -33,8 +33,6 @@ struct MaxMapCountOptionsProvider
                           MaxMapCountFeatureOptions> {
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           MaxMapCountFeatureOptions& options);
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
-                           MaxMapCountFeatureOptions& /*options*/){};
 };
 
 }  // namespace arangodb

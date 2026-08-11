@@ -23,11 +23,7 @@
 #include "ReplicationTimeoutFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Cluster/ReplicationTimeoutOptionsProvider.h"
 #include "FeaturePhases/DatabaseFeaturePhase.h"
-#include "ProgramOptions/ProgramOptions.h"
-
-using namespace arangodb::options;
 
 namespace arangodb {
 
@@ -52,18 +48,6 @@ ReplicationTimeoutFeature::ReplicationTimeoutFeature(
       _options(std::move(options)) {
   setOptional(true);
   startsAfter<application_features::DatabaseFeaturePhase>();
-}
-
-void ReplicationTimeoutFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  ReplicationTimeoutOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void ReplicationTimeoutFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  ReplicationTimeoutOptionsProvider provider;
-  provider.validateOptions(options, _options);
 }
 
 }  // namespace arangodb

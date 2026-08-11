@@ -27,9 +27,10 @@
 namespace arangodb {
 
 void Thread::beforeRun() {
-  if (_execContext != nullptr) {
-    ExecContext::set(std::move(_execContext));
-  }
+  // _execContext is allowed to be nullptr
+  ExecContext::set(std::move(_execContext));
+
+  return BasicThread::beforeRun();
 }
 
 }  // namespace arangodb

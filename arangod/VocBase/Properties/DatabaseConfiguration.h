@@ -35,6 +35,9 @@ class ResultT;
 class DataSourceId;
 struct UserInputCollectionProperties;
 
+struct OneShardDatabaseConfiguration {
+  std::string defaultDistributeShardsLike = "";
+};
 struct DatabaseConfiguration {
   DatabaseConfiguration(
       std::function<DataSourceId()> idGenerator,
@@ -53,8 +56,7 @@ struct DatabaseConfiguration {
   uint64_t defaultNumberOfShards = 1;
   uint64_t defaultReplicationFactor = 1;
   uint64_t defaultWriteConcern = 1;
-  std::string defaultDistributeShardsLike = "";
-  bool isOneShardDB = false;
+  std::optional<OneShardDatabaseConfiguration> oneShardDBConfiguration;
   replication::Version replicationVersion = replication::Version::ONE;
 
   std::function<DataSourceId()> idGenerator;

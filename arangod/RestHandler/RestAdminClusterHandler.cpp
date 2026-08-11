@@ -2076,11 +2076,18 @@ async<void> RestAdminClusterHandler::handleNumberOfServers() {
     co_return;
   }
 
-  // GET requests are allowed for everyone, PUT, too, unless
-  // --server.harden is used. In this case admin privileges are
-  // required. with RBAC, db:AdminMaintenance is needed for PUT
-  if (request()->requestType() != rest::RequestType::GET) {
+  // GET requests are allowed for everyone, unless --server.harden is
+  // used, in which case admin privileges are required.
+  // PUT always needs db:AdminMaintenance is needed for PUT
+  if (request()->requestType() == rest::RequestType::GET) {
     if (auto r = ExecContext::current().canUseHardenedAction(
+            auth::perms::AdminMaintenance{});
+        r.fail()) {
+      generateError(r);
+      co_return;
+    }
+  } else {
+    if (auto r = ExecContext::current().canUseAdminAction(
             auth::perms::AdminMaintenance{});
         r.fail()) {
       generateError(r);

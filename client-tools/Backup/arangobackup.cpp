@@ -54,10 +54,6 @@ int main(int argc, char* argv[]) {
 
     try {
       server.run(argc, argv);
-      if (server.helpShown()) {
-        // --help was displayed
-        ret = EXIT_SUCCESS;
-      }
     } catch (std::exception const& ex) {
       LOG_TOPIC("78140", ERR, arangodb::Logger::FIXME)
           << "arangobackup terminated because of an unhandled exception: "

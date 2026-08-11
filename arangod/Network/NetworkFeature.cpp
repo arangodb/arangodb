@@ -69,7 +69,7 @@ class RetryThread : public Thread {
 
  public:
   explicit RetryThread()
-      // connection retry plumbing only, no authorization-relevant code
+      // connection retry plumbing only, no ExecContext required
       : Thread("NetworkRetry", nullptr),
         _nextRetryTime(std::chrono::steady_clock::now() + kDefaultSleepTime) {}
 

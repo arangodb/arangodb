@@ -23,12 +23,10 @@
 #include "BumpFileDescriptorsFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/BumpFileDescriptorsOptionsProvider.h"
 #include "Basics/FileDescriptors.h"
 #include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
 #include "Logger/LogMacros.h"
-#include "ProgramOptions/ProgramOptions.h"
 
 #ifdef TRI_HAVE_SYS_RESOURCE_H
 #include <sys/resource.h>
@@ -41,37 +39,16 @@
 #include <string>
 
 using namespace arangodb::application_features;
-using namespace arangodb::options;
 
 #ifdef TRI_HAVE_GETRLIMIT
 namespace arangodb {
 
 BumpFileDescriptorsFeature::BumpFileDescriptorsFeature(
-    ApplicationServer& server, std::string optionName)
-    : BumpFileDescriptorsFeature(server, std::move(optionName),
-                                 BumpFileDescriptorsFeatureOptions{}) {}
-
-BumpFileDescriptorsFeature::BumpFileDescriptorsFeature(
-    ApplicationServer& server, std::string optionName,
-    BumpFileDescriptorsFeatureOptions options)
-    : ApplicationFeature{server, *this},
-      _optionName(std::move(optionName)),
-      _options(std::move(options)) {
+    ApplicationServer& server, BumpFileDescriptorsFeatureOptions options)
+    : ApplicationFeature{server, *this}, _options(std::move(options)) {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
   startsAfter<LoggerFeature>();
-}
-
-void BumpFileDescriptorsFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  BumpFileDescriptorsOptionsProvider provider(_optionName);
-  provider.declareOptions(options, _options);
-}
-
-void BumpFileDescriptorsFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  BumpFileDescriptorsOptionsProvider provider(_optionName);
-  provider.validateOptions(options, _options);
 }
 
 void BumpFileDescriptorsFeature::prepare() {
@@ -103,7 +80,7 @@ void BumpFileDescriptorsFeature::prepare() {
         "file-descriptors (nofiles) soft limit is too low, currently ",
         FileDescriptors::stringify(current.soft), ". please raise to at least ",
         required, " (e.g. via ulimit -n ", required,
-        ") or adjust the value of the startup option ", _optionName);
+        ") or adjust the value of the startup option ", _options.optionName);
     if (_options.descriptorsMinimum == 0) {
       LOG_TOPIC("a33ba", WARN, Logger::SYSCALL) << message;
     } else {

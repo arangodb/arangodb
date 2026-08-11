@@ -235,10 +235,6 @@ ReplicatedRocksDBTransactionCollection::performIntermediateCommitIfRequired() {
         .waitForCommit = true};
     // keep the transaction (and thus this object) alive across the co_await
     auto state = _transaction->shared_from_this();
-    // note: resuming after the co_await replays the caller's
-    // arangodb::Context (including the ExecContext), so the local
-    // intermediate commit below observes the transaction initiator's
-    // ExecContext (COR-822).
     auto res = co_await leader->replicateOperation(operation, options);
     if (res.fail()) {
       co_return res.result();

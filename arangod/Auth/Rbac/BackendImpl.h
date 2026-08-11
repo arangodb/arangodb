@@ -25,16 +25,27 @@
 #include "Auth/Rbac/Backend.h"
 
 #include "Inspection/Status.h"
+#include "Metrics/Fwd.h"
 #include "Network/Methods.h"
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
 namespace arangodb::rbac {
 
+/// @brief registers the RBAC request duration histogram in the given registry
+auto addRequestDurationMetric(metrics::IRegistry& registry)
+    -> metrics::Histogram<metrics::LogScale<std::uint64_t>>&;
+
 struct BackendImpl : Backend {
-  BackendImpl(network::ConnectionPool& pool, std::string authorizationEndpoint);
-  BackendImpl(network::Sender sendRequest, std::string authorizationEndpoint);
+  using RequestDurationMetric =
+      metrics::Histogram<metrics::LogScale<std::uint64_t>>;
+
+  BackendImpl(network::ConnectionPool& pool, std::string authorizationEndpoint,
+              RequestDurationMetric* requestDuration = nullptr);
+  BackendImpl(network::Sender sendRequest, std::string authorizationEndpoint,
+              RequestDurationMetric* requestDuration = nullptr);
 
   auto evaluateTokenManyImpl(JwtToken const& token, RequestItems const& items,
                              transaction::MethodsApi api)
@@ -48,6 +59,9 @@ struct BackendImpl : Backend {
  private:
   network::Sender _sendRequest;
   std::string _authorizationEndpoint;
+  /// @brief histogram of request durations in microseconds, or nullptr if
+  /// metrics are not available (e.g. in tests)
+  RequestDurationMetric* _requestDuration;
 };
 
 // Transformer that maps a flat std::vector<std::string> to the nested JSON

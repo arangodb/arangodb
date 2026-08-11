@@ -3037,12 +3037,9 @@ futures::Future<OperationResult> Methods::countCoordinatorHelper(
         DatabaseFeature& databaseFeature =
             vocbase().server().getFeature<DatabaseFeature>();
         // post a refresh operation onto the scheduler, with LOW priority.
-        // note: the scheduler captures the current ExecContext (COR-821),
+        // note: the scheduler captures the current ExecContext,
         // so the refresh below runs on behalf of the user whose count
-        // request bumped the cache expiry. that is semantically correct
-        // (the user must have read access to the collection to get here);
-        // if their permissions are revoked concurrently, the refresh is
-        // simply skipped -- it is best effort anyway.
+        // request bumped the cache expiry.
         SchedulerFeature::SCHEDULER->queue(
             RequestLane::CLIENT_SLOW,
             [&databaseFeature, databaseName = collinfo->vocbase().name(),
@@ -3379,15 +3376,12 @@ Result Methods::resolveId(char const* handle, size_t length,
 // overwrite), removes, or modifies (updates/replaces).
 Future<Result> Methods::replicateOperations(
     TransactionCollection& transactionCollection,
-    std::shared_ptr<const std::vector<ServerID>> const& followerList,
+    std::shared_ptr<const std::vector<ServerID>> const followerList,
     OperationOptions const& options, velocypack::Builder const& replicationData,
     TRI_voc_document_operation_e operation, std::string_view userName) {
-  // note: this is a coroutine. the reference parameters (and *this) belong
-  // to the caller's frame, which may already be gone when we resume after
-  // the co_await below. everything needed after the co_await must therefore
-  // be copied into the coroutine frame before suspending (this includes
-  // `collection`, which is why it is copied here).
-  auto collection = transactionCollection.collection();
+  // copy the shared_ptr to keep it alive across suspend/resume of this
+  // coroutine
+  auto const collection = transactionCollection.collection();
   TRI_ASSERT(followerList != nullptr);
 
   // It is normal to have an empty followerList when using replication2
@@ -3455,8 +3449,7 @@ Future<Result> Methods::replicateOperations(
     // be committed in the replicated log
     TRI_ASSERT(replicationFut.isReady());
 
-    // TODO This shouldn't be synchronous
-    auto replicationRes = replicationFut.waitAndGet();
+    auto replicationRes = co_await std::move(replicationFut);
     if (replicationRes.fail()) {
       co_return replicationRes.result();
     }
@@ -3618,30 +3611,24 @@ Future<Result> Methods::replicateOperations(
         std::format("Database {} deleted during transaction {}",
                     vocbase().name(), tid().id()));
   }
-  // copy everything we still need after the co_await into the coroutine
-  // frame: the reference parameters and *this belong to the caller's frame,
-  // which may be gone by the time we resume.
-  auto followers = followerList;
-  auto vocbase = std::move(vocbasePtr);
+
+  // keep the shared_ptr alive
   auto state = _state;
 
-  // note: resuming after the co_await replays the caller's arangodb::Context
-  // (including the ExecContext), so the intermediate commit below observes
-  // the transaction initiator's ExecContext and not whatever happens to be
-  // set on the thread that fulfills the last response (COR-822).
   auto responses = co_await futures::collectAll(std::move(futures));
 
   auto duration = std::chrono::steady_clock::now() - startTimeReplication;
-  auto& replMetrics = vocbase->server().getFeature<ReplicationMetricsFeature>();
+  auto& replMetrics =
+      vocbasePtr->server().getFeature<ReplicationMetricsFeature>();
   replMetrics.synchronousOpsTotal() += 1;
   replMetrics.synchronousTimeTotal() +=
       std::chrono::nanoseconds(duration).count();
 
   bool didRefuse = false;
   // We drop all followers that were not successful:
-  for (size_t i = 0; i < followers->size(); ++i) {
+  for (size_t i = 0; i < followerList->size(); ++i) {
     network::Response const& resp = responses[i].get();
-    ServerID const& follower = (*followers)[i];
+    ServerID const& follower = (*followerList)[i];
 
     std::string replicationFailureReason;
     if (resp.error == fuerte::Error::NoError) {
@@ -3649,8 +3636,8 @@ Future<Result> Methods::replicateOperations(
           resp.statusCode() == fuerte::StatusCreated ||
           resp.statusCode() == fuerte::StatusOK) {
         bool found;
-        std::string const& errors = resp.response().header.metaByKey(
-            StaticStrings::ErrorCodes, found);
+        std::string const& errors =
+            resp.response().header.metaByKey(StaticStrings::ErrorCodes, found);
         if (found) {
           replicationFailureReason =
               absl::StrCat("got error header from follower: ", errors);
@@ -3682,7 +3669,7 @@ Future<Result> Methods::replicateOperations(
             absl::StrCat("got error from follower: ", r.errorMessage());
 
         if (followerRefused) {
-          ++vocbase->server()
+          ++vocbasePtr->server()
                 .getFeature<ClusterFeature>()
                 .followersRefusedCounter();
 
@@ -3702,7 +3689,7 @@ Future<Result> Methods::replicateOperations(
     }
 
     if (!replicationFailureReason.empty()) {
-      if (!vocbase->server().isStopping()) {
+      if (!vocbasePtr->server().isStopping()) {
         LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
             << "synchronous replication of " << opName << " operation "
             << "(" << count << " doc(s)): "

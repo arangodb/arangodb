@@ -56,7 +56,7 @@ function generateVector(gen) {
 /// specific shard.
 function insertDocsForShard(collection, keys, count, gen) {
     assertTrue(keys.length >= count,
-        "Not enough keys for shard, need " + count + " have " + keys.length);
+        `Not enough keys for shard, need ${count} have ${keys.length}`);
     const batchSize = 500;
     for (let i = 0; i < count; i += batchSize) {
         const size = Math.min(batchSize, count - i);
@@ -72,7 +72,7 @@ function insertDocsForShard(collection, keys, count, gen) {
 /// specific shard.
 function insertDocsWithoutVectorForShard(collection, keys, count) {
     assertTrue(keys.length >= count,
-        "Not enough keys for shard, need " + count + " have " + keys.length);
+        `Not enough keys for shard, need ${count} have ${keys.length}`);
     const batchSize = 500;
     for (let i = 0; i < count; i += batchSize) {
         const size = Math.min(batchSize, count - i);
@@ -130,8 +130,7 @@ function assertPerShardCounts(collection, expectedCounts) {
     const counts = collection.count(true);
     for (const [shard, expected] of Object.entries(expectedCounts)) {
         assertEqual(expected, counts[shard],
-            "Shard " + shard + " should have " + expected +
-            " docs, got " + counts[shard]);
+            `Shard ${shard} should have ${expected} docs, got ${counts[shard]}`);
     }
 }
 
@@ -198,14 +197,14 @@ function VectorIndexPerShardStateSuite() {
             const shardStates = getPerShardStates(collection, "vec_l2");
             for (const s of shardNames) {
                 assertEqual(VectorIndexTrainingState.kReady, shardStates[s].trainingState,
-                    "Shard " + s + " should be ready");
+                    `Shard ${s} should be ready, got ${shardStates[s].trainingState}`);
                 assertEqual("", shardStates[s].error,
-                    "Shard " + s + " should have no error");
+                    `Shard ${s} should have no error, got "${shardStates[s].error}"`);
             }
         },
 
         // The 2 full shards should become "ready"; the starved shard stays
-        // "unusable" with no error.
+        // "unusable" and reports a "not enough training data" error.
         testOneShardStarvedRemainsUntrained: function () {
             const {shardNames, keysPerShard} = buildKeyPool(collection, docsAboveThreshold);
             assertEqual(3, shardNames.length);
@@ -230,23 +229,23 @@ function VectorIndexPerShardStateSuite() {
             for (const s of fullShards) {
                 expectations[s] = {trainingState: VectorIndexTrainingState.kReady, hasError: false};
             }
-            expectations[starvedShard] = {trainingState: VectorIndexTrainingState.kUnusable, hasError: false};
+            expectations[starvedShard] = {trainingState: VectorIndexTrainingState.kUnusable, hasError: true};
 
             assertTrue(
                 waitForPerShardStates(collection, "vec_l2", expectations, 120),
-                "2 shards should be ready, starved shard should be unusable"
+                "2 shards should be ready, starved shard should be unusable with error"
             );
 
             const shardStates = getPerShardStates(collection, "vec_l2");
             assertEqual(VectorIndexTrainingState.kUnusable, shardStates[starvedShard].trainingState,
-                "Starved shard should remain unusable");
+                `Starved shard ${starvedShard} should remain unusable, got ${shardStates[starvedShard].trainingState}`);
             assertTrue(shardStates[starvedShard].error.length > 0,
-                "Starved shard should have error");
+                `Starved shard ${starvedShard} should have error`);
             for (const s of fullShards) {
                 assertEqual(VectorIndexTrainingState.kReady, shardStates[s].trainingState,
-                    "Full shard " + s + " should be ready");
+                    `Full shard ${s} should be ready, got ${shardStates[s].trainingState}`);
                 assertEqual("", shardStates[s].error,
-                    "Full shard " + s + " should have no error");
+                    `Full shard ${s} should have no error, got "${shardStates[s].error}"`);
             }
         },
 
@@ -293,14 +292,14 @@ function VectorIndexPerShardStateSuite() {
             const shardStates = getPerShardStates(collection, "vec_l2");
             assertEqual(VectorIndexTrainingState.kUnusable,
                 shardStates[emptyVectorShard].trainingState,
-                "Shard without vector field docs should be unusable");
+                `Shard ${emptyVectorShard} without vector field docs should be unusable, got ${shardStates[emptyVectorShard].trainingState}`);
             assertTrue(shardStates[emptyVectorShard].error.length > 0,
-                "Shard without vector field docs should have an error");
+                `Shard ${emptyVectorShard} without vector field docs should have an error`);
             for (const s of fullShards) {
                 assertEqual(VectorIndexTrainingState.kReady, shardStates[s].trainingState,
-                    "Full shard " + s + " should be ready");
+                    `Full shard ${s} should be ready, got ${shardStates[s].trainingState}`);
                 assertEqual("", shardStates[s].error,
-                    "Full shard " + s + " should have no error");
+                    `Full shard ${s} should have no error, got "${shardStates[s].error}"`);
             }
         },
 
@@ -355,14 +354,14 @@ function VectorIndexPerShardStateSuite() {
             const shardStates = getPerShardStates(collection, "vec_l2");
             assertEqual(VectorIndexTrainingState.kUnusable,
                 shardStates[emptyShard].trainingState,
-                "Empty shard should be unusable with scaled nLists");
+                `Empty shard ${emptyShard} should be unusable with scaled nLists, got ${shardStates[emptyShard].trainingState}`);
             assertTrue(shardStates[emptyShard].error.length > 0,
-                "Empty shard should have an error message");
+                `Empty shard ${emptyShard} should have an error message`);
             for (const s of fullShards) {
                 assertEqual(VectorIndexTrainingState.kReady, shardStates[s].trainingState,
-                    "Full shard " + s + " should be ready");
+                    `Full shard ${s} should be ready, got ${shardStates[s].trainingState}`);
                 assertEqual("", shardStates[s].error,
-                    "Full shard " + s + " should have no error");
+                    `Full shard ${s} should have no error, got "${shardStates[s].error}"`);
             }
         },
 
@@ -393,9 +392,9 @@ function VectorIndexPerShardStateSuite() {
                 const shardStates = getPerShardStates(collection, "vec_l2");
                 for (const s of shardNames) {
                     assertEqual(VectorIndexTrainingState.kUnusable, shardStates[s].trainingState,
-                        "Shard " + s + " should be unusable");
+                        `Shard ${s} should be unusable, got ${shardStates[s].trainingState}`);
                     assertTrue(shardStates[s].error.length > 0,
-                        "Shard " + s + " should have an error message");
+                        `Shard ${s} should have an error message`);
                 }
             } finally {
                 IM.debugClearFailAt();

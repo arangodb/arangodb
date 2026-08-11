@@ -90,6 +90,8 @@ RestStatus RestUsersHandler::execute() {
     return RestStatus::DONE;
   }
 
+  // Note that contrary to versions up to and including 3.12.9 writes are now
+  // forbidden if the server is in read-only mode. This is intentional.
   switch (type) {
     case RequestType::GET:
       return getRequest(af->userManager());
@@ -251,12 +253,13 @@ void RestUsersHandler::generateDatabaseResult(auth::UserManager* um,
 
             methods::Collections::enumerate(
                 &vocbase,
-                [&](std::shared_ptr<LogicalCollection> const& c) -> void {
+                [&](std::shared_ptr<LogicalCollection> const& c) -> bool {
                   TRI_ASSERT(c);
                   lvl = user.configuredCollectionAuthLevel(vocbase.name(),
                                                            c->name());
                   data.add(c->name(),
                            velocypack::Value(convertFromAuthLevel(lvl)));
+                  return true;
                 });
             lvl = user.configuredCollectionAuthLevel(vocbase.name(), "*");
             data.add("*", velocypack::Value(convertFromAuthLevel(lvl)));

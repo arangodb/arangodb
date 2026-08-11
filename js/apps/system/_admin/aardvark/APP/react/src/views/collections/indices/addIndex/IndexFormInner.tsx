@@ -14,7 +14,7 @@ interface IndexFormInnerProps<InitialValues, Fields, Schema> {
 export const IndexFormInner = <
   InitialValues extends FormikValues,
   Fields extends FormFieldProps[],
-  Schema extends unknown
+  Schema
 >({
   onCreate,
   initialValues,

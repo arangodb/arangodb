@@ -106,7 +106,7 @@ const DeleteSlowQueryHistoryModal = ({
       onClose();
       setIsLoading(false);
       window.arangoHelper.arangoNotification("Deleted slow queries history");
-    } catch (e) {
+    } catch {
       window.arangoHelper.arangoError("Failed to delete slow queries history");
       onClose();
       setIsLoading(false);

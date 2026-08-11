@@ -28,6 +28,7 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Metrics/MetricsFeature.h"
 #include "Network/NetworkFeature.h"
 
 namespace arangodb {
@@ -54,9 +55,12 @@ void RbacFeature::prepare() {
   auto* pool = server().getFeature<NetworkFeature>().pool();
   TRI_ASSERT(pool != nullptr);
 
+  auto& requestDuration = rbac::addRequestDurationMetric(
+      server().getFeature<metrics::MetricsFeature>());
+
   auto endpoint = _authenticationFeature.externalRbacService();
-  auto backend =
-      std::make_unique<rbac::BackendImpl>(*pool, std::string{endpoint});
+  auto backend = std::make_unique<rbac::BackendImpl>(
+      *pool, std::string{endpoint}, &requestDuration);
   _service = std::make_unique<rbac::ServiceImpl>(std::move(backend));
 
   LOG_TOPIC("66f4a", INFO, Logger::AUTHORIZATION)

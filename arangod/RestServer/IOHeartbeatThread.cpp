@@ -50,7 +50,7 @@ DECLARE_COUNTER(arangodb_ioheartbeat_delays_total,
 /// production if IO is slow or not possible at all.
 IOHeartbeatThread::IOHeartbeatThread(metrics::IRegistry& metricsRegistry,
                                      DatabasePathFeature& databasePathFeature)
-    // disk probe only, no authorization-relevant code
+    // disk probe only, no ExecContext required
     : Thread("IOHeartbeat", nullptr),
       _databasePathFeature(databasePathFeature),
       _exeTimeHistogram(metricsRegistry.add(arangodb_ioheartbeat_duration{})),

@@ -184,6 +184,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/SplicedSubqueryIntegrationTest.cpp
   Aql/WaitingExecutionBlockMock.cpp
   AsyncAgencyComm/AsyncAgencyCommTest.cpp
+  Auth/ClassicAuthModeTest.cpp
   Auth/RbacAuthModeTest.cpp
   Auth/RbacBackendTest.cpp
   # Disabled for now, since this needs docker and does not work in CI:
@@ -355,8 +356,7 @@ target_link_libraries(arangodbtests
   arango_tests_actor
   arango_tests_inspection
   arango_tests_internal_rest_handler
-  # Disabled until Scheduler dependency is fixed
-  # arango_tests_rocksdb_engine
+  arango_tests_rocksdb_engine
   arango_inspection_test_helper
   arango_agency
   arango_cluster_engine

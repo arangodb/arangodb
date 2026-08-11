@@ -97,7 +97,7 @@ std::string const NO_LEADER("");
 /// Agent configuration
 Agent::Agent(application_features::ApplicationServer& server,
              metrics::IRegistry& metricsRegistry, config_t const& config)
-    // log persistence: transactions via State
+    // needs superuser permissions for log persistence: transactions via State
     : arangodb::ServerThread(server, "Agent", ExecContext::superuserAsShared()),
       _constituent(server),
       _supervision(std::make_unique<Supervision>(server, metricsRegistry)),

@@ -53,7 +53,7 @@ struct PersistentIndexTest : public Benchmark<PersistentIndexTest> {
       size_t threadNumber, size_t threadCounter, size_t globalCounter,
       BenchmarkOperation::RequestData& requestData) const override {
     size_t keyId = static_cast<size_t>(globalCounter / 4);
-    std::string const key = "testkey" + StringUtils::itoa(keyId);
+    std::string const key = "testkey" + basics::StringUtils::itoa(keyId);
     size_t const mod = globalCounter % 4;
     if (mod == 0) {
       requestData.url = std::string("/_api/document?collection=" +

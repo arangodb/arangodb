@@ -37,6 +37,9 @@ class RestOpenApiHandler : public arangodb::RestBaseHandler {
   RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
   futures::Future<futures::Unit> executeAsync() override;
 
+ protected:
+  async<Result> checkUserCanAccess() const override;
+
  private:
   std::string_view getOpenApiSpec(uint32_t apiVersion) const;
 };

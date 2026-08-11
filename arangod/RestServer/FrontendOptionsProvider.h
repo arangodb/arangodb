@@ -31,8 +31,6 @@ struct FrontendOptionsProvider
     : OptionsProviderImpl<FrontendOptionsProvider, FrontendFeatureOptions> {
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           FrontendFeatureOptions& options);
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
-                           FrontendFeatureOptions& /*options*/){};
 };
 
 }  // namespace arangodb

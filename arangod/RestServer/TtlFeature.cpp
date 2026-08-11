@@ -23,7 +23,6 @@
 #include "TtlFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "RestServer/TtlOptionsProvider.h"
 #include "FeaturePhases/DatabaseFeaturePhase.h"
 #include "FeaturePhases/ServerFeaturePhase.h"
 #include "Aql/Query.h"
@@ -47,8 +46,6 @@
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Network/types.h"
-#include "ProgramOptions/Parameters.h"
-#include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Methods.h"
@@ -73,7 +70,6 @@
 #include <thread>
 
 using namespace arangodb;
-using namespace arangodb::options;
 
 namespace {
 // the AQL query to lookup documents
@@ -589,22 +585,18 @@ class TtlThread final : public ServerThread {
 }  // namespace arangodb
 
 TtlFeature::TtlFeature(application_features::ApplicationServer& server)
-    : application_features::ApplicationFeature{server, *this}, _active(true) {
+    : TtlFeature(server, TtlProperties{}) {}
+
+TtlFeature::TtlFeature(application_features::ApplicationServer& server,
+                       TtlProperties properties)
+    : application_features::ApplicationFeature{server, *this},
+      _properties(std::move(properties)),
+      _active(true) {
   startsAfter<application_features::DatabaseFeaturePhase>();
   startsAfter<application_features::ServerFeaturePhase>();
 }
 
 TtlFeature::~TtlFeature() { shutdownThread(); }
-
-void TtlFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  TtlOptionsProvider provider;
-  provider.declareOptions(options, _properties);
-}
-
-void TtlFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  TtlOptionsProvider provider;
-  provider.validateOptions(options, _properties);
-}
 
 void TtlFeature::start() {
   // the thread will not run on a coordinator or an agency node,
