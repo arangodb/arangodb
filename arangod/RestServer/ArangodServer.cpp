@@ -166,6 +166,10 @@ ServerState::RoleEnum ArangodServer::resolveRole(
 }
 
 void ArangodServer::addFeatures() {
+  // No-op; COR-834 will refactor this.
+}
+
+void ArangodServer::addFeaturesWithOptionProvider() {
   // Adding the Phases - these must come first and in this order
   addFeature<AgencyFeaturePhase>();
   addFeature<CommunicationFeaturePhase>();
@@ -182,11 +186,7 @@ void ArangodServer::addFeatures() {
 #ifdef USE_V8
   addFeature<V8FeaturePhase>();
 #endif
-}
 
-void ArangodServer::addFeaturesWithOptionProvider() {
-  // Adding the features - order matters for dependency resolution
-  // metrics::MetricsFeature must go first
   auto& metrics = addFeature<metrics::MetricsFeature>(
       LazyApplicationFeatureReference<QueryRegistryFeature>(*this),
       LazyApplicationFeatureReference<StatisticsFeature>(*this),
