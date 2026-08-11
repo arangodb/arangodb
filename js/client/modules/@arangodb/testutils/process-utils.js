@@ -177,10 +177,12 @@ function setupBinaries (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function killRemainingProcesses(results) {
+  print(`${RED} ${Date()} killRemainingProcesses ${JSON.stringify(new Error().stack)} ${results}`);
+  let timeoutReached = false;
   let running = internal.getExternalSpawned();
   results.status = results.status && (running.length === 0);
   for (let i = 0; i < running.length; i++) {
-    let timeoutReached = internal.SetGlobalExecutionDeadlineTo(0.0);
+    timeoutReached = internal.SetGlobalExecutionDeadlineTo(0.0);
     print('VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV');
     if (timeoutReached) {
       print(RED + Date() + ' external deadline reached!' + RESET);
@@ -189,7 +191,7 @@ function killRemainingProcesses(results) {
   }
   sleep(1);
   for (let i = 0; i < running.length; i++) {
-    let timeoutReached = internal.SetGlobalExecutionDeadlineTo(0.0);
+    timeoutReached = timeoutReached || internal.SetGlobalExecutionDeadlineTo(0.0);
     print('VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV');
     if (timeoutReached) {
       print(RED + Date() + ' external deadline reached!' + RESET);
