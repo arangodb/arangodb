@@ -99,9 +99,16 @@ class UserManager {
   virtual Result removeUser(std::string const& user) = 0;
   virtual Result removeAllUsers() = 0;
 
-  // Convenience methods to check a password or access token
+  // Convenience methods to check a password or access token. tokenValidUntil
+  // is only ever written to when the credential is an access token and
+  // authentication succeeds, in which case it is set to the token's own
+  // expiration timestamp (seconds since epoch). It is left unmodified for
+  // password authentication and for failed authentication attempts.
+  // Initialize it to `std::nullopt` before the call if you need to tell
+  // whether it was set.
   virtual bool checkCredentials(std::string const& username,
-                                std::string const& token, std::string& un) = 0;
+                                std::string const& token, std::string& un,
+                                std::optional<double>& tokenValidUntil) = 0;
 
   virtual Level databaseAuthLevel(std::string const& username,
                                   std::string const& dbname,
