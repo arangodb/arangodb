@@ -26,8 +26,7 @@
 #include <rocksdb/db.h>
 
 #include <array>
-#include <cstdint>
-#include <span>
+#include <vector>
 
 namespace arangodb {
 
@@ -51,6 +50,7 @@ struct RocksDBColumnFamilyManager {
     MdiIndex = 8,
     MdiVPackIndex = 9,
     VectorIndex = 10,
+    PrimaryIndex_TT = 11,  // time-travel primary idx (User-Defined Timestamps)
 
     Invalid = 1024  // special placeholder
   };
@@ -61,28 +61,35 @@ struct RocksDBColumnFamilyManager {
   };
 
   static constexpr size_t minNumberOfColumnFamilies = 7;
-  static constexpr size_t numberOfColumnFamilies = 11;
+  static constexpr size_t numberOfColumnFamilies = 12;
 
   static void initialize();
 
   static rocksdb::ColumnFamilyHandle* get(Family family);
   static void set(Family family, rocksdb::ColumnFamilyHandle* handle);
 
+  /// Clear all handles back to nullptr. Handles are process-global; resetting
+  /// on engine shutdown keeps a subsequent engine (e.g. across unit-test
+  /// suites) from observing dangling handles of a destroyed engine.
+  static void reset() noexcept;
+
   static char const* name(Family family, NameMode mode = NameMode::Internal);
   static char const* name(rocksdb::ColumnFamilyHandle* handle,
                           NameMode mode = NameMode::External);
 
-  /// We purposefully cut off the handles still set to nullptr, since they were
-  /// not initialized
-  /// TODO find better solution that propagates changes to how many column
-  /// families there are on start time
-  static std::span<rocksdb::ColumnFamilyHandle*> allHandles();
+  /// All initialized handles, in family order. Handles left at nullptr (a
+  /// disabled optional family, e.g. VectorIndex or PrimaryIndex_TT) are skipped
+  /// Maintained by set()/reset(), so this is a cheap reference, not a rebuild.
+  static std::vector<rocksdb::ColumnFamilyHandle*> const& allHandles();
 
  private:
   static std::array<char const*, numberOfColumnFamilies> _internalNames;
   static std::array<char const*, numberOfColumnFamilies> _externalNames;
   static std::array<rocksdb::ColumnFamilyHandle*, numberOfColumnFamilies>
       _handles;
+  /// Compact, nullptr-free projection of _handles in family order;
+  // Rebuilt whenever _handles changes.
+  static std::vector<rocksdb::ColumnFamilyHandle*> _validHandles;
   static rocksdb::ColumnFamilyHandle* _defaultHandle;
 };
 
