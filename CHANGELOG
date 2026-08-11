@@ -1,6 +1,15 @@
 v3.11.14.5 (XXXX-XX-XX)
 -----------------------
 
+* Updated node modules:
+ - js-yaml to 3.15.1 to resolve GHSA-52cp-r559-cp3m, GHSA-h67p-54hq-rp68 and
+   GHSA-5p4m-2wfm-xmqj
+ - brace-expansion to 1.1.18 to resolve GHSA-rgw5-rvv9-x895,
+   GHSA-mh99-v99m-4gvg and GHSA-3jxr-9vmj-r5cp
+ - fast-uri to 3.1.5 to resolve GHSA-4c8g-83qw-93j6, GHSA-v2hh-gcrm-f6hx and
+   GHSA-7p8r-x3mc-p8w7
+ - qs to 6.15.3 to resolve GHSA-q8mj-m7cp-5q26
+
 * Updated ArangoDB Starter to v0.18.28.
 
 * Upgraded included rclone to v1.74.4 with go1.25.12 and non-vulnerable
