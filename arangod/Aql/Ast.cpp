@@ -4264,8 +4264,7 @@ AstNode* Ast::optimizeObject(
     AqlFunctionsInternalCache& aqlFunctionsInternalCache, AstNode* node) {
   node = flattenObjectLiteralSplices(node);
 
-  if (node->isConstant() && (!node->hasFlag(DETERMINED_NONDETERMINISTIC) ||
-                             !node->hasFlag(VALUE_NONDETERMINISTIC))) {
+  if (node->isConstant()) {
     Expression exp(this, node);
     FixedVarExpressionContext context(trx, _query, aqlFunctionsInternalCache);
     bool mustDestroy = false;
