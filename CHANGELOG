@@ -1,8 +1,8 @@
-v3.11.14.5 (XXXX-XX-XX)
+v3.11.14.5 (2026-08-11)
 -----------------------
 
-+* Fix authorization for /_admin/aardvark routes.
-+
+* Fix authorization for /_admin/aardvark routes.
+
 * Upgraded included rclone to v1.75.0 with go1.25.12 and non-vulnerable
   dependencies.
 
