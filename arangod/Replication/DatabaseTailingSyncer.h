@@ -22,8 +22,7 @@
 
 #pragma once
 
-#include "Replication/DatabaseReplicationApplier.h"
-#include "Replication/ReplicationApplierConfiguration.h"
+#include "Replication/ReplicationSyncConfiguration.h"
 #include "Replication/utilities.h"
 #include "TailingSyncer.h"
 
@@ -34,28 +33,20 @@
 namespace arangodb {
 struct Database;
 class DatabaseInitialSyncer;
-class DatabaseReplicationApplier;
 
 class DatabaseTailingSyncer : public TailingSyncer {
  private:
   // constructor is private, as DatabaseTailingSyncer uses shared_from_this()
   // and we must ensure that it is only created via make_shared.
   DatabaseTailingSyncer(Database& vocbase,
-                        ReplicationApplierConfiguration const& configuration,
-                        TRI_voc_tick_t initialTick, bool useTick);
+                        ReplicationSyncConfiguration const& configuration);
 
  public:
   static std::shared_ptr<DatabaseTailingSyncer> create(
-      Database& vocbase, ReplicationApplierConfiguration const& configuration,
-      TRI_voc_tick_t initialTick, bool useTick);
+      Database& vocbase, ReplicationSyncConfiguration const& configuration);
 
   Database* resolveVocbase(velocypack::Slice /*slice*/) override {
     return _vocbase;
-  }
-
-  /// @brief return the syncer's replication applier
-  DatabaseReplicationApplier* applier() const {
-    return static_cast<DatabaseReplicationApplier*>(_applier);
   }
 
   /// @brief finalize the synchronization of a collection by tailing the WAL
@@ -93,9 +84,6 @@ class DatabaseTailingSyncer : public TailingSyncer {
                                        double timeout, bool hard,
                                        TRI_voc_tick_t& until, bool& didTimeout,
                                        std::string const& context);
-
-  /// @brief save the current applier state
-  Result saveApplierState() override;
 
   Database* vocbase() const {
     TRI_ASSERT(vocbases().size() == 1);

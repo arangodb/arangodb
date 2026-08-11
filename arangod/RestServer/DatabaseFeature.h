@@ -49,7 +49,6 @@ class ApplicationServer;
 struct Database;
 class IOHeartbeatThread;
 class LogicalCollection;
-class ReplicationFeature;
 class StorageEngine;
 class ClusterEngine;
 class RocksDBEngine;
@@ -235,8 +234,6 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
  private:
   void initCalculationVocbase();
 
-  void stopAppliers();
-
   /// @brief iterate over all databases in the databases directory and open them
   ErrorCode iterateDatabases(velocypack::Slice databases);
 
@@ -297,7 +294,6 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
   VersionTracker _versionTracker;
 
   StorageEngine* _engine = nullptr;
-  ReplicationFeature* _replicationFeature = nullptr;
 
   /// @brief metadata metrics structure for single servers only
   struct MetadataMetrics {
