@@ -328,24 +328,17 @@ Result AuthenticationFeature::loadJwtSecretFolder() try {
   auto list =
       basics::FileUtils::listFiles(_options.jwtSecretFolderProgramOption);
 
-  // filter out empty filenames, hidden files, tmp files and symlinks
-  list.erase(std::remove_if(
-                 list.begin(), list.end(),
-                 [this](std::string const& file) {
-                   if (file.empty() || file[0] == '.') {
-                     return true;
-                   }
-                   if (file.ends_with(".tmp")) {
-                     return true;
-                   }
-                   auto p =
-                       std::filesystem::path(basics::FileUtils::buildFilename(
-                           _options.jwtSecretFolderProgramOption, file));
-                   if (std::filesystem::is_symlink(p)) {
-                     return true;
-                   }
-                   return false;
-                 }),
+  // filter out empty filenames, hidden files, tmp files
+  list.erase(std::remove_if(list.begin(), list.end(),
+                            [](std::string const& file) {
+                              if (file.empty() || file[0] == '.') {
+                                return true;
+                              }
+                              if (file.ends_with(".tmp")) {
+                                return true;
+                              }
+                              return false;
+                            }),
              list.end());
 
   if (list.empty()) {

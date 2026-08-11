@@ -29,7 +29,6 @@
 #include "Cluster/MaintenanceOptions.h"
 #include "Cluster/MaintenanceWorker.h"
 #include "Cluster/Utils/ShardID.h"
-#include "ProgramOptions/ProgramOptions.h"
 
 #include "Metrics/Fwd.h"
 
@@ -112,8 +111,6 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// @brief Highest limit for worker threads
   static constexpr uint32_t const maxThreadLimit = 64;
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
   void prepare() override;
 
   // @brief #databases last time we checked allDatabases

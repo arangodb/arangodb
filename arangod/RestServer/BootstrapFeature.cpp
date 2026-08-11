@@ -37,7 +37,6 @@
 #include "Logger/LoggerStream.h"
 #include "Rest/GeneralResponse.h"
 #include "Rest/Version.h"
-#include "RestServer/BootstrapOptionsProvider.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "VocBase/Methods/Upgrade.h"
@@ -108,11 +107,6 @@ SystemDatabaseFeature* BootstrapFeature::systemDatabaseFeature() {
 
 ClusterUpgradeFeature* BootstrapFeature::clusterUpgradeFeature() {
   return _clusterUpgradeFeature;
-}
-
-void BootstrapFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  arangodb::bootstrap::BootstrapOptionsProvider provider;
-  provider.declareOptions(options, _options);
 }
 
 // Local Helper functions

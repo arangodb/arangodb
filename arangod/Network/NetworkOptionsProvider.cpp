@@ -75,14 +75,15 @@ void NetworkOptionsProvider::declareOptionsImpl(
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnCoordinator))
       .setIntroducedIn(31200)
-      .setLongDescription(
-          R"(Automatically compress outgoing HTTP requests in cluster-internal
-traffic with the deflate, gzip or lz4 compression format.
-Compression will only happen if the size of the uncompressed request body
+      .setLongDescription(R"(Automatically compress outgoing HTTP requests in
+cluster-internal traffic with the deflate, gzip or lz4 compression format.
+
+Compression only happens if the size of the uncompressed request body
 exceeds the threshold value controlled by this startup option,
 and if the request body size after compression is less than the original
 request body size.
-Using the value 0 disables the automatic compression.)");
+
+Using the value `0` disables the automatic compression.)");
 
   std::unordered_set<std::string> types = {
       StaticStrings::EncodingGzip, StaticStrings::EncodingDeflate,
@@ -97,21 +98,23 @@ Using the value 0 disables the automatic compression.)");
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnCoordinator))
       .setIntroducedIn(31200)
-      .setLongDescription(
-          R"(Setting this option to 'none' will disable compression for
-cluster-internal requests.
+      .setLongDescription(R"(Set this option to `none` to disable compression
+for cluster-internal requests.
+
 To enable compression for cluster-internal requests, set this option to either
-'deflate', 'gzip', 'lz4' or 'auto'.
-The 'deflate' and 'gzip' compression methods are general purpose,
-but have significant CPU overhead for performing the compression work.
-The 'lz4' compression method compresses slightly worse, but has a lot lower
-CPU overhead for performing the compression.
-The 'auto' compression method will use 'deflate' by default, and 'lz4' for
-requests which have a size that is at least 3 times the configured threshold
-size.
+`deflate`, `gzip`, `lz4`, or `auto`.
+
+- The `deflate` and `gzip` compression methods are general purpose,
+  but have significant CPU overhead for performing the compression work.
+- The `lz4` compression method compresses slightly worse, but has a lot lower
+  CPU overhead for performing the compression.
+- The `auto` compression method uses `deflate` by default, and `lz4` for
+  requests which have a size that is at least 3 times the configured threshold
+  size.
+
 The compression method only matters if `--network.compress-request-threshold`
-is set to value greater than zero. If the threshold is set to value of 0,
-then no compression will be performed.)");
+is set to value greater than zero. If the threshold is set to value of `0`,
+then no compression is performed.)");
 }
 
 void NetworkOptionsProvider::validateOptionsImpl(

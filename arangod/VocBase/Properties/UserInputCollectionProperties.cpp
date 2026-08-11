@@ -103,10 +103,12 @@ UserInputCollectionProperties::applyDefaultsAndValidateDatabaseConfiguration(
   // so we went with it first DistributeShardsLike has the strongest binding. We
   // have to handle this first
 
-  if (!config.defaultDistributeShardsLike.empty() &&
+  if (config.oneShardDBConfiguration.has_value() &&
       !distributeShardsLike.has_value() &&
-      name != config.defaultDistributeShardsLike) {
-    distributeShardsLike = config.defaultDistributeShardsLike;
+      name !=
+          config.oneShardDBConfiguration.value().defaultDistributeShardsLike) {
+    distributeShardsLike =
+        config.oneShardDBConfiguration.value().defaultDistributeShardsLike;
   }
 
 #ifdef USE_ENTERPRISE
