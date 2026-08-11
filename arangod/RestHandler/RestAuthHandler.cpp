@@ -181,7 +181,8 @@ RestStatus RestAuthHandler::execute() {
   });
 
   std::string un;
-  if (um->checkCredentials(username, password, un)) {
+  std::optional<double> tokenValidUntil;  // Intentionally ignored here!
+  if (um->checkCredentials(username, password, un, tokenValidUntil)) {
     VPackBuilder resultBuilder;
     {
       VPackObjectBuilder b(&resultBuilder);

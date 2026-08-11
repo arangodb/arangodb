@@ -177,15 +177,26 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(
   std::string username = up.substr(0, n);
   std::string password = up.substr(n + 1);
   std::string un;
-  bool authorized = _userManager->checkCredentials(username, password, un);
+  std::optional<double> tokenValidUntil;
+  bool authorized =
+      _userManager->checkCredentials(username, password, un, tokenValidUntil);
 
   if (authorized) {
     username = un;
   }
 
-  double expiry = _authTimeout;
-  if (expiry > 0) {
-    expiry += TRI_microtime();
+  // for personal access tokens, cache the entry only until the token's own
+  // expiration time, instead of the generic authentication-timeout. for
+  // password authentication (and unauthenticated attempts) tokenValidUntil
+  // is left unset, so fall back to the generic timeout as before.
+  double expiry;
+  if (tokenValidUntil.has_value()) {
+    expiry = *tokenValidUntil;
+  } else {
+    expiry = _authTimeout;
+    if (expiry > 0) {
+      expiry += TRI_microtime();
+    }
   }
 
   auth::TokenCache::Entry entry(std::move(username), authorized, expiry);
