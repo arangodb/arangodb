@@ -22,8 +22,6 @@
 
 #include "DatabaseFeature.h"
 
-#include "DatabaseOptionsProvider.h"
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
@@ -48,9 +46,7 @@
 #include "Metrics/MetricsFeature.h"
 #include "Metrics/Gauge.h"
 #include "Metrics/IRegistry.h"
-#include "ProgramOptions/ProgramOptions.h"
 #include "Replication/ReplicationClients.h"
-#include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/IOHeartbeatThread.h"
@@ -289,23 +285,6 @@ DatabaseFeature::DatabaseFeature(
 
 DatabaseFeature::~DatabaseFeature() = default;
 
-void DatabaseFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  DatabaseOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void DatabaseFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  // check the misuse of startup options
-  if (_checkVersion && _upgrade) {
-    LOG_TOPIC("a25b0", FATAL, Logger::FIXME)
-        << "cannot specify both '--database.check-version' and "
-           "'--database.auto-upgrade'";
-    FATAL_ERROR_EXIT();
-  }
-}
-
 void DatabaseFeature::initCalculationVocbase() {
   calculationVocbase = std::make_unique<TRI_vocbase_t>(
       createExpressionVocbaseInfo(server()), engine(), *this,
@@ -397,8 +376,6 @@ void DatabaseFeature::stop() {
   // i am here for debugging only.
   static TRI_vocbase_t* currentVocbase = nullptr;
 #endif
-
-  stopAppliers();
 
   // turn off query cache and flush it
   aql::QueryCacheProperties p{
@@ -541,10 +518,6 @@ void DatabaseFeature::prepare() {
   }
 #endif
 
-  if (server().hasFeature<ReplicationFeature>()) {
-    _replicationFeature = &server().getFeature<ReplicationFeature>();
-  }
-
   // need this to make calculation analyzer available in database links
   initCalculationVocbase();
 
@@ -580,22 +553,6 @@ void DatabaseFeature::recoveryDone() {
           << "' message: " << result.errorMessage();
 
       THROW_ARANGO_EXCEPTION(result);
-    }
-  }
-
-  if (ServerState::instance()->isCoordinator()) {
-    return;
-  }
-
-  auto databases = _databases.load();
-
-  for (auto& p : *databases) {
-    TRI_vocbase_t* vocbase = p.second;
-    // iterate over all databases
-    TRI_ASSERT(vocbase != nullptr);
-
-    if (vocbase->replicationApplier() && _replicationFeature) {
-      _replicationFeature->startApplier(vocbase);
     }
   }
 }
@@ -671,20 +628,6 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
     TRI_ASSERT(vocbase != nullptr);
 
     if (!ServerState::instance()->isCoordinator()) {
-      try {
-        vocbase->addReplicationApplier();
-      } catch (basics::Exception const& ex) {
-        std::string msg = "initializing replication applier for database '" +
-                          vocbase->name() + "' failed: " + ex.what();
-        LOG_TOPIC("e7444", ERR, Logger::FIXME) << msg;
-        return Result(ex.code(), std::move(msg));
-      } catch (std::exception const& ex) {
-        std::string msg = "initializing replication applier for database '" +
-                          vocbase->name() + "' failed: " + ex.what();
-        LOG_TOPIC("56c41", ERR, Logger::FIXME) << msg;
-        return Result(TRI_ERROR_INTERNAL, std::move(msg));
-      }
-
 #ifdef USE_V8
       auto& dealer = server().getFeature<V8DealerFeature>();
       if (dealer.isEnabled()) {
@@ -697,10 +640,6 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
     }
 
     if (!_engine->inRecovery()) {
-      if (!ServerState::instance()->isCoordinator() && _replicationFeature) {
-        _replicationFeature->startApplier(vocbase.get());
-      }
-
       // increase reference counter
       bool result = vocbase->use();
       TRI_ASSERT(result);
@@ -1072,24 +1011,6 @@ TRI_vocbase_t& DatabaseFeature::getCalculationVocbase() {
   return *calculationVocbase;
 }
 
-void DatabaseFeature::stopAppliers() {
-  // stop the replication appliers so all replication transactions can end
-  if (_replicationFeature == nullptr) {
-    return;
-  }
-
-  std::lock_guard lock{_databasesMutex};
-  auto databases = _databases.load();
-
-  for (auto& p : *databases) {
-    TRI_vocbase_t* vocbase = p.second;
-    TRI_ASSERT(vocbase != nullptr);
-    if (!ServerState::instance()->isCoordinator()) {
-      _replicationFeature->stopApplier(vocbase);
-    }
-  }
-}
-
 void DatabaseFeature::closeOpenDatabases() {
   std::unique_lock lock{_databasesMutex};
 
@@ -1130,8 +1051,6 @@ ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
       delete p;
     }
   });
-
-  ServerState::RoleEnum role = ServerState::instance()->getRole();
 
   for (velocypack::Slice it : velocypack::ArrayIterator(databases)) {
     TRI_ASSERT(it.isObject());
@@ -1211,16 +1130,6 @@ ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
 
     auto database = _engine->openDatabase(std::move(info), _upgrade);
 
-    if (!ServerState::isCoordinator(role) && !ServerState::isAgent(role)) {
-      try {
-        database->addReplicationApplier();
-      } catch (std::exception const& ex) {
-        LOG_TOPIC("ff848", FATAL, Logger::FIXME)
-            << "initializing replication applier for database '"
-            << database->name() << "' failed: " << ex.what();
-        FATAL_ERROR_EXIT();
-      }
-    }
     ADB_PROD_ASSERT(!next->contains(database->name()))
         << "duplicate database name " << database->name();
     next->emplace(database->name(), database.get());

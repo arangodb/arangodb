@@ -27,7 +27,6 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Result.h"
 #include "Futures/Future.h"
-#include "ProgramOptions/ProgramOptions.h"
 #include "VectorIndex/IVectorIndexProvider.h"
 #include "VectorIndex/VectorIndexBuildManager.h"
 #include "VectorIndex/VectorIndexFeatureOptions.h"
@@ -48,8 +47,6 @@ class VectorIndexFeature final
                      DatabaseFeature& databaseFeature);
 
   static constexpr std::string_view name() noexcept { return "VectorIndex"; }
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
   void start() override final;
 

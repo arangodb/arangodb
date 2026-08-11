@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -22,17 +22,22 @@
 
 #pragma once
 
-#include "ApplicationFeatures/OptionsProvider.h"
-#include "Metrics/MetricsOptions.h"
+namespace arangodb {
+namespace velocypack {
+class HashedStringRef;
+class Builder;
+}  // namespace velocypack
 
-namespace arangodb::metrics {
+namespace graph {
+class IPathResult {
+ public:
+  IPathResult() {}
+  virtual ~IPathResult() = default;
 
-struct MetricsOptionsProvider
-    : OptionsProviderImpl<MetricsOptionsProvider, MetricsOptions> {
-  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                          MetricsOptions& options);
-  void processOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                          MetricsOptions& options);
+  virtual auto toVelocyPack(velocypack::Builder& builder) -> void = 0;
+  virtual auto lastVertexToVelocyPack(velocypack::Builder& builder) -> void = 0;
+  virtual auto lastEdgeToVelocyPack(velocypack::Builder& builder) -> void = 0;
 };
 
-}  // namespace arangodb::metrics
+}  // namespace graph
+}  // namespace arangodb
