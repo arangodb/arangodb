@@ -51,6 +51,8 @@ class ArangodServer : public OptionProvidingServer<ArangodOptionProviders> {
 
   void processOptions() override final;
 
+  void validateOptions() override final;
+
  private:
   static ServerState::RoleEnum resolveRole(ClusterOptions const& clusterOptions,
                                            AgencyOptions const& agencyOptions);
