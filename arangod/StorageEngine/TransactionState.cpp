@@ -756,6 +756,17 @@ Result TransactionState::checkCollectionPermission(
   return {};
 }
 
+Result TransactionState::checkCollectionPermissionOnCoordinator(
+    DataSourceId cid, std::string_view cname, AccessMode::Type accessType) {
+  TRI_ASSERT(isCoordinator());
+  if (collection(cid, accessType) != nullptr) {
+    // the collection is already a declared member of the transaction with
+    // sufficient access; it was permission-checked when it was added
+    return {};
+  }
+  return checkCollectionPermission(cid, cname, accessType);
+}
+
 /// @brief clear the query cache for all collections that were modified by
 /// the transaction
 void TransactionState::clearQueryCache() const {
