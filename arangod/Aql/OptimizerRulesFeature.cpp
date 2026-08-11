@@ -107,6 +107,7 @@
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Optimizer/Rule/OptimizeJoinOrder.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -317,6 +318,17 @@ optimizations.)");
                                OptimizerRule::Flags::CanBeDisabled),
       R"(Try out permutations of `FOR` statements in queries that contain
 multiple loops, which may enable further optimizations by other rules.)");
+
+  // Constructs the join graph only for now. Does not reorder joins yet.
+  // Disabled by default. Can be enabled via
+  // `{ optimizer: { rules: ["+optimize-join-order"] } }`
+  registerRule(
+      "optimize-join-order", optimizeJoinOrder,
+      OptimizerRule::optimizeJoinOrder,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::DisabledByDefault,
+                               OptimizerRule::Flags::CanBeDisabled),
+      R"(Detect adjacent `FOR` loops that are joined by equijoin conditions and
+build the corresponding join graph, as a basis for (in-future) cost-based join reordering.)");
 
   // replace attribute accesses that are equal due to a filter statement
   // with the same value. This might enable other optimizations later on.

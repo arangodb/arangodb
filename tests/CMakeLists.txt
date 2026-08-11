@@ -163,6 +163,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/JoinStrategy/GenericAndTwoNonUniqueJoinTest.cpp
   Aql/JoinStrategy/TwoIndicesUniqueJoinTest.cpp
   Aql/NodeWalkerTest.cpp
+  Aql/OptimizeJoinOrderTest.cpp
   Aql/ParserTest.cpp
   Aql/ProjectionsTest.cpp
   Aql/QueryCursorTest.cpp
