@@ -894,7 +894,13 @@ Result UserManagerImpl::extractUsername(std::string const& token,
     StringBuffer in;
     in.appendText(unhex);
 
-    auto json = VPackParser::fromJson(in.toString());
+    std::shared_ptr<VPackBuilder> json;
+    try {
+      json = VPackParser::fromJson(in.toString());
+    } catch (std::exception const& e) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              absl::StrCat("Error parsing JSON: ", e.what())};
+    }
     VPackSlice at = json->slice();
 
     if (!at.isObject()) {
