@@ -1,5 +1,10 @@
 3.12.11-devel (XXXX-XX-XX)
 --------------------------
+* COR-669: Server State Metric
+  Added the arangodb_server_health gauge metric to report the health status of each
+  server in a cluster. The metric is exported by Coordinators and labeled with
+  `target_server` (unique id), and `target_shortname` of the reported
+  server. Values are 0 (Failed), 1 (Bad), and 2 (Good).
 
 * Add explicit permission checks for operations on streaming transactions.
   Previously trying to do modifications and forbidden collections that were not
