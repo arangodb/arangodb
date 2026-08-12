@@ -172,7 +172,12 @@ class ExecContext {
     if (!_isRestApiHardened) {
       return {};
     }
-    return can(std::move(action));
+    Result r = can(std::move(action));
+    if (r.ok()) {
+      return r;
+    }
+    // Compatibility with 3.12.10:
+    return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
   }
 
   Result canSeeDatabase(std::string_view db) const;
