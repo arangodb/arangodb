@@ -20,7 +20,8 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-// TODO (COR-867): Remove this file by cutting the link to GeneralServerFeature.cpp
+// TODO (COR-867): Remove this file by cutting the link to
+// GeneralServerFeature.cpp
 
 #include "RocksDBEngine/RocksDBRestHandlers.h"
 #include "ClusterEngine/ClusterRestHandlers.h"
