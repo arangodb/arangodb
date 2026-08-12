@@ -41,7 +41,7 @@ template<typename H>
 class RestHandlerCreator : public H {
   template<typename... Args>
   static auto createUnique(application_features::ApplicationServer& server, GeneralRequest* request,
-      GeneralResponse* response, Args&&... args) -> std::shared_ptr<rest::RestHandler> {
+      GeneralResponse* response, Args&&... args) {
     using Deleter = decltype([](H* h) {
       auto* request = h->request();
       // Call the destructor under the user's ExecContext, if any.
