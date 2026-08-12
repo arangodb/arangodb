@@ -1,6 +1,13 @@
 3.12.10.1 (XXXX-XX-XX)
 ----------------------
 
+* Add explicit permission checks for operations on streaming transactions.
+  Previously trying to do modifications and forbidden collections that were not
+  part of the transaction already produced an error 400 (UNREGISTERED_COLLECTION).
+  Now this produces instead an error 403 (FORBIDDEN).
+  Trying to read a single document by key from a forbidden collection actually
+  worked. Now this produces instead an error 403 (FORBIDDEN).
+
 * Fixed access token expiry (COR-825).
 
 * Upgraded included rclone to v1.75.0 with go1.25.12 and non-vulnerable
