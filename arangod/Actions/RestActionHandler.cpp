@@ -139,6 +139,14 @@ bool isPublicAardvarkPath(std::string_view path) {
                              [&](auto p) { return path.starts_with(p); });
 }
 
+bool RestActionHandler::hasAllowedUnauthenticatedPath() const {
+  auto const* const auth = AuthenticationFeature::instance();
+  ADB_PROD_ASSERT(auth->isActive());
+  auto const& path = request()->requestPath();
+  return auth->authenticationSystemOnly() &&  // TODO remove in 4.0
+         !path.empty() && !path.starts_with("/_");
+}
+
 async<RestHandler::AuthenticationGrant>
 RestActionHandler::checkUserAuthentication() const {
   if (isPublicAardvarkPath(request()->requestPath())) {
@@ -146,15 +154,14 @@ RestActionHandler::checkUserAuthentication() const {
     co_return AuthenticationGrant::GRANTED_EARLY;
   }
 
-  co_return co_await RestHandler::checkUserAuthentication();
-}
+  auto auth = co_await RestHandler::checkUserAuthentication();
+  if (auth == AuthenticationGrant::DENIED) {
+    if (hasAllowedUnauthenticatedPath()) {
+      co_return AuthenticationGrant::GRANTED;
+    }
+  }
 
-bool RestActionHandler::hasAllowedUnauthenticatedPath() const {
-  auto const* const auth = AuthenticationFeature::instance();
-  ADB_PROD_ASSERT(auth->isActive());
-  auto const& path = request()->requestPath();
-  return auth->authenticationSystemOnly() &&  // TODO remove in 4.0
-         !path.empty() && !path.starts_with("/_");
+  co_return auth;
 }
 
 async<Result> RestActionHandler::checkApiVersionAccess() const {
@@ -166,6 +173,11 @@ async<Result> RestActionHandler::checkApiVersionAccess() const {
 }
 
 async<Result> RestActionHandler::checkDatabaseAccess() const {
+  if (isPublicAardvarkPath(request()->requestPath())) {
+    // Note that we do **not** escalate to superuser for these!
+    co_return Result{};
+  }
+
   auto r = co_await RestHandler::checkDatabaseAccess();
   if (r.ok()) {
     co_return Result{};
