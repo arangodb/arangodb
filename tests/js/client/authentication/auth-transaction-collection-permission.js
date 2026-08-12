@@ -97,6 +97,10 @@ function authTransactionCollectionPermissionSuite() {
       db._useDatabase("_system");
     },
 
+    // these tests intentionally use raw REST requests instead of the arangojs client
+    // because the client uses explicit transaction collections which perform permission
+    // checks at the time they are requested, which is not what we want to test here.
+
     testReadForbiddenCollectionInExistingTransaction: function () {
       arango.reconnect(arango.getEndpoint(), dbName, user, pw);
 
