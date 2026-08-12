@@ -28,6 +28,7 @@
 //
 // Handler: arangod/RestHandler/RestAuthHandler.cpp
 //
+// TODO fix
 // These are OPEN (public) endpoints. RestAuthHandler overrides
 // checkUserCanAccess() to unconditionally forceSuperuser() and return OK, so
 // the universal `UseDatabase name=... level=read` base check is NOT asked.
@@ -66,8 +67,10 @@ function openApiAuthzSuite () {
     // but that does not change which questions are asked (none).
     testObtainToken: function () {
       beginObserve();
-      arango.POST_RAW(`/_open/auth`, { username: 'AR', password: 'AR' });
-      assertPermissions([], endObserve());
+      arango.POST_RAW(`/_open/auth`, { username: 'AR', password: 'AR' },
+                      { 'Authorization': 'Bearer not-a-real-token' });
+      assertPermissions([
+      ], endObserve());
     },
 
     // POST /_open/auth/renew with a bearer token - still OPEN, asks nothing.
@@ -83,8 +86,10 @@ function openApiAuthzSuite () {
     // POST /_open/auth/renew without a proper token - OPEN, asks nothing.
     testRenewWithoutToken: function () {
       beginObserve();
-      arango.POST_RAW(`/_open/auth/renew`, {});
-      assertPermissions([], endObserve());
+      arango.POST_RAW(`/_open/auth/renew`, {},
+                      { 'Authorization': 'Bearer not-a-real-token' });
+      assertPermissions([
+      ], endObserve());
     },
   };
 }

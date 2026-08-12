@@ -201,11 +201,12 @@ RestStatus RestAuthHandler::execute() {
   return RestStatus::DONE;
 }
 
-async<Result> RestAuthHandler::checkUserCanAccess() const {
+async<RestHandler::AuthenticationGrant>
+RestAuthHandler::checkUserAuthentication() const {
   auto ec = _request->requestContext();
   TRI_ASSERT(ec != nullptr);
   ec->forceSuperuser();
-  co_return Result{};
+  co_return AuthenticationGrant::GRANTED;
 }
 
 std::string RestAuthHandler::generateJwt(

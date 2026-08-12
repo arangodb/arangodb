@@ -67,6 +67,7 @@ function actionApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/actions`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -76,6 +77,7 @@ function actionApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/_system/_admin/actions`, { execute: 'proceed' });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -86,6 +88,7 @@ function actionApiAuthzSuite () {
       arango.POST_RAW(`/_db/_system/_admin/actions`,
                       { execute: 'pause', duration: 1 });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
       arango.POST_RAW(`/_db/_system/_admin/actions`, { execute: 'proceed' });
@@ -96,16 +99,20 @@ function actionApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_admin/actions`, {});
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
 
+    // Bug: calls RestActionHandler instead of MaintenanceRestHandler
+    //      because handler is not installed as prefix-handler
     // DELETE /_admin/actions/999999 - non-existent action -> 400, base check
     // is still asked
     testDeleteNonExistent: function () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_admin/actions/999999`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },

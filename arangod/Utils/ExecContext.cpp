@@ -624,6 +624,14 @@ Result ExecContext::canGrantUserPermissions(std::string_view userName) const {
   return {};
 }
 
+/// @brief returns whether the given REST API version may be used
+Result ExecContext::canUseApiVersion(uint32_t version) const {
+  using namespace auth::perms;
+  // Using an API version never modifies anything, so the read-only gate does
+  // not apply here.
+  return can(UseApiVersion{.version = version});
+}
+
 /// @brief returns true for each user which can be read
 std::vector<bool> ExecContext::canReadUsers(
     std::span<std::string_view> users) const {
@@ -636,12 +644,15 @@ std::vector<bool> ExecContext::canReadUsers(
   return std::vector<bool>{view.begin(), view.end()};
 }
 
-ExecContextScope::ExecContextScope(std::shared_ptr<ExecContext const> exe)
+ExecContextScope::ExecContextScope(
+    std::shared_ptr<ExecContext const> exe) noexcept
     : _old(std::move(exe)) {
   std::swap(ExecContext::CURRENT, _old);
 }
 
-ExecContextScope::~ExecContextScope() { std::swap(ExecContext::CURRENT, _old); }
+ExecContextScope::~ExecContextScope() noexcept {
+  std::swap(ExecContext::CURRENT, _old);
+}
 
 ExecContextSuperuserScope::ExecContextSuperuserScope()
     : _old(ExecContext::CURRENT) {

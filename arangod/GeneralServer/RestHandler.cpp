@@ -24,9 +24,10 @@
 
 #include "Activities/GenericActivity.h"
 #include "Activities/RegistryGlobalVariable.h"
+#include "Agency/RestAgencyHandler.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Assertions/ProdAssert.h"
 #include "Auth/TokenCache.h"
-#include "Basics/DownCast.h"
 #include "Basics/dtrace-wrapper.h"
 #include "Basics/error.h"
 #include "Basics/voc-errors.h"
@@ -39,7 +40,6 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandlerActivity.h"
 #include "Logger/LogMacros.h"
-#include "Logger/LogStructuredParamsAllowList.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
@@ -52,12 +52,11 @@
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/ticks.h"
 
-#include <Agency/RestAgencyHandler.h>
 #include <Async/async.h>
+#include <Ssl/jwt.h>
 #include <absl/strings/str_cat.h>
-#include "Ssl/jwt.h"
-#include <velocypack/Exception.h>
 #include <unordered_map>
+#include <velocypack/Exception.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -530,8 +529,7 @@ bool RestHandler::wakeupHandler() { return !_suspensionCounter.notify(); }
 
 auto RestHandler::executeEngine() -> async<void> {
   DTRACE_PROBE1(arangod, RestHandlerExecuteEngine, this);
-  ExecContextScope scope(
-      basics::downCast<ExecContext>(_request->requestContext()));
+  TRI_ASSERT(ExecContext::currentAsShared() == _request->requestContext());
 
   try {
     co_await executeAsync();
@@ -702,10 +700,12 @@ void RestHandler::compressResponse() {
   }
 }
 
-async<Result> RestHandler::checkUserCanAccess() const {
+async<RestHandler::AuthenticationGrant> RestHandler::checkUserAuthentication()
+    const {
   auto const* const auth = AuthenticationFeature::instance();
+  ADB_PROD_ASSERT(auth != nullptr);
   if (!auth->isActive()) {
-    co_return Result();
+    co_return AuthenticationGrant::GRANTED_EARLY;
   }
 
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
@@ -713,14 +713,29 @@ async<Result> RestHandler::checkUserCanAccess() const {
   if (ci.endpointType == Endpoint::DomainType::UNIX &&
       !auth->authenticationUnixSockets()) {
     // no authentication required for unix domain socket connections
-    co_return Result{};
+    co_return AuthenticationGrant::GRANTED_EARLY;
   }
 #endif
 
-  if (not request()->authenticated()) {
-    co_return Result(TRI_ERROR_HTTP_UNAUTHORIZED, "User not authenticated.");
+  if (request()->authenticated()) {
+    co_return AuthenticationGrant::GRANTED;
   }
 
+  co_return AuthenticationGrant::DENIED;
+}
+
+async<Result> RestHandler::checkApiVersionAccess() const {
+  auto ec = request()->requestContext();
+  TRI_ASSERT(ec != nullptr) << "no exec context in request: " << this->name();
+  auto res = ec->canUseApiVersion(request()->requestedApiVersion());
+  if (res.fail()) {
+    LOG_TOPIC("3b1a7", TRACE, Logger::AUTHORIZATION)
+        << "API version forbidden for " << request()->requestPath();
+  }
+  co_return res;
+}
+
+async<Result> RestHandler::checkDatabaseAccess() const {
   auto ec = request()->requestContext();
   TRI_ASSERT(ec != nullptr) << "no exec context in request: " << this->name();
   auto canUseDB =
@@ -740,7 +755,27 @@ async<Result> RestHandler::checkUserCanAccess() const {
 }
 
 async<void> RestHandler::handleAuthorizationChecks() {
-  if (auto res = co_await checkUserCanAccess(); res.fail()) {
+  auto auth = co_await checkUserAuthentication();
+  if (auth == AuthenticationGrant::GRANTED_EARLY) {
+    co_return;
+  }
+
+  if (auth == AuthenticationGrant::DENIED) {
+    _state = HandlerState::FAILED;
+    events::NotAuthorized(*_request);
+    generateError(rest::ResponseCode::UNAUTHORIZED, TRI_ERROR_FORBIDDEN,
+                  "User not authenticated");
+    co_return;
+  }
+
+  if (auto res = co_await checkApiVersionAccess(); res.fail()) {
+    _state = HandlerState::FAILED;
+    events::NotAuthorized(*_request);
+    generateError(res);
+    co_return;
+  }
+
+  if (auto res = co_await checkDatabaseAccess(); res.fail()) {
     _state = HandlerState::FAILED;
     events::NotAuthorized(*_request);
     if (_request->requestedApiVersion() == 0) {
@@ -801,8 +836,13 @@ RestStatus RestHandler::execute() {
 }
 
 void RestHandler::runHandler(
-    std::function<void(rest::RestHandler*)> responseCallback) {
+    std::function<void(RestHandler*)> responseCallback) {
   _sendResponseCallback = std::move(responseCallback);
+
+  // set the scope for the state machine. note that the following
+  // .thenFinal does not automatically inherit the scope; but it does
+  // not need it, either.
+  auto scope = ExecContextScope(_request->requestContext());
 
   runHandlerStateMachine().
       // Swallow all exceptions. It would be desirable to guarantee no
@@ -811,7 +851,7 @@ void RestHandler::runHandler(
       thenFinal([self = shared_from_this()](auto&& tryResult) noexcept {
         try {
           std::move(tryResult).throwIfFailed();
-        } catch (basics::Exception const& exception) {
+        } catch (Exception const& exception) {
           LOG_TOPIC("e0b25", ERR, Logger::FIXME)
               << "Uncaught exception in RestHandler " << self->name() << ": "
               << "[" << exception.code() << "] " << exception.message()

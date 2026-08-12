@@ -172,7 +172,12 @@ class ExecContext {
     if (!_isRestApiHardened) {
       return {};
     }
-    return can(std::move(action));
+    Result r = can(std::move(action));
+    if (r.ok()) {
+      return r;
+    }
+    // Compatibility with 3.12.10:
+    return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
   }
 
   Result canSeeDatabase(std::string_view db) const;
@@ -266,6 +271,11 @@ class ExecContext {
   /// collections may be granted/revoked.
   Result canGrantUserPermissions(std::string_view userName) const;
 
+  /// @brief returns whether the given REST API version may be used, e.g. 1 for
+  /// `/_arango/v1`. Note that this does not ask whether the version exists -
+  /// that is decided by the handler factory.
+  Result canUseApiVersion(uint32_t version) const;
+
   static std::shared_ptr<ExecContext const> set(
       std::shared_ptr<ExecContext const> ctx) {
     std::swap(CURRENT, ctx);
@@ -293,9 +303,9 @@ class ExecContext {
 
 /// @brief scope guard for the exec context
 struct ExecContextScope {
-  explicit ExecContextScope(std::shared_ptr<ExecContext const> exe);
+  explicit ExecContextScope(std::shared_ptr<ExecContext const> exe) noexcept;
 
-  ~ExecContextScope();
+  ~ExecContextScope() noexcept;
 
  private:
   std::shared_ptr<ExecContext const> _old;

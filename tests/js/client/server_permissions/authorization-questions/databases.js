@@ -28,8 +28,8 @@
 //
 // Handler: arangod/RestHandler/RestDatabaseHandler.cpp
 //
-// Every request first asks the base `UseDatabase name=<db> level=read` in
-// RestHandler::checkUserCanAccess(), where <db> is the database in the request
+// Every request first asks the base `UseApiVersion version=0` and then
+// `UseDatabase name=<db> level=read`, where <db> is the database in the request
 // path prefix. Beyond that:
 //   - GET (list / current / user / shardStatistics) go through
 //     methods::Databases::list()/toVelocyPack(), which do NOT call the
@@ -91,6 +91,7 @@ function databaseApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/database`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -100,6 +101,7 @@ function databaseApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/database/current`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
     },
@@ -110,6 +112,7 @@ function databaseApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/database/user`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "SeeDatabase name=_system",
         "SeeDatabase name=d"
@@ -124,6 +127,7 @@ function databaseApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/database/shardStatistics`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
     },
@@ -134,6 +138,7 @@ function databaseApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/_system/_api/database`, { name: 'd2' });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "IsReadOnly",
         "CreateDatabase name=d2",
@@ -165,6 +170,7 @@ function databaseApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_api/database/d2`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "IsReadOnly",
         "DropDatabase name=d2",

@@ -28,8 +28,8 @@
 //
 // Handler: arangod/RestHandler/RestDumpHandler.cpp
 //
-// Every request first asks `UseDatabase name=d level=read` in
-// RestHandler::checkUserCanAccess() (the paths carry the /_db/d/ prefix).
+// Every request first asks `UseApiVersion version=0` and then
+// `UseDatabase name=d level=read` (the paths carry the /_db/d/ prefix).
 //
 //   POST /_api/dump/start   validateRequest() iterates the requested shards and
 //                           asks canDumpCollection(db, coll) for each ->
@@ -115,6 +115,7 @@ function dumpApiAuthzSuite () {
       // AUDIT: on a coordinator the question carries an empty collection
       // name, and AdminDump is not asked at all
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         ...singleOnly([
           "DumpCollection db=d name=c",
@@ -142,6 +143,7 @@ function dumpApiAuthzSuite () {
       arango.POST_RAW(
         `/_db/${DB}/_api/dump/next/${dumpId}?batchId=${batchId}`, {});
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
       abortDump(dumpId);
@@ -156,6 +158,7 @@ function dumpApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/dump/${dumpId}`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
       abortDump(dumpId);
