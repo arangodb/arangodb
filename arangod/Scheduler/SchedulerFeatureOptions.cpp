@@ -20,19 +20,22 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "Scheduler/SchedulerFeatureOptions.h"
 
-#include "ApplicationFeatures/OptionsProvider.h"
-#include "Metrics/MetricsOptions.h"
+#include "Basics/NumberOfCores.h"
 
-namespace arangodb::metrics {
+#include <algorithm>
 
-struct MetricsOptionsProvider
-    : OptionsProviderImpl<MetricsOptionsProvider, MetricsOptions> {
-  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                          MetricsOptions& options);
-  void processOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                          MetricsOptions& options);
-};
+namespace arangodb {
 
-}  // namespace arangodb::metrics
+/*static*/ uint64_t SchedulerFeatureOptions::getDefaultMaxThreads() noexcept {
+  // use two times the number of hardware threads as the default,
+  // but never less than 32
+  return (std::max)(static_cast<uint64_t>(32),
+                    static_cast<uint64_t>(NumberOfCores::getValue()) * 2);
+}
+
+SchedulerFeatureOptions::SchedulerFeatureOptions()
+    : nrMaximalThreads(getDefaultMaxThreads()) {}
+
+}  // namespace arangodb

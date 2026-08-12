@@ -78,6 +78,9 @@ class AuthenticationFeature final
   double sessionTimeout() const { return _options.sessionTimeout; }
   double minimalJwtExpiryTime() const { return _options.minimalJwtExpiryTime; }
   double maximalJwtExpiryTime() const { return _options.maximalJwtExpiryTime; }
+  double maximalAccessTokenExpiryTime() const {
+    return _options.maximalAccessTokenExpiryTime;
+  }
 
   // load secrets from file(s)
   [[nodiscard]] Result loadJwtSecretsFromFile();

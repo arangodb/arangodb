@@ -22,8 +22,6 @@
 
 #include "DatabaseFeature.h"
 
-#include "DatabaseOptionsProvider.h"
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
@@ -48,7 +46,6 @@
 #include "Metrics/MetricsFeature.h"
 #include "Metrics/Gauge.h"
 #include "Metrics/IRegistry.h"
-#include "ProgramOptions/ProgramOptions.h"
 #include "Replication/ReplicationClients.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FileDescriptorsFeature.h"
@@ -287,23 +284,6 @@ DatabaseFeature::DatabaseFeature(
 }
 
 DatabaseFeature::~DatabaseFeature() = default;
-
-void DatabaseFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  DatabaseOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void DatabaseFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  // check the misuse of startup options
-  if (_checkVersion && _upgrade) {
-    LOG_TOPIC("a25b0", FATAL, Logger::FIXME)
-        << "cannot specify both '--database.check-version' and "
-           "'--database.auto-upgrade'";
-    FATAL_ERROR_EXIT();
-  }
-}
 
 void DatabaseFeature::initCalculationVocbase() {
   calculationVocbase = std::make_unique<TRI_vocbase_t>(
