@@ -120,7 +120,9 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
       commits.emplace_back(
           leader->replicateOperation(operation, options)
               .thenValue([&rtc, leader,
-                          tid](auto&& res) -> ResultT<replication2::LogIndex> {
+                          tid, ec = ExecContext::currentAsShared()](auto&& res) -> ResultT<replication2::LogIndex> {
+                // preserve the context. TODO: rewrite as a coroutine instead
+                auto scope = ExecContextScope(ec);
                 if (res.fail()) {
                   LOG_CTX("57328", WARN, leader->loggerContext)
                       << "Failed to replicate commit of transaction (follower "
