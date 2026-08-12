@@ -206,7 +206,7 @@ bool UserManagerBase::checkAccessToken(std::string const& username,
   if (it != _userCache.end()) {
     User const& user = it->second;
     if (user.isActive()) {
-      return user.checkAccessToken(token, validUntul);
+      return user.checkAccessToken(token, validUntil);
     }
   }
 
