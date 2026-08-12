@@ -33,12 +33,12 @@ required to drop an ArangoSearch view.
 
 The two APIs:
  - `POST /_api/token/<username>`
- - `DELETE /_api/token/<username>`
+ - `DELETE /_api/token/<username>/<id>`
 up to 3.12.10 did not respect the read-only mode and allowed writes,
 provided a user has RW access to the `_system` database. This is now
 fixed and such an admin cannot create or delete tokens when the server
 is in read-only mode. The response code is HTTP 403 with `errorNum`
-403 in this case. The superuser can still perform these operations,
+1004 in this case. The superuser can still perform these operations,
 even in read-only mode.
 
 ## ErrorNum in read-only mode

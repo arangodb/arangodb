@@ -15,7 +15,20 @@
   - "RBAC" (Role Based Access Control), which delegates authorization
     decisions to an external service. This implementation is used
     exclusively on the platform.
-  This change is internal and does not alter the REST API surface.
+  This change is internal and does not alter the REST API surface, with the
+  following exceptions (see `Documentation/Differences_3.12.10_3.12.11_Classic.md`
+  for details:
+   - `GET /_arango/experimental/_admin/activities` will now return HTTP 404 and
+     errorNum 1228 (database not found) rather than HTTP 401 and errorNum 11,
+     if the user has no read access to the `_system` database.
+   - Dropping ArangoSearch views no longer needs read access to the linked
+     collections (which was pointless).
+   - `POST /_api/token/<username>` and `DELETE /_api/token/<username>/<id>`
+     will be rejected in read-only mode if the user has admin permissions
+     (RW on the _system database), this was an ommission.
+   - API calls which write to collections to which the user has RW permissions
+     in read-only mode will now return `errorNum` 1004 (READONLY) instead of
+     11 (FORBIDDEN). The HTTP code remains 403 FORBIDDEN. 
 
 * COR-569: Added activity to report ArangoSearch consolidation.
 
