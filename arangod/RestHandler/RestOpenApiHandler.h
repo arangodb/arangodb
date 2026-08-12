@@ -38,7 +38,14 @@ class RestOpenApiHandler : public arangodb::RestBaseHandler {
   futures::Future<futures::Unit> executeAsync() override;
 
  protected:
-  async<Result> checkUserCanAccess() const override;
+  // The OpenAPI spec must be reachable without authentication, so that
+  // clients (and the API documentation) can retrieve it before logging in.
+  async<RestHandler::AuthenticationGrant> checkUserAuthentication()
+      const override {
+    co_return AuthenticationGrant::GRANTED;
+  }
+  async<Result> checkApiVersionAccess() const override { co_return Result{}; }
+  async<Result> checkDatabaseAccess() const override { co_return Result{}; }
 
  private:
   std::string_view getOpenApiSpec(uint32_t apiVersion) const;

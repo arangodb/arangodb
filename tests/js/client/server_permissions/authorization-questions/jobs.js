@@ -29,8 +29,8 @@
 // Handler: arangod/RestHandler/RestJobHandler.cpp
 //
 // RestJobHandler performs NO ExecContext checks of its own. The only
-// authorization question is the base `UseDatabase name=_system level=read`
-// asked by RestHandler::checkUserCanAccess() for every request (the job
+// authorization questions are the base `UseApiVersion version=0` and
+// `UseDatabase name=_system level=read` for every request (the job
 // endpoints carry no /_db prefix, so the connected database _system applies;
 // we spell it out explicitly). The per-job ownership filtering inside
 // AsyncJobManager uses exec.user()/exec.isSuperuser(), which do not call can()
@@ -81,6 +81,7 @@ function jobApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/job/done`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -90,6 +91,7 @@ function jobApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/job/pending`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -100,6 +102,7 @@ function jobApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/job/${jobId}`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
       deleteJob(jobId);
@@ -111,6 +114,7 @@ function jobApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_api/job/${jobId}`, {});
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
       deleteJob(jobId);
@@ -122,6 +126,7 @@ function jobApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_api/job/${jobId}/cancel`, {});
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
       deleteJob(jobId);
@@ -132,6 +137,7 @@ function jobApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_api/job/all`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -141,6 +147,7 @@ function jobApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_api/job/expired?stamp=0`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -151,6 +158,7 @@ function jobApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_api/job/${jobId}`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
       deleteJob(jobId);
@@ -161,6 +169,7 @@ function jobApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/job/done`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },

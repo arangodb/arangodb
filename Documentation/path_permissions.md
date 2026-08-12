@@ -206,7 +206,9 @@ enabled:
  - Every other change is an exception, which we (grudgingly) make because we
    found some issue with the current system.
  - There is an additional action `db:UseApiVersion` to configure, which roles
-   are allowed to use which API versions (the API version is the resource)
+   are allowed to use which API versions. Every request of an authenticated 
+	 identity is gated by an api version check. It is asked in
+   `RestHandler::checkApiVersionAccess`.
  
 This philosophy helps in the following ways:
  
@@ -269,6 +271,8 @@ return a `Result`, so that a decline can return the actual reason
  - `canDropUser(std::string_view user) -> Result`
  - `canModifyUserProfile(std::string_view user) -> Result`
  - `canGrantUserPermissions(std::string_view user) -> Result`
+
+ - `canUseApiVersion(uint32_t version) -> Result`
 
  - `isSuperuser() -> bool`
 
