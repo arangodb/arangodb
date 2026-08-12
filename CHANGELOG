@@ -5,6 +5,18 @@
  - fast-uri to 3.1.5 to resolve CVE-2026-18446
  - brace-expansion to 5.0.9 to resolve CVE-2026-69152
 
+* COR-213: Reworked authorization internally. All authorization decisions
+  throughout the server are now funneled through a single internal API on
+  `ExecContext`. This API has two implementations:
+  - "Classic", which reproduces the previous authorization behavior as
+    closely as possible. A small number of intentional behavior changes were
+    made where the old behavior was considered a bug; these are called out
+    separately in the release notes rather than here.
+  - "RBAC" (Role Based Access Control), which delegates authorization
+    decisions to an external service. This implementation is used
+    exclusively on the platform.
+  This change is internal and does not alter the REST API surface.
+
 * COR-569: Added activity to report ArangoSearch consolidation.
 
 
