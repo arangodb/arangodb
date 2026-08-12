@@ -186,7 +186,7 @@ Result UserManagerBase::extractUsername(std::string const& token,
   }
 }
 
-bool UserManagerImpl::checkAccessToken(std::string const& username,
+bool UserManagerBase::checkAccessToken(std::string const& username,
                                        std::string const& token,
                                        std::string& un,
                                        std::optional<double>& validUntil) {
@@ -213,7 +213,7 @@ bool UserManagerImpl::checkAccessToken(std::string const& username,
   return false;
 }
 
-bool UserManagerImpl::checkCredentials(std::string const& username,
+bool UserManagerBase::checkCredentials(std::string const& username,
                                        std::string const& password,
                                        std::string& un,
                                        std::optional<double>& tokenValidUntil) {
