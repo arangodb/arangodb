@@ -139,26 +139,42 @@ bool isPublicAardvarkPath(std::string_view path) {
                              [&](auto p) { return path.starts_with(p); });
 }
 
-async<Result> RestActionHandler::checkUserCanAccess() const {
-  auto const& path = request()->requestPath();
-  if (isPublicAardvarkPath(path)) {
+async<RestHandler::AuthenticationGrant>
+RestActionHandler::checkUserAuthentication() const {
+  if (isPublicAardvarkPath(request()->requestPath())) {
     // Note that we do **not** escalate to superuser for these!
+    co_return AuthenticationGrant::GRANTED_EARLY;
+  }
+
+  co_return co_await RestHandler::checkUserAuthentication();
+}
+
+bool RestActionHandler::hasAllowedUnauthenticatedPath() const {
+  auto const* const auth = AuthenticationFeature::instance();
+  ADB_PROD_ASSERT(auth->isActive());
+  auto const& path = request()->requestPath();
+  return auth->authenticationSystemOnly() &&  // TODO remove in 4.0
+         !path.empty() && !path.starts_with("/_");
+}
+
+async<Result> RestActionHandler::checkApiVersionAccess() const {
+  if (hasAllowedUnauthenticatedPath()) {
     co_return Result{};
   }
 
-  auto r = co_await RestHandler::checkUserCanAccess();
+  co_return co_await RestHandler::checkApiVersionAccess();
+}
+
+async<Result> RestActionHandler::checkDatabaseAccess() const {
+  auto r = co_await RestHandler::checkDatabaseAccess();
   if (r.ok()) {
-    co_return r;
+    co_return Result{};
   }
 
-  auto const* const auth = AuthenticationFeature::instance();
-  ADB_PROD_ASSERT(auth->isActive());
-  if (auth->authenticationSystemOnly()) {  // TODO remove in 4.0
+  if (hasAllowedUnauthenticatedPath()) {
     // check if path is / which is required for the web UI to get started
-    if (!path.empty() && !path.starts_with("/_")) {
-      _mustEscalateToSuperuser = true;
-      co_return Result{};
-    }
+    _mustEscalateToSuperuser = true;
+    co_return Result{};
   }
   co_return r;
 }

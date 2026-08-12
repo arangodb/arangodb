@@ -703,11 +703,12 @@ void RestHandler::compressResponse() {
   }
 }
 
-async<Result> RestHandler::checkUserCanAccess() const {
+async<RestHandler::AuthenticationGrant> RestHandler::checkUserAuthentication()
+    const {
   auto const* const auth = AuthenticationFeature::instance();
   ADB_PROD_ASSERT(auth != nullptr);
   if (!auth->isActive()) {
-    co_return Result();
+    co_return AuthenticationGrant::GRANTED_EARLY;
   }
 
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
@@ -715,14 +716,29 @@ async<Result> RestHandler::checkUserCanAccess() const {
   if (ci.endpointType == Endpoint::DomainType::UNIX &&
       !auth->authenticationUnixSockets()) {
     // no authentication required for unix domain socket connections
-    co_return Result{};
+    co_return AuthenticationGrant::GRANTED_EARLY;
   }
 #endif
 
-  if (not request()->authenticated()) {
-    co_return Result(TRI_ERROR_HTTP_UNAUTHORIZED, "User not authenticated.");
+  if (request()->authenticated()) {
+    co_return AuthenticationGrant::GRANTED;
   }
 
+  co_return AuthenticationGrant::DENIED;
+}
+
+async<Result> RestHandler::checkApiVersionAccess() const {
+  auto ec = request()->requestContext();
+  TRI_ASSERT(ec != nullptr) << "no exec context in request: " << this->name();
+  auto res = ec->canUseApiVersion(request()->requestedApiVersion());
+  if (res.fail()) {
+    LOG_TOPIC("3b1a7", TRACE, Logger::AUTHORIZATION)
+        << "API version forbidden for " << request()->requestPath();
+  }
+  co_return res;
+}
+
+async<Result> RestHandler::checkDatabaseAccess() const {
   auto ec = request()->requestContext();
   TRI_ASSERT(ec != nullptr) << "no exec context in request: " << this->name();
   auto canUseDB =
@@ -741,39 +757,28 @@ async<Result> RestHandler::checkUserCanAccess() const {
   }
 }
 
-async<Result> RestHandler::checkApiVersionAccess() const {
-  if (not request()->authenticated()) {
-    // if we are not authenticated, we don't have a user for which to check
-    // the allowed api version
-    co_return Result{};
-  }
-
-  // During startup (or in maintenance mode) the AuthenticationFeature might not
-  // yet be available for authorization, and must not be consulted.
-  if (auto const mode = ServerState::instance()->mode();
-      mode == ServerState::Mode::STARTUP ||
-      mode == ServerState::Mode::MAINTENANCE) {
-    co_return Result{};
-  }
-
-  auto ec = request()->requestContext();
-  TRI_ASSERT(ec != nullptr) << "no exec context in request: " << this->name();
-  auto res = ec->canUseApiVersion(request()->requestedApiVersion());
-  if (res.fail()) {
-    LOG_TOPIC("3b1a7", TRACE, Logger::AUTHORIZATION)
-        << "API version forbidden for " << request()->requestPath();
-  }
-  co_return res;
-}
-
 async<void> RestHandler::handleAuthorizationChecks() {
+  auto auth = co_await checkUserAuthentication();
+  if (auth == AuthenticationGrant::GRANTED_EARLY) {
+    co_return;
+  }
+
+  if (auth == AuthenticationGrant::DENIED) {
+    _state = HandlerState::FAILED;
+    events::NotAuthorized(*_request);
+    generateError(rest::ResponseCode::UNAUTHORIZED, TRI_ERROR_FORBIDDEN,
+                  "User not authenticated");
+    co_return;
+  }
+
   if (auto res = co_await checkApiVersionAccess(); res.fail()) {
     _state = HandlerState::FAILED;
     events::NotAuthorized(*_request);
     generateError(res);
     co_return;
   }
-  if (auto res = co_await checkUserCanAccess(); res.fail()) {
+
+  if (auto res = co_await checkDatabaseAccess(); res.fail()) {
     _state = HandlerState::FAILED;
     events::NotAuthorized(*_request);
     if (_request->requestedApiVersion() == 0) {

@@ -104,6 +104,8 @@ function actionApiAuthzSuite () {
       ], endObserve());
     },
 
+    // Bug: calls RestActionHandler instead of MaintenanceRestHandler
+    //      because handler is not installed as prefix-handler
     // DELETE /_admin/actions/999999 - non-existent action -> 400, base check
     // is still asked
     testDeleteNonExistent: function () {
