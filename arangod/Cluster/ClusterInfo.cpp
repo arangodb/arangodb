@@ -341,7 +341,9 @@ void doQueueLinkDrop(IndexId id, std::string const& collection,
           res = methods::Indexes::drop(*coll, builder.slice()).waitAndGet();
         }
         if (res.fail() && res.isNot(TRI_ERROR_ARANGO_INDEX_NOT_FOUND)) {
-          // we should have internal superuser
+          // this task runs under the superuser ExecContext captured at
+          // enqueue time from the SyncerThread (COR-821), so the drop
+          // cannot fail with a permission error
           TRI_ASSERT(res.isNot(TRI_ERROR_FORBIDDEN));
           LOG_TOPIC("b27f3", WARN, Logger::CLUSTER)
               << "Failed to drop dangling link " << id

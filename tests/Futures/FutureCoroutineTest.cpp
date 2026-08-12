@@ -1,6 +1,8 @@
 #include "Async/Registry/promise.h"
 #include "Async/Registry/registry_variable.h"
 #include "Auth/Common.h"
+#include "Basics/Result.h"
+#include "Basics/voc-errors.h"
 #include "Futures/Future.h"
 #include "Mocks/ExecContextFactory.h"
 
@@ -282,6 +284,43 @@ TYPED_TEST(FutureTest,
 
   this->wait.resume();
   this->wait.await();
+}
+
+// COR-822: transaction::Methods::replicateOperations co_awaits the follower
+// responses (whose futures are fulfilled on a network or scheduler thread)
+// and performs an intermediate commit after resuming. The commit guard in
+// RocksDBTrxBaseMethods::doCommitImpl reads
+// ExecContext::current().isCanceled(); with a plain .thenValue continuation
+// it would run on the fulfilling thread and observe the Superuser fallback
+// (whose _canceled is always false) instead of the initiator's context. This
+// test asserts the property the coroutine conversion relies on: resumption
+// replays the initiator's ExecContext -- in particular for ConcurrentNoWait,
+// where the resumption happens on a foreign thread without any ExecContext --
+// so a cancellation of the initiating request is observed by the commit
+// guard.
+TYPED_TEST(FutureTest, canceled_initiator_context_is_replayed_after_resume) {
+  auto ctx = arangodb::tests::mocks::makeClassicExecContext(
+      "initiator", "", arangodb::auth::Level::RW, arangodb::auth::Level::NONE);
+  ExecContextScope scope(ctx.execContext);
+  ctx.execContext->cancel();
+
+  auto guardResult = [&]() -> Future<Result> {
+    co_await this->wait;
+    // this mirrors the commit guard in RocksDBTrxBaseMethods::doCommitImpl
+    auto const& exec = ExecContext::current();
+    EXPECT_EQ(exec.user(), "initiator");
+    if (exec.isCanceled()) {
+      co_return Result(TRI_ERROR_ARANGO_READ_ONLY);
+    }
+    co_return Result();
+  }();
+
+  this->wait.resume();
+  this->wait.await();
+
+  ASSERT_TRUE(guardResult.isReady());
+  EXPECT_EQ(std::move(guardResult).waitAndGet().errorNumber(),
+            TRI_ERROR_ARANGO_READ_ONLY);
 }
 
 TYPED_TEST(FutureTest, execution_context_is_local_to_coroutine) {
