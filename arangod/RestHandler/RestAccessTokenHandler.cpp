@@ -26,6 +26,7 @@
 #include "Auth/UserManager.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
+#include "Basics/system-functions.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -113,6 +114,14 @@ RestStatus RestAccessTokenHandler::createAccessToken(auth::UserManager* um,
 
   VPackSlice v = body.get("valid_until");
   double validUntil = basics::VelocyPackHelper::getNumericValue<double>(v, 0);
+
+  // cap the requested expiry date at the configured maximum TTL, measured
+  // from now, for personal access tokens.
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  double maxValidUntil = TRI_microtime() + af->maximalAccessTokenExpiryTime();
+  if (validUntil > maxValidUntil) {
+    validUntil = maxValidUntil;
+  }
 
   VPackBuilder token;
   Result result = um->createAccessToken(user, name, validUntil, token);
