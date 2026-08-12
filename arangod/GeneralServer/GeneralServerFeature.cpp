@@ -953,10 +953,10 @@ void GeneralServerFeature::defineRemainingHandlers(
 
   // engine specific handlers
   StorageEngine& engine = server().getFeature<DatabaseFeature>().engine();
-  if (auto* rocksdbEngine = dynamic_cast<RocksDBEngine*>(&engine)) {
-    RocksDBRestHandlers::registerResources(&f, *rocksdbEngine);
-  } else if (dynamic_cast<ClusterEngine*>(&engine)) {
+  if (ServerState::instance()->isCoordinator()) {
     ClusterRestHandlers::registerResources(&f);
+  } else {
+    RocksDBRestHandlers::registerResources(&f, engine);
   }
 }
 
