@@ -34,7 +34,7 @@
 // StandaloneContext, so the collection access check happens in the transaction
 // layer (StorageEngine/TransactionState.cpp checkCollectionPermission): a READ
 // transaction asks `UseCollection ... level=read`. Every request additionally
-// asks `UseDatabase name=d level=read` first.
+// asks `UseApiVersion version=0` and `UseDatabase name=d level=read` first.
 
 if (getOptions === true) {
   return {
@@ -75,6 +75,7 @@ function edgesApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/edges/${e}?vertex=c%2Fk1&direction=any`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=e level=read"
       ], endObserve());
@@ -86,6 +87,7 @@ function edgesApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/${DB}/_api/edges/${e}`, ['c/k1', 'c/k2']);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=e level=read"
       ], endObserve());

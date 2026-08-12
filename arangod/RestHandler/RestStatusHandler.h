@@ -39,7 +39,8 @@ class RestStatusHandler : public arangodb::RestBaseHandler {
   RestStatus execute() override;
 
  protected:
-  async<Result> checkUserCanAccess() const override;
+  async<RestHandler::AuthenticationGrant> checkUserAuthentication()
+      const override;
 
  private:
   RestStatus executeStandard(ServerSecurityFeature&);
