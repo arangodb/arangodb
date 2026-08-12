@@ -1,7 +1,8 @@
-#include "Graph/Enumerators/OneSidedEnumeratorInterface.h"
+#include "Graph/Enumerators/ITraversalEnumerator.h"
+#include "Graph/PathManagement/IPathResult.h"
 
 namespace arangodb::graph::experimental {
-struct SingleServerTraversalEnumerator : TraversalEnumerator {
+struct SingleServerTraversalEnumerator : ITraversalEnumerator {
   SingleServerTraversalEnumerator() {}
   ~SingleServerTraversalEnumerator() {}
   void clear(bool keepPathStore) override { TRI_ASSERT(false); }
@@ -19,7 +20,7 @@ struct SingleServerTraversalEnumerator : TraversalEnumerator {
   auto prepareIndexExpressions(aql::Ast* ast) -> void override {
     TRI_ASSERT(false);
   };
-  auto getNextPath() -> std::unique_ptr<PathResultInterface> override {
+  auto getNextPath() -> std::unique_ptr<IPathResult> override {
     TRI_ASSERT(false);
     return nullptr;
   };
