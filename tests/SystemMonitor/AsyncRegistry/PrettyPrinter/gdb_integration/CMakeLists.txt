@@ -5,6 +5,10 @@ target_link_libraries(async_registry_gdb_pretty_printer
   arango_async_registry
   arango
 )
+target_compile_options(async_registry_gdb_pretty_printer
+  PRIVATE
+  -O0
+)
 
 add_test(NAME async_registry_gdb_pretty_printer_test
   COMMAND gdb
