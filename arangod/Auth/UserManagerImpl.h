@@ -80,7 +80,10 @@ class UserManagerImpl final : public UserManager {
   Result removeAllUsers() override;
 
   bool checkCredentials(std::string const& username, std::string const& token,
-                        std::string& un) override;
+                        std::string& un,
+                        std::optional<double>& tokenValidUntil) override;
+  bool checkCredentials(std::string const& username, std::string const& token,
+                        std::string& un);
 
   Level databaseAuthLevel(std::string const& username,
                           std::string const& dbname, bool configured) override;
@@ -104,7 +107,7 @@ class UserManagerImpl final : public UserManager {
  private:
   bool checkPassword(std::string const& username, std::string const& password);
   bool checkAccessToken(std::string const& username, std::string const& token,
-                        std::string& un);
+                        std::string& un, std::optional<double>& validUntil);
 
   // Load users and permissions from local database.
   // Returns the version that was loaded and written to the _internalVersion.
