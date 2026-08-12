@@ -29,14 +29,6 @@ require access to the collections.
 Therefore, from 3.12.11 on, linked collection read access is no longer
 required to drop an ArangoSearch view.
 
-## Creating a replication2 replicated log
-
-Creating a replication2 replicated log is an API for DBServers. If called
-on a coordinator, one got an HTTP 500 provided one had RW access to the
-`_system` database or was the superuser. This is not right, since "normal"
-API calls should not return INTERNAL SERVER ERROR. We now return HTTP
-403 FORBIDDEN.
-
 ## Changes to access tokens in read-only mode
 
 The two APIs:
