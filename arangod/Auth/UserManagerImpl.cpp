@@ -894,7 +894,13 @@ Result UserManagerImpl::extractUsername(std::string const& token,
     StringBuffer in;
     in.appendText(unhex);
 
-    auto json = VPackParser::fromJson(in.toString());
+    std::shared_ptr<VPackBuilder> json;
+    try {
+      json = VPackParser::fromJson(in.toString());
+    } catch (std::exception const& e) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              absl::StrCat("Error parsing JSON: ", e.what())};
+    }
     VPackSlice at = json->slice();
 
     if (!at.isObject()) {
@@ -917,7 +923,8 @@ Result UserManagerImpl::extractUsername(std::string const& token,
 
 bool UserManagerImpl::checkAccessToken(std::string const& username,
                                        std::string const& token,
-                                       std::string& un) {
+                                       std::string& un,
+                                       std::optional<double>& validUntil) {
   Result result = extractUsername(token, un);
 
   if (!result.ok()) {
@@ -934,7 +941,7 @@ bool UserManagerImpl::checkAccessToken(std::string const& username,
   if (it != _userCache.end()) {
     User const& user = it->second;
     if (user.isActive()) {
-      return user.checkAccessToken(token);
+      return user.checkAccessToken(token, validUntil);
     }
   }
 
@@ -943,14 +950,15 @@ bool UserManagerImpl::checkAccessToken(std::string const& username,
 
 bool UserManagerImpl::checkCredentials(std::string const& username,
                                        std::string const& password,
-                                       std::string& un) {
+                                       std::string& un,
+                                       std::optional<double>& tokenValidUntil) {
   un.clear();
   bool authorized = !username.empty() && checkPassword(username, password);
 
   if (authorized) {
     un = username;
   } else {
-    authorized = checkAccessToken(username, password, un);
+    authorized = checkAccessToken(username, password, un, tokenValidUntil);
   }
 
   return authorized;
