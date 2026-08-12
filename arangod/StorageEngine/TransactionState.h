@@ -186,6 +186,12 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
       DataSourceId cid, std::string_view cname, AccessMode::Type accessType,
       bool lockUsage);
 
+  /// @brief check that the current user may access the given collection in the
+  /// requested mode
+  [[nodiscard]] Result checkCollectionPermission(DataSourceId cid,
+                                                 std::string_view cname,
+                                                 AccessMode::Type accessType);
+
   /// @brief use all participating collections of a transaction
   [[nodiscard]] futures::Future<Result> useCollections();
 
@@ -413,10 +419,6 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
     }
     callbacks.clear();
   }
-
-  /// @brief check if current user can access this collection
-  Result checkCollectionPermission(DataSourceId cid, std::string_view cname,
-                                   AccessMode::Type);
 
   /// @brief helper function for addCollection
   futures::Future<Result> addCollectionInternal(DataSourceId cid,
