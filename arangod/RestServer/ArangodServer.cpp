@@ -128,6 +128,18 @@ void ArangodServer::processOptions() {
   }
 }
 
+void ArangodServer::validateOptions() {
+  OptionProvidingServer<ArangodOptionProviders>::validateOptions();
+
+  if (getOptions<check_version::CheckVersionOptionsProvider>().checkVersion &&
+      getOptions<UpgradeOptionsProvider>().upgrade) {
+    LOG_TOPIC("a25b0", FATAL, Logger::FIXME)
+        << "cannot specify both '--database.check-version' and "
+           "'--database.auto-upgrade'";
+    FATAL_ERROR_EXIT();
+  }
+}
+
 ServerState::RoleEnum ArangodServer::resolveRole(
     ClusterOptions const& clusterOptions, AgencyOptions const& agencyOptions) {
   if (agencyOptions.activated && !clusterOptions.myRole.empty()) {
@@ -172,21 +184,9 @@ void ArangodServer::addFeatures() {
 #endif
 
   // Adding the features - order matters for dependency resolution
-  // metrics::MetricsFeature must go first
-  auto& metrics = addFeature<metrics::MetricsFeature>(
-      LazyApplicationFeatureReference<QueryRegistryFeature>(*this),
-      LazyApplicationFeatureReference<StatisticsFeature>(*this),
-      LazyApplicationFeatureReference<DatabaseFeature>(*this),
-      LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(*this),
-      LazyApplicationFeatureReference<ClusterFeature>(*this));
-  addFeature<metrics::ClusterMetricsFeature>();
   addFeature<AqlFeature>();
 
-  addFeature<CacheOptionsFeature>();
-  auto& cacheOptions = getFeature<CacheOptionsFeature>();
-  auto& sharedPRNGFeature = addFeature<SharedPRNGFeature>();
-  addFeature<CacheManagerFeature>(cacheOptions, sharedPRNGFeature.getPRNG());
-  auto& database = addFeature<DatabaseFeature>();
+  addFeature<SharedPRNGFeature>();
 #ifdef USE_V8
   addFeature<ConsoleFeature>();
 #endif
@@ -198,9 +198,6 @@ void ArangodServer::addFeatures() {
   addFeature<TimeZoneFeature>();
   addFeature<LockfileFeature>();
   addFeature<OptionsCheckFeature>();
-  addFeature<ReplicationMetricsFeature>(metrics);
-  addFeature<SchedulerFeature>(metrics, sharedPRNGFeature.getPRNG());
-  addFeature<VectorIndexFeature>(database);
   addFeature<ServerIdFeature>();
   addFeature<ShardingFeature>();
   addFeature<ShellColorsFeature>();
@@ -218,6 +215,7 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& cacheManager = getFeature<CacheManagerFeature>();
   auto& systemDatabaseFeature = getFeature<SystemDatabaseFeature>();
   auto& aqlFunctionFeature = getFeature<aql::AqlFunctionFeature>();
+  auto& sharedPRNGFeature = getFeature<SharedPRNGFeature>();
 
   addFeature<LoggerFeature>(true, getOptions<LoggerOptionsProvider>());
   addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());
@@ -314,6 +312,22 @@ void ArangodServer::addFeaturesWithOptionProvider() {
 
   addFeature<QueryRegistryFeature>(metrics,
                                    getOptions<QueryRegistryOptionsProvider>());
+
+  auto& vectorIndex = addFeature<VectorIndexFeature>(
+      database, getOptions<vector_index::VectorIndexOptionsProvider>());
+
+  auto& scheduler =
+      addFeature<SchedulerFeature>(metrics, sharedPRNGFeature.getPRNG(),
+                                   getOptions<SchedulerOptionsProvider>());
+
+  addFeature<metrics::ClusterMetricsFeature>(
+      getOptions<metrics::ClusterMetricsOptionsProvider>());
+
+  auto& cacheOptionsFeature = addFeature<CacheOptionsFeature>(
+      getOptions<CacheFeatureOptionsProvider>());
+
+  auto& cacheManager = addFeature<CacheManagerFeature>(
+      cacheOptionsFeature, sharedPRNGFeature.getPRNG());
 
   auto& clusterFeature =
       addFeature<ClusterFeature>(metrics, getOptions<ClusterOptionsProvider>());

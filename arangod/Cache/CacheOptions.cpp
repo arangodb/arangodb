@@ -20,19 +20,25 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "Cache/CacheOptions.h"
 
-#include "ApplicationFeatures/OptionsProvider.h"
-#include "Metrics/MetricsOptions.h"
+#include "Basics/PhysicalMemory.h"
 
-namespace arangodb::metrics {
+namespace arangodb {
 
-struct MetricsOptionsProvider
-    : OptionsProviderImpl<MetricsOptionsProvider, MetricsOptions> {
-  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                          MetricsOptions& options);
-  void processOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                          MetricsOptions& options);
-};
+CacheOptions::CacheOptions() {
+  // if there is less than 4 GiB of RAM in the system, default to 256 MiB.
+  // otherwise, default to (system RAM size - 2 GiB) * 0.25.
+  cacheSize =
+      (PhysicalMemory::getValue() >= (static_cast<std::uint64_t>(4) << 30))
+          ? static_cast<std::uint64_t>((PhysicalMemory::getValue() -
+                                        (static_cast<std::uint64_t>(2) << 30)) *
+                                       0.25)
+          : (256 << 20);
+}
 
-}  // namespace arangodb::metrics
+CacheOptions::CacheOptions(std::uint64_t cacheSizeOverride) : CacheOptions() {
+  cacheSize = cacheSizeOverride;
+}
+
+}  // namespace arangodb
