@@ -79,15 +79,25 @@ RestStatus RestAccessTokenHandler::execute() {
       return showAccessTokens(um, user);
     case RequestType::POST:
       if (auto r = exec.canModifyUserProfile(user); !r.ok()) {
-        generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                      r.errorMessage());
+        if (r.errorNumber() == TRI_ERROR_ARANGO_READ_ONLY) {
+          generateError(rest::ResponseCode::FORBIDDEN,
+                        TRI_ERROR_ARANGO_READ_ONLY, r.errorMessage());
+        } else {
+          generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                        r.errorMessage());
+        }
         return RestStatus::DONE;
       }
       return createAccessToken(um, user);
     case RequestType::DELETE_REQ:
       if (auto r = exec.canModifyUserProfile(user); !r.ok()) {
-        generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                      r.errorMessage());
+        if (r.errorNumber() == TRI_ERROR_ARANGO_READ_ONLY) {
+          generateError(rest::ResponseCode::FORBIDDEN,
+                        TRI_ERROR_ARANGO_READ_ONLY, r.errorMessage());
+        } else {
+          generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                        r.errorMessage());
+        }
         return RestStatus::DONE;
       }
       return deleteAccessToken(um, user);
