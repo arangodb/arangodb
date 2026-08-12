@@ -25,6 +25,7 @@
 
 #include "Basics/ResultAssertions.h"
 #include "Basics/StaticStrings.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/CountCache.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
@@ -32,6 +33,8 @@
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
+#include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -189,6 +192,44 @@ class StorageEngineDocumentTest : public StorageEngineDataTest {
     OperationOptions options;
     auto res = trx.document(_collection->name(), lookup.slice(), options);
     std::ignore = trx.finish(res.result);
+    return res;
+  }
+
+  // Physical storage identity, bypassing the document-body path.
+  std::pair<LocalDocumentId, RevisionId> lookupKey(std::string_view key) {
+    SingleCollectionTransaction trx{context(), *_collection,
+                                    AccessMode::Type::READ};
+    EXPECT_TRUE(IsOk(trx.begin()));
+    std::pair<LocalDocumentId, RevisionId> result;
+    auto res = _collection->getPhysical()->lookupKey(&trx, key, result,
+                                                     ReadOwnWrites::no);
+    std::ignore = trx.finish(res);
+    EXPECT_TRUE(res.ok()) << res.errorMessage();
+    return result;
+  }
+
+  // Same as lookupKey(), but returns the raw Result instead of asserting ok().
+  Result lookupKeyResult(std::string_view key) {
+    SingleCollectionTransaction trx{context(), *_collection,
+                                    AccessMode::Type::READ};
+    EXPECT_TRUE(IsOk(trx.begin()));
+    std::pair<LocalDocumentId, RevisionId> result;
+    auto res = _collection->getPhysical()->lookupKey(&trx, key, result,
+                                                     ReadOwnWrites::no);
+    std::ignore = trx.finish(res);
+    return res;
+  }
+
+  // Direct-by-id lookup, bypassing the primary index (and thus the key).
+  Result existsById(LocalDocumentId id) {
+    SingleCollectionTransaction trx{context(), *_collection,
+                                    AccessMode::Type::READ};
+    EXPECT_TRUE(IsOk(trx.begin()));
+    auto res = _collection->getPhysical()->lookup(
+        &trx, id,
+        [](LocalDocumentId, aql::DocumentData&&, VPackSlice) { return true; },
+        PhysicalCollection::LookupOptions{});
+    std::ignore = trx.finish(res);
     return res;
   }
 
