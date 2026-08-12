@@ -1,6 +1,8 @@
 3.12.10.1 (XXXX-XX-XX)
 ----------------------
 
+* Fixed access token expiry (COR-825).
+
 * Upgraded included rclone to v1.75.0 with go1.25.12 and non-vulnerable
   dependencies.
 
