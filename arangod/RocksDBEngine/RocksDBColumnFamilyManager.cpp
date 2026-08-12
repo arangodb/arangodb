@@ -22,10 +22,8 @@
 
 #include "RocksDBColumnFamilyManager.h"
 
-#include <span>
+#include <vector>
 #include <rocksdb/db.h>
-
-#include "Basics/debugging.h"
 
 namespace arangodb {
 
@@ -33,28 +31,45 @@ namespace arangodb {
 std::array<char const*,
            arangodb::RocksDBColumnFamilyManager::numberOfColumnFamilies>
     RocksDBColumnFamilyManager::_internalNames = {
-        "default", "Documents", "PrimaryIndex", "EdgeIndex", "VPackIndex",
-        "GeoIndex", "FulltextIndex",
-        "ReplicatedLogs",  // Fulltext indexes are removed in 4.0,
+        "default",         //
+        "Documents",       //
+        "PrimaryIndex",    //
+        "EdgeIndex",       //
+        "VPackIndex",      //
+        "GeoIndex",        //
+        "FulltextIndex",   // Fulltext indexes are removed in 4.0,
                            // but the column family is kept.
-        "ZkdIndex", "MdiPrefixed", "VectorIndex"};  // We have to keep
-                                                    // `ZkdIndex` cf
-                                                    // name for
-                                                    // backwards
-                                                    // compatibility.
+        "ReplicatedLogs",  //
+        "ZkdIndex",        // We have to keep `ZkdIndex` name for backwards
+                           // compatibility.
+        "MdiPrefixed",     //
+        "VectorIndex",     //
+        "PrimaryIndex_TT"};
 
 std::array<char const*,
            arangodb::RocksDBColumnFamilyManager::numberOfColumnFamilies>
-    RocksDBColumnFamilyManager::_externalNames = {
-        "definitions", "documents",    "primary",  "edge",
-        "vpack",       "geo",          "fulltext", "replicated-logs",
-        "mdi",         "mdi-prefixed", "vector"};
+    RocksDBColumnFamilyManager::_externalNames = {  //
+        "definitions",                              //
+        "documents",                                //
+        "primary",                                  //
+        "edge",                                     //
+        "vpack",                                    //
+        "geo",                                      //
+        "fulltext",                                 //
+        "replicated-logs",                          //
+        "mdi",                                      //
+        "mdi-prefixed",                             //
+        "vector",                                   //
+        "primary-tt"};
 
 std::array<rocksdb::ColumnFamilyHandle*,
            RocksDBColumnFamilyManager::numberOfColumnFamilies>
     RocksDBColumnFamilyManager::_handles = {nullptr, nullptr, nullptr, nullptr,
                                             nullptr, nullptr, nullptr, nullptr,
-                                            nullptr, nullptr, nullptr};
+                                            nullptr, nullptr, nullptr, nullptr};
+
+std::vector<rocksdb::ColumnFamilyHandle*>
+    RocksDBColumnFamilyManager::_validHandles;
 
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamilyManager::_defaultHandle =
     nullptr;
@@ -77,6 +92,12 @@ rocksdb::ColumnFamilyHandle* RocksDBColumnFamilyManager::get(Family family) {
   return _handles[index];
 }
 
+void RocksDBColumnFamilyManager::reset() noexcept {
+  _handles.fill(nullptr);
+  _validHandles.clear();
+  _defaultHandle = nullptr;
+}
+
 void RocksDBColumnFamilyManager::set(Family family,
                                      rocksdb::ColumnFamilyHandle* handle) {
   if (family == Family::Invalid) {
@@ -88,6 +109,15 @@ void RocksDBColumnFamilyManager::set(Family family,
   TRI_ASSERT(index < _handles.size());
 
   _handles[index] = handle;
+
+  // keep the compact, nullptr-free projection returned by allHandles() in sync.
+  // set() runs only a handful of times at startup, so a full rebuild is cheap.
+  _validHandles.clear();
+  for (rocksdb::ColumnFamilyHandle* h : _handles) {
+    if (h != nullptr) {
+      _validHandles.push_back(h);
+    }
+  }
 }
 
 char const* RocksDBColumnFamilyManager::name(Family family, NameMode mode) {
@@ -120,14 +150,9 @@ char const* RocksDBColumnFamilyManager::name(
   return "unknown";
 }
 
-std::span<rocksdb::ColumnFamilyHandle*>
+std::vector<rocksdb::ColumnFamilyHandle*> const&
 RocksDBColumnFamilyManager::allHandles() {
-  std::size_t valid_size{_handles.size()};
-  while (valid_size > 0 && _handles[valid_size - 1] == nullptr) {
-    --valid_size;
-  }
-
-  return std::span(_handles.data(), valid_size);
+  return _validHandles;
 }
 
 }  // namespace arangodb
