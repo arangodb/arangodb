@@ -24,8 +24,9 @@
    - Dropping ArangoSearch views no longer needs read access to the linked
      collections (which was pointless).
    - `POST /_api/token/<username>` and `DELETE /_api/token/<username>/<id>`
-     will be rejected in read-only mode if the user has admin permissions
-     (RW on the _system database), this was an ommission.
+     will be rejected in read-only mode with HTTP 403 FORBIDDEN and errorNum
+     1004 if the user has admin permissions (RW on the _system
+     database), this was an omission.
    - API calls which write to collections to which the user has RW permissions
      in read-only mode will now return `errorNum` 1004 (READONLY) instead of
      11 (FORBIDDEN). The HTTP code remains 403 FORBIDDEN. 
