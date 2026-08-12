@@ -38,6 +38,7 @@ namespace arangodb::inspection {
 struct ParseOptions {
   bool ignoreUnknownFields = false;
   bool ignoreMissingFields = false;
+  bool ignoreInvariants = false;
 };
 
 template<class Derived, class ValueType, class Context>
@@ -143,6 +144,9 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
 
   template<class Invariant, class T>
   Status objectInvariant(T& object, Invariant&& func, Status result) {
+    if (_options.ignoreInvariants) {
+      return result;
+    }
     if (result.ok()) {
       result =
           Base::template doCheckInvariant<detail::ObjectInvariantFailedError>(
@@ -448,6 +452,9 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
 
   template<class T, class U>
   Status checkInvariant(typename Base::template InvariantField<T, U>& field) {
+    if (_options.ignoreInvariants) {
+      return {};
+    }
     return Base::template doCheckInvariant<detail::FieldInvariantFailedError>(
         field.invariantFunc, Base::getFieldValue(field));
   }

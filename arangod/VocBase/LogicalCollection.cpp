@@ -121,7 +121,8 @@ std::string readGloballyUniqueId(velocypack::Slice info) {
 CollectionDescriptor loadCollectionDescriptor(VPackSlice info) {
   CollectionDescriptor props;
   auto status = velocypack::deserializeWithStatus(
-      info, props, {.ignoreUnknownFields = true}, InspectUserContext{});
+      info, props, {.ignoreUnknownFields = true, .ignoreInvariants = true},
+      InspectInternalContext{});
   if (!status.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
@@ -163,7 +164,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
 #endif
 
       _allowUserKeys(
-          Helper::getBooleanValue(info, StaticStrings::AllowUserKeys, true)),
+          std::visit([](auto const& opts) { return opts.allowUserKeys; },
+                     _properties.constant.keyOptions)),
       _usesRevisionsAsDocumentIds(Helper::getBooleanValue(
           info, StaticStrings::UsesRevisionsAsDocumentIds, false)),
       _waitForSync(_properties.clustering.waitForSync),
@@ -328,7 +330,7 @@ UserInputCollectionProperties LogicalCollection::getCollectionProperties()
   // to work.
   // Longterm-Plan: A logical collection should have those properties as a
   // member and just return a reference to them.
-  props.name = _properties.mutableProps.name;
+  props.name = name();
   props.id = id();
   props.numberOfShards = numberOfShards();
   props.writeConcern = writeConcern();
@@ -339,9 +341,9 @@ UserInputCollectionProperties LogicalCollection::getCollectionProperties()
   }
   props.shardKeys = shardKeys();
   props.shardingStrategy = shardingInfo()->shardingStrategyName();
-  props.waitForSync = _properties.clustering.waitForSync;
+  props.waitForSync = waitForSync();
   props.cacheEnabled = cacheEnabled();
-  props.supportsRBAC = _properties.mutableProps.supportsRBAC;
+  props.supportsRBAC = supportsRBAC();
   return props;
 }
 
@@ -1116,12 +1118,10 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
   auto waitForSync = Helper::getBooleanValue(
       slice, StaticStrings::WaitForSyncString, _waitForSync.load());
   _waitForSync = waitForSync;
-  _properties.clustering.waitForSync = waitForSync;
 
   auto supportsRBAC = Helper::getBooleanValue(
       slice, StaticStrings::SupportsRBAC, _supportsRBAC.load());
   _supportsRBAC = supportsRBAC;
-  _properties.mutableProps.supportsRBAC = supportsRBAC;
   _sharding->setWriteConcernAndReplicationFactor(writeConcern,
                                                  replicationFactor);
 

@@ -58,8 +58,7 @@ struct ClusteringConstantProperties {
 template<class Inspector>
 auto inspect(Inspector& f, ClusteringConstantProperties& props) {
   auto distShardsLikeField = std::invoke([&]() {
-    if constexpr (std::is_same_v<typename Inspector::Context,
-                                 InspectAgencyContext>) {
+    if constexpr (isAgencyContext<Inspector> || isInternalContext<Inspector>) {
       // The agency requires the CollectionID
       auto field = f.field(StaticStrings::DistributeShardsLike,
                            props.distributeShardsLikeCid)
@@ -75,8 +74,7 @@ auto inspect(Inspector& f, ClusteringConstantProperties& props) {
     }
   });
 
-  if constexpr (std::is_same_v<typename Inspector::Context,
-                               InspectAgencyContext>) {
+  if constexpr (isAgencyContext<Inspector> || isInternalContext<Inspector>) {
     return f.object(props).fields(
         f.field(StaticStrings::NumberOfShards, props.numberOfShards)
             .invariant(UtilityInvariants::isGreaterZeroIfPresent),

@@ -25,7 +25,9 @@
 #include "Basics/StaticStrings.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/Properties/InspectContexts.h"
 
+#include <functional>
 #include <string>
 
 namespace arangodb {
@@ -65,11 +67,21 @@ struct CollectionInternalProperties {
 
 template<class Inspector>
 auto inspect(Inspector& f, CollectionInternalProperties& props) {
-  return f.object(props).fields(
-      f.field(StaticStrings::Id, props.id)
+  auto idField = std::invoke([&]() {
+    if constexpr (isInternalContext<Inspector>) {
+      // Markers and plan entries store the id as a number or under "cid".
+      // LogicalDataSource owns the id on that path, so skip it here.
+      return f.ignoreField(StaticStrings::Id);
+    } else {
+      return f.field(StaticStrings::Id, props.id)
           .transformWith(
               CollectionInternalProperties::Transformers::IdIdentifier{})
-          .fallback(f.keep()),
+          .fallback(f.keep());
+    }
+  });
+
+  return f.object(props).fields(
+      std::move(idField),
       f.field(StaticStrings::SyncByRevision, props.syncByRevision)
           .fallback(f.keep()),
       f.field(StaticStrings::UsesRevisionsAsDocumentIds,
