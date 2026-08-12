@@ -364,6 +364,12 @@ function makeDataWrapper (options) {
   }
   localOptions.extraArgs['vector-index'] = true;
 
+  if (!localOptions.isSan) {
+    // don't have default values if non instrumented arangosh.
+    ["TSAN_OPTIONS", "UBSAN_OPTIONS", "LSAN_OPTIONS", "ASAN_OPTIONS"].forEach(varname => {
+      delete(process.env[varname]);
+    });
+  }
   SetGlobalExecutionDeadlineTo(localOptions.oneTestTimeout);
   let rc = new rtaMakedataRunner(localOptions, 'rta_makedata_test').run(['rta']);
   let timeout = SetGlobalExecutionDeadlineTo(0.0);
