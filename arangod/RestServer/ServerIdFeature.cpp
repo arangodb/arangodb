@@ -55,7 +55,7 @@ ServerIdFeature::ServerIdFeature(
 
 ServerIdFeature::~ServerIdFeature() { SERVERID = ServerId::none(); }
 
-void ServerIdFeature::prepare() {
+void ServerIdFeature::start() {
   auto& databasePath = server().getFeature<DatabasePathFeature>();
   _idFilename = databasePath.subdirectoryName("SERVER");
 
