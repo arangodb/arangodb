@@ -210,9 +210,6 @@ void ArangodServer::addFeatures() {
 void ArangodServer::addFeaturesWithOptionProvider() {
   auto& metrics = getFeature<metrics::MetricsFeature>();
   auto& database = getFeature<DatabaseFeature>();
-  auto& vectorIndex = getFeature<VectorIndexFeature>();
-  auto& scheduler = getFeature<SchedulerFeature>();
-  auto& cacheManager = getFeature<CacheManagerFeature>();
   auto& systemDatabaseFeature = getFeature<SystemDatabaseFeature>();
   auto& aqlFunctionFeature = getFeature<aql::AqlFunctionFeature>();
   auto& sharedPRNGFeature = getFeature<SharedPRNGFeature>();
