@@ -118,6 +118,19 @@ std::string readGloballyUniqueId(velocypack::Slice info) {
   return StaticStrings::Empty;
 }
 
+CollectionDescriptor loadCollectionDescriptor(VPackSlice info) {
+  CollectionDescriptor props;
+  auto status = velocypack::deserializeWithStatus(
+      info, props, {.ignoreUnknownFields = true}, InspectUserContext{});
+  if (!status.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        absl::StrCat("failed to parse collection properties: ",
+                     status.error()));
+  }
+  return props;
+}
+
 }  // namespace
 
 // The Slice contains the part of the plan that
@@ -136,28 +149,25 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
                                       false),
           Helper::getBooleanValue(info, StaticStrings::DataSourceDeleted,
                                   false)),
+      _properties(loadCollectionDescriptor(info)),
       _version(static_cast<Version>(Helper::getNumericValue<uint32_t>(
           info, StaticStrings::Version,
           static_cast<uint32_t>(currentVersion())))),
       _v8CacheVersion(0),
-      _type(Helper::getNumericValue<TRI_col_type_e, int>(
-          info, StaticStrings::DataSourceType, TRI_COL_TYPE_DOCUMENT)),
+      _type(_properties.constant.getType()),
       _isAStub(isAStub),
 #ifdef USE_ENTERPRISE
-      _isDisjoint(
-          Helper::getBooleanValue(info, StaticStrings::IsDisjoint, false)),
-      _isSmart(Helper::getBooleanValue(info, StaticStrings::IsSmart, false)),
-      _isSmartChild(
-          Helper::getBooleanValue(info, StaticStrings::IsSmartChild, false)),
+      _isDisjoint(_properties.constant.isDisjoint),
+      _isSmart(_properties.constant.isSmart),
+      _isSmartChild(_properties.internal.isSmartChild),
 #endif
+
       _allowUserKeys(
           Helper::getBooleanValue(info, StaticStrings::AllowUserKeys, true)),
       _usesRevisionsAsDocumentIds(Helper::getBooleanValue(
           info, StaticStrings::UsesRevisionsAsDocumentIds, false)),
-      _waitForSync(Helper::getBooleanValue(
-          info, StaticStrings::WaitForSyncString, false)),
-      _supportsRBAC(
-          Helper::getBooleanValue(info, StaticStrings::SupportsRBAC, true)),
+      _waitForSync(_properties.clustering.waitForSync),
+      _supportsRBAC(_properties.mutableProps.supportsRBAC),
       _syncByRevision(determineSyncByRevision()),
       _countCache(defaultCountCacheTtl(system())),
       _physical(vocbase.engine().createPhysicalCollection(*this, info)) {
@@ -182,8 +192,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  _internalValidatorTypes = Helper::getNumericValue<uint64_t>(
-      info, StaticStrings::InternalValidatorTypes, 0);
+  _internalValidatorTypes = _properties.internal.internalValidatorType;
 
   TRI_ASSERT(!guid().empty());
 
@@ -319,7 +328,7 @@ UserInputCollectionProperties LogicalCollection::getCollectionProperties()
   // to work.
   // Longterm-Plan: A logical collection should have those properties as a
   // member and just return a reference to them.
-  props.name = name();
+  props.name = _properties.mutableProps.name;
   props.id = id();
   props.numberOfShards = numberOfShards();
   props.writeConcern = writeConcern();
@@ -330,9 +339,9 @@ UserInputCollectionProperties LogicalCollection::getCollectionProperties()
   }
   props.shardKeys = shardKeys();
   props.shardingStrategy = shardingInfo()->shardingStrategyName();
-  props.waitForSync = waitForSync();
+  props.waitForSync = _properties.clustering.waitForSync;
   props.cacheEnabled = cacheEnabled();
-  props.supportsRBAC = supportsRBAC();
+  props.supportsRBAC = _properties.mutableProps.supportsRBAC;
   return props;
 }
 
@@ -1104,10 +1113,15 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
   }
 
   TRI_ASSERT(!isSatellite() || replicationFactor == 0);
-  _waitForSync = Helper::getBooleanValue(
-      slice, StaticStrings::WaitForSyncString, _waitForSync);
-  _supportsRBAC = Helper::getBooleanValue(slice, StaticStrings::SupportsRBAC,
-                                          _supportsRBAC);
+  auto waitForSync = Helper::getBooleanValue(
+      slice, StaticStrings::WaitForSyncString, _waitForSync.load());
+  _waitForSync = waitForSync;
+  _properties.clustering.waitForSync = waitForSync;
+
+  auto supportsRBAC = Helper::getBooleanValue(
+      slice, StaticStrings::SupportsRBAC, _supportsRBAC.load());
+  _supportsRBAC = supportsRBAC;
+  _properties.mutableProps.supportsRBAC = supportsRBAC;
   _sharding->setWriteConcernAndReplicationFactor(writeConcern,
                                                  replicationFactor);
 
@@ -1415,13 +1429,14 @@ auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
     replication2::replicated_state::document::DocumentLeaderState> {
   auto stateMachine = getDocumentState();
 
-  static constexpr auto throwUnavailable = []<typename... Args>(
-      basics::SourceLocation location, std::format_string<Args...> formatString,
-      Args && ... args) {
-    throw basics::Exception(
-        TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
-        std::format(formatString, std::forward<Args>(args)...), location);
-  };
+  static constexpr auto throwUnavailable =
+      []<typename... Args>(basics::SourceLocation location,
+                           std::format_string<Args...> formatString,
+                           Args&&... args) {
+        throw basics::Exception(
+            TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
+            std::format(formatString, std::forward<Args>(args)...), location);
+      };
 
   auto leader = stateMachine->getLeader();
   if (leader == nullptr) {

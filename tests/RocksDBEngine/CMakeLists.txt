@@ -7,6 +7,7 @@ add_library(arango_tests_rocksdb_engine OBJECT
   RocksDBEngineTest.cpp
   DatabaseTest.cpp
   CollectionTest.cpp
+  LogicalCollectionDescriptorTest.cpp
   DocumentTest.cpp)
 
 target_include_directories(arango_tests_rocksdb_engine PRIVATE
