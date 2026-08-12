@@ -86,7 +86,6 @@ struct StorageEngineFixtureSuite {
   std::shared_ptr<replication2::ReplicatedLogGlobalSettings const> logSettings =
       std::make_shared<replication2::ReplicatedLogGlobalSettings>();
 
-  ::testing::NiceMock<MockVectorIndexProvider> vectorIdx;
   ::testing::NiceMock<MockFlushControl> flush;
   ::testing::NiceMock<MockDumpLimitsProvider> dumpLimits;
   ::testing::NiceMock<MockDatabaseProvider> dbProvider;
@@ -101,11 +100,11 @@ struct StorageEngineFixtureSuite {
   FakeScheduler scheduler{server};
   TestSchedulerProvider schedulerProvider{scheduler};
 
-  RocksDBEngine engine{server,          optionsProvider, metricsRegistry,
-                       dbPath,          vectorIdx,       flush,
-                       dumpLimits,      &logProvider,    schedulerProvider,
-                       recoveryManager, dbProvider,      indexCacheRefill,
-                       cacheManager,    sortingPolicy};
+  RocksDBEngine engine{
+      server,          optionsProvider, metricsRegistry,  dbPath,
+      flush,           dumpLimits,      &logProvider,     schedulerProvider,
+      recoveryManager, dbProvider,      indexCacheRefill, cacheManager,
+      sortingPolicy};
 };
 
 // Fixture providing a preconfigured RocksDBEngine backed by a temporary

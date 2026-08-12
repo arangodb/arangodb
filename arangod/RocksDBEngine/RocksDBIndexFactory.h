@@ -27,12 +27,9 @@
 
 namespace arangodb {
 
-struct IVectorIndexProvider;
-
 class RocksDBIndexFactory final : public IndexFactory {
  public:
-  explicit RocksDBIndexFactory(application_features::ApplicationServer&,
-                               IVectorIndexProvider const&);
+  explicit RocksDBIndexFactory(application_features::ApplicationServer&);
 
   /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
   /// "hash") used to display storage engine capabilities

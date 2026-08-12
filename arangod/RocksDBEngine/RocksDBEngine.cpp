@@ -254,7 +254,6 @@ RocksDBEngine::RocksDBEngine(
     application_features::ApplicationServer& server,
     RocksDBOptionsProvider& optionsProvider, metrics::IRegistry& metrics,
     IDatabasePathProvider const& databasePathProvider,
-    IVectorIndexProvider const& vectorIndexProvider,
     IFlushControl& flushControl, IDumpLimitsProvider const& dumpLimitsProvider,
     replication2::IReplicatedLogProvider* replicatedLogProvider,
     ISchedulerProvider const& schedulerProvider,
@@ -263,17 +262,15 @@ RocksDBEngine::RocksDBEngine(
     ICacheManagerProvider& cacheManagerProvider,
     ISortingPolicy const& sortingPolicy)
     : RocksDBEngine(server, optionsProvider, metrics, databasePathProvider,
-                    vectorIndexProvider, flushControl, dumpLimitsProvider,
-                    replicatedLogProvider, schedulerProvider,
-                    rocksDbRecoveryManager, databaseProvider, indexCacheRefill,
-                    cacheManagerProvider, sortingPolicy,
+                    flushControl, dumpLimitsProvider, replicatedLogProvider,
+                    schedulerProvider, rocksDbRecoveryManager, databaseProvider,
+                    indexCacheRefill, cacheManagerProvider, sortingPolicy,
                     RocksDBEngineOptions{}) {}
 
 RocksDBEngine::RocksDBEngine(
     application_features::ApplicationServer& server,
     RocksDBOptionsProvider& optionsProvider, metrics::IRegistry& metrics,
     IDatabasePathProvider const& databasePathProvider,
-    IVectorIndexProvider const& vectorIndexProvider,
     IFlushControl& flushControl, IDumpLimitsProvider const& dumpLimitsProvider,
     replication2::IReplicatedLogProvider* replicatedLogProvider,
     ISchedulerProvider const& schedulerProvider,
@@ -281,12 +278,10 @@ RocksDBEngine::RocksDBEngine(
     IDatabaseProvider& databaseProvider, IIndexCacheRefill& indexCacheRefill,
     ICacheManagerProvider& cacheManagerProvider,
     ISortingPolicy const& sortingPolicy, RocksDBEngineOptions options)
-    : StorageEngine(
-          server, kEngineName, name(), typeid(RocksDBEngine),
-          std::make_unique<RocksDBIndexFactory>(server, vectorIndexProvider),
-          databaseProvider),
+    : StorageEngine(server, kEngineName, name(), typeid(RocksDBEngine),
+                    std::make_unique<RocksDBIndexFactory>(server),
+                    databaseProvider),
       _databasePathProvider(databasePathProvider),
-      _vectorIndexProvider(vectorIndexProvider),
       _flushControl(flushControl),
       _dumpLimitsProvider(dumpLimitsProvider),
       _replicatedLogProvider(replicatedLogProvider),
@@ -481,10 +476,6 @@ void RocksDBEngine::verifySstFiles(rocksdb::Options const& options) const {
   int exitCode = static_cast<int>(TRI_ERROR_NO_ERROR);
   TRI_EXIT_FUNCTION(exitCode, nullptr);
   exit(exitCode);
-}
-
-bool RocksDBEngine::isVectorIndexEnabled() const {
-  return _vectorIndexProvider.isVectorIndexEnabled();
 }
 
 namespace {
@@ -819,10 +810,8 @@ void RocksDBEngine::start() {
                                   cfHandles[8]);
   RocksDBColumnFamilyManager::set(
       RocksDBColumnFamilyManager::Family::MdiVPackIndex, cfHandles[9]);
-  if (isVectorIndexEnabled()) {
-    RocksDBColumnFamilyManager::set(
-        RocksDBColumnFamilyManager::Family::VectorIndex, cfHandles[10]);
-  }
+  RocksDBColumnFamilyManager::set(
+      RocksDBColumnFamilyManager::Family::VectorIndex, cfHandles[10]);
   TRI_ASSERT(RocksDBColumnFamilyManager::get(
                  RocksDBColumnFamilyManager::Family::Definitions)
                  ->GetID() == 0);
@@ -3636,8 +3625,7 @@ bool RocksDBEngine::checkExistingDB(
                            existingColumnFamilies.end(), it.name);
       if (it2 == existingColumnFamilies.end()) {
         if (it.name == replicatedLogsName || it.name == mdiIndexName ||
-            it.name == mdiVPackIndexName ||
-            (isVectorIndexEnabled() && it.name == vectorVPackIndexName)) {
+            it.name == mdiVPackIndexName || it.name == vectorVPackIndexName) {
           LOG_TOPIC("293c3", INFO, Logger::STARTUP)
               << "column family " << it.name
               << " is missing and will be created.";
