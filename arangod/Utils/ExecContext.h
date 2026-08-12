@@ -298,9 +298,9 @@ class ExecContext {
 
 /// @brief scope guard for the exec context
 struct ExecContextScope {
-  explicit ExecContextScope(std::shared_ptr<ExecContext const> exe);
+  explicit ExecContextScope(std::shared_ptr<ExecContext const> exe) noexcept;
 
-  ~ExecContextScope();
+  ~ExecContextScope() noexcept;
 
  private:
   std::shared_ptr<ExecContext const> _old;

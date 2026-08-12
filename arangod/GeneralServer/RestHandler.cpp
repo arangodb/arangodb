@@ -24,10 +24,10 @@
 
 #include "Activities/GenericActivity.h"
 #include "Activities/RegistryGlobalVariable.h"
+#include "Agency/RestAgencyHandler.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Assertions/ProdAssert.h"
 #include "Auth/TokenCache.h"
-#include "Basics/DownCast.h"
 #include "Basics/dtrace-wrapper.h"
 #include "Basics/error.h"
 #include "Basics/voc-errors.h"
@@ -40,7 +40,6 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandlerActivity.h"
 #include "Logger/LogMacros.h"
-#include "Logger/LogStructuredParamsAllowList.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
@@ -53,12 +52,11 @@
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/ticks.h"
 
-#include <Agency/RestAgencyHandler.h>
 #include <Async/async.h>
+#include <Ssl/jwt.h>
 #include <absl/strings/str_cat.h>
-#include "Ssl/jwt.h"
-#include <velocypack/Exception.h>
 #include <unordered_map>
+#include <velocypack/Exception.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -531,8 +529,7 @@ bool RestHandler::wakeupHandler() { return !_suspensionCounter.notify(); }
 
 auto RestHandler::executeEngine() -> async<void> {
   DTRACE_PROBE1(arangod, RestHandlerExecuteEngine, this);
-  ExecContextScope scope(
-      basics::downCast<ExecContext>(_request->requestContext()));
+  TRI_ASSERT(ExecContext::currentAsShared() == _request->requestContext());
 
   try {
     co_await executeAsync();
@@ -839,8 +836,13 @@ RestStatus RestHandler::execute() {
 }
 
 void RestHandler::runHandler(
-    std::function<void(rest::RestHandler*)> responseCallback) {
+    std::function<void(RestHandler*)> responseCallback) {
   _sendResponseCallback = std::move(responseCallback);
+
+  // set the scope for the state machine. note that the following
+  // .thenFinal does not automatically inherit the scope; but it does
+  // not need it, either.
+  auto scope = ExecContextScope(_request->requestContext());
 
   runHandlerStateMachine().
       // Swallow all exceptions. It would be desirable to guarantee no
@@ -849,7 +851,7 @@ void RestHandler::runHandler(
       thenFinal([self = shared_from_this()](auto&& tryResult) noexcept {
         try {
           std::move(tryResult).throwIfFailed();
-        } catch (basics::Exception const& exception) {
+        } catch (Exception const& exception) {
           LOG_TOPIC("e0b25", ERR, Logger::FIXME)
               << "Uncaught exception in RestHandler " << self->name() << ": "
               << "[" << exception.code() << "] " << exception.message()
