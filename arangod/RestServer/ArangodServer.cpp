@@ -208,8 +208,16 @@ void ArangodServer::addFeatures() {
 }
 
 void ArangodServer::addFeaturesWithOptionProvider() {
-  auto& metrics = getFeature<metrics::MetricsFeature>();
-  auto& database = getFeature<DatabaseFeature>();
+  auto& metrics = addFeature<metrics::MetricsFeature>(
+      LazyApplicationFeatureReference<QueryRegistryFeature>(*this),
+      LazyApplicationFeatureReference<StatisticsFeature>(*this),
+      LazyApplicationFeatureReference<DatabaseFeature>(*this),
+      LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(*this),
+      LazyApplicationFeatureReference<ClusterFeature>(*this),
+      getOptions<metrics::MetricsOptionsProvider>());
+  auto& database =
+      addFeature<DatabaseFeature>(getOptions<DatabaseOptionsProvider>());
+  addFeature<ReplicationMetricsFeature>(metrics);
   auto& systemDatabaseFeature = getFeature<SystemDatabaseFeature>();
   auto& aqlFunctionFeature = getFeature<aql::AqlFunctionFeature>();
   auto& sharedPRNGFeature = getFeature<SharedPRNGFeature>();
