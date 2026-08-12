@@ -139,8 +139,8 @@ function WalCleanupSuite () {
         coordinator.toThisInstance(() => {
           db._drop(cn);
           db._create(cn, { numberOfShards: dbservers.length });
+          run(insertData, () => dbserver.getMetric("rocksdb_prunable_wal_files"));
         });
-        run(insertData, () => dbserver.getMetric("rocksdb_prunable_wal_files"));
       } finally {
         IM.reconnectMe();
         db._drop(cn);
