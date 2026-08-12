@@ -318,7 +318,8 @@ auth::User::User(std::string&& key, RevisionId rid)
 
 void auth::User::touch() { _loaded = TRI_microtime(); }
 
-bool auth::User::checkAccessToken(std::string const& token) const {
+bool auth::User::checkAccessToken(std::string const& token,
+                                  std::optional<double>& validUntil) const {
   auto now = TRI_microtime();
 
   for (auto const& doc : VPackArrayIterator(_accessTokens.slice())) {
@@ -330,7 +331,7 @@ bool auth::User::checkAccessToken(std::string const& token) const {
 
     VPackSlice e = doc.get("valid_until");
 
-    if (!e.isNumber() && e.getNumericValue<uint64_t>() > now) {
+    if (!e.isNumber() || e.getNumericValue<double>() < now) {
       continue;
     }
 
@@ -341,6 +342,7 @@ bool auth::User::checkAccessToken(std::string const& token) const {
       char const* nValue = n.getString(len);
 
       if (len == token.size() && std::string(nValue, len) == token) {
+        validUntil = e.getNumericValue<double>();
         return true;
       }
     }

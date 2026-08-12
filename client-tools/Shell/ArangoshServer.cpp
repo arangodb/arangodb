@@ -69,48 +69,41 @@ ArangoshServer::ArangoshServer(std::shared_ptr<options::ProgramOptions> options,
   mutableOptions<ClientOptionsProvider>().allowJwtSecret = true;
 }
 
-void ArangoshServer::addFeatures() {
-  // Phases first
+void ArangoshServer::addFeaturesWithOptionProvider() {
   addFeature<BasicFeaturePhaseClient>();
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
-
+#ifdef USE_ENTERPRISE
+  addFeature<EncryptionFeature>(getOptions<EncryptionOptionsProvider>());
+#endif
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  addFeature<ProcessEnvironmentFeature>(
+      _binaryName, getOptions<ProcessEnvironmentOptionsProvider>());
+#endif
+  auto& console = addFeature<ShellConsoleFeature>(
+      getOptions<ShellConsoleOptionsProvider>());
+  auto& client = addFeature<HttpEndpointProvider, ClientFeature>(
+      getOptions<ClientOptionsProvider>());
+  addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());
+  addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
   addFeature<OptionsCheckFeature>();
+  addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
+  addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(
       std::array{std::type_index(typeid(ShellFeature))});
   addFeature<SslFeature>();
   addFeature<V8ShellFeaturePhase>();
-}
-
-void ArangoshServer::addFeaturesWithOptionProvider() {
-  addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
-  addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());
-  addFeature<TempFeature>(_binaryName, getOptions<TempOptionsProvider>());
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  addFeature<ProcessEnvironmentFeature>(
-      _binaryName, getOptions<ProcessEnvironmentOptionsProvider>());
-#endif
-
-  addFeature<V8PlatformFeature>(getOptions<V8PlatformOptionsProvider>());
-  auto& v8SecurityFeature = addFeature<V8SecurityFeature>(
-      AllowListStrictness::NONSTRICT, getOptions<V8SecurityOptionsProvider>());
-  auto& v8ShellFeature = addFeature<V8ShellFeature>(
-      _binaryName, getOptions<V8ShellOptionsProvider>());
-  addFeature<ProcessMonitoringFeature>(v8ShellFeature, v8SecurityFeature);
-
-  addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
-  addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
-  addFeature<LanguageFeature>(getOptions<LanguageOptionsProvider>());
-#ifdef USE_ENTERPRISE
-  addFeature<EncryptionFeature>(getOptions<EncryptionOptionsProvider>());
-#endif
-  auto& client = addFeature<HttpEndpointProvider, ClientFeature>(
-      getOptions<ClientOptionsProvider>());
-  auto& console = addFeature<ShellConsoleFeature>(
-      getOptions<ShellConsoleOptionsProvider>());
   addFeature<ShellFeature>(_ret, client, console,
                            getOptions<ShellOptionsProvider>());
+  addFeature<V8PlatformFeature>(getOptions<V8PlatformOptionsProvider>());
+  auto& v8ShellFeature = addFeature<V8ShellFeature>(
+      _binaryName, getOptions<V8ShellOptionsProvider>());
+  addFeature<LanguageFeature>(getOptions<LanguageOptionsProvider>());
+  auto& v8SecurityFeature = addFeature<V8SecurityFeature>(
+      AllowListStrictness::NONSTRICT, getOptions<V8SecurityOptionsProvider>());
+  addFeature<ProcessMonitoringFeature>(v8ShellFeature, v8SecurityFeature);
+  addFeature<TempFeature>(_binaryName, getOptions<TempOptionsProvider>());
 }
 
 }  // namespace arangodb

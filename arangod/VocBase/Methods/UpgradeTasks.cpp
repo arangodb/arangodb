@@ -27,10 +27,8 @@
 #include "Auth/UserManager.h"
 #include "Basics/DownCast.h"
 #include "Basics/Exceptions.h"
-#include "Basics/FileUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
-#include "Basics/files.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "Containers/SmallVector.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -52,7 +50,6 @@
 #include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/vocbase.h"
 
-#include <filesystem>
 #include <velocypack/Collection.h>
 
 using namespace arangodb;
@@ -602,38 +599,6 @@ Result UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
     }
   }
   return {};
-}
-
-Result UpgradeTasks::renameReplicationApplierStateFiles(
-    TRI_vocbase_t& vocbase, velocypack::Slice slice) {
-  std::string const path = vocbase.engine().databasePath();
-
-  std::string const source = arangodb::basics::FileUtils::buildFilename(
-      path, "REPLICATION-APPLIER-STATE");
-
-  if (!std::filesystem::is_regular_file(source)) {
-    // source file does not exist (or not a regular file)
-    return {};
-  }
-
-  // copy file REPLICATION-APPLIER-STATE to REPLICATION-APPLIER-STATE-<id>
-  return basics::catchToResult([&vocbase, &path, &source]() -> Result {
-    std::string const dest = arangodb::basics::FileUtils::buildFilename(
-        path, "REPLICATION-APPLIER-STATE-" + std::to_string(vocbase.id()));
-
-    LOG_TOPIC("75337", TRACE, Logger::STARTUP)
-        << "copying replication applier file '" << source << "' to '" << dest
-        << "'";
-
-    std::string error;
-    if (!TRI_CopyFile(source, dest, error)) {
-      auto msg = absl::StrCat("could not copy replication applier file '",
-                              source, "' to '", dest, "'");
-      LOG_TOPIC("6c90c", WARN, Logger::STARTUP) << msg;
-      return {TRI_ERROR_INTERNAL, std::move(msg)};
-    }
-    return {};
-  });
 }
 
 ////////////////////////////////////////////////////////////////////////////////

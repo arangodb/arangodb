@@ -64,6 +64,7 @@
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
 #include "Metrics/IRegistry.h"
+#include "Metrics/MetricsFeature.h"
 #include "Replication2/Methods.h"
 #include "Replication2/AgencyCollectionSpecification.h"
 #include "Replication2/AgencyCollectionSpecificationInspectors.h"
@@ -280,7 +281,7 @@ constexpr frozen::unordered_map<std::string_view, ServerHealth, 4>
       << "Supervision health is:" << supervisionHealth.toString();
   if (serversKnownSlice.isObject()) {
     for (auto const it : VPackObjectIterator(serversKnownSlice)) {
-      auto status = ServerHealth::kUnclear;
+      auto status = ServerHealth::kFailed;
       std::string serverId = it.key.copyString();
       if (ADB_LIKELY(supervisionHealth.isObject())) {
         auto serverKey = supervisionHealth.get(serverId);
@@ -465,6 +466,16 @@ DECLARE_GAUGE(arangodb_metadata_shard_followers_out_of_sync_number,
               "leader");  // No leaders have been elected yet or they are
                           // catching up
 
+/// Gauge-style metric (one series per server via target_server /
+/// target_shortname). Values: 0=FAILED, 1=BAD, 2=GOOD.
+/// Updated from Supervision/Health via ClusterInfo::loadServers on
+/// Coordinators.
+DECLARE_GAUGE(
+    arangodb_server_health, std::uint64_t,
+    "Cluster server health status (0=FAILED, 1=BAD, 2=GOOD). "
+    "Labeled by target_server (unique id), target_shortname."
+    "Exporter identity is provided by the global shortname/role labels.");
+
 ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
                          AgencyCache& agencyCache,
                          AgencyCallbackRegistry& agencyCallbackRegistry,
@@ -549,6 +560,7 @@ ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterInfo::~ClusterInfo() {
+  clearServerHealthMetrics();
   _resourceMonitor.decreaseMemoryUsage(_planMemoryUsage);
   _planMemoryUsage = 0;
   _resourceMonitor.decreaseMemoryUsage(_currentMemoryUsage);
@@ -4409,6 +4421,7 @@ void ClusterInfo::loadServers() {
     // RebootTracker has its own mutex, and doesn't strictly need to be in
     // sync with the other members.
     rebootTracker().updateServerState(_serversKnown);
+    updateServerHealthMetrics(_serversKnown);
     return;
   }
 
@@ -4424,6 +4437,107 @@ void ClusterInfo::loadServers() {
 ServersKnown ClusterInfo::rebootIds() const {
   READ_LOCKER(readLocker, _serversProt.lock);
   return _serversKnown;
+}
+
+namespace {
+
+[[nodiscard]] arangodb_server_health makeServerHealthBuilder(
+    ServerID const& serverId, std::string_view targetShortName) {
+  arangodb_server_health builder;
+  // Reserve for variable label values plus ~80 bytes of fixed label overhead
+  // (label names and separators value) to minimize reallocations.
+  builder.reserveSpaceForLabels(serverId.size() + targetShortName.size() + 80);
+  builder.addLabel("target_server", serverId);
+  builder.addLabel("target_shortname", targetShortName);
+  return builder;
+}
+
+}  // namespace
+
+void ClusterInfo::updateServerHealthMetrics(ServersKnown const& serversKnown) {
+  // Cluster-wide health view is exported from Coordinators (the usual
+  // Prometheus scrape targets). Agency Supervision remains the source of truth;
+  // ClusterInfo already mirrors Supervision/Health into ServersKnown.
+  //
+  // Agents intentionally do not export this metric: AgencyCache / ClusterInfo
+  // server-list sync are not started for ROLE_AGENT, so ServersKnown is not
+  // kept up to date on Agents. Leading Agents already hold Supervision/Health
+  // in the agency snapshot, but wiring a parallel export path would duplicate
+  // ClusterInfo and is not needed for the normal Coordinator scrape model.
+  if (!ServerState::instance()->isCoordinator()) {
+    return;
+  }
+  if (!_server.hasFeature<metrics::MetricsFeature>()) {
+    return;
+  }
+  auto& metricsFeature = _server.getFeature<metrics::MetricsFeature>();
+
+  // Target/MapUniqueToShortID is stored as ShortName -> ServerID.
+  containers::FlatHashMap<ServerID, std::string> idToShortName;
+  {
+    READ_LOCKER(readLocker, _serversProt.lock);
+    idToShortName.reserve(_serverAliases.size());
+    for (auto const& [shortName, id] : _serverAliases) {
+      idToShortName.try_emplace(id, shortName);
+    }
+  }
+
+  containers::FlatHashMap<ServerID, metrics::Gauge<std::uint64_t>*>
+      updatedMetrics;
+  updatedMetrics.reserve(serversKnown.size());
+
+  // Iterate every ServersKnown entry — Coordinators and DBServers alike.
+  // There is no role-based filter; disappeared servers are removed below.
+  for (auto const& [serverId, state] : serversKnown) {
+    std::string_view targetShortName;
+    if (auto alias = idToShortName.find(serverId);
+        alias != idToShortName.end()) {
+      targetShortName = alias->second;
+    }
+
+    auto builder = makeServerHealthBuilder(serverId, targetShortName);
+    auto it = _serverHealthMetrics.find(serverId);
+    metrics::Gauge<std::uint64_t>* gauge = nullptr;
+    if (it != _serverHealthMetrics.end()) {
+      gauge = it->second;
+      _serverHealthMetrics.erase(it);
+      // ShortName may appear (or change) after the first registration; recreate
+      // the series when labels diverge so Prometheus identity stays correct.
+      if (gauge->labels() != builder.labels()) {
+        metricsFeature.remove(*gauge);
+        gauge = &metricsFeature.ensureMetric(std::move(builder));
+      }
+    } else {
+      gauge = &metricsFeature.ensureMetric(std::move(builder));
+    }
+    TRI_ASSERT(gauge != nullptr);
+    gauge->store(serverHealthMetricValue(state.status),
+                 std::memory_order_relaxed);
+    updatedMetrics.emplace(serverId, gauge);
+  }
+
+  // Drop series for servers that disappeared from ServersKnown.
+  for (auto const& [serverId, gauge] : _serverHealthMetrics) {
+    TRI_ASSERT(gauge != nullptr);
+    metricsFeature.remove(*gauge);
+  }
+  _serverHealthMetrics = std::move(updatedMetrics);
+}
+
+void ClusterInfo::clearServerHealthMetrics() {
+  if (_serverHealthMetrics.empty()) {
+    return;
+  }
+  if (!_server.hasFeature<metrics::MetricsFeature>()) {
+    _serverHealthMetrics.clear();
+    return;
+  }
+  auto& metricsFeature = _server.getFeature<metrics::MetricsFeature>();
+  for (auto const& [serverId, gauge] : _serverHealthMetrics) {
+    TRI_ASSERT(gauge != nullptr);
+    metricsFeature.remove(*gauge);
+  }
+  _serverHealthMetrics.clear();
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -5321,6 +5435,14 @@ void ClusterInfo::setServerAdvertisedEndpoints(
   for (auto const& [k, v] : advertisedEndpoints) {
     _serverAdvertisedEndpoints.emplace(k, v);
   }
+}
+
+void ClusterInfo::setServersKnown(ServersKnown serversKnown) {
+  {
+    WRITE_LOCKER(writeLocker, _serversProt.lock);
+    _serversKnown = std::move(serversKnown);
+  }
+  updateServerHealthMetrics(_serversKnown);
 }
 
 void ClusterInfo::setShardToShardGroupLeader(

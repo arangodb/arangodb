@@ -21,7 +21,6 @@
 
 #include "VectorIndex/VectorIndexFeature.h"
 
-#include "VectorIndex/VectorIndexOptionsProvider.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Futures/Utilities.h"
 #include "Cluster/MaintenanceFeature.h"
@@ -29,8 +28,6 @@
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Parameters.h"
 #include "Scheduler/SchedulerFeature.h"
 
 #include <chrono>
@@ -51,12 +48,6 @@ VectorIndexFeature::VectorIndexFeature(
       _options(std::move(options)) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
-}
-
-void VectorIndexFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  arangodb::vector_index::VectorIndexOptionsProvider provider;
-  provider.declareOptions(options, _options);
 }
 
 bool VectorIndexFeature::shouldRunBuildManager() const {

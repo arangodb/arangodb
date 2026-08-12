@@ -652,7 +652,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
       << " this: " << (uintptr_t)this;
 
   TRI_ASSERT(_ast != nullptr);
-  Parser parser(*this, *_ast, _queryString);
+  Parser parser(*this, &_warnings, *_ast, _queryString);
   parser.parse();
 
   // any usage of one of the following features make the query ineligible
@@ -1441,7 +1441,7 @@ QueryResult Query::parse() {
 
   try {
     init(/*createProfile*/ false);
-    Parser parser(*this, *_ast, _queryString);
+    Parser parser(*this, &_warnings, *_ast, _queryString);
     return parser.parseWithDetails();
 
   } catch (Exception const& ex) {
@@ -1495,7 +1495,7 @@ QueryResult Query::explain() {
     init(/*createProfile*/ false);
     enterState(QueryExecutionState::ValueType::PARSING);
 
-    Parser parser(*this, *_ast, _queryString);
+    Parser parser(*this, &_warnings, *_ast, _queryString);
     parser.parse();
 
     // any usage of one of the following features make the query ineligible

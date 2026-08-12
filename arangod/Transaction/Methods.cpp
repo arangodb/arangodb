@@ -2208,6 +2208,21 @@ Future<OperationResult> Methods::documentAsync(
                           MethodsApi::Asynchronous);
 }
 
+Result Methods::checkCollectionPermission(std::string const& collectionName,
+                                          AccessMode::Type accessType) {
+  DataSourceId cid = resolver()->getCollectionId(collectionName);
+  if (cid.empty()) {
+    // unknown collection: leave the not-found reporting to the operation itself
+    return {};
+  }
+  if (trxCollection(cid, accessType) != nullptr) {
+    // the collection is already a declared member of the transaction with
+    // sufficient access; it was permission-checked when it was added
+    return {};
+  }
+  return _state->checkCollectionPermission(cid, collectionName, accessType);
+}
+
 /// @brief read one or multiple documents in a collection, coordinator
 #ifndef USE_ENTERPRISE
 Future<OperationResult> Methods::documentCoordinator(
@@ -3875,6 +3890,14 @@ Future<OperationResult> Methods::documentInternal(
     OperationOptions const& options, MethodsApi api) {
   TRI_ASSERT(_state->status() == Status::RUNNING);
 
+  if (Result res =
+          checkCollectionPermission(collectionName, AccessMode::Type::READ);
+      res.fail()) {
+    events::ReadDocument(vocbase().name(), collectionName, value, options,
+                         res.errorNumber());
+    co_return OperationResult(std::move(res), options);
+  }
+
   if (!value.isObject() && !value.isArray()) {
     // must provide a document object or an array of documents
     events::ReadDocument(vocbase().name(), collectionName, value, options,
@@ -3898,6 +3921,14 @@ Future<OperationResult> Methods::insertInternal(
     std::string const& collectionName, VPackSlice value,
     OperationOptions const& options, MethodsApi api) {
   TRI_ASSERT(_state->status() == Status::RUNNING);
+
+  if (Result res =
+          checkCollectionPermission(collectionName, AccessMode::Type::WRITE);
+      res.fail()) {
+    events::CreateDocument(vocbase().name(), collectionName, value, options,
+                           res.errorNumber());
+    co_return OperationResult(std::move(res), options);
+  }
 
   if (!value.isObject() && !value.isArray()) {
     // must provide a document object or an array of documents
@@ -3934,6 +3965,14 @@ Future<OperationResult> Methods::updateInternal(
     OperationOptions const& options, MethodsApi api) {
   TRI_ASSERT(_state->status() == Status::RUNNING);
 
+  if (Result res =
+          checkCollectionPermission(collectionName, AccessMode::Type::WRITE);
+      res.fail()) {
+    events::ModifyDocument(vocbase().name(), collectionName, newValue, options,
+                           res.errorNumber());
+    co_return OperationResult(std::move(res), options);
+  }
+
   if (!newValue.isObject() && !newValue.isArray()) {
     // must provide a document object or an array of documents
     events::ModifyDocument(vocbase().name(), collectionName, newValue, options,
@@ -3966,6 +4005,14 @@ Future<OperationResult> Methods::replaceInternal(
     std::string const& collectionName, VPackSlice newValue,
     OperationOptions const& options, MethodsApi api) {
   TRI_ASSERT(_state->status() == Status::RUNNING);
+
+  if (Result res =
+          checkCollectionPermission(collectionName, AccessMode::Type::WRITE);
+      res.fail()) {
+    events::ReplaceDocument(vocbase().name(), collectionName, newValue, options,
+                            res.errorNumber());
+    co_return OperationResult(std::move(res), options);
+  }
 
   if (!newValue.isObject() && !newValue.isArray()) {
     // must provide a document object or an array of documents
@@ -4001,6 +4048,14 @@ Future<OperationResult> Methods::removeInternal(
     OperationOptions const& options, MethodsApi api) {
   TRI_ASSERT(_state->status() == Status::RUNNING);
 
+  if (Result res =
+          checkCollectionPermission(collectionName, AccessMode::Type::WRITE);
+      res.fail()) {
+    events::DeleteDocument(vocbase().name(), collectionName, value, options,
+                           res.errorNumber());
+    co_return OperationResult(std::move(res), options);
+  }
+
   if (!value.isObject() && !value.isArray() && !value.isString()) {
     // must provide a document object or an array of documents
     events::DeleteDocument(vocbase().name(), collectionName, value, options,
@@ -4032,6 +4087,11 @@ Future<OperationResult> Methods::truncateInternal(
     MethodsApi api) {
   TRI_ASSERT(_state->status() == Status::RUNNING);
 
+  if (Result res =
+          checkCollectionPermission(collectionName, AccessMode::Type::WRITE);
+      res.fail()) {
+    co_return OperationResult(std::move(res), options);
+  }
   auto opRes = co_await [&] {
     if (_state->isCoordinator()) {
       return truncateCoordinator(collectionName, options, api);
@@ -4049,6 +4109,12 @@ futures::Future<OperationResult> Methods::countInternal(
     std::string const& collectionName, CountType type,
     OperationOptions const& options, MethodsApi api) {
   TRI_ASSERT(_state->status() == Status::RUNNING);
+
+  if (Result res =
+          checkCollectionPermission(collectionName, AccessMode::Type::READ);
+      res.fail()) {
+    return {OperationResult(std::move(res), options)};
+  }
 
   if (_state->isCoordinator()) {
     return countCoordinator(collectionName, type, options, api);

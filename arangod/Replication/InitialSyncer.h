@@ -23,7 +23,7 @@
 #pragma once
 
 #include "Basics/Result.h"
-#include "Replication/ReplicationApplierConfiguration.h"
+#include "Replication/ReplicationSyncConfiguration.h"
 #include "Replication/Syncer.h"
 #include "Replication/utilities.h"
 #include "Scheduler/Scheduler.h"
@@ -37,7 +37,7 @@ namespace arangodb {
 class InitialSyncer : public Syncer {
  public:
   explicit InitialSyncer(
-      ReplicationApplierConfiguration const&,
+      ReplicationSyncConfiguration const&,
       replutils::ProgressInfo::Setter s = [](std::string const&) -> void {});
 
   ~InitialSyncer();
