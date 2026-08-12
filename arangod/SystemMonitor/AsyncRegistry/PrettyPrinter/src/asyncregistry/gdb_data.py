@@ -1,7 +1,6 @@
 from __future__ import annotations
 from typing import Iterable
 from dataclasses import dataclass
-import gdb
 
 @dataclass
 class State:
@@ -65,6 +64,7 @@ class Requester:
 
     @classmethod
     def from_gdb(cls, value: gdb.Value):
+        import gdb
         num_flag_bits = 1
         flag_mask = (1 << num_flag_bits) - 1
         BIT_WIDTH_64 = 64
