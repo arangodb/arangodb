@@ -91,7 +91,7 @@ namespace tao::json
    inline namespace literals
    {
       template< char... Cs >
-      [[nodiscard]] std::vector< std::byte > operator"" _binary()
+      [[nodiscard]] std::vector< std::byte > operator""_binary()
       {
          return internal::unhex< std::vector< std::byte >, Cs... >();
       }
