@@ -22,32 +22,31 @@
 
 #pragma once
 
+#include "VocBase/Properties/ClusteringConstantProperties.h"
+#include "VocBase/Properties/ClusteringMutableProperties.h"
 #include "VocBase/Properties/CollectionConstantProperties.h"
 #include "VocBase/Properties/CollectionMutableProperties.h"
 #include "VocBase/Properties/CollectionInternalProperties.h"
-#include "VocBase/Properties/ClusteringProperties.h"
 #include "VocBase/Properties/CollectionStorageProperties.h"
 
 namespace arangodb {
 
 struct CollectionDescriptor {
   CollectionConstantProperties constant{};
-  CollectionMutableProperties mutableProps{};
   CollectionInternalProperties internal{};
-  ClusteringProperties clustering{};
+  ClusteringConstantProperties clusteringConstant{};
+  ClusteringMutableProperties clusteringMutable{};  // needs to be thread-safe
+  CollectionMutableProperties mutableProps{};       // needs to be thread-safe
   CollectionStorageProperties storage{};
-  // CollectionIndexesProperties indexes{};  // optional Phase-1 scope
   bool operator==(CollectionDescriptor const&) const = default;
 };
 
 template<class Inspector>
 auto inspect(Inspector& f, CollectionDescriptor& d) {
   return f.object(d).fields(
-      f.embedFields(d.constant),
-      f.embedFields(d.mutableProps),
-      f.embedFields(d.internal),
-      f.embedFields(d.clustering),
-      f.embedFields(d.storage));
+      f.embedFields(d.constant), f.embedFields(d.internal),
+      f.embedFields(d.clusteringConstant), f.embedFields(d.clusteringMutable),
+      f.embedFields(d.mutableProps), f.embedFields(d.storage));
 }
 
 }  // namespace arangodb

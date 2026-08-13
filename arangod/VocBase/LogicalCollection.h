@@ -413,8 +413,8 @@ class LogicalCollection : public LogicalDataSource {
       -> arangodb::replication2::agency::CollectionGroupId;
   auto replicatedStateId() const noexcept -> arangodb::replication2::LogId;
 
-  CollectionDescriptor const& properties() const noexcept {
-    return _properties;
+  std::shared_ptr<CollectionDescriptor const> properties() const noexcept {
+    return std::atomic_load_explicit(&_properties, std::memory_order_acquire);
   }
 
  private:
@@ -427,7 +427,10 @@ class LogicalCollection : public LogicalDataSource {
 
   void decorateWithInternalValidators();
 
-  CollectionDescriptor _properties;
+  // `_properties` must be used with atomic accessors only!!
+  // Never modified in place: an update copies it, changes the copy, and
+  // swaps the pointer. Acquire/release access (load/store).
+  std::shared_ptr<CollectionDescriptor const> _properties;
 
  protected:
   void addInternalValidator(std::unique_ptr<ValidatorBase>);
@@ -512,9 +515,6 @@ class LogicalCollection : public LogicalDataSource {
   // `_schema` must be used with atomic accessors only!!
   // We use acquire/release access (load/store)
   std::shared_ptr<ValidatorBase> _schema;
-
-  // This is a bitmap entry of InternalValidatorType entries.
-  uint64_t _internalValidatorTypes;
 
   std::vector<std::unique_ptr<ValidatorBase>> _internalValidators;
 

@@ -150,29 +150,31 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
                                       false),
           Helper::getBooleanValue(info, StaticStrings::DataSourceDeleted,
                                   false)),
-      _properties(loadCollectionDescriptor(info)),
+      _properties(std::make_shared<CollectionDescriptor const>(
+          loadCollectionDescriptor(info))),
       _version(static_cast<Version>(Helper::getNumericValue<uint32_t>(
           info, StaticStrings::Version,
           static_cast<uint32_t>(currentVersion())))),
       _v8CacheVersion(0),
-      _type(_properties.constant.getType()),
+      _type(_properties->constant.getType()),
       _isAStub(isAStub),
 #ifdef USE_ENTERPRISE
-      _isDisjoint(_properties.constant.isDisjoint),
-      _isSmart(_properties.constant.isSmart),
-      _isSmartChild(_properties.internal.isSmartChild),
+      _isDisjoint(_properties->constant.isDisjoint),
+      _isSmart(_properties->constant.isSmart),
+      _isSmartChild(_properties->internal.isSmartChild),
 #endif
 
       _allowUserKeys(
           std::visit([](auto const& opts) { return opts.allowUserKeys; },
-                     _properties.constant.keyOptions)),
+                     _properties->constant.keyOptions)),
       _usesRevisionsAsDocumentIds(Helper::getBooleanValue(
           info, StaticStrings::UsesRevisionsAsDocumentIds, false)),
-      _waitForSync(_properties.clustering.waitForSync),
-      _supportsRBAC(_properties.mutableProps.supportsRBAC),
+      _waitForSync(_properties->clusteringMutable.waitForSync),
+      _supportsRBAC(_properties->mutableProps.supportsRBAC),
       _syncByRevision(determineSyncByRevision()),
       _countCache(defaultCountCacheTtl(system())),
-      _physical(vocbase.engine().createPhysicalCollection(*this, _properties)) {
+      _physical(
+          vocbase.engine().createPhysicalCollection(*this, *_properties)) {
 
   TRI_IF_FAILURE("disableRevisionsAsDocumentIds") {
     _usesRevisionsAsDocumentIds = false;
@@ -193,8 +195,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   if (auto res = updateSchema(info.get(StaticStrings::Schema)); res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
-
-  _internalValidatorTypes = _properties.internal.internalValidatorType;
 
   TRI_ASSERT(!guid().empty());
 
@@ -832,7 +832,7 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
 
   // Internal CollectionType
   build.add(StaticStrings::InternalValidatorTypes,
-            VPackValue(_internalValidatorTypes));
+            VPackValue(getInternalValidatorTypes()));
   // Cluster Specific
   build.add(StaticStrings::IsDisjoint, VPackValue(isDisjoint()));
   build.add(StaticStrings::IsSmart, VPackValue(isSmart()));
@@ -1125,6 +1125,15 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
   auto supportsRBAC = Helper::getBooleanValue(
       slice, StaticStrings::SupportsRBAC, _supportsRBAC.load());
   _supportsRBAC = supportsRBAC;
+
+  auto updated = std::make_shared<CollectionDescriptor>(*properties());
+  updated->clusteringMutable.waitForSync = waitForSync;
+  updated->mutableProps.supportsRBAC = supportsRBAC;
+  std::atomic_store_explicit(
+      &_properties,
+      std::shared_ptr<CollectionDescriptor const>(std::move(updated)),
+      std::memory_order_release);
+
   _sharding->setWriteConcernAndReplicationFactor(writeConcern,
                                                  replicationFactor);
 
@@ -1133,8 +1142,9 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
     // and should only be triggered during cluster upgrades.
     // The user is NOT allowed to modify this value in any way.
     auto nextType = Helper::getNumericValue<uint64_t>(
-        slice, StaticStrings::InternalValidatorTypes, _internalValidatorTypes);
-    if (nextType != _internalValidatorTypes) {
+        slice, StaticStrings::InternalValidatorTypes,
+        getInternalValidatorTypes());
+    if (nextType != getInternalValidatorTypes()) {
       // This is a bit dangerous operation, if the internalValidators are NOT
       // empty a concurrent writer could have one in its hand while this thread
       // deletes it. For now the situation cannot happen, but may happen in the
@@ -1143,7 +1153,7 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
       // local locking for validators only, that would be fine too)
 
       TRI_ASSERT(_internalValidators.empty());
-      _internalValidatorTypes = nextType;
+      setInternalValidatorTypes(nextType);
       _internalValidators.clear();
       decorateWithInternalValidators();
     }
@@ -1336,12 +1346,17 @@ Result LogicalCollection::validate(std::shared_ptr<ValidatorBase> const& schema,
   return {};
 }
 
-void LogicalCollection::setInternalValidatorTypes(uint64_t type) {
-  _internalValidatorTypes = type;
+uint64_t LogicalCollection::getInternalValidatorTypes() const noexcept {
+  return properties()->internal.internalValidatorType;
 }
 
-uint64_t LogicalCollection::getInternalValidatorTypes() const noexcept {
-  return _internalValidatorTypes;
+void LogicalCollection::setInternalValidatorTypes(uint64_t type) {
+  auto updated = std::make_shared<CollectionDescriptor>(*properties());
+  updated->internal.internalValidatorType = type;
+  std::atomic_store_explicit(
+      &_properties,
+      std::shared_ptr<CollectionDescriptor const>(std::move(updated)),
+      std::memory_order_release);
 }
 
 void LogicalCollection::addInternalValidator(
