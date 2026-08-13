@@ -117,6 +117,7 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RestHandler/RestHotBackupHandler.h"
+#include "Enterprise/RestHandler/RestVectorGraphHandler.h"
 #include "Enterprise/StorageEngine/HotBackupFeature.h"
 #endif
 
@@ -904,6 +905,10 @@ void GeneralServerFeature::defineRemainingHandlers(
         "/_admin/backup",
         RestHandlerCreator<arangodb::RestHotBackupHandler>::createNoData, {1});
   }
+
+  f.addPrefixHandler(
+      "/_admin/vector-graph",
+      RestHandlerCreator<arangodb::RestVectorGraphHandler>::createNoData, {1});
 #endif
 
   // ...........................................................................
