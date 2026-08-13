@@ -326,6 +326,15 @@ bool IResearchViewCoordinator::visitCollections(
   return true;
 }
 
+std::vector<std::string> IResearchViewCoordinator::linkedCollectionNames()
+    const {
+  std::vector<std::string> names;
+  for (auto const& pair : _collections) {
+    names.push_back(pair.second->collectionName);
+  }
+  return names;
+}
+
 bool IResearchViewCoordinator::isBuilding() const {
   std::shared_lock lock{_mutex};
   for (auto& entry : _collections) {
