@@ -24,11 +24,29 @@
 #include <rocksdb/comparator.h>
 #include <rocksdb/db.h>
 
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+
+#include "Basics/StaticStrings.h"
+#include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
+#include "RocksDBEngine/RocksDBPrimaryIndex.h"
+#include "RocksDBEngine/StorageEngineDataTest.h"
 #include "RocksDBEngine/StorageEngineFixture.h"
+#include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
 using namespace arangodb::tests;
+
+namespace {
+
+rocksdb::ColumnFamilyHandle* primaryIndexCf(LogicalCollection& collection) {
+  return toRocksDBCollection(collection.getPhysical())
+      ->primaryIndex()
+      ->columnFamily();
+}
+
+}  // namespace
 
 TEST_F(TimeTravelStorageEngineFixture, PrimaryIndexTtColumnFamilyIsUdt) {
   rocksdb::ColumnFamilyHandle* ttCf = RocksDBColumnFamilyManager::get(
@@ -43,4 +61,70 @@ TEST_F(TimeTravelStorageEngineFixture, PrimaryIndexTtColumnFamilyIsUdt) {
       RocksDBColumnFamilyManager::Family::PrimaryIndex);
   ASSERT_NE(primaryCf, nullptr);
   EXPECT_EQ(primaryCf->GetComparator()->timestamp_size(), 0u);
+}
+
+TEST_F(TimeTravelStorageEngineDataTest,
+       TimeTravelCollectionUsesTtPrimaryIndex) {
+  auto database = makeDatabase("testDatabase", 42);
+  auto collection =
+      makeCollection(*database, "ttCollection", /*timeTravel*/ true);
+
+  EXPECT_EQ(primaryIndexCf(*collection),
+            RocksDBColumnFamilyManager::get(
+                RocksDBColumnFamilyManager::Family::PrimaryIndex_TT));
+}
+
+TEST_F(TimeTravelStorageEngineDataTest,
+       NonTimeTravelCollectionUsesRegularPrimaryIndex) {
+  auto database = makeDatabase("testDatabase", 42);
+  auto collection =
+      makeCollection(*database, "plainCollection", /*timeTravel*/ false);
+
+  EXPECT_EQ(primaryIndexCf(*collection),
+            RocksDBColumnFamilyManager::get(
+                RocksDBColumnFamilyManager::Family::PrimaryIndex));
+}
+
+TEST_F(TimeTravelStorageEngineDataTest, TimeTravelFlagPersistsInProperties) {
+  auto database = makeDatabase("testDatabase", 42);
+  auto collection =
+      makeCollection(*database, "ttCollection", /*timeTravel*/ true);
+
+  EXPECT_TRUE(
+      toRocksDBCollection(collection->getPhysical())->timeTravelEnabled());
+
+  VPackBuilder builder;
+  builder.openObject();
+  collection->getPhysical()->getPropertiesVPack(builder);
+  builder.close();
+
+  auto slice = builder.slice().get(StaticStrings::EnableTimeTravel);
+  ASSERT_TRUE(slice.isBool());
+  EXPECT_TRUE(slice.getBool());
+}
+
+TEST_F(TimeTravelStorageEngineDataTest, RegularCollectionReportsFlagFalse) {
+  auto database = makeDatabase("testDatabase", 42);
+  auto collection =
+      makeCollection(*database, "plainCollection", /*timeTravel*/ false);
+
+  EXPECT_FALSE(
+      toRocksDBCollection(collection->getPhysical())->timeTravelEnabled());
+}
+
+TEST_F(TimeTravelStorageEngineDataTest, TimeTravelFlagIsImmutable) {
+  auto database = makeDatabase("testDatabase", 42);
+  auto collection =
+      makeCollection(*database, "ttCollection", /*timeTravel*/ true);
+
+  VPackBuilder update;
+  update.openObject();
+  update.add(StaticStrings::EnableTimeTravel, VPackValue(false));
+  update.close();
+
+  auto res = collection->getPhysical()->updateProperties(update.slice());
+  EXPECT_TRUE(res.ok()) << res.errorMessage();
+
+  EXPECT_TRUE(
+      toRocksDBCollection(collection->getPhysical())->timeTravelEnabled());
 }

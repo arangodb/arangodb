@@ -36,10 +36,6 @@
 using namespace arangodb;
 using namespace arangodb::tests;
 
-// Static member definition for StorageEngineDataTest
-std::shared_ptr<transaction::Manager>
-    StorageEngineDataTest::_transactionManager;
-
 TEST_F(StorageEngineDataTest, CreatedCollectionIsListedInInventory) {
   auto database = makeDatabase("testDatabase", 42);
   auto collection = makeCollection(*database, "testCollection");
