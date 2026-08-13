@@ -51,7 +51,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
  public:
   explicit RocksDBCollection(
-      LogicalCollection& collection, velocypack::Slice info,
+      LogicalCollection& collection, CollectionDescriptor const& descriptor,
       cache::Manager* cacheManager,
       std::optional<RocksDBReadWriteMetrics>& readWriteMetrics);
   ~RocksDBCollection();

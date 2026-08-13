@@ -172,7 +172,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
       _supportsRBAC(_properties.mutableProps.supportsRBAC),
       _syncByRevision(determineSyncByRevision()),
       _countCache(defaultCountCacheTtl(system())),
-      _physical(vocbase.engine().createPhysicalCollection(*this, info)) {
+      _physical(vocbase.engine().createPhysicalCollection(*this, _properties)) {
 
   TRI_IF_FAILURE("disableRevisionsAsDocumentIds") {
     _usesRevisionsAsDocumentIds = false;

@@ -310,10 +310,10 @@ namespace arangodb {
 void syncIndexOnCreate(Index&);
 
 RocksDBCollection::RocksDBCollection(
-    LogicalCollection& collection, velocypack::Slice info,
+    LogicalCollection& collection, CollectionDescriptor const& descriptor,
     cache::Manager* cacheManager,
     std::optional<RocksDBReadWriteMetrics>& readWriteMetrics)
-    : RocksDBMetaCollection(collection, info),
+    : RocksDBMetaCollection(collection, descriptor),
       _primaryIndex(nullptr),
       _cacheManager(cacheManager),
       _maxCacheValueSize(
@@ -322,8 +322,7 @@ RocksDBCollection::RocksDBCollection(
       _cacheEnabled(_cacheManager != nullptr && !collection.system() &&
                     !collection.isAStub() &&
                     !ServerState::instance()->isCoordinator() &&
-                    basics::VelocyPackHelper::getBooleanValue(
-                        info, StaticStrings::CacheEnabled, false)) {
+                    descriptor.mutableProps.cacheEnabled) {
   TRI_ASSERT(_logicalCollection.isAStub() || objectId() != 0);
   if (_cacheEnabled.load(std::memory_order_relaxed)) {
     setupCache();

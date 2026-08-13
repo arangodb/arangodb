@@ -48,7 +48,7 @@ class ClusterCollection final : public PhysicalCollection {
  public:
   explicit ClusterCollection(LogicalCollection& collection,
                              ClusterEngineType engineType,
-                             velocypack::Slice info);
+                             CollectionDescriptor const& descriptor);
 
   ~ClusterCollection();
 
