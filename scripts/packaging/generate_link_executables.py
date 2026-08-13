@@ -82,7 +82,9 @@ def makefiles_tokens(link_txt):
 
 def ninja_tokens(build_abs, exe):
     """The link edge of bin/<exe>: the last command 'ninja -t commands'
-    prints, unwrapped from CMake's ': && <link> && :' chain."""
+    prints. CMake chains it as ': && <link> && <post-build steps>' (e.g.
+    the arango-init-database symlinks), and prefixes the compiler with the
+    configured launcher (ccache/sccache) — unwrap both."""
     result = subprocess.run(
         ["ninja", "-C", build_abs, "-t", "commands", f"bin/{exe}"],
         capture_output=True, text=True,
@@ -92,21 +94,28 @@ def ninja_tokens(build_abs, exe):
     lines = result.stdout.strip().splitlines()
     if not lines:
         fail(f"{exe}: ninja -t commands returned no commands for bin/{exe}")
-    segments = [s.strip() for s in lines[-1].split("&&")]
-    candidates = [s for s in segments if "clang++" in s.split(" ", 1)[0]]
+    candidates = [s for s in lines[-1].split("&&") if "clang++" in s]
     if len(candidates) != 1:
         fail(f"{exe}: expected exactly one clang++ link segment, got: {lines[-1]}")
     return shlex.split(candidates[0])
 
 
 def transform(exe, tokens, subdir, up, project, build_abs, clang_major):
+    # strip a compiler launcher (ccache/sccache) prefix, then replace the
+    # resolved compiler with the versioned clang++ users can install
+    while tokens and "clang++" not in tokens[0]:
+        tokens = tokens[1:]
+    if not tokens:
+        fail(f"{exe}: no clang++ token in the link command")
     out, skip_check = [], False
-    if "clang++" not in tokens[0]:
-        fail(f"{exe}: link command does not start with clang++: {tokens[0]}")
     out.append(f"clang++-{clang_major}")
     for tok in tokens[1:]:
         is_output = skip_check
         skip_check = tok == "-o"
+        if tok.startswith("-Wl,-rpath"):
+            # rpaths are meaningless for static executables and would leak
+            # absolute build-tree paths into the shipped script
+            continue
         prefix = ""
         if tok.startswith("-L"):
             prefix, tok = "-L", tok[2:]
@@ -157,7 +166,8 @@ def main():
 # ({", ".join(EXECUTABLES)}),
 # so they can be rebuilt against your own (newer) glibc.
 # Use Ubuntu 24.04 (with glibc 2.39 or later) and install:
-#   apt install build-essential clang-{clang_major} lld-{clang_major} liburing-dev
+#   apt install build-essential clang-{clang_major} lld-{clang_major} liburing-dev \\
+#       libblas-dev liblapack-dev gfortran
 # Execute in the directory in which you extracted the archive!
 set -e
 cd build""")
