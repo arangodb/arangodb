@@ -385,7 +385,7 @@ Result Databases::create(application_features::ApplicationServer& server,
       createInfo.strictValidation(false);
     }
 
-    res = createInfo.load(dbName, options, users);
+    auto res = createInfo.load(dbName, options, users);
 
     if (!res.ok()) {
       return res;
