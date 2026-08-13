@@ -97,9 +97,7 @@ struct SharedPtr {
   }
 
   template<class... Input>
-  requires(sizeof...(Input) != 1 ||
-           (!std::same_as<std::remove_cvref_t<Input>, SharedPtr> &&
-            ...)) explicit SharedPtr(Input&&... args)
+  explicit SharedPtr(Input&&... args)
       : _resource{new SharedResource<T>(std::forward<Input>(args)...)} {}
 
   auto operator*() -> std::optional<std::reference_wrapper<T>> {
