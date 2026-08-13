@@ -165,14 +165,10 @@ ServerState::RoleEnum ArangodServer::resolveRole(
   FATAL_ERROR_EXIT();
 }
 
-void ArangodServer::addFeatures() {
-  // No-op; COR-834 will refactor this.
-}
-
 void ArangodServer::addFeaturesWithOptionProvider() {
   // Adding the Phases - these must come first and in this order
   addFeature<AgencyFeaturePhase>();
-  addFeature<CommunicationFeaturePhase>();
+  auto& comm = addFeature<CommunicationFeaturePhase>();
   addFeature<AqlFeaturePhase>();
   addFeature<BasicFeaturePhaseServer>();
   addFeature<ClusterFeaturePhase>();
@@ -268,10 +264,9 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   addFeature<QueryRegistryFeature>(metrics,
                                    getOptions<QueryRegistryOptionsProvider>());
   addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
-  auto& comm = getFeature<CommunicationFeaturePhase>();
   addFeature<ReplicationFeature>(comm, metrics,
                                  getOptions<ReplicationOptionsProvider>());
-  addFeature<ReplicatedLogFeature>(
+  auto& replicatedLogFeature = addFeature<ReplicatedLogFeature>(
       getOptions<replication2::ReplicatedLogOptionsProvider>());
   addFeature<ReplicationMetricsFeature>(metrics);
   addFeature<ReplicationTimeoutFeature>(
@@ -379,8 +374,7 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   addFeature<ClusterEngine>(clusterFeature, database, metrics);
   addFeature<RocksDBEngine>(
       rocksdbOption, metrics, databasePath, vectorIndex, flush, dumpLimits,
-      replication2::EnableReplication2 ? &getFeature<ReplicatedLogFeature>()
-                                       : nullptr,
+      replication2::EnableReplication2 ? &replicatedLogFeature : nullptr,
       scheduler, rocksdbRecovery, database, rocksdbCacheRefill, cacheManager,
       agency, getOptions<RocksDBEngineOptionsProvider>());
   addFeature<replication2::replicated_state::ReplicatedStateAppFeature>();
