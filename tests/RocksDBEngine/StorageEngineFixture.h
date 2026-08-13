@@ -131,30 +131,28 @@ void stopSuite(std::unique_ptr<StorageEngineFixtureSuite>& suite);
 // for all tests in the suite. Each test gets a fresh collection via SetUp().
 // All collaborators are owned by the fixture suite and torn down (including
 // the on-disk data) when all tests in the class finish.
-class StorageEngineFixture : public ::testing::Test {
- protected:
-  static void SetUpTestSuite() { _suite = makeStartedSuite(); }
-
-  static void TearDownTestSuite() { stopSuite(_suite); }
-
-  RocksDBEngine& engine() noexcept { return _suite->engine; }
-
-  static std::unique_ptr<StorageEngineFixtureSuite> _suite;
-};
-
-// Like StorageEngineFixture, but with the time-travel feature enabled so the
-// engine creates the PrimaryIndex_TT (User-Defined Timestamps) column family.
-class TimeTravelStorageEngineFixture : public ::testing::Test {
+template<class Derived>
+class BasicStorageEngineFixture : public ::testing::Test {
  protected:
   static void SetUpTestSuite() {
-    _suite = makeStartedSuite(/*timeTravel*/ true);
+    _suite = makeStartedSuite(Derived::timeTravelEnabled);
   }
 
   static void TearDownTestSuite() { stopSuite(_suite); }
 
   RocksDBEngine& engine() noexcept { return _suite->engine; }
 
-  static std::unique_ptr<StorageEngineFixtureSuite> _suite;
+  inline static std::unique_ptr<StorageEngineFixtureSuite> _suite;
+};
+
+struct StorageEngineFixture : BasicStorageEngineFixture<StorageEngineFixture> {
+  static constexpr bool timeTravelEnabled = false;
+};
+
+// Like StorageEngineFixture, but with the time-travel feature enabled
+struct TimeTravelStorageEngineFixture
+    : BasicStorageEngineFixture<TimeTravelStorageEngineFixture> {
+  static constexpr bool timeTravelEnabled = true;
 };
 
 }  // namespace arangodb::tests

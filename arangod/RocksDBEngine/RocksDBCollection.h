@@ -156,6 +156,10 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   bool cacheEnabled() const noexcept override;
 
+  // Whether this collection stores time-travel history
+  // Immutable, set at creation.
+  bool timeTravelEnabled() const noexcept { return _timeTravelEnabled; }
+
   bool hasDocuments() override;
 
   void freeMemory() noexcept override;
@@ -263,6 +267,8 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   std::optional<RocksDBReadWriteMetrics>& _readWriteMetrics;
 
   std::atomic_bool _cacheEnabled;
+
+  bool const _timeTravelEnabled;
 };
 
 inline RocksDBCollection* toRocksDBCollection(PhysicalCollection* physical) {
