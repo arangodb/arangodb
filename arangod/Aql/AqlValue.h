@@ -322,6 +322,11 @@ struct AqlValue final {
   // construct range type
   AqlValue(int64_t low, int64_t high);
 
+  /// @brief take ownership of memory allocated by velocypack_malloc/malloc.
+  /// the caller must ensure the buffer is a valid VPack value of the given
+  /// length.
+  static AqlValue fromOwnedMallocSlice(uint8_t* data, size_t length);
+
   /// @brief AqlValues can be copied and moved as required
   /// memory management is not performed via AqlValue destructor but via
   /// explicit calls to destroy()

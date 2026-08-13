@@ -26,6 +26,7 @@
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBPrefixExtractor.h"
 
+#include <rocksdb/comparator.h>
 #include <rocksdb/slice_transform.h>
 
 namespace arangodb {
@@ -74,6 +75,16 @@ rocksdb::ColumnFamilyOptions RocksDBOptionsProvider::getColumnFamilyOptions(
       // fixed 8 byte object id prefix
       result.prefix_extractor = std::shared_ptr<rocksdb::SliceTransform const>(
           rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize()));
+      break;
+    }
+    case RocksDBColumnFamilyManager::Family::PrimaryIndex_TT: {
+      // time-travel primary index: same 8-byte object id prefix as the regular
+      // primary index (RocksDB strips the User-Defined Timestamp before the
+      // prefix extractor runs), plus a timestamp-aware comparator (ts_sz = 8)
+      // so each key can hold multiple versions addressable by commit timestamp.
+      result.prefix_extractor = std::shared_ptr<rocksdb::SliceTransform const>(
+          rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize()));
+      result.comparator = rocksdb::BytewiseComparatorWithU64Ts();
       break;
     }
     case RocksDBColumnFamilyManager::Family::ReplicatedLogs: {

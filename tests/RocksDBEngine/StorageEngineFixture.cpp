@@ -21,9 +21,39 @@
 
 #include "RocksDBEngine/StorageEngineFixture.h"
 
+#include "Replication2/Version.h"
+
 namespace arangodb::tests {
 
 std::unique_ptr<StorageEngineFixtureSuite> StorageEngineFixture::_suite;
+std::unique_ptr<StorageEngineFixtureSuite>
+    TimeTravelStorageEngineFixture::_suite;
+
+std::unique_ptr<StorageEngineFixtureSuite> makeStartedSuite(bool timeTravel) {
+  auto suite = std::make_unique<StorageEngineFixtureSuite>(timeTravel);
+  suite->serverState.setRole(ServerState::ROLE_SINGLE);
+
+  using ::testing::Return;
+  using ::testing::ReturnRef;
+  ON_CALL(suite->dumpLimits, limits())
+      .WillByDefault(ReturnRef(suite->limitsOptions));
+  ON_CALL(suite->flush, isEnabled()).WillByDefault(Return(true));
+  ON_CALL(suite->logProvider, options())
+      .WillByDefault(Return(suite->logSettings));
+  ON_CALL(suite->dbProvider, defaultReplicationVersion())
+      .WillByDefault(Return(replication::Version::ONE));
+
+  suite->engine.start();
+  return suite;
+}
+
+void stopSuite(std::unique_ptr<StorageEngineFixtureSuite>& suite) {
+  suite->server.beginShutdown();
+  suite->engine.beginShutdown();
+  suite->engine.stop();
+  suite->engine.unprepare();
+  suite.reset();
+}
 
 StorageEngineFixtureSuite::~StorageEngineFixtureSuite() {
   while (!scheduler.queueEmpty()) {

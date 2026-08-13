@@ -273,7 +273,7 @@ function optimizerRuleTestSuite () {
         var resultDisabled = db._query(query, { }, paramDisabled).toArray();
         var resultEnabled  = db._query(query, { }, paramEnabled).toArray();
 
-        assertTrue(isEqual(resultDisabled, resultEnabled), query[0]);
+        assertTrue(isEqual(resultDisabled, resultEnabled), query);
       });
     },
 

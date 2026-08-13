@@ -583,6 +583,8 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   [[nodiscard]] bool isVectorIndexEnabled() const;
 
+  [[nodiscard]] bool isTimeTravelEnabled() const;
+
 #ifdef USE_ENTERPRISE
   void prepareEnterprise();
 

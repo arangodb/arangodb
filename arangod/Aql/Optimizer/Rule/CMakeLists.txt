@@ -24,6 +24,7 @@ target_sources(arango_aql PRIVATE
   MoveFiltersIntoEnumerate.cpp
   MoveFiltersUp.cpp
   OptimizeCount.cpp
+  OptimizeJoinOrder.cpp
   OptimizePaths.cpp
   OptimizeProjections.cpp
   OptimizeSubqueries.cpp
