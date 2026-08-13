@@ -36,10 +36,22 @@ if [ -z "${ARANGODB_VERSION:-}" ]; then
 fi
 
 # V8 produces thin archives; rewrite them into self-contained ones so they
-# survive being shipped.
+# survive being shipped. Done with an ar MRI script: ADDLIB copies every
+# member (reading the thin archive's backing files) and — unlike the old
+# "ar -t | xargs ar rvs" — preserves duplicate member basenames (V8 has
+# e.g. heap/sweeper.o AND cppgc/sweeper.o; whenever xargs split the list
+# into batches, "r" REPLACED one duplicate with the other, shipping
+# archives with silently missing objects — undefined Sweeper symbols when
+# relinking arangod on arm64). The member count is asserted to match.
 while IFS= read -r lib; do
   echo "${lib} ..."
-  ar -t "${lib}" | xargs ar rvs "${lib}.new" > /dev/null
+  printf 'CREATE %s\nADDLIB %s\nSAVE\nEND\n' "${lib}.new" "${lib}" | ar -M
+  OLD_COUNT="$(ar -t "${lib}" | wc -l)"
+  NEW_COUNT="$(ar -t "${lib}.new" | wc -l)"
+  if [ "${OLD_COUNT}" != "${NEW_COUNT}" ]; then
+    echo "pack-object-files: rewrite of ${lib} lost members (${OLD_COUNT} -> ${NEW_COUNT})" >&2
+    exit 1
+  fi
   mv "${lib}.new" "${lib}"
 done < <(find "${BUILD_DIR}/3rdParty/v8-build" -name "*.a" 2>/dev/null)
 
