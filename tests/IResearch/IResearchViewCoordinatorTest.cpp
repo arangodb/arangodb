@@ -749,7 +749,7 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
     auto indexes = logicalCollection->getPhysical()->getAllIndexes();
     ASSERT_EQ(1, indexes.size());  // arangosearch should be there
     auto index = indexes[0];
-    ASSERT_EQ(arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK, index->type());
+    ASSERT_EQ(arangodb::Index::IndexType::IResearchLink, index->type());
     VPackBuilder builder;
     index->toVelocyPack(builder, arangodb::Index::makeFlags(
                                      arangodb::Index::Serialize::Internals));
@@ -3373,8 +3373,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
     EXPECT_TRUE((false == index->isSorted()));
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                 index->type()));
+    EXPECT_TRUE((arangodb::Index::IndexType::IResearchLink == index->type()));
     EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                  index->typeName()));
     EXPECT_TRUE((false == index->unique()));
@@ -3438,8 +3437,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
     EXPECT_TRUE((false == index->isSorted()));
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                 index->type()));
+    EXPECT_TRUE((arangodb::Index::IndexType::IResearchLink == index->type()));
     EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                  index->typeName()));
     EXPECT_TRUE((false == index->unique()));
@@ -3503,8 +3501,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
     EXPECT_TRUE((false == index->isSorted()));
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                 index->type()));
+    EXPECT_TRUE((arangodb::Index::IndexType::IResearchLink == index->type()));
     EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                  index->typeName()));
     EXPECT_TRUE((false == index->unique()));
@@ -3668,8 +3665,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
     EXPECT_TRUE((false == index->isSorted()));
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                 index->type()));
+    EXPECT_TRUE((arangodb::Index::IndexType::IResearchLink == index->type()));
     EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                  index->typeName()));
     EXPECT_TRUE((false == index->unique()));
@@ -3734,8 +3730,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
     EXPECT_TRUE((false == index->isSorted()));
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                 index->type()));
+    EXPECT_TRUE((arangodb::Index::IndexType::IResearchLink == index->type()));
     EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                  index->typeName()));
     EXPECT_TRUE((false == index->unique()));
@@ -4046,8 +4041,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     EXPECT_TRUE((false == index->isSorted()));
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                 index->type()));
+    EXPECT_TRUE((arangodb::Index::IndexType::IResearchLink == index->type()));
     EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                  index->typeName()));
     EXPECT_TRUE((false == index->unique()));
@@ -4108,8 +4102,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     EXPECT_TRUE((false == index->isSorted()));
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                 index->type()));
+    EXPECT_TRUE((arangodb::Index::IndexType::IResearchLink == index->type()));
     EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                  index->typeName()));
     EXPECT_TRUE((false == index->unique()));
@@ -4288,8 +4281,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     EXPECT_TRUE((false == index->isSorted()));
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                 index->type()));
+    EXPECT_TRUE((arangodb::Index::IndexType::IResearchLink == index->type()));
     EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                  index->typeName()));
     EXPECT_TRUE((false == index->unique()));
@@ -4354,8 +4346,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     EXPECT_TRUE((false == index->isSorted()));
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                 index->type()));
+    EXPECT_TRUE((arangodb::Index::IndexType::IResearchLink == index->type()));
     EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                  index->typeName()));
     EXPECT_TRUE((false == index->unique()));
@@ -4420,8 +4411,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     EXPECT_TRUE((false == index->isSorted()));
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                 index->type()));
+    EXPECT_TRUE((arangodb::Index::IndexType::IResearchLink == index->type()));
     EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                  index->typeName()));
     EXPECT_TRUE((false == index->unique()));
@@ -4800,8 +4790,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
     EXPECT_TRUE((false == index->isSorted()));
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                 index->type()));
+    EXPECT_TRUE((arangodb::Index::IndexType::IResearchLink == index->type()));
     EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                  index->typeName()));
     EXPECT_TRUE((false == index->unique()));
@@ -4862,8 +4851,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
     EXPECT_TRUE((false == index->isSorted()));
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                 index->type()));
+    EXPECT_TRUE((arangodb::Index::IndexType::IResearchLink == index->type()));
     EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                  index->typeName()));
     EXPECT_TRUE((false == index->unique()));
@@ -5033,8 +5021,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
     EXPECT_TRUE((false == index->isSorted()));
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                 index->type()));
+    EXPECT_TRUE((arangodb::Index::IndexType::IResearchLink == index->type()));
     EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                  index->typeName()));
     EXPECT_TRUE((false == index->unique()));
@@ -5188,8 +5175,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
     EXPECT_TRUE((false == index->isSorted()));
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                 index->type()));
+    EXPECT_TRUE((arangodb::Index::IndexType::IResearchLink == index->type()));
     EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                  index->typeName()));
     EXPECT_TRUE((false == index->unique()));
@@ -5517,8 +5503,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
     EXPECT_TRUE((false == index->isSorted()));
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                 index->type()));
+    EXPECT_TRUE((arangodb::Index::IndexType::IResearchLink == index->type()));
     EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                  index->typeName()));
     EXPECT_TRUE((false == index->unique()));
@@ -5583,8 +5568,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
     EXPECT_TRUE((false == index->isSorted()));
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                 index->type()));
+    EXPECT_TRUE((arangodb::Index::IndexType::IResearchLink == index->type()));
     EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                  index->typeName()));
     EXPECT_TRUE((false == index->unique()));
@@ -5648,8 +5632,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
     EXPECT_TRUE((false == index->isSorted()));
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                 index->type()));
+    EXPECT_TRUE((arangodb::Index::IndexType::IResearchLink == index->type()));
     EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                  index->typeName()));
     EXPECT_TRUE((false == index->unique()));
@@ -5970,8 +5953,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
       EXPECT_TRUE((false == index->isSorted()));
       EXPECT_EQ(0, index->memory());
       EXPECT_TRUE((true == index->sparse()));
-      EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                   index->type()));
+      EXPECT_TRUE((arangodb::Index::IndexType::IResearchLink == index->type()));
       EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                    index->typeName()));
       EXPECT_TRUE((false == index->unique()));

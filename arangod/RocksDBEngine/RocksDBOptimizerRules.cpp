@@ -162,11 +162,10 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
               // index doesn't cover the projection
               return false;
             }
-            if (idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX &&
-                idx->type() != Index::IndexType::TRI_IDX_TYPE_HASH_INDEX &&
-                idx->type() != Index::IndexType::TRI_IDX_TYPE_SKIPLIST_INDEX &&
-                idx->type() !=
-                    Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX) {
+            if (idx->type() != Index::IndexType::Primary &&
+                idx->type() != Index::IndexType::Hash &&
+                idx->type() != Index::IndexType::Skiplist &&
+                idx->type() != Index::IndexType::Persistent) {
               // only the above index types are supported
               return false;
             }
@@ -285,7 +284,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
 
         auto selectIndexIfPossible =
             [&picked](std::shared_ptr<Index> const& idx) -> bool {
-          if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+          if (idx->type() == Index::IndexType::Primary) {
             TRI_ASSERT(!idx->inProgress());
             picked = idx;
             return true;
@@ -321,8 +320,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
         }
 
         if (picked != nullptr) {
-          TRI_ASSERT(picked->type() ==
-                     Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
+          TRI_ASSERT(picked->type() == Index::IndexType::Primary);
           TRI_ASSERT(!picked->inProgress());
           IndexIteratorOptions opts;
           opts.useCache = false;

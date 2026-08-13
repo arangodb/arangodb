@@ -95,8 +95,7 @@ void ReplicatedRocksDBTransactionCollection::maybeDisableIndexing() {
         // primary index is unique, but we can ignore it here.
         // for secondary unique indexes we need to turn off the
         // NO_INDEXING optimization
-        return idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX &&
-               idx->unique();
+        return idx->type() != Index::IndexType::Primary && idx->unique();
       });
 
   if (disableIndexing) {

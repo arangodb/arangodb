@@ -61,7 +61,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
                      arangodb::velocypack::Slice info);
   ~RocksDBVectorIndex();
 
-  IndexType type() const override { return Index::TRI_IDX_TYPE_VECTOR_INDEX; }
+  IndexType type() const override { return IndexType::Vector; }
 
   bool isSorted() const override { return false; }
 

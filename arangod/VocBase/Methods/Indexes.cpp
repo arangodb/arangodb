@@ -319,7 +319,7 @@ futures::Future<arangodb::Result> Indexes::getAll(
 
     auto type = index.get(arangodb::StaticStrings::IndexType);
     if (mergeEdgeIdxs &&
-        Index::type(type.copyString()) == Index::TRI_IDX_TYPE_EDGE_INDEX) {
+        Index::type(type.copyString()) == Index::IndexType::Edge) {
       VPackSlice fields = index.get(StaticStrings::IndexFields);
       TRI_ASSERT(fields.isArray() && fields.length() <= 2);
 

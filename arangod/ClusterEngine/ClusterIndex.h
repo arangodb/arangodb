@@ -64,8 +64,7 @@ class ClusterIndex : public Index {
   }
 
   bool canBeDropped() const override {
-    return _indexType != Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
-           _indexType != Index::TRI_IDX_TYPE_EDGE_INDEX;
+    return _indexType != IndexType::Primary && _indexType != IndexType::Edge;
   }
 
   bool isSorted() const override;

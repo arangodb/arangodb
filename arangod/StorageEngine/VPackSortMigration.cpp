@@ -76,10 +76,8 @@ Result analyzeVPackIndexSorting(RocksDBEngine& engine,
                 << "Checking VPackSortMigration for index with ID "
                 << index->id().id() << " and name " << index->name();
             if (auto type = index->type();
-                type == IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX ||
-                type == IndexType::TRI_IDX_TYPE_HASH_INDEX ||
-                type == IndexType::TRI_IDX_TYPE_SKIPLIST_INDEX ||
-                type == IndexType::TRI_IDX_TYPE_MDI_PREFIXED_INDEX) {
+                type == IndexType::Persistent || type == IndexType::Hash ||
+                type == IndexType::Skiplist || type == IndexType::MDIPrefixed) {
               RocksDBIndex* rocksDBIndex =
                   dynamic_cast<RocksDBIndex*>(index.get());
               if (rocksDBIndex != nullptr) {

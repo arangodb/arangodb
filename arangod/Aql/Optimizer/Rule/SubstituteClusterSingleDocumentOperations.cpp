@@ -167,8 +167,7 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
       continue;
     }
 
-    Index* index =
-        hasSingleIndexHandle(node, Index::TRI_IDX_TYPE_PRIMARY_INDEX);
+    Index* index = hasSingleIndexHandle(node, Index::IndexType::Primary);
     if (index) {
       IndexNode* indexNode = ExecutionNode::castTo<IndexNode*>(node);
       auto binaryCompares = hasBinaryCompare(node);

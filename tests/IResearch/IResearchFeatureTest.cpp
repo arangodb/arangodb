@@ -2955,8 +2955,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade1_link_collectionName) {
   {
     auto indexes = logicalCollection->getPhysical()->getReadyIndexes();
     for (auto& index : indexes) {
-      if (index->type() ==
-          arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
+      if (index->type() == arangodb::Index::IndexType::IResearchLink) {
         VPackBuilder builder;
         index->toVelocyPack(
             builder,
@@ -2972,8 +2971,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade1_link_collectionName) {
   {
     auto indexes = logicalCollection->getPhysical()->getReadyIndexes();
     for (auto& index : indexes) {
-      if (index->type() ==
-          arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
+      if (index->type() == arangodb::Index::IndexType::IResearchLink) {
         VPackBuilder builder;
         index->toVelocyPack(
             builder,

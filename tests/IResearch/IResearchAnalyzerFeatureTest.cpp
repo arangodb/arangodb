@@ -96,7 +96,7 @@ struct TestIndex : arangodb::Index {
   void load() override {}
   size_t memory() const override { return sizeof(Index); }
   arangodb::Index::IndexType type() const override {
-    return arangodb::Index::TRI_IDX_TYPE_UNKNOWN;
+    return arangodb::Index::IndexType::Unknown;
   }
   char const* typeName() const override { return "testType"; }
   void unload() override {}

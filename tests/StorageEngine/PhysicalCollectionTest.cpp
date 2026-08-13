@@ -245,25 +245,25 @@ TEST_F(PhysicalCollectionTest, test_index_ordeing) {
   PhysicalCollection::IndexContainerType test_container;
   // also regular index but no need to be reversed
   test_container.insert(std::make_shared<MockIndex>(
-      Index::TRI_IDX_TYPE_HASH_INDEX, false, arangodb::IndexId{2}, *collection,
-      "4", dummyFields, false, false));
+      Index::IndexType::Hash, false, arangodb::IndexId{2}, *collection, "4",
+      dummyFields, false, false));
   // Edge index- should go right after primary and after all other
   // non-reversable edge indexes
   test_container.insert(std::make_shared<MockIndex>(
-      Index::TRI_IDX_TYPE_EDGE_INDEX, true, arangodb::IndexId{3}, *collection,
-      "3", dummyFields, false, false));
+      Index::IndexType::Edge, true, arangodb::IndexId{3}, *collection, "3",
+      dummyFields, false, false));
   // Edge index- non-reversable should go right after primary
   test_container.insert(std::make_shared<MockIndex>(
-      Index::TRI_IDX_TYPE_EDGE_INDEX, false, arangodb::IndexId{4}, *collection,
-      "2", dummyFields, false, false));
+      Index::IndexType::Edge, false, arangodb::IndexId{4}, *collection, "2",
+      dummyFields, false, false));
   // Primary index. Should be first!
   test_container.insert(std::make_shared<MockIndex>(
-      Index::TRI_IDX_TYPE_PRIMARY_INDEX, true, arangodb::IndexId{5},
-      *collection, "1", dummyFields, true, false));
+      Index::IndexType::Primary, true, arangodb::IndexId{5}, *collection, "1",
+      dummyFields, true, false));
   // should execute last - regular index with reversal possible
   test_container.insert(std::make_shared<MockIndex>(
-      Index::TRI_IDX_TYPE_HASH_INDEX, true, arangodb::IndexId{1}, *collection,
-      "5", dummyFields, false, false));
+      Index::IndexType::Hash, true, arangodb::IndexId{1}, *collection, "5",
+      dummyFields, false, false));
 
   arangodb::IndexId prevId{5};
   for (auto idx : test_container) {

@@ -376,7 +376,7 @@ void RocksDBCollection::freeMemory() noexcept {
 
       // Abort any in-progress vector index build via the coordinator
       // TODO (jbajic) Lets trigger the abort via the coordinator
-      if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+      if (idx->type() == Index::IndexType::Primary) {
         // we keep the primary index object around, because it can
         // be referred to by the collection object with a pointer.
         ++it;
@@ -439,7 +439,7 @@ void RocksDBCollection::duringAddIndex(std::shared_ptr<Index> idx) {
   // update tick value and _primaryIndex member
   TRI_ASSERT(idx != nullptr);
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(idx->id().id()));
-  if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+  if (idx->type() == Index::IndexType::Primary) {
     TRI_ASSERT(idx->id().isPrimary());
     _primaryIndex = static_cast<RocksDBPrimaryIndex*>(idx.get());
   }
@@ -476,7 +476,7 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
 
     if (auto existingIdx = findIndex(info, _indexes); existingIdx != nullptr) {
       // We already have this index.
-      if (existingIdx->type() == arangodb::Index::TRI_IDX_TYPE_TTL_INDEX) {
+      if (existingIdx->type() == Index::IndexType::TTL) {
         // special handling for TTL indexes
         // if there is exactly the same index present, we return it
         if (!existingIdx->matchesDefinition(info)) {
@@ -532,8 +532,8 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
   }
 
   // we cannot persist primary or edge indexes
-  TRI_ASSERT(newIdx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
-  TRI_ASSERT(newIdx->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX);
+  TRI_ASSERT(newIdx->type() != Index::IndexType::Primary);
+  TRI_ASSERT(newIdx->type() != Index::IndexType::Edge);
 
   // cleanup newly instantiated object
   auto indexCleanup = ScopeGuard([&newIdx]() noexcept {
@@ -602,7 +602,7 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
     // so we skip the filling here.
     bool const inBackground = basics::VelocyPackHelper::getBooleanValue(
         info, StaticStrings::IndexInBackground, false);
-    if (buildIdx->type() != Index::TRI_IDX_TYPE_VECTOR_INDEX) {
+    if (buildIdx->type() != Index::IndexType::Vector) {
       if (inBackground) {
         {
           RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
@@ -1387,9 +1387,9 @@ void RocksDBCollection::figuresSpecific(
 
       for (auto const& it : indexes) {
         auto type = it->type();
-        if (type == Index::TRI_IDX_TYPE_UNKNOWN ||
-            type == Index::TRI_IDX_TYPE_IRESEARCH_LINK ||
-            type == Index::TRI_IDX_TYPE_NO_ACCESS_INDEX) {
+        if (type == Index::IndexType::Unknown ||
+            type == Index::IndexType::IResearchLink ||
+            type == Index::IndexType::NoAccess) {
           continue;
         }
 
@@ -1400,39 +1400,39 @@ void RocksDBCollection::figuresSpecific(
         RocksDBIndex const* rix = static_cast<RocksDBIndex const*>(it.get());
         size_t count = 0;
         switch (type) {
-          case Index::TRI_IDX_TYPE_INVERTED_INDEX: {
+          case Index::IndexType::Inverted: {
             auto snapshot =
                 basics::downCast<iresearch::IResearchRocksDBInvertedIndex>(*rix)
                     .snapshot();
             count = snapshot.getDirectoryReader().live_docs_count();
           } break;
-          case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
+          case Index::IndexType::Primary:
             count = rocksutils::countKeyRange(
                 db, RocksDBKeyBounds::PrimaryIndex(rix->objectId()), snapshot,
                 true);
             break;
-          case Index::TRI_IDX_TYPE_GEO_INDEX:
-          case Index::TRI_IDX_TYPE_GEO1_INDEX:
-          case Index::TRI_IDX_TYPE_GEO2_INDEX:
+          case Index::IndexType::Geo:
+          case Index::IndexType::Geo1:
+          case Index::IndexType::Geo2:
             count = rocksutils::countKeyRange(
                 db, RocksDBKeyBounds::GeoIndex(rix->objectId()), snapshot,
                 true);
             break;
-          case Index::TRI_IDX_TYPE_ZKD_INDEX:
-          case Index::TRI_IDX_TYPE_MDI_INDEX:
+          case Index::IndexType::Zkd:
+          case Index::IndexType::MDI:
             count = rocksutils::countKeyRange(
                 db, RocksDBKeyBounds::MdiIndex(rix->objectId()), snapshot,
                 true);
             break;
-          case Index::TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
+          case Index::IndexType::MDIPrefixed:
             count = rocksutils::countKeyRange(
                 db, RocksDBKeyBounds::MdiVPackIndex(rix->objectId()), snapshot,
                 true);
             break;
-          case Index::TRI_IDX_TYPE_HASH_INDEX:
-          case Index::TRI_IDX_TYPE_SKIPLIST_INDEX:
-          case Index::TRI_IDX_TYPE_TTL_INDEX:
-          case Index::TRI_IDX_TYPE_PERSISTENT_INDEX:
+          case Index::IndexType::Hash:
+          case Index::IndexType::Skiplist:
+          case Index::IndexType::TTL:
+          case Index::IndexType::Persistent:
             if (it->unique()) {
               count = rocksutils::countKeyRange(
                   db,
@@ -1444,17 +1444,17 @@ void RocksDBCollection::figuresSpecific(
                   snapshot, true);
             }
             break;
-          case Index::TRI_IDX_TYPE_EDGE_INDEX:
+          case Index::IndexType::Edge:
             count = rocksutils::countKeyRange(
                 db, RocksDBKeyBounds::EdgeIndex(rix->objectId()), snapshot,
                 false);
             break;
-          case Index::TRI_IDX_TYPE_FULLTEXT_INDEX:
+          case Index::IndexType::Fulltext:
             count = rocksutils::countKeyRange(
                 db, RocksDBKeyBounds::FulltextIndex(rix->objectId()), snapshot,
                 true);
             break;
-          case Index::TRI_IDX_TYPE_VECTOR_INDEX:
+          case Index::IndexType::Vector:
             count = rocksutils::countKeyRange(
                 db, RocksDBKeyBounds::VectorVPackIndex(rix->objectId()),
                 snapshot, true);

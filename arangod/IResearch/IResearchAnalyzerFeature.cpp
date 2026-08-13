@@ -718,8 +718,8 @@ bool analyzerInUse(std::string_view dbName,
       }
 
       for (auto const& index : collection->getPhysical()->getAllIndexes()) {
-        if (!index || (Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type() &&
-                       Index::TRI_IDX_TYPE_INVERTED_INDEX != index->type())) {
+        if (!index || (Index::IndexType::IResearchLink != index->type() &&
+                       Index::IndexType::Inverted != index->type())) {
           continue;  // not an IResearchDataStore
         }
 

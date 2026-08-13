@@ -223,10 +223,9 @@ AstNode* createSubqueryWithLimit(ExecutionPlan* plan, ExecutionNode* node,
   return ast->createNodeReference(subqueryOutVariable);
 }
 
-bool isGeoIndex(arangodb::Index::IndexType type) {
-  return type == arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX ||
-         type == arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX ||
-         type == arangodb::Index::TRI_IDX_TYPE_GEO_INDEX;
+bool isGeoIndex(Index::IndexType type) {
+  return type == Index::IndexType::Geo1 || type == Index::IndexType::Geo2 ||
+         type == Index::IndexType::Geo;
 }
 
 std::pair<AstNode*, AstNode*> getAttributeAccessFromIndex(
@@ -244,9 +243,9 @@ std::pair<AstNode*, AstNode*> getAttributeAccessFromIndex(
   for (auto& idx : coll->indexes()) {
     if (isGeoIndex(idx->type())) {
       // we take the first index that is found
-      bool isGeo1 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX;
-      bool isGeo2 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX;
-      bool isGeo = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO_INDEX;
+      bool isGeo1 = idx->type() == Index::IndexType::Geo1;
+      bool isGeo2 = idx->type() == Index::IndexType::Geo2;
+      bool isGeo = idx->type() == Index::IndexType::Geo;
 
       auto fieldNum = idx->fields().size();
       if ((isGeo2 || isGeo) && fieldNum == 2) {  // individual fields
@@ -576,8 +575,7 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode,
   }
 
   for (auto& idx : coll->indexes()) {
-    if (idx->type() ==
-        arangodb::Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+    if (idx->type() == Index::IndexType::Fulltext) {
       if (basics::AttributeName::isIdentical(
               idx->fields()[0], field, false /*ignore expansion in last?!*/)) {
         index = idx;

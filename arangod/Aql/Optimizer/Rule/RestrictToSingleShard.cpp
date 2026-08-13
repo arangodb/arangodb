@@ -814,7 +814,7 @@ void restrictToSingleShardRule(Optimizer* opt,
           // shard key distribution.
           for (auto& index :
                ExecutionNode::castTo<aql::IndexNode*>(current)->getIndexes()) {
-            if (Index::TRI_IDX_TYPE_INVERTED_INDEX == index->type()) {
+            if (Index::IndexType::Inverted == index->type()) {
               disable = true;
               break;
             }

@@ -106,7 +106,7 @@ void SimpleRocksDBTransactionState::maybeDisableIndexing() {
       auto indexes =
           trxCollection->collection()->getPhysical()->getAllIndexes();
       for (auto const& idx : indexes) {
-        if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+        if (idx->type() == Index::IndexType::Primary) {
           // primary index is unique, but we can ignore it here.
           // we are only looking for secondary indexes
           continue;

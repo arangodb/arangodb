@@ -73,7 +73,7 @@ arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
   overw.openObject();
   overw.add(arangodb::StaticStrings::IndexType,
             arangodb::velocypack::Value(
-                arangodb::Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
+                arangodb::Index::oldtypeName(Index::IndexType::Geo)));
   overw.close();
 
   VPackBuilder newDesc =
@@ -94,7 +94,7 @@ arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
   }
 
   TRI_ASSERT(newIndex->id() == iid);  // will break cluster otherwise
-  TRI_ASSERT(newIndex->type() == Index::TRI_IDX_TYPE_GEO_INDEX);
+  TRI_ASSERT(newIndex->type() == Index::IndexType::Geo);
 
   return res;
 }
@@ -106,8 +106,8 @@ Result upgradeGeoIndexes(TRI_vocbase_t& vocbase) {
     auto indexes = collection->getPhysical()->getReadyIndexes();
     for (auto const& index : indexes) {
       auto* rIndex = basics::downCast<RocksDBIndex>(index.get());
-      if (index->type() == Index::TRI_IDX_TYPE_GEO1_INDEX ||
-          index->type() == Index::TRI_IDX_TYPE_GEO2_INDEX) {
+      if (index->type() == Index::IndexType::Geo1 ||
+          index->type() == Index::IndexType::Geo2) {
         LOG_TOPIC("5e53d", INFO, Logger::STARTUP)
             << "Upgrading legacy geo index '" << rIndex->id().id() << "'";
 
@@ -363,20 +363,20 @@ Result createSystemStatisticsIndices(
   Result res;
   if (vocbase.isSystem()) {
     res = ::createIndex(StaticStrings::StatisticsCollection,
-                        arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, {"time"},
-                        false, false, collections);
+                        arangodb::Index::IndexType::Skiplist, {"time"}, false,
+                        false, collections);
     if (!res.ok() && !res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
       return res;
     }
     res = ::createIndex(StaticStrings::Statistics15Collection,
-                        arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, {"time"},
-                        false, false, collections);
+                        arangodb::Index::IndexType::Skiplist, {"time"}, false,
+                        false, collections);
     if (!res.ok() && !res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
       return res;
     }
     res = ::createIndex(StaticStrings::StatisticsRawCollection,
-                        arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, {"time"},
-                        false, false, collections);
+                        arangodb::Index::IndexType::Skiplist, {"time"}, false,
+                        false, collections);
     if (!res.ok() && !res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
       return res;
     }
@@ -390,8 +390,8 @@ Result createSystemCollectionsIndices(
   Result res;
   if (vocbase.isSystem()) {
     res = ::createIndex(StaticStrings::UsersCollection,
-                        arangodb::Index::TRI_IDX_TYPE_HASH_INDEX, {"user"},
-                        true, true, collections);
+                        arangodb::Index::IndexType::Hash, {"user"}, true, true,
+                        collections);
     if (!res.ok()) {
       return res;
     }
@@ -408,22 +408,20 @@ Result createSystemCollectionsIndices(
   }
 
   res = ::createIndex(StaticStrings::AppsCollection,
-                      arangodb::Index::TRI_IDX_TYPE_HASH_INDEX, {"mount"}, true,
-                      true, collections);
-  if (!res.ok()) {
-    return res;
-  }
-  res = ::createIndex(StaticStrings::JobsCollection,
-                      arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
-                      {"queue", "status", "delayUntil"}, false, false,
+                      arangodb::Index::IndexType::Hash, {"mount"}, true, true,
                       collections);
   if (!res.ok()) {
     return res;
   }
-  res = ::createIndex(StaticStrings::JobsCollection,
-                      arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
-                      {"status", "queue", "delayUntil"}, false, false,
-                      collections);
+  res = ::createIndex(
+      StaticStrings::JobsCollection, arangodb::Index::IndexType::Skiplist,
+      {"queue", "status", "delayUntil"}, false, false, collections);
+  if (!res.ok()) {
+    return res;
+  }
+  res = ::createIndex(
+      StaticStrings::JobsCollection, arangodb::Index::IndexType::Skiplist,
+      {"status", "queue", "delayUntil"}, false, false, collections);
   if (!res.ok()) {
     return res;
   }

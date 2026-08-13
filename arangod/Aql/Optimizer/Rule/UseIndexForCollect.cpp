@@ -101,7 +101,7 @@ bool isIndexNodeEligible(IndexNode const& in) {
     return false;
   }
   auto index = in.getSingleIndex();
-  if (index->type() != arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX) {
+  if (index->type() != Index::IndexType::Persistent) {
     LOG_RULE << "IndexNode " << in.id()
              << " not eligible - only persistent index supported";
     return false;

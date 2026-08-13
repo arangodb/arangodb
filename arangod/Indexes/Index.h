@@ -99,25 +99,25 @@ class Index {
       emptyCoveredFields;
 
   /// @brief index types
-  enum IndexType {
-    TRI_IDX_TYPE_UNKNOWN = 0,
-    TRI_IDX_TYPE_PRIMARY_INDEX,
-    TRI_IDX_TYPE_GEO_INDEX,
-    TRI_IDX_TYPE_GEO1_INDEX,
-    TRI_IDX_TYPE_GEO2_INDEX,
-    TRI_IDX_TYPE_HASH_INDEX,
-    TRI_IDX_TYPE_EDGE_INDEX,
-    TRI_IDX_TYPE_FULLTEXT_INDEX,
-    TRI_IDX_TYPE_SKIPLIST_INDEX,
-    TRI_IDX_TYPE_TTL_INDEX,
-    TRI_IDX_TYPE_PERSISTENT_INDEX,
-    TRI_IDX_TYPE_IRESEARCH_LINK,
-    TRI_IDX_TYPE_NO_ACCESS_INDEX,
-    TRI_IDX_TYPE_ZKD_INDEX,
-    TRI_IDX_TYPE_MDI_INDEX,
-    TRI_IDX_TYPE_MDI_PREFIXED_INDEX,
-    TRI_IDX_TYPE_INVERTED_INDEX,
-    TRI_IDX_TYPE_VECTOR_INDEX,
+  enum class IndexType {
+    Unknown = 0,
+    Primary = 1,
+    Geo = 2,
+    Geo1 = 3,
+    Geo2 = 4,
+    Hash = 5,
+    Edge = 6,
+    Fulltext = 7,
+    Skiplist = 8,
+    TTL = 9,
+    Persistent = 10,
+    IResearchLink = 11,
+    NoAccess = 12,
+    Zkd = 13,
+    MDI = 14,
+    MDIPrefixed = 15,
+    Inverted = 16,
+    Vector = 17,
   };
 
   /// @brief: helper struct returned by index methods that determine the costs
@@ -245,10 +245,8 @@ class Index {
   virtual char const* typeName() const = 0;
 
   static bool allowExpansion(IndexType type) {
-    return (type == TRI_IDX_TYPE_HASH_INDEX ||
-            type == TRI_IDX_TYPE_SKIPLIST_INDEX ||
-            type == TRI_IDX_TYPE_PERSISTENT_INDEX ||
-            type == TRI_IDX_TYPE_INVERTED_INDEX);
+    return (type == IndexType::Hash || type == IndexType::Skiplist ||
+            type == IndexType::Persistent || type == IndexType::Inverted);
   }
 
   virtual IndexType type() const = 0;

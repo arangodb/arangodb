@@ -63,7 +63,7 @@ inline bool checkAscendingMatchesMetric(
 inline bool isCompatibleVectorIndex(std::shared_ptr<Index> const& candidate,
                                     std::shared_ptr<Index> const& currentIndex,
                                     bool ascending) {
-  if (candidate->type() != Index::IndexType::TRI_IDX_TYPE_VECTOR_INDEX) {
+  if (candidate->type() != Index::IndexType::Vector) {
     return false;
   }
   if (candidate->getVectorIndexDefinition().metric !=
