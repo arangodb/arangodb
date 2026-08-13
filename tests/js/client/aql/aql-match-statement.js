@@ -41,12 +41,26 @@ function aqlMatchStatementTestSuite() {
 
             db._create("vc");
             for (let i = 0; i < 100; i++) {
-                db.vc.save({_key: `v${i}`, i, j: i % 5});
+                db.vc.save({
+                    _key: `v${i}`,
+                    i,
+                    j: i % 5,
+                    profile: {name: `user${i}`, age: i % 40},
+                    a: {b: {c: i}},
+                    "profile.name": `literal${i}`
+                });
             }
 
             db._createEdgeCollection("ec");
             for (let i = 0; i < 50; i++) {
-                db.ec.save({_key: `e${i}`, i, j: i % 10, _from: `vc/v${2 * i}`, _to: `vc/v${2 * i + 1}`});
+                db.ec.save({
+                    _key: `e${i}`,
+                    i,
+                    j: i % 10,
+                    meta: {since: i},
+                    _from: `vc/v${2 * i}`,
+                    _to: `vc/v${2 * i + 1}`
+                });
             }
 
             db._createEdgeCollection("ec2");
@@ -732,6 +746,179 @@ function aqlMatchStatementTestSuite() {
                     assertEqual(edges[i]._from, vertices[i]._id);
                     assertEqual(edges[i]._to, vertices[i+1]._id);
                 }
+            }
+        },
+
+        testSelectVerticesWithNestedProjection: function () {
+            const result = db._query(
+                "MATCH (v :vc RETURN profile.name) RETURN v",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 100);
+
+            for (const v of result) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertTrue(v.hasOwnProperty("profile"));
+                assertTrue(v.profile.hasOwnProperty("name"));
+                assertTrue(v.profile.name.startsWith("user"));
+                assertFalse(v.profile.hasOwnProperty("age"));
+                assertFalse(v.hasOwnProperty("i"));
+                assertFalse(v.hasOwnProperty("j"));
+                assertFalse(v.hasOwnProperty("profile.name"));
+            }
+        },
+
+        testSelectVerticesWithDeepNestedProjection: function () {
+            const result = db._query(
+                "MATCH (v :vc RETURN a.b.c) RETURN v",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 100);
+
+            for (const v of result) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertEqual(typeof v.a.b.c, "number");
+                assertFalse(v.hasOwnProperty("i"));
+            }
+        },
+
+        testSelectVerticesWithSiblingNestedProjections: function () {
+            const result = db._query(
+                "MATCH (v :vc RETURN profile.name, profile.age) RETURN v",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 100);
+
+            for (const v of result) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertTrue(v.hasOwnProperty("profile"));
+                assertTrue(v.profile.hasOwnProperty("name"));
+                assertTrue(v.profile.hasOwnProperty("age"));
+                assertEqual(typeof v.profile.age, "number");
+                assertFalse(v.hasOwnProperty("i"));
+            }
+        },
+
+        testSelectVerticesWithFlatAndNestedProjection: function () {
+            const result = db._query(
+                "MATCH (v :vc RETURN i, profile.name) RETURN v",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 100);
+
+            for (const v of result) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertTrue(v.hasOwnProperty("i"));
+                assertEqual(typeof v.i, "number");
+                assertEqual(v.profile.name, `user${v.i}`);
+                assertFalse(v.hasOwnProperty("j"));
+                assertFalse(v.profile.hasOwnProperty("age"));
+            }
+        },
+
+        testSelectEdgesWithNestedProjection: function () {
+            const result = db._query(
+                "MATCH (u :vc)-[e :ec RETURN meta.since]->(v :vc) RETURN e",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 50);
+
+            for (const e of result) {
+                assertTrue(e.hasOwnProperty("_id"));
+                assertTrue(e.hasOwnProperty("_from"));
+                assertTrue(e.hasOwnProperty("_to"));
+                assertTrue(e.hasOwnProperty("meta"));
+                assertEqual(typeof e.meta.since, "number");
+                assertFalse(e.hasOwnProperty("i"));
+                assertFalse(e.hasOwnProperty("j"));
+            }
+        },
+
+        testSelectVerticesWithAliasUnchangedByNested: function () {
+            // Aliasing stays flat even when the RHS walks a nested path.
+            const result = db._query(
+                "MATCH (v :vc RETURN name = v.profile.name) RETURN v",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 100);
+
+            for (const v of result) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertTrue(v.hasOwnProperty("name"));
+                assertTrue(v.name.startsWith("user"));
+                assertFalse(v.hasOwnProperty("profile"));
+            }
+        },
+
+        testSelectVerticesWithNestedAndAliasComposition: function () {
+            const result = db._query(
+                "MATCH (v :vc RETURN profile.name, label = v.i) RETURN v",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 100);
+
+            for (const v of result) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertEqual(v.profile.name, `user${v.label}`);
+                assertFalse(v.hasOwnProperty("i"));
+            }
+        },
+
+        testSelectVerticesWithQuotedDottedProjection: function () {
+            // Quoted "profile.name" is a single literal key, not nested hierarchy.
+            const result = db._query(
+                'MATCH (v :vc RETURN "profile.name") RETURN v',
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 100);
+
+            for (const v of result) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertTrue(v.hasOwnProperty("profile.name"));
+                assertTrue(v["profile.name"].startsWith("literal"));
+                assertFalse(v.hasOwnProperty("profile"));
+            }
+        },
+
+        testSelectVerticesWithMissingNestedProjection: function () {
+            const result = db._query(
+                "MATCH (v :vc RETURN profile.missingAttr) RETURN v",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 100);
+
+            for (const v of result) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertTrue(v.hasOwnProperty("profile"));
+                assertEqual(v.profile.missingAttr, null);
+                assertFalse(v.hasOwnProperty("i"));
+            }
+        },
+
+        testSelectVerticesWithPrefixOverlapKeepsShorter: function () {
+            // profile subsumes profile.name — emit the whole profile object.
+            const result = db._query(
+                "MATCH (v :vc RETURN profile, profile.name) RETURN v",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 100);
+
+            for (const v of result) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertTrue(v.hasOwnProperty("profile"));
+                assertTrue(v.profile.hasOwnProperty("name"));
+                assertTrue(v.profile.hasOwnProperty("age"));
+                assertFalse(v.hasOwnProperty("i"));
             }
         },
 
