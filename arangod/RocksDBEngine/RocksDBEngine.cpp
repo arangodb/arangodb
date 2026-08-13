@@ -370,6 +370,9 @@ void RocksDBEngine::shutdownRocksDBInstance() noexcept {
        RocksDBColumnFamilyManager::allHandles()) {
     _db->DestroyColumnFamilyHandle(h);
   }
+  // handles are process-global; clear them so a later engine in the same
+  // process does not observe the ones we just destroyed.
+  RocksDBColumnFamilyManager::reset();
 
   // now prune all obsolete WAL files
   try {
@@ -476,6 +479,10 @@ void RocksDBEngine::verifySstFiles(rocksdb::Options const& options) const {
   int exitCode = static_cast<int>(TRI_ERROR_NO_ERROR);
   TRI_EXIT_FUNCTION(exitCode, nullptr);
   exit(exitCode);
+}
+
+bool RocksDBEngine::isTimeTravelEnabled() const {
+  return _optionsProvider.timeTravelEnabled();
 }
 
 namespace {
@@ -719,14 +726,15 @@ void RocksDBEngine::start() {
   rocksdb::BlockBasedTableOptions tableOptions =
       _optionsProvider.getTableOptions();
 
-  // create column families
   std::vector<rocksdb::ColumnFamilyDescriptor> cfFamilies;
-  auto addFamily = [this,
-                    &cfFamilies](RocksDBColumnFamilyManager::Family family) {
+  std::vector<RocksDBColumnFamilyManager::Family> families;
+  auto addFamily = [this, &cfFamilies,
+                    &families](RocksDBColumnFamilyManager::Family family) {
     rocksdb::ColumnFamilyOptions specialized =
         _optionsProvider.getColumnFamilyOptions(family);
     std::string name = RocksDBColumnFamilyManager::name(family);
     cfFamilies.emplace_back(name, specialized);
+    families.push_back(family);
   };
   // no prefix families for default column family (Has to be there)
   addFamily(RocksDBColumnFamilyManager::Family::Definitions);
@@ -742,6 +750,9 @@ void RocksDBEngine::start() {
   addFamily(RocksDBColumnFamilyManager::Family::MdiIndex);
   addFamily(RocksDBColumnFamilyManager::Family::MdiVPackIndex);
   addFamily(RocksDBColumnFamilyManager::Family::VectorIndex);
+  if (isTimeTravelEnabled()) {
+    addFamily(RocksDBColumnFamilyManager::Family::PrimaryIndex_TT);
+  }
 
   bool dbExisted = checkExistingDB(cfFamilies);
 
@@ -787,31 +798,12 @@ void RocksDBEngine::start() {
 
   TRI_ASSERT(_db != nullptr);
 
-  // set our column families
   RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::Invalid,
                                   _db->DefaultColumnFamily());
-  RocksDBColumnFamilyManager::set(
-      RocksDBColumnFamilyManager::Family::Definitions, cfHandles[0]);
-  RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::Documents,
-                                  cfHandles[1]);
-  RocksDBColumnFamilyManager::set(
-      RocksDBColumnFamilyManager::Family::PrimaryIndex, cfHandles[2]);
-  RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::EdgeIndex,
-                                  cfHandles[3]);
-  RocksDBColumnFamilyManager::set(
-      RocksDBColumnFamilyManager::Family::VPackIndex, cfHandles[4]);
-  RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::GeoIndex,
-                                  cfHandles[5]);
-  RocksDBColumnFamilyManager::set(
-      RocksDBColumnFamilyManager::Family::FulltextIndex, cfHandles[6]);
-  RocksDBColumnFamilyManager::set(
-      RocksDBColumnFamilyManager::Family::ReplicatedLogs, cfHandles[7]);
-  RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::MdiIndex,
-                                  cfHandles[8]);
-  RocksDBColumnFamilyManager::set(
-      RocksDBColumnFamilyManager::Family::MdiVPackIndex, cfHandles[9]);
-  RocksDBColumnFamilyManager::set(
-      RocksDBColumnFamilyManager::Family::VectorIndex, cfHandles[10]);
+  TRI_ASSERT(families.size() == cfHandles.size());
+  for (std::size_t i = 0; i < families.size(); ++i) {
+    RocksDBColumnFamilyManager::set(families[i], cfHandles[i]);
+  }
   TRI_ASSERT(RocksDBColumnFamilyManager::get(
                  RocksDBColumnFamilyManager::Family::Definitions)
                  ->GetID() == 0);
@@ -3292,6 +3284,9 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addCf(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
   addCf(RocksDBColumnFamilyManager::Family::MdiVPackIndex);
   addCf(RocksDBColumnFamilyManager::Family::VectorIndex);
+  if (isTimeTravelEnabled()) {
+    addCf(RocksDBColumnFamilyManager::Family::PrimaryIndex_TT);
+  }
   builder.close();
 
   if (_throttleListener) {
