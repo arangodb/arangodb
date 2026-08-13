@@ -102,29 +102,25 @@ TEST_F(StorageEngineDataTest, LogicalCollection_acceptsInternalOnlyValues) {
   EXPECT_EQ(collection->type(), TRI_COL_TYPE_EDGE);
 }
 
-TEST_F(StorageEngineDataTest,
-       LogicalCollection_serializationRoundTripIsStable) {
-  auto database = makeDatabase("testDatabase", 42);
+TEST_F(StorageEngineDataTest, CollectionDescriptor_roundTripIsStable) {
   auto sliceBuilder = representativeCreateSlice();
-  auto collection = database->createCollection(sliceBuilder.slice());
-  engine().createCollection(*database, *collection);
 
-  std::unordered_set<std::string> const ignore{
-      StaticStrings::ObjectId, StaticStrings::DataSourceGuid,
-      StaticStrings::DataSourceId, StaticStrings::DataSourceCid,
-      StaticStrings::Indexes};
+  CollectionDescriptor first;
+  auto status = velocypack::deserializeWithStatus(
+      sliceBuilder.slice(), first,
+      {.ignoreUnknownFields = true, .ignoreInvariants = true},
+      InspectInternalContext{});
+  ASSERT_TRUE(status.ok()) << status.error();
 
-  auto first = collection->toVelocyPackIgnore(
-      ignore, LogicalDataSource::Serialization::Persistence);
+  VPackBuilder out;
+  velocypack::serializeWithContext(out, first, InspectInternalContext{});
 
-  auto other = makeDatabase("otherDatabase", 43);
-  auto reloaded = other->createCollection(first.slice());
+  CollectionDescriptor second;
+  status = velocypack::deserializeWithStatus(
+      out.slice(), second,
+      {.ignoreUnknownFields = true, .ignoreInvariants = true},
+      InspectInternalContext{});
+  ASSERT_TRUE(status.ok()) << status.error();
 
-  auto second = reloaded->toVelocyPackIgnore(
-      ignore, LogicalDataSource::Serialization::Persistence);
-
-  EXPECT_TRUE(basics::VelocyPackHelper::equal(first.slice(), second.slice(),
-                                              /*useUTF8*/ true))
-      << "first:  " << first.slice().toJson()
-      << "\nsecond: " << second.slice().toJson();
+  EXPECT_EQ(first, second) << out.slice().toJson();
 }

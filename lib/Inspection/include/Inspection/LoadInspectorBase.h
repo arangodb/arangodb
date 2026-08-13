@@ -49,7 +49,8 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
  public:
   static constexpr bool isLoading = true;
 
-  explicit LoadInspectorBase(ParseOptions options) requires(!Base::hasContext)
+  explicit LoadInspectorBase(ParseOptions options)
+    requires(!Base::hasContext)
       : _options(options) {}
 
   explicit LoadInspectorBase(ParseOptions options, Context const& context)
@@ -307,7 +308,12 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
       FieldsMap& fields,
       std::unique_ptr<detail::EmbeddedFields<Derived>>&& embeddedFields) {
     return embeddedFields->apply(this->self(), fields)  //
-           | [&]() { return embeddedFields->checkInvariant(); };
+               | [&]() -> Status {
+      if (_options.ignoreInvariants) {
+        return {};
+      }
+      return embeddedFields->checkInvariant();
+    };
   }
 
   [[nodiscard]] Status::Success parseField(FieldsMap& fields,
