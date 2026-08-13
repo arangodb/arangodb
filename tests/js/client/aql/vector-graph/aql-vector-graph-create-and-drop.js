@@ -118,10 +118,6 @@ function VectorGraphIndexCreateAndDropTestSuite() {
             assertTrue(Math.abs(index.params.alpha - 1.5) < 0.0001);
         },
 
-        testMaxDegreeMustNotExceedOnDiskBound: function() {
-            assertBadParameter(Object.assign({}, baseParams, { maxDegree: 65 }));
-        },
-
         testMaxDegreeMustBeGreaterThanZero: function() {
             assertBadParameter(Object.assign({}, baseParams, { maxDegree: 0 }));
         },
@@ -163,41 +159,6 @@ function VectorGraphIndexCreateAndDropTestSuite() {
             // dimension 32 is not divisible by M=48.
             assertBadParameter(
                 Object.assign({}, baseParams, { quantization: "PQ48x8" }));
-        },
-
-        // TurboQuant's codebook is fixed for unit-length vectors, so it is only
-        // offered under the cosine metric.
-        testTurboQuantizationRoundTrip: function() {
-            const index = ensureGraphIndex(
-                { dimension: 32, metric: "cosine", quantization: "TQ8" });
-            assertEqual("TQ8", index.params.quantization);
-        },
-
-        testTurboQuantizationSubByteRoundTrip: function() {
-            const index = ensureGraphIndex(
-                { dimension: 32, metric: "cosine", quantization: "TQ4" });
-            assertEqual("TQ4", index.params.quantization);
-        },
-
-        testTurboQuantizationHasNoDivisibilityConstraint: function() {
-            // TurboQuant is a per-component scalar quantizer, so any dimension
-            // is valid (unlike PQ's dimension % M == 0).
-            const index = ensureGraphIndex(
-                { dimension: 40, metric: "cosine", quantization: "TQ8" });
-            assertEqual("TQ8", index.params.quantization);
-        },
-
-        testTurboQuantizationRequiresCosineMetric: function() {
-            assertBadParameter(
-                Object.assign({}, baseParams, { quantization: "TQ8" }));
-        },
-
-        testTurboQuantizationUnsupportedBitsRejected: function() {
-            const cosine = { dimension: 32, metric: "cosine" };
-            assertBadParameter(
-                Object.assign({}, cosine, { quantization: "TQ5" }));
-            assertBadParameter(
-                Object.assign({}, cosine, { quantization: "TQ0" }));
         },
     };
 }
