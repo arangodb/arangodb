@@ -240,8 +240,7 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& systemDatabaseFeature = addFeature<SystemDatabaseFeature>();
   addFeature<EnvironmentFeature>();
   addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
-  auto& flush =
-      addFeature<FlushFeature>(metrics, getOptions<FlushOptionsProvider>());
+  auto& flush = addFeature<FlushFeature>(metrics);
   addFeature<FortuneFeature>(getOptions<fortune::FortuneOptionsProvider>());
 #ifdef USE_V8
   addFeature<FoxxFeature>(getOptions<FoxxOptionsProvider>());
@@ -259,10 +258,10 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   addFeature<LoggerFeature>(true, getOptions<LoggerOptionsProvider>());
   addFeature<MaintenanceFeature>(&clusterFeature,
                                  getOptions<MaintenanceOptionsProvider>());
-  addFeature<MaxMapCountFeature>(getOptions<MaxMapCountOptionsProvider>());
+  addFeature<MaxMapCountFeature>();
   auto& networkFeature =
       addFeature<NetworkFeature>(metrics, getOptions<NetworkOptionsProvider>());
-  addFeature<NonceFeature>(getOptions<NonceOptionsProvider>());
+  addFeature<NonceFeature>();
   addFeature<OptionsCheckFeature>();
   addFeature<PrivilegeFeature>(getOptions<PrivilegeOptionsProvider>());
   addFeature<QueryRegistryFeature>(metrics,
