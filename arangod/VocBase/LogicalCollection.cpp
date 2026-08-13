@@ -169,8 +169,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
                      _properties->constant.keyOptions)),
       _usesRevisionsAsDocumentIds(Helper::getBooleanValue(
           info, StaticStrings::UsesRevisionsAsDocumentIds, false)),
-      _waitForSync(_properties->clusteringMutable.waitForSync),
-      _supportsRBAC(_properties->mutableProps.supportsRBAC),
       _syncByRevision(determineSyncByRevision()),
       _countCache(defaultCountCacheTtl(system())),
       _physical(
@@ -352,7 +350,7 @@ bool LogicalCollection::cacheEnabled() const noexcept {
 }
 
 bool LogicalCollection::supportsRBAC() const noexcept {
-  return _supportsRBAC.load();
+  return properties()->mutableProps.supportsRBAC;
 }
 
 bool LogicalCollection::waitForSync() const noexcept {
@@ -370,7 +368,7 @@ bool LogicalCollection::waitForSync() const noexcept {
     // while we are still in this method. Let's just take the
     // value at creation then.
   }
-  return _waitForSync;
+  return properties()->clusteringMutable.waitForSync;
 }
 
 size_t LogicalCollection::numberOfShards() const noexcept {
@@ -776,8 +774,11 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
   build.add(StaticStrings::Version,
             VPackValue(static_cast<uint32_t>(_version)));
   // Collection Flags
-  build.add(StaticStrings::WaitForSyncString, VPackValue(_waitForSync));
-  build.add(StaticStrings::SupportsRBAC, VPackValue(_supportsRBAC));
+  auto props = properties();
+  build.add(StaticStrings::WaitForSyncString,
+            VPackValue(props->clusteringMutable.waitForSync));
+  build.add(StaticStrings::SupportsRBAC,
+            VPackValue(props->mutableProps.supportsRBAC));
   if (!forPersistence) {
     // with 'forPersistence' added by LogicalDataSource::toVelocyPack
     // FIXME TODO is this needed in !forPersistence???
@@ -1118,15 +1119,14 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
   }
 
   TRI_ASSERT(!isSatellite() || replicationFactor == 0);
-  auto waitForSync = Helper::getBooleanValue(
-      slice, StaticStrings::WaitForSyncString, _waitForSync.load());
-  _waitForSync = waitForSync;
-
+  auto snapshot = properties();
+  auto waitForSync =
+      Helper::getBooleanValue(slice, StaticStrings::WaitForSyncString,
+                              snapshot->clusteringMutable.waitForSync);
   auto supportsRBAC = Helper::getBooleanValue(
-      slice, StaticStrings::SupportsRBAC, _supportsRBAC.load());
-  _supportsRBAC = supportsRBAC;
+      slice, StaticStrings::SupportsRBAC, snapshot->mutableProps.supportsRBAC);
 
-  auto updated = std::make_shared<CollectionDescriptor>(*properties());
+  auto updated = std::make_shared<CollectionDescriptor>(*snapshot);
   updated->clusteringMutable.waitForSync = waitForSync;
   updated->mutableProps.supportsRBAC = supportsRBAC;
   std::atomic_store_explicit(

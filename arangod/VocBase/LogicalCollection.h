@@ -477,10 +477,6 @@ class LogicalCollection : public LogicalDataSource {
 
   bool _usesRevisionsAsDocumentIds;
 
-  // SECTION: Properties
-  std::atomic<bool> _waitForSync;
-  std::atomic<bool> _supportsRBAC;
-
   std::atomic<bool> _syncByRevision;
 
 #ifdef USE_ENTERPRISE
