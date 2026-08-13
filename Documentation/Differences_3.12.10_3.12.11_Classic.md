@@ -19,16 +19,6 @@ This is because the experimental API version is considered to be
 larger than 0 and we are doing this change from API V0 to API V1
 for security reasons.
 
-## Dropping views relaxes permissions
-
-Up to and including 3.12.10, one needed read access to all linked
-collections to drop a view. This lead to internal complexity and
-does not really make sense, since dropping a view does not really
-require access to the collections.
-
-Therefore, from 3.12.11 on, linked collection read access is no longer
-required to drop an ArangoSearch view.
-
 ## Changes to access tokens in read-only mode
 
 The two APIs:

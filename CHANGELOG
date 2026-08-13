@@ -48,8 +48,6 @@
    - `GET /_arango/experimental/_admin/activities` will now return HTTP 404 and
      errorNum 1228 (database not found) rather than HTTP 401 and errorNum 11,
      if the user has no read access to the `_system` database.
-   - Dropping ArangoSearch views no longer needs read access to the linked
-     collections (which was pointless).
    - `POST /_api/token/<username>` and `DELETE /_api/token/<username>/<id>`
      will be rejected in read-only mode with HTTP 403 FORBIDDEN and errorNum
      1004 if the user has admin permissions (RW on the _system
