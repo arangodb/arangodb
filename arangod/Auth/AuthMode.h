@@ -116,6 +116,9 @@ struct AuthMode {
    protected:
     // has _system RW access
     [[nodiscard]] Result isAdmin() const;
+
+    // Recall requested API version:
+    uint32_t _requestedApiVersion;
   };
 
   // Role-based access control, based on an external authorization service.

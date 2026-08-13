@@ -309,7 +309,8 @@ AuthMode::Classic::Classic(auth::UserManager& userManager, std::string username,
                            GeneralRequest& req)
     : _userManager(userManager),
       _username(std::move(username)),
-      _request(req) {}
+      _request(req),
+      _requestedApiVersion(req.requestedApiVersion()) {}
 
 auto AuthMode::Classic::username() const noexcept -> std::string_view {
   return _username;
@@ -385,7 +386,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
 
             if (requestedLevel <= effectiveLevel) {
               return {};
-            } else if (_request.requestedApiVersion() > 0 &&
+            } else if (_requestedApiVersion > 0 &&
                        effectiveLevel == auth::Level::NONE) {
               // User has no access to the database at all: report as not found
               // to avoid revealing its existence.
@@ -449,7 +450,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             if (requestedLevel > effectiveLevel) {
               // If we are using API version > 0, then we return NOT_FOUND to
               // hide the fact that the collection exists:
-              if (_request.requestedApiVersion() > 0) {
+              if (_requestedApiVersion > 0) {
                 if (effectiveLevel == auth::Level::NONE) {
                   // User has no access to this collection: report as not found
                   // to avoid revealing its existence.
@@ -579,7 +580,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
 
             if (requestedLevel <= effectiveLevel) {
               return {};
-            } else if (_request.requestedApiVersion() > 0 &&
+            } else if (_requestedApiVersion > 0 &&
                        effectiveLevel == auth::Level::NONE) {
               return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
             } else {
@@ -650,7 +651,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
               // `TRI_ERROR_ARANGO_READ_ONLY`, but we **must** hand on
               // `TRI_ERROR_FORBIDDEN` here for API compatibility for the
               // API version 0!
-              if (_request.requestedApiVersion() == 0) {
+              if (_requestedApiVersion == 0) {
                 return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
               } else {
                 return r;
@@ -663,7 +664,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
               // `TRI_ERROR_ARANGO_READ_ONLY`, but we **must** hand on
               // `TRI_ERROR_FORBIDDEN` here for API compatibility for
               // the API Version 0!
-              if (_request.requestedApiVersion() == 0) {
+              if (_requestedApiVersion == 0) {
                 return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
               } else {
                 return r;
@@ -814,7 +815,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                 r.ok()) {
               return {};
             }
-            if (_request.requestedApiVersion() > 0) {
+            if (_requestedApiVersion > 0) {
               return {TRI_ERROR_FORBIDDEN,
                       failureMessage(graph, "Cannot write to database.")};
             } else {
