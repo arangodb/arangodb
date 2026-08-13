@@ -1109,7 +1109,10 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
 
   // The physical may first reject illegal properties.
   // After this call it either has thrown or the properties are stored
-  res = getPhysical()->updateProperties(slice);
+  CollectionMutableProperties physicalProps;
+  physicalProps.cacheEnabled = Helper::getBooleanValue(
+      slice, StaticStrings::CacheEnabled, cacheEnabled());
+  res = getPhysical()->updateProperties(physicalProps);
   if (!res.ok()) {
     return res;
   }

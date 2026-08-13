@@ -394,15 +394,12 @@ void RocksDBCollection::freeMemory() noexcept {
   engine.removeCollectionMapping(objectId());
 }
 
-Result RocksDBCollection::updateProperties(velocypack::Slice slice) {
-  bool cacheEnabled = _cacheManager != nullptr &&
-                      !_logicalCollection.system() &&
-                      !_logicalCollection.isAStub() &&
-                      !ServerState::instance()->isCoordinator() &&
-                      basics::VelocyPackHelper::getBooleanValue(
-                          slice, StaticStrings::CacheEnabled,
-                          _cacheEnabled.load(std::memory_order_relaxed));
-  _cacheEnabled.store(cacheEnabled, std::memory_order_relaxed);
+Result RocksDBCollection::updateProperties(
+    CollectionMutableProperties const& props) {
+  bool cacheEnabled =
+      _cacheManager != nullptr && !_logicalCollection.system() &&
+      !_logicalCollection.isAStub() &&
+      !ServerState::instance()->isCoordinator() && props.cacheEnabled;
   primaryIndex()->setCacheEnabled(cacheEnabled);
 
   if (cacheEnabled) {

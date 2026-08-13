@@ -59,7 +59,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   void deferDropCollection(
       std::function<bool(LogicalCollection&)> const& cb) override final;
 
-  Result updateProperties(velocypack::Slice slice) override;
+  Result updateProperties(CollectionMutableProperties const& props) override;
 
   /// @brief export properties
   void getPropertiesVPack(velocypack::Builder&) const override;

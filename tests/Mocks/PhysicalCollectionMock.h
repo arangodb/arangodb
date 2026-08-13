@@ -127,7 +127,8 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
                           arangodb::RevisionId newRevisionId,
                           arangodb::velocypack::Slice newDocument,
                           arangodb::OperationOptions const& options) override;
-  arangodb::Result updateProperties(arangodb::velocypack::Slice slice) override;
+  arangodb::Result updateProperties(
+      arangodb::CollectionMutableProperties const& props) override;
 
   bool cacheEnabled() const noexcept override { return false; }
 

@@ -1468,7 +1468,7 @@ arangodb::Result PhysicalCollectionMock::updateInternal(
 }
 
 arangodb::Result PhysicalCollectionMock::updateProperties(
-    arangodb::velocypack::Slice slice) {
+    arangodb::CollectionMutableProperties const& props) {
   before();
 
   return arangodb::Result(

@@ -90,11 +90,9 @@ void ClusterCollection::flushClusterIndexEstimates() {
   _selectivityEstimates.flush();
 }
 
-Result ClusterCollection::updateProperties(velocypack::Slice slice) {
-  _cacheEnabled.store(basics::VelocyPackHelper::getBooleanValue(
-                          slice, StaticStrings::CacheEnabled,
-                          _cacheEnabled.load(std::memory_order_relaxed)),
-                      std::memory_order_relaxed);
+Result ClusterCollection::updateProperties(
+    CollectionMutableProperties const& props) {
+  _cacheEnabled.store(props.cacheEnabled, std::memory_order_relaxed);
 
   // notify all indexes about the properties change for the collection
   auto indexesSnapshot = getIndexesSnapshot();
