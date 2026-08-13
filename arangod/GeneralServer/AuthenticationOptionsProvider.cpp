@@ -27,6 +27,7 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "absl/strings/str_cat.h"
 
 #include <limits>
 
@@ -264,8 +265,13 @@ void AuthenticationOptionsProvider::validateOptionsImpl(
   }
 
   if (!options.externalRbacService.empty()) {
-    if (!options.externalRbacService.starts_with("http://") &&
-        !options.externalRbacService.starts_with("https://")) {
+    if (options.externalRbacService.starts_with("http://")) {
+      options.externalRbacService =
+          absl::StrCat("tcp://", options.externalRbacService.substr(7));
+    } else if (options.externalRbacService.starts_with("https://")) {
+      options.externalRbacService =
+          absl::StrCat("ssl://", options.externalRbacService.substr(8));
+    } else {
       LOG_TOPIC("1aaaf", FATAL, arangodb::Logger::AUTHENTICATION)
           << "--server.external-rbac-service must start with http:// or "
              "https://";
