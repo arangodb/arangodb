@@ -94,6 +94,13 @@ struct AuthMode {
     [[nodiscard]] auto check(auth::Permission permission) const
         -> Result override;
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+    // Only used in tests.
+    void setRequestedApiVersion(uint32_t apiVersion) {
+      _requestedApiVersion = apiVersion;
+    }
+#endif
+
    protected:
     // has _system RW access
     [[nodiscard]] Result isAdmin() const;

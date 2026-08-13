@@ -146,7 +146,9 @@ struct ClassicAuthModeTest : ::testing::Test {
   // [[nodiscard]].
   Result check(auth::Permission perm) { return classic.check(std::move(perm)); }
 
-  void useApiVersion(uint32_t version) { req.setRequestedApiVersion(version); }
+  void useApiVersion(uint32_t version) {
+    classic.setRequestedApiVersion(version);
+  }
 
   static void expectError(Result const& r, ErrorCode expected) {
     EXPECT_EQ(r.errorNumber(), expected) << r.errorMessage();
