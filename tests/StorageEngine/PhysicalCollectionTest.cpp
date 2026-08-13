@@ -111,7 +111,7 @@ TEST_F(PhysicalCollectionTest, test_new_object_for_insert) {
   auto collection = vocbase.createCollection(json->slice());
 
   auto physical =
-      engine.createPhysicalCollection(*collection, collection->properties());
+      engine.createPhysicalCollection(*collection, *collection->properties());
 
   auto doc = arangodb::velocypack::Parser::fromJson(
       "{ \"doc1\":\"test1\", \"doc100\":\"test2\", \"doc2\":\"test3\", "

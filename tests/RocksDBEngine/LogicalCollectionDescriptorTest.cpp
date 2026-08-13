@@ -69,7 +69,7 @@ TEST_F(StorageEngineDataTest,
   EXPECT_TRUE(collection->waitForSync());
   EXPECT_FALSE(collection->cacheEnabled());
   EXPECT_FALSE(collection->supportsRBAC());
-  EXPECT_TRUE(collection->properties().mutableProps.cacheEnabled);
+  EXPECT_TRUE(collection->properties()->mutableProps.cacheEnabled);
 
   UserInputCollectionProperties props = collection->getCollectionProperties();
   EXPECT_EQ(props.name, "books");
@@ -132,8 +132,8 @@ TEST_F(StorageEngineDataTest, CollectionDescriptor_holdsObjectId) {
   engine().createCollection(*database, *collection);
 
   // createCollectionObjectForStorage merges in an engine-assigned objectId
-  EXPECT_NE(collection->properties().storage.objectId, 0u);
-  EXPECT_EQ(collection->properties().storage.objectId,
+  EXPECT_NE(collection->properties()->storage.objectId, 0u);
+  EXPECT_EQ(collection->properties()->storage.objectId,
             static_cast<RocksDBMetaCollection*>(collection->getPhysical())
                 ->objectId());
 }
