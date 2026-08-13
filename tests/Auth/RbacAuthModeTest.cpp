@@ -25,8 +25,6 @@
 // is mocked: it records every question it is asked and returns a programmed
 // answer, so these tests never talk to a real authorization backend.
 
-#include "ExecContextFactory.h"
-
 #include "gtest/gtest.h"
 
 #include <span>
@@ -38,8 +36,6 @@
 #include "Auth/Rbac/Service.h"
 #include "Basics/overload.h"
 #include "Basics/voc-errors.h"
-#include "Endpoint/ConnectionInfo.h"
-#include "Rest/GeneralRequest.h"
 
 using namespace arangodb;
 namespace p = arangodb::auth::perms;
@@ -109,12 +105,10 @@ struct MockService : rbac::Service {
   }
 };
 
-// Fixture bundling a mock service, a stub request and the Rbac auth mode under
-// test.
+// Fixture bundling a mock service and the Rbac auth mode under test.
 struct RbacAuthModeTest : ::testing::Test {
   MockService svc;
-  tests::mocks::FakeGeneralRequest req;
-  AuthMode::Rbac rbac{svc, "myuser", "mytoken", req};
+  AuthMode::Rbac rbac{svc, "myuser", "mytoken"};
 
   // Discarding wrapper around rbac.check(). IAuth::check is [[nodiscard]], so
   // tests that only inspect the recorded queries would otherwise not compile

@@ -66,10 +66,8 @@ TEST(ExecContextTest, disabled_is_not_superuser_authmode) {
   // In the new API, isSuperuserOrDisabled() is true only for
   // AuthMode::Superuser (or AuthMode::Disabled). The old Type::Internal+RW/RW
   // maps to Superuser here.
-  FakeGeneralRequest fakeRequest;
-  auto ctx = createSharedExecContext(
-      AuthMode{AuthMode::Disabled{"dummy", fakeRequest}}, false,
-      VocbasePtr{nullptr});
+  auto ctx = createSharedExecContext(AuthMode{AuthMode::Disabled{"dummy"}},
+                                     false, VocbasePtr{nullptr});
 
   EXPECT_TRUE(ctx->isSuperuserOrDisabled());
   EXPECT_FALSE(ctx->isSuperuser());
@@ -140,10 +138,8 @@ TEST(ExecContextTest, canUseApiVersion_superuser_grants_every_version) {
 }
 
 TEST(ExecContextTest, canUseApiVersion_unauthenticated_is_denied) {
-  FakeGeneralRequest fakeRequest;
   auto ctx = createSharedExecContext(
-      AuthMode{AuthMode::Unauthenticated{"dummy", fakeRequest}}, false,
-      VocbasePtr{nullptr});
+      AuthMode{AuthMode::Unauthenticated{"dummy"}}, false, VocbasePtr{nullptr});
 
   auto const result = ctx->canUseApiVersion(1);
   EXPECT_EQ(result.errorNumber(), TRI_ERROR_FORBIDDEN);

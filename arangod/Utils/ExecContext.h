@@ -60,7 +60,9 @@ class ExecContext {
 
  public:
   ExecContext(ConstructorToken, AuthMode authMode, bool isRestApiHardened,
-              VocbasePtr vocbase);
+              VocbasePtr vocbase, std::string clientAddress = {},
+              std::string requestUrl = {}, std::string authMethod = "n/a",
+              bool hasRequestInfo = false);
   ExecContext(ExecContext const&) = delete;
   ExecContext(ExecContext&&) = delete;
 
@@ -114,12 +116,6 @@ class ExecContext {
   /// @brief returns the vocbase associated with this context, if any
   [[nodiscard]] std::optional<std::reference_wrapper<Database>> vocbase()
       const noexcept;
-
-  /// @brief returns the request associated with this context, if any
-  [[nodiscard]] std::optional<std::reference_wrapper<GeneralRequest>> request()
-      const noexcept {
-    return _authMode.getIAuth().request();
-  }
 
   /// @brief current user, may be empty for internal users
   [[nodiscard]] std::string_view user() const {
@@ -292,6 +288,15 @@ class ExecContext {
   AuthMode _authMode;
   bool const _isRestApiHardened;
   VocbasePtr _vocbase;
+
+  // Client address, request URL and authentication method of the request
+  // this context was created from, if any (see ExecContext::create()).
+  // Preserved across forceSuperuser()/ExecContextSuperuserScope so that
+  // auditing keeps working after a privilege upgrade.
+  std::string _clientAddress;
+  std::string _requestUrl;
+  std::string _authMethod{"n/a"};
+  bool _hasRequestInfo{false};
 
   // TODO (Tobias) this feels out of place. Look into it.
   /// should be used to indicate a canceled request / thread

@@ -77,8 +77,8 @@ struct FakeGeneralRequest final : GeneralRequest {
 
 /// @brief Bundled ownership for a Classic-auth ExecContext created by the
 /// factory. All three members must outlive any ExecContextScope that uses
-/// execContext, because AuthMode::Classic holds raw references to userManager
-/// and request.
+/// execContext, because AuthMode::Classic holds a raw reference to
+/// userManager.
 struct ClassicExecContext {
   std::shared_ptr<auth::UserManagerTester> userManager;
   std::shared_ptr<FakeGeneralRequest> request;

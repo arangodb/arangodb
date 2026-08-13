@@ -65,10 +65,16 @@ std::shared_ptr<ExecContext const> ExecContext::superuserAsShared() {
 }
 
 ExecContext::ExecContext(ConstructorToken, AuthMode authMode,
-                         bool isRestApiHardened, VocbasePtr vocbase)
+                         bool isRestApiHardened, VocbasePtr vocbase,
+                         std::string clientAddress, std::string requestUrl,
+                         std::string authMethod, bool hasRequestInfo)
     : _authMode(std::move(authMode)),
       _isRestApiHardened(isRestApiHardened),
-      _vocbase(std::move(vocbase)) {}
+      _vocbase(std::move(vocbase)),
+      _clientAddress(std::move(clientAddress)),
+      _requestUrl(std::move(requestUrl)),
+      _authMethod(std::move(authMethod)),
+      _hasRequestInfo(hasRequestInfo) {}
 
 /*static*/ std::shared_ptr<ExecContext> ExecContext::create(
     AuthenticationFeature& authenticationFeature, RbacFeature& rbacFeature,
@@ -85,13 +91,11 @@ ExecContext::ExecContext(ConstructorToken, AuthMode authMode,
         req.authenticated() && req.user().empty() &&
         req.authenticationMethod() == rest::AuthenticationMethod::JWT;
     if (isSuperUser) {
-      // For a superuser JWT request, create a dynamic Superuser context that
-      // preserves the request reference (for auditing etc.).
-      return AuthMode::Superuser(req);
+      return AuthMode::Superuser();
     }
 
     if (!authenticationFeature.isActive()) {
-      return AuthMode::Disabled(req.user(), req);
+      return AuthMode::Disabled(req.user());
     }
 
     auto* userManager = authenticationFeature.userManager();
@@ -99,33 +103,37 @@ ExecContext::ExecContext(ConstructorToken, AuthMode authMode,
     // there is no UserManager, but at least the SuperUser can be
     // authenticated. In that case we treat the request as unauthenticated.
     if (!req.authenticated() || userManager == nullptr) {
-      return AuthMode::Unauthenticated(req.user(), req);
+      return AuthMode::Unauthenticated(req.user());
     }
 
     if (auto* rbacService = rbacFeature.service(); rbacService != nullptr) {
-      return AuthMode::Rbac(*rbacService, req.user(), req.jwtToken(), req);
+      return AuthMode::Rbac(*rbacService, req.user(), req.jwtToken());
     }
 
     ADB_PROD_ASSERT(userManager != nullptr);
     return AuthMode::Classic(*userManager, req.user(), req);
   }()};
 
-  return std::make_shared<ExecContext>(ConstructorToken{}, std::move(authMode),
-                                       securityFeature.isRestApiHardened(),
-                                       std::move(vocbase));
+  std::string authMethod = "n/a";
+  switch (req.authenticationMethod()) {
+    case rest::AuthenticationMethod::BASIC:
+      authMethod = "http basic";
+      break;
+    case rest::AuthenticationMethod::JWT:
+      authMethod = "http jwt";
+      break;
+    case rest::AuthenticationMethod::NONE:
+      break;
+  }
+
+  return std::make_shared<ExecContext>(
+      ConstructorToken{}, std::move(authMode),
+      securityFeature.isRestApiHardened(), std::move(vocbase),
+      req.connectionInfo().fullClient(), req.fullUrl(), std::move(authMethod),
+      /*hasRequestInfo*/ true);
 }
 
-void ExecContext::forceSuperuser() {
-  // Preserve any existing request/vocbase references in the new Superuser
-  // mode so that the destructor can still release the vocbase correctly,
-  // and auditing information remains accessible.
-  auto req = _authMode.getIAuth().request();
-  if (_vocbase && req.has_value()) {
-    _authMode.reset<AuthMode::Superuser>(req->get());
-  } else {
-    _authMode.reset<AuthMode::Superuser>();
-  }
-}
+void ExecContext::forceSuperuser() { _authMode.reset<AuthMode::Superuser>(); }
 
 std::optional<std::reference_wrapper<TRI_vocbase_t>> ExecContext::vocbase()
     const noexcept {
@@ -136,33 +144,11 @@ std::optional<std::reference_wrapper<TRI_vocbase_t>> ExecContext::vocbase()
 }
 
 #ifdef USE_ENTERPRISE
-std::string ExecContext::clientAddress() const {
-  if (auto req = request(); req.has_value()) {
-    return req->get().connectionInfo().fullClient();
-  }
-  return {};
-}
+std::string ExecContext::clientAddress() const { return _clientAddress; }
 
-std::string ExecContext::requestUrl() const {
-  if (auto req = request(); req.has_value()) {
-    return req->get().fullUrl();
-  }
-  return {};
-}
+std::string ExecContext::requestUrl() const { return _requestUrl; }
 
-std::string ExecContext::authMethod() const {
-  if (auto req = request(); req.has_value()) {
-    switch (req->get().authenticationMethod()) {
-      case rest::AuthenticationMethod::BASIC:
-        return "http basic";
-      case rest::AuthenticationMethod::JWT:
-        return "http jwt";
-      case rest::AuthenticationMethod::NONE:
-        break;
-    }
-  }
-  return "n/a";
-}
+std::string ExecContext::authMethod() const { return _authMethod; }
 #endif
 
 Result ExecContext::can(auth::Permission permission) const {
@@ -668,16 +654,14 @@ ExecContextSuperuserScope::ExecContextSuperuserScope(bool cond)
 
 auto ExecContextSuperuserScope::getSuperuserContextFrom(
     ExecContext const* const old) -> std::shared_ptr<ExecContext const> {
-  // save the original request for audit logging, if there is one
-  if (old != nullptr && old->request().has_value()) {
+  // save the original request information for audit logging, if there is any
+  if (old != nullptr && old->_hasRequestInfo) {
     // NOTE we could store the vocbase as well, but I'm unsure if that's
     // helpful
-    //      (note that an exec context contains a request iff it
-    //      contains a vocbase)
     return std::make_shared<ExecContext>(
-        ExecContext::ConstructorToken{},
-        AuthMode{AuthMode::Superuser{*old->request()}}, old->_isRestApiHardened,
-        nullptr);
+        ExecContext::ConstructorToken{}, AuthMode{AuthMode::Superuser{}},
+        old->_isRestApiHardened, nullptr, old->_clientAddress, old->_requestUrl,
+        old->_authMethod, true);
   } else {
     return ExecContext::Superuser;
   }

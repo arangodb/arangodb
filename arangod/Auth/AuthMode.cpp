@@ -297,27 +297,14 @@ auto AuthMode::Superuser::check(auth::Permission permission) const -> Result {
   return {};
 }
 
-auto AuthMode::Superuser::request() const noexcept
-    -> std::optional<std::reference_wrapper<GeneralRequest>> {
-  if (_request != nullptr) {
-    return *_request;
-  }
-  return std::nullopt;
-}
-
 AuthMode::Classic::Classic(auth::UserManager& userManager, std::string username,
                            GeneralRequest& req)
     : _userManager(userManager),
       _username(std::move(username)),
-      _request(req) {}
+      _requestedApiVersion(req.requestedApiVersion()) {}
 
 auto AuthMode::Classic::username() const noexcept -> std::string_view {
   return _username;
-}
-
-auto AuthMode::Classic::request() const noexcept
-    -> std::optional<std::reference_wrapper<GeneralRequest>> {
-  return _request;
 }
 
 auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
@@ -385,7 +372,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
 
             if (requestedLevel <= effectiveLevel) {
               return {};
-            } else if (_request.requestedApiVersion() > 0 &&
+            } else if (_requestedApiVersion > 0 &&
                        effectiveLevel == auth::Level::NONE) {
               // User has no access to the database at all: report as not found
               // to avoid revealing its existence.
@@ -449,7 +436,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             if (requestedLevel > effectiveLevel) {
               // If we are using API version > 0, then we return NOT_FOUND to
               // hide the fact that the collection exists:
-              if (_request.requestedApiVersion() > 0) {
+              if (_requestedApiVersion > 0) {
                 if (effectiveLevel == auth::Level::NONE) {
                   // User has no access to this collection: report as not found
                   // to avoid revealing its existence.
@@ -579,7 +566,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
 
             if (requestedLevel <= effectiveLevel) {
               return {};
-            } else if (_request.requestedApiVersion() > 0 &&
+            } else if (_requestedApiVersion > 0 &&
                        effectiveLevel == auth::Level::NONE) {
               return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
             } else {
@@ -650,7 +637,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
               // `TRI_ERROR_ARANGO_READ_ONLY`, but we **must** hand on
               // `TRI_ERROR_FORBIDDEN` here for API compatibility for the
               // API version 0!
-              if (_request.requestedApiVersion() == 0) {
+              if (_requestedApiVersion == 0) {
                 return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
               } else {
                 return r;
@@ -663,7 +650,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
               // `TRI_ERROR_ARANGO_READ_ONLY`, but we **must** hand on
               // `TRI_ERROR_FORBIDDEN` here for API compatibility for
               // the API Version 0!
-              if (_request.requestedApiVersion() == 0) {
+              if (_requestedApiVersion == 0) {
                 return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
               } else {
                 return r;
@@ -814,7 +801,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                 r.ok()) {
               return {};
             }
-            if (_request.requestedApiVersion() > 0) {
+            if (_requestedApiVersion > 0) {
               return {TRI_ERROR_FORBIDDEN,
                       failureMessage(graph, "Cannot write to database.")};
             } else {
@@ -1306,22 +1293,11 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
       permission);
 }
 
-auto AuthMode::Rbac::request() const noexcept
-    -> std::optional<std::reference_wrapper<GeneralRequest>> {
-  return _request;
-}
-
-AuthMode::Unauthenticated::Unauthenticated(std::string username,
-                                           GeneralRequest& req)
-    : _username(std::move(username)), _request(req) {}
+AuthMode::Unauthenticated::Unauthenticated(std::string username)
+    : _username(std::move(username)) {}
 
 auto AuthMode::Unauthenticated::username() const noexcept -> std::string_view {
   return _username;
-}
-
-auto AuthMode::Unauthenticated::request() const noexcept
-    -> std::optional<std::reference_wrapper<GeneralRequest>> {
-  return _request;
 }
 
 auto AuthMode::Unauthenticated::check(auth::Permission permission) const
@@ -1339,16 +1315,11 @@ auto AuthMode::Unauthenticated::check(auth::Permission permission) const
       permission);
 }
 
-AuthMode::Disabled::Disabled(std::string username, GeneralRequest& req)
-    : _username(std::move(username)), _request(req) {}
+AuthMode::Disabled::Disabled(std::string username)
+    : _username(std::move(username)) {}
 
 auto AuthMode::Disabled::username() const noexcept -> std::string_view {
   return _username;
-}
-
-auto AuthMode::Disabled::request() const noexcept
-    -> std::optional<std::reference_wrapper<GeneralRequest>> {
-  return _request;
 }
 
 auto AuthMode::Disabled::check(auth::Permission permission) const -> Result {
@@ -1364,12 +1335,6 @@ auto AuthMode::Mockable::username() const noexcept -> std::string_view {
 auto AuthMode::Mockable::check(auth::Permission permission) const -> Result {
   ADB_PROD_ASSERT(mock != nullptr);
   return mock->check(permission);
-}
-
-auto AuthMode::Mockable::request() const noexcept
-    -> std::optional<std::reference_wrapper<GeneralRequest>> {
-  ADB_PROD_ASSERT(mock != nullptr);
-  return mock->request();
 }
 #endif
 
