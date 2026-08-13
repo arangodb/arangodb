@@ -29,6 +29,8 @@
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <atomic>
+
 namespace rocksdb {
 class Transaction;
 }
@@ -157,7 +159,7 @@ class ClusterCollection final : public PhysicalCollection {
   // keep locks just to adhere to behavior in other collections
   mutable basics::ReadWriteLock _exclusiveLock;
   ClusterEngineType _engineType;
-  velocypack::Builder _info;
+  std::atomic<bool> _cacheEnabled;
   ClusterSelectivityEstimates _selectivityEstimates;
 };
 

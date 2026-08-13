@@ -25,9 +25,7 @@
 #include "Basics/StaticStrings.h"
 #include "Inspection/Access.h"
 #include "Inspection/Status.h"
-#include "VocBase/Properties/InspectContexts.h"
 
-#include <functional>
 #include <cstdint>
 #include <string>
 
@@ -56,20 +54,11 @@ struct CollectionStorageProperties {
 
 template<class Inspector>
 auto inspect(Inspector& f, CollectionStorageProperties& props) {
-  auto objectIdField = std::invoke([&]() {
-    if constexpr (isInternalContext<Inspector>) {
-      // Markers store objectId as a number in some paths, and
-      // RocksDBMetaCollection owns it anyway.
-      return f.ignoreField(StaticStrings::ObjectId);
-    } else {
-      return f.field(StaticStrings::ObjectId, props.objectId)
+  return f.object(props).fields(
+      f.field(StaticStrings::ObjectId, props.objectId)
           .transformWith(
               CollectionStorageProperties::Transformers::ObjectIdAsString{})
-          .fallback(f.keep());
-    }
-  });
-
-  return f.object(props).fields(std::move(objectIdField));
+          .fallback(f.keep()));
 }
 
 }  // namespace arangodb

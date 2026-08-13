@@ -23,7 +23,7 @@
 #include <gtest/gtest.h>
 
 #include "RocksDBEngine/StorageEngineDataTest.h"
-
+#include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "Basics/StaticStrings.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Properties/UserInputCollectionProperties.h"
@@ -123,4 +123,17 @@ TEST_F(StorageEngineDataTest, CollectionDescriptor_roundTripIsStable) {
   ASSERT_TRUE(status.ok()) << status.error();
 
   EXPECT_EQ(first, second) << out.slice().toJson();
+}
+
+TEST_F(StorageEngineDataTest, CollectionDescriptor_holdsObjectId) {
+  auto database = makeDatabase("testDatabase", 42);
+  auto sliceBuilder = representativeCreateSlice();
+  auto collection = database->createCollection(sliceBuilder.slice());
+  engine().createCollection(*database, *collection);
+
+  // createCollectionObjectForStorage merges in an engine-assigned objectId
+  EXPECT_NE(collection->properties().storage.objectId, 0u);
+  EXPECT_EQ(collection->properties().storage.objectId,
+            static_cast<RocksDBMetaCollection*>(collection->getPhysical())
+                ->objectId());
 }
