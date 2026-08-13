@@ -59,9 +59,6 @@ void VectorIndexFeature::collectOptions(
 }
 
 bool VectorIndexFeature::shouldRunBuildManager() const {
-  if (!isVectorIndexEnabled()) {
-    return false;
-  }
   if (!ServerState::instance()->isDBServer() &&
       !ServerState::instance()->isSingleServer()) {
     return false;
@@ -100,8 +97,6 @@ void VectorIndexFeature::stop() {
   }
   _buildManager->stop();
 }
-
-bool VectorIndexFeature::isVectorIndexEnabled() const noexcept { return true; }
 
 futures::Future<Result> VectorIndexFeature::waitForIndexReady(IndexId indexId) {
   if (!_buildManager.has_value()) {
