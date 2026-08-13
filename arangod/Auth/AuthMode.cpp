@@ -297,28 +297,14 @@ auto AuthMode::Superuser::check(auth::Permission permission) const -> Result {
   return {};
 }
 
-auto AuthMode::Superuser::request() const noexcept
-    -> std::optional<std::reference_wrapper<GeneralRequest>> {
-  if (_request != nullptr) {
-    return *_request;
-  }
-  return std::nullopt;
-}
-
 AuthMode::Classic::Classic(auth::UserManager& userManager, std::string username,
                            GeneralRequest& req)
     : _userManager(userManager),
       _username(std::move(username)),
-      _request(req),
       _requestedApiVersion(req.requestedApiVersion()) {}
 
 auto AuthMode::Classic::username() const noexcept -> std::string_view {
   return _username;
-}
-
-auto AuthMode::Classic::request() const noexcept
-    -> std::optional<std::reference_wrapper<GeneralRequest>> {
-  return _request;
 }
 
 auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
@@ -1307,22 +1293,11 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
       permission);
 }
 
-auto AuthMode::Rbac::request() const noexcept
-    -> std::optional<std::reference_wrapper<GeneralRequest>> {
-  return _request;
-}
-
-AuthMode::Unauthenticated::Unauthenticated(std::string username,
-                                           GeneralRequest& req)
-    : _username(std::move(username)), _request(req) {}
+AuthMode::Unauthenticated::Unauthenticated(std::string username)
+    : _username(std::move(username)) {}
 
 auto AuthMode::Unauthenticated::username() const noexcept -> std::string_view {
   return _username;
-}
-
-auto AuthMode::Unauthenticated::request() const noexcept
-    -> std::optional<std::reference_wrapper<GeneralRequest>> {
-  return _request;
 }
 
 auto AuthMode::Unauthenticated::check(auth::Permission permission) const
@@ -1340,16 +1315,11 @@ auto AuthMode::Unauthenticated::check(auth::Permission permission) const
       permission);
 }
 
-AuthMode::Disabled::Disabled(std::string username, GeneralRequest& req)
-    : _username(std::move(username)), _request(req) {}
+AuthMode::Disabled::Disabled(std::string username)
+    : _username(std::move(username)) {}
 
 auto AuthMode::Disabled::username() const noexcept -> std::string_view {
   return _username;
-}
-
-auto AuthMode::Disabled::request() const noexcept
-    -> std::optional<std::reference_wrapper<GeneralRequest>> {
-  return _request;
 }
 
 auto AuthMode::Disabled::check(auth::Permission permission) const -> Result {
@@ -1365,12 +1335,6 @@ auto AuthMode::Mockable::username() const noexcept -> std::string_view {
 auto AuthMode::Mockable::check(auth::Permission permission) const -> Result {
   ADB_PROD_ASSERT(mock != nullptr);
   return mock->check(permission);
-}
-
-auto AuthMode::Mockable::request() const noexcept
-    -> std::optional<std::reference_wrapper<GeneralRequest>> {
-  ADB_PROD_ASSERT(mock != nullptr);
-  return mock->request();
 }
 #endif
 

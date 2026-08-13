@@ -157,11 +157,8 @@ struct ClassicAuthModeTest : ::testing::Test {
 // Accessors
 // ---------------------------------------------------------------------------
 
-TEST_F(ClassicAuthModeTest, UsernameAndRequestAreExposed) {
+TEST_F(ClassicAuthModeTest, UsernameIsExposed) {
   EXPECT_EQ(classic.username(), kUser);
-  auto r = classic.request();
-  ASSERT_TRUE(r.has_value());
-  EXPECT_EQ(&r->get(), &req);
 }
 
 // ---------------------------------------------------------------------------
