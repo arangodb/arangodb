@@ -117,6 +117,7 @@ struct AuthMode {
     // has _system RW access
     [[nodiscard]] Result isAdmin() const;
 
+   private:
     // Recall requested API version:
     uint32_t _requestedApiVersion;
   };
