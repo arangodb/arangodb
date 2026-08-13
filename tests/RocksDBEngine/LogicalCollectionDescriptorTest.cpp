@@ -69,10 +69,62 @@ TEST_F(StorageEngineDataTest,
   EXPECT_TRUE(collection->waitForSync());
   EXPECT_FALSE(collection->cacheEnabled());
   EXPECT_FALSE(collection->supportsRBAC());
+  EXPECT_TRUE(collection->properties().mutableProps.cacheEnabled);
 
   UserInputCollectionProperties props = collection->getCollectionProperties();
   EXPECT_EQ(props.name, "books");
   EXPECT_TRUE(props.waitForSync);
   EXPECT_FALSE(props.cacheEnabled);
   EXPECT_FALSE(props.supportsRBAC);
+}
+
+TEST_F(StorageEngineDataTest, LogicalCollection_acceptsInternalOnlyValues) {
+  auto database = makeDatabase("testDatabase", 42);
+
+  // A SmartGraph edge collection in a cluster is stored with
+  // numberOfShards: 0. The create API rejects that value, so the invariant
+  // must not run when loading a marker or a plan entry.
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder obj(&builder);
+    builder.add(StaticStrings::DataSourceName, VPackValue("edges"));
+    builder.add(StaticStrings::DataSourceType,
+                VPackValue(static_cast<int>(TRI_COL_TYPE_EDGE)));
+    builder.add(StaticStrings::NumberOfShards, VPackValue(0));
+    // markers store the id as a number, not a string
+    builder.add(StaticStrings::Id, VPackValue(9988488));
+  }
+
+  std::shared_ptr<LogicalCollection> collection;
+  ASSERT_NO_THROW(collection = database->createCollection(builder.slice()));
+  ASSERT_NE(collection, nullptr);
+  EXPECT_EQ(collection->name(), "edges");
+  EXPECT_EQ(collection->type(), TRI_COL_TYPE_EDGE);
+}
+
+TEST_F(StorageEngineDataTest,
+       LogicalCollection_serializationRoundTripIsStable) {
+  auto database = makeDatabase("testDatabase", 42);
+  auto sliceBuilder = representativeCreateSlice();
+  auto collection = database->createCollection(sliceBuilder.slice());
+  engine().createCollection(*database, *collection);
+
+  std::unordered_set<std::string> const ignore{
+      StaticStrings::ObjectId, StaticStrings::DataSourceGuid,
+      StaticStrings::DataSourceId, StaticStrings::DataSourceCid,
+      StaticStrings::Indexes};
+
+  auto first = collection->toVelocyPackIgnore(
+      ignore, LogicalDataSource::Serialization::Persistence);
+
+  auto other = makeDatabase("otherDatabase", 43);
+  auto reloaded = other->createCollection(first.slice());
+
+  auto second = reloaded->toVelocyPackIgnore(
+      ignore, LogicalDataSource::Serialization::Persistence);
+
+  EXPECT_TRUE(basics::VelocyPackHelper::equal(first.slice(), second.slice(),
+                                              /*useUTF8*/ true))
+      << "first:  " << first.slice().toJson()
+      << "\nsecond: " << second.slice().toJson();
 }

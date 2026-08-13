@@ -22,12 +22,14 @@
 
 #pragma once
 
-#include <cstdint>
-#include <optional>
-
 #include "Basics/StaticStrings.h"
 #include "Inspection/Access.h"
 #include "VocBase/Properties/UtilityInvariants.h"
+#include "VocBase/Properties/InspectContexts.h"
+
+#include <cstdint>
+#include <optional>
+#include <functional>
 
 namespace arangodb {
 
@@ -74,6 +76,19 @@ struct ClusteringMutableProperties {
 
 template<class Inspector>
 auto inspect(Inspector& f, ClusteringMutableProperties& props) {
+  auto replicationFactorField = std::invoke([&]() {
+    if constexpr (isInternalContext<Inspector>) {
+      // The plan stores a numeric 0 for smart edge collections, which the
+      // transformer rejects because user input has to say "satellite".
+      // ShardingInfo owns this value on the internal path.
+      return f.ignoreField(StaticStrings::ReplicationFactor);
+    } else {
+      return f.field(StaticStrings::ReplicationFactor, props.replicationFactor)
+          .transformWith(ClusteringMutableProperties::Transformers::
+                             ReplicationSatellite{});
+    }
+  });
+
   return f.object(props)
       .fields(
           f.field(StaticStrings::WaitForSyncString, props.waitForSync)
@@ -89,10 +104,9 @@ auto inspect(Inspector& f, ClusteringMutableProperties& props) {
           // is set already.
           f.field(StaticStrings::WriteConcern, props.writeConcern)
               .fallback(f.keep()),
-          f.field(StaticStrings::ReplicationFactor, props.replicationFactor)
-              .transformWith(ClusteringMutableProperties::Transformers::
-                                 ReplicationSatellite{}))
+          std::move(replicationFactorField))
       .invariant(ClusteringMutableProperties::Invariants::
                      writeConcernAllowedToBeZeroForSatellite);
 }
+
 }  // namespace arangodb
