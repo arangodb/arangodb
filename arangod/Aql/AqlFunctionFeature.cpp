@@ -573,24 +573,23 @@ void AqlFunctionFeature::addMiscFunctions() {
                            FF::CanRunOnDBServerOneShard),
        &functions::MakeDistributeGraphInput});
 
-  if (server().getFeature<VectorIndexFeature>().isVectorIndexEnabled()) {
-    add({"APPROX_NEAR_COSINE", ".,.|.",
-         Function::makeFlags(FF::Deterministic, FF::Cacheable,
-                             FF::CanRunOnDBServerCluster,
-                             FF::CanRunOnDBServerOneShard),
-         &functions::ApproxNearCosine});
-    add({"APPROX_NEAR_L2", ".,.|.",
-         Function::makeFlags(FF::Deterministic, FF::Cacheable,
-                             FF::CanRunOnDBServerCluster,
-                             FF::CanRunOnDBServerOneShard),
-         &functions::ApproxNearL2});
+  add({"APPROX_NEAR_COSINE", ".,.|.",
+       Function::makeFlags(FF::Deterministic, FF::Cacheable,
+                           FF::CanRunOnDBServerCluster,
+                           FF::CanRunOnDBServerOneShard),
+       &functions::ApproxNearCosine});
+  add({"APPROX_NEAR_L2", ".,.|.",
+       Function::makeFlags(FF::Deterministic, FF::Cacheable,
+                           FF::CanRunOnDBServerCluster,
+                           FF::CanRunOnDBServerOneShard),
+       &functions::ApproxNearL2});
 
-    add({"APPROX_NEAR_INNER_PRODUCT", ".,.|.",
-         Function::makeFlags(FF::Deterministic, FF::Cacheable,
-                             FF::CanRunOnDBServerCluster,
-                             FF::CanRunOnDBServerOneShard),
-         &functions::ApproxNearL2});
-  }
+  add({"APPROX_NEAR_INNER_PRODUCT", ".,.|.",
+       Function::makeFlags(FF::Deterministic, FF::Cacheable,
+                           FF::CanRunOnDBServerCluster,
+                           FF::CanRunOnDBServerOneShard),
+       &functions::ApproxNearL2});
+
 #ifdef USE_ENTERPRISE
   add({"SELECT_SMART_DISTRIBUTE_GRAPH_INPUT", ".,.",
        Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::Internal,
