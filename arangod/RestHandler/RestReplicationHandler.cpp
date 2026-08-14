@@ -54,7 +54,7 @@
 #include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "VectorIndex/VectorIndexFeature.h"
+#include "VectorIndex/Feature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "Sharding/ShardingInfo.h"
 #include "StorageEngine/PhysicalCollection.h"

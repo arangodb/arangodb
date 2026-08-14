@@ -20,7 +20,7 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "VectorIndex/VectorIndexTrainingSampler.h"
+#include "VectorIndex/TrainingSampler.h"
 
 #include "Assertions/Assert.h"
 
@@ -30,9 +30,8 @@
 
 namespace arangodb::vector {
 
-VectorIndexTrainingSampler::VectorIndexTrainingSampler(std::size_t dimension,
-                                                       std::size_t capacity,
-                                                       std::uint64_t seed)
+TrainingSampler::TrainingSampler(std::size_t dimension, std::size_t capacity,
+                                 std::uint64_t seed)
     : _dimension{dimension},
       _capacity{capacity},
       _rng{seed},
@@ -42,11 +41,11 @@ VectorIndexTrainingSampler::VectorIndexTrainingSampler(std::size_t dimension,
   _data.reserve(_capacity * _dimension);
 }
 
-bool VectorIndexTrainingSampler::wantsItem() const noexcept {
+bool TrainingSampler::wantsItem() const noexcept {
   return _itemsSeen < _capacity || _itemsSeen == _nextReplacement;
 }
 
-void VectorIndexTrainingSampler::consume(std::span<float const> vector) {
+void TrainingSampler::consume(std::span<float const> vector) {
   TRI_ASSERT(wantsItem());
   TRI_ASSERT(vector.size() == _dimension);
   if (_itemsSeen < _capacity) {
@@ -65,12 +64,12 @@ void VectorIndexTrainingSampler::consume(std::span<float const> vector) {
   ++_itemsSeen;
 }
 
-void VectorIndexTrainingSampler::skip() noexcept {
+void TrainingSampler::skip() noexcept {
   TRI_ASSERT(!wantsItem());
   ++_itemsSeen;
 }
 
-void VectorIndexTrainingSampler::resize(std::size_t newCapacity) {
+void TrainingSampler::resize(std::size_t newCapacity) {
   std::size_t const current = _data.size() / _dimension;
   if (newCapacity >= current) {
     return;
@@ -87,16 +86,12 @@ void VectorIndexTrainingSampler::resize(std::size_t newCapacity) {
   _data.resize(newCapacity * _dimension);
 }
 
-std::vector<float> VectorIndexTrainingSampler::release() && {
-  return std::move(_data);
-}
+std::vector<float> TrainingSampler::release() && { return std::move(_data); }
 
-std::size_t VectorIndexTrainingSampler::itemsSeen() const noexcept {
-  return _itemsSeen;
-}
+std::size_t TrainingSampler::itemsSeen() const noexcept { return _itemsSeen; }
 
 // Draws u ∈ (0, 1); rejects 0 so std::log(u) stays finite.
-double VectorIndexTrainingSampler::sampleOpenUnit() {
+double TrainingSampler::sampleOpenUnit() {
   double u;
   do {
     u = _unitDist(_rng);
@@ -106,12 +101,12 @@ double VectorIndexTrainingSampler::sampleOpenUnit() {
 
 // Geometric skip count: floor(log(U) / log(1 - w)). Uses log1p for
 // numerical stability when w is close to 0.
-std::size_t VectorIndexTrainingSampler::skipCount(double w) {
+std::size_t TrainingSampler::skipCount(double w) {
   return static_cast<std::size_t>(
       std::floor(std::log(sampleOpenUnit()) / std::log1p(-w)));
 }
 
-void VectorIndexTrainingSampler::primeSampler() {
+void TrainingSampler::primeSampler() {
   _w = std::exp(std::log(sampleOpenUnit()) / static_cast<double>(_capacity));
   TRI_ASSERT(_w > 0.0 && _w < 1.0);
   _nextReplacement = _capacity + skipCount(_w);

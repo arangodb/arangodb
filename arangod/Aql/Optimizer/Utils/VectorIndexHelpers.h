@@ -24,7 +24,7 @@
 
 #include "Assertions/Assert.h"
 #include "Indexes/Index.h"
-#include "VectorIndex/VectorIndexDefinition.h"
+#include "VectorIndex/Definition.h"
 
 #include <memory>
 #include <string_view>
@@ -33,8 +33,7 @@
 namespace arangodb::aql {
 
 inline bool checkFunctionNameMatchesIndexMetric(
-    std::string_view functionName,
-    vector::UserVectorIndexDefinition const& definition) {
+    std::string_view functionName, vector::UserDefinition const& definition) {
   switch (definition.metric) {
     case vector::SimilarityMetric::kL2:
       return functionName == "APPROX_NEAR_L2";

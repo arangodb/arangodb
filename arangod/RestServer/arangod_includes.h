@@ -152,7 +152,7 @@
 #include "Statistics/StatisticsFeature.h"
 #include "Statistics/StatisticsWorker.h"
 #include "Transaction/ManagerFeature.h"
-#include "VectorIndex/VectorIndexFeature.h"
+#include "VectorIndex/Feature.h"
 #ifdef USE_V8
 #include "V8Server/FoxxFeature.h"
 #include "V8Server/V8DealerFeature.h"
