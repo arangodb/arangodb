@@ -100,24 +100,31 @@ auto inspect(Inspector& f, ClusteringMutableProperties& props) {
     }
   });
 
-  return f.object(props)
-      .fields(
-          f.field(StaticStrings::WaitForSyncString, props.waitForSync)
-              .fallback(f.keep()),
-          // minReplicationFactor is deprecated, and not documented anymore
-          // The ordering is important here, minReplicationFactor
-          // has to be before writeConcern, this way we ensure that writeConcern
-          // will overwrite the minReplicationFactor value if present
-          f.field(StaticStrings::MinReplicationFactor, props.writeConcern)
-              .fallback(f.keep()),
-          // Now check the new attribute, if it is not there,
-          // fallback to minReplicationFactor / default, whatever
-          // is set already.
-          f.field(StaticStrings::WriteConcern, props.writeConcern)
-              .fallback(f.keep()),
-          std::move(replicationFactorField))
-      .invariant(ClusteringMutableProperties::Invariants::
-                     writeConcernAllowedToBeZeroForSatellite);
+  auto result = f.object(props).fields(
+      f.field(StaticStrings::WaitForSyncString, props.waitForSync)
+          .fallback(f.keep()),
+      // minReplicationFactor is deprecated, and not documented anymore
+      // The ordering is important here, minReplicationFactor
+      // has to be before writeConcern, this way we ensure that writeConcern
+      // will overwrite the minReplicationFactor value if present
+      f.field(StaticStrings::MinReplicationFactor, props.writeConcern)
+          .fallback(f.keep()),
+      // Now check the new attribute, if it is not there,
+      // fallback to minReplicationFactor / default, whatever
+      // is set already.
+      f.field(StaticStrings::WriteConcern, props.writeConcern)
+          .fallback(f.keep()),
+      std::move(replicationFactorField));
+
+  if constexpr (isInternalContext<Inspector>) {
+    // Not an invariant of the type: EE SmartGraph edge collections are
+    // persisted with writeConcern == 0 and a non-satellite replicationFactor.
+    // The rule only constrains what a user may ask for.
+    return inspection::Status{std::move(result)};
+  } else {
+    return result.invariant(ClusteringMutableProperties::Invariants::
+                                writeConcernAllowedToBeZeroForSatellite);
+  }
 }
 
 }  // namespace arangodb

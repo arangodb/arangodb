@@ -111,8 +111,7 @@ TEST_F(StorageEngineDataTest, CollectionDescriptor_roundTripIsStable) {
   CollectionDescriptor first;
   auto status = velocypack::deserializeWithStatus(
       sliceBuilder.slice(), first,
-      {.ignoreUnknownFields = true, .ignoreInvariants = true},
-      InspectInternalContext{});
+      {.ignoreUnknownFields = true}, InspectInternalContext{});
   ASSERT_TRUE(status.ok()) << status.error();
 
   VPackBuilder out;
@@ -121,8 +120,7 @@ TEST_F(StorageEngineDataTest, CollectionDescriptor_roundTripIsStable) {
   CollectionDescriptor second;
   status = velocypack::deserializeWithStatus(
       out.slice(), second,
-      {.ignoreUnknownFields = true, .ignoreInvariants = true},
-      InspectInternalContext{});
+      {.ignoreUnknownFields = true}, InspectInternalContext{});
   ASSERT_TRUE(status.ok()) << status.error();
 
   EXPECT_EQ(first, second) << out.slice().toJson();

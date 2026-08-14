@@ -37,8 +37,7 @@ CollectionDescriptor CollectionDescriptor::fromVelocyPack(velocypack::Slice info
   props.clusteringMutable.replicationFactor = 1;
   props.clusteringMutable.writeConcern = 1;
   auto status = velocypack::deserializeWithStatus(
-      info, props, {.ignoreUnknownFields = true, .ignoreInvariants = true},
-      InspectInternalContext{});
+      info, props, {.ignoreUnknownFields = true}, InspectInternalContext{});
   if (!status.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
