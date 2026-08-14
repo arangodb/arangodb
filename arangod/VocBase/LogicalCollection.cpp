@@ -798,7 +798,10 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
       "numberOfShards", "shardKeys", "replicationFactor", "writeConcern",
       "minReplicationFactor", "distributeShardsLike", "shardingStrategy",
       // the physical collection owns the effective cacheEnabled
-      "objectId", "cacheEnabled"};
+      "objectId", "cacheEnabled",
+      // includeVelocyPackEnterprise() writes this only for smart vertex
+      // collections, a condition the descriptor does not know about
+      "smartGraphAttribute"};
 
   for (auto it : VPackObjectIterator(tmp.slice())) {
     auto key = it.key.stringView();

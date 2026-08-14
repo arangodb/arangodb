@@ -175,7 +175,7 @@ class LogicalCollection : public LogicalDataSource {
     return !_smartJoinAttribute.empty();
   }
   bool hasSmartGraphAttribute() const noexcept {
-    return !_smartGraphAttribute.empty();
+    return properties()->internal.smartGraphAttribute.has_value();
   }
 
   bool isLocalSmartEdgeCollection() const noexcept;
@@ -493,10 +493,7 @@ class LogicalCollection : public LogicalDataSource {
   std::atomic<bool> _syncByRevision;
 
 #ifdef USE_ENTERPRISE
-  mutable std::mutex
-      _smartGraphAttributeLock;  // lock protecting the smartGraphAttribute
-  std::string _smartGraphAttribute;
-
+  // the smartGraphAttribute lives in `_properties`, which is copy-on-write
   std::string _smartJoinAttribute;
 #endif
 

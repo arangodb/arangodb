@@ -51,7 +51,6 @@ struct CollectionConstantProperties {
   bool isSmart = false;
   bool isDisjoint = false;
 
-  inspection::NonNullOptional<std::string> smartGraphAttribute = std::nullopt;
   inspection::NonNullOptional<std::vector<DataSourceId>> shadowCollections =
       std::nullopt;
 
@@ -81,9 +80,6 @@ auto inspect(Inspector& f, CollectionConstantProperties& props) {
           .fallback(f.keep()),
       f.field(StaticStrings::IsSmart, props.isSmart).fallback(f.keep()),
       f.field(StaticStrings::IsDisjoint, props.isDisjoint).fallback(f.keep()),
-      f.field(StaticStrings::GraphSmartGraphAttribute,
-              props.smartGraphAttribute)
-          .invariant(UtilityInvariants::isNonEmptyIfPresent),
       f.field(StaticStrings::SmartJoinAttribute, props.smartJoinAttribute)
           .invariant(UtilityInvariants::isNonEmptyIfPresent),
       f.field(StaticStrings::DataSourceType, props.type)

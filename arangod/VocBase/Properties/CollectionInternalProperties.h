@@ -23,9 +23,11 @@
 #pragma once
 
 #include "Basics/StaticStrings.h"
+#include "Inspection/Access.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/Properties/InspectContexts.h"
+#include "VocBase/Properties/UtilityInvariants.h"
 
 #include <functional>
 #include <string>
@@ -58,6 +60,11 @@ struct CollectionInternalProperties {
   bool usesRevisionsAsDocumentIds = true;
   bool isSmartChild = false;
   uint64_t internalValidatorType = 0;
+
+  // The user supplies this when creating a SmartGraph, but the DBServer
+  // maintenance task also fills it in during an upgrade, so it changes at
+  // runtime and cannot live with the immutable properties.
+  inspection::NonNullOptional<std::string> smartGraphAttribute = std::nullopt;
 
   [[nodiscard]] arangodb::Result applyDefaultsAndValidateDatabaseConfiguration(
       DatabaseConfiguration const& config);
@@ -92,6 +99,9 @@ auto inspect(Inspector& f, CollectionInternalProperties& props) {
       f.field(StaticStrings::InternalValidatorTypes,
               props.internalValidatorType)
           .fallback(f.keep()),
+      f.field(StaticStrings::GraphSmartGraphAttribute,
+              props.smartGraphAttribute)
+          .invariant(UtilityInvariants::isNonEmptyIfPresent),
       /* Backwards compatibility, field is documented but does not have an
        * effect
        */
