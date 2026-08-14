@@ -346,9 +346,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   void addV8Functions() override;
 #endif
 
-  /// @brief Add engine-specific REST handlers
-  void addRestHandlers(rest::RestHandlerFactory& handlerFactory) override;
-
   void addParametersForNewCollection(velocypack::Builder& builder,
                                      velocypack::Slice info) override;
 

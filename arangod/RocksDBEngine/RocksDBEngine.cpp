@@ -96,7 +96,6 @@
 #include "RocksDBEngine/RocksDBOptionFeature.h"
 #include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
-#include "RocksDBEngine/RocksDBRestHandlers.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBTypes.h"
@@ -1878,11 +1877,6 @@ void RocksDBEngine::addV8Functions() {
   RocksDBV8Functions::registerResources(*this);
 }
 #endif
-
-/// @brief Add engine-specific REST handlers
-void RocksDBEngine::addRestHandlers(rest::RestHandlerFactory& handlerFactory) {
-  RocksDBRestHandlers::registerResources(&handlerFactory, *this);
-}
 
 void RocksDBEngine::addCollectionMapping(uint64_t objectId, TRI_voc_tick_t did,
                                          DataSourceId cid) {

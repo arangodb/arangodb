@@ -131,8 +131,6 @@ class StorageEngineMock : private StorageEngineMockBase,
   arangodb::HealthData healthCheck() override;
   void addOptimizerRules(
       arangodb::aql::OptimizerRulesFeature& feature) override;
-  void addRestHandlers(
-      arangodb::rest::RestHandlerFactory& handlerFactory) override;
 #ifdef USE_V8
   void addV8Functions() override;
 #endif

@@ -330,9 +330,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void addV8Functions();
 #endif
 
-  /// @brief Add engine-specific REST handlers
-  virtual void addRestHandlers(rest::RestHandlerFactory& handlerFactory);
-
   // replication
   virtual void cleanupReplicationContexts() = 0;
 

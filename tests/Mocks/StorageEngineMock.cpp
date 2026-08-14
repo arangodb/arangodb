@@ -230,11 +230,6 @@ void StorageEngineMock::addOptimizerRules(
   // NOOP
 }
 
-void StorageEngineMock::addRestHandlers(
-    arangodb::rest::RestHandlerFactory& handlerFactory) {
-  TRI_ASSERT(false);
-}
-
 #ifdef USE_V8
 void StorageEngineMock::addV8Functions() { TRI_ASSERT(false); }
 #endif
