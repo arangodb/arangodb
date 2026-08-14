@@ -50,7 +50,6 @@
 #include "RestServer/IDumpLimitsProvider.h"
 #include "RestServer/IFlushControl.h"
 #include "RocksDBEngine/IIndexCacheRefill.h"
-#include "VectorIndex/IVectorIndexProvider.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/Identifiers/DataSourceId.h"
@@ -177,7 +176,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
                 RocksDBOptionsProvider& optionsProvider,
                 metrics::IRegistry& metrics,
                 IDatabasePathProvider const& databasePathProvider,
-                IVectorIndexProvider const& vectorIndexProvider,
                 IFlushControl& flushControl,
                 IDumpLimitsProvider const& dumpLimitsProvider,
                 replication2::IReplicatedLogProvider* replicatedLogProvider,
@@ -192,7 +190,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
                 RocksDBOptionsProvider& optionsProvider,
                 metrics::IRegistry& metrics,
                 IDatabasePathProvider const& databasePathProvider,
-                IVectorIndexProvider const& vectorIndexProvider,
                 IFlushControl& flushControl,
                 IDumpLimitsProvider const& dumpLimitsProvider,
                 replication2::IReplicatedLogProvider* replicatedLogProvider,
@@ -581,7 +578,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   [[noreturn]] void verifySstFiles(rocksdb::Options const& options) const;
 
-  [[nodiscard]] bool isVectorIndexEnabled() const;
+  [[nodiscard]] bool isTimeTravelEnabled() const;
 
 #ifdef USE_ENTERPRISE
   void prepareEnterprise();
@@ -622,7 +619,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
  private:
   IDatabasePathProvider const& _databasePathProvider;
-  IVectorIndexProvider const& _vectorIndexProvider;
   IFlushControl& _flushControl;
   IDumpLimitsProvider const& _dumpLimitsProvider;
   replication2::IReplicatedLogProvider* _replicatedLogProvider;

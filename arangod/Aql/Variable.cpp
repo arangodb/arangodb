@@ -167,6 +167,21 @@ void Variable::setConstantValue(AqlValue value) {
   }
 }
 
+AqlValue Variable::extractOwnedConstantValue() {
+  TRI_ASSERT(!_constantValue.isNone());
+  if (auto const usage = _constantValue.memoryUsage(); usage > 0) {
+    _resourceMonitor.decreaseMemoryUsage(usage);
+  }
+  AqlValue result = std::move(_constantValue);
+  _constantValue.erase();
+  return result;
+}
+
+void Variable::setConstantBlockReference(velocypack::Slice slice) {
+  TRI_ASSERT(!slice.isNone());
+  _constantValue = AqlValue(AqlValueHintSliceNoCopy{slice});
+}
+
 std::string_view Variable::bindParameterName() const noexcept {
   TRI_ASSERT(type() == Type::BindParameter);
   return _bindParameterName;

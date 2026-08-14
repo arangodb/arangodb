@@ -35,9 +35,6 @@ class CircleCIGenerator(OutputGenerator):
     # YAML definitions or need runtime-dependent adjustments.
     # ========================================================================
 
-    # Job-specific bucket overrides
-    BUCKET_OVERRIDES: Dict[str, int] = {}
-
     # Job-specific size overrides (applied conditionally)
     # shell_client_aql: Nightly single-server runs need more memory due to
     # extended test coverage and data volume
@@ -591,9 +588,6 @@ class CircleCIGenerator(OutputGenerator):
 
         if job.options.buckets == "auto" and len(filtered_suites) != len(job.suites):
             bucket_count = len(filtered_suites)
-
-        if job.name in self.BUCKET_OVERRIDES:
-            bucket_count = self.BUCKET_OVERRIDES[job.name]
 
         if bucket_count and bucket_count != 1:
             job_dict["buckets"] = bucket_count

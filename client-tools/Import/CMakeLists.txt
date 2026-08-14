@@ -14,6 +14,7 @@ add_executable(${BIN_ARANGOIMPORT}
   ${ProductVersionFiles_arangoimport}
   ArangoImportServer.cpp
   ImportFeature.cpp
+  ImportFeatureOptions.cpp
   ImportOptionsProvider.cpp
   arangoimport.cpp
 )

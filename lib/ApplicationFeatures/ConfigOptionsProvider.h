@@ -40,8 +40,6 @@ struct ConfigOptionsProvider
                           ConfigFeatureOptions& options);
   void processOptionsImpl(std::shared_ptr<options::ProgramOptions> progOpts,
                           ConfigFeatureOptions& configOpts);
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
-                           ConfigFeatureOptions& /*options*/) {}
 
  private:
   void loadConfigFile(std::shared_ptr<options::ProgramOptions> progOpts,

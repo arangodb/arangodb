@@ -30,7 +30,6 @@
 #include "IResearch/IResearchRocksDBInvertedIndex.h"
 #include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBEdgeIndex.h"
-#include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBFulltextIndex.h"
 #include "RocksDBEngine/RocksDBGeoIndex.h"
 #include "RocksDBEngine/RocksDBHashIndex.h"
@@ -42,7 +41,6 @@
 #include "RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
 #include "Enterprise/VectorGraphIndex/VectorGraphIndex.h"
-#include "VectorIndex/IVectorIndexProvider.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
@@ -402,10 +400,8 @@ struct MdiPrefixedIndexFactory : public DefaultIndexFactory {
 
 struct VectorIndexFactory : public DefaultIndexFactory {
   explicit VectorIndexFactory(application_features::ApplicationServer& server,
-                              Index::IndexType type,
-                              IVectorIndexProvider const& vectorIndexProvider)
-      : DefaultIndexFactory(server, type),
-        _vectorIndexProvider(vectorIndexProvider) {}
+                              Index::IndexType type)
+      : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<arangodb::Index> instantiate(
       arangodb::LogicalCollection& collection,
@@ -418,12 +414,6 @@ struct VectorIndexFactory : public DefaultIndexFactory {
       velocypack::Builder& normalized, velocypack::Slice definition,
       bool isCreation, TRI_vocbase_t const& /*vocbase*/) const override {
     TRI_ASSERT(normalized.isOpenObject());
-
-    if (!_vectorIndexProvider.isVectorIndexEnabled()) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "vector index feature is not enabled. Run ArangoDB with "
-              "`--vector-index` flag turned on."};
-    }
 
     normalized.add(StaticStrings::IndexType,
                    velocypack::Value(Index::oldtypeName(_type)));
@@ -441,9 +431,6 @@ struct VectorIndexFactory : public DefaultIndexFactory {
     return IndexFactory::enhanceJsonIndexVector(definition, normalized,
                                                 isCreation);
   }
-
- private:
-  IVectorIndexProvider const& _vectorIndexProvider;
 };
 
 // PoC skeleton for a graph-based vector index. Always enabled, no feature
@@ -563,8 +550,7 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
 }  // namespace
 
 RocksDBIndexFactory::RocksDBIndexFactory(
-    application_features::ApplicationServer& server,
-    IVectorIndexProvider const& vectorIndexProvider)
+    application_features::ApplicationServer& server)
     : IndexFactory(server) {
   static const EdgeIndexFactory edgeIndexFactory(server);
   static const FulltextIndexFactory fulltextIndexFactory(server);
@@ -588,9 +574,9 @@ RocksDBIndexFactory::RocksDBIndexFactory(
   static const MdiIndexFactory mdiIndexFactory(server,
                                                Index::TRI_IDX_TYPE_MDI_INDEX);
   static const VectorIndexFactory vectorIndexFactory(
-      server, Index::TRI_IDX_TYPE_VECTOR_INDEX, vectorIndexProvider);
+      server, Index::TRI_IDX_TYPE_VECTOR_INDEX);
   static const VectorGraphIndexFactory vectorGraphIndexFactory(
-      server, Index::TRI_IDX_TYPE_VECTOR_GRAPH_INDEX, vectorIndexProvider);
+      server, Index::TRI_IDX_TYPE_VECTOR_GRAPH_INDEX);
   static const iresearch::IResearchRocksDBInvertedIndexFactory
       iresearchInvertedIndexFactory(server);
   static const MdiPrefixedIndexFactory mdiPrefixedIndexFactory(server);

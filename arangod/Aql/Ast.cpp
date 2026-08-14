@@ -25,6 +25,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Aggregator.h"
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/AqlValue.h"
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionNode/TraversalNode.h"
@@ -120,6 +121,16 @@ struct ValidateAndOptimizeContext {
   bool hasSeenAnyWriteNode = false;
   bool hasSeenWriteNodeInCurrentScope = false;
 };
+
+bool astNodeObjectHasObjectSplice(AstNode const* node) noexcept {
+  size_t const n = node->numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    if (node->getMemberUnchecked(i)->type == NODE_TYPE_OBJECT_SPLICE) {
+      return true;
+    }
+  }
+  return false;
+}
 
 auto doNothingVisitor = [](AstNode const*) {};
 
@@ -2948,7 +2959,8 @@ void Ast::validateAndOptimize(transaction::Methods& trx,
     }
 
     if (node->type == NODE_TYPE_OBJECT) {
-      return this->optimizeObject(node);
+      return this->optimizeObject(ctx->trx, ctx->aqlFunctionsInternalCache,
+                                  node);
     }
 
     // traversal
@@ -4159,8 +4171,111 @@ AstNode* Ast::optimizeFor(AstNode* node) {
   return node;
 }
 
+void Ast::clearObjectOptimizationFlags(AstNode* node) {
+  if (node == nullptr || node->type != NODE_TYPE_OBJECT) {
+    return;
+  }
+
+  node->removeFlag(DETERMINED_CONSTANT);
+  node->removeFlag(VALUE_CONSTANT);
+  node->removeFlag(DETERMINED_CHECKUNIQUENESS);
+  node->removeFlag(VALUE_CHECKUNIQUENESS);
+}
+
+void Ast::flattenObjectLiteralMemberValues(AstNode* node) {
+  size_t const n = node->numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    AstNode* member = node->getMemberUnchecked(i);
+
+    size_t valueIndex;
+    if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
+      valueIndex = 0;
+    } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
+      valueIndex = 1;
+    } else {
+      continue;
+    }
+
+    AstNode* value = member->getMemberUnchecked(valueIndex);
+    if (value == nullptr || value->type != NODE_TYPE_OBJECT) {
+      continue;
+    }
+
+    flattenObjectLiteralSplices(value);
+  }
+}
+
+/// @brief flatten object literal splices into the parent object
+/// Always mutates the node in place and returns the same node.
+AstNode* Ast::flattenObjectLiteralSplices(AstNode* node) {
+  if (node == nullptr || node->type != NODE_TYPE_OBJECT) {
+    return node;
+  }
+
+  flattenObjectLiteralMemberValues(node);
+
+  if (!astNodeObjectHasObjectSplice(node)) {
+    return node;
+  }
+
+  size_t const n = node->numMembers();
+  containers::SmallVector<AstNode*, 8> newMembers;
+  bool changed = false;
+
+  for (size_t i = 0; i < n; ++i) {
+    AstNode* member = node->getMemberUnchecked(i);
+
+    if (member != nullptr && member->type == NODE_TYPE_OBJECT_SPLICE) {
+      AstNode* source = member->getMemberUnchecked(0);
+      if (source == nullptr || source->type != NODE_TYPE_OBJECT) {
+        newMembers.push_back(member);
+        continue;
+      }
+
+      source = flattenObjectLiteralSplices(source);
+      changed = true;
+
+      size_t const innerMembers = source->numMembers();
+      for (size_t j = 0; j < innerMembers; ++j) {
+        newMembers.push_back(clone(source->getMemberUnchecked(j)));
+      }
+    } else {
+      newMembers.push_back(member);
+    }
+  }
+
+  if (!changed) {
+    return node;
+  }
+
+  TEMPORARILY_UNLOCK_NODE(node);
+  node->clearMembers();
+  for (auto* member : newMembers) {
+    node->addMember(member);
+  }
+
+  clearObjectOptimizationFlags(node);
+  return node;
+}
+
 /// @brief optimizes an object literal or an object expression
-AstNode* Ast::optimizeObject(AstNode* node) {
+AstNode* Ast::optimizeObject(
+    transaction::Methods& trx,
+    AqlFunctionsInternalCache& aqlFunctionsInternalCache, AstNode* node) {
+  node = flattenObjectLiteralSplices(node);
+
+  if (node->isConstant()) {
+    Expression exp(this, node);
+    FixedVarExpressionContext context(trx, _query, aqlFunctionsInternalCache);
+    bool mustDestroy = false;
+    AqlValue a = exp.execute(&context, mustDestroy);
+    AqlValueGuard guard(a, mustDestroy);
+
+    AqlValueMaterializer materializer(
+        trx.transactionContextPtr()->getVPackOptions());
+    node = nodeFromVPack(materializer.slice(a), true);
+  }
+
   ast::ObjectNode object(node);
 
   auto members = object.getElements();
@@ -4176,9 +4291,10 @@ AstNode* Ast::optimizeObject(AstNode* node) {
           node->setFlag(DETERMINED_CHECKUNIQUENESS, VALUE_CHECKUNIQUENESS);
           return node;
         }
-      } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
-        // dynamic key... we don't know the key yet, so there's no
-        // way around check it at runtime later
+      } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT ||
+                 member->type == NODE_TYPE_OBJECT_SPLICE) {
+        // dynamic key or object splice... we don't know the final shape yet,
+        // so there's no way around checking it at runtime later
         node->setFlag(DETERMINED_CHECKUNIQUENESS, VALUE_CHECKUNIQUENESS);
         return node;
       }

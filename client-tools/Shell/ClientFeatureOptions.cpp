@@ -20,13 +20,17 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "ClientFeatureOptions.h"
+
+#include "Basics/StaticStrings.h"
+#include "Endpoint/Endpoint.h"
+#include "Ssl/ssl-helper.h"
 
 namespace arangodb {
 
-struct IVectorIndexProvider {
-  virtual ~IVectorIndexProvider() = default;
-  virtual bool isVectorIndexEnabled() const noexcept = 0;
-};
+ClientFeatureOptions::ClientFeatureOptions()
+    : endpoints{{Endpoint::defaultEndpoint()}},
+      databaseName{StaticStrings::SystemDatabase},
+      sslProtocol{TLS_V12} {}
 
 }  // namespace arangodb

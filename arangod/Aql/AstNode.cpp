@@ -1196,6 +1196,15 @@ void AstNode::setConstantFlags() noexcept {
   setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
 }
 
+namespace {
+
+bool astNodeIsConstantObjectLiteral(AstNode const* node) noexcept {
+  return node != nullptr && node->type == NODE_TYPE_OBJECT &&
+         node->isConstant();
+}
+
+}  // namespace
+
 bool AstNode::valueHasVelocyPackRepresentation() const {
   switch (type) {
     case NODE_TYPE_VALUE:
@@ -1214,18 +1223,27 @@ bool AstNode::valueHasVelocyPackRepresentation() const {
       return true;
     }
     case NODE_TYPE_OBJECT: {
-      // Is representable as VPack if all its members
-      // are representable as VPack
       size_t const n = numMembers();
       for (size_t i = 0; i < n; ++i) {
         auto member = getMemberUnchecked(i);
-        if (member != nullptr) {
-          // Throws if we do not have member 0
+        if (member == nullptr) {
+          return false;
+        }
+
+        if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
           auto value = member->getMember(0);
           TRI_ASSERT(value != nullptr);
           if (!value->valueHasVelocyPackRepresentation()) {
             return false;
           }
+        } else if (member->type == NODE_TYPE_OBJECT_SPLICE) {
+          auto source = member->getMember(0);
+          TRI_ASSERT(source != nullptr);
+          if (!astNodeIsConstantObjectLiteral(source)) {
+            return false;
+          }
+        } else {
+          return false;
         }
       }
       return true;
@@ -1241,6 +1259,72 @@ bool AstNode::valueHasVelocyPackRepresentation() const {
       return false;
   }
 }
+
+namespace {
+
+struct ObjectVPackEntry {
+  std::string key;
+  AstNode const* valueNode{nullptr};
+  VPackBuilder valueBuilder;
+  bool hasValueNode{true};
+};
+
+void collectConstantObjectMemberToVPackEntries(
+    AstNode const* member,
+    containers::FlatHashMap<std::string, size_t>& keyToIndex,
+    std::vector<ObjectVPackEntry>& entries) {
+  if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
+    std::string key(member->getStringView());
+    auto it = keyToIndex.find(key);
+
+    if (it == keyToIndex.end()) {
+      keyToIndex.emplace(key, entries.size());
+      entries.push_back({std::move(key), member->getMemberUnchecked(0),
+                         VPackBuilder(), true});
+      return;
+    }
+
+    entries[it->second].valueNode = member->getMemberUnchecked(0);
+    entries[it->second].hasValueNode = true;
+    return;
+  }
+
+  if (member->type == NODE_TYPE_OBJECT_SPLICE) {
+    AstNode const* source = member->getMemberUnchecked(0);
+    TRI_ASSERT(source != nullptr);
+    TRI_ASSERT(source->isConstant());
+
+    if (source->type == NODE_TYPE_OBJECT) {
+      size_t const n = source->numMembers();
+      for (size_t i = 0; i < n; ++i) {
+        collectConstantObjectMemberToVPackEntries(source->getMemberUnchecked(i),
+                                                  keyToIndex, entries);
+      }
+      return;
+    }
+
+    // non-object constant splice: no-op (null, scalar, array, etc.)
+    return;
+  }
+
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      "unexpected object member type: " + std::to_string(member->type));
+}
+
+bool objectHasNonElementMember(AstNode const* node) noexcept {
+  TRI_ASSERT(node != nullptr);
+  size_t const n = node->numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    AstNode const* member = node->getMemberUnchecked(i);
+    if (member != nullptr && member->type != NODE_TYPE_OBJECT_ELEMENT) {
+      return true;
+    }
+  }
+  return false;
+}
+
+}  // namespace
 
 /// @brief build a VelocyPack representation of the node value
 ///        Can throw Out of Memory Error
@@ -1282,9 +1366,35 @@ void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
   }
 
   if (type == NODE_TYPE_OBJECT) {
-    builder.openObject();
-
     size_t const n = numMembers();
+
+    if (objectHasNonElementMember(this)) {
+      containers::FlatHashMap<std::string, size_t> keyToIndex;
+      std::vector<ObjectVPackEntry> entries;
+      entries.reserve(n);
+
+      for (size_t i = 0; i < n; ++i) {
+        auto member = getMemberUnchecked(i);
+        if (member != nullptr) {
+          collectConstantObjectMemberToVPackEntries(member, keyToIndex,
+                                                    entries);
+        }
+      }
+
+      builder.openObject();
+      for (auto const& entry : entries) {
+        builder.add(VPackValue(entry.key));
+        if (entry.hasValueNode) {
+          entry.valueNode->toVelocyPackValue(builder);
+        } else {
+          builder.add(entry.valueBuilder.slice());
+        }
+      }
+      builder.close();
+      return;
+    }
+
+    builder.openObject();
 
     // only check for duplicate keys if we have more than a single attribute
     bool checkUniqueness = (n > 1);
@@ -1294,20 +1404,34 @@ void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
     }
 
     if (checkUniqueness) {
-      containers::FlatHashMap<std::string_view, AstNode const*> keys;
-      keys.reserve(n);
+      // Deduplicate keys while preserving the original member order. For
+      // duplicate keys the last occurrence wins (matching the runtime object
+      // construction in Expression::executeSimpleExpressionObject), but the
+      // surviving entry keeps the position of the key's first occurrence.
+      // NOTE: we must not iterate a hash map here to produce the output, as
+      // hash map iteration order does not match insertion order and is not
+      // stable across map instances, which would change the observable
+      // attribute order of the resulting object.
+      containers::FlatHashMap<std::string_view, size_t> keyToIndex;
+      std::vector<AstNode const*> elements;
+      keyToIndex.reserve(n);
+      elements.reserve(n);
 
       for (size_t i = 0; i < n; ++i) {
         auto member = getMemberUnchecked(i);
-        if (member != nullptr) {
-          keys[member->getStringView()] = member;
+        if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
+          auto [it, inserted] =
+              keyToIndex.emplace(member->getStringView(), elements.size());
+          if (inserted) {
+            elements.emplace_back(member);
+          } else {
+            elements[it->second] = member;
+          }
         }
       }
 
-      for (auto const& it : keys) {
-        AstNode const* member = it.second;
-
-        builder.add(VPackValue(it.first));
+      for (AstNode const* member : elements) {
+        builder.add(VPackValue(member->getStringView()));
         member->getMember(0)->toVelocyPackValue(builder);
       }
 
@@ -1316,7 +1440,7 @@ void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
     }
     for (size_t i = 0; i < n; ++i) {
       auto member = getMemberUnchecked(i);
-      if (member != nullptr) {
+      if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
         std::string_view key(member->getStringView());
 
         builder.add(VPackValue(key));
@@ -2064,11 +2188,12 @@ bool AstNode::isConstant() const {
           return false;
         }
       } else if (member->type == NODE_TYPE_OBJECT_SPLICE) {
-        setFlag(DETERMINED_CONSTANT);
-        return false;
+        if (!astNodeIsConstantObjectLiteral(member->getMember(0))) {
+          setFlag(DETERMINED_CONSTANT);
+          return false;
+        }
       } else {
         // definitely not const!
-        TRI_ASSERT(member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT);
         setFlag(DETERMINED_CONSTANT);
         return false;
       }
@@ -2209,9 +2334,10 @@ bool AstNode::mustCheckUniqueness() const {
           break;
         }
 
-      } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
-        // dynamic key... we don't know the key yet, so there's no
-        // way around check it at runtime later
+      } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT ||
+                 member->type == NODE_TYPE_OBJECT_SPLICE) {
+        // dynamic key or object splice... we don't know the final shape yet, so
+        // there's no way around checking it at runtime later
         mustCheck = true;
         break;
       }

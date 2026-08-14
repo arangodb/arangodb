@@ -323,7 +323,9 @@ RocksDBCollection::RocksDBCollection(
                     !collection.isAStub() &&
                     !ServerState::instance()->isCoordinator() &&
                     basics::VelocyPackHelper::getBooleanValue(
-                        info, StaticStrings::CacheEnabled, false)) {
+                        info, StaticStrings::CacheEnabled, false)),
+      _timeTravelEnabled(basics::VelocyPackHelper::getBooleanValue(
+          info, StaticStrings::EnableTimeTravel, false)) {
   TRI_ASSERT(_logicalCollection.isAStub() || objectId() != 0);
   if (_cacheEnabled.load(std::memory_order_relaxed)) {
     setupCache();
@@ -425,6 +427,7 @@ void RocksDBCollection::getPropertiesVPack(velocypack::Builder& result) const {
   result.add(StaticStrings::ObjectId, VPackValue(std::to_string(objectId())));
   result.add(StaticStrings::CacheEnabled,
              VPackValue(_cacheEnabled.load(std::memory_order_relaxed)));
+  result.add(StaticStrings::EnableTimeTravel, VPackValue(_timeTravelEnabled));
   TRI_ASSERT(result.isOpenObject());
 }
 

@@ -160,12 +160,13 @@ Graph::Graph(Database& vocbase, std::string&& graphName, VPackSlice const& info,
       /* In OneShardDatabases this value is not used internally. It mostly has
        * informative value on how your graph is sharded. The OneShard feature
        * will overwrite this setting */
-      _replicationFactor(vocbase.getDatabaseConfiguration().isOneShardDB
-                             ? (std::max)(vocbase.replicationFactor(),
-                                          vocbase.server()
-                                              .getFeature<ClusterFeature>()
-                                              .systemReplicationFactor())
-                             : vocbase.replicationFactor()),
+      _replicationFactor(
+          vocbase.getDatabaseConfiguration().oneShardDBConfiguration.has_value()
+              ? (std::max)(vocbase.replicationFactor(),
+                           vocbase.server()
+                               .getFeature<ClusterFeature>()
+                               .systemReplicationFactor())
+              : vocbase.replicationFactor()),
       _writeConcern(1),
       _rev("") {
   if (_graphName.empty()) {
@@ -875,7 +876,7 @@ auto Graph::injectShardingToCollectionBody(
     DatabaseConfiguration const& config) const noexcept -> Result {
   // Only specialized enterprise Graphs make use of the leadingCollection.
   // Inject all attributes required for a collection
-  if (config.isOneShardDB) {
+  if (config.oneShardDBConfiguration.has_value()) {
     // Nothing to do for oneShardDBs we just use defaults
     return {};
   }

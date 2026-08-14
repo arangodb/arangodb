@@ -28,12 +28,13 @@
 namespace arangodb {
 
 struct ReplicationTimeoutOptionsProvider
-    : OptionsProvider<ReplicationTimeoutFeatureOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      ReplicationTimeoutFeatureOptions& options) override;
+    : OptionsProviderImpl<ReplicationTimeoutOptionsProvider,
+                          ReplicationTimeoutFeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          ReplicationTimeoutFeatureOptions& options);
 
-  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
-                       ReplicationTimeoutFeatureOptions& options) override;
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                           ReplicationTimeoutFeatureOptions& options);
 };
 
 }  // namespace arangodb

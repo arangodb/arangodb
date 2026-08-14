@@ -113,6 +113,14 @@ struct Variable {
   /// This implicitly changes the type -> see type()
   void setConstantValue(AqlValue value);
 
+  /// @brief move the owned constant value out of the variable and untrack its
+  /// memory usage. used when transferring ownership to the const value block.
+  AqlValue extractOwnedConstantValue();
+
+  /// @brief after the owned value was moved into the const value block, keep a
+  /// non-owning reference to it here.
+  void setConstantBlockReference(velocypack::Slice slice);
+
   void setBindParameterReplacement(std::string name);
 
   std::string_view bindParameterName() const noexcept;

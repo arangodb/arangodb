@@ -163,6 +163,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/JoinStrategy/GenericAndTwoNonUniqueJoinTest.cpp
   Aql/JoinStrategy/TwoIndicesUniqueJoinTest.cpp
   Aql/NodeWalkerTest.cpp
+  Aql/OptimizeJoinOrderTest.cpp
   Aql/ParserTest.cpp
   Aql/ProjectionsTest.cpp
   Aql/QueryCursorTest.cpp
@@ -333,8 +334,7 @@ target_link_libraries(arangodbtests
   arango_tests_actor
   arango_tests_inspection
   arango_tests_internal_rest_handler
-  # Disabled until Scheduler dependency is fixed
-  # arango_tests_rocksdb_engine
+  arango_tests_rocksdb_engine
   arango_inspection_test_helper
   arango_agency
   arango_cluster_engine

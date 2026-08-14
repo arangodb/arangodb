@@ -399,10 +399,8 @@ std::vector<std::string_view> IndexFactory::supportedIndexes() const {
       "geo2",
       "mdi",
       "mdi-prefixed",
-      arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE};
-  if (_server.getFeature<VectorIndexFeature>().isVectorIndexEnabled()) {
-    enabledFeatures.push_back("vector");
-  }
+      arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE,
+      "vector"};
 
   return enabledFeatures;
 }

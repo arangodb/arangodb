@@ -243,8 +243,8 @@ void WandTestCase::ConsolidateAll(irs::ScorersView scorers, bool write_norms) {
   const irs::index_utils::ConsolidateCount consolidate_all;
   auto writer =
       open_writer(irs::OM_APPEND, GetWriterOptions(scorers, write_norms));
-  ASSERT_TRUE(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+  ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all),
+                                  callbacks));
   ASSERT_TRUE(writer->Commit());
   ASSERT_EQ(1, writer->GetSnapshot().size());
 }
