@@ -81,7 +81,7 @@ ArangoBenchServer::ArangoBenchServer(
       std::numeric_limits<size_t>::max();
 }
 
-void ArangoBenchServer::addFeaturesWithOptionProvider() {
+void ArangoBenchServer::addFeatures() {
   addFeature<BasicFeaturePhaseClient>();
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});

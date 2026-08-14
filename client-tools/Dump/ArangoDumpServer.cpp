@@ -65,7 +65,7 @@ ArangoDumpServer::ArangoDumpServer(
       std::numeric_limits<size_t>::max();
 }
 
-void ArangoDumpServer::addFeaturesWithOptionProvider() {
+void ArangoDumpServer::addFeatures() {
   addFeature<BasicFeaturePhaseClient>();
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
