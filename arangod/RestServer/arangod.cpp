@@ -74,8 +74,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
          },
          {}});
 
-    server.addFeatures();
-
     try {
       server.run(argc, argv);
     } catch (std::exception const& ex) {

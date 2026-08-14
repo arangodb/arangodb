@@ -59,7 +59,7 @@ ArangoImportServer::ArangoImportServer(
     : OptionProvidingServer<ArangoImportOptionProviders>(
           options, binaryPath, std::move(binaryName), ret) {}
 
-void ArangoImportServer::addFeaturesWithOptionProvider() {
+void ArangoImportServer::addFeatures() {
   addFeature<BasicFeaturePhaseClient>();
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
