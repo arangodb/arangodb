@@ -44,7 +44,7 @@ class ArangodServer : public OptionProvidingServer<ArangodOptionProviders> {
 
  protected:
   // Called by server::run() after collect & validate.
-  void addFeaturesWithOptionProvider() final;
+  void addFeatures() final;
 
   void processOptions() final;
 

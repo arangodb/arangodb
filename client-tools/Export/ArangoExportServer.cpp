@@ -59,7 +59,7 @@ ArangoExportServer::ArangoExportServer(
     : OptionProvidingServer<ArangoExportOptionProviders>(
           options, binaryPath, std::move(binaryName), ret) {}
 
-void ArangoExportServer::addFeaturesWithOptionProvider() {
+void ArangoExportServer::addFeatures() {
   addFeature<BasicFeaturePhaseClient>();
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});

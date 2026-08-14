@@ -165,7 +165,7 @@ ServerState::RoleEnum ArangodServer::resolveRole(
   FATAL_ERROR_EXIT();
 }
 
-void ArangodServer::addFeaturesWithOptionProvider() {
+void ArangodServer::addFeatures() {
   // Adding the Phases - these must come first and in this order
   addFeature<AgencyFeaturePhase>();
   auto& comm = addFeature<CommunicationFeaturePhase>();

@@ -345,10 +345,10 @@ class ApplicationServer {
   virtual void processOptions() {}
 
   // allows features to cross-validate their program options
-  virtual void validateOptions(){};
+  virtual void validateOptions() {}
 
   // adds the features that receive their options as a c-tor dependency.
-  virtual void addFeaturesWithOptionProvider(){};
+  virtual void addFeatures() {}
 
   // allows process control
   void daemonize();

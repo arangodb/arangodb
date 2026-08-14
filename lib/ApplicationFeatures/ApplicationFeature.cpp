@@ -32,8 +32,6 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 
-using namespace arangodb::options;
-
 namespace arangodb {
 namespace application_features {
 

@@ -31,9 +31,6 @@
 #include "Containers/FlatHashSet.h"
 
 namespace arangodb {
-namespace options {
-class ProgramOptions;
-}
 namespace application_features {
 class ApplicationServer;
 
