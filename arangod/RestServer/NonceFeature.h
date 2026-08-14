@@ -31,12 +31,7 @@ class NonceFeature : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Nonce"; }
 
-  explicit NonceFeature(application_features::ApplicationServer& server,
-                        NonceFeatureOptions options);
   explicit NonceFeature(application_features::ApplicationServer& server);
-
- private:
-  NonceFeatureOptions _options;
 };
 
 }  // namespace arangodb
