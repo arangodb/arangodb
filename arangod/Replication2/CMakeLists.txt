@@ -12,7 +12,13 @@ add_library(arango_replication2 STATIC
 target_link_libraries(arango_replication2
         arango_basic_utils
         arango_network # NetworkWorkAttachedFollower
-        arangoserver # RestHandler, arango_rocksdb
+        arango_cluster
+        arango_cluster_methods
+        arango_agency
+        arango_rest_handler
+        arango_general_server
+        arango_transaction
+        arango_aql
         arango_futures
         arango_actor
         immer)
