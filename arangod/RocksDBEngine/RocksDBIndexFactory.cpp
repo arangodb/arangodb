@@ -437,10 +437,8 @@ struct VectorIndexFactory : public DefaultIndexFactory {
 // gate (for now).
 struct VectorGraphIndexFactory : public DefaultIndexFactory {
   explicit VectorGraphIndexFactory(
-      application_features::ApplicationServer& server, Index::IndexType type,
-      IVectorIndexProvider const& vectorIndexProvider)
-      : DefaultIndexFactory(server, type),
-        _vectorIndexProvider(vectorIndexProvider) {}
+      application_features::ApplicationServer& server, Index::IndexType type)
+      : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<arangodb::Index> instantiate(
       arangodb::LogicalCollection& collection,
@@ -454,12 +452,6 @@ struct VectorGraphIndexFactory : public DefaultIndexFactory {
       velocypack::Builder& normalized, velocypack::Slice definition,
       bool isCreation, TRI_vocbase_t const& /*vocbase*/) const override {
     TRI_ASSERT(normalized.isOpenObject());
-
-    if (!_vectorIndexProvider.isVectorIndexEnabled()) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "vector index feature is not enabled. Run ArangoDB with "
-              "`--vector-index` flag turned on."};
-    }
 
     normalized.add(StaticStrings::IndexType,
                    velocypack::Value(Index::oldtypeName(_type)));
@@ -477,9 +469,6 @@ struct VectorGraphIndexFactory : public DefaultIndexFactory {
     return IndexFactory::enhanceJsonIndexVectorGraph(definition, normalized,
                                                      isCreation);
   }
-
- private:
-  IVectorIndexProvider const& _vectorIndexProvider;
 };
 
 struct TtlIndexFactory : public DefaultIndexFactory {
