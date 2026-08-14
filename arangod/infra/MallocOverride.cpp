@@ -21,6 +21,9 @@
 
 #include "MallocOverride.h"
 
+#include "Assertions/Assert.h"
+#include "infra/CurrentResourceMonitor.h"
+#include "infra/ResizeAccounting.h"
 #include "infra/ResourceMonitor.h"
 
 #include <cstddef>
@@ -46,9 +49,7 @@ struct AllocHeader {
 static_assert(sizeof(AllocHeader) == 16);
 static_assert(sizeof(AllocHeader) == alignof(std::max_align_t));
 
-arangodb::infra::ResourceMonitor g_global_monitor;
-
-thread_local arangodb::infra::ResourceMonitor* g_current_monitor = nullptr;
+arangodb::infra::StaticResourceMonitor g_global_monitor;
 
 auto userPtr(AllocHeader* header) -> void* { return header + 1; }
 
@@ -56,13 +57,13 @@ auto headerPtr(void* user) -> AllocHeader* {
   return static_cast<AllocHeader*>(user) - 1;
 }
 
-auto effectiveMonitor() -> arangodb::infra::ResourceMonitor* {
-  auto* m = g_current_monitor;
+auto effectiveMonitor() -> arangodb::infra::ResourceMonitorBase* {
+  auto* m = arangodb::infra::currentResourceMonitor().get();
   return m ? m : &g_global_monitor;
 }
 
-auto getMonitor(AllocHeader* header) -> arangodb::infra::ResourceMonitor* {
-  return reinterpret_cast<arangodb::infra::ResourceMonitor*>(
+auto getMonitor(AllocHeader* header) -> arangodb::infra::ResourceMonitorBase* {
+  return reinterpret_cast<arangodb::infra::ResourceMonitorBase*>(
       header->monitor_tagged & ~uintptr_t{1});
 }
 
@@ -71,7 +72,7 @@ auto isAlignedAlloc(AllocHeader* header) -> bool {
 }
 
 auto getRealPtr(AllocHeader* header) -> void* {
-  if (!isAlignedAlloc(header)) {
+  if (!isAlignedAlloc(header)) [[likely]] {
     return header;
   }
   return *(reinterpret_cast<void**>(header) - 1);
@@ -82,62 +83,90 @@ auto headerOverhead(AllocHeader* header) -> size_t {
                              reinterpret_cast<char*>(getRealPtr(header)));
 }
 
-void initHeader(AllocHeader* header, size_t requested) {
-  header->monitor_tagged = reinterpret_cast<uintptr_t>(effectiveMonitor());
+// Computes base + extra without wrapping. Returns false on overflow, so an
+// oversized request is rejected here rather than silently wrapping to a small
+// total that je_nallocx would accept (which would under-allocate). The builtin
+// folds the add and the overflow test into a single add + carry-flag check.
+auto checkedAdd(size_t base, size_t extra, size_t& result) -> bool {
+  return !__builtin_add_overflow(base, extra, &result);
+}
+
+void initHeader(AllocHeader* header,
+                arangodb::infra::ResourceMonitorBase* monitor,
+                size_t requested) {
+  header->monitor_tagged = reinterpret_cast<uintptr_t>(monitor);
   header->requested_size = requested;
 }
 
-void initAlignedHeader(AllocHeader* header, void* real_ptr, size_t requested) {
+void initAlignedHeader(AllocHeader* header,
+                       arangodb::infra::ResourceMonitorBase* monitor,
+                       void* real_ptr, size_t requested) {
   *(reinterpret_cast<void**>(header) - 1) = real_ptr;
-  header->monitor_tagged =
-      reinterpret_cast<uintptr_t>(effectiveMonitor()) | uintptr_t{1};
+  header->monitor_tagged = reinterpret_cast<uintptr_t>(monitor) | uintptr_t{1};
   header->requested_size = requested;
 }
 
-void trackAlloc(AllocHeader* header) {
-  auto requested = header->requested_size;
-  auto actual = je_malloc_usable_size(getRealPtr(header));
-  getMonitor(header)->increase(requested, actual);
+auto tryIncrease(arangodb::infra::ResourceMonitorBase* base, uint64_t requested,
+                 uint64_t actual) -> bool {
+  if (base->isStatic()) {
+    return static_cast<arangodb::infra::StaticResourceMonitor*>(base)->increase(
+        requested, actual);
+  }
+  return static_cast<arangodb::infra::ResourceMonitor*>(base)->increase(
+      requested, actual);
+}
+
+void doDecrease(arangodb::infra::ResourceMonitorBase* base, uint64_t requested,
+                uint64_t actual) {
+  if (base->isStatic()) {
+    static_cast<arangodb::infra::StaticResourceMonitor*>(base)->decrease(
+        requested, actual);
+  } else {
+    static_cast<arangodb::infra::ResourceMonitor*>(base)->decrease(requested,
+                                                                   actual);
+  }
 }
 
 void trackFree(AllocHeader* header) {
   auto requested = header->requested_size;
   auto actual = je_malloc_usable_size(getRealPtr(header));
-  getMonitor(header)->decrease(requested, actual);
+  doDecrease(getMonitor(header), requested, actual);
 }
 
-void printAllocationStats() {
-  auto& m = g_global_monitor;
-  std::fprintf(stderr,
-               "\n[MallocOverride] live: %lu requested, %lu actual bytes\n",
-               static_cast<unsigned long>(
-                   m.requested_bytes.load(std::memory_order_relaxed)),
-               static_cast<unsigned long>(
-                   m.actual_bytes.load(std::memory_order_relaxed)));
-}
-
-// NOLINTNEXTLINE(cert-err58-cpp)
-const auto kRegistered = (std::atexit(printAllocationStats), true);
 }  // namespace
 
 namespace arangodb::infra {
 
-auto getGlobalResourceMonitor() noexcept -> ResourceMonitor& {
+auto getGlobalResourceMonitor() noexcept -> StaticResourceMonitor& {
   return g_global_monitor;
 }
 
 }  // namespace arangodb::infra
 
+// memory function overrides that track allocations
+
 extern "C" {
 
 void* malloc(size_t size) noexcept {
-  void* real = je_malloc(sizeof(AllocHeader) + size);
-  if (!real) {
+  size_t total = 0;
+  if (!checkedAdd(size, sizeof(AllocHeader), total)) [[unlikely]] {
+    return nullptr;
+  }
+  size_t actual = je_nallocx(total, 0);
+  if (actual == 0) [[unlikely]] {
+    return nullptr;
+  }
+  auto* monitor = effectiveMonitor();
+  if (!tryIncrease(monitor, size, actual)) [[unlikely]] {
+    return nullptr;
+  }
+  void* real = je_malloc(total);
+  if (!real) [[unlikely]] {
+    doDecrease(monitor, size, actual);
     return nullptr;
   }
   auto* header = static_cast<AllocHeader*>(real);
-  initHeader(header, size);
-  trackAlloc(header);
+  initHeader(header, monitor, size);
   return userPtr(header);
 }
 
@@ -151,19 +180,31 @@ void free(void* ptr) noexcept {
 }
 
 void* calloc(size_t nmemb, size_t size) noexcept {
-  if (nmemb != 0 && size > SIZE_MAX / nmemb) {
+  if (nmemb != 0 && size > SIZE_MAX / nmemb) [[unlikely]] {
     return nullptr;
   }
-  size_t total = nmemb * size;
-  void* real = je_malloc(sizeof(AllocHeader) + total);
-  if (!real) {
+  size_t total_user = nmemb * size;
+  size_t total = 0;
+  if (!checkedAdd(total_user, sizeof(AllocHeader), total)) [[unlikely]] {
+    return nullptr;
+  }
+  size_t actual = je_nallocx(total, 0);
+  if (actual == 0) [[unlikely]] {
+    return nullptr;
+  }
+  auto* monitor = effectiveMonitor();
+  if (!tryIncrease(monitor, total_user, actual)) [[unlikely]] {
+    return nullptr;
+  }
+  void* real = je_malloc(total);
+  if (!real) [[unlikely]] {
+    doDecrease(monitor, total_user, actual);
     return nullptr;
   }
   auto* header = static_cast<AllocHeader*>(real);
-  initHeader(header, total);
+  initHeader(header, monitor, total_user);
   void* user = userPtr(header);
-  std::memset(user, 0, total);
-  trackAlloc(header);
+  std::memset(user, 0, total_user);
   return user;
 }
 
@@ -172,58 +213,110 @@ void* realloc(void* ptr, size_t size) noexcept {
     return malloc(size);
   }
 
-  auto* old_header = headerPtr(ptr);
-  trackFree(old_header);
+  size_t new_total = 0;
+  if (!checkedAdd(size, sizeof(AllocHeader), new_total)) [[unlikely]] {
+    return nullptr;
+  }
+  size_t new_actual = je_nallocx(new_total, 0);
+  if (new_actual == 0) [[unlikely]] {
+    return nullptr;
+  }
 
+  auto* old_header = headerPtr(ptr);
   void* old_real = getRealPtr(old_header);
   bool was_aligned = isAlignedAlloc(old_header);
+  auto* old_monitor = getMonitor(old_header);
+  auto old_requested = old_header->requested_size;
+  auto old_actual = je_malloc_usable_size(old_real);
 
-  if (was_aligned) {
-    size_t old_size = old_header->requested_size;
-    void* new_real = je_malloc(sizeof(AllocHeader) + size);
-    if (!new_real) {
-      trackAlloc(old_header);
+  auto* new_monitor = effectiveMonitor();
+  TRI_ASSERT(new_monitor == old_monitor);
+
+  // Net the resize against the still-counted old allocation when it stays on
+  // the same monitor, so a small growth (or a shrink) is not checked against
+  // the limit as if it were a full new allocation on top of the old one. See
+  // computeResizeDelta for the rationale. Reserve happens on new_monitor before
+  // the resize; release happens on old_monitor after (the two are the same
+  // monitor in the netted case).
+  auto delta = arangodb::infra::computeResizeDelta(
+      new_monitor == old_monitor, old_requested, old_actual, size, new_actual);
+
+  if (!tryIncrease(new_monitor, delta.reserveRequested, delta.reserveActual))
+      [[unlikely]] {
+    return nullptr;
+  }
+
+  if (was_aligned) [[unlikely]] {
+    void* new_real = je_malloc(new_total);
+    if (!new_real) [[unlikely]] {
+      doDecrease(new_monitor, delta.reserveRequested, delta.reserveActual);
       return nullptr;
     }
     auto* new_header = static_cast<AllocHeader*>(new_real);
-    initHeader(new_header, size);
+    initHeader(new_header, new_monitor, size);
     void* new_user = userPtr(new_header);
-    std::memcpy(new_user, ptr, size < old_size ? size : old_size);
-    trackAlloc(new_header);
+    std::memcpy(new_user, ptr, size < old_requested ? size : old_requested);
+    doDecrease(old_monitor, delta.releaseRequested, delta.releaseActual);
     je_free(old_real);
     return new_user;
   }
 
-  void* new_real = je_realloc(old_real, sizeof(AllocHeader) + size);
-  if (!new_real) {
-    trackAlloc(old_header);
+  void* new_real = je_realloc(old_real, new_total);
+  if (!new_real) [[unlikely]] {
+    doDecrease(new_monitor, delta.reserveRequested, delta.reserveActual);
     return nullptr;
   }
 
+  doDecrease(old_monitor, delta.releaseRequested, delta.releaseActual);
   auto* new_header = static_cast<AllocHeader*>(new_real);
-  new_header->requested_size = size;
-  trackAlloc(new_header);
+  initHeader(new_header, new_monitor, size);
   return userPtr(new_header);
 }
 
 int posix_memalign(void** memptr, size_t alignment, size_t size) noexcept {
   if (alignment <= sizeof(AllocHeader)) {
+    size_t total = 0;
+    if (!checkedAdd(size, sizeof(AllocHeader), total)) [[unlikely]] {
+      return ENOMEM;
+    }
+    size_t actual = je_nallocx(total, 0);
+    if (actual == 0) [[unlikely]] {
+      return ENOMEM;
+    }
+    auto* monitor = effectiveMonitor();
+    if (!tryIncrease(monitor, size, actual)) [[unlikely]] {
+      return ENOMEM;
+    }
     void* real = nullptr;
-    int result =
-        je_posix_memalign(&real, alignment, sizeof(AllocHeader) + size);
-    if (result != 0) {
+    int result = je_posix_memalign(&real, alignment, total);
+    if (result != 0) [[unlikely]] {
+      doDecrease(monitor, size, actual);
       return result;
     }
     auto* header = static_cast<AllocHeader*>(real);
-    initHeader(header, size);
-    trackAlloc(header);
+    initHeader(header, monitor, size);
     *memptr = userPtr(header);
     return 0;
   }
 
-  void* real =
-      je_malloc(sizeof(AllocHeader) + sizeof(void*) + size + alignment);
-  if (!real) {
+  // For large alignments we over-allocate to guarantee alignment.
+  size_t alloc_size = 0;
+  if (!checkedAdd(size, alignment, alloc_size) ||
+      !checkedAdd(alloc_size, sizeof(AllocHeader) + sizeof(void*), alloc_size))
+      [[unlikely]] {
+    return ENOMEM;
+  }
+  size_t actual = je_nallocx(alloc_size, 0);
+  if (actual == 0) [[unlikely]] {
+    return ENOMEM;
+  }
+  auto* monitor = effectiveMonitor();
+  if (!tryIncrease(monitor, size, actual)) [[unlikely]] {
+    return ENOMEM;
+  }
+  void* real = je_malloc(alloc_size);
+  if (!real) [[unlikely]] {
+    doDecrease(monitor, size, actual);
     return ENOMEM;
   }
   auto addr =
@@ -231,8 +324,7 @@ int posix_memalign(void** memptr, size_t alignment, size_t size) noexcept {
   addr = (addr + alignment - 1) & ~(alignment - 1);
   void* user = reinterpret_cast<void*>(addr);
   auto* header = headerPtr(user);
-  initAlignedHeader(header, real, size);
-  trackAlloc(header);
+  initAlignedHeader(header, monitor, real, size);
   *memptr = user;
   return 0;
 }

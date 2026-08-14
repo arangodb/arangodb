@@ -61,6 +61,7 @@ target_link_libraries(${BIN_ARANGOD}
 if (USE_JEMALLOC)
   target_link_libraries(${BIN_ARANGOD} jemalloc)
 endif ()
+target_sources(${BIN_ARANGOD} PRIVATE infra/CurrentResourceMonitor.cpp)
 if (USE_MEMORY_TRACKING)
   target_sources(${BIN_ARANGOD} PRIVATE infra/MallocOverride.cpp)
 endif ()

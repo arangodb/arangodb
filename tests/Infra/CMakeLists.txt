@@ -1,0 +1,10 @@
+target_sources(arangodbtests
+  PRIVATE
+  MonitorRegistryTest.cpp
+  ResizeAccountingTest.cpp
+  ResourceMonitorRefTest.cpp
+  ResourceMonitorScopeTest.cpp
+  ResourceMonitorTest.cpp
+  StaticResourceMonitorTest.cpp
+  ${CMAKE_SOURCE_DIR}/arangod/infra/CurrentResourceMonitor.cpp
+  ${CMAKE_SOURCE_DIR}/arangod/infra/MonitorRegistry.cpp)

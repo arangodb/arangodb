@@ -321,6 +321,7 @@ add_executable(arangodbtests
   ${ARANGODB_TESTS_SOURCES})
 
 add_subdirectory(Basics)
+add_subdirectory(Infra)
 add_subdirectory(Inspection)
 add_subdirectory(VelocyPackUtils)
 
