@@ -120,6 +120,11 @@ std::string readGloballyUniqueId(velocypack::Slice info) {
 
 CollectionDescriptor loadCollectionDescriptor(VPackSlice info) {
   CollectionDescriptor props;
+  // Defaults for markers and plan entries that predate these keys.
+  // ShardingInfo applies the same values.
+  props.clusteringConstant.numberOfShards = 1;
+  props.clusteringMutable.replicationFactor = 1;
+  props.clusteringMutable.writeConcern = 1;
   auto status = velocypack::deserializeWithStatus(
       info, props, {.ignoreUnknownFields = true, .ignoreInvariants = true},
       InspectInternalContext{});
@@ -779,7 +784,6 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
   // Collection Meta Information
   build.add(StaticStrings::DataSourceCid,
             VPackValue(std::to_string(id().id())));
-  build.add(StaticStrings::DataSourceType, VPackValue(static_cast<int>(_type)));
 
   // there are no collection statuses anymore, but we need to keep
   // API-compatibility. so the following attributes' values are hard-coded.
@@ -795,10 +799,34 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
             VPackValue(static_cast<uint32_t>(_version)));
   // Collection Flags
   auto props = properties();
-  build.add(StaticStrings::WaitForSyncString,
-            VPackValue(props->clusteringMutable.waitForSync));
-  build.add(StaticStrings::SupportsRBAC,
-            VPackValue(props->mutableProps.supportsRBAC));
+
+  VPackBuilder tmp;
+  velocypack::serializeWithContext(tmp, *props, InspectInternalContext{});
+  // Emitted elsewhere: name/isSystem by LogicalDataSource, objectId and the
+  // effective cacheEnabled by the physical collection, sharding by
+  // ShardingInfo.
+  static constexpr std::array kEmittedElsewhere{"name",
+                                                "isSystem",
+                                                "objectId",
+                                                "cacheEnabled",
+                                                "numberOfShards",
+                                                "shardKeys",
+                                                "replicationFactor",
+                                                "writeConcern",
+                                                "minReplicationFactor",
+                                                "distributeShardsLike",
+                                                "shardingStrategy",
+                                                "keyOptions",
+                                                "syncByRevision",
+                                                "usesRevisionsAsDocumentIds"};
+  for (auto it : VPackObjectIterator(tmp.slice())) {
+    auto key = it.key.stringView();
+    if (std::ranges::find(kEmittedElsewhere, key) != kEmittedElsewhere.end()) {
+      continue;
+    }
+    build.add(key, it.value);
+  }
+
   if (!forPersistence) {
     // with 'forPersistence' added by LogicalDataSource::toVelocyPack
     // FIXME TODO is this needed in !forPersistence???
@@ -842,25 +870,10 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
     return false;
   };
   getPhysical()->getIndexesVPack(build, filter);
-
-  // Schema
-  build.add(VPackValue(StaticStrings::Schema));
-  schemaToVelocyPack(build);
-
-  // Computed Values
-  build.add(VPackValue(StaticStrings::ComputedValues));
-  computedValuesToVelocyPack(build);
-
-  // Internal CollectionType
-  build.add(StaticStrings::InternalValidatorTypes,
-            VPackValue(getInternalValidatorTypes()));
-  // Cluster Specific
-  build.add(StaticStrings::IsDisjoint, VPackValue(isDisjoint()));
-  build.add(StaticStrings::IsSmart, VPackValue(isSmart()));
-  build.add(StaticStrings::IsSmartChild, VPackValue(isSmartChild()));
   build.add(StaticStrings::UsesRevisionsAsDocumentIds,
             VPackValue(usesRevisionsAsDocumentIds()));
   build.add(StaticStrings::SyncByRevision, VPackValue(syncByRevision()));
+
   if (!forPersistence) {
     // with 'forPersistence' added by LogicalDataSource::toVelocyPack
     // TODO is this needed in !forPersistence???

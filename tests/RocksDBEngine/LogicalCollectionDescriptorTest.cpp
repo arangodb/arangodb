@@ -55,6 +55,9 @@ VPackBuilder representativeCreateSlice() {
   return builder;
 }
 
+constexpr std::string_view kExpectedBooksJson =
+    R"({"allowUserKeys":false,"cacheEnabled":false,"computedValues":null,"deleted":false,"internalValidatorType":0,"isDisjoint":false,"isSmart":false,"isSmartChild":false,"isSystem":false,"keyOptions":{"allowUserKeys":false,"type":"traditional","lastValue":0},"minReplicationFactor":1,"name":"books","numberOfShards":1,"replicationFactor":1,"schema":null,"shardKeys":["_key"],"shards":{},"status":3,"statusString":"loaded","supportsRBAC":false,"syncByRevision":false,"type":2,"usesRevisionsAsDocumentIds":false,"version":9,"waitForSync":true,"writeConcern":1})";
+
 }  // namespace
 
 TEST_F(StorageEngineDataTest,
@@ -136,4 +139,56 @@ TEST_F(StorageEngineDataTest, CollectionDescriptor_holdsObjectId) {
   EXPECT_EQ(collection->properties()->storage.objectId,
             static_cast<RocksDBMetaCollection*>(collection->getPhysical())
                 ->objectId());
+}
+
+TEST_F(StorageEngineDataTest, LogicalCollection_persistenceOutputIsStable) {
+  auto database = makeDatabase("testDatabase", 42);
+  auto sliceBuilder = representativeCreateSlice();
+  auto collection = database->createCollection(sliceBuilder.slice());
+  engine().createCollection(*database, *collection);
+
+  std::unordered_set<std::string> const ignore{
+      StaticStrings::ObjectId,         StaticStrings::DataSourceGuid,
+      StaticStrings::DataSourceId,     StaticStrings::DataSourceCid,
+      StaticStrings::DataSourcePlanId, StaticStrings::Indexes};
+
+  auto out = collection->toVelocyPackIgnore(
+      ignore, LogicalDataSource::Serialization::Persistence);
+
+  EXPECT_EQ(
+      out.slice().toJson(),
+      R"({"allowUserKeys":false,"cacheEnabled":false,"computedValues":null,"deleted":false,"internalValidatorType":0,"isDisjoint":false,"isSmart":false,"isSmartChild":false,"isSystem":false,"keyOptions":{"allowUserKeys":false,"type":"traditional","lastValue":0},"minReplicationFactor":1,"name":"books","numberOfShards":1,"replicationFactor":1,"schema":null,"shardKeys":["_key"],"shards":{},"status":3,"statusString":"loaded","supportsRBAC":false,"syncByRevision":false,"type":2,"usesRevisionsAsDocumentIds":false,"version":9,"waitForSync":true,"writeConcern":1})");
+}
+
+TEST_F(StorageEngineDataTest, LogicalCollection_serializationOutputIsStable) {
+  auto database = makeDatabase("testDatabase", 42);
+  auto sliceBuilder = representativeCreateSlice();
+  auto collection = database->createCollection(sliceBuilder.slice());
+  engine().createCollection(*database, *collection);
+
+  std::unordered_set<std::string> const ignore{
+      StaticStrings::ObjectId,         StaticStrings::DataSourceGuid,
+      StaticStrings::DataSourceId,     StaticStrings::DataSourceCid,
+      StaticStrings::DataSourcePlanId, StaticStrings::Indexes};
+
+  EXPECT_EQ(
+      collection
+          ->toVelocyPackIgnore(ignore, LogicalDataSource::Serialization::List)
+          .slice()
+          .toJson(),
+      kExpectedBooksJson);
+
+  EXPECT_EQ(collection
+                ->toVelocyPackIgnore(
+                    ignore, LogicalDataSource::Serialization::Inventory)
+                .slice()
+                .toJson(),
+            kExpectedBooksJson);
+
+  EXPECT_EQ(collection
+                ->toVelocyPackIgnore(
+                    ignore, LogicalDataSource::Serialization::Maintenance)
+                .slice()
+                .toJson(),
+            kExpectedBooksJson);
 }

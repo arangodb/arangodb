@@ -32,9 +32,9 @@
 
 using namespace arangodb;
 
-auto ClusteringMutableProperties::Transformers::ReplicationSatellite::
-    toSerialized(MemoryType v, SerializedType& result)
-        -> arangodb::inspection::Status {
+namespace {
+
+inspection::Status replicationToSerialized(uint64_t v, VPackBuilder& result) {
   if (v == 0) {
     result.add(VPackValue(StaticStrings::Satellite));
   } else {
@@ -43,25 +43,51 @@ auto ClusteringMutableProperties::Transformers::ReplicationSatellite::
   return {};
 }
 
-auto ClusteringMutableProperties::Transformers::ReplicationSatellite::
-    fromSerialized(SerializedType const& b, MemoryType& result)
-        -> arangodb::inspection::Status {
+inspection::Status replicationFromSerialized(VPackBuilder const& b,
+                                             uint64_t& result, bool allowZero) {
   auto v = b.slice();
   if (v.isString() && v.isEqualString(StaticStrings::Satellite)) {
     result = 0;
     return {};
-  } else if (v.isNumber()) {
+  }
+  if (v.isNumber()) {
     try {
-      result = v.getNumber<MemoryType>();
-      if (result != 0) {
+      auto n = v.getNumber<uint64_t>();
+      if (n != 0 || allowZero) {
+        result = n;
         return {};
       }
     } catch (...) {
-      // intentionally fall through. We got disallowed number type (e.g.
-      // negative value)
+      // disallowed number type, e.g. negative
     }
   }
   return {"Only an integer number or 'satellite' is allowed"};
+}
+
+}  // namespace
+
+auto ClusteringMutableProperties::Transformers::ReplicationSatellite::
+    toSerialized(MemoryType v, SerializedType& result)
+        -> arangodb::inspection::Status {
+  return replicationToSerialized(v, result);
+}
+
+auto ClusteringMutableProperties::Transformers::ReplicationSatellite::
+    fromSerialized(SerializedType const& b, MemoryType& result)
+        -> arangodb::inspection::Status {
+  return replicationFromSerialized(b, result, /*allowZero*/ false);
+}
+
+auto ClusteringMutableProperties::Transformers::ReplicationSatelliteInternal::
+    toSerialized(MemoryType v, SerializedType& result)
+        -> arangodb::inspection::Status {
+  return replicationToSerialized(v, result);
+}
+
+auto ClusteringMutableProperties::Transformers::ReplicationSatelliteInternal::
+    fromSerialized(SerializedType const& b, MemoryType& result)
+        -> arangodb::inspection::Status {
+  return replicationFromSerialized(b, result, /*allowZero*/ true);
 }
 
 [[nodiscard]] auto ClusteringMutableProperties::Invariants::

@@ -42,13 +42,25 @@ class Result;
 
 struct ClusteringMutableProperties {
   struct Transformers {
+    // Serialized form is a number, or the string "satellite" for 0.
+    // User input must spell 0 as "satellite"; markers and plan entries
+    // may store a numeric 0, so the internal variant accepts it.
     struct ReplicationSatellite {
       using MemoryType = uint64_t;
       using SerializedType = arangodb::velocypack::Builder;
 
       static arangodb::inspection::Status toSerialized(MemoryType v,
                                                        SerializedType& result);
+      static arangodb::inspection::Status fromSerialized(
+          SerializedType const& v, MemoryType& result);
+    };
 
+    struct ReplicationSatelliteInternal {
+      using MemoryType = uint64_t;
+      using SerializedType = arangodb::velocypack::Builder;
+
+      static arangodb::inspection::Status toSerialized(MemoryType v,
+                                                       SerializedType& result);
       static arangodb::inspection::Status fromSerialized(
           SerializedType const& v, MemoryType& result);
     };
@@ -78,10 +90,9 @@ template<class Inspector>
 auto inspect(Inspector& f, ClusteringMutableProperties& props) {
   auto replicationFactorField = std::invoke([&]() {
     if constexpr (isInternalContext<Inspector>) {
-      // The plan stores a numeric 0 for smart edge collections, which the
-      // transformer rejects because user input has to say "satellite".
-      // ShardingInfo owns this value on the internal path.
-      return f.ignoreField(StaticStrings::ReplicationFactor);
+      return f.field(StaticStrings::ReplicationFactor, props.replicationFactor)
+          .transformWith(ClusteringMutableProperties::Transformers::
+                             ReplicationSatelliteInternal{});
     } else {
       return f.field(StaticStrings::ReplicationFactor, props.replicationFactor)
           .transformWith(ClusteringMutableProperties::Transformers::
