@@ -86,8 +86,9 @@ TEST_F(StorageEngineIndexTest, RemoveDeletesSecondaryIndexEntry) {
 // ===========================================================================
 
 TEST_F(StorageEngineIndexTest, TtlIndexIndexesDocumentsWithNumericExpireValue) {
-  auto index = makeIndex(
-      R"({"type":"ttl","fields":["value"],"expireAfter":3600})"_vpack);
+  auto index =
+      makeIndex(R"({"type":"ttl","fields":["value"],"expireAfter":3600,)"
+                R"("unique":false,"sparse":true})"_vpack);
   ASSERT_TRUE(IsOk(insertR(keyed("a", 1))));
 
   auto entries = scanIndex(*index);
@@ -97,16 +98,18 @@ TEST_F(StorageEngineIndexTest, TtlIndexIndexesDocumentsWithNumericExpireValue) {
 
 TEST_F(StorageEngineIndexTest,
        TtlIndexExcludesDocumentsMissingExpireAttribute) {
-  auto index = makeIndex(
-      R"({"type":"ttl","fields":["value"],"expireAfter":3600})"_vpack);
+  auto index =
+      makeIndex(R"({"type":"ttl","fields":["value"],"expireAfter":3600,)"
+                R"("unique":false,"sparse":true})"_vpack);
   ASSERT_TRUE(IsOk(insertR(keyOnly("a"))));
 
   EXPECT_TRUE(scanIndex(*index).empty());
 }
 
 TEST_F(StorageEngineIndexTest, TtlIndexReturnsEntriesInAscendingOrder) {
-  auto index = makeIndex(
-      R"({"type":"ttl","fields":["value"],"expireAfter":3600})"_vpack);
+  auto index =
+      makeIndex(R"({"type":"ttl","fields":["value"],"expireAfter":3600,)"
+                R"("unique":false,"sparse":true})"_vpack);
   ASSERT_TRUE(IsOk(insertR(keyed("a", 3))));
   ASSERT_TRUE(IsOk(insertR(keyed("b", 1))));
   ASSERT_TRUE(IsOk(insertR(keyed("c", 2))));
