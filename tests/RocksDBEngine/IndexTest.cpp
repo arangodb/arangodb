@@ -77,3 +77,87 @@ TEST_F(StorageEngineIndexTest, RemoveDeletesSecondaryIndexEntry) {
   ASSERT_EQ(entries.size(), 1u);
   EXPECT_EQ(entries.front(), lookupKey("b").first);
 }
+
+// ===========================================================================
+// TTL index: unlike the persistent-family indexes above, entries are derived
+// from the document rather than stored verbatim (RocksDBTtlIndex::insert
+// converts the attribute to a timestamp), so a document is only indexed if
+// that conversion succeeds.
+// ===========================================================================
+
+TEST_F(StorageEngineIndexTest, TtlIndexIndexesDocumentsWithNumericExpireValue) {
+  auto index = makeIndex(
+      R"({"type":"ttl","fields":["value"],"expireAfter":3600})"_vpack);
+  ASSERT_TRUE(IsOk(insertR(keyed("a", 1))));
+
+  auto entries = scanIndex(*index);
+  ASSERT_EQ(entries.size(), 1u);
+  EXPECT_EQ(entries.front(), lookupKey("a").first);
+}
+
+TEST_F(StorageEngineIndexTest,
+       TtlIndexExcludesDocumentsMissingExpireAttribute) {
+  auto index = makeIndex(
+      R"({"type":"ttl","fields":["value"],"expireAfter":3600})"_vpack);
+  ASSERT_TRUE(IsOk(insertR(keyOnly("a"))));
+
+  EXPECT_TRUE(scanIndex(*index).empty());
+}
+
+TEST_F(StorageEngineIndexTest, TtlIndexReturnsEntriesInAscendingOrder) {
+  auto index = makeIndex(
+      R"({"type":"ttl","fields":["value"],"expireAfter":3600})"_vpack);
+  ASSERT_TRUE(IsOk(insertR(keyed("a", 3))));
+  ASSERT_TRUE(IsOk(insertR(keyed("b", 1))));
+  ASSERT_TRUE(IsOk(insertR(keyed("c", 2))));
+
+  std::vector<LocalDocumentId> expected{
+      lookupKey("b").first, lookupKey("c").first, lookupKey("a").first};
+  EXPECT_EQ(scanIndex(*index), expected);
+}
+
+// ===========================================================================
+// persistent/hash/skiplist: three factory-registered type names that all
+// instantiate RocksDBVPackIndex subclasses overriding nothing but type() and
+// typeName() (see RocksDBPersistentIndex.h / RocksDBHashIndex.h /
+// RocksDBSkiplistIndex.h) - parameterized here instead of duplicated per type.
+// ===========================================================================
+
+class StorageEngineIndexTypeTest
+    : public StorageEngineIndexTest,
+      public testing::WithParamInterface<std::string_view> {
+ protected:
+  static VPackString indexDefinition(std::string_view type) {
+    VPackBuilder b;
+    b.openObject();
+    b.add("type", VPackValue(type));
+    b.add("fields", VPackValue(VPackValueType::Array));
+    b.add(VPackValue("value"));
+    b.close();
+    b.close();
+    return VPackString{b.slice()};
+  }
+};
+
+TEST_P(StorageEngineIndexTypeTest, ReflectsInsertedDocuments) {
+  auto index = makeIndex(indexDefinition(GetParam()));
+  ASSERT_TRUE(IsOk(insertR(keyed("a", 1))));
+
+  auto entries = scanIndex(*index);
+  ASSERT_EQ(entries.size(), 1u);
+  EXPECT_EQ(entries.front(), lookupKey("a").first);
+}
+
+TEST_P(StorageEngineIndexTypeTest, ReturnsEntriesInAscendingOrder) {
+  auto index = makeIndex(indexDefinition(GetParam()));
+  ASSERT_TRUE(IsOk(insertR(keyed("a", 3))));
+  ASSERT_TRUE(IsOk(insertR(keyed("b", 1))));
+  ASSERT_TRUE(IsOk(insertR(keyed("c", 2))));
+
+  std::vector<LocalDocumentId> expected{
+      lookupKey("b").first, lookupKey("c").first, lookupKey("a").first};
+  EXPECT_EQ(scanIndex(*index), expected);
+}
+
+INSTANTIATE_TEST_CASE_P(VPackIndexAliases, StorageEngineIndexTypeTest,
+                        ::testing::Values("persistent", "hash", "skiplist"));

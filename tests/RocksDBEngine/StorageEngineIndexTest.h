@@ -38,13 +38,11 @@
 namespace arangodb::tests {
 
 // Adds secondary-index creation/inspection on top of the document-level
-// fixture. Kept separate from StorageEngineDocumentTest so its CRUD tests
-// keep running against a collection with only the automatic primary index.
+// fixture
 class StorageEngineIndexTest : public StorageEngineDocumentTest {
  protected:
-  // createIndex() is a genuine coroutine; waitAndGet() is the established
-  // safe way to drive it to completion synchronously (see
-  // tests/Aql/ExecutionNode/IndexNodeTest.cpp).
+  // waitAndGet() is the
+  // safe way to drive createIndex() to completion synchronously
   std::shared_ptr<Index> makeIndex(VPackSlice definition) {
     bool created = false;
     auto index = _collection->createIndex(definition, created).waitAndGet();
@@ -52,10 +50,6 @@ class StorageEngineIndexTest : public StorageEngineDocumentTest {
     return index;
   }
 
-  // Enumerates every entry currently in the index via an unconditioned scan
-  // (node == nullptr): this is the same path production code takes when an
-  // index is picked only for sorting, so it's an already-exercised way to
-  // observe an index's contents from outside.
   std::vector<LocalDocumentId> scanIndex(Index& index) {
     SingleCollectionTransaction trx{context(), *_collection,
                                     AccessMode::Type::READ};
