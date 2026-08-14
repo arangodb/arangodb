@@ -418,6 +418,19 @@ class LogicalCollection : public LogicalDataSource {
   }
 
  private:
+  // Applies `fn` to a copy of the current descriptor and publishes it.
+  // Callers must hold _infoLock or run during construction: this is a
+  // read-copy-modify-store, so concurrent callers would lose an update.
+  template<class F>
+  void updateDescriptor(F&& fn) {
+    auto updated = std::make_shared<CollectionDescriptor>(*properties());
+    fn(*updated);
+    std::atomic_store_explicit(
+        &_properties,
+        std::shared_ptr<CollectionDescriptor const>(std::move(updated)),
+        std::memory_order_release);
+  }
+
   void initializeSmartAttributesBefore(velocypack::Slice info);
   void initializeSmartAttributesAfter(velocypack::Slice info);
 

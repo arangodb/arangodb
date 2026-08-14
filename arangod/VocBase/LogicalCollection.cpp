@@ -285,6 +285,15 @@ Result LogicalCollection::updateSchema(VPackSlice schema) {
     }
 
     std::atomic_store_explicit(&_schema, newSchema, std::memory_order_release);
+    updateDescriptor([&](CollectionDescriptor& d) {
+      if (schema.isEmptyObject()) {
+        d.mutableProps.schema = std::nullopt;
+      } else {
+        VPackBuilder b;
+        b.add(schema);
+        d.mutableProps.schema = std::move(b);
+      }
+    });
   }
 
   return {};
@@ -302,6 +311,11 @@ Result LogicalCollection::updateComputedValues(VPackSlice computedValues) {
 
     std::atomic_store_explicit(&_computedValues, result.get(),
                                std::memory_order_release);
+    updateDescriptor([&](CollectionDescriptor& d) {
+      VPackBuilder b;
+      b.add(computedValues);
+      d.mutableProps.computedValues = std::move(b);
+    });
   }
   return {};
 }
@@ -619,16 +633,22 @@ Result LogicalCollection::rename(std::string&& newName) {
   // Okay we can finally rename safely
   try {
     name(std::move(newName));
+    updateDescriptor(
+        [this](CollectionDescriptor& d) { d.mutableProps.name = name(); });
     vocbase().engine().changeCollection(vocbase(), *this);
     ++_v8CacheVersion;
   } catch (basics::Exception const& ex) {
     // Engine Rename somehow failed. Reset to old name
     name(std::move(oldName));
+    updateDescriptor(
+        [this](CollectionDescriptor& d) { d.mutableProps.name = name(); });
 
     return ex.code();
   } catch (...) {
     // Engine Rename somehow failed. Reset to old name
     name(std::move(oldName));
+    updateDescriptor(
+        [this](CollectionDescriptor& d) { d.mutableProps.name = name(); });
 
     return {TRI_ERROR_INTERNAL};
   }
@@ -1126,13 +1146,13 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
   auto supportsRBAC = Helper::getBooleanValue(
       slice, StaticStrings::SupportsRBAC, snapshot->mutableProps.supportsRBAC);
 
-  auto updated = std::make_shared<CollectionDescriptor>(*snapshot);
-  updated->clusteringMutable.waitForSync = waitForSync;
-  updated->mutableProps.supportsRBAC = supportsRBAC;
-  std::atomic_store_explicit(
-      &_properties,
-      std::shared_ptr<CollectionDescriptor const>(std::move(updated)),
-      std::memory_order_release);
+  updateDescriptor([&](CollectionDescriptor& d) {
+    d.clusteringMutable.waitForSync = waitForSync;
+    d.mutableProps.supportsRBAC = supportsRBAC;
+    d.mutableProps.cacheEnabled = physicalProps.cacheEnabled;
+    d.clusteringMutable.replicationFactor = replicationFactor;
+    d.clusteringMutable.writeConcern = writeConcern;
+  });
 
   _sharding->setWriteConcernAndReplicationFactor(writeConcern,
                                                  replicationFactor);
