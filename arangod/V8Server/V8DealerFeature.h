@@ -48,6 +48,9 @@ struct Database;
 class JavaScriptSecurityContext;
 class Thread;
 class V8Executor;
+namespace options {
+class ProgramOptions;
+}
 
 class V8DealerFeature final : public application_features::ApplicationFeature {
  public:

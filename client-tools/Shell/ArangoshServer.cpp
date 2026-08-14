@@ -69,7 +69,7 @@ ArangoshServer::ArangoshServer(std::shared_ptr<options::ProgramOptions> options,
   mutableOptions<ClientOptionsProvider>().allowJwtSecret = true;
 }
 
-void ArangoshServer::addFeaturesWithOptionProvider() {
+void ArangoshServer::addFeatures() {
   addFeature<BasicFeaturePhaseClient>();
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});

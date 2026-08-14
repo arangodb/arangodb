@@ -54,7 +54,7 @@ ArangoBackupServer::ArangoBackupServer(
     : OptionProvidingServer<ArangoBackupOptionProviders>(
           options, binaryPath, std::move(binaryName), ret) {}
 
-void ArangoBackupServer::addFeaturesWithOptionProvider() {
+void ArangoBackupServer::addFeatures() {
   addFeature<BasicFeaturePhaseClient>();
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});

@@ -34,8 +34,8 @@ class OptionProvidingServer : public application_features::ApplicationServer {
         _ret(ret) {}
 
  protected:
-  void collectOptions() override {
-    ApplicationServer::collectOptions();
+  void declareOptions() override {
+    ApplicationServer::declareOptions();
     _optionProviders.declareOptions(options());
   }
 

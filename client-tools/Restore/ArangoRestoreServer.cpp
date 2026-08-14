@@ -66,7 +66,7 @@ ArangoRestoreServer::ArangoRestoreServer(
       std::numeric_limits<size_t>::max();
 }
 
-void ArangoRestoreServer::addFeaturesWithOptionProvider() {
+void ArangoRestoreServer::addFeatures() {
   addFeature<BasicFeaturePhaseClient>();
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
