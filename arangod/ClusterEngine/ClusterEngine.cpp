@@ -118,6 +118,11 @@ void ClusterEngine::prepare() {
 void ClusterEngine::start() {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   initTransactionStatistics(_metrics);
+
+  VPackBuilder databases;
+  getDatabases(databases);
+  TRI_ASSERT(databases.slice().isArray());
+  _databaseProvider.bootstrapDatabases(databases.slice());
 }
 
 std::shared_ptr<TransactionState> ClusterEngine::createTransactionState(

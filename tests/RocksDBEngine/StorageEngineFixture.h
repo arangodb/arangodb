@@ -124,8 +124,6 @@ class StorageEngineFixture : public ::testing::Test {
 
     _suite->engine.prepare();
     _suite->engine.start();
-    // normally triggered by DatabaseFeature::start(); no DatabaseFeature here
-    _suite->engine.onDatabasesLoaded();
   }
 
   static void TearDownTestSuite() {

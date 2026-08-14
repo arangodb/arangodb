@@ -170,7 +170,6 @@ class StorageEngineMock : private StorageEngineMockBase,
                                      bool isUpgrade) override;
   void getDatabases(arangodb::velocypack::Builder& result) override;
   void cleanupReplicationContexts() override;
-  void onDatabasesLoaded() override {}
   ErrorCode getViews(TRI_vocbase_t& vocbase,
                      arangodb::velocypack::Builder& result) override;
   arangodb::Result handleSyncKeys(arangodb::DatabaseInitialSyncer& syncer,

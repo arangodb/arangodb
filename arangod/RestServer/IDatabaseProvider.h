@@ -33,7 +33,8 @@ class LogicalCollection;
 
 namespace velocypack {
 class Builder;
-}
+class Slice;
+}  // namespace velocypack
 
 struct IDatabaseProvider {
   virtual ~IDatabaseProvider() = default;
@@ -58,6 +59,10 @@ struct IDatabaseProvider {
   virtual void extendedNames(bool value) noexcept = 0;
 
   virtual void recoveryDone() = 0;
+
+  // materializes databases from an engine inventory; called by the engine
+  // itself once it's open, not by anything external.
+  virtual void bootstrapDatabases(velocypack::Slice databases) = 0;
 };
 
 }  // namespace arangodb

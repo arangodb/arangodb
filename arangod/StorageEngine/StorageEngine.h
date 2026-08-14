@@ -142,9 +142,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   // fully created (see "createDatabase" below). called at server start only
   virtual void getDatabases(arangodb::velocypack::Builder& result) = 0;
 
-  // called once databases are resolvable via useDatabase()
-  virtual void onDatabasesLoaded() = 0;
-
   // fills the provided builder with information about the collection
   virtual void getCollectionInfo(TRI_vocbase_t& vocbase, DataSourceId cid,
                                  arangodb::velocypack::Builder& result,

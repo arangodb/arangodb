@@ -198,7 +198,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   // the storage engine must not start any threads here or write any files
   void prepare() override;
   void start() override;
-  void onDatabasesLoaded() override;
   void beginShutdown() override;
   void stop() override;
   void unprepare() override;

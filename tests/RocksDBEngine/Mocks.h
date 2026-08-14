@@ -34,6 +34,8 @@
 #include "RocksDBEngine/ISortingPolicy.h"
 #include "VectorIndex/IVectorIndexProvider.h"
 
+#include <velocypack/Slice.h>
+
 namespace arangodb::tests {
 
 struct MockDatabasePathProvider : IDatabasePathProvider {
@@ -74,6 +76,7 @@ struct MockDatabaseProvider : IDatabaseProvider {
   MOCK_METHOD(bool, extendedNames, (), (const, noexcept, override));
   MOCK_METHOD(void, extendedNames, (bool), (noexcept, override));
   MOCK_METHOD(void, recoveryDone, (), (override));
+  MOCK_METHOD(void, bootstrapDatabases, (velocypack::Slice), (override));
 };
 
 struct MockCacheManagerProvider : ICacheManagerProvider {

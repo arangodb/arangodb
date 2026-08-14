@@ -109,6 +109,7 @@
 #include "Transaction/Context.h"
 #include "Transaction/Manager.h"
 #include "Transaction/Options.h"
+#include "V8Server/V8DealerFeature.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/ticks.h"
@@ -359,6 +360,8 @@ RocksDBEngine::RocksDBEngine(
   startsAfter<RocksDBOptionFeature>();
   startsAfter<LanguageFeature>();
   startsAfter<LanguageCheckFeature>();
+  // bootstrapDatabases() below may create per-database V8 contexts
+  startsAfter<V8DealerFeature>();
 
   transaction::Options::setLimits(_options.maxTransactionSize,
                                   _options.intermediateCommitSize,
@@ -914,9 +917,12 @@ void RocksDBEngine::start() {
   // metrics are correctly populated once the HTTP interface comes
   // up
   determineWalFilesInitial();
-}
 
-void RocksDBEngine::onDatabasesLoaded() {
+  VPackBuilder databases;
+  getDatabases(databases);
+  TRI_ASSERT(databases.slice().isArray());
+  _databaseProvider.bootstrapDatabases(databases.slice());
+
   runRecovery();
   _databaseProvider.recoveryDone();
 }

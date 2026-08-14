@@ -279,9 +279,6 @@ DatabaseFeature::DatabaseFeature(
   startsAfter<CacheManagerFeature>();
   startsAfter<InitDatabaseFeature>();
   startsAfter<metrics::MetricsFeature>();
-
-  startsAfter<ClusterEngine>();
-  startsAfter<RocksDBEngine>();
 }
 
 DatabaseFeature::~DatabaseFeature() = default;
@@ -299,13 +296,6 @@ void DatabaseFeature::start() {
     dealer.verifyAppPaths();
   }
 #endif
-
-  // safe unconditionally: all prepare() calls finish before any start()
-  VPackBuilder builder;
-  _engine->getDatabases(builder);
-  TRI_ASSERT(builder.slice().isArray());
-  openDatabases(builder.slice());
-  _engine->onDatabasesLoaded();
 
   // start database manager thread
   _databaseManager =
@@ -511,6 +501,10 @@ void DatabaseFeature::prepare() {
     auto& metrics = server().getFeature<metrics::MetricsFeature>();
     _metadataMetrics.emplace(metrics);
   }
+}
+
+void DatabaseFeature::bootstrapDatabases(velocypack::Slice databases) {
+  openDatabases(databases);
 }
 
 void DatabaseFeature::openDatabases(velocypack::Slice databases) {

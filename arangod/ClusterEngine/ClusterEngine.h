@@ -103,9 +103,6 @@ class ClusterEngine final : public StorageEngine {
 
   void cleanupReplicationContexts() override {}
 
-  // coordinators have no local WAL to recover, nothing to do
-  void onDatabasesLoaded() override {}
-
   Result handleSyncKeys(DatabaseInitialSyncer& syncer, LogicalCollection& col,
                         std::string const& keysId) override {
     return {TRI_ERROR_NOT_IMPLEMENTED};
