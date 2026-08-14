@@ -56,14 +56,9 @@ int main(int argc, char* argv[]) {
         "For more information use:", BIN_DIRECTORY);
 
     ArangoDumpServer server(options, BIN_DIRECTORY, context.binaryName(), &ret);
-    server.addFeatures();
 
     try {
       server.run(argc, argv);
-      if (server.helpShown()) {
-        // --help was displayed
-        ret = EXIT_SUCCESS;
-      }
     } catch (std::exception const& ex) {
       LOG_TOPIC("8363a", ERR, arangodb::Logger::FIXME)
           << "arangodump terminated because of an unhandled exception: "

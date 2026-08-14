@@ -46,14 +46,8 @@ int main(int argc, char* argv[]) {
     int ret = EXIT_SUCCESS;
     ArangoRestoreServer server(options, BIN_DIRECTORY, context.binaryName(),
                                &ret);
-    server.addFeatures();
-
     try {
       server.run(argc, argv);
-      if (server.helpShown()) {
-        // --help was displayed
-        ret = EXIT_SUCCESS;
-      }
     } catch (std::exception const& ex) {
       LOG_TOPIC("f337f", ERR, arangodb::Logger::FIXME)
           << "arangorestore terminated because of an unhandled exception: "

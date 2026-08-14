@@ -1,7 +1,34 @@
 3.12.11-devel (XXXX-XX-XX)
 --------------------------
 
-* BTS-2425: Updated node modules:
+* Fixed access token expiry (COR-825).
+
+* COR-669: Server State Metric
+  Added the arangodb_server_health gauge metric to report the health status of each
+  server in a cluster. The metric is exported by Coordinators and labeled with
+  `target_server` (unique id), and `target_shortname` of the reported
+  server. Values are 0 (Failed), 1 (Bad), and 2 (Good).
+
+* Add explicit permission checks for operations on streaming transactions.
+  Previously trying to do modifications and forbidden collections that were not
+  part of the transaction already produced an error 400
+  (UNREGISTERED_COLLECTION).
+  Now this produces instead an error 403 (FORBIDDEN).
+  Trying to read a single document by key from a forbidden collection actually
+  worked. Now this produces instead an error 403 (FORBIDDEN).
+
+* Upgraded included rclone to v1.75.0 with go1.25.12 and non-vulnerable
+  dependencies.
+
+* Updated node module js-yaml to 4.3.1 to resolve GHSA-5p4m-2wfm-xmqj.
+
+* Removed the obsolete "Replication" view and menu entry from the web UI.
+
+* COR-764: Added REST API to access ArangoSearch segment stats.
+
+* COR-569: Added activity to report ArangoSearch consolidation.
+
+* BTS-2425:
  - fast-uri to 3.1.5 to resolve CVE-2026-18446
  - brace-expansion to 5.0.9 to resolve CVE-2026-69152
 

@@ -31,7 +31,6 @@
 #include "ApplicationFeatures/GreetingsFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
-#include "ApplicationFeatures/VersionFeature.h"
 #include "Logger/LoggerFeature.h"
 #include "Random/RandomFeature.h"
 #include "Ssl/SslFeature.h"
@@ -310,13 +309,6 @@ void MockServer::startFeatures() {
 
   if (_server.hasFeature<DatabaseFeature>()) {
     _server.getFeature<DatabaseFeature>().setEngineTesting(_engine.get());
-  }
-
-  if (_server.hasFeature<SchedulerFeature>()) {
-    auto& sched = _server.getFeature<SchedulerFeature>();
-    // Needed to set nrMaximalThreads
-    sched.validateOptions(
-        std::make_shared<options::ProgramOptions>("", "", "", nullptr));
   }
 
   for (ApplicationFeature& f : orderedFeatures) {

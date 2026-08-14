@@ -37,9 +37,6 @@ const setup = require(base);
   setup.createModifyCollection();
   setup.createExtendedName();
   setup.createComputedValues();
-  setup.createAutoIncKeyGen();
-  setup.createPaddedKeyGen();
-  setup.createUUIDKeyGen();
   setup.createStrings();
   setup.createTransactional();
   setup.createPersistent();
@@ -50,20 +47,10 @@ const setup = require(base);
   setup.createFoxx();
   setup.createAnalyzers();
 
-  // those two are related to each other as createSmartArangoSearch depends on createSmartGraph
   setup.createSmartGraph();
-  setup.createSmartArangoSearch();
 
   setup.createSmartGraph3_11_compat();
 
-  setup.createEmptySmartGraph();
-  setup.createEmptyEnterpriseGraph();
-  setup.createEmptySatelliteGraph();
-  setup.createEmptyDisjointGraph();
-  setup.createSmartGraphWithoutData();
-  setup.createEnterpriseGraphWithoutData();
-  setup.createSatelliteGraphWithoutData();
-  setup.createDisjointGraphWithoutData();
   setup.createSmartGraphSingleServer();
   setup.createEnterpriseGraphSingleServer();
   setup.createSatelliteGraphSingleServer();

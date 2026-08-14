@@ -20,21 +20,24 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationFeatures/VersionFeature.h"
-#include "ApplicationFeatures/ShellColorsFeature.h"
+#pragma once
 
 namespace arangodb {
+namespace velocypack {
+class HashedStringRef;
+class Builder;
+}  // namespace velocypack
 
-VersionFeature::VersionFeature(application_features::ApplicationServer& server)
-    : VersionFeature(server, VersionFeatureOptions{}) {}
+namespace graph {
+class IPathResult {
+ public:
+  IPathResult() {}
+  virtual ~IPathResult() = default;
 
-VersionFeature::VersionFeature(application_features::ApplicationServer& server,
-                               VersionFeatureOptions options)
-    : application_features::ApplicationFeature{server, *this},
-      _options(std::move(options)) {
-  setOptional(false);
+  virtual auto toVelocyPack(velocypack::Builder& builder) -> void = 0;
+  virtual auto lastVertexToVelocyPack(velocypack::Builder& builder) -> void = 0;
+  virtual auto lastEdgeToVelocyPack(velocypack::Builder& builder) -> void = 0;
+};
 
-  startsAfter<ShellColorsFeature>();
-}
-
+}  // namespace graph
 }  // namespace arangodb

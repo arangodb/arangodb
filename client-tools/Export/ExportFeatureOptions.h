@@ -32,6 +32,8 @@
 namespace arangodb {
 
 struct ExportFeatureOptions {
+  ExportFeatureOptions();
+
   std::vector<std::string> collections;
   std::string customQuery;
   std::string customQueryFile;

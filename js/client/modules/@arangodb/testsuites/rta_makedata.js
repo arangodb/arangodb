@@ -29,11 +29,6 @@ const functionsDocumentation = {
 };
 
 const internal = require('internal');
-
-const executeExternal = internal.executeExternal;
-const executeExternalAndWait = internal.executeExternalAndWait;
-const statusExternal = internal.statusExternal;
-
 /* Modules: */
 const _ = require('lodash');
 const fs = require('fs');
@@ -94,6 +89,9 @@ function makeDataWrapper (options) {
         this.serverOptions["arangosearch.columns-cache-limit"] = "5000";
       }
       this.continueTesting = true;
+      if (this.options.isCov) {
+        this.options.oneTestTimeout = this.options.oneTestTimeout * 2;
+      }
     }
     filter(te, filtered) {
       return true;
@@ -268,11 +266,39 @@ function makeDataWrapper (options) {
             if (this.options.replicationVersion === 2 || this.options.replicationVersion === "2") {
               this.instanceManager.removeServerFromAgency(stoppedDbServerInstance.id);
             }
+            let rc = this.runMakeData(moreargv, file, whichRTA, 2, 2, 0, res);
+            if (!rc.status) {
+              this.continueTesting = false;
+              res.status = false;
+              res.failed += 1;
+              res[whichRTA] = {
+                'forceTerminate': true,
+                'message': `SUT did not get in sync ${rc}`,
+                'failed': 1,
+                'status': false,
+                'duration': 0.0
+              };
+              return;
+            }
           }
         } else {
           if (count === 2) {
             this.createDump();
             this.restoreDump();
+            let rc = this.runMakeData(moreargv, file, whichRTA, 2, 2, 0, res);
+            if (!rc.status) {
+              this.continueTesting = false;
+              res.status = false;
+              res.failed += 1;
+              res[whichRTA] = {
+                'forceTerminate': true,
+                'message': `SUT did not get in sync ${rc}`,
+                'failed': 1,
+                'status': false,
+                'duration': 0.0
+              };
+              return;
+            }
           } else if (count === 3) {
             try {
               if (this.options.oldSource !== undefined) {
@@ -281,6 +307,20 @@ function makeDataWrapper (options) {
               }
               this.instanceManager.upgradeCycleInstance(false, {});
               this.restoreDump();
+              let rc = this.runMakeData(moreargv, file, whichRTA, 2, 2, 0, res);
+              if (!rc.status) {
+                this.continueTesting = false;
+                res.status = false;
+                res.failed += 1;
+                res[whichRTA] = {
+                  'forceTerminate': true,
+                  'message': `SUT did not get in sync ${rc}`,
+                  'failed': 1,
+                  'status': false,
+                  'duration': 0.0
+                };
+                return;
+              }
             } catch(e) {
               res.status = false;
               res.failed += 1;
@@ -320,10 +360,16 @@ function makeDataWrapper (options) {
     }
     localOptions.password = "cluster";
   } else {
-    localOptions.password = "leaderfollower";
+    localOptions.password = "single";
   }
   localOptions.extraArgs['vector-index'] = true;
 
+  if (!localOptions.isSan) {
+    // don't have default values if non instrumented arangosh.
+    ["TSAN_OPTIONS", "UBSAN_OPTIONS", "LSAN_OPTIONS", "ASAN_OPTIONS"].forEach(varname => {
+      delete(process.env[varname]);
+    });
+  }
   SetGlobalExecutionDeadlineTo(localOptions.oneTestTimeout);
   let rc = new rtaMakedataRunner(localOptions, 'rta_makedata_test').run(['rta']);
   let timeout = SetGlobalExecutionDeadlineTo(0.0);

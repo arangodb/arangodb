@@ -20,19 +20,32 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "RestoreFeatureOptions.h"
 
-#include "ApplicationFeatures/OptionsProvider.h"
-#include "VersionFeatureOptions.h"
+#include "Basics/error.h"
+#include "Basics/Exceptions.h"
+#include "Basics/FileUtils.h"
+#include "Basics/NumberOfCores.h"
+#include "Basics/StringUtils.h"
+#include "Basics/voc-errors.h"
+
+#include <filesystem>
 
 namespace arangodb {
 
-struct VersionOptionsProvider
-    : OptionsProviderImpl<VersionOptionsProvider, VersionFeatureOptions> {
-  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                          VersionFeatureOptions& options);
-  void processOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                          VersionFeatureOptions& options);
-};
+RestoreFeatureOptions::RestoreFeatureOptions() {
+  using basics::FileUtils::buildFilename;
+  std::error_code ec;
+  std::filesystem::path const cwd = std::filesystem::current_path(ec);
+  if (ec) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_set_errno(TRI_ERROR_SYS_ERROR),
+        basics::StringUtils::concatT("cannot get current working directory: ",
+                                     ec.message()));
+  }
+  inputPath = buildFilename(cwd.string(), "dump");
+  threadCount =
+      std::max(threadCount, static_cast<uint32_t>(NumberOfCores::getValue()));
+}
 
 }  // namespace arangodb

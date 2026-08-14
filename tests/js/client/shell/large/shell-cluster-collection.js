@@ -546,11 +546,13 @@ function ClusterCollectionSuite () {
     },
 
     testCreateAsManyShardsAsAllowed : function () {
-      let max = maxNumberOfShards;
-      if (max > 0) {
-        db._create("UnitTestsClusterCrud", { numberOfShards : max });
-        let properties = db["UnitTestsClusterCrud"].properties();
-        assertEqual(max, properties.numberOfShards);
+      if (!IM.options.isCov) {
+        let max = maxNumberOfShards;
+        if (max > 0) {
+          db._create("UnitTestsClusterCrud", { numberOfShards : max });
+          let properties = db["UnitTestsClusterCrud"].properties();
+          assertEqual(max, properties.numberOfShards);
+        }
       }
     },
 

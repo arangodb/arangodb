@@ -41,12 +41,6 @@ jsunity.run(function dump_single_testsuite() {
   if (!internal.isEnterprise()) {
       enterpriseTests = [
           // enterprise sharded graphs on single server tests
-          "testEmptySmartGraph",
-          "testEmptyEnterpriseGraph",
-          "testEmptySatelliteGraph",
-          "testEmptyDisjointGraph",
-          "testSmartGraphWithoutData",
-          "testEnterpriseGraphWithoutData",
           "testSmartGraphSingleServer",
           "testEnterpriseGraphSingleServer",
           "testSatelliteSmartGraphSingleServer",
@@ -87,7 +81,6 @@ jsunity.run(function dump_single_testsuite() {
       "testAqlGraphQueryOutbound",
       "testAqlGraphQueryAny",
       "testSmartGraphSharding",
-      "testViewOnSmartEdgeCollection",
       "testSmartGraphAttribute",
 
       // Hotbackup tests:

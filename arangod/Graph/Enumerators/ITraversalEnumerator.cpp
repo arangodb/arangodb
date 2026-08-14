@@ -20,7 +20,7 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "OneSidedEnumeratorInterface.h"
+#include "Graph/Enumerators/ITraversalEnumerator.h"
 
 #include "Aql/QueryContext.h"
 #include "Graph/algorithm-aliases.h"
@@ -93,7 +93,7 @@ using namespace arangodb::graph;
   }
 
 template<class ProviderName>
-auto TraversalEnumerator::createEnumerator(
+auto ITraversalEnumerator::createEnumerator(
     traverser::TraverserOptions::Order order,
     traverser::TraverserOptions::UniquenessLevel uniqueVertices,
     traverser::TraverserOptions::UniquenessLevel uniqueEdges,
@@ -101,13 +101,13 @@ auto TraversalEnumerator::createEnumerator(
     typename ProviderName::Options&& baseProviderOptions,
     arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
     arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions)
-    -> std::unique_ptr<TraversalEnumerator> {
+    -> std::unique_ptr<ITraversalEnumerator> {
   GENERATE_ORDER_SWITCH(ProviderName)
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
 
 #define INSTANTIATE_FACTORY(ProviderName)                              \
-  template auto TraversalEnumerator::createEnumerator<ProviderName>(   \
+  template auto ITraversalEnumerator::createEnumerator<ProviderName>(  \
       traverser::TraverserOptions::Order order,                        \
       traverser::TraverserOptions::UniquenessLevel uniqueVertices,     \
       traverser::TraverserOptions::UniquenessLevel uniqueEdges,        \
@@ -115,7 +115,7 @@ auto TraversalEnumerator::createEnumerator(
       ProviderName::Options && baseProviderOptions,                    \
       arangodb::graph::PathValidatorOptions && pathValidatorOptions,   \
       arangodb::graph::OneSidedEnumeratorOptions && enumeratorOptions) \
-      ->std::unique_ptr<TraversalEnumerator>;
+      ->std::unique_ptr<ITraversalEnumerator>;
 
 INSTANTIATE_FACTORY(
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>)

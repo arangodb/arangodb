@@ -24,6 +24,7 @@
 
 #include "Graph/TraverserOptions.h"
 #include "Graph/Types/VertexRef.h"
+#include "Graph/PathManagement/IPathResult.h"
 
 #include <memory>
 #include <numeric>
@@ -45,24 +46,7 @@ struct VertexDescription;
 struct OneSidedEnumeratorOptions;
 class PathValidatorOptions;
 
-#ifdef USE_ENTERPRISE
-namespace enterprise {
-template<class Provider>
-struct SmartGraphResponse;
-}
-#endif
-
-class PathResultInterface {
- public:
-  PathResultInterface() {}
-  virtual ~PathResultInterface() = default;
-
-  virtual auto toVelocyPack(velocypack::Builder& builder) -> void = 0;
-  virtual auto lastVertexToVelocyPack(velocypack::Builder& builder) -> void = 0;
-  virtual auto lastEdgeToVelocyPack(velocypack::Builder& builder) -> void = 0;
-};
-
-class TraversalEnumerator {
+class ITraversalEnumerator {
  public:
   template<class Provider>
   static auto createEnumerator(
@@ -73,10 +57,10 @@ class TraversalEnumerator {
       typename Provider::Options&& baseProviderOptions,
       graph::PathValidatorOptions&& pathValidatorOptions,
       graph::OneSidedEnumeratorOptions&& enumeratorOptions)
-      -> std::unique_ptr<TraversalEnumerator>;
+      -> std::unique_ptr<ITraversalEnumerator>;
 
-  TraversalEnumerator() {}
-  virtual ~TraversalEnumerator() {}
+  ITraversalEnumerator() {}
+  virtual ~ITraversalEnumerator() {}
 
   virtual void clear(bool keepPathStore) = 0;
   [[nodiscard]] virtual bool isDone() const = 0;
@@ -88,7 +72,7 @@ class TraversalEnumerator {
       std::vector<VertexDescription> const& vertices) = 0;
 
   virtual auto prepareIndexExpressions(aql::Ast* ast) -> void = 0;
-  virtual auto getNextPath() -> std::unique_ptr<PathResultInterface> = 0;
+  virtual auto getNextPath() -> std::unique_ptr<IPathResult> = 0;
 #ifdef USE_ENTERPRISE
   virtual auto smartSearch(size_t amountOfExpansions,
                            velocypack::Builder& result) -> void = 0;
