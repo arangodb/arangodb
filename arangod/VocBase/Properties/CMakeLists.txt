@@ -4,6 +4,7 @@ add_library(arango_vocbase_api STATIC
         ClusteringProperties.cpp
         CollectionConstantProperties.cpp
         CollectionCreateOptions.cpp
+        CollectionDescriptor.cpp
         CollectionIndexesProperties.cpp
         CollectionInternalProperties.cpp
         CollectionMutableProperties.cpp

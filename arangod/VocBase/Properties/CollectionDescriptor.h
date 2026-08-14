@@ -39,6 +39,8 @@ struct CollectionDescriptor {
   CollectionMutableProperties mutableProps{};       // needs to be thread-safe
   CollectionStorageProperties storage{};
   bool operator==(CollectionDescriptor const&) const = default;
+
+  static CollectionDescriptor fromVelocyPack(velocypack::Slice info);
 };
 
 template<class Inspector>

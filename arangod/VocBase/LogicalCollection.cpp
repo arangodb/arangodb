@@ -118,25 +118,6 @@ std::string readGloballyUniqueId(velocypack::Slice info) {
   return StaticStrings::Empty;
 }
 
-CollectionDescriptor loadCollectionDescriptor(VPackSlice info) {
-  CollectionDescriptor props;
-  // Defaults for markers and plan entries that predate these keys.
-  // ShardingInfo applies the same values.
-  props.clusteringConstant.numberOfShards = 1;
-  props.clusteringMutable.replicationFactor = 1;
-  props.clusteringMutable.writeConcern = 1;
-  auto status = velocypack::deserializeWithStatus(
-      info, props, {.ignoreUnknownFields = true, .ignoreInvariants = true},
-      InspectInternalContext{});
-  if (!status.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        absl::StrCat("failed to parse collection properties: ",
-                     status.error()));
-  }
-  return props;
-}
-
 }  // namespace
 
 // The Slice contains the part of the plan that
@@ -156,7 +137,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
           Helper::getBooleanValue(info, StaticStrings::DataSourceDeleted,
                                   false)),
       _properties(std::make_shared<CollectionDescriptor const>(
-          loadCollectionDescriptor(info))),
+          CollectionDescriptor::fromVelocyPack(info))),
       _version(static_cast<Version>(Helper::getNumericValue<uint32_t>(
           info, StaticStrings::Version,
           static_cast<uint32_t>(currentVersion())))),
@@ -183,6 +164,11 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
     _usesRevisionsAsDocumentIds = false;
     _syncByRevision.store(false);
   }
+
+  updateDescriptor([this](CollectionDescriptor& d) {
+    d.internal.usesRevisionsAsDocumentIds = _usesRevisionsAsDocumentIds;
+    d.internal.syncByRevision = _syncByRevision.load();
+  });
 
   TRI_ASSERT(info.isObject());
 
@@ -802,23 +788,18 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
 
   VPackBuilder tmp;
   velocypack::serializeWithContext(tmp, *props, InspectInternalContext{});
-  // Emitted elsewhere: name/isSystem by LogicalDataSource, objectId and the
-  // effective cacheEnabled by the physical collection, sharding by
-  // ShardingInfo.
-  static constexpr std::array kEmittedElsewhere{"name",
-                                                "isSystem",
-                                                "objectId",
-                                                "cacheEnabled",
-                                                "numberOfShards",
-                                                "shardKeys",
-                                                "replicationFactor",
-                                                "writeConcern",
-                                                "minReplicationFactor",
-                                                "distributeShardsLike",
-                                                "shardingStrategy",
-                                                "keyOptions",
-                                                "syncByRevision",
-                                                "usesRevisionsAsDocumentIds"};
+  static constexpr std::array kEmittedElsewhere{
+      // LogicalDataSource::properties() wrote these already
+      "name", "isSystem",
+      // the key generator owns the live lastValue
+      "keyOptions",
+      // ShardingInfo::toVelocyPack needs the server role, the replication-2
+      // gate, and a CID-to-name lookup
+      "numberOfShards", "shardKeys", "replicationFactor", "writeConcern",
+      "minReplicationFactor", "distributeShardsLike", "shardingStrategy",
+      // the physical collection owns the effective cacheEnabled
+      "objectId", "cacheEnabled"};
+
   for (auto it : VPackObjectIterator(tmp.slice())) {
     auto key = it.key.stringView();
     if (std::ranges::find(kEmittedElsewhere, key) != kEmittedElsewhere.end()) {
@@ -870,9 +851,6 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
     return false;
   };
   getPhysical()->getIndexesVPack(build, filter);
-  build.add(StaticStrings::UsesRevisionsAsDocumentIds,
-            VPackValue(usesRevisionsAsDocumentIds()));
-  build.add(StaticStrings::SyncByRevision, VPackValue(syncByRevision()));
 
   if (!forPersistence) {
     // with 'forPersistence' added by LogicalDataSource::toVelocyPack
