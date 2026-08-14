@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -20,19 +20,20 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "NonceFeature.h"
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
+// TODO (COR-867): Remove this file by cutting the link to
+// GeneralServerFeature.cpp
 
-using namespace arangodb::basics;
-using namespace arangodb::options;
+#include "RocksDBEngine/RocksDBRestHandlers.h"
+#include "ClusterEngine/ClusterRestHandlers.h"
 
 namespace arangodb {
 
-NonceFeature::NonceFeature(application_features::ApplicationServer& server)
-    : application_features::ApplicationFeature{server, *this} {
-  setOptional(true);
-  startsAfter<application_features::GreetingsFeaturePhase>();
-}
+// These no-op implementations are needed because of GeneralServerFeature.cpp.
+// It calls registerResources for both RocksDBEngine and ClusterEngine, but
+// this test only links arango_rocksdb (which lacks these methods'
+// implementations).
+void RocksDBRestHandlers::registerResources(rest::RestHandlerFactory*,
+                                            StorageEngine&) {}
+void ClusterRestHandlers::registerResources(rest::RestHandlerFactory*) {}
 
 }  // namespace arangodb
