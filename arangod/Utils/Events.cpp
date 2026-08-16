@@ -78,6 +78,8 @@ void QueryDocument(std::string const& db, VPackSlice const&, int code) {}
 void CreateHotbackup(std::string const& id, ErrorCode result) {}
 void RestoreHotbackup(std::string const& id, ErrorCode result) {}
 void DeleteHotbackup(std::string const& id, ErrorCode result) {}
+void ReadUser(std::string const& username, Result const& result,
+              ExecContext const& context) {}
 
 }  // namespace events
 }  // namespace arangodb

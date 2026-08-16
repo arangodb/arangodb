@@ -29,6 +29,7 @@
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/Events.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/vocbase.h"
@@ -125,6 +126,7 @@ RestStatus RestUsersHandler::getRequest(auth::UserManager* um) {
   if (suffixes.empty()) {
     if (isAdminUser()) {
       VPackBuilder users = um->allUsers();
+      events::ReadUser("*", Result(), ExecContext::current());
       generateOk(ResponseCode::OK, users.slice());
     } else {
       generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
@@ -133,6 +135,7 @@ RestStatus RestUsersHandler::getRequest(auth::UserManager* um) {
     std::string const& user = suffixes[0];
     if (canAccessUser(user)) {
       VPackBuilder doc = um->serializeUser(user);
+      events::ReadUser(user, Result(), ExecContext::current());
       generateUserResult(ResponseCode::OK, doc);
     } else {
       generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
@@ -153,6 +156,7 @@ RestStatus RestUsersHandler::getRequest(auth::UserManager* um) {
           full = StringUtils::boolean(param);
         }
         generateDatabaseResult(um, user, full);
+        events::ReadUser(user, Result(), ExecContext::current());
       } else if (suffixes.size() == 3) {
         //_api/user/<user>/database/<dbname>
         // return specific database
@@ -161,6 +165,7 @@ RestStatus RestUsersHandler::getRequest(auth::UserManager* um) {
 
         VPackBuilder data;
         data.add(VPackValue(convertFromAuthLevel(lvl)));
+        events::ReadUser(user, Result(), ExecContext::current());
         generateOk(ResponseCode::OK, data.slice());
       } else if (suffixes.size() == 4) {
         bool configured = _request->parsedValue("configured", false);
@@ -170,6 +175,7 @@ RestStatus RestUsersHandler::getRequest(auth::UserManager* um) {
 
         VPackBuilder data;
         data.add(VPackValue(convertFromAuthLevel(lvl)));
+        events::ReadUser(user, Result(), ExecContext::current());
         generateOk(ResponseCode::OK, data.slice());
       } else {
         generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
@@ -186,6 +192,7 @@ RestStatus RestUsersHandler::getRequest(auth::UserManager* um) {
                    resp.isNone() ? VPackSlice::nullSlice() : resp);
         return TRI_ERROR_NO_ERROR;
       });
+      events::ReadUser(user, r, ExecContext::current());
       if (r.fail()) {
         generateError(r);
       }
