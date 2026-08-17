@@ -25,6 +25,7 @@
 #include "Basics/Result.h"
 #include "Cluster/Utils/ShardID.h"
 #include "Containers/FlatHashMap.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -50,6 +51,8 @@ class ShardingInfo {
  public:
   ShardingInfo() = delete;
   ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* collection);
+  ShardingInfo(CollectionDescriptor const& descriptor,
+               LogicalCollection* collection);
   ShardingInfo(ShardingInfo const& other, LogicalCollection* collection);
   ShardingInfo& operator=(ShardingInfo const& other) = delete;
   ~ShardingInfo();
@@ -118,6 +121,10 @@ class ShardingInfo {
   static Result extractShardKeys(velocypack::Slice info,
                                  size_t replicationFactor,
                                  std::vector<std::string>& shardKeys);
+
+  static Result extractShardKeys(
+      std::optional<std::vector<std::string>> const& input,
+      size_t replicationFactor, std::vector<std::string>& shardKeys);
 
  private:
   void makeSatellite();

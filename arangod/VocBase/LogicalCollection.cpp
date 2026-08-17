@@ -296,6 +296,7 @@ RevisionId LogicalCollection::newRevisionId() const {
 }
 
 // SECTION: sharding
+// TODO: Make result type const
 ShardingInfo* LogicalCollection::shardingInfo() const {
   TRI_ASSERT(_sharding != nullptr);
   return _sharding.get();

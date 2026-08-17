@@ -100,6 +100,8 @@ class LogicalCollection : public LogicalDataSource {
  public:
   LogicalCollection() = delete;
   LogicalCollection(Database& vocbase, velocypack::Slice info, bool isAStub);
+  LogicalCollection(Database& vocbase, CollectionDescriptor const& descriptor,
+                    bool isAStub);
   LogicalCollection(LogicalCollection const&) = delete;
   LogicalCollection& operator=(LogicalCollection const&) = delete;
   ~LogicalCollection() override;
@@ -424,7 +426,6 @@ class LogicalCollection : public LogicalDataSource {
   CollectionDescriptor properties() const;
 
  private:
-
   void initializeSmartAttributesBefore(velocypack::Slice info);
   void initializeSmartAttributesAfter(velocypack::Slice info);
 
