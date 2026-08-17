@@ -60,7 +60,7 @@
 #include "Transaction/Helpers.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/DatabaseGuard.h"
-#include "VectorIndex/VectorIndexTrainingSampler.h"
+#include "VectorIndex/TrainingSampler.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <rocksdb/db.h>
@@ -289,7 +289,7 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
       _index.sparse() ? "sparse" : "non-sparse", numDocsHint, reservoirCapacity,
       expectedReservoirBytes / (1024 * 1024), seed);
 
-  VectorIndexTrainingSampler sampler{def.dimension, reservoirCapacity, seed};
+  TrainingSampler sampler{def.dimension, reservoirCapacity, seed};
   std::vector<float> inputBuffer;
   inputBuffer.reserve(def.dimension);
 
@@ -378,7 +378,7 @@ ResultT<std::size_t> VectorIndexTrainer::resolveNLists(
 Result VectorIndexTrainer::shrinkReservoirForSparseScaling(
     std::size_t validSeen, std::size_t reservoirCapacity,
     std::uint64_t expectedReservoirBytes, ResourceUsageScope& memScope,
-    VectorIndexTrainingSampler& sampler) const {
+    TrainingSampler& sampler) const {
   auto resolvedNLists = resolveNLists(validSeen);
   if (resolvedNLists.fail()) {
     return std::move(resolvedNLists).result();
@@ -659,7 +659,7 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
         auto* ptr = item.codes.get() + k * codeSize;
         return RocksDBValue::VectorIndexValue(ptr, codeSize);
       };
-    } else if (formatVersion == VectorIndexFormatVersion::kV2) {
+    } else if (formatVersion == FormatVersion::kV2) {
       return [](EncodedVectors& item, size_t k, size_t codeSize) {
         auto* ptr = item.codes.get() + k * codeSize;
         return RocksDBValue::VectorIndexValueV2(ptr, codeSize,
@@ -759,7 +759,7 @@ VectorIndexBuilder::VectorIndexBuilder(RocksDBVectorIndex& index,
       _bounds(_rcoll->bounds()) {}
 
 Result VectorIndexBuilder::persistVectorIndexMetadata(
-    VectorIndexMetadata const& metadata) {
+    Metadata const& metadata) {
   velocypack::Builder builder;
   velocypack::serialize(builder, metadata);
 
@@ -845,8 +845,8 @@ Result VectorIndexBuilder::build(
 
   auto trainedData = serializeIndex(*faissIndex);
 
-  VectorIndexMetadata metadata{.trainedData = trainedData,
-                               .formatVersion = _index.formatVersion()};
+  Metadata metadata{.trainedData = trainedData,
+                    .formatVersion = _index.formatVersion()};
   if (auto res = persistVectorIndexMetadata(metadata); res.fail()) {
     _index.resetTrainingState();
     return res;

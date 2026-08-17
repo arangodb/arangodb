@@ -78,32 +78,32 @@ struct TrainedData {
 /// Each version uses its own sentinel slot in the VectorIndex CF, so a
 /// downgrade misses the V2 metadata and triggers retraining instead of
 /// crashing.
-enum class VectorIndexFormatVersion : std::uint8_t {
+enum class FormatVersion : std::uint8_t {
   kV1 = 1,
   kV2 = 2,
 };
 
 template<class Inspector>
-inline auto inspect(Inspector& f, VectorIndexFormatVersion& x) {
-  return f.enumeration(x).values(VectorIndexFormatVersion::kV1, "1",
-                                 VectorIndexFormatVersion::kV2, "2");
+inline auto inspect(Inspector& f, FormatVersion& x) {
+  return f.enumeration(x).values(FormatVersion::kV1, "1", FormatVersion::kV2,
+                                 "2");
 }
 
-static constexpr VectorIndexFormatVersion kCurrentVectorIndexFormatVersion =
-    VectorIndexFormatVersion::kV2;
+static constexpr FormatVersion kCurrentVectorIndexFormatVersion =
+    FormatVersion::kV2;
 
 /// @brief Per-index metadata sentinel record stored in the VectorIndex CF.
 /// Wraps TrainedData and adds the on-disk formatVersion. The kV1 default
 /// covers legacy records that pre-date the formatVersion field.
-struct VectorIndexMetadata {
+struct Metadata {
   TrainedData trainedData;
-  VectorIndexFormatVersion formatVersion = VectorIndexFormatVersion::kV1;
+  FormatVersion formatVersion = FormatVersion::kV1;
 
   template<class Inspector>
-  friend inline auto inspect(Inspector& f, VectorIndexMetadata& x) {
-    return f.object(x).fields(f.field("codeData", x.trainedData.codeData),
-                              f.field("formatVersion", x.formatVersion)
-                                  .fallback(VectorIndexFormatVersion::kV1));
+  friend inline auto inspect(Inspector& f, Metadata& x) {
+    return f.object(x).fields(
+        f.field("codeData", x.trainedData.codeData),
+        f.field("formatVersion", x.formatVersion).fallback(FormatVersion::kV1));
   }
 };
 
@@ -261,7 +261,7 @@ inline std::string resolveFactoryString(std::string factoryString,
                                std::to_string(nlists));
 }
 
-struct UserVectorIndexDefinition {
+struct UserDefinition {
   std::uint64_t dimension;
   SimilarityMetric metric;
   NListsParameter nLists;
@@ -277,10 +277,10 @@ struct UserVectorIndexDefinition {
   // FAISS factory string.
   std::optional<std::string> factory;
 
-  bool operator==(UserVectorIndexDefinition const&) const noexcept = default;
+  bool operator==(UserDefinition const&) const noexcept = default;
 
   template<class Inspector>
-  friend inline auto inspect(Inspector& f, UserVectorIndexDefinition& x) {
+  friend inline auto inspect(Inspector& f, UserDefinition& x) {
     return f.object(x).fields(
         f.field("dimension", x.dimension)
             .invariant([](auto value) -> inspection::Status {
