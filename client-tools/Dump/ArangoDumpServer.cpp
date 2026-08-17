@@ -65,32 +65,31 @@ ArangoDumpServer::ArangoDumpServer(
       std::numeric_limits<size_t>::max();
 }
 
-void ArangoDumpServer::addFeaturesWithOptionProvider() {
+void ArangoDumpServer::addFeatures() {
   addFeature<BasicFeaturePhaseClient>();
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
-  addFeature<OptionsCheckFeature>();
-  addFeature<ShellColorsFeature>();
-  addFeature<ShutdownFeature>(std::array{std::type_index(typeid(DumpFeature))});
-  addFeature<SslFeature>();
-
-  addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
+  auto& client = addFeature<HttpEndpointProvider, ClientFeature>(
+      getOptions<ClientOptionsProvider>());
   addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());
   addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
+  addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
+  addFeature<OptionsCheckFeature>();
   addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
+  addFeature<ShellColorsFeature>();
+  addFeature<ShutdownFeature>(std::array{std::type_index(typeid(DumpFeature))});
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   addFeature<ProcessEnvironmentFeature>(
       _binaryName, getOptions<ProcessEnvironmentOptionsProvider>());
 #endif
-#ifdef USE_ENTERPRISE
-  addFeature<EncryptionFeature>(getOptions<EncryptionOptionsProvider>());
-#endif
+  addFeature<SslFeature>();
 #ifdef TRI_HAVE_GETRLIMIT
   addFeature<BumpFileDescriptorsFeature>(
       getOptions<ClientBumpFileDescriptorsOptionsProvider>());
 #endif
-  auto& client = addFeature<HttpEndpointProvider, ClientFeature>(
-      getOptions<ClientOptionsProvider>());
+#ifdef USE_ENTERPRISE
+  addFeature<EncryptionFeature>(getOptions<EncryptionOptionsProvider>());
+#endif
   addFeature<DumpFeature>(client, *_ret, getOptions<DumpOptionsProvider>());
 }
 

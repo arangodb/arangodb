@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -20,30 +20,25 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "Cache/CacheOptions.h"
 
-#include "ProgramOptions/ProgramOptions.h"
+#include "Basics/PhysicalMemory.h"
 
 namespace arangodb {
 
-template<class Derived, class OptionsT>
-struct OptionsProviderImpl {
-  using Options = OptionsT;
+CacheOptions::CacheOptions() {
+  // if there is less than 4 GiB of RAM in the system, default to 256 MiB.
+  // otherwise, default to (system RAM size - 2 GiB) * 0.25.
+  cacheSize =
+      (PhysicalMemory::getValue() >= (static_cast<std::uint64_t>(4) << 30))
+          ? static_cast<std::uint64_t>((PhysicalMemory::getValue() -
+                                        (static_cast<std::uint64_t>(2) << 30)) *
+                                       0.25)
+          : (256 << 20);
+}
 
-  void declareOptions(std::shared_ptr<options::ProgramOptions> prgOptions) {
-    static_cast<Derived*>(this)->declareOptionsImpl(prgOptions, _options);
-  }
-  void processOptions(std::shared_ptr<options::ProgramOptions> prgOptions) {
-    static_cast<Derived*>(this)->processOptionsImpl(prgOptions, _options);
-  }
-  void validateOptions(std::shared_ptr<options::ProgramOptions> prgOptions) {
-    static_cast<Derived*>(this)->validateOptionsImpl(prgOptions, _options);
-  }
-  [[nodiscard]] OptionsT const& options() const noexcept { return _options; }
-  [[nodiscard]] OptionsT& mutableOptions() noexcept { return _options; }
-
- private:
-  OptionsT _options;
-};
+CacheOptions::CacheOptions(std::uint64_t cacheSizeOverride) : CacheOptions() {
+  cacheSize = cacheSizeOverride;
+}
 
 }  // namespace arangodb

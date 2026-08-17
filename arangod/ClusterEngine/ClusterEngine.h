@@ -184,9 +184,6 @@ class ClusterEngine final : public StorageEngine {
   void addV8Functions() override;
 #endif
 
-  /// @brief Add engine-specific REST handlers
-  void addRestHandlers(rest::RestHandlerFactory& handlerFactory) override;
-
   void addParametersForNewCollection(arangodb::velocypack::Builder& builder,
                                      arangodb::velocypack::Slice info) override;
 

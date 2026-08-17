@@ -90,7 +90,7 @@ function makeDataWrapper (options) {
       }
       this.continueTesting = true;
       if (this.options.isCov) {
-        this.options.oneTestTimeout = this.options.oneTestTimeout * 2;
+        this.options.oneTestTimeout = this.options.oneTestTimeout * 4;
       }
     }
     filter(te, filtered) {
@@ -139,7 +139,13 @@ function makeDataWrapper (options) {
     runMakeData(moreargv, file, whichRTA, count, testCount, launch, res) {
       let logFile = fs.join(fs.getTempPath(), `rta_out_${count}_${launch}.log`);
       require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
-      let rc = ct.run.rtaMakedata(this.options, this.instanceManager, testCount, messages[count-1], logFile, moreargv);
+      let rc;
+      try {
+        rc = ct.run.rtaMakedata(this.options, this.instanceManager, testCount, messages[count-1], logFile, moreargv);
+      } catch (ex) {
+        print(`${RED}$(Date()} caught exception: ${ex} while ${messages[count-1]} ${ex} - ${ex.stack}${RESET}`);
+        throw ex;
+      }
       res[whichRTA] = rc;
       if (!rc.status) {
         this.continueTesting = false;
@@ -364,6 +370,12 @@ function makeDataWrapper (options) {
   }
   localOptions.extraArgs['vector-index'] = true;
 
+  if (!localOptions.isSan) {
+    // don't have default values if non instrumented arangosh.
+    ["TSAN_OPTIONS", "UBSAN_OPTIONS", "LSAN_OPTIONS", "ASAN_OPTIONS"].forEach(varname => {
+      delete(process.env[varname]);
+    });
+  }
   SetGlobalExecutionDeadlineTo(localOptions.oneTestTimeout);
   let rc = new rtaMakedataRunner(localOptions, 'rta_makedata_test').run(['rta']);
   let timeout = SetGlobalExecutionDeadlineTo(0.0);

@@ -68,7 +68,7 @@
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "FeaturePhases/DatabaseFeaturePhase.h"
-#include "VectorIndex/VectorIndexFeature.h"
+#include "VectorIndex/Feature.h"
 #ifdef USE_V8
 #include "FeaturePhases/V8FeaturePhase.h"
 #endif
@@ -309,13 +309,6 @@ void MockServer::startFeatures() {
 
   if (_server.hasFeature<DatabaseFeature>()) {
     _server.getFeature<DatabaseFeature>().setEngineTesting(_engine.get());
-  }
-
-  if (_server.hasFeature<SchedulerFeature>()) {
-    auto& sched = _server.getFeature<SchedulerFeature>();
-    // Needed to set nrMaximalThreads
-    sched.validateOptions(
-        std::make_shared<options::ProgramOptions>("", "", "", nullptr));
   }
 
   for (ApplicationFeature& f : orderedFeatures) {

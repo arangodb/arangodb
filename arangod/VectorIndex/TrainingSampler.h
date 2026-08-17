@@ -34,10 +34,10 @@ namespace arangodb::vector {
 // replacement sampling over a stream of unknown-but-bounded length. Each
 // slot holds `dimension` consecutive floats. The reservoir is bounded at
 // `capacity` slots and never grows past it; resize() can only shrink it.
-class VectorIndexTrainingSampler {
+class TrainingSampler {
  public:
-  VectorIndexTrainingSampler(std::size_t dimension, std::size_t capacity,
-                             std::uint64_t seed);
+  TrainingSampler(std::size_t dimension, std::size_t capacity,
+                  std::uint64_t seed);
 
   // True iff the next observed item must be consumed — either the reservoir
   // is still filling, or we have reached the next replacement position. Lets

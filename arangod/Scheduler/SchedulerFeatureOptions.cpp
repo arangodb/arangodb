@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -20,30 +20,22 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "Scheduler/SchedulerFeatureOptions.h"
 
-#include "ProgramOptions/ProgramOptions.h"
+#include "Basics/NumberOfCores.h"
+
+#include <algorithm>
 
 namespace arangodb {
 
-template<class Derived, class OptionsT>
-struct OptionsProviderImpl {
-  using Options = OptionsT;
+/*static*/ uint64_t SchedulerFeatureOptions::getDefaultMaxThreads() noexcept {
+  // use two times the number of hardware threads as the default,
+  // but never less than 32
+  return (std::max)(static_cast<uint64_t>(32),
+                    static_cast<uint64_t>(NumberOfCores::getValue()) * 2);
+}
 
-  void declareOptions(std::shared_ptr<options::ProgramOptions> prgOptions) {
-    static_cast<Derived*>(this)->declareOptionsImpl(prgOptions, _options);
-  }
-  void processOptions(std::shared_ptr<options::ProgramOptions> prgOptions) {
-    static_cast<Derived*>(this)->processOptionsImpl(prgOptions, _options);
-  }
-  void validateOptions(std::shared_ptr<options::ProgramOptions> prgOptions) {
-    static_cast<Derived*>(this)->validateOptionsImpl(prgOptions, _options);
-  }
-  [[nodiscard]] OptionsT const& options() const noexcept { return _options; }
-  [[nodiscard]] OptionsT& mutableOptions() noexcept { return _options; }
-
- private:
-  OptionsT _options;
-};
+SchedulerFeatureOptions::SchedulerFeatureOptions()
+    : nrMaximalThreads(getDefaultMaxThreads()) {}
 
 }  // namespace arangodb

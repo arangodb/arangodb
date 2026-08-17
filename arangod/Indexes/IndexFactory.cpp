@@ -31,12 +31,12 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
-#include "VectorIndex/VectorIndexDefinition.h"
+#include "VectorIndex/Definition.h"
 #include "IResearch/IResearchCommon.h"
 #include "Inspection/VPack.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "VectorIndex/VectorIndexFeature.h"
+#include "VectorIndex/Feature.h"
 #include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
@@ -190,8 +190,8 @@ bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
     }
   } else if (Index::IndexType::TRI_IDX_TYPE_VECTOR_INDEX == type) {
     // check if the parameters are the same
-    vector::UserVectorIndexDefinition leftDefinition;
-    vector::UserVectorIndexDefinition rightDefinition;
+    vector::UserDefinition leftDefinition;
+    vector::UserDefinition rightDefinition;
     velocypack::deserialize(lhs.get("params"), leftDefinition);
     velocypack::deserialize(rhs.get("params"), rightDefinition);
 
@@ -922,7 +922,7 @@ Result IndexFactory::enhanceJsonIndexVector(
                          /*allowExpansion*/ false, /*allowSubAttributes*/ true,
                          /*allowIdAttribute*/ false);
 
-  vector::UserVectorIndexDefinition vectorIndexDefinition;
+  vector::UserDefinition vectorIndexDefinition;
   if (res.ok()) {
     auto const paramsSlice = definition.get("params");
     if (auto const res = velocypack::deserializeWithStatus(

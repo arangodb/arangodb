@@ -152,7 +152,9 @@ void ApplicationServer::disableFeatures(std::span<const std::type_index> types,
                                         bool force) {
   for (std::type_index type : types) {
     auto it = _features.find(type);
+    TRI_ASSERT(it != _features.end());
     if (it != _features.end()) {
+      // TODO (COR-861): remove this function by conditional registration logic
       TRI_ASSERT(it->second != nullptr);
       if (force) {
         it->second->forceDisable();
@@ -173,7 +175,7 @@ void ApplicationServer::run(int argc, char* argv[]) {
   // in this phase, all features are order-independent
   _state.store(State::IN_COLLECT_OPTIONS, std::memory_order_release);
   reportServerProgress(State::IN_COLLECT_OPTIONS);
-  collectOptions();
+  declareOptions();
 
   // parse the command line parameters and load any configuration
   // file(s)
@@ -189,11 +191,11 @@ void ApplicationServer::run(int argc, char* argv[]) {
   reportServerProgress(State::IN_VALIDATE_OPTIONS);
   validateOptions();
 
-  addFeaturesWithOptionProvider();
+  addFeatures();
 
   // setup and validate all feature dependencies
   // This is needed to also add the feature coming from
-  // addFeaturesWithOptionProvider to the _orderedFeatures vector
+  // addFeatures to the _orderedFeatures vector
   setupDependencies(true);
 
   // turn off all features that depend on other features that have been
@@ -347,7 +349,7 @@ void ApplicationServer::apply(std::function<void(ApplicationFeature&)> callback,
   }
 }
 
-void ApplicationServer::collectOptions() {
+void ApplicationServer::declareOptions() {
   LOG_TOPIC("0eac7", TRACE, Logger::STARTUP)
       << "ApplicationServer::collectOptions";
 
@@ -380,16 +382,6 @@ void ApplicationServer::collectOptions() {
                   new BooleanParameter(&_printVersionJson),
                   makeDefaultFlags(Flags::Command))
       .setIntroducedIn(30900);
-
-  apply(
-      [this](ApplicationFeature& feature) {
-        LOG_TOPIC("b2731", TRACE, Logger::STARTUP)
-            << feature.name() << "::collectOptions";
-        reportFeatureProgress(_state.load(std::memory_order_relaxed),
-                              feature.name());
-        feature.collectOptions(_options);
-      },
-      true);
 }
 
 void ApplicationServer::parseOptions(int argc, char* argv[]) {
@@ -451,22 +443,6 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
     std::cout << builder.slice().toJson(&options) << std::endl;
     exit(EXIT_SUCCESS);
   }
-}
-
-void ApplicationServer::validateOptions() {
-  LOG_TOPIC("1ed27", TRACE, Logger::STARTUP)
-      << "ApplicationServer::validateOptions";
-
-  apply(
-      [this](ApplicationFeature& feature) {
-        LOG_TOPIC("fa73c", TRACE, Logger::STARTUP)
-            << feature.name() << "::validateOptions";
-        reportFeatureProgress(_state.load(std::memory_order_relaxed),
-                              feature.name());
-        feature.validateOptions(_options);
-        feature.state(ApplicationFeature::State::VALIDATED);
-      },
-      true);
 }
 
 // setup and validate all feature dependencies, determine feature order
