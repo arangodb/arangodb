@@ -422,6 +422,9 @@ struct Database {
       arangodb::velocypack::Slice infoSlice,
       bool allowEnterpriseCollectionsOnSingleServer);
 
+  std::vector<std::shared_ptr<arangodb::LogicalCollection>> createCollections(
+      std::vector<CollectionDescriptor> descriptors);
+
   [[nodiscard]] arangodb::ResultT<
       std::vector<std::shared_ptr<arangodb::LogicalCollection>>>
   createCollections(std::vector<arangodb::CreateCollectionBody> const&

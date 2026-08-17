@@ -860,8 +860,46 @@ ResultT<std::vector<std::shared_ptr<arangodb::LogicalCollection>>>
 Database::createCollections(
     std::vector<arangodb::CreateCollectionBody> const& collections,
     bool allowEnterpriseCollectionsOnSingleServer) {
-  /// Code from here is copy pasted from original create and
-  /// has not been refacored yet.
+  TRI_ASSERT(!allowEnterpriseCollectionsOnSingleServer ||
+             ServerState::instance()->isSingleServer());
+
+#ifndef USE_ENTERPRISE
+  if (allowEnterpriseCollectionsOnSingleServer) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_NOT_IMPLEMENTED,
+        "creating SmartGraph collections is not supported in this version");
+  }
+#endif
+
+  bool const anySmart = std::any_of(collections.begin(), collections.end(),
+                                    [](auto const& c) { return c.isSmart; });
+
+  if (!ServerState::instance()->isCoordinator() && !anySmart) {
+    // typed path: hand the properties down as a descriptor instead of
+    // serializing them and parsing them again
+    try {
+      std::vector<CollectionDescriptor> descriptors;
+      descriptors.reserve(collections.size());
+      for (auto const& c : collections) {
+        descriptors.emplace_back(c.toDescriptor());
+      }
+
+      auto result = createCollections(std::move(descriptors));
+
+      if (ServerState::instance()->isSingleServer() &&
+          _server.hasFeature<DatabaseFeature>()) {
+        _server.getFeature<DatabaseFeature>().incrementCollectionCount(
+            result.size());
+      }
+      return {result};
+    } catch (basics::Exception const& ex) {
+      return Result(ex.code(), ex.what());
+    } catch (std::exception const& ex) {
+      return Result(TRI_ERROR_INTERNAL, ex.what());
+    } catch (...) {
+      return Result(TRI_ERROR_INTERNAL, "cannot create collection");
+    }
+  }
   VPackBuilder builder =
       CreateCollectionBody::toCreateCollectionProperties(collections);
   VPackSlice infoSlice = builder.slice();
@@ -898,17 +936,6 @@ Database::createCollections(
 std::vector<std::shared_ptr<LogicalCollection>> Database::createCollections(
     velocypack::Slice infoSlice,
     bool allowEnterpriseCollectionsOnSingleServer) {
-  TRI_ASSERT(!allowEnterpriseCollectionsOnSingleServer ||
-             ServerState::instance()->isSingleServer());
-
-#ifndef USE_ENTERPRISE
-  if (allowEnterpriseCollectionsOnSingleServer) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_NOT_IMPLEMENTED,
-        "creating SmartGraph collections is not supported in this version");
-  }
-#endif
-
   auto const& dbName = _info.getName();
 
   // first validate all collections
@@ -965,6 +992,36 @@ std::vector<std::shared_ptr<LogicalCollection>> Database::createCollections(
   }
 
   // audit-log all collections
+  for (auto& col : collections) {
+    events::CreateCollection(dbName, col->name(), TRI_ERROR_NO_ERROR);
+  }
+
+  _databaseProvider.notifyDdlChange("create collection");
+  return collections;
+}
+
+std::vector<std::shared_ptr<LogicalCollection>> Database::createCollections(
+    std::vector<CollectionDescriptor> descriptors) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
+  auto const& dbName = _info.getName();
+
+  std::vector<std::shared_ptr<LogicalCollection>> collections;
+  collections.reserve(descriptors.size());
+
+  for (auto& descriptor : descriptors) {
+    auto col = createCollectionObject(std::move(descriptor), /*isAStub*/ false);
+    TRI_ASSERT(col != nullptr);
+    collections.emplace_back(std::move(col));
+  }
+
+  {
+    READ_LOCKER(readLocker, _inventoryLock);
+    for (auto& col : collections) {
+      persistCollection(col);
+    }
+  }
+
   for (auto& col : collections) {
     events::CreateCollection(dbName, col->name(), TRI_ERROR_NO_ERROR);
   }
