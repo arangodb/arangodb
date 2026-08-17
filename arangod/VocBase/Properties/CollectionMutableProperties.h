@@ -24,6 +24,7 @@
 
 #include "Basics/StaticStrings.h"
 #include "VocBase/Properties/UtilityInvariants.h"
+#include "VocBase/Properties/InspectContexts.h"
 #include "Inspection/Access.h"
 
 #include <velocypack/Builder.h>
@@ -54,6 +55,18 @@ struct CollectionMutableProperties {
 
 template<class Inspector>
 auto inspect(Inspector& f, CollectionMutableProperties& props) {
+  auto nameField = std::invoke([&]() {
+    if constexpr (isInternalContext<Inspector>) {
+      // LogicalDataSource owns the name on this path, and a marker or plan
+      // entry may not carry one. Non-empty is a rule about user input.
+      return f.field(StaticStrings::DataSourceName, props.name)
+          .fallback(f.keep());
+    } else {
+      return f.field(StaticStrings::DataSourceName, props.name)
+          .fallback(f.keep())
+          .invariant(UtilityInvariants::isNonEmpty);
+    }
+  });
   return f.object(props).fields(
       f.field(StaticStrings::DataSourceName, props.name)
           .fallback(f.keep())
