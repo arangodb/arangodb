@@ -28,7 +28,7 @@
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "FeaturePhases/V8FeaturePhase.h"
 #include "RestServer/AqlFeature.h"
-#include "VectorIndex/VectorIndexFeature.h"
+#include "VectorIndex/Feature.h"
 
 namespace arangodb::aql {
 

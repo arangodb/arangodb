@@ -33,7 +33,7 @@
 #include "Indexes/Index.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
-#include "VectorIndex/VectorIndexDefinition.h"
+#include "VectorIndex/Definition.h"
 #include "RocksDBEngine/RocksDBMultiDimIndex.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBVPackIndex.h"
@@ -554,8 +554,7 @@ bool ClusterIndex::isVectorIndexReady() const noexcept {
   }
 }
 
-vector::UserVectorIndexDefinition const&
-ClusterIndex::getVectorIndexDefinition() const {
+vector::UserDefinition const& ClusterIndex::getVectorIndexDefinition() const {
   TRI_ASSERT(_vectorIndexDefinition != nullptr);
   if (!_vectorIndexDefinition) {
     THROW_ARANGO_EXCEPTION_MESSAGE(

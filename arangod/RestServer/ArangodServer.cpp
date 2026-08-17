@@ -274,7 +274,7 @@ void ArangodServer::addFeatures() {
       addFeature<SchedulerFeature>(metrics, sharedPRNGFeature.getPRNG(),
                                    getOptions<SchedulerOptionsProvider>());
   auto& vectorIndex = addFeature<VectorIndexFeature>(
-      database, getOptions<vector_index::VectorIndexOptionsProvider>());
+      database, getOptions<vector_index::OptionsProvider>());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   addFeature<ProcessEnvironmentFeature>(
       std::string{_binaryName},
