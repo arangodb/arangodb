@@ -36,7 +36,7 @@
     "vary": "^1.1.2"
   },
   "devDependencies": {
-    "@xmldom/xmldom": "^0.8.13",
+    "@xmldom/xmldom": "^0.9.11",
     "ansi_up": "^5.1.0",
     "node-netstat": "^1.8.0",
     "parse-prometheus-text-format": "^1.1.1",
