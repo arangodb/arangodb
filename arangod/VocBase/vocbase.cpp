@@ -350,7 +350,6 @@ std::shared_ptr<LogicalCollection> Database::createCollectionObject(
 
   return std::make_shared<LogicalCollection>(*this, data, isAStub);
 }
-#endif
 
 std::shared_ptr<LogicalCollection> Database::createCollectionObject(
     CollectionDescriptor descriptor, bool isAStub) {
@@ -358,14 +357,19 @@ std::shared_ptr<LogicalCollection> Database::createCollectionObject(
   TRI_ASSERT(!ServerState::instance()->isSingleServer() || !isAStub);
   if (descriptor.constant.isSmart) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_NOT_IMPLEMENTED,
-        "smart collections cannot be created from a descriptor yet");
+        TRI_ERROR_ONLY_ENTERPRISE,
+        "SmartGraph collections are only available in the Enterprise Edition");
   }
-  _engine.addParametersForNewCollection(descriptor);
+  if (!isAStub) {
+    // stubs are not persisted, so they get no storage-engine properties —
+    // same split as createCollectionObject / createCollectionObjectForStorage
+    _engine.addParametersForNewCollection(descriptor);
+  }
 
   return std::make_shared<LogicalCollection>(*this, std::move(descriptor),
                                              isAStub);
 }
+#endif
 
 void Database::persistCollection(
     std::shared_ptr<LogicalCollection> const& collection) {
@@ -871,10 +875,7 @@ Database::createCollections(
   }
 #endif
 
-  bool const anySmart = std::any_of(collections.begin(), collections.end(),
-                                    [](auto const& c) { return c.isSmart; });
-
-  if (!ServerState::instance()->isCoordinator() && !anySmart) {
+  if (!ServerState::instance()->isCoordinator()) {
     // typed path: hand the properties down as a descriptor instead of
     // serializing them and parsing them again
     try {

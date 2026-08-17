@@ -48,8 +48,7 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
  public:
   static constexpr bool isLoading = true;
 
-  explicit LoadInspectorBase(ParseOptions options)
-    requires(!Base::hasContext)
+  explicit LoadInspectorBase(ParseOptions options) requires(!Base::hasContext)
       : _options(options) {}
 
   explicit LoadInspectorBase(ParseOptions options, Context const& context)

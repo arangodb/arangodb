@@ -860,80 +860,82 @@ std::unique_ptr<KeyGenerator> KeyGeneratorHelper::createKeyGenerator(
     KeyGeneratorProperties const& options) {
   // create key generator based on what the user requested
   auto generator = std::visit(
-      overload{
-          [&](TraditionalKeyGeneratorProperties const& p)
-              -> std::unique_ptr<KeyGenerator> {
-            if (ServerState::instance()->isCoordinator() ||
-                ServerState::instance()->isDBServer()) {
-              // We are in a cluster where keys need to be globally unique.
-              // Under normal circumstances, coordinators create the keys.
-              // However, there are cases, in which this can happen on a
-              // DBServer, amongst them are:
-              //  - collections with a single shard and an AQL query which does
-              //    INSERT in a loop, no _key given by query
-              //  - collections with multiple shards, non-standard sharding, an
-              //    AQL query which does INSERT in a loop, no key given by query
-              //    and usage of the option `forceOneShardAttributeValue`
-              // In these cases we have to generate a key using a cluster-wide
-              // unique identifier, so we use the "Coordinator" key generator
-              // also on DBServers.
-              auto const& server = collection.vocbase().server();
+      overload{[&](TraditionalKeyGeneratorProperties const& p)
+                   -> std::unique_ptr<KeyGenerator> {
+                 if (ServerState::instance()->isCoordinator() ||
+                     ServerState::instance()->isDBServer()) {
+                   // We are in a cluster where keys need to be globally unique.
+                   // Under normal circumstances, coordinators create the keys.
+                   // However, there are cases, in which this can happen on a
+                   // DBServer, amongst them are:
+                   //  - collections with a single shard and an AQL query which
+                   //  does
+                   //    INSERT in a loop, no _key given by query
+                   //  - collections with multiple shards, non-standard
+                   //  sharding, an
+                   //    AQL query which does INSERT in a loop, no key given by
+                   //    query and usage of the option
+                   //    `forceOneShardAttributeValue`
+                   // In these cases we have to generate a key using a
+                   // cluster-wide unique identifier, so we use the
+                   // "Coordinator" key generator also on DBServers.
+                   auto const& server = collection.vocbase().server();
 
-              if (server.getFeature<DatabaseFeature>().upgrade()) {
-                return std::make_unique<UpgradeKeyGenerator>(collection);
-              }
-              auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+                   if (server.getFeature<DatabaseFeature>().upgrade()) {
+                     return std::make_unique<UpgradeKeyGenerator>(collection);
+                   }
+                   auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
 
-              return std::make_unique<TraditionalKeyGeneratorCoordinator>(
-                  ci, collection, p.allowUserKeys);
-            }
-            return std::make_unique<TraditionalKeyGeneratorSingle>(
-                collection, p.allowUserKeys, p.lastValue);
-          },
+                   return std::make_unique<TraditionalKeyGeneratorCoordinator>(
+                       ci, collection, p.allowUserKeys);
+                 }
+                 return std::make_unique<TraditionalKeyGeneratorSingle>(
+                     collection, p.allowUserKeys, p.lastValue);
+               },
 
-          [&](AutoIncrementGeneratorProperties const& p)
-              -> std::unique_ptr<KeyGenerator> {
-            if (!ServerState::instance()->isSingleServer() &&
-                collection.numberOfShards() > 1) {
-              THROW_ARANGO_EXCEPTION_MESSAGE(
-                  TRI_ERROR_CLUSTER_UNSUPPORTED,
-                  "the specified key generator is not "
-                  "supported for collections with more than one shard");
-            }
-            return std::make_unique<AutoIncrementKeyGenerator>(
-                collection, p.allowUserKeys, p.lastValue, p.offset,
-                p.increment);
-          },
+               [&](AutoIncrementGeneratorProperties const& p)
+                   -> std::unique_ptr<KeyGenerator> {
+                 if (!ServerState::instance()->isSingleServer() &&
+                     collection.numberOfShards() > 1) {
+                   THROW_ARANGO_EXCEPTION_MESSAGE(
+                       TRI_ERROR_CLUSTER_UNSUPPORTED,
+                       "the specified key generator is not "
+                       "supported for collections with more than one shard");
+                 }
+                 return std::make_unique<AutoIncrementKeyGenerator>(
+                     collection, p.allowUserKeys, p.lastValue, p.offset,
+                     p.increment);
+               },
 
-          [&](UUIDKeyGeneratorProperties const& p)
-              -> std::unique_ptr<KeyGenerator> {
-            return std::make_unique<UuidKeyGenerator>(collection,
-                                                      p.allowUserKeys);
-          },
+               [&](UUIDKeyGeneratorProperties const& p)
+                   -> std::unique_ptr<KeyGenerator> {
+                 return std::make_unique<UuidKeyGenerator>(collection,
+                                                           p.allowUserKeys);
+               },
 
-          [&](PaddedKeyGeneratorProperties const& p)
-              -> std::unique_ptr<KeyGenerator> {
-            if (ServerState::instance()->isCoordinator() ||
-                ServerState::instance()->isDBServer()) {
-              // see the comment on the traditional generator above
-              auto const& server = collection.vocbase().server();
+               [&](PaddedKeyGeneratorProperties const& p)
+                   -> std::unique_ptr<KeyGenerator> {
+                 if (ServerState::instance()->isCoordinator() ||
+                     ServerState::instance()->isDBServer()) {
+                   // see the comment on the traditional generator above
+                   auto const& server = collection.vocbase().server();
 
-              if (server.getFeature<DatabaseFeature>().upgrade()) {
-                return std::make_unique<UpgradeKeyGenerator>(collection);
-              }
-              auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+                   if (server.getFeature<DatabaseFeature>().upgrade()) {
+                     return std::make_unique<UpgradeKeyGenerator>(collection);
+                   }
+                   auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
 
-              return std::make_unique<PaddedKeyGeneratorCoordinator>(
-                  ci, collection, p.allowUserKeys, p.lastValue);
-            }
-            return std::make_unique<PaddedKeyGeneratorSingle>(
-                collection, p.allowUserKeys, p.lastValue);
-          },
+                   return std::make_unique<PaddedKeyGeneratorCoordinator>(
+                       ci, collection, p.allowUserKeys, p.lastValue);
+                 }
+                 return std::make_unique<PaddedKeyGeneratorSingle>(
+                     collection, p.allowUserKeys, p.lastValue);
+               },
 
-          [&](UpgradeKeyGeneratorProperties const&)
-              -> std::unique_ptr<KeyGenerator> {
-            return std::make_unique<UpgradeKeyGenerator>(collection);
-          }},
+               [&](UpgradeKeyGeneratorProperties const&)
+                   -> std::unique_ptr<KeyGenerator> {
+                 return std::make_unique<UpgradeKeyGenerator>(collection);
+               }},
       options);
 
   // optionally wrap it into a KeyGenerator for a smart graph collection,

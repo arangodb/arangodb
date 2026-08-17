@@ -252,6 +252,7 @@ TEST_F(StorageEngineDataTest, UsesRevisionsAsDocumentIds_defaultsDiffer) {
   EXPECT_TRUE(d.internal.usesRevisionsAsDocumentIds);
 
   auto database = makeDatabase("testDatabase", 42);
-  auto collection = database->createCollection(representativeCreateSlice().slice());
+  auto collection =
+      database->createCollection(representativeCreateSlice().slice());
   EXPECT_FALSE(collection->usesRevisionsAsDocumentIds());
 }

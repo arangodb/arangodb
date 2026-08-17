@@ -400,6 +400,7 @@ Result RocksDBCollection::updateProperties(
       _cacheManager != nullptr && !_logicalCollection.system() &&
       !_logicalCollection.isAStub() &&
       !ServerState::instance()->isCoordinator() && props.cacheEnabled;
+  _cacheEnabled.store(cacheEnabled, std::memory_order_relaxed);
   primaryIndex()->setCacheEnabled(cacheEnabled);
 
   if (cacheEnabled) {

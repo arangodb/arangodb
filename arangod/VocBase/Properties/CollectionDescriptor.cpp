@@ -29,7 +29,8 @@
 
 namespace arangodb {
 
-CollectionDescriptor CollectionDescriptor::fromVelocyPack(velocypack::Slice info) {
+CollectionDescriptor CollectionDescriptor::fromVelocyPack(
+    velocypack::Slice info) {
   CollectionDescriptor props;
   // Defaults for markers and plan entries that predate these keys.
   // ShardingInfo applies the same values.
@@ -47,4 +48,4 @@ CollectionDescriptor CollectionDescriptor::fromVelocyPack(velocypack::Slice info
   return props;
 }
 
-} // namespace arangodb
+}  // namespace arangodb
