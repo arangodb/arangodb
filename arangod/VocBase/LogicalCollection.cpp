@@ -136,32 +136,24 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
                                       false),
           Helper::getBooleanValue(info, StaticStrings::DataSourceDeleted,
                                   false)),
-      _properties(std::make_shared<CollectionDescriptor const>(
-          CollectionDescriptor::fromVelocyPack(info))),
+      _properties(CollectionDescriptor::fromVelocyPack(info)),
       _version(static_cast<Version>(Helper::getNumericValue<uint32_t>(
           info, StaticStrings::Version,
           static_cast<uint32_t>(currentVersion())))),
       _v8CacheVersion(0),
-      _type(_properties->constant.getType()),
       _isAStub(isAStub),
-#ifdef USE_ENTERPRISE
-      _isDisjoint(_properties->constant.isDisjoint),
-      _isSmart(_properties->constant.isSmart),
-      _isSmartChild(_properties->internal.isSmartChild),
-#endif
-
       _allowUserKeys(
           std::visit([](auto const& opts) { return opts.allowUserKeys; },
-                     _properties->constant.keyOptions)),
+                     _properties.constant.keyOptions)),
       _usesRevisionsAsDocumentIds(Helper::getBooleanValue(
           info, StaticStrings::UsesRevisionsAsDocumentIds, false)),
       _syncByRevision(determineSyncByRevision()),
-      _waitForSync(_properties->clusteringMutable.waitForSync),
-      _supportsRBAC(_properties->mutableProps.supportsRBAC),
-      _internalValidatorTypes(_properties->internal.internalValidatorType),
+      _waitForSync(_properties.clusteringMutable.waitForSync),
+      _supportsRBAC(_properties.mutableProps.supportsRBAC),
+      _internalValidatorTypes(_properties.internal.internalValidatorType),
       _countCache(defaultCountCacheTtl(system())),
       _physical(
-          vocbase.engine().createPhysicalCollection(*this, *_properties)) {
+          vocbase.engine().createPhysicalCollection(*this, _properties)) {
 
   TRI_IF_FAILURE("disableRevisionsAsDocumentIds") {
     _usesRevisionsAsDocumentIds = false;
@@ -342,15 +334,15 @@ bool LogicalCollection::supportsRBAC() const noexcept {
   return _supportsRBAC.load(std::memory_order_relaxed);
 }
 
-// Fills a descriptor from the live state so that inspect() can write it out.
 // The stored descriptor supplies the immutable fields; every field that
-// LogicalCollection owns is overwritten here with the current value.
-CollectionDescriptor LogicalCollection::toDescriptor() const {
-  auto d = *properties();
+// LogicalCollection owns is overwritten here with its current value.
+CollectionDescriptor LogicalCollection::properties() const {
+  auto d = _properties;
 
   d.mutableProps.name = name();
   d.mutableProps.supportsRBAC = _supportsRBAC.load(std::memory_order_relaxed);
-  d.mutableProps.cacheEnabled = cacheEnabled();
+  // cacheEnabled stays as declared at creation. The physical collection owns
+  // the effective value and writes it out itself.
 
   d.clusteringMutable.waitForSync =
       _waitForSync.load(std::memory_order_relaxed);
@@ -785,7 +777,7 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
   build.add(StaticStrings::Version,
             VPackValue(static_cast<uint32_t>(_version)));
   // Collection Flags
-  auto props = toDescriptor();
+  auto props = properties();
 
   VPackBuilder tmp;
   velocypack::serializeWithContext(tmp, props, InspectInternalContext{});
@@ -800,9 +792,10 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
       "minReplicationFactor", "distributeShardsLike", "shardingStrategy",
       // the physical collection owns the effective cacheEnabled
       "objectId", "cacheEnabled",
-      // includeVelocyPackEnterprise() writes this only for smart vertex
-      // collections, a condition the descriptor does not know about
-      "smartGraphAttribute",
+      // includeVelocyPackEnterprise() writes these under conditions the
+      // descriptor does not know about: smartGraphAttribute only for smart
+      // vertex collections, smartJoinAttribute only in a cluster
+      "smartGraphAttribute", "smartJoinAttribute",
       // derived from the compiled _schema / _computedValues below
       "schema", "computedValues"};
 
@@ -1051,7 +1044,7 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
           return Result(TRI_ERROR_FORBIDDEN,
                         "cannot change replicationFactor for a collection "
                         "using 'distributeShardsLike'");
-        } else if (_type == TRI_COL_TYPE_EDGE && isSmart()) {
+        } else if (type() == TRI_COL_TYPE_EDGE && isSmart()) {
           return Result(TRI_ERROR_NOT_IMPLEMENTED,
                         "changing replicationFactor is "
                         "not supported for SmartGraph edge collections");
@@ -1116,7 +1109,7 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
            (ServerState::instance()->isSingleServer() &&
             (isSatellite() || isSmart()))) &&
           writeConcern != this->writeConcern()) {  // check if changed
-        if (_type == TRI_COL_TYPE_EDGE && isSmart()) {
+        if (type() == TRI_COL_TYPE_EDGE && isSmart()) {
           return Result(TRI_ERROR_NOT_IMPLEMENTED,
                         "Changing writeConcern "
                         "not supported for SmartGraph edge collections");

@@ -145,7 +145,9 @@ class LogicalCollection : public LogicalDataSource {
 
   uint32_t v8CacheVersion() const noexcept { return _v8CacheVersion; }
 
-  TRI_col_type_e type() const noexcept { return _type; }
+  TRI_col_type_e type() const noexcept {
+    return _properties.constant.getType();
+  }
 
   // For normal collections the realNames is just a vector of length 1
   // with its name. For smart edge collections (Enterprise Edition only)
@@ -168,11 +170,13 @@ class LogicalCollection : public LogicalDataSource {
   bool cacheEnabled() const noexcept;
   bool supportsRBAC() const noexcept;
 #ifdef USE_ENTERPRISE
-  bool isDisjoint() const noexcept { return _isDisjoint; }
-  bool isSmart() const noexcept { return _isSmart; }
-  bool isSmartChild() const noexcept { return _isSmartChild; }
+  bool isDisjoint() const noexcept { return _properties.constant.isDisjoint; }
+  bool isSmart() const noexcept { return _properties.constant.isSmart; }
+  bool isSmartChild() const noexcept {
+    return _properties.internal.isSmartChild;
+  }
   bool hasSmartJoinAttribute() const noexcept {
-    return !_smartJoinAttribute.empty();
+    return _properties.constant.smartJoinAttribute.has_value();
   }
   bool hasSmartGraphAttribute() const noexcept {
     return std::atomic_load_explicit(&_smartGraphAttribute,
@@ -414,13 +418,12 @@ class LogicalCollection : public LogicalDataSource {
       -> arangodb::replication2::agency::CollectionGroupId;
   auto replicatedStateId() const noexcept -> arangodb::replication2::LogId;
 
-  std::shared_ptr<CollectionDescriptor const> properties() const noexcept {
-    return std::atomic_load_explicit(&_properties, std::memory_order_acquire);
-  }
+  // The collection's current properties, assembled from the immutable
+  // descriptor plus every mutable value LogicalCollection owns. Cold path
+  // only -- it copies. Individual getters read their own attribute.
+  CollectionDescriptor properties() const;
 
  private:
-  // Assembles a descriptor from the live state, for serialization.
-  CollectionDescriptor toDescriptor() const;
 
   void initializeSmartAttributesBefore(velocypack::Slice info);
   void initializeSmartAttributesAfter(velocypack::Slice info);
@@ -431,10 +434,10 @@ class LogicalCollection : public LogicalDataSource {
 
   void decorateWithInternalValidators();
 
-  // `_properties` must be used with atomic accessors only!!
-  // Never modified in place: an update copies it, changes the copy, and
-  // swaps the pointer. Acquire/release access (load/store).
-  std::shared_ptr<CollectionDescriptor const> _properties;
+  // Parsed once at construction and never changed. Only its immutable fields
+  // are authoritative; the mutable ones are seeded from here into the
+  // attributes below and are stale afterwards, so read them via properties().
+  CollectionDescriptor const _properties;
 
  protected:
   void addInternalValidator(std::unique_ptr<ValidatorBase>);
@@ -460,23 +463,11 @@ class LogicalCollection : public LogicalDataSource {
   // @brief Internal version used for caching
   uint32_t _v8CacheVersion;
 
-  // @brief Collection type
-  TRI_col_type_e const _type;
-
   /// @brief is this a global collection on a DBServer
   bool const _isAStub;
 
-#ifdef USE_ENTERPRISE
-  // @brief Flag if this collection is a disjoint smart one. (Enterprise Edition
-  // only) can only be true if _isSmart is also true
-  bool const _isDisjoint;
-  // @brief Flag if this collection is a smart one. (Enterprise Edition only)
-  bool const _isSmart;
-  // @brief Flag if this collection is a child of a smart collection (Enterprise
-  // Edition only)
-  bool const _isSmartChild;
-#endif
-
+  // Derived from the keyOptions variant rather than copied from a field, and
+  // read on document paths, so it is cached here instead of re-visited.
   bool const _allowUserKeys;
 
   bool _usesRevisionsAsDocumentIds;
@@ -498,8 +489,6 @@ class LogicalCollection : public LogicalDataSource {
   // during an upgrade. `nullptr` means "not set". Must be used with atomic
   // accessors only!! Acquire/release access (load/store).
   std::shared_ptr<std::string const> _smartGraphAttribute;
-
-  std::string _smartJoinAttribute;
 #endif
 
   transaction::CountCache _countCache;
