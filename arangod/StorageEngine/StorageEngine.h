@@ -133,6 +133,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // collection creation data with engine-specific information
   virtual void addParametersForNewCollection(velocypack::Builder&,
                                              velocypack::Slice /*info*/);
+  virtual void addParametersForNewCollection(CollectionDescriptor&);
 
   // create storage-engine specific collection
   virtual std::unique_ptr<PhysicalCollection> createPhysicalCollection(

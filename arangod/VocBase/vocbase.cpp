@@ -352,6 +352,21 @@ std::shared_ptr<LogicalCollection> Database::createCollectionObject(
 }
 #endif
 
+std::shared_ptr<LogicalCollection> Database::createCollectionObject(
+    CollectionDescriptor descriptor, bool isAStub) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator() || isAStub);
+  TRI_ASSERT(!ServerState::instance()->isSingleServer() || !isAStub);
+  if (descriptor.constant.isSmart) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_NOT_IMPLEMENTED,
+        "smart collections cannot be created from a descriptor yet");
+  }
+  _engine.addParametersForNewCollection(descriptor);
+
+  return std::make_shared<LogicalCollection>(*this, std::move(descriptor),
+                                             isAStub);
+}
+
 void Database::persistCollection(
     std::shared_ptr<LogicalCollection> const& collection) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
@@ -792,6 +807,40 @@ std::shared_ptr<LogicalCollection> Database::createCollection(
     _databaseProvider.notifyDdlChange("create collection");
 
     // Update metadata metrics on single server
+    if (ServerState::instance()->isSingleServer() &&
+        _server.hasFeature<DatabaseFeature>()) {
+      _server.getFeature<DatabaseFeature>().incrementCollectionCount();
+    }
+
+    return collection;
+  } catch (basics::Exception const& ex) {
+    events::CreateCollection(dbName, name, ex.code());
+    throw;
+  } catch (std::exception const&) {
+    events::CreateCollection(dbName, name, TRI_ERROR_INTERNAL);
+    throw;
+  }
+}
+
+std::shared_ptr<LogicalCollection> Database::createCollection(
+    CollectionDescriptor descriptor) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
+  auto const& dbName = _info.getName();
+  std::string name = descriptor.mutableProps.name;
+
+  try {
+    auto collection =
+        createCollectionObject(std::move(descriptor), /*isAStub*/ false);
+
+    {
+      READ_LOCKER(readLocker, _inventoryLock);
+      persistCollection(collection);
+    }
+
+    events::CreateCollection(dbName, name, TRI_ERROR_NO_ERROR);
+    _databaseProvider.notifyDdlChange("create collection");
+
     if (ServerState::instance()->isSingleServer() &&
         _server.hasFeature<DatabaseFeature>()) {
       _server.getFeature<DatabaseFeature>().incrementCollectionCount();

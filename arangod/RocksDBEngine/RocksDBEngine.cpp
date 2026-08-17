@@ -1070,6 +1070,13 @@ void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder,
   }
 }
 
+void RocksDBEngine::addParametersForNewCollection(
+    CollectionDescriptor& descriptor) {
+  if (descriptor.storage.objectId == 0) {
+    descriptor.storage.objectId = TRI_NewTickServer();
+  }
+}
+
 // create storage-engine specific collection
 std::unique_ptr<PhysicalCollection> RocksDBEngine::createPhysicalCollection(
     LogicalCollection& collection, CollectionDescriptor const& descriptor) {

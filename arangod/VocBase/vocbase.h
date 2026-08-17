@@ -40,6 +40,7 @@
 #include "RestServer/IDatabaseProvider.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/Identifiers/DataSourceId.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/voc-types.h"
 
@@ -206,7 +207,8 @@ struct Database {
 
   template<typename As>
   As& engine() const noexcept
-      requires(std::derived_from<As, arangodb::StorageEngine>) {
+    requires(std::derived_from<As, arangodb::StorageEngine>)
+  {
     return static_cast<As&>(_engine);
   }
 
@@ -434,6 +436,9 @@ struct Database {
   std::shared_ptr<arangodb::LogicalCollection> createCollection(
       arangodb::velocypack::Slice parameters);
 
+  std::shared_ptr<arangodb::LogicalCollection> createCollection(
+      CollectionDescriptor descriptor);
+
   /// @brief drops a collection.
   arangodb::Result dropCollection(arangodb::DataSourceId cid,
                                   bool allowDropSystem);
@@ -468,6 +473,9 @@ struct Database {
   /// ClusterInfo.
   std::shared_ptr<arangodb::LogicalCollection> createCollectionObject(
       arangodb::velocypack::Slice data, bool isAStub);
+
+  std::shared_ptr<arangodb::LogicalCollection> createCollectionObject(
+      CollectionDescriptor descriptor, bool isAStub);
 
   /// @brief creates a collection object (of type LogicalCollection or one of
   /// the SmartGraph-specific subtypes) for storage. The object is augmented
