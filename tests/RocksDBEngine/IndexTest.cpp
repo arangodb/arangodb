@@ -33,93 +33,6 @@ using namespace arangodb::tests;
 using namespace arangodb::velocypack;
 
 // ===========================================================================
-// Secondary index entries (physical storage identity, index level)
-// ===========================================================================
-
-TEST_F(StorageEngineIndexTest, SecondaryIndexReflectsInsertedDocuments) {
-  auto index = makeIndex(R"({"type":"persistent","fields":["value"]})"_vpack);
-
-  ASSERT_TRUE(IsOk(insertR(keyed("a", 1))));
-  ASSERT_TRUE(IsOk(insertR(keyed("b", 2))));
-  ASSERT_TRUE(IsOk(insertR(keyed("c", 3))));
-
-  auto entries = scanIndex(*index);
-  ASSERT_EQ(entries.size(), 3u);
-
-  for (auto const* key : {"a", "b", "c"}) {
-    auto expected = lookupKey(key).first;
-    EXPECT_NE(std::find(entries.begin(), entries.end(), expected),
-              entries.end());
-  }
-}
-
-TEST_F(StorageEngineIndexTest, UpdateIndexedFieldReplacesIndexEntry) {
-  auto index = makeIndex(R"({"type":"persistent","fields":["value"]})"_vpack);
-  ASSERT_TRUE(IsOk(insertR(keyed("k", 1))));
-
-  ASSERT_TRUE(IsOk(updateR(keyed("k", 2))));
-
-  // A stale entry (keyed on value 1) would make this return two.
-  auto entries = scanIndex(*index);
-  ASSERT_EQ(entries.size(), 1u);
-  EXPECT_EQ(entries.front(), lookupKey("k").first);
-}
-
-TEST_F(StorageEngineIndexTest, RemoveDeletesSecondaryIndexEntry) {
-  auto index = makeIndex(R"({"type":"persistent","fields":["value"]})"_vpack);
-  ASSERT_TRUE(IsOk(insertR(keyed("a", 1))));
-  ASSERT_TRUE(IsOk(insertR(keyed("b", 2))));
-  ASSERT_EQ(scanIndex(*index).size(), 2u);
-
-  ASSERT_TRUE(IsOk(remove(keyOnly("a"))));
-
-  auto entries = scanIndex(*index);
-  ASSERT_EQ(entries.size(), 1u);
-  EXPECT_EQ(entries.front(), lookupKey("b").first);
-}
-
-// ===========================================================================
-// TTL index: unlike the persistent-family indexes above, entries are derived
-// from the document rather than stored verbatim (RocksDBTtlIndex::insert
-// converts the attribute to a timestamp), so a document is only indexed if
-// that conversion succeeds.
-// ===========================================================================
-
-TEST_F(StorageEngineIndexTest, TtlIndexIndexesDocumentsWithNumericExpireValue) {
-  auto index =
-      makeIndex(R"({"type":"ttl","fields":["value"],"expireAfter":3600,)"
-                R"("unique":false,"sparse":true})"_vpack);
-  ASSERT_TRUE(IsOk(insertR(keyed("a", 1))));
-
-  auto entries = scanIndex(*index);
-  ASSERT_EQ(entries.size(), 1u);
-  EXPECT_EQ(entries.front(), lookupKey("a").first);
-}
-
-TEST_F(StorageEngineIndexTest,
-       TtlIndexExcludesDocumentsMissingExpireAttribute) {
-  auto index =
-      makeIndex(R"({"type":"ttl","fields":["value"],"expireAfter":3600,)"
-                R"("unique":false,"sparse":true})"_vpack);
-  ASSERT_TRUE(IsOk(insertR(keyOnly("a"))));
-
-  EXPECT_TRUE(scanIndex(*index).empty());
-}
-
-TEST_F(StorageEngineIndexTest, TtlIndexReturnsEntriesInAscendingOrder) {
-  auto index =
-      makeIndex(R"({"type":"ttl","fields":["value"],"expireAfter":3600,)"
-                R"("unique":false,"sparse":true})"_vpack);
-  ASSERT_TRUE(IsOk(insertR(keyed("a", 3))));
-  ASSERT_TRUE(IsOk(insertR(keyed("b", 1))));
-  ASSERT_TRUE(IsOk(insertR(keyed("c", 2))));
-
-  std::vector<LocalDocumentId> expected{
-      lookupKey("b").first, lookupKey("c").first, lookupKey("a").first};
-  EXPECT_EQ(scanIndex(*index), expected);
-}
-
-// ===========================================================================
 // persistent/hash/skiplist: three factory-registered type names that all
 // instantiate RocksDBVPackIndex subclasses overriding nothing but type() and
 // typeName() (see RocksDBPersistentIndex.h / RocksDBHashIndex.h /
@@ -151,6 +64,31 @@ TEST_P(StorageEngineIndexTypeTest, ReflectsInsertedDocuments) {
   EXPECT_EQ(entries.front(), lookupKey("a").first);
 }
 
+TEST_P(StorageEngineIndexTypeTest, UpdateReplacesIndexEntry) {
+  auto index = makeIndex(indexDefinition(GetParam()));
+  ASSERT_TRUE(IsOk(insertR(keyed("k", 1))));
+
+  ASSERT_TRUE(IsOk(updateR(keyed("k", 2))));
+
+  // A stale entry (keyed on value 1) would make this return two.
+  auto entries = scanIndex(*index);
+  ASSERT_EQ(entries.size(), 1u);
+  EXPECT_EQ(entries.front(), lookupKey("k").first);
+}
+
+TEST_P(StorageEngineIndexTypeTest, RemoveDeletesIndexEntry) {
+  auto index = makeIndex(indexDefinition(GetParam()));
+  ASSERT_TRUE(IsOk(insertR(keyed("a", 1))));
+  ASSERT_TRUE(IsOk(insertR(keyed("b", 2))));
+  ASSERT_EQ(scanIndex(*index).size(), 2u);
+
+  ASSERT_TRUE(IsOk(remove(keyOnly("a"))));
+
+  auto entries = scanIndex(*index);
+  ASSERT_EQ(entries.size(), 1u);
+  EXPECT_EQ(entries.front(), lookupKey("b").first);
+}
+
 TEST_P(StorageEngineIndexTypeTest, ReturnsEntriesInAscendingOrder) {
   auto index = makeIndex(indexDefinition(GetParam()));
   ASSERT_TRUE(IsOk(insertR(keyed("a", 3))));
@@ -164,3 +102,70 @@ TEST_P(StorageEngineIndexTypeTest, ReturnsEntriesInAscendingOrder) {
 
 INSTANTIATE_TEST_CASE_P(VPackIndexAliases, StorageEngineIndexTypeTest,
                         ::testing::Values("persistent", "hash", "skiplist"));
+
+// ===========================================================================
+// TTL index: unlike the persistent-family indexes above, entries are derived
+// from the document rather than stored verbatim (RocksDBTtlIndex::insert
+// converts the attribute to a timestamp), so a document is only indexed if
+// that conversion succeeds.
+// ===========================================================================
+
+namespace {
+VPackString ttlIndexDefinition() {
+  return R"({"type":"ttl","fields":["value"],"expireAfter":3600,)"
+         R"("unique":false,"sparse":true})"_vpack;
+}
+}  // namespace
+
+TEST_F(StorageEngineIndexTest, TtlIndexIndexesDocumentsWithNumericExpireValue) {
+  auto index = makeIndex(ttlIndexDefinition());
+  ASSERT_TRUE(IsOk(insertR(keyed("a", 1))));
+
+  auto entries = scanIndex(*index);
+  ASSERT_EQ(entries.size(), 1u);
+  EXPECT_EQ(entries.front(), lookupKey("a").first);
+}
+
+TEST_F(StorageEngineIndexTest,
+       TtlIndexExcludesDocumentsMissingExpireAttribute) {
+  auto index = makeIndex(ttlIndexDefinition());
+  ASSERT_TRUE(IsOk(insertR(keyOnly("a"))));
+
+  EXPECT_TRUE(scanIndex(*index).empty());
+}
+
+TEST_F(StorageEngineIndexTest, TtlIndexReturnsEntriesInAscendingOrder) {
+  auto index = makeIndex(ttlIndexDefinition());
+  ASSERT_TRUE(IsOk(insertR(keyed("a", 3))));
+  ASSERT_TRUE(IsOk(insertR(keyed("b", 1))));
+  ASSERT_TRUE(IsOk(insertR(keyed("c", 2))));
+
+  std::vector<LocalDocumentId> expected{
+      lookupKey("b").first, lookupKey("c").first, lookupKey("a").first};
+  EXPECT_EQ(scanIndex(*index), expected);
+}
+
+TEST_F(StorageEngineIndexTest, TtlIndexUpdateReplacesIndexEntry) {
+  auto index = makeIndex(ttlIndexDefinition());
+  ASSERT_TRUE(IsOk(insertR(keyed("k", 1))));
+
+  ASSERT_TRUE(IsOk(updateR(keyed("k", 2))));
+
+  // A stale entry (keyed on the old timestamp) would make this return two.
+  auto entries = scanIndex(*index);
+  ASSERT_EQ(entries.size(), 1u);
+  EXPECT_EQ(entries.front(), lookupKey("k").first);
+}
+
+TEST_F(StorageEngineIndexTest, TtlIndexRemoveDeletesIndexEntry) {
+  auto index = makeIndex(ttlIndexDefinition());
+  ASSERT_TRUE(IsOk(insertR(keyed("a", 1))));
+  ASSERT_TRUE(IsOk(insertR(keyed("b", 2))));
+  ASSERT_EQ(scanIndex(*index).size(), 2u);
+
+  ASSERT_TRUE(IsOk(remove(keyOnly("a"))));
+
+  auto entries = scanIndex(*index);
+  ASSERT_EQ(entries.size(), 1u);
+  EXPECT_EQ(entries.front(), lookupKey("b").first);
+}
