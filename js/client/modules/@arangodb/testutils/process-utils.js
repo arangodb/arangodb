@@ -177,7 +177,7 @@ function setupBinaries (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function killRemainingProcesses(results) {
-  print(`${RED} ${Date()} killRemainingProcesses ${JSON.stringify(new Error().stack)} ${results}`);
+  print(`${RED} ${Date()} killRemainingProcesses ${JSON.stringify(new Error().stack)} ${JSON.stringify(results)}`);
   let timeoutReached = false;
   let running = internal.getExternalSpawned();
   results.status = results.status && (running.length === 0);
