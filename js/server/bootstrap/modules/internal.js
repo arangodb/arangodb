@@ -24,8 +24,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Dr. Frank Celler
-// / @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
   var exports = require('internal');
@@ -290,56 +288,6 @@
     delete global.REPLICATION_LOGGER_STATE;
   }
 
-  if (global.REPLICATION_LOGGER_TICK_RANGES) {
-    exports.tickRangesReplicationLogger = global.REPLICATION_LOGGER_TICK_RANGES;
-    delete global.REPLICATION_LOGGER_TICK_RANGES;
-  }
-
-  if (global.REPLICATION_LOGGER_FIRST_TICK) {
-    exports.firstTickReplicationLogger = global.REPLICATION_LOGGER_FIRST_TICK;
-    delete global.REPLICATION_LOGGER_FIRST_TICK;
-  }
-
-  if (global.REPLICATION_APPLIER_CONFIGURE) {
-    // TODO: remove this export from the internal module
-    exports.configureReplicationApplier = global.REPLICATION_APPLIER_CONFIGURE;
-  }
-
-  if (global.REPLICATION_APPLIER_START) {
-    // TODO: remove this export from the internal module
-    exports.startReplicationApplier = global.REPLICATION_APPLIER_START;
-  }
-
-  if (global.REPLICATION_APPLIER_STOP) {
-    // TODO: remove this export from the internal module
-    exports.stopReplicationApplier = global.REPLICATION_APPLIER_STOP;
-  }
-
-  if (global.REPLICATION_APPLIER_STATE) {
-    // TODO: remove this export from the internal module
-    exports.getStateReplicationApplier = global.REPLICATION_APPLIER_STATE;
-  }
-
-  if (global.REPLICATION_APPLIER_STATE_ALL) {
-    // TODO: remove this export from the internal module
-    exports.getStateReplicationApplierAll = global.REPLICATION_APPLIER_STATE_ALL;
-  }
-
-  if (global.REPLICATION_APPLIER_FORGET) {
-    // TODO: remove this export from the internal module
-    exports.forgetStateReplicationApplier = global.REPLICATION_APPLIER_FORGET;
-  }
-
-  if (global.REPLICATION_SYNCHRONIZE) {
-    // TODO: remove this export from the internal module
-    exports.synchronizeReplication = global.REPLICATION_SYNCHRONIZE;
-  }
-
-  if (global.REPLICATION_SERVER_ID) {
-    exports.serverId = global.REPLICATION_SERVER_ID;
-    delete global.REPLICATION_SERVER_ID;
-  }
-  
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief wait for index selectivity estimate sync
   // //////////////////////////////////////////////////////////////////////////////

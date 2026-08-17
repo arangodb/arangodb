@@ -32,7 +32,6 @@
 #include "Basics/system-functions.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Import/ImportHelper.h"
-#include "Import/ImportOptionsProvider.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -57,27 +56,18 @@ namespace arangodb {
 
 ImportFeature::ImportFeature(application_features::ApplicationServer& server,
                              int* result)
-    : ApplicationFeature{server, *this}, _result(result) {
+    : ImportFeature(server, result, ImportFeatureOptions{}) {}
+
+ImportFeature::ImportFeature(application_features::ApplicationServer& server,
+                             int* result, ImportFeatureOptions options)
+    : ApplicationFeature{server, *this},
+      _options(std::move(options)),
+      _result(result) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
-  _options.threadCount =
-      std::max(uint32_t(_options.threadCount),
-               static_cast<uint32_t>(NumberOfCores::getValue()));
 }
 
 ImportFeature::~ImportFeature() = default;
-
-void ImportFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  ImportOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void ImportFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  ImportOptionsProvider provider;
-  provider.validateOptions(options, _options);
-}
 
 void ImportFeature::prepare() { logLGPLNotice(); }
 

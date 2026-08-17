@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Servers.h"
@@ -32,7 +31,6 @@
 #include "ApplicationFeatures/GreetingsFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
-#include "ApplicationFeatures/VersionFeature.h"
 #include "Logger/LoggerFeature.h"
 #include "Random/RandomFeature.h"
 #include "Ssl/SslFeature.h"
@@ -70,7 +68,7 @@
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "FeaturePhases/DatabaseFeaturePhase.h"
-#include "VectorIndex/VectorIndexFeature.h"
+#include "VectorIndex/Feature.h"
 #ifdef USE_V8
 #include "FeaturePhases/V8FeaturePhase.h"
 #endif
@@ -80,6 +78,7 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchOptionsProvider.h"
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/common.h"
 #include "Logger/LogMacros.h"
@@ -189,7 +188,8 @@ static void SetupDatabaseFeaturePhase(MockServer& server) {
 
 #if USE_ENTERPRISE
   // required for AuthenticationFeature with USE_ENTERPRISE
-  server.addFeature<LicenseFeature>(false);
+  server.addFeature<LicenseFeature>(false,
+                                    server.getFeature<DatabasePathFeature>());
   server.addFeature<EncryptionFeature>(false);
 #endif
 }
@@ -231,7 +231,8 @@ static void SetupAqlPhase(MockServer& server) {
   auto& metrics = server.getFeature<metrics::MetricsFeature>();
   server.addFeature<application_features::AqlFeaturePhase>(false);
   server.addFeature<QueryRegistryFeature>(false, metrics);
-  server.addFeature<TemporaryStorageFeature>(false);
+  auto& dbPath = server.getFeature<DatabasePathFeature>();
+  server.addFeature<TemporaryStorageFeature>(false, dbPath);
   server.addFeature<aql::AqlFunctionFeature>(true);
   server.addFeature<aql::OptimizerRulesFeature>(true);
   server.addFeature<aql::QueryInfoLoggerFeature>(true);
@@ -242,10 +243,11 @@ static void SetupAqlPhase(MockServer& server) {
       arangodb::iresearch::IResearchAnalyzerFeature::Dependencies::fromServer(
           server.server()));
   {
-    auto& feature =
-        server.addFeature<arangodb::iresearch::IResearchFeature>(true, metrics);
-    feature.collectOptions(server.server().options());
-    feature.validateOptions(server.server().options());
+    auto& provider = server.addOptionsProvider<
+        arangodb::iresearch::IResearchOptionsProvider>();
+    provider.validateOptions(server.server().options());
+    server.addFeature<arangodb::iresearch::IResearchFeature>(
+        true, metrics, provider.options());
   }
 
 #ifdef USE_ENTERPRISE
@@ -278,7 +280,9 @@ MockServer::~MockServer() {
   ServerState::instance()->setRebootId(_oldRebootId);
 }
 
-ArangodServer& MockServer::server() { return _server; }
+application_features::ApplicationServer& MockServer::server() {
+  return _server;
+}
 
 void MockServer::init() {
   _oldApplicationServerState = _server.state();
@@ -305,13 +309,6 @@ void MockServer::startFeatures() {
 
   if (_server.hasFeature<DatabaseFeature>()) {
     _server.getFeature<DatabaseFeature>().setEngineTesting(_engine.get());
-  }
-
-  if (_server.hasFeature<SchedulerFeature>()) {
-    auto& sched = _server.getFeature<SchedulerFeature>();
-    // Needed to set nrMaximalThreads
-    sched.validateOptions(
-        std::make_shared<options::ProgramOptions>("", "", "", nullptr));
   }
 
   for (ApplicationFeature& f : orderedFeatures) {

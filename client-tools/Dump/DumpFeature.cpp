@@ -18,12 +18,9 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DumpFeature.h"
-#include "Dump/DumpOptionsProvider.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/BumpFileDescriptorsFeature.h"
@@ -33,7 +30,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/InputProcessors.h"
-#include "Basics/NumberOfCores.h"
 #include "Basics/Result.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
@@ -759,42 +755,21 @@ Result DumpFeature::DumpShardJob::run(
 
 DumpFeature::DumpFeature(application_features::ApplicationServer& server,
                          ClientFeature& client, int& exitCode)
+    : DumpFeature(server, client, exitCode, DumpFeatureOptions{}) {}
+
+DumpFeature::DumpFeature(application_features::ApplicationServer& server,
+                         ClientFeature& client, int& exitCode, Options options)
     : ApplicationFeature{server, *this},
       _client(client),
       _clientManager{client, Logger::DUMP},
-      _clientTaskQueue{server, ::processJob},
-      _exitCode{exitCode} {
+      _clientTaskQueue{::processJob},
+      _exitCode{exitCode},
+      _options(std::move(options)) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
 #ifdef TRI_HAVE_GETRLIMIT
   startsAfter<BumpFileDescriptorsFeature>();
 #endif
-
-  using arangodb::basics::FileUtils::buildFilename;
-  std::error_code ec;
-  std::filesystem::path const cwd = std::filesystem::current_path(ec);
-  if (ec) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_set_errno(TRI_ERROR_SYS_ERROR),
-        basics::StringUtils::concatT("cannot get current working directory: ",
-                                     ec.message()));
-  }
-  _options.outputPath = buildFilename(cwd.string(), "dump");
-  _options.threadCount =
-      std::max(uint32_t(_options.threadCount),
-               static_cast<uint32_t>(NumberOfCores::getValue()));
-}
-
-void DumpFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  DumpOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void DumpFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  DumpOptionsProvider provider;
-  provider.validateOptions(options, _options);
 }
 
 // dump data from cluster via a coordinator

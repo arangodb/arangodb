@@ -25,15 +25,12 @@
 #include "ApplicationFeatures/OptionsProvider.h"
 #include "V8/V8PlatformFeatureOptions.h"
 
-namespace arangodb::options {
-class ProgramOptions;
-}
-
 namespace arangodb {
 
-struct V8PlatformOptionsProvider : OptionsProvider<V8PlatformFeatureOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      V8PlatformFeatureOptions& options) override;
+struct V8PlatformOptionsProvider
+    : OptionsProviderImpl<V8PlatformOptionsProvider, V8PlatformFeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          V8PlatformFeatureOptions& options);
 };
 
 }  // namespace arangodb

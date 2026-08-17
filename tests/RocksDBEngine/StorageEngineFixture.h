@@ -26,15 +26,19 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ServerState.h"
-#include "Mocks.h"
+#include "Mocks/FakeRegistry.h"
+#include "Mocks/FakeScheduler.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Version.h"
-#include "TempDatabasePathProvider.h"
-
+#include "RestServer/IRecoveryCallback.h"
+#include "RocksDBEngine/Mocks.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBOptionsProvider.h"
 #include "RocksDBEngine/RocksDBRecoveryManager.h"
-#include "RestServer/IRecoveryCallback.h"
+#include "RocksDBEngine/TempDatabasePathProvider.h"
+#include "Scheduler/ISchedulerProvider.h"
+
+#include <memory>
 
 namespace arangodb::tests {
 
@@ -59,77 +63,86 @@ struct TestRocksDBOptionsProvider final : RocksDBOptionsProvider {
   }
 };
 
-// Fixture providing a preconfigured RocksDBEngine backed by a temporary
-// directory. The engine is started in SetUp() and ready to use; all
-// collaborators are owned by the fixture and torn down (including the on-disk
-// data) when the test ends.
 struct NullRecoveryCallback final : IRecoveryCallback {
   void recoveryDone() override {}
 };
 
+struct TestSchedulerProvider final : ISchedulerProvider {
+  explicit TestSchedulerProvider(Scheduler& scheduler)
+      : _scheduler(scheduler) {}
+  Scheduler* scheduler() const noexcept override { return &_scheduler; }
+  Scheduler& _scheduler;
+};
+
+struct StorageEngineFixtureSuite {
+  ~StorageEngineFixtureSuite();
+  metrics::FakeRegistry metricsRegistry;
+  application_features::ApplicationServer server{nullptr, nullptr};
+  ScopedServerStateReset serverStateReset;
+  ServerState serverState{server};
+  TempDatabasePathProvider dbPath;
+  TestRocksDBOptionsProvider optionsProvider;
+  DumpLimitsFeatureOptions limitsOptions{};
+  std::shared_ptr<replication2::ReplicatedLogGlobalSettings const> logSettings =
+      std::make_shared<replication2::ReplicatedLogGlobalSettings>();
+
+  ::testing::NiceMock<MockVectorIndexProvider> vectorIdx;
+  ::testing::NiceMock<MockFlushControl> flush;
+  ::testing::NiceMock<MockDumpLimitsProvider> dumpLimits;
+  ::testing::NiceMock<MockDatabaseProvider> dbProvider;
+  ::testing::NiceMock<MockCacheManagerProvider> cacheManager;
+  ::testing::NiceMock<MockSortingPolicy> sortingPolicy;
+  ::testing::NiceMock<MockIndexCacheRefill> indexCacheRefill;
+  ::testing::NiceMock<MockReplicatedLogProvider> logProvider;
+
+  NullRecoveryCallback nullCallback;
+  RocksDBRecoveryManager recoveryManager{server, dbProvider, nullCallback};
+
+  FakeScheduler scheduler{server};
+  TestSchedulerProvider schedulerProvider{scheduler};
+
+  RocksDBEngine engine{server,          optionsProvider, metricsRegistry,
+                       dbPath,          vectorIdx,       flush,
+                       dumpLimits,      &logProvider,    schedulerProvider,
+                       recoveryManager, dbProvider,      indexCacheRefill,
+                       cacheManager,    sortingPolicy};
+};
+
+// Fixture providing a preconfigured RocksDBEngine backed by a temporary
+// directory. The engine is started once in SetUpTestSuite() and ready to use
+// for all tests in the suite. Each test gets a fresh collection via SetUp().
+// All collaborators are owned by the fixture suite and torn down (including
+// the on-disk data) when all tests in the class finish.
 class StorageEngineFixture : public ::testing::Test {
  protected:
-  void SetUp() override {
-    _serverState.setRole(ServerState::ROLE_SINGLE);
+  static void SetUpTestSuite() {
+    _suite = std::make_unique<StorageEngineFixtureSuite>();
+    _suite->serverState.setRole(ServerState::ROLE_SINGLE);
 
     using ::testing::Return;
     using ::testing::ReturnRef;
-    ON_CALL(_dumpLimits, limits()).WillByDefault(ReturnRef(_limitsOptions));
-    // single-server/DB-server engines require the released-tick mechanism
-    ON_CALL(_flush, isEnabled()).WillByDefault(Return(true));
-    ON_CALL(_logProvider, options()).WillByDefault(Return(_logSettings));
-    ON_CALL(_dbProvider, defaultReplicationVersion())
+    ON_CALL(_suite->dumpLimits, limits())
+        .WillByDefault(ReturnRef(_suite->limitsOptions));
+    ON_CALL(_suite->flush, isEnabled()).WillByDefault(Return(true));
+    ON_CALL(_suite->logProvider, options())
+        .WillByDefault(Return(_suite->logSettings));
+    ON_CALL(_suite->dbProvider, defaultReplicationVersion())
         .WillByDefault(Return(replication::Version::ONE));
 
-    _engine.start();
+    _suite->engine.start();
   }
 
-  void TearDown() override {
-    // The engine's background threads assert that the server is stopping when
-    // they are shut down, so move the server into a stopping state first.
-    _server.beginShutdown();
-    // Then run the ApplicationFeature shutdown lifecycle so the background
-    // threads are stopped before the RocksDB instance (and the engine) are
-    // destroyed.
-    _engine.beginShutdown();
-    _engine.stop();
-    _engine.unprepare();
+  static void TearDownTestSuite() {
+    _suite->server.beginShutdown();
+    _suite->engine.beginShutdown();
+    _suite->engine.stop();
+    _suite->engine.unprepare();
+    _suite.reset();
   }
 
-  RocksDBEngine& engine() noexcept { return _engine; }
+  RocksDBEngine& engine() noexcept { return _suite->engine; }
 
-  MetricsCollector _metricsCollector;
-  application_features::ApplicationServer _server{nullptr, nullptr};
-  // ServerState is a process-wide singleton. The reset guard detaches any
-  // existing instance (e.g. the one installed by tests/main.cpp in the combined
-  // arangodbtests binary) so this fixture can own its own ServerState bound to
-  // _server. Declaration order matters: the guard must precede _serverState.
-  ScopedServerStateReset _serverStateReset;
-  ServerState _serverState{_server};
-  TempDatabasePathProvider _dbPath;
-  TestRocksDBOptionsProvider _optionsProvider;
-  DumpLimitsFeatureOptions _limitsOptions{};
-  std::shared_ptr<replication2::ReplicatedLogGlobalSettings const>
-      _logSettings =
-          std::make_shared<replication2::ReplicatedLogGlobalSettings>();
-
-  ::testing::NiceMock<MockVectorIndexProvider> _vectorIdx;
-  ::testing::NiceMock<MockFlushControl> _flush;
-  ::testing::NiceMock<MockDumpLimitsProvider> _dumpLimits;
-  ::testing::NiceMock<MockDatabaseProvider> _dbProvider;
-  ::testing::NiceMock<MockCacheManagerProvider> _cacheManager;
-  ::testing::NiceMock<MockSortingPolicy> _sortingPolicy;
-  ::testing::NiceMock<MockIndexCacheRefill> _indexCacheRefill;
-  ::testing::NiceMock<MockReplicatedLogProvider> _logProvider;
-
-  NullRecoveryCallback _nullCallback;
-  RocksDBRecoveryManager _recoveryManager{_server, _dbProvider, _nullCallback};
-
-  RocksDBEngine _engine{_server,       _optionsProvider,  _metricsCollector,
-                        _dbPath,       _vectorIdx,        _flush,
-                        _dumpLimits,   &_logProvider,     _recoveryManager,
-                        _dbProvider,   _indexCacheRefill, _cacheManager,
-                        _sortingPolicy};
+  static std::unique_ptr<StorageEngineFixtureSuite> _suite;
 };
 
 }  // namespace arangodb::tests

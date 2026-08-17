@@ -18,9 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
-/// @author Matthew Von-Maszewski
-/// @author Copyright 2017-2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -103,19 +100,9 @@ class TestMaintenanceFeature : public arangodb::MaintenanceFeature {
     initializeMetrics();
   }
 
-  virtual ~TestMaintenanceFeature() = default;
+  ~TestMaintenanceFeature() override = default;
 
-  void collectOptions(
-      std::shared_ptr<arangodb::options::ProgramOptions> options) override {
-    arangodb::MaintenanceFeature::collectOptions(options);
-    _options.maintenanceThreadsMax = 0;
-    _options.maintenanceThreadsSlowMax = 0;
-  }
-
-  void validateOptions(
-      std::shared_ptr<arangodb::options::ProgramOptions> options) override {}
-
-  void setSecondsActionsBlock(uint32_t seconds) {
+  void setSecondsActionsBlock(int32_t const seconds) {
     _options.secondsActionsBlock = seconds;
   }
 

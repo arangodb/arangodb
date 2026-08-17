@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBEngine/RocksDBVectorIndex.h"
@@ -59,7 +58,7 @@
 #include "VocBase/LogicalCollection.h"
 #include <rocksdb/db.h>
 #include "RocksDBEngine/RocksDBMetaCollection.h"
-#include "VectorIndex/VectorIndexDefinition.h"
+#include "VectorIndex/Definition.h"
 
 #include "faiss/MetricType.h"
 #include "faiss/utils/distances.h"
@@ -181,23 +180,22 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
 
 RocksDBVectorIndex::~RocksDBVectorIndex() = default;
 
-vector::VectorIndexMetadata RocksDBVectorIndex::loadVectorIndexMetadata(
+vector::Metadata RocksDBVectorIndex::loadVectorIndexMetadata(
     velocypack::Slice info) const {
   // Try the V2 slot first, then fall back to the V1 slot. The slots are
   // distinct so an old binary that only knows the V1 slot will simply miss
   // V2 metadata after a downgrade and treat the index as unusable
-  auto readSlot = [&](vector::VectorIndexFormatVersion version,
-                      std::string& raw) -> bool {
+  auto readSlot = [&](vector::FormatVersion version, std::string& raw) -> bool {
     RocksDBKey key;
     key.constructVectorIndexTrainedData(objectId(), version);
     rocksdb::ReadOptions ro;
     return _engine.db()->GetRootDB()->Get(ro, _cf, key.string(), &raw).ok();
   };
 
-  vector::VectorIndexMetadata result;
+  vector::Metadata result;
   std::string raw;
-  if (readSlot(vector::VectorIndexFormatVersion::kV2, raw) ||
-      readSlot(vector::VectorIndexFormatVersion::kV1, raw)) {
+  if (readSlot(vector::FormatVersion::kV2, raw) ||
+      readSlot(vector::FormatVersion::kV1, raw)) {
     auto slice =
         velocypack::Slice(reinterpret_cast<uint8_t const*>(raw.data()));
     velocypack::deserialize(slice, result);
@@ -222,7 +220,7 @@ bool RocksDBVectorIndex::matchesDefinition(VPackSlice const& info) const {
     return false;
   }
 
-  vector::UserVectorIndexDefinition definition;
+  vector::UserDefinition definition;
   velocypack::deserialize(info.get("params"), definition);
   if (definition != _definition) {
     return false;
@@ -369,7 +367,7 @@ RocksDBVectorIndex::bruteForceSearch(
   bool const hasFilter = config.strategy.filter != FilterMode::kNone;
   aql::AqlFunctionsInternalCache functionsCache;
 
-  auto eraseCaptured = [&](vector::VectorIndexLabelId id) {
+  auto eraseCaptured = [&](vector::LabelId id) {
     if (captureSink != nullptr && id >= 0) {
       captureSink->erase(LocalDocumentId{static_cast<std::uint64_t>(id)});
     }
@@ -391,7 +389,7 @@ RocksDBVectorIndex::bruteForceSearch(
     }
 
     auto dist = computeDistance(currentDocVector, searchVector, isDescending);
-    auto id = static_cast<vector::VectorIndexLabelId>(docId.id());
+    auto id = static_cast<vector::LabelId>(docId.id());
 
     if (n < topK) {
       if (isDescending) {
@@ -664,7 +662,7 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
               ->get();
       auto storedValues = extractedAttributeValues->sharedSlice();
 
-      if (_formatVersion == vector::VectorIndexFormatVersion::kV2) {
+      if (_formatVersion == vector::FormatVersion::kV2) {
         return RocksDBValue::VectorIndexValueV2(
             flat_codes.get(), _faissIndex->code_size, storedValues);
       }
@@ -718,8 +716,8 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
   return {};
 }
 
-vector::UserVectorIndexDefinition const&
-RocksDBVectorIndex::getVectorIndexDefinition() const {
+vector::UserDefinition const& RocksDBVectorIndex::getVectorIndexDefinition()
+    const {
   return getDefinition();
 }
 

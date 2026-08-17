@@ -18,11 +18,9 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "VPackFeature.h"
-#include "VPackOptionsProvider.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
@@ -117,14 +115,14 @@ struct CustomTypeHandler : public VPackCustomTypeHandler {
 
 VPackFeature::VPackFeature(application_features::ApplicationServer& server,
                            int* result)
-    : ApplicationFeature{server, *this}, _result(result) {
-  setOptional(false);
-}
+    : VPackFeature(server, result, VPackFeatureOptions{}) {}
 
-void VPackFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  VPackOptionsProvider provider;
-  provider.declareOptions(options, _options);
+VPackFeature::VPackFeature(application_features::ApplicationServer& server,
+                           int* result, VPackFeatureOptions options)
+    : ApplicationFeature{server, *this},
+      _result(result),
+      _options(std::move(options)) {
+  setOptional(false);
 }
 
 void VPackFeature::start() {

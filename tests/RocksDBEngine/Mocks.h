@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -26,7 +25,6 @@
 #include <gmock/gmock.h>
 
 #include "Cache/ICacheManagerProvider.h"
-#include "Metrics/IRegistry.h"
 #include "RestServer/IDatabasePathProvider.h"
 #include "RestServer/IDatabaseProvider.h"
 #include "RestServer/IDumpLimitsProvider.h"
@@ -62,10 +60,11 @@ struct MockDumpLimitsProvider : IDumpLimitsProvider {
 };
 
 struct MockDatabaseProvider : IDatabaseProvider {
+  MOCK_METHOD(void, notifyDdlChange, (char const*), (override));
   MOCK_METHOD(VocbasePtr, useDatabase, (std::string_view), (const, override));
   MOCK_METHOD(VocbasePtr, useDatabase, (TRI_voc_tick_t), (const, override));
-  MOCK_METHOD(void, enumerateDatabases,
-              (std::function<void(TRI_vocbase_t&)> const&), (override));
+  MOCK_METHOD(void, enumerateDatabases, (std::function<void(Database&)> const&),
+              (override));
   MOCK_METHOD(void, inventory,
               (velocypack::Builder&, TRI_voc_tick_t,
                std::function<bool(LogicalCollection const*)> const&),
@@ -104,18 +103,6 @@ struct MockIndexCacheRefill : IIndexCacheRefill {
 struct MockReplicatedLogProvider : replication2::IReplicatedLogProvider {
   MOCK_METHOD(std::shared_ptr<replication2::ReplicatedLogGlobalSettings const>,
               options, (), (const, noexcept, override));
-};
-
-struct MetricsCollector : metrics::IRegistry {
-  std::shared_ptr<metrics::Metric> doAdd(metrics::Builder& builder) override {
-    auto metric = builder.build();
-    _metrics.emplace_back(metric);
-    return metric;
-  }
-
- private:
-  // "add" hands out references, so we we have to keep the metrics alive here
-  std::vector<std::shared_ptr<metrics::Metric>> _metrics;
 };
 
 }  // namespace arangodb::tests

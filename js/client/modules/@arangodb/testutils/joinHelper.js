@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Lars Maier
 // //////////////////////////////////////////////////////////////////////////////
 
 const db = require("@arangodb").db;

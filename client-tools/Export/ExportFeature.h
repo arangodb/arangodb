@@ -44,12 +44,11 @@ class ExportFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Export"; }
 
+  ExportFeature(application_features::ApplicationServer& server, int* result,
+                ExportFeatureOptions options);
   ExportFeature(application_features::ApplicationServer& server, int* result);
   ~ExportFeature();
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(
-      std::shared_ptr<options::ProgramOptions> options) override;
   void prepare() override final;
   void start() override final;
   std::shared_ptr<VPackBuilder> customQueryBindVars() const {

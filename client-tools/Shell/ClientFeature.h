@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -53,32 +52,12 @@ struct SimpleHttpClientParams;
 
 class ClientFeature final : public HttpEndpointProvider {
  public:
-  constexpr static double DEFAULT_REQUEST_TIMEOUT = 1200.0;
-  constexpr static double DEFAULT_CONNECTION_TIMEOUT = 5.0;
   constexpr static std::string_view name() noexcept { return "Client"; }
 
-  ClientFeature(application_features::ApplicationServer& server,
-                bool allowJwtSecret, size_t maxNumEndpoints = 1,
-                double connectionTimeout = DEFAULT_CONNECTION_TIMEOUT,
-                double requestTimeout = DEFAULT_REQUEST_TIMEOUT)
-      : ClientFeature{server,
-                      server.getFeature<CommunicationFeaturePhase>(),
-                      typeid(HttpEndpointProvider),
-                      allowJwtSecret,
-                      maxNumEndpoints,
-                      connectionTimeout,
-                      requestTimeout} {
-    if (server.hasFeature<ShellConsoleFeature>()) {
-      _console = &server.getFeature<ShellConsoleFeature>();
-    }
+  ClientFeature(ApplicationServer& server);
+  ClientFeature(ApplicationServer& server, ClientFeatureOptions options);
 
-    startsAfter<CommunicationFeaturePhase>();
-    startsAfter<GreetingsFeaturePhase>();
-  }
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void prepare() override final;
+  void prepare() override;
 
   std::string databaseName() const;
   void setDatabaseName(std::string_view databaseName);
@@ -144,10 +123,7 @@ class ClientFeature final : public HttpEndpointProvider {
 
  private:
   ClientFeature(ApplicationServer& server, CommunicationFeaturePhase& comm,
-                std::type_index registration, bool allowJwtSecret,
-                size_t maxNumEndpoints = 1,
-                double connectionTimeout = DEFAULT_CONNECTION_TIMEOUT,
-                double requestTimeout = DEFAULT_REQUEST_TIMEOUT);
+                std::type_index registration, ClientFeatureOptions options);
 
   void readPassword();
   void readJwtSecret();

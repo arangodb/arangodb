@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -31,7 +30,7 @@
 #include "Aql/RegisterInfos.h"
 #include "Aql/TraversalStats.h"
 #include "Aql/Variable.h"
-#include "Graph/Enumerators/OneSidedEnumeratorInterface.h"
+#include "Graph/Enumerators/ITraversalEnumerator.h"
 #include "Graph/Options/OneSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathValidatorOptions.h"
 #include "Graph/Providers/BaseProviderOptions.h"
@@ -103,7 +102,7 @@ class TraversalExecutorInfos {
   ~TraversalExecutorInfos() = default;
 
   [[nodiscard]] auto traversalEnumerator() const
-      -> arangodb::graph::TraversalEnumerator*;
+      -> arangodb::graph::ITraversalEnumerator*;
 
   bool usesOutputRegister(TraversalExecutorInfosHelper::OutputName type) const;
 
@@ -164,7 +163,7 @@ class TraversalExecutorInfos {
       TraversalExecutorInfosHelper::OutputName type) const;
 
  private:
-  std::unique_ptr<arangodb::graph::TraversalEnumerator> _traversalEnumerator =
+  std::unique_ptr<arangodb::graph::ITraversalEnumerator> _traversalEnumerator =
       nullptr;
 
   std::unordered_map<TraversalExecutorInfosHelper::OutputName, RegisterId,
@@ -214,7 +213,7 @@ class TraversalExecutor {
 
   [[nodiscard]] auto stats() -> Stats;
 
-  auto traversalEnumerator() -> arangodb::graph::TraversalEnumerator*;
+  auto traversalEnumerator() -> arangodb::graph::ITraversalEnumerator*;
 
   Infos& _infos;
 
@@ -224,7 +223,7 @@ class TraversalExecutor {
   InputAqlItemRow _inputRow;
 
   /// @brief the finder variant.
-  arangodb::graph::TraversalEnumerator* _traversalEnumerator;
+  arangodb::graph::ITraversalEnumerator* _traversalEnumerator;
 };
 
 }  // namespace aql

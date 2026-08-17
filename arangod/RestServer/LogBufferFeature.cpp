@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LogBufferFeature.h"
@@ -188,7 +187,12 @@ class LogAppenderMetricsCounter final : public LogAppender {
 LogBufferFeature::LogBufferFeature(
     application_features::ApplicationServer& server,
     metrics::IRegistry& metricsRegistry)
-    : ApplicationFeature{server, *this} {
+    : LogBufferFeature(server, metricsRegistry, LogBufferFeatureOptions{}) {}
+
+LogBufferFeature::LogBufferFeature(
+    application_features::ApplicationServer& server,
+    metrics::IRegistry& metricsRegistry, LogBufferFeatureOptions options)
+    : ApplicationFeature{server, *this}, _options(std::move(options)) {
   setOptional(true);
   startsAfter<LoggerFeature>();
 
@@ -201,12 +205,6 @@ LogBufferFeature::LogBufferFeature(
     std::static_pointer_cast<LogAppenderMetricsCounter>(mc)
         ->trackDroppedMessage();
   });
-}
-
-void LogBufferFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  LogBufferOptionsProvider provider;
-  provider.declareOptions(options, _options);
 }
 
 void LogBufferFeature::prepare() {

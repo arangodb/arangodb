@@ -18,41 +18,31 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBTransactionState.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Cache/Manager.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
-#include "Basics/system-compiler.h"
 #include "Basics/system-functions.h"
-#include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
-#include "RocksDBEngine/Methods/RocksDBTrxBaseMethods.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBKey.h"
-#include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
-#include "Statistics/ServerStatistics.h"
+#include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "StorageEngine/TransactionCollection.h"
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include "Transaction/History.h"
 #endif
 #include "Transaction/Manager.h"
-#include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
 #include <absl/strings/str_cat.h>
@@ -66,8 +56,9 @@ using namespace arangodb;
 /// @brief transaction type
 RocksDBTransactionState::RocksDBTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
-    transaction::Options const& options, transaction::OperationOrigin trxType)
-    : TransactionState(vocbase, tid, options, trxType) {}
+    transaction::Options const& options, transaction::OperationOrigin trxType,
+    transaction::Manager& manager)
+    : TransactionState(vocbase, tid, options, trxType), _manager(manager) {}
 
 /// @brief free a transaction container
 RocksDBTransactionState::~RocksDBTransactionState() {
@@ -124,19 +115,16 @@ futures::Future<Result> RocksDBTransactionState::beginTransaction(
     ++stats._transactionsStarted;
   }
 
-  transaction::Manager* mgr = transaction::ManagerFeature::manager();
-  TRI_ASSERT(mgr != nullptr);
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // track currently ongoing transactions in history.
   // we only do this in maintainer mode and not in production.
   // the reason we insert into the history is only for testing
   // purposes.
-  mgr->history().insert(*this);
+  _manager.history().insert(*this);
 #endif
 
-  _counterGuard = mgr->registerTransaction(id(), isReadOnlyTransaction(),
-                                           isFollowerTransaction());
+  _counterGuard = _manager.registerTransaction(id(), isReadOnlyTransaction(),
+                                               isFollowerTransaction());
 
   TRI_ASSERT(_cacheTx.term == cache::Transaction::kInvalidTerm);
 

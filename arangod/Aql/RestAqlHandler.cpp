@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAqlHandler.h"
@@ -50,6 +49,7 @@
 #include "Random/RandomGenerator.h"
 #include "Rest/GeneralRequest.h"
 #include "Transaction/Context.h"
+#include "VocBase/vocbase.h"
 
 #include <absl/strings/str_cat.h>
 

@@ -18,29 +18,34 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RandomFeature.h"
 
-#include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomGenerator.h"
-#include "Random/RandomOptionsProvider.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 
 namespace arangodb {
 
-RandomFeature::RandomFeature(application_features::ApplicationServer& server,
-                             std::type_index registration)
-    : ApplicationFeature(server, registration, name()) {
-  setOptional(false);
+RandomFeature::RandomFeature(application_features::ApplicationServer& server)
+    : RandomFeature{server, typeid(RandomFeature), RandomFeatureOptions{}} {
+  startsAfter<LoggerFeature>();
 }
 
-void RandomFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  RandomOptionsProvider provider;
-  provider.declareOptions(options, _options);
+RandomFeature::RandomFeature(application_features::ApplicationServer& server,
+                             RandomFeatureOptions options)
+    : RandomFeature{server, typeid(RandomFeature), std::move(options)} {
+  startsAfter<LoggerFeature>();
+}
+
+RandomFeature::RandomFeature(application_features::ApplicationServer& server,
+                             std::type_index registration,
+                             RandomFeatureOptions options)
+    : ApplicationFeature(server, registration, name()),
+      _options(std::move(options)) {
+  setOptional(false);
 }
 
 void RandomFeature::prepare() {

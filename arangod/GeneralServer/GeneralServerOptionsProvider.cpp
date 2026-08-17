@@ -33,7 +33,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void GeneralServerOptionsProvider::declareOptions(
+void GeneralServerOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, GeneralServerOptions& options) {
   opts->addOldOption("server.allow-method-override",
                      "http.allow-method-override");
@@ -41,38 +41,15 @@ void GeneralServerOptionsProvider::declareOptions(
   opts->addOldOption("server.keep-alive-timeout", "http.keep-alive-timeout");
   opts->addOldOption("no-server", "server.rest-server");
 
-  opts->addOption("--server.telemetrics-api",
-                  "Whether to enable the telemetrics API.",
-                  new BooleanParameter(&options.enableTelemetrics),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::Uncommon,
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31100);
-
-  opts->addOption(
-          "--server.telemetrics-api-max-requests",
-          "The maximum number of requests from arangosh that the "
-          "telemetrics API responds to without rate-limiting.",
-          new UInt64Parameter(&options.telemetricsMaxRequestsPerInterval),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::Uncommon,
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnCoordinator,
-              arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31100)
-      .setLongDescription(R"(This option limits requests from the arangosh to
-the telemetrics API, but not any other requests to the API.
-
-Requests to the telemetrics API are counted for every 2 hour interval, and then
-reset. This means after a period of at most 2 hours, the telemetrics API
-becomes usable again.
-
-The purpose of this option is to keep a deployment from being overwhelmed by
-too many telemetrics requests issued by arangosh instances that are used for
-batch processing.)");
+  // options were removed in 3.12.10 as part of removing the telemetrics API
+  // entirely.
+  opts->addObsoleteOption("--server.telemetrics-api",
+                          "Whether to enable the telemetrics API.", true);
+  opts->addObsoleteOption(
+      "--server.telemetrics-api-max-requests",
+      "The maximum number of requests from arangosh that the "
+      "telemetrics API responds to without rate-limiting.",
+      true);
 
   opts->addOption(
       "--server.io-threads", "The number of threads used to handle I/O.",
@@ -80,8 +57,7 @@ batch processing.)");
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
   opts->addOption("--server.support-info-api",
-                  "The policy for exposing the support info and also the "
-                  "telemetrics API.",
+                  "The policy for exposing the support info API.",
                   new DiscreteValuesParameter<StringParameter>(
                       &options.supportInfoApiPolicy,
                       std::unordered_set<std::string>{"disabled", "jwt",
@@ -142,15 +118,16 @@ and also react on overload.)");
                   "transparently compressed in case the client asks for it.",
                   new UInt64Parameter(&options.compressResponseThreshold))
       .setIntroducedIn(31200)
-      .setLongDescription(
-          R"(Automatically compress outgoing HTTP responses with the
-deflate or gzip compression format, in case the client request advertises
-support for this. Compression will only happen for HTTP/1.1 and HTTP/2
-connections, if the size of the uncompressed response body exceeds
-the threshold value controlled by this startup option,
-and if the response body size after compression is less than the original
-response body size.
-Using the value 0 disables the automatic response compression.)");
+      .setLongDescription(R"(Automatically compress outgoing HTTP responses with
+the deflate or gzip compression format, in case the client request advertises
+support for this.
+
+Compression only happens for HTTP/1.1 and HTTP/2 connections, if the size of the
+uncompressed response body exceeds the threshold value controlled by this
+startup option, and if the response body size after compression is less than the
+original response body size.
+
+Using the value `0` disables the automatic response compression.)");
 
   opts->addOption("--server.early-connections",
                   "Allow requests to a limited set of APIs early during the "
@@ -196,13 +173,12 @@ Using the value 0 disables the automatic response compression.)");
           new BooleanParameter(
               &options.handleContentEncodingForUnauthenticatedRequests))
       .setIntroducedIn(31200)
-      .setLongDescription(
-          R"(If the option is set to `true`, the server will automatically
-uncompress incoming HTTP requests with Content-Encodings gzip and deflate
-even if the request is not authenticated.)");
+      .setLongDescription(R"(If the option is set to `true`, the server
+automatically decompresses incoming HTTP requests with `gzip` or `deflate` in
+the `Content-Encoding` header even if the request is not authenticated.)");
 }
 
-void GeneralServerOptionsProvider::validateOptions(
+void GeneralServerOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions>, GeneralServerOptions& options) {
   if (!options.accessControlAllowOrigins.empty()) {
     // trim trailing slash from all members

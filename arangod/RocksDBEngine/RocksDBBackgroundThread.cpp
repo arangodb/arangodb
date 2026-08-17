@@ -18,12 +18,10 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBBackgroundThread.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
 #include "Metrics/GaugeBuilder.h"
@@ -46,7 +44,7 @@ DECLARE_GAUGE(rocksdb_wal_released_tick_replication, uint64_t,
 RocksDBBackgroundThread::RocksDBBackgroundThread(RocksDBEngine& engine,
                                                  double interval,
                                                  metrics::IRegistry& metrics)
-    : Thread(engine.server(), "RocksDBThread"),
+    : Thread("RocksDBThread"),
       _engine(engine),
       _interval(interval),
       _metricsWalReleasedTickReplication(

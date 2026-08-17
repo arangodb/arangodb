@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearch/IResearchInvertedClusterIndex.h"
@@ -94,7 +93,7 @@ std::string IResearchInvertedClusterIndex::getCollectionName() const {
   return collection().name();
 }
 
-IResearchDataStore::Stats IResearchInvertedClusterIndex::stats() const {
+IResearchDataStore::Stats IResearchInvertedClusterIndex::getStats() const {
   auto& cmf = collection()
                   .vocbase()
                   .server()

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -51,11 +50,11 @@ class RocksDBOptionFeature final
  public:
   static constexpr std::string_view name() noexcept { return "RocksDBOption"; }
 
-  explicit RocksDBOptionFeature(application_features::ApplicationServer& server,
-                                AgencyFeature const* agencyFeature);
+  RocksDBOptionFeature(application_features::ApplicationServer& server,
+                       RocksDBOptionFeatureOptions options);
+  explicit RocksDBOptionFeature(
+      application_features::ApplicationServer& server);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
   void prepare() override;
   void start() override;
 
@@ -91,7 +90,6 @@ class RocksDBOptionFeature final
 
  private:
   RocksDBOptionFeatureOptions _options;
-  AgencyFeature const* _agencyFeature{nullptr};
 };
 
 }  // namespace arangodb

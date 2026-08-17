@@ -18,11 +18,9 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShellConsoleFeature.h"
-#include "ShellConsoleOptionsProvider.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
@@ -55,7 +53,13 @@ namespace arangodb {
 
 ShellConsoleFeature::ShellConsoleFeature(
     application_features::ApplicationServer& server)
+    : ShellConsoleFeature(server, ShellConsoleFeatureOptions{}) {}
+
+ShellConsoleFeature::ShellConsoleFeature(
+    application_features::ApplicationServer& server,
+    ShellConsoleFeatureOptions options)
     : ApplicationFeature(server, *this),
+      _options(std::move(options)),
       _promptError(false),
       _supportsColors(isatty(STDIN_FILENO) != 0),
       _toPager(stdout),
@@ -67,12 +71,6 @@ ShellConsoleFeature::ShellConsoleFeature(
   if (!_supportsColors) {
     _options.colors = false;
   }
-}
-
-void ShellConsoleFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  ShellConsoleOptionsProvider provider;
-  provider.declareOptions(options, _options);
 }
 
 void ShellConsoleFeature::start() { openLog(); }

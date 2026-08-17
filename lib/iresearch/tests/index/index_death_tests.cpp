@@ -17,8 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "formats/formats.hpp"
@@ -324,6 +322,17 @@ void open_reader(
   ASSERT_FALSE(live_docs->next());
   ASSERT_EQ(irs::doc_limits::eof(), live_docs->value());
 }
+
+auto beginCons = [](const auto& ) {
+};
+auto endCons = [](const auto& ) {
+};
+auto flushProgress = []() {
+  return true;
+};
+
+irs::IndexWriter::ConsolidationProgress callbacks = { .beginConsolidation = beginCons,
+  .endConsolidation = endCons, .flushProgress = flushProgress };
 
 }  // namespace
 
@@ -1437,13 +1446,13 @@ TEST(index_death_test_formats_10,
 
     // segment meta creation failure
     ASSERT_THROW(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)),
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all), callbacks),
       irs::io_error);
     ASSERT_FALSE(writer->Begin());  // nothing to flush
 
     // segment meta synchronization failure
     ASSERT_TRUE(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all), callbacks));
     ASSERT_THROW(writer->Begin(), irs::io_error);
     ASSERT_FALSE(writer->Begin());  // nothing to flush
 
@@ -1569,7 +1578,7 @@ TEST(index_death_test_formats_10,
                        doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(writer->Begin());  // start transaction
     ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
-      consolidate_all)));            // register pending consolidation
+      consolidate_all), callbacks));            // register pending consolidation
     ASSERT_FALSE(writer->Commit());  // commit started transaction
     tests::AssertSnapshotEquality(writer->GetSnapshot(),
                                   irs::DirectoryReader(dir));
@@ -1582,7 +1591,7 @@ TEST(index_death_test_formats_10,
                        doc4->stored.begin(), doc4->stored.end()));
     ASSERT_TRUE(writer->Begin());  // start transaction
     ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
-      consolidate_all)));            // register pending consolidation
+      consolidate_all), callbacks));            // register pending consolidation
     ASSERT_FALSE(writer->Commit());  // commit started transaction
     tests::AssertSnapshotEquality(writer->GetSnapshot(),
                                   irs::DirectoryReader(dir));
@@ -1759,7 +1768,7 @@ TEST(index_death_test_formats_10,
     std::thread consolidation_thread([&writer]() {
       const irs::index_utils::ConsolidateCount consolidate_all;
       ASSERT_THROW(
-        writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)),
+        writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all), callbacks),
         irs::io_error);  // consolidate
     });
 
@@ -1901,7 +1910,7 @@ TEST(index_death_test_formats_10,
     std::thread consolidation_thread([&writer]() {
       const irs::index_utils::ConsolidateCount consolidate_all;
       ASSERT_TRUE(writer->Consolidate(
-        irs::index_utils::MakePolicy(consolidate_all)));  // consolidate
+        irs::index_utils::MakePolicy(consolidate_all), callbacks));  // consolidate
     });
 
     dir.wait_for_blocker();
@@ -2060,7 +2069,7 @@ TEST(index_death_test_formats_10, segment_components_write_fail_consolidation) {
 
     while (!dir.no_failures()) {
       ASSERT_THROW(
-        writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)),
+        writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all), callbacks),
         irs::io_error);
       ASSERT_FALSE(writer->Begin());  // nothing to flush
     }
@@ -2181,7 +2190,7 @@ TEST(index_death_test_formats_10, segment_components_sync_fail_consolidation) {
 
     while (!dir.no_failures()) {
       ASSERT_TRUE(
-        writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+        writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all), callbacks));
       ASSERT_THROW(writer->Begin(), irs::io_error);  // nothing to flush
       ASSERT_FALSE(writer->Begin());
     }
@@ -3122,7 +3131,7 @@ TEST(index_death_test_formats_14, fails_in_consolidate_with_removals) {
     const irs::index_utils::ConsolidateCount consolidate_all;
 
     ASSERT_TRUE(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all), callbacks));
     ASSERT_TRUE(writer->Commit());
     tests::AssertSnapshotEquality(writer->GetSnapshot(),
                                   irs::DirectoryReader(dir));
@@ -3246,7 +3255,7 @@ TEST(index_death_test_formats_14, fails_in_exists) {
     const irs::index_utils::ConsolidateCount consolidate_all;
 
     ASSERT_TRUE(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all), callbacks));
     ASSERT_TRUE(writer->Commit());
     tests::AssertSnapshotEquality(writer->GetSnapshot(),
                                   irs::DirectoryReader(dir));
@@ -3435,7 +3444,7 @@ TEST(index_death_test_formats_14, fails_in_length) {
 
     const auto num_failures_before = dir.num_failures();
     ASSERT_TRUE(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all), callbacks));
     ASSERT_EQ(num_failures_before, dir.num_failures());
 
     irs::directory_cleaner::clean(dir);

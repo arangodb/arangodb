@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <velocypack/Builder.h>
@@ -27,7 +26,6 @@
 #include <velocypack/Slice.h>
 
 #include "BenchFeature.h"
-#include "BenchOptionsProvider.h"
 
 #include <ctime>
 #include <fstream>
@@ -41,10 +39,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
-#include "Basics/FileUtils.h"
-#include "Basics/NumberOfCores.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/Utf8Helper.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
@@ -53,9 +48,7 @@
 #include "Benchmark/BenchmarkStats.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/LogMacros.h"
-#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/HttpResponseChecker.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
@@ -68,43 +61,17 @@ using namespace arangodb::httpclient;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief includes all the test cases
-///
-/// We use an evil global pointer here.
-////////////////////////////////////////////////////////////////////////////////
-
-#include "Benchmark/test-cases.h"
-
 BenchFeature::BenchFeature(application_features::ApplicationServer& server,
                            int* result)
-    : ApplicationFeature{server, *this}, _result(result) {
+    : BenchFeature(server, result, BenchFeatureOptions{}) {}
+
+BenchFeature::BenchFeature(application_features::ApplicationServer& server,
+                           int* result, BenchFeatureOptions options)
+    : ApplicationFeature{server, *this},
+      _options(std::move(options)),
+      _result(result) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
-
-  // the following is not awesome, as all test classes need to be repeated here.
-  // however, it works portably across different compilers.
-  AqlInsertTest::registerTestcase();
-  CollectionCreationTest::registerTestcase();
-  CustomQueryTest::registerTestcase();
-  DocumentCreationTest::registerTestcase();
-  DocumentCrudAppendTest::registerTestcase();
-  DocumentCrudTest::registerTestcase();
-  DocumentCrudWriteReadTest::registerTestcase();
-  DocumentImportTest::registerTestcase();
-  EdgeCrudTest::registerTestcase();
-  PersistentIndexTest::registerTestcase();
-  VersionTest::registerTestcase();
-}
-
-void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  BenchOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void BenchFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  BenchOptionsProvider provider;
-  provider.validateOptions(options, _options);
 
   if (!_options.customQueryBindVars.empty()) {
     try {
@@ -296,11 +263,10 @@ void BenchFeature::start() {
 
     for (uint64_t i = 0; i < _options.threadCount; ++i) {
       auto thread = std::make_unique<BenchmarkThread>(
-          server(), benchmark.get(), &startCondition,
-          &BenchFeature::updateStartCounter, static_cast<int>(i),
-          &operationsCounter, client, _options.keepAlive, _options.async,
-          _options.histogramIntervalSize, _options.histogramNumIntervals,
-          _options.generateHistogram);
+          benchmark.get(), &startCondition, &BenchFeature::updateStartCounter,
+          static_cast<int>(i), &operationsCounter, client, _options.keepAlive,
+          _options.async, _options.histogramIntervalSize,
+          _options.histogramNumIntervals, _options.generateHistogram);
       thread->setOffset(i * realStep);
       thread->start();
       threads.push_back(std::move(thread));

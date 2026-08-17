@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchAqlAnalyzer.h"
@@ -452,7 +451,7 @@ bool AqlAnalyzer::reset(std::string_view field) noexcept {
       auto queryString = arangodb::aql::QueryString(_options.queryString);
       auto ast = _query->ast();
       TRI_ASSERT(ast);
-      Parser parser(*_query, *ast, queryString);
+      Parser parser(*_query, &_query->warnings(), *ast, queryString);
       parser.parse();
       AstNode* astRoot = const_cast<AstNode*>(ast->root());
       TRI_ASSERT(astRoot);

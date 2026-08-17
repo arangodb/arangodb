@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -44,7 +42,7 @@ class SimpleHttpResult;
 }  // namespace httpclient
 
 class Endpoint;
-class ReplicationApplierConfiguration;
+class ReplicationSyncConfiguration;
 struct SyncerId;
 class Syncer;
 
@@ -54,8 +52,7 @@ namespace replutils {
 extern std::string const ReplicationUrl;
 
 struct Connection {
-  Connection(Syncer* syncer,
-             ReplicationApplierConfiguration const& applierConfig);
+  Connection(Syncer* syncer, ReplicationSyncConfiguration const& applierConfig);
 
   /// @brief determine if the client connection is open and valid
   bool valid() const;
@@ -138,7 +135,7 @@ struct LeaderInfo {
   int patchVersion{0};
   TRI_voc_tick_t lastLogTick{0};  // only used during initialSync
 
-  explicit LeaderInfo(ReplicationApplierConfiguration const& applierConfig);
+  explicit LeaderInfo(ReplicationSyncConfiguration const& applierConfig);
 
   static LeaderInfo createEmpty() { return LeaderInfo(); }
 
@@ -146,8 +143,7 @@ struct LeaderInfo {
   uint64_t version() const;
 
   /// @brief get leader state
-  Result getState(Connection& connection, bool isChildSyncer,
-                  char const* context);
+  Result getState(Connection& connection, char const* context);
 };
 
 struct BatchInfo {

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -61,12 +60,12 @@ class NetworkFeature final : public application_features::ApplicationFeature {
   static constexpr std::string_view name() noexcept { return "Network"; }
 
   NetworkFeature(application_features::ApplicationServer& server,
+                 metrics::IRegistry& metricsRegistry, NetworkOptions options);
+  NetworkFeature(application_features::ApplicationServer& server,
                  metrics::IRegistry& metricsRegistry,
-                 network::ConnectionPool::Config);
+                 network::ConnectionPool::Config config);
   ~NetworkFeature();
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
   void prepare() override;
   void start() override;
   void beginShutdown() override;

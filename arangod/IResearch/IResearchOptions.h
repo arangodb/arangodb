@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasily Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -50,6 +48,7 @@ struct IResearchOptions {
 
 #ifdef USE_ENTERPRISE
   bool columnsCacheOnlyLeader = false;
+  uint64_t columnsCacheLimit = 0;
 #endif
 };
 

@@ -18,62 +18,31 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-
-#include <memory>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "Logger/LoggerFeature.h"
 #include "ApplicationFeatures/ConfigFeatureOptions.h"
-#include "Assertions/ProdAssert.h"
 
 namespace arangodb {
-namespace options {
-class ProgramOptions;
-}
 
 class LoggerFeature;
 class ShellColorsFeature;
-class VersionFeature;
 
 class ConfigFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Config"; }
 
-  ConfigFeature(application_features::ApplicationServer& server,
-                std::string const& progname,
-                std::string const& configFilename = "")
-      : application_features::ApplicationFeature{server, *this},
-        _version{[&server]() {
-          return server.hasFeature<VersionFeature>()
-                     ? &server.getFeature<VersionFeature>()
-                     : nullptr;
-        }()} {
-    ADB_PROD_ASSERT(_version != nullptr);
-    _options.file = configFilename;
-    _options.progname = progname;
-
-    setOptional(false);
-    startsAfter<LoggerFeature>();
-    startsAfter<ShellColorsFeature>();
-  }
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void loadOptions(std::shared_ptr<options::ProgramOptions>,
-                   char const* binaryPath) override final;
+  explicit ConfigFeature(application_features::ApplicationServer& server,
+                         ConfigFeatureOptions options = {});
 
   void prepare() override final;
 
  private:
-  void loadConfigFile(std::shared_ptr<options::ProgramOptions>,
-                      std::string const& progname, char const* binaryPath);
-
-  VersionFeature* _version;
   ConfigFeatureOptions _options;
 };
 

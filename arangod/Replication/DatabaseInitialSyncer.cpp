@@ -18,10 +18,10 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DatabaseInitialSyncer.h"
+#include "Metrics/MetricsFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
@@ -41,8 +41,6 @@
 #include "Logger/Logger.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
-#include "Replication/DatabaseReplicationApplier.h"
-#include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication/utilities.h"
 #include "Rest/CommonDefines.h"
@@ -196,7 +194,7 @@ Result fetchRevisions(NetworkFeature& netFeature, transaction::Methods& trx,
 
   network::Headers headers;
   if (ServerState::instance()->isSingleServer() &&
-      config.applier._jwt.empty()) {
+      config.syncConfig._jwt.empty()) {
     // if we are the single-server replication and there is no JWT
     // present, inject the username/password credentials into the
     // requests.
@@ -204,9 +202,9 @@ Result fetchRevisions(NetworkFeature& netFeature, transaction::Methods& trx,
     // server replication when the leader uses authentication with
     // username/password
     headers.emplace(StaticStrings::Authorization,
-                    "Basic " + absl::Base64Escape(
-                                   absl::StrCat(config.applier._username, ":",
-                                                config.applier._password)));
+                    "Basic " + absl::Base64Escape(absl::StrCat(
+                                   config.syncConfig._username, ":",
+                                   config.syncConfig._password)));
   }
 
   config.progress.set(
@@ -510,42 +508,11 @@ Result fetchRevisions(NetworkFeature& netFeature, transaction::Methods& trx,
 
 }  // namespace
 
-/// @brief helper struct to prevent multiple starts of the replication
-/// in the same database. used for single-server replication only.
-struct MultiStartPreventer {
-  MultiStartPreventer(MultiStartPreventer const&) = delete;
-  MultiStartPreventer& operator=(MultiStartPreventer const&) = delete;
-
-  MultiStartPreventer(TRI_vocbase_t& vocbase, bool preventStart)
-      : vocbase(vocbase), preventedStart(false) {
-    if (preventStart) {
-      TRI_ASSERT(!ServerState::instance()->isClusterRole());
-
-      auto res = vocbase.replicationApplier()->preventStart();
-      if (res.fail()) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
-      preventedStart = true;
-    }
-  }
-
-  ~MultiStartPreventer() {
-    if (preventedStart) {
-      // reallow starting
-      TRI_ASSERT(!ServerState::instance()->isClusterRole());
-      vocbase.replicationApplier()->allowStart();
-    }
-  }
-
-  TRI_vocbase_t& vocbase;
-  bool preventedStart;
-};
-
 DatabaseInitialSyncer::Configuration::Configuration(
-    ReplicationApplierConfiguration const& a, replutils::BatchInfo& bat,
-    replutils::Connection& c, bool f, replutils::LeaderInfo& l,
+    ReplicationSyncConfiguration const& a, replutils::BatchInfo& bat,
+    replutils::Connection& c, replutils::LeaderInfo& l,
     replutils::ProgressInfo& p, SyncerState& s, TRI_vocbase_t& v)
-    : applier{a},
+    : syncConfig{a},
       batch{bat},
       connection{c},
       leader{l},
@@ -553,21 +520,15 @@ DatabaseInitialSyncer::Configuration::Configuration(
       state{s},
       vocbase{v} {}
 
-bool DatabaseInitialSyncer::Configuration::isChild() const noexcept {
-  return state.isChildSyncer;
-}
-
 DatabaseInitialSyncer::DatabaseInitialSyncer(
-    TRI_vocbase_t& vocbase,
-    ReplicationApplierConfiguration const& configuration)
+    TRI_vocbase_t& vocbase, ReplicationSyncConfiguration const& configuration)
     : InitialSyncer(
           configuration,
           [this](std::string const& msg) -> void { setProgress(msg); }),
-      _config{_state.applier, _batch,        _state.connection,
-              false,          _state.leader, _progress,
-              _state,         vocbase},
+      _config{_state.config, _batch,    _state.connection,
+              _state.leader, _progress, _state,
+              vocbase},
       _lastCancellationCheck(std::chrono::steady_clock::now()),
-      _isClusterRole(ServerState::instance()->isClusterRole()),
       _quickKeysNumDocsLimit(
           vocbase.server().getFeature<ReplicationFeature>().quickKeysLimit()) {
   _state.vocbases.try_emplace(vocbase.name(), vocbase);
@@ -581,12 +542,11 @@ DatabaseInitialSyncer::DatabaseInitialSyncer(
 }
 
 std::shared_ptr<DatabaseInitialSyncer> DatabaseInitialSyncer::create(
-    TRI_vocbase_t& vocbase,
-    ReplicationApplierConfiguration const& configuration) {
+    TRI_vocbase_t& vocbase, ReplicationSyncConfiguration const& configuration) {
   // enable make_shared on a class with a private constructor
   struct Enabler final : public DatabaseInitialSyncer {
     Enabler(TRI_vocbase_t& vocbase,
-            ReplicationApplierConfiguration const& configuration)
+            ReplicationSyncConfiguration const& configuration)
         : DatabaseInitialSyncer(vocbase, configuration) {}
   };
 
@@ -609,9 +569,6 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
   double const startTime = TRI_microtime();
 
   try {
-    bool const preventMultiStart = !_isClusterRole;
-    MultiStartPreventer p(vocbase(), preventMultiStart);
-
     setAborted(false);
 
     _config.progress.set("fetching leader state");
@@ -620,42 +577,39 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
         << "client: getting leader state to dump " << vocbase().name();
 
     Result r;
-    if (!_config.isChild()) {
-      // enable patching of collection count for ShardSynchronization Job
-      std::string patchCount;
-      if (_config.applier._skipCreateDrop &&
-          _config.applier._restrictType ==
-              ReplicationApplierConfiguration::RestrictType::Include &&
-          _config.applier._restrictCollections.size() == 1) {
-        patchCount = *_config.applier._restrictCollections.begin();
-      }
-
-      // with a 3.8 leader, this call combines fetching the leader state with
-      // starting the batch. this saves us one request per shard. a 3.7 leader
-      // will does not return the leader state together with this call, so we
-      // need to be prepared for not yet getting it here
-      r = batchStart(context, patchCount);
-
-      if (r.ok() && !_config.leader.serverId.isSet()) {
-        // a 3.7 leader, which does not return leader state when stating a
-        // batch. so we need to fetch the leader state in addition
-        r = _config.leader.getState(_config.connection, _config.isChild(),
-                                    context);
-      }
-
-      if (r.fail()) {
-        return r;
-      }
-
-      TRI_ASSERT(!_config.leader.endpoint.empty());
-      TRI_ASSERT(_config.leader.serverId.isSet());
-      TRI_ASSERT(_config.leader.majorVersion != 0);
-
-      LOG_TOPIC("6fd2b", DEBUG, Logger::REPLICATION)
-          << "client: got leader state";
-
-      startRecurringBatchExtension();
+    // enable patching of collection count for ShardSynchronization Job
+    std::string patchCount;
+    if (_config.syncConfig._skipCreateDrop &&
+        _config.syncConfig._restrictType ==
+            ReplicationSyncConfiguration::RestrictType::Include &&
+        _config.syncConfig._restrictCollections.size() == 1) {
+      patchCount = *_config.syncConfig._restrictCollections.begin();
     }
+
+    // with a 3.8 leader, this call combines fetching the leader state with
+    // starting the batch. this saves us one request per shard. a 3.7 leader
+    // will does not return the leader state together with this call, so we
+    // need to be prepared for not yet getting it here
+    r = batchStart(context, patchCount);
+
+    if (r.ok() && !_config.leader.serverId.isSet()) {
+      // a 3.7 leader, which does not return leader state when stating a
+      // batch. so we need to fetch the leader state in addition
+      r = _config.leader.getState(_config.connection, context);
+    }
+
+    if (r.fail()) {
+      return r;
+    }
+
+    TRI_ASSERT(!_config.leader.endpoint.empty());
+    TRI_ASSERT(_config.leader.serverId.isSet());
+    TRI_ASSERT(_config.leader.majorVersion != 0);
+
+    LOG_TOPIC("6fd2b", DEBUG, Logger::REPLICATION)
+        << "client: got leader state";
+
+    startRecurringBatchExtension();
 
     VPackSlice collections, views;
     if (dbInventory.isObject()) {
@@ -725,21 +679,8 @@ Result DatabaseInitialSyncer::getInventory(VPackBuilder& builder) {
 
 /// @brief check whether the initial synchronization should be aborted
 bool DatabaseInitialSyncer::isAborted() const {
-  if (vocbase().server().isStopping() ||
-      (vocbase().replicationApplier() != nullptr &&
-       vocbase().replicationApplier()->stopInitialSynchronization())) {
+  if (vocbase().server().isStopping()) {
     return true;
-  }
-
-  if (_state.isChildSyncer) {
-    // this syncer is used as a child syncer of the GlobalInitialSyncer.
-    // now check if parent was aborted
-    ReplicationFeature& replication =
-        vocbase().server().getFeature<ReplicationFeature>();
-    GlobalReplicationApplier* applier = replication.globalReplicationApplier();
-    if (applier != nullptr && applier->stopInitialSynchronization()) {
-      return true;
-    }
   }
 
   if (_checkCancellation) {
@@ -767,18 +708,10 @@ bool DatabaseInitialSyncer::isAborted() const {
 void DatabaseInitialSyncer::setProgress(std::string const& msg) {
   _config.progress.message = msg;
 
-  if (_config.applier._verbose) {
+  if (_config.syncConfig._verbose) {
     LOG_TOPIC("c6f5f", INFO, Logger::REPLICATION) << msg;
   } else {
     LOG_TOPIC("d15ed", DEBUG, Logger::REPLICATION) << msg;
-  }
-
-  if (!_isClusterRole) {
-    auto* applier = _config.vocbase.replicationApplier();
-
-    if (applier != nullptr) {
-      applier->setProgress(msg);
-    }
   }
 }
 
@@ -993,9 +926,7 @@ void DatabaseInitialSyncer::fetchDumpChunk(
     std::string const typeString =
         (coll->type() == TRI_COL_TYPE_EDGE ? "edge" : "document");
 
-    if (!_config.isChild()) {
-      batchExtend();
-    }
+    batchExtend();
 
     // assemble URL to call
     std::string url =
@@ -1072,14 +1003,14 @@ Result DatabaseInitialSyncer::fetchCollectionDump(LogicalCollection* coll,
   std::string baseUrl = absl::StrCat(
       replutils::ReplicationUrl, "/dump?collection=", urlEncode(leaderColl),
       "&batchId=", _config.batch.id,
-      "&includeSystem=", (_config.applier._includeSystem ? "true" : "false"),
+      "&includeSystem=", (_config.syncConfig._includeSystem ? "true" : "false"),
       "&useEnvelope=false&serverId=", _state.localServerIdString);
 
-  if (ServerState::instance()->isDBServer() && !_config.isChild() &&
-      _config.applier._skipCreateDrop &&
-      _config.applier._restrictType ==
-          ReplicationApplierConfiguration::RestrictType::Include &&
-      _config.applier._restrictCollections.size() == 1 &&
+  if (ServerState::instance()->isDBServer() &&
+      _config.syncConfig._skipCreateDrop &&
+      _config.syncConfig._restrictType ==
+          ReplicationSyncConfiguration::RestrictType::Include &&
+      _config.syncConfig._restrictCollections.size() == 1 &&
       !hasDocuments(*coll)) {
     // DB server doing shard synchronization. now try to fetch everything in a
     // single VPack array. note: only servers >= 3.10 will honor this URL
@@ -1097,7 +1028,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(LogicalCollection* coll,
   // state variables for the dump
   TRI_voc_tick_t fromTick = 0;
   int batch = 1;
-  uint64_t chunkSize = _config.applier._chunkSize;
+  uint64_t chunkSize = _config.syncConfig._chunkSize;
 
   double const startTime = TRI_microtime();
 
@@ -1295,9 +1226,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(
     TRI_voc_tick_t maxTick) {
   using basics::StringUtils::urlEncode;
 
-  if (!_config.isChild()) {
-    batchExtend();
-  }
+  batchExtend();
 
   ReplicationMetricsFeature::InitialSyncStats stats(
       coll->vocbase().server().getFeature<ReplicationMetricsFeature>(), true);
@@ -1320,7 +1249,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(
   constexpr uint64_t lowerBoundForWaitTime = 180000000;
 
   // note: maxWaitTime has a unit of microseconds
-  uint64_t maxWaitTime = _config.applier._initialSyncMaxWaitTime;
+  uint64_t maxWaitTime = _config.syncConfig._initialSyncMaxWaitTime;
   maxWaitTime = std::max<uint64_t>(maxWaitTime, lowerBoundForWaitTime);
 
   // the following two variables can be modified by the "keysCall" lambda
@@ -1365,9 +1294,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(
     headers = replutils::createHeaders();
 
     while (true) {
-      if (!_config.isChild()) {
-        batchExtend();
-      }
+      batchExtend();
 
       std::string const jobUrl = "/_api/job/" + jobId;
       _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
@@ -1477,7 +1404,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(
 
     // there is an additional lower bound for the wait time as defined initially
     // in
-    //    _config.applier._initialSyncMaxWaitTime
+    //    _config.syncConfig._initialSyncMaxWaitTime
     // we also apply an additional lower bound of 180 seconds here, in case that
     // value is configured too low, for whatever reason
     maxWaitTime = std::max<uint64_t>(maxWaitTime, lowerBoundForWaitTime);
@@ -1595,9 +1522,7 @@ void DatabaseInitialSyncer::fetchRevisionsChunk(
     std::string const typeString =
         (coll->type() == TRI_COL_TYPE_EDGE ? "edge" : "document");
 
-    if (!_config.isChild()) {
-      batchExtend();
-    }
+    batchExtend();
 
     using basics::StringUtils::urlEncode;
 
@@ -1668,9 +1593,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
 
   double const startTime = TRI_microtime();
 
-  if (!_config.isChild()) {
-    batchExtend();
-  }
+  batchExtend();
 
   std::unique_ptr<containers::RevisionTree> treeLeader;
   std::string const baseUrl = absl::StrCat(replutils::ReplicationUrl, "/",
@@ -2281,9 +2204,7 @@ Result DatabaseInitialSyncer::handleCollection(velocypack::Slice parameters,
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE);
   }
 
-  if (!_config.isChild()) {
-    batchExtend();
-  }
+  batchExtend();
 
   std::string const leaderName =
       basics::VelocyPackHelper::getStringValue(parameters, "name", "");
@@ -2406,7 +2327,7 @@ Result DatabaseInitialSyncer::handleCollection(velocypack::Slice parameters,
             }
           } else {
             // drop a regular collection
-            if (_config.applier._skipCreateDrop) {
+            if (_config.syncConfig._skipCreateDrop) {
               _config.progress.set("dropping " + collectionMsg +
                                    " skipped because of configuration");
               return Result();
@@ -2435,7 +2356,7 @@ Result DatabaseInitialSyncer::handleCollection(velocypack::Slice parameters,
     // When we get here, col is a nullptr anyway!
 
     std::string msg = "creating " + collectionMsg;
-    if (_config.applier._skipCreateDrop) {
+    if (_config.syncConfig._skipCreateDrop) {
       msg += " skipped because of configuration";
       _config.progress.set(msg);
       return Result();
@@ -2503,7 +2424,7 @@ Result DatabaseInitialSyncer::handleCollection(velocypack::Slice parameters,
     }
 
     // schmutz++ creates indexes on DBServers
-    if (_config.applier._skipCreateDrop) {
+    if (_config.syncConfig._skipCreateDrop) {
       _config.progress.set(absl::StrCat("creating indexes for ", collectionMsg,
                                         " skipped because of configuration"));
       return res;
@@ -2513,9 +2434,7 @@ Result DatabaseInitialSyncer::handleCollection(velocypack::Slice parameters,
     TRI_ASSERT(indexes.isArray());
     VPackValueLength const numIdx = indexes.length();
     if (numIdx > 0) {
-      if (!_config.isChild()) {
-        batchExtend();
-      }
+      batchExtend();
 
       _config.progress.set(
           absl::StrCat("creating ", numIdx, " index(es) for ", collectionMsg));
@@ -2556,23 +2475,24 @@ Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
       absl::StrCat(replutils::ReplicationUrl,
                    "/inventory?serverId=", _state.localServerIdString,
                    "&batchId=", _config.batch.id);
-  if (_config.applier._includeSystem) {
+  if (_config.syncConfig._includeSystem) {
     url += "&includeSystem=true";
   }
-  if (_config.applier._includeFoxxQueues) {
+  if (_config.syncConfig._includeFoxxQueues) {
     url += "&includeFoxxQueues=true";
   }
 
   // use an optimization here for shard synchronization: only fetch the
   // inventory including a single shard. this can greatly reduce the size of
   // the response.
-  if (ServerState::instance()->isDBServer() && !_config.isChild() &&
-      _config.applier._skipCreateDrop &&
-      _config.applier._restrictType ==
-          ReplicationApplierConfiguration::RestrictType::Include &&
-      _config.applier._restrictCollections.size() == 1) {
-    url += "&collection=" + basics::StringUtils::urlEncode(*(
-                                _config.applier._restrictCollections.begin()));
+  if (ServerState::instance()->isDBServer() &&
+      _config.syncConfig._skipCreateDrop &&
+      _config.syncConfig._restrictType ==
+          ReplicationSyncConfiguration::RestrictType::Include &&
+      _config.syncConfig._restrictCollections.size() == 1) {
+    url += "&collection=" +
+           basics::StringUtils::urlEncode(
+               *(_config.syncConfig._restrictCollections.begin()));
   }
 
   // send request
@@ -2585,9 +2505,7 @@ Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
   });
 
   if (replutils::hasFailed(response.get())) {
-    if (!_config.isChild()) {
-      batchFinish();
-    }
+    batchFinish();
     return replutils::buildHttpError(response.get(), url, _config.connection);
   }
 
@@ -2651,9 +2569,9 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(
                     "collection name is missing in response");
     }
 
-    if (TRI_ExcludeCollectionReplication(leaderName,
-                                         _config.applier._includeSystem,
-                                         _config.applier._includeFoxxQueues)) {
+    if (TRI_ExcludeCollectionReplication(
+            leaderName, _config.syncConfig._includeSystem,
+            _config.syncConfig._includeFoxxQueues)) {
       continue;
     }
 
@@ -2663,18 +2581,18 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(
       continue;
     }
 
-    if (_config.applier._restrictType !=
-        ReplicationApplierConfiguration::RestrictType::None) {
-      auto const it = _config.applier._restrictCollections.find(leaderName);
-      bool found = (it != _config.applier._restrictCollections.end());
+    if (_config.syncConfig._restrictType !=
+        ReplicationSyncConfiguration::RestrictType::None) {
+      auto const it = _config.syncConfig._restrictCollections.find(leaderName);
+      bool found = (it != _config.syncConfig._restrictCollections.end());
 
-      if (_config.applier._restrictType ==
-              ReplicationApplierConfiguration::RestrictType::Include &&
+      if (_config.syncConfig._restrictType ==
+              ReplicationSyncConfiguration::RestrictType::Include &&
           !found) {
         // collection should not be included
         continue;
-      } else if (_config.applier._restrictType ==
-                     ReplicationApplierConfiguration::RestrictType::Exclude &&
+      } else if (_config.syncConfig._restrictType ==
+                     ReplicationSyncConfiguration::RestrictType::Exclude &&
                  found) {
         // collection should be excluded
         continue;
@@ -2727,8 +2645,8 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(
   // yet
   // ----------------------------------------------------------------------------------
 
-  if (!_config.applier._skipCreateDrop &&
-      _config.applier._restrictCollections.empty() && viewSlices.isArray()) {
+  if (!_config.syncConfig._skipCreateDrop &&
+      _config.syncConfig._restrictCollections.empty() && viewSlices.isArray()) {
     // views are optional, and 3.3 and before will not send any view data
     auto r = handleViewCreation(viewSlices,
                                 iresearch::StaticStrings::ViewArangoSearchType);

@@ -18,25 +18,15 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
-/// @author Jan Steemann
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-
-#include <memory>
-#include <mutex>
-#include <optional>
-#include <span>
-#include <string>
-#include <string_view>
-#include <unordered_map>
 
 #include "Agency/AgencyComm.h"
 #include "Agency/AgencyCommon.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/ResourceUsage.h"
 #include "Cluster/CallbackGuard.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/RebootTracker.h"
@@ -46,9 +36,13 @@
 #include "Replication2/AgencyCollectionSpecification.h"
 #include "Replication2/Version.h"
 
-#include "Basics/ResourceUsage.h"
-
-struct TRI_vocbase_t;
+#include <memory>
+#include <mutex>
+#include <optional>
+#include <span>
+#include <string>
+#include <string_view>
+#include <unordered_map>
 
 namespace arangodb {
 
@@ -85,6 +79,7 @@ struct ClusterCollectionCreationInfo;
 class ClusterInfo;
 class CollectionInfoCurrent;
 class CreateDatabaseInfo;
+struct Database;
 class IndexId;
 class LogicalDataSource;
 class LogicalCollection;
@@ -469,7 +464,7 @@ class ClusterInfo final {
 
   [[nodiscard]] std::unordered_map<std::string,
                                    std::shared_ptr<LogicalCollection>>
-  generateCollectionStubs(TRI_vocbase_t& database);
+  generateCollectionStubs(Database& database);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a view
@@ -915,6 +910,8 @@ class ClusterInfo final {
   void setServerAdvertisedEndpoints(
       containers::FlatHashMap<ServerID, std::string> advertisedEndpoints);
 
+  void setServersKnown(ServersKnown serversKnown);
+
   void setShardToShardGroupLeader(
       containers::FlatHashMap<ShardID, ShardID> shardToShardGroupLeader);
 
@@ -1029,8 +1026,8 @@ class ClusterInfo final {
   /// possible
   CollectionWithHash buildCollection(
       bool isBuilding, AllCollections::const_iterator existingCollections,
-      std::string_view collectionId, velocypack::Slice data,
-      TRI_vocbase_t& vocbase, uint64_t planVersion, bool cleanupLinks) const;
+      std::string_view collectionId, velocypack::Slice data, Database& database,
+      uint64_t planVersion, bool cleanupLinks) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about our plan
@@ -1062,6 +1059,16 @@ class ClusterInfo final {
   // metrics). Expects the caller to hold _currentProt.lock (read) when
   // invoked.
   void updateCoordinatorCurrentShardMetrics();
+
+  /// @brief Sync arangodb_server_health gauges from ServersKnown (Coordinators
+  /// only). Creates/updates one labeled gauge per server (target_server,
+  /// target_shortname) for every ServersKnown entry — including
+  /// DBServers — and removes gauges for servers that disappeared. Agents do
+  /// not export this metric (no AgencyCache/ClusterInfo server sync).
+  void updateServerHealthMetrics(ServersKnown const& serversKnown);
+
+  /// @brief Remove all arangodb_server_health series.
+  void clearServerHealthMetrics();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the timeout for reloading the server list
@@ -1161,6 +1168,11 @@ class ClusterInfo final {
   // So should we consider removing this member and use only rebootTracker?
   // Current/ServersKnown:
   ServersKnown _serversKnown;
+
+  /// @brief Per-server health gauges (Coordinator only). Keyed by ServerID.
+  /// Uses MetricsFeature::ensureMetric / remove for dynamic label sets.
+  containers::FlatHashMap<ServerID, metrics::Gauge<std::uint64_t>*>
+      _serverHealthMetrics;
 
   // Accounting drops of dangling links. We do not want to pollute
   // scheduler with drop requests. So we put only one per link at time.

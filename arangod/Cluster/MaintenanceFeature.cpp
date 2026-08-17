@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
-/// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <set>
@@ -27,7 +25,6 @@
 
 #include "Cluster/Maintenance.h"
 #include "MaintenanceFeature.h"
-#include "Cluster/MaintenanceOptionsProvider.h"
 
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
@@ -37,7 +34,6 @@
 
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/NumberOfCores.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/TimeString.h"
@@ -54,8 +50,6 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "ProgramOptions/Parameters.h"
-#include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Random/RandomGenerator.h"
 #include "Transaction/OperationOrigin.h"
@@ -66,7 +60,6 @@
 
 using namespace arangodb;
 using namespace arangodb::application_features;
-using namespace arangodb::options;
 using namespace arangodb::maintenance;
 
 DECLARE_COUNTER(
@@ -166,9 +159,14 @@ arangodb::Result arangodb::maintenance::collectionCount(
 
 MaintenanceFeature::MaintenanceFeature(ApplicationServer& server,
                                        ClusterFeature* clusterFeature)
+    : MaintenanceFeature(server, clusterFeature, MaintenanceOptions{}) {}
+
+MaintenanceFeature::MaintenanceFeature(ApplicationServer& server,
+                                       ClusterFeature* clusterFeature,
+                                       MaintenanceOptions options)
     : application_features::ApplicationFeature{server, *this},
       _clusterFeature(clusterFeature),
-      _options(),
+      _options(std::move(options)),
       _firstRun(true),
       _isShuttingDown(false),
       _nextActionId(1),
@@ -176,10 +174,6 @@ MaintenanceFeature::MaintenanceFeature(ApplicationServer& server,
   // the number of threads will be adjusted later. it's just that we want to
   // initialize all members properly
 
-  // this feature has to know the role of this server in its `start` method. The
-  // role is determined by `ClusterFeature::validateOptions`, hence the
-  // following line of code is not required. For philosophical reasons we added
-  // it to the ClusterPhase and let it start after `Cluster`.
   startsAfter<ClusterFeature>();
   startsAfter<metrics::MetricsFeature>();
 
@@ -190,24 +184,6 @@ MaintenanceFeature::MaintenanceFeature(ApplicationServer& server,
 }
 
 MaintenanceFeature::~MaintenanceFeature() { stop(); }
-
-void MaintenanceFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  // Initialize default values that depend on system state
-  _options.maintenanceThreadsMax =
-      (std::max)(static_cast<uint32_t>(3),  // minThreadLimit
-                 static_cast<uint32_t>(NumberOfCores::getValue() / 4 + 1));
-  _options.maintenanceThreadsSlowMax = _options.maintenanceThreadsMax / 2;
-
-  MaintenanceOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void MaintenanceFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  MaintenanceOptionsProvider provider;
-  provider.validateOptions(options, _options);
-}
 
 void MaintenanceFeature::prepare() {
   if (ServerState::instance()->isDBServer()) {

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <errno.h>
@@ -50,26 +49,21 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "ProgramOptions/Option.h"
-#include "ProgramOptions/Parameters.h"
-#include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/PrivilegeOptionsProvider.h"
 
 using namespace arangodb::basics;
-using namespace arangodb::options;
 
 namespace arangodb {
 
 PrivilegeFeature::PrivilegeFeature(
     application_features::ApplicationServer& server)
-    : ApplicationFeature{server, *this} {
+    : PrivilegeFeature(server, PrivilegeFeatureOptions{}) {}
+
+PrivilegeFeature::PrivilegeFeature(
+    application_features::ApplicationServer& server,
+    PrivilegeFeatureOptions options)
+    : ApplicationFeature{server, *this}, _options(std::move(options)) {
   setOptional(true);
   startsAfter<application_features::GreetingsFeaturePhase>();
-}
-
-void PrivilegeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  PrivilegeOptionsProvider provider;
-  provider.declareOptions(options, _options);
 }
 
 void PrivilegeFeature::prepare() { extractPrivileges(); }

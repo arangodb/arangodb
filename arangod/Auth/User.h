@@ -18,12 +18,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
+#include <optional>
 #include <set>
 
 #include "Auth/Common.h"
@@ -66,7 +65,14 @@ class User {
 
   bool checkPassword(std::string const& password) const;
   void updatePassword(std::string const& password);
-  bool checkAccessToken(std::string const& token) const;
+  // Checks whether `token` is one of this user's active, non-expired
+  // personal access tokens. `validUntil` is only ever written to on
+  // success, where it is set to the token's own expiration timestamp
+  // (seconds since epoch); on failure (return value false) it is left
+  // unmodified. Initialize it to `std::nullopt` before the call if you
+  // need to tell whether it was set.
+  bool checkAccessToken(std::string const& token,
+                        std::optional<double>& validUntil) const;
 
   velocypack::Builder toVPackBuilder() const;
 

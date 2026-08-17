@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterEngine.h"
@@ -32,15 +31,14 @@
 #include "Cluster/ClusterAdminOperations.h"
 #include "ClusterEngine/ClusterCollection.h"
 #include "ClusterEngine/ClusterIndexFactory.h"
-#include "ClusterEngine/ClusterRestHandlers.h"
 #include "ClusterEngine/ClusterTransactionState.h"
 #ifdef USE_V8
 #include "ClusterEngine/ClusterV8Functions.h"
 #endif
-#include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "Transaction/Context.h"
@@ -61,10 +59,15 @@ bool ClusterEngine::Mocking = false;
 #endif
 
 // create the storage engine
-ClusterEngine::ClusterEngine(application_features::ApplicationServer& server)
+ClusterEngine::ClusterEngine(application_features::ApplicationServer& server,
+                             ClusterFeature& clusterFeature,
+                             DatabaseFeature& database,
+                             metrics::IRegistry& metrics)
     : StorageEngine(server, EngineName, name(), typeid(ClusterEngine),
-                    std::make_unique<ClusterIndexFactory>(server, *this)),
-      _clusterFeature(server.getFeature<ClusterFeature>()),
+                    std::make_unique<ClusterIndexFactory>(server, *this),
+                    database),
+      _clusterFeature(clusterFeature),
+      _metrics(metrics),
       _actualEngine(nullptr) {
   setOptional(true);
 }
@@ -114,19 +117,15 @@ void ClusterEngine::prepare() {
 
 void ClusterEngine::start() {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
-}
-
-std::unique_ptr<transaction::Manager> ClusterEngine::createTransactionManager(
-    transaction::ManagerFeature& feature) {
-  return std::make_unique<transaction::Manager>(feature);
+  initTransactionStatistics(_metrics);
 }
 
 std::shared_ptr<TransactionState> ClusterEngine::createTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
     transaction::Options const& options,
     transaction::OperationOrigin operationOrigin) {
-  return std::make_shared<ClusterTransactionState>(vocbase, tid, options,
-                                                   operationOrigin);
+  return std::make_shared<ClusterTransactionState>(
+      vocbase, tid, options, operationOrigin, transactionManager());
 }
 
 void ClusterEngine::addParametersForNewCollection(VPackBuilder& builder,
@@ -180,16 +179,6 @@ ErrorCode ClusterEngine::getCollectionsAndIndexes(
 ErrorCode ClusterEngine::getViews(TRI_vocbase_t& vocbase,
                                   arangodb::velocypack::Builder& result) {
   return TRI_ERROR_NO_ERROR;
-}
-
-VPackBuilder ClusterEngine::getReplicationApplierConfiguration(
-    TRI_vocbase_t& vocbase, ErrorCode& status) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-VPackBuilder ClusterEngine::getReplicationApplierConfiguration(
-    ErrorCode& status) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 // database, collection and index management
@@ -281,11 +270,6 @@ void ClusterEngine::addV8Functions() {
   ClusterV8Functions::registerResources();
 }
 #endif
-
-/// @brief Add engine-specific REST handlers
-void ClusterEngine::addRestHandlers(rest::RestHandlerFactory& handlerFactory) {
-  ClusterRestHandlers::registerResources(&handlerFactory);
-}
 
 void ClusterEngine::waitForEstimatorSync() {
   // fixes tests by allowing us to reload the cluster selectivity estimates

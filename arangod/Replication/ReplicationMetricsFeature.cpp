@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ReplicationMetricsFeature.h"
@@ -26,6 +25,7 @@
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/IRegistry.h"
+#include "Metrics/MetricsFeature.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::options;

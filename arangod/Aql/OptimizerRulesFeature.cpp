@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "OptimizerRulesFeature.h"
@@ -90,7 +89,7 @@
 #include "Aql/Optimizer/Rule/UseIndexForSort.h"
 #include "Aql/Optimizer/Rule/UseIndexes.h"
 #include "Aql/Optimizer/Rule/UseVectorIndex.h"
-#include "Aql/OptimizerRulesOptionsProvider.h"
+
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Aql/Optimizer/Rule/ClusterLiftConstantsForDisjointGraphNodes.h"
 #include "Enterprise/Aql/Optimizer/Rule/ClusterOneShard.h"
@@ -124,7 +123,12 @@ std::vector<OptimizerRule> OptimizerRulesFeature::_rules;
 std::unordered_map<std::string_view, int> OptimizerRulesFeature::_ruleLookup;
 
 OptimizerRulesFeature::OptimizerRulesFeature(ApplicationServer& server)
-    : application_features::ApplicationFeature{server, *this} {
+    : OptimizerRulesFeature(server, OptimizerRulesOptions{}) {}
+
+OptimizerRulesFeature::OptimizerRulesFeature(ApplicationServer& server,
+                                             OptimizerRulesOptions options)
+    : application_features::ApplicationFeature{server, *this},
+      _options(std::move(options)) {
   setOptional(false);
 #ifdef USE_V8
   startsAfter<V8FeaturePhase>();
@@ -133,12 +137,6 @@ OptimizerRulesFeature::OptimizerRulesFeature(ApplicationServer& server)
 #endif
 
   startsAfter<AqlFeature>();
-}
-
-void OptimizerRulesFeature::collectOptions(
-    std::shared_ptr<arangodb::options::ProgramOptions> options) {
-  OptimizerRulesOptionsProvider provider;
-  provider.declareOptions(options, _options);
 }
 
 void OptimizerRulesFeature::prepare() {
@@ -928,7 +926,7 @@ filtering by using `storedValues`. This rule is only enabled by the
 
   registerRule("materialize-for-enumerate-near", materializeForEnumerateNear,
                OptimizerRule::materializeForEnumerateNearRule,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+               OptimizerRule::makeFlags(OptimizerRule::Flags::Hidden),
                R"(Choose how each EnumerateNearVectorNode emits its document.
 If the vector index storedValues cover the downstream projections, or if a
 pushed-down filter already loaded the document, the vector node produces the

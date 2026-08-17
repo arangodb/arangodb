@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <exception>
@@ -65,19 +64,12 @@ using namespace arangodb::options;
 
 SslServerFeature::SslServerFeature(
     application_features::ApplicationServer& server)
-    : ApplicationFeature{server, *this} {
+    : SslServerFeature(server, SslServerOptions{}) {}
+
+SslServerFeature::SslServerFeature(
+    application_features::ApplicationServer& server, SslServerOptions options)
+    : ApplicationFeature{server, *this}, _options(std::move(options)) {
   setOptional(true);
-}
-
-void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  SslServerOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void SslServerFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  SslServerOptionsProvider provider;
-  provider.validateOptions(options, _options);
 }
 
 void SslServerFeature::prepare() {

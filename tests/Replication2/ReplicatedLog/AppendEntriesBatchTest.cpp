@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
-/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Replication2/Helper/ReplicatedLogTestSetup.h"
@@ -79,7 +77,7 @@ TEST_P(AppendEntriesBatchTest, test_with_sized_batches) {
     for (auto const& [idx, logEntry] :
          leaderLogContainer->storageContext->log) {
       currentSize += logEntry.approxByteSize();
-      if (currentSize >= _settings->_thresholdNetworkBatchSize) {
+      if (currentSize >= _settings->thresholdNetworkBatchSize) {
         numRequests += 1;
         currentSize = 0;
       }
@@ -89,7 +87,7 @@ TEST_P(AppendEntriesBatchTest, test_with_sized_batches) {
       currentSize +=
           LogEntry{TermIndexPair{LogTerm{5}, LogIndex{1}}, LogMetaPayload{}}
               .approxByteSize();
-      if (currentSize >= _settings->_thresholdNetworkBatchSize) {
+      if (currentSize >= _settings->thresholdNetworkBatchSize) {
         numRequests += 1;
         currentSize = 0;
       }

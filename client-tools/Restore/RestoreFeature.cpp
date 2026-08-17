@@ -18,18 +18,14 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestoreFeature.h"
-#include "Restore/RestoreOptionsProvider.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/BumpFileDescriptorsFeature.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
 #include "Basics/FileUtils.h"
-#include "Basics/NumberOfCores.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
@@ -1906,42 +1902,22 @@ Result RestoreFeature::RestoreSendJob::run(
 
 RestoreFeature::RestoreFeature(application_features::ApplicationServer& server,
                                ClientFeature& client, int& exitCode)
+    : RestoreFeature(server, client, exitCode, RestoreFeatureOptions{}) {}
+
+RestoreFeature::RestoreFeature(application_features::ApplicationServer& server,
+                               ClientFeature& client, int& exitCode,
+                               Options options)
     : ApplicationFeature{server, *this},
       _client(client),
       _clientManager{client, Logger::RESTORE},
-      _clientTaskQueue{server, ::processJob},
-      _exitCode{exitCode} {
+      _clientTaskQueue{::processJob},
+      _exitCode{exitCode},
+      _options(std::move(options)) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
 #ifdef TRI_HAVE_GETRLIMIT
   startsAfter<BumpFileDescriptorsFeature>();
 #endif
-
-  using arangodb::basics::FileUtils::buildFilename;
-  std::error_code ec;
-  std::filesystem::path const cwd = std::filesystem::current_path(ec);
-  if (ec) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_set_errno(TRI_ERROR_SYS_ERROR),
-        basics::StringUtils::concatT("cannot get current working directory: ",
-                                     ec.message()));
-  }
-  _options.inputPath = buildFilename(cwd.string(), "dump");
-  _options.threadCount =
-      std::max(uint32_t(_options.threadCount),
-               static_cast<uint32_t>(NumberOfCores::getValue()));
-}
-
-void RestoreFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  RestoreOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void RestoreFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  RestoreOptionsProvider provider;
-  provider.validateOptions(options, _options);
 }
 
 void RestoreFeature::prepare() {

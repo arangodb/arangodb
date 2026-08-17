@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef USE_V8
@@ -27,21 +26,16 @@
 
 #include "v8-statistics.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/Exceptions.h"
 #include "Basics/PhysicalMemory.h"
-#include "Basics/StringUtils.h"
-#include "Basics/process-utils.h"
-#include "Rest/GeneralRequest.h"
 #include "Metrics/Counter.h"
 #include "Metrics/MetricsFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
-#include "Statistics/ServerStatistics.h"
 #include "Statistics/StatisticsFeature.h"
-#include "V8/v8-conv.h"
+#include "StorageEngine/StorageEngine.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 #include "V8Server/V8DealerFeature.h"
@@ -118,15 +112,13 @@ static void JS_ServerStatistics(
   v8::HandleScope scope(isolate);
   auto context = TRI_IGETC;
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
-  ServerStatistics const& info =
-      v8g->server().getFeature<metrics::MetricsFeature>().serverStatistics();
+  TRI_GET_GLOBALS();
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
   result
       ->Set(context, TRI_V8_ASCII_STRING(isolate, "uptime"),
-            v8::Number::New(isolate, (double)info.uptime()))
+            v8::Number::New(isolate, metrics::MetricsFeature::serverUptime()))
       .FromMaybe(false);
   result
       ->Set(context, TRI_V8_ASCII_STRING(isolate, "physicalMemory"),
@@ -134,7 +126,10 @@ static void JS_ServerStatistics(
       .FromMaybe(false);
 
   // transaction info
-  auto const& ts = info._transactionsStatistics;
+  auto const& ts = v8g->server()
+                       .getFeature<DatabaseFeature>()
+                       .engine()
+                       .transactionStatistics();
   v8::Handle<v8::Object> v8TransactionInfoObj = v8::Object::New(isolate);
   v8TransactionInfoObj
       ->Set(context, TRI_V8_ASCII_STRING(isolate, "started"),
@@ -274,7 +269,7 @@ static void JS_EnabledStatistics(
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   bool enabled = v8g->server().getFeature<StatisticsFeature>().isEnabled();
   v8::Handle<v8::Value> result = v8::Boolean::New(isolate, enabled);
   TRI_V8_RETURN(result);
@@ -286,7 +281,7 @@ static void JS_EnabledStatisticsAllDatabases(
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   bool enabled = v8g->server().getFeature<StatisticsFeature>().isEnabled();
   bool allDatabases =
       v8g->server().getFeature<StatisticsFeature>().allDatabases();
@@ -304,7 +299,7 @@ static void JS_EnabledMetrics(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   bool enabled =
       v8g->server().getFeature<metrics::MetricsFeature>().exportAPI();
   v8::Handle<v8::Value> result = v8::Boolean::New(isolate, enabled);

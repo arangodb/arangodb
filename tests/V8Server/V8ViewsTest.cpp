@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef USE_V8
@@ -231,7 +229,7 @@ TEST_F(V8ViewsTest, test_auth) {
         context);  // required for TRI_AddMethodVocbase(...)
 
     // create and set inside 'isolate' for use 'TRI_GET_GLOBALS()'
-    std::unique_ptr<V8Global<arangodb::ArangodServer>> v8g(
+    std::unique_ptr<V8Global> v8g(
         CreateV8Globals(server.server(), isolate.get(), 0));
 
     // otherwise v8:-utils::CreateErrorObject(...) will fail
@@ -374,7 +372,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // required for TRI_AddMethodVocbase(...)
     v8::Context::Scope contextScope(context);
     // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    std::unique_ptr<V8Global<arangodb::ArangodServer>> v8g(
+    std::unique_ptr<V8Global> v8g(
         CreateV8Globals(server.server(), isolate.get(), 0));
     // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->ArangoErrorTempl.Reset(isolate.get(),
@@ -507,7 +505,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // required for TRI_AddMethodVocbase(...)
     v8::Context::Scope contextScope(context);
     // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    std::unique_ptr<V8Global<arangodb::ArangodServer>> v8g(
+    std::unique_ptr<V8Global> v8g(
         CreateV8Globals(server.server(), isolate.get(), 0));
     // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->ArangoErrorTempl.Reset(isolate.get(),
@@ -639,7 +637,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // required for TRI_AddMethodVocbase(...)
     v8::Context::Scope contextScope(context);
     // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    std::unique_ptr<V8Global<arangodb::ArangodServer>> v8g(
+    std::unique_ptr<V8Global> v8g(
         CreateV8Globals(server.server(), isolate.get(), 0));
     // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->ArangoErrorTempl.Reset(isolate.get(),
@@ -829,7 +827,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // required for TRI_AddMethodVocbase(...)
     v8::Context::Scope contextScope(context);
     // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    std::unique_ptr<V8Global<arangodb::ArangodServer>> v8g(
+    std::unique_ptr<V8Global> v8g(
         CreateV8Globals(server.server(), isolate.get(), 0));
     // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->ArangoErrorTempl.Reset(isolate.get(),
@@ -1030,7 +1028,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // required for TRI_AddMethodVocbase(...)
     v8::Context::Scope contextScope(context);
     // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    std::unique_ptr<V8Global<arangodb::ArangodServer>> v8g(
+    std::unique_ptr<V8Global> v8g(
         CreateV8Globals(server.server(), isolate.get(), 0));
     // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->ArangoErrorTempl.Reset(isolate.get(),
@@ -1186,7 +1184,7 @@ TEST_F(V8ViewsTest, test_auth) {
     v8::Context::Scope contextScope(context);
     // create and set inside 'isolate' for use
     // with 'TRI_GET_GLOBALS()'
-    std::unique_ptr<V8Global<arangodb::ArangodServer>> v8g(
+    std::unique_ptr<V8Global> v8g(
         CreateV8Globals(server.server(), isolate.get(), 0));
     // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->ArangoErrorTempl.Reset(isolate.get(),
@@ -1351,7 +1349,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // required for TRI_AddMethodVocbase(...)
     v8::Context::Scope contextScope(context);
     // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    std::unique_ptr<V8Global<arangodb::ArangodServer>> v8g(
+    std::unique_ptr<V8Global> v8g(
         CreateV8Globals(server.server(), isolate.get(), 0));
     // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->ArangoErrorTempl.Reset(isolate.get(),

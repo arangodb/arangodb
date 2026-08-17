@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -56,11 +55,15 @@ class RocksDBIndexCacheRefillFeature final
   RocksDBIndexCacheRefillFeature(
       application_features::ApplicationServer& server,
       DatabaseFeature& databaseFeature, ClusterFeature* clusterFeature,
+      metrics::IRegistry& metricsRegistry,
+      RocksDBIndexCacheRefillFeatureOptions options);
+  RocksDBIndexCacheRefillFeature(
+      application_features::ApplicationServer& server,
+      DatabaseFeature& databaseFeature, ClusterFeature* clusterFeature,
       metrics::IRegistry& metricsRegistry);
 
   ~RocksDBIndexCacheRefillFeature();
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void beginShutdown() override;
   void start() override;
   void stop() override;

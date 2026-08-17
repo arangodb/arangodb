@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
-/// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LogicalCollection.h"
@@ -660,6 +658,10 @@ void LogicalCollection::toVelocyPackForInventory(VPackBuilder& result) const {
           case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
           case Index::TRI_IDX_TYPE_EDGE_INDEX:
             return false;
+          case Index::TRI_IDX_TYPE_VECTOR_INDEX:
+            // Always include the vector index
+            flags = Index::makeFlags(Index::Serialize::Inventory);
+            return true;
           default:
             flags = Index::makeFlags(Index::Serialize::Inventory);
             return !idx->isHidden();
@@ -1151,7 +1153,7 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
   }
 
   vocbase().engine().changeCollection(vocbase(), *this);
-  vocbase().versionTracker().track("change collection");
+  vocbase().notifyDdlChange("change collection");
 
   return {};
 }
@@ -1185,7 +1187,7 @@ futures::Future<std::shared_ptr<Index>> LogicalCollection::createIndex(
                                              std::move(progress),
                                              std::move(replicationCb));
   if (idx) {
-    vocbase().versionTracker().track("create index");
+    vocbase().notifyDdlChange("create index");
   }
   vocbase().queryPlanCache().invalidate(guid());
 
@@ -1202,7 +1204,7 @@ Result LogicalCollection::dropIndex(IndexId iid) {
   Result res = _physical->dropIndex(iid);
 
   if (res.ok()) {
-    vocbase().versionTracker().track("drop index");
+    vocbase().notifyDdlChange("drop index");
     vocbase().queryPlanCache().invalidate(guid());
   }
 

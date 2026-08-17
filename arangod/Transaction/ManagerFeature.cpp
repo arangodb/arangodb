@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ManagerFeature.h"
@@ -38,7 +37,6 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Manager.h"
-#include "Transaction/ManagerOptionsProvider.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -49,11 +47,17 @@ namespace arangodb::transaction {
 DECLARE_COUNTER(arangodb_transactions_expired_total,
                 "Total number of expired transactions");
 
-std::unique_ptr<transaction::Manager> ManagerFeature::MANAGER;
+std::shared_ptr<transaction::Manager> ManagerFeature::MANAGER;
 
 ManagerFeature::ManagerFeature(application_features::ApplicationServer& server,
                                metrics::IRegistry& metricsRegistry)
+    : ManagerFeature(server, metricsRegistry, ManagerFeatureOptions{}) {}
+
+ManagerFeature::ManagerFeature(application_features::ApplicationServer& server,
+                               metrics::IRegistry& metricsRegistry,
+                               ManagerFeatureOptions options)
     : application_features::ApplicationFeature{server, *this},
+      _options(std::move(options)),
       _numExpiredTransactions(
           metricsRegistry.add(arangodb_transactions_expired_total{})) {
   setOptional(false);
@@ -82,11 +86,6 @@ ManagerFeature::~ManagerFeature() {
   _workItem.reset();
 }
 
-void ManagerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  ManagerOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
 void ManagerFeature::prepare() {
   TRI_ASSERT(MANAGER.get() == nullptr);
   StorageEngine* engine = nullptr;
@@ -101,7 +100,7 @@ void ManagerFeature::prepare() {
   } else {
     engine = &server().getFeature<RocksDBEngine>();
   }
-  MANAGER = engine->createTransactionManager(*this);
+  MANAGER = engine->createTransactionManager(_options, _numExpiredTransactions);
 }
 
 void ManagerFeature::start() {
@@ -157,18 +156,6 @@ void ManagerFeature::stop() {
 
 void ManagerFeature::unprepare() { MANAGER.reset(); }
 
-size_t ManagerFeature::streamingMaxTransactionSize() const noexcept {
-  return _options.streamingMaxTransactionSize;
-}
-
-double ManagerFeature::streamingLockTimeout() const noexcept {
-  return _options.streamingLockTimeout;
-}
-
-double ManagerFeature::streamingIdleTimeout() const noexcept {
-  return _options.streamingIdleTimeout;
-}
-
 /*static*/ transaction::Manager* ManagerFeature::manager() noexcept {
   return MANAGER.get();
 }
@@ -182,12 +169,6 @@ void ManagerFeature::queueGarbageCollection() {
       _gcfunc);
   std::lock_guard<std::mutex> guard(_workItemMutex);
   _workItem = std::move(workItem);
-}
-
-void ManagerFeature::trackExpired(uint64_t numExpired) noexcept {
-  if (numExpired > 0) {
-    _numExpiredTransactions.count(numExpired);
-  }
 }
 
 }  // namespace arangodb::transaction

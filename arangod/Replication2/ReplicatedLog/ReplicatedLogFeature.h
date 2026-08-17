@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -40,6 +39,8 @@ class ReplicatedLogFeature final
 
   explicit ReplicatedLogFeature(
       application_features::ApplicationServer& server);
+  ReplicatedLogFeature(application_features::ApplicationServer& server,
+                       replication2::ReplicatedLogGlobalSettings options);
   ~ReplicatedLogFeature() override;
 
   void start() override;
@@ -49,7 +50,6 @@ class ReplicatedLogFeature final
   auto options() const noexcept -> std::shared_ptr<
       replication2::ReplicatedLogGlobalSettings const> override;
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override;
 
  private:

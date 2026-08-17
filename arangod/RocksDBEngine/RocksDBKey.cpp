@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBKey.h"
@@ -27,7 +25,7 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBTypes.h"
-#include "VectorIndex/VectorIndexDefinition.h"
+#include "VectorIndex/Definition.h"
 #include "Zkd/ZkdHelper.h"
 
 #include <cstdint>
@@ -44,11 +42,11 @@ namespace {
 /// used by removeLargeRange on drop and never collide with an IVF list
 /// number.
 constexpr std::uint64_t vectorIndexMetadataSlot(
-    vector::VectorIndexFormatVersion version) noexcept {
+    vector::FormatVersion version) noexcept {
   switch (version) {
-    case vector::VectorIndexFormatVersion::kV1:
+    case vector::FormatVersion::kV1:
       return std::numeric_limits<std::uint64_t>::max();
-    case vector::VectorIndexFormatVersion::kV2:
+    case vector::FormatVersion::kV2:
       return std::numeric_limits<std::uint64_t>::max() - 1;
   }
 }
@@ -186,7 +184,7 @@ void RocksDBKey::constructVectorIndexValue(uint64_t indexId,
 }
 
 void RocksDBKey::constructVectorIndexTrainedData(
-    uint64_t indexId, vector::VectorIndexFormatVersion version) {
+    uint64_t indexId, vector::FormatVersion version) {
   _type = RocksDBEntryType::VectorVPackIndexValue;
   size_t constexpr keyLength = sizeof(uint64_t) + sizeof(uint64_t);
   _buffer->clear();
@@ -367,17 +365,6 @@ void RocksDBKey::constructSettingsValue(RocksDBSettingsType st) {
   _buffer->reserve(keyLength);
   _buffer->push_back(static_cast<char>(_type));
   _buffer->push_back(static_cast<char>(st));
-  TRI_ASSERT(_buffer->size() == keyLength);
-}
-
-void RocksDBKey::constructReplicationApplierConfig(TRI_voc_tick_t databaseId) {
-  // databaseId may be 0 for global applier config
-  _type = RocksDBEntryType::ReplicationApplierConfig;
-  size_t keyLength = sizeof(char) + sizeof(uint64_t);
-  _buffer->clear();
-  _buffer->reserve(keyLength);
-  _buffer->push_back(static_cast<char>(_type));
-  uint64ToPersistent(*_buffer, databaseId);
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 

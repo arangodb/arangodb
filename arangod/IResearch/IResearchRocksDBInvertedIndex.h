@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -77,7 +76,7 @@ class IResearchRocksDBInvertedIndex final : public RocksDBIndex,
   void toVelocyPack(VPackBuilder& builder,
                     std::underlying_type_t<Index::Serialize> flags) const final;
 
-  size_t memory() const final { return stats().indexSize; }
+  size_t memory() const final { return getStats().indexSize; }
 
   bool isHidden() const final { return false; }
 

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -26,10 +25,10 @@
 #include "Basics/Result.h"
 #include "Indexes/Index.h"
 #include "VocBase/Identifiers/IndexId.h"
-#include "VocBase/voc-types.h"
 
 namespace arangodb {
 
+struct Database;
 class Index;
 class LogicalCollection;
 
@@ -73,7 +72,7 @@ struct IndexTypeFactory {
   /// @brief normalize an Index definition prior to instantiation/persistence
   virtual Result normalize(velocypack::Builder& normalized,
                            velocypack::Slice definition, bool isCreation,
-                           TRI_vocbase_t const& vocbase) const = 0;
+                           Database const& vocbase) const = 0;
 
   /// @brief the order of attributes matters by default
   virtual bool attributeOrderMatters() const {
@@ -96,7 +95,7 @@ class IndexFactory {
   virtual Result enhanceIndexDefinition(velocypack::Slice definition,
                                         velocypack::Builder& normalized,
                                         bool isCreation,
-                                        TRI_vocbase_t const& vocbase) const;
+                                        Database const& vocbase) const;
 
   /// @brief returns factory for the specified type or a failing placeholder if
   /// no such type

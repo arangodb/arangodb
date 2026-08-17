@@ -267,7 +267,7 @@ set(ARANGODB_TESTS_SOURCES
   Utils/ExecContextTest.cpp
   Utils/NameValidatorTest.cpp
   Utils/QuickGen.cpp
-  VectorIndex/VectorIndexTrainingSamplerTest.cpp
+  VectorIndex/TrainingSamplerTest.cpp
   VocBase/ComputedValuesTest.cpp
   VocBase/KeyGeneratorTest.cpp
   VocBase/LogicalDataSourceTest.cpp
@@ -346,8 +346,7 @@ target_link_libraries(arangodbtests
   arango_tests_actor
   arango_tests_inspection
   arango_tests_internal_rest_handler
-  # Disabled until Scheduler dependency is fixed
-  # arango_tests_rocksdb_engine
+  arango_tests_rocksdb_engine
   arango_inspection_test_helper
   arango_agency
   arango_cluster_engine
@@ -434,3 +433,4 @@ add_subdirectory(VocBase/Properties)
 add_subdirectory(SystemMonitor)
 add_subdirectory(InternalRestHandler)
 add_subdirectory(Scheduler)
+add_subdirectory(Probe)

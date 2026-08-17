@@ -18,13 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/SharedPRNG.h"
+#include "Scheduler/ISchedulerProvider.h"
 #include "Scheduler/SchedulerFeatureOptions.h"
 
 #include <memory>
@@ -36,7 +36,8 @@ namespace metrics {
 struct IRegistry;
 }
 
-class SchedulerFeature final : public application_features::ApplicationFeature {
+class SchedulerFeature final : public application_features::ApplicationFeature,
+                               public ISchedulerProvider {
  public:
   static constexpr std::string_view name() noexcept { return "Scheduler"; }
 
@@ -44,11 +45,15 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
 
   SchedulerFeature(application_features::ApplicationServer& server,
                    metrics::IRegistry& metricsRegistry,
+                   basics::SharedPRNG& sharedPRNG,
+                   SchedulerFeatureOptions options);
+  SchedulerFeature(application_features::ApplicationServer& server,
+                   metrics::IRegistry& metricsRegistry,
                    basics::SharedPRNG& sharedPRNG);
   ~SchedulerFeature();
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  Scheduler* scheduler() const noexcept override { return _scheduler.get(); }
+
   void prepare() override final;
   void start() override final;
   void stop() override final;

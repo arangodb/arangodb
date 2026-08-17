@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -57,7 +56,8 @@ struct UserManagerMock : UserManager {
   MOCK_METHOD(Result, removeUser, (std::string const&), (override));
   MOCK_METHOD(Result, removeAllUsers, (), (override));
   MOCK_METHOD(bool, checkCredentials,
-              (std::string const&, std::string const&, std::string&),
+              (std::string const&, std::string const&, std::string&,
+               std::optional<double>&),
               (override));
   MOCK_METHOD(Level, databaseAuthLevel,
               (std::string const&, std::string const&, bool), (override));

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "V8PlatformFeature.h"
@@ -40,7 +39,6 @@
 #include "ProgramOptions/Option.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "V8/V8PlatformOptionsProvider.h"
 #include "V8/v8-globals.h"
 
 #include <absl/strings/str_cat.h>
@@ -151,14 +149,17 @@ void fatalCallback(char const* location, char const* message) {
 
 std::string const V8PlatformFeature::fn("icudtl.dat");
 
-void V8PlatformFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  V8PlatformOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
+V8PlatformFeature::V8PlatformFeature(
+    application_features::ApplicationServer& server)
+    : V8PlatformFeature(server, V8PlatformFeatureOptions{}) {}
 
-void V8PlatformFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> /*options*/) {
+V8PlatformFeature::V8PlatformFeature(
+    application_features::ApplicationServer& server,
+    V8PlatformFeatureOptions options)
+    : ApplicationFeature{server, *this},
+      _binaryPath(server.getBinaryPath()),
+      _options(std::move(options)) {
+  setOptional(true);
   if (!_options.v8Options.empty()) {
     _v8CombinedOptions = StringUtils::join(_options.v8Options, " ");
 

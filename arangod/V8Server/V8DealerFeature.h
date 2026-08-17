@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -27,17 +26,10 @@
 #error this file is not supposed to be used in builds with -DUSE_V8=Off
 #endif
 
-#include <atomic>
-#include <string>
-#include <string_view>
-#include <unordered_set>
-#include <vector>
-
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Result.h"
 #include "Metrics/Fwd.h"
-#include "Utils/DatabaseGuard.h"
 #include "V8/JSLoader.h"
 #include "V8Server/GlobalExecutorMethods.h"
 #include "V8Server/V8DealerFeatureOptions.h"
@@ -45,12 +37,20 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
-struct TRI_vocbase_t;
+#include <atomic>
+#include <string>
+#include <string_view>
+#include <unordered_set>
+#include <vector>
 
 namespace arangodb {
+struct Database;
 class JavaScriptSecurityContext;
 class Thread;
 class V8Executor;
+namespace options {
+class ProgramOptions;
+}
 
 class V8DealerFeature final : public application_features::ApplicationFeature {
  public:
@@ -74,10 +74,11 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   static constexpr std::string_view name() noexcept { return "V8Dealer"; }
 
   V8DealerFeature(application_features::ApplicationServer& server,
+                  metrics::IRegistry& metricsRegistry,
+                  V8DealerFeatureOptions options);
+  V8DealerFeature(application_features::ApplicationServer& server,
                   metrics::IRegistry& metricsRegistry);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) final;
   void prepare() final;
   void start() final;
   void unprepare() final;
@@ -85,7 +86,7 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   void verifyAppPaths();
   ErrorCode createDatabase(std::string_view name, std::string_view id,
                            bool removeExisting);
-  void cleanupDatabase(TRI_vocbase_t& database);
+  void cleanupDatabase(Database& database);
 
  private:
   ErrorCode createApplicationDirectory(std::string const& name,
@@ -118,12 +119,12 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   /// if the builder pointer is not nullptr, then
   /// the Javascript result(s) are returned as VPack in the builder,
   /// the builder is not cleared and thus should be empty before the call.
-  void loadJavaScriptFileInAllExecutors(TRI_vocbase_t*, std::string const& file,
+  void loadJavaScriptFileInAllExecutors(Database*, std::string const& file,
                                         velocypack::Builder* builder);
 
   /// @brief enter a V8 executor
   /// currently returns a nullptr if no executor can be acquired in time
-  V8Executor* enterExecutor(TRI_vocbase_t*,
+  V8Executor* enterExecutor(Database*,
                             JavaScriptSecurityContext const& securityContext);
   void exitExecutor(V8Executor* executor);
 
@@ -158,16 +159,16 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   void copyInstallationFiles();
   void startGarbageCollection();
   std::unique_ptr<V8Executor> addExecutor();
-  std::unique_ptr<V8Executor> buildExecutor(TRI_vocbase_t* vocbase, size_t id);
+  std::unique_ptr<V8Executor> buildExecutor(Database* vocbase, size_t id);
   V8Executor* pickFreeExecutorForGc();
   void shutdownExecutor(V8Executor* executor);
   void unblockDynamicExecutorCreation();
   void loadJavaScriptFileInternal(std::string const& file, V8Executor* executor,
                                   velocypack::Builder* builder);
-  void loadJavaScriptFileInExecutor(TRI_vocbase_t*, std::string const& file,
+  void loadJavaScriptFileInExecutor(Database*, std::string const& file,
                                     V8Executor* executor,
                                     velocypack::Builder* builder);
-  void prepareLockedExecutor(TRI_vocbase_t*, V8Executor* executor,
+  void prepareLockedExecutor(Database*, V8Executor* executor,
                              JavaScriptSecurityContext const&);
   void exitExecutorInternal(V8Executor* executor);
   void cleanupLockedExecutor(V8Executor* executor);
@@ -205,7 +206,7 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
 /// throws an exception when no executor can be provided
 class V8ExecutorGuard {
  public:
-  explicit V8ExecutorGuard(TRI_vocbase_t*, JavaScriptSecurityContext const&);
+  explicit V8ExecutorGuard(Database*, JavaScriptSecurityContext const&);
   V8ExecutorGuard(V8ExecutorGuard const&) = delete;
   V8ExecutorGuard& operator=(V8ExecutorGuard const&) = delete;
   ~V8ExecutorGuard();
@@ -215,7 +216,7 @@ class V8ExecutorGuard {
                       bool executeGlobalMethods = true);
 
  private:
-  TRI_vocbase_t* _vocbase;
+  Database* _vocbase;
   v8::Isolate* _isolate;
   V8Executor* _executor;
 };
@@ -224,7 +225,7 @@ class V8ExecutorGuard {
 // in case the passed in isolate is a nullptr
 class V8ConditionalExecutorGuard {
  public:
-  explicit V8ConditionalExecutorGuard(TRI_vocbase_t*,
+  explicit V8ConditionalExecutorGuard(Database*,
                                       JavaScriptSecurityContext const&);
   V8ConditionalExecutorGuard(V8ConditionalExecutorGuard const&) = delete;
   V8ConditionalExecutorGuard& operator=(V8ConditionalExecutorGuard const&) =
@@ -236,7 +237,7 @@ class V8ConditionalExecutorGuard {
                       bool executeGlobalMethods = true);
 
  private:
-  TRI_vocbase_t* _vocbase;
+  Database* _vocbase;
   v8::Isolate* _isolate;
   V8Executor* _executor;
 };

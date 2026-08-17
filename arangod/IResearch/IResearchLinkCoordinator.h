@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
@@ -88,9 +86,9 @@ class IResearchLinkCoordinator final : public Index, public IResearchLink {
     return IResearchLink::matchesDefinition(slice);
   }
 
-  Stats stats() const final;
+  Stats getStats() const final;
 
-  size_t memory() const final { return stats().indexSize; }
+  size_t memory() const final { return getStats().indexSize; }
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchLink object
   /// @param withFigures output 'figures' section with e.g. memory size

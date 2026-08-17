@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -35,9 +34,10 @@ class ActionFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Action"; }
 
+  explicit ActionFeature(application_features::ApplicationServer& server,
+                         ActionFeatureOptions options);
   explicit ActionFeature(application_features::ApplicationServer& server);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void unprepare() override final;
 
   bool allowUseDatabase() const;

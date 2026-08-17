@@ -18,12 +18,10 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ActionFeature.h"
 
-#include "Actions/ActionOptionsProvider.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Actions/actions.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
@@ -35,14 +33,14 @@ using namespace arangodb::options;
 namespace arangodb {
 
 ActionFeature::ActionFeature(ApplicationServer& server)
-    : application_features::ApplicationFeature{server, *this} {
+    : ActionFeature(server, ActionFeatureOptions{}) {}
+
+ActionFeature::ActionFeature(ApplicationServer& server,
+                             ActionFeatureOptions options)
+    : application_features::ApplicationFeature{server, *this},
+      _options(std::move(options)) {
   setOptional(true);
   startsAfter<application_features::ClusterFeaturePhase>();
-}
-
-void ActionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  ActionOptionsProvider provider;
-  provider.declareOptions(options, _options);
 }
 
 void ActionFeature::unprepare() { TRI_CleanupActions(); }

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -58,11 +57,14 @@ namespace application_features {
 // to feature is enabled or disabled. There is no defined order in
 // which the features are traversed.
 //
-// `loadOptions`
+// `parseOptions`
 //
-// Allows a feature to load more options from somewhere. This method
-// will only be called for enabled features. There is no defined
-// order in which the features are traversed.
+// `processOptions`
+//
+// Runs after the command line has been parsed but before `validateOptions`.
+// Option providers that define `processOptionsImpl` are called here, in the
+// order they are listed in the provider container. This is where options
+// that pull in further options are handled.
 //
 // `validateOptions`
 //
@@ -135,9 +137,6 @@ class ApplicationServer {
                     char const* binaryPath);
 
   virtual ~ApplicationServer();
-
-  std::string helpSection() const { return _helpSection; }
-  bool helpShown() const { return !_helpSection.empty(); }
 
   /// @brief stringify the internal state
   std::string_view stringifyState() const;
@@ -338,13 +337,18 @@ class ApplicationServer {
 
   // collects the program options from all features,
   // without validating them
-  void collectOptions();
+  virtual void declareOptions();
 
   // parse options
   void parseOptions(int argc, char* argv[]);
 
+  virtual void processOptions() {}
+
   // allows features to cross-validate their program options
-  void validateOptions();
+  virtual void validateOptions() {}
+
+  // adds the features that receive their options as a c-tor dependency.
+  virtual void addFeatures() {}
 
   // allows process control
   void daemonize();
@@ -426,6 +430,11 @@ class ApplicationServer {
 
   // whether or not to dump configuration options
   bool _dumpOptions = false;
+
+  // declared only so they appear in --help and --dump-options;
+  // handled by ArgumentParser before options are parsed
+  bool _printVersion = false;
+  bool _printVersionJson = false;
 };
 
 }  // namespace application_features

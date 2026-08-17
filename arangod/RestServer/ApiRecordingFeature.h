@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -120,11 +119,13 @@ class ApiRecordingFeature : public application_features::ApplicationFeature,
   ApiRecordingFeature(
       application_features::ApplicationServer& server,
       std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry,
+      metrics::IRegistry& metricsRegistry, ApiRecordingFeatureOptions options);
+  ApiRecordingFeature(
+      application_features::ApplicationServer& server,
+      std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry,
       metrics::IRegistry& metricsRegistry);
   ~ApiRecordingFeature() override;
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
   void stop() override final;

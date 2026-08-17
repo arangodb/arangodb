@@ -25,15 +25,12 @@
 #include "ApplicationFeatures/OptionsProvider.h"
 #include "Random/RandomFeatureOptions.h"
 
-namespace arangodb::options {
-class ProgramOptions;
-}
-
 namespace arangodb {
 
-struct RandomOptionsProvider : OptionsProvider<RandomFeatureOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      RandomFeatureOptions& options) override;
+struct RandomOptionsProvider
+    : OptionsProviderImpl<RandomOptionsProvider, RandomFeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          RandomFeatureOptions& options);
 };
 
 }  // namespace arangodb

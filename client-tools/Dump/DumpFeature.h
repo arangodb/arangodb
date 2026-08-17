@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -51,11 +49,10 @@ class DumpFeature final : public application_features::ApplicationFeature {
   static constexpr std::string_view name() noexcept { return "Dump"; }
 
   DumpFeature(application_features::ApplicationServer& server,
+              ClientFeature& client, int& exitCode, DumpFeatureOptions options);
+  DumpFeature(application_features::ApplicationServer& server,
               ClientFeature& client, int& exitCode);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(
-      std::shared_ptr<options::ProgramOptions> options) override;
   void prepare() override;
   void start() override;
 

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef USE_V8
@@ -55,7 +54,7 @@ namespace {
 arangodb::Result existsCollection(v8::Isolate* isolate,
                                   std::string const& database,
                                   std::string const& collection) {
-  TRI_GET_SERVER_GLOBALS(arangodb::ArangodServer);
+  TRI_GET_GLOBALS();
   if (!v8g->server().hasFeature<arangodb::DatabaseFeature>()) {
     return arangodb::Result(TRI_ERROR_INTERNAL,
                             "failure to find feature 'Database'");
@@ -562,7 +561,7 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
     // return the current database permissions
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
-    TRI_GET_SERVER_GLOBALS(ArangodServer);
+    TRI_GET_GLOBALS();
     v8g->server().getFeature<DatabaseFeature>().enumerateDatabases(
         [&](TRI_vocbase_t& vocbase) -> void {
           auto lvl = um->databaseAuthLevel(username, vocbase.name(), false);

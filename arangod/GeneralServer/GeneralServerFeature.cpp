@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GeneralServerFeature.h"
@@ -42,6 +41,8 @@
 #include "Cluster/MaintenanceRestHandler.h"
 #include "Cluster/RestAgencyCallbacksHandler.h"
 #include "Cluster/RestClusterHandler.h"
+#include "ClusterEngine/ClusterEngine.h"
+#include "ClusterEngine/ClusterRestHandlers.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServer.h"
@@ -106,7 +107,6 @@
 #include "RestHandler/RestSimpleQueryHandler.h"
 #include "RestHandler/RestStatusHandler.h"
 #include "RestHandler/RestSupervisionStateHandler.h"
-#include "RestHandler/RestTelemetricsHandler.h"
 #include "RestHandler/RestSupportInfoHandler.h"
 #include "RestHandler/RestSystemReportHandler.h"
 #include "RestHandler/RestTasksHandler.h"
@@ -120,8 +120,11 @@
 #include "RestHandler/RestVersionHandler.h"
 #include "RestHandler/RestOpenApiHandler.h"
 #include "RestHandler/RestViewHandler.h"
+#include "RestHandler/RestIResearchHandler.h"
 #include "RestHandler/RestWalAccessHandler.h"
 #include "RestServer/EndpointFeature.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBRestHandlers.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
@@ -162,23 +165,42 @@ DECLARE_COUNTER(arangodb_http1_connections_total,
                 "Total number of HTTP/1.1 connections");
 DECLARE_COUNTER(arangodb_http2_connections_total,
                 "Total number of HTTP/2 connections");
+DECLARE_COUNTER(arangodb_http_response_code_total,
+                "Total number of HTTP responses by response code");
 DECLARE_GAUGE(arangodb_requests_memory_usage, std::uint64_t,
               "Memory consumed by incoming requests");
 
+static arangodb_http_response_code_total getBuilder(rest::ResponseCode code) {
+  auto const codeStr = std::to_string(static_cast<int>(code));
+  arangodb_http_response_code_total builder;
+  builder.reserveSpaceForLabels(4 + codeStr.size());
+  builder.addLabel("code", codeStr);
+
+  return builder;
+}
+
 GeneralServerFeature::GeneralServerFeature(
     application_features::ApplicationServer& server,
-    metrics::IRegistry& metricsRegistry)
+    metrics::MetricsFeature& metricsFeature)
+    : GeneralServerFeature(server, metricsFeature, GeneralServerOptions{},
+                           LogApiOptions{}) {}
+
+GeneralServerFeature::GeneralServerFeature(
+    application_features::ApplicationServer& server,
+    metrics::MetricsFeature& metricsFeature, GeneralServerOptions options,
+    LogApiOptions logApiOptions)
     : ApplicationFeature{server, *this},
       _currentRequestsSize(
-          metricsRegistry.add(arangodb_requests_memory_usage{})),
+          metricsFeature.add(arangodb_requests_memory_usage{})),
+      _options(std::move(options)),
+      _logApiOptions(std::move(logApiOptions)),
       _requestBodySizeHttp1(
-          metricsRegistry.add(arangodb_request_body_size_http1{})),
+          metricsFeature.add(arangodb_request_body_size_http1{})),
       _requestBodySizeHttp2(
-          metricsRegistry.add(arangodb_request_body_size_http2{})),
-      _http1Connections(
-          metricsRegistry.add(arangodb_http1_connections_total{})),
-      _http2Connections(
-          metricsRegistry.add(arangodb_http2_connections_total{})) {
+          metricsFeature.add(arangodb_request_body_size_http2{})),
+      _http1Connections(metricsFeature.add(arangodb_http1_connections_total{})),
+      _http2Connections(metricsFeature.add(arangodb_http2_connections_total{})),
+      _metricsFeature(metricsFeature) {
   setOptional(true);
   startsAfter<application_features::AqlFeaturePhase>();
 
@@ -186,18 +208,8 @@ GeneralServerFeature::GeneralServerFeature(
   startsAfter<SslServerFeature>();
   startsAfter<SchedulerFeature>();
   startsAfter<UpgradeFeature>();
-}
 
-void GeneralServerFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  GeneralServerOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void GeneralServerFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  GeneralServerOptionsProvider provider;
-  provider.validateOptions(options, _options);
+  initResponseCodeCounters();
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   for (auto const& it : _options.failurePoints) {
@@ -206,13 +218,149 @@ void GeneralServerFeature::validateOptions(
 #endif
 }
 
+void GeneralServerFeature::initResponseCodeCounters() {
+  using rest::ResponseCode;
+
+  auto addCounter = [&](ResponseCode code) {
+    auto builder = getBuilder(code);
+    _responseCodeCounters.try_emplace(code,
+                                      &_metricsFeature.add(std::move(builder)));
+  };
+
+  for (auto code : {
+           ResponseCode::CONTINUE,
+           ResponseCode::SWITCHING_PROTOCOLS,
+           ResponseCode::PROCESSING,
+           ResponseCode::OK,
+           ResponseCode::CREATED,
+           ResponseCode::ACCEPTED,
+           ResponseCode::PARTIAL,
+           ResponseCode::NO_CONTENT,
+           ResponseCode::RESET_CONTENT,
+           ResponseCode::PARTIAL_CONTENT,
+           ResponseCode::MOVED_PERMANENTLY,
+           ResponseCode::FOUND,
+           ResponseCode::SEE_OTHER,
+           ResponseCode::NOT_MODIFIED,
+           ResponseCode::TEMPORARY_REDIRECT,
+           ResponseCode::PERMANENT_REDIRECT,
+           ResponseCode::BAD,
+           ResponseCode::UNAUTHORIZED,
+           ResponseCode::PAYMENT_REQUIRED,
+           ResponseCode::FORBIDDEN,
+           ResponseCode::NOT_FOUND,
+           ResponseCode::METHOD_NOT_ALLOWED,
+           ResponseCode::NOT_ACCEPTABLE,
+           ResponseCode::REQUEST_TIMEOUT,
+           ResponseCode::CONFLICT,
+           ResponseCode::GONE,
+           ResponseCode::LENGTH_REQUIRED,
+           ResponseCode::PRECONDITION_FAILED,
+           ResponseCode::REQUEST_ENTITY_TOO_LARGE,
+           ResponseCode::REQUEST_URI_TOO_LONG,
+           ResponseCode::UNSUPPORTED_MEDIA_TYPE,
+           ResponseCode::REQUESTED_RANGE_NOT_SATISFIABLE,
+           ResponseCode::EXPECTATION_FAILED,
+           ResponseCode::I_AM_A_TEAPOT,
+           ResponseCode::ENHANCE_YOUR_CALM,
+           ResponseCode::MISDIRECTED_REQUEST,
+           ResponseCode::UNPROCESSABLE_ENTITY,
+           ResponseCode::LOCKED,
+           ResponseCode::PRECONDITION_REQUIRED,
+           ResponseCode::TOO_MANY_REQUESTS,
+           ResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE,
+           ResponseCode::UNAVAILABLE_FOR_LEGAL_REASONS,
+           ResponseCode::SERVER_ERROR,
+           ResponseCode::NOT_IMPLEMENTED,
+           ResponseCode::BAD_GATEWAY,
+           ResponseCode::SERVICE_UNAVAILABLE,
+           ResponseCode::GATEWAY_TIMEOUT,
+           ResponseCode::HTTP_VERSION_NOT_SUPPORTED,
+           ResponseCode::BANDWIDTH_LIMIT_EXCEEDED,
+           ResponseCode::NOT_EXTENDED,
+       }) {
+    switch (code) {
+      case ResponseCode::CONTINUE:
+      case ResponseCode::SWITCHING_PROTOCOLS:
+      case ResponseCode::PROCESSING:
+      case ResponseCode::OK:
+      case ResponseCode::CREATED:
+      case ResponseCode::ACCEPTED:
+      case ResponseCode::PARTIAL:
+      case ResponseCode::NO_CONTENT:
+      case ResponseCode::RESET_CONTENT:
+      case ResponseCode::PARTIAL_CONTENT:
+      case ResponseCode::MOVED_PERMANENTLY:
+      case ResponseCode::FOUND:
+      case ResponseCode::SEE_OTHER:
+      case ResponseCode::NOT_MODIFIED:
+      case ResponseCode::TEMPORARY_REDIRECT:
+      case ResponseCode::PERMANENT_REDIRECT:
+      case ResponseCode::BAD:
+      case ResponseCode::UNAUTHORIZED:
+      case ResponseCode::PAYMENT_REQUIRED:
+      case ResponseCode::FORBIDDEN:
+      case ResponseCode::NOT_FOUND:
+      case ResponseCode::METHOD_NOT_ALLOWED:
+      case ResponseCode::NOT_ACCEPTABLE:
+      case ResponseCode::REQUEST_TIMEOUT:
+      case ResponseCode::CONFLICT:
+      case ResponseCode::GONE:
+      case ResponseCode::LENGTH_REQUIRED:
+      case ResponseCode::PRECONDITION_FAILED:
+      case ResponseCode::REQUEST_ENTITY_TOO_LARGE:
+      case ResponseCode::REQUEST_URI_TOO_LONG:
+      case ResponseCode::UNSUPPORTED_MEDIA_TYPE:
+      case ResponseCode::REQUESTED_RANGE_NOT_SATISFIABLE:
+      case ResponseCode::EXPECTATION_FAILED:
+      case ResponseCode::I_AM_A_TEAPOT:
+      case ResponseCode::ENHANCE_YOUR_CALM:
+      case ResponseCode::MISDIRECTED_REQUEST:
+      case ResponseCode::UNPROCESSABLE_ENTITY:
+      case ResponseCode::LOCKED:
+      case ResponseCode::PRECONDITION_REQUIRED:
+      case ResponseCode::TOO_MANY_REQUESTS:
+      case ResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE:
+      case ResponseCode::UNAVAILABLE_FOR_LEGAL_REASONS:
+      case ResponseCode::SERVER_ERROR:
+      case ResponseCode::NOT_IMPLEMENTED:
+      case ResponseCode::BAD_GATEWAY:
+      case ResponseCode::SERVICE_UNAVAILABLE:
+      case ResponseCode::GATEWAY_TIMEOUT:
+      case ResponseCode::HTTP_VERSION_NOT_SUPPORTED:
+      case ResponseCode::BANDWIDTH_LIMIT_EXCEEDED:
+      case ResponseCode::NOT_EXTENDED:
+        addCounter(code);
+        break;
+        // Deliberately no default case defined. The switch has to be
+        // exhaustive. This helps catch missing enum values.
+    }
+  }
+}
+
+void GeneralServerFeature::countHttpResponseCode(
+    rest::ResponseCode code) noexcept {
+  // Fast, lock-free path. Covers every ResponseCode registered up front.
+  if (auto it = _responseCodeCounters.find(code);
+      it != _responseCodeCounters.end()) {
+    it->second->count();
+    return;
+  }
+
+  // Slow path. Reached only for a ResponseCode that was somehow missed
+  // during initialization (e.g. CommonDefines.h gained a new enumerator).
+  TRI_ASSERT(false) << "unhandled response code " << static_cast<int>(code)
+                    << " missing from initResponseCodeCounters()";
+  try {
+    auto builder = getBuilder(code);
+    _metricsFeature.ensureMetric(std::move(builder)).count();
+  } catch (...) {
+    // must not throw from this noexcept function
+  }
+}
+
 void GeneralServerFeature::prepare() {
   ServerState::instance()->setServerMode(ServerState::Mode::STARTUP);
-
-  if (ServerState::instance()->isAgent()) {
-    // telemetrics automatically and always turned off on agents
-    _options.enableTelemetrics = false;
-  }
 
   _jobManager = std::make_unique<AsyncJobManager>();
 
@@ -514,6 +662,10 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addPrefixHandler(RestVocbaseBaseHandler::VIEW_PATH,
                      RestHandlerCreator<RestViewHandler>::createNoData, {0, 1});
 
+  f.addPrefixHandler(RestVocbaseBaseHandler::STATS_ARANGOSEARCH_PATH,
+                     RestHandlerCreator<RestIResearchHandler>::createNoData,
+                     {api_version::experimentalApiVersion});
+
   if (::arangodb::replication2::EnableReplication2 && cluster.isEnabled()) {
     f.addPrefixHandler(std::string{StaticStrings::ApiLogExternal},
                        RestHandlerCreator<RestLogHandler>::createNoData,
@@ -681,10 +833,6 @@ void GeneralServerFeature::defineRemainingHandlers(
     f.addHandler("/_admin/support-info",
                  RestHandlerCreator<RestSupportInfoHandler>::createNoData,
                  {0, 1});
-
-    f.addHandler("/_admin/telemetrics",
-                 RestHandlerCreator<RestTelemetricsHandler>::createNoData,
-                 {0, 1});
   }
 
   if (_options.optionsApiPolicy != "disabled") {
@@ -720,7 +868,9 @@ void GeneralServerFeature::defineRemainingHandlers(
 
   f.addPrefixHandler(
       "/_admin/log",
-      RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData, {0, 1});
+      RestHandlerCreator<arangodb::RestAdminLogHandler>::createData<
+          LogApiOptions const*>,
+      {0, 1}, &_logApiOptions);
 
 #ifdef USE_V8
   if (server().isEnabled<V8DealerFeature>()) {
@@ -803,7 +953,11 @@ void GeneralServerFeature::defineRemainingHandlers(
 
   // engine specific handlers
   StorageEngine& engine = server().getFeature<DatabaseFeature>().engine();
-  engine.addRestHandlers(f);
+  if (ServerState::instance()->isCoordinator()) {
+    ClusterRestHandlers::registerResources(&f);
+  } else {
+    RocksDBRestHandlers::registerResources(&f, engine);
+  }
 }
 
 }  // namespace arangodb

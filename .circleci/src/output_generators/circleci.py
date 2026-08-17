@@ -8,13 +8,13 @@ import json
 import os
 from typing import List, Dict, Any, Optional, Callable
 from datetime import date
-import re
 import yaml
 
 from ..config_lib import (
     TestJob,
     TestDefinitionFile,
     BuildConfig,
+    BuildVariant,
     DeploymentType,
     ResourceSize,
     Architecture,
@@ -34,13 +34,6 @@ class CircleCIGenerator(OutputGenerator):
     # These jobs require CircleCI-specific overrides that differ from their
     # YAML definitions or need runtime-dependent adjustments.
     # ========================================================================
-
-    # Job-specific bucket overrides
-    # replication_sync: YAML specifies 2 buckets (for Jenkins compatibility),
-    # but CircleCI needs 5 for better parallelization. See tests/tests.yml:74
-    BUCKET_OVERRIDES = {
-        "replication_sync": 5,
-    }
 
     # Job-specific size overrides (applied conditionally)
     # shell_client_aql: Nightly single-server runs need more memory due to
@@ -122,6 +115,9 @@ class CircleCIGenerator(OutputGenerator):
                 )
                 self._add_workflow(circleci_config["workflows"], all_jobs, build_config)
 
+        if self.config.circleci.create_test_docker_images != "none":
+            self._add_docker_images_workflow(circleci_config["workflows"])
+
         return circleci_config
 
     def write_output(self, output: Dict[str, Any], destination: str) -> None:
@@ -185,11 +181,8 @@ class CircleCIGenerator(OutputGenerator):
         workflow["jobs"].append(build_job)
         workflow["jobs"].append(frontend_job)
 
-        # Add non-maintainer build for x64 (non-instrumented builds only)
-        if (
-            not build_config.build_variant.is_instrumented
-            and not self.config.circleci.create_docker_images
-        ):
+        # Add non-maintainer smoke build (non-instrumented builds only)
+        if not build_config.build_variant.is_instrumented:
             non_maintainer_job = self._create_non_maintainer_build_job(build_config)
             workflow["jobs"].append(non_maintainer_job)
 
@@ -201,12 +194,24 @@ class CircleCIGenerator(OutputGenerator):
 
     def _create_build_job(self, build_config: BuildConfig) -> Dict[str, Any]:
         """Create compilation job definition."""
-        preset = "enterprise-pr"
+        preset = "pr"
 
         if build_config.architecture == Architecture.AARCH64:
-            preset += "-arm"
+            preset += "-arm64"
+        else:
+            preset += "-x64"
 
         preset += build_config.build_variant.get_suffix()
+
+        # Coverage has plain pr-*-coverage presets but no -no-v8 combos
+        # (coverage is a rare, CLI-only variant); when combined with
+        # arangod-without-v8 it keeps the coverage preset and gets USE_V8
+        # forced off via the Configure step's command-line override.
+        if (
+            not self.config.filter_criteria.v8
+            and not build_config.build_variant.is_coverage
+        ):
+            preset += "-no-v8"
 
         suffix = build_config.build_variant.get_suffix()
         name = f"build-{build_config.architecture.value}{suffix}"
@@ -238,25 +243,33 @@ class CircleCIGenerator(OutputGenerator):
         self, build_config: BuildConfig
     ) -> Dict[str, Any]:
         """Create non-maintainer build job for faster CI feedback."""
-        return {
-            "compile-linux": {
-                "context": ["sccache-aws-bucket"],
-                "resource-class": self.sizer.get_resource_class(
-                    ResourceSize.XXLARGE, build_config.architecture
-                ),
-                "name": f"build-non-maintainer-{build_config.architecture.value}",
-                "preset": "enterprise-pr-non-maintainer",
-                "enterprise": True,
-                "arch": "x64",
-                "publish-artifacts": False,
-                "build-tests": False,
-            }
+        preset = (
+            "pr-non-maintainer-arm64"
+            if build_config.architecture == Architecture.AARCH64
+            else "pr-non-maintainer-x64"
+        )
+        params = {
+            "context": ["sccache-aws-bucket"],
+            "resource-class": self.sizer.get_resource_class(
+                ResourceSize.XXLARGE, build_config.architecture
+            ),
+            "name": f"build-non-maintainer-{build_config.architecture.value}",
+            "preset": preset,
+            "enterprise": True,
+            "arch": build_config.architecture.value,
+            "publish-artifacts": False,
+            "build-tests": False,
         }
+
+        if build_config.architecture == Architecture.AARCH64:
+            params["s3-prefix"] = "aarch64"
+
+        return {"compile-linux": params}
 
     def _add_optional_jobs(
         self, workflow: Dict[str, Any], build_config: BuildConfig, build_jobs: List[str]
     ) -> None:
-        """Add optional jobs (cppcheck, docker)."""
+        """Add optional jobs (cppcheck)."""
         # Cppcheck for x64 (non-instrumented builds only)
         if (
             build_config.architecture == Architecture.X64
@@ -266,38 +279,130 @@ class CircleCIGenerator(OutputGenerator):
                 {"run-cppcheck": {"name": "cppcheck", "requires": [build_jobs[0]]}}
             )
 
-        # Docker image creation
-        if self.config.circleci.create_docker_images:
-            self._add_docker_image_job(workflow, build_config, build_jobs)
+    # Architecture -> (docker --platform arch, workspace tarball name)
+    _DOCKER_IMAGE_ARCHES = (
+        (Architecture.X64, "amd64", "docker-amd64.tar"),
+        (Architecture.AARCH64, "arm64", "docker-arm64.tar"),
+    )
 
-    def _add_docker_image_job(
-        self, workflow: Dict[str, Any], build_config: BuildConfig, build_jobs: List[str]
-    ) -> None:
-        """Add docker image creation job."""
-        arch = "amd64" if build_config.architecture == Architecture.X64 else "arm64"
-        image = "public.ecr.aws/b0b8h2r4/enterprise-preview"
+    def _add_docker_images_workflow(self, workflows: Dict[str, Any]) -> None:
+        """
+        Add a dedicated workflow that builds and publishes a multi-arch
+        arangodb/enterprise-test Docker image to public ECR (maintainer-mode,
+        Alpine- or Debian-based per create-test-docker-images).
 
-        branch = self.env_getter("CIRCLE_BRANCH", "unknown-branch")
-        match = re.fullmatch(r"(.+\/)?(.+)", branch)
-        if match:
-            branch = match.group(2)
+        Tagging follows the nightly-packages convention: the tag is
+        <community sha7>_<enterprise sha7>, Alpine is the suffix-less
+        default, and Debian-based images carry an extra -deb suffix before
+        the per-arch suffix (<tag>[-deb][-amd64|-arm64v8], manifest
+        <tag>[-deb]).
 
-        sha1 = self.env_getter("CIRCLE_SHA1", "unknown-sha1")[:7]
-        tag = f"{self.date_provider()}-{branch}-{sha1}-{arch}"
+        This has to be a separate workflow rather than a job tacked onto the
+        per-architecture pr workflows: creating a multi-arch manifest needs
+        both architectures' built images in the same job graph, and CircleCI
+        workflows cannot depend on jobs in another workflow. Both
+        architectures are therefore compiled again here and handed off
+        through this workflow's own workspace.
+        """
+        workflow: Dict[str, Any] = {"jobs": []}
+        workflows["docker-images"] = workflow
+
+        distro = self.config.circleci.create_test_docker_images
+        # ENTERPRISE_COMMIT is exported by the setup pipeline's "Determine
+        # enterprise branch" step (config.yml).
+        community = (self.env_getter("CIRCLE_SHA1", "") or "unknown-sha1")[:7]
+        enterprise = (self.env_getter("ENTERPRISE_COMMIT", "") or "unknown-sha1")[:7]
+        tag = f"{community}_{enterprise}"
+        if distro != "alpine":
+            tag += f"-{distro}"
+
+        image_job_names = []
+        for architecture, docker_arch, output in self._DOCKER_IMAGE_ARCHES:
+            build_config = BuildConfig(
+                architecture=architecture, build_variant=BuildVariant.NORMAL
+            )
+
+            compile_job = self._create_docker_compile_job(build_config)
+            workflow["jobs"].append(compile_job)
+            compile_job_name = compile_job["compile-linux"]["name"]
+
+            image_job = self._create_docker_build_job(
+                build_config, distro, docker_arch, output, [compile_job_name]
+            )
+            workflow["jobs"].append(image_job)
+            image_job_names.append(image_job["build-docker-image"]["name"])
 
         workflow["jobs"].append(
-            {
-                "create-docker-image": {
-                    "name": f"create-{build_config.architecture.value}-docker-image",
-                    "resource-class": self.sizer.get_resource_class(
-                        ResourceSize.CIRCLECI_LARGE, build_config.architecture
-                    ),
-                    "arch": arch,
-                    "tag": f"{image}:{tag}",
-                    "requires": build_jobs,
-                }
-            }
+            self._create_docker_manifest_job(tag, image_job_names)
         )
+
+    def _create_docker_compile_job(self, build_config: BuildConfig) -> Dict[str, Any]:
+        """Create the maintainer-mode compile job producing the install
+        package for a Docker image. Uses the dedicated test-docker-image
+        presets: unlike the pr presets (IPO disabled for developer build
+        turnaround), the published test image keeps IPO on x64."""
+        preset = (
+            "test-docker-image-arm64"
+            if build_config.architecture == Architecture.AARCH64
+            else "test-docker-image-x64"
+        )
+
+        params = {
+            "context": ["sccache-aws-bucket"],
+            "resource-class": self.sizer.get_resource_class(
+                ResourceSize.XXLARGE, build_config.architecture
+            ),
+            "name": f"build-{build_config.architecture.value}-for-docker-image",
+            "preset": preset,
+            "enterprise": True,
+            "arch": build_config.architecture.value,
+            "publish-artifacts": False,
+            "build-tests": False,
+            "create-install-package": True,
+        }
+
+        if build_config.architecture == Architecture.AARCH64:
+            params["s3-prefix"] = "aarch64"
+
+        return {"compile-linux": params}
+
+    def _create_docker_build_job(
+        self,
+        build_config: BuildConfig,
+        distro: str,
+        docker_arch: str,
+        output: str,
+        requires: List[str],
+    ) -> Dict[str, Any]:
+        """Create the job that builds and locally saves one architecture's Docker image."""
+        return {
+            "build-docker-image": {
+                "name": f"build-{build_config.architecture.value}-docker-image",
+                "resource-class": self.sizer.get_resource_class(
+                    ResourceSize.CIRCLECI_LARGE, build_config.architecture
+                ),
+                "distro": distro,
+                "arch": docker_arch,
+                "build-arch": build_config.architecture.value,
+                "output": output,
+                "requires": requires,
+            }
+        }
+
+    def _create_docker_manifest_job(
+        self, tag: str, requires: List[str]
+    ) -> Dict[str, Any]:
+        """Create the job that pushes the multi-arch arangodb/enterprise-test manifest to ECR."""
+        return {
+            "push-docker-manifest": {
+                "name": "push-docker-manifest",
+                "resource-class": self.sizer.get_resource_class(
+                    ResourceSize.CIRCLECI_LARGE, Architecture.X64
+                ),
+                "tag": tag,
+                "requires": requires,
+            }
+        }
 
     def _add_test_jobs(
         self,
@@ -508,9 +613,6 @@ class CircleCIGenerator(OutputGenerator):
 
         if job.options.buckets == "auto" and len(filtered_suites) != len(job.suites):
             bucket_count = len(filtered_suites)
-
-        if job.name in self.BUCKET_OVERRIDES:
-            bucket_count = self.BUCKET_OVERRIDES[job.name]
 
         if bucket_count and bucket_count != 1:
             job_dict["buckets"] = bucket_count

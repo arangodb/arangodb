@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <filesystem>
@@ -139,7 +138,13 @@ namespace arangodb {
 
 V8ShellFeature::V8ShellFeature(application_features::ApplicationServer& server,
                                std::string const& name)
+    : V8ShellFeature(server, name, V8ShellFeatureOptions{}) {}
+
+V8ShellFeature::V8ShellFeature(application_features::ApplicationServer& server,
+                               std::string const& name,
+                               V8ShellFeatureOptions options)
     : ApplicationFeature(server, *this),
+      _options(std::move(options)),
       _removeCopyInstallation(false),
       _name(name),
       _isolate(nullptr) {
@@ -150,17 +155,6 @@ V8ShellFeature::V8ShellFeature(application_features::ApplicationServer& server,
   startsAfter<RandomFeature>();
   startsAfter<V8PlatformFeature>();
   startsAfter<V8SecurityFeature>();
-}
-
-void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  V8ShellOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void V8ShellFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  V8ShellOptionsProvider provider;
-  provider.validateOptions(options, _options);
 }
 
 void V8ShellFeature::start() {
@@ -399,7 +393,7 @@ bool V8ShellFeature::printHello() {
         << "Copyright (c) ArangoDB GmbH";
 
       console.printLine(s.str());
-      console.printLine(LGPLNotice);
+      console.printLine(rest::Version::getLGPLNotice());
       console.printLine("");
 
       console.printWelcomeInfo();
@@ -996,7 +990,7 @@ static void JS_Exit(v8::FunctionCallbackInfo<v8::Value> const& args) {
     code = TRI_ObjectToInt64(isolate, args[0]);
   }
 
-  TRI_GET_SERVER_GLOBALS(application_features::ApplicationServer);
+  TRI_GET_GLOBALS();
   ShellFeature& shell = v8g->server().getFeature<ShellFeature>();
 
   shell.setExitCode(static_cast<int>(code));

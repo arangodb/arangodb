@@ -22,10 +22,11 @@
 
 #include "RocksDBEngine/RocksDBOptionFeatureOptionsProvider.h"
 
+#include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <unordered_set>
 
-#include "Basics/NumberOfCores.h"
 #include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -35,56 +36,30 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 
+namespace arangodb {
+
 namespace {
 
-std::string const kCompressionTypeSnappy = "snappy";
-std::string const kCompressionTypeLZ4 = "lz4";
-std::string const kCompressionTypeLZ4HC = "lz4hc";
-std::string const kCompressionTypeNone = "none";
-
 std::unordered_set<std::string> const compressionTypes = {
-    {kCompressionTypeSnappy},
-    {kCompressionTypeLZ4},
-    {kCompressionTypeLZ4HC},
-    {kCompressionTypeNone}};
-
-std::string const kBlockCacheTypeLRU = "lru";
-std::string const kBlockCacheTypeHyperClock = "hyper-clock";
+    std::string{kCompressionTypeSnappy}, std::string{kCompressionTypeLZ4},
+    std::string{kCompressionTypeLZ4HC}, std::string{kCompressionTypeNone}};
 
 std::unordered_set<std::string> const blockCacheTypes = {
-    {kBlockCacheTypeLRU}, {kBlockCacheTypeHyperClock}};
-
-std::string const kChecksumTypeCRC32C = "crc32c";
-std::string const kChecksumTypeXXHash = "xxHash";
-std::string const kChecksumTypeXXHash64 = "xxHash64";
-std::string const kChecksumTypeXXH3 = "XXH3";
+    std::string{kBlockCacheTypeLRU}, std::string{kBlockCacheTypeHyperClock}};
 
 std::unordered_set<std::string> const checksumTypes = {
-    kChecksumTypeCRC32C, kChecksumTypeXXHash, kChecksumTypeXXHash64,
-    kChecksumTypeXXH3};
-
-std::string const kCompactionStyleLevel = "level";
-std::string const kCompactionStyleUniversal = "universal";
-std::string const kCompactionStyleFifo = "fifo";
-std::string const kCompactionStyleNone = "none";
+    std::string{kChecksumTypeCRC32C}, std::string{kChecksumTypeXXHash},
+    std::string{kChecksumTypeXXHash64}, std::string{kChecksumTypeXXH3}};
 
 std::unordered_set<std::string> const compactionStyles = {
-    kCompactionStyleLevel, kCompactionStyleUniversal, kCompactionStyleFifo,
-    kCompactionStyleNone};
-
-constexpr uint64_t minShardSize = 128 * 1024 * 1024;
+    std::string{kCompactionStyleLevel}, std::string{kCompactionStyleUniversal},
+    std::string{kCompactionStyleFifo}, std::string{kCompactionStyleNone}};
 
 }  // namespace
 
-namespace arangodb {
-
 using namespace arangodb::options;
 
-RocksDBOptionFeatureOptionsProvider::RocksDBOptionFeatureOptionsProvider(
-    bool const ioUringEnabled)
-    : _ioUringEnabled(ioUringEnabled) {}
-
-void RocksDBOptionFeatureOptionsProvider::declareOptions(
+void RocksDBOptionFeatureOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> opts,
     RocksDBOptionFeatureOptions& options) {
   opts->addSection("rocksdb", "RocksDB engine");
@@ -130,11 +105,11 @@ void RocksDBOptionFeatureOptionsProvider::declareOptions(
           arangodb::options::Flags::OnDBServer,
           arangodb::options::Flags::OnSingle));
 
-  TRI_ASSERT(::compressionTypes.contains(options.compressionType));
+  TRI_ASSERT(compressionTypes.contains(options.compressionType));
   opts->addOption("--rocksdb.compression-type",
                   "The compression algorithm to use within RocksDB.",
                   new DiscreteValuesParameter<StringParameter>(
-                      &options.compressionType, ::compressionTypes))
+                      &options.compressionType, compressionTypes))
       .setIntroducedIn(31000);
 
   opts->addOption("--rocksdb.transaction-lock-stripes",
@@ -527,12 +502,12 @@ are stopped to allow compaction to catch up.)");
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31206);
 
-  TRI_ASSERT(::blockCacheTypes.contains(options.blockCacheType));
+  TRI_ASSERT(blockCacheTypes.contains(options.blockCacheType));
   opts->addOption("--rocksdb.block-cache-type",
                   "The block cache type to use (note: the 'hyper-clock' cache "
                   "type is experimental).",
                   new DiscreteValuesParameter<StringParameter>(
-                      &options.blockCacheType, ::blockCacheTypes))
+                      &options.blockCacheType, blockCacheTypes))
       .setIntroducedIn(31206);
 
   opts->addOption("--rocksdb.num-threads-priority-low",
@@ -797,11 +772,11 @@ collections introduce a noticeable throughput penalty.
 only. This option is thus deprecated, and will be removed in a future
 version.)");
 
-  TRI_ASSERT(::checksumTypes.contains(options.checksumType));
+  TRI_ASSERT(checksumTypes.contains(options.checksumType));
   opts->addOption("--rocksdb.checksum-type",
                   "The checksum type to use for table files.",
                   new DiscreteValuesParameter<StringParameter>(
-                      &options.checksumType, ::checksumTypes),
+                      &options.checksumType, checksumTypes),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnAgent,
@@ -809,13 +784,13 @@ version.)");
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31000);
 
-  TRI_ASSERT(::compactionStyles.contains(options.compactionStyle));
+  TRI_ASSERT(compactionStyles.contains(options.compactionStyle));
   opts->addOption(
           "--rocksdb.compaction-style",
           "The compaction style which is used to pick the next file(s) to "
           "be compacted (note: all styles except 'level' are experimental).",
           new DiscreteValuesParameter<StringParameter>(&options.compactionStyle,
-                                                       ::compactionStyles),
+                                                       compactionStyles),
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnAgent,
@@ -835,9 +810,8 @@ version.)");
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31000)
-      .setLongDescription(
-          R"(Note that format version 6 can only be read by RocksDB
-versions >= 8.6.0. Thus switching to format version 6 will make the database
+      .setLongDescription(R"(Note that format version 6 can only be read by
+RocksDB versions >= 8.6.0. Thus switching to format version 6 makes the database
 files incompatible with ArangoDB versions with a lower RocksDB version in case
 of downgrading.)");
 
@@ -959,13 +933,13 @@ of downgrading.)");
               arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31100);
 
-  TRI_ASSERT(::compressionTypes.contains(options.blobCompressionType));
+  TRI_ASSERT(compressionTypes.contains(options.blobCompressionType));
   opts->addOption("--rocksdb.blob-compression-type",
                   "The compression algorithm to use for blob data in the "
                   "documents column family. "
                   "Requires `--rocksdb.enable-blob-files`.",
                   new DiscreteValuesParameter<StringParameter>(
-                      &options.blobCompressionType, ::compressionTypes),
+                      &options.blobCompressionType, compressionTypes),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::Experimental,
                       arangodb::options::Flags::DefaultNoComponents,
@@ -1009,10 +983,10 @@ of downgrading.)");
                                        arangodb::options::Flags::OnDBServer,
                                        arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31100)
-      .setLongDescription(
-          R"(The jemalloc-based memory allocator for the RocksDB block cache
-will also exclude the block cache contents from coredumps, potentially making
-generated coredumps a lot smaller.
+      .setLongDescription(R"(The jemalloc-based memory allocator for the RocksDB
+block cache also excludes the block cache contents from coredumps, potentially
+making generated coredumps a lot smaller.
+
 In order to use this option, the executable needs to be compiled with jemalloc
 support (which is the default on Linux).)");
 
@@ -1087,23 +1061,25 @@ option to `0`.)");
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31200)
-      .setLongDescription(R"(Enabling this option will make RocksDB's
+      .setLongDescription(R"(Enabling this option makes RocksDB's
 compaction write the document data for different collections/shards
 into different .sst files. Otherwise the document data from different
 collections/shards can be mixed and written into the same .sst files.
 
-Enabling this option usually has the benefit of making the RocksDB
-compaction more efficient when a lot of different collections/shards
-are written to in parallel.
-The disavantage of enabling this option is that there can be more .sst
-files than when the option is turned off, and the disk space used by
-these .sst files can be higher than if there are fewer .sst files (this
-is because there is some per-.sst file overhead).
-In particular on deployments with many collections/shards
-this can lead to a very high number of .sst files, with the potential
-of outgrowing the maximum number of file descriptors the ArangoDB process
-can open. Thus the option should only be enabled on deployments with a
-limited number of collections/shards.)");
+- Enabling this option usually has the benefit of making the RocksDB
+  compaction more efficient when a lot of different collections/shards
+  are written to in parallel.
+
+- The disadvantage of enabling this option is that there can be more .sst
+  files than when the option is turned off, and the disk space used by
+  these .sst files can be higher than if there are fewer .sst files (this
+  is because there is some per-.sst file overhead).
+
+  In particular on deployments with many collections/shards
+  this can lead to a very high number of .sst files, with the potential
+  of outgrowing the maximum number of file descriptors the ArangoDB process
+  can open. Thus the option should only be enabled on deployments with a
+  limited number of collections/shards.)");
 
   opts->addOption(
           "--rocksdb.partition-files-for-primary-index",
@@ -1119,23 +1095,25 @@ limited number of collections/shards.)");
               arangodb::options::Flags::OnDBServer,
               arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31200)
-      .setLongDescription(R"(Enabling this option will make RocksDB's
+      .setLongDescription(R"(Enabling this option makes RocksDB's
 compaction write the primary index data for different collections/shards
 into different .sst files. Otherwise the primary index data from different
 collections/shards can be mixed and written into the same .sst files.
 
-Enabling this option usually has the benefit of making the RocksDB
-compaction more efficient when a lot of different collections/shards
-are written to in parallel.
-The disavantage of enabling this option is that there can be more .sst
-files than when the option is turned off, and the disk space used by
-these .sst files can be higher than if there are fewer .sst files (this
-is because there is some per-.sst file overhead).
-In particular on deployments with many collections/shards
-this can lead to a very high number of .sst files, with the potential
-of outgrowing the maximum number of file descriptors the ArangoDB process
-can open. Thus the option should only be enabled on deployments with a
-limited number of collections/shards.)");
+- Enabling this option usually has the benefit of making the RocksDB
+  compaction more efficient when a lot of different collections/shards
+  are written to in parallel.
+
+- The disadvantage of enabling this option is that there can be more .sst
+  files than when the option is turned off, and the disk space used by
+  these .sst files can be higher than if there are fewer .sst files (this
+  is because there is some per-.sst file overhead).
+
+  In particular on deployments with many collections/shards
+  this can lead to a very high number of .sst files, with the potential
+  of outgrowing the maximum number of file descriptors the ArangoDB process
+  can open. Thus the option should only be enabled on deployments with a
+  limited number of collections/shards.)");
 
   opts->addOption("--rocksdb.partition-files-for-edge-index",
                   "If enabled, the index data for different edge "
@@ -1149,23 +1127,25 @@ limited number of collections/shards.)");
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31200)
-      .setLongDescription(R"(Enabling this option will make RocksDB's
+      .setLongDescription(R"(Enabling this option makes RocksDB's
 compaction write the edge index data for different edge collections/shards
 into different .sst files. Otherwise the edge index data from different
 edge collections/shards can be mixed and written into the same .sst files.
 
-Enabling this option usually has the benefit of making the RocksDB
-compaction more efficient when a lot of different edge collections/shards
-are written to in parallel.
-The disavantage of enabling this option is that there can be more .sst
-files than when the option is turned off, and the disk space used by
-these .sst files can be higher than if there are fewer .sst files (this
-is because there is some per-.sst file overhead).
-In particular on deployments with many edge collections/shards
-this can lead to a very high number of .sst files, with the potential
-of outgrowing the maximum number of file descriptors the ArangoDB process
-can open. Thus the option should only be enabled on deployments with a
-limited number of edge collections/shards.)");
+- Enabling this option usually has the benefit of making the RocksDB
+  compaction more efficient when a lot of different edge collections/shards
+  are written to in parallel.
+
+- The disadvantage of enabling this option is that there can be more .sst
+  files than when the option is turned off, and the disk space used by
+  these .sst files can be higher than if there are fewer .sst files (this
+  is because there is some per-.sst file overhead).
+
+  In particular on deployments with many edge collections/shards,
+  this can lead to a very high number of .sst files, with the potential
+  of outgrowing the maximum number of file descriptors the ArangoDB process
+  can open. Thus the option should only be enabled on deployments with a
+  limited number of edge collections/shards.)");
 
   opts->addOption("--rocksdb.partition-files-for-persistent-index",
                   "If enabled, the index data for different persistent "
@@ -1185,18 +1165,20 @@ indexes (also indexes from different collections/shards) into different
 .sst files. Otherwise the persistent index data from different
 collections/shards/indexes can be mixed and written into the same .sst files.
 
-Enabling this option usually has the benefit of making the RocksDB
-compaction more efficient when a lot of different collections/shards/indexes
-are written to in parallel.
-The disavantage of enabling this option is that there can be more .sst
-files than when the option is turned off, and the disk space used by
-these .sst files can be higher than if there are fewer .sst files (this
-is because there is some per-.sst file overhead).
-In particular on deployments with many collections/shards/indexes
-this can lead to a very high number of .sst files, with the potential
-of outgrowing the maximum number of file descriptors the ArangoDB process
-can open. Thus the option should only be enabled on deployments with a
-limited number of edge collections/shards/indexes.)");
+- Enabling this option usually has the benefit of making the RocksDB
+  compaction more efficient when a lot of different collections/shards/indexes
+  are written to in parallel.
+
+- The disadvantage of enabling this option is that there can be more .sst
+  files than when the option is turned off, and the disk space used by
+  these .sst files can be higher than if there are fewer .sst files (this
+  is because there is some per-.sst file overhead).
+
+  In particular on deployments with many collections/shards/indexes
+  this can lead to a very high number of .sst files, with the potential
+  of outgrowing the maximum number of file descriptors the ArangoDB process
+  can open. Thus the option should only be enabled on deployments with a
+  limited number of edge collections/shards/indexes.)");
 
   opts->addOption("--rocksdb.partition-files-for-mdi-index",
                   "If enabled, the index data for different mdi "
@@ -1216,19 +1198,20 @@ indexes (also indexes from different collections/shards) into different
 `.sst` files. Otherwise the persistent index data from different
 collections/shards/indexes can be mixed and written into the same `.sst` files.
 
-Enabling this option usually has the benefit of making the RocksDB
-compaction more efficient when a lot of different collections/shards/indexes
-are written to in parallel.
-The disadvantage of enabling this option is that there can be more `.sst`
-files than when the option is turned off, and the disk space used by
-these `.sst` files can be higher than if there are fewer `.sst` files (this
-is because there is some per-`.sst` file overhead).
+- Enabling this option usually has the benefit of making the RocksDB
+  compaction more efficient when a lot of different collections/shards/indexes
+  are written to in parallel.
 
-In particular on deployments with many collections/shards/indexes
-this can lead to a very high number of `.sst` files, with the potential
-of outgrowing the maximum number of file descriptors the ArangoDB process
-can open. Thus the option should only be enabled on deployments with a
-limited number of edge collections/shards/indexes.)");
+- The disadvantage of enabling this option is that there can be more `.sst`
+  files than when the option is turned off, and the disk space used by
+  these `.sst` files can be higher than if there are fewer `.sst` files (this
+  is because there is some per-`.sst` file overhead).
+
+  In particular on deployments with many collections/shards/indexes
+  this can lead to a very high number of `.sst` files, with the potential
+  of outgrowing the maximum number of file descriptors the ArangoDB process
+  can open. Thus the option should only be enabled on deployments with a
+  limited number of edge collections/shards/indexes.)");
 
   opts->addOption("--rocksdb.partition-files-for-vector-index",
                   "If enabled, the index data for different vector "
@@ -1247,18 +1230,20 @@ indexes (also indexes from different collections/shards) into different
 .sst files. Otherwise, the index data from different
 collections/shards/indexes can be mixed and written into the same .sst files.
 
-Enabling this option usually has the benefit of making the RocksDB
-compaction more efficient when a lot of different collections/shards/indexes
-are written to in parallel.
-The disadvantage of enabling this option is that there can be more .sst
-files than when the option is disabled, and the disk space used by
-these .sst files can be higher than if there are fewer .sst files
-because there is some overhead per .sst file.
-For deployments with many collections/shards/indexes in particular,
-this can lead to a very high number of .sst files, with the potential
-of outgrowing the maximum number of file descriptors the ArangoDB process
-can open. The option should thus only be enabled for deployments with a
-limited number of edge collections/shards/indexes.)");
+- Enabling this option usually has the benefit of making the RocksDB
+  compaction more efficient when a lot of different collections/shards/indexes
+  are written to in parallel.
+
+- The disadvantage of enabling this option is that there can be more .sst
+  files than when the option is disabled, and the disk space used by
+  these .sst files can be higher than if there are fewer .sst files
+  because there is some overhead per .sst file.
+
+  For deployments with many collections/shards/indexes in particular,
+  this can lead to a very high number of .sst files, with the potential
+  of outgrowing the maximum number of file descriptors the ArangoDB process
+  can open. The option should thus only be enabled for deployments with a
+  limited number of edge collections/shards/indexes.)");
 
   options.ioUringEnabled = _ioUringEnabled;
   opts->addOption(
@@ -1319,7 +1304,7 @@ limited number of edge collections/shards/indexes.)");
   }
 }
 
-void RocksDBOptionFeatureOptionsProvider::validateOptions(
+void RocksDBOptionFeatureOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> opts,
     RocksDBOptionFeatureOptions& options) {
   if (options.writeBufferSize > 0 && options.writeBufferSize < 1024 * 1024) {
@@ -1342,7 +1327,7 @@ void RocksDBOptionFeatureOptionsProvider::validateOptions(
   options.minWriteBufferNumberToMergeTouched = opts->processingResult().touched(
       "--rocksdb.min-write-buffer-number-to-merge");
 
-  if (options.blockCacheType == ::kBlockCacheTypeLRU &&
+  if (options.blockCacheType == kBlockCacheTypeLRU &&
       opts->processingResult().touched(
           "--rocksdb.block-cache-estimated-entry-charge")) {
     LOG_TOPIC("a527b", WARN, arangodb::Logger::ENGINES)
@@ -1364,8 +1349,9 @@ void RocksDBOptionFeatureOptionsProvider::validateOptions(
     // note that RocksDB also has an internal upper bound for the number of
     // shards bits, which is 20.
     options.blockCacheShardBits = std::clamp(
-        int64_t(std::floor(std::log2(
-            static_cast<double>(options.blockCacheSize) / ::minShardSize))),
+        int64_t(
+            std::floor(std::log2(static_cast<double>(options.blockCacheSize) /
+                                 kMinBlockCacheShardSize))),
         int64_t(1), int64_t(10));
 
     // TODO: hyper clock cache probably doesn't need as many shards. check this.

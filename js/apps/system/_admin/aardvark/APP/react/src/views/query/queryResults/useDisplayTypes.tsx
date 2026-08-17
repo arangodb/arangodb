@@ -189,7 +189,7 @@ const isValidPoint = (item: { type?: string; coordinates?: any[] }) => {
     try {
       new L.GeoJSON(item as any);
       return true;
-    } catch (ignore) {
+    } catch {
       return false;
     }
   }
@@ -199,7 +199,7 @@ const isValidGeodesic = (item: GeoItemType) => {
     try {
       new GeodesicLine().fromGeoJson(item as any);
       return true;
-    } catch (ignore) {
+    } catch {
       return false;
     }
   }
@@ -213,10 +213,9 @@ const detectGeo = ({
   isTable: boolean;
 } => {
   let validGeojsonCount = 0;
-  let isGeo = false;
   let isTable = false;
   // makes a map like {type: 1, coordinates: 2} across all resultItems
-  let attributeCountMap = {} as {
+  const attributeCountMap = {} as {
     [key: string]: number;
   };
   if (!result?.length) {
@@ -259,7 +258,7 @@ const detectGeo = ({
 
     const resultItemKeys = Object.keys(resultItem);
     resultItemKeys.forEach(key => {
-      if (attributeCountMap.hasOwnProperty(key)) {
+      if (Object.prototype.hasOwnProperty.call(attributeCountMap, key)) {
         attributeCountMap[key] = attributeCountMap[key] + 1;
       } else {
         attributeCountMap[key] = 1;
@@ -280,11 +279,7 @@ const detectGeo = ({
     }
   });
 
-  if (result.length === validGeojsonCount) {
-    isGeo = true;
-  } else {
-    isGeo = false;
-  }
+  const isGeo = result.length === validGeojsonCount;
   return {
     isGeo,
     isTable

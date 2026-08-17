@@ -73,7 +73,7 @@ set(ARANGODB_VERSION_MINOR "12")
 
 # when building the nightly ARANGODB_VERSION_PATCH will be set
 if(NOT DEFINED ARANGODB_VERSION_PATCH)
-  set(ARANGODB_VERSION_PATCH "10")
+  set(ARANGODB_VERSION_PATCH "11")
   set(ARANGODB_VERSION_RELEASE_TYPE "devel")
   set(ARANGODB_VERSION_RELEASE_NUMBER "")
 else()
@@ -1363,3 +1363,11 @@ add_custom_target(arangodb
    DEPENDS arangod client-tools)
 
 add_subdirectory(utils/gdb-pretty-printers/immer/test)
+
+# Generate JS_SHA1SUM.txt over everything installed into the JS directory.
+# Declared last on purpose: install rules run in declaration order (CMP0082),
+# so this executes after every other install rule — including the client-tools
+# and enterprise JS files added by the add_subdirectory calls above — and the
+# checksum always matches the final installed tree.
+install(CODE "set(ARANGODB_INSTALLED_JS_DIR \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}\")")
+install(SCRIPT ${CMAKE_SOURCE_DIR}/cmake/GenerateJsSha1Sum.cmake)

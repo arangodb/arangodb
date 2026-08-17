@@ -18,25 +18,27 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestViewHandler.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
-#include "Basics/Utf8Helper.h"
-#include "Basics/VelocyPackHelper.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
+#include "Logger/LogMacros.h"
 #include "Rest/GeneralResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/OperationOrigin.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
-#include "Utilities/NameValidator.h"
 #include "VocBase/LogicalView.h"
-#include "Logger/LogMacros.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/Methods/Collections.h"
+#include "StorageEngine/PhysicalCollection.h"
+#include "Transaction/IndexesSnapshot.h"
+#include "IResearch/IResearchDataStore.h"
+#include "VocBase/vocbase.h"
 
 namespace {
 

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -59,11 +58,12 @@ class ClusterFeature : public application_features::ApplicationFeature {
   static constexpr std::string_view name() noexcept { return "Cluster"; }
 
   explicit ClusterFeature(application_features::ApplicationServer& server,
+                          metrics::IRegistry& metricsRegistry,
+                          ClusterOptions options);
+  explicit ClusterFeature(application_features::ApplicationServer& server,
                           metrics::IRegistry& metricsRegistry);
   ~ClusterFeature();
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
   void stop() override final;
@@ -231,7 +231,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
  private:
   ClusterFeature(application_features::ApplicationServer& server,
                  metrics::IRegistry& metricsRegistry, DatabaseFeature& database,
-                 std::type_index registration);
+                 std::type_index registration, ClusterOptions options);
   void reportRole(ServerState::RoleEnum);
   void scheduleConnectivityCheck(std::uint32_t inSeconds);
   void runConnectivityCheck();

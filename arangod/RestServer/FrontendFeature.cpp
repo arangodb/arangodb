@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "FrontendFeature.h"
@@ -35,14 +34,13 @@ using namespace arangodb::options;
 namespace arangodb {
 
 FrontendFeature::FrontendFeature(ApplicationServer& server)
-    : ApplicationFeature{server, *this} {
+    : FrontendFeature(server, FrontendFeatureOptions{}) {}
+
+FrontendFeature::FrontendFeature(ApplicationServer& server,
+                                 FrontendFeatureOptions options)
+    : ApplicationFeature{server, *this}, _options(std::move(options)) {
   setOptional(true);
   startsAfter<ServerFeaturePhase>();
-}
-
-void FrontendFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  FrontendOptionsProvider provider;
-  provider.declareOptions(options, _options);
 }
 
 void FrontendFeature::prepare() {

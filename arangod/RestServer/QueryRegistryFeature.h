@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -43,11 +42,12 @@ class QueryRegistryFeature final
   }
 
   QueryRegistryFeature(application_features::ApplicationServer& server,
+                       metrics::IRegistry& metricsRegistry,
+                       QueryRegistryFeatureOptions options);
+  QueryRegistryFeature(application_features::ApplicationServer& server,
                        metrics::IRegistry& metricsRegistry);
   ~QueryRegistryFeature();
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void beginShutdown() override final;
   void stop() override final;

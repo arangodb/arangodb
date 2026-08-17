@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef USE_V8
@@ -225,7 +224,7 @@ static void JS_CreateViewVocbase(
 
   try {
     // First refresh our analyzers cache to see all latest changes in analyzers
-    TRI_GET_SERVER_GLOBALS(ArangodServer);
+    TRI_GET_GLOBALS();
     auto res =
         v8g->server()
             .getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
@@ -651,7 +650,7 @@ static void JS_PropertiesViewVocbase(
     }
 
     auto& vocbase = GetContextVocBase(isolate);
-    TRI_GET_SERVER_GLOBALS(ArangodServer);
+    TRI_GET_GLOBALS();
     auto res =
         v8g->server()
             .getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()

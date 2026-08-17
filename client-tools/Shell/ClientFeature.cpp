@@ -18,28 +18,22 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClientFeature.h"
-#include "Shell/ClientOptionsProvider.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ReadLocker.h"
-#include "Basics/StaticStrings.h"
-#include "Basics/Utf8Helper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
-#include "Basics/files.h"
 #include "Endpoint/Endpoint.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "Shell/ShellConsoleFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
@@ -60,37 +54,34 @@ constexpr size_t DEFAULT_RETRIES = 2;
 
 namespace arangodb {
 
+ClientFeature::ClientFeature(ApplicationServer& server)
+    : ClientFeature{server, server.getFeature<CommunicationFeaturePhase>(),
+                    typeid(HttpEndpointProvider), ClientFeatureOptions{}} {}
+
+ClientFeature::ClientFeature(ApplicationServer& server,
+                             ClientFeatureOptions options)
+    : ClientFeature{server, server.getFeature<CommunicationFeaturePhase>(),
+                    typeid(HttpEndpointProvider), std::move(options)} {}
+
 ClientFeature::ClientFeature(ApplicationServer& server,
                              CommunicationFeaturePhase& comm,
                              std::type_index registration,
-                             bool const allowJwtSecret,
-                             size_t const maxNumEndpoints,
-                             double const connectionTimeout,
-                             double const requestTimeout)
+                             ClientFeatureOptions options)
     : HttpEndpointProvider(server, registration, name()),
+      _options(std::move(options)),
       _comm{comm},
       _console{},
       _retries(DEFAULT_RETRIES),
       _warn(false),
       _warnConnect(true) {
-  _options.endpoints = {Endpoint::defaultEndpoint()};
-  _options.maxNumEndpoints = maxNumEndpoints;
-  _options.databaseName = StaticStrings::SystemDatabase;
-  _options.connectionTimeout = connectionTimeout;
-  _options.requestTimeout = requestTimeout;
-  _options.sslProtocol = TLS_V12;
-  _options.allowJwtSecret = allowJwtSecret;
   setOptional(true);
-}
 
-void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  ClientOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
+  if (server.hasFeature<ShellConsoleFeature>()) {
+    _console = &server.getFeature<ShellConsoleFeature>();
+  }
 
-void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  ClientOptionsProvider provider;
-  provider.validateOptions(options, _options);
+  startsAfter<CommunicationFeaturePhase>();
+  startsAfter<GreetingsFeaturePhase>();
 
   if (auto res = DatabaseNameValidator::validateName(true, true,
                                                      _options.databaseName);

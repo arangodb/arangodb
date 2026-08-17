@@ -29,7 +29,7 @@ namespace arangodb::aql {
 
 using namespace arangodb::options;
 
-void OptimizerRulesOptionsProvider::declareOptions(
+void OptimizerRulesOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, OptimizerRulesOptions& opts) {
   options
       ->addOption("--query.optimizer-rules",
@@ -58,9 +58,8 @@ state.)");
       ->addObsoleteOption(
           "--query.parallelize-gather-writes",
           "Whether to enable write parallelization for gather nodes.", false)
-      .setLongDescription(
-          R"(Starting with 3.11 almost all queries support parallelization of
-gather nodes, making this option obsolete.)");
+      .setLongDescription(R"(Starting with 3.11 almost all queries support
+parallelization of gather nodes, making this option obsolete.)");
 }
 
 }  // namespace arangodb::aql

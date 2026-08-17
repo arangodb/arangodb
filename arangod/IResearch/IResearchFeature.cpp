@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasily Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchFeature.h"
@@ -829,7 +827,13 @@ bool isOffsetInfo(aql::Function const& func) noexcept {
 IResearchFeature::IResearchFeature(
     application_features::ApplicationServer& server,
     metrics::IRegistry& metricsRegistry)
+    : IResearchFeature(server, metricsRegistry, IResearchOptions{}) {}
+
+IResearchFeature::IResearchFeature(
+    application_features::ApplicationServer& server,
+    metrics::IRegistry& metricsRegistry, IResearchOptions options)
     : ApplicationFeature{server, *this},
+      _options(std::move(options)),
       _async(std::make_unique<IResearchAsync>()),
       _outOfSyncLinks(
           metricsRegistry.add(arangodb_search_num_out_of_sync_links{})),
@@ -847,42 +851,11 @@ IResearchFeature::IResearchFeature(
 #endif
   startsAfter<IResearchAnalyzerFeature>();
   startsAfter<aql::AqlFunctionFeature>();
-}
-
-void IResearchFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  IResearchOptionsProvider provider;
-  provider.declareOptions(options, _options);
-
 #ifdef USE_ENTERPRISE
   auto& manager =
       basics::downCast<LimitedResourceManager>(_columnsCacheMemoryUsed);
-  options
-      ->addOption(IResearchOptionsProvider::CACHE_LIMIT,
-                  "The limit (in bytes) for ArangoSearch columns cache "
-                  "(0 = no caching).",
-                  new options::UInt64Parameter(&manager.limit),
-                  options::makeDefaultFlags(options::Flags::DefaultNoComponents,
-                                            options::Flags::OnSingle,
-                                            options::Flags::OnDBServer,
-                                            options::Flags::Enterprise))
-      .setIntroducedIn(3'09'05);
-  options
-      ->addOption(
-          IResearchOptionsProvider::CACHE_ONLY_LEADER,
-          "Cache ArangoSearch columns only for leader shards.",
-          new options::BooleanParameter(&_options.columnsCacheOnlyLeader),
-          options::makeDefaultFlags(options::Flags::DefaultNoComponents,
-                                    options::Flags::OnDBServer,
-                                    options::Flags::Enterprise))
-      .setIntroducedIn(3'10'06);
+  manager.limit = _options.columnsCacheLimit;
 #endif
-}
-
-void IResearchFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  IResearchOptionsProvider provider;
-  provider.validateOptions(options, _options);
 }
 
 void IResearchFeature::prepare() {

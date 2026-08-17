@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Dan Larkin-York
-/// @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -36,9 +34,10 @@ const _ = require("lodash");
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const errors = require('internal').errors;
 const dbs = ["testDatabase", "abc123", "maçã", "mötör", "😀", "ﻚﻠﺑ ﻞﻄﻴﻓ", "かわいい犬"];
-const getCoordinatorEndpoints = require('@arangodb/test-helper').getCoordinatorEndpoints;
 
-const servers = getCoordinatorEndpoints();
+let { instanceRole } = require('@arangodb/testutils/instance');
+const IM = global.instanceManager;
+
 
 function CursorSyncSuite (databaseName) {
   'use strict';
@@ -51,7 +50,7 @@ function CursorSyncSuite (databaseName) {
   let coordinators = [];
   const baseCursorUrl = `/_db/${encodeURIComponent(databaseName)}/_api/cursor`; 
  
-  function sendRequest(method, endpoint, body, usePrimary) {
+  function sendRequest(method, path, body, usePrimary) {
     let res;
     const i = usePrimary ? 0 : 1;
 
@@ -60,11 +59,11 @@ function CursorSyncSuite (databaseName) {
         body,
         json: true,
         method,
-        url: `${coordinators[i]}${endpoint}`
+        url: `${coordinators[i].url}${path}`
       };
       res = request(envelope);
     } catch(err) {
-      console.error(`Exception processing ${method} ${endpoint}`, err.stack);
+      console.error(`Exception processing ${method} ${path}`, err.stack);
       return {};
     }
     var resultBody = res.body;
@@ -77,7 +76,7 @@ function CursorSyncSuite (databaseName) {
   return {
     
     setUpAll: function() {
-      coordinators = getCoordinatorEndpoints();
+      coordinators = IM.getInstancesRole(instanceRole.coordinator);
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
       }

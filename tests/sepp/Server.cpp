@@ -18,9 +18,9 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Metrics/MetricsFeature.h"
 #include "Server.h"
 
 #include <chrono>
@@ -158,7 +158,6 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(_server),
       LazyApplicationFeatureReference<ClusterFeature>(_server));
   _server.addFeature<metrics::ClusterMetricsFeature>();
-  _server.addFeature<VersionFeature>();
   _server.addFeature<ActionFeature>();
   auto& agency = _server.addFeature<AgencyFeature>();
   _server.addFeature<ApiRecordingFeature>(nullptr, metrics);
@@ -167,8 +166,7 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<AuthenticationFeature>();
   _server.addFeature<BootstrapFeature>();
 #ifdef TRI_HAVE_GETRLIMIT
-  _server.addFeature<BumpFileDescriptorsFeature>(
-      "--server.descriptors-minimum");
+  _server.addFeature<BumpFileDescriptorsFeature>();
 #endif
   _server.addFeature<CacheOptionsFeature>();
   auto& cacheManager =
@@ -177,7 +175,7 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   auto& clusterFeature = _server.addFeature<ClusterFeature>(metrics);
   auto& database = _server.addFeature<DatabaseFeature>();
   _server.addFeature<ClusterUpgradeFeature>(database);
-  _server.addFeature<ConfigFeature>(name);
+  _server.addFeature<ConfigFeature>();
 #ifdef USE_V8
   _server.addFeature<ConsoleFeature>();
 #endif
@@ -241,7 +239,7 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<StatisticsFeature>(metrics);
   _server.addFeature<SystemDatabaseFeature>();
   _server.addFeature<TempFeature>(name);
-  _server.addFeature<TemporaryStorageFeature>();
+  _server.addFeature<TemporaryStorageFeature>(databasePath);
   _server.addFeature<TtlFeature>();
   _server.addFeature<UpgradeFeature>(&result, kNonServerFeatures);
   _server.addFeature<transaction::ManagerFeature>(metrics);
@@ -251,9 +249,7 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<aql::QueryInfoLoggerFeature>();
   auto& rocksdbCacheRefill =
       _server.addFeature<RocksDBIndexCacheRefillFeature>();
-  _server.addFeature<RocksDBOptionFeature>(
-      _server.hasFeature<AgencyFeature>() ? &_server.getFeature<AgencyFeature>()
-                                          : nullptr);
+  _server.addFeature<RocksDBOptionFeature>();
   auto& rocksdbRecovery =
       _server.addFeature<RocksDBRecoveryManager>(database, database);
 #ifdef TRI_HAVE_GETRLIMIT
@@ -264,7 +260,7 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
 #endif
 #ifdef USE_ENTERPRISE
   _server.addFeature<AuditFeature>();
-  _server.addFeature<LicenseFeature>();
+  _server.addFeature<LicenseFeature>(databasePath);
   _server.addFeature<RCloneFeature>();
   _server.addFeature<HotBackupFeature>();
   _server.addFeature<EncryptionFeature>();

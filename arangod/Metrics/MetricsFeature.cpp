@@ -18,19 +18,17 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 #include "Metrics/MetricsFeature.h"
-#include "Metrics/MetricsOptionsProvider.h"
 
 #include <frozen/string.h>
 #include <frozen/unordered_set.h>
 #include <velocypack/Builder.h>
 
 #include <chrono>
-#include <unordered_set>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/system-functions.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Agency/Node.h"
 #include "Basics/debugging.h"
@@ -39,8 +37,6 @@
 #include "Logger/LoggerFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/Metric.h"
-#include "ProgramOptions/Parameters.h"
-#include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -57,24 +53,42 @@ MetricsFeature::MetricsFeature(
     LazyApplicationFeatureReference<ClusterMetricsFeature>
         lazyClusterMetricsFeatureRef,
     LazyApplicationFeatureReference<ClusterFeature> lazyClusterFeatureRef)
+    : MetricsFeature(server, std::move(lazyQueryRegistryFeatureRef),
+                     std::move(lazyStatisticsFeatureRef),
+                     std::move(lazyDatabaseFeatureRef),
+                     std::move(lazyClusterMetricsFeatureRef),
+                     std::move(lazyClusterFeatureRef), MetricsOptions{}) {}
+
+MetricsFeature::MetricsFeature(
+    application_features::ApplicationServer& server,
+    LazyApplicationFeatureReference<QueryRegistryFeature>
+        lazyQueryRegistryFeatureRef,
+    LazyApplicationFeatureReference<StatisticsFeature> lazyStatisticsFeatureRef,
+    LazyApplicationFeatureReference<DatabaseFeature> lazyDatabaseFeatureRef,
+    LazyApplicationFeatureReference<ClusterMetricsFeature>
+        lazyClusterMetricsFeatureRef,
+    LazyApplicationFeatureReference<ClusterFeature> lazyClusterFeatureRef,
+    MetricsOptions options)
     : ApplicationFeature{server, *this},
       _lazyQueryRegistryFeatureRef(std::move(lazyQueryRegistryFeatureRef)),
       _lazyStatisticsFeatureRef(std::move(lazyStatisticsFeatureRef)),
       _lazyDatabaseFeatureRef(std::move(lazyDatabaseFeatureRef)),
       _lazyClusterMetricsFeatureRef(std::move(lazyClusterMetricsFeatureRef)),
-      _lazyClusterFeatureRef(std::move(lazyClusterFeatureRef)) {
+      _lazyClusterFeatureRef(std::move(lazyClusterFeatureRef)),
+      _options(std::move(options)) {
   setOptional(false);
   startsAfter<LoggerFeature>();
   startsBefore<application_features::GreetingsFeaturePhase>();
+  _serverStartTime = TRI_microtime();
 }
 
-void MetricsFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  _serverStatistics =
-      std::make_unique<ServerStatistics>(*this, StatisticsFeature::time());
+/*static*/ double MetricsFeature::_serverStartTime = 0.0;
 
-  metrics::MetricsOptionsProvider provider;
-  provider.declareOptions(options, _options);
+/*static*/ double MetricsFeature::serverUptime() noexcept {
+  if (_serverStartTime == 0.0) {
+    return 0.0;
+  }
+  return TRI_microtime() - _serverStartTime;
 }
 
 std::shared_ptr<Metric> MetricsFeature::doAdd(Builder& builder) {
@@ -148,16 +162,6 @@ bool MetricsFeature::ensureWhitespace() const noexcept {
 MetricsFeature::UsageTrackingMode MetricsFeature::usageTrackingMode()
     const noexcept {
   return _options.usageTrackingMode;
-}
-
-void MetricsFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  metrics::MetricsOptionsProvider provider;
-  provider.validateOptions(options, _options);
-
-  if (_options.exportReadWriteMetrics) {
-    serverStatistics().setupDocumentMetrics();
-  }
 }
 
 void MetricsFeature::toPrometheus(std::string& result,
@@ -266,10 +270,6 @@ void MetricsFeature::toVPack(velocypack::Builder& builder,
   }
   lock.unlock();
   builder.close();
-}
-
-ServerStatistics& MetricsFeature::serverStatistics() noexcept {
-  return *_serverStatistics;
 }
 
 std::shared_lock<std::shared_mutex> MetricsFeature::initGlobalLabels() const {

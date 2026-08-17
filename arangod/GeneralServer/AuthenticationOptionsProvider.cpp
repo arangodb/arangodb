@@ -34,7 +34,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void AuthenticationOptionsProvider::declareOptions(
+void AuthenticationOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, AuthenticationOptions& options) {
   opts->addObsoleteOption(
       "server.disable-authentication",
@@ -111,6 +111,26 @@ endpoint. Requests with expiry times below this value will be rejected.)");
       .setLongDescription(R"(This option sets the maximum lifetime that can be
 requested for JWT tokens via the `expiryTime` parameter in the `POST /_open/auth`
 endpoint. Requests with expiry times above this value will be rejected.)");
+
+  opts->addOption(
+          "--auth.maximal-access-token-expiry-time",
+          "The maximal expiry time (in seconds) allowed for personal access "
+          "tokens requested via the `POST /_api/token` endpoint.",
+          new DoubleParameter(&options.maximalAccessTokenExpiryTime,
+                              /*base*/ 1.0,
+                              /*minValue*/ 1.0,
+                              /*maxValue*/ std::numeric_limits<double>::max(),
+                              /*minInclusive*/ false),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31210)
+      .setLongDescription(R"(This option sets the maximum lifetime that can be
+requested for a personal access token via the `valid_until` parameter in the
+`POST /_api/token` endpoint. If a request specifies a `valid_until` further in
+the future than this maximum allows, it is silently capped to `now` plus this
+option's value.)");
 
   opts->addOption("--server.external-rbac-service",
                   "Enable role-based access control (RBAC) and set the "
@@ -219,8 +239,22 @@ of a cluster deployment via the `POST /_admin/server/jwt` HTTP API endpoint.
 You can use this feature to roll out new JWT secrets throughout a cluster.)");
 }
 
-void AuthenticationOptionsProvider::validateOptions(
+void AuthenticationOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, AuthenticationOptions& options) {
+  if (!options.jwtSecretKeyfileProgramOption.empty() &&
+      !options.jwtSecretFolderProgramOption.empty()) {
+    LOG_TOPIC("d3515", FATAL, Logger::STARTUP)
+        << "please specify either '--server.jwt-"
+           "secret-keyfile' or '--server.jwt-secret-folder' but not both.";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (opts->processingResult().touched("server.jwt-secret")) {
+    LOG_TOPIC("1aaae", WARN, arangodb::Logger::AUTHENTICATION)
+        << "--server.jwt-secret is insecure. Use --server.jwt-secret-keyfile "
+           "instead.";
+  }
+
   if (options.minimalJwtExpiryTime > options.maximalJwtExpiryTime) {
     LOG_TOPIC("a4b5c", FATAL, Logger::STARTUP)
         << "--auth.minimal-jwt-expiry-time (" << options.minimalJwtExpiryTime

@@ -32,7 +32,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void DumpLimitsOptionsProvider::declareOptions(
+void DumpLimitsOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, DumpLimitsFeatureOptions& opts) {
   options->addSection("dump", "Dump limits");
 
@@ -45,9 +45,8 @@ void DumpLimitsOptionsProvider::declareOptions(
           makeFlags(Flags::Dynamic, Flags::DefaultNoComponents,
                     Flags::OnDBServer, Flags::OnSingle))
       .setIntroducedIn(31200)
-      .setLongDescription(
-          R"(The approximate per-server maximum allowed memory usage value
-for all ongoing dump actions combined.)");
+      .setLongDescription(R"(The approximate per-server maximum allowed memory
+usage value for all ongoing dump actions combined.)");
 
   options
       ->addOption(
@@ -58,8 +57,8 @@ for all ongoing dump actions combined.)");
           makeFlags(Flags::Uncommon, Flags::DefaultNoComponents,
                     Flags::OnDBServer, Flags::OnSingle))
       .setIntroducedIn(31200)
-      .setLongDescription(
-          R"(Each batch in a dump can grow to at most this size.)");
+      .setLongDescription(R"(Each batch in a dump can grow to at most
+this size.)");
 
   options
       ->addOption(
@@ -70,8 +69,8 @@ for all ongoing dump actions combined.)");
           makeFlags(Flags::Uncommon, Flags::DefaultNoComponents,
                     Flags::OnDBServer, Flags::OnSingle))
       .setIntroducedIn(31200)
-      .setLongDescription(
-          R"(Each batch in a dump can grow to at most this size.)");
+      .setLongDescription(R"(Each batch in a dump can grow to at most
+this size.)");
 
   options
       ->addOption("--dump.max-parallelism",
@@ -86,7 +85,7 @@ this many parallel threads. Note that end users can still start multiple
 dump actions that run in parallel.)");
 }
 
-void DumpLimitsOptionsProvider::validateOptions(
+void DumpLimitsOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> /*options*/,
     DumpLimitsFeatureOptions& opts) {
   if (opts.batchSizeLowerBound > opts.batchSizeUpperBound) {

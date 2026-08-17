@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IndexFactory.h"
@@ -32,14 +31,15 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
-#include "VectorIndex/VectorIndexDefinition.h"
+#include "VectorIndex/Definition.h"
 #include "IResearch/IResearchCommon.h"
 #include "Inspection/VPack.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "VectorIndex/VectorIndexFeature.h"
+#include "VectorIndex/Feature.h"
 #include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -77,7 +77,7 @@ struct InvalidIndexFactory : public IndexTypeFactory {
   }
 
   Result normalize(velocypack::Builder&, velocypack::Slice definition, bool,
-                   TRI_vocbase_t const&) const override {
+                   Database const&) const override {
     std::string type = basics::VelocyPackHelper::getStringValue(
         definition, StaticStrings::IndexType, "");
     return Result(TRI_ERROR_BAD_PARAMETER, "invalid index type '" + type + "'");
@@ -190,8 +190,8 @@ bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
     }
   } else if (Index::IndexType::TRI_IDX_TYPE_VECTOR_INDEX == type) {
     // check if the parameters are the same
-    vector::UserVectorIndexDefinition leftDefinition;
-    vector::UserVectorIndexDefinition rightDefinition;
+    vector::UserDefinition leftDefinition;
+    vector::UserDefinition rightDefinition;
     velocypack::deserialize(lhs.get("params"), leftDefinition);
     velocypack::deserialize(rhs.get("params"), rightDefinition);
 
@@ -278,7 +278,7 @@ Result IndexFactory::enhanceIndexDefinition(  // normalize definition
     velocypack::Slice definition,             // source definition
     velocypack::Builder& normalized,  // normalized definition (out-param)
     bool isCreation,                  // definition for index creation
-    TRI_vocbase_t const& vocbase      // index vocbase
+    Database const& vocbase           // index vocbase
 ) const {
   auto type = definition.get(StaticStrings::IndexType);
 
@@ -922,7 +922,7 @@ Result IndexFactory::enhanceJsonIndexVector(
                          /*allowExpansion*/ false, /*allowSubAttributes*/ true,
                          /*allowIdAttribute*/ false);
 
-  vector::UserVectorIndexDefinition vectorIndexDefinition;
+  vector::UserDefinition vectorIndexDefinition;
   if (res.ok()) {
     auto const paramsSlice = definition.get("params");
     if (auto const res = velocypack::deserializeWithStatus(

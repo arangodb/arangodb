@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -37,11 +36,10 @@
 #include <string>
 #include <string_view>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
+struct Database;
 namespace metrics {
-class MetricsFeature;
+struct IRegistry;
 }  // namespace metrics
 class Thread;
 class StatisticsWorker;
@@ -94,13 +92,14 @@ class StatisticsFeature final
  public:
   static constexpr std::string_view name() noexcept { return "Statistics"; }
 
+  StatisticsFeature(application_features::ApplicationServer& server,
+                    metrics::IRegistry& metrics,
+                    StatisticsFeatureOptions options);
   explicit StatisticsFeature(application_features::ApplicationServer& server,
-                             metrics::MetricsFeature& metrics);
+                             metrics::IRegistry& registry);
 
   static double time();
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
   void stop() override final;
   void toPrometheus(std::string& result, double now, std::string_view globals,
@@ -108,12 +107,11 @@ class StatisticsFeature final
 
   stats::Descriptions const& descriptions() const { return _descriptions; }
 
-  static arangodb::velocypack::Builder fillDistribution(
+  static velocypack::Builder fillDistribution(
       statistics::Distribution const& dist);
 
-  Result getClusterSystemStatistics(
-      TRI_vocbase_t& vocbase, double start,
-      arangodb::velocypack::Builder& result) const;
+  Result getClusterSystemStatistics(Database& vocbase, double start,
+                                    velocypack::Builder& result) const;
 
   bool allDatabases() const noexcept { return _options.statisticsAllDatabases; }
 
@@ -135,8 +133,8 @@ class StatisticsFeature final
                               std::initializer_list<std::string> const& les,
                               bool isInteger, std::string_view globals,
                               bool ensureWhitespace);
+
   StatisticsFeatureOptions _options;
-  bool _statisticsHistoryTouched = false;
 
   stats::Descriptions _descriptions;
   std::unique_ptr<Thread> _statisticsThread;

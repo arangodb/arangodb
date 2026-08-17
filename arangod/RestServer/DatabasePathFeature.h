@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -35,10 +34,10 @@ class DatabasePathFeature final
  public:
   static constexpr std::string_view name() { return "DatabasePath"; }
 
+  explicit DatabasePathFeature(application_features::ApplicationServer& server,
+                               DatabasePathFeatureOptions options);
   explicit DatabasePathFeature(application_features::ApplicationServer& server);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
 

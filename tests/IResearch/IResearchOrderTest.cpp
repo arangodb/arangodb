@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
@@ -44,19 +42,18 @@
 #include "IResearch/AqlHelper.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchOptionsProvider.h"
 #include "IResearch/IResearchFilterContext.h"
 #include "IResearch/IResearchOrderFactory.h"
-#include "RestServer/arangod.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "VectorIndex/VectorIndexFeature.h"
+#include "VectorIndex/Feature.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Statistics/StatisticsFeature.h"
-#include "Statistics/StatisticsWorker.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 
@@ -275,7 +272,7 @@ class IResearchOrderTest
                                             arangodb::LogLevel::FATAL>,
       public arangodb::tests::IResearchLogSuppressor {
  protected:
-  arangodb::ArangodServer server;
+  arangodb::application_features::ApplicationServer server;
   StorageEngineMock engine;
   std::vector<
       std::pair<arangodb::application_features::ApplicationFeature&, bool>>
@@ -315,15 +312,15 @@ class IResearchOrderTest
     features.emplace_back(
         server.addFeature<arangodb::VectorIndexFeature>(dbFeature), false);
     {
-      auto& feature =
-          features
-              .emplace_back(
-                  server.addFeature<arangodb::iresearch::IResearchFeature>(
-                      metrics),
-                  true)
-              .first;
-      feature.validateOptions(server.options());
-      feature.collectOptions(server.options());
+      arangodb::iresearch::IResearchOptionsProvider optionsProvider;
+      auto irsOptions =
+          std::make_shared<arangodb::options::ProgramOptions>("", "", "", "");
+      optionsProvider.declareOptions(irsOptions);
+      optionsProvider.validateOptions(irsOptions);
+      features.emplace_back(
+          server.addFeature<arangodb::iresearch::IResearchFeature>(
+              metrics, optionsProvider.options()),
+          true);
     }
 
     for (auto& f : features) {

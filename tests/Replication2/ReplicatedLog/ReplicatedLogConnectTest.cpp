@@ -18,18 +18,17 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
+#include "Mocks/FakeRegistry.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
-#include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/ReplicatedLog/types.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
@@ -39,7 +38,6 @@
 #include "Replication2/Mocks/LogLeaderMock.h"
 #include "Replication2/Mocks/LogFollowerMock.h"
 #include "Replication2/Mocks/ReplicatedStateHandleMock.h"
-#include "Replication2/Mocks/ReplicatedLogMetricsMock.h"
 #include "Replication2/Mocks/ParticipantsFactoryMock.h"
 
 using namespace arangodb;
@@ -109,8 +107,9 @@ struct ReplicatedLogConnectTest : ::testing::Test {
               std::make_shared<storage::rocksdb::test::ThreadAsyncExecutor>());
   storage::IStorageEngineMethods* methodsPtr =
       storageContext->getMethods().release();
-  std::shared_ptr<test::ReplicatedLogMetricsMock> logMetricsMock =
-      std::make_shared<test::ReplicatedLogMetricsMock>();
+  metrics::FakeRegistry fakeRegistry;
+  std::shared_ptr<replicated_log::ReplicatedLogMetrics> logMetricsMock =
+      std::make_shared<replicated_log::ReplicatedLogMetrics>(fakeRegistry);
   std::shared_ptr<ReplicatedLogGlobalSettings> optionsMock =
       std::make_shared<ReplicatedLogGlobalSettings>();
   LoggerContext loggerContext = LoggerContext(Logger::REPLICATION2);

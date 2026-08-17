@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBIndexCacheRefillFeature.h"
@@ -57,10 +56,20 @@ RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(
     application_features::ApplicationServer& server,
     DatabaseFeature& databaseFeature, ClusterFeature* clusterFeature,
     metrics::IRegistry& metricsRegistry)
+    : RocksDBIndexCacheRefillFeature(server, databaseFeature, clusterFeature,
+                                     metricsRegistry,
+                                     RocksDBIndexCacheRefillFeatureOptions{}) {}
+
+RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(
+    application_features::ApplicationServer& server,
+    DatabaseFeature& databaseFeature, ClusterFeature* clusterFeature,
+    metrics::IRegistry& metricsRegistry,
+    RocksDBIndexCacheRefillFeatureOptions options)
     : application_features::ApplicationFeature{server, *this},
       _databaseFeature(databaseFeature),
       _clusterFeature(clusterFeature),
       _metricsRegistry(metricsRegistry),
+      _options(std::move(options)),
       _totalFullIndexRefills(addTotalFullIndexRefills(metricsRegistry)),
       _currentlyRunningIndexFillTasks(0) {
   setOptional(true);
@@ -75,12 +84,6 @@ RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(
 
 RocksDBIndexCacheRefillFeature::~RocksDBIndexCacheRefillFeature() {
   stopThread();
-}
-
-void RocksDBIndexCacheRefillFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  RocksDBIndexCacheRefillOptionsProvider provider;
-  provider.declareOptions(options, _options);
 }
 
 void RocksDBIndexCacheRefillFeature::beginShutdown() {
@@ -185,6 +188,8 @@ void RocksDBIndexCacheRefillFeature::buildStartupIndexRefillTasks() {
               _indexFillTasks.emplace_back(
                   IndexFillTask{database, collection->name(), index->id()});
             }
+
+            return true;
           });
     } catch (...) {
       // must ignore any errors here in case a database or collection

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
@@ -49,8 +48,11 @@ struct SharedResource {
       delete this;
     }
   }
+
   template<class... Input>
-  SharedResource(Input... args) : _data{args...} {}
+  explicit SharedResource(Input&&... args)
+      : _data{std::forward<Input>(args)...} {}
+
   auto get() -> T* { return &_data; }
   auto get_ref() -> T& { return _data; }
   auto ref_count() const -> size_t {
@@ -93,8 +95,11 @@ struct SharedPtr {
       _resource->decrement();
     }
   }
+
   template<class... Input>
-  SharedPtr(Input... args) : _resource{new SharedResource<T>(args...)} {}
+  explicit SharedPtr(Input&&... args)
+      : _resource{new SharedResource<T>(std::forward<Input>(args)...)} {}
+
   auto operator*() -> std::optional<std::reference_wrapper<T>> {
     if (_resource) {
       return {_resource->get_ref()};

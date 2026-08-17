@@ -24,17 +24,15 @@
 
 #include "ApplicationFeatures/OptionsProvider.h"
 
-namespace arangodb::options {
-class ProgramOptions;
-}
-
 namespace arangodb {
 
 struct MaxMapCountFeatureOptions {};
 
-struct MaxMapCountOptionsProvider : OptionsProvider<MaxMapCountFeatureOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      MaxMapCountFeatureOptions& options) override;
+struct MaxMapCountOptionsProvider
+    : OptionsProviderImpl<MaxMapCountOptionsProvider,
+                          MaxMapCountFeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          MaxMapCountFeatureOptions& options);
 };
 
 }  // namespace arangodb

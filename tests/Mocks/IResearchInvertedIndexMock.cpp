@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alexey Bakharew
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchInvertedIndexMock.h"
@@ -71,7 +70,7 @@ bool IResearchInvertedIndexMock::needsReversal() const { return true; }
 
 size_t IResearchInvertedIndexMock::memory() const {
   // FIXME return in memory size
-  return stats().indexSize;
+  return getStats().indexSize;
 }
 
 bool IResearchInvertedIndexMock::isHidden() const { return false; }

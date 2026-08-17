@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -46,8 +45,6 @@
 #define ENTERPRISE_VIRT TEST_VIRTUAL
 #endif
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
 
 namespace futures {
@@ -70,6 +67,7 @@ struct Variable;
 }  // namespace aql
 
 class CollectionNameResolver;
+struct Database;
 class DataSourceId;
 class Index;
 class IndexIterator;
@@ -162,7 +160,7 @@ class Methods {
   enum class CursorType { ALL = 0, ANY };
 
   /// @brief return database of transaction
-  TRI_vocbase_t& vocbase() const;
+  Database& vocbase() const;
 
   /// @brief return internals of transaction
   TransactionState* state() const noexcept { return _state.get(); }
@@ -435,6 +433,17 @@ class Methods {
   // perform a (deferred) intermediate commit if required
   futures::Future<Result> performIntermediateCommitIfRequired(
       DataSourceId collectionId);
+
+  // Check that the current user may access the given collection in the
+  // requested mode. This closes the gap for operations that run within an
+  // already existing transaction and target a collection that was not declared
+  // when the transaction was started: on a coordinator such a collection is
+  // never added at runtime, and on a DB server it is only added lazily in
+  // superuser context, where the permission check is a no-op. It is a no-op for
+  // collections that are already declared members of the transaction (they were
+  // permission-checked when they were added).
+  Result checkCollectionPermission(std::string const& collectionName,
+                                   AccessMode::Type accessType);
 
   futures::Future<OperationResult> documentCoordinator(
       std::string const& collectionName, VPackSlice value,

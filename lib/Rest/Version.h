@@ -18,13 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include <map>
 #include <string>
+#include <iosfwd>
 
 #include "Basics/operating-system.h"
 
@@ -173,6 +173,13 @@ class Version {
 
   // VelocyPack all data
   static void getVPack(velocypack::Builder&);
+
+  // glibc LGPL notice
+  static char const* getLGPLNotice();
+
+  // print --version / --version-json output
+  static void print(std::ostream& out);
+  static void printJson(std::ostream& out);
 
  public:
   static std::map<std::string, std::string> Values;

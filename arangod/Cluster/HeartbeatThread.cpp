@@ -18,18 +18,14 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HeartbeatThread.h"
 
 #include "Agency/AsyncAgencyComm.h"
-#include "ApplicationFeatures/ShutdownFeature.h"
 #include "Auth/UserManager.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
-#include "Basics/tri-strings.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
@@ -37,16 +33,13 @@
 #include "Cluster/DBServerAgencySync.h"
 #include "Cluster/ServerState.h"
 #include "Containers/FlatHashSet.h"
-#include "GeneralServer/AsyncJobManager.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
 #include "Metrics/IRegistry.h"
-#include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -76,10 +69,8 @@ namespace arangodb {
 
 class HeartbeatBackgroundJobThread : public Thread {
  public:
-  explicit HeartbeatBackgroundJobThread(
-      application_features::ApplicationServer& server,
-      HeartbeatThread* heartbeatThread)
-      : Thread(server, "Maintenance"),
+  explicit HeartbeatBackgroundJobThread(HeartbeatThread* heartbeatThread)
+      : Thread("Maintenance"),
         _heartbeatThread(heartbeatThread),
         _stop(false),
         _sleeping(false),
@@ -871,8 +862,7 @@ bool HeartbeatThread::init() {
     // thread, but that SyncerThread is started before runDBServer is called.
     // So in order to prevent a data race we should initialize
     // _maintenanceThread before that SyncerThread is started.
-    _maintenanceThread =
-        std::make_unique<HeartbeatBackgroundJobThread>(_server, this);
+    _maintenanceThread = std::make_unique<HeartbeatBackgroundJobThread>(this);
   }
   return true;
 }

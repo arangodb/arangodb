@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -36,8 +34,6 @@
 #include <tuple>
 #include <vector>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
 namespace metrics {
 struct IRegistry;
@@ -53,9 +49,6 @@ class FlushFeature final : public application_features::ApplicationFeature,
                metrics::IRegistry& metricsRegistry);
 
   ~FlushFeature();
-
-  void collectOptions(
-      std::shared_ptr<options::ProgramOptions> options) override;
 
   /// @brief register a flush subscription that will ensure replay of all WAL
   ///        entries after the latter of registration or the last successful
@@ -78,7 +71,6 @@ class FlushFeature final : public application_features::ApplicationFeature,
   void stop() override;
 
  private:
-  FlushFeatureOptions _options;
   std::mutex _flushSubscriptionsMutex;
   std::vector<std::weak_ptr<FlushSubscription>> _flushSubscriptions;
   bool _stopped;

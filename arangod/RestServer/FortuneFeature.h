@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -31,10 +30,11 @@ class FortuneFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Fortune"; }
 
+  explicit FortuneFeature(application_features::ApplicationServer& server,
+                          FortuneFeatureOptions options);
   explicit FortuneFeature(application_features::ApplicationServer& server);
 
  public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
 
  private:

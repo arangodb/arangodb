@@ -18,9 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
-/// @author Matthew Von-Maszewski
-/// @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
@@ -41,7 +38,7 @@
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "Mocks/Servers.h"
-#include "Network/NetworkFeature.h"
+#include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/UpgradeFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -195,7 +192,7 @@ struct MaintenanceFeatureTestThreaded : ::testing::Test {
   std::shared_ptr<arangodb::options::ProgramOptions> po =
       std::make_shared<arangodb::options::ProgramOptions>(
           "test", std::string(), std::string(), "path");
-  arangodb::ArangodServer as{po, nullptr};
+  arangodb::application_features::ApplicationServer as{po, nullptr};
 
   void SetUp() override {
     using namespace arangodb;
@@ -216,7 +213,8 @@ TEST_F(MaintenanceFeatureTestThreaded, iterate_action_0_times_ok) {
       as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
                                  //
-  std::thread th(&arangodb::ArangodServer::run, &as, 0, nullptr);
+  std::thread th(&arangodb::application_features::ApplicationServer::run, &as,
+                 0, nullptr);
 
   auto threadGuard = arangodb::scopeGuard([&]() noexcept {
     as.beginShutdown();
@@ -255,7 +253,8 @@ TEST_F(MaintenanceFeatureTestThreaded, iterate_action_0_times_fail) {
       as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
                                  //
-  std::thread th(&arangodb::ArangodServer::run, &as, 0, nullptr);
+  std::thread th(&arangodb::application_features::ApplicationServer::run, &as,
+                 0, nullptr);
 
   auto threadGuard = arangodb::scopeGuard([&]() noexcept {
     as.beginShutdown();
@@ -297,7 +296,8 @@ TEST_F(MaintenanceFeatureTestThreaded, iterate_action_1_time_ok) {
       as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
                                  //
-  std::thread th(&arangodb::ArangodServer::run, &as, 0, nullptr);
+  std::thread th(&arangodb::application_features::ApplicationServer::run, &as,
+                 0, nullptr);
 
   auto threadGuard = arangodb::scopeGuard([&]() noexcept {
     as.beginShutdown();
@@ -338,7 +338,8 @@ TEST_F(MaintenanceFeatureTestThreaded, iterate_action_1_time_fail) {
       as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
                                  //
-  std::thread th(&arangodb::ArangodServer::run, &as, 0, nullptr);
+  std::thread th(&arangodb::application_features::ApplicationServer::run, &as,
+                 0, nullptr);
 
   auto threadGuard = arangodb::scopeGuard([&]() noexcept {
     as.beginShutdown();
@@ -382,7 +383,8 @@ TEST_F(MaintenanceFeatureTestThreaded, iterate_action_2_times_ok) {
       as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
                                  //
-  std::thread th(&arangodb::ArangodServer::run, &as, 0, nullptr);
+  std::thread th(&arangodb::application_features::ApplicationServer::run, &as,
+                 0, nullptr);
 
   auto threadGuard = arangodb::scopeGuard([&]() noexcept {
     as.beginShutdown();
@@ -425,7 +427,8 @@ TEST_F(MaintenanceFeatureTestThreaded, iterate_action_100_times_ok) {
       as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
 
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
-  std::thread th(&arangodb::ArangodServer::run, &as, 0, nullptr);
+  std::thread th(&arangodb::application_features::ApplicationServer::run, &as,
+                 0, nullptr);
 
   auto threadGuard = arangodb::scopeGuard([&]() noexcept {
     as.beginShutdown();
@@ -468,7 +471,8 @@ TEST_F(MaintenanceFeatureTestThreaded, iterate_action_100_times_fail) {
       as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
 
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
-  std::thread th(&arangodb::ArangodServer::run, &as, 0, nullptr);
+  std::thread th(&arangodb::application_features::ApplicationServer::run, &as,
+                 0, nullptr);
 
   auto threadGuard = arangodb::scopeGuard([&]() noexcept {
     as.beginShutdown();
@@ -510,7 +514,8 @@ TEST_F(MaintenanceFeatureTestThreaded, populate_action_queue_and_validate) {
   TestMaintenanceFeature& tf =
       as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
 
-  std::thread th(&arangodb::ArangodServer::run, &as, 0, nullptr);
+  std::thread th(&arangodb::application_features::ApplicationServer::run, &as,
+                 0, nullptr);
 
   auto threadGuard = arangodb::scopeGuard([&]() noexcept {
     as.beginShutdown();
@@ -590,7 +595,8 @@ TEST_F(MaintenanceFeatureTestThreaded, action_that_generates_a_preaction) {
   TestMaintenanceFeature& tf =
       as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
 
-  std::thread th(&arangodb::ArangodServer::run, &as, 0, nullptr);
+  std::thread th(&arangodb::application_features::ApplicationServer::run, &as,
+                 0, nullptr);
 
   auto threadGuard = arangodb::scopeGuard([&]() noexcept {
     as.beginShutdown();
@@ -648,7 +654,8 @@ TEST_F(MaintenanceFeatureTestThreaded, action_that_generates_a_postaction) {
   TestMaintenanceFeature& tf =
       as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
 
-  std::thread th(&arangodb::ArangodServer::run, &as, 0, nullptr);
+  std::thread th(&arangodb::application_features::ApplicationServer::run, &as,
+                 0, nullptr);
 
   auto threadGuard = arangodb::scopeGuard([&]() noexcept {
     as.beginShutdown();
@@ -706,7 +713,8 @@ TEST_F(MaintenanceFeatureTestThreaded,
   TestMaintenanceFeature& tf =
       as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
 
-  std::thread th(&arangodb::ArangodServer::run, &as, 0, nullptr);
+  std::thread th(&arangodb::application_features::ApplicationServer::run, &as,
+                 0, nullptr);
 
   auto threadGuard = arangodb::scopeGuard([&]() noexcept {
     as.beginShutdown();
@@ -748,7 +756,8 @@ TEST_F(MaintenanceFeatureTestThreaded, action_delete) {
   TestMaintenanceFeature& tf =
       as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
 
-  std::thread th(&arangodb::ArangodServer::run, &as, 0, nullptr);
+  std::thread th(&arangodb::application_features::ApplicationServer::run, &as,
+                 0, nullptr);
 
   auto threadGuard = arangodb::scopeGuard([&]() noexcept {
     as.beginShutdown();
@@ -803,7 +812,8 @@ TEST_F(MaintenanceFeatureTestThreaded,
   TestMaintenanceFeature& tf =
       as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
 
-  std::thread th(&arangodb::ArangodServer::run, &as, 0, nullptr);
+  std::thread th(&arangodb::application_features::ApplicationServer::run, &as,
+                 0, nullptr);
 
   auto threadGuard = arangodb::scopeGuard([&]() noexcept {
     as.beginShutdown();

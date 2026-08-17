@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
@@ -154,8 +153,11 @@ function validateMetrics(metrics) {
 
 function checkMetricsBelongToServer(metrics, server) {
   let serverName = getServerShortName(server);
-  let positiveRegex = new RegExp('(shortname="(' + serverName + ').*")');
-  let negativeRegex = new RegExp('(shortname="(?!' + serverName + ').*")');
+  // Match only the exporter global label `shortname=...`.
+  // Do not match `target_shortname=...` from arangodb_server_health, which
+  // intentionally lists other cluster members' short names.
+  let positiveRegex = new RegExp('(?:^|[\\{,])shortname="(' + serverName + ')"');
+  let negativeRegex = new RegExp('(?:^|[\\{,])shortname="(?!' + serverName + ')[^"]+"');
   let matchesServerName = metrics.match(positiveRegex);
   let matchesAnyOtherName = metrics.match(negativeRegex);
   assertNotEqual(null, matchesServerName, "Metrics must contain server name, but they don't");

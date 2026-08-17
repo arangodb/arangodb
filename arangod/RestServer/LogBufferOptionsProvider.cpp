@@ -29,7 +29,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void LogBufferOptionsProvider::declareOptions(
+void LogBufferOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, LogBufferFeatureOptions& opts) {
   options
       ->addOption("--log.in-memory",

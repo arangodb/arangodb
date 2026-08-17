@@ -21,9 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Wilfried Goesgens
-/// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 (function () {
@@ -37,6 +34,7 @@
   const arangosh = require('@arangodb/arangosh');
   const isCluster = internal.isCluster();
   const isEnterprise = internal.isEnterprise();
+  let { instanceRole } = require('@arangodb/testutils/instance');
   let IM = global.instanceManager;
   var db = internal.db;
   const getNoShards = function (defaultNo) {
@@ -123,13 +121,6 @@
     removedModulo: 10,
     // testIndexes
     indexesCount: 9,
-    // testKeygenAutoInc
-    keygenAutoInc: 42049,
-    autoIncDocCount: 1001,
-    // testKeygenPadded
-    paddedDocCount: 1001,
-    // testKeygenUuid
-    uuidDocCount: 1001,
   }) {
     // 'use strict';
     const smartGraphName = "UnitTestDumpSmartGraph";
@@ -146,8 +137,6 @@
     const gm = (isEnterprise) ? require("@arangodb/smart-graph") : {};
     const satgm = (isEnterprise) ? require("@arangodb/satellite-graph") : {};
     const {map, zipObject} = require('lodash');
-    const request = require("@arangodb/request");
-    const {getRawMetric, getEndpointsByType} = require("@arangodb/test-helper");
 
     console.info("Test suite arguments: " + JSON.stringify(args));
 
@@ -172,11 +161,6 @@
       assertFalse(graph.isSmart);
       assertEqual(graph.replicationFactor, "satellite");
       assertEqual(graph.numberOfShards, 1);
-    }
-
-    function assertEmptyness(graph) {
-      assertEqual(graph.edgeDefinitions.length, 0);
-      assertEqual(graph.orphanCollections.length, 0);
     }
 
     function assertSmartCollectionProperties(graph, edgeCollName, vertexCollName, orphanCollName, isDisjoint) {
@@ -624,137 +608,6 @@
       },
 
       ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test autoinc keygen
-      ////////////////////////////////////////////////////////////////////////////////
-
-      testKeygenAutoInc: function () {
-        var c = getCollection("UnitTestsDumpKeygen");
-        var p = c.properties();
-
-        assertEqual(2, c.type()); // document
-        assertFalse(p.waitForSync);
-        assertEqual("autoincrement", p.keyOptions.type);
-        if (!isCluster) {
-          assertEqual(args.keygenAutoInc, p.keyOptions.lastValue);
-        }
-        assertFalse(p.keyOptions.allowUserKeys);
-        assertEqual(7, p.keyOptions.offset);
-        assertEqual(42, p.keyOptions.increment);
-
-        assertEqual(1, c.indexes().length, `We found following indexes: ${JSON.stringify(c.indexes())}`); // just primary index
-        assertEqual("primary", c.indexes()[0].type);
-        assertEqual(args.autoIncDocCount, c.count());
-
-        for (var i = 0; i < 1000; ++i) {
-          var doc = c.document(String(7 + (i * 42)));
-
-          assertEqual(String(7 + (i * 42)), doc._key);
-          assertEqual(i, doc.value);
-          assertEqual({value: [i, i]}, doc.more);
-        }
-        if (isCluster) {
-          waitForCollInSync("UnitTestsDumpKeygen");
-        }
-        if (args.autoIncDocCount === 1001) {
-          doc = c.save({});
-          assertEqual(doc._key, "42091");
-        } else if (args.autoIncDocCount === 2001) {
-          // hot backup case:
-          for (var j = 0; i < 1000; ++i) {
-            let doc = c.document(String(7 + ((1000 + j) * 42)));
-
-            assertEqual(String(7 + ((1000 + j) * 42)), doc._key);
-            assertEqual(j, doc.value);
-            assertEqual({value: [j, j]}, doc.more);
-          }
-        }
-      },
-
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test padded keygen
-      ////////////////////////////////////////////////////////////////////////////////
-
-      testKeygenPadded: function () {
-        var c = getCollection("UnitTestsDumpKeygenPadded");
-        var p = c.properties();
-
-        assertEqual(2, c.type()); // document
-        assertFalse(p.waitForSync);
-        assertEqual("padded", p.keyOptions.type);
-        assertFalse(p.keyOptions.allowUserKeys);
-        assertEqual(1,  c.indexes().length, `We found following indexes: ${JSON.stringify(c.indexes())}`); // just primary index
-        assertEqual("primary", c.indexes()[0].type);
-        assertEqual(args.paddedDocCount, c.count());
-
-        let allDocs = {};
-        let nonDeletedDoc;
-        c.toArray().forEach(doc => {
-          if (doc.hasOwnProperty('value')) {
-            allDocs[doc.value] = doc;
-          } else {
-            nonDeletedDoc = doc;
-          }
-        });
-
-        let lastKey = "";
-        for (var i = 0; i < 1000; ++i) {
-          var doc = allDocs[i];
-
-          assertTrue(doc._key > lastKey, doc._key + ">" + lastKey);
-          assertEqual(i, doc.value);
-          assertEqual({value: [i, i]}, doc.more);
-          lastKey = doc._key;
-        }
-        if (isCluster) {
-          waitForCollInSync("UnitTestsDumpKeygenPadded");
-        }
-        if (args.paddedDocCount === 1001) {
-          assertTrue(nonDeletedDoc._key > lastKey, nonDeletedDoc._key + ">" + lastKey);
-          lastKey = nonDeletedDoc._key;
-          nonDeletedDoc = c.save({});
-          assertTrue(nonDeletedDoc._key > lastKey, nonDeletedDoc._key + ">" + lastKey);
-        } else {
-          // Backup and restore case:
-          doc = c.save({});
-          assertTrue(doc._key > lastKey, doc._key + ">" + lastKey);
-        }
-      },
-
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test uuid keygen
-      ////////////////////////////////////////////////////////////////////////////////
-
-      testKeygenUuid: function () {
-        var c = getCollection("UnitTestsDumpKeygenUuid");
-        var p = c.properties();
-
-        assertEqual(2, c.type()); // document
-        assertFalse(p.waitForSync);
-        assertEqual("uuid", p.keyOptions.type);
-        assertFalse(p.keyOptions.allowUserKeys);
-
-        assertEqual(1, c.indexes().length, `We found following indexes: ${JSON.stringify(c.indexes())}`); // just primary index
-        assertEqual("primary", c.indexes()[0].type);
-        assertEqual(args.uuidDocCount, c.count());
-
-        let allDocs = {};
-        c.toArray().forEach(doc => {
-          allDocs[doc.value] = doc;
-        });
-
-        let docs = [];
-        for (var i = 0; i < 1000; ++i) docs.push({"a": i});
-
-        if (isCluster) {
-          waitForCollInSync("UnitTestsDumpKeygenUuid");
-        }
-        let savedDocs = c.save(docs);
-        savedDocs.forEach(doc => {
-          assertFalse(allDocs.hasOwnProperty(doc._key), "found " + doc._key + "!");
-        });
-      },
-
-      ////////////////////////////////////////////////////////////////////////////////
       /// @brief test strings
       ////////////////////////////////////////////////////////////////////////////////
 
@@ -950,10 +803,12 @@
         let res = db._query("FOR doc IN " + search.name() + " SEARCH doc.value >= 0 OPTIONS { waitForSync: true } RETURN doc").toArray();
         assertEqual(5000, res.length);
 
-        let coordinators = getEndpointsByType("coordinator");
-        for (let i = 0; i < coordinators.length; i++) {
-          let c = coordinators[i];
-          getRawMetric(c, '?mode=trigger_global');
+        if (isCluster) {
+          let coordinators = IM.getInstancesRole(instanceRole.coordinator);
+          for (let i = 0; i < coordinators.length; i++) {
+            let c = coordinators[i];
+            c.getRawMetric('?mode=trigger_global');
+          }
         }
         let figures;
         for (let i = 0; i < 100; ++i) {
@@ -1005,11 +860,9 @@
       testAnalyzers: function () {
         /*
          * createAnalyzers() creates -> "customInCreateAnalyzers" (CE && EE)
-         * createSmartArangoSearch() creates -> "smartCustom" (EE)
          * createView() creates -> customInCreateView (CE && EE)
          *
-         * => EE will lead to a total of 3x created analyzers
-         * => CE will lead to a total of 2x created analyzers
+         * => both CE and EE lead to a total of 2x created custom analyzers
          */
         let createdAnalyzersInSrc = [
           {
@@ -1020,12 +873,6 @@
             delimiter: ","
           }
         ];
-        if (isEnterprise) {
-          createdAnalyzersInSrc.push({
-            name: "smartCustom",
-            delimiter: "smart"
-          });
-        }
 
         let verifyAnalyzer = (analyzerName, delimiter) => {
           let analyzer = analyzers.analyzer(analyzerName);
@@ -1038,10 +885,8 @@
         };
 
         assertNotEqual(null, getCollection("_analyzers"));
-        assertEqual((isEnterprise) ?
-            7 : // plus 1 for a SmartGraph in Enterprise
-            6,  // only 1 stored custom analyzers
-          db._analyzers.count());
+        // 4 analyzers from createInvertedIndex + customInCreateView + customInCreateAnalyzers
+        assertEqual(6, db._analyzers.count());
 
         _.each(createdAnalyzersInSrc, (analyzerObject) => {
           verifyAnalyzer(analyzerObject.name, analyzerObject.delimiter);
@@ -1481,62 +1326,6 @@
         }
       },
 
-      testViewOnSmartEdgeCollection: function () {
-        try {
-          db._createView("check", "arangosearch", {});
-        } catch (err) {
-        }
-
-        let views = db._views();
-        if (views.length === 0) {
-          return; // arangosearch views are not supported
-        }
-
-        let view = db._view("UnitTestsDumpSmartView");
-        assertNotEqual(null, view);
-        let props = view.properties();
-        assertEqual("UnitTestsDumpSmartView", view.name());
-        assertTrue(props.hasOwnProperty("links"));
-        assertEqual(Object.keys(props.links).length, 3); // virtual collecion + 2 system collections
-
-        // UnitTestDumpSmartEdges
-        assertTrue(props.links.hasOwnProperty("UnitTestDumpSmartEdges"));
-        assertTrue(props.links.UnitTestDumpSmartEdges.hasOwnProperty("includeAllFields"));
-        assertTrue(props.links.UnitTestDumpSmartEdges.includeAllFields);
-        assertTrue(props.links.UnitTestDumpSmartEdges.hasOwnProperty("fields"));
-        assertEqual(Object.keys(props.links.UnitTestDumpSmartEdges.fields).length, 1);
-        assertTrue(props.links.UnitTestDumpSmartEdges.fields.text.analyzers.length, 2);
-        assertTrue("text_en", props.links.UnitTestDumpSmartEdges.fields.text.analyzers[0]);
-        assertTrue("UnitTestsDumpView::smartCustom", props.links.UnitTestDumpSmartEdges.fields.text.analyzers[1]);
-
-        // _to_UnitTestDumpSmartEdges
-        assertFalse(props.links.hasOwnProperty("_to_UnitTestDumpSmartEdges"));
-
-        // _from_UnitTestDumpSmartEdges
-        assertTrue(props.links.hasOwnProperty("_from_UnitTestDumpSmartEdges"));
-        assertTrue(props.links._from_UnitTestDumpSmartEdges.hasOwnProperty("includeAllFields"));
-        assertTrue(props.links._from_UnitTestDumpSmartEdges.includeAllFields);
-        assertTrue(props.links._from_UnitTestDumpSmartEdges.hasOwnProperty("fields"));
-        assertEqual(Object.keys(props.links._from_UnitTestDumpSmartEdges.fields).length, 1);
-        assertTrue(props.links._from_UnitTestDumpSmartEdges.fields.text.analyzers.length, 2);
-        assertTrue("text_en", props.links._from_UnitTestDumpSmartEdges.fields.text.analyzers[0]);
-        assertTrue("UnitTestsDumpView::smartCustom", props.links._from_UnitTestDumpSmartEdges.fields.text.analyzers[1]);
-
-        // _local_UnitTestDumpSmartEdges
-        assertTrue(props.links.hasOwnProperty("_local_UnitTestDumpSmartEdges"));
-        assertTrue(props.links._local_UnitTestDumpSmartEdges.hasOwnProperty("includeAllFields"));
-        assertTrue(props.links._local_UnitTestDumpSmartEdges.includeAllFields);
-        assertTrue(props.links._local_UnitTestDumpSmartEdges.hasOwnProperty("fields"));
-        assertEqual(Object.keys(props.links._local_UnitTestDumpSmartEdges.fields).length, 1);
-        assertTrue(props.links._local_UnitTestDumpSmartEdges.fields.text.analyzers.length, 2);
-        assertTrue("text_en", props.links._local_UnitTestDumpSmartEdges.fields.text.analyzers[0]);
-        assertTrue("UnitTestsDumpView::smartCustom", props.links._local_UnitTestDumpSmartEdges.fields.text.analyzers[1]);
-        assertEqual(props.consolidationIntervalMsec, 0);
-        assertEqual(props.cleanupIntervalStep, 456);
-        assertTrue(Math.abs(props.consolidationPolicy.threshold - 0.3) < 0.001);
-        assertEqual(props.consolidationPolicy.type, "bytes_accum");
-      },
-
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief test whether hotbackup restore restores the uniqid
       ////////////////////////////////////////////////////////////////////////////////
@@ -1556,21 +1345,6 @@
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief test smart graph restores
       ////////////////////////////////////////////////////////////////////////////////
-      testEmptySmartGraph: function () {
-        if (!isEnterprise) {
-          return;
-        }
-        const smartGraphName = "UnitTestsDumpEmptySmartGraph";
-        const graphsColl = getCollection('_graphs');
-        assertTrue(!!graphsColl.exists(smartGraphName));
-
-        const graph = graphsColl.document(smartGraphName);
-        assertFalse(graph.isDisjoint);
-        assertCommonSmartGraphProperties(graph);
-        assertEqual(graph.edgeDefinitions.length, 0);
-        assertEqual(graph.orphanCollections.length, 0);
-      },
-
       testSmartGraph3_11_compat: function () {
         if (!isEnterprise) {
           return;
@@ -1603,85 +1377,6 @@
         // New collections are smart
         assertTrue(db[newRelationName].properties().isSmart);
         assertTrue(db[newVertexName].properties().isSmart);
-      },
-
-      testEmptyEnterpriseGraph: function () {
-        if (!isEnterprise) {
-          return;
-        }
-        const enterpriseGraphName = "UnitTestsDumpEmptyEnterpriseGraph";
-        const graphsColl = getCollection('_graphs');
-        assertTrue(!!graphsColl.exists(enterpriseGraphName));
-
-        const graph = graphsColl.document(enterpriseGraphName);
-        assertFalse(graph.isDisjoint);
-        assertCommonEnterpriseGraphProperties(graph);
-        assertEqual(graph.edgeDefinitions.length, 0);
-        assertEqual(graph.orphanCollections.length, 0);
-      },
-
-      testEmptySatelliteGraph: function () {
-        if (!isEnterprise) {
-          return;
-        }
-        const smartGraphName = "UnitTestsDumpEmptySatelliteGraph";
-        const graphsColl = getCollection('_graphs');
-        assertTrue(!!graphsColl.exists(smartGraphName));
-
-        const graph = graphsColl.document(smartGraphName);
-        assertFalse(graph.isDisjoint);
-        assertCommonSatelliteGraphProperties(graph);
-        assertEmptyness(graph);
-      },
-
-      testEmptyDisjointGraph: function () {
-        if (!isEnterprise) {
-          return;
-        }
-        const smartGraphName = "UnitTestsDumpEmptyDisjointGraph";
-        const graphsColl = getCollection('_graphs');
-        assertTrue(!!graphsColl.exists(smartGraphName));
-
-        const graph = graphsColl.document(smartGraphName);
-        assertTrue(graph.isDisjoint);
-        assertCommonSmartGraphProperties(graph);
-        assertEmptyness(graph);
-      },
-
-      testSmartGraphWithoutData: function () {
-        if (!isEnterprise) {
-          return;
-        }
-        const smartGraphName = "UnitTestDumpSmartGraphWithoutData";
-        const vertexCollName = 'UnitTestDumpSmartVerticesWithoutData';
-        const edgeCollName = 'UnitTestDumpSmartEdgesWithoutData';
-        const orphanCollName = 'UnitTestDumpSmartOrphansWithoutData';
-
-        const g = getCollection('_graphs');
-        assertTrue(!!g.exists(smartGraphName));
-
-        const graph = g.document(smartGraphName);
-        assertFalse(graph.isDisjoint);
-        assertCommonSmartGraphProperties(graph);
-        assertSmartCollectionProperties(graph, edgeCollName, vertexCollName, orphanCollName, false);
-      },
-
-      testEnterpriseGraphWithoutData: function () {
-        if (!isEnterprise) {
-          return;
-        }
-        const enterpriseGraphName = "UnitTestDumpEnterpriseGraphWithoutData";
-        const vertexCollName = 'UnitTestDumpEnterpriseVerticesWithoutData';
-        const edgeCollName = 'UnitTestDumpEnterpriseEdgesWithoutData';
-        const orphanCollName = 'UnitTestDumpEnterpriseOrphansWithoutData';
-
-        const g = getCollection('_graphs');
-        assertTrue(!!g.exists(enterpriseGraphName));
-
-        const graph = g.document(enterpriseGraphName);
-        assertFalse(graph.isDisjoint);
-        assertCommonEnterpriseGraphProperties(graph);
-        assertEnterpriseCollectionProperties(graph, edgeCollName, vertexCollName, orphanCollName, false);
       },
 
       testSmartGraphSingleServer: function () {

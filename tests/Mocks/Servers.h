@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -26,17 +25,12 @@
 #include "Mocks/LogLevels.h"
 
 #include "Agency/AgencyCommon.h"
-#include "RestServer/arangod.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/ServerState.h"
 #include "IResearch/IResearchCommon.h"
-#include "Logger/LogMacros.h"
 #include "Mocks/StorageEngineMock.h"
-#include "Transaction/Hints.h"
 #include "VocBase/Identifiers/DataSourceId.h"
-
-struct TRI_vocbase_t;
 
 class StorageEngineMock;
 
@@ -77,10 +71,10 @@ class MockServer {
              bool injectClusterIndexes = false);
   virtual ~MockServer();
 
-  ArangodServer& server();
+  application_features::ApplicationServer& server();
   void init();
 
-  TRI_vocbase_t& getSystemDatabase() const;
+  Database& getSystemDatabase() const;
   std::string const testFilesystemPath() const { return _testFilesystemPath; }
 
   // add a feature to the underlying server, keep track of it;
@@ -102,6 +96,14 @@ class MockServer {
   template<typename Type, typename As = Type, typename... Args>
   As& addFeatureUntracked(Args&&... args) {
     return _server.addFeature<Type, As>(std::forward<Args>(args)...);
+  }
+
+  template<typename Provider>
+  Provider& addOptionsProvider() {
+    auto provider = std::make_shared<Provider>();
+    _optionProviders.emplace_back(provider);
+    provider->declareOptions(_server.options());
+    return *provider;
   }
 
   // make previously added feature untracked.
@@ -132,7 +134,10 @@ class MockServer {
   arangodb::application_features::ApplicationServer::State
       _oldApplicationServerState = arangodb::application_features::
           ApplicationServer::State::UNINITIALIZED;
-  arangodb::ArangodServer _server;
+  // OpitionsProviders own the storage that ProgramOptions::addOption() binds
+  // raw pointes to, so they must live longer than _server.
+  std::vector<std::shared_ptr<void>> _optionProviders;
+  arangodb::application_features::ApplicationServer _server;
   std::unique_ptr<StorageEngineMock> _engine;
   std::unordered_map<arangodb::application_features::ApplicationFeature*, bool>
       _features;
@@ -227,7 +232,7 @@ class MockClusterServer
       public LogSuppressor<iresearch::TOPIC, LogLevel::FATAL>,
       public IResearchLogSuppressor {
  public:
-  virtual TRI_vocbase_t* createDatabase(std::string const& name) = 0;
+  virtual Database* createDatabase(std::string const& name) = 0;
   virtual void dropDatabase(std::string const& name) = 0;
   void startFeatures() override;
 
@@ -308,7 +313,7 @@ class MockDBServer : public MockClusterServer {
                bool useAgencyMockConnection = true);
   ~MockDBServer();
 
-  TRI_vocbase_t* createDatabase(std::string const& name) override;
+  Database* createDatabase(std::string const& name) override;
   void dropDatabase(std::string const& name) override;
 
   void createShard(std::string const& dbName, std::string const& shardName,
@@ -322,7 +327,7 @@ class MockCoordinator : public MockClusterServer {
                   bool injectClusterIndexes = false);
   ~MockCoordinator();
 
-  TRI_vocbase_t* createDatabase(std::string const& name) override;
+  Database* createDatabase(std::string const& name) override;
   void dropDatabase(std::string const& name) override;
 
   std::pair<std::string, std::string> registerFakedDBServer(

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "VelocyPackStringLiteral.h"
@@ -26,7 +25,7 @@
 #include <velocypack/Options.h>
 #include <velocypack/Parser.h>
 
-auto arangodb::velocypack::operator"" _vpack(const char* json, size_t size)
+auto arangodb::velocypack::operator""_vpack(const char* json, size_t size)
     -> VPackString {
   VPackOptions options;
   options.checkAttributeUniqueness = true;

@@ -18,9 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Achim Brandt
-/// @author Dr. Frank Celler
-/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CommTask.h"
@@ -68,8 +65,27 @@ constexpr std::string_view pathPrefixApi("/_api/");
 constexpr std::string_view pathPrefixApiUser("/_api/user/");
 constexpr std::string_view pathPrefixApiToken("/_api/token/");
 constexpr std::string_view pathPrefixAdmin("/_admin/");
-constexpr std::string_view pathPrefixAdminAardvark("/_admin/aardvark/");
 constexpr std::string_view pathPrefixOpen("/_open/");
+constexpr std::string_view pathPrefixOpenAuth("/_open/auth");
+
+// The aardvark web UI serves a handful of static assets and harmless
+// metadata that must be reachable before the user has logged in (so the
+// UI itself can load and offer a login form). Unlike the rest of
+// /_admin/aardvark/, none of these need any database access, so they must
+// never be granted superuser rights - doing so previously allowed
+// unauthenticated AQL execution and other superuser-level operations via
+// any path merely prefixed with /_admin/aardvark/.
+constexpr std::string_view aardvarkIndexHtml("/_admin/aardvark/index.html");
+constexpr std::string_view aardvarkConfigJs("/_admin/aardvark/config.js");
+constexpr std::string_view aardvarkWhoAmI("/_admin/aardvark/whoAmI");
+constexpr std::string_view aardvarkStaticPrefix("/_admin/aardvark/static/");
+constexpr std::string_view aardvarkImgPrefix("/_admin/aardvark/img/");
+
+bool isPublicAardvarkPath(std::string_view path) {
+  return path == ::aardvarkIndexHtml || path == ::aardvarkConfigJs ||
+         path == ::aardvarkWhoAmI || path.starts_with(::aardvarkStaticPrefix) ||
+         path.starts_with(::aardvarkImgPrefix);
+}
 
 VocbasePtr lookupDatabaseFromRequest(
     application_features::ApplicationServer& server, GeneralRequest& req) {
@@ -407,6 +423,8 @@ void CommTask::finishExecution(GeneralResponse& res,
               1000.0));
     }
   }
+
+  _generalServerFeature.countHttpResponseCode(res.responseCode());
 }
 
 /// Push this request into the execution pipeline
@@ -847,9 +865,16 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
     if (result == Flow::Abort) {
       std::string const& username = req.user();
 
-      if (path == "/" || path.starts_with(::pathPrefixOpen) ||
-          path.starts_with(::pathPrefixAdminAardvark) ||
-          path == "/_admin/server/availability") {
+      if (path == "/" || ::isPublicAardvarkPath(path)) {
+        // These paths only ever serve static UI assets or harmless
+        // metadata, so they are always callable without prior
+        // authentication, and - unlike the other exceptions below - must
+        // NOT be escalated to superuser, since that would grant full
+        // (including AQL) access regardless of the caller's actual
+        // permissions.
+        result = Flow::Continue;
+      } else if (path.starts_with(::pathPrefixOpenAuth) ||
+                 path == "/_admin/server/availability") {
         // mop: these paths are always callable...they will be able to check
         // req.user when it could be validated
         result = Flow::Continue;

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PathValidator.h"
@@ -304,7 +303,7 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
     if (evaluator->needsPath()) {
       using ResultPathType =
           SingleProviderPathResult<ProviderType, PathStore, Step>;
-      std::unique_ptr<PathResultInterface> currentPath =
+      std::unique_ptr<IPathResult> currentPath =
           std::make_unique<ResultPathType>(step, _provider, _store);
       currentPath->toVelocyPack(pathBuilder);
       evaluator->injectPath(pathBuilder.slice());

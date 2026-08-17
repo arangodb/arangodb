@@ -18,12 +18,10 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Manuel Baesler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "StatisticsWorker.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/system-functions.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
@@ -31,7 +29,6 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/process-utils.h"
 #include "Basics/system-functions.h"
-#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
@@ -39,13 +36,14 @@
 #include "Logger/LoggerStream.h"
 #include "Random/RandomGenerator.h"
 #include "Metrics/Counter.h"
-#include "Metrics/MetricsFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/TtlFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
-#include "Statistics/ServerStatistics.h"
+#include "Metrics/MetricsFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
@@ -55,7 +53,6 @@
 #include "V8Server/V8DealerFeature.h"
 #endif
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Indexes.h"
 
 #include <velocypack/Exception.h>
@@ -895,10 +892,7 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder,
   RequestStatistics::getSnapshot(requestStats,
                                  stats::RequestStatisticsSource::ALL);
 
-  ServerStatistics const& serverInfo =
-      _vocbase.server()
-          .getFeature<metrics::MetricsFeature>()
-          .serverStatistics();
+  auto const& ts = _vocbase.engine().transactionStatistics();
 
   builder.openObject();
   if (!_clusterId.empty()) {
@@ -993,32 +987,16 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder,
 
   // _serverStatistics()
   builder.add("server", VPackValue(VPackValueType::Object));
-  builder.add("uptime", VPackValue(serverInfo.uptime()));
+  builder.add("uptime", VPackValue(metrics::MetricsFeature::serverUptime()));
   builder.add("physicalMemory", VPackValue(PhysicalMemory::getValue()));
   builder.add("transactions", VPackValue(VPackValueType::Object));
-  builder.add(
-      "started",
-      VPackValue(
-          serverInfo._transactionsStatistics._transactionsStarted.load()));
-  builder.add(
-      "aborted",
-      VPackValue(
-          serverInfo._transactionsStatistics._transactionsAborted.load()));
-  builder.add(
-      "committed",
-      VPackValue(
-          serverInfo._transactionsStatistics._transactionsCommitted.load()));
-  builder.add(
-      "intermediateCommits",
-      VPackValue(
-          serverInfo._transactionsStatistics._intermediateCommits.load()));
-  builder.add(
-      "readOnly",
-      VPackValue(serverInfo._transactionsStatistics._readTransactions.load()));
-  builder.add(
-      "dirtyReadOnly",
-      VPackValue(
-          serverInfo._transactionsStatistics._dirtyReadTransactions.load()));
+  builder.add("started", VPackValue(ts._transactionsStarted.load()));
+  builder.add("aborted", VPackValue(ts._transactionsAborted.load()));
+  builder.add("committed", VPackValue(ts._transactionsCommitted.load()));
+  builder.add("intermediateCommits",
+              VPackValue(ts._intermediateCommits.load()));
+  builder.add("readOnly", VPackValue(ts._readTransactions.load()));
+  builder.add("dirtyReadOnly", VPackValue(ts._dirtyReadTransactions.load()));
   builder.close();
 
   // export v8 statistics

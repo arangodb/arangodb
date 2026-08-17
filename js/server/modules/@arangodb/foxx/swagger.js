@@ -20,7 +20,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Alan Plum
 // //////////////////////////////////////////////////////////////////////////////
 
 const NotFound = require('http-errors').NotFound;
