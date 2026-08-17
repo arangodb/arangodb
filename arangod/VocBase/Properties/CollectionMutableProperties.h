@@ -68,9 +68,7 @@ auto inspect(Inspector& f, CollectionMutableProperties& props) {
     }
   });
   return f.object(props).fields(
-      f.field(StaticStrings::DataSourceName, props.name)
-          .fallback(f.keep())
-          .invariant(UtilityInvariants::isNonEmpty),
+      std::move(nameField),
       f.field(StaticStrings::Schema, props.schema)
           .fallback(f.keep())
           .invariant(CollectionMutableProperties::Invariants::isJsonSchema),

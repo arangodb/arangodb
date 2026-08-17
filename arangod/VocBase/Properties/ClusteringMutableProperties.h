@@ -48,7 +48,7 @@ struct ClusteringMutableProperties {
     struct ReplicationSatellite {
       using MemoryType = uint64_t;
       using SerializedType = arangodb::velocypack::Builder;
-     
+
       static arangodb::inspection::Status toSerialized(MemoryType v,
                                                        SerializedType& result);
       static arangodb::inspection::Status fromSerialized(
