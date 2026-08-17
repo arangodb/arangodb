@@ -24,6 +24,7 @@
 
 #include "Basics/StaticStrings.h"
 #include "Inspection/Types.h"
+#include "VocBase/Properties/InspectContexts.h"
 
 #include <cstdint>
 #include <variant>
@@ -117,10 +118,27 @@ auto inspect(Inspector& f, PaddedKeyGeneratorProperties& props) {
       f.field(StaticStrings::LastValue, props.lastValue).fallback(f.keep()));
 }
 
+/// @brief Only ever produced by the server itself, while running a database
+/// upgrade. Never accepted as user input: UpgradeKeyGenerator::generate()
+/// crashes by design, so it must not be reachable through the create API.
+struct UpgradeKeyGeneratorProperties {
+  bool allowUserKeys{false};
+
+  bool operator==(UpgradeKeyGeneratorProperties const&) const noexcept =
+      default;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, UpgradeKeyGeneratorProperties& props) {
+  return f.object(props).fields(
+      f.field(StaticStrings::AllowUserKeys, props.allowUserKeys)
+          .fallback(f.keep()));
+}
+
 using KeyGeneratorProperties =
     std::variant<TraditionalKeyGeneratorProperties,
                  AutoIncrementGeneratorProperties, UUIDKeyGeneratorProperties,
-                 PaddedKeyGeneratorProperties>;
+                 PaddedKeyGeneratorProperties, UpgradeKeyGeneratorProperties>;
 
 template<class Inspector>
 auto inspect(Inspector& f, KeyGeneratorProperties& props) {
@@ -136,11 +154,23 @@ auto inspect(Inspector& f, KeyGeneratorProperties& props) {
       return status;
     }
   }
-  return f.variant(props).embedded("type").alternatives(
-      inspection::type<TraditionalKeyGeneratorProperties>("traditional"),
-      inspection::type<AutoIncrementGeneratorProperties>("autoincrement"),
-      inspection::type<UUIDKeyGeneratorProperties>("uuid"),
-      inspection::type<PaddedKeyGeneratorProperties>("padded"));
+  if constexpr (isInternalContext<Inspector>) {
+    // A collection whose parameters were written while a database upgrade was
+    // running has "upgrade" stored on disk, so the internal path has to accept
+    // it. The create API deliberately does not.
+    return f.variant(props).embedded("type").alternatives(
+        inspection::type<TraditionalKeyGeneratorProperties>("traditional"),
+        inspection::type<AutoIncrementGeneratorProperties>("autoincrement"),
+        inspection::type<UUIDKeyGeneratorProperties>("uuid"),
+        inspection::type<PaddedKeyGeneratorProperties>("padded"),
+        inspection::type<UpgradeKeyGeneratorProperties>("upgrade"));
+  } else {
+    return f.variant(props).embedded("type").alternatives(
+        inspection::type<TraditionalKeyGeneratorProperties>("traditional"),
+        inspection::type<AutoIncrementGeneratorProperties>("autoincrement"),
+        inspection::type<UUIDKeyGeneratorProperties>("uuid"),
+        inspection::type<PaddedKeyGeneratorProperties>("padded"));
+  }
 }
 
 }  // namespace arangodb
