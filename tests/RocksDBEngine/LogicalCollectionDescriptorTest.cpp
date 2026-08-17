@@ -26,6 +26,8 @@
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "Basics/StaticStrings.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/Properties/CreateCollectionBody.h"
+#include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/Properties/UserInputCollectionProperties.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -57,6 +59,17 @@ VPackBuilder representativeCreateSlice() {
 
 constexpr std::string_view kExpectedBooksJson =
     R"({"allowUserKeys":false,"cacheEnabled":false,"computedValues":null,"deleted":false,"internalValidatorType":0,"isDisjoint":false,"isSmart":false,"isSmartChild":false,"isSystem":false,"keyOptions":{"allowUserKeys":false,"type":"traditional","lastValue":0},"minReplicationFactor":1,"name":"books","numberOfShards":1,"replicationFactor":1,"schema":null,"shardKeys":["_key"],"shards":{},"status":3,"statusString":"loaded","supportsRBAC":false,"syncByRevision":false,"type":2,"usesRevisionsAsDocumentIds":false,"version":9,"waitForSync":true,"writeConcern":1})";
+
+VPackBuilder userCreateSlice() {
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add(VPackObjectIterator(representativeCreateSlice().slice()));
+  // Collections::create injects this for every user create on a single
+  // server or coordinator; without it the two paths legitimately disagree
+  builder.add(StaticStrings::UsesRevisionsAsDocumentIds, VPackValue(true));
+  builder.close();
+  return builder;
+}
 
 }  // namespace
 
@@ -109,18 +122,18 @@ TEST_F(StorageEngineDataTest, CollectionDescriptor_roundTripIsStable) {
   auto sliceBuilder = representativeCreateSlice();
 
   CollectionDescriptor first;
-  auto status = velocypack::deserializeWithStatus(
-      sliceBuilder.slice(), first,
-      {.ignoreUnknownFields = true}, InspectInternalContext{});
+  auto status = velocypack::deserializeWithStatus(sliceBuilder.slice(), first,
+                                                  {.ignoreUnknownFields = true},
+                                                  InspectInternalContext{});
   ASSERT_TRUE(status.ok()) << status.error();
 
   VPackBuilder out;
   velocypack::serializeWithContext(out, first, InspectInternalContext{});
 
   CollectionDescriptor second;
-  status = velocypack::deserializeWithStatus(
-      out.slice(), second,
-      {.ignoreUnknownFields = true}, InspectInternalContext{});
+  status = velocypack::deserializeWithStatus(out.slice(), second,
+                                             {.ignoreUnknownFields = true},
+                                             InspectInternalContext{});
   ASSERT_TRUE(status.ok()) << status.error();
 
   EXPECT_EQ(first, second) << out.slice().toJson();
@@ -189,4 +202,56 @@ TEST_F(StorageEngineDataTest, LogicalCollection_serializationOutputIsStable) {
                 .slice()
                 .toJson(),
             kExpectedBooksJson);
+}
+
+TEST_F(StorageEngineDataTest, CreateCollection_descriptorPathMatchesSlicePath) {
+  auto sliceBuilder = userCreateSlice();
+
+  // baseline: the existing slice path
+  auto viaSlice = makeDatabase("viaSlice", 42);
+  auto expected = viaSlice->createCollection(sliceBuilder.slice());
+  engine().createCollection(*viaSlice, *expected);
+
+  // same input, taken through CreateCollectionBody and the descriptor
+  DatabaseConfiguration config{
+      []() { return DataSourceId(42); },
+      [](std::string const&) -> ResultT<UserInputCollectionProperties> {
+        return {TRI_ERROR_INTERNAL};
+      }};
+  auto body =
+      CreateCollectionBody::fromCreateAPIBody(sliceBuilder.slice(), config,
+                                              /*backwardsCompatibility*/ false);
+  ASSERT_TRUE(body.ok()) << body.errorMessage();
+
+  auto viaDescriptor = makeDatabase("viaDescriptor", 43);
+  auto actual = viaDescriptor->createCollection(body->toDescriptor());
+  engine().createCollection(*viaDescriptor, *actual);
+
+  std::unordered_set<std::string> const ignore{
+      StaticStrings::ObjectId,         StaticStrings::DataSourceGuid,
+      StaticStrings::DataSourceId,     StaticStrings::DataSourceCid,
+      StaticStrings::DataSourcePlanId, StaticStrings::Indexes};
+
+  EXPECT_EQ(actual
+                ->toVelocyPackIgnore(
+                    ignore, LogicalDataSource::Serialization::Persistence)
+                .slice()
+                .toJson(),
+            expected
+                ->toVelocyPackIgnore(
+                    ignore, LogicalDataSource::Serialization::Persistence)
+                .slice()
+                .toJson());
+}
+
+TEST_F(StorageEngineDataTest, UsesRevisionsAsDocumentIds_defaultsDiffer) {
+  // The descriptor defaults to true, matching what Collections::create injects
+  // for a user create. The slice constructor defaults to false, which is what
+  // the agency's own collections and pre-v37 markers rely on.
+  CollectionDescriptor d;
+  EXPECT_TRUE(d.internal.usesRevisionsAsDocumentIds);
+
+  auto database = makeDatabase("testDatabase", 42);
+  auto collection = database->createCollection(representativeCreateSlice().slice());
+  EXPECT_FALSE(collection->usesRevisionsAsDocumentIds());
 }
