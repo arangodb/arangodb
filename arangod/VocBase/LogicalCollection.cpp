@@ -156,6 +156,9 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
       _usesRevisionsAsDocumentIds(Helper::getBooleanValue(
           info, StaticStrings::UsesRevisionsAsDocumentIds, false)),
       _syncByRevision(determineSyncByRevision()),
+      _waitForSync(_properties->clusteringMutable.waitForSync),
+      _supportsRBAC(_properties->mutableProps.supportsRBAC),
+      _internalValidatorTypes(_properties->internal.internalValidatorType),
       _countCache(defaultCountCacheTtl(system())),
       _physical(
           vocbase.engine().createPhysicalCollection(*this, *_properties)) {
@@ -164,11 +167,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
     _usesRevisionsAsDocumentIds = false;
     _syncByRevision.store(false);
   }
-
-  updateDescriptor([this](CollectionDescriptor& d) {
-    d.internal.usesRevisionsAsDocumentIds = _usesRevisionsAsDocumentIds;
-    d.internal.syncByRevision = _syncByRevision.load();
-  });
 
   TRI_ASSERT(info.isObject());
 
@@ -276,15 +274,6 @@ Result LogicalCollection::updateSchema(VPackSlice schema) {
     }
 
     std::atomic_store_explicit(&_schema, newSchema, std::memory_order_release);
-    updateDescriptor([&](CollectionDescriptor& d) {
-      if (schema.isEmptyObject()) {
-        d.mutableProps.schema = std::nullopt;
-      } else {
-        VPackBuilder b;
-        b.add(schema);
-        d.mutableProps.schema = std::move(b);
-      }
-    });
   }
 
   return {};
@@ -302,11 +291,6 @@ Result LogicalCollection::updateComputedValues(VPackSlice computedValues) {
 
     std::atomic_store_explicit(&_computedValues, result.get(),
                                std::memory_order_release);
-    updateDescriptor([&](CollectionDescriptor& d) {
-      VPackBuilder b;
-      b.add(computedValues);
-      d.mutableProps.computedValues = std::move(b);
-    });
   }
   return {};
 }
@@ -355,7 +339,32 @@ bool LogicalCollection::cacheEnabled() const noexcept {
 }
 
 bool LogicalCollection::supportsRBAC() const noexcept {
-  return properties()->mutableProps.supportsRBAC;
+  return _supportsRBAC.load(std::memory_order_relaxed);
+}
+
+// Fills a descriptor from the live state so that inspect() can write it out.
+// The stored descriptor supplies the immutable fields; every field that
+// LogicalCollection owns is overwritten here with the current value.
+CollectionDescriptor LogicalCollection::toDescriptor() const {
+  auto d = *properties();
+
+  d.mutableProps.name = name();
+  d.mutableProps.supportsRBAC = _supportsRBAC.load(std::memory_order_relaxed);
+  d.mutableProps.cacheEnabled = cacheEnabled();
+
+  d.clusteringMutable.waitForSync =
+      _waitForSync.load(std::memory_order_relaxed);
+  d.clusteringMutable.replicationFactor = replicationFactor();
+  d.clusteringMutable.writeConcern = writeConcern();
+
+  d.internal.usesRevisionsAsDocumentIds = _usesRevisionsAsDocumentIds;
+  d.internal.syncByRevision = _syncByRevision.load(std::memory_order_relaxed);
+  d.internal.internalValidatorType =
+      _internalValidatorTypes.load(std::memory_order_relaxed);
+
+  // schema and computedValues are written straight from the compiled
+  // _schema / _computedValues, so the descriptor's copies are never read.
+  return d;
 }
 
 bool LogicalCollection::waitForSync() const noexcept {
@@ -373,7 +382,7 @@ bool LogicalCollection::waitForSync() const noexcept {
     // while we are still in this method. Let's just take the
     // value at creation then.
   }
-  return properties()->clusteringMutable.waitForSync;
+  return _waitForSync.load(std::memory_order_relaxed);
 }
 
 size_t LogicalCollection::numberOfShards() const noexcept {
@@ -624,23 +633,15 @@ Result LogicalCollection::rename(std::string&& newName) {
   // Okay we can finally rename safely
   try {
     name(std::move(newName));
-    updateDescriptor(
-        [this](CollectionDescriptor& d) { d.mutableProps.name = name(); });
     vocbase().engine().changeCollection(vocbase(), *this);
     ++_v8CacheVersion;
   } catch (basics::Exception const& ex) {
     // Engine Rename somehow failed. Reset to old name
     name(std::move(oldName));
-    updateDescriptor(
-        [this](CollectionDescriptor& d) { d.mutableProps.name = name(); });
-
     return ex.code();
   } catch (...) {
     // Engine Rename somehow failed. Reset to old name
     name(std::move(oldName));
-    updateDescriptor(
-        [this](CollectionDescriptor& d) { d.mutableProps.name = name(); });
-
     return {TRI_ERROR_INTERNAL};
   }
 
@@ -784,10 +785,10 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
   build.add(StaticStrings::Version,
             VPackValue(static_cast<uint32_t>(_version)));
   // Collection Flags
-  auto props = properties();
+  auto props = toDescriptor();
 
   VPackBuilder tmp;
-  velocypack::serializeWithContext(tmp, *props, InspectInternalContext{});
+  velocypack::serializeWithContext(tmp, props, InspectInternalContext{});
   static constexpr std::array kEmittedElsewhere{
       // LogicalDataSource::properties() wrote these already
       "name", "isSystem",
@@ -801,7 +802,9 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
       "objectId", "cacheEnabled",
       // includeVelocyPackEnterprise() writes this only for smart vertex
       // collections, a condition the descriptor does not know about
-      "smartGraphAttribute"};
+      "smartGraphAttribute",
+      // derived from the compiled _schema / _computedValues below
+      "schema", "computedValues"};
 
   for (auto it : VPackObjectIterator(tmp.slice())) {
     auto key = it.key.stringView();
@@ -824,6 +827,14 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
   build.add(StaticStrings::KeyOptions, VPackValue(VPackValueType::Object));
   keyGenerator().toVelocyPack(build);
   build.close();
+
+  // Schema
+  build.add(VPackValue(StaticStrings::Schema));
+  schemaToVelocyPack(build);
+
+  // Computed Values
+  build.add(VPackValue(StaticStrings::ComputedValues));
+  computedValuesToVelocyPack(build);
 
   // Physical Information
   getPhysical()->getPropertiesVPack(build);
@@ -1133,20 +1144,15 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
   }
 
   TRI_ASSERT(!isSatellite() || replicationFactor == 0);
-  auto snapshot = properties();
-  auto waitForSync =
-      Helper::getBooleanValue(slice, StaticStrings::WaitForSyncString,
-                              snapshot->clusteringMutable.waitForSync);
+  auto waitForSync = Helper::getBooleanValue(
+      slice, StaticStrings::WaitForSyncString,
+      _waitForSync.load(std::memory_order_relaxed));
   auto supportsRBAC = Helper::getBooleanValue(
-      slice, StaticStrings::SupportsRBAC, snapshot->mutableProps.supportsRBAC);
+      slice, StaticStrings::SupportsRBAC,
+      _supportsRBAC.load(std::memory_order_relaxed));
 
-  updateDescriptor([&](CollectionDescriptor& d) {
-    d.clusteringMutable.waitForSync = waitForSync;
-    d.mutableProps.supportsRBAC = supportsRBAC;
-    d.mutableProps.cacheEnabled = physicalProps.cacheEnabled;
-    d.clusteringMutable.replicationFactor = replicationFactor;
-    d.clusteringMutable.writeConcern = writeConcern;
-  });
+  _waitForSync.store(waitForSync, std::memory_order_relaxed);
+  _supportsRBAC.store(supportsRBAC, std::memory_order_relaxed);
 
   _sharding->setWriteConcernAndReplicationFactor(writeConcern,
                                                  replicationFactor);
@@ -1361,16 +1367,11 @@ Result LogicalCollection::validate(std::shared_ptr<ValidatorBase> const& schema,
 }
 
 uint64_t LogicalCollection::getInternalValidatorTypes() const noexcept {
-  return properties()->internal.internalValidatorType;
+  return _internalValidatorTypes.load(std::memory_order_relaxed);
 }
 
 void LogicalCollection::setInternalValidatorTypes(uint64_t type) {
-  auto updated = std::make_shared<CollectionDescriptor>(*properties());
-  updated->internal.internalValidatorType = type;
-  std::atomic_store_explicit(
-      &_properties,
-      std::shared_ptr<CollectionDescriptor const>(std::move(updated)),
-      std::memory_order_release);
+  _internalValidatorTypes.store(type, std::memory_order_relaxed);
 }
 
 void LogicalCollection::addInternalValidator(

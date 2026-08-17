@@ -175,7 +175,8 @@ class LogicalCollection : public LogicalDataSource {
     return !_smartJoinAttribute.empty();
   }
   bool hasSmartGraphAttribute() const noexcept {
-    return properties()->internal.smartGraphAttribute.has_value();
+    return std::atomic_load_explicit(&_smartGraphAttribute,
+                                     std::memory_order_acquire) != nullptr;
   }
 
   bool isLocalSmartEdgeCollection() const noexcept;
@@ -418,18 +419,8 @@ class LogicalCollection : public LogicalDataSource {
   }
 
  private:
-  // Applies `fn` to a copy of the current descriptor and publishes it.
-  // Callers must hold _infoLock or run during construction: this is a
-  // read-copy-modify-store, so concurrent callers would lose an update.
-  template<class F>
-  void updateDescriptor(F&& fn) {
-    auto updated = std::make_shared<CollectionDescriptor>(*properties());
-    fn(*updated);
-    std::atomic_store_explicit(
-        &_properties,
-        std::shared_ptr<CollectionDescriptor const>(std::move(updated)),
-        std::memory_order_release);
-  }
+  // Assembles a descriptor from the live state, for serialization.
+  CollectionDescriptor toDescriptor() const;
 
   void initializeSmartAttributesBefore(velocypack::Slice info);
   void initializeSmartAttributesAfter(velocypack::Slice info);
@@ -492,8 +483,22 @@ class LogicalCollection : public LogicalDataSource {
 
   std::atomic<bool> _syncByRevision;
 
+  // The declared value. waitForSync() prefers the collection group's value
+  // when this is a replication-2 shard, but this is what gets serialized.
+  std::atomic<bool> _waitForSync;
+
+  std::atomic<bool> _supportsRBAC;
+
+  // Bitmap of InternalValidatorType. Changed by the maintenance during
+  // cluster upgrades only.
+  std::atomic<uint64_t> _internalValidatorTypes;
+
 #ifdef USE_ENTERPRISE
-  // the smartGraphAttribute lives in `_properties`, which is copy-on-write
+  // Set once, either during construction or by the DBServer maintenance
+  // during an upgrade. `nullptr` means "not set". Must be used with atomic
+  // accessors only!! Acquire/release access (load/store).
+  std::shared_ptr<std::string const> _smartGraphAttribute;
+
   std::string _smartJoinAttribute;
 #endif
 
