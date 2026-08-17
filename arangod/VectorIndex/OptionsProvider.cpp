@@ -20,7 +20,7 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "VectorIndexOptionsProvider.h"
+#include "OptionsProvider.h"
 
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -29,7 +29,7 @@ namespace arangodb::vector_index {
 
 using namespace arangodb::options;
 
-void VectorIndexOptionsProvider::declareOptionsImpl(
+void OptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> programOptions,
     VectorIndexFeatureOptions& opts) {
   programOptions

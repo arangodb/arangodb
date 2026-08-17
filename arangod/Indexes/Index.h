@@ -48,7 +48,7 @@ struct IndexStreamOptions;
 struct IndexDistinctScanOptions;
 
 namespace vector {
-struct UserVectorIndexDefinition;
+struct UserDefinition;
 }  // namespace vector
 
 using StoredValues = std::vector<std::vector<basics::AttributeName>>;
@@ -424,8 +424,7 @@ class Index {
   virtual std::unique_ptr<AqlIndexDistinctScanIterator> distinctScanFor(
       transaction::Methods* trx, IndexDistinctScanOptions const&);
 
-  virtual vector::UserVectorIndexDefinition const& getVectorIndexDefinition()
-      const;
+  virtual vector::UserDefinition const& getVectorIndexDefinition() const;
 
   /// @brief Returns true if the vector index is trained and ready for queries.
   /// Default returns false. Overridden only by vector index implementations.

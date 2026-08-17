@@ -1023,8 +1023,7 @@ bool Index::isVectorIndexReady() const noexcept { return false; }
 
 bool Index::isLinearScanEnabled() const noexcept { return false; }
 
-vector::UserVectorIndexDefinition const& Index::getVectorIndexDefinition()
-    const {
+vector::UserDefinition const& Index::getVectorIndexDefinition() const {
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_NOT_IMPLEMENTED,

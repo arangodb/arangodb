@@ -57,7 +57,7 @@
 #include "V8/V8PlatformOptionsProvider.h"
 #include "V8/V8SecurityOptionsProvider.h"
 #include "V8Server/FoxxOptionsProvider.h"
-#include "VectorIndex/VectorIndexOptionsProvider.h"
+#include "VectorIndex/OptionsProvider.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Audit/AuditOptionsProvider.h"
@@ -113,7 +113,7 @@ using ArangodOptionProviders = CoreOptionProviders<
     TempOptionsProvider, TemporaryStorageOptionsProvider,
     transaction::ManagerOptionsProvider, TtlOptionsProvider,
     UpgradeOptionsProvider, V8PlatformOptionsProvider,
-    V8SecurityOptionsProvider, vector_index::VectorIndexOptionsProvider
+    V8SecurityOptionsProvider, vector_index::OptionsProvider
 #ifdef USE_ENTERPRISE
     ,
     AuditOptionsProvider, LicenseOptionsProvider, RCloneOptionsProvider,

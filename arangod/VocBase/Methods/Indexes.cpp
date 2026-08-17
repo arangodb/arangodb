@@ -537,35 +537,53 @@ futures::Future<arangodb::Result> Indexes::ensureIndex(
       auto isUnique =
           indexDef.get(arangodb::StaticStrings::IndexUnique).isTrue();
 
-      /* the following combinations of shardKeys and indexKeys are allowed/not
-       allowed:
-
-       shardKeys     indexKeys
-       a             a            ok
-       a             b        not ok
-       a             a b          ok
-       a b             a      not ok
-       a b             b      not ok
-       a b           a b          ok
-       a b           a b c        ok
-       a b c           a b    not ok
-       a b c         a b c        ok
-       */
-
-      if (isUnique && collection.numberOfShards() > 1) {
-        // unique index, now check if fields and shard keys match
-
-        std::vector<std::string> const& shardKeys = collection.shardKeys();
+      if (isUnique) {
         std::unordered_set<std::string_view> indexKeys =
             extractRelevantKeysForSharding(indexDef);
 
-        // all shard-keys must be covered by the index
-        for (auto& it : shardKeys) {
-          if (indexKeys.find(it) == indexKeys.end()) {
+        if (collection.isSmart() && collection.type() == TRI_COL_TYPE_EDGE) {
+          // A unique index can
+          // only be enforced if the indexed attributes pin a document
+          // to a single shard in each of them. That holds for _key (and hence
+          // _id), which encodes both smart values, and for _from and _to
+          // together.
+          if (!indexKeys.contains(StaticStrings::KeyString) &&
+              !indexKeys.contains(StaticStrings::IdString) &&
+              !(indexKeys.contains(StaticStrings::FromString) &&
+                indexKeys.contains(StaticStrings::ToString))) {
             ensureIndexResult = TRI_ERROR_CLUSTER_UNSUPPORTED;
             co_return Result(TRI_ERROR_CLUSTER_UNSUPPORTED,
-                             absl::StrCat("shard key '", it,
-                                          "' must be present in unique index"));
+                             "a unique index on a smart edge collection must "
+                             "contain either '_key', '_id', or both '_from' "
+                             "and '_to' in its fields");
+          }
+        } else if (collection.numberOfShards() > 1) {
+          // unique index, now check if fields and shard keys match
+
+          /* the following combinations of shardKeys and indexKeys are
+           allowed/not allowed:
+
+           shardKeys     indexKeys
+           a             a            ok
+           a             b        not ok
+           a             a b          ok
+           a b             a      not ok
+           a b             b      not ok
+           a b           a b          ok
+           a b           a b c        ok
+           a b c           a b    not ok
+           a b c         a b c        ok
+           */
+
+          // all shard-keys must be covered by the index
+          for (auto const& it : collection.shardKeys()) {
+            if (!indexKeys.contains(it)) {
+              ensureIndexResult = TRI_ERROR_CLUSTER_UNSUPPORTED;
+              co_return Result(
+                  TRI_ERROR_CLUSTER_UNSUPPORTED,
+                  absl::StrCat("shard key '", it,
+                               "' must be present in unique index"));
+            }
           }
         }
       }

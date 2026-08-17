@@ -20,7 +20,7 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "VectorIndex/VectorIndexBuildManager.h"
+#include "VectorIndex/BuildManager.h"
 
 #include "Basics/Exceptions.h"
 #include "Basics/GlobalResourceMonitor.h"
@@ -79,10 +79,11 @@ DECLARE_HISTOGRAM(arangodb_vector_index_ingestion_duration,
 
 namespace arangodb::vector {
 
-VectorIndexBuildManager::VectorIndexBuildManager(
-    DatabaseFeature& dbFeature, MaintenanceFeature& maintenance,
-    metrics::IRegistry& metricsRegistry, Scheduler& scheduler,
-    std::chrono::duration<double> retryBackoff)
+BuildManager::BuildManager(DatabaseFeature& dbFeature,
+                           MaintenanceFeature& maintenance,
+                           metrics::IRegistry& metricsRegistry,
+                           Scheduler& scheduler,
+                           std::chrono::duration<double> retryBackoff)
     : _dbFeature(dbFeature),
       _maintenance(maintenance),
       _scheduler(scheduler),
@@ -96,13 +97,13 @@ VectorIndexBuildManager::VectorIndexBuildManager(
       _ingestionDuration(
           metricsRegistry.add(arangodb_vector_index_ingestion_duration{})) {}
 
-void VectorIndexBuildManager::start() {
+void BuildManager::start() {
   _thread = std::jthread([this](std::stop_token stopToken) { run(stopToken); });
 }
 
-void VectorIndexBuildManager::beginShutdown() { _thread.request_stop(); }
+void BuildManager::beginShutdown() { _thread.request_stop(); }
 
-void VectorIndexBuildManager::stop() {
+void BuildManager::stop() {
   beginShutdown();
 
   if (_thread.joinable()) {
@@ -110,8 +111,7 @@ void VectorIndexBuildManager::stop() {
   }
 }
 
-futures::Future<Result> VectorIndexBuildManager::waitForIndexReady(
-    IndexId indexId) {
+futures::Future<Result> BuildManager::waitForIndexReady(IndexId indexId) {
   futures::Promise<Result> promise;
   auto future = promise.getFuture();
   {
@@ -121,8 +121,7 @@ futures::Future<Result> VectorIndexBuildManager::waitForIndexReady(
   return future;
 }
 
-void VectorIndexBuildManager::fulfillWaiters(IndexId indexId,
-                                             Result const& result) {
+void BuildManager::fulfillWaiters(IndexId indexId, Result const& result) {
   std::vector<futures::Promise<Result>> waiters;
   {
     std::lock_guard lock(_waitersMutex);
@@ -143,7 +142,7 @@ void VectorIndexBuildManager::fulfillWaiters(IndexId indexId,
   }
 }
 
-void VectorIndexBuildManager::fulfillAllWaiters(Result const& result) {
+void BuildManager::fulfillAllWaiters(Result const& result) {
   std::unordered_map<IndexId::BaseType, std::vector<futures::Promise<Result>>>
       waiters;
   {
@@ -161,9 +160,9 @@ void VectorIndexBuildManager::fulfillAllWaiters(Result const& result) {
   }
 }
 
-bool VectorIndexBuildManager::shouldSkipRetry(
-    FailedBuildsMap const& failedBuilds, std::uint64_t objectId,
-    std::uint64_t currentDocCount) const {
+bool BuildManager::shouldSkipRetry(FailedBuildsMap const& failedBuilds,
+                                   std::uint64_t objectId,
+                                   std::uint64_t currentDocCount) const {
   auto const it = failedBuilds.find(objectId);
   if (it == failedBuilds.end()) {
     return false;
@@ -178,7 +177,7 @@ bool VectorIndexBuildManager::shouldSkipRetry(
   return !(backoffElapsed || docCountChanged);
 }
 
-void VectorIndexBuildManager::run(std::stop_token stopToken) {
+void BuildManager::run(std::stop_token stopToken) {
 #ifdef TRI_HAVE_SYS_PRCTL_H
   pthread_setname_np(pthread_self(), "VecIdxBuild");
 #endif
@@ -208,13 +207,13 @@ void VectorIndexBuildManager::run(std::stop_token stopToken) {
       scanAndBuild(stopToken, failedBuilds);
     } catch (std::exception const& ex) {
       LOG_TOPIC("e170b", WARN, Logger::ENGINES)
-          << "VectorIndexBuildManager scan error: " << ex.what();
+          << "BuildManager scan error: " << ex.what();
     }
   }
 }
 
-void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
-                                           FailedBuildsMap& failedBuilds) {
+void BuildManager::scanAndBuild(std::stop_token const& stopToken,
+                                FailedBuildsMap& failedBuilds) {
   // we use these ones to prune failedBuilds(for dropped indexes)
   std::unordered_set<std::uint64_t> seenObjectIds;
   // we use this one to prune waiters(for dropped indexes)
@@ -357,13 +356,13 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
   }
 }
 
-void VectorIndexBuildManager::buildIndex(TRI_vocbase_t const& vocbase,
-                                         LogicalCollection const& coll,
-                                         std::shared_ptr<Index> const& idx,
-                                         std::uint64_t numDocs,
-                                         std::uint64_t unusableIndexesCount,
-                                         std::stop_token const& stopToken,
-                                         FailedBuildsMap& failedBuilds) {
+void BuildManager::buildIndex(TRI_vocbase_t const& vocbase,
+                              LogicalCollection const& coll,
+                              std::shared_ptr<Index> const& idx,
+                              std::uint64_t numDocs,
+                              std::uint64_t unusableIndexesCount,
+                              std::stop_token const& stopToken,
+                              FailedBuildsMap& failedBuilds) {
   auto& vecIdx = static_cast<RocksDBVectorIndex&>(*idx);
 
   LOG_TOPIC("e171b", INFO, Logger::ENGINES)
@@ -437,16 +436,16 @@ void VectorIndexBuildManager::buildIndex(TRI_vocbase_t const& vocbase,
                         std::memory_order_relaxed);
 }
 
-void VectorIndexBuildManager::markDatabaseDirty(std::string const& database) {
+void BuildManager::markDatabaseDirty(std::string const& database) {
   if (ServerState::instance()->isDBServer()) {
     _maintenance.addDirty(database);
   }
 }
 
-void VectorIndexBuildManager::reportIndexError(TRI_vocbase_t const& vocbase,
-                                               LogicalCollection const& coll,
-                                               RocksDBVectorIndex const& vecIdx,
-                                               Result const& error) {
+void BuildManager::reportIndexError(TRI_vocbase_t const& vocbase,
+                                    LogicalCollection const& coll,
+                                    RocksDBVectorIndex const& vecIdx,
+                                    Result const& error) {
   auto const& database = vocbase.name();
   auto const collection = std::to_string(coll.planId().id());
   auto const& shard = coll.name();
@@ -476,9 +475,9 @@ void VectorIndexBuildManager::reportIndexError(TRI_vocbase_t const& vocbase,
   markDatabaseDirty(database);
 }
 
-void VectorIndexBuildManager::clearIndexError(
-    TRI_vocbase_t const& vocbase, LogicalCollection const& coll,
-    RocksDBVectorIndex const& vecIdx) {
+void BuildManager::clearIndexError(TRI_vocbase_t const& vocbase,
+                                   LogicalCollection const& coll,
+                                   RocksDBVectorIndex const& vecIdx) {
   auto const& database = vocbase.name();
   auto const collection = std::to_string(coll.planId().id());
   auto const& shard = coll.name();

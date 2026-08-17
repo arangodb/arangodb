@@ -29,7 +29,7 @@
 
 #include "Basics/StaticStrings.h"
 #include "RocksDBIndex.h"
-#include "VectorIndex/VectorIndexDefinition.h"
+#include "VectorIndex/Definition.h"
 #include "VectorIndex/VectorReadBatch.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBVectorIndexBuilder.h"
@@ -76,15 +76,14 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   void toVelocyPack(
       arangodb::velocypack::Builder& builder,
       std::underlying_type<Index::Serialize>::type flags) const override;
-  vector::UserVectorIndexDefinition const& getDefinition() const noexcept {
+  vector::UserDefinition const& getDefinition() const noexcept {
     return _definition;
   }
 
   vector::SearchResult readBatch(vector::VectorSearchConfig const& config,
                                  vector::VectorSearchContext const& ctx) const;
 
-  vector::UserVectorIndexDefinition const& getVectorIndexDefinition()
-      const override;
+  vector::UserDefinition const& getVectorIndexDefinition() const override;
 
   bool isVectorIndexReady() const noexcept override;
 
@@ -119,7 +118,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   /// @brief On-disk format version for this index's list entries. Internal
   /// detail; never surfaced through toVelocyPack or the REST API.
-  vector::VectorIndexFormatVersion formatVersion() const noexcept {
+  vector::FormatVersion formatVersion() const noexcept {
     return _formatVersion;
   }
 
@@ -182,13 +181,12 @@ class RocksDBVectorIndex final : public RocksDBIndex {
       containers::NodeHashMap<LocalDocumentId, velocypack::SharedSlice>*
           captureSink) const;
 
-  vector::VectorIndexMetadata loadVectorIndexMetadata(
-      velocypack::Slice info) const;
+  vector::Metadata loadVectorIndexMetadata(velocypack::Slice info) const;
 
-  vector::UserVectorIndexDefinition _definition;
+  vector::UserDefinition _definition;
   std::shared_ptr<faiss::IndexIVF> _faissIndex;
   vector::TrainedData _trainedData;
-  vector::VectorIndexFormatVersion _formatVersion{
+  vector::FormatVersion _formatVersion{
       vector::kCurrentVectorIndexFormatVersion};
   StoredValues const _storedValues;
 
