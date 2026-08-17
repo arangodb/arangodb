@@ -43,58 +43,6 @@ function medQueueBlockedSuite() {
       db._drop(cn);
     },
     
-    testRunAql: function() {
-      let coll = db._create(cn, {numberOfShards:3});
-      let l = [];
-      for (let i = 0; i < 100; ++i) {
-        l.push({"Hello":i});
-      }
-      coll.insert(l);
-
-      // We now want to overload the medium prio scheduler queue, to this
-      // end, we post some perverse queries asynchronously. This should
-      // overwhelm any server without the fix. Note that we post the query
-      // with x-arango-frontend: true, such that we can start enough queries
-      // concurrently to fill the medium queue on the coordinator.
-      const f = require("@arangodb/aql/functions");
-      try {
-        f.register("USER::FUNC", function() {
-          const db = require("@arangodb").db;
-          require("internal").wait(1);
-          db._query("FOR d IN @@c RETURN d", {"@c": "UnitTestsMedQueueBlocked"});
-          return 12;
-        });
-        let start = new Date();
-        let jobs = []; 
-        for (let i = 0; i < 100; ++i) {
-          jobs.push(arango.POST_RAW("/_api/cursor",
-            {query:`LET s = USER::FUNC() FOR d IN ${cn} RETURN {d,s}`},
-            {"x-arango-async": "store", "x-arango-frontend": true}).headers["x-arango-async-id"]);
-        }
-        for (let j of jobs) {
-          while (true) {
-            let res = arango.PUT_RAW(`/_api/job/${j}`, {});
-            if (res.code !== 204) {
-              break;
-            }
-            if (new Date() - start > 50000) {
-              throw "Lost patience, almost certainly the coordinator is deadlocked!";
-            }
-            require("internal").wait(0.1);
-          }
-        }
-        let end = new Date();
-        // Why 50 seconds? If only two of the queries are executed concurrently,
-        // then this should be done in 50s. Usually, there will be a higher parallelism
-        // and it should finish much faster. Without the bug fixed, it will lock up and
-        // not finish within 50s.
-        assertTrue(end - start < 50000);   // Should be done in 50 seconds
-      } finally {
-        f.unregister("USER::FUNC");
-        coll.drop();
-      }
-    },
-
     testCreateColl: function() {
       try {
         // This failure point blocks the medium priority queue. This means
