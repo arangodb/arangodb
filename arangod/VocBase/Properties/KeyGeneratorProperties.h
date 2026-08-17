@@ -153,24 +153,28 @@ auto inspect(Inspector& f, KeyGeneratorProperties& props) {
       }
       return status;
     }
+
+    if constexpr (!isInternalContext<Inspector>) {
+      // "upgrade" is only ever written by the server itself, while a database
+      // upgrade is running. The internal path below has to read it back, but
+      // the create API must not accept it: UpgradeKeyGenerator::generate()
+      // crashes by design.
+      return f.variant(props).embedded("type").alternatives(
+          inspection::type<TraditionalKeyGeneratorProperties>("traditional"),
+          inspection::type<AutoIncrementGeneratorProperties>("autoincrement"),
+          inspection::type<UUIDKeyGeneratorProperties>("uuid"),
+          inspection::type<PaddedKeyGeneratorProperties>("padded"));
+    }
   }
-  if constexpr (isInternalContext<Inspector>) {
-    // A collection whose parameters were written while a database upgrade was
-    // running has "upgrade" stored on disk, so the internal path has to accept
-    // it. The create API deliberately does not.
-    return f.variant(props).embedded("type").alternatives(
-        inspection::type<TraditionalKeyGeneratorProperties>("traditional"),
-        inspection::type<AutoIncrementGeneratorProperties>("autoincrement"),
-        inspection::type<UUIDKeyGeneratorProperties>("uuid"),
-        inspection::type<PaddedKeyGeneratorProperties>("padded"),
-        inspection::type<UpgradeKeyGeneratorProperties>("upgrade"));
-  } else {
-    return f.variant(props).embedded("type").alternatives(
-        inspection::type<TraditionalKeyGeneratorProperties>("traditional"),
-        inspection::type<AutoIncrementGeneratorProperties>("autoincrement"),
-        inspection::type<UUIDKeyGeneratorProperties>("uuid"),
-        inspection::type<PaddedKeyGeneratorProperties>("padded"));
-  }
+
+  // Serialization always lists every alternative: the save inspector builds a
+  // visitor over the whole variant, so an unlisted type would not compile.
+  return f.variant(props).embedded("type").alternatives(
+      inspection::type<TraditionalKeyGeneratorProperties>("traditional"),
+      inspection::type<AutoIncrementGeneratorProperties>("autoincrement"),
+      inspection::type<UUIDKeyGeneratorProperties>("uuid"),
+      inspection::type<PaddedKeyGeneratorProperties>("padded"),
+      inspection::type<UpgradeKeyGeneratorProperties>("upgrade"));
 }
 
 }  // namespace arangodb

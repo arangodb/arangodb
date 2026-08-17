@@ -34,7 +34,6 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Inspection/VPack.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
@@ -856,24 +855,6 @@ bool KeyGeneratorHelper::validateId(char const* key, size_t len,
 }
 
 /// @brief create a key generator based on the options specified
-std::unique_ptr<KeyGenerator> KeyGeneratorHelper::createKeyGenerator(
-    LogicalCollection const& collection, VPackSlice options) {
-  if (!options.isObject()) {
-    options = VPackSlice::emptyObjectSlice();
-  }
-
-  KeyGeneratorProperties properties;
-  auto status = velocypack::deserializeWithStatus(options, properties,
-                                                  {.ignoreUnknownFields = true},
-                                                  InspectInternalContext{});
-  if (!status.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR,
-                                   status.error());
-  }
-
-  return createKeyGenerator(collection, properties);
-}
-
 std::unique_ptr<KeyGenerator> KeyGeneratorHelper::createKeyGenerator(
     LogicalCollection const& collection,
     KeyGeneratorProperties const& options) {

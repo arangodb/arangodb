@@ -152,9 +152,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
       _supportsRBAC(_properties.mutableProps.supportsRBAC),
       _internalValidatorTypes(_properties.internal.internalValidatorType),
       _countCache(defaultCountCacheTtl(system())),
-      _physical(
-          vocbase.engine().createPhysicalCollection(*this, _properties)) {
-
+      _physical(vocbase.engine().createPhysicalCollection(*this, _properties)) {
   TRI_IF_FAILURE("disableRevisionsAsDocumentIds") {
     _usesRevisionsAsDocumentIds = false;
     _syncByRevision.store(false);
@@ -215,7 +213,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
 
   // create key generator based on keyOptions from slice
   _keyGenerator = KeyGeneratorHelper::createKeyGenerator(
-      *this, info.get(StaticStrings::KeyOptions));
+      *this, _properties.constant.keyOptions);
 
   // computed values
   if (auto res = updateComputedValues(info.get(StaticStrings::ComputedValues));
@@ -229,6 +227,98 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   }
 }
 
+LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase,
+                                     CollectionDescriptor descriptor,
+                                     bool isAStub)
+    : LogicalDataSource(
+          *this, vocbase, descriptor.internal.id,
+          // an empty guid makes LogicalDataSource generate one
+          std::string{},
+          // a zero planId makes LogicalDataSource fall back to the id
+          DataSourceId::none(), std::string{descriptor.mutableProps.name},
+          NameValidator::isSystemName(descriptor.mutableProps.name) &&
+              descriptor.constant.isSystem,
+          /*deleted*/ false),
+      _properties(std::move(descriptor)),
+      _version(currentVersion()),
+      _v8CacheVersion(0),
+      _isAStub(isAStub),
+      _allowUserKeys(
+          std::visit([](auto const& opts) { return opts.allowUserKeys; },
+                     _properties.constant.keyOptions)),
+      // NOTE: the slice ctor defaults this to false while the descriptor field
+      // defaults to true. Whoever builds the descriptor must set it; see
+      // Collections.cpp, which only injects the key on a single server or
+      // coordinator.
+      _usesRevisionsAsDocumentIds(
+          _properties.internal.usesRevisionsAsDocumentIds),
+      _syncByRevision(determineSyncByRevision()),
+      _waitForSync(_properties.clusteringMutable.waitForSync),
+      _supportsRBAC(_properties.mutableProps.supportsRBAC),
+      _internalValidatorTypes(_properties.internal.internalValidatorType),
+      _countCache(defaultCountCacheTtl(system())),
+      _physical(vocbase.engine().createPhysicalCollection(*this, _properties)) {
+  TRI_IF_FAILURE("disableRevisionsAsDocumentIds") {
+    _usesRevisionsAsDocumentIds = false;
+    _syncByRevision.store(false);
+  }
+
+  if (auto res = updateSchema(_properties.mutableProps.schema.has_value()
+                                  ? _properties.mutableProps.schema->slice()
+                                  : VPackSlice::emptyObjectSlice());
+      res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  TRI_ASSERT(!guid().empty());
+
+  // update server's tick value
+  TRI_UpdateTickServer(id().id());
+
+  if (replicationVersion() == replication::Version::TWO &&
+      _properties.clusteringConstant.groupId.has_value()) {
+    _groupId = _properties.clusteringConstant.groupId.value().id();
+    // a new collection has no replicatedStateId yet
+    TRI_ASSERT(planId() == id() || _replicatedStateId.has_value());
+  }
+
+  initializeSmartAttributesBefore(_properties);
+
+  _sharding = std::make_unique<ShardingInfo>(_properties, this);
+
+  initializeSmartAttributesAfter(_properties);
+
+  if (ServerState::instance()->isDBServer() ||
+      !ServerState::instance()->isRunningInCluster()) {
+    if (!isAStub) {
+      _followers = std::make_unique<FollowerInfo>(this);
+    }
+  }
+
+  TRI_ASSERT(_physical != nullptr);
+  // This has to be called AFTER _physical and _logical are properly linked
+  // together.
+
+  // a new collection starts without indexes; restore supplies them and stays
+  // on the slice constructor for now
+  prepareIndexes(VPackSlice::emptyArraySlice());
+  decorateWithInternalValidators();
+
+  _keyGenerator = KeyGeneratorHelper::createKeyGenerator(
+      *this, _properties.constant.keyOptions);
+
+  if (auto res =
+          updateComputedValues(_properties.mutableProps.computedValues.slice());
+      res.fail()) {
+    LOG_TOPIC("4c740", ERR, Logger::FIXME)
+        << "collection '" << this->vocbase().name() << "/" << name() << ": "
+        << res.errorMessage()
+        << " - disabling computed values for this collection. original value: "
+        << _properties.mutableProps.computedValues.toJson();
+    TRI_ASSERT(_computedValues == nullptr);
+  }
+}
+
 LogicalCollection::~LogicalCollection() = default;
 
 #ifndef USE_ENTERPRISE
@@ -237,6 +327,14 @@ void LogicalCollection::initializeSmartAttributesBefore(
   // nothing to do in community edition
 }
 void LogicalCollection::initializeSmartAttributesAfter(velocypack::Slice info) {
+  // nothing to do in community edition
+}
+void LogicalCollection::initializeSmartAttributesBefore(
+    CollectionDescriptor const& descriptor) {
+  // nothing to do in community edition
+}
+void LogicalCollection::initializeSmartAttributesAfter(
+    CollectionDescriptor const& descriptor) {
   // nothing to do in community edition
 }
 #endif
@@ -1138,12 +1236,12 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
   }
 
   TRI_ASSERT(!isSatellite() || replicationFactor == 0);
-  auto waitForSync = Helper::getBooleanValue(
-      slice, StaticStrings::WaitForSyncString,
-      _waitForSync.load(std::memory_order_relaxed));
-  auto supportsRBAC = Helper::getBooleanValue(
-      slice, StaticStrings::SupportsRBAC,
-      _supportsRBAC.load(std::memory_order_relaxed));
+  auto waitForSync =
+      Helper::getBooleanValue(slice, StaticStrings::WaitForSyncString,
+                              _waitForSync.load(std::memory_order_relaxed));
+  auto supportsRBAC =
+      Helper::getBooleanValue(slice, StaticStrings::SupportsRBAC,
+                              _supportsRBAC.load(std::memory_order_relaxed));
 
   _waitForSync.store(waitForSync, std::memory_order_relaxed);
   _supportsRBAC.store(supportsRBAC, std::memory_order_relaxed);

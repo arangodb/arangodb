@@ -64,9 +64,6 @@ struct KeyGeneratorHelper {
 
   /// @brief create a key generator based on the options specified
   static std::unique_ptr<KeyGenerator> createKeyGenerator(
-      LogicalCollection const& collection, velocypack::Slice);
-
-  static std::unique_ptr<KeyGenerator> createKeyGenerator(
       LogicalCollection const& collection,
       KeyGeneratorProperties const& options);
 
