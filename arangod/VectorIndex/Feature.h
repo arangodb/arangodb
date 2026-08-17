@@ -28,8 +28,8 @@
 #include "Basics/Result.h"
 #include "Futures/Future.h"
 #include "VectorIndex/IVectorIndexProvider.h"
-#include "VectorIndex/VectorIndexBuildManager.h"
-#include "VectorIndex/VectorIndexFeatureOptions.h"
+#include "VectorIndex/BuildManager.h"
+#include "VectorIndex/FeatureOptions.h"
 #include "VocBase/Identifiers/IndexId.h"
 
 namespace arangodb {
@@ -67,7 +67,7 @@ class VectorIndexFeature final
 
   DatabaseFeature& _databaseFeature;
   VectorIndexFeatureOptions _options;
-  std::optional<vector::VectorIndexBuildManager> _buildManager;
+  std::optional<vector::BuildManager> _buildManager;
 };
 
 }  // namespace arangodb

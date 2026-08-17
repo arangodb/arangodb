@@ -23,7 +23,7 @@
 #pragma once
 
 #include "ApplicationFeatures/OptionsProvider.h"
-#include "VectorIndexFeatureOptions.h"
+#include "FeatureOptions.h"
 #include <memory>
 
 namespace arangodb::options {
@@ -32,9 +32,8 @@ class ProgramOptions;
 
 namespace arangodb::vector_index {
 
-struct VectorIndexOptionsProvider
-    : OptionsProviderImpl<VectorIndexOptionsProvider,
-                          VectorIndexFeatureOptions> {
+struct OptionsProvider
+    : OptionsProviderImpl<OptionsProvider, VectorIndexFeatureOptions> {
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           VectorIndexFeatureOptions& options);
 };

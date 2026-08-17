@@ -68,7 +68,7 @@
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "FeaturePhases/DatabaseFeaturePhase.h"
-#include "VectorIndex/VectorIndexFeature.h"
+#include "VectorIndex/Feature.h"
 #ifdef USE_V8
 #include "FeaturePhases/V8FeaturePhase.h"
 #endif
