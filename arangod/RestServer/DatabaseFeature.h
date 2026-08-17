@@ -129,8 +129,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
 
   void recoveryDone() override;
 
-  // called by the engine once it's open; not meant to be called by anything
-  // else.
+  // called by the engine once it's open, not by anything else.
   void bootstrapDatabases(velocypack::Slice databases) override;
 
   /// @brief whether or not the DatabaseFeature has started (and thus has

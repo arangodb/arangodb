@@ -60,8 +60,7 @@ struct IDatabaseProvider {
 
   virtual void recoveryDone() = 0;
 
-  // materializes databases from an engine inventory; called by the engine
-  // itself once it's open, not by anything external.
+  // materializes databases from an engine inventory; called by the engine.
   virtual void bootstrapDatabases(velocypack::Slice databases) = 0;
 };
 
