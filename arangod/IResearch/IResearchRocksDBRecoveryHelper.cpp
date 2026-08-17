@@ -307,9 +307,9 @@ IResearchRocksDBRecoveryHelper::makeRanges(uint64_t objectId) {
 
   for (auto&& index : collection->getPhysical()->getReadyIndexes()) {
     TRI_ASSERT(index != nullptr);
-    if (index->type() == Index::IndexType::Inverted) {
+    if (index->type() == IndexType::Inverted) {
       add(_indexes, basics::downCast<IResearchRocksDBInvertedIndex>(*index));
-    } else if (index->type() == Index::IndexType::IResearchLink) {
+    } else if (index->type() == IndexType::IResearchLink) {
       add(_links, basics::downCast<IResearchRocksDBLink>(*index));
     }
   }

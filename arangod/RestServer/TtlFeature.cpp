@@ -274,7 +274,7 @@ class TtlThread final : public ServerThread {
 
         for (auto const& index : indexes) {
           // we are only interested in collections with TTL indexes
-          if (index->type() != Index::IndexType::TTL) {
+          if (index->type() != IndexType::TTL) {
             continue;
           }
 

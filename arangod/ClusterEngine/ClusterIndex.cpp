@@ -48,7 +48,7 @@ using namespace arangodb;
 using namespace arangodb::futures;
 
 ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
-                           ClusterEngineType engineType, Index::IndexType itype,
+                           ClusterEngineType engineType, IndexType itype,
                            velocypack::Slice info)
     : Index(id, collection, info),
       _engineType(engineType),

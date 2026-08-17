@@ -719,7 +719,7 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
       return {TRI_ERROR_BAD_PARAMETER, "'index' should be a string"};
     }
     auto index = getIndex(*collection, indexSlice.stringView());
-    if (!index || index->type() != Index::IndexType::Inverted) {
+    if (!index || index->type() != IndexType::Inverted) {
       if (!isUserRequest) {
         continue;
       }

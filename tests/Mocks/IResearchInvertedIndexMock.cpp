@@ -62,7 +62,7 @@ void IResearchInvertedIndexMock::toVelocyPack(
   }
 }
 
-Index::IndexType IResearchInvertedIndexMock::type() const {
+IndexType IResearchInvertedIndexMock::type() const {
   return IndexType::Inverted;
 }
 

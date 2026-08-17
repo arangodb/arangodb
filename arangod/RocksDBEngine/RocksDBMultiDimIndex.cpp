@@ -1046,7 +1046,7 @@ aql::AstNode* RocksDBMdiIndexBase::specializeCondition(
   return mdi::specializeCondition(this, condition, reference);
 }
 
-Index::IndexType RocksDBMdiIndexBase::type() const { return _type; }
+IndexType RocksDBMdiIndexBase::type() const { return _type; }
 
 char const* RocksDBMdiIndexBase::typeName() const {
   return Index::oldtypeName(type());

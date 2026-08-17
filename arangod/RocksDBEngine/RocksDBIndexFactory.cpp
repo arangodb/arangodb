@@ -53,10 +53,10 @@ using namespace arangodb;
 namespace {
 
 struct DefaultIndexFactory : public IndexTypeFactory {
-  Index::IndexType const _type;
+  IndexType const _type;
 
   explicit DefaultIndexFactory(application_features::ApplicationServer& server,
-                               Index::IndexType type)
+                               IndexType type)
       : IndexTypeFactory(server), _type(type) {}
 
   bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
@@ -67,7 +67,7 @@ struct DefaultIndexFactory : public IndexTypeFactory {
 
 struct EdgeIndexFactory : public DefaultIndexFactory {
   explicit EdgeIndexFactory(application_features::ApplicationServer& server)
-      : DefaultIndexFactory(server, Index::IndexType::Edge) {}
+      : DefaultIndexFactory(server, IndexType::Edge) {}
 
   std::shared_ptr<Index> instantiate(LogicalCollection& collection,
                                      velocypack::Slice definition, IndexId id,
@@ -97,9 +97,8 @@ struct EdgeIndexFactory : public DefaultIndexFactory {
     }
 
     TRI_ASSERT(normalized.isOpenObject());
-    normalized.add(
-        StaticStrings::IndexType,
-        velocypack::Value(Index::oldtypeName(Index::IndexType::Edge)));
+    normalized.add(StaticStrings::IndexType,
+                   velocypack::Value(Index::oldtypeName(IndexType::Edge)));
 
     return TRI_ERROR_INTERNAL;
   }
@@ -107,7 +106,7 @@ struct EdgeIndexFactory : public DefaultIndexFactory {
 
 struct FulltextIndexFactory : public DefaultIndexFactory {
   explicit FulltextIndexFactory(application_features::ApplicationServer& server)
-      : DefaultIndexFactory(server, Index::IndexType::Fulltext) {}
+      : DefaultIndexFactory(server, IndexType::Fulltext) {}
 
   std::shared_ptr<Index> instantiate(
       LogicalCollection& collection, velocypack::Slice definition, IndexId id,
@@ -119,9 +118,8 @@ struct FulltextIndexFactory : public DefaultIndexFactory {
                            velocypack::Slice definition, bool isCreation,
                            TRI_vocbase_t const& /*vocbase*/) const override {
     TRI_ASSERT(normalized.isOpenObject());
-    normalized.add(
-        StaticStrings::IndexType,
-        velocypack::Value(Index::oldtypeName(Index::IndexType::Fulltext)));
+    normalized.add(StaticStrings::IndexType,
+                   velocypack::Value(Index::oldtypeName(IndexType::Fulltext)));
 
     if (isCreation && !ServerState::instance()->isCoordinator() &&
         !definition.hasKey(StaticStrings::ObjectId)) {
@@ -136,7 +134,7 @@ struct FulltextIndexFactory : public DefaultIndexFactory {
 
 struct GeoIndexFactory : public DefaultIndexFactory {
   explicit GeoIndexFactory(application_features::ApplicationServer& server)
-      : DefaultIndexFactory(server, Index::IndexType::Geo) {}
+      : DefaultIndexFactory(server, IndexType::Geo) {}
 
   std::shared_ptr<Index> instantiate(
       LogicalCollection& collection, velocypack::Slice definition, IndexId id,
@@ -148,9 +146,8 @@ struct GeoIndexFactory : public DefaultIndexFactory {
                            velocypack::Slice definition, bool isCreation,
                            TRI_vocbase_t const& /*vocbase*/) const override {
     TRI_ASSERT(normalized.isOpenObject());
-    normalized.add(
-        StaticStrings::IndexType,
-        velocypack::Value(Index::oldtypeName(Index::IndexType::Geo)));
+    normalized.add(StaticStrings::IndexType,
+                   velocypack::Value(Index::oldtypeName(IndexType::Geo)));
 
     if (isCreation && !ServerState::instance()->isCoordinator() &&
         !definition.hasKey(StaticStrings::ObjectId)) {
@@ -165,7 +162,7 @@ struct GeoIndexFactory : public DefaultIndexFactory {
 
 struct Geo1IndexFactory : public DefaultIndexFactory {
   explicit Geo1IndexFactory(application_features::ApplicationServer& server)
-      : DefaultIndexFactory(server, Index::IndexType::Geo) {}
+      : DefaultIndexFactory(server, IndexType::Geo) {}
 
   std::shared_ptr<Index> instantiate(
       LogicalCollection& collection, velocypack::Slice definition, IndexId id,
@@ -178,9 +175,8 @@ struct Geo1IndexFactory : public DefaultIndexFactory {
                            velocypack::Slice definition, bool isCreation,
                            TRI_vocbase_t const& /*vocbase*/) const override {
     TRI_ASSERT(normalized.isOpenObject());
-    normalized.add(
-        StaticStrings::IndexType,
-        velocypack::Value(Index::oldtypeName(Index::IndexType::Geo)));
+    normalized.add(StaticStrings::IndexType,
+                   velocypack::Value(Index::oldtypeName(IndexType::Geo)));
 
     if (isCreation && !ServerState::instance()->isCoordinator() &&
         !definition.hasKey(StaticStrings::ObjectId)) {
@@ -195,7 +191,7 @@ struct Geo1IndexFactory : public DefaultIndexFactory {
 
 struct Geo2IndexFactory : public DefaultIndexFactory {
   explicit Geo2IndexFactory(application_features::ApplicationServer& server)
-      : DefaultIndexFactory(server, Index::IndexType::Geo) {}
+      : DefaultIndexFactory(server, IndexType::Geo) {}
 
   std::shared_ptr<Index> instantiate(
       LogicalCollection& collection, velocypack::Slice definition, IndexId id,
@@ -208,9 +204,8 @@ struct Geo2IndexFactory : public DefaultIndexFactory {
                            velocypack::Slice definition, bool isCreation,
                            TRI_vocbase_t const& /*vocbase*/) const override {
     TRI_ASSERT(normalized.isOpenObject());
-    normalized.add(
-        StaticStrings::IndexType,
-        velocypack::Value(Index::oldtypeName(Index::IndexType::Geo)));
+    normalized.add(StaticStrings::IndexType,
+                   velocypack::Value(Index::oldtypeName(IndexType::Geo)));
 
     if (isCreation && !ServerState::instance()->isCoordinator() &&
         !definition.hasKey(StaticStrings::ObjectId)) {
@@ -223,7 +218,7 @@ struct Geo2IndexFactory : public DefaultIndexFactory {
   }
 };
 
-template<typename F, Index::IndexType type>
+template<typename F, IndexType type>
 struct SecondaryIndexFactory : public DefaultIndexFactory {
   explicit SecondaryIndexFactory(
       application_features::ApplicationServer& server)
@@ -260,7 +255,7 @@ struct SecondaryIndexFactory : public DefaultIndexFactory {
 
 struct MdiIndexFactory : public DefaultIndexFactory {
   explicit MdiIndexFactory(application_features::ApplicationServer& server,
-                           Index::IndexType type)
+                           IndexType type)
       : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<arangodb::Index> instantiate(
@@ -306,7 +301,7 @@ struct MdiIndexFactory : public DefaultIndexFactory {
 struct MdiPrefixedIndexFactory : public DefaultIndexFactory {
   explicit MdiPrefixedIndexFactory(
       application_features::ApplicationServer& server)
-      : DefaultIndexFactory(server, Index::IndexType::MDIPrefixed) {}
+      : DefaultIndexFactory(server, IndexType::MDIPrefixed) {}
 
   std::shared_ptr<arangodb::Index> instantiate(
       arangodb::LogicalCollection& collection,
@@ -326,8 +321,8 @@ struct MdiPrefixedIndexFactory : public DefaultIndexFactory {
       bool isCreation, TRI_vocbase_t const& /*vocbase*/) const override {
     TRI_ASSERT(normalized.isOpenObject());
     normalized.add(arangodb::StaticStrings::IndexType,
-                   arangodb::velocypack::Value(arangodb::Index::oldtypeName(
-                       Index::IndexType::MDIPrefixed)));
+                   arangodb::velocypack::Value(
+                       arangodb::Index::oldtypeName(IndexType::MDIPrefixed)));
 
     if (isCreation && !ServerState::instance()->isCoordinator() &&
         !definition.hasKey(StaticStrings::ObjectId)) {
@@ -348,7 +343,7 @@ struct MdiPrefixedIndexFactory : public DefaultIndexFactory {
 
 struct VectorIndexFactory : public DefaultIndexFactory {
   explicit VectorIndexFactory(application_features::ApplicationServer& server,
-                              Index::IndexType type,
+                              IndexType type,
                               IVectorIndexProvider const& vectorIndexProvider)
       : DefaultIndexFactory(server, type),
         _vectorIndexProvider(vectorIndexProvider) {}
@@ -394,7 +389,7 @@ struct VectorIndexFactory : public DefaultIndexFactory {
 
 struct TtlIndexFactory : public DefaultIndexFactory {
   TtlIndexFactory(application_features::ApplicationServer& server,
-                  Index::IndexType type)
+                  IndexType type)
       : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<Index> instantiate(
@@ -425,7 +420,7 @@ struct TtlIndexFactory : public DefaultIndexFactory {
 
 struct PrimaryIndexFactory : public DefaultIndexFactory {
   explicit PrimaryIndexFactory(application_features::ApplicationServer& server)
-      : DefaultIndexFactory(server, Index::IndexType::Primary) {}
+      : DefaultIndexFactory(server, IndexType::Primary) {}
 
   std::shared_ptr<Index> instantiate(LogicalCollection& collection,
                                      velocypack::Slice definition,
@@ -449,9 +444,8 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
     }
 
     TRI_ASSERT(normalized.isOpenObject());
-    normalized.add(
-        StaticStrings::IndexType,
-        velocypack::Value(Index::oldtypeName(Index::IndexType::Primary)));
+    normalized.add(StaticStrings::IndexType,
+                   velocypack::Value(Index::oldtypeName(IndexType::Primary)));
 
     return TRI_ERROR_INTERNAL;
   }
@@ -468,20 +462,19 @@ RocksDBIndexFactory::RocksDBIndexFactory(
   static const GeoIndexFactory geoIndexFactory(server);
   static const Geo1IndexFactory geo1IndexFactory(server);
   static const Geo2IndexFactory geo2IndexFactory(server);
-  static const SecondaryIndexFactory<RocksDBHashIndex, Index::IndexType::Hash>
+  static const SecondaryIndexFactory<RocksDBHashIndex, IndexType::Hash>
       hashIndexFactory(server);
   static const SecondaryIndexFactory<RocksDBPersistentIndex,
-                                     Index::IndexType::Persistent>
+                                     IndexType::Persistent>
       persistentIndexFactory(server);
-  static const SecondaryIndexFactory<RocksDBSkiplistIndex,
-                                     Index::IndexType::Skiplist>
+  static const SecondaryIndexFactory<RocksDBSkiplistIndex, IndexType::Skiplist>
       skiplistIndexFactory(server);
-  static const TtlIndexFactory ttlIndexFactory(server, Index::IndexType::TTL);
+  static const TtlIndexFactory ttlIndexFactory(server, IndexType::TTL);
   static const PrimaryIndexFactory primaryIndexFactory(server);
-  static const MdiIndexFactory zkdIndexFactory(server, Index::IndexType::Zkd);
-  static const MdiIndexFactory mdiIndexFactory(server, Index::IndexType::MDI);
-  static const VectorIndexFactory vectorIndexFactory(
-      server, Index::IndexType::Vector, vectorIndexProvider);
+  static const MdiIndexFactory zkdIndexFactory(server, IndexType::Zkd);
+  static const MdiIndexFactory mdiIndexFactory(server, IndexType::MDI);
+  static const VectorIndexFactory vectorIndexFactory(server, IndexType::Vector,
+                                                     vectorIndexProvider);
   static const iresearch::IResearchRocksDBInvertedIndexFactory
       iresearchInvertedIndexFactory(server);
   static const MdiPrefixedIndexFactory mdiPrefixedIndexFactory(server);
@@ -553,9 +546,9 @@ void RocksDBIndexFactory::prepareIndexes(
     // check for combined edge index from MMFiles; must split!
     auto typeSlice = v.get(StaticStrings::IndexType);
     if (typeSlice.isString()) {
-      Index::IndexType const type = Index::type(typeSlice.stringView());
+      IndexType const type = Index::type(typeSlice.stringView());
 
-      if (type == Index::IndexType::Edge) {
+      if (type == IndexType::Edge) {
         VPackSlice fields = v.get(StaticStrings::IndexFields);
 
         if (fields.isArray() && fields.length() == 2) {

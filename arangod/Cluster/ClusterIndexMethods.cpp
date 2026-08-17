@@ -386,10 +386,10 @@ Result dropIndexCoordinatorReplication2Inner(LogicalCollection const& col,
     }
 
     if (idSlice.isEqualString(idString)) {
-      Index::IndexType type =
+      IndexType type =
           Index::type(indexSlice.get(StaticStrings::IndexType).copyString());
 
-      if (type == Index::IndexType::Primary || type == Index::IndexType::Edge) {
+      if (type == IndexType::Primary || type == IndexType::Edge) {
         return Result(TRI_ERROR_FORBIDDEN);
       }
 
@@ -610,9 +610,9 @@ Result dropIndexCoordinatorInner(LogicalCollection const& col, IndexId iid,
     }
 
     if (idSlice.isEqualString(idString)) {
-      Index::IndexType type = Index::type(typeSlice.copyString());
+      IndexType type = Index::type(typeSlice.copyString());
 
-      if (type == Index::IndexType::Primary || type == Index::IndexType::Edge) {
+      if (type == IndexType::Primary || type == IndexType::Edge) {
         return Result(TRI_ERROR_FORBIDDEN);
       }
 
@@ -1065,7 +1065,7 @@ Result ensureIndexCoordinatorInner(
                 auto const indexType = Index::type(
                     arangodb::basics::VelocyPackHelper::getStringView(
                         v, StaticStrings::IndexType, ""));
-                if (indexType != Index::IndexType::Vector) {
+                if (indexType != IndexType::Vector) {
                   auto msg = extractErrorMessage(shard.key.stringView(), v);
                   auto errNum =
                       arangodb::basics::VelocyPackHelper::getNumericValue<

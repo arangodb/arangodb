@@ -69,8 +69,8 @@ RestIResearchHandler::getIResearchDatastore() {
     for (size_t i = 0; i < idxs.size(); i++) {
       const auto& idx = idxs[i];
 
-      if (!idx || (Index::IndexType::IResearchLink != idx->type() &&
-                   Index::IndexType::Inverted != idx->type())) {
+      if (!idx || (IndexType::IResearchLink != idx->type() &&
+                   IndexType::Inverted != idx->type())) {
         continue;
       }
 

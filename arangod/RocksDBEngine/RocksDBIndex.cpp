@@ -381,8 +381,8 @@ void RocksDBIndex::setEstimator(
 
 void RocksDBIndex::recalculateEstimates() {}
 
-RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type,
-                                         uint64_t objectId, bool unique) {
+RocksDBKeyBounds RocksDBIndex::getBounds(IndexType type, uint64_t objectId,
+                                         bool unique) {
   switch (type) {
     case IndexType::Primary:
       return RocksDBKeyBounds::PrimaryIndex(objectId);

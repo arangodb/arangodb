@@ -149,7 +149,7 @@ Result removeKeysOutsideRange(
   // range
   auto index = coll->lookupIndex(
       IndexId::primary());  // RocksDBCollection->primaryIndex() is private
-  TRI_ASSERT(index->type() == Index::IndexType::Primary);
+  TRI_ASSERT(index->type() == IndexType::Primary);
   auto primaryIndex = static_cast<RocksDBPrimaryIndex*>(index.get());
 
   RocksDBKey key(ThreadLocalStringLeaser::lease());

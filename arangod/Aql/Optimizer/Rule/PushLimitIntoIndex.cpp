@@ -52,9 +52,8 @@ bool isEligibleIndex(transaction::Methods::IndexHandle const& idx) {
   // we only care about persistent indexes.
   // note that "hash" and "skiplist" indexes are the same as persistent
   // indexes under the hood, just with legacy naming.
-  if (idx->type() != Index::IndexType::Persistent &&
-      idx->type() != Index::IndexType::Hash &&
-      idx->type() != Index::IndexType::Skiplist) {
+  if (idx->type() != IndexType::Persistent && idx->type() != IndexType::Hash &&
+      idx->type() != IndexType::Skiplist) {
     return false;
   }
 

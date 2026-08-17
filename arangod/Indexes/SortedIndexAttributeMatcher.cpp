@@ -121,9 +121,9 @@ bool SortedIndexAttributeMatcher::accessFitsIndex(
   std::pair<arangodb::aql::Variable const*,
             std::vector<arangodb::basics::AttributeName>>
       attributeData;
-  bool const isPrimaryIndex = idx->type() == Index::IndexType::Primary;
+  bool const isPrimaryIndex = idx->type() == IndexType::Primary;
 
-  if (idx->type() == Index::IndexType::TTL &&
+  if (idx->type() == IndexType::TTL &&
       (!other->isConstant() ||
        !(other->isIntValue() || other->isDoubleValue()))) {
     // TTL index can only be used for numeric lookup values, no date strings or
@@ -475,7 +475,7 @@ arangodb::aql::AstNode* SortedIndexAttributeMatcher::specializeCondition(
     arangodb::Index const* idx, arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) {
   // mmfiles failure compat
-  if (idx->type() == Index::IndexType::Hash) {
+  if (idx->type() == IndexType::Hash) {
     TRI_IF_FAILURE("SimpleAttributeMatcher::specializeAllChildrenEQ") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }

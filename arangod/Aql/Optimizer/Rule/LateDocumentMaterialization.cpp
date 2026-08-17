@@ -137,7 +137,7 @@ void lateDocumentMaterializationRule(Optimizer* opt,
         // index does not cover any fields
         continue;
       }
-      if (index->type() != Index::IndexType::Inverted) {
+      if (index->type() != IndexType::Inverted) {
         // rule can only be applied for inverted indexes
         continue;
       }
@@ -345,7 +345,7 @@ void lateDocumentMaterializationRule(Optimizer* opt,
         // 2. We need to add materializer after limit node to do materialization
         // insert a materialize node
         auto makeMaterializer = [&]() -> std::unique_ptr<ExecutionNode> {
-          if (index->type() == Index::IndexType::Inverted) {
+          if (index->type() == IndexType::Inverted) {
             return std::make_unique<materialize::MaterializeSearchNode>(
                 plan.get(), plan->nextId(), *localDocIdTmp, *var, *var);
           }

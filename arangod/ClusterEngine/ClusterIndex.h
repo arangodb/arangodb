@@ -37,7 +37,7 @@ class LogicalCollection;
 class ClusterIndex : public Index {
  public:
   ClusterIndex(IndexId id, LogicalCollection& collection,
-               ClusterEngineType engineType, Index::IndexType type,
+               ClusterEngineType engineType, IndexType type,
                velocypack::Slice info);
 
   ClusterIndex(ClusterIndex const&) = delete;
@@ -126,7 +126,7 @@ class ClusterIndex : public Index {
 
  protected:
   ClusterEngineType _engineType;
-  Index::IndexType _indexType;
+  IndexType _indexType;
   velocypack::Builder _info;
   bool _estimates;
   std::atomic<double> _clusterSelectivity;

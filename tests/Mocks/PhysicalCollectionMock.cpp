@@ -212,7 +212,9 @@ class EdgeIndexMock final : public arangodb::Index {
     return std::make_shared<EdgeIndexMock>(iid, collection);
   }
 
-  IndexType type() const override { return IndexType::Edge; }
+  arangodb::IndexType type() const override {
+    return arangodb::IndexType::Edge;
+  }
 
   char const* typeName() const override { return "edge"; }
 
@@ -733,7 +735,9 @@ class HashIndexMock final : public arangodb::Index {
     return std::make_shared<HashIndexMock>(iid, collection, definition);
   }
 
-  IndexType type() const override { return IndexType::Hash; }
+  arangodb::IndexType type() const override {
+    return arangodb::IndexType::Hash;
+  }
 
   char const* typeName() const override { return "hash"; }
 
@@ -1026,26 +1030,26 @@ PhysicalCollectionMock::createIndex(
   auto res = trx.begin();
   TRI_ASSERT(res.ok());
 
-  if (index->type() == arangodb::Index::IndexType::Edge) {
+  if (index->type() == arangodb::IndexType::Edge) {
     auto* l = dynamic_cast<EdgeIndexMock*>(index.get());
     TRI_ASSERT(l != nullptr);
     for (auto const& pair : docs) {
       l->insert(trx, pair.first, pair.second);
     }
-  } else if (index->type() == arangodb::Index::IndexType::Hash) {
+  } else if (index->type() == arangodb::IndexType::Hash) {
     auto* l = dynamic_cast<HashIndexMock*>(index.get());
     TRI_ASSERT(l != nullptr);
     for (auto const& pair : docs) {
       l->insert(trx, pair.first, pair.second);
     }
-  } else if (index->type() == arangodb::Index::IndexType::IResearchLink) {
+  } else if (index->type() == arangodb::IndexType::IResearchLink) {
     auto* l =
         dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(index.get());
     TRI_ASSERT(l != nullptr);
     for (auto const& pair : docs) {
       l->insert(trx, pair.first, pair.second);
     }
-  } else if (index->type() == arangodb::Index::IndexType::Inverted) {
+  } else if (index->type() == arangodb::IndexType::Inverted) {
     auto* l = dynamic_cast<arangodb::iresearch::IResearchInvertedIndexMock*>(
         index.get());
     TRI_ASSERT(l != nullptr);
@@ -1062,7 +1066,7 @@ PhysicalCollectionMock::createIndex(
   res = trx.commit();
   TRI_ASSERT(res.ok());
 
-  if (index->type() == arangodb::Index::IndexType::Inverted) {
+  if (index->type() == arangodb::IndexType::Inverted) {
     auto* l = dynamic_cast<arangodb::iresearch::IResearchInvertedIndexMock*>(
         index.get());
     TRI_ASSERT(l != nullptr);
@@ -1160,26 +1164,26 @@ arangodb::Result PhysicalCollectionMock::insert(
   TRI_ASSERT(didInsert);
 
   for (auto& index : _indexes) {
-    if (index->type() == arangodb::Index::IndexType::Edge) {
+    if (index->type() == arangodb::IndexType::Edge) {
       auto* l = static_cast<EdgeIndexMock*>(index.get());
       if (!l->insert(trx, id, newDocument).ok()) {
         return {TRI_ERROR_BAD_PARAMETER};
       }
       continue;
-    } else if (index->type() == arangodb::Index::IndexType::Hash) {
+    } else if (index->type() == arangodb::IndexType::Hash) {
       auto* l = static_cast<HashIndexMock*>(index.get());
       if (!l->insert(trx, id, newDocument).ok()) {
         return {TRI_ERROR_BAD_PARAMETER};
       }
       continue;
-    } else if (index->type() == arangodb::Index::IndexType::IResearchLink) {
+    } else if (index->type() == arangodb::IndexType::IResearchLink) {
       auto* l =
           static_cast<arangodb::iresearch::IResearchLinkMock*>(index.get());
       if (!l->insert(trx, id, newDocument).ok()) {
         return {TRI_ERROR_BAD_PARAMETER};
       }
       continue;
-    } else if (index->type() == arangodb::Index::IndexType::Inverted) {
+    } else if (index->type() == arangodb::IndexType::Inverted) {
       auto* l = static_cast<arangodb::iresearch::IResearchInvertedIndexMock*>(
           index.get());
       if (!l->insert(trx, ref->second.docId(), newDocument).ok()) {

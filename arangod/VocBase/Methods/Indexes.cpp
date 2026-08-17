@@ -318,8 +318,7 @@ futures::Future<arangodb::Result> Indexes::getAll(
               arangodb::velocypack::Value(id));
 
     auto type = index.get(arangodb::StaticStrings::IndexType);
-    if (mergeEdgeIdxs &&
-        Index::type(type.copyString()) == Index::IndexType::Edge) {
+    if (mergeEdgeIdxs && Index::type(type.copyString()) == IndexType::Edge) {
       VPackSlice fields = index.get(StaticStrings::IndexFields);
       TRI_ASSERT(fields.isArray() && fields.length() <= 2);
 
@@ -635,7 +634,7 @@ futures::Future<arangodb::Result> Indexes::ensureIndex(
 }
 
 futures::Future<arangodb::Result> Indexes::createIndex(
-    LogicalCollection& coll, Index::IndexType type,
+    LogicalCollection& coll, IndexType type,
     std::vector<std::string> const& fields, bool unique, bool sparse,
     bool estimates) {
   VPackBuilder props;

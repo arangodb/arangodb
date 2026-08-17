@@ -224,7 +224,7 @@ struct SortToIndexNode final
         if (coveredAttributes == sortCondition.numAttributes()) {
           deleteSortNode(indexNode, sortCondition);
         } else if (usedIndexes.size() == 1 &&
-                   usedIndexes[0]->type() == Index::IndexType::Persistent) {
+                   usedIndexes[0]->type() == IndexType::Persistent) {
           _sortNode->setGroupedElements(coveredAttributes);
         }
       }
@@ -293,7 +293,7 @@ struct SortToIndexNode final
         (!sortCondition.isEmpty() && sortCondition.isOnlyAttributeAccess());
 
     bool indexFullyCoversSortCondition = false;
-    if (index->type() == Index::IndexType::Inverted) {
+    if (index->type() == IndexType::Inverted) {
       indexFullyCoversSortCondition =
           index->supportsSortCondition(&sortCondition, outVariable, 1)
               .supportsCondition;
@@ -308,7 +308,7 @@ struct SortToIndexNode final
 
     if (indexFullyCoversSortCondition) {
       deleteSortNode(indexNode, sortCondition);
-    } else if (index->type() == Index::IndexType::Persistent) {
+    } else if (index->type() == IndexType::Persistent) {
       auto [numberOfCoveredAttributes, sortIsAscending] =
           sortCondition.coveredUnidirectionalAttributesWithDirection(
               outVariable, fields);
@@ -318,7 +318,7 @@ struct SortToIndexNode final
         _sortNode->setGroupedElements(numberOfCoveredAttributes);
         _modified = true;
       }
-    } else if (index->type() != Index::IndexType::Inverted) {
+    } else if (index->type() != IndexType::Inverted) {
       //
       //  For B-tree and skiplist based indexes that are
       //  already sorted, we can kick the SortNode and prevent double sorting,

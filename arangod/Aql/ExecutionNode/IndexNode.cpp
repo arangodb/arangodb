@@ -616,8 +616,8 @@ CostEstimate IndexNode::estimateCost() const {
       factor = 1.25;
     } else {
       auto type = getIndexes()[0]->type();
-      if (type != Index::IndexType::Geo && type != Index::IndexType::Geo1 &&
-          type != Index::IndexType::Geo2) {
+      if (type != IndexType::Geo && type != IndexType::Geo1 &&
+          type != IndexType::Geo2) {
         // if we only use a single index, and it is a geo index, we don't
         // apply the weight to prioritize geo indexes
         factor = 1.25;

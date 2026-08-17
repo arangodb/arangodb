@@ -169,9 +169,8 @@ Result IResearchRocksDBInvertedIndexFactory::normalize(
             arangodb::StaticStrings::IndexName, "': ", definition.toString())};
   }
 
-  normalized.add(
-      arangodb::StaticStrings::IndexType,
-      velocypack::Value(Index::oldtypeName(Index::IndexType::Inverted)));
+  normalized.add(arangodb::StaticStrings::IndexType,
+                 velocypack::Value(Index::oldtypeName(IndexType::Inverted)));
 
   if (isCreation && !ServerState::instance()->isCoordinator() &&
       definition.get(arangodb::StaticStrings::ObjectId).isNone()) {

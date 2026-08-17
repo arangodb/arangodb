@@ -109,10 +109,10 @@ void PhysicalCollection::prepareIndexes(velocypack::Slice indexesSlice) {
   TRI_ASSERT(!_indexes.empty());
 
   auto it = _indexes.cbegin();
-  if ((*it)->type() != Index::IndexType::Primary ||
+  if ((*it)->type() != IndexType::Primary ||
       (TRI_COL_TYPE_EDGE == _logicalCollection.type() &&
-       (_indexes.size() < 3 || ((*++it)->type() != Index::IndexType::Edge ||
-                                (*++it)->type() != Index::IndexType::Edge)))) {
+       (_indexes.size() < 3 || ((*++it)->type() != IndexType::Edge ||
+                                (*++it)->type() != IndexType::Edge)))) {
     std::string msg = absl::StrCat("got invalid indexes for collection '",
                                    _logicalCollection.name(), "'");
     LOG_TOPIC("0ef34", ERR, arangodb::Logger::ENGINES) << msg;
@@ -177,7 +177,7 @@ bool PhysicalCollection::hasDocuments() {
   for (auto const& idx : indexes) {
     if (idx->type() == type) {
       // Only check relevant indexes
-      if (type == arangodb::Index::IndexType::TTL) {
+      if (type == arangodb::IndexType::TTL) {
         // directly return here, as we allow at most one ttl index per
         // collection
         return idx;
@@ -287,7 +287,7 @@ IndexesSnapshot PhysicalCollection::getIndexesSnapshot() {
 Index* PhysicalCollection::primaryIndex() const {
   RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   for (auto& idx : _indexes) {
-    if (idx->type() == Index::IndexType::Primary) {
+    if (idx->type() == IndexType::Primary) {
       TRI_ASSERT(idx->id().isPrimary());
       return idx.get();
     }
@@ -333,10 +333,10 @@ futures::Future<OperationResult> PhysicalCollection::figures(
     RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
     for (auto const& idx : _indexes) {
       // only count an edge index instance
-      if (idx->type() != Index::IndexType::Edge || !seenEdgeIndex) {
+      if (idx->type() != IndexType::Edge || !seenEdgeIndex) {
         ++numIndexes;
       }
-      if (idx->type() == Index::IndexType::Edge) {
+      if (idx->type() == IndexType::Edge) {
         seenEdgeIndex = true;
       }
       sizeIndexes += static_cast<size_t>(idx->memory());
@@ -372,19 +372,19 @@ bool PhysicalCollection::IndexOrder::operator()(
     std::shared_ptr<Index> const& right) const {
   // Primary index always first (but two primary indexes render comparison
   // invalid but that`s a bug itself)
-  TRI_ASSERT(!((left->type() == Index::IndexType::Primary) &&
-               (right->type() == Index::IndexType::Primary)));
-  if (left->type() == Index::IndexType::Primary) {
+  TRI_ASSERT(!((left->type() == IndexType::Primary) &&
+               (right->type() == IndexType::Primary)));
+  if (left->type() == IndexType::Primary) {
     return true;
-  } else if (right->type() == Index::IndexType::Primary) {
+  } else if (right->type() == IndexType::Primary) {
     return false;
   }
 
   // edge indexes should go right after primary
   if (left->type() != right->type()) {
-    if (left->type() == Index::IndexType::Edge) {
+    if (left->type() == IndexType::Edge) {
       return true;
-    } else if (right->type() == Index::IndexType::Edge) {
+    } else if (right->type() == IndexType::Edge) {
       return false;
     }
   }
@@ -395,9 +395,9 @@ bool PhysicalCollection::IndexOrder::operator()(
   // And this will make possible to deterministically trigger index reversals
   TRI_IF_FAILURE("HashIndexAlwaysLast") {
     if (left->type() != right->type()) {
-      if (left->type() == Index::IndexType::Hash) {
+      if (left->type() == IndexType::Hash) {
         return false;
-      } else if (right->type() == Index::IndexType::Hash) {
+      } else if (right->type() == IndexType::Hash) {
         return true;
       }
     }

@@ -223,9 +223,9 @@ AstNode* createSubqueryWithLimit(ExecutionPlan* plan, ExecutionNode* node,
   return ast->createNodeReference(subqueryOutVariable);
 }
 
-bool isGeoIndex(Index::IndexType type) {
-  return type == Index::IndexType::Geo1 || type == Index::IndexType::Geo2 ||
-         type == Index::IndexType::Geo;
+bool isGeoIndex(IndexType type) {
+  return type == IndexType::Geo1 || type == IndexType::Geo2 ||
+         type == IndexType::Geo;
 }
 
 std::pair<AstNode*, AstNode*> getAttributeAccessFromIndex(
@@ -243,9 +243,9 @@ std::pair<AstNode*, AstNode*> getAttributeAccessFromIndex(
   for (auto& idx : coll->indexes()) {
     if (isGeoIndex(idx->type())) {
       // we take the first index that is found
-      bool isGeo1 = idx->type() == Index::IndexType::Geo1;
-      bool isGeo2 = idx->type() == Index::IndexType::Geo2;
-      bool isGeo = idx->type() == Index::IndexType::Geo;
+      bool isGeo1 = idx->type() == IndexType::Geo1;
+      bool isGeo2 = idx->type() == IndexType::Geo2;
+      bool isGeo = idx->type() == IndexType::Geo;
 
       auto fieldNum = idx->fields().size();
       if ((isGeo2 || isGeo) && fieldNum == 2) {  // individual fields
@@ -575,7 +575,7 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode,
   }
 
   for (auto& idx : coll->indexes()) {
-    if (idx->type() == Index::IndexType::Fulltext) {
+    if (idx->type() == IndexType::Fulltext) {
       if (basics::AttributeName::isIdentical(
               idx->fields()[0], field, false /*ignore expansion in last?!*/)) {
         index = idx;

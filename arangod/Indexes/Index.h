@@ -29,10 +29,8 @@
 #include "Utils/OperationOptions.h"
 #include "VocBase/Identifiers/IndexId.h"
 
-#include <s2/base/integral_types.h>
+#include "IndexType.h"
 
-#include <cstddef>
-#include <cstdint>
 #include <iosfwd>
 #include <memory>
 #include <string_view>
@@ -97,28 +95,6 @@ class Index {
 
   static std::vector<std::vector<basics::AttributeName>> const
       emptyCoveredFields;
-
-  /// @brief index types
-  enum class IndexType {
-    Unknown = 0,
-    Primary = 1,
-    Geo = 2,
-    Geo1 = 3,
-    Geo2 = 4,
-    Hash = 5,
-    Edge = 6,
-    Fulltext = 7,
-    Skiplist = 8,
-    TTL = 9,
-    Persistent = 10,
-    IResearchLink = 11,
-    NoAccess = 12,
-    Zkd = 13,
-    MDI = 14,
-    MDIPrefixed = 15,
-    Inverted = 16,
-    Vector = 17,
-  };
 
   /// @brief: helper struct returned by index methods that determine the costs
   /// of index usage for filtering

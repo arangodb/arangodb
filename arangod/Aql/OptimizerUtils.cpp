@@ -351,7 +351,7 @@ std::pair<bool, bool> findIndexHandleForAndNode(
     bool supportsSort = false;
 
     if (readOwnWrites == ReadOwnWrites::yes &&
-        idx->type() == Index::IndexType::Inverted) {
+        idx->type() == IndexType::Inverted) {
       // inverted index does not support ReadOwnWrites
       return;
     }
@@ -828,7 +828,7 @@ void extractNonConstPartsOfLeafNode(
     // Index is responsible for the right side, check if left side
     // has to be evaluated
     auto isInvertedIndexFunc = [&] {
-      if (index == nullptr || index->type() != Index::IndexType::Inverted) {
+      if (index == nullptr || index->type() != IndexType::Inverted) {
         return false;
       }
       TRI_ASSERT(lhs != nullptr);
@@ -1223,7 +1223,7 @@ bool getBestIndexHandleForFilterCondition(
   if (onlyEdgeIndexes) {
     indexes.erase(std::remove_if(indexes.begin(), indexes.end(),
                                  [](auto&& idx) {
-                                   return idx->type() != Index::IndexType::Edge;
+                                   return idx->type() != IndexType::Edge;
                                  }),
                   indexes.end());
   }
@@ -1274,11 +1274,11 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
         continue;
       }
       if (readOwnWrites == ReadOwnWrites::yes &&
-          index->type() == Index::IndexType::Inverted) {
+          index->type() == IndexType::Inverted) {
         // inverted index does not support ReadOwnWrites
         continue;
       }
-      if (index->type() == Index::IndexType::Inverted &&
+      if (index->type() == IndexType::Inverted &&
           // apply this index only if hinted
           hint.isSimple() &&
           std::find(hint.candidateIndexes().begin(),

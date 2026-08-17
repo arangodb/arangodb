@@ -83,7 +83,7 @@ Index* hasSingleIndexHandle(ExecutionNode const* node) {
   return nullptr;
 }
 
-Index* hasSingleIndexHandle(ExecutionNode const* node, Index::IndexType type) {
+Index* hasSingleIndexHandle(ExecutionNode const* node, IndexType type) {
   auto* idx = hasSingleIndexHandle(node);
   if (idx && idx->type() == type) {
     return idx;
@@ -167,7 +167,7 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
       continue;
     }
 
-    Index* index = hasSingleIndexHandle(node, Index::IndexType::Primary);
+    Index* index = hasSingleIndexHandle(node, IndexType::Primary);
     if (index) {
       IndexNode* indexNode = ExecutionNode::castTo<IndexNode*>(node);
       auto binaryCompares = hasBinaryCompare(node);

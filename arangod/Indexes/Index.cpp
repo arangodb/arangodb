@@ -125,10 +125,10 @@ std::string defaultIndexName(VPackSlice const& slice) {
   auto type = arangodb::Index::type(
       slice.get(arangodb::StaticStrings::IndexType).stringView());
 
-  if (type == arangodb::Index::IndexType::Primary) {
+  if (type == arangodb::IndexType::Primary) {
     return arangodb::StaticStrings::IndexNamePrimary;
   }
-  if (type == arangodb::Index::IndexType::Edge) {
+  if (type == arangodb::IndexType::Edge) {
     auto fields = slice.get(arangodb::StaticStrings::IndexFields);
     TRI_ASSERT(fields.isArray());
     auto firstField = fields.at(0);
@@ -391,7 +391,7 @@ void Index::validateFields(VPackSlice slice) {
 }
 
 /// @brief return the index type based on a type name
-Index::IndexType Index::type(std::string_view type) {
+IndexType Index::type(std::string_view type) {
   if (type == "primary") {
     return IndexType::Primary;
   }
@@ -453,7 +453,7 @@ bool Index::onlyHintForced(IndexType type) {
 }
 
 /// @brief return the name of an index type
-char const* Index::oldtypeName(Index::IndexType type) {
+char const* Index::oldtypeName(IndexType type) {
   switch (type) {
     case IndexType::Primary:
       return "primary";

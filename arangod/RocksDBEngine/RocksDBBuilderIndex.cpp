@@ -347,7 +347,7 @@ static Result fillIndex(
 
   TRI_IF_FAILURE("RocksDBBuilderIndex::fillIndex") { FATAL_ERROR_EXIT(); }
 
-  if (ridx.type() == Index::IndexType::Vector) {
+  if (ridx.type() == IndexType::Vector) {
     auto& vecIdx = static_cast<RocksDBVectorIndex&>(ridx);
     it->Seek(bounds.start());
     res = vector::ingestVectors(vecIdx, rootDB, std::move(it));

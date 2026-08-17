@@ -92,7 +92,7 @@ class ConditionRemoveForIndexTest : public ::testing::Test {
       fields.push_back(std::move(parsed));
     }
     return std::make_shared<MockIndex>(_collection, std::move(fields), sparse,
-                                       Index::IndexType::Persistent);
+                                       IndexType::Persistent);
   }
 
   std::shared_ptr<arangodb::Index> makeMdiSparse(
@@ -106,7 +106,7 @@ class ConditionRemoveForIndexTest : public ::testing::Test {
       fields.push_back(std::move(parsed));
     }
     return std::make_shared<MockIndex>(_collection, std::move(fields),
-                                       /*sparse*/ true, Index::IndexType::MDI);
+                                       /*sparse*/ true, IndexType::MDI);
   }
 
   // Builds an IN_RANGE(v.attr, low, high, includeLow, includeHigh) AST node.

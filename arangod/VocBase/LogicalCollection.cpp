@@ -655,10 +655,10 @@ void LogicalCollection::toVelocyPackForInventory(VPackBuilder& result) const {
       [](arangodb::Index const* idx, decltype(Index::makeFlags())& flags) {
         // we have to exclude the primary and edge index for dump / restore
         switch (idx->type()) {
-          case Index::IndexType::Primary:
-          case Index::IndexType::Edge:
+          case IndexType::Primary:
+          case IndexType::Edge:
             return false;
-          case Index::IndexType::Vector:
+          case IndexType::Vector:
             // Always include the vector index
             flags = Index::makeFlags(Index::Serialize::Inventory);
             return true;
@@ -721,8 +721,8 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
     // at least the MMFiles engine will try to create it
     // AND exclude hidden indexes
     switch (idx->type()) {
-      case Index::IndexType::Primary:
-      case Index::IndexType::Edge:
+      case IndexType::Primary:
+      case IndexType::Edge:
         return false;
       default:
         flags = Index::makeFlags(Index::Serialize::Inventory);
@@ -803,7 +803,7 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
         (showInProgress || !idx->inProgress() ||
          // We do this since we need trainingState of the vector index in agency
          // so we can report it to the end user
-         (forMaintance && idx->type() == Index::IndexType::Vector))) {
+         (forMaintance && idx->type() == IndexType::Vector))) {
       flags = indexFlags;
       return true;
     }
