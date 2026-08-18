@@ -399,7 +399,13 @@ TEST_F(OptimizeJoinOrderTest,
   EXPECT_FALSE(chooseJoinOrder(g, estimator, current).has_value());
 }
 
-TEST_F(OptimizeJoinOrderTest, keeps_the_written_order_on_an_exact_tie) {
+TEST_F(OptimizeJoinOrderTest, identical_order_is_a_no_op) {
+  // All costs are uniform, so orderComponent's and the sequencing loop's
+  // strict "<" comparisons converge on the written order: chosen ==
+  // currentOrder, and the early-equality guard short-circuits before the
+  // margin comparison is even reached. This pins that short-circuit, not the
+  // ">=" vs ">" boundary at the margin -- see
+  // exactly_meeting_the_margin_does_not_rewrite for that.
   auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
   auto g = buildGraph(*q);
   auto current = collectEnumerationOrder(firstEnumeration(q->plan()), nullptr);
@@ -407,7 +413,7 @@ TEST_F(OptimizeJoinOrderTest, keeps_the_written_order_on_an_exact_tie) {
   FakeCostEstimator estimator;  // all costs identical
 
   EXPECT_FALSE(chooseJoinOrder(g, estimator, current).has_value())
-      << "a tie must be a no-op, not a coin flip on node id";
+      << "an identical order must be a no-op, not a coin flip on node id";
 }
 
 TEST_F(OptimizeJoinOrderTest, bails_out_when_any_statistic_was_defaulted) {
@@ -477,7 +483,12 @@ TEST_F(OptimizeJoinOrderTest,
 }
 
 TEST_F(OptimizeJoinOrderTest, skips_graphs_above_the_enumeration_cap) {
-  // 17 enumerations exceeds kMaxEnumerationsToReorder
+  // 17 enumerations exceeds kMaxEnumerationsToReorder. Script costs that
+  // would clearly win a rewrite if the cap were not checked: v0's seed is
+  // expensive (1000) while every other seed/step defaults to 1.0, so any
+  // order starting elsewhere costs about 17 against the written order's
+  // 1016 -- nowhere near the 20% margin -- so without the cap this would
+  // rewrite. EXPECT_FALSE is therefore attributable to the cap alone.
   std::string query = "FOR v0 IN c1 ";
   for (int i = 1; i < 17; ++i) {
     query += "FOR v" + std::to_string(i) + " IN c1 FILTER v" +
@@ -491,7 +502,7 @@ TEST_F(OptimizeJoinOrderTest, skips_graphs_above_the_enumeration_cap) {
   auto current = collectEnumerationOrder(firstEnumeration(q->plan()), nullptr);
 
   FakeCostEstimator estimator;
-  estimator.seedCost = {{"v16", 1.0}};
+  estimator.seedCost = {{"v0", 1000.0}};
 
   EXPECT_FALSE(chooseJoinOrder(g, estimator, current).has_value());
 }
@@ -529,6 +540,55 @@ TEST_F(OptimizeJoinOrderTest, improvement_margin_requires_twenty_percent) {
     EXPECT_FALSE(chooseJoinOrder(g, estimator, current).has_value())
         << "81 is outside 0.8 * 100 = 80, so the rewrite should not fire";
   }
+}
+
+TEST_F(OptimizeJoinOrderTest, exactly_meeting_the_margin_does_not_rewrite) {
+  // Unlike identical_order_is_a_no_op, chosen != currentOrder here, so this
+  // test actually reaches the margin comparison. current costs exactly 100
+  // (seed(a)=50, step(b)=50); chosen ([b, a]) costs exactly 80
+  // (seed(b)=40, step(a)=40) -- precisely current / (1 + kImprovementMargin)
+  // = 100 / 1.25 = 80. The guard is `chosen >= current / (1 + margin)`, so
+  // 80 >= 80 declines; a ">" comparison would rewrite here instead. This is
+  // the boundary the measured 7.84x-worse tie makes consequential.
+  auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
+  auto g = buildGraph(*q);
+  auto current = collectEnumerationOrder(firstEnumeration(q->plan()), nullptr);
+  ASSERT_EQ(namesOf(current), (std::vector<std::string>{"a", "b"}));
+
+  FakeCostEstimator estimator;
+  estimator.seedCost = {{"a", 50.0}, {"b", 40.0}};
+  estimator.stepCost = {{"a", 40.0}, {"b", 50.0}};
+
+  EXPECT_FALSE(chooseJoinOrder(g, estimator, current).has_value())
+      << "80 exactly meets current / 1.25 = 80, which must decline, not "
+         "rewrite";
+}
+
+TEST_F(OptimizeJoinOrderTest, collect_enumeration_order_stops_at_run_boundary) {
+  // Two joins separated by a SORT (same query shape as
+  // separate_runs_produce_separate_graphs): the first run is a, b; the
+  // second is c, d. collectEnumerationOrder must stop at `next` -- the node
+  // that terminated the first run -- rather than continuing into the run
+  // that follows it, or a rewrite of the first run would silently pull in
+  // the second run's FOR loops. Every other test passes nullptr for `next`,
+  // which cannot exercise this.
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "SORT a.x "
+      "FOR c IN c3 FOR d IN c1 FILTER c.x == d.y RETURN [a, b, c, d]");
+  auto* plan = q->plan();
+  auto* first = firstEnumeration(plan);
+  ASSERT_NE(first, nullptr);
+
+  ExecutionNode* next = nullptr;
+  auto g = buildJoinGraph(plan, first, next);
+  ASSERT_NE(next, nullptr) << "the SORT should have terminated the first run";
+  ASSERT_EQ(g.nodes.size(), 2u);
+
+  auto order = collectEnumerationOrder(first, next);
+  EXPECT_EQ(namesOf(order), (std::vector<std::string>{"a", "b"}))
+      << "must stop at the run boundary, not continue into the next run's "
+         "enumerations";
 }
 
 }  // namespace arangodb::tests::aql
