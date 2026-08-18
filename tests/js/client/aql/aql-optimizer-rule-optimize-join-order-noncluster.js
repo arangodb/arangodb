@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertNotEqual */
+/*global assertEqual, assertNotEqual */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -24,6 +24,7 @@
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
+const waitForEstimatorSync = require("@arangodb/test-helper").waitForEstimatorSync;
 
 function optimizeJoinOrderTestSuite () {
   const ruleName = "optimize-join-order";
@@ -101,6 +102,13 @@ function optimizeJoinOrderTestSuite () {
         large.push({ joinKey: i % kSmallSize });
       }
       colLarge.insert(large);
+
+      // The rule's statistics come from index selectivity estimates, which
+      // RocksDB updates asynchronously after a bulk insert. While they are
+      // still stale, distinctValues() would default and the rule would
+      // decline regardless of the size asymmetry -- so wait for them to
+      // settle before any test relies on the rule actually firing.
+      waitForEstimatorSync();
     },
 
     tearDownAll : function () {
@@ -220,10 +228,10 @@ function optimizeJoinOrderTestSuite () {
             RETURN [a.joinKey, b.joinKey]`;
 
       const withRule = db._query(query, {}, {
-        optimizer: { rules: ["+optimize-join-order"] }
+        optimizer: { rules: ["+" + ruleName] }
       }).toArray();
       const withoutRule = db._query(query, {}, {
-        optimizer: { rules: ["-optimize-join-order"] }
+        optimizer: { rules: ["-" + ruleName] }
       }).toArray();
 
       assertEqual(withoutRule, withRule,
@@ -232,8 +240,14 @@ function optimizeJoinOrderTestSuite () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the payoff: after reordering, use-indexes must be able to turn the
-/// inner enumeration into an IndexNode. Asserting only the FOR order would
-/// pass even if the reordering delivered nothing.
+/// inner enumeration into an IndexNode. Both collections carry a persistent
+/// index on joinKey (each side needs index-backed statistics or the rule
+/// declines), so whichever collection ends up inner becomes an IndexNode
+/// either way -- asserting only that an IndexNode exists would pass whether
+/// or not the rule actually reordered anything. What reordering buys is
+/// *which* collection lands on which side: the small collection driving the
+/// loop as a scan, the large one probed through the index, instead of the
+/// reverse (see testResultsAreInvariantUnderReordering's proof).
 ////////////////////////////////////////////////////////////////////////////////
 
     testReorderingEnablesAnIndexLookup : function () {
@@ -243,15 +257,25 @@ function optimizeJoinOrderTestSuite () {
             FILTER a.joinKey == b.joinKey
             RETURN [a, b]`;
 
+      // interchange-adjacent-enumerations is a pre-existing, independent rule
+      // that also permutes adjacent FOR loops (by the engine's own cost
+      // model, unrelated to this feature). It is disabled here so that any
+      // reordering observed is attributable only to optimize-join-order --
+      // otherwise this assertion would pass even if optimize-join-order did
+      // nothing at all, because the older rule alone already finds the same
+      // order on this fixture.
       const plan = db._createStatement({
         query,
-        options: { optimizer: { rules: ["+optimize-join-order"] } }
+        options: { optimizer: { rules: ["+" + ruleName, "-interchange-adjacent-enumerations"] } }
       }).explain().plan;
 
-      const indexNodes = plan.nodes.filter(n => n.type === "IndexNode");
-      assertTrue(indexNodes.length >= 1,
-        "expected at least one IndexNode after index selection, got: " +
-        JSON.stringify(plan.nodes.map(n => n.type)));
+      const scanned = plan.nodes.filter(n => n.type === "EnumerateCollectionNode")
+                                .map(n => n.collection);
+      const probed  = plan.nodes.filter(n => n.type === "IndexNode")
+                                .map(n => n.collection);
+
+      assertEqual([cnSmall], scanned, JSON.stringify(plan.nodes.map(n => n.type)));
+      assertEqual([cnLarge], probed, JSON.stringify(plan.nodes.map(n => n.type)));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
