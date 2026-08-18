@@ -40,15 +40,14 @@ namespace {
 /// @brief only these index types carry a distinct-value estimate with the
 /// semantics this model needs. Inverted, geo, ttl, mdi and vector indexes
 /// report unrelated numbers.
-auto isAllowedType(Index const& index) noexcept -> bool {
-  auto const type = index.type();
-  return type == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
-         type == Index::TRI_IDX_TYPE_EDGE_INDEX ||
-         type == Index::TRI_IDX_TYPE_PERSISTENT_INDEX;
+auto isAllowedType(IndexFacts const& facts) noexcept -> bool {
+  return facts.type == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
+         facts.type == Index::TRI_IDX_TYPE_EDGE_INDEX ||
+         facts.type == Index::TRI_IDX_TYPE_PERSISTENT_INDEX;
 }
 
-auto hasExpandedField(Index const& index) noexcept -> bool {
-  for (auto const& field : index.fields()) {
+auto hasExpandedField(IndexFacts const& facts) noexcept -> bool {
+  for (auto const& field : facts.fields) {
     for (auto const& component : field) {
       if (component.shouldExpand) {
         return true;
@@ -58,13 +57,13 @@ auto hasExpandedField(Index const& index) noexcept -> bool {
   return false;
 }
 
-/// @brief structural prerequisites shared by both queries. `sparse` is
+/// @brief structural prerequisites shared by both rules. `sparse` is
 /// rejected because a sparse index's estimate is relative to the indexed
 /// documents only; expanded (array) fields have different selectivity
 /// semantics.
-auto isUsable(Index const& index) noexcept -> bool {
-  return isAllowedType(index) && !index.isHidden() && !index.inProgress() &&
-         !index.sparse() && !hasExpandedField(index);
+auto isUsable(IndexFacts const& facts) noexcept -> bool {
+  return isAllowedType(facts) && !facts.hidden && !facts.inProgress &&
+         !facts.sparse && !hasExpandedField(facts);
 }
 
 auto fieldEquals(std::vector<basics::AttributeName> const& field,
@@ -80,13 +79,13 @@ auto fieldEquals(std::vector<basics::AttributeName> const& field,
   return true;
 }
 
-/// @brief are all of the index's fields present in `attributes`? A
+/// @brief are all of the candidate's fields present in `attributes`? A
 /// subset-covering index yields a lower bound on distinct(attributes), which
 /// is the conservative direction; a superset would over-estimate
 /// distinctness.
-auto fieldsAreSubsetOf(Index const& index,
+auto fieldsAreSubsetOf(IndexFacts const& facts,
                        std::span<AttributePath const> attributes) -> bool {
-  for (auto const& field : index.fields()) {
+  for (auto const& field : facts.fields) {
     bool found = false;
     for (auto const& path : attributes) {
       if (fieldEquals(field, path)) {
@@ -125,7 +124,104 @@ auto cacheKey(JoinGraph::Node const& node,
   return key;
 }
 
+/// @brief lift the properties this model needs out of a real Index. The
+/// only engine-specific step in the whole file: everything downstream of
+/// this operates on IndexFacts, not on Index.
+auto toIndexFacts(Index const& index) -> IndexFacts {
+  IndexFacts facts;
+  facts.type = index.type();
+  facts.fields = index.fields();
+  facts.hidden = index.isHidden();
+  facts.inProgress = index.inProgress();
+  facts.sparse = index.sparse();
+  facts.hasSelectivityEstimate = index.hasSelectivityEstimate();
+  // The Index contract does not permit calling selectivityEstimate() when
+  // hasSelectivityEstimate() is false.
+  facts.selectivityEstimate =
+      facts.hasSelectivityEstimate ? index.selectivityEstimate() : 0.0;
+  return facts;
+}
+
+/// @brief the collection's indexes, lifted to IndexFacts. Null entries (a
+/// possibility the Collection::indexes() contract does not rule out) are
+/// dropped rather than propagated.
+auto candidatesFor(JoinGraph::Node const& node) -> std::vector<IndexFacts> {
+  std::vector<IndexFacts> candidates;
+  for (auto const& index : node.executionNode->collection()->indexes()) {
+    if (index != nullptr) {
+      candidates.push_back(toIndexFacts(*index));
+    }
+  }
+  return candidates;
+}
+
 }  // namespace
+
+auto distinctFromIndexFacts(std::span<IndexFacts const> candidates,
+                            double count,
+                            std::span<AttributePath const> attributes)
+    -> DistinctEstimate {
+  if (attributes.empty()) {
+    // No restriction at all -- the empty-subset case of the rule below, not
+    // an exception to it, and it must not be reported as a guess.
+    return {1.0, false};
+  }
+
+  double best = 1.0;
+  bool found = false;
+
+  for (auto const& facts : candidates) {
+    if (!isUsable(facts)) {
+      continue;
+    }
+    if (!facts.hasSelectivityEstimate) {
+      continue;
+    }
+    if (!fieldsAreSubsetOf(facts, attributes)) {
+      continue;
+    }
+    // The Index contract does not promise that hasSelectivityEstimate()
+    // yields a usable number, and an out-of-range value divides by zero
+    // downstream.
+    double const selectivity = facts.selectivityEstimate;
+    if (!(selectivity > 0.0) || selectivity > 1.0) {
+      continue;
+    }
+    best = std::max(best, selectivity * count);
+    found = true;
+  }
+
+  if (!found) {
+    return {1.0, true};
+  }
+  return {std::clamp(best, 1.0, std::max(count, 1.0)), false};
+}
+
+auto coveringFromIndexFacts(std::span<IndexFacts const> candidates,
+                            std::span<AttributePath const> attributes) -> bool {
+  if (attributes.empty()) {
+    return false;
+  }
+
+  for (auto const& facts : candidates) {
+    if (!isUsable(facts)) {
+      continue;
+    }
+    // A probe needs the *leading* field: an index on (y,x) cannot serve a
+    // probe by x alone. No selectivity estimate is required, only
+    // existence.
+    if (facts.fields.empty()) {
+      continue;
+    }
+    auto const& leading = facts.fields.front();
+    for (auto const& path : attributes) {
+      if (fieldEquals(leading, path)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
 
 IndexJoinStatistics::IndexJoinStatistics(ExecutionPlan const& plan)
     : _plan(plan) {}
@@ -160,45 +256,18 @@ auto IndexJoinStatistics::distinctValues(
     return it->second;
   }
 
-  // Defaults to "no confident estimate" and stays there unless a qualifying
-  // index is actually found while the transaction is running. In particular,
-  // if the transaction is not RUNNING, documentCount() would silently read
-  // back as 0 (it has no defaulted channel of its own) and a naive
-  // selectivity * 0 computation would look like a confident distinct count
-  // of 1 for any qualifying index -- an unusable transaction must not
-  // masquerade as a confident estimate, so that case is rejected up front
-  // rather than being allowed to fall out of the arithmetic.
+  // Defaults to "no confident estimate" and stays there unless the
+  // transaction is actually RUNNING. documentCount() has no defaulted
+  // channel of its own (it would silently read back as 0), and feeding that
+  // into the rule below for a qualifying index would look like a confident
+  // distinct count of 1 -- an unusable transaction must not masquerade as a
+  // confident estimate, so that case is rejected up front rather than being
+  // allowed to fall out of the arithmetic.
   DistinctEstimate estimate{1.0, true};
   auto& trx = _plan.getAst()->query().trxForOptimization();
   if (trx.status() == transaction::Status::RUNNING) {
     double const count = documentCount(node);
-    double best = 1.0;
-    bool found = false;
-
-    for (auto const& index : node.executionNode->collection()->indexes()) {
-      if (index == nullptr || !isUsable(*index)) {
-        continue;
-      }
-      if (!index->hasSelectivityEstimate()) {
-        continue;
-      }
-      if (!fieldsAreSubsetOf(*index, attributes)) {
-        continue;
-      }
-      // The Index contract does not promise that hasSelectivityEstimate()
-      // yields a usable number, and an out-of-range value divides by zero
-      // downstream.
-      double const selectivity = index->selectivityEstimate();
-      if (!(selectivity > 0.0) || selectivity > 1.0) {
-        continue;
-      }
-      best = std::max(best, selectivity * count);
-      found = true;
-    }
-
-    if (found) {
-      estimate = {std::clamp(best, 1.0, std::max(count, 1.0)), false};
-    }
+    estimate = distinctFromIndexFacts(candidatesFor(node), count, attributes);
   }
 
   _distinct.emplace(key, estimate);
@@ -217,27 +286,7 @@ auto IndexJoinStatistics::hasIndexCovering(
     return it->second;
   }
 
-  bool covering = false;
-  for (auto const& index : node.executionNode->collection()->indexes()) {
-    if (index == nullptr || !isUsable(*index)) {
-      continue;
-    }
-    // A probe needs the *leading* field: an index on (y,x) cannot serve a
-    // probe by x alone. No selectivity estimate is required, only existence.
-    auto const& fields = index->fields();
-    if (fields.empty()) {
-      continue;
-    }
-    for (auto const& path : attributes) {
-      if (fieldEquals(fields.front(), path)) {
-        covering = true;
-        break;
-      }
-    }
-    if (covering) {
-      break;
-    }
-  }
+  bool const covering = coveringFromIndexFacts(candidatesFor(node), attributes);
 
   _covering.emplace(key, covering);
   return covering;

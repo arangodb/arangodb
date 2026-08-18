@@ -23,20 +23,67 @@
 #pragma once
 
 #include "Aql/Optimizer/Utils/JoinStatistics.h"
+#include "Basics/AttributeNameParser.h"
+#include "Indexes/Index.h"
 
 #include <span>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace arangodb::aql {
 class ExecutionPlan;
+
+/// @brief the index properties this model consults, lifted out of Index so
+/// the selection rules below can be exercised without a storage engine (no
+/// real collection, no registered indexes -- just scripted facts).
+struct IndexFacts {
+  Index::IndexType type = Index::TRI_IDX_TYPE_UNKNOWN;
+  std::vector<std::vector<basics::AttributeName>> fields;
+  bool hidden = false;
+  bool inProgress = false;
+  bool sparse = false;
+  bool hasSelectivityEstimate = false;
+  // Only meaningful when hasSelectivityEstimate is true; the Index contract
+  // forbids calling Index::selectivityEstimate() otherwise.
+  double selectivityEstimate = 0.0;
+};
+
+/// @brief |C_S| under the subset rule: consider only candidates whose fields
+/// are a subset of `attributes`, and take the maximum of
+/// selectivityEstimate() * count over them -- a subset-covering index yields
+/// a lower bound on distinct(attributes), which is the conservative
+/// direction; a superset would over-estimate distinctness and therefore
+/// under-estimate the join. Structural prerequisites (allowed type, not
+/// hidden, not in progress, not sparse, no expanded/array field, a usable
+/// selectivity estimate in (0, 1]) are enforced the same way regardless of
+/// where the facts came from. Falls back to {1.0, defaulted = true} -- the
+/// identity for both max() and the estimator's division -- when nothing
+/// qualifies, which includes the empty-attribute-set case (no real index
+/// has an empty field list, so nothing can ever look like a subset of it;
+/// that case is instead the trivial "exactly one empty tuple", handled here
+/// directly rather than left to fall out of the loop).
+auto distinctFromIndexFacts(std::span<IndexFacts const> candidates,
+                            double count,
+                            std::span<AttributePath const> attributes)
+    -> DistinctEstimate;
+
+/// @brief can any candidate serve a *probe* by these attributes, i.e. an
+/// index lookup rather than a full scan per outer row? This is a
+/// leading-field question, not a subset one: an index on (y,x) cannot serve
+/// a probe by x alone. No selectivity estimate is required, only existence.
+auto coveringFromIndexFacts(std::span<IndexFacts const> candidates,
+                            std::span<AttributePath const> attributes) -> bool;
 
 /// @brief statistics read from whatever indexes happen to exist on the
 /// collections. This runs before index selection, so it consults the
 /// collection's indexes directly rather than any IndexNode.
 ///
 /// Depends only on the abstract Index interface: no concrete index class is
-/// named and no storage engine is assumed.
+/// named and no storage engine is assumed. The selection rules themselves
+/// live in distinctFromIndexFacts()/coveringFromIndexFacts() above, over the
+/// engine-independent IndexFacts; this class is just the thin adapter that
+/// reads real Index objects into that shape.
 class IndexJoinStatistics final : public JoinStatistics {
  public:
   explicit IndexJoinStatistics(ExecutionPlan const& plan);
