@@ -21,6 +21,8 @@
 
 #include "JoinGraphTestHelper.h"
 
+#include "Aql/OptimizerRule.h"
+
 #include <algorithm>
 #include <cstdlib>
 #include <memory>
@@ -617,10 +619,13 @@ TEST_F(OptimizeJoinOrderTest, rewrite_keeps_the_plan_valid) {
   std::vector<EnumerateCollectionNode*> desired{current[1], current[0]};
   rewriteJoinGraph(*plan, first, nullptr, desired);
 
-  // every variable must still be set before it is used; findVarUsage walks the
-  // plan and asserts that invariant.
+  // findVarUsage() only records which node sets and uses each variable; it
+  // does not check that a used variable was already set. planRegisters() is
+  // the check that actually enforces "set before use" -- it throws
+  // MissingVariablesException from the register planner, and it needs
+  // findVarUsage()'s recorded set/use relationships to run at all.
   plan->findVarUsage();
-  EXPECT_TRUE(plan->varUsageComputed());
+  EXPECT_NO_THROW(plan->planRegisters());
 }
 
 TEST_F(OptimizeJoinOrderTest, non_deterministic_calculation_is_flagged) {
@@ -635,6 +640,19 @@ TEST_F(OptimizeJoinOrderTest, deterministic_run_is_not_flagged) {
   auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
   auto g = buildGraph(*q);
   EXPECT_FALSE(g.hasNonDeterministicCalculation);
+}
+
+TEST_F(OptimizeJoinOrderTest, decline_is_not_reported_as_applied) {
+  // The mock collections carry no indexes, so every statistic is defaulted and
+  // the rule declines. Declining must not be reported as applied, or every join
+  // query needlessly re-triggers the downstream rules. -interchange-adjacent-
+  // enumerations isolates the subject, as in the neighbouring test.
+  EXPECT_FALSE(
+      assertRules(server.getSystemDatabase(),
+                  "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]",
+                  {OptimizerRule::optimizeJoinOrder}, nullptr,
+                  R"({"optimizer":{"rules":["+optimize-join-order",)"
+                  R"("-interchange-adjacent-enumerations"]}})"));
 }
 
 TEST_F(OptimizeJoinOrderTest, rule_leaves_the_plan_alone_without_statistics) {
