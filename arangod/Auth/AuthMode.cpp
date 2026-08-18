@@ -338,8 +338,6 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
         switch (level) {
           case ViewAccessLevel::Read:
             return auth::Level::RO;
-          case ViewAccessLevel::Modify:
-            return auth::Level::RW;
         }
         ADB_PROD_CRASH();
       },
@@ -969,8 +967,6 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
     switch (level) {
       case ViewAccessLevel::Read:
         return rbac::Action::Read;
-      case ViewAccessLevel::Modify:
-        return rbac::Action::WriteMeta;
     }
     ADB_PROD_CRASH();
   };

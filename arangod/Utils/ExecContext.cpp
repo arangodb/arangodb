@@ -414,11 +414,6 @@ Result ExecContext::canUseView(std::string_view db, std::string_view viewName,
       r.fail()) {
     return r;
   }
-  if (requested == ViewAccessLevel::Modify) {
-    if (auto r = checkNotReadOnly(); r.fail()) {
-      return r;
-    }
-  }
   return {};
 }
 

@@ -56,8 +56,6 @@ auto to_string(ViewAccessLevel level) -> std::string_view {
   switch (level) {
     case ViewAccessLevel::Read:
       return "read";
-    case ViewAccessLevel::Modify:
-      return "modify";
   }
   ADB_PROD_CRASH();
 }

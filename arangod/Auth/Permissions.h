@@ -46,7 +46,7 @@ enum class CollectionAccessLevel { Read, WriteData, WriteMeta };
 // TODO We call ::Write for DB, but ::Modify for View and Analyzer.
 //      Should we keep it consistent?
 enum class DatabaseAccessLevel { Read, Write };
-enum class ViewAccessLevel { Read, Modify };
+enum class ViewAccessLevel { Read };
 enum class AnalyzerAccessLevel { Read, Modify };
 enum class GraphAccessLevel { Read, Modify };
 
