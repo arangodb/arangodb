@@ -480,8 +480,6 @@ class LogicalCollection : public LogicalDataSource {
   // when this is a replication-2 shard, but this is what gets serialized.
   std::atomic<bool> _waitForSync;
 
-  std::atomic<bool> _supportsRBAC;
-
   // Bitmap of InternalValidatorType. Changed by the maintenance during
   // cluster upgrades only.
   std::atomic<uint64_t> _internalValidatorTypes;

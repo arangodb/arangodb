@@ -149,7 +149,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
           info, StaticStrings::UsesRevisionsAsDocumentIds, false)),
       _syncByRevision(determineSyncByRevision()),
       _waitForSync(_properties.clusteringMutable.waitForSync),
-      _supportsRBAC(_properties.mutableProps.supportsRBAC),
       _internalValidatorTypes(_properties.internal.internalValidatorType),
       _countCache(defaultCountCacheTtl(system())),
       _physical(vocbase.engine().createPhysicalCollection(*this, _properties)) {
@@ -254,7 +253,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase,
           _properties.internal.usesRevisionsAsDocumentIds),
       _syncByRevision(determineSyncByRevision()),
       _waitForSync(_properties.clusteringMutable.waitForSync),
-      _supportsRBAC(_properties.mutableProps.supportsRBAC),
       _internalValidatorTypes(_properties.internal.internalValidatorType),
       _countCache(defaultCountCacheTtl(system())),
       _physical(vocbase.engine().createPhysicalCollection(*this, _properties)) {
@@ -428,17 +426,12 @@ bool LogicalCollection::cacheEnabled() const noexcept {
   return _physical->cacheEnabled();
 }
 
-bool LogicalCollection::supportsRBAC() const noexcept {
-  return _supportsRBAC.load(std::memory_order_relaxed);
-}
-
 // The stored descriptor supplies the immutable fields; every field that
 // LogicalCollection owns is overwritten here with its current value.
 CollectionDescriptor LogicalCollection::properties() const {
   auto d = _properties;
 
   d.mutableProps.name = name();
-  d.mutableProps.supportsRBAC = _supportsRBAC.load(std::memory_order_relaxed);
   // cacheEnabled stays as declared at creation. The physical collection owns
   // the effective value and writes it out itself.
 
@@ -1238,12 +1231,8 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
   auto waitForSync =
       Helper::getBooleanValue(slice, StaticStrings::WaitForSyncString,
                               _waitForSync.load(std::memory_order_relaxed));
-  auto supportsRBAC =
-      Helper::getBooleanValue(slice, StaticStrings::SupportsRBAC,
-                              _supportsRBAC.load(std::memory_order_relaxed));
 
   _waitForSync.store(waitForSync, std::memory_order_relaxed);
-  _supportsRBAC.store(supportsRBAC, std::memory_order_relaxed);
 
   _sharding->setWriteConcernAndReplicationFactor(writeConcern,
                                                  replicationFactor);

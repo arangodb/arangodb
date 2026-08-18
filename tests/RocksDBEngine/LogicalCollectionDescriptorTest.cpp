@@ -47,7 +47,6 @@ VPackBuilder representativeCreateSlice() {
               VPackValue(static_cast<int>(TRI_COL_TYPE_DOCUMENT)));
   builder.add(StaticStrings::WaitForSyncString, VPackValue(true));
   builder.add(StaticStrings::CacheEnabled, VPackValue(true));
-  builder.add(StaticStrings::SupportsRBAC, VPackValue(false));
   {
     VPackObjectBuilder keyOpts(&builder, StaticStrings::KeyOptions);
     builder.add(StaticStrings::AllowUserKeys, VPackValue(false));
@@ -58,7 +57,7 @@ VPackBuilder representativeCreateSlice() {
 }
 
 constexpr std::string_view kExpectedBooksJson =
-    R"({"allowUserKeys":false,"cacheEnabled":false,"computedValues":null,"deleted":false,"internalValidatorType":0,"isDisjoint":false,"isSmart":false,"isSmartChild":false,"isSystem":false,"keyOptions":{"allowUserKeys":false,"type":"traditional","lastValue":0},"minReplicationFactor":1,"name":"books","numberOfShards":1,"replicationFactor":1,"schema":null,"shardKeys":["_key"],"shards":{},"status":3,"statusString":"loaded","supportsRBAC":false,"syncByRevision":false,"type":2,"usesRevisionsAsDocumentIds":false,"version":9,"waitForSync":true,"writeConcern":1})";
+    R"({"allowUserKeys":false,"cacheEnabled":false,"computedValues":null,"deleted":false,"internalValidatorType":0,"isDisjoint":false,"isSmart":false,"isSmartChild":false,"isSystem":false,"keyOptions":{"allowUserKeys":false,"type":"traditional","lastValue":0},"minReplicationFactor":1,"name":"books","numberOfShards":1,"replicationFactor":1,"schema":null,"shardKeys":["_key"],"shards":{},"status":3,"statusString":"loaded","syncByRevision":false,"type":2,"usesRevisionsAsDocumentIds":false,"version":9,"waitForSync":true,"writeConcern":1})";
 
 VPackBuilder userCreateSlice() {
   VPackBuilder builder;
@@ -84,14 +83,12 @@ TEST_F(StorageEngineDataTest,
   EXPECT_EQ(collection->type(), TRI_COL_TYPE_DOCUMENT);
   EXPECT_TRUE(collection->waitForSync());
   EXPECT_FALSE(collection->cacheEnabled());
-  EXPECT_FALSE(collection->supportsRBAC());
   EXPECT_TRUE(collection->properties().mutableProps.cacheEnabled);
 
   UserInputCollectionProperties props = collection->getCollectionProperties();
   EXPECT_EQ(props.name, "books");
   EXPECT_TRUE(props.waitForSync);
   EXPECT_FALSE(props.cacheEnabled);
-  EXPECT_FALSE(props.supportsRBAC);
 }
 
 TEST_F(StorageEngineDataTest, LogicalCollection_acceptsInternalOnlyValues) {
@@ -168,7 +165,7 @@ TEST_F(StorageEngineDataTest, LogicalCollection_persistenceOutputIsStable) {
 
   EXPECT_EQ(
       out.slice().toJson(),
-      R"({"allowUserKeys":false,"cacheEnabled":false,"computedValues":null,"deleted":false,"internalValidatorType":0,"isDisjoint":false,"isSmart":false,"isSmartChild":false,"isSystem":false,"keyOptions":{"allowUserKeys":false,"type":"traditional","lastValue":0},"minReplicationFactor":1,"name":"books","numberOfShards":1,"replicationFactor":1,"schema":null,"shardKeys":["_key"],"shards":{},"status":3,"statusString":"loaded","supportsRBAC":false,"syncByRevision":false,"type":2,"usesRevisionsAsDocumentIds":false,"version":9,"waitForSync":true,"writeConcern":1})");
+      R"({"allowUserKeys":false,"cacheEnabled":false,"computedValues":null,"deleted":false,"internalValidatorType":0,"isDisjoint":false,"isSmart":false,"isSmartChild":false,"isSystem":false,"keyOptions":{"allowUserKeys":false,"type":"traditional","lastValue":0},"minReplicationFactor":1,"name":"books","numberOfShards":1,"replicationFactor":1,"schema":null,"shardKeys":["_key"],"shards":{},"status":3,"statusString":"loaded","syncByRevision":false,"type":2,"usesRevisionsAsDocumentIds":false,"version":9,"waitForSync":true,"writeConcern":1})");
 }
 
 TEST_F(StorageEngineDataTest, LogicalCollection_serializationOutputIsStable) {

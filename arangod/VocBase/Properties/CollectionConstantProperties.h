@@ -82,9 +82,10 @@ auto inspect(Inspector& f, CollectionConstantProperties& props) {
       f.field(StaticStrings::IsDisjoint, props.isDisjoint).fallback(f.keep()),
       f.field(StaticStrings::SmartJoinAttribute, props.smartJoinAttribute)
           .invariant(UtilityInvariants::isNonEmptyIfPresent),
-      f.field(StaticStrings::DataSourceType, props.type)
-          .fallback(f.keep())
-          .invariant(UtilityInvariants::isValidCollectionType),
+      userInvariant(
+          f,
+          f.field(StaticStrings::DataSourceType, props.type).fallback(f.keep()),
+          UtilityInvariants::isValidCollectionType),
       f.field(StaticStrings::KeyOptions, props.keyOptions).fallback(f.keep()),
       /* Backwards compatibility, fields are allowed (MMFILES) but have no
          relevance anymore */
