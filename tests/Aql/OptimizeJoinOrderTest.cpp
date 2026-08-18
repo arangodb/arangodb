@@ -108,6 +108,49 @@ TEST_F(OptimizeJoinOrderTest, non_equijoin_predicate_becomes_residual) {
   EXPECT_FALSE(g.residuals.empty());
 }
 
+TEST_F(OptimizeJoinOrderTest, single_variable_residual_attaches_to_node) {
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FILTER a.p < 5 RETURN [a, b]");
+  auto g = buildGraph(*q);
+
+  EXPECT_TRUE(g.residuals.empty()) << "should have been attached to node a";
+  auto* a = nodeByName(g, "a");
+  ASSERT_NE(a, nullptr);
+  EXPECT_EQ(a->residuals.size(), 1u);
+  auto* b = nodeByName(g, "b");
+  ASSERT_NE(b, nullptr);
+  EXPECT_TRUE(b->residuals.empty());
+}
+
+TEST_F(OptimizeJoinOrderTest, two_variable_residual_stays_graph_level) {
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FILTER a.p < b.q RETURN [a, b]");
+  auto g = buildGraph(*q);
+
+  EXPECT_EQ(g.residuals.size(), 1u);
+  EXPECT_TRUE(nodeByName(g, "a")->residuals.empty());
+  EXPECT_TRUE(nodeByName(g, "b")->residuals.empty());
+}
+
+TEST_F(OptimizeJoinOrderTest,
+       residual_without_graph_variable_stays_graph_level) {
+  // NOOPT() is load-bearing: Ast::optimizeBinaryOperatorRelational
+  // constant-folds a comparison whose both sides are constant, so a literal `1
+  // < 2` collapses to `true` during AST optimization and never reaches
+  // addResidual at all. NOOPT keeps the left side non-constant so the predicate
+  // survives as a real residual that happens to reference no graph variable. Do
+  // not "simplify" this back to `1 < 2`.
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FILTER NOOPT(1) < 2 RETURN [a, b]");
+  auto g = buildGraph(*q);
+
+  EXPECT_EQ(g.residuals.size(), 1u);
+  EXPECT_TRUE(nodeByName(g, "a")->residuals.empty());
+}
+
 TEST_F(OptimizeJoinOrderTest, id_is_remapped_to_key) {
   auto q =
       prepare("FOR a IN c1 FOR b IN c2 FILTER a._id == b._id RETURN [a, b]");

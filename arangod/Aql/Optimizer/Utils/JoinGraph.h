@@ -44,6 +44,11 @@ struct JoinGraph {
     /// on this node (e.g. the `x` of `doc.x == 'foo'`).
     std::vector<AttributePath> conditions;
 
+    /// @brief residual predicates that reference this node's variable and no
+    /// other graph variable. Priced with a default selectivity factor by the
+    /// cost estimator; see the design doc's residual-selectivity section.
+    std::vector<AstNode const*> residuals;
+
     explicit Node(EnumerateCollectionNode* executionNode)
         : executionNode(executionNode) {}
   };

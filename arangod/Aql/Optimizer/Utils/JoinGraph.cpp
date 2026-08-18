@@ -22,8 +22,10 @@
 
 #include "JoinGraph.h"
 
+#include "Aql/Ast.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/Variable.h"
+#include "Aql/types.h"
 #include "Assertions/ProdAssert.h"
 
 #include <algorithm>
@@ -80,7 +82,28 @@ auto JoinGraph::addJoinCondition(Variable const* v, AttributePath vAttributes,
 }
 
 void JoinGraph::addResidual(AstNode const* node) {
-  residuals.emplace_back(node);
+  // A residual that constrains exactly one graph variable is a genuine
+  // restriction on that node's row count, so attach it there. Anything that
+  // touches none or several is kept graph-level and left unmodelled.
+  VarSet referenced;
+  Ast::getReferencedVariables(node, referenced);
+
+  Node* single = nullptr;
+  for (auto const* var : referenced) {
+    if (auto* candidate = nodeForVariable(var); candidate != nullptr) {
+      if (single != nullptr && single != candidate) {
+        single = nullptr;  // more than one graph variable
+        break;
+      }
+      single = candidate;
+    }
+  }
+
+  if (single != nullptr) {
+    single->residuals.emplace_back(node);
+  } else {
+    residuals.emplace_back(node);
+  }
 }
 
 auto JoinGraph::getEdgesForNode(Node* node) -> std::vector<Edge*> {
