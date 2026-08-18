@@ -209,6 +209,10 @@ class FakeCostEstimator final : public arangodb::aql::JoinCostEstimator {
   std::map<std::string, double, std::less<>> stepCost;
   // set to true to make every estimate report a defaulted statistic
   bool defaulted = false;
+  // records how many connecting edges `extend` was offered for each vertex it
+  // added, keyed by that vertex's out-variable name, so tests can assert on
+  // it directly instead of only reasoning about it from cost behaviour.
+  mutable std::map<std::string, size_t> edgesSeen;
 
   static std::string nameOf(arangodb::aql::JoinGraph::Node const& node) {
     return node.executionNode->outVariable()->name;
@@ -226,6 +230,7 @@ class FakeCostEstimator final : public arangodb::aql::JoinCostEstimator {
               arangodb::aql::JoinGraph::Node const& next,
               std::span<arangodb::aql::JoinGraph::Edge const* const> connecting)
       const -> arangodb::aql::JoinEstimate override {
+    edgesSeen[nameOf(next)] = connecting.size();
     auto it = stepCost.find(nameOf(next));
     double step = it == stepCost.end() ? 1.0 : it->second;
     // a cross product is charged double, so tests can see components being

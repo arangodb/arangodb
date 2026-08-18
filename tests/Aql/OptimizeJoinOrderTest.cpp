@@ -273,20 +273,70 @@ TEST_F(OptimizeJoinOrderTest, greedy_only_extends_along_edges) {
   EXPECT_EQ(namesOf(result.order), (std::vector<std::string>{"a", "b", "c"}));
 }
 
-TEST_F(OptimizeJoinOrderTest, greedy_order_is_deterministic_across_runs) {
+TEST_F(OptimizeJoinOrderTest, equal_costs_break_ties_by_node_id) {
   auto q = prepare(
       "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
       "FOR c IN c3 FILTER b.z == c.w RETURN [a, b, c]");
   auto g = buildGraph(*q);
   auto components = g.connectedComponents();
 
-  // every cost identical, so the outcome is decided entirely by the tie-break
+  // Every cost is identical, so the outcome is decided entirely by the
+  // tie-break rule: ascending ExecutionNode::id(). This is necessary but not
+  // sufficient to prove run-to-run stability -- JoinGraph::nodes is keyed by
+  // Variable const*, and within a single process calling orderComponent
+  // twice on the same graph would see the same map iteration order whether
+  // or not nodesInIdOrder sorts, so that could not have caught the sort
+  // being removed. What this test does catch: id-ascending order coinciding
+  // by chance with Variable-pointer order is exceedingly unlikely, so if the
+  // sort in nodesInIdOrder is ever deleted, this is very likely to fail.
   FakeCostEstimator estimator;
 
-  auto first = orderComponent(g, components.front(), estimator);
-  auto second = orderComponent(g, components.front(), estimator);
-  EXPECT_EQ(namesOf(first.order), namesOf(second.order));
-  EXPECT_EQ(first.order.size(), 3u);
+  auto result = orderComponent(g, components.front(), estimator);
+  EXPECT_EQ(namesOf(result.order), (std::vector<std::string>{"a", "b", "c"}));
+}
+
+TEST_F(OptimizeJoinOrderTest, multi_start_beats_picking_the_cheapest_seed) {
+  // a - b - c, same shape as the other chain tests.
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FOR c IN c3 FILTER b.z == c.w RETURN [a, b, c]");
+  auto g = buildGraph(*q);
+  auto components = g.connectedComponents();
+
+  // a has by far the cheapest SEED cost, so a shortcut that starts at
+  // argmin(seedCost) and then just descends once would start at a. Doing so
+  // forces the chain order a, b, c, which pays b's enormous step cost. Only
+  // trying every start and costing the *complete* order finds that starting
+  // at b instead -- paying a slightly higher seed but never paying b's own
+  // step cost -- is actually cheapest overall (11, vs. 1006 either other
+  // way): seed(b)=5 + step(a)=1 + step(c)=5 = 11.
+  FakeCostEstimator estimator;
+  estimator.seedCost = {{"a", 1.0}, {"b", 5.0}, {"c", 5.0}};
+  estimator.stepCost = {{"a", 1.0}, {"b", 1000.0}, {"c", 5.0}};
+
+  auto result = orderComponent(g, components.front(), estimator);
+  EXPECT_EQ(namesOf(result.order), (std::vector<std::string>{"b", "a", "c"}));
+  EXPECT_DOUBLE_EQ(result.estimate.cost, 11.0);
+}
+
+TEST_F(OptimizeJoinOrderTest, estimate_order_passes_every_connecting_edge) {
+  // a cycle: a-b, b-c, a-c. Replaying the fixed order a, b, c means c joins a
+  // prefix it is doubly constrained against, so extend must be offered both
+  // edges, not just one.
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FOR c IN c3 "
+      "FILTER a.x == b.y FILTER b.z == c.w FILTER a.q == c.r "
+      "RETURN [a, b, c]");
+  auto g = buildGraph(*q);
+  ASSERT_EQ(g.edges.size(), 3u);
+
+  FakeCostEstimator estimator;
+  auto* a = nodeByName(g, "a")->executionNode;
+  auto* b = nodeByName(g, "b")->executionNode;
+  auto* c = nodeByName(g, "c")->executionNode;
+
+  estimateOrder(g, estimator, {a, b, c});
+  EXPECT_EQ(estimator.edgesSeen.at("c"), 2u);
 }
 
 TEST_F(OptimizeJoinOrderTest, estimate_order_replays_a_complete_order) {
