@@ -80,8 +80,10 @@ auto inspect(Inspector& f, CollectionConstantProperties& props) {
           .fallback(f.keep()),
       f.field(StaticStrings::IsSmart, props.isSmart).fallback(f.keep()),
       f.field(StaticStrings::IsDisjoint, props.isDisjoint).fallback(f.keep()),
-      f.field(StaticStrings::SmartJoinAttribute, props.smartJoinAttribute)
-          .invariant(UtilityInvariants::isNonEmptyIfPresent),
+      userInvariant(
+          f,
+          f.field(StaticStrings::SmartJoinAttribute, props.smartJoinAttribute),
+          UtilityInvariants::isNonEmptyIfPresent),
       userInvariant(
           f,
           f.field(StaticStrings::DataSourceType, props.type).fallback(f.keep()),

@@ -54,23 +54,14 @@ struct CollectionMutableProperties {
 
 template<class Inspector>
 auto inspect(Inspector& f, CollectionMutableProperties& props) {
-  auto nameField = std::invoke([&]() {
-    if constexpr (isInternalContext<Inspector>) {
-      // LogicalDataSource owns the name on this path, and a marker or plan
-      // entry may not carry one. Non-empty is a rule about user input.
-      return f.field(StaticStrings::DataSourceName, props.name)
-          .fallback(f.keep());
-    } else {
-      return f.field(StaticStrings::DataSourceName, props.name)
-          .fallback(f.keep())
-          .invariant(UtilityInvariants::isNonEmpty);
-    }
-  });
   return f.object(props).fields(
-      std::move(nameField),
-      f.field(StaticStrings::Schema, props.schema)
-          .fallback(f.keep())
-          .invariant(CollectionMutableProperties::Invariants::isJsonSchema),
+      userInvariant(
+          f,
+          f.field(StaticStrings::DataSourceName, props.name).fallback(f.keep()),
+          UtilityInvariants::isNonEmpty),
+      userInvariant(
+          f, f.field(StaticStrings::Schema, props.schema).fallback(f.keep()),
+          CollectionMutableProperties::Invariants::isJsonSchema),
       f.field(StaticStrings::ComputedValues, props.computedValues)
           .fallback(f.keep()),
       f.field(StaticStrings::CacheEnabled, props.cacheEnabled)

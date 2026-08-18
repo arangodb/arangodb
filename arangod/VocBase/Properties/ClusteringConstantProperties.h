@@ -60,37 +60,32 @@ auto inspect(Inspector& f, ClusteringConstantProperties& props) {
   auto distShardsLikeField = std::invoke([&]() {
     if constexpr (isAgencyContext<Inspector> || isInternalContext<Inspector>) {
       // The agency requires the CollectionID
-      auto field = f.field(StaticStrings::DistributeShardsLike,
-                           props.distributeShardsLikeCid)
-                       .invariant(UtilityInvariants::isNonEmptyIfPresent);
-      return field;
+      return userInvariant(f,
+                           f.field(StaticStrings::DistributeShardsLike,
+                                   props.distributeShardsLikeCid),
+                           UtilityInvariants::isNonEmptyIfPresent);
     } else {
       // The user gives the CollectionName
-      return f
-          .field(StaticStrings::DistributeShardsLike,
-                 props.distributeShardsLike)
-          .fallback(f.keep())
-          .invariant(UtilityInvariants::isNonEmptyIfPresent);
+      return userInvariant(f,
+                           f.field(StaticStrings::DistributeShardsLike,
+                                   props.distributeShardsLike)
+                               .fallback(f.keep()),
+                           UtilityInvariants::isNonEmptyIfPresent);
     }
   });
 
-  auto numberOfShardsField = std::invoke([&]() {
-    if constexpr (isInternalContext<Inspector>) {
-      // Not an invariant of the type: EE SmartGraph edge collections are
-      // persisted with numberOfShards == 0. Greater-than-zero is a rule about
-      // what a user may ask for, so it is only checked on the input paths.
-      return f.field(StaticStrings::NumberOfShards, props.numberOfShards);
-    } else {
-      return f.field(StaticStrings::NumberOfShards, props.numberOfShards)
-          .invariant(UtilityInvariants::isGreaterZeroIfPresent);
-    }
-  });
+  auto numberOfShardsField = userInvariant(
+      f, f.field(StaticStrings::NumberOfShards, props.numberOfShards),
+      UtilityInvariants::isGreaterZeroIfPresent);
+
+  auto shardingStrategyField = userInvariant(
+      f, f.field(StaticStrings::ShardingStrategy, props.shardingStrategy),
+      UtilityInvariants::isValidShardingStrategyIfPresent);
 
   if constexpr (isAgencyContext<Inspector> || isInternalContext<Inspector>) {
     return f.object(props).fields(
         std::move(numberOfShardsField), std::move(distShardsLikeField),
-        f.field(StaticStrings::ShardingStrategy, props.shardingStrategy)
-            .invariant(UtilityInvariants::isValidShardingStrategyIfPresent),
+        std::move(shardingStrategyField),
         f.field(StaticStrings::ShardKeys, props.shardKeys).fallback(f.keep()),
         f.field("shardsR2", props.shardsR2).fallback(f.keep()),
         f.field(StaticStrings::GroupId, props.groupId).fallback(f.keep()));
@@ -98,8 +93,7 @@ auto inspect(Inspector& f, ClusteringConstantProperties& props) {
     // If the user specifies the shards list and groupId, we reject it.
     return f.object(props).fields(
         std::move(numberOfShardsField), std::move(distShardsLikeField),
-        f.field(StaticStrings::ShardingStrategy, props.shardingStrategy)
-            .invariant(UtilityInvariants::isValidShardingStrategyIfPresent),
+        std::move(shardingStrategyField),
         f.field(StaticStrings::ShardKeys, props.shardKeys).fallback(f.keep()));
   }
 }

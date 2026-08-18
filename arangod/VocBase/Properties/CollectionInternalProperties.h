@@ -99,9 +99,10 @@ auto inspect(Inspector& f, CollectionInternalProperties& props) {
       f.field(StaticStrings::InternalValidatorTypes,
               props.internalValidatorType)
           .fallback(f.keep()),
-      f.field(StaticStrings::GraphSmartGraphAttribute,
-              props.smartGraphAttribute)
-          .invariant(UtilityInvariants::isNonEmptyIfPresent),
+      userInvariant(f,
+                    f.field(StaticStrings::GraphSmartGraphAttribute,
+                            props.smartGraphAttribute),
+                    UtilityInvariants::isNonEmptyIfPresent),
       /* Backwards compatibility, field is documented but does not have an
        * effect
        */
