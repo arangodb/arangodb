@@ -21,13 +21,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "thread.h"
 
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 
 using namespace arangodb::basics;
 
 auto ThreadId::current() noexcept -> ThreadId {
-  return ThreadId{.posix_id = arangodb::Thread::currentThreadId(),
-                  .kernel_id = arangodb::Thread::currentKernelThreadId()};
+  return ThreadId{.posix_id = arangodb::BasicThread::currentThreadId(),
+                  .kernel_id = arangodb::BasicThread::currentKernelThreadId()};
 }
 auto ThreadId::name() -> std::string {
   return std::string{ThreadNameFetcher{posix_id}.get()};
@@ -36,7 +36,7 @@ auto ThreadId::name() -> std::string {
 auto ThreadInfo::current() noexcept -> containers::SharedPtr<ThreadInfo> {
   struct Guard {
     containers::SharedPtr<ThreadInfo> _info = containers::SharedPtr<ThreadInfo>(
-        arangodb::Thread::currentKernelThreadId(),
+        arangodb::BasicThread::currentKernelThreadId(),
         std::string{arangodb::ThreadNameFetcher{}.get()});
   };
   static thread_local auto guard = Guard{};

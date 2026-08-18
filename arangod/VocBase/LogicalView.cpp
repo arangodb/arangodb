@@ -20,7 +20,8 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "LogicalView.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/LogicalView.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
@@ -131,16 +132,6 @@ Result LogicalView::appendVPack(velocypack::Builder& build, Serialization ctx,
   return appendVPackImpl(build, ctx, safe);
 }
 
-bool LogicalView::canUse(auth::Level const& level) {
-  return ExecContext::current().canUseDatabase(vocbase().name(), level);
-  // TODO per-view authentication checks disabled as per
-  // https://github.com/arangodb/backlog/issues/459
-  // return !ctx || (  // authentication not enabled
-  //   ctx->canUseDatabase(vocbase.name(), level) &&  // can use vocbase
-  //   ctx->canUseCollection(vocbase.name(), name(), level)  // can use view
-  // ));
-}
-
 Result LogicalView::create(LogicalView::ptr& view, Database& vocbase,
                            velocypack::Slice definition, bool isUserRequest) {
   // extract view name
@@ -172,6 +163,13 @@ Result LogicalView::create(LogicalView::ptr& view, Database& vocbase,
 }
 
 Result LogicalView::drop() {
+  // TODO We mark a view as deleted before doing any permission checks (or maybe
+  //      check for other failure conditions), but happily report it as deleted
+  //      in the meantime.
+  //      So if one user tries to drop the view, but it fails (e.g. due to
+  //      missing permissions); and a second user tries to drop it while the
+  //      first try is running, it will see a success, but the view is still
+  //      there.
   if (deleted()) {
     return {};  // view already dropped
   }
@@ -187,6 +185,17 @@ Result LogicalView::drop() {
     setUndeleted();
     throw;
   }
+}
+
+std::vector<std::string> LogicalView::linkedCollectionNames() const {
+  std::vector<std::string> names;
+  visitCollections([&](DataSourceId cid, Indexes*) {
+    if (auto collection = vocbase().lookupCollection(cid); collection) {
+      names.push_back(collection->name());
+    }
+    return true;
+  });
+  return names;
 }
 
 bool LogicalView::enumerate(

@@ -55,7 +55,7 @@ class IResearchLinkHelperTestSingle : public ::testing::Test {
 
   IResearchLinkHelperTestSingle() {
     auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
-    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::OperationOptions options;
     {
       auto vocbase =
           dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);

@@ -43,7 +43,8 @@ DECLARE_GAUGE(rocksdb_wal_released_tick_replication, uint64_t,
 RocksDBBackgroundThread::RocksDBBackgroundThread(RocksDBEngine& engine,
                                                  double interval,
                                                  metrics::IRegistry& metrics)
-    : Thread("RocksDBThread"),
+    // the settingsManager sync installs its own superuser scope where needed
+    : Thread("RocksDBThread", nullptr),
       _engine(engine),
       _interval(interval),
       _metricsWalReleasedTickReplication(

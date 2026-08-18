@@ -88,8 +88,7 @@ const getDefaultProps = () => {
       "computedValues": null,
       "syncByRevision": true,
       "schema": null,
-      "isDisjoint": false,
-      "supportsRBAC": true
+      "isDisjoint": false
     };
     return base;
   } else {
@@ -105,8 +104,7 @@ const getDefaultProps = () => {
       "cacheEnabled": false,
       "computedValues": null,
       "syncByRevision": true,
-      "schema": null,
-      "supportsRBAC": true
+      "schema": null
     };
     return base;
   }

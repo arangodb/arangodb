@@ -23,7 +23,7 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
 #include "Metrics/GaugeBuilder.h"
@@ -33,6 +33,7 @@
 #include "RestServer/IDatabaseBootstrap.h"
 #include "RestServer/IDatabaseProvider.h"
 #include "Utils/DatabaseGuard.h"
+#include "Utils/Thread.h"
 #include "Utils/VersionTracker.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/Methods/Databases.h"
@@ -159,7 +160,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
   /// @brief get the ids of all local databases
   std::vector<TRI_voc_tick_t> getDatabaseIds(bool includeSystem);
   std::vector<std::string> getDatabaseNames();
-  std::vector<std::string> getDatabaseNamesForUser(std::string const& user);
+  std::vector<std::string> getDatabaseNamesForCurrentUser();
 
   Result createDatabase(arangodb::CreateDatabaseInfo&&, Database*& result);
 

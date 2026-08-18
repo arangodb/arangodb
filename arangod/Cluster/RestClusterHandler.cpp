@@ -33,10 +33,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/CollectionInfoCurrent.h"
 #include "Cluster/ServerState.h"
-#include "GeneralServer/AuthenticationFeature.h"
-#include "Replication/ReplicationFeature.h"
 #include "VocBase/LogicalCollection.h"
-#include "Rest/Version.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -50,13 +47,15 @@ RestClusterHandler::RestClusterHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_api/cluster (prefix, only when cluster is enabled)
 RestStatus RestClusterHandler::execute() {
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (!suffixes.empty()) {
     if (suffixes[0] == "cluster-info") {
-      if (!ExecContext::current().isAdminUser()) {
-        generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                      "you need admin rights to produce a cluster info dump");
+      if (auto r = ExecContext::current().canUseAdminAction(
+              auth::perms::AdminClusterInfo{});
+          r.fail()) {
+        generateError(r);
         return RestStatus::DONE;
       }
       if (suffixes.size() == 1) {
@@ -133,6 +132,17 @@ RestStatus RestClusterHandler::execute() {
   return RestStatus::DONE;
 }
 
+async<Result> RestClusterHandler::checkDatabaseAccess() const {
+  auto const& suffixes = _request->suffixes();
+  if (_request->authenticated() && suffixes.size() == 1 &&
+      suffixes[0] == "endpoints") {
+    // endpoint shall be available to all authenticated users
+    co_return Result{};
+  }
+
+  co_return co_await RestHandler::checkDatabaseAccess();
+}
+
 void RestClusterHandler::handleAgencyDump() {
   if (!ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,
@@ -141,20 +151,11 @@ void RestClusterHandler::handleAgencyDump() {
     return;
   }
 
-  AuthenticationFeature* af = AuthenticationFeature::instance();
-  if (af->isActive() && !_request->user().empty()) {
-    auth::Level lvl;
-    if (af->userManager() != nullptr) {
-      lvl = af->userManager()->databaseAuthLevel(_request->user(), "_system",
-                                                 true);
-    } else {
-      lvl = auth::Level::RW;
-    }
-    if (lvl < auth::Level::RW) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    "you need admin rights to produce an agency dump");
-      return;
-    }
+  auto const& exec = ExecContext::current();
+  if (auto r = exec.canUseAdminAction(auth::perms::AdminReadAgency{});
+      r.fail()) {
+    generateError(r);
+    return;
   }
 
   std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
@@ -169,20 +170,11 @@ void RestClusterHandler::handleAgencyDump() {
 }
 
 void RestClusterHandler::handleAgencyCache() {
-  AuthenticationFeature* af = AuthenticationFeature::instance();
-  if (af->isActive() && !_request->user().empty()) {
-    auth::Level lvl;
-    if (af->userManager() != nullptr) {
-      lvl = af->userManager()->databaseAuthLevel(_request->user(), "_system",
-                                                 true);
-    } else {
-      lvl = auth::Level::RW;
-    }
-    if (lvl < auth::Level::RW) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    "you need admin rights to produce an agency cache dump");
-      return;
-    }
+  auto const& exec = ExecContext::current();
+  if (auto r = exec.canUseAdminAction(auth::perms::AdminReadAgency{});
+      r.fail()) {
+    generateError(r);
+    return;
   }
 
   auto& ac = server().getFeature<ClusterFeature>().agencyCache();
@@ -448,7 +440,7 @@ void RestClusterHandler::handleCI_getResponsibleShard(
                   "only the POST method is allowed");
     return;
   }
-  if (suffixes.size() < 4) {
+  if (suffixes.size() < 5) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "databaseName, collectionName, documentIsComplete arguments "
                   "are missing");
