@@ -36,28 +36,24 @@ const privateKey1 = `-----BEGIN PRIVATE KEY-----
 MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgE9UrCRndJypo4FJG
 CZRZoPjLL1cD3WtipcIV4klbI6yhRANCAAQ4VbtPOezJa9iday7L1aXICQ+AY5Ua
 0g6LZsHQRZdTVtIhaEyKhDASvzwdagTU9UY4dTcmTMA4XS7bIJt0n3ZO
------END PRIVATE KEY-----
-`;
+-----END PRIVATE KEY-----`;
 
 const publicKey1 = `-----BEGIN PUBLIC KEY-----
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEOFW7TznsyWvYnWsuy9WlyAkPgGOV
 GtIOi2bB0EWXU1bSIWhMioQwEr88HWoE1PVGOHU3JkzAOF0u2yCbdJ92Tg==
------END PUBLIC KEY-----
-`;
+-----END PUBLIC KEY-----`;
 
 // Dummy ES256 key pair 2 (secondary)
 const privateKey2 = `-----BEGIN PRIVATE KEY-----
 MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgUQAbplUZLUp+JVQJ
 RrMwcTKW7qQAfdjQsBdi9vTOq+ChRANCAAQFywYqn11zi3YO1B5QJHi9shcfFb2o
 qWUVFw/7F/PnJB6IvNy+Ap+9PjzjjQwKV7EtyGWrD6UihBTEhHB85c+K
------END PRIVATE KEY-----
-`;
+-----END PRIVATE KEY-----`;
 
 const publicKey2 = `-----BEGIN PUBLIC KEY-----
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEBcsGKp9dc4t2DtQeUCR4vbIXHxW9
 qKllFRcP+xfz5yQeiLzcvgKfvT48440MClexLchlqw+lIoQUxIRwfOXPig==
------END PUBLIC KEY-----
-`;
+-----END PUBLIC KEY-----`;
 
 let tmpDir;
 
@@ -211,6 +207,23 @@ function testSuite() {
         url: IM.url + "/_api/database/current"
       });
       assertEqual(401, res.status, "Request to protected endpoint without token should fail");
+    },
+
+    testWithForgedToken : function() {
+      // Test access to a more sensitive endpoint
+
+      const payload = {
+        "server_id": "testserver",
+        "iss": "arangodb",
+        "exp": Math.floor(Date.now() / 1000) + 3600
+      };
+      const token = crypto.jwtEncode(publicKey2, payload, 'HS256');
+      const res = request({
+        method: "GET",
+        url: IM.url + "/_api/version",
+        auth: { bearer: token }
+      });
+        assertEqual(401, res.status, "Request to protected endpoint with forged token should fail");
     },
   };
 }
