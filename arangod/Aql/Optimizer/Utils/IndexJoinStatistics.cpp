@@ -107,7 +107,12 @@ auto cacheKey(JoinGraph::Node const& node,
     std::string joined;
     for (auto const& component : path) {
       if (!joined.empty()) {
-        joined += '.';
+        // A plain '.' is not safe here: it can also appear literally inside
+        // an attribute name, so the path ["a","b"] and the single attribute
+        // ["a.b"] would join to the same string and collide in the cache.
+        // '\x1e' cannot appear in an attribute name, mirroring the '\x1f'
+        // path separator below.
+        joined += '\x1e';
       }
       joined += component;
     }
@@ -225,6 +230,25 @@ auto coveringFromIndexFacts(std::span<IndexFacts const> candidates,
 IndexJoinStatistics::IndexJoinStatistics(ExecutionPlan const& plan)
     : _plan(plan) {}
 
+/// @brief unlike distinctValues(), this has no `defaulted` channel: an
+/// out-of-transaction call silently reads back as 0.0 rather than reporting
+/// that it guessed. That is safe only by the combination of two properties,
+/// both worth re-checking before trusting this again:
+///   1. restrictedFor() clamps this to count = std::max(documentCount, 1.0),
+///      so a 0.0 here becomes count = 1 everywhere downstream, which makes
+///      probeCost == scanCost for every candidate order -- no order looks
+///      cheaper than any other, so this alone cannot steer the greedy.
+///   2. any real equijoin also calls distinctValues() with a non-empty
+///      attribute set, which *does* honestly report `defaulted = true` when
+///      the transaction is not RUNNING (see below) -- so the existing
+///      "any statistic was defaulted" bail-out in chooseJoinOrder still
+///      catches this case via that second lookup, even though this one is
+///      silent.
+/// If either property stops holding -- e.g. a caller starts using
+/// documentCount for something other than a uniform "all counts are 1"
+/// clamp, or a code path reaches this with conditions/residuals empty and no
+/// accompanying distinctValues() call -- this reasoning breaks and
+/// documentCount needs its own `defaulted` channel.
 auto IndexJoinStatistics::documentCount(JoinGraph::Node const& node) const
     -> double {
   if (auto it = _counts.find(node.executionNode); it != _counts.end()) {

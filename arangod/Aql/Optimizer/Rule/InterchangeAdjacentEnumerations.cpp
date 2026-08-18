@@ -94,6 +94,11 @@ void interchangeAdjacentEnumerationsRule(Optimizer* opt,
   // generic cost estimate to choose between near-duplicates -- which is the
   // mechanism cost-based reordering exists to replace. This rule runs first,
   // so the decision has to be taken here rather than from the other rule.
+  // This suppression fires whenever the other rule is merely *enabled*, not
+  // only when it actually reorders: optimize-join-order may still decline
+  // via its own guards (e.g. partial index coverage), in which case the
+  // query gets neither rule and simply keeps the order as written -- that
+  // is intended.
   if (!plan->isDisabledRule(OptimizerRule::optimizeJoinOrder)) {
     opt->addPlan(std::move(plan), rule, false);
     return;

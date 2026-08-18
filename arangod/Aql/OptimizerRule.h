@@ -502,6 +502,24 @@ struct OptimizerRule {
       "pushFilterIntoEnumerateNear, since the filter mode must already be "
       "decided as it takes precedence over projections");
 
+  static_assert(
+      interchangeAdjacentEnumerationsRule < optimizeJoinOrder,
+      "interchangeAdjacentEnumerationsRule's early-out for cost-based join "
+      "reordering lives inside that rule and relies on running first; if "
+      "the order inverted, the early-out could never prevent the n! "
+      "fan-out it exists to suppress");
+  static_assert(
+      optimizeJoinOrder < moveCalculationsUpRule2,
+      "optimizeJoinOrder deliberately splices enumerations above the run's "
+      "calculations and filters and relies on moveCalculationsUpRule2 and "
+      "moveFiltersUpRule2 running afterwards to push them back down");
+  static_assert(
+      moveCalculationsUpRule2 < moveFiltersUpRule2,
+      "moveFiltersUpRule2 must run after moveCalculationsUpRule2 so that "
+      "calculations are repositioned before the filters chase them back "
+      "down -- otherwise optimizeJoinOrder's splice would strand filters "
+      "above the enumerations they restrict, losing early filtering");
+
   std::string_view name;
   RuleFunction func;
   RuleLevel level;

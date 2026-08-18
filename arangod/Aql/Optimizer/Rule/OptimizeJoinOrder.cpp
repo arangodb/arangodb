@@ -353,6 +353,22 @@ auto chooseJoinOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
     componentOrders.emplace_back(orderComponent(graph, component, estimator));
   }
 
+  // connectedComponents() iterates a std::map<Variable const*, Node>, so the
+  // component list it returns comes out in heap-address order, which varies
+  // between processes. Without this sort, the selection loop below -- which
+  // only replaces `bestIndex` on a strict cost improvement -- tie-breaks
+  // equal-cost components by that address order, making the final
+  // concatenation (and therefore whether it clears the improvement margin)
+  // non-deterministic. Sorting by each component's first vertex id here
+  // fixes the tie-break for every round below: erasing the winner each round
+  // never disturbs the relative id-order of what remains, so this single
+  // sort is enough for the whole sequencing loop. Do not remove this as
+  // "redundant" -- ties are the common case, not an edge case, here.
+  std::sort(componentOrders.begin(), componentOrders.end(),
+            [](JoinOrder const& lhs, JoinOrder const& rhs) {
+              return lhs.order.front()->id() < rhs.order.front()->id();
+            });
+
   std::vector<EnumerateCollectionNode*> chosen;
   while (!componentOrders.empty()) {
     size_t bestIndex = 0;

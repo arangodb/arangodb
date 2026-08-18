@@ -460,6 +460,44 @@ TEST_F(OptimizeJoinOrderTest, keeps_components_contiguous) {
   EXPECT_EQ(std::abs(positionOf("c") - positionOf("d")), 1);
 }
 
+TEST_F(OptimizeJoinOrderTest, component_sequencing_ties_break_by_node_id) {
+  // Two disconnected components, each costed so the two components tie
+  // exactly at the top level: whichever one is sequenced first is then
+  // decided entirely by the tie-break on ExecutionNode::id(), because
+  // connectedComponents() iterates a std::map<Variable const*, Node> and is
+  // therefore address-ordered -- the same hazard nodesInIdOrder guards
+  // against within a component (see equal_costs_break_ties_by_node_id
+  // above), but here at the level of which *component* goes first. As
+  // there, this is necessary but not sufficient to prove run-to-run
+  // stability -- id-ascending order coinciding by chance with the address
+  // order in this one process is not ruled out -- but it is exactly what
+  // would very likely fail if the sort in chooseJoinOrder were ever
+  // deleted.
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FOR c IN c3 FOR d IN c1 FILTER c.x == d.y RETURN [a, b, c, d]");
+  auto g = buildGraph(*q);
+  ASSERT_EQ(g.connectedComponents().size(), 2u);
+  auto current = collectEnumerationOrder(firstEnumeration(q->plan()), nullptr);
+
+  FakeCostEstimator estimator;
+  // Within each component, the cheapest start is the *second* written
+  // variable (b, d), not the first (a, c) -- so the chosen order differs
+  // from the written one and chooseJoinOrder actually returns a rewrite
+  // instead of declining as a no-op. Both components are costed
+  // identically once oriented that way: seed(b) + step(a) == seed(d) +
+  // step(c) == 2, a tie.
+  estimator.seedCost = {{"a", 100.0}, {"b", 1.0}, {"c", 100.0}, {"d", 1.0}};
+  estimator.stepCost = {{"a", 1.0}, {"b", 100.0}, {"c", 1.0}, {"d", 100.0}};
+
+  auto chosen = chooseJoinOrder(g, estimator, current);
+  ASSERT_TRUE(chosen.has_value());
+  // {a,b}'s component is oriented [b, a]; {c,d}'s is oriented [d, c]. Tied
+  // on cost, the component starting at the lower id (b, id(b) < id(d))
+  // must be sequenced first.
+  EXPECT_EQ(namesOf(*chosen), (std::vector<std::string>{"b", "a", "d", "c"}));
+}
+
 TEST_F(OptimizeJoinOrderTest,
        chosen_order_is_a_permutation_of_the_current_one) {
   auto q = prepare(
