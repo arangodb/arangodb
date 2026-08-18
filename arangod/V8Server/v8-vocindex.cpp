@@ -204,21 +204,24 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
 
   auto& vocbase = GetContextVocBase(isolate);
 
+  // extract the name
+  std::string const name = TRI_ObjectToString(isolate, args[0]);
+
   if (vocbase.isDangling()) {
-    events::CreateCollection(vocbase.name(), StaticStrings::Empty,
+    events::CreateCollection(vocbase.name(), name,
                              TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   } else if (args.Length() < 1 || args.Length() > 4) {
-    events::CreateCollection(vocbase.name(), StaticStrings::Empty,
-                             TRI_ERROR_BAD_PARAMETER);
+    events::CreateCollection(vocbase.name(), name, TRI_ERROR_BAD_PARAMETER);
     TRI_V8_THROW_EXCEPTION_USAGE(
         "_create(<name>, <properties>, <type>, <options>)");
   }
 
-  if (!ExecContext::current().canUseDatabase(vocbase.name(), auth::Level::RW)) {
-    events::CreateCollection(vocbase.name(), StaticStrings::Empty,
-                             TRI_ERROR_FORBIDDEN);
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseCollection(
+          vocbase.name(), name, CollectionAccessLevel::WriteMeta);
+      r.fail()) {
+    events::CreateCollection(vocbase.name(), name, TRI_ERROR_FORBIDDEN);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
   }
 
   // optional, third parameter can override collection type
@@ -232,9 +235,6 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   }
 
   PREVENT_EMBEDDED_TRANSACTION();
-
-  // extract the name
-  std::string const name = TRI_ObjectToString(isolate, args[0]);
 
   VPackBuilder properties;
   VPackSlice propSlice = VPackSlice::emptyObjectSlice();
@@ -280,7 +280,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   std::vector<CreateCollectionBody> collections{
       std::move(planCollection.get())};
 
-  OperationOptions options(ExecContext::current());
+  OperationOptions options;
   std::shared_ptr<LogicalCollection> coll;
   auto result = methods::Collections::create(
       vocbase,  // collection vocbase

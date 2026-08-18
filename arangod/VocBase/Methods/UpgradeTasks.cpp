@@ -127,7 +127,7 @@ Result upgradeGeoIndexes(TRI_vocbase_t& vocbase) {
 Result createSystemCollections(
     TRI_vocbase_t& vocbase,
     std::vector<std::shared_ptr<LogicalCollection>>& createdCollections) {
-  OperationOptions options(ExecContext::current());
+  OperationOptions options;
 
   std::vector<CreateCollectionBody> systemCollectionsToCreate;
   // the order of systemCollections is important. If we're in _system db, the

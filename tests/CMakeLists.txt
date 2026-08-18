@@ -54,6 +54,7 @@ add_library(arango_tests_basics OBJECT
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/PhysicalCollectionMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/StorageEngineMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/Servers.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/Auth/UserManagerTester.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/MockGraph.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/MockGraphProvider.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Basics/icu-helper.cpp
@@ -183,6 +184,14 @@ set(ARANGODB_TESTS_SOURCES
   Aql/SplicedSubqueryIntegrationTest.cpp
   Aql/WaitingExecutionBlockMock.cpp
   AsyncAgencyComm/AsyncAgencyCommTest.cpp
+  Auth/ClassicAuthModeTest.cpp
+  Auth/RbacAuthModeTest.cpp
+  Auth/RbacBackendTest.cpp
+  # Disabled for now, since this needs docker and does not work in CI:
+  # Auth/RbacIntegrationTest.cpp
+  Auth/RbacSerializationTest.cpp
+  Auth/SmockerClient.cpp
+  Auth/RbacServiceImplTest.cpp
   Auth/UserManagerClusterTest.cpp
   Auth/UserManagerTest.cpp
   Cache/BucketState.cpp
@@ -255,6 +264,7 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/KeyTest.cpp
   RocksDBEngine/MemoryUsageTest.cpp
   RocksDBEngine/TransactionManagerTest.cpp
+  Scheduler/SchedulerExecContextTest.cpp
   Sharding/ShardDistributionReporterTest.cpp
   SimpleHttpClient/ConnectionCacheTest.cpp
   SimpleHttpClient/HttpResponseCheckerTest.cpp

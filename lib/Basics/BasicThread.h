@@ -29,9 +29,6 @@
 #include "Basics/threads-posix.h"
 
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
 namespace basics {
 struct ConditionVariable;
 }
@@ -57,9 +54,9 @@ class ThreadNameFetcher {
 /// Each subclass must implement a method run. A thread can be started by
 /// start and is stopped either when the method run ends or when stop is
 /// called.
-class Thread {
-  Thread(Thread const&) = delete;
-  Thread& operator=(Thread const&) = delete;
+class BasicThread {
+  BasicThread(BasicThread const&) = delete;
+  BasicThread& operator=(BasicThread const&) = delete;
 
  public:
 #if defined(TRI_HAVE_POSIX_THREADS)
@@ -95,9 +92,9 @@ class Thread {
   static TRI_pid_t currentKernelThreadId();
 
  public:
-  Thread(std::string const& name, bool deleteOnExit = false,
-         std::uint32_t terminationTimeout = INFINITE);
-  virtual ~Thread();
+  BasicThread(std::string const& name, bool deleteOnExit = false,
+              std::uint32_t terminationTimeout = INFINITE);
+  virtual ~BasicThread();
 
   // whether or not the thread is allowed to start during prepare
   virtual bool isSystem() const { return false; }
@@ -107,7 +104,7 @@ class Thread {
 
   /// @brief flags the thread as stopping
   /// Classes that override this function must ensure that they
-  /// always call Thread::beginShutdown()!
+  /// always call BasicThread::beginShutdown()!
   virtual void beginShutdown();
 
   bool runningInThisThread() const {
@@ -159,6 +156,11 @@ class Thread {
   void shutdown();
 
  protected:
+  /// @brief hook that is called on the new thread immediately before run().
+  /// an exception escaping from beforeRun() is treated exactly like an
+  /// exception escaping from run().
+  virtual void beforeRun() {}
+
   /// @brief the thread program. note that any implementation of run() is
   /// responsible for handling its own exceptions inside run(). failure to do
   /// so will lead to the thread being aborted, and the exception escaping
@@ -194,21 +196,6 @@ class Thread {
   basics::ConditionVariable* _finishedCondition;
 
   std::atomic<ThreadState> _state;
-};
-
-class ServerThread : public Thread {
- public:
-  using Server = application_features::ApplicationServer;
-
-  ServerThread(Server& server, std::string const& name,
-               bool deleteOnExit = false,
-               std::uint32_t terminationTimeout = INFINITE)
-      : Thread{name, deleteOnExit, terminationTimeout}, _server(server) {}
-
-  Server& server() noexcept { return _server; }
-
- protected:
-  Server& _server;
 };
 
 }  // namespace arangodb

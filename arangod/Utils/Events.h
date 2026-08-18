@@ -38,6 +38,7 @@ class Query;
 }
 
 namespace events {
+// TODO Replace `std::string const&` parameters with std::string_view.
 void UnknownAuthenticationMethod(GeneralRequest const&);
 void CredentialsMissing(GeneralRequest const&);
 void LoggedIn(GeneralRequest const&, std::string const& username);
