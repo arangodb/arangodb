@@ -27,7 +27,6 @@
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/QueryContext.h"
-#include "Aql/Variable.h"
 #include "Indexes/Index.h"
 #include "Transaction/Methods.h"
 

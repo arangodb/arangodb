@@ -239,6 +239,38 @@ TEST(IndexFactsRulesTest,
 }
 
 TEST(IndexFactsRulesTest,
+     hidden_index_is_rejected_even_with_a_qualifying_index) {
+  // A hidden index (e.g. internal bookkeeping) is never surfaced to this
+  // model. The qualifying {x} index alone would report 10; if the hidden
+  // one were wrongly allowed too, its selectivity of 1.0 would push the
+  // answer to 100 instead.
+  auto hidden = qualifyingIndex("x", 1.0);
+  hidden.hidden = true;
+  std::array<IndexFacts, 2> candidates{qualifyingIndex("x", 0.1), hidden};
+  std::array<AttributePath, 1> attributes{AttributePath{"x"}};
+
+  auto est = distinctFromIndexFacts(candidates, 100.0, attributes);
+  EXPECT_DOUBLE_EQ(est.value, 10.0);
+  EXPECT_FALSE(est.defaulted);
+}
+
+TEST(IndexFactsRulesTest,
+     in_progress_index_is_rejected_even_with_a_qualifying_index) {
+  // An index still being built has no reliable estimate yet. The qualifying
+  // {x} index alone would report 10; if the in-progress one were wrongly
+  // allowed too, its selectivity of 1.0 would push the answer to 100
+  // instead.
+  auto inProgress = qualifyingIndex("x", 1.0);
+  inProgress.inProgress = true;
+  std::array<IndexFacts, 2> candidates{qualifyingIndex("x", 0.1), inProgress};
+  std::array<AttributePath, 1> attributes{AttributePath{"x"}};
+
+  auto est = distinctFromIndexFacts(candidates, 100.0, attributes);
+  EXPECT_DOUBLE_EQ(est.value, 10.0);
+  EXPECT_FALSE(est.defaulted);
+}
+
+TEST(IndexFactsRulesTest,
      expanded_field_is_rejected_even_with_a_qualifying_index) {
   // An index on x[*] has different selectivity semantics than a plain field
   // and is never trusted here. The qualifying plain {x} index alone would
