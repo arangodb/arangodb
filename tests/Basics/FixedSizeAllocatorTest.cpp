@@ -262,7 +262,7 @@ TEST(FixedSizeAllocatorTest, test_AstNodesRollbackDuringCreation) {
   // create a query object so we have an AST object to mess with
   arangodb::tests::mocks::MockAqlServer server(true);
   arangodb::CreateDatabaseInfo testDBInfo(server.server(),
-                                          arangodb::ExecContext::current());
+                                          arangodb::ExecContext::superuser());
   testDBInfo.load("testVocbase", 2);
   TRI_vocbase_t vocbase(std::move(testDBInfo), server.engine());
   auto query = arangodb::aql::Query::create(

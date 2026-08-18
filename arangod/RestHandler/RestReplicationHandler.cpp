@@ -3179,7 +3179,7 @@ futures::Future<Result> RestReplicationHandler::createBlockingTransaction(
   // if we are not using superuser scope here and the leader is
   // read-only, trying to grab the lock in exclusive mode will
   // return a "read-only" error.
-  ExecContextScope scope(ExecContext::superuserAsShared());
+  ExecContextSuperuserScope scope;
 
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);

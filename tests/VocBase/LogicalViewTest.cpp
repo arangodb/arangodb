@@ -109,6 +109,7 @@ class LogicalViewTest
       public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
                                             arangodb::LogLevel::ERR> {
  protected:
+  arangodb::ExecContextSuperuserScope execContextScope;
   arangodb::application_features::ApplicationServer server;
   StorageEngineMock engine;
   std::vector<
@@ -176,7 +177,7 @@ TEST_F(LogicalViewTest, test_auth) {
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
 
-  // no ExecContext (implicitly superuser!)
+  // superuser (the fixture's ambient superuser context)
   {
     TRI_vocbase_t vocbase(testDBInfo(server), engine);
     auto logicalView = vocbase.createView(viewJson->slice(), false);

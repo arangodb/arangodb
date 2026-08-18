@@ -38,6 +38,7 @@
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/StorageEngineMock.h"
+#include "Utils/ExecContext.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlFunctionFeature.h"
@@ -223,6 +224,7 @@ struct IResearchExpressionFilterTest
       public arangodb::tests::LogSuppressor<arangodb::iresearch::TOPIC,
                                             arangodb::LogLevel::FATAL>,
       public arangodb::tests::IResearchLogSuppressor {
+  arangodb::ExecContextSuperuserScope execContextScope;
   arangodb::application_features::ApplicationServer server;
   StorageEngineMock engine;
   std::unique_ptr<TRI_vocbase_t> system;

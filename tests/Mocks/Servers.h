@@ -30,6 +30,7 @@
 #include "Cluster/ServerState.h"
 #include "IResearch/IResearchCommon.h"
 #include "Mocks/StorageEngineMock.h"
+#include "Utils/ExecContext.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 
 class StorageEngineMock;
@@ -131,6 +132,7 @@ class MockServer {
   void stopFeatures();
 
  protected:
+  ExecContextSuperuserScope _execContextScope;
   arangodb::application_features::ApplicationServer::State
       _oldApplicationServerState = arangodb::application_features::
           ApplicationServer::State::UNINITIALIZED;
