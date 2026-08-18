@@ -753,8 +753,9 @@ static void JS_RenameViewVocbase(
   // end of parameter parsing
   // ...........................................................................
 
-  if (auto r = ExecContext::current().canRenameView(view->vocbase().name(),
-                                                    view->name(), name);
+  if (auto r = ExecContext::current().canRenameView(
+          view->vocbase().name(), view->name(), name,
+          view->linkedCollectionNames());
       r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
   }
