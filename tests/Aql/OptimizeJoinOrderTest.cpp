@@ -681,4 +681,26 @@ TEST_F(OptimizeJoinOrderTest, rule_leaves_the_plan_alone_without_statistics) {
   EXPECT_EQ(namesOf(after), (std::vector<std::string>{"a", "b"}));
 }
 
+TEST_F(OptimizeJoinOrderTest, interchange_yields_when_join_order_is_enabled) {
+  // With optimize-join-order enabled, interchange-adjacent-enumerations must
+  // not fan out: reordering is this rule's job, and the n! candidates would
+  // otherwise be discriminated by the generic cost estimate.
+  std::string const query = "FOR a IN c1 FOR b IN c2 FOR c IN c3 RETURN 1";
+
+  // assertRules returns true when every listed rule appears in the explain
+  // output's applied-rules list.
+  EXPECT_TRUE(assertRules(
+      server.getSystemDatabase(), query,
+      {OptimizerRule::interchangeAdjacentEnumerationsRule}, nullptr,
+      R"({"optimizer":{"rules":["+interchange-adjacent-enumerations"]}})"))
+      << "interchange should fire when it is the only reordering rule on";
+
+  EXPECT_FALSE(assertRules(
+      server.getSystemDatabase(), query,
+      {OptimizerRule::interchangeAdjacentEnumerationsRule}, nullptr,
+      R"({"optimizer":{"rules":["+interchange-adjacent-enumerations",)"
+      R"("+optimize-join-order"]}})"))
+      << "interchange must yield to cost-based reordering";
+}
+
 }  // namespace arangodb::tests::aql

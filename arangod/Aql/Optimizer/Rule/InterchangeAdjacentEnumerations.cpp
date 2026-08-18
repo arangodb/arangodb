@@ -31,6 +31,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Optimizer.h"
+#include "Aql/OptimizerRule.h"
 #include "Aql/Variable.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/HashSet.h"
@@ -88,6 +89,16 @@ static bool NextPermutationTuple(std::vector<size_t>& data,
 void interchangeAdjacentEnumerationsRule(Optimizer* opt,
                                          std::unique_ptr<ExecutionPlan> plan,
                                          OptimizerRule const& rule) {
+  // Cost-based join reordering supersedes this rule. Running both would fan
+  // out n! plans and then reorder each of them identically, leaving the
+  // generic cost estimate to choose between near-duplicates -- which is the
+  // mechanism cost-based reordering exists to replace. This rule runs first,
+  // so the decision has to be taken here rather than from the other rule.
+  if (!plan->isDisabledRule(OptimizerRule::optimizeJoinOrder)) {
+    opt->addPlan(std::move(plan), rule, false);
+    return;
+  }
+
   containers::SmallVector<ExecutionNode*, 8> nodes;
 
   // note: we are looking here only for ENUMERATE_COLLECTION
