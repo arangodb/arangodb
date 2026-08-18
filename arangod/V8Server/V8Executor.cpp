@@ -31,6 +31,7 @@
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
+#include "Utils/ExecContext.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 
@@ -150,6 +151,13 @@ Result V8Executor::runInContext(std::function<Result(v8::Isolate*)> const& cb,
         // restore old security settings
         v8g->_securityContext = old;
       });
+
+      // deferred global methods (reloadRouting, reloadAql) execute on the
+      // next entry into this executor, i.e. under an arbitrary caller's
+      // ExecContext. They are deduplicated per executor, so a single entry
+      // may represent triggers from multiple different users; run them
+      // explicitly as Superuser instead of whoever happens to enter first.
+      ExecContextSuperuserScope superuserScope;
 
       for (auto const& type : copy) {
         std::string_view code = GlobalExecutorMethods::code(type);

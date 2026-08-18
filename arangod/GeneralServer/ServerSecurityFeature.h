@@ -22,8 +22,8 @@
 
 #pragma once
 
-#include "GeneralServer/ServerSecurityFeatureOptions.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "GeneralServer/ServerSecurityFeatureOptions.h"
 
 namespace arangodb {
 
@@ -44,7 +44,6 @@ class ServerSecurityFeature final
   bool isRestApiHardened() const noexcept;
   bool isFoxxApiDisabled() const noexcept;
   bool isFoxxStoreDisabled() const noexcept;
-  bool canAccessHardenedApi() const noexcept;
   bool foxxAllowInstallFromRemote() const noexcept;
 
  private:

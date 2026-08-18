@@ -145,9 +145,11 @@ static void JS_RecalculateCounts(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  if (!ExecContext::current().canUseCollection(collection->name(),
-                                               auth::Level::RW)) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseCollection(
+          collection->vocbase().name(), collection->name(),
+          AccessLevel::WriteMeta);
+      r.fail()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
   }
 
   auto* physical = toRocksDBCollection(*collection);
