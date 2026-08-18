@@ -289,14 +289,6 @@ void RestViewHandler::modifyView(bool partialUpdate) {
     return;
   }
 
-  auto& analyzers = server().getFeature<iresearch::IResearchAnalyzerFeature>();
-  // First refresh our analyzers cache to see all latest changes in analyzers
-  if (auto r = analyzers.loadAvailableAnalyzers(
-          _vocbase.name(), transaction::OperationOriginREST{"modifying view"});
-      !r.ok()) {
-    return generateError(r);
-  }
-
   bool const isRename = suffixes[1] == "rename";
   if (isRename) {
     body = body.get("name");
@@ -307,7 +299,6 @@ void RestViewHandler::modifyView(bool partialUpdate) {
   }
 
   auto const& execContext = ExecContext::current();
-
   if (isRename) {
     if (auto r =
             execContext.canRenameView(_vocbase.name(), name, body.stringView());
@@ -327,6 +318,15 @@ void RestViewHandler::modifyView(bool partialUpdate) {
       return generateError(r);
     }
   }
+
+  auto& analyzers = server().getFeature<iresearch::IResearchAnalyzerFeature>();
+  // First refresh our analyzers cache to see all latest changes in analyzers
+  if (auto r = analyzers.loadAvailableAnalyzers(
+          _vocbase.name(), transaction::OperationOriginREST{"modifying view"});
+      !r.ok()) {
+    return generateError(r);
+  }
+
   velocypack::Builder builder;
   // skip views for which the full view definition cannot be generated, as
   // per https://github.com/arangodb/backlog/issues/459
