@@ -100,6 +100,10 @@ class LogicalCollection : public LogicalDataSource {
  public:
   LogicalCollection() = delete;
   LogicalCollection(Database& vocbase, velocypack::Slice info, bool isAStub);
+  // @brief for a brand new collection. Generates the guid and defaults planId
+  // to the id, so it must not be used to load an existing one.
+  // TODO (COR-885): Remove the defaulting logic so this ctor can be used to
+  // load existing collections as well.
   LogicalCollection(Database& vocbase, CollectionDescriptor descriptor,
                     bool isAStub);
   LogicalCollection(LogicalCollection const&) = delete;
@@ -419,9 +423,6 @@ class LogicalCollection : public LogicalDataSource {
       -> arangodb::replication2::agency::CollectionGroupId;
   auto replicatedStateId() const noexcept -> arangodb::replication2::LogId;
 
-  // The collection's current properties, assembled from the immutable
-  // descriptor plus every mutable value LogicalCollection owns. Cold path
-  // only -- it copies. Individual getters read their own attribute.
   CollectionDescriptor properties() const;
 
  private:
@@ -436,9 +437,9 @@ class LogicalCollection : public LogicalDataSource {
 
   void decorateWithInternalValidators();
 
-  // Parsed once at construction and never changed. Only its immutable fields
-  // are authoritative; the mutable ones are seeded from here into the
-  // attributes below and are stale afterwards, so read them via properties().
+  // Parsed once at construction; only its immutable fields are authoritative;
+  // the mutable ones are seeded from here into the attributes below and are
+  // stale afterwards
   CollectionDescriptor const _properties;
 
  protected:

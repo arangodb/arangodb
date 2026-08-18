@@ -239,16 +239,14 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase,
               descriptor.constant.isSystem,
           /*deleted*/ false),
       _properties(std::move(descriptor)),
+      // COR-856: the load path must pass the stored version
       _version(currentVersion()),
       _v8CacheVersion(0),
       _isAStub(isAStub),
       _allowUserKeys(
           std::visit([](auto const& opts) { return opts.allowUserKeys; },
                      _properties.constant.keyOptions)),
-      // NOTE: the slice ctor defaults this to false while the descriptor field
-      // defaults to true. Whoever builds the descriptor must set it; see
-      // Collections.cpp, which only injects the key on a single server or
-      // coordinator.
+      // COR-856: the load path defaults this to false
       _usesRevisionsAsDocumentIds(
           _properties.internal.usesRevisionsAsDocumentIds),
       _syncByRevision(determineSyncByRevision()),
@@ -259,6 +257,15 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase,
   TRI_IF_FAILURE("disableRevisionsAsDocumentIds") {
     _usesRevisionsAsDocumentIds = false;
     _syncByRevision.store(false);
+  }
+
+  if (_version < minimumVersion()) {
+    // collection is too "old"
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FAILED,
+        absl::StrCat("collection '", name(),
+                     "' has a too old version. Please start the server "
+                     "with the --database.auto-upgrade option."));
   }
 
   if (auto res = updateSchema(_properties.mutableProps.schema.has_value()
@@ -280,10 +287,12 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase,
     TRI_ASSERT(planId() == id() || _replicatedStateId.has_value());
   }
 
+  // TODO: THIS NEEDS CLEANUP (Naming & Structural issue)
   initializeSmartAttributesBefore(_properties);
 
   _sharding = std::make_unique<ShardingInfo>(_properties, this);
 
+  // TODO: THIS NEEDS CLEANUP (Naming & Structural issue)
   initializeSmartAttributesAfter(_properties);
 
   if (ServerState::instance()->isDBServer() ||
@@ -297,8 +306,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase,
   // This has to be called AFTER _physical and _logical are properly linked
   // together.
 
-  // a new collection starts without indexes; restore supplies them and stays
-  // on the slice constructor for now
+  // COR-856: the load path must pass the stored index definitions
   prepareIndexes(VPackSlice::emptyArraySlice());
   decorateWithInternalValidators();
 
@@ -866,23 +874,25 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
 
   VPackBuilder tmp;
   velocypack::serializeWithContext(tmp, props, InspectInternalContext{});
-  static constexpr std::array kEmittedElsewhere{
-      // LogicalDataSource::properties() wrote these already
-      "name", "isSystem",
-      // the key generator owns the live lastValue
-      "keyOptions",
-      // ShardingInfo::toVelocyPack needs the server role, the replication-2
-      // gate, and a CID-to-name lookup
-      "numberOfShards", "shardKeys", "replicationFactor", "writeConcern",
-      "minReplicationFactor", "distributeShardsLike", "shardingStrategy",
-      // the physical collection owns the effective cacheEnabled
-      "objectId", "cacheEnabled",
-      // includeVelocyPackEnterprise() writes these under conditions the
-      // descriptor does not know about: smartGraphAttribute only for smart
-      // vertex collections, smartJoinAttribute only in a cluster
-      "smartGraphAttribute", "smartJoinAttribute",
-      // derived from the compiled _schema / _computedValues below
-      "schema", "computedValues"};
+  // For these, the descriptor's copy is not the value to publish -- another
+  // object owns the live one and emits it below. We want to skipping them to
+  // avoid adding duplicate key holding a stale value.
+  static constexpr std::array kEmittedElsewhere{"name",
+                                                "isSystem",
+                                                "keyOptions",
+                                                "numberOfShards",
+                                                "shardKeys",
+                                                "replicationFactor",
+                                                "writeConcern",
+                                                "minReplicationFactor",
+                                                "distributeShardsLike",
+                                                "shardingStrategy",
+                                                "objectId",
+                                                "cacheEnabled",
+                                                "smartGraphAttribute",
+                                                "smartJoinAttribute",
+                                                "schema",
+                                                "computedValues"};
 
   for (auto it : VPackObjectIterator(tmp.slice())) {
     auto key = it.key.stringView();
@@ -1536,13 +1546,14 @@ auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
     replication2::replicated_state::document::DocumentLeaderState> {
   auto stateMachine = getDocumentState();
 
-  static constexpr auto throwUnavailable = []<typename... Args>(
-      basics::SourceLocation location, std::format_string<Args...> formatString,
-      Args && ... args) {
-    throw basics::Exception(
-        TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
-        std::format(formatString, std::forward<Args>(args)...), location);
-  };
+  static constexpr auto throwUnavailable =
+      []<typename... Args>(basics::SourceLocation location,
+                           std::format_string<Args...> formatString,
+                           Args&&... args) {
+        throw basics::Exception(
+            TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
+            std::format(formatString, std::forward<Args>(args)...), location);
+      };
 
   auto leader = stateMachine->getLeader();
   if (leader == nullptr) {
