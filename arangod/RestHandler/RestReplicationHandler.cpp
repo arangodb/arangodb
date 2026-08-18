@@ -52,7 +52,7 @@
 #include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "VectorIndex/VectorIndexFeature.h"
+#include "VectorIndex/Feature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -403,11 +403,6 @@ std::string const RestReplicationHandler::LoggerState = "logger-state";
 std::string const RestReplicationHandler::Batch = "batch";
 std::string const RestReplicationHandler::Inventory = "inventory";
 std::string const RestReplicationHandler::Keys = "keys";
-std::string const RestReplicationHandler::Revisions = "revisions";
-std::string const RestReplicationHandler::Tree = "tree";
-std::string const RestReplicationHandler::TreePending = "treepending";
-std::string const RestReplicationHandler::Ranges = "ranges";
-std::string const RestReplicationHandler::Documents = "documents";
 std::string const RestReplicationHandler::Dump = "dump";
 std::string const RestReplicationHandler::RestoreCollection =
     "restore-collection";

@@ -52,16 +52,16 @@ namespace arangodb::vector {
 
 /// Single background thread that periodically scans for untrained vector
 /// indexes and builds them one at a time. The same thread scans and builds.
-class VectorIndexBuildManager {
+class BuildManager {
  public:
   static constexpr auto kScanInterval = std::chrono::seconds(5);
   static constexpr auto kSleepGranularity = std::chrono::seconds(1);
 
-  explicit VectorIndexBuildManager(DatabaseFeature& dbFeature,
-                                   MaintenanceFeature& maintenance,
-                                   metrics::IRegistry& metricsRegistry,
-                                   Scheduler& scheduler,
-                                   std::chrono::duration<double> retryBackoff);
+  explicit BuildManager(DatabaseFeature& dbFeature,
+                        MaintenanceFeature& maintenance,
+                        metrics::IRegistry& metricsRegistry,
+                        Scheduler& scheduler,
+                        std::chrono::duration<double> retryBackoff);
 
   void start();
   void beginShutdown();
