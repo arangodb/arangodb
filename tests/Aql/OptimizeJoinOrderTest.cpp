@@ -22,6 +22,7 @@
 #include "JoinGraphTestHelper.h"
 
 #include <algorithm>
+#include <cstdlib>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -367,6 +368,167 @@ TEST_F(OptimizeJoinOrderTest, estimate_order_charges_a_cross_product) {
   auto* b = nodeByName(g, "b")->executionNode;
   // the fake doubles a cross-product step
   EXPECT_DOUBLE_EQ(estimateOrder(g, estimator, {a, b}).cost, 1.0 + 10.0);
+}
+
+TEST_F(OptimizeJoinOrderTest, chooses_a_cheaper_order_when_the_win_is_large) {
+  auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
+  auto g = buildGraph(*q);
+  auto current = collectEnumerationOrder(firstEnumeration(q->plan()), nullptr);
+  ASSERT_EQ(namesOf(current), (std::vector<std::string>{"a", "b"}));
+
+  FakeCostEstimator estimator;
+  estimator.seedCost = {{"a", 1000.0}, {"b", 1.0}};
+  estimator.stepCost = {{"a", 1.0}, {"b", 1.0}};
+
+  auto chosen = chooseJoinOrder(g, estimator, current);
+  ASSERT_TRUE(chosen.has_value());
+  EXPECT_EQ(namesOf(*chosen), (std::vector<std::string>{"b", "a"}));
+}
+
+TEST_F(OptimizeJoinOrderTest,
+       keeps_the_written_order_when_the_win_is_marginal) {
+  auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
+  auto g = buildGraph(*q);
+  auto current = collectEnumerationOrder(firstEnumeration(q->plan()), nullptr);
+
+  // b-first is cheaper, but only by 10%, well inside estimator error
+  FakeCostEstimator estimator;
+  estimator.seedCost = {{"a", 100.0}, {"b", 90.0}};
+  estimator.stepCost = {{"a", 1.0}, {"b", 1.0}};
+
+  EXPECT_FALSE(chooseJoinOrder(g, estimator, current).has_value());
+}
+
+TEST_F(OptimizeJoinOrderTest, keeps_the_written_order_on_an_exact_tie) {
+  auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
+  auto g = buildGraph(*q);
+  auto current = collectEnumerationOrder(firstEnumeration(q->plan()), nullptr);
+
+  FakeCostEstimator estimator;  // all costs identical
+
+  EXPECT_FALSE(chooseJoinOrder(g, estimator, current).has_value())
+      << "a tie must be a no-op, not a coin flip on node id";
+}
+
+TEST_F(OptimizeJoinOrderTest, bails_out_when_any_statistic_was_defaulted) {
+  auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
+  auto g = buildGraph(*q);
+  auto current = collectEnumerationOrder(firstEnumeration(q->plan()), nullptr);
+
+  FakeCostEstimator estimator;
+  estimator.seedCost = {{"a", 1000.0}, {"b", 1.0}};
+  estimator.stepCost = {{"a", 1.0}, {"b", 1.0}};
+  estimator.defaulted = true;  // nothing was index-backed
+
+  EXPECT_FALSE(chooseJoinOrder(g, estimator, current).has_value())
+      << "rewriting on guessed statistics measured worse than not rewriting";
+}
+
+TEST_F(OptimizeJoinOrderTest, keeps_components_contiguous) {
+  // two independent joins: a-b and c-d. The chosen order must finish one
+  // component before starting the other, never interleave them.
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FOR c IN c3 FOR d IN c1 FILTER c.x == d.y RETURN [a, b, c, d]");
+  auto g = buildGraph(*q);
+  ASSERT_EQ(g.connectedComponents().size(), 2u);
+  auto current = collectEnumerationOrder(firstEnumeration(q->plan()), nullptr);
+
+  FakeCostEstimator estimator;
+  estimator.seedCost = {{"a", 100.0}, {"b", 100.0}, {"c", 1.0}, {"d", 100.0}};
+  estimator.stepCost = {{"a", 1.0}, {"b", 1.0}, {"c", 1.0}, {"d", 1.0}};
+
+  auto chosen = chooseJoinOrder(g, estimator, current);
+  ASSERT_TRUE(chosen.has_value());
+  auto names = namesOf(*chosen);
+  ASSERT_EQ(names.size(), 4u);
+
+  auto positionOf = [&](std::string const& name) {
+    return std::distance(names.begin(),
+                         std::find(names.begin(), names.end(), name));
+  };
+  // {a,b} occupy adjacent positions, and so do {c,d}
+  EXPECT_EQ(std::abs(positionOf("a") - positionOf("b")), 1);
+  EXPECT_EQ(std::abs(positionOf("c") - positionOf("d")), 1);
+}
+
+TEST_F(OptimizeJoinOrderTest,
+       chosen_order_is_a_permutation_of_the_current_one) {
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FOR c IN c3 FILTER b.z == c.w RETURN [a, b, c]");
+  auto g = buildGraph(*q);
+  auto current = collectEnumerationOrder(firstEnumeration(q->plan()), nullptr);
+
+  FakeCostEstimator estimator;
+  estimator.seedCost = {{"a", 1000.0}, {"b", 1000.0}, {"c", 1.0}};
+  estimator.stepCost = {{"a", 1.0}, {"b", 1.0}, {"c", 1.0}};
+
+  auto chosen = chooseJoinOrder(g, estimator, current);
+  ASSERT_TRUE(chosen.has_value());
+
+  auto sortedCurrent = namesOf(current);
+  auto sortedChosen = namesOf(*chosen);
+  std::sort(sortedCurrent.begin(), sortedCurrent.end());
+  std::sort(sortedChosen.begin(), sortedChosen.end());
+  EXPECT_EQ(sortedCurrent, sortedChosen)
+      << "every enumeration must appear exactly once, or the rewrite deletes a "
+         "FOR loop";
+}
+
+TEST_F(OptimizeJoinOrderTest, skips_graphs_above_the_enumeration_cap) {
+  // 17 enumerations exceeds kMaxEnumerationsToReorder
+  std::string query = "FOR v0 IN c1 ";
+  for (int i = 1; i < 17; ++i) {
+    query += "FOR v" + std::to_string(i) + " IN c1 FILTER v" +
+             std::to_string(i - 1) + ".x == v" + std::to_string(i) + ".y ";
+  }
+  query += "RETURN 1";
+
+  auto q = prepare(query);
+  auto g = buildGraph(*q);
+  ASSERT_GT(g.nodes.size(), kMaxEnumerationsToReorder);
+  auto current = collectEnumerationOrder(firstEnumeration(q->plan()), nullptr);
+
+  FakeCostEstimator estimator;
+  estimator.seedCost = {{"v16", 1.0}};
+
+  EXPECT_FALSE(chooseJoinOrder(g, estimator, current).has_value());
+}
+
+TEST_F(OptimizeJoinOrderTest, improvement_margin_requires_twenty_percent) {
+  // kImprovementMargin = 0.25 is applied as `chosen >= current / 1.25`, i.e.
+  // the chosen order must cost at most 0.8 * current to trigger a rewrite --
+  // a 20% reduction, not 25%. Pin that boundary exactly: current always costs
+  // 100 (seed(a)=50, step(b)=50), and the chosen order [b, a] costs 79 in one
+  // case (just inside 0.8 * 100 = 80: rewrite) and 81 in the other (just
+  // outside: no rewrite).
+  auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
+  auto g = buildGraph(*q);
+  auto current = collectEnumerationOrder(firstEnumeration(q->plan()), nullptr);
+  ASSERT_EQ(namesOf(current), (std::vector<std::string>{"a", "b"}));
+
+  {
+    // chosen cost = seed(b) + step(a) = 39 + 40 = 79 < 80.
+    FakeCostEstimator estimator;
+    estimator.seedCost = {{"a", 50.0}, {"b", 39.0}};
+    estimator.stepCost = {{"a", 40.0}, {"b", 50.0}};
+
+    auto chosen = chooseJoinOrder(g, estimator, current);
+    ASSERT_TRUE(chosen.has_value())
+        << "79 is inside 0.8 * 100 = 80, so the rewrite should fire";
+    EXPECT_EQ(namesOf(*chosen), (std::vector<std::string>{"b", "a"}));
+  }
+
+  {
+    // chosen cost = seed(b) + step(a) = 41 + 40 = 81 >= 80.
+    FakeCostEstimator estimator;
+    estimator.seedCost = {{"a", 50.0}, {"b", 41.0}};
+    estimator.stepCost = {{"a", 40.0}, {"b", 50.0}};
+
+    EXPECT_FALSE(chooseJoinOrder(g, estimator, current).has_value())
+        << "81 is outside 0.8 * 100 = 80, so the rewrite should not fire";
+  }
 }
 
 }  // namespace arangodb::tests::aql

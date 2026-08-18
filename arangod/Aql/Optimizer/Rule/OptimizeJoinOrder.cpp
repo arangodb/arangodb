@@ -319,6 +319,96 @@ auto orderComponent(JoinGraph& graph,
   return std::move(*best);
 }
 
+auto collectEnumerationOrder(ExecutionNode* firstEnumeration,
+                             ExecutionNode* next)
+    -> std::vector<EnumerateCollectionNode*> {
+  std::vector<EnumerateCollectionNode*> order;
+  for (ExecutionNode* n = firstEnumeration; n != nullptr && n != next;
+       n = n->getFirstParent()) {
+    if (n->getType() == ExecutionNode::ENUMERATE_COLLECTION) {
+      order.emplace_back(ExecutionNode::castTo<EnumerateCollectionNode*>(n));
+    }
+  }
+  return order;
+}
+
+auto chooseJoinOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
+                     std::vector<EnumerateCollectionNode*> const& currentOrder)
+    -> std::optional<std::vector<EnumerateCollectionNode*>> {
+  if (graph.nodes.size() > kMaxEnumerationsToReorder) {
+    LOG_TOPIC("a7f03", TRACE, Logger::AQL)
+        << "optimize-join-order: skipping a run of " << graph.nodes.size()
+        << " enumerations, above the reordering cap";
+    return std::nullopt;
+  }
+
+  // Order each component internally, then decide the sequence of components.
+  // Components join by cross product, so they are concatenated, never
+  // interleaved: interleaving would put a cross product in the middle of a
+  // component's chain and cost more than the estimate that chose it.
+  std::vector<JoinOrder> componentOrders;
+  for (auto const& component : graph.connectedComponents()) {
+    componentOrders.emplace_back(orderComponent(graph, component, estimator));
+  }
+
+  std::vector<EnumerateCollectionNode*> chosen;
+  while (!componentOrders.empty()) {
+    size_t bestIndex = 0;
+    std::optional<double> bestCost;
+    for (size_t i = 0; i < componentOrders.size(); ++i) {
+      auto candidate = chosen;
+      candidate.insert(candidate.end(), componentOrders[i].order.begin(),
+                       componentOrders[i].order.end());
+      double const cost = estimateOrder(graph, estimator, candidate).cost;
+      if (!bestCost.has_value() || cost < *bestCost) {
+        bestCost = cost;
+        bestIndex = i;
+      }
+    }
+    auto& winner = componentOrders[bestIndex];
+    chosen.insert(chosen.end(), winner.order.begin(), winner.order.end());
+    componentOrders.erase(componentOrders.begin() +
+                          static_cast<std::ptrdiff_t>(bestIndex));
+  }
+
+  // connectedComponents() partitions the vertex set, so the concatenation must
+  // cover every vertex exactly once.
+  ADB_PROD_ASSERT(chosen.size() == graph.nodes.size());
+  ADB_PROD_ASSERT(
+      std::unordered_set<EnumerateCollectionNode*>(chosen.begin(), chosen.end())
+          .size() == chosen.size());
+
+  if (chosen == currentOrder) {
+    return std::nullopt;
+  }
+
+  auto const chosenEstimate = estimateOrder(graph, estimator, chosen);
+  auto const currentEstimate = estimateOrder(graph, estimator, currentOrder);
+
+  // If any statistic was a fallback, the comparison is between two guesses.
+  // Measured on real data, rewriting in that situation produced a plan slower
+  // than the one it replaced, so decline.
+  if (chosenEstimate.defaulted || currentEstimate.defaulted) {
+    LOG_TOPIC("a7f04", TRACE, Logger::AQL)
+        << "optimize-join-order: declining to reorder, estimate rests on "
+           "defaulted statistics";
+    return std::nullopt;
+  }
+
+  // Require a real margin: differences below the estimator's own error are not
+  // signal.
+  if (chosenEstimate.cost >=
+      currentEstimate.cost / (1.0 + kImprovementMargin)) {
+    LOG_TOPIC("a7f05", TRACE, Logger::AQL)
+        << "optimize-join-order: keeping the written order, improvement "
+        << currentEstimate.cost << " -> " << chosenEstimate.cost
+        << " does not clear the margin";
+    return std::nullopt;
+  }
+
+  return chosen;
+}
+
 // -----------------------------------------------------------------------------
 // the optimizer rule
 // -----------------------------------------------------------------------------

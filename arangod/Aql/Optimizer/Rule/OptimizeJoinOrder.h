@@ -25,6 +25,7 @@
 #include "Aql/Optimizer/Utils/JoinGraph.h"
 
 #include <memory>
+#include <optional>
 #include <vector>
 
 namespace arangodb::aql {
@@ -63,6 +64,33 @@ auto estimateOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
 auto orderComponent(JoinGraph& graph,
                     std::vector<Variable const*> const& component,
                     JoinCostEstimator const& estimator) -> JoinOrder;
+
+/// @brief above this many enumerations in one run the per-component search is
+/// not worth the optimizer time, so the order is left untouched.
+constexpr size_t kMaxEnumerationsToReorder = 16;
+
+/// @brief the relative cost improvement required before rewriting. Note the
+/// arithmetic: the check is `chosen < current / (1 + kImprovementMargin)`, so
+/// 0.25 demands that the chosen order cost at most 0.8 of the current one --
+/// a 20% reduction, not 25%. Differences below the estimator's own error
+/// (measured 1.7-3.1x on non-unique index estimates) are not signal, so the
+/// exact figure matters far less than its direction: bias toward not rewriting.
+constexpr double kImprovementMargin = 0.25;
+
+/// @brief the enumerations of one run, in spine order, from
+/// `firstEnumeration` up to but excluding `next` (pass nullptr for a run that
+/// reached the top of the plan). Calculations and filters are skipped.
+auto collectEnumerationOrder(ExecutionNode* firstEnumeration,
+                             ExecutionNode* next)
+    -> std::vector<EnumerateCollectionNode*>;
+
+/// @brief pick an order for the whole graph, or std::nullopt to leave the plan
+/// alone. Returns nullopt when the run is too large, when any statistic behind
+/// the estimate was a fallback, when the winner is the current order, or when
+/// the improvement does not clear kImprovementMargin.
+auto chooseJoinOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
+                     std::vector<EnumerateCollectionNode*> const& currentOrder)
+    -> std::optional<std::vector<EnumerateCollectionNode*>>;
 
 /// @brief the `optimize-join-order` optimizer rule.
 void optimizeJoinOrder(Optimizer*, std::unique_ptr<ExecutionPlan>,
