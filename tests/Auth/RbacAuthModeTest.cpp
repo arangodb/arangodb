@@ -255,9 +255,14 @@ TEST_F(RbacAuthModeTest, ModifyViewChecksViewThenLinkedCollections) {
   EXPECT_EQ(svc.queries[1].resource, "collection:mydb:c1");
 }
 
-TEST_F(RbacAuthModeTest, RenameViewChecksOldName) {
+TEST_F(RbacAuthModeTest, RenameViewChecksOldAndNewName) {
   check(p::RenameView{.db = "mydb", .oldName = "old", .newName = "new"});
-  expectSingle(rbac::Action::WriteMeta, "view:mydb:old");
+  EXPECT_EQ(svc.checkCalls, 1);
+  ASSERT_EQ(svc.queries.size(), 2u);
+  EXPECT_EQ(svc.queries[0].action, rbac::Action::WriteMeta);
+  EXPECT_EQ(svc.queries[0].resource, "view:mydb:old");
+  EXPECT_EQ(svc.queries[1].action, rbac::Action::Create);
+  EXPECT_EQ(svc.queries[1].resource, "view:mydb:new");
 }
 
 TEST_F(RbacAuthModeTest, RenameViewToSameNameIsBadParameterAndAsksNothing) {
