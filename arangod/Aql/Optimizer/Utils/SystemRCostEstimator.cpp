@@ -24,6 +24,7 @@
 
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
+#include "Aql/Optimizer/Utils/IndexJoinStatistics.h"
 #include "Assertions/ProdAssert.h"
 
 #include <algorithm>
@@ -195,10 +196,10 @@ auto SystemRCostEstimator::extend(
   return estimate;
 }
 
-auto makeDefaultJoinCostEstimator(ExecutionPlan const& /*plan*/)
+auto makeDefaultJoinCostEstimator(ExecutionPlan const& plan)
     -> std::unique_ptr<JoinCostEstimator> {
-  // Wired up to IndexJoinStatistics in the next task.
-  return nullptr;
+  return std::make_unique<SystemRCostEstimator>(
+      std::make_unique<IndexJoinStatistics>(plan));
 }
 
 }  // namespace arangodb::aql
