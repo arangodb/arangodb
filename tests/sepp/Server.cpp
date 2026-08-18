@@ -268,7 +268,7 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
       replication2::EnableReplication2
           ? &_server.getFeature<ReplicatedLogFeature>()
           : nullptr,
-      scheduler, database, rocksdbCacheRefill, cacheManager, agency);
+      scheduler, database, database, rocksdbCacheRefill, cacheManager, agency);
 
   _server
       .addFeature<replication2::replicated_state::ReplicatedStateAppFeature>();

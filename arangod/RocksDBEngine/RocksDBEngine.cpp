@@ -290,13 +290,14 @@ RocksDBEngine::RocksDBEngine(
     IFlushControl& flushControl, IDumpLimitsProvider const& dumpLimitsProvider,
     replication2::IReplicatedLogProvider* replicatedLogProvider,
     ISchedulerProvider const& schedulerProvider,
-    IDatabaseProvider& databaseProvider, IIndexCacheRefill& indexCacheRefill,
+    IDatabaseProvider& databaseProvider, IDatabaseBootstrap& databaseBootstrap,
+    IIndexCacheRefill& indexCacheRefill,
     ICacheManagerProvider& cacheManagerProvider,
     ISortingPolicy const& sortingPolicy, RocksDBEngineOptions options)
     : StorageEngine(
           server, kEngineName, name(), typeid(RocksDBEngine),
           std::make_unique<RocksDBIndexFactory>(server, vectorIndexProvider),
-          databaseProvider),
+          databaseProvider, databaseBootstrap),
       _databasePathProvider(databasePathProvider),
       _vectorIndexProvider(vectorIndexProvider),
       _flushControl(flushControl),
@@ -918,11 +919,10 @@ void RocksDBEngine::start() {
   VPackBuilder databases;
   getDatabases(databases);
   TRI_ASSERT(databases.slice().isArray());
-  // TODO separate interface
-  _databaseProvider.bootstrapDatabases(databases.slice());
+  _databaseBootstrap.bootstrapDatabases(databases.slice());
 
   runRecovery();
-  _databaseProvider.recoveryDone();
+  _databaseBootstrap.recoveryDone();
 }
 
 void RocksDBEngine::runRecovery() {

@@ -46,6 +46,7 @@
 #include "Cache/ICacheManagerProvider.h"
 #include "Replication2/ReplicatedLog/IReplicatedLogProvider.h"
 #include "RestServer/IDatabasePathProvider.h"
+#include "RestServer/IDatabaseBootstrap.h"
 #include "RestServer/IDatabaseProvider.h"
 #include "RestServer/IDumpLimitsProvider.h"
 #include "RestServer/IFlushControl.h"
@@ -182,6 +183,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
                 replication2::IReplicatedLogProvider* replicatedLogProvider,
                 ISchedulerProvider const& schedulerProvider,
                 IDatabaseProvider& databaseProvider,
+                IDatabaseBootstrap& databaseBootstrap,
                 IIndexCacheRefill& indexCacheRefill,
                 ICacheManagerProvider& cacheManagerProvider,
                 ISortingPolicy const& sortingPolicy,

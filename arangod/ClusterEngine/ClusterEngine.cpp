@@ -65,7 +65,7 @@ ClusterEngine::ClusterEngine(application_features::ApplicationServer& server,
                              metrics::IRegistry& metrics)
     : StorageEngine(server, EngineName, name(), typeid(ClusterEngine),
                     std::make_unique<ClusterIndexFactory>(server, *this),
-                    database),
+                    database, database),
       _clusterFeature(clusterFeature),
       _metrics(metrics),
       _actualEngine(nullptr) {
@@ -122,7 +122,7 @@ void ClusterEngine::start() {
   VPackBuilder databases;
   getDatabases(databases);
   TRI_ASSERT(databases.slice().isArray());
-  _databaseProvider.bootstrapDatabases(databases.slice());
+  _databaseBootstrap.bootstrapDatabases(databases.slice());
 }
 
 std::shared_ptr<TransactionState> ClusterEngine::createTransactionState(

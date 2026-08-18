@@ -92,11 +92,11 @@ struct StorageEngineFixtureSuite {
   FakeScheduler scheduler{server};
   TestSchedulerProvider schedulerProvider{scheduler};
 
-  RocksDBEngine engine{server,       optionsProvider,  metricsRegistry,
-                       dbPath,       vectorIdx,        flush,
-                       dumpLimits,   &logProvider,     schedulerProvider,
-                       dbProvider,   indexCacheRefill, cacheManager,
-                       sortingPolicy};
+  RocksDBEngine engine{server,       optionsProvider, metricsRegistry,
+                       dbPath,       vectorIdx,       flush,
+                       dumpLimits,   &logProvider,    schedulerProvider,
+                       dbProvider,   dbProvider,      indexCacheRefill,
+                       cacheManager, sortingPolicy};
 };
 
 // Fixture providing a preconfigured RocksDBEngine backed by a temporary

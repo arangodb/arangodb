@@ -32,6 +32,7 @@
 #include "RestServer/ViewTypesFeature.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
+#include "RestServer/IDatabaseBootstrap.h"
 #include "RestServer/IDatabaseProvider.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
@@ -47,9 +48,11 @@ StorageEngine::StorageEngine(application_features::ApplicationServer& server,
                              std::string_view featureName,
                              std::type_index registration,
                              std::unique_ptr<IndexFactory>&& indexFactory,
-                             IDatabaseProvider& databaseProvider)
+                             IDatabaseProvider& databaseProvider,
+                             IDatabaseBootstrap& databaseBootstrap)
     : ApplicationFeature{server, registration, featureName},
       _databaseProvider(databaseProvider),
+      _databaseBootstrap(databaseBootstrap),
       _indexFactory(std::move(indexFactory)),
       _typeName(engineName) {
   // each specific storage engine feature is optional. the storage engine

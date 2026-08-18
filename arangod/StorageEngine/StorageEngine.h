@@ -60,6 +60,7 @@ class TransactionCollection;
 class TransactionState;
 class WalAccess;
 struct IDatabaseProvider;
+struct IDatabaseBootstrap;
 
 namespace rest {
 class RestHandlerFactory;
@@ -99,7 +100,8 @@ class StorageEngine : public application_features::ApplicationFeature {
                 std::string_view engineName, std::string_view featureName,
                 std::type_index registration,
                 std::unique_ptr<IndexFactory>&& indexFactory,
-                IDatabaseProvider& databaseProvider);
+                IDatabaseProvider& databaseProvider,
+                IDatabaseBootstrap& databaseBootstrap);
 
   virtual HealthData healthCheck() = 0;
 
@@ -383,6 +385,9 @@ class StorageEngine : public application_features::ApplicationFeature {
   // provides access to the database catalog (database objects, version tracker,
   // name settings).
   IDatabaseProvider& _databaseProvider;
+
+  // startup-lifecycle hooks called as the engine opens.
+  IDatabaseBootstrap& _databaseBootstrap;
 
  private:
   std::unique_ptr<IndexFactory> const _indexFactory;
