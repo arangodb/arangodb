@@ -305,29 +305,12 @@ class IResearchAnalyzerFeature final
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check permissions
-  /// @param vocbase analyzer vocbase
-  /// @param level access level
-  /// @return analyzers in the specified vocbase are granted 'level' access
-  //////////////////////////////////////////////////////////////////////////////
-  static bool canUse(Database const& vocbase, auth::Level const& level);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief check permissions for analyzer usage from vocbase by name
-  /// @param vocbaseName  vocbase name to check
-  /// @param level access level
-  /// @return analyzers in the specified vocbase are granted 'level' access
-  //////////////////////////////////////////////////////////////////////////////
-  static bool canUseVocbase(std::string_view vocbaseName,
-                            auth::Level const& level);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief check permissions
   /// @param name analyzer name (already normalized)
   /// @param level access level
   /// @return analyzer with the given prefixed name (or unprefixed and resides
   ///         in defaultVocbase) is granted 'level' access
   //////////////////////////////////////////////////////////////////////////////
-  static bool canUse(std::string_view name, auth::Level const& level);
+  static Result canUse(std::string_view name, AnalyzerAccessLevel const& level);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create new analyzer pool

@@ -36,7 +36,6 @@
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
-#include "RestServer/VocbaseContext.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -191,6 +190,7 @@ RestIndexHandler::RestIndexHandler(
     : RestVocbaseBaseHandler(server, request, response),
       _clusterFeature(server.getFeature<ClusterFeature>()) {}
 
+// Mounted at /_api/index (prefix)
 futures::Future<futures::Unit> RestIndexHandler::executeAsync() {
   // extract the request type
   rest::RequestType const type = _request->requestType();
@@ -227,6 +227,14 @@ std::shared_ptr<LogicalCollection> RestIndexHandler::collection(
     std::string const& cName) {
   if (!cName.empty()) {
     if (ServerState::instance()->isCoordinator()) {
+      // Restrict access properly from API version 1 on:
+      if (_request->requestedApiVersion() > 0) {
+        if (auto r = ExecContext::current().canUseCollection(
+                _vocbase.name(), cName, AccessLevel::Read);
+            r.fail()) {
+          return nullptr;
+        }
+      }
       return _clusterFeature.clusterInfo().getCollectionNT(_vocbase.name(),
                                                            cName);
     }
@@ -989,6 +997,13 @@ async<void> RestIndexHandler::dropIndex() {
 }
 
 void RestIndexHandler::syncCaches() {
+  if (_request->requestedApiVersion() > 0 &&
+      ServerState::instance()->isCoordinator()) {
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                  TRI_ERROR_NOT_IMPLEMENTED,
+                  "Not implemented on coordinators!");
+    return;
+  }
   StorageEngine& engine = _vocbase.engine();
   engine.syncIndexCaches();
 

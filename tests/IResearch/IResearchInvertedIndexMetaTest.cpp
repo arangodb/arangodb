@@ -97,7 +97,7 @@ class IResearchInvertedIndexMetaTest
     auto sysvocbase =
         dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
     std::shared_ptr<LogicalCollection> unused;
-    OperationOptions options(ExecContext::current());
+    OperationOptions options;
     methods::Collections::createSystem(
         *sysvocbase, options, tests::AnalyzerCollectionName, false, unused);
     unused.reset();

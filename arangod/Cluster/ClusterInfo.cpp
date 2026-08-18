@@ -36,7 +36,7 @@
 #include "Basics/Result.h"
 #include "Basics/Result.tpp"
 #include "Basics/StaticStrings.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/TimeString.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
@@ -79,6 +79,8 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/CountCache.h"
 #include "Utils/Events.h"
+#include "Utils/ExecContext.h"
+#include "Utils/Thread.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/VocbaseInfo.h"
@@ -340,7 +342,9 @@ void doQueueLinkDrop(IndexId id, std::string const& collection,
           res = methods::Indexes::drop(*coll, builder.slice()).waitAndGet();
         }
         if (res.fail() && res.isNot(TRI_ERROR_ARANGO_INDEX_NOT_FOUND)) {
-          // we should have internal superuser
+          // this task runs under the superuser ExecContext captured at
+          // enqueue time from the SyncerThread (COR-821), so the drop
+          // cannot fail with a permission error
           TRI_ASSERT(res.isNot(TRI_ERROR_FORBIDDEN));
           LOG_TOPIC("b27f3", WARN, Logger::CLUSTER)
               << "Failed to drop dangling link " << id
@@ -6118,7 +6122,8 @@ void ClusterInfo::waitForSyncersToStop() {
 ClusterInfo::SyncerThread::SyncerThread(
     std::string const& section, std::function<consensus::index_t()> const& f,
     AgencyCache& agencyCache)
-    : Thread(section + "Syncer"),
+    // needs superuser permissions for loadPlan: it may create databases etc.
+    : Thread(section + "Syncer", ExecContext::superuserAsShared()),
       _section(section),
       _f(f),
       _agencyCache(agencyCache) {}

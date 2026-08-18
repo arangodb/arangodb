@@ -99,13 +99,10 @@ Result canUseAnalyzers(IResearchLinkMeta const& meta,
     auto result = IResearchAnalyzerFeature::canUse(
         IResearchAnalyzerFeature::normalize(pool->name(),
                                             defaultVocbase.name()),
-        auth::Level::RO);
+        AnalyzerAccessLevel::Read);
 
-    if (!result) {
-      return {
-          TRI_ERROR_FORBIDDEN,
-          absl::StrCat("read access is forbidden to arangosearch analyzer '",
-                       pool->name(), "'")};
+    if (result.fail()) {
+      return result;
     }
   }
 
@@ -841,13 +838,12 @@ Result IResearchLinkHelper::validateLinks(TRI_vocbase_t& vocbase,
     }
 
     // check link auth as per https://github.com/arangodb/backlog/issues/459
-    if (!ExecContext::current().canUseCollection(
-            vocbase.name(), collection->name(), auth::Level::RO)) {
-      return {TRI_ERROR_FORBIDDEN,  // code
-              absl::StrCat("while validating arangosearch link definition, "
-                           "error: collection '",
-                           collectionName.stringView(),
-                           "' not authorized for read access")};
+    if (auto r = ExecContext::current().canUseCollection(
+            vocbase.name(), collection->name(), AccessLevel::Read);
+        !r.ok()) {
+      return {TRI_ERROR_FORBIDDEN,
+              absl::StrCat("while validating arangosearch link definition: ",
+                           r.errorMessage())};
     }
 
     IResearchLinkMeta meta;

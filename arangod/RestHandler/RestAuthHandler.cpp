@@ -36,6 +36,7 @@
 #include <velocypack/Builder.h>
 
 #include <format>
+#include <Basics/DownCast.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -46,6 +47,7 @@ RestAuthHandler::RestAuthHandler(
     GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
+// Mounted at /_open/auth (prefix)
 RestStatus RestAuthHandler::execute() {
   auto const type = _request->requestType();
   if (type != rest::RequestType::POST) {
@@ -197,6 +199,14 @@ RestStatus RestAuthHandler::execute() {
                   "Wrong credentials");
   }
   return RestStatus::DONE;
+}
+
+async<RestHandler::AuthenticationGrant>
+RestAuthHandler::checkUserAuthentication() const {
+  auto ec = _request->requestContext();
+  TRI_ASSERT(ec != nullptr);
+  ec->forceSuperuser();
+  co_return AuthenticationGrant::GRANTED;
 }
 
 std::string RestAuthHandler::generateJwt(

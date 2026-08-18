@@ -78,6 +78,7 @@ RequestLane RestCollectionHandler::lane() const {
   return RequestLane::CLIENT_SLOW;
 }
 
+// Mounted at /_api/collection (prefix)
 futures::Future<futures::Unit> RestCollectionHandler::executeAsync() {
   switch (_request->requestType()) {
     case rest::RequestType::GET:
@@ -118,10 +119,11 @@ async<void> RestCollectionHandler::handleCommandGet() {
     for (auto const& collection :
          methods::Collections::getNotDeleted(_vocbase)) {
       TRI_ASSERT(collection);
-      bool const canUse = ExecContext::current().canUseCollection(
-          collection->name(), auth::Level::RO);
-
-      if (canUse && (!excludeSystem || !collection->system())) {
+      bool const canSee =
+          ExecContext::current()
+              .canSeeCollection(_vocbase.name(), collection->name())
+              .ok();
+      if (canSee && (!excludeSystem || !collection->system())) {
         // We do not need a transaction here
         methods::Collections::Context ctxt(collection);
         co_await collectionRepresentation(ctxt,
@@ -136,6 +138,11 @@ async<void> RestCollectionHandler::handleCommandGet() {
 
     co_return;
   }
+
+  // All further collection access checks are done in the
+  // methods::Collection::lookup method which is called further
+  // down (and in some helper functions).
+  // This checks canUseCollection(Read)
 
   std::string const& name = suffixes[0];
   // /_api/collection/<name>
@@ -160,6 +167,8 @@ async<void> RestCollectionHandler::handleCommandGet() {
 
   _builder.clear();
 
+  // During the following lookup we will check if the collection can be used
+  // for reading for the current user/identity:
   std::shared_ptr<LogicalCollection> coll;
   auto res = methods::Collections::lookup(_vocbase, name, coll);
   if (res.fail()) {
@@ -278,7 +287,7 @@ async<void> RestCollectionHandler::handleCommandGet() {
     // /_api/collection/<identifier>/revision
 
     _ctxt = std::make_unique<methods::Collections::Context>(coll);
-    OperationOptions options(_context);
+    OperationOptions options;
     auto res = co_await methods::Collections::revisionId(*_ctxt, options);
     if (res.fail()) {
       generateTransactionError(coll->name(), res);
@@ -337,6 +346,9 @@ async<void> RestCollectionHandler::handleCommandPost() {
     co_return;
   }
 
+  // All permission checks are done in methods::Collections::create below
+  // which does canCreateCollection().
+
   bool parseSuccess = false;
   VPackSlice const body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
@@ -372,7 +384,7 @@ async<void> RestCollectionHandler::handleCommandPost() {
   std::vector<CreateCollectionBody> collections{
       std::move(planCollection.get())};
 
-  OperationOptions options(_context);
+  OperationOptions options;
   auto result = methods::Collections::create(
       _vocbase,  // collection vocbase
       options, collections,
@@ -428,6 +440,12 @@ async<void> RestCollectionHandler::handleCommandPut() {
     body = VPackSlice::emptyObjectSlice();
   }
 
+  // All permission checks for reading the collection are done
+  // in the methods::Collections::lookup method called below and
+  // inside some helper methods.
+  // The checks for writing the collection or its metadata are
+  // typically done here in the RestHandler.
+
   _builder.clear();
 
   std::shared_ptr<LogicalCollection> coll;
@@ -462,6 +480,16 @@ async<void> RestCollectionHandler::handleCommandPut() {
     co_return standardResponse();
   }
   if (sub == "compact") {
+    // We only enforce WriteMeta access here if the API version is higher
+    // than 0 for backwards compatibility:
+    if (_request.get()->requestedApiVersion() > 0) {
+      if (auto r = ExecContext::current().canUseCollection(
+              _vocbase.name(), name, AccessLevel::WriteMeta);
+          r.fail()) {
+        generateError(r);
+        co_return;
+      }
+    }
     if (ServerState::instance()->isCoordinator()) {
       auto& feature = server().getFeature<ClusterFeature>();
       // while this call is technically blocking, the requests to the
@@ -518,7 +546,8 @@ async<void> RestCollectionHandler::handleCommandPut() {
     co_return;
   }
   if (sub == "truncate") {
-    OperationOptions opts(_context);
+    // Collection permission check in transaction!
+    OperationOptions opts;
 
     opts.waitForSync =
         _request->parsedValue(StaticStrings::WaitForSyncString, false);
@@ -609,10 +638,11 @@ async<void> RestCollectionHandler::handleCommandPut() {
         StaticStrings::ReplicationFactor,
         StaticStrings::MinReplicationFactor,  // deprecated
         StaticStrings::WriteConcern,         StaticStrings::ComputedValues,
-        StaticStrings::CacheEnabled,         StaticStrings::SupportsRBAC};
+        StaticStrings::CacheEnabled};
     VPackBuilder props = VPackCollection::keep(body, keep);
 
-    OperationOptions options(_context);
+    OperationOptions options;
+    // Permission check inside this call:
     res = co_await methods::Collections::updateProperties(*coll, props.slice(),
                                                           options);
     if (res.fail()) {
@@ -646,7 +676,7 @@ async<void> RestCollectionHandler::handleCommandPut() {
     co_return;
   }
   if (sub == "loadIndexesIntoMemory") {
-    OperationOptions options(_context);
+    OperationOptions options;
     auto res = co_await methods::Collections::warmup(_vocbase, *coll);
     if (res.fail()) {
       generateTransactionError(coll->name(), OperationResult(res, options), "");
@@ -691,6 +721,17 @@ async<void> RestCollectionHandler::handleCommandDelete() {
   bool allowDropSystem =
       _request->parsedValue(StaticStrings::DataSourceSystem, false);
   _builder.clear();
+
+  // Note that this check will be done in methods::Collections::drop below
+  // again. However, we need to check before the lookup, or else somebody
+  // without access permissions could read off from the result code, if
+  // a collection exists or not!
+  if (auto r = ExecContext::current().canDropCollection(_vocbase.name(), name);
+      r.fail()) {
+    events::DropCollection(_vocbase.name(), name, TRI_ERROR_FORBIDDEN);
+    generateError(r);
+    co_return;
+  }
 
   std::shared_ptr<LogicalCollection> coll;
   Result res = methods::Collections::lookup(_vocbase, name, coll);
@@ -787,7 +828,7 @@ futures::Future<futures::Unit> RestCollectionHandler::collectionRepresentation(
     }
   }
 
-  OperationOptions options(_context);
+  OperationOptions options;
   futures::Future<OperationResult> figures =
       futures::makeFuture(OperationResult(Result(), options));
   if (showFigures != FiguresType::None) {
