@@ -92,6 +92,15 @@ auto chooseJoinOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
                      std::vector<EnumerateCollectionNode*> const& currentOrder)
     -> std::optional<std::vector<EnumerateCollectionNode*>>;
 
+/// @brief splice `order` into the plan in place of the run's current
+/// enumeration order. Unlinking the enumerations leaves the run's calculations
+/// and filters chained onto the run's first dependency; reinserting the
+/// enumerations above them yields a valid, if un-optimised, plan, which
+/// move-calculations-up-2 and move-filters-up-2 then repair.
+void rewriteJoinGraph(ExecutionPlan& plan, ExecutionNode* firstEnumeration,
+                      ExecutionNode* next,
+                      std::vector<EnumerateCollectionNode*> const& order);
+
 /// @brief the `optimize-join-order` optimizer rule.
 void optimizeJoinOrder(Optimizer*, std::unique_ptr<ExecutionPlan>,
                        OptimizerRule const&);

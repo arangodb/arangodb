@@ -103,6 +103,12 @@ struct JoinGraph {
   std::vector<Edge> edges;
   std::vector<AstNode const*> residuals;
 
+  /// @brief true when the run contains a calculation whose expression is not
+  /// deterministic. Hoisting enumerations above such a calculation changes how
+  /// many times it is evaluated, which changes results, so the run must not be
+  /// reordered.
+  bool hasNonDeterministicCalculation = false;
+
  private:
   auto ensureEdge(Variable const* v, Variable const* w) -> Edge&;
 };

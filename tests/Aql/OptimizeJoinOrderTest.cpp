@@ -591,4 +591,76 @@ TEST_F(OptimizeJoinOrderTest, collect_enumeration_order_stops_at_run_boundary) {
          "enumerations";
 }
 
+TEST_F(OptimizeJoinOrderTest, rewrite_splices_the_chosen_order) {
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FOR c IN c3 FILTER b.z == c.w RETURN [a, b, c]");
+  auto* plan = q->plan();
+  auto* first = firstEnumeration(plan);
+  auto current = collectEnumerationOrder(first, nullptr);
+  ASSERT_EQ(namesOf(current), (std::vector<std::string>{"a", "b", "c"}));
+
+  std::vector<EnumerateCollectionNode*> desired{current[2], current[1],
+                                                current[0]};
+  rewriteJoinGraph(*plan, first, nullptr, desired);
+
+  auto after = collectEnumerationOrder(plan->root()->getSingleton(), nullptr);
+  EXPECT_EQ(namesOf(after), (std::vector<std::string>{"c", "b", "a"}));
+}
+
+TEST_F(OptimizeJoinOrderTest, rewrite_keeps_the_plan_valid) {
+  auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
+  auto* plan = q->plan();
+  auto* first = firstEnumeration(plan);
+  auto current = collectEnumerationOrder(first, nullptr);
+
+  std::vector<EnumerateCollectionNode*> desired{current[1], current[0]};
+  rewriteJoinGraph(*plan, first, nullptr, desired);
+
+  // every variable must still be set before it is used; findVarUsage walks the
+  // plan and asserts that invariant.
+  plan->findVarUsage();
+  EXPECT_TRUE(plan->varUsageComputed());
+}
+
+TEST_F(OptimizeJoinOrderTest, non_deterministic_calculation_is_flagged) {
+  auto q = prepare(
+      "FOR a IN c1 LET r = RAND() FILTER a.x > r "
+      "FOR b IN c2 FILTER a.y == b.z RETURN [a, b]");
+  auto g = buildGraph(*q);
+  EXPECT_TRUE(g.hasNonDeterministicCalculation);
+}
+
+TEST_F(OptimizeJoinOrderTest, deterministic_run_is_not_flagged) {
+  auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
+  auto g = buildGraph(*q);
+  EXPECT_FALSE(g.hasNonDeterministicCalculation);
+}
+
+TEST_F(OptimizeJoinOrderTest, rule_leaves_the_plan_alone_without_statistics) {
+  // The mock collections carry no secondary indexes, so every distinct lookup
+  // is defaulted and the rule must decline. This is the documented behaviour,
+  // not a limitation of the test.
+  auto ctx = std::make_shared<transaction::StandaloneContext>(
+      server.getSystemDatabase(), transaction::OperationOriginTestCase{});
+  // interchange-adjacent-enumerations is enabled by default and also
+  // permutes adjacent FOR loops; with it left on, it -- not
+  // optimize-join-order -- could be the one deciding the enumeration order
+  // this test checks. It must be off so the test isolates its actual
+  // subject. The two rules are made mutually exclusive in a later task.
+  auto options = velocypack::Parser::fromJson(
+      R"({"optimizer":{"rules":["+optimize-join-order",)"
+      R"("-interchange-adjacent-enumerations"]}})");
+  auto query = Query::create(
+      std::move(ctx),
+      QueryString(std::string{"FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+                              "RETURN [a, b]"}),
+      nullptr, QueryOptions(options->slice()));
+  waitForAsync(query->prepareQuery());
+
+  auto after =
+      collectEnumerationOrder(query->plan()->root()->getSingleton(), nullptr);
+  EXPECT_EQ(namesOf(after), (std::vector<std::string>{"a", "b"}));
+}
+
 }  // namespace arangodb::tests::aql

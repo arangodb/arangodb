@@ -201,8 +201,10 @@ auto buildJoinGraph(ExecutionPlan const* plan, ExecutionNode* firstEnumeration,
       }
 
       case ExecutionNode::CALCULATION: {
-        // calculations feeding filters are inspected via the FILTER case; the
-        // calculation node itself is part of the run but carries no join info.
+        auto* calc = ExecutionNode::castTo<CalculationNode*>(n);
+        if (!calc->expression()->isDeterministic()) {
+          graph.hasNonDeterministicCalculation = true;
+        }
         break;
       }
 
@@ -410,39 +412,82 @@ auto chooseJoinOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
 }
 
 // -----------------------------------------------------------------------------
+// plan rewriting
+// -----------------------------------------------------------------------------
+
+void rewriteJoinGraph(ExecutionPlan& plan, ExecutionNode* firstEnumeration,
+                      ExecutionNode* next,
+                      std::vector<EnumerateCollectionNode*> const& order) {
+  // Capture the anchor before touching anything: after the unlink loop the
+  // spine no longer contains the enumerations.
+  ExecutionNode* firstDependency = firstEnumeration->getFirstDependency();
+  ADB_PROD_ASSERT(firstDependency != nullptr);
+
+  // A permutation check, not merely a size check: the loop below unlinks every
+  // enumeration and reinserts only what `order` holds, so a duplicate paired
+  // with an omission would silently delete a FOR loop from the query -- which
+  // no assertion on the resulting *order* would catch.
+  auto const current = collectEnumerationOrder(firstEnumeration, next);
+  {
+    auto sortedCurrent = current;
+    auto sortedOrder = order;
+    auto byId = [](auto const* l, auto const* r) { return l->id() < r->id(); };
+    std::sort(sortedCurrent.begin(), sortedCurrent.end(), byId);
+    std::sort(sortedOrder.begin(), sortedOrder.end(), byId);
+    ADB_PROD_ASSERT(sortedCurrent == sortedOrder);
+  }
+
+  for (auto* enumeration : current) {
+    plan.unlinkNode(enumeration);
+  }
+
+  // insertAfter splices the new node in as the parent of `previous`, so
+  // inserting in reverse against a fixed anchor yields the forward order.
+  for (auto it = order.rbegin(); it != order.rend(); ++it) {
+    plan.insertAfter(firstDependency, *it);
+  }
+
+  plan.clearVarUsageComputed();
+}
+
+// -----------------------------------------------------------------------------
 // the optimizer rule
 // -----------------------------------------------------------------------------
 
 void optimizeJoinOrder(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                        OptimizerRule const& rule) {
-  // Scaffolding: construct the join graph(s) for the plan. This does
-  // NOT reorder joins and does NOT modify the plan yet; the reordering
-  // algorithm is a follow-up task. We report the rule as "applied" only when we
-  // actually discovered a join so that it is observable via `explain`.
-  bool foundJoin = false;
+  auto estimator = makeDefaultJoinCostEstimator(*plan);
+  bool modified = false;
 
   ExecutionNode* n = plan->root()->getSingleton();
   while (n != nullptr) {
-    if (n->getType() == ExecutionNode::ENUMERATE_COLLECTION) {
-      ExecutionNode* next = nullptr;
-
-      // This graph is discarded now, but will be retained and used for join
-      // reordering later.
-      JoinGraph graph = buildJoinGraph(plan.get(), n, next);
-      if (graph.hasJoin()) {
-        foundJoin = true;
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        traceJoinGraph(graph);
-#endif
-      }
-      // continue scanning after the run that we just consumed
-      n = next;
-    } else {
+    if (n->getType() != ExecutionNode::ENUMERATE_COLLECTION) {
       n = n->getFirstParent();
+      continue;
     }
+
+    ExecutionNode* firstEnumeration = n;
+    ExecutionNode* next = nullptr;
+    JoinGraph graph = buildJoinGraph(plan.get(), firstEnumeration, next);
+
+    if (graph.hasJoin() && !graph.hasNonDeterministicCalculation) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      traceJoinGraph(graph);
+#endif
+      auto const current = collectEnumerationOrder(firstEnumeration, next);
+      if (auto chosen = chooseJoinOrder(graph, *estimator, current);
+          chosen.has_value()) {
+        rewriteJoinGraph(*plan, firstEnumeration, next, *chosen);
+        modified = true;
+      }
+    }
+
+    n = next;
   }
 
-  opt->addPlan(std::move(plan), rule, foundJoin);
+  // Report the rule applied only when the order actually changed, so an
+  // unchanged plan does not needlessly re-trigger the downstream rules.
+  opt->addPlan(std::move(plan), rule, modified);
 }
 
 }  // namespace arangodb::aql

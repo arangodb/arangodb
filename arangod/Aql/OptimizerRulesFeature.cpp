@@ -319,16 +319,17 @@ optimizations.)");
       R"(Try out permutations of `FOR` statements in queries that contain
 multiple loops, which may enable further optimizations by other rules.)");
 
-  // Constructs the join graph only for now. Does not reorder joins yet.
-  // Disabled by default. Can be enabled via
+  // Cost-based reordering of adjacent collection enumerations. Disabled by
+  // default. Can be enabled via
   // `{ optimizer: { rules: ["+optimize-join-order"] } }`
   registerRule(
       "optimize-join-order", optimizeJoinOrder,
       OptimizerRule::optimizeJoinOrder,
       OptimizerRule::makeFlags(OptimizerRule::Flags::DisabledByDefault,
                                OptimizerRule::Flags::CanBeDisabled),
-      R"(Detect adjacent `FOR` loops that are joined by equijoin conditions and
-build the corresponding join graph, as a basis for (in-future) cost-based join reordering.)");
+      R"(Reorder adjacent `FOR` loops that are joined by equijoin conditions,
+using estimated join cardinalities to pick an order, and keeping the order as
+written unless the estimate shows a clear improvement.)");
 
   // replace attribute accesses that are equal due to a filter statement
   // with the same value. This might enable other optimizations later on.
