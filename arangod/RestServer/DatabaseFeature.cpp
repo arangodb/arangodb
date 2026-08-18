@@ -353,6 +353,24 @@ void DatabaseFeature::stop() {
   static TRI_vocbase_t* currentVocbase = nullptr;
 #endif
 
+  // delete the IO checker thread
+  if (_ioHeartbeatThread != nullptr) {
+    _ioHeartbeatThread->beginShutdown();
+
+    while (_ioHeartbeatThread->isRunning()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+  }
+
+  // delete the database manager thread
+  if (_databaseManager != nullptr) {
+    _databaseManager->beginShutdown();
+
+    while (_databaseManager->isRunning()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+  }
+
   // turn off query cache and flush it
   aql::QueryCacheProperties p{
       .mode = aql::QueryCacheMode::CACHE_ALWAYS_OFF,
@@ -437,24 +455,6 @@ void DatabaseFeature::stop() {
 }
 
 void DatabaseFeature::unprepare() {
-  // delete the IO checker thread
-  if (_ioHeartbeatThread != nullptr) {
-    _ioHeartbeatThread->beginShutdown();
-
-    while (_ioHeartbeatThread->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    }
-  }
-
-  // delete the database manager thread
-  if (_databaseManager != nullptr) {
-    _databaseManager->beginShutdown();
-
-    while (_databaseManager->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    }
-  }
-
   try {
     closeDroppedDatabases();
   } catch (...) {
