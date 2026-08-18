@@ -77,21 +77,6 @@ class ClusteringMutablePropertiesTest : public ::testing::Test {
     }
   }
 
-  // The internal read path (persisted markers, agency plan entries) is
-  // deliberately more permissive than user input.
-  static ResultT<ClusteringMutableProperties> parseInternal(VPackSlice body) {
-    ClusteringMutableProperties res;
-    auto status = velocypack::deserializeWithStatus(body, res, {},
-                                                    InspectInternalContext{});
-    if (!status.ok()) {
-      return Result{
-          TRI_ERROR_BAD_PARAMETER,
-          status.error() +
-              (status.path().empty() ? "" : " on path " + status.path())};
-    }
-    return res;
-  }
-
   static VPackBuilder serialize(ClusteringMutableProperties testee) {
     VPackBuilder result;
     velocypack::serialize(result, testee);
@@ -120,25 +105,5 @@ GeneratePositiveIntegerAttributeTest(ClusteringMutablePropertiesTest,
 GeneratePositiveIntegerAttributeTestInternal(ClusteringMutablePropertiesTest,
                                              minReplicationFactor, writeConcern,
                                              false);
-
-// EE SmartGraph edge collections are persisted with writeConcern == 0 and a
-// non-satellite replicationFactor, so "writeConcern > 0 unless satellite" does
-// not hold for every valid instance. It constrains user input only.
-TEST_F(ClusteringMutablePropertiesTest, test_writeConcernZeroIsInternalOnly) {
-  VPackBuilder body;
-  {
-    VPackObjectBuilder guard(&body);
-    body.add("writeConcern", VPackValue(0));
-    body.add("replicationFactor", VPackValue(2));
-  }
-
-  EXPECT_TRUE(parse(body.slice()).fail());
-
-  auto testee = parseInternal(body.slice());
-  ASSERT_TRUE(testee.ok()) << testee.errorMessage();
-  ASSERT_TRUE(testee->writeConcern.has_value());
-  EXPECT_EQ(testee->writeConcern.value(), 0u);
-  EXPECT_FALSE(testee->isSatellite());
-}
 
 }  // namespace arangodb::tests

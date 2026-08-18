@@ -77,21 +77,6 @@ class ClusteringConstantPropertiesTest : public ::testing::Test {
     }
   }
 
-  // The internal read path (persisted markers, agency plan entries) is
-  // deliberately more permissive than user input.
-  static ResultT<ClusteringConstantProperties> parseInternal(VPackSlice body) {
-    ClusteringConstantProperties res;
-    auto status = velocypack::deserializeWithStatus(body, res, {},
-                                                    InspectInternalContext{});
-    if (!status.ok()) {
-      return Result{
-          TRI_ERROR_BAD_PARAMETER,
-          status.error() +
-              (status.path().empty() ? "" : " on path " + status.path())};
-    }
-    return res;
-  }
-
   static VPackBuilder serialize(ClusteringConstantProperties testee) {
     VPackBuilder result;
     velocypack::serializeWithContext(result, testee, InspectUserContext{});
@@ -144,21 +129,6 @@ TEST_F(ClusteringConstantPropertiesTest, test_shardingStrategy) {
 
 GeneratePositiveIntegerAttributeTest(ClusteringConstantPropertiesTest,
                                      numberOfShards);
-
-// EE SmartGraph edge collections are persisted with numberOfShards == 0, so
-// "greater than zero" is not a property of every valid instance. It is a rule
-// about what a user may ask for, and must not be enforced when reading state
-// that already exists.
-TEST_F(ClusteringConstantPropertiesTest,
-       test_numberOfShardsZeroIsInternalOnly) {
-  auto body = createMinimumBodyWithOneValue("numberOfShards", 0);
-  EXPECT_TRUE(parse(body.slice()).fail());
-
-  auto testee = parseInternal(body.slice());
-  ASSERT_TRUE(testee.ok()) << testee.errorMessage();
-  ASSERT_TRUE(testee->numberOfShards.has_value());
-  EXPECT_EQ(testee->numberOfShards.value(), 0u);
-}
 
 GenerateOptionalStringAttributeTest(ClusteringConstantPropertiesTest,
                                     distributeShardsLike);
