@@ -32,12 +32,8 @@ using namespace arangodb;
 using namespace arangodb::tests;
 using namespace arangodb::velocypack;
 
-// ===========================================================================
-// persistent/hash/skiplist: three factory-registered type names that all
-// instantiate RocksDBVPackIndex subclasses overriding nothing but type() and
-// typeName() (see RocksDBPersistentIndex.h / RocksDBHashIndex.h /
-// RocksDBSkiplistIndex.h) - parameterized here instead of duplicated per type.
-// ===========================================================================
+// persistent/hash/skiplist all instantiate RocksDBVPackIndex with only
+// type()/typeName() overridden - parameterized instead of duplicated per type.
 
 class StorageEngineIndexTypeTest
     : public StorageEngineIndexTest,
@@ -103,12 +99,8 @@ TEST_P(StorageEngineIndexTypeTest, ReturnsEntriesInAscendingOrder) {
 INSTANTIATE_TEST_CASE_P(VPackIndexAliases, StorageEngineIndexTypeTest,
                         ::testing::Values("persistent", "hash", "skiplist"));
 
-// ===========================================================================
-// TTL index: unlike the persistent-family indexes above, entries are derived
-// from the document rather than stored verbatim (RocksDBTtlIndex::insert
-// converts the attribute to a timestamp), so a document is only indexed if
-// that conversion succeeds.
-// ===========================================================================
+// RocksDBTtlIndex::insert converts the attribute to a timestamp, so a
+// document is only indexed if that conversion succeeds.
 
 namespace {
 VPackString ttlIndexDefinition() {
