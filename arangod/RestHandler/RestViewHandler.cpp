@@ -28,16 +28,10 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Rest/GeneralResponse.h"
-#include "RestServer/DatabaseFeature.h"
 #include "Transaction/OperationOrigin.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/LogicalCollection.h"
-#include "VocBase/Methods/Collections.h"
-#include "StorageEngine/PhysicalCollection.h"
-#include "Transaction/IndexesSnapshot.h"
-#include "IResearch/IResearchDataStore.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>
