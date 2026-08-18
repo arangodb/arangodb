@@ -158,7 +158,17 @@ TEST(RbacServiceImplCheckTest, translatesUseApiVersion) {
   f.svc.check({testToken}, queries);
   ASSERT_EQ(f.mock->lastItems.size(), 1u);
   EXPECT_EQ(f.mock->lastItems[0].action, "db:UseApiVersion");
-  EXPECT_EQ(f.mock->lastItems[0].resource, "db:apiversion:1");
+  EXPECT_EQ(f.mock->lastItems[0].resource, "db:apiversion:v1");
+}
+
+TEST(RbacServiceImplCheckTest, translatesUseApiVersionZero) {
+  auto f = CheckFixture::make();
+  std::array queries{rbac::ActionResource{
+      rbac::Action::UseApiVersion, rbac::resources::ApiVersion{.version = 0}}};
+  f.svc.check({testToken}, queries);
+  ASSERT_EQ(f.mock->lastItems.size(), 1u);
+  EXPECT_EQ(f.mock->lastItems[0].action, "db:UseApiVersion");
+  EXPECT_EQ(f.mock->lastItems[0].resource, "db:apiversion:v0");
 }
 
 TEST(RbacServiceImplCheckTest, adminActionHasNoResource) {

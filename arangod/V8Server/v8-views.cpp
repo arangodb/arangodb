@@ -633,11 +633,15 @@ static void JS_PropertiesViewVocbase(
     // end of parameter parsing
     // ...........................................................................
 
-    if (auto r = ExecContext::current().canUseView(viewPtr->vocbase().name(),
-                                                   viewPtr->name(),
-                                                   ViewAccessLevel::Modify);
-        r.fail()) {  // check auth after ensuring that
-      // the view exists
+    std::vector<std::string> linkedCollections;
+    if (auto linksSlice = builder.slice().get("links"); linksSlice.isObject()) {
+      for (auto const& pair : VPackObjectIterator(linksSlice)) {
+        linkedCollections.push_back(pair.key.copyString());
+      }
+    }
+    if (auto r = ExecContext::current().canModifyView(
+            viewPtr->vocbase().name(), viewPtr->name(), linkedCollections);
+        !r.ok()) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
     }
 
@@ -687,10 +691,6 @@ static void JS_PropertiesViewVocbase(
   if (!view) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
-
-  // ...........................................................................
-  // end of parameter parsing
-  // ...........................................................................
 
   if (auto r = ExecContext::current().canUseView(view->vocbase().name(),
                                                  view->name(),
