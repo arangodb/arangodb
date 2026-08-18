@@ -753,12 +753,16 @@ static void JS_RenameViewVocbase(
   // end of parameter parsing
   // ...........................................................................
 
-  // TODO We need to check permissions for the old AND new view name!
   if (auto r = ExecContext::current().canUseView(view->vocbase().name(),
                                                  view->name(),
                                                  ViewAccessLevel::Modify);
       r.fail()) {  // check auth after ensuring
                    // that the view exists
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
+  }
+  if (auto r = ExecContext::current().canRenameView(view->vocbase().name(),
+                                                    view->name(), name);
+      r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
   }
 
