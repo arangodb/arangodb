@@ -311,4 +311,194 @@ TEST_F(SystemRCostEstimatorTest, multiple_edges_multiply_their_factors) {
   EXPECT_DOUBLE_EQ(est.cardinality, 2000.0);
 }
 
+TEST_F(SystemRCostEstimatorTest, distinct_caps_pair_with_their_own_node) {
+  // Unlike the equal-base cap test above, base(a) and base(b) are clearly
+  // different here (100 vs. 1000), so a bug that caps otherDistinct against
+  // nextRestricted.base (or vice versa) changes the answer instead of
+  // silently agreeing with the correct pairing.
+  auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
+  auto g = buildGraph(*q);
+  auto [estimator, stats] = makeEstimator();
+  stats->counts = {{"a", 100.0}, {"b", 1000.0}};
+  stats->distinct["a"]["x"] = {1e6, false};  // capped by base(a) = 100
+  stats->distinct["b"]["y"] = {5.0, false};  // stays under base(b) = 1000
+
+  auto* a = nodeByName(g, "a");
+  auto* b = nodeByName(g, "b");
+  std::array<JoinGraph::Edge const*, 1> connecting{&g.edges.front()};
+
+  // correct: dp = min(1e6, 100) = 100, dn = min(5, 1000) = 5,
+  // factor = 1/max(100, 5) = 1/100; cardinality = 100 * 1000 / 100 = 1000.
+  // a swapped pairing gives dp = min(1e6, 1000) = 1000, dn = min(5, 100) = 5,
+  // factor = 1/1000, cardinality = 100.
+  auto est = estimator->extend(estimator->seed(*a), *b, connecting);
+  EXPECT_DOUBLE_EQ(est.cardinality, 1000.0);
+}
+
+TEST_F(SystemRCostEstimatorTest, extend_costs_against_the_unrestricted_count) {
+  // Give `next` (b) a constant restriction that shrinks restricted(b) well
+  // below |C_b|, and check that extend()'s cost still uses the full
+  // documentCount(b), not restricted(b) -- an index descent traverses the
+  // whole index regardless of how selective the outer restriction is.
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FILTER b.k == 'v' RETURN [a, b]");
+  auto g = buildGraph(*q);
+  auto [estimator, stats] = makeEstimator();
+  stats->counts = {{"a", 500.0}, {"b", 1000.0}};
+  stats->distinct["b"]["k"] = {100.0, false};  // restricted(b) = 1000/100 = 10
+  stats->indexed["b"] = {"y"};                 // extend() probes, not scans
+
+  auto* a = nodeByName(g, "a");
+  auto* b = nodeByName(g, "b");
+  std::array<JoinGraph::Edge const*, 1> connecting{&g.edges.front()};
+
+  auto est = estimator->extend(estimator->seed(*a), *b, connecting);
+  // seed(a).cost == documentCount(a) == 500 (no index on a's empty
+  // conditions); the probe is against |C_b| = 1000, not restricted(b) = 10.
+  EXPECT_DOUBLE_EQ(est.cost, 500.0 + probeCost(500.0, 1000.0));
+}
+
+TEST_F(SystemRCostEstimatorTest, defaulted_propagates_from_the_prefix) {
+  // Every lookup this extend() touches is fully scripted (not defaulted);
+  // only the prefix itself carries the flag. The result must still be
+  // defaulted -- once a fallback statistic has fed the estimate, nothing
+  // downstream can un-flag it.
+  auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
+  auto g = buildGraph(*q);
+  auto [estimator, stats] = makeEstimator();
+  stats->counts = {{"a", 100.0}, {"b", 100.0}};
+  stats->distinct["a"]["x"] = {10.0, false};
+  stats->distinct["b"]["y"] = {10.0, false};
+
+  auto* b = nodeByName(g, "b");
+  std::array<JoinGraph::Edge const*, 1> connecting{&g.edges.front()};
+
+  JoinEstimate prefix{.cardinality = 100.0, .cost = 0.0, .defaulted = true};
+  auto est = estimator->extend(prefix, *b, connecting);
+  EXPECT_TRUE(est.defaulted);
+}
+
+TEST_F(SystemRCostEstimatorTest,
+       defaulted_propagates_from_next_s_own_condition_lookup) {
+  // `next` (b) carries a constant restriction whose distinct count is not
+  // scripted, so restrictedFor(b) is itself defaulted -- distinct from every
+  // edge-level lookup, which are all scripted here, and from the prefix,
+  // which starts clean.
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FILTER b.k == 'v' RETURN [a, b]");
+  auto g = buildGraph(*q);
+  auto [estimator, stats] = makeEstimator();
+  stats->counts = {{"a", 100.0}, {"b", 100.0}};
+  stats->distinct["a"]["x"] = {10.0, false};
+  stats->distinct["b"]["y"] = {10.0, false};
+  // stats->distinct["b"]["k"] intentionally left unscripted
+
+  auto* a = nodeByName(g, "a");
+  auto* b = nodeByName(g, "b");
+  std::array<JoinGraph::Edge const*, 1> connecting{&g.edges.front()};
+
+  auto est = estimator->extend(estimator->seed(*a), *b, connecting);
+  EXPECT_TRUE(est.defaulted);
+}
+
+TEST_F(SystemRCostEstimatorTest, in_residual_uses_min_of_one_and_the_ratio) {
+  // a.k IN ['u','v','w'] over 10 distinct k values: factor = min(1, 3/10).
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FILTER a.k IN ['u', 'v', 'w'] RETURN [a, b]");
+  auto g = buildGraph(*q);
+  auto [estimator, stats] = makeEstimator();
+  stats->counts = {{"a", 900.0}, {"b", 100.0}};
+  stats->distinct["a"]["k"] = {10.0, false};
+
+  auto seeded = estimator->seed(*nodeByName(g, "a"));
+  // restricted(a) = 900 (no equality condition on k, only a residual);
+  // base(a) = 900 * min(1, 3/10) = 270.
+  EXPECT_DOUBLE_EQ(seeded.cardinality, 270.0);
+}
+
+TEST_F(SystemRCostEstimatorTest,
+       in_residual_on_a_different_variable_is_neutral) {
+  // The residual is attached to `a` because it is the only *graph* variable
+  // it references, but the IN's own attribute access (t.k) belongs to a
+  // variable outside the graph entirely. Pricing it as if it were about
+  // a's own attributes would be wrong; the factor must stay neutral.
+  auto q = prepare(
+      "LET t = NOOPT({k: 1}) FOR a IN c1 "
+      "FILTER t.k IN [a.x, 1, 2] RETURN a");
+  auto g = buildGraph(*q);
+  auto* a = nodeByName(g, "a");
+  ASSERT_NE(a, nullptr);
+  ASSERT_EQ(a->residuals.size(), 1u);
+
+  FakeJoinStatistics stats;
+  // Deliberately do not script anything for "a" -- if the bug under test
+  // were present, this would be queried and return a defaulted 1.0 anyway,
+  // masking the real failure mode (querying the wrong node/attribute at
+  // all). The assertion below pins the return value regardless.
+  EXPECT_DOUBLE_EQ(residualSelectivityFactor(a->residuals.front(), stats, *a),
+                   1.0);
+}
+
+TEST_F(SystemRCostEstimatorTest, unmodelled_residual_is_the_neutral_element) {
+  // a != comparison has no principled selectivity constant. Its factor must
+  // be exactly 1.0, so base(v) ends up equal to restricted(v) even though a
+  // residual is present.
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FILTER a.k == 'v' FILTER a.m != 5 RETURN [a, b]");
+  auto g = buildGraph(*q);
+  auto [estimator, stats] = makeEstimator();
+  stats->counts = {{"a", 1000.0}, {"b", 100.0}};
+  stats->distinct["a"]["k"] = {10.0, false};
+
+  auto* a = nodeByName(g, "a");
+  ASSERT_EQ(a->residuals.size(), 1u);
+  EXPECT_DOUBLE_EQ(residualSelectivityFactor(a->residuals.front(), *stats, *a),
+                   1.0);
+
+  // restricted(a) = 1000 / 10 = 100; base(a) = 100 * 1.0 == restricted(a).
+  auto seeded = estimator->seed(*a);
+  EXPECT_DOUBLE_EQ(seeded.cardinality, 100.0);
+}
+
+TEST_F(SystemRCostEstimatorTest, extend_floors_cardinality_at_one) {
+  // Two connecting edges each divide by ~100, and c's own equality
+  // restriction is so over-selective that restricted(c)/base(c) clamp to
+  // their floor of 1. Unfloored, 100 * 1 * (1/100) * (1/100) == 0.01; a join
+  // cannot meaningfully produce a fraction of a row, and letting it through
+  // would make every later probeCost/scanCost on this prefix collapse
+  // towards zero.
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FOR c IN c3 "
+      "FILTER a.x == b.y FILTER b.z == c.w FILTER a.q == c.r "
+      "FILTER c.k == 'v' RETURN [a, b, c]");
+  auto g = buildGraph(*q);
+  ASSERT_EQ(g.edges.size(), 3u);
+
+  auto [estimator, stats] = makeEstimator();
+  stats->counts = {{"a", 100.0}, {"b", 100.0}, {"c", 100.0}};
+  stats->distinct["b"]["z"] = {100.0, false};
+  stats->distinct["c"]["w"] = {100.0, false};
+  stats->distinct["a"]["q"] = {100.0, false};
+  stats->distinct["c"]["r"] = {100.0, false};
+  // 100 distinct k values over 100 documents in c: restricted(c) clamps to 1.
+  stats->distinct["c"]["k"] = {1000.0, false};
+
+  auto* c = nodeByName(g, "c");
+  std::vector<JoinGraph::Edge const*> connecting;
+  for (auto const& e : g.edges) {
+    if (e.from == c || e.to == c) {
+      connecting.emplace_back(&e);
+    }
+  }
+  ASSERT_EQ(connecting.size(), 2u);
+
+  JoinEstimate prefix{.cardinality = 100.0, .cost = 0.0, .defaulted = false};
+  auto est = estimator->extend(prefix, *c, connecting);
+  EXPECT_DOUBLE_EQ(est.cardinality, 1.0);
+}
+
 }  // namespace arangodb::tests::aql

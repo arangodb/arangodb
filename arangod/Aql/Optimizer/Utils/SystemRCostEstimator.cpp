@@ -65,7 +65,13 @@ auto residualSelectivityFactor(AstNode const* residual,
         return 1.0;
       }
       auto access = extractAttributeAccess(residual->getMemberUnchecked(0));
-      if (!access.has_value()) {
+      if (!access.has_value() ||
+          access->first != node.executionNode->outVariable()) {
+        // Either not an attribute access, or an access on some other
+        // variable: a residual is attached to a node when it references
+        // exactly one *graph* variable, but it may also reference non-graph
+        // variables (e.g. `FILTER t.k IN [a.x, 1, 2]` attaches to `a`), so
+        // this cannot be assumed to be about `node`'s own attribute.
         return 1.0;
       }
       std::array<AttributePath, 1> attributes{std::move(access->second)};
@@ -91,7 +97,8 @@ SystemRCostEstimator::SystemRCostEstimator(
 
 auto SystemRCostEstimator::restrictedFor(JoinGraph::Node const& node) const
     -> Restricted const& {
-  if (auto it = _restricted.find(&node); it != _restricted.end()) {
+  auto const* variable = node.executionNode->outVariable();
+  if (auto it = _restricted.find(variable); it != _restricted.end()) {
     return it->second;
   }
 
@@ -110,7 +117,7 @@ auto SystemRCostEstimator::restrictedFor(JoinGraph::Node const& node) const
   }
   value.base = std::clamp(base, 1.0, count);
 
-  return _restricted.emplace(&node, value).first->second;
+  return _restricted.emplace(variable, value).first->second;
 }
 
 auto SystemRCostEstimator::seed(JoinGraph::Node const& start) const
@@ -173,8 +180,15 @@ auto SystemRCostEstimator::extend(
   }
 
   double const count = std::max(_statistics->documentCount(next), 1.0);
-  estimate.cardinality =
-      clampEstimate(prefix.cardinality * nextRestricted.base * factor);
+  // Floored at 1.0: a join cannot meaningfully produce less than one row when
+  // its output is itself a multiplier feeding later extend() calls. Without
+  // this floor, two connecting edges plus a residual-shrunk base(next) can
+  // drive the product arbitrarily far below 1 (clampEstimate only floors at
+  // 0), which then charges near-zero cost for every subsequent step and
+  // erases the cost differences the search relies on to discriminate between
+  // orderings.
+  estimate.cardinality = std::max(
+      clampEstimate(prefix.cardinality * nextRestricted.base * factor), 1.0);
   estimate.cost = clampEstimate(
       prefix.cost + (probeable ? probeCost(prefix.cardinality, count)
                                : scanCost(prefix.cardinality, count)));

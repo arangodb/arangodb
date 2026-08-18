@@ -71,7 +71,12 @@ class SystemRCostEstimator final : public JoinCostEstimator {
   auto restrictedFor(JoinGraph::Node const& node) const -> Restricted const&;
 
   std::unique_ptr<JoinStatistics> _statistics;
-  mutable std::unordered_map<JoinGraph::Node const*, Restricted> _restricted;
+  // Keyed on the node's out-variable, not the `JoinGraph::Node*` address: the
+  // rule builds and destroys one JoinGraph per spine run while this estimator
+  // is constructed once per plan, so a freed node's address can be reused by
+  // an unrelated later graph's node. Variables are owned by the Ast and stay
+  // alive and distinct for the whole plan, so they are a safe cache key.
+  mutable std::unordered_map<Variable const*, Restricted> _restricted;
 };
 
 }  // namespace arangodb::aql
