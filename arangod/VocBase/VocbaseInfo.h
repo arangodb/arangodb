@@ -32,6 +32,7 @@
 #include <velocypack/Slice.h>
 
 namespace arangodb {
+class ExecContext;
 namespace application_features {
 class ApplicationServer;
 }

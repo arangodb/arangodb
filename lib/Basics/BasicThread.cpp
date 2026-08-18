@@ -20,7 +20,7 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Thread.h"
+#include "BasicThread.h"
 
 #include "Basics/application-exit.h"
 #include "Basics/ConditionVariable.h"
@@ -107,9 +107,9 @@ std::string_view ThreadNameFetcher::get() const noexcept {
 }
 
 /// @brief static started with access to the private variables
-void Thread::startThread(void* arg) {
+void BasicThread::startThread(void* arg) {
   TRI_ASSERT(arg != nullptr);
-  Thread* ptr = static_cast<Thread*>(arg);
+  BasicThread* ptr = static_cast<BasicThread*>(arg);
   TRI_ASSERT(ptr != nullptr);
 
   ptr->_threadNumber = LOCAL_THREAD_NUMBER.get();
@@ -142,31 +142,31 @@ void Thread::startThread(void* arg) {
 }
 
 /// @brief returns the process id
-TRI_pid_t Thread::currentProcessId() { return getpid(); }
+TRI_pid_t BasicThread::currentProcessId() { return getpid(); }
 
 /// @brief returns the kernel thread id
 #ifdef HAVE_SYS_GETTID
-TRI_pid_t Thread::currentKernelThreadId() { return gettid(); }
+TRI_pid_t BasicThread::currentKernelThreadId() { return gettid(); }
 #else
 #include <sys/syscall.h>
-TRI_pid_t Thread::currentKernelThreadId() { return syscall(SYS_gettid); }
+TRI_pid_t BasicThread::currentKernelThreadId() { return syscall(SYS_gettid); }
 #endif
 
 /// @brief returns the thread process id
-uint64_t Thread::currentThreadNumber() noexcept {
+uint64_t BasicThread::currentThreadNumber() noexcept {
   return LOCAL_THREAD_NUMBER.get();
 }
 
 /// @brief returns the thread id
-TRI_tid_t Thread::currentThreadId() {
+TRI_tid_t BasicThread::currentThreadId() {
 #ifdef TRI_HAVE_POSIX_THREADS
   return pthread_self();
 #else
-#error "Thread::currentThreadId not implemented"
+#error "BasicThread::currentThreadId not implemented"
 #endif
 }
 
-std::string Thread::stringify(ThreadState state) {
+std::string BasicThread::stringify(ThreadState state) {
   switch (state) {
     case ThreadState::CREATED:
       return "created";
@@ -182,8 +182,8 @@ std::string Thread::stringify(ThreadState state) {
   return "unknown";
 }
 
-Thread::Thread(std::string const& name, bool deleteOnExit,
-               std::uint32_t terminationTimeout)
+BasicThread::BasicThread(std::string const& name, bool deleteOnExit,
+                         std::uint32_t terminationTimeout)
     : _threadStructInitialized(false),
       _refs(0),
       _name(name),
@@ -197,7 +197,7 @@ Thread::Thread(std::string const& name, bool deleteOnExit,
 }
 
 /// @brief deletes the thread
-Thread::~Thread() {
+BasicThread::~BasicThread() {
   TRI_ASSERT(_refs.load() == 0);
 
   auto state = _state.load();
@@ -213,7 +213,7 @@ Thread::~Thread() {
 }
 
 /// @brief flags the thread as stopping
-void Thread::beginShutdown() {
+void BasicThread::beginShutdown() {
   LOG_TOPIC("1a183", TRACE, Logger::THREADS)
       << "beginShutdown(" << _name << ") in state " << stringify(_state.load());
 
@@ -233,7 +233,7 @@ void Thread::beginShutdown() {
 }
 
 /// @brief MUST be called from the destructor of the MOST DERIVED class
-void Thread::shutdown() {
+void BasicThread::shutdown() {
   LOG_TOPIC("93614", TRACE, Logger::THREADS) << "shutdown(" << _name << ")";
 
   beginShutdown();
@@ -256,7 +256,7 @@ void Thread::shutdown() {
 }
 
 /// @brief checks if the current thread was asked to stop
-bool Thread::isStopping() const noexcept {
+bool BasicThread::isStopping() const noexcept {
   // need acquire to ensure we establish a happens before relation with the
   // update that updates _state, so threads that wait for isStopping to return
   // true are properly synchronized
@@ -265,7 +265,7 @@ bool Thread::isStopping() const noexcept {
 }
 
 /// @brief starts the thread
-bool Thread::start(basics::ConditionVariable* finishedCondition) {
+bool BasicThread::start(basics::ConditionVariable* finishedCondition) {
   _finishedCondition = finishedCondition;
   ThreadState state = _state.load();
 
@@ -311,7 +311,7 @@ bool Thread::start(basics::ConditionVariable* finishedCondition) {
   return ok;
 }
 
-void Thread::markAsStopped() noexcept {
+void BasicThread::markAsStopped() noexcept {
   _state.store(ThreadState::STOPPED);
 
   if (_finishedCondition != nullptr) {
@@ -320,11 +320,12 @@ void Thread::markAsStopped() noexcept {
   }
 }
 
-void Thread::runMe() {
+void BasicThread::runMe() {
   // make sure the thread is marked as stopped under all circumstances
   auto sg = arangodb::scopeGuard([&]() noexcept { markAsStopped(); });
 
   try {
+    beforeRun();
     run();
   } catch (std::exception const& ex) {
     if (!isSilent()) {
@@ -341,7 +342,7 @@ void Thread::runMe() {
   }
 }
 
-void Thread::releaseRef() noexcept {
+void BasicThread::releaseRef() noexcept {
   auto refs = _refs.fetch_sub(1) - 1;
   TRI_ASSERT(refs >= 0);
   if (refs == 0 && _deleteOnExit) {

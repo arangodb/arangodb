@@ -187,6 +187,7 @@ InternalRestTraverserHandler::InternalRestTraverserHandler(
   TRI_ASSERT(_registry != nullptr);
 }
 
+// Mounted at /_internal/traverser (prefix)
 auto InternalRestTraverserHandler::executeAsync()
     -> futures::Future<futures::Unit> {
   if (!ServerState::instance()->isDBServer()) {

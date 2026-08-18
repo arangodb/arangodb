@@ -421,7 +421,6 @@ UserInputCollectionProperties LogicalCollection::getCollectionProperties()
   props.shardingStrategy = shardingInfo()->shardingStrategyName();
   props.waitForSync = waitForSync();
   props.cacheEnabled = cacheEnabled();
-  props.supportsRBAC = supportsRBAC();
   return props;
 }
 

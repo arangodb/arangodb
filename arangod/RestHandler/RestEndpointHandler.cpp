@@ -37,6 +37,7 @@ RestEndpointHandler::RestEndpointHandler(
     GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
+// Mounted at /_api/endpoint (prefix)
 RestStatus RestEndpointHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();

@@ -24,11 +24,15 @@
 
 #include <cassert>
 #include <ostream>
+#include <sstream>
 #include <string>
 #include <tuple>
 #include <type_traits>
 #include <utility>
 #include <variant>
+
+#include <tao/json/internal/escape.hpp>
+#include <velocypack/Utf8Helper.h>
 
 #include "Inspection/SaveInspectorBase.h"
 
@@ -89,14 +93,12 @@ struct JsonPrintInspector
     return {};
   }
 
-  [[nodiscard]] Status::Success value(std::string& v) {
-    _stream << '"' << v << '"';
-    return {};
+  [[nodiscard]] Status value(std::string& v) {
+    return writeEscapedJsonString(v);
   }
 
-  [[nodiscard]] Status::Success value(std::string_view v) {
-    _stream << '"' << v << '"';
-    return {};
+  [[nodiscard]] Status value(std::string_view v) {
+    return writeEscapedJsonString(v);
   }
 
   [[nodiscard]] Status::Success value(velocypack::Slice s) {
@@ -109,9 +111,15 @@ struct JsonPrintInspector
     return {};
   }
 
-  [[nodiscard]] Status::Success value(velocypack::HashedStringRef& s) {
+  [[nodiscard]] Status value(velocypack::HashedStringRef& s) {
     return value(s.stringView());
   }
+
+  // _firstField tracks whether the next beginField() is the first in the
+  // current object, suppressing the leading comma. beginObject() sets it to
+  // true; beginField() clears it after the first field. endObject() resets it
+  // to false so that, at the enclosing level, subsequent fields correctly emit
+  // a comma (beginField() already cleared it before the nested value).
 
   [[nodiscard]] Status::Success beginObject() {
     _stream << '{';
@@ -123,6 +131,7 @@ struct JsonPrintInspector
   [[nodiscard]] Status::Success endObject() {
     decrementIndentationLevel();
     _stream << _linebreak << _indentation << '}';
+    _firstField = false;
     return {};
   }
 
@@ -205,14 +214,25 @@ struct JsonPrintInspector
   }
 
   template<class T>
-  [[nodiscard]] auto processMap(T const& map)
-      -> decltype(process(std::declval<JsonPrintInspector&>(),
-                          map.begin()->second)) {
+  [[nodiscard]] auto processMap(T const& map) -> Status {
+    using KeyType = std::remove_cvref_t<decltype(map.begin()->first)>;
     auto end = map.end();
     _stream << _linebreak;
     for (auto it = map.begin(); it != end;) {
       auto&& [k, v] = *it;
-      _stream << _indentation << '"' << k << "\":" << _separator;
+      _stream << _indentation;
+      if constexpr (std::is_convertible_v<KeyType, std::string_view>) {
+        if (auto res = writeEscapedJsonString(k); !res.ok()) {
+          return res;
+        }
+      } else {
+        std::ostringstream oss;
+        oss << k;
+        if (auto res = writeEscapedJsonString(oss.str()); !res.ok()) {
+          return res;
+        }
+      }
+      _stream << ':' << _separator;
       if (auto res = process(*this, v); !res.ok()) {
         return res;
       }
@@ -220,6 +240,17 @@ struct JsonPrintInspector
         _stream << ',' << _linebreak;
       }
     }
+    return {};
+  }
+
+  [[nodiscard]] Status writeEscapedJsonString(std::string_view v) {
+    if (!velocypack::Utf8Helper::isValidUtf8(
+            reinterpret_cast<uint8_t const*>(v.data()), v.size())) {
+      return {"Invalid UTF-8 string"};
+    }
+    _stream << '"';
+    tao::json::internal::escape(_stream, v);
+    _stream << '"';
     return {};
   }
 
