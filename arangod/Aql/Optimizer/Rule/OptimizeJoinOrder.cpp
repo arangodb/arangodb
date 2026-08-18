@@ -274,7 +274,6 @@ auto orderComponent(JoinGraph& graph,
     while (candidate.order.size() < nodes.size()) {
       JoinGraph::Node* chosen = nullptr;
       JoinEstimate chosenEstimate;
-      std::vector<JoinGraph::Edge const*> chosenEdges;
 
       for (auto* next : nodes) {
         if (placed.contains(next)) {
@@ -290,7 +289,6 @@ auto orderComponent(JoinGraph& graph,
         if (chosen == nullptr || estimate.cost < chosenEstimate.cost) {
           chosen = next;
           chosenEstimate = estimate;
-          chosenEdges = std::move(connecting);
         }
       }
 

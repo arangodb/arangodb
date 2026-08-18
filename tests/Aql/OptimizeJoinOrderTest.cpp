@@ -243,12 +243,17 @@ TEST_F(OptimizeJoinOrderTest, greedy_can_start_in_the_middle_of_a_chain) {
   auto g = buildGraph(*q);
   auto components = g.connectedComponents();
 
+  // The scripted costs must make the mid-chain start actually WIN, or the test
+  // cannot demonstrate what it claims. Starting at b costs 1 + 1 + 5 = 7, while
+  // either end costs 100 + 1 + 5 = 106 or 100 + 1 + 1 = 102. And from b, c is
+  // cheaper to absorb than a (1 vs 5), which fixes the rest of the order.
   FakeCostEstimator estimator;
-  estimator.seedCost = {{"a", 10.0}, {"b", 1.0}, {"c", 10.0}};
-  estimator.stepCost = {{"a", 50.0}, {"b", 1.0}, {"c", 1.0}};
+  estimator.seedCost = {{"a", 100.0}, {"b", 1.0}, {"c", 100.0}};
+  estimator.stepCost = {{"a", 5.0}, {"b", 1.0}, {"c", 1.0}};
 
   auto result = orderComponent(g, components.front(), estimator);
   EXPECT_EQ(namesOf(result.order), (std::vector<std::string>{"b", "c", "a"}));
+  EXPECT_DOUBLE_EQ(result.estimate.cost, 7.0);
 }
 
 TEST_F(OptimizeJoinOrderTest, greedy_only_extends_along_edges) {
