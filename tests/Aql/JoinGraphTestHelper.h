@@ -28,6 +28,7 @@
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Optimizer/Rule/OptimizeJoinOrder.h"
+#include "Aql/Optimizer/Utils/JoinCostEstimator.h"
 #include "Aql/Optimizer/Utils/JoinStatistics.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
@@ -196,6 +197,45 @@ class FakeJoinStatistics final : public arangodb::aql::JoinStatistics {
       }
     }
     return false;
+  }
+};
+
+// A cost estimator whose numbers are dictated by the test: `seedCost[v]` is the
+// cost of starting at v, `stepCost[v]` the cost added when v is appended.
+// Cardinality is not modelled because the greedy selects on cost.
+class FakeCostEstimator final : public arangodb::aql::JoinCostEstimator {
+ public:
+  std::map<std::string, double, std::less<>> seedCost;
+  std::map<std::string, double, std::less<>> stepCost;
+  // set to true to make every estimate report a defaulted statistic
+  bool defaulted = false;
+
+  static std::string nameOf(arangodb::aql::JoinGraph::Node const& node) {
+    return node.executionNode->outVariable()->name;
+  }
+
+  auto seed(arangodb::aql::JoinGraph::Node const& start) const
+      -> arangodb::aql::JoinEstimate override {
+    auto it = seedCost.find(nameOf(start));
+    return {.cardinality = 1.0,
+            .cost = it == seedCost.end() ? 1.0 : it->second,
+            .defaulted = defaulted};
+  }
+
+  auto extend(arangodb::aql::JoinEstimate const& prefix,
+              arangodb::aql::JoinGraph::Node const& next,
+              std::span<arangodb::aql::JoinGraph::Edge const* const> connecting)
+      const -> arangodb::aql::JoinEstimate override {
+    auto it = stepCost.find(nameOf(next));
+    double step = it == stepCost.end() ? 1.0 : it->second;
+    // a cross product is charged double, so tests can see components being
+    // kept together
+    if (connecting.empty()) {
+      step *= 2.0;
+    }
+    return {.cardinality = prefix.cardinality,
+            .cost = prefix.cost + step,
+            .defaulted = prefix.defaulted || defaulted};
   }
 };
 

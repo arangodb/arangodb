@@ -21,11 +21,14 @@
 
 #pragma once
 
+#include "Aql/Optimizer/Utils/JoinCostEstimator.h"
 #include "Aql/Optimizer/Utils/JoinGraph.h"
 
 #include <memory>
+#include <vector>
 
 namespace arangodb::aql {
+class EnumerateCollectionNode;
 class ExecutionNode;
 class ExecutionPlan;
 class Optimizer;
@@ -39,6 +42,27 @@ struct OptimizerRule;
 /// analysis: the plan is not modified.
 auto buildJoinGraph(ExecutionPlan const* plan, ExecutionNode* firstEnumeration,
                     ExecutionNode*& next) -> JoinGraph;
+
+/// @brief a chosen enumeration order together with the estimate that chose it.
+struct JoinOrder {
+  std::vector<EnumerateCollectionNode*> order;
+  JoinEstimate estimate;
+};
+
+/// @brief cost a complete enumeration order by replaying it through the
+/// estimator: seed on the first vertex, then extend by each subsequent vertex
+/// using every edge that connects it to the prefix already placed.
+auto estimateOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
+                   std::vector<EnumerateCollectionNode*> const& order)
+    -> JoinEstimate;
+
+/// @brief order one connected component by multi-start greedy: try every
+/// vertex as the start, grow by repeatedly absorbing the adjacent vertex that
+/// costs least, and keep the cheapest completed order. Ties break on
+/// ExecutionNode::id() so the result is reproducible.
+auto orderComponent(JoinGraph& graph,
+                    std::vector<Variable const*> const& component,
+                    JoinCostEstimator const& estimator) -> JoinOrder;
 
 /// @brief the `optimize-join-order` optimizer rule.
 void optimizeJoinOrder(Optimizer*, std::unique_ptr<ExecutionPlan>,

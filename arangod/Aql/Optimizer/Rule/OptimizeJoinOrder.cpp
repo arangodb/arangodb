@@ -32,11 +32,14 @@
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNode/FilterNode.h"
+#include "Assertions/ProdAssert.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 
+#include <algorithm>
 #include <optional>
 #include <tuple>
+#include <unordered_set>
 #include <utility>
 
 namespace arangodb::aql {
@@ -122,6 +125,43 @@ void handleExpression(JoinGraph& graph, ExecutionPlan const* plan,
   }
 }
 
+/// @brief every edge joining `candidate` to a vertex already in `placed`.
+/// Self-loops are skipped: they are single-node filters, not join predicates.
+auto edgesToPrefix(JoinGraph& graph, JoinGraph::Node* candidate,
+                   std::unordered_set<JoinGraph::Node const*> const& placed)
+    -> std::vector<JoinGraph::Edge const*> {
+  std::vector<JoinGraph::Edge const*> result;
+  for (auto* edge : graph.getEdgesForNode(candidate)) {
+    if (edge->from == edge->to) {
+      continue;
+    }
+    auto const* other = (edge->from == candidate) ? edge->to : edge->from;
+    if (placed.contains(other)) {
+      result.emplace_back(edge);
+    }
+  }
+  return result;
+}
+
+/// @brief the component's nodes in a reproducible order. JoinGraph::nodes is
+/// keyed by Variable const*, so iterating it is address-ordered and would make
+/// plan choice vary between runs.
+auto nodesInIdOrder(JoinGraph& graph,
+                    std::vector<Variable const*> const& component)
+    -> std::vector<JoinGraph::Node*> {
+  std::vector<JoinGraph::Node*> nodes;
+  nodes.reserve(component.size());
+  for (auto const* variable : component) {
+    if (auto* node = graph.nodeForVariable(variable); node != nullptr) {
+      nodes.emplace_back(node);
+    }
+  }
+  std::sort(nodes.begin(), nodes.end(), [](auto const* l, auto const* r) {
+    return l->executionNode->id() < r->executionNode->id();
+  });
+  return nodes;
+}
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void traceJoinGraph(JoinGraph const& graph) {
   auto components = graph.connectedComponents();
@@ -189,6 +229,96 @@ auto buildJoinGraph(ExecutionPlan const* plan, ExecutionNode* firstEnumeration,
   }
 
   return graph;
+}
+
+// -----------------------------------------------------------------------------
+// ordering
+// -----------------------------------------------------------------------------
+
+auto estimateOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
+                   std::vector<EnumerateCollectionNode*> const& order)
+    -> JoinEstimate {
+  JoinEstimate estimate;
+  std::unordered_set<JoinGraph::Node const*> placed;
+
+  for (size_t i = 0; i < order.size(); ++i) {
+    auto* node = graph.nodeForVariable(order[i]->outVariable());
+    ADB_PROD_ASSERT(node != nullptr);
+    if (i == 0) {
+      estimate = estimator.seed(*node);
+    } else {
+      auto const connecting = edgesToPrefix(graph, node, placed);
+      estimate = estimator.extend(estimate, *node, connecting);
+    }
+    placed.insert(node);
+  }
+  return estimate;
+}
+
+auto orderComponent(JoinGraph& graph,
+                    std::vector<Variable const*> const& component,
+                    JoinCostEstimator const& estimator) -> JoinOrder {
+  auto const nodes = nodesInIdOrder(graph, component);
+  ADB_PROD_ASSERT(!nodes.empty());
+
+  std::optional<JoinOrder> best;
+
+  for (auto* start : nodes) {
+    JoinOrder candidate;
+    candidate.order.reserve(nodes.size());
+    candidate.order.emplace_back(start->executionNode);
+    candidate.estimate = estimator.seed(*start);
+
+    std::unordered_set<JoinGraph::Node const*> placed{start};
+
+    while (candidate.order.size() < nodes.size()) {
+      JoinGraph::Node* chosen = nullptr;
+      JoinEstimate chosenEstimate;
+      std::vector<JoinGraph::Edge const*> chosenEdges;
+
+      for (auto* next : nodes) {
+        if (placed.contains(next)) {
+          continue;
+        }
+        auto connecting = edgesToPrefix(graph, next, placed);
+        if (connecting.empty()) {
+          // not adjacent to the prefix yet; within a connected component some
+          // other vertex is, so defer this one rather than cross-producting.
+          continue;
+        }
+        auto estimate = estimator.extend(candidate.estimate, *next, connecting);
+        if (chosen == nullptr || estimate.cost < chosenEstimate.cost) {
+          chosen = next;
+          chosenEstimate = estimate;
+          chosenEdges = std::move(connecting);
+        }
+      }
+
+      // Defensive: a disconnected "component" would leave nothing adjacent.
+      // Fall back to the lowest-id remaining vertex as a cross product so the
+      // order still covers every vertex.
+      if (chosen == nullptr) {
+        for (auto* next : nodes) {
+          if (!placed.contains(next)) {
+            chosen = next;
+            chosenEstimate = estimator.extend(candidate.estimate, *next, {});
+            break;
+          }
+        }
+      }
+      ADB_PROD_ASSERT(chosen != nullptr);
+
+      candidate.order.emplace_back(chosen->executionNode);
+      candidate.estimate = chosenEstimate;
+      placed.insert(chosen);
+    }
+
+    if (!best.has_value() || candidate.estimate.cost < best->estimate.cost) {
+      best = std::move(candidate);
+    }
+  }
+
+  return std::move(*best);
 }
 
 // -----------------------------------------------------------------------------

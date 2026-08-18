@@ -204,4 +204,114 @@ TEST_F(OptimizeJoinOrderTest, separate_runs_produce_separate_graphs) {
   }
 }
 
+namespace {
+// Reads an order back as variable names, so expectations are readable.
+std::vector<std::string> namesOf(
+    std::vector<EnumerateCollectionNode*> const& order) {
+  std::vector<std::string> names;
+  names.reserve(order.size());
+  for (auto const* node : order) {
+    names.emplace_back(node->outVariable()->name);
+  }
+  return names;
+}
+}  // namespace
+
+TEST_F(OptimizeJoinOrderTest, greedy_starts_at_the_cheapest_vertex) {
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FOR c IN c3 FILTER b.z == c.w RETURN [a, b, c]");
+  auto g = buildGraph(*q);
+  auto components = g.connectedComponents();
+  ASSERT_EQ(components.size(), 1u);
+
+  FakeCostEstimator estimator;
+  estimator.seedCost = {{"a", 100.0}, {"b", 1.0}, {"c", 100.0}};
+  estimator.stepCost = {{"a", 1.0}, {"b", 1.0}, {"c", 1.0}};
+
+  auto result = orderComponent(g, components.front(), estimator);
+  EXPECT_EQ(namesOf(result.order), (std::vector<std::string>{"b", "a", "c"}))
+      << "cheapest seed is b; a and c then tie and break on node id";
+}
+
+TEST_F(OptimizeJoinOrderTest, greedy_can_start_in_the_middle_of_a_chain) {
+  // a - b - c: starting at b then taking c is reachable, i.e. the search is
+  // not restricted to the ends of the chain.
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FOR c IN c3 FILTER b.z == c.w RETURN [a, b, c]");
+  auto g = buildGraph(*q);
+  auto components = g.connectedComponents();
+
+  FakeCostEstimator estimator;
+  estimator.seedCost = {{"a", 10.0}, {"b", 1.0}, {"c", 10.0}};
+  estimator.stepCost = {{"a", 50.0}, {"b", 1.0}, {"c", 1.0}};
+
+  auto result = orderComponent(g, components.front(), estimator);
+  EXPECT_EQ(namesOf(result.order), (std::vector<std::string>{"b", "c", "a"}));
+}
+
+TEST_F(OptimizeJoinOrderTest, greedy_only_extends_along_edges) {
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FOR c IN c3 FILTER b.z == c.w RETURN [a, b, c]");
+  auto g = buildGraph(*q);
+  auto components = g.connectedComponents();
+
+  // c is by far the cheapest step, but it is not adjacent to a, so starting
+  // from a the greedy must take b first regardless.
+  FakeCostEstimator estimator;
+  estimator.seedCost = {{"a", 1.0}, {"b", 100.0}, {"c", 100.0}};
+  estimator.stepCost = {{"a", 1.0}, {"b", 10.0}, {"c", 0.1}};
+
+  auto result = orderComponent(g, components.front(), estimator);
+  EXPECT_EQ(namesOf(result.order), (std::vector<std::string>{"a", "b", "c"}));
+}
+
+TEST_F(OptimizeJoinOrderTest, greedy_order_is_deterministic_across_runs) {
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FOR c IN c3 FILTER b.z == c.w RETURN [a, b, c]");
+  auto g = buildGraph(*q);
+  auto components = g.connectedComponents();
+
+  // every cost identical, so the outcome is decided entirely by the tie-break
+  FakeCostEstimator estimator;
+
+  auto first = orderComponent(g, components.front(), estimator);
+  auto second = orderComponent(g, components.front(), estimator);
+  EXPECT_EQ(namesOf(first.order), namesOf(second.order));
+  EXPECT_EQ(first.order.size(), 3u);
+}
+
+TEST_F(OptimizeJoinOrderTest, estimate_order_replays_a_complete_order) {
+  auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
+  auto g = buildGraph(*q);
+
+  FakeCostEstimator estimator;
+  estimator.seedCost = {{"a", 7.0}, {"b", 3.0}};
+  estimator.stepCost = {{"a", 11.0}, {"b", 13.0}};
+
+  auto* a = nodeByName(g, "a")->executionNode;
+  auto* b = nodeByName(g, "b")->executionNode;
+
+  EXPECT_DOUBLE_EQ(estimateOrder(g, estimator, {a, b}).cost, 7.0 + 13.0);
+  EXPECT_DOUBLE_EQ(estimateOrder(g, estimator, {b, a}).cost, 3.0 + 11.0);
+}
+
+TEST_F(OptimizeJoinOrderTest, estimate_order_charges_a_cross_product) {
+  auto q = prepare("FOR a IN c1 FOR b IN c2 RETURN [a, b]");
+  auto g = buildGraph(*q);
+  ASSERT_TRUE(g.edges.empty());
+
+  FakeCostEstimator estimator;
+  estimator.seedCost = {{"a", 1.0}, {"b", 1.0}};
+  estimator.stepCost = {{"a", 5.0}, {"b", 5.0}};
+
+  auto* a = nodeByName(g, "a")->executionNode;
+  auto* b = nodeByName(g, "b")->executionNode;
+  // the fake doubles a cross-product step
+  EXPECT_DOUBLE_EQ(estimateOrder(g, estimator, {a, b}).cost, 1.0 + 10.0);
+}
+
 }  // namespace arangodb::tests::aql
