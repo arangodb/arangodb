@@ -41,39 +41,7 @@
 
 namespace arangodb::aql {
 
-// -----------------------------------------------------------------------------
-// attribute-access extraction
-// -----------------------------------------------------------------------------
-
 namespace {
-
-auto extractAttributeAccess(AstNode const* n, AttributePath& path)
-    -> Variable const* {
-  if (n->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    auto var = extractAttributeAccess(n->getMemberUnchecked(0), path);
-    if (var != nullptr) {
-      auto attr = n->getStringView();
-      if (path.empty() && attr == "_id") {
-        attr = "_key";
-      }
-      path.emplace_back(attr);
-    }
-    return var;
-  } else if (n->type == NODE_TYPE_REFERENCE) {
-    return static_cast<Variable const*>(n->getData());
-  }
-  return nullptr;
-}
-
-auto extractAttributeAccess(AstNode const* n)
-    -> std::optional<std::pair<Variable const*, AttributePath>> {
-  AttributePath path;
-  auto var = extractAttributeAccess(n, path);
-  if (var != nullptr) {
-    return std::make_pair(var, std::move(path));
-  }
-  return std::nullopt;
-}
 
 // @brief classify the predicates of a filter expression into the join graph:
 // equijoins between two graph variables become edges, constant restrictions on

@@ -4,4 +4,5 @@ target_sources(arango_aql PRIVATE
   JoinGraph.cpp
   LateMaterializedCommon.cpp
   OptimizeTraversalPathVariable.cpp
+  SystemRCostEstimator.cpp
 )
