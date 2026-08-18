@@ -259,10 +259,29 @@ TEST_F(RbacAuthModeTest, RenameViewChecksOldAndNewName) {
   check(p::RenameView{.db = "mydb", .oldName = "old", .newName = "new"});
   EXPECT_EQ(svc.checkCalls, 1);
   ASSERT_EQ(svc.queries.size(), 2u);
-  EXPECT_EQ(svc.queries[0].action, rbac::Action::WriteMeta);
+  EXPECT_EQ(svc.queries[0].action, rbac::Action::Drop);
   EXPECT_EQ(svc.queries[0].resource, "view:mydb:old");
   EXPECT_EQ(svc.queries[1].action, rbac::Action::Create);
   EXPECT_EQ(svc.queries[1].resource, "view:mydb:new");
+}
+
+TEST_F(RbacAuthModeTest, RenameViewChecksOldAndNewNameThenLinkedCollections) {
+  std::vector<std::string> links{"c1", "c2"};
+  EXPECT_TRUE(check(p::RenameView{.db = "mydb",
+                                  .oldName = "old",
+                                  .newName = "new",
+                                  .linkedCollections = links})
+                  .ok());
+  EXPECT_EQ(svc.checkCalls, 1);  // old + new + linked collections in one batch
+  ASSERT_EQ(svc.queries.size(), 4u);
+  EXPECT_EQ(svc.queries[0].action, rbac::Action::Drop);
+  EXPECT_EQ(svc.queries[0].resource, "view:mydb:old");
+  EXPECT_EQ(svc.queries[1].action, rbac::Action::Create);
+  EXPECT_EQ(svc.queries[1].resource, "view:mydb:new");
+  EXPECT_EQ(svc.queries[2].action, rbac::Action::Read);
+  EXPECT_EQ(svc.queries[2].resource, "collection:mydb:c1");
+  EXPECT_EQ(svc.queries[3].action, rbac::Action::Read);
+  EXPECT_EQ(svc.queries[3].resource, "collection:mydb:c2");
 }
 
 TEST_F(RbacAuthModeTest, RenameViewToSameNameIsBadParameterAndAsksNothing) {

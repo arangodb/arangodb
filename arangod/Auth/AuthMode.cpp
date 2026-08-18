@@ -1144,13 +1144,19 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
               return {TRI_ERROR_BAD_PARAMETER,
                       "new view name must be different from old view name"};
             }
-            // Renaming modifies the existing (old) view and gives access to
-            // resource with new name
-            auto queries = std::vector<rbac::ActionResource>{
-                {rbac::Action::WriteMeta,
-                 rbac::resources::View{view.db, view.oldName}},
-                {rbac::Action::Create,
-                 rbac::resources::View{view.db, view.newName}}};
+            // Renaming drops the existing (old) view and creates new one (check
+            // here same permissions as in CreateView)
+            std::vector<rbac::ActionResource> queries;
+            queries.reserve(2 + view.linkedCollections.size());
+            queries.push_back({rbac::Action::Drop,
+                               rbac::resources::View{view.db, view.oldName}});
+            queries.push_back({rbac::Action::Create,
+                               rbac::resources::View{view.db, view.newName}});
+
+            for (auto const& coll : view.linkedCollections) {
+              queries.push_back({rbac::Action::Read,
+                                 rbac::resources::Collection{view.db, coll}});
+            }
             return checkAll(queries);
           },
           [&](p::DropView const& view) -> Result {
