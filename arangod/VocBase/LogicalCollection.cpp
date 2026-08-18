@@ -426,15 +426,11 @@ bool LogicalCollection::cacheEnabled() const noexcept {
   return _physical->cacheEnabled();
 }
 
-// The stored descriptor supplies the immutable fields; every field that
-// LogicalCollection owns is overwritten here with its current value.
 CollectionDescriptor LogicalCollection::properties() const {
   auto d = _properties;
 
+  // Only update the mutable fields with the current values
   d.mutableProps.name = name();
-  // cacheEnabled stays as declared at creation. The physical collection owns
-  // the effective value and writes it out itself.
-
   d.clusteringMutable.waitForSync =
       _waitForSync.load(std::memory_order_relaxed);
   d.clusteringMutable.replicationFactor = replicationFactor();
@@ -445,8 +441,6 @@ CollectionDescriptor LogicalCollection::properties() const {
   d.internal.internalValidatorType =
       _internalValidatorTypes.load(std::memory_order_relaxed);
 
-  // schema and computedValues are written straight from the compiled
-  // _schema / _computedValues, so the descriptor's copies are never read.
   return d;
 }
 

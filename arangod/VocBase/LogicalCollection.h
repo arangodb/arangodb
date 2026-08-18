@@ -468,16 +468,12 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief is this a global collection on a DBServer
   bool const _isAStub;
 
-  // Derived from the keyOptions variant rather than copied from a field, and
-  // read on document paths, so it is cached here instead of re-visited.
   bool const _allowUserKeys;
 
   bool _usesRevisionsAsDocumentIds;
 
   std::atomic<bool> _syncByRevision;
 
-  // The declared value. waitForSync() prefers the collection group's value
-  // when this is a replication-2 shard, but this is what gets serialized.
   std::atomic<bool> _waitForSync;
 
   // Bitmap of InternalValidatorType. Changed by the maintenance during

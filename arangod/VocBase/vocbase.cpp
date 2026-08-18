@@ -353,13 +353,10 @@ std::shared_ptr<LogicalCollection> Database::createCollectionObject(
 
 std::shared_ptr<LogicalCollection> Database::createCollectionObject(
     CollectionDescriptor descriptor, bool isAStub) {
+  // every collection object on coordinators must be a stub
   TRI_ASSERT(!ServerState::instance()->isCoordinator() || isAStub);
+  // collection objects on single servers must not be stubs
   TRI_ASSERT(!ServerState::instance()->isSingleServer() || !isAStub);
-  if (descriptor.constant.isSmart) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_ONLY_ENTERPRISE,
-        "SmartGraph collections are only available in the Enterprise Edition");
-  }
   if (!isAStub) {
     // stubs are not persisted, so they get no storage-engine properties —
     // same split as createCollectionObject / createCollectionObjectForStorage
@@ -845,6 +842,7 @@ std::shared_ptr<LogicalCollection> Database::createCollection(
     events::CreateCollection(dbName, name, TRI_ERROR_NO_ERROR);
     _databaseProvider.notifyDdlChange("create collection");
 
+    // Update metadata metrics on single server
     if (ServerState::instance()->isSingleServer() &&
         _server.hasFeature<DatabaseFeature>()) {
       _server.getFeature<DatabaseFeature>().incrementCollectionCount();
@@ -875,56 +873,25 @@ Database::createCollections(
   }
 #endif
 
-  if (!ServerState::instance()->isCoordinator()) {
-    // typed path: hand the properties down as a descriptor instead of
-    // serializing them and parsing them again
-    try {
-      std::vector<CollectionDescriptor> descriptors;
-      descriptors.reserve(collections.size());
-      for (auto const& c : collections) {
-        descriptors.emplace_back(c.toDescriptor());
-      }
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
-      auto result = createCollections(std::move(descriptors));
-
-      if (ServerState::instance()->isSingleServer() &&
-          _server.hasFeature<DatabaseFeature>()) {
-        _server.getFeature<DatabaseFeature>().incrementCollectionCount(
-            result.size());
-      }
-      return {result};
-    } catch (basics::Exception const& ex) {
-      return Result(ex.code(), ex.what());
-    } catch (std::exception const& ex) {
-      return Result(TRI_ERROR_INTERNAL, ex.what());
-    } catch (...) {
-      return Result(TRI_ERROR_INTERNAL, "cannot create collection");
-    }
-  }
-  VPackBuilder builder =
-      CreateCollectionBody::toCreateCollectionProperties(collections);
-  VPackSlice infoSlice = builder.slice();
-
-  TRI_ASSERT(infoSlice.isArray());
-  TRI_ASSERT(infoSlice.length() >= 1);
-  TRI_ASSERT(infoSlice.length() == collections.size());
+  // typed path: hand the properties down as a descriptor instead of
+  // serializing them and parsing them again
   try {
-    // Here we do have a single server setup, or we're either on a DBServer
-    // / Agency. In that case, we're not batching collection creating.
-    // Therefore, we need to iterate over the infoSlice and create each
-    // collection one by one.
-    auto result =
-        createCollections(infoSlice, allowEnterpriseCollectionsOnSingleServer);
+    std::vector<CollectionDescriptor> descriptors;
+    descriptors.reserve(collections.size());
+    for (auto const& c : collections) {
+      descriptors.emplace_back(c.toDescriptor());
+    }
 
-    // Update metadata metrics on single server after collections are created
+    auto result = createCollections(std::move(descriptors));
+
     if (ServerState::instance()->isSingleServer() &&
         _server.hasFeature<DatabaseFeature>()) {
       _server.getFeature<DatabaseFeature>().incrementCollectionCount(
           result.size());
     }
-
     return {result};
-
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {

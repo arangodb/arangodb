@@ -35,8 +35,8 @@ struct CollectionDescriptor {
   CollectionConstantProperties constant{};
   CollectionInternalProperties internal{};
   ClusteringConstantProperties clusteringConstant{};
-  ClusteringMutableProperties clusteringMutable{};  // needs to be thread-safe
-  CollectionMutableProperties mutableProps{};       // needs to be thread-safe
+  ClusteringMutableProperties clusteringMutable{};
+  CollectionMutableProperties mutableProps{};
   CollectionStorageProperties storage{};
   bool operator==(CollectionDescriptor const&) const = default;
 

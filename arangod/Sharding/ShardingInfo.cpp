@@ -207,7 +207,9 @@ ShardingInfo::ShardingInfo(CollectionDescriptor const& descriptor,
 
   if (isSmart && _collection->type() == TRI_COL_TYPE_EDGE &&
       ServerState::instance()->isRunningInCluster()) {
-    // A smart edge collection in a cluster has numberOfShards 0 by definition.
+    // A smart edge collection in a single server environment does get proper
+    // numberOfShards value. A smart edge collection in a cluster needs to set
+    // numberOfShards to zero by definition.
     _numberOfShards = 0;
   }
 
