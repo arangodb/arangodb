@@ -301,7 +301,8 @@ void RestViewHandler::modifyView(bool partialUpdate) {
   auto const& execContext = ExecContext::current();
   if (isRename) {
     if (auto r =
-            execContext.canRenameView(_vocbase.name(), name, body.stringView());
+            execContext.canRenameView(_vocbase.name(), name, body.stringView(),
+                                      view->linkedCollectionNames());
         !r.ok()) {
       return generateError(r);
     }

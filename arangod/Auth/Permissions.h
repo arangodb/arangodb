@@ -251,6 +251,7 @@ struct RenameView {
   std::string db;
   std::string oldName;
   std::string newName;
+  std::vector<std::string> linkedCollections;
 };
 
 struct DropView {
