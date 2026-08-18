@@ -701,6 +701,14 @@ TEST_F(OptimizeJoinOrderTest, interchange_yields_when_join_order_is_enabled) {
       R"({"optimizer":{"rules":["+interchange-adjacent-enumerations",)"
       R"("+optimize-join-order"]}})"))
       << "interchange must yield to cost-based reordering";
+
+  // The realistic configuration: the user enables cost-based reordering and
+  // leaves interchange at its default-enabled state. Interchange must still
+  // yield, without needing to be named explicitly.
+  EXPECT_FALSE(
+      assertRules(server.getSystemDatabase(), query,
+                  {OptimizerRule::interchangeAdjacentEnumerationsRule}, nullptr,
+                  R"({"optimizer":{"rules":["+optimize-join-order"]}})"));
 }
 
 }  // namespace arangodb::tests::aql
