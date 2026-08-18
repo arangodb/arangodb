@@ -404,40 +404,46 @@ TEST_F(SystemRCostEstimatorTest,
 }
 
 TEST_F(SystemRCostEstimatorTest, in_residual_uses_min_of_one_and_the_ratio) {
-  // a.k IN ['u','v','w'] over 10 distinct k values: factor = min(1, 3/10).
+  // The ratio must exceed 1 to exercise the min at all, and the node needs a
+  // separate constant restriction so restricted(a) < count(a): otherwise
+  // restricted == count and the [1, count] clamp on base() would mask a
+  // missing min() just as easily as a correct one. distinct(c) = 10 shrinks
+  // restricted(a) to 100; the IN array of 5 over distinct(k) = 2 gives a raw
+  // ratio of 2.5, so 100 * 2.5 = 250 sits well inside [1, 1000] and is
+  // genuinely visible if the min is dropped.
   auto q = prepare(
       "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
-      "FILTER a.k IN ['u', 'v', 'w'] RETURN [a, b]");
+      "FILTER a.c == 'v' "
+      "FILTER a.k IN ['p', 'q', 'r', 's', 't'] RETURN [a, b]");
   auto g = buildGraph(*q);
   auto [estimator, stats] = makeEstimator();
-  stats->counts = {{"a", 900.0}, {"b", 100.0}};
-  stats->distinct["a"]["k"] = {10.0, false};
+  stats->counts = {{"a", 1000.0}, {"b", 100.0}};
+  stats->distinct["a"]["c"] = {10.0, false};  // restricted(a) = 1000/10 = 100
+  stats->distinct["a"]["k"] = {2.0, false};   // ratio = 5/2 = 2.5
 
   auto seeded = estimator->seed(*nodeByName(g, "a"));
-  // restricted(a) = 900 (no equality condition on k, only a residual);
-  // base(a) = 900 * min(1, 3/10) = 270.
-  EXPECT_DOUBLE_EQ(seeded.cardinality, 270.0);
+  // base(a) = 100 * min(1, 2.5) = 100. Without the min, base(a) = 250.
+  EXPECT_DOUBLE_EQ(seeded.cardinality, 100.0);
 }
 
 TEST_F(SystemRCostEstimatorTest,
        in_residual_on_a_different_variable_is_neutral) {
   // The residual is attached to `a` because it is the only *graph* variable
   // it references, but the IN's own attribute access (t.k) belongs to a
-  // variable outside the graph entirely. Pricing it as if it were about
-  // a's own attributes would be wrong; the factor must stay neutral.
+  // variable outside the graph entirely. distinct["a"]["k"] is scripted and
+  // non-defaulted on purpose: an unguarded lookup would not fall back to the
+  // masking defaulted-1.0 case, it would compute a visibly wrong factor
+  // (3 array members / 50 = 0.06) instead of the correct neutral 1.0.
   auto q = prepare(
-      "LET t = NOOPT({k: 1}) FOR a IN c1 "
-      "FILTER t.k IN [a.x, 1, 2] RETURN a");
+      "LET t = NOOPT({k: 1}) FOR a IN c1 FOR b IN c2 "
+      "FILTER a.x == b.y FILTER t.k IN [a.q, 1, 2] RETURN [a, b]");
   auto g = buildGraph(*q);
   auto* a = nodeByName(g, "a");
   ASSERT_NE(a, nullptr);
   ASSERT_EQ(a->residuals.size(), 1u);
 
   FakeJoinStatistics stats;
-  // Deliberately do not script anything for "a" -- if the bug under test
-  // were present, this would be queried and return a defaulted 1.0 anyway,
-  // masking the real failure mode (querying the wrong node/attribute at
-  // all). The assertion below pins the return value regardless.
+  stats.distinct["a"]["k"] = {50.0, false};
   EXPECT_DOUBLE_EQ(residualSelectivityFactor(a->residuals.front(), stats, *a),
                    1.0);
 }
