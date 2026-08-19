@@ -153,7 +153,7 @@ function viewApiAuthzSuite () {
       assertPermissions([
         "UseApiVersion version=0",
         "UseDatabase name=d level=read",
-        "UseView db=d name=v_apitest level=read",
+        "UseView db=d name=v_apitest",
         "UseCollection db=d name=c level=read",
         ...singleOnly([
           `UseCollection db=d name=${cId} level=read`
@@ -169,7 +169,7 @@ function viewApiAuthzSuite () {
       assertPermissions([
         "UseApiVersion version=0",
         "UseDatabase name=d level=read",
-        "UseView db=d name=v_apitest level=read",
+        "UseView db=d name=v_apitest",
         "UseCollection db=d name=c level=read",
         ...singleOnly([
           `UseCollection db=d name=${cId} level=read`

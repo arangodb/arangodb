@@ -181,8 +181,7 @@ TEST_F(LogicalViewTest, test_auth) {
     TRI_vocbase_t vocbase(testDBInfo(server), engine);
     auto logicalView = vocbase.createView(viewJson->slice(), false);
     EXPECT_TRUE(arangodb::ExecContext::current()
-                    .canUseView(vocbase.name(), logicalView->name(),
-                                arangodb::ViewAccessLevel::Modify)
+                    .canUseView(vocbase.name(), logicalView->name())
                     .ok());
   }
 
@@ -193,44 +192,32 @@ TEST_F(LogicalViewTest, test_auth) {
     auto classicCtx = arangodb::tests::mocks::makeClassicExecContext(
         "", "testVocbase", arangodb::auth::Level::NONE,
         arangodb::auth::Level::NONE);
-    EXPECT_FALSE(classicCtx.execContext
-                     ->canUseView(vocbase.name(), logicalView->name(),
-                                  arangodb::ViewAccessLevel::Read)
-                     .ok());
+    EXPECT_FALSE(
+        classicCtx.execContext->canUseView(vocbase.name(), logicalView->name())
+            .ok());
   }
 
-  // no write access
+  // read access
   {
     TRI_vocbase_t vocbase(testDBInfo(server), engine);
     auto logicalView = vocbase.createView(viewJson->slice(), false);
     auto classicCtx = arangodb::tests::mocks::makeClassicExecContext(
         "", "testVocbase", arangodb::auth::Level::NONE,
         arangodb::auth::Level::RO);
-    EXPECT_TRUE(classicCtx.execContext
-                    ->canUseView(vocbase.name(), logicalView->name(),
-                                 arangodb::ViewAccessLevel::Read)
-                    .ok());
-    EXPECT_FALSE(classicCtx.execContext
-                     ->canUseView(vocbase.name(), logicalView->name(),
-                                  arangodb::ViewAccessLevel::Modify)
-                     .ok());
+    EXPECT_TRUE(
+        classicCtx.execContext->canUseView(vocbase.name(), logicalView->name())
+            .ok());
   }
 
-  // write access (view access is db access as per
-  // https://github.com/arangodb/backlog/issues/459)
+  // write access
   {
     TRI_vocbase_t vocbase(testDBInfo(server), engine);
     auto logicalView = vocbase.createView(viewJson->slice(), false);
     auto classicCtx = arangodb::tests::mocks::makeClassicExecContext(
         "", "testVocbase", arangodb::auth::Level::NONE,
         arangodb::auth::Level::RW);
-    EXPECT_TRUE(classicCtx.execContext
-                    ->canUseView(vocbase.name(), logicalView->name(),
-                                 arangodb::ViewAccessLevel::Read)
-                    .ok());
-    EXPECT_TRUE(classicCtx.execContext
-                    ->canUseView(vocbase.name(), logicalView->name(),
-                                 arangodb::ViewAccessLevel::Modify)
-                    .ok());
+    EXPECT_TRUE(
+        classicCtx.execContext->canUseView(vocbase.name(), logicalView->name())
+            .ok());
   }
 }

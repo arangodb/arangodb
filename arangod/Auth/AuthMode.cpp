@@ -60,8 +60,7 @@ auto describe(auth::perms::UseCollection const& perm) -> std::string {
       perm.db, to_string(perm.level));
 }
 auto describe(auth::perms::UseView const& perm) -> std::string {
-  return std::format("use view '{}' in database '{}' with access level '{}'",
-                     perm.name, perm.db, to_string(perm.level));
+  return std::format("use view '{}' in database '{}'", perm.name, perm.db);
 }
 auto describe(auth::perms::SeeView const& perm) -> std::string {
   return std::format("see view '{}' in database '{}'", perm.name, perm.db);
@@ -334,13 +333,6 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
         }
         ADB_PROD_CRASH();
       },
-      [](ViewAccessLevel level) {
-        switch (level) {
-          case ViewAccessLevel::Read:
-            return auth::Level::RO;
-        }
-        ADB_PROD_CRASH();
-      },
       [](AnalyzerAccessLevel level) {
         switch (level) {
           case AnalyzerAccessLevel::Read:
@@ -560,9 +552,8 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             // In the classic system views delegate to database-level access
             // (per-view collection-level auth is not used for views).
             auto const effectiveLevel = effectiveDatabaseAuthLevel(view.db);
-            auto const requestedLevel = accessLevelToAuthLevel(view.level);
 
-            if (requestedLevel <= effectiveLevel) {
+            if (auth::Level::RO <= effectiveLevel) {
               return {};
             } else if (_requestedApiVersion > 0 &&
                        effectiveLevel == auth::Level::NONE) {
@@ -571,7 +562,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
               return {
                   TRI_ERROR_FORBIDDEN,
                   failureMessage(view, accessLevelMismatchReason(
-                                           "Request", "view", requestedLevel,
+                                           "Request", "view", auth::Level::RO,
                                            effectiveLevel))};
             }
           },
@@ -963,14 +954,6 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
     ADB_PROD_CRASH();
   };
 
-  auto viewAccessModeToAction = [](ViewAccessLevel level) -> rbac::Action {
-    switch (level) {
-      case ViewAccessLevel::Read:
-        return rbac::Action::Read;
-    }
-    ADB_PROD_CRASH();
-  };
-
   auto analyzerAccessModeToAction =
       [](AnalyzerAccessLevel level) -> rbac::Action {
     switch (level) {
@@ -1113,7 +1096,7 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
           },
           // -- Views -----------------------------------------------------
           [&](p::UseView const& view) -> Result {
-            return checkOne(viewAccessModeToAction(view.level),
+            return checkOne(rbac::Action::Read,
                             rbac::resources::View{view.db, view.name});
           },
           [&](p::SeeView const& view) -> Result {

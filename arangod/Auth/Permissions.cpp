@@ -52,14 +52,6 @@ auto to_string(DatabaseAccessLevel level) -> std::string_view {
   ADB_PROD_CRASH();
 }
 
-auto to_string(ViewAccessLevel level) -> std::string_view {
-  switch (level) {
-    case ViewAccessLevel::Read:
-      return "read";
-  }
-  ADB_PROD_CRASH();
-}
-
 auto to_string(AnalyzerAccessLevel level) -> std::string_view {
   switch (level) {
     case AnalyzerAccessLevel::Read:
@@ -210,8 +202,7 @@ std::ostream& operator<<(std::ostream& os, Permission const& permission) {
             os << "DropView db=" << p.db << " name=" << p.name;
           },
           [&](UseView const& p) {
-            os << "UseView db=" << p.db << " name=" << p.name
-               << " level=" << to_string(p.level);
+            os << "UseView db=" << p.db << " name=" << p.name;
           },
 
           // analyzers

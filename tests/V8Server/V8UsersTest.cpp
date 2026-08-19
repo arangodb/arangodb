@@ -436,10 +436,8 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     ASSERT_FALSE(!logicalView);
 
-    EXPECT_TRUE(execContext
-                    ->canUseView(vocbase->name(), "testDataSource",
-                                 arangodb::ViewAccessLevel::Read)
-                    .fail());
+    EXPECT_TRUE(
+        execContext->canUseView(vocbase->name(), "testDataSource").fail());
     userPtr->grantDatabase("_system", arangodb::auth::Level::RW);
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
@@ -458,10 +456,8 @@ TEST_F(V8UsersTest, test_collection_auth) {
                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
                      ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
                                    .getNumber<int>()}));
-    EXPECT_TRUE(execContext
-                    ->canUseView(vocbase->name(), "testDataSource",
-                                 arangodb::ViewAccessLevel::Read)
-                    .fail());
+    EXPECT_TRUE(
+        execContext->canUseView(vocbase->name(), "testDataSource").fail());
   }
 
   // test auth view (revoke)
@@ -493,10 +489,8 @@ TEST_F(V8UsersTest, test_collection_auth) {
     // In Classic auth mode, views use database-level access. Since no
     // database-level grant is set (only a collection-level grant), the view
     // is not accessible before or after the (failed) revoke.
-    EXPECT_TRUE(execContext
-                    ->canUseView(vocbase->name(), "testDataSource",
-                                 arangodb::ViewAccessLevel::Read)
-                    .fail());
+    EXPECT_TRUE(
+        execContext->canUseView(vocbase->name(), "testDataSource").fail());
     userPtr->grantDatabase("_system", arangodb::auth::Level::RW);
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
@@ -515,9 +509,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
                      ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
                                    .getNumber<int>()}));
-    EXPECT_TRUE(execContext
-                    ->canUseView(vocbase->name(), "testDataSource",
-                                 arangodb::ViewAccessLevel::Read)
+    EXPECT_TRUE(execContext->canUseView(vocbase->name(), "testDataSource")
                     .fail());  // not modified from above
   }
 

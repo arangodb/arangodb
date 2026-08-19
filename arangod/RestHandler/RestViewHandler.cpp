@@ -65,8 +65,8 @@ void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
   // end of parameter parsing
   // ...........................................................................
 
-  if (auto r = ExecContext::current().canUseView(
-          view->vocbase().name(), view->name(), ViewAccessLevel::Read);
+  if (auto r = ExecContext::current().canUseView(view->vocbase().name(),
+                                                 view->name());
       !r.ok()) {
     // check auth after ensuring that the view exists
     generateError(r);

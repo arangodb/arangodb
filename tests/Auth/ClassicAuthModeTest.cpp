@@ -501,36 +501,22 @@ TEST_F(ClassicAuthModeTest, DropCollectionReadOnlyCollectionIsReadOnlyUnderV1) {
 
 TEST_F(ClassicAuthModeTest, UseViewFollowsTheDatabaseLevel) {
   beUserWith(RO);
-  EXPECT_TRUE(check(p::UseView{.db = std::string{kDb},
-                               .name = "v",
-                               .level = ViewAccessLevel::Read})
-                  .ok());
-  expectError(check(p::UseView{.db = std::string{kDb},
-                               .name = "v",
-                               .level = ViewAccessLevel::Modify}),
-              TRI_ERROR_FORBIDDEN);
+  EXPECT_TRUE(check(p::UseView{.db = std::string{kDb}, .name = "v"}).ok());
   beUserWith(RW);
-  EXPECT_TRUE(check(p::UseView{.db = std::string{kDb},
-                               .name = "v",
-                               .level = ViewAccessLevel::Modify})
-                  .ok());
+  EXPECT_TRUE(check(p::UseView{.db = std::string{kDb}, .name = "v"}).ok());
 }
 
 TEST_F(ClassicAuthModeTest, UseViewWithoutAccessIsForbiddenUnderV0) {
   beUserWith(NONE);
-  expectError(
-      check(p::UseView{
-          .db = std::string{kDb}, .name = "v", .level = ViewAccessLevel::Read}),
-      TRI_ERROR_FORBIDDEN);
+  expectError(check(p::UseView{.db = std::string{kDb}, .name = "v"}),
+              TRI_ERROR_FORBIDDEN);
 }
 
 TEST_F(ClassicAuthModeTest, UseViewWithoutAccessIsNotFoundUnderV1) {
   beUserWith(NONE);
   useApiVersion(1);
-  expectError(
-      check(p::UseView{
-          .db = std::string{kDb}, .name = "v", .level = ViewAccessLevel::Read}),
-      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  expectError(check(p::UseView{.db = std::string{kDb}, .name = "v"}),
+              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 }
 
 TEST_F(ClassicAuthModeTest, SeeViewIsAlwaysGranted) {
@@ -1393,12 +1379,7 @@ std::vector<PermCase> permissionCases() {
       {"DropView",
        p::DropView{.db = db, .name = "v", .linkedCollections = links},
        {{{Scope::Db, RW}, {Scope::Coll, RO}}}},
-      {"UseViewRead",
-       p::UseView{.db = db, .name = "v", .level = ViewAccessLevel::Read},
-       {{{Scope::Db, RO}}}},
-      {"UseViewModify",
-       p::UseView{.db = db, .name = "v", .level = ViewAccessLevel::Modify},
-       {{{Scope::Db, RW}}}},
+      {"UseView", p::UseView{.db = db, .name = "v"}, {{{Scope::Db, RO}}}},
 
       // Analyzers.
       {"SeeAnalyzer", p::SeeAnalyzer{.db = db, .name = "a"},
