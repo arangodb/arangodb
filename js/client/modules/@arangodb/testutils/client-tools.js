@@ -776,7 +776,13 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
   }
   
   let timeout = (options.isInstrumented) ? 60 * 45 : 60 * 15;
-  return pu.executeAndWait(pu.ARANGOSH_BIN, argv, options, 'arangosh', instanceManager.rootDir, options.coreCheck, timeout);
+  SetGlobalExecutionDeadlineTo(timeout);
+  let ret = pu.executeAndWait(pu.ARANGOSH_BIN, argv, options, 'arangosh', instanceManager.rootDir, options.coreCheck, timeout);
+  let timeout = SetGlobalExecutionDeadlineTo(0.0);
+  if (timeout) {
+    ret.status = false;
+  }
+  return ret;
 }
 function rtaWaitShardsInSync(options, instanceManager) {
   let args = Object.assign(makeArgsArangosh(options), {
