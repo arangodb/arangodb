@@ -149,36 +149,41 @@ Result Databases::grantCurrentUser(CreateDatabaseInfo const& info) {
   AuthenticationFeature* af = AuthenticationFeature::instance();
   auth::UserManager* um = af->userManager();
 
-  Result res;
+  // No user manager on DB servers/agents; nothing to grant when auth is off.
+  if (um == nullptr || !af->isActive()) {
+    return {};
+  }
 
-  if (um != nullptr) {
-    ExecContext const& exec = ExecContext::current();
-    // If the current user is empty (which happens if a Maintenance job
-    // called us, or when authentication is off), granting rights
-    // will fail. We hence ignore it here, but issue a warning below
-    if (!exec.user().empty() && af->isActive()) {
-      // This is no longer canWriteUser, but the old check from devel!
-      // TODO (Tobias) `exec.canWriteUser(exec.user())` is a very quirky
-      //      way to check for `exec.user().empty()`.
-      //      I'd like to understand a little bit better when this is
-      //      expected to happen, and maybe improve on the readability.
-      res = um->updateUser(
-          exec.user(),
-          [&](auth::User& entry) {
-            entry.grantDatabase(info.getName(), auth::Level::RW);
-            entry.grantCollection(info.getName(), "*", auth::Level::RW);
-            return TRI_ERROR_NO_ERROR;
-          },
-          auth::UserManager::RetryOnConflict::Yes);
-      return res;
-    }
+  ExecContext const& exec = ExecContext::current();
 
+  // If the current user is empty (which happens if a Maintenance job called
+  // us), granting rights will fail. We hence ignore it here.
+  if (exec.user().empty()) {
     LOG_TOPIC("2a4dd", DEBUG, Logger::FIXME)
         << "current ExecContext's user() is empty. "
         << "Database will be created without any user having permissions";
+    return {};
   }
 
-  return res;
+  // Don't write a redundant grant if the creator already has RW on the new
+  // database through existing rules (e.g. root's "*" wildcard grant). This
+  // was `!exec.isAdminUser()` before the RBAC merge; writing the grant anyway
+  // destroys the configured-vs-effective distinction that
+  // `GET /_api/user/<user>/database?full=true` reports, and accumulates one
+  // stale entry per database ever created in admin user documents.
+  if (um->databaseAuthLevel(exec.user(), info.getName(),
+                            /*configured*/ true) == auth::Level::RW) {
+    return {};
+  }
+
+  return um->updateUser(
+      exec.user(),
+      [&](auth::User& entry) {
+        entry.grantDatabase(info.getName(), auth::Level::RW);
+        entry.grantCollection(info.getName(), "*", auth::Level::RW);
+        return TRI_ERROR_NO_ERROR;
+      },
+      auth::UserManager::RetryOnConflict::Yes);
 }
 
 // Create database on cluster;
