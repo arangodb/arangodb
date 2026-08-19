@@ -659,7 +659,7 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
     let logFile = fs.join(fs.getTempPath(), `rta_out_makedata.log`);
     let rc = ct.run.rtaMakedata(this.instanceManager.options, this.instanceManager, 0, "creating test data", logFile, this.rtaArgs);
     if (!rc.status) {
-      this.results.RtaMakedata = {
+      this.results[`${this.which}_RtaMakedata`] = {
         message:  'Makedata:\n' + ct.run.readRtaErrorLog(logFile),
         status: false,
         duration: rc.duration
@@ -668,7 +668,7 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
       return false;
     } else {
       fs.remove(logFile);
-      this.results.RtaMakedata = rc;
+      this.results[`${this.which}_RtaMakedata`] = rc;
       return true;
     }
   }
@@ -748,7 +748,7 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
     let logFile = fs.join(fs.getTempPath(), `rta_out_checkdata.log`);
     let rc = ct.run.rtaMakedata(this.secondRunOptions, this.instanceManager, 1, "checking test data", logFile, this.rtaArgs);
     if (!rc.status) {
-      this.results.RtaCheckdata = {
+      this.results[`${this.which}_RtaCheckdata`] = {
         message: 'Checkdata:\n' + ct.run.readRtaErrorLog(logFile),
         status: false,
         failed: 1,
@@ -758,7 +758,7 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
       return false;
     } else {
       fs.remove(logFile);
-      this.results.RtaCheckdata = {
+      this.results[`${this.which}_RtaCheckdata`] = {
         status: true,
         failed: 0,
         duration: rc.duration,
@@ -772,7 +772,7 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
     let logFile = fs.join(fs.getTempPath(), `rta_out_waitdata.log`);
     let rc = ct.run.rtaMakedata(this.secondRunOptions, this.instanceManager, 2, "waiting for the SUT to come in sync", logFile, this.rtaArgs);
     if (!rc.status) {
-      this.results.RtaCheckdata = {
+      this.results[`${this.which}_RtaWaitdata`] = {
         message: 'Waitdata:\n' + ct.run.readRtaErrorLog(logFile),
         status: false,
         failed: 1,
@@ -782,7 +782,7 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
       return false;
     } else {
       fs.remove(logFile);
-      this.results.RtaCheckdata = {
+      this.results[`${this.which}_RtaCheckdata`] = {
         status: true,
         failed: 0,
         duration: rc.duration,
