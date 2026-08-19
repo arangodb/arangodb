@@ -32,7 +32,6 @@
 #include "Replication2/ReplicatedLog/IReplicatedLogProvider.h"
 #include "RocksDBEngine/IIndexCacheRefill.h"
 #include "RocksDBEngine/ISortingPolicy.h"
-#include "VectorIndex/IVectorIndexProvider.h"
 
 namespace arangodb::tests {
 
@@ -40,10 +39,6 @@ struct MockDatabasePathProvider : IDatabasePathProvider {
   MOCK_METHOD(std::string const&, directory, (), (const, override));
   MOCK_METHOD(std::string, subdirectoryName, (std::string const&),
               (const, override));
-};
-
-struct MockVectorIndexProvider : IVectorIndexProvider {
-  MOCK_METHOD(bool, isVectorIndexEnabled, (), (const, noexcept, override));
 };
 
 struct MockFlushControl : IFlushControl {

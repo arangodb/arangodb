@@ -29,7 +29,6 @@
 #include "Mocks/FakeRegistry.h"
 #include "Mocks/FakeScheduler.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/Version.h"
 #include "RestServer/IRecoveryCallback.h"
 #include "RocksDBEngine/Mocks.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -43,6 +42,9 @@
 namespace arangodb::tests {
 
 struct TestRocksDBOptionsProvider final : RocksDBOptionsProvider {
+  explicit TestRocksDBOptionsProvider(bool timeTravel = false)
+      : _timeTravel(timeTravel) {}
+
   rocksdb::TransactionDBOptions getTransactionDBOptions() const override {
     return {};
   }
@@ -50,6 +52,7 @@ struct TestRocksDBOptionsProvider final : RocksDBOptionsProvider {
   uint32_t numThreadsHigh() const noexcept override { return 2; }
   uint32_t numThreadsLow() const noexcept override { return 2; }
   uint64_t periodicCompactionTtl() const noexcept override { return 0; }
+  bool timeTravelEnabled() const noexcept override { return _timeTravel; }
 
  protected:
   rocksdb::Options doGetOptions() const override {
@@ -61,6 +64,9 @@ struct TestRocksDBOptionsProvider final : RocksDBOptionsProvider {
   rocksdb::BlockBasedTableOptions doGetTableOptions() const override {
     return {};
   }
+
+ private:
+  bool _timeTravel;
 };
 
 struct NullRecoveryCallback final : IRecoveryCallback {
@@ -75,7 +81,12 @@ struct TestSchedulerProvider final : ISchedulerProvider {
 };
 
 struct StorageEngineFixtureSuite {
+  // `timeTravel` enables the PrimaryIndex_TT column family on the engine; off
+  // by default so existing suites keep exercising the non-time-travel paths.
+  explicit StorageEngineFixtureSuite(bool timeTravel = false)
+      : optionsProvider(timeTravel) {}
   ~StorageEngineFixtureSuite();
+
   metrics::FakeRegistry metricsRegistry;
   application_features::ApplicationServer server{nullptr, nullptr};
   ScopedServerStateReset serverStateReset;
@@ -86,7 +97,6 @@ struct StorageEngineFixtureSuite {
   std::shared_ptr<replication2::ReplicatedLogGlobalSettings const> logSettings =
       std::make_shared<replication2::ReplicatedLogGlobalSettings>();
 
-  ::testing::NiceMock<MockVectorIndexProvider> vectorIdx;
   ::testing::NiceMock<MockFlushControl> flush;
   ::testing::NiceMock<MockDumpLimitsProvider> dumpLimits;
   ::testing::NiceMock<MockDatabaseProvider> dbProvider;
@@ -101,48 +111,48 @@ struct StorageEngineFixtureSuite {
   FakeScheduler scheduler{server};
   TestSchedulerProvider schedulerProvider{scheduler};
 
-  RocksDBEngine engine{server,          optionsProvider, metricsRegistry,
-                       dbPath,          vectorIdx,       flush,
-                       dumpLimits,      &logProvider,    schedulerProvider,
-                       recoveryManager, dbProvider,      indexCacheRefill,
-                       cacheManager,    sortingPolicy};
+  RocksDBEngine engine{
+      server,          optionsProvider, metricsRegistry,  dbPath,
+      flush,           dumpLimits,      &logProvider,     schedulerProvider,
+      recoveryManager, dbProvider,      indexCacheRefill, cacheManager,
+      sortingPolicy};
 };
+
+// Build a suite, wire up the collaborator mocks the engine needs at startup,
+// and start the engine. Shared by the plain and time-travel fixtures.
+std::unique_ptr<StorageEngineFixtureSuite> makeStartedSuite(
+    bool timeTravel = false);
+
+// Shut down and destroy a suite created by makeStartedSuite().
+void stopSuite(std::unique_ptr<StorageEngineFixtureSuite>& suite);
 
 // Fixture providing a preconfigured RocksDBEngine backed by a temporary
 // directory. The engine is started once in SetUpTestSuite() and ready to use
 // for all tests in the suite. Each test gets a fresh collection via SetUp().
 // All collaborators are owned by the fixture suite and torn down (including
 // the on-disk data) when all tests in the class finish.
-class StorageEngineFixture : public ::testing::Test {
+template<class Derived>
+class BasicStorageEngineFixture : public ::testing::Test {
  protected:
   static void SetUpTestSuite() {
-    _suite = std::make_unique<StorageEngineFixtureSuite>();
-    _suite->serverState.setRole(ServerState::ROLE_SINGLE);
-
-    using ::testing::Return;
-    using ::testing::ReturnRef;
-    ON_CALL(_suite->dumpLimits, limits())
-        .WillByDefault(ReturnRef(_suite->limitsOptions));
-    ON_CALL(_suite->flush, isEnabled()).WillByDefault(Return(true));
-    ON_CALL(_suite->logProvider, options())
-        .WillByDefault(Return(_suite->logSettings));
-    ON_CALL(_suite->dbProvider, defaultReplicationVersion())
-        .WillByDefault(Return(replication::Version::ONE));
-
-    _suite->engine.start();
+    _suite = makeStartedSuite(Derived::timeTravelEnabled);
   }
 
-  static void TearDownTestSuite() {
-    _suite->server.beginShutdown();
-    _suite->engine.beginShutdown();
-    _suite->engine.stop();
-    _suite->engine.unprepare();
-    _suite.reset();
-  }
+  static void TearDownTestSuite() { stopSuite(_suite); }
 
   RocksDBEngine& engine() noexcept { return _suite->engine; }
 
-  static std::unique_ptr<StorageEngineFixtureSuite> _suite;
+  inline static std::unique_ptr<StorageEngineFixtureSuite> _suite;
+};
+
+struct StorageEngineFixture : BasicStorageEngineFixture<StorageEngineFixture> {
+  static constexpr bool timeTravelEnabled = false;
+};
+
+// Like StorageEngineFixture, but with the time-travel feature enabled
+struct TimeTravelStorageEngineFixture
+    : BasicStorageEngineFixture<TimeTravelStorageEngineFixture> {
+  static constexpr bool timeTravelEnabled = true;
 };
 
 }  // namespace arangodb::tests

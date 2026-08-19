@@ -1804,16 +1804,6 @@ Result RestReplicationHandler::processRestoreIndexes(
       }
 
       idxDef = transformDeprecatedIndexType(idxDef, rebuilder);
-
-      if (type.isEqualString(StaticStrings::IndexNameVector) &&
-          !server().getFeature<VectorIndexFeature>().isVectorIndexEnabled()) {
-        LOG_TOPIC("e2125", ERR, Logger::RESTORE) << std::format(
-            "Discarding the vector index: `{}` since the feature is not "
-            "enabled.",
-            name);
-        continue;
-      }
-
       std::shared_ptr<arangodb::Index> idx;
       try {
         bool created = false;
@@ -1935,19 +1925,7 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(
     }
 
     idxDef = transformDeprecatedIndexType(idxDef, rebuilder);
-
-    if (type.isEqualString(StaticStrings::IndexNameVector) &&
-        !server().getFeature<VectorIndexFeature>().isVectorIndexEnabled()) {
-      auto const indexName = arangodb::basics::VelocyPackHelper::getStringValue(
-          parameters, "name", "");
-      LOG_TOPIC("43c16", ERR, Logger::RESTORE) << std::format(
-          "Discarding the vector index: `{}` since the feature is not enabled.",
-          indexName);
-      continue;
-    }
-
     VPackBuilder tmp;
-
     res = ClusterIndexMethods::ensureIndexCoordinator(
         *col, idxDef, true, tmp, cluster.indexCreationTimeout());
 

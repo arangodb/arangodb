@@ -815,11 +815,6 @@ futures::Future<Result> RestIndexHandler::awaitAndRefreshVectorIndex(
     co_return Result{};
   }
 
-  auto& vectorIndexFeature = server().getFeature<VectorIndexFeature>();
-  if (!vectorIndexFeature.isVectorIndexEnabled()) {
-    co_return Result{};
-  }
-
   auto idSlice = response.slice().get("id");
   if (!idSlice.isString()) {
     co_return Result{};

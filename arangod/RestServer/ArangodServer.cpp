@@ -189,7 +189,6 @@ void ArangodServer::addFeatures() {
 void ArangodServer::addFeaturesWithOptionProvider() {
   auto& metrics = getFeature<metrics::MetricsFeature>();
   auto& database = getFeature<DatabaseFeature>();
-  auto& vectorIndex = getFeature<VectorIndexFeature>();
   auto& scheduler = getFeature<SchedulerFeature>();
   auto& rocksdbRecovery = getFeature<RocksDBRecoveryManager>();
   auto& cacheManager = getFeature<CacheManagerFeature>();
@@ -337,7 +336,7 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& flush = addFeature<FlushFeature>(metrics);
 
   addFeature<RocksDBEngine>(
-      rocksdbOption, metrics, databasePath, vectorIndex, flush, dumpLimits,
+      rocksdbOption, metrics, databasePath, flush, dumpLimits,
       replication2::EnableReplication2 ? &getFeature<ReplicatedLogFeature>()
                                        : nullptr,
       scheduler, rocksdbRecovery, database, rocksdbCacheRefill, cacheManager,
