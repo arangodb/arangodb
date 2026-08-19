@@ -19,11 +19,12 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
+#include <cstdint>
+
 namespace arangodb {
-enum class IndexType {
+enum class IndexType : std::uint8_t {
   Unknown = 0,
   Primary = 1,
   Geo = 2,
