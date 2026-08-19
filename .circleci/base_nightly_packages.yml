@@ -877,6 +877,33 @@ jobs:
             export BUILD_DIR=build-presets/<< parameters.preset >>
             export PACKAGES_OUT=/tmp/nightly/objectfiles/<< parameters.arch >>
             scripts/packaging/pack-object-files.sh
+      - run:
+          name: Verify object-files archive relinks
+          no_output_timeout: 30m
+          command: |
+            # Run the generated scripts/link_executables.sh against the
+            # just-packed archive so the relink promise (LGPL compliance)
+            # is proven for every nightly, on both architectures.
+            VERIFY_DIR="$(mktemp -d)"
+            trap 'rm -rf "${VERIFY_DIR}"' EXIT
+            tar -xzf /tmp/nightly/objectfiles/<< parameters.arch >>/arangodb4e-linux-object_files_*.tar.gz \
+              -C "${VERIFY_DIR}"
+            cd "${VERIFY_DIR}"
+            bash scripts/link_executables.sh
+            for exe in arangod arangodump arangorestore arangosh \
+                       arangovpack arangoexport arangoimport arangobackup; do
+              if [ ! -x "build/bin/${exe}" ]; then
+                echo "relink verification: build/bin/${exe} was not produced" >&2
+                exit 1
+              fi
+              file -b "build/bin/${exe}" | grep -q "statically linked" || {
+                echo "relink verification: ${exe} is not statically linked" >&2
+                exit 1
+              }
+            done
+            build/bin/arangosh --version | head -1
+            build/bin/arangod --version | head -1
+            echo "relink verification OK: all executables rebuilt from the published object files"
       - persist_to_workspace:
           root: /tmp/nightly
           paths:
