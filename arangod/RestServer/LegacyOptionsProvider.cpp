@@ -21,20 +21,12 @@
 /// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RestServer/LegacyOptionsFeature.h"
+#include "LegacyOptionsProvider.h"
 
-#include "ProgramOptions/ProgramOptions.h"
-
-using namespace arangodb;
+namespace arangodb {
 using namespace arangodb::options;
 
-LegacyOptionsFeature::LegacyOptionsFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature{server, *this} {
-  setOptional(false);
-}
-
-void LegacyOptionsFeature::collectOptions(
+void LegacyOptionsProvider::declareOptions(
     std::shared_ptr<ProgramOptions> options) {
   // V8DealerFeature options
   options->addObsoleteOption("--javascript.gc-frequency",
@@ -223,3 +215,5 @@ void LegacyOptionsFeature::collectOptions(
       "--http.permanently-redirect-root",
       "Whether to use a permanent or temporary redirect.", true);
 }
+
+}  // namespace arangodb

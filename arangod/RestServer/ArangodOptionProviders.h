@@ -33,6 +33,7 @@
 #include "RestServer/EndpointOptionsProvider.h"
 #include "RestServer/FortuneOptionsProvider.h"
 #include "RestServer/InitDatabaseOptionsProvider.h"
+#include "RestServer/LegacyOptionsProvider.h"
 #include "RestServer/LogApiOptionsProvider.h"
 #include "RestServer/LogBufferOptionsProvider.h"
 #include "RestServer/LogRotateOptionsProvider.h"
@@ -95,7 +96,8 @@ using ArangodOptionProviders = CoreOptionProviders<
     ServerOptionsProvider, security::ServerSecurityOptionsProvider,
     SslServerOptionsProvider, TempOptionsProvider,
     TemporaryStorageOptionsProvider, transaction::ManagerOptionsProvider,
-    TtlOptionsProvider, UpgradeOptionsProvider, vector_index::OptionsProvider
+    TtlOptionsProvider, UpgradeOptionsProvider, vector_index::OptionsProvider,
+    LegacyOptionsProvider
 #ifdef USE_ENTERPRISE
     ,
     AuditOptionsProvider, LicenseOptionsProvider, RCloneOptionsProvider,

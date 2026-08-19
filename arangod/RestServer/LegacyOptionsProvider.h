@@ -21,22 +21,15 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "ProgramOptions/ProgramOptions.h"
 
 namespace arangodb {
 
 /// Registers obsolete options for features that were removed (e.g. V8/Foxx),
 /// so that config files from older installations don't cause startup errors
 /// during rolling upgrades.
-class LegacyOptionsFeature final
-    : public application_features::ApplicationFeature {
- public:
-  static constexpr std::string_view name() noexcept { return "LegacyOptions"; }
-
-  explicit LegacyOptionsFeature(
-      application_features::ApplicationServer& server);
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+struct LegacyOptionsProvider {
+  void declareOptions(std::shared_ptr<options::ProgramOptions>);
 };
 
 }  // namespace arangodb

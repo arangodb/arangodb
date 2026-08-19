@@ -33,7 +33,7 @@ add_library(arango_rest_server STATIC
   InitDatabaseFeature.cpp
   InitDatabaseOptionsProvider.cpp
   LanguageCheckFeature.cpp
-  LegacyOptionsFeature.cpp
+  LegacyOptionsProvider.cpp
   LockfileFeature.cpp
   LogApiOptionsProvider.cpp
   LogBufferFeature.cpp
