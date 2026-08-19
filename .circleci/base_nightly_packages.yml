@@ -960,8 +960,11 @@ jobs:
                 exit 1
               }
             done
-            build/bin/arangosh --version | head -1
-            build/bin/arangod --version | head -1
+            # sed reads the whole stream, unlike "| head -1", which closes
+            # the pipe early and SIGPIPEs the still-writing binary - the
+            # step shell runs with -o pipefail, so that 141 fails the step
+            build/bin/arangosh --version | sed -n 1p
+            build/bin/arangod --version | sed -n 1p
             echo "relink verification OK: all executables rebuilt from the published object files"
       - persist_to_workspace:
           root: /tmp/nightly
