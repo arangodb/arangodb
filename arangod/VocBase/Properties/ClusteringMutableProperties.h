@@ -29,7 +29,6 @@
 
 #include <cstdint>
 #include <optional>
-#include <functional>
 
 namespace arangodb {
 
@@ -43,26 +42,16 @@ class Result;
 struct ClusteringMutableProperties {
   struct Transformers {
     // Serialized form is a number, or the string "satellite" for 0.
-    // User input must spell 0 as "satellite"; markers and plan entries
-    // may store a numeric 0, so the internal variant accepts it.
+    // User input must spell 0 as "satellite"; markers and plan entries may
+    // store a numeric 0, so the internal path accepts it.
     struct ReplicationSatellite {
       using MemoryType = uint64_t;
       using SerializedType = arangodb::velocypack::Builder;
-
-      static arangodb::inspection::Status toSerialized(MemoryType v,
-                                                       SerializedType& result);
-      static arangodb::inspection::Status fromSerialized(
-          SerializedType const& v, MemoryType& result);
-    };
-
-    struct ReplicationSatelliteInternal {
-      using MemoryType = uint64_t;
-      using SerializedType = arangodb::velocypack::Builder;
-
-      static arangodb::inspection::Status toSerialized(MemoryType v,
-                                                       SerializedType& result);
-      static arangodb::inspection::Status fromSerialized(
-          SerializedType const& v, MemoryType& result);
+      bool acceptNumericZero{false};
+      arangodb::inspection::Status toSerialized(MemoryType v,
+                                                SerializedType& result) const;
+      arangodb::inspection::Status fromSerialized(SerializedType const& v,
+                                                  MemoryType& result) const;
     };
   };
 
@@ -88,18 +77,6 @@ struct ClusteringMutableProperties {
 
 template<class Inspector>
 auto inspect(Inspector& f, ClusteringMutableProperties& props) {
-  auto replicationFactorField = std::invoke([&]() {
-    if constexpr (isInternalContext<Inspector>) {
-      return f.field(StaticStrings::ReplicationFactor, props.replicationFactor)
-          .transformWith(ClusteringMutableProperties::Transformers::
-                             ReplicationSatelliteInternal{});
-    } else {
-      return f.field(StaticStrings::ReplicationFactor, props.replicationFactor)
-          .transformWith(ClusteringMutableProperties::Transformers::
-                             ReplicationSatellite{});
-    }
-  });
-
   auto result = f.object(props).fields(
       f.field(StaticStrings::WaitForSyncString, props.waitForSync)
           .fallback(f.keep()),
@@ -114,7 +91,10 @@ auto inspect(Inspector& f, ClusteringMutableProperties& props) {
       // is set already.
       f.field(StaticStrings::WriteConcern, props.writeConcern)
           .fallback(f.keep()),
-      std::move(replicationFactorField));
+      f.field(StaticStrings::ReplicationFactor, props.replicationFactor)
+          .transformWith(
+              ClusteringMutableProperties::Transformers::ReplicationSatellite{
+                  .acceptNumericZero = isInternalContext<Inspector>}));
 
   if constexpr (isInternalContext<Inspector>) {
     // Not an invariant of the type: EE SmartGraph edge collections are
