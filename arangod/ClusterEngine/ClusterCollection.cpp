@@ -90,9 +90,8 @@ void ClusterCollection::flushClusterIndexEstimates() {
   _selectivityEstimates.flush();
 }
 
-Result ClusterCollection::updateProperties(
-    CollectionMutableProperties const& props) {
-  _cacheEnabled.store(props.cacheEnabled, std::memory_order_relaxed);
+Result ClusterCollection::setCacheEnabled(bool cacheEnabled) {
+  _cacheEnabled.store(cacheEnabled, std::memory_order_relaxed);
 
   // notify all indexes about the properties change for the collection
   auto indexesSnapshot = getIndexesSnapshot();

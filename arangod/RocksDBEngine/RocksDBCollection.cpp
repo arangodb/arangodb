@@ -394,16 +394,14 @@ void RocksDBCollection::freeMemory() noexcept {
   engine.removeCollectionMapping(objectId());
 }
 
-Result RocksDBCollection::updateProperties(
-    CollectionMutableProperties const& props) {
-  bool cacheEnabled =
-      _cacheManager != nullptr && !_logicalCollection.system() &&
-      !_logicalCollection.isAStub() &&
-      !ServerState::instance()->isCoordinator() && props.cacheEnabled;
-  _cacheEnabled.store(cacheEnabled, std::memory_order_relaxed);
-  primaryIndex()->setCacheEnabled(cacheEnabled);
+Result RocksDBCollection::setCacheEnabled(bool cacheEnabled) {
+  bool enable = _cacheManager != nullptr && !_logicalCollection.system() &&
+                !_logicalCollection.isAStub() &&
+                !ServerState::instance()->isCoordinator() && cacheEnabled;
+  _cacheEnabled.store(enable, std::memory_order_relaxed);
+  primaryIndex()->setCacheEnabled(enable);
 
-  if (cacheEnabled) {
+  if (enable) {
     setupCache();
     primaryIndex()->setupCache();
   } else {
@@ -411,7 +409,6 @@ Result RocksDBCollection::updateProperties(
     destroyCache();
     primaryIndex()->destroyCache();
   }
-
   // nothing else to do
   return {};
 }
