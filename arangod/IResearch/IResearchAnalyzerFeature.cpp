@@ -2061,6 +2061,7 @@ Result IResearchAnalyzerFeature::loadAvailableAnalyzers(
   // an internal cache and does not expose any information to the caller.
   // Authorization for seeing/using individual analyzers is enforced where
   // analyzers are actually read or listed.
+  ExecContextSuperuserScope scope;
   Result res = loadAnalyzers(operationOrigin, dbName);
   if (res.fail()) {
     return res;
