@@ -200,7 +200,7 @@ void ArangodServer::addFeatures() {
       _dataSourceRegistry, getOptions<async_registry::OptionsProvider>());
   addFeature<activities::Feature>(_dataSourceRegistry,
                                   getOptions<activities::OptionsProvider>());
-  addFeature<AuthenticationFeature>(
+  auto& authentication = addFeature<AuthenticationFeature>(
       getOptions<AuthenticationOptionsProvider>());
 #ifdef TRI_HAVE_GETRLIMIT
   addFeature<BumpFileDescriptorsFeature>(
@@ -349,6 +349,7 @@ void ArangodServer::addFeatures() {
 #else
   addFeature<SslServerFeature>(getOptions<SslServerOptionsProvider>());
 #endif
+  addFeature<RbacFeature>(authentication);
   addFeature<iresearch::IResearchAnalyzerFeature>(
       iresearch::IResearchAnalyzerFeature::Dependencies{
           .databaseFeature = database,

@@ -136,7 +136,7 @@ option's value.)");
                   "Enable role-based access control (RBAC) and set the "
                   "external RBAC service endpoint. If the string is empty, "
                   "RBAC is disabled.",
-                  new StringParameter(&options.externalRBACservice),
+                  new StringParameter(&options.externalRbacService),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
@@ -263,9 +263,9 @@ void AuthenticationOptionsProvider::validateOptionsImpl(
     FATAL_ERROR_EXIT();
   }
 
-  if (!options.externalRBACservice.empty()) {
-    if (!options.externalRBACservice.starts_with("http://") &&
-        !options.externalRBACservice.starts_with("https://")) {
+  if (!options.externalRbacService.empty()) {
+    if (!options.externalRbacService.starts_with("http://") &&
+        !options.externalRbacService.starts_with("https://")) {
       LOG_TOPIC("1aaaf", FATAL, arangodb::Logger::AUTHENTICATION)
           << "--server.external-rbac-service must start with http:// or "
              "https://";

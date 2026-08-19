@@ -66,8 +66,7 @@ add_library(arango_rest_server STATIC
   TtlProperties.cpp
   UpgradeFeature.cpp
   UpgradeOptionsProvider.cpp
-  ViewTypesFeature.cpp
-  VocbaseContext.cpp)
+  ViewTypesFeature.cpp)
 
 if(USE_V8)
   target_sources(arango_rest_server PRIVATE

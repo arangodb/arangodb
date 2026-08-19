@@ -531,10 +531,10 @@ std::vector<std::shared_ptr<LogicalCollection>> Collections::getNotDeleted(
       auto coll = ci.getCollectionNT(vocbase.name(), name);
       if (coll) {
         // check authentication after ensuring the collection exists
-        if (!ExecContext::current().canUseCollection(
-                vocbase.name(), coll->name(), auth::Level::RO)) {
-          return Result(TRI_ERROR_FORBIDDEN,
-                        absl::StrCat("No access to collection '", name, "'"));
+        if (auto r = ExecContext::current().canUseCollection(
+                vocbase.name(), coll->name(), AccessLevel::Read);
+            r.fail()) {
+          return r;
         }
 
         ret = std::move(coll);
@@ -560,10 +560,10 @@ std::vector<std::shared_ptr<LogicalCollection>> Collections::getNotDeleted(
 
   if (coll != nullptr) {
     // check authentication after ensuring the collection exists
-    if (!ExecContext::current().canUseCollection(vocbase.name(), coll->name(),
-                                                 auth::Level::RO)) {
-      return Result(TRI_ERROR_FORBIDDEN,
-                    absl::StrCat("No access to collection '", name, "'"));
+    if (auto r = ExecContext::current().canUseCollection(
+            vocbase.name(), coll->name(), AccessLevel::Read);
+        r.fail()) {
+      return r;
     }
     try {
       ret = std::move(coll);
@@ -602,16 +602,12 @@ Collections::create(         // create collection
                                    {"collectionNames", collectionNames}});
 
   // Let's first check if we are allowed to create the collections
-  ExecContext const& exec = options.context();
-  if (!exec.canUseDatabase(vocbase.name(), auth::Level::RW)) {
-    for (auto const& col : collections) {
+  auto const& exec = ExecContext::current();
+  for (auto const& col : collections) {
+    if (auto r = exec.canCreateCollection(vocbase.name(), col.name); r.fail()) {
       events::CreateCollection(vocbase.name(), col.name, TRI_ERROR_FORBIDDEN);
+      return r;
     }
-    return arangodb::Result(  // result
-        TRI_ERROR_FORBIDDEN,  // code
-        absl::StrCat("cannot create collection in ", vocbase.name(), ": ",
-                     TRI_errno_string(TRI_ERROR_FORBIDDEN))  // message
-    );
   }
 
   // TODO: Discuss should this be Prod Assert?
@@ -707,7 +703,7 @@ Collections::create(         // create collection
   try {
     // in case of success we grant the creating user RW access
     auth::UserManager* um = AuthenticationFeature::instance()->userManager();
-    if (um != nullptr && !exec.isSuperuser() && !isRestore) {
+    if (um != nullptr && !exec.isSuperuserOrDisabled() && !isRestore) {
       // this should not fail, we can not get here without database RW access
       // however, there may be races for updating the users account, so we try
       // a few times in case of a conflict
@@ -969,11 +965,15 @@ futures::Future<Result> Collections::properties(Context& ctxt,
   auto coll = ctxt.coll();
   TRI_ASSERT(coll != nullptr);
   ExecContext const& exec = ExecContext::current();
-  bool canRead = exec.canUseCollection(coll->name(), auth::Level::RO);
-  if (!canRead || exec.databaseAuthLevel() == auth::Level::NONE) {
-    co_return Result(
-        TRI_ERROR_FORBIDDEN,
-        absl::StrCat("cannot access collection '", coll->name(), "'"));
+  if (auto r = exec.canUseDatabase(coll->vocbase().name(),
+                                   DatabaseAccessLevel::Read);
+      r.fail()) {
+    co_return r;
+  }
+  if (auto r = exec.canUseCollection(coll->vocbase().name(), coll->name(),
+                                     AccessLevel::Read);
+      r.fail()) {
+    co_return r;
   }
 
   std::unordered_set<std::string> ignoreKeys{StaticStrings::AllowUserKeys,
@@ -1022,10 +1022,12 @@ futures::Future<Result> Collections::updateProperties(
     LogicalCollection& collection, velocypack::Slice props,
     OperationOptions const& options) {
   ExecContext const& exec = ExecContext::current();
-  bool canModify = exec.canUseCollection(collection.name(), auth::Level::RW);
 
-  if (!canModify || !exec.canUseDatabase(auth::Level::RW)) {
-    co_return TRI_ERROR_FORBIDDEN;
+  if (auto r = exec.canUseCollection(collection.vocbase().name(),
+                                     collection.name(), AccessLevel::WriteMeta);
+      r.fail()) {
+    // Needed for backwards compatibility!
+    co_return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
   }
 
   if (ServerState::instance()->isCoordinator()) {
@@ -1145,9 +1147,10 @@ Result Collections::rename(LogicalCollection& collection,
   }
 
   ExecContext const& exec = ExecContext::current();
-  if (!exec.canUseDatabase(auth::Level::RW) ||
-      !exec.canUseCollection(collection.name(), auth::Level::RW)) {
-    return {TRI_ERROR_FORBIDDEN};
+  if (auto r = exec.canUseCollection(collection.vocbase().name(),
+                                     collection.name(), AccessLevel::WriteMeta);
+      r.fail()) {
+    return r;
   }
 
   std::string const oldName(collection.name());
@@ -1220,23 +1223,15 @@ static Result DropVocbaseColCoordinator(LogicalCollection* collection,
 /*static*/ Result Collections::drop(  // drop collection
     LogicalCollection& coll,          // collection to drop
     CollectionDropOptions options) {
-  ExecContext const& exec = ExecContext::current();
-  if (!exec.canUseDatabase(coll.vocbase().name(),
-                           auth::Level::RW) ||  // vocbase modifiable
-      !exec.canUseCollection(coll.name(),
-                             auth::Level::RW)) {  // collection modifiable
-    events::DropCollection(coll.vocbase().name(), coll.name(),
-                           TRI_ERROR_FORBIDDEN);
-    return arangodb::Result(  // result
-        TRI_ERROR_FORBIDDEN,  // code
-        absl::StrCat("Insufficient rights to drop collection ",
-                     coll.name())  // message
-    );
-  }
-
   auto const& dbname = coll.vocbase().name();
   std::string const collName = coll.name();
   Result res;
+
+  if (auto r = ExecContext::current().canDropCollection(dbname, collName);
+      r.fail()) {
+    events::DropCollection(dbname, collName, r.errorNumber());
+    return r;
+  }
 
   if (!options.allowDropGraphCollection &&
       ServerState::instance()->isSingleServerOrCoordinator()) {
@@ -1323,14 +1318,16 @@ static Result DropVocbaseColCoordinator(LogicalCollection* collection,
 futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
                                             LogicalCollection const& coll) {
   ExecContext const& exec = ExecContext::current();
-  if (!exec.canUseCollection(coll.name(), auth::Level::RO)) {
-    return futures::makeFuture(Result(TRI_ERROR_FORBIDDEN));
+  if (auto r = exec.canUseCollection(coll.vocbase().name(), coll.name(),
+                                     AccessLevel::Read);
+      r.fail()) {
+    return futures::makeFuture(std::move(r));
   }
 
   if (ServerState::instance()->isCoordinator()) {
     auto cid = std::to_string(coll.id().id());
     auto& feature = vocbase.server().getFeature<ClusterFeature>();
-    OperationOptions options(exec);
+    OperationOptions options;
     return warmupOnCoordinator(feature, vocbase.name(), cid, options);
   }
 
@@ -1377,7 +1374,7 @@ futures::Future<Result> Collections::checksum(LogicalCollection& collection,
   if (ServerState::instance()->isCoordinator()) {
     auto cid = std::to_string(collection.id().id());
     auto& feature = collection.vocbase().server().getFeature<ClusterFeature>();
-    OperationOptions options(ExecContext::current());
+    OperationOptions options;
     auto res =
         co_await checksumOnCoordinator(feature, collection.vocbase().name(),
                                        cid, options, withRevisions, withData);

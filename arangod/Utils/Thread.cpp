@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -20,15 +20,17 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "Thread.h"
+
+#include "Utils/ExecContext.h"
 
 namespace arangodb {
-class RequestContext {
-  RequestContext(RequestContext const&) = delete;
-  RequestContext& operator=(RequestContext const&) = delete;
 
- public:
-  RequestContext() = default;
-  virtual ~RequestContext() = default;
-};
+void Thread::beforeRun() {
+  // _execContext is allowed to be nullptr
+  ExecContext::set(std::move(_execContext));
+
+  return BasicThread::beforeRun();
+}
+
 }  // namespace arangodb
