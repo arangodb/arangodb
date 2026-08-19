@@ -132,7 +132,8 @@ TEST_F(LogicalCollectionDescriptorTest, DescriptorCtor_appliesDescriptor) {
   EXPECT_FALSE(collection->allowUserKeys());
 }
 
-TEST_F(LogicalCollectionDescriptorTest, DescriptorCtor_buildsKeyGeneratorFromKeyOptions) {
+TEST_F(LogicalCollectionDescriptorTest,
+       DescriptorCtor_buildsKeyGeneratorFromKeyOptions) {
   auto database = makeDatabase("testDatabase", 42);
   auto descriptor = representativeCreateDescriptor();
   descriptor.constant.keyOptions =
@@ -163,7 +164,8 @@ TEST_F(LogicalCollectionDescriptorTest, DescriptorCtor_appliesSharding) {
   EXPECT_EQ(collection->shardKeys(), std::vector<std::string>({"_key"}));
 }
 
-TEST_F(LogicalCollectionDescriptorTest, DescriptorCtor_keepsRequestedCacheEnabled) {
+TEST_F(LogicalCollectionDescriptorTest,
+       DescriptorCtor_keepsRequestedCacheEnabled) {
   auto database = makeDatabase("testDatabase", 42);
   auto collection =
       database->createCollection(representativeCreateDescriptor());
@@ -175,7 +177,8 @@ TEST_F(LogicalCollectionDescriptorTest, DescriptorCtor_keepsRequestedCacheEnable
   EXPECT_FALSE(collection->cacheEnabled());
 }
 
-TEST_F(LogicalCollectionDescriptorTest, DescriptorCtor_receivesEngineAssignedObjectId) {
+TEST_F(LogicalCollectionDescriptorTest,
+       DescriptorCtor_receivesEngineAssignedObjectId) {
   auto database = makeDatabase("testDatabase", 42);
   auto collection =
       database->createCollection(representativeCreateDescriptor());
@@ -220,12 +223,13 @@ TEST_F(LogicalCollectionDescriptorTest, LoadPath_acceptsInternalOnlyValues) {
   EXPECT_EQ(collection->name(), "edges");
   EXPECT_EQ(collection->type(), TRI_COL_TYPE_EDGE);
 }
- 
+
 //////////////////////////////////////////////////////////////////////////////////
 // Section 3: serializing a collection back to velocypack works correctly
 //////////////////////////////////////////////////////////////////////////////////
 
-TEST_F(LogicalCollectionDescriptorTest, Serialization_emitsEveryKeyExactlyOnce) {
+TEST_F(LogicalCollectionDescriptorTest,
+       Serialization_emitsEveryKeyExactlyOnce) {
   auto database = makeDatabase("testDatabase", 42);
   auto collection =
       database->createCollection(representativeCreateDescriptor());
@@ -257,7 +261,8 @@ TEST_F(LogicalCollectionDescriptorTest, Serialization_emitsEveryKeyExactlyOnce) 
                    .getBool());
 }
 
-TEST_F(LogicalCollectionDescriptorTest, Serialization_descriptorRoundTripIsStable) {
+TEST_F(LogicalCollectionDescriptorTest,
+       Serialization_descriptorRoundTripIsStable) {
   auto sliceBuilder = representativeCreateSlice();
 
   CollectionDescriptor first;
@@ -282,7 +287,8 @@ TEST_F(LogicalCollectionDescriptorTest, Serialization_descriptorRoundTripIsStabl
 // Section 4: validation differs correctly between contexts
 //////////////////////////////////////////////////////////////////////////////////
 
-TEST_F(LogicalCollectionDescriptorTest, Context_numberOfShardsZeroIsInternalOnly) {
+TEST_F(LogicalCollectionDescriptorTest,
+       Context_numberOfShardsZeroIsInternalOnly) {
   auto body = oneKeyObject(StaticStrings::NumberOfShards, VPackValue(0));
 
   ClusteringConstantProperties internalProps;
@@ -297,7 +303,8 @@ TEST_F(LogicalCollectionDescriptorTest, Context_numberOfShardsZeroIsInternalOnly
                    .ok());
 }
 
-TEST_F(LogicalCollectionDescriptorTest, Context_upgradeKeyGeneratorIsInternalOnly) {
+TEST_F(LogicalCollectionDescriptorTest,
+       Context_upgradeKeyGeneratorIsInternalOnly) {
   auto body = oneKeyObject("type", VPackValue("upgrade"));
 
   KeyGeneratorProperties internalProps;
@@ -346,21 +353,21 @@ TEST_F(LogicalCollectionDescriptorTest, SliceCtor_matchesDescriptorCtor) {
   auto actual = viaDescriptor->createCollection(body->toDescriptor());
   engine().createCollection(*viaDescriptor, *actual);
 
-  EXPECT_EQ(actual
-                ->toVelocyPackIgnore(
-                    volatileKeys(),
-                    LogicalDataSource::Serialization::Persistence)
-                .slice()
-                .toJson(),
-            expected
-                ->toVelocyPackIgnore(
-                    volatileKeys(),
-                    LogicalDataSource::Serialization::Persistence)
-                .slice()
-                .toJson());
+  EXPECT_EQ(
+      actual
+          ->toVelocyPackIgnore(volatileKeys(),
+                               LogicalDataSource::Serialization::Persistence)
+          .slice()
+          .toJson(),
+      expected
+          ->toVelocyPackIgnore(volatileKeys(),
+                               LogicalDataSource::Serialization::Persistence)
+          .slice()
+          .toJson());
 }
 
-TEST_F(LogicalCollectionDescriptorTest, SliceCtor_usesRevisionsAsDocumentIdsDefaults) {
+TEST_F(LogicalCollectionDescriptorTest,
+       SliceCtor_usesRevisionsAsDocumentIdsDefaults) {
   // The descriptor defaults to true, matching what Collections::create injects
   // for a user create. The slice ctor defaults to false, which is what the
   // agency's own collections and pre-v37 markers rely on.
