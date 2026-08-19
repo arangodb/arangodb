@@ -2057,11 +2057,6 @@ Result IResearchAnalyzerFeature::loadAvailableAnalyzers(
     // and dbservers never should start ddl by themselves.
     return {};
   }
-  // No authorization is required here: loading analyzers merely (re-)fills
-  // an internal cache and does not expose any information to the caller.
-  // Authorization for seeing/using individual analyzers is enforced where
-  // analyzers are actually read or listed.
-  ExecContextSuperuserScope scope;
   Result res = loadAnalyzers(operationOrigin, dbName);
   if (res.fail()) {
     return res;
@@ -2077,6 +2072,11 @@ Result IResearchAnalyzerFeature::loadAvailableAnalyzers(
 Result IResearchAnalyzerFeature::loadAnalyzers(
     transaction::OperationOrigin operationOrigin,
     std::string_view database /*= std::string_view{}*/) {
+  // No authorization is required here: loading analyzers merely (re-)fills
+  // an internal cache and does not expose any information to the caller.
+  // Authorization for seeing/using individual analyzers is enforced where
+  // analyzers are actually read or listed.
+  ExecContextSuperuserScope scope;
   try {
     // '_analyzers'/'_lastLoad' can be asynchronously read
     WRITE_LOCKER(lock, _mutex);
