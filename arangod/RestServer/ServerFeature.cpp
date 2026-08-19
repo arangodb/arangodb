@@ -31,7 +31,6 @@
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
-#include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 

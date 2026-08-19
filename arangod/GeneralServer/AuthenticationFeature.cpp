@@ -218,14 +218,18 @@ bool AuthenticationFeature::authenticationUnixSockets() const noexcept {
   return _options.authenticationUnixSockets;
 }
 
-std::string_view AuthenticationFeature::externalRBACservice() const noexcept {
-  return _options.externalRBACservice;
+std::string_view AuthenticationFeature::externalRbacService() const noexcept {
+  return _options.externalRbacService;
+}
+
+bool AuthenticationFeature::rbacEnabled() const noexcept {
+  return !_options.externalRbacService.empty();
 }
 
 /// @return Cache to deal with authentication tokens
 auth::TokenCache& AuthenticationFeature::tokenCache() const noexcept {
   TRI_ASSERT(_authCache);
-  return *_authCache.get();
+  return *_authCache;
 }
 
 /// @brief user manager may be null on DBServers and Agency

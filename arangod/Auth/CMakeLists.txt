@@ -1,7 +1,15 @@
 add_library(arango_auth STATIC
+  AuthMode.cpp
   Common.cpp
+  Permissions.cpp
+  Rbac/Backend.cpp
+  Rbac/RbacFeature.cpp
+  Rbac/ServiceImpl.cpp
+  Rbac/Service.cpp
+  Rbac/BackendImpl.cpp
   TokenCache.cpp
   User.cpp
+  UserManagerBase.cpp
   UserManagerImpl.cpp)
 
 target_link_libraries(arango_auth

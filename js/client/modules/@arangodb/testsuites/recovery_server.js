@@ -53,8 +53,8 @@ const testPaths = {
 // / @brief TEST: recovery_server
 // //////////////////////////////////////////////////////////////////////////////
 
-function runArangodRecovery (params, useEncryption, exitSuccessOk, exitFailOk) {
-  let additionalParams= {
+function runArangodRecovery(params, useEncryption, exitSuccessOk, exitFailOk) {
+  let additionalParams = {
     'log.foreground-tty': 'true',
     'database.ignore-datafile-errors': 'false', // intentionally false!
   };
@@ -85,18 +85,17 @@ function runArangodRecovery (params, useEncryption, exitSuccessOk, exitFailOk) {
     // enable development debugging if extremeVerbosity is set
     let args = Object.assign({
       'rocksdb.wal-file-timeout-initial': 10,
-      'replication.auto-start': 'true',
       'javascript.script': params.script,
       'log.output': 'file://' + params.crashLog
     }, params.options.extraArgs);
-    
+
     if (params.options.extremeVerbosity === true) {
       args['log.level'] = 'development=info';
     }
 
     if (useEncryption) {
       const key = '01234567890123456789012345678901';
-      
+
       let keyfile = fs.join(params.keyDir, 'rocksdb-encryption-keyfile');
       fs.write(keyfile, key);
 
@@ -112,20 +111,20 @@ function runArangodRecovery (params, useEncryption, exitSuccessOk, exitFailOk) {
     params.options.disableMonitor = true;
     params.testDir = fs.join(params.tempDir, `${params.count}`);
     params['instance'] = new inst.instance(params.options,
-                                           inst.instanceRole.single,
-                                           args, {}, {}, 'tcp', params.testDir, '',
-                                           new agencyMgr(params.options, null));
+      inst.instanceRole.single,
+      args, {}, {}, 'tcp', params.testDir, '',
+      new agencyMgr(params.options, null));
     argv = toArgv(Object.assign(params.instance.args, additionalParams));
   } else {
     additionalParams['javascript.script-parameter'] = 'recovery';
     argv = toArgv(Object.assign(params.instance.args, additionalParams));
-    
+
     if (params.options.rr) {
       binary = 'rr';
       argv.unshift(pu.ARANGOD_BIN);
     }
   }
-  
+
   process.env["state-file"] = params.stateFile;
   process.env["crash-log"] = params.crashLog;
   process.env["isSan"] = params.options.isSan;
@@ -176,7 +175,7 @@ function runArangodRecovery (params, useEncryption, exitSuccessOk, exitFailOk) {
   };
 }
 
-function recovery_server (options) {
+function recovery_server(options) {
   if (options.skipServerJS) {
     return {
       recovery_server: {
@@ -238,7 +237,7 @@ function recovery_server (options) {
           stateFile,
           crashLogDir: fs.join(fs.getTempPath(), `crash_${count}`),
           crashLog: "",
-          keyDir: ""          
+          keyDir: ""
         };
         fs.makeDirectoryRecursive(params.crashLogDir);
         params.crashLog = fs.join(params.crashLogDir, 'crash.log');
@@ -251,7 +250,7 @@ function recovery_server (options) {
           results[test] = res;
           break;
         }
-          
+
         ////////////////////////////////////////////////////////////////////////
         print(BLUE + "running recovery_server #" + iteration + " of test " + count + " - " + test + RESET);
         params.options.disableMonitor = options.disableMonitor;
@@ -259,11 +258,11 @@ function recovery_server (options) {
         try {
           trs.writeTestResult(params.instance.args['temp.path'], {
             failed: 1,
-            status: false, 
+            status: false,
             message: "unable to run recovery_server test " + test,
             duration: -1
           });
-        } catch (er) {}
+        } catch (er) { }
         runArangodRecovery(params, useEncryption, exitSuccessOk, exitFailOk);
 
         results[test] = trs.readTestResult(
@@ -278,7 +277,7 @@ function recovery_server (options) {
           results.status = false;
           // end while loop
           break;
-        } 
+        }
 
         // check if the state file has been written by the test.
         // if so, we will run another round of this test!

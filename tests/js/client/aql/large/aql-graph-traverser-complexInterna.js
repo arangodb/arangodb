@@ -32,6 +32,7 @@ var _ = require('lodash');
 const internal = require('internal');
 const db = require('internal').db;
 const errors = require('@arangodb').errors;
+let IM = global.instanceManager;
 const gh = require("@arangodb/graph/helpers");
 const {
   executeQuery,
@@ -217,9 +218,10 @@ function complexInternaSuite() {
     testTailRecursion: function () {
       // This test is to make sure their is no
       // inifinite callstack in getSome() API
+      let count = (IM.options.isInstrumented)? 1000 : 100000;
       let query = `
       WITH ${gh.vn}
-      FOR id IN 0..100000
+      FOR id IN 0..${count}
       FOR v IN OUTBOUND CONCAT("${gh.vn}/foobar", id) ${gh.en}
       RETURN v
       `;

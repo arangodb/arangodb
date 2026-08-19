@@ -36,7 +36,6 @@
 #include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication/Syncer.h"
-#include "Replication/common-defines.h"
 #include "Replication/utilities.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/Version.h"
@@ -181,6 +180,7 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
   return true;
 }
 
+// Mounted at /_api/wal (prefix)
 RestStatus RestWalAccessHandler::execute() {
   if (ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,
@@ -189,8 +189,11 @@ RestStatus RestWalAccessHandler::execute() {
     return RestStatus::DONE;
   }
 
-  if (!_context.isAdminUser()) {
-    generateError(ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseAdminAction(
+          auth::perms::AdminWalAccess{});
+      r.fail()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  r.errorMessage());
     return RestStatus::DONE;
   }
 
@@ -303,7 +306,14 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     return;
   }
 
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
+  // If we got here, we are either on a DBServer (and thus anyway
+  // superuser), or we are on a single server and have passed the
+  // authorization. This means we are Admin in Classic or have
+  // AdminWalAccess in RBAC. But deep inside the WAL-tailing code, we
+  // sometimes do `loadCollection` and thus `useCollection` and then
+  // another check happens if we can read the collection. Therefore, we
+  // must escalate to superuser here:
+  ExecContextSuperuserScope escope;
 
   bool found = false;
   size_t chunkSize = 1024 * 1024;

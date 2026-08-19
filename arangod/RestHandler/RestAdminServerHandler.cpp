@@ -25,14 +25,11 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/Handler.h"
 #include "Auth/UserManager.h"
-#include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
-#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/SslServerFeature.h"
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
-#include "Replication/ReplicationFeature.h"
 #include "RestServer/ApiRecordingFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
@@ -52,6 +49,7 @@ RestAdminServerHandler::RestAdminServerHandler(
       _engine(server.getFeature<DatabaseFeature>().engine()),
       _apiRecordingFeature(server.getFeature<ApiRecordingFeature>()) {}
 
+// Mounted at /_admin/server (prefix)
 RestStatus RestAdminServerHandler::execute() {
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() == 1 && suffixes[0] == "mode") {
@@ -78,6 +76,19 @@ RestStatus RestAdminServerHandler::execute() {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
   }
   return RestStatus::DONE;
+}
+
+async<RestHandler::AuthenticationGrant>
+RestAdminServerHandler::checkUserAuthentication() const {
+  auto const& suffixes = _request->suffixes();
+  if (suffixes.size() == 1 && suffixes[0] == "availability") {
+    auto ec = _request->requestContext();
+    TRI_ASSERT(ec != nullptr);
+    ec->forceSuperuser();
+    co_return AuthenticationGrant::GRANTED_EARLY;
+  }
+
+  co_return co_await RestBaseHandler::checkUserAuthentication();
 }
 
 void RestAdminServerHandler::writeModeResult(bool readOnly) {
@@ -187,20 +198,12 @@ void RestAdminServerHandler::handleMode() {
   if (requestType == rest::RequestType::GET) {
     writeModeResult(ServerState::readOnly());
   } else if (requestType == rest::RequestType::PUT) {
-    AuthenticationFeature* af = AuthenticationFeature::instance();
-    if (af->isActive() && !_request->user().empty()) {
-      auth::Level lvl;
-      if (af->userManager() != nullptr) {
-        lvl = af->userManager()->databaseAuthLevel(
-            _request->user(), StaticStrings::SystemDatabase,
-            /*configured*/ true);
-      } else {
-        lvl = auth::Level::RW;
-      }
-      if (lvl < auth::Level::RW) {
-        generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
-        return;
-      }
+    if (auto r = ExecContext::current().canUseAdminAction(
+            auth::perms::AdminMaintenance{});
+        r.fail()) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                    r.errorMessage());
+      return;
     }
 
     bool parseSuccess = false;
@@ -243,7 +246,6 @@ void RestAdminServerHandler::handleMode() {
       return;
     }
     writeModeResult(ServerState::readOnly());
-
   } else {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
@@ -274,7 +276,7 @@ void RestAdminServerHandler::handleTLS() {
     generateOk(rest::ResponseCode::OK, builder.slice());
   } else if (requestType == rest::RequestType::POST) {
     // Only the superuser may reload TLS data:
-    if (ExecContext::isAuthEnabled() && !ExecContext::current().isSuperuser()) {
+    if (!ExecContext::current().isSuperuserOrDisabled()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
                     "only superusers may reload TLS data");
       return;
@@ -320,15 +322,16 @@ void RestAdminServerHandler::handleApiCalls() {
 
   // Check permission level
   if (_apiRecordingFeature.onlySuperUser()) {
-    if (!ExecContext::current().isSuperuser()) {
+    if (!ExecContext::current().isSuperuserOrDisabled()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     "You need super user rights for recording API operations");
       return;
     }
   } else {
-    if (!ExecContext::current().isAdminUser()) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    "You need admin rights for recording API operations");
+    if (auto r = ExecContext::current().canUseAdminAction(
+            auth::perms::AdminApiCalls{});
+        r.fail()) {
+      generateError(r);
       return;
     }
   }
@@ -373,15 +376,16 @@ void RestAdminServerHandler::handleAqlRecordedQueries() {
 
   // Check permission level
   if (_apiRecordingFeature.onlySuperUser()) {
-    if (!ExecContext::current().isSuperuser()) {
+    if (!ExecContext::current().isSuperuserOrDisabled()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     "you need super user rights for recording API operations");
       return;
     }
   } else {
-    if (!ExecContext::current().isAdminUser()) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    "you need admin rights for recording API operations");
+    if (auto r = ExecContext::current().canUseAdminAction(
+            auth::perms::AdminAqlQueries{});
+        r.fail()) {
+      generateError(r);
       return;
     }
   }

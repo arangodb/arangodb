@@ -38,7 +38,7 @@ class ArangoImportServer final
                      char const* binaryPath, std::string binaryName, int* ret);
 
  protected:
-  void addFeaturesWithOptionProvider() final;
+  void addFeatures() final;
 };
 
 }  // namespace arangodb

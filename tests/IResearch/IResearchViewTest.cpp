@@ -36,6 +36,7 @@
 #include "IResearch/IResearchTestCommon.h"
 #include "IResearch/common.h"
 #include "IResearch/MakeViewSnapshot.h"
+#include "Mocks/ExecContextFactory.h"
 #include "Mocks/IResearchLinkMock.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
@@ -45,7 +46,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/SortCondition.h"
-#include "Auth/UserManagerMock.h"
+#include "Mocks/Auth/UserManagerTester.h"
 #include "Basics/files.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
@@ -144,7 +145,6 @@ class IResearchViewTest
     auto& metrics = server.getFeature<arangodb::metrics::MetricsFeature>();
     server.addFeature<arangodb::FlushFeature>(false, metrics);
     server.startFeatures();
-    expectUserManagerCalls();
 
     TransactionStateMock::abortTransactionCount = 0;
     TransactionStateMock::beginTransactionCount = 0;
@@ -171,32 +171,6 @@ class IResearchViewTest
   ~IResearchViewTest() override {
     TRI_RemoveDirectory(testFilesystemPath.c_str());
   }
-
-  void expectUserManagerCalls() {
-    using namespace arangodb;
-    auto* authFeature = AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
-    auto* um =
-        dynamic_cast<testing::StrictMock<auth::UserManagerMock>*>(userManager);
-    EXPECT_NE(um, nullptr);
-
-    using namespace ::testing;
-    EXPECT_CALL(*um, collectionAuthLevel)
-        .WillRepeatedly(WithArgs<0, 1, 2>([this](std::string const& username,
-                                                 std::string const& dbname,
-                                                 std::string_view const cname) {
-          auto const it = _userMap.find(username);
-          if (it == _userMap.end()) {
-            return auth::Level::NONE;
-          }
-          EXPECT_EQ(username, it->second.username());
-          return it->second.collectionAuthLevel(dbname, cname);
-        }));
-    EXPECT_CALL(*um, setAuthInfo)
-        .WillRepeatedly(
-            [this](auth::UserMap const& userMap) { _userMap = userMap; });
-  }
-  arangodb::auth::UserMap _userMap;
 };
 
 // -----------------------------------------------------------------------------
@@ -336,17 +310,12 @@ TEST_F(IResearchViewTest, test_defaults) {
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection));
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
     arangodb::auth::UserMap userMap;    // empty map, no user -> no permissions
     userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                         // configuration from system database
@@ -2094,38 +2063,12 @@ TEST_F(IResearchViewTest, test_drop_with_link) {
   EXPECT_TRUE((true == TRI_IsDirectory(dataPath.c_str())));
 
   {
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
-
-    // not authorised (NONE collection) as per
-    // https://github.com/arangodb/backlog/issues/459
-    {
-      arangodb::auth::UserMap userMap;
-      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
-                       .first->second;
-      user.grantCollection(
-          vocbase.name(), "testCollection",
-          arangodb::auth::Level::NONE);   // for missing collections
-                                          // User::collectionAuthLevel(...)
-                                          // returns database auth::Level
-      userManager->setAuthInfo(userMap);  // set user map to avoid loading
-                                          // configuration from system database
-
-      EXPECT_TRUE((TRI_ERROR_FORBIDDEN == view->drop().errorNumber()));
-      EXPECT_TRUE(
-          (false == logicalCollection->getPhysical()->getAllIndexes().empty()));
-      EXPECT_TRUE((false == !vocbase.lookupView("testView")));
-      EXPECT_TRUE((true == TRI_IsDirectory(dataPath.c_str())));
-    }
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // authorised (RO collection)
     {
@@ -7244,17 +7187,12 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
                           arangodb::LogicalView::Indexes*) { return false; })));
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {
@@ -7345,17 +7283,12 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
                      [](arangodb::DataSourceId,
                         arangodb::LogicalView::Indexes*) { return false; })));
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
     arangodb::auth::UserMap userMap;    // empty map, no user -> no permissions
     userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                         // configuration from system database
@@ -7407,17 +7340,12 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
                           arangodb::LogicalView::Indexes*) { return false; })));
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {
@@ -7513,17 +7441,12 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
                           arangodb::LogicalView::Indexes*) { return false; })));
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
@@ -7633,17 +7556,12 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
                           arangodb::LogicalView::Indexes*) { return false; })));
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {
@@ -7743,17 +7661,12 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
                           arangodb::LogicalView::Indexes*) { return false; })));
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {
@@ -7849,17 +7762,12 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
                           arangodb::LogicalView::Indexes*) { return false; })));
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {
@@ -7970,17 +7878,12 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
                           arangodb::LogicalView::Indexes*) { return false; })));
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {
@@ -10031,17 +9934,12 @@ TEST_F(IResearchViewTest, test_update_partial) {
                           arangodb::LogicalView::Indexes*) { return false; })));
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {
@@ -10132,17 +10030,12 @@ TEST_F(IResearchViewTest, test_update_partial) {
                      [](arangodb::DataSourceId,
                         arangodb::LogicalView::Indexes*) { return false; })));
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
     arangodb::auth::UserMap userMap;    // empty map, no user -> no permissions
     userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                         // configuration from system database
@@ -10194,17 +10087,12 @@ TEST_F(IResearchViewTest, test_update_partial) {
                           arangodb::LogicalView::Indexes*) { return false; })));
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {
@@ -10300,17 +10188,12 @@ TEST_F(IResearchViewTest, test_update_partial) {
                           arangodb::LogicalView::Indexes*) { return false; })));
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {
@@ -10421,17 +10304,12 @@ TEST_F(IResearchViewTest, test_update_partial) {
                           arangodb::LogicalView::Indexes*) { return false; })));
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {

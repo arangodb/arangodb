@@ -23,6 +23,7 @@
 #include "CommTask.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/Rbac/RbacFeature.h"
 #include "Auth/UserManager.h"
 #include "Basics/EncodingUtils.h"
 #include "Basics/HybridLogicalClock.h"
@@ -36,12 +37,13 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
 #include "GeneralServer/RequestTimingData.h"
+#include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationFeature.h"
 #include "Rest/GeneralResponse.h"
 #include "RestServer/ApiRecordingFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/VocbaseContext.h"
+#include "Utils/ExecContext.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Utils/Events.h"
@@ -55,13 +57,8 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 namespace {
-// some static URL path prefixes
-constexpr std::string_view pathPrefixApiUser("/_api/user/");
-constexpr std::string_view pathPrefixApiToken("/_api/token/");
-constexpr std::string_view pathPrefixOpen("/_open/");
-
-VocbasePtr lookupDatabaseFromRequest(
-    application_features::ApplicationServer& server, GeneralRequest& req) {
+VocbasePtr lookupDatabaseFromRequest(DatabaseFeature& databaseFeature,
+                                     GeneralRequest& req) {
   // get database name from request
   if (req.databaseName().empty()) {
     // if no database name was specified in the request, use system database
@@ -69,14 +66,16 @@ VocbasePtr lookupDatabaseFromRequest(
     req.setDatabaseName(StaticStrings::SystemDatabase);
   }
 
-  DatabaseFeature& databaseFeature = server.getFeature<DatabaseFeature>();
   return databaseFeature.useDatabase(req.databaseName());
 }
 
 /// Set the appropriate requestContext
-bool resolveRequestContext(application_features::ApplicationServer& server,
+bool resolveRequestContext(DatabaseFeature& databaseFeature,
+                           AuthenticationFeature& authenticationFeature,
+                           RbacFeature& rbacFeature,
+                           ServerSecurityFeature& securityFeature,
                            GeneralRequest& req) {
-  auto vocbase = lookupDatabaseFromRequest(server, req);
+  auto vocbase = lookupDatabaseFromRequest(databaseFeature, req);
 
   // invalid database name specified, database not found etc.
   if (vocbase == nullptr) {
@@ -85,12 +84,13 @@ bool resolveRequestContext(application_features::ApplicationServer& server,
 
   TRI_ASSERT(!vocbase->isDangling());
 
-  // FIXME(gnusi): modify VocbaseContext to accept VocbasePtr
-  auto context = VocbaseContext::create(req, *vocbase.release());
+  // ExecContext takes ownership of the VocbasePtr and will release it on
+  // destruction
+  auto context = ExecContext::create(authenticationFeature, rbacFeature,
+                                     securityFeature, req, std::move(vocbase));
   if (!context) {
     return false;
   }
-  // the VocbaseContext is now responsible for releasing the vocbase
   req.setRequestContext(std::move(context));
 
   // the "true" means the request is the owner of the context
@@ -141,9 +141,13 @@ CommTask::CommTask(GeneralServer& server, ConnectionInfo info)
     : _server(server),
       _generalServerFeature(server.server().getFeature<GeneralServerFeature>()),
       _apiRecordingFeature(server.server().getFeature<ApiRecordingFeature>()),
+      // TODO change the type of _auth from a pointer to a reference
+      _auth(&server.server().getFeature<AuthenticationFeature>()),
+      _databaseFeature(server.server().getFeature<DatabaseFeature>()),
+      _rbacFeature(server.server().getFeature<RbacFeature>()),
+      _securityFeature(server.server().getFeature<ServerSecurityFeature>()),
       _connectionInfo(std::move(info)),
       _connectionStatistics(_generalServerFeature.startConnection()),
-      _auth(AuthenticationFeature::instance()),
       _isUserRequest(true) {
   TRI_ASSERT(_auth != nullptr);
 }
@@ -262,7 +266,8 @@ CommTask::Flow CommTask::prepareExecution(
   }
 
   // Step 3: Try to resolve vocbase and use
-  if (!::resolveRequestContext(_server.server(),
+  if (!::resolveRequestContext(_databaseFeature, *_auth, _rbacFeature,
+                               _securityFeature,
                                req)) {  // false if db not found
     if (_auth->isActive()) {
       // prevent guessing database names (issue #5030)
@@ -444,26 +449,6 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
     // request during startup phase
     handler->setTimingData(stealTimingData(messageId));
     handleRequestStartup(std::move(handler));
-    return;
-  }
-
-  // forward to correct server if necessary
-  bool forwarded;
-  auto res = handler->forwardRequest(forwarded);
-  if (forwarded) {
-    timingData(messageId).superuser = true;
-    std::move(res).thenFinal([self(shared_from_this()), h(std::move(handler)),
-                              messageId](
-                                 futures::Try<Result>&& /*ignored*/) -> void {
-      self->sendResponse(h->stealResponse(), self->stealTimingData(messageId));
-    });
-    return;
-  }
-
-  if (res.hasValue() && res.waitAndGet().fail()) {
-    auto& r = res.waitAndGet();
-    sendErrorResponse(GeneralResponse::responseCode(r.errorNumber()), respType,
-                      messageId, r.errorNumber(), r.errorMessage());
     return;
   }
 
@@ -769,63 +754,7 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
     }
   }
 
-  bool userAuthenticated = req.authenticated();
-  Flow result = userAuthenticated ? Flow::Continue : Flow::Abort;
-
-  auto vc = basics::downCast<VocbaseContext>(req.requestContext());
-  TRI_ASSERT(vc != nullptr);
-  // deny access to database with NONE
-  if (result == Flow::Continue &&
-      vc->databaseAuthLevel() == auth::Level::NONE) {
-    result = Flow::Abort;
-    LOG_TOPIC("0898a", TRACE, Logger::AUTHORIZATION)
-        << "Access forbidden to " << path;
-  }
-
-  // we need to check for some special cases, where users may be allowed
-  // to proceed even unauthorized
-  if (result == Flow::Abort) {
-#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
-    // check if we need to run authentication for this type of
-    // endpoint
-    ConnectionInfo const& ci = req.connectionInfo();
-
-    if (ci.endpointType == Endpoint::DomainType::UNIX &&
-        !_auth->authenticationUnixSockets()) {
-      // no authentication required for unix domain socket connections
-      result = Flow::Continue;
-    }
-#endif
-
-    if (result == Flow::Abort) {
-      std::string const& username = req.user();
-
-      if (path == "/" || path.starts_with(::pathPrefixOpen) ||
-          path == "/_admin/server/availability") {
-        // mop: these paths are always callable...they will be able to check
-        // req.user when it could be validated
-        result = Flow::Continue;
-        vc->forceSuperuser();
-      } else if (userAuthenticated && path == "/_api/cluster/endpoints") {
-        // allow authenticated users to access cluster/endpoints
-        result = Flow::Continue;
-        // vc->forceReadOnly();
-      } else if (req.requestType() == RequestType::POST && !username.empty() &&
-                 path.starts_with(std::string{::pathPrefixApiUser} + username +
-                                  '/')) {
-        // simon: unauthorized users should be able to call
-        // `/_api/user/<name>` to check their passwords
-        result = Flow::Continue;
-        vc->forceReadOnly();
-      } else if (userAuthenticated && path.starts_with(::pathPrefixApiUser)) {
-        result = Flow::Continue;
-      } else if (userAuthenticated && path.starts_with(::pathPrefixApiToken)) {
-        result = Flow::Continue;
-      }
-    }
-  }
-
-  return result;
+  return Flow::Continue;
 }
 
 /// deny credentialed requests or not (only CORS)

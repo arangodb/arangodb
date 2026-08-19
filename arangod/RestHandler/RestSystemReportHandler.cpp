@@ -22,14 +22,10 @@
 
 #include "RestSystemReportHandler.h"
 
-#include "Agency/AgencyFeature.h"
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ServerState.h"
-#include "GeneralServer/ServerSecurityFeature.h"
 #include "Rest/HttpRequest.h"
-#include "Rest/Version.h"
-#include "RestServer/ServerFeature.h"
 #include "Utils/ExecContext.h"
 
 #include <velocypack/Builder.h>
@@ -76,21 +72,13 @@ std::string exec(std::string const& cmd) {
 }
 }  // namespace
 
-bool RestSystemReportHandler::isAdminUser() const {
-  if (!ExecContext::isAuthEnabled()) {
-    return true;
-  } else {
-    return ExecContext::current().isAdminUser();
-  }
-}
-
+// Mounted at /_admin/system-report (exact)
 RestStatus RestSystemReportHandler::execute() {
-  ServerSecurityFeature& security =
-      server().getFeature<ServerSecurityFeature>();
-
-  if (!security.canAccessHardenedApi()) {
+  if (auto r = ExecContext::current().canUseHardenedAction(
+          arangodb::auth::perms::AdminMonitoringInternal{});
+      r.fail()) {
     // dont leak information about server internals here
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+    generateError(r);
     return RestStatus::DONE;
   }
 

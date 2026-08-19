@@ -65,17 +65,13 @@ RestStatusHandler::RestStatusHandler(
     : RestBaseHandler(server, request, response),
       _engine(server.getFeature<DatabaseFeature>().engine()) {}
 
+// Mounted at /_admin/status (exact)
 RestStatus RestStatusHandler::execute() {
-  if (!isAllowedHttpMethod({RequestType::GET})) {
-    return RestStatus::DONE;
-  }
-
-  ServerSecurityFeature& security =
-      server().getFeature<ServerSecurityFeature>();
-
-  if (!security.canAccessHardenedApi()) {
+  if (auto r = ExecContext::current().canUseHardenedAction(
+          auth::perms::AdminMonitoring{});
+      r.fail()) {
     // dont leak information about server internals here
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+    generateError(r);
     return RestStatus::DONE;
   }
 
@@ -84,8 +80,26 @@ RestStatus RestStatusHandler::execute() {
   } else if (_request->parsedValue("memory", false)) {
     return executeMemoryProfile();
   } else {
+    ServerSecurityFeature& security =
+        server().getFeature<ServerSecurityFeature>();
     return executeStandard(security);
   }
+}
+
+async<RestHandler::AuthenticationGrant>
+RestStatusHandler::checkUserAuthentication() const {
+  // Note that this particular RestHandler might be called during startup (or
+  // in maintenance mode). The AuthenticationFeature might not yet be available
+  // for authorization, and must not be consulted.
+  if (auto const mode = ServerState::mode();
+      mode == ServerState::Mode::STARTUP ||
+      mode == ServerState::Mode::MAINTENANCE) {
+    co_return request()->authenticated()  // with JWT can also be authenticated
+        ? AuthenticationGrant::GRANTED_EARLY
+        : AuthenticationGrant::DENIED;
+  }
+
+  co_return co_await RestBaseHandler::checkUserAuthentication();
 }
 
 RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {

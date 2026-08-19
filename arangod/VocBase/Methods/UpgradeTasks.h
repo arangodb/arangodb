@@ -37,8 +37,6 @@ struct UpgradeTasks {
   static Result createSystemCollectionsAndIndices(Database& vocbase,
                                                   velocypack::Slice slice);
   static Result addDefaultUserOther(Database& vocbase, velocypack::Slice slice);
-  static Result renameReplicationApplierStateFiles(Database& vocbase,
-                                                   velocypack::Slice slice);
   static Result dropLegacyAnalyzersCollection(Database& vocbase,
                                               velocypack::Slice slice);
   static Result dropPregelQueriesCollection(Database& vocbase,

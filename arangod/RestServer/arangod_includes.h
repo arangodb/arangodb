@@ -45,6 +45,7 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/QueryInfoLoggerFeature.h"
+#include "Auth/Rbac/RbacFeature.h"
 #include "SystemMonitor/AsyncRegistry/Feature.h"
 #include "SystemMonitor/Activities/Feature.h"
 #include "Basics/ArangoGlobalContext.h"
@@ -130,7 +131,7 @@
 #include "Sharding/ShardingFeature.h"
 #include "Ssl/SslFeature.h"
 #include "Transaction/ManagerFeature.h"
-#include "VectorIndex/VectorIndexFeature.h"
+#include "VectorIndex/Feature.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Audit/AuditFeature.h"
