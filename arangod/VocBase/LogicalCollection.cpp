@@ -231,23 +231,23 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase,
                                      bool isAStub)
     : LogicalDataSource(
           *this, vocbase, descriptor.internal.id,
-          // COR-856: load path must pass the stored id
+          // COR-885: load path must pass the stored id
           std::string{},
-          // COR-856: load path must pass the stored planId
+          // COR-885: load path must pass the stored planId
           DataSourceId::none(), std::string{descriptor.mutableProps.name},
           NameValidator::isSystemName(descriptor.mutableProps.name) &&
               descriptor.constant.isSystem,
-          // COR-856: load path must pass the stored deleted flag
+          // COR-885: load path must pass the stored deleted flag
           /*deleted*/ false),
       _properties(std::move(descriptor)),
-      // COR-856: load path must pass the stored version
+      // COR-885: load path must pass the stored version
       _version(currentVersion()),
       _v8CacheVersion(0),
       _isAStub(isAStub),
       _allowUserKeys(
           std::visit([](auto const& opts) { return opts.allowUserKeys; },
                      _properties.constant.keyOptions)),
-      // COR-856: load path must default this to false
+      // COR-885: load path must default this to false
       _usesRevisionsAsDocumentIds(
           _properties.internal.usesRevisionsAsDocumentIds),
       _syncByRevision(determineSyncByRevision()),
@@ -284,7 +284,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase,
   if (replicationVersion() == replication::Version::TWO &&
       _properties.clusteringConstant.groupId.has_value()) {
     _groupId = _properties.clusteringConstant.groupId.value().id();
-    // COR-856: load path must set the stored replicatedStateId
+    // COR-885: load path must set the stored replicatedStateId
     TRI_ASSERT(planId() == id() || _replicatedStateId.has_value());
   }
 
@@ -307,7 +307,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase,
   // This has to be called AFTER _physical and _logical are properly linked
   // together.
 
-  // COR-856: the load path must pass the stored index definitions
+  // COR-885: the load path must pass the stored index definitions
   prepareIndexes(VPackSlice::emptyArraySlice());
   decorateWithInternalValidators();
 

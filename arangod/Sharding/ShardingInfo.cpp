@@ -252,7 +252,7 @@ ShardingInfo::ShardingInfo(CollectionDescriptor const& descriptor,
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  // COR-856: "shards" is runtime state that only the load path carries,
+  // COR-885: "shards" is runtime state that only the load path carries,
   // therefore, we must set it here in load path.
 
   auto& server = _collection->vocbase().server();

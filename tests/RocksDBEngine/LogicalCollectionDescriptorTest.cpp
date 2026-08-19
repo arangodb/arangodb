@@ -320,7 +320,7 @@ TEST_F(LogicalCollectionDescriptorTest,
                    .ok());
 }
 
-// The slice ctor goes away in COR-856. Until then, one test keeps it honest:
+// The slice ctor goes away in COR-885. Until then, one test keeps it honest:
 // the same input through either ctor must produce the same collection. Delete
 // this block together with the ctor.
 
