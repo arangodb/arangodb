@@ -778,7 +778,7 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
   let timeout = (options.isInstrumented) ? 60 * 45 : 60 * 15;
   SetGlobalExecutionDeadlineTo(timeout);
   let ret = pu.executeAndWait(pu.ARANGOSH_BIN, argv, options, 'arangosh', instanceManager.rootDir, options.coreCheck, timeout);
-  let timeout = SetGlobalExecutionDeadlineTo(0.0);
+  timeout = SetGlobalExecutionDeadlineTo(0.0);
   if (timeout) {
     ret.status = false;
   }
