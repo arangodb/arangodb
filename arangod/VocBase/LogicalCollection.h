@@ -100,10 +100,7 @@ class LogicalCollection : public LogicalDataSource {
  public:
   LogicalCollection() = delete;
   LogicalCollection(Database& vocbase, velocypack::Slice info, bool isAStub);
-  // @brief for a brand new collection. Generates the guid and defaults planId
-  // to the id, so it must not be used to load an existing one.
-  // TODO (COR-885): Remove the defaulting logic so this ctor can be used to
-  // load existing collections as well.
+  // TODO (COR-885): This ctor only works for create path
   LogicalCollection(Database& vocbase, CollectionDescriptor descriptor,
                     bool isAStub);
   LogicalCollection(LogicalCollection const&) = delete;

@@ -32,11 +32,6 @@ namespace arangodb {
 CollectionDescriptor CollectionDescriptor::fromVelocyPack(
     velocypack::Slice info) {
   CollectionDescriptor props;
-  // Defaults for markers and plan entries that predate these keys.
-  // ShardingInfo applies the same values.
-  props.clusteringConstant.numberOfShards = 1;
-  props.clusteringMutable.replicationFactor = 1;
-  props.clusteringMutable.writeConcern = 1;
   auto status = velocypack::deserializeWithStatus(
       info, props, {.ignoreUnknownFields = true}, InspectInternalContext{});
   if (!status.ok()) {

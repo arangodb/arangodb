@@ -252,8 +252,8 @@ ShardingInfo::ShardingInfo(CollectionDescriptor const& descriptor,
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  // "shards" is runtime state that only the load path carries, so there is
-  // nothing to put into _shardIds here.
+  // COR-856: "shards" is runtime state that only the load path carries,
+  // therefore, we must set it here in load path.
 
   auto& server = _collection->vocbase().server();
 #ifdef ARANGODB_USE_GOOGLE_TESTS
