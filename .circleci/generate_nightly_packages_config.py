@@ -260,6 +260,29 @@ def check_workflow(config: Dict[str, Any], name: str = WORKFLOW_NAME) -> None:
             f"{expected}"
         )
 
+    # ... and the verdict file each docker scan job writes must carry the
+    # SAME item name: it is derived from the gate-item-image parameter,
+    # not the job name, and the two drifting apart deadlocks the publish
+    # ("no gate verdict recorded" — the image parameter's -preview suffix
+    # once leaked into the verdict names exactly this way).
+    for entry in workflow["jobs"]:
+        if not isinstance(entry, dict):
+            continue
+        [(job_type, job_config)] = entry.items()
+        if job_type != "security-check-docker-image":
+            continue
+        composed = (
+            "security-check-docker-"
+            f"{(job_config or {}).get('gate-item-image')}-"
+            f"{(job_config or {}).get('arch')}"
+        )
+        if composed != entry_name(entry):
+            raise ValueError(
+                f"{entry_name(entry)}: gate-item-image/arch compose the "
+                f"verdict item {composed!r}, which must match the job "
+                "name (publish-nightly waits for that exact verdict)"
+            )
+
 
 def generate(base: Dict[str, Any], args: argparse.Namespace) -> Dict[str, Any]:
     if not any((args.build_tarballs, args.build_alpine_images)):

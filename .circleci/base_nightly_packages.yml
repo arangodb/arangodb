@@ -950,8 +950,11 @@ jobs:
                 exit 1
               }
             done
-            build/bin/arangosh --version | head -1
-            build/bin/arangod --version | head -1
+            # sed reads the whole stream, unlike "| head -1", which closes
+            # the pipe early and SIGPIPEs the still-writing binary - the
+            # step shell runs with -o pipefail, so that 141 fails the step
+            build/bin/arangosh --version | sed -n 1p
+            build/bin/arangod --version | sed -n 1p
             echo "relink verification OK: all executables rebuilt from the published object files"
       - persist_to_workspace:
           root: /tmp/nightly
@@ -1502,6 +1505,14 @@ jobs:
       image:
         type: enum
         enum: ["core-preview", "client-tools-preview"]
+      gate-item-image:
+        # The image part of the gate verdict item, matching the job's
+        # workflow name (security-check-docker-<gate-item-image>-<arch>):
+        # publish-nightly's expected-gate-items list is pinned to the job
+        # names by the config generator, and the image parameter's
+        # -preview suffix must not leak into the verdict file names.
+        type: enum
+        enum: ["core", "client-tools"]
     docker:
       - image: cimg/base:current
     # medium suffices: the image is Alpine-sized and the daemon runs on the
@@ -1653,7 +1664,7 @@ jobs:
           paths:
             - trivy-reports/docker
       - gate-trivy-findings:
-          item: docker-<< parameters.image >>-<< parameters.arch >>
+          item: docker-<< parameters.gate-item-image >>-<< parameters.arch >>
 
   # ── GPG signing ──────────────────────────────────────────────────────────────
   sign-packages:
@@ -2429,24 +2440,28 @@ workflows:
           name: security-check-docker-core-amd64
           arch: amd64
           image: core-preview
+          gate-item-image: core
           requires: [docker-enterprise-amd64]
 
       - security-check-docker-image:
           name: security-check-docker-client-tools-amd64
           arch: amd64
           image: client-tools-preview
+          gate-item-image: client-tools
           requires: [docker-enterprise-amd64]
 
       - security-check-docker-image:
           name: security-check-docker-core-arm64
           arch: arm64
           image: core-preview
+          gate-item-image: core
           requires: [docker-enterprise-arm64]
 
       - security-check-docker-image:
           name: security-check-docker-client-tools-arm64
           arch: arm64
           image: client-tools-preview
+          gate-item-image: client-tools
           requires: [docker-enterprise-arm64]
 
       - publish-nightly:

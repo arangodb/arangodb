@@ -26,7 +26,7 @@ if [ -x "$executable" ] ; then
       exec "$executable" "$@"
       ;;
     *)
-      exec "$executable" --server.arangod="$installation/usr/sbin/arangod" --server.js-dir="$installation/usr/share/arangodb4/js" "$@"
+      exec "$executable" --server.arangod="$installation/usr/sbin/arangod" "$@"
       ;;
   esac
 fi

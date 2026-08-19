@@ -718,6 +718,15 @@ class TestCoverageFiltering:
         suite = job.suites[0]
         assert should_include_suite(suite, criteria_coverage)
 
+    def test_coverage_build_is_instrumented(self):
+        """Coverage builds should be considered instrumented builds."""
+        criteria = FilterCriteria(build_variant=BuildVariant.COVERAGE)
+        assert criteria.is_instrumented_build
+
+
+class TestDeploymentTypeFiltering:
+    """Test deployment type filtering at job level."""
+
     def test_job_without_deployment_type_included_in_all_filters(self):
         """Job without deployment_type field should run in all filters."""
         job = TestJob(

@@ -15,11 +15,13 @@ install_bin_and_config(arangorestore ${CMAKE_INSTALL_BINDIR})
 install_bin_and_config(arangoexport  ${CMAKE_INSTALL_BINDIR})
 install_bin_and_config(arangovpack   ${CMAKE_INSTALL_BINDIR})
 
-if (USE_V8)
-  install_bin_and_config(arangosh ${CMAKE_INSTALL_BINDIR})
+# arangosh keeps its client-side V8 shell in 4.0 (only the server dropped
+# V8) and is built unconditionally, so it is installed unconditionally too:
+# the old USE_V8 guard referenced a cache variable that no longer exists,
+# which silently dropped arangosh from every install tree.
+install_bin_and_config(arangosh ${CMAKE_INSTALL_BINDIR})
 
-  install_command_alias(${BIN_ARANGOSH}
-    ${CMAKE_INSTALL_BINDIR}
-    arangoinspect)
-  install_config(arangoinspect)
-endif ()
+install_command_alias(${BIN_ARANGOSH}
+  ${CMAKE_INSTALL_BINDIR}
+  arangoinspect)
+install_config(arangoinspect)
