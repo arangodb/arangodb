@@ -25,13 +25,15 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal');
-const sleep = internal.sleep;
 const _ = require('lodash');
 const tu = require('@arangodb/testutils/test-utils');
 const pu = require('@arangodb/testutils/process-utils');
 const fs = require('fs');
 const { sanHandler } = require('@arangodb/testutils/san-file-handler');
-const executeExternal = internal.executeExternal;
+const {
+  sleep,
+  executeExternal,
+  SetGlobalExecutionDeadlineTo } = internal;
 const { versionHas } = require("@arangodb/test-helper");
 const isCov = versionHas('coverage');
 const isSan = versionHas('tsan') || versionHas('aulsan');
