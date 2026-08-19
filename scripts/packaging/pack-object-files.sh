@@ -35,10 +35,6 @@ if [ -z "${ARANGODB_VERSION:-}" ]; then
   find_arangodb_version "${PROJECT_DIR}/CMakeLists.txt" > /dev/null
 fi
 
-# 4.0 has no V8 and therefore no thin archives to rewrite (3.12 rewrites
-# V8's thin archives at this point); every .a in the build tree is already
-# self-contained.
-
 # The linking scripts reference ../../libssl.a / ../../libcrypto.a relative
 # to the build directory.
 cp -a "$(find /opt -name libssl.a | head -1)" "${BUILD_DIR}/"

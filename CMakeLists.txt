@@ -29,8 +29,6 @@ string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPER)
 # where to find CMAKE modules
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
-option(SKIP_PACKAGING "" OFF)
-
 # be verbose about flags used
 option(VERBOSE "be verbose about flags used" OFF)
 
@@ -1150,10 +1148,6 @@ endforeach()
 
 add_subdirectory(Documentation)
 include(ArangoDBInstall)
-
-if(NOT(SKIP_PACKAGING))
-  include(packages/packages)
-endif()
 
 ################################################################################
 ## ERRORS FILES
