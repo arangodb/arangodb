@@ -61,12 +61,12 @@ parameters:
   security-check:
     type: boolean
     default: true
-    description: "Trivy scan (CVEs + secrets) of every package and Docker image before publishing; findings at or above security-check-fail-level block the publish."
+    description: "Trivy scan (CVEs + secrets) of every package and Docker image before publishing; findings at or above security-check-fail-level fail the scan jobs and with them the workflow, but not the publish."
   security-check-fail-level:
     type: enum
     enum: ["NONE", "LOW", "MEDIUM", "HIGH", "CRITICAL", "ALL"]
     default: "HIGH"
-    description: "Minimum Trivy finding severity that fails the security-check jobs (findings at or above this level block the publish). The stored reports always contain ALL severities. NONE = report-only, never fail; ALL = fail on any finding incl. UNKNOWN severity. The EOL base-OS check on Docker images fails regardless of this level."
+    description: "Minimum Trivy finding severity that fails a security-check job. Findings at or above it red the job and with it the workflow, which is the nightly's alert signal, but they do NOT block the publish: publish-nightly tolerates the security-check jobs failing (after verifying each one delivered its reports and verdict), so the nightly still ships while the findings stay loud. The stored reports always contain ALL severities. NONE = report-only, never fail; ALL = fail on any finding incl. UNKNOWN severity. The EOL base-OS check on Docker images is separate from this level: it fails the scan before the reports are delivered, and that does block the publish."
   pr-run:
     type: boolean
     default: false
