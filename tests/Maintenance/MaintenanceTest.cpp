@@ -45,6 +45,7 @@
 #include "Metrics/MetricsFeature.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
+#include "ProgramOptions/ProgramOptions.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
 #include "RestServer/DatabaseFeature.h"

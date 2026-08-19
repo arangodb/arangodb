@@ -154,7 +154,7 @@ void parseAndValidateReturnExpression(tests::mocks::MockAqlServer const& server,
   Ast ast(*queryContext);
 
   QueryString queryString(query);
-  Parser parser(*queryContext, ast, queryString);
+  Parser parser(*queryContext, &queryContext->warnings(), ast, queryString);
   parser.parse();
 
   AstNode const* rootNode = ast.root();
@@ -176,7 +176,7 @@ void parseAndOptimizeReturnExpression(tests::mocks::MockAqlServer const& server,
   Ast ast(*queryContext);
 
   QueryString queryString(query);
-  Parser parser(*queryContext, ast, queryString);
+  Parser parser(*queryContext, &queryContext->warnings(), ast, queryString);
   parser.parse();
 
   ast.validateAndOptimize(queryContext->trxForOptimization(),
@@ -423,7 +423,7 @@ TEST_F(AstNodeTest, constantObjectWithSpliceCanMaterializeToVPack) {
   Ast ast(*queryContext);
   QueryString queryString(
       std::string_view("RETURN { ...{ a: 1, b: 2 }, c: 3 }"));
-  Parser parser(*queryContext, ast, queryString);
+  Parser parser(*queryContext, &queryContext->warnings(), ast, queryString);
   parser.parse();
 
   AstNode* objectNode = nullptr;

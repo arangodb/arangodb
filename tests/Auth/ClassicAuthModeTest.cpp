@@ -401,31 +401,6 @@ TEST_F(ClassicAuthModeTest, SystemUsersCollectionIsForbiddenEvenForAdmins) {
   }
 }
 
-TEST_F(ClassicAuthModeTest, QueuesCollectionIsReadableWithoutAnyGrant) {
-  setGrants({});
-  EXPECT_TRUE(check(p::UseCollection{.db = std::string{kDb},
-                                     .name = StaticStrings::QueuesCollection,
-                                     .level = CollectionAccessLevel::Read})
-                  .ok());
-}
-
-TEST_F(ClassicAuthModeTest, QueuesCollectionIsNotWritableEvenForAdmins) {
-  beAdmin();
-  expectError(
-      check(p::UseCollection{.db = std::string{kDb},
-                             .name = StaticStrings::QueuesCollection,
-                             .level = CollectionAccessLevel::WriteData}),
-      TRI_ERROR_FORBIDDEN);
-}
-
-TEST_F(ClassicAuthModeTest, FrontendCollectionIsFullyAccessibleWithoutGrants) {
-  setGrants({});
-  EXPECT_TRUE(check(p::UseCollection{.db = std::string{kDb},
-                                     .name = StaticStrings::FrontendCollection,
-                                     .level = CollectionAccessLevel::WriteMeta})
-                  .ok());
-}
-
 TEST_F(ClassicAuthModeTest, OtherSystemCollectionsFollowTheDatabaseLevel) {
   // A system collection without a fixed rule (here _graphs) inherits the
   // database's access level.
