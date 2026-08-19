@@ -49,7 +49,7 @@
 #include "Basics/PhysicalMemory.h"
 #include "Basics/SizeLimitedString.h"
 #include "Basics/StringUtils.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/files.h"
 #include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
@@ -347,7 +347,7 @@ size_t acquireBacktrace(char* buffer, size_t bufferSize) try {
   {
     SmallString headerBuffer;
     headerBuffer.append("Backtrace of thread ");
-    headerBuffer.appendUInt64(arangodb::Thread::currentThreadNumber());
+    headerBuffer.appendUInt64(arangodb::BasicThread::currentThreadNumber());
     headerBuffer.append(" [").append(currentThreadName).append("]\n");
 
     if (!safeAppend(headerBuffer.view())) {
@@ -622,8 +622,9 @@ void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
 
     // Store crash data for the dedicated crash handler thread
     storeCrashData("signal handler invoked", signal,
-                   arangodb::Thread::currentThreadId(),
-                   arangodb::Thread::currentThreadNumber(), info, ucontext);
+                   arangodb::BasicThread::currentThreadId(),
+                   arangodb::BasicThread::currentThreadNumber(), info,
+                   ucontext);
 
     // Now acquire the backtrace from the crashed thread (only the crashed
     // thread can do this) and store it in the preallocated buffer
@@ -737,9 +738,10 @@ void CrashHandler::logBacktrace() {
 /// @brief logs a fatal message and crashes the program
 void CrashHandler::crash(std::string_view context) {
   // Store crash data for the dedicated crash handler thread
-  storeCrashData(context.data(), SIGABRT, arangodb::Thread::currentThreadId(),
-                 arangodb::Thread::currentThreadNumber(), /*no info*/ nullptr,
-                 /*no context*/ nullptr);
+  storeCrashData(
+      context.data(), SIGABRT, arangodb::BasicThread::currentThreadId(),
+      arangodb::BasicThread::currentThreadNumber(), /*no info*/ nullptr,
+      /*no context*/ nullptr);
 
   // Now acquire the backtrace from the crashed thread (only the crashed
   // thread can do this) and store it in the preallocated buffer

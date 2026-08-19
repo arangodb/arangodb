@@ -29,7 +29,6 @@
 #include <velocypack/Builder.h>
 
 #include "Basics/StaticStrings.h"
-#include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -53,6 +52,8 @@
 
 #include <string>
 #include <string_view>
+
+#include "absl/strings/str_cat.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -110,9 +111,17 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("register(<task>)");
   }
 
-  if (ExecContext::current().databaseAuthLevel() != auth::Level::RW) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "registerTask() needs db RW permissions");
+  {
+    TRI_GET_GLOBALS();
+    TRI_vocbase_t* vocbase = v8g->_vocbase;
+    if (auto r = ExecContext::current().canUseDatabase(
+            vocbase->name(), DatabaseAccessLevel::Write);
+        r.fail()) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(
+          TRI_ERROR_FORBIDDEN,
+          absl::StrCat("registerTask() needs db RW permissions: ",
+                       r.errorMessage()));
+    }
   }
 
   v8::Handle<v8::Object> obj = args[0].As<v8::Object>();
@@ -177,18 +186,23 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  std::string runAsUser;
-  if (TRI_HasProperty(context, isolate, obj, "runAsUser")) {
-    runAsUser = TRI_ObjectToString(
-        isolate, obj->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "runAsUser"))
-                     .FromMaybe(v8::Local<v8::Value>()));
-  }
+  {
+    // This option is not documented, and never worked (or at least hasn't for
+    // at least 7 years). If it was set to any non-empty string except the
+    // current username, an error was generated.
+    // I've left this block here for backwards compatibility with that
+    // behavior, but deleted subsequent code.
+    std::string runAsUser;
+    if (TRI_HasProperty(context, isolate, obj, "runAsUser")) {
+      runAsUser = TRI_ObjectToString(
+          isolate,
+          obj->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "runAsUser"))
+              .FromMaybe(v8::Local<v8::Value>()));
+    }
 
-  // only the superroot is allowed to run tasks as an arbitrary user
-  if (runAsUser.empty()) {  // execute task as the same user
-    runAsUser = ExecContext::current().user();
-  } else if (ExecContext::current().user() != runAsUser) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+    if (!runAsUser.empty() && ExecContext::current().user() != runAsUser) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+    }
   }
 
   // extract the command
@@ -229,18 +243,18 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   command = "(function (params) { " + command + " } )(params);";
 
+  auto exec = ExecContext::currentAsShared();
+  if (!exec) {
+    exec = ExecContext::superuserAsShared();
+  }
   ErrorCode res = TRI_ERROR_NO_ERROR;
-  std::shared_ptr<Task> task =
-      Task::createTask(id, name, v8g->_vocbase, command, isSystem, res);
+  auto task =
+      Task::createTask(id, name, exec, v8g->_vocbase, command, isSystem, res);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  // set the user this will run as
-  if (!runAsUser.empty()) {
-    task->setUser(runAsUser);
-  }
   // set execution parameters
   task->setParameter(parameters);
 
@@ -276,9 +290,17 @@ static void JS_UnregisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("unregister(<id>)");
   }
 
-  if (ExecContext::current().databaseAuthLevel() != auth::Level::RW) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "registerTask() needs db RW permissions");
+  {
+    TRI_GET_GLOBALS();
+    TRI_vocbase_t* vocbase = v8g->_vocbase;
+    if (auto r = ExecContext::current().canUseDatabase(
+            vocbase->name(), DatabaseAccessLevel::Write);
+        r.fail()) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(
+          TRI_ERROR_FORBIDDEN,
+          absl::StrCat("registerTask() needs db RW permissions: ",
+                       r.errorMessage()));
+    }
   }
 
   auto res = Task::unregisterTask(GetTaskId(isolate, args[0]), true);
@@ -336,13 +358,20 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto const& exec = ExecContext::current();
-  if (exec.databaseAuthLevel() != auth::Level::RW) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "createQueue() needs db RW permissions");
+  if (auto r = exec.canUseDatabase(vocbase->name(), DatabaseAccessLevel::Write);
+      r.fail()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        absl::StrCat("createQueue() needs db RW permissions: ",
+                     r.errorMessage()));
   }
 
-  std::string const runAsUser = exec.user();
-  TRI_ASSERT(exec.isAdminUser() || !runAsUser.empty());
+  auto const runAsUser = exec.user();
+  // TODO: This is only an assertion here, should this be enforced?
+  TRI_ASSERT(exec.canUseDatabase(StaticStrings::SystemDatabase,
+                                 DatabaseAccessLevel::Write)
+                 .ok() ||
+             !runAsUser.empty());
 
   std::string key = TRI_ObjectToString(isolate, args[0]);
   uint64_t maxWorkers =
@@ -403,9 +432,13 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   doc(VPackValue(VPackValueType::Object))(StaticStrings::KeyString,
                                           VPackValue(key))();
 
-  if (ExecContext::current().databaseAuthLevel() != auth::Level::RW) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "deleteQueue() needs db RW permissions");
+  if (auto r = ExecContext::current().canUseDatabase(
+          vocbase->name(), DatabaseAccessLevel::Write);
+      r.fail()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        absl::StrCat("deleteQueue() needs db RW permissions: ",
+                     r.errorMessage()));
   }
 
   LOG_TOPIC("2cef9", TRACE, Logger::FIXME) << "Removing queue " << key;
@@ -436,7 +469,8 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                             module initialization
+// --SECTION--                                             module
+// initialization
 // -----------------------------------------------------------------------------
 
 void TRI_InitV8Dispatcher(v8::Isolate* isolate,

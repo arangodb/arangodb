@@ -39,6 +39,8 @@ RestAgencyCallbacksHandler::RestAgencyCallbacksHandler(
     : RestVocbaseBaseHandler(server, request, response),
       _agencyCallbackRegistry(agencyCallbackRegistry) {}
 
+// Mounted at /_api/agency/agency-callbacks (prefix, only when cluster is
+// enabled)
 RestStatus RestAgencyCallbacksHandler::execute() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 

@@ -58,6 +58,7 @@ RestQueryHandler::RestQueryHandler(
     GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
+// Mounted at /_api/query (prefix)
 RestStatus RestQueryHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
@@ -93,7 +94,7 @@ RestStatus RestQueryHandler::execute() {
 }
 
 void RestQueryHandler::dumpQueryRegistry() {
-  if (!ExecContext::current().isSuperuser()) {
+  if (!ExecContext::current().isSuperuserOrDisabled()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return;
   }

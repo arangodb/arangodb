@@ -29,7 +29,7 @@
 #include <mutex>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/process-utils.h"
 #include <absl/cleanup/cleanup.h>
 
@@ -38,10 +38,10 @@
 namespace arangodb {
 class ProcessMonitoringFeature;
 
-class ProcessMonitorThread final : public arangodb::Thread {
+class ProcessMonitorThread final : public arangodb::BasicThread {
  public:
   ProcessMonitorThread(ProcessMonitoringFeature& processMonitorFeature)
-      : Thread("ProcessMonitor"),
+      : BasicThread("ProcessMonitor"),
         _processMonitorFeature(processMonitorFeature) {}
   ~ProcessMonitorThread() final { shutdown(); }
 
