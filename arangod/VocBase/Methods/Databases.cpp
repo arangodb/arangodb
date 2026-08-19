@@ -143,49 +143,6 @@ Result Databases::info(TRI_vocbase_t* vocbase, velocypack::Builder& result) {
   return Result();
 }
 
-// Grant permissions on newly created database to current user
-// to be able to run the upgrade script
-Result Databases::grantCurrentUser(CreateDatabaseInfo const& info) {
-  AuthenticationFeature* af = AuthenticationFeature::instance();
-  auth::UserManager* um = af->userManager();
-
-  // No user manager on DB servers/agents; nothing to grant when auth is off.
-  if (um == nullptr || !af->isActive()) {
-    return {};
-  }
-
-  ExecContext const& exec = ExecContext::current();
-
-  // If the current user is empty (which happens if a Maintenance job called
-  // us), granting rights will fail. We hence ignore it here.
-  if (exec.user().empty()) {
-    LOG_TOPIC("2a4dd", DEBUG, Logger::FIXME)
-        << "current ExecContext's user() is empty. "
-        << "Database will be created without any user having permissions";
-    return {};
-  }
-
-  // Don't write a redundant grant if the creator already has RW on the new
-  // database through existing rules (e.g. root's "*" wildcard grant). This
-  // was `!exec.isAdminUser()` before the RBAC merge; writing the grant anyway
-  // destroys the configured-vs-effective distinction that
-  // `GET /_api/user/<user>/database?full=true` reports, and accumulates one
-  // stale entry per database ever created in admin user documents.
-  if (um->databaseAuthLevel(exec.user(), info.getName(),
-                            /*configured*/ true) == auth::Level::RW) {
-    return {};
-  }
-
-  return um->updateUser(
-      exec.user(),
-      [&](auth::User& entry) {
-        entry.grantDatabase(info.getName(), auth::Level::RW);
-        entry.grantCollection(info.getName(), "*", auth::Level::RW);
-        return TRI_ERROR_NO_ERROR;
-      },
-      auth::UserManager::RetryOnConflict::Yes);
-}
-
 // Create database on cluster;
 Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
@@ -265,11 +222,6 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
     }
   });
 
-  res = grantCurrentUser(info);
-  if (!res.ok()) {
-    return res;
-  }
-
   LOG_TOPIC("54323", DEBUG, Logger::CLUSTER)
       << "createDatabase on coordinator: have granted current user for "
          "database: "
@@ -346,11 +298,6 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
   TRI_ASSERT(!vocbase->isDangling());
 
   auto sg = scopeGuard([&]() noexcept { vocbase->release(); });
-
-  Result res = grantCurrentUser(info);
-  if (!res.ok()) {
-    return res;
-  }
 
   VPackBuilder userBuilder;
   info.UsersToVelocyPack(userBuilder);
