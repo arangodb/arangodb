@@ -29,8 +29,6 @@ string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPER)
 # where to find CMAKE modules
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
-option(SKIP_PACKAGING "" OFF)
-
 # be verbose about flags used
 option(VERBOSE "be verbose about flags used" OFF)
 
@@ -122,7 +120,7 @@ message(STATUS "SNAP REVISION: ${ARANGODB_SNAP_REVISION}")
 # ------------------------------------------------------------------------------
 #
 # ------------------------------------------------------------------------------
-project(arangodb3 LANGUAGES CXX C ASM VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
+project(arangodb4 LANGUAGES CXX C ASM VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
 
 # Enable CMake's Testing facilities.
 #
@@ -597,8 +595,6 @@ if(USE_GOOGLE_TESTS)
 endif()
 
 include(debugInformation)
-find_program(READELF_EXECUTABLE readelf)
-detect_binary_id_type(CMAKE_DEBUG_FILENAMES_SHA_SUM)
 
 # ###############################################################################
 # # FAILURE TESTS
@@ -1153,10 +1149,6 @@ endforeach()
 add_subdirectory(Documentation)
 include(ArangoDBInstall)
 
-if(NOT(SKIP_PACKAGING))
-  include(packages/packages)
-endif()
-
 ################################################################################
 ## ERRORS FILES
 ################################################################################
@@ -1203,7 +1195,6 @@ add_custom_target(errorfiles ALL DEPENDS ${ERROR_FILES_GEN})
 set(EXIT_CODE_FILES
   lib/Basics/exitcodes.h
   js/common/bootstrap/exitcodes.js
-  Installation/Windows/Plugins/exitcodes.nsh
 )
 
 set(EXIT_CODE_FILES_GEN)
