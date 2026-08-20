@@ -52,7 +52,6 @@
 #include "Utilities/NameValidator.h"
 #include "VocBase/ComputedValues.h"
 #include "VocBase/KeyGenerator.h"
-#include "VocBase/Properties/UserInputCollectionProperties.h"
 #include "VocBase/Validators.h"
 #include "velocypack/Builder.h"
 

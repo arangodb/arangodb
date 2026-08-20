@@ -65,6 +65,9 @@ struct CollectionDescriptor {
   };
 };
 
+[[nodiscard]] velocypack::Builder collectionCreateResponse(
+    CollectionDescriptor const& d);
+
 template<class Inspector>
 auto inspect(Inspector& f, CollectionDescriptor& d) {
   auto result = f.object(d).fields(

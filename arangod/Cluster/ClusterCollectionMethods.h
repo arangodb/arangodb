@@ -34,7 +34,8 @@ template<typename T>
 class ResultT;
 
 struct AgencyIsBuildingFlags;
-struct CreateCollectionBody;
+struct CollectionDescriptor;
+struct CollectionCreateOptions;
 struct Database;
 struct PlanCollectionEntry;
 struct PlanCollectionEntryReplication2;
@@ -64,18 +65,19 @@ struct ClusterCollectionMethods {
 
   [[nodiscard]] static auto createCollectionsOnCoordinator(
       Database& vocbase,
-      std::vector<CreateCollectionBody> parametersOfCollections,
+      std::vector<CollectionDescriptor> parametersOfCollections,
       bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
-      bool enforceReplicationFactor, bool isNewDatabase)
+      bool enforceReplicationFactor, bool isNewDatabase,
+      CollectionCreateOptions const& options)
       -> arangodb::ResultT<std::vector<std::shared_ptr<LogicalCollection>>>;
 
   [[nodiscard]] static auto toPlanEntry(
-      CreateCollectionBody col, std::vector<ShardID> shardNames,
+      CollectionDescriptor col, std::vector<ShardID> shardNames,
       std::shared_ptr<IShardDistributionFactory> distributeType,
       AgencyIsBuildingFlags isBuildingFlags) -> PlanCollectionEntry;
 
   [[nodiscard]] static auto toPlanEntryReplication2(
-      CreateCollectionBody col, std::vector<ShardID> shardNames,
+      CollectionDescriptor col, std::vector<ShardID> shardNames,
       std::shared_ptr<IShardDistributionFactory> distributeType,
       AgencyIsBuildingFlags isBuildingFlags) -> PlanCollectionEntryReplication2;
 
@@ -85,14 +87,16 @@ struct ClusterCollectionMethods {
 
   [[nodiscard]] static auto selectDistributeType(
       ClusterInfo& ci, std::string_view databaseName,
-      CreateCollectionBody const& col, bool enforceReplicationFactor,
+      CollectionDescriptor const& col, bool enforceReplicationFactor,
       std::unordered_map<std::string,
                          std::shared_ptr<IShardDistributionFactory>>&
-          allUsedDistrbitions) -> std::shared_ptr<IShardDistributionFactory>;
+          allUsedDistrbitions,
+      CollectionCreateOptions const& options)
+      -> std::shared_ptr<IShardDistributionFactory>;
 
   [[nodiscard]] static auto prepareCollectionGroups(
       ClusterInfo& ci, std::string_view databaseName,
-      std::vector<CreateCollectionBody>& collections)
+      std::vector<CollectionDescriptor>& collections)
       -> ResultT<replication2::CollectionGroupUpdates>;
 
   [[nodiscard]] static auto updateCollectionProperties(
