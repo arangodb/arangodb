@@ -233,7 +233,7 @@ void BuildManager::scanAndBuild(std::stop_token const& stopToken,
       auto const indexes = coll->getPhysical()->getReadyIndexes();
 
       for (auto const& idx : indexes) {
-        if (idx->type() != Index::TRI_IDX_TYPE_VECTOR_INDEX) {
+        if (idx->type() != IndexType::Vector) {
           continue;
         }
         auto& vecIdx = static_cast<RocksDBVectorIndex&>(*idx);

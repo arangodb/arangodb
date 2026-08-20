@@ -2447,7 +2447,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
         RocksDBKeyBounds bounds =
             RocksDBIndex::getBounds(type, objectId, unique);
         // edge index drop fails otherwise
-        bool const prefixSameAsStart = type != Index::TRI_IDX_TYPE_EDGE_INDEX;
+        bool const prefixSameAsStart = type != IndexType::Edge;
         res = rocksutils::removeLargeRange(db, bounds, prefixSameAsStart,
                                            useRangeDelete);
         if (res.fail()) {

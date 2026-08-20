@@ -514,7 +514,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       for (auto const& idx : coll->getReadyIndexes()) {
         RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
         RocksDBCuckooIndexEstimatorType* est = ridx->estimator();
-        TRI_ASSERT(ridx->type() != Index::TRI_IDX_TYPE_EDGE_INDEX || est);
+        TRI_ASSERT(ridx->type() != IndexType::Edge || est);
         if (est) {
           est->clearInRecovery(_currentSequence);
         }
