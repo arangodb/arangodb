@@ -24,8 +24,6 @@
   edges. The `MATCH` statement remains experimental (`matchStatement:
   "experimental"`).
 
-* Updated ArangoDB Starter to v0.20.0-preview-14.
-
 * Added a debug-symbols TAR.GZ bundle
   (arangodb4e-dbg-linux-<version>_<arch>.tar.gz), the TAR.GZ analogue of
   the 3.12 -dbg packages: it contains usr/lib/debug/.build-id/... debug
@@ -64,13 +62,9 @@
 * COR-675: Constant-Folding for Object splice, enhanced AQL constant folding 
   for object literals. Object literals with constant object splices and constant computed attribute names are now precomputed during query optimization, reducing runtime overhead and improving query performance
 
-* Upgraded included rclone to v1.74.4 with go1.25.12 and non-vulnerable
-  dependencies.
-
 * Updated node modules:
- - brace-expansion to 5.0.8
- - fast-uri to 3.1.4
- - js-yaml to 4.3.0
+ - brace-expansion to 5.0.9
+ - fast-uri to 3.1.5
 
 * Removed the deprecated `hash` and `skiplist` index types from the index
   aliases reported by the `GET /_api/engine` endpoint, as they can no longer
