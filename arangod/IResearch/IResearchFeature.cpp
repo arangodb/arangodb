@@ -1016,6 +1016,11 @@ bool IResearchFeature::failQueriesOnOutOfSync() const noexcept {
 }
 
 void IResearchFeature::registerRecoveryHelper() {
+  if (ServerState::instance()->isCoordinator()) {
+    // no local WAL to recover on coordinators
+    return;
+  }
+
   if (!_options.skipRecoveryItems.empty()) {
     LOG_TOPIC("e36f2", WARN, arangodb::iresearch::TOPIC)
         << "arangosearch recovery explicitly disabled via the '"

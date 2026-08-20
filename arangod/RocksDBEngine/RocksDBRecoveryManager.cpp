@@ -32,6 +32,7 @@
 #include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
 #include "Basics/files.h"
+#include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/IDatabaseProvider.h"
@@ -80,16 +81,20 @@ RocksDBRecoveryManager::RocksDBRecoveryManager(
       _dbProvider(dbProvider),
       _recoveryCallback(recoveryCallback) {
   setOptional(true);
-  startsAfter<RocksDBEngine>();
+  startsAfter<StorageEngine>();
   // implies DatabaseFeature + SystemDatabaseFeature ordering
   startsAfter<ServerIdFeature>();
+}
 
-  onlyEnabledWith<RocksDBEngine>();
+void RocksDBRecoveryManager::prepare() {
+  if (ServerState::instance()->isCoordinator()) {
+    setEnabled(false);
+  }
 }
 
 void RocksDBRecoveryManager::start() {
   TRI_ASSERT(isEnabled());
-  _engine = &server().getFeature<RocksDBEngine>();
+  _engine = &server().getFeature<StorageEngine, RocksDBEngine>();
 
   // synchronizes with acquire inRecovery()
   _recoveryState.store(RecoveryState::IN_PROGRESS, std::memory_order_release);

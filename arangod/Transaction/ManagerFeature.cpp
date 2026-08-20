@@ -23,8 +23,6 @@
 #include "ManagerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Cluster/ServerState.h"
-#include "ClusterEngine/ClusterEngine.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -34,7 +32,6 @@
 #include "Metrics/CounterBuilder.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Manager.h"
 
@@ -90,16 +87,11 @@ void ManagerFeature::prepare() {
   TRI_ASSERT(MANAGER.get() == nullptr);
   StorageEngine* engine = nullptr;
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  if (!server().hasFeature<RocksDBEngine>() &&
-      !server().hasFeature<ClusterEngine>()) {
+  if (!server().hasFeature<StorageEngine>()) {
     engine = &server().getFeature<DatabaseFeature>().engine();
   } else
 #endif
-      if (ServerState::instance()->isCoordinator()) {
-    engine = &server().getFeature<ClusterEngine>();
-  } else {
-    engine = &server().getFeature<RocksDBEngine>();
-  }
+    engine = &server().getFeature<StorageEngine>();
   MANAGER = engine->createTransactionManager(_options, _numExpiredTransactions);
 }
 

@@ -57,14 +57,7 @@ struct DefaultIndexFactory : public IndexTypeFactory {
 
   bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
              std::string const& dbname) const override {
-    auto* engine = _engine.actualEngine();
-    if (!engine) {
-      THROW_ARANGO_EXCEPTION(
-          Result(TRI_ERROR_INTERNAL,
-                 "cannot find storage engine while normalizing index"));
-    }
-
-    return engine->indexFactory().factory(_type).equal(lhs, rhs, dbname);
+    return _engine.rocksDBIndexFactory().factory(_type).equal(lhs, rhs, dbname);
   }
 
   std::shared_ptr<Index> instantiate(
@@ -78,14 +71,7 @@ struct DefaultIndexFactory : public IndexTypeFactory {
   virtual Result normalize(velocypack::Builder& normalized,
                            velocypack::Slice definition, bool isCreation,
                            TRI_vocbase_t const& vocbase) const override {
-    auto* engine = _engine.actualEngine();
-
-    if (!engine) {
-      return Result(TRI_ERROR_INTERNAL,
-                    "cannot find storage engine while normalizing index");
-    }
-
-    return engine->indexFactory().factory(_type).normalize(
+    return _engine.rocksDBIndexFactory().factory(_type).normalize(
         normalized, definition, isCreation, vocbase);
   }
 
@@ -225,12 +211,7 @@ ClusterIndexFactory::ClusterIndexFactory(
 /// "hash") used to display storage engine capabilities
 std::vector<std::pair<std::string_view, std::string_view>>
 ClusterIndexFactory::indexAliases() const {
-  auto* ae = _engine.actualEngine();
-  if (!ae) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "no actual storage engine for ClusterIndexFactory");
-  }
-  return ae->indexFactory().indexAliases();
+  return _engine.rocksDBIndexFactory().indexAliases();
 }
 
 Result ClusterIndexFactory::enhanceIndexDefinition(  // normalize definition
@@ -239,13 +220,8 @@ Result ClusterIndexFactory::enhanceIndexDefinition(  // normalize definition
     bool isCreation,                  // definition for index creation
     TRI_vocbase_t const& vocbase      // index vocbase
 ) const {
-  auto* ae = _engine.actualEngine();
-  if (!ae) {
-    return TRI_ERROR_INTERNAL;
-  }
-
-  return ae->indexFactory().enhanceIndexDefinition(definition, normalized,
-                                                   isCreation, vocbase);
+  return _engine.rocksDBIndexFactory().enhanceIndexDefinition(
+      definition, normalized, isCreation, vocbase);
 }
 
 void ClusterIndexFactory::fillSystemIndexes(

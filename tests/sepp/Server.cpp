@@ -266,7 +266,7 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<HotBackupFeature>();
   _server.addFeature<EncryptionFeature>();
 #endif
-  _server.addFeature<RocksDBEngine>(
+  _server.addFeature<StorageEngine, RocksDBEngine>(
       _optionsProvider, metrics, databasePath, vectorIndex, flush, dumpLimits,
       replication2::EnableReplication2
           ? &_server.getFeature<ReplicatedLogFeature>()

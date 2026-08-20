@@ -371,12 +371,16 @@ void ArangodServer::addFeatures() {
                              getOptions<UpgradeOptionsProvider>());
   auto& rocksdbOption = addFeature<RocksDBOptionFeature>(
       getOptions<RocksDBOptionFeatureOptionsProvider>());
-  addFeature<ClusterEngine>(clusterFeature, database, metrics);
-  addFeature<RocksDBEngine>(
-      rocksdbOption, metrics, databasePath, vectorIndex, flush, dumpLimits,
-      replication2::EnableReplication2 ? &replicatedLogFeature : nullptr,
-      scheduler, rocksdbRecovery, database, rocksdbCacheRefill, cacheManager,
-      agency, getOptions<RocksDBEngineOptionsProvider>());
+  if (ServerState::instance()->isCoordinator()) {
+    addFeature<StorageEngine, ClusterEngine>(clusterFeature, database, metrics,
+                                             vectorIndex);
+  } else {
+    addFeature<StorageEngine, RocksDBEngine>(
+        rocksdbOption, metrics, databasePath, vectorIndex, flush, dumpLimits,
+        replication2::EnableReplication2 ? &replicatedLogFeature : nullptr,
+        scheduler, rocksdbRecovery, database, rocksdbCacheRefill, cacheManager,
+        agency, getOptions<RocksDBEngineOptionsProvider>());
+  }
   addFeature<replication2::replicated_state::ReplicatedStateAppFeature>();
   addFeature<replication2::replicated_state::black_hole::
                  BlackHoleStateMachineFeature>();

@@ -35,7 +35,6 @@
 #include "Basics/application-exit.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cluster/ServerState.h"
-#include "ClusterEngine/ClusterEngine.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
@@ -52,7 +51,6 @@
 #include "RestServer/IOHeartbeatThread.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
-#include "RocksDBEngine/RocksDBEngine.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/OperationOrigin.h"
@@ -278,8 +276,7 @@ DatabaseFeature::DatabaseFeature(
 
   startsAfter<AuthenticationFeature>();
   startsAfter<CacheManagerFeature>();
-  startsAfter<ClusterEngine>();
-  startsAfter<RocksDBEngine>();
+  startsAfter<StorageEngine>();
   startsAfter<InitDatabaseFeature>();
   startsAfter<metrics::MetricsFeature>();
 }
@@ -504,17 +501,7 @@ void DatabaseFeature::prepare() {
   if (_engine == nullptr) {
     // engine not injected by test code, inject it now
 #endif
-    if (ServerState::instance()->isCoordinator()) {
-      auto& ce = server().getFeature<ClusterEngine>();
-      auto& rocksdb = server().getFeature<RocksDBEngine>();
-      rocksdb.disable();
-      ce.setActualEngine(&rocksdb);
-      _engine = &ce;
-    } else {
-      auto& rocksdb = server().getFeature<RocksDBEngine>();
-      rocksdb.enable();
-      _engine = &rocksdb;
-    }
+    _engine = &server().getFeature<StorageEngine>();
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   }
 #endif
