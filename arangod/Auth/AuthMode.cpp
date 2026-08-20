@@ -59,8 +59,8 @@ auto describe(auth::perms::UseCollection const& perm) -> std::string {
       "use collection '{}' in database '{}' with access level '{}'", perm.name,
       perm.db, to_string(perm.level));
 }
-auto describe(auth::perms::UseView const& perm) -> std::string {
-  return std::format("use view '{}' in database '{}'", perm.name, perm.db);
+auto describe(auth::perms::ReadView const& perm) -> std::string {
+  return std::format("read view '{}' in database '{}'", perm.name, perm.db);
 }
 auto describe(auth::perms::SeeView const& perm) -> std::string {
   return std::format("see view '{}' in database '{}'", perm.name, perm.db);
@@ -548,7 +548,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             return check(p::UseCollection{data.db, data.collName,
                                           CollectionAccessLevel::WriteData});
           },
-          [&](p::UseView const& view) -> Result {
+          [&](p::ReadView const& view) -> Result {
             // In the classic system views delegate to database-level access
             // (per-view collection-level auth is not used for views).
             auto const effectiveLevel = effectiveDatabaseAuthLevel(view.db);
@@ -1095,7 +1095,7 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
                 rbac::resources::Collection{collection.db, collection.name});
           },
           // -- Views -----------------------------------------------------
-          [&](p::UseView const& view) -> Result {
+          [&](p::ReadView const& view) -> Result {
             return checkOne(rbac::Action::Read,
                             rbac::resources::View{view.db, view.name});
           },

@@ -181,7 +181,7 @@ TEST_F(LogicalViewTest, test_auth) {
     TRI_vocbase_t vocbase(testDBInfo(server), engine);
     auto logicalView = vocbase.createView(viewJson->slice(), false);
     EXPECT_TRUE(arangodb::ExecContext::current()
-                    .canUseView(vocbase.name(), logicalView->name())
+                    .canReadView(vocbase.name(), logicalView->name())
                     .ok());
   }
 
@@ -193,7 +193,7 @@ TEST_F(LogicalViewTest, test_auth) {
         "", "testVocbase", arangodb::auth::Level::NONE,
         arangodb::auth::Level::NONE);
     EXPECT_FALSE(
-        classicCtx.execContext->canUseView(vocbase.name(), logicalView->name())
+        classicCtx.execContext->canReadView(vocbase.name(), logicalView->name())
             .ok());
   }
 
@@ -205,7 +205,7 @@ TEST_F(LogicalViewTest, test_auth) {
         "", "testVocbase", arangodb::auth::Level::NONE,
         arangodb::auth::Level::RO);
     EXPECT_TRUE(
-        classicCtx.execContext->canUseView(vocbase.name(), logicalView->name())
+        classicCtx.execContext->canReadView(vocbase.name(), logicalView->name())
             .ok());
   }
 
@@ -217,7 +217,7 @@ TEST_F(LogicalViewTest, test_auth) {
         "", "testVocbase", arangodb::auth::Level::NONE,
         arangodb::auth::Level::RW);
     EXPECT_TRUE(
-        classicCtx.execContext->canUseView(vocbase.name(), logicalView->name())
+        classicCtx.execContext->canReadView(vocbase.name(), logicalView->name())
             .ok());
   }
 }

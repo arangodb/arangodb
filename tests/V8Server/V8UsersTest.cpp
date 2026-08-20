@@ -437,7 +437,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
     ASSERT_FALSE(!logicalView);
 
     EXPECT_TRUE(
-        execContext->canUseView(vocbase->name(), "testDataSource").fail());
+        execContext->canReadView(vocbase->name(), "testDataSource").fail());
     userPtr->grantDatabase("_system", arangodb::auth::Level::RW);
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
@@ -457,7 +457,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
                      ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
                                    .getNumber<int>()}));
     EXPECT_TRUE(
-        execContext->canUseView(vocbase->name(), "testDataSource").fail());
+        execContext->canReadView(vocbase->name(), "testDataSource").fail());
   }
 
   // test auth view (revoke)
@@ -490,7 +490,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
     // database-level grant is set (only a collection-level grant), the view
     // is not accessible before or after the (failed) revoke.
     EXPECT_TRUE(
-        execContext->canUseView(vocbase->name(), "testDataSource").fail());
+        execContext->canReadView(vocbase->name(), "testDataSource").fail());
     userPtr->grantDatabase("_system", arangodb::auth::Level::RW);
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
@@ -509,7 +509,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
                      ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
                                    .getNumber<int>()}));
-    EXPECT_TRUE(execContext->canUseView(vocbase->name(), "testDataSource")
+    EXPECT_TRUE(execContext->canReadView(vocbase->name(), "testDataSource")
                     .fail());  // not modified from above
   }
 

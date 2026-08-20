@@ -446,7 +446,7 @@ static void JS_ViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // end of parameter parsing
   // ...........................................................................
 
-  if (auto r = ExecContext::current().canUseView(vocbase.name(), view->name());
+  if (auto r = ExecContext::current().canReadView(vocbase.name(), view->name());
       r.fail()) {  // check auth after ensuring
                    // that the view exists
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
@@ -522,7 +522,7 @@ static void JS_ViewsVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     auto view = views[i];
 
     if (!view || ExecContext::current()
-                     .canUseView(vocbase.name(), view->name())
+                     .canReadView(vocbase.name(), view->name())
                      .fail()) {  // check auth after ensuring
                                  // that the view exists
       continue;  // skip views that are not authorized to be read
@@ -579,7 +579,7 @@ static void JS_NameViewVocbase(
   // end of parameter parsing
   // ...........................................................................
 
-  if (auto r = ExecContext::current().canUseView(vocbase.name(), view->name());
+  if (auto r = ExecContext::current().canReadView(vocbase.name(), view->name());
       r.fail()) {  // check auth after ensuring that the
                    // view exists
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
@@ -689,8 +689,8 @@ static void JS_PropertiesViewVocbase(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
-  if (auto r = ExecContext::current().canUseView(view->vocbase().name(),
-                                                 view->name());
+  if (auto r = ExecContext::current().canReadView(view->vocbase().name(),
+                                                  view->name());
       r.fail()) {  // check auth after ensuring that the
                    // view exists
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
@@ -798,8 +798,8 @@ static void JS_TypeViewVocbase(
   // end of parameter parsing
   // ...........................................................................
 
-  if (auto r = ExecContext::current().canUseView(view->vocbase().name(),
-                                                 view->name());
+  if (auto r = ExecContext::current().canReadView(view->vocbase().name(),
+                                                  view->name());
       r.fail()) {  // check auth after ensuring that the
                    // view exists
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());

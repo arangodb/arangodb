@@ -30,14 +30,7 @@
 //
 // Every request first asks `UseApiVersion version=0` and then
 // `UseDatabase name=d level=read`. The view handler then asks one dedicated
-// ExecContext question per operation (arangod/Utils/ExecContext.cpp):
-//   getViews (list)     -> canSeeView()   -> SeeView    (per visible view)
-//   getView             -> canUseView(RO) -> UseView ... level=read
-//   createView          -> canCreateView()-> CreateView ... linkedCollections=[..]
-//   modifyView (props)  -> canModifyView()-> ModifyView ... linkedCollections=[..]
-//   modifyView (rename) -> canRenameView()-> RenameView oldName=.. newName=..
-//   deleteView          -> canDropView()  -> DropView
-// The linkedCollections list is derived from the request body's `links` field.
+// ExecContext question per operation (arangod/Utils/ExecContext.cpp).
 
 if (getOptions === true) {
   return {
@@ -145,7 +138,7 @@ function viewApiAuthzSuite () {
       ], endObserve());
     },
 
-    // GET /_api/view/v_apitest - getView() -> canUseView(Read)
+    // GET /_api/view/v_apitest - getView() -> canReadView
     testGetView: function () {
       createView();
       beginObserve();
@@ -153,7 +146,7 @@ function viewApiAuthzSuite () {
       assertPermissions([
         "UseApiVersion version=0",
         "UseDatabase name=d level=read",
-        "UseView db=d name=v_apitest",
+        "ReadView db=d name=v_apitest",
         "UseCollection db=d name=c level=read",
         ...singleOnly([
           `UseCollection db=d name=${cId} level=read`
@@ -161,7 +154,7 @@ function viewApiAuthzSuite () {
       ], endObserve());
     },
 
-    // GET /_api/view/v_apitest/properties - getView(detailed) -> canUseView(Read)
+    // GET /_api/view/v_apitest/properties - getView(detailed) -> canReadView
     testGetViewProperties: function () {
       createView();
       beginObserve();
@@ -169,7 +162,7 @@ function viewApiAuthzSuite () {
       assertPermissions([
         "UseApiVersion version=0",
         "UseDatabase name=d level=read",
-        "UseView db=d name=v_apitest",
+        "ReadView db=d name=v_apitest",
         "UseCollection db=d name=c level=read",
         ...singleOnly([
           `UseCollection db=d name=${cId} level=read`

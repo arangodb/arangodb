@@ -201,8 +201,8 @@ std::ostream& operator<<(std::ostream& os, Permission const& permission) {
           [&](DropView const& p) {
             os << "DropView db=" << p.db << " name=" << p.name;
           },
-          [&](UseView const& p) {
-            os << "UseView db=" << p.db << " name=" << p.name;
+          [&](ReadView const& p) {
+            os << "ReadView db=" << p.db << " name=" << p.name;
           },
 
           // analyzers

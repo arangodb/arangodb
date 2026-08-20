@@ -59,8 +59,8 @@ void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
   // end of parameter parsing
   // ...........................................................................
 
-  if (auto r = ExecContext::current().canUseView(view->vocbase().name(),
-                                                 view->name());
+  if (auto r = ExecContext::current().canReadView(view->vocbase().name(),
+                                                  view->name());
       !r.ok()) {
     // check auth after ensuring that the view exists
     generateError(r);
@@ -458,15 +458,6 @@ void RestViewHandler::getViews() {
   // ...........................................................................
   // end of parameter parsing
   // ...........................................................................
-
-  // TODO check access right per view
-  //  if (auto const& can = ExecContext::current().can();
-  //  can.readView(_vocbase.name(), name)) {
-  //    generateError(
-  //        Result(TRI_ERROR_FORBIDDEN, "insufficient rights to get views"));
-  //
-  //    return;
-  //  }
 
   std::vector<LogicalView::ptr> views;
 

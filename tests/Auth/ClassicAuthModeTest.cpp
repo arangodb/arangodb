@@ -499,23 +499,23 @@ TEST_F(ClassicAuthModeTest, DropCollectionReadOnlyCollectionIsReadOnlyUnderV1) {
 // Views
 // ---------------------------------------------------------------------------
 
-TEST_F(ClassicAuthModeTest, UseViewFollowsTheDatabaseLevel) {
+TEST_F(ClassicAuthModeTest, ReadViewRequiresSystemReadAccess) {
   beUserWith(RO);
-  EXPECT_TRUE(check(p::UseView{.db = std::string{kDb}, .name = "v"}).ok());
+  EXPECT_TRUE(check(p::ReadView{.db = std::string{kDb}, .name = "v"}).ok());
   beUserWith(RW);
-  EXPECT_TRUE(check(p::UseView{.db = std::string{kDb}, .name = "v"}).ok());
+  EXPECT_TRUE(check(p::ReadView{.db = std::string{kDb}, .name = "v"}).ok());
 }
 
-TEST_F(ClassicAuthModeTest, UseViewWithoutAccessIsForbiddenUnderV0) {
+TEST_F(ClassicAuthModeTest, ReadViewWithoutAccessIsForbiddenUnderV0) {
   beUserWith(NONE);
-  expectError(check(p::UseView{.db = std::string{kDb}, .name = "v"}),
+  expectError(check(p::ReadView{.db = std::string{kDb}, .name = "v"}),
               TRI_ERROR_FORBIDDEN);
 }
 
-TEST_F(ClassicAuthModeTest, UseViewWithoutAccessIsNotFoundUnderV1) {
+TEST_F(ClassicAuthModeTest, ReadViewWithoutAccessIsNotFoundUnderV1) {
   beUserWith(NONE);
   useApiVersion(1);
-  expectError(check(p::UseView{.db = std::string{kDb}, .name = "v"}),
+  expectError(check(p::ReadView{.db = std::string{kDb}, .name = "v"}),
               TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 }
 
@@ -1379,7 +1379,7 @@ std::vector<PermCase> permissionCases() {
       {"DropView",
        p::DropView{.db = db, .name = "v", .linkedCollections = links},
        {{{Scope::Db, RW}, {Scope::Coll, RO}}}},
-      {"UseView", p::UseView{.db = db, .name = "v"}, {{{Scope::Db, RO}}}},
+      {"ReadView", p::ReadView{.db = db, .name = "v"}, {{{Scope::Db, RO}}}},
 
       // Analyzers.
       {"SeeAnalyzer", p::SeeAnalyzer{.db = db, .name = "a"},

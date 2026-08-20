@@ -258,7 +258,7 @@ struct DropView {
   std::vector<std::string> linkedCollections;
 };
 
-struct UseView {
+struct ReadView {
   std::string db;
   std::string name;
 };
@@ -365,7 +365,7 @@ using NonAdminList = meta::TypeList<
     DumpCollection, RestoreCollection, RestoreCreateIndex, RestoreCreateView,
     RestoreDropView, RestoreWriteData,
     // view permissions
-    SeeView, CreateView, ModifyView, RenameView, DropView, UseView,
+    SeeView, CreateView, ModifyView, RenameView, DropView, ReadView,
     // analyzer permissions
     SeeAnalyzer, CreateAnalyzer, DropAnalyzer, UseAnalyzer,
     // graph permissions
