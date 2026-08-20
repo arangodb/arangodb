@@ -111,17 +111,16 @@ auto RestAdminLogHandler::executeAsync() -> futures::Future<futures::Unit> {
                       "This endpoint has been removed. Please use DELETE "
                       "`/_admin/log/entries` instead.");
       }
-    } else if (suffixes.size() == 1 && suffixes[0] == "entries")) {
+    } else if (suffixes.size() == 1 && suffixes[0] == "entries") {
       clearLogs();
-    }
-    else if (suffixes.size() == 1 && suffixes[0] == "level") {
+    } else if (suffixes.size() == 1 && suffixes[0] == "level") {
       // reset log levels to defaults
       co_await handleLogLevel();
     } else {
       generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                     "superfluous suffix, expecting /_admin/log/<suffix>, "
-                    "where suffix can be either omitted or 'level'");
+                    "where suffix can be either 'entries' or 'level'");
     }
   } else if (type == rest::RequestType::GET) {
     if (suffixes.empty()) {

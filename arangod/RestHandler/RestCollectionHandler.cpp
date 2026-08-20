@@ -696,7 +696,7 @@ async<void> RestCollectionHandler::handleCommandPut() {
   if (resExtra.is(TRI_ERROR_NOT_IMPLEMENTED)) {
     resExtra.reset(
         TRI_ERROR_HTTP_NOT_FOUND,
-        "expecting one of the actions 'load', 'unload', 'truncate',"
+        "expecting one of the actions 'truncate',"
         " 'properties', 'compact', 'rename', 'loadIndexesIntoMemory'");
     generateError(resExtra);
   } else if (resExtra.fail()) {
