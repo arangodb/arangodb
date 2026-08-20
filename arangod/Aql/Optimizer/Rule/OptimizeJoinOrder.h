@@ -85,9 +85,24 @@ auto collectEnumerationOrder(ExecutionNode* firstEnumeration,
     -> std::vector<EnumerateCollectionNode*>;
 
 /// @brief pick an order for the whole graph, or std::nullopt to leave the plan
-/// alone. Returns nullopt when the run is too large, when any statistic behind
-/// the estimate was a fallback, when the winner is the current order, or when
-/// the improvement does not clear kImprovementMargin.
+/// alone. Returns nullopt when the run is too large; otherwise two
+/// independent accept/decline decisions are made, each guarded the same way:
+///
+/// - Per component: a component's greedy order replaces its written order
+///   only when neither side of that component's own comparison rests on a
+///   fallback statistic and the greedy order clears kImprovementMargin
+///   against the component's own written cost.
+/// - Sequencing: components are then sequenced by the cheapest concatenation
+///   (ties broken by node id), using whichever order each component ended up
+///   with -- but that resequencing itself is only adopted when neither it nor
+///   the written component sequence (components in the order they first
+///   appear in currentOrder) rests on a fallback statistic, and the
+///   resequenced concatenation clears kImprovementMargin against that
+///   written sequence. Otherwise components stay in their written relative
+///   order. With a single component this is a structural no-op.
+///
+/// Returns nullopt when neither decision actually changed anything, so a
+/// graph left untouched is still reported unapplied.
 auto chooseJoinOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
                      std::vector<EnumerateCollectionNode*> const& currentOrder)
     -> std::optional<std::vector<EnumerateCollectionNode*>>;

@@ -402,12 +402,15 @@ TEST_F(OptimizeJoinOrderTest,
 }
 
 TEST_F(OptimizeJoinOrderTest, identical_order_is_a_no_op) {
-  // All costs are uniform, so orderComponent's and the sequencing loop's
-  // strict "<" comparisons converge on the written order: chosen ==
-  // currentOrder, and the early-equality guard short-circuits before the
-  // margin comparison is even reached. This pins that short-circuit, not the
-  // ">=" vs ">" boundary at the margin -- see
-  // exactly_meeting_the_margin_does_not_rewrite for that.
+  // All costs are uniform, so orderComponent's strict "<" comparison
+  // converges on the written order: the component's own greedy order is
+  // identical to its own written order, so the per-component margin check
+  // compares that cost to itself (divided by 1.25) and declines -- the
+  // component is never accepted, chooseJoinOrder never sees a reordered
+  // component, and returns nullopt without ever assembling a `chosen`
+  // vector. This pins that no-op path, not the ">=" vs ">" boundary at the
+  // margin -- see exactly_meeting_the_margin_does_not_rewrite for that,
+  // where the greedy and written orders actually differ.
   auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
   auto g = buildGraph(*q);
   auto current = collectEnumerationOrder(firstEnumeration(q->plan()), nullptr);
@@ -435,6 +438,20 @@ TEST_F(OptimizeJoinOrderTest, bails_out_when_any_statistic_was_defaulted) {
 TEST_F(OptimizeJoinOrderTest, keeps_components_contiguous) {
   // two independent joins: a-b and c-d. The chosen order must finish one
   // component before starting the other, never interleave them.
+  //
+  // Restored to its original script (seed(c) cheap, everything else costed
+  // uniformly): neither component's own greedy order beats its own written
+  // order here (each ties with its written order and the per-component
+  // margin check declines, same reasoning as
+  // no_component_reordered_declines_the_whole_graph below), so
+  // anyComponentReordered is false. What still fires is the *resequencing*
+  // guard added on top of that: cd's standalone cost (2) against ab's (101)
+  // clears the margin against the written component sequence [a,b,c,d]
+  // (candidate cost 5 vs baseline cost 104, comfortably past 104/1.25=83.2),
+  // and neither replay is defaulted, so the candidate sequence [c,d,a,b] is
+  // accepted. This is a genuine reorder -- sequenceChanged is true -- even
+  // though no component's own internal order moved at all, and it is exactly
+  // the resequencing guard's accept path that this test now pins.
   auto q = prepare(
       "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
       "FOR c IN c3 FOR d IN c1 FILTER c.x == d.y RETURN [a, b, c, d]");
@@ -458,6 +475,152 @@ TEST_F(OptimizeJoinOrderTest, keeps_components_contiguous) {
   // {a,b} occupy adjacent positions, and so do {c,d}
   EXPECT_EQ(std::abs(positionOf("a") - positionOf("b")), 1);
   EXPECT_EQ(std::abs(positionOf("c") - positionOf("d")), 1);
+  // cd is promoted ahead of ab: this is a resequencing-only reorder.
+  EXPECT_EQ(namesOf(*chosen), (std::vector<std::string>{"c", "d", "a", "b"}));
+}
+
+TEST_F(OptimizeJoinOrderTest,
+       defaulted_component_keeps_written_order_while_confident_reorders) {
+  // Two independent joins: a-b (confidently estimated) and c-d (statistics
+  // defaulted). The whole-graph guard this replaces would have declined
+  // everything because of c-d alone; per-component, only c-d must decline.
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FOR c IN c3 FOR d IN c1 FILTER c.x == d.y RETURN [a, b, c, d]");
+  auto g = buildGraph(*q);
+  ASSERT_EQ(g.connectedComponents().size(), 2u);
+  auto current = collectEnumerationOrder(firstEnumeration(q->plan()), nullptr);
+
+  // a-b: seed(b)=1 + step(a)=1 = 2 against a written cost of seed(a)=100 +
+  // step(b)=1 = 101 -- clears the margin (2 < 101/1.25 = 80.8), and neither
+  // vertex is defaulted, so this component is accepted and flips to [b, a].
+  //
+  // c-d: same seed/step shape, so greedy would also want [d, c] at cost 2
+  // against a written cost of 101 -- but both c and d are marked defaulted,
+  // so this component must decline regardless of the cost numbers and keep
+  // its written order [c, d].
+  FakeCostEstimator estimator;
+  estimator.seedCost = {{"a", 100.0}, {"b", 1.0}, {"c", 100.0}, {"d", 1.0}};
+  estimator.stepCost = {{"a", 1.0}, {"b", 1.0}, {"c", 1.0}, {"d", 1.0}};
+  estimator.defaultedVertices = {"c", "d"};
+
+  auto chosen = chooseJoinOrder(g, estimator, current);
+  ASSERT_TRUE(chosen.has_value());
+  // a-b flips to [b, a]; c-d keeps its written [c, d]; both stay contiguous.
+  EXPECT_EQ(namesOf(*chosen), (std::vector<std::string>{"b", "a", "c", "d"}));
+}
+
+TEST_F(OptimizeJoinOrderTest,
+       marginal_component_keeps_written_order_while_another_reorders) {
+  // Two independent joins: a-b clears the margin, c-d is confidently
+  // estimated (no defaulted statistic) but its improvement is only ~10%,
+  // well short of the required 20%. c-d must keep its written order even
+  // though it is not defaulted -- the margin guard is independent of the
+  // defaulted guard, and both are now per component.
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FOR c IN c3 FOR d IN c1 FILTER c.x == d.y RETURN [a, b, c, d]");
+  auto g = buildGraph(*q);
+  ASSERT_EQ(g.connectedComponents().size(), 2u);
+  auto current = collectEnumerationOrder(firstEnumeration(q->plan()), nullptr);
+
+  // a-b: seed(b)=1 + step(a)=1 = 2 against written seed(a)=100 + step(b)=1 =
+  // 101 -- clears the margin (2 < 80.8), accepted, flips to [b, a].
+  //
+  // c-d: greedy is [d, c] at seed(d)=90 + step(c)=1 = 91, against a written
+  // cost of seed(c)=100 + step(d)=1 = 101. 91 is cheaper than 101, but
+  // 91 >= 101/1.25 = 80.8, so the margin does not clear -- c-d must keep its
+  // written order [c, d].
+  FakeCostEstimator estimator;
+  estimator.seedCost = {{"a", 100.0}, {"b", 1.0}, {"c", 100.0}, {"d", 90.0}};
+  estimator.stepCost = {{"a", 1.0}, {"b", 1.0}, {"c", 1.0}, {"d", 1.0}};
+
+  auto chosen = chooseJoinOrder(g, estimator, current);
+  ASSERT_TRUE(chosen.has_value());
+  EXPECT_EQ(namesOf(*chosen), (std::vector<std::string>{"b", "a", "c", "d"}));
+}
+
+TEST_F(OptimizeJoinOrderTest, no_component_reordered_declines_the_whole_graph) {
+  // Two independent joins, both scripted so their greedy order coincides
+  // with their own written order (a tie, which the per-component margin
+  // guard declines). With every cost identical, the resequencing guard also
+  // ties (the cheapest-concatenation candidate comes out identical to the
+  // written component sequence here), so it declines too. With neither a
+  // component reordered nor the sequence changed, chooseJoinOrder must
+  // decline the whole graph.
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FOR c IN c3 FOR d IN c1 FILTER c.x == d.y RETURN [a, b, c, d]");
+  auto g = buildGraph(*q);
+  ASSERT_EQ(g.connectedComponents().size(), 2u);
+  auto current = collectEnumerationOrder(firstEnumeration(q->plan()), nullptr);
+
+  FakeCostEstimator estimator;  // all costs identical -> every start ties
+
+  EXPECT_FALSE(chooseJoinOrder(g, estimator, current).has_value())
+      << "no component was reordered, so the graph must be reported unapplied";
+}
+
+TEST_F(OptimizeJoinOrderTest, single_component_sequencing_guard_is_a_no_op) {
+  // A single connected component has only one possible component sequence,
+  // so the written sequence and the cheapest-concatenation candidate are
+  // structurally identical (both are exactly that one component's own final
+  // order). The resequencing guard added on top of the per-component guards
+  // must therefore never affect a single-component graph: this pins that a
+  // component's own accepted reorder ([b, a] here) still comes through
+  // untouched once the guard's baseline/candidate machinery is added,
+  // instead of, say, being dropped or duplicated when there is only one
+  // component to sequence.
+  auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
+  auto g = buildGraph(*q);
+  ASSERT_EQ(g.connectedComponents().size(), 1u);
+  auto current = collectEnumerationOrder(firstEnumeration(q->plan()), nullptr);
+
+  FakeCostEstimator estimator;
+  estimator.seedCost = {{"a", 1000.0}, {"b", 1.0}};
+  estimator.stepCost = {{"a", 1.0}, {"b", 1.0}};
+
+  auto chosen = chooseJoinOrder(g, estimator, current);
+  ASSERT_TRUE(chosen.has_value());
+  EXPECT_EQ(namesOf(*chosen), (std::vector<std::string>{"b", "a"}));
+}
+
+TEST_F(OptimizeJoinOrderTest,
+       defaulted_statistics_block_resequencing_even_when_cost_favours_it) {
+  // Two independent joins: a-b (confidently estimated, and internally
+  // reordered) and c-d (statistics defaulted, so it correctly keeps its
+  // written order [c, d] per the per-component guard). c-d is scripted to be
+  // very cheap standalone, so the cheapest-concatenation candidate wants to
+  // hoist it ahead of a-b, reversing the written component sequence
+  // [a,b,c,d] -> [c,d,a,b]. Cost alone would even clear the margin for that
+  // swap (3.2 vs 4.1/1.25=3.28) -- but c-d's defaulted flag propagates
+  // through every replay it appears in, so both the candidate and the
+  // written-sequence baseline come out `defaulted`, and the resequencing
+  // guard must decline regardless of the cost numbers. The written
+  // component sequence -- a-b before c-d -- must survive.
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FOR c IN c3 FOR d IN c1 FILTER c.x == d.y RETURN [a, b, c, d]");
+  auto g = buildGraph(*q);
+  ASSERT_EQ(g.connectedComponents().size(), 2u);
+  auto current = collectEnumerationOrder(firstEnumeration(q->plan()), nullptr);
+
+  // a-b: seed(b)=1 + step(a)=1 = 2 against a written cost of seed(a)=100 +
+  // step(b)=1 = 101 -- clears the margin, accepted, flips to [b, a].
+  //
+  // c-d: seed(c)=0.1 + step(d)=0.1 = 0.2 standalone -- cheap enough that the
+  // sequencing loop wants it first -- but c and d are both defaulted, so the
+  // per-component guard keeps c-d's written order [c, d] regardless.
+  FakeCostEstimator estimator;
+  estimator.seedCost = {{"a", 100.0}, {"b", 1.0}, {"c", 0.1}, {"d", 1.0}};
+  estimator.stepCost = {{"a", 1.0}, {"b", 1.0}, {"c", 1.0}, {"d", 0.1}};
+  estimator.defaultedVertices = {"c", "d"};
+
+  auto chosen = chooseJoinOrder(g, estimator, current);
+  ASSERT_TRUE(chosen.has_value());
+  // a-b flips to [b, a] (a genuine, confident reorder), but the component
+  // sequence itself -- a-b before c-d -- must stay exactly as written.
+  EXPECT_EQ(namesOf(*chosen), (std::vector<std::string>{"b", "a", "c", "d"}));
 }
 
 TEST_F(OptimizeJoinOrderTest, component_sequencing_ties_break_by_node_id) {
@@ -583,8 +746,10 @@ TEST_F(OptimizeJoinOrderTest, improvement_margin_requires_twenty_percent) {
 }
 
 TEST_F(OptimizeJoinOrderTest, exactly_meeting_the_margin_does_not_rewrite) {
-  // Unlike identical_order_is_a_no_op, chosen != currentOrder here, so this
-  // test actually reaches the margin comparison. current costs exactly 100
+  // Unlike identical_order_is_a_no_op, the component's greedy order actually
+  // differs from its written order here, so this test exercises the ">="
+  // boundary on a real candidate rather than a value compared to itself.
+  // current costs exactly 100
   // (seed(a)=50, step(b)=50); chosen ([b, a]) costs exactly 80
   // (seed(b)=40, step(a)=40) -- precisely current / (1 + kImprovementMargin)
   // = 100 / 1.25 = 80. The guard is `chosen >= current / (1 + margin)`, so

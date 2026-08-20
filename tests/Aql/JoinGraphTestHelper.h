@@ -230,6 +230,11 @@ class FakeCostEstimator final : public arangodb::aql::JoinCostEstimator {
   std::map<std::string, double, std::less<>> stepCost;
   // set to true to make every estimate report a defaulted statistic
   bool defaulted = false;
+  // out-variable names of vertices whose statistic reports as defaulted
+  // independently of the blanket `defaulted` flag above -- lets a test mark
+  // just one vertex (or component) as unindexed while the rest of the graph
+  // stays confident.
+  std::set<std::string> defaultedVertices;
   // records how many connecting edges `extend` was offered for each vertex it
   // added, keyed by that vertex's out-variable name, so tests can assert on
   // it directly instead of only reasoning about it from cost behaviour.
@@ -242,9 +247,10 @@ class FakeCostEstimator final : public arangodb::aql::JoinCostEstimator {
   auto seed(arangodb::aql::JoinGraph::Node const& start) const
       -> arangodb::aql::JoinEstimate override {
     auto it = seedCost.find(nameOf(start));
-    return {.cardinality = 1.0,
-            .cost = it == seedCost.end() ? 1.0 : it->second,
-            .defaulted = defaulted};
+    return {
+        .cardinality = 1.0,
+        .cost = it == seedCost.end() ? 1.0 : it->second,
+        .defaulted = defaulted || defaultedVertices.contains(nameOf(start))};
   }
 
   auto extend(arangodb::aql::JoinEstimate const& prefix,
@@ -261,7 +267,8 @@ class FakeCostEstimator final : public arangodb::aql::JoinCostEstimator {
     }
     return {.cardinality = prefix.cardinality,
             .cost = prefix.cost + step,
-            .defaulted = prefix.defaulted || defaulted};
+            .defaulted = prefix.defaulted || defaulted ||
+                         defaultedVertices.contains(nameOf(next))};
   }
 };
 
