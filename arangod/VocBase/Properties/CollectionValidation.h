@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -22,26 +22,23 @@
 
 #pragma once
 
-#include "VocBase/Properties/ClusteringMutableProperties.h"
-#include "VocBase/Properties/ClusteringConstantProperties.h"
-
 namespace arangodb {
+
 class Result;
+struct CollectionDescriptor;
+struct DatabaseConfiguration;
 
-struct UserInputCollectionProperties;
+[[nodiscard]] Result applyDefaultsAndValidate(
+    CollectionDescriptor& d, DatabaseConfiguration const& config);
 
-struct ClusteringProperties : public ClusteringMutableProperties,
-                              public ClusteringConstantProperties {
-  bool operator==(ClusteringProperties const& other) const = default;
+#ifdef USE_ENTERPRISE
+[[nodiscard]] Result validateOrSetDefaultShardingStrategyEE(
+    CollectionDescriptor& d);
+void setDefaultShardKeysEE(CollectionDescriptor& d);
+[[nodiscard]] Result validateOrSetShardingStrategyEE(
+    CollectionDescriptor& d, CollectionDescriptor const& leadingCollection);
+[[nodiscard]] Result validateSmartJoinEE(CollectionDescriptor& d);
+[[nodiscard]] Result validateOrSetSmartEdgeValidators(CollectionDescriptor& d);
+#endif
 
-  [[nodiscard]] arangodb::Result applyDefaultsAndValidateDatabaseConfiguration(
-      DatabaseConfiguration const& config);
-};
-
-template<class Inspector>
-auto inspect(Inspector& f, ClusteringProperties& props) {
-  return f.object(props).fields(
-      f.template embedFields<ClusteringMutableProperties>(props),
-      f.template embedFields<ClusteringConstantProperties>(props));
-}
 }  // namespace arangodb

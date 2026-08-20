@@ -184,7 +184,7 @@ Result createSystemCollections(
     // Override lookup for leading CollectionName
     config.getCollectionGroupSharding =
         [&testSystemCollectionsToCreate, &createdCollections, &vocbase](
-            std::string const& name) -> ResultT<UserInputCollectionProperties> {
+            std::string const& name) -> ResultT<CollectionDescriptor> {
       // For the time being the leading collection is created as standalone
       // before adding the others. So it has to be part of createdCollections.
       // So let us scan there
@@ -194,7 +194,7 @@ Result createSystemCollections(
           // So we will quickly loop here.
           // During upgrades there may be some collections before, however
           // it is not performance critical.
-          return c;
+          return c.toDescriptor();
         }
       }
 
@@ -204,7 +204,7 @@ Result createSystemCollections(
           // So we will quickly loop here.
           // During upgrades there may be some collections before, however
           // it is not performance critical.
-          return c->getCollectionProperties();
+          return c->properties();
         }
       }
       return Result{
@@ -236,7 +236,7 @@ Result createSystemCollections(
   // Override lookup for leading CollectionName
   config.getCollectionGroupSharding =
       [&systemCollectionsToCreate, &createdCollections, &vocbase](
-          std::string const& name) -> ResultT<UserInputCollectionProperties> {
+          std::string const& name) -> ResultT<CollectionDescriptor> {
     // For the time being the leading collection is created as standalone
     // before adding the others. So it has to be part of createdCollections.
     // So let us scan there
@@ -246,7 +246,7 @@ Result createSystemCollections(
         // So we will quickly loop here.
         // During upgrades there may be some collections before, however
         // it is not performance critical.
-        return c;
+        return c.toDescriptor();
       }
     }
 
@@ -256,7 +256,7 @@ Result createSystemCollections(
         // So we will quickly loop here.
         // During upgrades there may be some collections before, however
         // it is not performance critical.
-        return c->getCollectionProperties();
+        return c->properties();
       }
     }
     return Result{

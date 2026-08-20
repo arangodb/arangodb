@@ -1,7 +1,6 @@
 set(ARANGODB_VOCBASE_PROPERTIES_TEST_SOURCES
         ClusteringConstantPropertiesTest.cpp
         ClusteringMutablePropertiesTest.cpp
-        ClusteringPropertiesTest.cpp
         CollectionPropertiesTest.cpp
         CollectionConstantPropertiesTest.cpp
         CollectionMutablePropertiesTest.cpp

@@ -1762,7 +1762,7 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
   DatabaseConfiguration config{
       std::move(idGenerator),
       [this](
-          std::string const& name) -> ResultT<UserInputCollectionProperties> {
+          std::string const& name) -> ResultT<CollectionDescriptor> {
         CollectionNameResolver resolver{*this};
         auto c = resolver.getCollection(name);
         if (c == nullptr) {
@@ -1770,7 +1770,7 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
                         absl::StrCat("Collection not found: ", name,
                                      " in database ", this->name())};
         }
-        return c->getCollectionProperties();
+        return c->properties();
       }};
 
   config.isSystemDB = isSystem();
