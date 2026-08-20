@@ -1091,7 +1091,7 @@ futures::Future<Result> RestReplicationHandler::processRestoreCollection(
   }
   OperationOptions options;
 
-  if (ignoreHiddenEnterpriseCollection(input->name, force)) {
+  if (ignoreHiddenEnterpriseCollection(input->mutableProps.name, force)) {
     co_return {TRI_ERROR_NO_ERROR};
   }
 
@@ -1102,8 +1102,8 @@ futures::Future<Result> RestReplicationHandler::processRestoreCollection(
   }
 
   {
-    auto result = co_await handlingOfExistingCollection(_vocbase, input->name,
-                                                        dropExisting);
+    auto result = co_await handlingOfExistingCollection(
+        _vocbase, input->mutableProps.name, dropExisting);
     if (result.fail()) {
       co_return result.result();
     }
@@ -1115,9 +1115,9 @@ futures::Future<Result> RestReplicationHandler::processRestoreCollection(
         // Consider this process successful.
         co_return {TRI_ERROR_NO_ERROR};
       } else {
-        co_return Result(
-            TRI_ERROR_ARANGO_DUPLICATE_NAME,
-            std::string("duplicate collection name '") + input->name + "'");
+        co_return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME,
+                         std::string("duplicate collection name '") +
+                             input->mutableProps.name + "'");
       }
     }
   }
@@ -1130,7 +1130,7 @@ futures::Future<Result> RestReplicationHandler::processRestoreCollection(
   bool allowEnterpriseCollectionsOnSingleServer = false;
   bool enforceReplicationFactor = true;
 
-  if (input->isSmart || input->isSatellite()) {
+  if (input->constant.isSmart || input->clusteringMutable.isSatellite()) {
     allowEnterpriseCollectionsOnSingleServer = true;
   }
 

@@ -218,9 +218,9 @@ Result impl(ClusterInfo& ci, application_features::ApplicationServer& server,
     std::unordered_set<std::string> distributeShardsLikeColls;
     auto const& colls = writer.collectionsToCreate();
     for (auto const& c : colls) {
-      if (c.properties().distributeShardsLike.has_value()) {
+      if (c.properties().clusteringConstant.distributeShardsLike.has_value()) {
         distributeShardsLikeColls.insert(
-            c.properties().distributeShardsLike.value());
+            c.properties().clusteringConstant.distributeShardsLike.value());
       }
     }
     // If we have some, let's see if they are about to be generated or not:
