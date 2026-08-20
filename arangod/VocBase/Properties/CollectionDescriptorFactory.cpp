@@ -24,6 +24,7 @@
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "Basics/VelocyPackHelper.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 #include "VocBase/Properties/CollectionValidation.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 

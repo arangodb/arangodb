@@ -366,7 +366,9 @@ async<void> RestCollectionHandler::handleCommandPost() {
   auto config = _vocbase.getDatabaseConfiguration();
   config.enforceReplicationFactor = enforceReplicationFactor;
 
-  auto planCollection = CollectionDescriptor::fromCreateAPIBody(body, config);
+  CollectionCreateOptions createOptions;
+  auto planCollection =
+      CollectionDescriptor::fromCreateAPIBody(body, config, createOptions);
 
   if (planCollection.fail()) {
     // error message generated in inspect

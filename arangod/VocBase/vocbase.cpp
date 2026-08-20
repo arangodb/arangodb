@@ -877,13 +877,7 @@ Database::createCollections(
   // typed path: hand the properties down as a descriptor instead of
   // serializing them and parsing them again
   try {
-    std::vector<CollectionDescriptor> descriptors;
-    descriptors.reserve(collections.size());
-    for (auto const& c : collections) {
-      descriptors.emplace_back(c.toDescriptor());
-    }
-
-    auto result = createCollections(std::move(descriptors));
+    auto result = createCollections(std::move(collections));
 
     if (ServerState::instance()->isSingleServer() &&
         _server.hasFeature<DatabaseFeature>()) {
