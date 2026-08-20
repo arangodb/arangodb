@@ -159,6 +159,11 @@ void RestVersionHandler::getVersion(
 
 // Mounted at /_api/version (exact) and /_admin/version (exact)
 RestStatus RestVersionHandler::execute() {
+  if (_request->requestedApiVersion() > 0 &&
+      !isAllowedHttpMethod({RequestType::GET})) {
+    return RestStatus::DONE;
+  }
+
   VPackBuilder result;
 
   bool const allowInfo =
