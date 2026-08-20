@@ -74,12 +74,15 @@ static void addApiVersions(VPackBuilder& result) {
 }
 
 static void addVersionDetails(application_features::ApplicationServer& server,
-                              VPackBuilder& result) {
+                              VPackBuilder& result,
+                              uint32_t requestedApiVersion) {
   result.add("details", VPackValue(VPackValueType::Object));
   Version::getVPack(result);
 
   auto& serverFeature = server.getFeature<ServerFeature>();
-  result.add("mode", VPackValue(serverFeature.operationModeString()));
+  if (requestedApiVersion == 0) {
+    result.add("mode", VPackValue(serverFeature.operationModeString()));
+  }
   auto serverState = ServerState::instance();
   if (serverState != nullptr) {
     result.add("role",
@@ -143,7 +146,7 @@ void RestVersionHandler::getVersion(
     result.add("version", VPackValue(ARANGODB_VERSION));
 
     if (includeDetails) {
-      addVersionDetails(server, result);
+      addVersionDetails(server, result, requestedApiVersion);
     }
   }
 
