@@ -698,9 +698,6 @@ jobs:
       build-tests:
         type: boolean
         default: true
-      build-v8:
-        type: boolean
-        default: true
       publish-artifacts:
         type: boolean
         default: true
@@ -910,8 +907,12 @@ jobs:
                    install-client/usr/bin/arangodb \
                    install-client/usr/share/arangodb4/js/server \
                    install-client/usr/share/arangodb4/arangodb-update-db \
-                   install-client/etc \
                    install-client/var
+            # Keep the client-tool configs in /etc/arangodb4; drop only the
+            # server-side ones.
+            rm -f install-client/etc/arangodb4/arangod.conf \
+                  install-client/etc/arangodb4/arango-init-database.conf \
+                  install-client/etc/arangodb4/arango-secure-installation.conf
             # Server image ships no client tools (mirrors the TAR.GZ
             # server bundle): drop the binaries, their configs, man pages
             # and the client-only JS tree.

@@ -27,6 +27,17 @@ from src.filters import (
 class TestFilterCriteria:
     """Test FilterCriteria dataclass."""
 
+    def test_default_values(self):
+        """Test default filter criteria values."""
+        criteria = FilterCriteria()
+        assert criteria.full is False
+        assert criteria.gtest is False
+        assert criteria.architecture is None
+        assert criteria.build_variant is None
+        assert criteria.deployment_type is None
+        assert criteria.enterprise is True
+        assert criteria.test_suite == ""
+
     def test_custom_values(self):
         """Test setting custom criteria values."""
         criteria = FilterCriteria(

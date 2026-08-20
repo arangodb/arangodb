@@ -103,6 +103,7 @@ jobs:
             not:
               or:
                 - equal: [devel, << pipeline.git.branch >>]
+                - equal: ["4.0", << pipeline.git.branch >>]
                 - equal: [api, << pipeline.trigger_source >>]
                 - equal: [scheduled_pipeline, << pipeline.trigger_source >>]
           steps:

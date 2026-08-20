@@ -1083,8 +1083,12 @@ jobs:
                    install-client/usr/bin/arangodb \
                    install-client/usr/share/arangodb4/js/server \
                    install-client/usr/share/arangodb4/arangodb-update-db \
-                   install-client/etc \
                    install-client/var
+            # Keep the client-tool configs in /etc/arangodb4; drop only the
+            # server-side ones.
+            rm -f install-client/etc/arangodb4/arangod.conf \
+                  install-client/etc/arangodb4/arango-init-database.conf \
+                  install-client/etc/arangodb4/arango-secure-installation.conf
             find install-client/usr/share/man -type f \
               \( -name 'arangod.8' -o -name 'arangodb.8' -o -name 'arango-dfdb.8' -o -name 'rcarangod.8' \) \
               -delete 2>/dev/null || true
@@ -1513,6 +1517,14 @@ jobs:
         # -preview suffix must not leak into the verdict file names.
         type: enum
         enum: ["core", "client-tools"]
+      # Per-image scan-target assertions: without them an empty scan gates
+      # green. The two images have disjoint contents, so each names its own
+      # expected targets (plus the unnamed OS package database, which
+      # min-targets accounts for).
+      expect-targets:
+        type: string
+      min-targets:
+        type: integer
     docker:
       - image: cimg/base:current
     # medium suffices: the image is Alpine-sized and the daemon runs on the
@@ -1537,7 +1549,11 @@ jobs:
       - trivy-scan/scan:
           scan-type: image
           image-ref: nightly-security-scan:<< parameters.image >>-<< parameters.arch >>
-          severity: "CRITICAL,HIGH,MEDIUM,LOW,UNKNOWN"
+          # Same report/gate severity split as the package scans.
+          severity: "CRITICAL,HIGH"
+          report-severity: "CRITICAL,HIGH,MEDIUM,LOW,UNKNOWN"
+          expect-targets: << parameters.expect-targets >>
+          min-targets: << parameters.min-targets >>
           fail-on-findings: false
           ignore-unfixed: false
           exit-on-eol: "1"
@@ -2441,6 +2457,8 @@ workflows:
           arch: amd64
           image: core-preview
           gate-item-image: core
+          expect-targets: "usr/bin/arangodb,usr/sbin/rclone-arangodb"
+          min-targets: 3
           requires: [docker-enterprise-amd64]
 
       - security-check-docker-image:
@@ -2448,6 +2466,8 @@ workflows:
           arch: amd64
           image: client-tools-preview
           gate-item-image: client-tools
+          expect-targets: "Node.js"
+          min-targets: 2
           requires: [docker-enterprise-amd64]
 
       - security-check-docker-image:
@@ -2455,6 +2475,8 @@ workflows:
           arch: arm64
           image: core-preview
           gate-item-image: core
+          expect-targets: "usr/bin/arangodb,usr/sbin/rclone-arangodb"
+          min-targets: 3
           requires: [docker-enterprise-arm64]
 
       - security-check-docker-image:
@@ -2462,6 +2484,8 @@ workflows:
           arch: arm64
           image: client-tools-preview
           gate-item-image: client-tools
+          expect-targets: "Node.js"
+          min-targets: 2
           requires: [docker-enterprise-arm64]
 
       - publish-nightly:

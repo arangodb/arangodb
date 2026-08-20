@@ -12,4 +12,8 @@ RUN apk update --no-cache && apk upgrade --no-cache
 
 COPY ./install-client/ /
 
+# Client tools need no privileges: run as a dedicated non-root user.
+RUN addgroup -S arangodb && adduser -S -G arangodb -H -D arangodb
+USER arangodb
+
 CMD [ "arangosh" ]
