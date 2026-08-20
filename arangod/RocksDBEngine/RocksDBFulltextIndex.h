@@ -65,7 +65,7 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
 
   ~RocksDBFulltextIndex() = default;
 
-  IndexType type() const override { return Index::TRI_IDX_TYPE_FULLTEXT_INDEX; }
+  IndexType type() const override { return IndexType::Fulltext; }
 
   char const* typeName() const override { return "fulltext"; }
 
