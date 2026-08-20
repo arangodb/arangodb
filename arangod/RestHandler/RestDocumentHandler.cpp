@@ -188,6 +188,11 @@ async<void> RestDocumentHandler::insertDocument() {
     co_return;
   }
 
+  // if name is a numeric collection id, generate a 400 error
+  if (_request->requestedApiVersion() > 0 && rejectNumericCollectionId(cname)) {
+    co_return;
+  }
+
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {  // error message generated in parseVPackBody

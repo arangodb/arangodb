@@ -100,7 +100,8 @@ IndexFactory const& StorageEngine::indexFactory() const {
   return *_indexFactory;
 }
 
-void StorageEngine::getCapabilities(velocypack::Builder& builder) const {
+void StorageEngine::getCapabilities(velocypack::Builder& builder,
+                                    uint32_t apiVersion) const {
   builder.openObject();
   builder.add("name", velocypack::Value(typeName()));
 
@@ -114,7 +115,7 @@ void StorageEngine::getCapabilities(velocypack::Builder& builder) const {
 
   builder.add("aliases", velocypack::Value(VPackValueType::Object));
   builder.add("indexes", velocypack::Value(VPackValueType::Object));
-  for (auto const& [alias, type] : indexFactory().indexAliases()) {
+  for (auto const& [alias, type] : indexFactory().indexAliases(apiVersion)) {
     builder.add(alias, velocypack::Value(type));
   }
   builder.close();  // indexes

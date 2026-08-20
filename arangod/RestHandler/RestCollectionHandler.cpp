@@ -634,11 +634,12 @@ async<void> RestCollectionHandler::handleCommandPut() {
   }
   if (sub == "properties") {
     std::vector<std::string> keep = {
-        StaticStrings::WaitForSyncString,    StaticStrings::Schema,
-        StaticStrings::ReplicationFactor,
-        StaticStrings::MinReplicationFactor,  // deprecated
-        StaticStrings::WriteConcern,         StaticStrings::ComputedValues,
-        StaticStrings::CacheEnabled};
+        StaticStrings::WaitForSyncString, StaticStrings::Schema,
+        StaticStrings::ReplicationFactor, StaticStrings::WriteConcern,
+        StaticStrings::ComputedValues,    StaticStrings::CacheEnabled};
+    if (_request->requestedApiVersion() == 0) {
+      keep.emplace_back(StaticStrings::MinReplicationFactor);  // deprecated
+    }
     VPackBuilder props = VPackCollection::keep(body, keep);
 
     OperationOptions options;

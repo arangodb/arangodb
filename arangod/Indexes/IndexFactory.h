@@ -114,7 +114,7 @@ class IndexFactory {
   /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
   /// "hash") used to display storage engine capabilities
   virtual std::vector<std::pair<std::string_view, std::string_view>>
-  indexAliases() const;
+  indexAliases(uint32_t apiVersion) const;
 
   /// @brief create system indexes primary / edge
   virtual void fillSystemIndexes(

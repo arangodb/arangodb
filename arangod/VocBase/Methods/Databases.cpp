@@ -96,7 +96,8 @@ std::vector<std::string> Databases::list(DatabaseFeature& databaseFeature,
   }
 }
 
-Result Databases::info(TRI_vocbase_t* vocbase, velocypack::Builder& result) {
+Result Databases::info(TRI_vocbase_t* vocbase, velocypack::Builder& result,
+                       uint32_t apiVersion) {
   if (ServerState::instance()->isCoordinator()) {
     auto& cache = vocbase->server().getFeature<ClusterFeature>().agencyCache();
     auto [acb, idx] = cache.read(std::vector<std::string>{
@@ -129,7 +130,9 @@ Result Databases::info(TRI_vocbase_t* vocbase, velocypack::Builder& result) {
       }
       result.add(StaticStrings::DataSourceSystem,
                  VPackValue(NameValidator::isSystemName(name)));
-      result.add("path", VPackValue("none"));
+      if (apiVersion == 0) {
+        result.add("path", VPackValue("none"));
+      }
     }
   } else {
     VPackObjectBuilder b(&result);
@@ -138,7 +141,9 @@ Result Databases::info(TRI_vocbase_t* vocbase, velocypack::Builder& result) {
                VPackValue(std::to_string(vocbase->id())));
     result.add(StaticStrings::DataSourceSystem,
                VPackValue(vocbase->isSystem()));
-    result.add("path", VPackValue(vocbase->path()));
+    if (apiVersion == 0) {
+      result.add("path", VPackValue(vocbase->path()));
+    }
   }
   return Result();
 }

@@ -391,7 +391,7 @@ std::vector<std::string_view> IndexFactory::supportedIndexes() const {
 }
 
 std::vector<std::pair<std::string_view, std::string_view>>
-IndexFactory::indexAliases() const {
+IndexFactory::indexAliases(uint32_t apiVersion) const {
   return {};
 }
 

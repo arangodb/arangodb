@@ -907,6 +907,26 @@ async<void> RestIndexHandler::createIndex() {
     body = copy.slice();
   }
 
+  auto type = body.get(StaticStrings::IndexType);
+  if (!type.isString()) {
+    events::CreateIndexEnd(_vocbase.name(), cName, body,
+                           TRI_ERROR_BAD_PARAMETER);
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "expecting attribute 'type' in request body");
+    co_return;
+  }
+
+  auto const& typeStr = type.stringView();
+  if (_request->requestedApiVersion() > 0 &&
+      (typeStr == "geo1" || typeStr == "geo2" || typeStr == "hash" ||
+       typeStr == "skiplist" || typeStr == "fulltext")) {
+    events::CreateIndexEnd(_vocbase.name(), cName, body,
+                           TRI_ERROR_BAD_PARAMETER);
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "index type is not supported in API version 1 or higher");
+    co_return;
+  }
+
   VPackBuilder indexInfo;
   indexInfo.add(body);
 

@@ -147,7 +147,15 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
 
   filter.includeSystem =
       _request->parsedValue("includeSystem", filter.includeSystem);
-  filter.includeFoxxQueues = _request->parsedValue("includeFoxxQueues", false);
+  if (_request->requestedApiVersion() == 0) {
+    filter.includeFoxxQueues =
+        _request->parsedValue("includeFoxxQueues", false);
+  } else {
+    LOG_TOPIC("f1c3e", ERR, Logger::REQUESTS)
+        << "'includeFoxxQueues' query parameter no longer exists in API "
+           "version 1 and above.";
+    filter.includeFoxxQueues = false;
+  }
 
   // grab list of transactions from the body value
   if (_request->requestType() == arangodb::rest::RequestType::PUT) {
@@ -228,9 +236,12 @@ RestStatus RestWalAccessHandler::execute() {
              _request->requestedApiVersion() == 0) {
     handleCommandDetermineOpenTransactions(wal);
   } else {
-    generateError(
-        ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        "expected GET /_api/wal/[tail|range|lastTick|open-transactions]>");
+    std::string msg = "expected GET /_api/wal/[tail|range|lastTick";
+    if (_request->requestedApiVersion() == 0) {
+      msg.append("|open-transactions");
+    }
+    msg.append("]");
+    generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, msg);
   }
 
   return RestStatus::DONE;
