@@ -58,7 +58,7 @@ struct IndexTypeFactory {
 
   /// @brief determine if the two Index definitions will result in the same
   ///        index once instantiated
-  virtual bool equal(Index::IndexType type, velocypack::Slice lhs,
+  virtual bool equal(IndexType type, velocypack::Slice lhs,
                      velocypack::Slice rhs, bool attributeOrderMatters) const;
 
   virtual bool equal(velocypack::Slice lhs, velocypack::Slice rhs,

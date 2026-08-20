@@ -330,6 +330,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_api/query-cache/properties`, { mode: 'off' });
       assertPermissions([
+        "AdminQueryCache",
         "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
@@ -339,6 +340,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_api/query-cache`);
       assertPermissions([
+        "AdminQueryCache",
         "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
