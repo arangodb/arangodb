@@ -595,8 +595,12 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
           // AdminQueryCache only requires RO access to _system, unlike every
           // other admin action, which requires RW (see below).
           [&](p::AdminQueryCache const&) -> Result {
-            return check(p::UseDatabase{.name = StaticStrings::SystemDatabase,
-                                        .level = DatabaseAccessLevel::Read});
+            if (_requestedApiVersion == 0) {
+              return check(p::UseDatabase{.name = StaticStrings::SystemDatabase,
+                                          .level = DatabaseAccessLevel::Read});
+            } else {
+              return isAdmin();
+            }
           },
           // Every other admin action requires RW access to the _system
           // database.
