@@ -329,7 +329,9 @@ multiple loops, which may enable further optimizations by other rules.)");
                                OptimizerRule::Flags::CanBeDisabled),
       R"(Reorder adjacent `FOR` loops that are joined by equijoin conditions,
 using estimated join cardinalities to pick an order, and keeping the order as
-written unless the estimate shows a clear improvement.)");
+written unless the estimate shows a clear improvement. Enabling this rule turns
+off `interchange-adjacent-enumerations`, which is otherwise enabled by default,
+so the two do not compete for the same decision.)");
 
   // replace attribute accesses that are equal due to a filter statement
   // with the same value. This might enable other optimizations later on.
