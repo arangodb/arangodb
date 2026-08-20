@@ -25,6 +25,7 @@
 #include "Basics/StaticStrings.h"
 #include "Inspection/Access.h"
 #include "Inspection/Status.h"
+#include "VocBase/Properties/InspectContexts.h"
 
 #include <cstdint>
 #include <string>
@@ -54,11 +55,18 @@ struct CollectionStorageProperties {
 
 template<class Inspector>
 auto inspect(Inspector& f, CollectionStorageProperties& props) {
-  return f.object(props).fields(
-      f.field(StaticStrings::ObjectId, props.objectId)
-          .transformWith(
-              CollectionStorageProperties::Transformers::ObjectIdAsString{})
-          .fallback(f.keep()));
+  if constexpr (isInternalContext<Inspector>) {
+    return f.object(props).fields(
+        f.field(StaticStrings::ObjectId, props.objectId)
+            .transformWith(
+                CollectionStorageProperties::Transformers::ObjectIdAsString{})
+            .fallback(f.keep()));
+  } else {
+    // objectId is assigned by the storage engine. On the user path it must stay
+    // unknown, so the create API rejects it as it always has.
+    return f.object(props).fields();
+  }
 }
+
 
 }  // namespace arangodb
