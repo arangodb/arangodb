@@ -50,7 +50,7 @@ RestStatus RestQueryCacheHandler::execute() {
       replaceProperties();
       break;
     default:
-      generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);
+      generateNotImplemented("ILLEGAL /_api/query-cache");
       break;
   }
 
