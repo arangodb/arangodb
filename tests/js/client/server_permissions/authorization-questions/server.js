@@ -192,13 +192,10 @@ function serverApiAuthzSuite () {
       ], endObserve());
     },
 
-    // GET /_admin/server/availability - OPEN endpoint: the handler forces
-    // superuser and returns before the base implementation runs, so not even
-    // an authenticated request asks anything.
+    // GET /_admin/server/availability - OPEN endpoint
     testAvailability: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/server/availability`);
-      // this endpoint bypasses RestHandler::checkUserCanAccess()
       assertPermissions([
       ], endObserve());
     },
