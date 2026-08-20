@@ -28,8 +28,13 @@
 #include "VocBase/Properties/CollectionMutableProperties.h"
 #include "VocBase/Properties/CollectionInternalProperties.h"
 #include "VocBase/Properties/CollectionStorageProperties.h"
+#include "VocBase/Properties/CollectionCreateOptions.h"
+#include "VocBase/voc-types.h"
 
 namespace arangodb {
+template<typename T>
+class ResultT;
+struct DatabaseConfiguration;
 
 struct CollectionDescriptor {
   CollectionConstantProperties constant{};
@@ -41,14 +46,40 @@ struct CollectionDescriptor {
   bool operator==(CollectionDescriptor const&) const = default;
 
   static CollectionDescriptor fromVelocyPack(velocypack::Slice info);
+
+  static ResultT<CollectionDescriptor> fromCreateAPIBody(
+      velocypack::Slice input, DatabaseConfiguration const& config,
+      CollectionCreateOptions& options,
+      bool activateBackwardsCompatibility = true);
+
+  static ResultT<CollectionDescriptor> fromCreateAPIV8(
+      velocypack::Slice properties, std::string const& name,
+      TRI_col_type_e type, DatabaseConfiguration const& config);
+
+  static ResultT<CollectionDescriptor> fromRestoreAPIBody(
+      velocypack::Slice input, DatabaseConfiguration const& config);
+
+  struct Invariants {
+    [[nodiscard]] static auto isSmartConfiguration(
+        CollectionDescriptor const& d) -> inspection::Status;
+  };
 };
 
 template<class Inspector>
 auto inspect(Inspector& f, CollectionDescriptor& d) {
-  return f.object(d).fields(
+  auto result = f.object(d).fields(
       f.embedFields(d.constant), f.embedFields(d.internal),
       f.embedFields(d.clusteringConstant), f.embedFields(d.clusteringMutable),
-      f.embedFields(d.mutableProps), f.embedFields(d.storage));
+      f.embedFields(d.mutableProps), f.embedFields(d.storage),
+      // parsed into CollectionCreateOptions, not a collection property
+      f.ignoreField("avoidServers"));
+
+  if constexpr (isInternalContext<Inspector>) {
+    return inspection::Status{std::move(result)};
+  } else {
+    return result.invariant(
+        CollectionDescriptor::Invariants::isSmartConfiguration);
+  }
 }
 
 }  // namespace arangodb

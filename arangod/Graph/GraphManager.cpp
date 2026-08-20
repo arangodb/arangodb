@@ -631,7 +631,7 @@ Result GraphManager::ensureCollections(
     config.getCollectionGroupSharding =
         [&leadingCollection, &createRequests,
          originalCallback = std::move(originalCallback)](
-            std::string const& name) -> ResultT<UserInputCollectionProperties> {
+            std::string const& name) -> ResultT<CollectionDescriptor> {
       // We can only search for the leading collection.
       TRI_ASSERT(name == leadingCollection.value())
           << name << " does not match " << leadingCollection.value();
@@ -639,7 +639,7 @@ Result GraphManager::ensureCollections(
         if (c.name == name) {
           // On new graphs the leading collection is in the first position.
           // So we will quickly loop here, even if it is not this loop is safe
-          return c;
+          return c.toDescriptor();
         }
       }
       // Try lookup via Database

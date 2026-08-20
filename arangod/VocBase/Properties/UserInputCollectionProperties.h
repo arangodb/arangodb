@@ -22,10 +22,11 @@
 
 #pragma once
 
-#include "VocBase/Properties/ClusteringProperties.h"
 #include "VocBase/Properties/CollectionConstantProperties.h"
 #include "VocBase/Properties/CollectionMutableProperties.h"
 #include "VocBase/Properties/CollectionInternalProperties.h"
+#include "VocBase/Properties/ClusteringConstantProperties.h"
+#include "VocBase/Properties/ClusteringMutableProperties.h"
 
 namespace arangodb {
 struct DatabaseConfiguration;
@@ -33,51 +34,9 @@ struct DatabaseConfiguration;
 struct UserInputCollectionProperties : public CollectionConstantProperties,
                                        public CollectionMutableProperties,
                                        public CollectionInternalProperties,
-                                       public ClusteringProperties {
-  struct Invariants {
-    [[nodiscard]] static auto isSmartConfiguration(
-        UserInputCollectionProperties const& props) -> inspection::Status;
-  };
-
+                                       public ClusteringMutableProperties,
+                                       public ClusteringConstantProperties {
   bool operator==(UserInputCollectionProperties const& other) const = default;
-
-  [[nodiscard]] arangodb::Result applyDefaultsAndValidateDatabaseConfiguration(
-      DatabaseConfiguration const& config);
-
- private:
-  Result validateOrSetDefaultShardingStrategy();
-
-#ifdef USE_ENTERPRISE
-  Result validateOrSetDefaultShardingStrategyEE();
-
-  Result validateOrSetSmartEdgeValidators();
-#endif
-
-  void setDefaultShardKeys();
-
-#ifdef USE_ENTERPRISE
-  void setDefaultShardKeysEE();
-#endif
-
-  [[nodiscard]] arangodb::Result validateShardKeys();
-
-#ifdef USE_ENTERPRISE
-  [[nodiscard]] arangodb::Result validateShardKeysEE();
-#endif
-
-  [[nodiscard]] arangodb::Result validateOrSetShardingStrategy(
-      UserInputCollectionProperties const& leadingCollection);
-
-#ifdef USE_ENTERPRISE
-  [[nodiscard]] arangodb::Result validateOrSetShardingStrategyEE(
-      UserInputCollectionProperties const& leadingCollection);
-#endif
-
-  [[nodiscard]] arangodb::Result validateSmartJoin();
-
-#ifdef USE_ENTERPRISE
-  [[nodiscard]] arangodb::Result validateSmartJoinEE();
-#endif
 };
 
 template<class Inspector>
@@ -86,9 +45,8 @@ auto inspect(Inspector& f, UserInputCollectionProperties& body) {
       .fields(f.template embedFields<CollectionConstantProperties>(body),
               f.template embedFields<CollectionMutableProperties>(body),
               f.template embedFields<CollectionInternalProperties>(body),
-              f.template embedFields<ClusteringProperties>(body))
-      .invariant(
-          UserInputCollectionProperties::Invariants::isSmartConfiguration);
+              f.template embedFields<ClusteringMutableProperties>(body),
+              f.template embedFields<ClusteringConstantProperties>(body));
 }
 
 }  // namespace arangodb
