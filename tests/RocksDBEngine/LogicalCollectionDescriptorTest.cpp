@@ -30,10 +30,8 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Properties/ClusteringConstantProperties.h"
 #include "VocBase/Properties/CollectionDescriptor.h"
-#include "VocBase/Properties/CreateCollectionBody.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/Properties/KeyGeneratorProperties.h"
-#include "VocBase/Properties/UserInputCollectionProperties.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -338,19 +336,20 @@ TEST_F(LogicalCollectionDescriptorTest, SliceCtor_matchesDescriptorCtor) {
   auto expected = viaSlice->createCollection(sliceBuilder.slice());
   engine().createCollection(*viaSlice, *expected);
 
-  // same input, taken through CreateCollectionBody and the descriptor
+  // same input, taken through the descriptor factory
   DatabaseConfiguration config{
       []() { return DataSourceId(42); },
-      [](std::string const&) -> ResultT<UserInputCollectionProperties> {
+      [](std::string const&) -> ResultT<CollectionDescriptor> {
         return {TRI_ERROR_INTERNAL};
       }};
-  auto body =
-      CreateCollectionBody::fromCreateAPIBody(sliceBuilder.slice(), config,
-                                              /*backwardsCompatibility*/ false);
+  CollectionCreateOptions createOptions;
+  auto body = CollectionDescriptor::fromCreateAPIBody(
+      sliceBuilder.slice(), config, createOptions,
+      /*backwardsCompatibility*/ false);
   ASSERT_TRUE(body.ok()) << body.errorMessage();
 
   auto viaDescriptor = makeDatabase("viaDescriptor", 43);
-  auto actual = viaDescriptor->createCollection(body->toDescriptor());
+  auto actual = viaDescriptor->createCollection(body.get());
   engine().createCollection(*viaDescriptor, *actual);
 
   EXPECT_EQ(

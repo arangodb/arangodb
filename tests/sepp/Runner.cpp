@@ -49,7 +49,6 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
-#include "VocBase/Properties/CreateCollectionBody.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 
 namespace {
@@ -211,14 +210,14 @@ auto Runner::createCollection(std::string const& name, std::string const& type)
   config.enforceReplicationFactor = enforceReplicationFactor;
 
   auto planCollection =
-      CreateCollectionBody::fromCreateAPIBody(b.slice(), config);
+      CollectionDescriptor::fromCreateAPIBody(b.slice(), config);
 
   if (planCollection.fail()) {
     throw std::runtime_error("Failed to create collection: " +
                              std::string(planCollection.errorMessage()));
   }
 
-  std::vector<CreateCollectionBody> collections{
+  std::vector<CollectionDescriptor> collections{
       std::move(planCollection.get())};
 
   auto res = methods::Collections::create(

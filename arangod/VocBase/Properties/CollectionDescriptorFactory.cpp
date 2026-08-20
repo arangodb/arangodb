@@ -775,7 +775,7 @@ ResultT<CollectionDescriptor> CollectionDescriptor::fromRestoreAPIBody(
       });
   if (res.fail()) {
     auto newBody = transformFromBackwardsCompatibleRestoreBody(input, config,
-                                                              res.result());
+                                                               res.result());
     if (newBody.fail()) {
       return newBody.result();
     }
@@ -830,7 +830,8 @@ ResultT<CollectionDescriptor> CollectionDescriptor::fromRestoreAPIBody(
   return res;
 }
 
-velocypack::Builder collectionCreateResponse(CollectionDescriptor const& d) {
+velocypack::Builder arangodb::collectionCreateResponse(
+    CollectionDescriptor const& d) {
   velocypack::Builder builder;
   velocypack::serializeWithContext(builder, d, InspectUserContext{});
   return builder;
