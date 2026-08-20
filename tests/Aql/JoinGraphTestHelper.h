@@ -67,6 +67,27 @@ inline std::shared_ptr<arangodb::aql::Query> prepareJoinPlan(
   return q;
 }
 
+// Like prepareJoinPlan(), but leaves the query in PLAN_OPTIMIZATION instead
+// of EXECUTION. prepareJoinPlan()'s prepareQuery() call always finishes by
+// entering EXECUTION, which is fine for consumers that only walk the plan's
+// node structure -- but IndexJoinStatistics itself calls
+// Query::trxForOptimization(), an optimization-time API that asserts (under
+// maintainer mode) that the query has not started executing. Use this
+// instead of prepareJoinPlan() wherever an IndexJoinStatistics is
+// constructed directly over the resulting plan.
+inline std::shared_ptr<arangodb::aql::Query> prepareJoinPlanForStatistics(
+    mocks::MockAqlServer& server, std::string const& query) {
+  auto ctx = std::make_shared<transaction::StandaloneContext>(
+      server.getSystemDatabase(), transaction::OperationOriginTestCase{});
+  auto options =
+      velocypack::Parser::fromJson(R"({"optimizer":{"rules":["-all"]}})");
+  auto q = arangodb::aql::Query::create(
+      std::move(ctx), arangodb::aql::QueryString(query), nullptr,
+      arangodb::aql::QueryOptions(options->slice()));
+  q->prepareOptimizedPlanForTests();
+  return q;
+}
+
 // Walks from the singleton towards the root and returns the first
 // EnumerateCollection node (i.e. the bottom-most enumeration).
 inline arangodb::aql::ExecutionNode* firstEnumeration(

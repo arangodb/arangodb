@@ -87,7 +87,7 @@ class IndexJoinStatisticsTest : public testing::Test {
 
 TEST_F(IndexJoinStatisticsTest, document_count_matches_the_collection) {
   makeCollection("s1", 100);
-  auto q = prepareJoinPlan(server, "FOR a IN s1 RETURN a");
+  auto q = prepareJoinPlanForStatistics(server, "FOR a IN s1 RETURN a");
   auto g = buildGraph(*q);
   IndexJoinStatistics stats{*q->plan()};
 
@@ -96,7 +96,7 @@ TEST_F(IndexJoinStatisticsTest, document_count_matches_the_collection) {
 
 TEST_F(IndexJoinStatisticsTest, empty_attribute_set_is_one_and_not_defaulted) {
   makeCollection("s1", 100);
-  auto q = prepareJoinPlan(server, "FOR a IN s1 RETURN a");
+  auto q = prepareJoinPlanForStatistics(server, "FOR a IN s1 RETURN a");
   auto g = buildGraph(*q);
   IndexJoinStatistics stats{*q->plan()};
 
@@ -108,7 +108,7 @@ TEST_F(IndexJoinStatisticsTest, empty_attribute_set_is_one_and_not_defaulted) {
 
 TEST_F(IndexJoinStatisticsTest, no_covering_index_defaults_to_one) {
   makeCollection("s1", 100);
-  auto q = prepareJoinPlan(server, "FOR a IN s1 RETURN a");
+  auto q = prepareJoinPlanForStatistics(server, "FOR a IN s1 RETURN a");
   auto g = buildGraph(*q);
   IndexJoinStatistics stats{*q->plan()};
 
@@ -129,7 +129,7 @@ TEST_F(IndexJoinStatisticsTest,
   // arithmetic.
   makeCollection("s1", 100,
                  {R"({"type":"persistent","fields":["x"],"unique":true})"});
-  auto q = prepareJoinPlan(server, "FOR a IN s1 RETURN a");
+  auto q = prepareJoinPlanForStatistics(server, "FOR a IN s1 RETURN a");
   auto g = buildGraph(*q);
   IndexJoinStatistics stats{*q->plan()};
 
