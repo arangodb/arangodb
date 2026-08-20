@@ -469,7 +469,7 @@ class runInTinkerpopProvider extends runWithAllureReport {
     let start = Date();
     let status = true;
     const cwd = fs.normalize(fs.makeAbsolute(this.options.tinkerpopsource));
-    SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout * (this.options.isInstrumented)? 2: 1);
+    SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout * (this.options.isInstrumented)? 3: 2);
     try {
       const rc = executeExternalAndWait('mvn', args, false, 0, [], cwd);
       if (rc.exit !== 0) {
