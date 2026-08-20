@@ -229,10 +229,11 @@ You can use this feature to roll out new JWT secrets throughout a cluster.)");
           "A folder containing one or more JWT secret files to use for JWT "
           "authentication.",
           new StringParameter(&options.jwtSecretFolderProgramOption))
-      .setLongDescription(R"(Files are sorted alphabetically, the first secret
-is used for signing + verifying JWT tokens (_active_ secret), and all other
-secrets are only used to validate incoming JWT tokens (_passive_ secrets).
-Only one secret needs to verify a JWT token for it to be accepted.
+      .setLongDescription(R"(Hidden files (starting with a `.`) and files with
+the extension `.tmp` are ignored. The other files are sorted alphabetically, the
+first secret is used for signing + verifying JWT tokens (_active_ secret), and
+all other secrets are only used to validate incoming JWT tokens (_passive_
+secrets). Only one secret needs to verify a JWT token for it to be accepted.
 
 You can reload JWT secrets from disk without restarting the server or the nodes
 of a cluster deployment via the `POST /_admin/server/jwt` HTTP API endpoint.
