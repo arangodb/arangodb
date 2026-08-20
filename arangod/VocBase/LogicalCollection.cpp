@@ -423,7 +423,8 @@ CollectionDescriptor LogicalCollection::properties() const {
   // ShardingInfo
   d.clusteringConstant.numberOfShards = numberOfShards();
   d.clusteringConstant.shardKeys = shardKeys();
-  d.clusteringConstant.shardingStrategy = shardingInfo()->shardingStrategyName();
+  d.clusteringConstant.shardingStrategy =
+      shardingInfo()->shardingStrategyName();
   if (auto distLike = distributeShardsLike(); !distLike.empty()) {
     d.clusteringConstant.distributeShardsLikeCid = std::move(distLike);
   }
@@ -437,7 +438,6 @@ CollectionDescriptor LogicalCollection::properties() const {
 
   return d;
 }
-
 
 bool LogicalCollection::waitForSync() const noexcept {
   if (_groupId.has_value() && ServerState::instance()->isDBServer()) {
@@ -1531,13 +1531,14 @@ auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
     replication2::replicated_state::document::DocumentLeaderState> {
   auto stateMachine = getDocumentState();
 
-  static constexpr auto throwUnavailable = []<typename... Args>(
-      basics::SourceLocation location, std::format_string<Args...> formatString,
-      Args && ... args) {
-    throw basics::Exception(
-        TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
-        std::format(formatString, std::forward<Args>(args)...), location);
-  };
+  static constexpr auto throwUnavailable =
+      []<typename... Args>(basics::SourceLocation location,
+                           std::format_string<Args...> formatString,
+                           Args&&... args) {
+        throw basics::Exception(
+            TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
+            std::format(formatString, std::forward<Args>(args)...), location);
+      };
 
   auto leader = stateMachine->getLeader();
   if (leader == nullptr) {

@@ -1754,8 +1754,7 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
 
   DatabaseConfiguration config{
       std::move(idGenerator),
-      [this](
-          std::string const& name) -> ResultT<CollectionDescriptor> {
+      [this](std::string const& name) -> ResultT<CollectionDescriptor> {
         CollectionNameResolver resolver{*this};
         auto c = resolver.getCollection(name);
         if (c == nullptr) {

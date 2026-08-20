@@ -43,8 +43,7 @@ struct LogTarget;
 }
 
 struct PlanCollectionEntryReplication2 {
-  explicit PlanCollectionEntryReplication2(
-      CollectionDescriptor collection);
+  explicit PlanCollectionEntryReplication2(CollectionDescriptor collection);
 
   [[nodiscard]] std::string getCID() const;
 
