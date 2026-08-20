@@ -94,7 +94,7 @@ void GetByPrimaryKey::Thread::run() {
 
   RocksDBPrimaryIndex* primaryIndex = nullptr;
   for (auto const& idx : collection->getIndexes()) {
-    if (idx->type() == arangodb::IndexType::Primary) {
+    if (idx->type() == IndexType::Primary) {
       primaryIndex = static_cast<RocksDBPrimaryIndex*>(idx.get());
       break;
     }

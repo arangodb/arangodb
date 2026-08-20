@@ -239,7 +239,7 @@ static bool geoFuncArgCheck(ExecutionPlan* plan, AstNode const* args,
   // check for suitiable indexes
   for (std::shared_ptr<arangodb::Index> idx : indexes) {
     // check if current index is a geo-index
-    bool isGeo = idx->type() == arangodb::IndexType::Geo;
+    bool isGeo = idx->type() == IndexType::Geo;
     if (isGeo && idx->fields().size() == 1) {  // individual fields
       // check access paths of attributes in ast and those in index match
       if (idx->fields()[0] == attributeAccess.second) {

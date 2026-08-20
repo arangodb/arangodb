@@ -177,7 +177,7 @@ bool PhysicalCollection::hasDocuments() {
   for (auto const& idx : indexes) {
     if (idx->type() == type) {
       // Only check relevant indexes
-      if (type == arangodb::IndexType::TTL) {
+      if (type == IndexType::TTL) {
         // directly return here, as we allow at most one ttl index per
         // collection
         return idx;

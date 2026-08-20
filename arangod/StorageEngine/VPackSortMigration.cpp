@@ -47,7 +47,6 @@ Result analyzeVPackIndexSorting(RocksDBEngine& engine,
                                 VPackBuilder& result) {
   auto* db = engine.db();
 
-  using IndexType = arangodb::IndexType;
   auto newComparator = RocksDBVPackComparator<
       arangodb::basics::VelocyPackHelper::SortingMethod::Correct>();
 

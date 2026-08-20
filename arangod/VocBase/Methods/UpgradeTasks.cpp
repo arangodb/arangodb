@@ -362,21 +362,21 @@ Result createSystemStatisticsIndices(
     std::vector<std::shared_ptr<LogicalCollection>>& collections) {
   Result res;
   if (vocbase.isSystem()) {
-    res = ::createIndex(StaticStrings::StatisticsCollection,
-                        arangodb::IndexType::Skiplist, {"time"}, false, false,
-                        collections);
+    res =
+        ::createIndex(StaticStrings::StatisticsCollection, IndexType::Skiplist,
+                      {"time"}, false, false, collections);
     if (!res.ok() && !res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
       return res;
     }
-    res = ::createIndex(StaticStrings::Statistics15Collection,
-                        arangodb::IndexType::Skiplist, {"time"}, false, false,
-                        collections);
+    res =
+        ::createIndex(StaticStrings::Statistics15Collection,
+                      IndexType::Skiplist, {"time"}, false, false, collections);
     if (!res.ok() && !res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
       return res;
     }
-    res = ::createIndex(StaticStrings::StatisticsRawCollection,
-                        arangodb::IndexType::Skiplist, {"time"}, false, false,
-                        collections);
+    res =
+        ::createIndex(StaticStrings::StatisticsRawCollection,
+                      IndexType::Skiplist, {"time"}, false, false, collections);
     if (!res.ok() && !res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
       return res;
     }
@@ -389,9 +389,8 @@ Result createSystemCollectionsIndices(
     std::vector<std::shared_ptr<LogicalCollection>>& collections) {
   Result res;
   if (vocbase.isSystem()) {
-    res =
-        ::createIndex(StaticStrings::UsersCollection, arangodb::IndexType::Hash,
-                      {"user"}, true, true, collections);
+    res = ::createIndex(StaticStrings::UsersCollection, IndexType::Hash,
+                        {"user"}, true, true, collections);
     if (!res.ok()) {
       return res;
     }
@@ -407,20 +406,20 @@ Result createSystemCollectionsIndices(
     return res;
   }
 
-  res = ::createIndex(StaticStrings::AppsCollection, arangodb::IndexType::Hash,
-                      {"mount"}, true, true, collections);
+  res = ::createIndex(StaticStrings::AppsCollection, IndexType::Hash, {"mount"},
+                      true, true, collections);
   if (!res.ok()) {
     return res;
   }
-  res = ::createIndex(
-      StaticStrings::JobsCollection, arangodb::IndexType::Skiplist,
-      {"queue", "status", "delayUntil"}, false, false, collections);
+  res = ::createIndex(StaticStrings::JobsCollection, IndexType::Skiplist,
+                      {"queue", "status", "delayUntil"}, false, false,
+                      collections);
   if (!res.ok()) {
     return res;
   }
-  res = ::createIndex(
-      StaticStrings::JobsCollection, arangodb::IndexType::Skiplist,
-      {"status", "queue", "delayUntil"}, false, false, collections);
+  res = ::createIndex(StaticStrings::JobsCollection, IndexType::Skiplist,
+                      {"status", "queue", "delayUntil"}, false, false,
+                      collections);
   if (!res.ok()) {
     return res;
   }
