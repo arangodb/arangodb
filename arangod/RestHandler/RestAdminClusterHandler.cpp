@@ -412,10 +412,11 @@ auto RestAdminClusterHandler::executeAsync() -> futures::Future<futures::Unit> {
     } else if (command == NodeEngine) {
       co_await handleNodeEngine();
       co_return;
-    } else if (command == NodeStatistics) {
+    } else if (command == NodeStatistics &&
+               _request->requestedApiVersion() == 0) {
       co_await handleNodeStatistics();
       co_return;
-    } else if (command == Statistics) {
+    } else if (command == Statistics && _request->requestedApiVersion() == 0) {
       co_await handleStatistics();
       co_return;
     } else if (command == ShardDistribution) {

@@ -457,7 +457,7 @@ async<void> RestCollectionHandler::handleCommandPut() {
   }
   TRI_ASSERT(coll);
 
-  if (sub == "load") {
+  if (sub == "load" && _request->requestedApiVersion() == 0) {
     // "load" is a no-op starting with 3.9
     bool cc = VelocyPackHelper::getBooleanValue(body, "count", true);
     co_await collectionRepresentation(
@@ -466,7 +466,7 @@ async<void> RestCollectionHandler::handleCommandPut() {
         /*showCount*/ cc ? CountType::Standard : CountType::None);
     co_return standardResponse();
   }
-  if (sub == "unload") {
+  if (sub == "unload" && _request->requestedApiVersion() == 0) {
     bool flush = _request->parsedValue("flush", false);
 
     if (flush && !coll->deleted()) {

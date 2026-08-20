@@ -221,7 +221,8 @@ RestStatus RestWalAccessHandler::execute() {
               _request->requestType() == RequestType::DELETE_REQ)) {
     handleCommandTail(wal);
   } else if (suffixes[0] == "open-transactions" &&
-             _request->requestType() == RequestType::GET) {
+             _request->requestType() == RequestType::GET &&
+             _request->requestedApiVersion() == 0) {
     handleCommandDetermineOpenTransactions(wal);
   } else {
     generateError(

@@ -103,10 +103,18 @@ auto RestAdminLogHandler::executeAsync() -> futures::Future<futures::Unit> {
   auto const& suffixes = _request->suffixes();
 
   if (type == rest::RequestType::DELETE_REQ) {
-    if (suffixes.empty() ||
-        (suffixes.size() == 1 && suffixes[0] == "entries")) {
+    if (suffixes.empty()) {
+      if (_request->requestedApiVersion() == 0) {
+        clearLogs();
+      } else {
+        generateError(rest::ResponseCode::GONE, TRI_ERROR_HTTP_GONE,
+                      "This endpoint has been removed. Please use DELETE "
+                      "`/_admin/log/entries` instead.");
+      }
+    } else if (suffixes.size() == 1 && suffixes[0] == "entries")) {
       clearLogs();
-    } else if (suffixes.size() == 1 && suffixes[0] == "level") {
+    }
+    else if (suffixes.size() == 1 && suffixes[0] == "level") {
       // reset log levels to defaults
       co_await handleLogLevel();
     } else {
@@ -117,7 +125,14 @@ auto RestAdminLogHandler::executeAsync() -> futures::Future<futures::Unit> {
     }
   } else if (type == rest::RequestType::GET) {
     if (suffixes.empty()) {
-      co_await reportLogs(/*newFormat*/ false);
+      if (_request->requestedApiVersion() == 0) {
+        co_await reportLogs(/*newFormat*/ false);
+      } else {
+        generateError(rest::ResponseCode::GONE, TRI_ERROR_HTTP_GONE,
+                      "This endpoint has been removed. Please use GET "
+                      "`/_admin/log/entries` instead.");
+      }
+
     } else if (suffixes.size() == 1 && suffixes[0] == "entries") {
       co_await reportLogs(/*newFormat*/ true);
     } else if (suffixes.size() == 1 && suffixes[0] == "level") {

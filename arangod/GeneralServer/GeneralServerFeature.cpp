@@ -550,7 +550,7 @@ void GeneralServerFeature::defineInitialHandlers(rest::RestHandlerFactory& f) {
   f.addHandler("/_api/version",
                RestHandlerCreator<RestVersionHandler>::createNoData, {0, 1});
   f.addHandler("/_admin/version",
-               RestHandlerCreator<RestVersionHandler>::createNoData, {0, 1});
+               RestHandlerCreator<RestVersionHandler>::createNoData, {0});
   f.addHandler("/openapi.json",
                RestHandlerCreator<RestOpenApiHandler>::createNoData, {0, 1, 2});
   f.addHandler("/_admin/status",
@@ -604,7 +604,7 @@ void GeneralServerFeature::defineRemainingHandlers(
 
   f.addPrefixHandler(RestVocbaseBaseHandler::ENDPOINT_PATH,
                      RestHandlerCreator<RestEndpointHandler>::createNoData,
-                     {0, 1});
+                     {0});
 
   f.addPrefixHandler(RestVocbaseBaseHandler::IMPORT_PATH,
                      RestHandlerCreator<RestImportHandler>::createNoData,
@@ -648,8 +648,7 @@ void GeneralServerFeature::defineRemainingHandlers(
 #endif
 
   f.addPrefixHandler(RestVocbaseBaseHandler::UPLOAD_PATH,
-                     RestHandlerCreator<RestUploadHandler>::createNoData,
-                     {0, 1});
+                     RestHandlerCreator<RestUploadHandler>::createNoData, {0});
 
   f.addPrefixHandler(RestVocbaseBaseHandler::USERS_PATH,
                      RestHandlerCreator<RestUsersHandler>::createNoData,
@@ -786,7 +785,7 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addPrefixHandler("/_api/job",
                      RestHandlerCreator<arangodb::RestJobHandler>::createData<
                          AsyncJobManager*>,
-                     {0, 1}, _jobManager.get());
+                     {0}, _jobManager.get());
 
   f.addPrefixHandler("/_api/engine",
                      RestHandlerCreator<RestEngineHandler>::createNoData,
