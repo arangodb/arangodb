@@ -14,13 +14,13 @@
   statistics it needs is not backed by an index. Queries over collections
   without a suitable index on the join attributes are therefore left untouched.
 
-  Enabling `optimize-join-order` also switches off
-  `interchange-adjacent-enumerations` for that query. That rule is enabled by
-  default, so this replaces one reordering strategy with the other rather than
-  adding to it: cost-based reordering alone then decides the enumeration order.
-  If it declines -- for instance because the join attributes carry no index to
-  estimate from -- the query keeps the order as written and is reordered by
-  neither rule.
+  `optimize-join-order` now runs before `interchange-adjacent-enumerations`,
+  which is enabled by default, and switches it off for a query only once it
+  has actually reordered a join. If it declines instead -- for instance
+  because the join attributes carry no index to estimate from --
+  `interchange-adjacent-enumerations` still runs as usual, so enabling
+  `optimize-join-order` can never leave a query less optimized than the
+  default.
 
 * COR-742: AQL `MATCH` inline projections support aliasing / flattening via
   `RETURN name = <expr>` in addition to bare attribute keeps. Alias expressions

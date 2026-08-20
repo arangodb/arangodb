@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual */
+/*global assertEqual, assertNotEqual, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -276,6 +276,71 @@ function optimizeJoinOrderTestSuite () {
 
       assertEqual([cnSmall], scanned, JSON.stringify(plan.nodes.map(n => n.type)));
       assertEqual([cnLarge], probed, JSON.stringify(plan.nodes.map(n => n.type)));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief interchange-adjacent-enumerations is a brute-force alternative that
+/// decides the very same thing this rule does, so once this rule has
+/// actually reordered a join, interchange must not also run on the result
+/// -- otherwise the two would compete over the same decision. This is the
+/// only fixture (real, index-backed, size-asymmetric statistics) where the
+/// rule demonstrably rewrites, which is what makes this assertion possible;
+/// interchange is left at its default-enabled state (not disabled) so the
+/// suppression itself is what is under test.
+////////////////////////////////////////////////////////////////////////////////
+
+    testInterchangeSuppressedWhenJoinOrderApplies : function () {
+      const query = `
+        FOR a IN ${cnLarge}
+          FOR b IN ${cnSmall}
+            FILTER a.joinKey == b.joinKey
+            RETURN [a, b]`;
+
+      const stmt = db._createStatement({
+        query, bindVars: {},
+        options: { optimizer: { rules: ["+" + ruleName] } }
+      });
+      const explained = stmt.explain();
+
+      // The rule has to have fired, or there is nothing to suppress and the
+      // rest of this test would pass vacuously.
+      assertNotEqual(-1, explained.plan.rules.indexOf(ruleName), query);
+
+      // Do NOT assert on the absence of "interchange-adjacent-enumerations"
+      // from plan.rules: that is vacuously true either way. This rule has
+      // already produced the order interchange's own estimate prefers, so
+      // even when interchange does run, the plan it permutes loses the cost
+      // comparison and the winning plan carries no interchange marker.
+      // Measured directly: with suppression removed, this query still
+      // reports interchange absent from plan.rules while creating 2 plans
+      // instead of 1.
+      //
+      // What suppression actually prevents is the n! fan-out, so assert on
+      // that instead. plansCreated is 1 exactly when interchange never ran,
+      // and rulesSkipped counts it as skipped.
+      assertEqual(1, explained.stats.plansCreated, JSON.stringify(explained.stats));
+      assertTrue(explained.stats.rulesSkipped >= 1, JSON.stringify(explained.stats));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the other half of the guarantee: when this rule declines, opting
+/// into it must not cost anything either. A plain cross product between
+/// cnLarge and cnSmall gives optimize-join-order no equijoin to build a
+/// graph from, so it declines exactly as in testRuleNoEffect. interchange-
+/// adjacent-enumerations, left at its default-enabled state, must still be
+/// free to reorder the same two enumerations by their generic (index-
+/// independent) cost estimate, proving suppression did not fire.
+////////////////////////////////////////////////////////////////////////////////
+
+    testInterchangeStillFiresWhenJoinOrderDeclines : function () {
+      const query = `
+        FOR a IN ${cnLarge}
+          FOR b IN ${cnSmall}
+            RETURN [a, b]`;
+
+      const planRules = rules({ optimizer: { rules: ["+" + ruleName] } }, query);
+      assertEqual(-1, planRules.indexOf(ruleName), query);
+      assertNotEqual(-1, planRules.indexOf("interchange-adjacent-enumerations"), query);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

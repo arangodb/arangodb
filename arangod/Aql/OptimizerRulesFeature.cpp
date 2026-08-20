@@ -308,17 +308,6 @@ number of subquery results is checked later. This saves copying the document
 data from the subquery to the outer scope and may enable follow-up
 optimizations.)");
 
-  /// "Pass 3": interchange EnumerateCollection nodes in all possible ways
-  ///           this is level 500, please never let new plans from higher
-  ///           levels go back to this or lower levels!
-  registerRule(
-      "interchange-adjacent-enumerations", interchangeAdjacentEnumerationsRule,
-      OptimizerRule::interchangeAdjacentEnumerationsRule,
-      OptimizerRule::makeFlags(OptimizerRule::Flags::CanCreateAdditionalPlans,
-                               OptimizerRule::Flags::CanBeDisabled),
-      R"(Try out permutations of `FOR` statements in queries that contain
-multiple loops, which may enable further optimizations by other rules.)");
-
   // Cost-based reordering of adjacent collection enumerations. Disabled by
   // default. Can be enabled via
   // `{ optimizer: { rules: ["+optimize-join-order"] } }`
@@ -329,9 +318,22 @@ multiple loops, which may enable further optimizations by other rules.)");
                                OptimizerRule::Flags::CanBeDisabled),
       R"(Reorder adjacent `FOR` loops that are joined by equijoin conditions,
 using estimated join cardinalities to pick an order, and keeping the order as
-written unless the estimate shows a clear improvement. Enabling this rule turns
-off `interchange-adjacent-enumerations`, which is otherwise enabled by default,
-so the two do not compete for the same decision.)");
+written unless the estimate shows a clear improvement. When it actually
+reorders a join, it also disables `interchange-adjacent-enumerations` for the
+resulting plan so the two rules do not compete over the same decision; if it
+declines to reorder (for example because statistics are unavailable),
+`interchange-adjacent-enumerations` still runs as usual.)");
+
+  /// "Pass 3": interchange EnumerateCollection nodes in all possible ways
+  ///           this is level 500, please never let new plans from higher
+  ///           levels go back to this or lower levels!
+  registerRule(
+      "interchange-adjacent-enumerations", interchangeAdjacentEnumerationsRule,
+      OptimizerRule::interchangeAdjacentEnumerationsRule,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanCreateAdditionalPlans,
+                               OptimizerRule::Flags::CanBeDisabled),
+      R"(Try out permutations of `FOR` statements in queries that contain
+multiple loops, which may enable further optimizations by other rules.)");
 
   // replace attribute accesses that are equal due to a filter statement
   // with the same value. This might enable other optimizations later on.

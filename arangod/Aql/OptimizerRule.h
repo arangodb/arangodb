@@ -140,14 +140,14 @@ struct OptimizerRule {
     // push limits into subqueries and simplify them
     optimizeSubqueriesRule,
 
+    optimizeJoinOrder,
+
     // "Pass 3": interchange EnumerateCollection nodes in all possible ways
     //           this is level 500, please never let new plans from higher
     //           levels go back to this or lower levels!
     // ======================================================
 
     interchangeAdjacentEnumerationsRule,
-
-    optimizeJoinOrder,
 
     // replace attribute accesses that are equal due to a filter statement
     // with the same value. This might enable other optimizations later on.
@@ -503,11 +503,12 @@ struct OptimizerRule {
       "decided as it takes precedence over projections");
 
   static_assert(
-      interchangeAdjacentEnumerationsRule < optimizeJoinOrder,
-      "interchangeAdjacentEnumerationsRule's early-out for cost-based join "
-      "reordering lives inside that rule and relies on running first; if "
-      "the order inverted, the early-out could never prevent the n! "
-      "fan-out it exists to suppress");
+      optimizeJoinOrder < interchangeAdjacentEnumerationsRule,
+      "optimizeJoinOrder must run first so it can suppress "
+      "interchangeAdjacentEnumerationsRule's n! fan-out once it has "
+      "actually reordered a join -- if the order inverted, interchange "
+      "would already have produced its candidate plans before "
+      "optimizeJoinOrder ever ran");
   static_assert(
       optimizeJoinOrder < moveCalculationsUpRule2,
       "optimizeJoinOrder deliberately splices enumerations above the run's "

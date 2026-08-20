@@ -27,6 +27,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Optimizer.h"
+#include "Aql/OptimizerRule.h"
 #include "Aql/Variable.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
@@ -619,6 +620,21 @@ void optimizeJoinOrder(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     }
 
     n = next;
+  }
+
+  if (modified) {
+    // Cost-based reordering ran and actually rewrote a join here, so running
+    // interchange-adjacent-enumerations afterwards would fan out n! plans
+    // that just re-permute what this rule already chose, leaving the generic
+    // cost estimate to pick among near-duplicates -- the exact mechanism
+    // cost-based reordering exists to replace. Suppression is conditional on
+    // `modified`, not on this rule merely being enabled: when it declines
+    // (e.g. no usable statistics), interchange must still run, so opting
+    // into cost-based join ordering can never leave a query worse optimized
+    // than the default.
+    opt->disableRules(plan.get(), [](OptimizerRule const& r) {
+      return r.level == OptimizerRule::interchangeAdjacentEnumerationsRule;
+    });
   }
 
   // Report the rule applied only when the order actually changed, so an

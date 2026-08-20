@@ -848,8 +848,12 @@ TEST_F(OptimizeJoinOrderTest, deterministic_run_is_not_flagged) {
 TEST_F(OptimizeJoinOrderTest, decline_is_not_reported_as_applied) {
   // The mock collections carry no indexes, so every statistic is defaulted and
   // the rule declines. Declining must not be reported as applied, or every join
-  // query needlessly re-triggers the downstream rules. -interchange-adjacent-
-  // enumerations isolates the subject, as in the neighbouring test.
+  // query needlessly re-triggers the downstream rules. This assertion is about
+  // optimize-join-order's own applied-status only, which does not depend on
+  // interchange-adjacent-enumerations -- suppression of that rule is now
+  // conditional on optimize-join-order actually having rewritten a join, so
+  // interchange runs here regardless. -interchange-adjacent-enumerations is
+  // kept anyway, purely to isolate the subject from an unrelated rule.
   EXPECT_FALSE(
       assertRules(server.getSystemDatabase(),
                   "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]",
@@ -868,7 +872,11 @@ TEST_F(OptimizeJoinOrderTest, rule_leaves_the_plan_alone_without_statistics) {
   // permutes adjacent FOR loops; with it left on, it -- not
   // optimize-join-order -- could be the one deciding the enumeration order
   // this test checks. It must be off so the test isolates its actual
-  // subject. The two rules are made mutually exclusive in a later task.
+  // subject. The two rules are only mutually exclusive when optimize-join-
+  // order actually rewrites a join; on this unindexed fixture it always
+  // declines, so interchange would otherwise be free to permute this same
+  // pair and pick a different order via the generic cost estimate -- this
+  // explicit disable is what keeps the asserted order deterministic.
   auto options = velocypack::Parser::fromJson(
       R"({"optimizer":{"rules":["+optimize-join-order",)"
       R"("-interchange-adjacent-enumerations"]}})");
@@ -884,10 +892,19 @@ TEST_F(OptimizeJoinOrderTest, rule_leaves_the_plan_alone_without_statistics) {
   EXPECT_EQ(namesOf(after), (std::vector<std::string>{"a", "b"}));
 }
 
-TEST_F(OptimizeJoinOrderTest, interchange_yields_when_join_order_is_enabled) {
-  // With optimize-join-order enabled, interchange-adjacent-enumerations must
-  // not fan out: reordering is this rule's job, and the n! candidates would
-  // otherwise be discriminated by the generic cost estimate.
+TEST_F(OptimizeJoinOrderTest, interchange_still_runs_when_join_order_declines) {
+  // This fixture's collections (see the constructor above) carry no indexes
+  // at all, so the real join cost estimator always reports defaulted
+  // statistics here and optimize-join-order always declines to reorder --
+  // it never sets `modified`, and so never suppresses
+  // interchange-adjacent-enumerations. That suppression only fires once
+  // optimize-join-order has actually rewritten a join (proved in the JS
+  // integration suite against real indexed collections, which this C++
+  // fixture cannot provide). What this test can honestly assert is the
+  // other half of the guarantee: when optimize-join-order declines,
+  // interchange-adjacent-enumerations must still run exactly as if
+  // optimize-join-order were not enabled at all -- opting in to cost-based
+  // reordering must never leave a query less optimized than the default.
   std::string const query = "FOR a IN c1 FOR b IN c2 FOR c IN c3 RETURN 1";
 
   // assertRules returns true when every listed rule appears in the explain
@@ -898,20 +915,23 @@ TEST_F(OptimizeJoinOrderTest, interchange_yields_when_join_order_is_enabled) {
       R"({"optimizer":{"rules":["+interchange-adjacent-enumerations"]}})"))
       << "interchange should fire when it is the only reordering rule on";
 
-  EXPECT_FALSE(assertRules(
+  EXPECT_TRUE(assertRules(
       server.getSystemDatabase(), query,
       {OptimizerRule::interchangeAdjacentEnumerationsRule}, nullptr,
       R"({"optimizer":{"rules":["+interchange-adjacent-enumerations",)"
       R"("+optimize-join-order"]}})"))
-      << "interchange must yield to cost-based reordering";
+      << "optimize-join-order declines on this unindexed fixture, so it "
+         "never suppresses interchange -- both rules run";
 
   // The realistic configuration: the user enables cost-based reordering and
-  // leaves interchange at its default-enabled state. Interchange must still
-  // yield, without needing to be named explicitly.
-  EXPECT_FALSE(
+  // leaves interchange at its default-enabled state. Because
+  // optimize-join-order declines here, interchange must still run without
+  // needing to be named explicitly.
+  EXPECT_TRUE(
       assertRules(server.getSystemDatabase(), query,
                   {OptimizerRule::interchangeAdjacentEnumerationsRule}, nullptr,
-                  R"({"optimizer":{"rules":["+optimize-join-order"]}})"));
+                  R"({"optimizer":{"rules":["+optimize-join-order"]}})"))
+      << "declining to reorder must not silently disable interchange too";
 }
 
 }  // namespace arangodb::tests::aql
