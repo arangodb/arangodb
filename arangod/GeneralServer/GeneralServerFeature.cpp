@@ -785,7 +785,7 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addPrefixHandler("/_api/job",
                      RestHandlerCreator<arangodb::RestJobHandler>::createData<
                          AsyncJobManager*>,
-                     {0}, _jobManager.get());
+                     {0, 1}, _jobManager.get());
 
   f.addPrefixHandler("/_api/engine",
                      RestHandlerCreator<RestEngineHandler>::createNoData,
@@ -857,7 +857,7 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addPrefixHandler("/_admin/job",
                      RestHandlerCreator<arangodb::RestJobHandler>::createData<
                          AsyncJobManager*>,
-                     {0, 1}, _jobManager.get());
+                     {0}, _jobManager.get());
 
   // further admin handlers
   f.addPrefixHandler(
