@@ -212,7 +212,7 @@ Result RocksDBIndex::drop() {
   auto* coll = toRocksDBCollection(_collection);
   // edge index needs to be dropped with prefixSameAsStart = false
   // otherwise full index scan will not work
-  bool const prefixSameAsStart = type() != Index::TRI_IDX_TYPE_EDGE_INDEX;
+  bool const prefixSameAsStart = type() != IndexType::Edge;
   bool const useRangeDelete = coll->meta().numberDocuments() >= 32 * 1024;
 
   Result r = rocksutils::removeLargeRange(_engine.db(), getBounds(),
@@ -299,7 +299,7 @@ Result RocksDBIndex::update(transaction::Methods& trx, RocksDBMethods* mthd,
                             bool performChecks) {
   // It is illegal to call this method on the primary index
   // RocksDBPrimaryIndex must override this method accordingly
-  TRI_ASSERT(type() != TRI_IDX_TYPE_PRIMARY_INDEX);
+  TRI_ASSERT(type() != IndexType::Primary);
 
   /// only if the insert needs to see the changes of the update, enable
   /// indexing:
@@ -381,39 +381,39 @@ void RocksDBIndex::setEstimator(
 
 void RocksDBIndex::recalculateEstimates() {}
 
-RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type,
-                                         uint64_t objectId, bool unique) {
+RocksDBKeyBounds RocksDBIndex::getBounds(IndexType type, uint64_t objectId,
+                                         bool unique) {
   switch (type) {
-    case RocksDBIndex::TRI_IDX_TYPE_PRIMARY_INDEX:
+    case IndexType::Primary:
       return RocksDBKeyBounds::PrimaryIndex(objectId);
-    case RocksDBIndex::TRI_IDX_TYPE_EDGE_INDEX:
+    case IndexType::Edge:
       return RocksDBKeyBounds::EdgeIndex(objectId);
-    case RocksDBIndex::TRI_IDX_TYPE_HASH_INDEX:
-    case RocksDBIndex::TRI_IDX_TYPE_SKIPLIST_INDEX:
-    case RocksDBIndex::TRI_IDX_TYPE_TTL_INDEX:
-    case RocksDBIndex::TRI_IDX_TYPE_PERSISTENT_INDEX:
-    case RocksDBIndex::TRI_IDX_TYPE_INVERTED_INDEX:
+    case IndexType::Hash:
+    case IndexType::Skiplist:
+    case IndexType::TTL:
+    case IndexType::Persistent:
+    case IndexType::Inverted:
       if (unique) {
         return RocksDBKeyBounds::UniqueVPackIndex(objectId, false);
       }
       return RocksDBKeyBounds::VPackIndex(objectId, false);
-    case RocksDBIndex::TRI_IDX_TYPE_FULLTEXT_INDEX:
+    case IndexType::Fulltext:
       return RocksDBKeyBounds::FulltextIndex(objectId);
-    case RocksDBIndex::TRI_IDX_TYPE_GEO1_INDEX:
-    case RocksDBIndex::TRI_IDX_TYPE_GEO2_INDEX:
+    case IndexType::Geo1:
+    case IndexType::Geo2:
       return RocksDBKeyBounds::LegacyGeoIndex(objectId);
-    case RocksDBIndex::TRI_IDX_TYPE_GEO_INDEX:
+    case IndexType::Geo:
       return RocksDBKeyBounds::GeoIndex(objectId);
-    case RocksDBIndex::TRI_IDX_TYPE_IRESEARCH_LINK:
+    case IndexType::IResearchLink:
       return RocksDBKeyBounds::DatabaseViews(objectId);
-    case RocksDBIndex::TRI_IDX_TYPE_MDI_INDEX:
-    case RocksDBIndex::TRI_IDX_TYPE_ZKD_INDEX:
+    case IndexType::MDI:
+    case IndexType::Zkd:
       return RocksDBKeyBounds::MdiIndex(objectId);
-    case RocksDBIndex::TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
+    case IndexType::MDIPrefixed:
       return RocksDBKeyBounds::MdiVPackIndex(objectId);
-    case RocksDBIndex::TRI_IDX_TYPE_VECTOR_INDEX:
+    case IndexType::Vector:
       return RocksDBKeyBounds::VectorVPackIndex(objectId);
-    case RocksDBIndex::TRI_IDX_TYPE_UNKNOWN:
+    case IndexType::Unknown:
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }

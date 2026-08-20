@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -19,27 +19,29 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
-#include "RocksDBEngine/RocksDBVPackIndex.h"
-#include "VocBase/Identifiers/IndexId.h"
+#include <cstdint>
 
 namespace arangodb {
-
-class RocksDBSkiplistIndex : public RocksDBVPackIndex {
- public:
-  RocksDBSkiplistIndex() = delete;
-
-  RocksDBSkiplistIndex(IndexId iid, LogicalCollection& coll,
-                       arangodb::velocypack::Slice const& info)
-      : RocksDBVPackIndex(iid, coll, info) {}
-
-  IndexType type() const override { return IndexType::Skiplist; }
-
-  char const* typeName() const override { return "rocksdb-skiplist"; }
-
-  bool isSorted() const override { return true; }
+enum class IndexType : std::uint8_t {
+  Unknown = 0,
+  Primary = 1,
+  Geo = 2,
+  Geo1 = 3,
+  Geo2 = 4,
+  Hash = 5,
+  Edge = 6,
+  Fulltext = 7,
+  Skiplist = 8,
+  TTL = 9,
+  Persistent = 10,
+  IResearchLink = 11,
+  NoAccess = 12,
+  Zkd = 13,
+  MDI = 14,
+  MDIPrefixed = 15,
+  Inverted = 16,
+  Vector = 17,
 };
-
 }  // namespace arangodb
