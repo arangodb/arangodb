@@ -153,7 +153,6 @@ target_link_libraries(arango_aql
   arango_indexes
   arango_iresearch
   arango_network
-  arango_v8server
   immer)
 
 target_include_directories(arango_aql PRIVATE

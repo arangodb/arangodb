@@ -99,14 +99,11 @@ endif()
 target_link_libraries(arango_rest_handler
   PUBLIC
     arango_auth
-    arango_actions
     arango_actor
     arango_basic_utils
-    arango_statistics
     arango_iresearch
+    arango_sharding
     arango::validation
-    arango_v8
-    arango_v8server
     rocksdb_interface
     immer
     velocypack)

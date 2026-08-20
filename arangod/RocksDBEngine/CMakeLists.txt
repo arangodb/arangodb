@@ -81,7 +81,6 @@ target_link_libraries(arango_rocksdb
     faiss
   PRIVATE
     arango_health
-    arango_v8server
     snappy)
 
 add_library(arango_rocksdb_rest STATIC

@@ -75,7 +75,7 @@ target_link_libraries(arango_cluster
     arango_auth
     arango_basic_utils velocypack
     arango::validation rocksdb_interface immer arango_actor
-    arango_iresearch arango_v8)
+    arango_iresearch)
 
 target_include_directories(arango_cluster PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"

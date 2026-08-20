@@ -16,7 +16,7 @@ target_link_libraries(arango_auth
   PUBLIC
     arango_basic_utils velocypack
     arango::validation rocksdb_interface immer arango_actor
-    arango_iresearch arango_v8)
+    arango_iresearch)
 
 target_include_directories(arango_auth PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
