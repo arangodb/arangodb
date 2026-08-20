@@ -103,7 +103,8 @@ Result validateShardKeys(CollectionDescriptor const& d) {
 
 Result validateOrSetShardingStrategy(
     CollectionDescriptor& d, CollectionDescriptor const& leadingCollection) {
-  auto const& leaderStrategy = leadingCollection.clusteringConstant.shardingStrategy;
+  auto const& leaderStrategy =
+      leadingCollection.clusteringConstant.shardingStrategy;
   TRI_ASSERT(leaderStrategy.has_value());
   if (d.constant.isSmart) {
 #ifdef USE_ENTERPRISE
@@ -150,8 +151,7 @@ Result arangodb::applyDefaultsAndValidate(CollectionDescriptor& d,
     return res;
   }
 
-  auto res =
-      d.internal.applyDefaultsAndValidateDatabaseConfiguration(config);
+  auto res = d.internal.applyDefaultsAndValidateDatabaseConfiguration(config);
   if (res.fail()) {
     return res;
   }
@@ -180,8 +180,7 @@ Result arangodb::applyDefaultsAndValidate(CollectionDescriptor& d,
     if (leader.clusteringConstant.distributeShardsLike.has_value() ||
         leader.clusteringConstant.distributeShardsLikeCid.has_value()) {
       // We are creating a chain of distributeShardsLike, this is not allowed.
-      TRI_ASSERT(
-          leader.clusteringConstant.distributeShardsLikeCid.has_value());
+      TRI_ASSERT(leader.clusteringConstant.distributeShardsLikeCid.has_value());
       auto leadersLeader = config.getCollectionGroupSharding(
           leader.clusteringConstant.distributeShardsLikeCid.value());
       // We cannot see a follower to a non-existent leader.
@@ -203,14 +202,14 @@ Result arangodb::applyDefaultsAndValidate(CollectionDescriptor& d,
     if (d.clusteringConstant.numberOfShards.has_value()) {
       if (d.clusteringConstant.numberOfShards !=
           leader.clusteringConstant.numberOfShards) {
-        return {TRI_ERROR_BAD_PARAMETER,
-                "Cannot have a different numberOfShards (" +
-                    std::to_string(
-                        d.clusteringConstant.numberOfShards.value()) +
-                    "), than the leading collection (" +
-                    std::to_string(
-                        leader.clusteringConstant.numberOfShards.value()) +
-                    ")"};
+        return {
+            TRI_ERROR_BAD_PARAMETER,
+            "Cannot have a different numberOfShards (" +
+                std::to_string(d.clusteringConstant.numberOfShards.value()) +
+                "), than the leading collection (" +
+                std::to_string(
+                    leader.clusteringConstant.numberOfShards.value()) +
+                ")"};
       }
     } else {
       d.clusteringConstant.numberOfShards =
@@ -225,8 +224,7 @@ Result arangodb::applyDefaultsAndValidate(CollectionDescriptor& d,
             leader.clusteringMutable.writeConcern) {
           return {TRI_ERROR_BAD_PARAMETER,
                   "Cannot have a different writeConcern (" +
-                      std::to_string(
-                          d.clusteringMutable.writeConcern.value()) +
+                      std::to_string(d.clusteringMutable.writeConcern.value()) +
                       "), than the leading collection (" +
                       std::to_string(
                           leader.clusteringMutable.writeConcern.value()) +
@@ -241,14 +239,14 @@ Result arangodb::applyDefaultsAndValidate(CollectionDescriptor& d,
     if (d.clusteringMutable.replicationFactor.has_value()) {
       if (d.clusteringMutable.replicationFactor !=
           leader.clusteringMutable.replicationFactor) {
-        return {TRI_ERROR_BAD_PARAMETER,
-                "Cannot have a different replicationFactor (" +
-                    std::to_string(
-                        d.clusteringMutable.replicationFactor.value()) +
-                    "), than the leading collection (" +
-                    std::to_string(
-                        leader.clusteringMutable.replicationFactor.value()) +
-                    ")"};
+        return {
+            TRI_ERROR_BAD_PARAMETER,
+            "Cannot have a different replicationFactor (" +
+                std::to_string(d.clusteringMutable.replicationFactor.value()) +
+                "), than the leading collection (" +
+                std::to_string(
+                    leader.clusteringMutable.replicationFactor.value()) +
+                ")"};
       }
     } else {
       d.clusteringMutable.replicationFactor =
@@ -265,14 +263,14 @@ Result arangodb::applyDefaultsAndValidate(CollectionDescriptor& d,
     TRI_ASSERT(leader.clusteringConstant.shardKeys.has_value());
     if (d.clusteringConstant.shardKeys.value().size() !=
         leader.clusteringConstant.shardKeys.value().size()) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "Cannot have a different number of shardKeys (" +
-                  std::to_string(
-                      d.clusteringConstant.shardKeys.value().size()) +
-                  "), than the leading collection (" +
-                  std::to_string(
-                      leader.clusteringConstant.shardKeys.value().size()) +
-                  ")."};
+      return {
+          TRI_ERROR_BAD_PARAMETER,
+          "Cannot have a different number of shardKeys (" +
+              std::to_string(d.clusteringConstant.shardKeys.value().size()) +
+              "), than the leading collection (" +
+              std::to_string(
+                  leader.clusteringConstant.shardKeys.value().size()) +
+              ")."};
     }
   } else {
     if (auto strategyResult = validateOrSetDefaultShardingStrategy(d);

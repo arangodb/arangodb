@@ -90,8 +90,8 @@ class PlanCollectionToAgencyWriterTest : public ::testing::Test {
       CollectionDescriptor col) {
     auto numberOfShards = col.clusteringConstant.numberOfShards.value();
     auto distribution = std::make_shared<EvenDistribution>(
-        numberOfShards, col.clusteringMutable.replicationFactor.value(), std::vector<ServerID>{},
-        false);
+        numberOfShards, col.clusteringMutable.replicationFactor.value(),
+        std::vector<ServerID>{}, false);
     auto shards = generateShardNames(numberOfShards);
 
     std::unordered_map<std::string, std::shared_ptr<IShardDistributionFactory>>
