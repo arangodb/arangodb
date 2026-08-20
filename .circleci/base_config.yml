@@ -76,9 +76,8 @@ parameters:
   build-targets:
     type: string
     default: "arangodb"
-    # The arangodb target consists of arangod and the list of client-tools which already
-    # conditionally contains arangobackup and arangosh, depending on whether we build in
-    # enterprise mode, and whether we build with V8 or not.
+    # The arangodb target consists of arangod and the client tools
+    # (arangobackup is enterprise-only).
     # This should also improve build times because this way the individual targets can be
     # built in parallel (a list of individual targets is built serially).
   test-build-targets:
