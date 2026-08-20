@@ -53,7 +53,7 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
-#include "VocBase/Properties/CreateCollectionBody.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/vocbase.h"
 
@@ -622,7 +622,7 @@ Result GraphManager::ensureCollections(
     }
   }
 
-  std::vector<CreateCollectionBody> createRequests;
+  std::vector<CollectionDescriptor> createRequests;
 
   if (leadingCollection.has_value() && graph.requiresInitialUpdate()) {
     // We create the leader within this call, rewire distributeShardsLike
@@ -636,10 +636,10 @@ Result GraphManager::ensureCollections(
       TRI_ASSERT(name == leadingCollection.value())
           << name << " does not match " << leadingCollection.value();
       for (auto const& c : createRequests) {
-        if (c.name == name) {
+        if (c.mutableProps.name == name) {
           // On new graphs the leading collection is in the first position.
           // So we will quickly loop here, even if it is not this loop is safe
-          return c.toDescriptor();
+          return c;
         }
       }
       // Try lookup via Database

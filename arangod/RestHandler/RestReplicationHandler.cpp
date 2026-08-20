@@ -67,7 +67,7 @@
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/Properties/CreateCollectionBody.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 
@@ -1085,7 +1085,7 @@ futures::Future<Result> RestReplicationHandler::processRestoreCollection(
   auto config = _vocbase.getDatabaseConfiguration();
 
   // Original
-  auto input = CreateCollectionBody::fromRestoreAPIBody(parameters, config);
+  auto input = CollectionDescriptor::fromRestoreAPIBody(parameters, config);
   if (input.fail()) {
     co_return input.result();
   }
@@ -1134,7 +1134,7 @@ futures::Future<Result> RestReplicationHandler::processRestoreCollection(
     allowEnterpriseCollectionsOnSingleServer = true;
   }
 
-  std::vector<CreateCollectionBody> collections{std::move(input.get())};
+  std::vector<CollectionDescriptor> collections{std::move(input.get())};
   auto result = methods::Collections::create(
       _vocbase, options, collections, waitForSyncReplication,
       enforceReplicationFactor, isNewDatabase,

@@ -73,9 +73,8 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/Properties/CreateCollectionBody.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
-#include "VocBase/Properties/UserInputCollectionProperties.h"
 #include "VocBase/VocBaseLogManager.h"
 #include "VocBase/VocbaseMetrics.h"
 
@@ -860,7 +859,7 @@ std::shared_ptr<LogicalCollection> Database::createCollection(
 
 ResultT<std::vector<std::shared_ptr<arangodb::LogicalCollection>>>
 Database::createCollections(
-    std::vector<arangodb::CreateCollectionBody> const& collections,
+    std::vector<arangodb::CollectionDescriptor> const& collections,
     bool allowEnterpriseCollectionsOnSingleServer) {
   TRI_ASSERT(!allowEnterpriseCollectionsOnSingleServer ||
              ServerState::instance()->isSingleServer());

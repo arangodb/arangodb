@@ -98,7 +98,6 @@ struct DatabaseJavaScriptCache;
 class LogicalCollection;
 class LogicalDataSource;
 class LogicalView;
-struct CreateCollectionBody;
 class ReplicationClientsProgressTracker;
 class StorageEngine;
 struct VocBaseLogManager;
@@ -427,7 +426,7 @@ struct Database {
 
   [[nodiscard]] arangodb::ResultT<
       std::vector<std::shared_ptr<arangodb::LogicalCollection>>>
-  createCollections(std::vector<arangodb::CreateCollectionBody> const&
+  createCollections(std::vector<arangodb::CollectionDescriptor> const&
                         parametersOfCollections,
                     bool allowEnterpriseCollectionsOnSingleServer);
 

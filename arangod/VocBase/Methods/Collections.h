@@ -28,6 +28,7 @@
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
+#include "VocBase/Properties/CollectionCreateOptions.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
@@ -40,7 +41,7 @@ class ClusterFeature;
 class LogicalCollection;
 struct CollectionCreationInfo;
 class CollectionNameResolver;
-struct CreateCollectionBody;
+struct CollectionDescriptor;
 struct ShardID;
 
 namespace transaction {
@@ -109,12 +110,13 @@ struct Collections {
   create(                 // create collection
       Database& vocbase,  // collection vocbase
       OperationOptions const& options,
-      std::vector<CreateCollectionBody> collections,  // Collections to create
+      std::vector<CollectionDescriptor> collections,  // Collections to create
       bool createWaitsForSyncReplication,             // replication wait flag
       bool enforceReplicationFactor,                  // replication factor flag
       bool isNewDatabase, bool allowEnterpriseCollectionsOnSingleServer = false,
-      bool isRestore = false);  // whether this is being called
-                                // during restore
+      // whether this is being called during restore
+      bool isRestore = false,
+      CollectionCreateOptions const& createOptions = {});
 
   /// Create shard, can only be used on DBServers.
   /// Should only be called by Maintenance.
@@ -135,7 +137,7 @@ struct Collections {
       Database const&);
 
   static void applySystemCollectionProperties(
-      CreateCollectionBody& col, Database const& vocbase,
+      CollectionDescriptor& col, Database const& vocbase,
       DatabaseConfiguration const& config, bool isLegacyDatabase);
 
   static futures::Future<Result> properties(Context& ctxt,
@@ -168,8 +170,8 @@ struct Collections {
 
  private:
   static void appendSmartEdgeCollections(
-      CreateCollectionBody& collection,
-      std::vector<CreateCollectionBody>& collectionList,
+      CollectionDescriptor& collection,
+      std::vector<CollectionDescriptor>& collectionList,
       std::function<DataSourceId()> const&);
 };
 

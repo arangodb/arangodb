@@ -60,7 +60,6 @@ class ShardingInfo;
 
 struct Database;
 struct OperationOptions;
-struct UserInputCollectionProperties;
 
 namespace transaction {
 class Methods;
