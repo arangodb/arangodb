@@ -35,9 +35,10 @@ const optionsDocumentation = [
 
 const internal = require('internal');
 
-const executeExternal = internal.executeExternal;
-const executeExternalAndWait = internal.executeExternalAndWait;
-const statusExternal = internal.statusExternal;
+const {
+  executeExternalAndWait,
+  statusExternal,
+  SetGlobalExecutionDeadlineTo } = internal;
 
 /* Modules: */
 const _ = require('lodash');
@@ -134,14 +135,25 @@ class runInPythonTest extends runWithAllureReport {
     }
     let status = true;
     const cwd = fs.normalize(fs.makeAbsolute(this.options.pythonsource));
-    const rc = executeExternalAndWait('pytest', args, false, 0, [], cwd);
-    if (rc.exit !== 0) {
-      status = false;
+    SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout);
+    let results;
+    try {
+      let rc = executeExternalAndWait('pytest', args, false, 0, [], cwd);
+      if (rc.exit !== 0) {
+        status = false;
+      }
+      results = {
+        status: status,
+        failed: (status)?0:1,
+      };
+    } catch (ex) {
+      let timeout = SetGlobalExecutionDeadlineTo(0.0);
+      results = {
+        status: false,
+        failed: 1,
+        message: `testrun has thrown ${ex.message} \n ${ex.stack}`
+      };
     }
-    let results = {
-      status: status,
-      failed: (status)?0:1,
-    };
     this.getAllureResults(testResultsDir, results, status, "python-arango");
     return results;
   }
