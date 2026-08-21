@@ -133,8 +133,6 @@ ExecContext::ExecContext(ConstructorToken, AuthMode authMode,
       /*hasRequestInfo*/ true);
 }
 
-void ExecContext::forceSuperuser() { _authMode.reset<AuthMode::Superuser>(); }
-
 std::optional<std::reference_wrapper<TRI_vocbase_t>> ExecContext::vocbase()
     const noexcept {
   if (_vocbase) {

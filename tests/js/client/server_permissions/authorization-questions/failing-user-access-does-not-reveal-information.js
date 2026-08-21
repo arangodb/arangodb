@@ -47,7 +47,11 @@
 if (getOptions === true) {
   return {
     'server.failure-point': 'ApiVersion::treatVersion1AsSupported',
-    'server.authentication': 'true'
+    'server.authentication': 'true',
+    // keep background threads from asking questions of their own
+    'foxx.queues': 'false',
+    // disable so it doesn't spoil the test output:
+    'server.statistics': 'false'
   };
 }
 
