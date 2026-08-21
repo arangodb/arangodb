@@ -166,8 +166,8 @@ async<void> RestDocumentHandler::insertDocument() {
       (suffixes.empty() || suffixes[0].empty())) {
     generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
-                  "'collection' is missing, expecting " + DOCUMENT_PATH +
-                      " POST /_api/document/<collection>");
+                  "'collection' is missing, expecting POST " + DOCUMENT_PATH +
+                      "/<collection>");
     co_return;
   }
 
@@ -183,8 +183,8 @@ async<void> RestDocumentHandler::insertDocument() {
   if (!found || cname.empty()) {
     generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
-                  "'collection' is missing, expecting " + DOCUMENT_PATH +
-                      " POST /_api/document/<collection>");
+                  "'collection' is missing, expecting POST " + DOCUMENT_PATH +
+                      "/<collection>");
     co_return;
   }
 
