@@ -24,7 +24,7 @@
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "Basics/VelocyPackHelper.h"
-#include "VocBase/Properties/CollectionDescriptor.h"
+#include "VocBase/Properties/CreateCollectionRequest.h"
 #include "VocBase/Properties/CollectionValidation.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 
@@ -634,35 +634,27 @@ Result validateEnterpriseFeaturesNotUsed(CollectionDescriptor const& d) {
 }
 #endif
 
-ResultT<CollectionDescriptor> parseAndValidate(
+ResultT<CreateCollectionRequest> parseAndValidate(
     DatabaseConfiguration const& config, VPackSlice input,
-    CollectionCreateOptions* options,
     std::function<void(CollectionDescriptor&)> applyDefaults,
     std::function<Result(inspection::Status const&)> const& statusToResult,
     std::function<void(CollectionDescriptor&)> applyCompatibilityHacks) {
   try {
-    CollectionDescriptor res;
-    applyDefaults(res);
+    CreateCollectionRequest res;
+    applyDefaults(res.descriptor);
+    // One pass over the body fills both the collection properties and the
+    // options that only apply to this request.
     auto status =
         velocypack::deserializeWithStatus(input, res, {}, InspectUserContext{});
     if (status.ok()) {
-      if (options != nullptr) {
-        // avoidServers is a request option, not a collection property
-        auto optStatus = velocypack::deserializeWithStatus(
-            input, *options, {.ignoreUnknownFields = true},
-            InspectUserContext{});
-        if (!optStatus.ok()) {
-          return statusToResult(optStatus);
-        }
-      }
-      applyCompatibilityHacks(res);
+      applyCompatibilityHacks(res.descriptor);
       // Inject default values, and finally check if collection is allowed
-      auto result = applyDefaultsAndValidate(res, config);
+      auto result = applyDefaultsAndValidate(res.descriptor, config);
       if (result.fail()) {
         return result;
       }
 #ifndef USE_ENTERPRISE
-      result = validateEnterpriseFeaturesNotUsed(res);
+      result = validateEnterpriseFeaturesNotUsed(res.descriptor);
       if (result.fail()) {
         return result;
       }
@@ -679,16 +671,16 @@ ResultT<CollectionDescriptor> parseAndValidate(
 
 }  // namespace
 
-ResultT<CollectionDescriptor> CollectionDescriptor::fromCreateAPIBody(
+ResultT<CreateCollectionRequest> CreateCollectionRequest::fromCreateAPIBody(
     VPackSlice input, DatabaseConfiguration const& config,
-    CollectionCreateOptions& options, bool activateBackwardsCompatibility) {
+    bool activateBackwardsCompatibility) {
   if (!input.isObject()) {
     // Special handling to be backwards compatible error reporting
     // on "name"
     return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
   }
   auto res = ::parseAndValidate(
-      config, input, &options, [](CollectionDescriptor& col) {},
+      config, input, [](CollectionDescriptor& col) {},
       ::rewriteStatusErrorMessage, [](CollectionDescriptor& col) {});
   if (activateBackwardsCompatibility && res.fail()) {
     auto newBody =
@@ -697,7 +689,7 @@ ResultT<CollectionDescriptor> CollectionDescriptor::fromCreateAPIBody(
       return newBody.result();
     }
     auto compatibleRes = ::parseAndValidate(
-        config, newBody->slice(), &options, [](CollectionDescriptor& col) {},
+        config, newBody->slice(), [](CollectionDescriptor& col) {},
         ::rewriteStatusErrorMessage, [](CollectionDescriptor& col) {});
     if (compatibleRes.ok()) {
       logDeprecationMessage(res.result());
@@ -707,7 +699,7 @@ ResultT<CollectionDescriptor> CollectionDescriptor::fromCreateAPIBody(
   return res;
 }
 
-ResultT<CollectionDescriptor> CollectionDescriptor::fromCreateAPIV8(
+ResultT<CreateCollectionRequest> CreateCollectionRequest::fromCreateAPIV8(
     VPackSlice properties, std::string const& name, TRI_col_type_e type,
     DatabaseConfiguration const& config) {
   if (name.empty()) {
@@ -730,7 +722,7 @@ ResultT<CollectionDescriptor> CollectionDescriptor::fromCreateAPIV8(
 #endif
   };
 
-  auto res = ::parseAndValidate(config, properties, nullptr, applyDefaults,
+  auto res = ::parseAndValidate(config, properties, applyDefaults,
                                 ::rewriteStatusErrorMessage, applyHacks);
   if (res.fail()) {
     auto newBody =
@@ -739,7 +731,7 @@ ResultT<CollectionDescriptor> CollectionDescriptor::fromCreateAPIV8(
       return newBody.result();
     }
     auto compatibleRes =
-        ::parseAndValidate(config, newBody->slice(), nullptr, applyDefaults,
+        ::parseAndValidate(config, newBody->slice(), applyDefaults,
                            ::rewriteStatusErrorMessage, applyHacks);
     if (compatibleRes.ok()) {
       logDeprecationMessage(res.result());
@@ -749,10 +741,10 @@ ResultT<CollectionDescriptor> CollectionDescriptor::fromCreateAPIV8(
   return res;
 }
 
-ResultT<CollectionDescriptor> CollectionDescriptor::fromRestoreAPIBody(
+ResultT<CreateCollectionRequest> CreateCollectionRequest::fromRestoreAPIBody(
     VPackSlice input, DatabaseConfiguration const& config) {
   auto res = ::parseAndValidate(
-      config, input, nullptr, [](CollectionDescriptor& col) {},
+      config, input, [](CollectionDescriptor& col) {},
       ::rewriteStatusErrorMessageForRestore,
       [&config](CollectionDescriptor& col) {
         // By all means, we cannot take an id from the outside. We need to
@@ -783,7 +775,7 @@ ResultT<CollectionDescriptor> CollectionDescriptor::fromRestoreAPIBody(
     // NOTE: We do not log a deprecation message here. The restore API is
     // forever backwards compatible.
     res = ::parseAndValidate(
-        config, newBody->slice(), nullptr, [](CollectionDescriptor& col) {},
+        config, newBody->slice(), [](CollectionDescriptor& col) {},
         ::rewriteStatusErrorMessageForRestore,
         [&config](CollectionDescriptor& col) {
           // By all means, we cannot take an id from the outside. We need to

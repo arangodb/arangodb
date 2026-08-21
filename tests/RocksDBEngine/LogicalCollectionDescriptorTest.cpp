@@ -30,6 +30,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Properties/ClusteringConstantProperties.h"
 #include "VocBase/Properties/CollectionDescriptor.h"
+#include "VocBase/Properties/CreateCollectionRequest.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/Properties/KeyGeneratorProperties.h"
 #include "VocBase/voc-types.h"
@@ -343,14 +344,12 @@ TEST_F(LogicalCollectionDescriptorTest, SliceCtor_matchesDescriptorCtor) {
       [](std::string const&) -> ResultT<CollectionDescriptor> {
         return {TRI_ERROR_INTERNAL};
       }};
-  CollectionCreateOptions createOptions;
-  auto body = CollectionDescriptor::fromCreateAPIBody(
-      sliceBuilder.slice(), config, createOptions,
-      /*backwardsCompatibility*/ false);
-  ASSERT_TRUE(body.ok()) << body.errorMessage();
+  auto request = CreateCollectionRequest::fromCreateAPIBody(
+      sliceBuilder.slice(), config, /*backwardsCompatibility*/ false);
+  ASSERT_TRUE(request.ok()) << request.errorMessage();
 
   auto viaDescriptor = makeDatabase("viaDescriptor", 43);
-  auto actual = viaDescriptor->createCollection(body.get());
+  auto actual = viaDescriptor->createCollection(std::move(request->descriptor));
   engine().createCollection(*viaDescriptor, *actual);
 
   EXPECT_EQ(

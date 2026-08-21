@@ -44,7 +44,7 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
-#include "VocBase/Properties/CollectionDescriptor.h"
+#include "VocBase/Properties/CreateCollectionRequest.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 
 #include <velocypack/Builder.h>
@@ -366,9 +366,7 @@ async<void> RestCollectionHandler::handleCommandPost() {
   auto config = _vocbase.getDatabaseConfiguration();
   config.enforceReplicationFactor = enforceReplicationFactor;
 
-  CollectionCreateOptions createOptions;
-  auto planCollection =
-      CollectionDescriptor::fromCreateAPIBody(body, config, createOptions);
+  auto planCollection = CreateCollectionRequest::fromCreateAPIBody(body, config);
 
   if (planCollection.fail()) {
     // error message generated in inspect
@@ -384,7 +382,7 @@ async<void> RestCollectionHandler::handleCommandPost() {
     co_return;
   }
   std::vector<CollectionDescriptor> collections{
-      std::move(planCollection.get())};
+      std::move(planCollection->descriptor)};
 
   OperationOptions options;
   auto result = methods::Collections::create(
@@ -394,7 +392,7 @@ async<void> RestCollectionHandler::handleCommandPost() {
       enforceReplicationFactor,  // replication factor flag
       /*isNewDatabase*/ false,   // here always false
       /*allowEnterpriseCollectionsOnSingleServer*/ false,
-      /*isRestore*/ false, createOptions);
+      /*isRestore*/ false, planCollection->options);
 
   std::shared_ptr<LogicalCollection> coll;
   // backwards compatibility transformation:
