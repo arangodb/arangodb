@@ -50,7 +50,7 @@ ArangoVPackServer::ArangoVPackServer(
     : OptionProvidingServer<ArangoVPackOptionProviders>(
           options, binaryPath, std::move(binaryName), ret) {}
 
-void ArangoVPackServer::addFeaturesWithOptionProvider() {
+void ArangoVPackServer::addFeatures() {
   addFeature<BasicFeaturePhaseClient>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
   addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());

@@ -1,6 +1,11 @@
 3.12.11-devel (XXXX-XX-XX)
 --------------------------
 
+* Updated ArangoDB Starter to v0.19.27.
+
+* Rebuilt included rclone v1.75.0 with go1.25.13 and non-vulnerable
+  dependencies.
+
 * Fixed access token expiry (COR-825).
 
 * COR-669: Server State Metric
@@ -17,9 +22,6 @@
   Trying to read a single document by key from a forbidden collection actually
   worked. Now this produces instead an error 403 (FORBIDDEN).
 
-* Upgraded included rclone to v1.75.0 with go1.25.12 and non-vulnerable
-  dependencies.
-
 * Updated node module js-yaml to 4.3.1 to resolve GHSA-5p4m-2wfm-xmqj.
 
 * Removed the obsolete "Replication" view and menu entry from the web UI.
@@ -31,6 +33,30 @@
 * BTS-2425:
  - fast-uri to 3.1.5 to resolve CVE-2026-18446
  - brace-expansion to 5.0.9 to resolve CVE-2026-69152
+
+* COR-213: Reworked authorization internally. All authorization decisions
+  throughout the server are now funneled through a single internal API on
+  `ExecContext`. This API has two implementations:
+  - "Classic", which reproduces the previous authorization behavior as
+    closely as possible. A small number of intentional behavior changes were
+    made where the old behavior was considered a bug; these are called out
+    separately in the release notes rather than here.
+  - "RBAC" (Role Based Access Control), which delegates authorization
+    decisions to an external service. This implementation is used
+    exclusively on the platform.
+  This change is internal and does not alter the REST API surface, with the
+  following exceptions (see `Documentation/Differences_3.12.10_3.12.11_Classic.md`
+  for details:
+   - `GET /_arango/experimental/_admin/activities` will now return HTTP 404 and
+     errorNum 1228 (database not found) rather than HTTP 401 and errorNum 11,
+     if the user has no read access to the `_system` database.
+   - `POST /_api/token/<username>` and `DELETE /_api/token/<username>/<id>`
+     will be rejected in read-only mode with HTTP 403 FORBIDDEN and errorNum
+     1004 if the user has admin permissions (RW on the _system
+     database), this was an omission.
+   - API calls which write to collections to which the user has RW permissions
+     in read-only mode will now return `errorNum` 1004 (READONLY) instead of
+     11 (FORBIDDEN). The HTTP code remains 403 FORBIDDEN. 
 
 * COR-569: Added activity to report ArangoSearch consolidation.
 

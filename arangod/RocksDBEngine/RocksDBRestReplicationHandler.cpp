@@ -30,7 +30,6 @@
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
-#include "Replication/Syncer.h"
 #include "Replication/utilities.h"
 #include "Rest/HttpResponse.h"
 #include "RestServer/DatabaseFeature.h"
@@ -281,7 +280,6 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
     res = ctx->getInventory(_vocbase, includeSystem, includeFoxxQs, true,
                             builder);
   } else {
-    ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
     if (collection.empty()) {
       // all collections in database
       res = ctx->getInventory(_vocbase, includeSystem, includeFoxxQs, false,
@@ -335,9 +333,6 @@ RocksDBRestReplicationHandler::handleCommandCreateKeys() {
         std::string("invalid quick parameter: must be boolean, got ") + quick);
     co_return;
   }
-
-  // to is ignored because the snapshot time is the latest point in time
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
   // get batchId from url parameters
   uint64_t batchId = _request->parsedValue("batchId", uint64_t(0));
@@ -601,13 +596,18 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
       << "requested collection dump for collection '" << collection
       << "' using contextId '" << ctx->id() << "'";
 
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
-
-  if (!ExecContext::current().canUseCollection(_vocbase.name(), cname,
-                                               auth::Level::RO)) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+  // This is for the single server case, in case we are a DBServer, this
+  // has already been checked in `forwardingTarget` and this check here
+  // is actually meaningless, since we are SuperUser anyway!
+  if (auto r = ExecContext::current().canDumpCollection(_vocbase.name(), cname);
+      r.fail()) {
+    generateError(r);
     return;
   }
+
+  // Now escalate to root, which is necessary on single servers to actually
+  // be able to access the collection:
+  ExecContextSuperuserScope superUser;
 
   // maximum number of documents to be returned per batch
   size_t docsPerBatch =

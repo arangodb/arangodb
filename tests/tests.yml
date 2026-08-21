@@ -209,7 +209,15 @@
       type: single
     requires:
       coverage: false
-
+- gtest_rbac_integration:
+    options:
+      type: single
+      size: small
+    job: run-linux-tests-with-smocker
+    suites:
+      - gtest_rbac_integration
+    requires:
+      coverage: false
 # without coverage this is fast enough:
 - rta_makedata:
     options:

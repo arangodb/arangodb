@@ -56,6 +56,7 @@ class Future;
 template<typename>
 struct async;
 
+class AuthenticationFeature;
 class GeneralRequest;
 class RequestStatistics;
 class Result;
@@ -190,6 +191,11 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   auto executeEngine() -> async<void>;
   void compressResponse();
 
+  enum class AuthenticationGrant { DENIED, GRANTED, GRANTED_EARLY };
+  virtual async<AuthenticationGrant> checkUserAuthentication() const;
+  virtual async<Result> checkApiVersionAccess() const;
+  virtual async<Result> checkDatabaseAccess() const;
+
   // The ValueBuilder, as it is, is unsuitable for composition. By composition,
   // I mean, for example, creating a builder in the base class with certain
   // values, and reusing that and adding additional values in a subclass.
@@ -223,6 +229,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
  private:
   mutable std::mutex _executionMutex;
+
+  async<void> handleAuthorizationChecks();
 
  protected:
   // TODO Move this in a separate header, side-by-side with SuspensionCounter?

@@ -24,7 +24,7 @@
 
 #include "Agency/AgencyCommon.h"
 #include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
+#include "Utils/Thread.h"
 
 namespace arangodb {
 namespace consensus {

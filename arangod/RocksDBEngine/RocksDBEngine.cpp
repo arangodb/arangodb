@@ -34,7 +34,7 @@
 #include "Basics/Result.h"
 #include "Basics/RocksDBLogger.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
@@ -45,7 +45,6 @@
 #include "Cache/Manager.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
-#include "GeneralServer/RestHandlerFactory.h"
 #include "IResearch/IResearchCommon.h"
 #include "Inspection/VPack.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
@@ -96,7 +95,6 @@
 #include "RocksDBEngine/RocksDBOptionFeature.h"
 #include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
-#include "RocksDBEngine/RocksDBRestHandlers.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBTypes.h"
@@ -1896,11 +1894,6 @@ void RocksDBEngine::addV8Functions() {
 }
 #endif
 
-/// @brief Add engine-specific REST handlers
-void RocksDBEngine::addRestHandlers(rest::RestHandlerFactory& handlerFactory) {
-  RocksDBRestHandlers::registerResources(&handlerFactory, *this);
-}
-
 void RocksDBEngine::addCollectionMapping(uint64_t objectId, TRI_voc_tick_t did,
                                          DataSourceId cid) {
   if (objectId != 0) {
@@ -2466,7 +2459,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
         RocksDBKeyBounds bounds =
             RocksDBIndex::getBounds(type, objectId, unique);
         // edge index drop fails otherwise
-        bool const prefixSameAsStart = type != Index::TRI_IDX_TYPE_EDGE_INDEX;
+        bool const prefixSameAsStart = type != IndexType::Edge;
         res = rocksutils::removeLargeRange(db, bounds, prefixSameAsStart,
                                            useRangeDelete);
         if (res.fail()) {
