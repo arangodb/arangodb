@@ -1,16 +1,24 @@
 #include "Graph/Enumerators/ITraversalEnumerator.h"
 #include "Graph/PathManagement/IPathResult.h"
+#include "Graph/PathManagement/SingleServerPathResult.h"
+
+#include <optional>
+#include <string>
+#include <utility>
+#include <memory>
 
 namespace arangodb::graph::experimental {
 struct SingleServerTraversalEnumerator : ITraversalEnumerator {
   SingleServerTraversalEnumerator() {}
   ~SingleServerTraversalEnumerator() {}
   void clear(bool keepPathStore) override { TRI_ASSERT(false); }
-  [[nodiscard]] bool isDone() const override { return false; }
+  [[nodiscard]] bool isDone() const override { return _isDone; }
 
+  // does not validate that vertex exists on graph
   void reset(VertexRef source, size_t depth = 0, double weight = 0.0,
              bool keepPathStore = false) override {
-    // does not validate that vertex exists on graph
+    _isDone = false;
+    _startVertex = source;
   }
   void resetManyStartVertices(
       std::vector<VertexDescription> const& vertices) override {
@@ -21,8 +29,13 @@ struct SingleServerTraversalEnumerator : ITraversalEnumerator {
     TRI_ASSERT(false);
   };
   auto getNextPath() -> std::unique_ptr<IPathResult> override {
-    TRI_ASSERT(false);
-    return nullptr;
+    if (not _startVertex.has_value()) {
+      return nullptr;
+    }
+    _isDone = true;
+    return std::make_unique<SingleServerPathResult>(
+        std::vector<std::optional<VertexId>>{std::nullopt},
+        std::vector<Edge>{});
   };
 #ifdef USE_ENTERPRISE
   auto smartSearch(size_t amountOfExpansions, velocypack::Builder& result)
@@ -52,5 +65,9 @@ struct SingleServerTraversalEnumerator : ITraversalEnumerator {
     TRI_ASSERT(false);
   }
   auto unprepareValidatorContext() -> void override { TRI_ASSERT(false); }
+
+ private:
+  bool _isDone = true;
+  std::optional<VertexRef> _startVertex;
 };
 }  // namespace arangodb::graph::experimental
