@@ -45,7 +45,9 @@ if (getOptions === true) {
     'server.authentication': 'true',
     'log.force-direct': 'true',
     // keep background threads from asking questions of their own
-    'foxx.queues': 'false'
+    'foxx.queues': 'false',
+    // disable so it doesn't spoil the test output:
+    'server.statistics': 'false'
   };
 }
 
