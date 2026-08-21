@@ -446,6 +446,158 @@ TEST_F(CollectionDescriptorFactoryTest,
   __HELPER_assertParsingThrows(smartGraphAttribute, "test");
 }
 
+// Satellite and oneShard combinations
+
+TEST_F(CollectionDescriptorFactoryTest, test_oneShardDBCannotBeSatellite) {
+  auto body = createMinimumBodyWithOneValue("replicationFactor", "satellite");
+
+  auto config = defaultDBConfig();
+  config.oneShardDBConfiguration = OneShardDatabaseConfiguration{};
+
+  auto testee = parse(body.slice(), config);
+  EXPECT_FALSE(testee.ok())
+      << "Configured a oneShardDB collection as 'satellite'.";
+}
+
+TEST_F(CollectionDescriptorFactoryTest, test_shardKeyOnSatellites) {
+  auto satelliteWithShardKeys = [&](std::vector<std::string> const& keys) {
+    VPackBuilder body;
+    {
+      VPackObjectBuilder guard(&body);
+      body.add("name", VPackValue("test"));
+      body.add("replicationFactor", VPackValue("satellite"));
+      body.add(VPackValue("shardKeys"));
+      {
+        VPackArrayBuilder arrayGuard{&body};
+        for (auto const& key : keys) {
+          body.add(VPackValue(key));
+        }
+      }
+    }
+    return body;
+  };
+
+  // Sharding by a specific shardKey, or by a prefix/postfix of _key, is not
+  // allowed for satellites
+  for (auto const& key : {"testKey", "a", ":_key", "_key:"}) {
+    auto body = satelliteWithShardKeys({key});
+    EXPECT_FALSE(parse(body.slice()).ok())
+        << "Created a satellite collection with a shardkey: " << key;
+  }
+
+  {
+    // Sharding by _key is the only allowed value
+    auto body = satelliteWithShardKeys({StaticStrings::KeyString});
+    auto result = parse(body.slice()).result();
+#ifdef USE_ENTERPRISE
+    EXPECT_TRUE(result.ok())
+        << "Failed to create a satellite collection with default sharding "
+        << result.errorMessage();
+#else
+    EXPECT_FALSE(result.ok())
+        << "Created a 'satellite' collection in community edition. "
+        << result.errorMessage();
+#endif
+  }
+
+  {
+    // _key plus something else is not allowed either
+    auto body = satelliteWithShardKeys({StaticStrings::KeyString, "testKey"});
+    EXPECT_FALSE(parse(body.slice()).ok())
+        << "Created a satellite collection with shardKeys [_key, testKey]";
+  }
+}
+
+TEST_F(CollectionDescriptorFactoryTest, test_satellite) {
+  auto body = createMinimumBodyWithOneValue("replicationFactor", "satellite");
+  auto testee = parse(body.slice());
+#ifdef USE_ENTERPRISE
+  ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
+  EXPECT_TRUE(testee->clusteringMutable.isSatellite());
+  ASSERT_TRUE(testee->clusteringMutable.writeConcern.has_value());
+  EXPECT_EQ(testee->clusteringMutable.writeConcern.value(), 1ull);
+  ASSERT_TRUE(testee->clusteringConstant.numberOfShards.has_value());
+  EXPECT_EQ(testee->clusteringConstant.numberOfShards.value(), 1ull);
+#else
+  EXPECT_FALSE(testee.ok())
+      << "Created a 'satellite' collection in community edition.";
+#endif
+}
+
+TEST_F(CollectionDescriptorFactoryTest,
+       test_satellite_numberOfShards_forbidden) {
+  VPackBuilder body;
+  {
+    VPackObjectBuilder guard(&body);
+    body.add("name", VPackValue("test"));
+    body.add("replicationFactor", VPackValue("satellite"));
+    body.add("numberOfShards", VPackValue(3));
+  }
+  EXPECT_FALSE(parse(body.slice()).ok())
+      << "Allowed illegal: " << body.toJson();
+}
+
+TEST_F(CollectionDescriptorFactoryTest, test_satellite_numberOfShards_allowed) {
+  VPackBuilder body;
+  {
+    VPackObjectBuilder guard(&body);
+    body.add("name", VPackValue("test"));
+    body.add("replicationFactor", VPackValue("satellite"));
+    body.add("numberOfShards", VPackValue(1));
+  }
+  auto testee = parse(body.slice());
+#ifdef USE_ENTERPRISE
+  ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
+  EXPECT_TRUE(testee->clusteringMutable.isSatellite());
+  ASSERT_TRUE(testee->clusteringMutable.writeConcern.has_value());
+  EXPECT_EQ(testee->clusteringMutable.writeConcern.value(), 1ull);
+  ASSERT_TRUE(testee->clusteringConstant.numberOfShards.has_value());
+  EXPECT_EQ(testee->clusteringConstant.numberOfShards.value(), 1ull);
+#else
+  EXPECT_FALSE(testee.ok())
+      << "Created a 'satellite' collection in community edition.";
+#endif
+}
+
+TEST_F(CollectionDescriptorFactoryTest,
+       test_satellite_writeConcern_forbidden) {
+  VPackBuilder body;
+  {
+    VPackObjectBuilder guard(&body);
+    body.add("name", VPackValue("test"));
+    body.add("replicationFactor", VPackValue("satellite"));
+    body.add("writeConcern", VPackValue(3));
+  }
+  EXPECT_FALSE(parse(body.slice()).ok())
+      << "Allowed illegal: " << body.toJson();
+}
+
+TEST_F(CollectionDescriptorFactoryTest, test_satellite_writeConcern_allowed) {
+  // As satellite is replicationFactor 0, writeConcern 0 and 1 are both
+  // accepted: writeConcern is defined to be at most replicationFactor, and
+  // some APIs pass 1.
+  for (auto writeConcern : {0, 1}) {
+    VPackBuilder body;
+    {
+      VPackObjectBuilder guard(&body);
+      body.add("name", VPackValue("test"));
+      body.add("replicationFactor", VPackValue("satellite"));
+      body.add("writeConcern", VPackValue(writeConcern));
+    }
+    auto testee = parse(body.slice());
+#ifdef USE_ENTERPRISE
+    ASSERT_TRUE(testee.ok()) << "Did not allow legal body: " << body.toJson()
+                             << " -- " << testee.result().errorMessage();
+    EXPECT_TRUE(testee->clusteringMutable.isSatellite());
+    ASSERT_TRUE(testee->clusteringConstant.numberOfShards.has_value());
+    EXPECT_EQ(testee->clusteringConstant.numberOfShards.value(), 1ull);
+#else
+    EXPECT_FALSE(testee.ok())
+        << "Created a 'satellite' collection in community edition.";
+#endif
+  }
+}
+
 // Tests for generic attributes without special needs
 
 namespace {

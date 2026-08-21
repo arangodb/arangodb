@@ -1085,8 +1085,7 @@ futures::Future<Result> RestReplicationHandler::processRestoreCollection(
   auto config = _vocbase.getDatabaseConfiguration();
 
   // Original
-  auto input =
-      CreateCollectionRequest::fromRestoreAPIBody(parameters, config);
+  auto input = CreateCollectionRequest::fromRestoreAPIBody(parameters, config);
   if (input.fail()) {
     co_return input.result();
   }
