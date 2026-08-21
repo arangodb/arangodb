@@ -26,9 +26,19 @@
 #include <vector>
 
 namespace arangodb {
+/// Options that apply to a single create request. None of them describes the
+/// collection, so none of them is stored with it.
 struct CollectionCreateOptions {
+  // Parsed from the request body.
   // Not documented, actually this is an option, not a configuration parameter
   std::vector<std::string> avoidServers = {};
+
+  // Chosen by the caller, not part of the body.
+  bool waitForSyncReplication = true;
+  bool enforceReplicationFactor = true;
+  bool isNewDatabase = false;
+  bool allowEnterpriseCollectionsOnSingleServer = false;
+  bool isRestore = false;
 
   bool operator==(CollectionCreateOptions const& other) const = default;
 };

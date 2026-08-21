@@ -46,6 +46,7 @@
 #include "VocBase/Methods/CollectionCreationInfo.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Indexes.h"
+#include "VocBase/Properties/CollectionCreateOptions.h"
 #include "VocBase/Properties/CollectionDescriptor.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/vocbase.h"
@@ -220,10 +221,11 @@ Result createSystemCollections(
       testSystemCollectionsToCreate.emplace_back(std::move(newCollection));
     }
 
+    // waitForSyncReplication and enforceReplicationFactor keep their defaults
+    CollectionCreateOptions createOptions;
+    createOptions.isNewDatabase = true;
     auto cols = methods::Collections::create(
-        vocbase, options, testSystemCollectionsToCreate, true, true, true,
-
-        false /* allow system collection creation */);
+        vocbase, options, testSystemCollectionsToCreate, createOptions);
     if (cols.fail()) {
       return cols.result();
     }
@@ -285,10 +287,11 @@ Result createSystemCollections(
   // We capture the vector of created LogicalCollections here
   // to use it to create indices later.
   if (!systemCollectionsToCreate.empty()) {
+    // waitForSyncReplication and enforceReplicationFactor keep their defaults
+    CollectionCreateOptions createOptions;
+    createOptions.isNewDatabase = true;
     auto cols = methods::Collections::create(
-        vocbase, options, systemCollectionsToCreate, true, true, true,
-
-        false /* allow system collection creation */);
+        vocbase, options, systemCollectionsToCreate, createOptions);
     if (cols.fail()) {
       return cols.result();
     }
