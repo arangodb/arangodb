@@ -865,7 +865,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
 
   resultBuilder.add("collections", VPackValue(VPackValueType::Array));
   for (std::shared_ptr<LogicalCollection> const& c : cols) {
-    if (exec.canUseAdminAction(auth::perms::AdminClusterInfo{}).fail() &&
+    if (exec.canUseAdminAction(auth::perms::AdminClusterInfo{}).fail() ||
         exec.canUseCollection(dbName, c->name(), AccessLevel::Read).fail()) {
       continue;
     }
