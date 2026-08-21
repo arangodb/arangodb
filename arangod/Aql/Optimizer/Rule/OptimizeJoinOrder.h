@@ -61,9 +61,9 @@ auto getEstimateForOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
 /// vertex as the start, grow by repeatedly absorbing the adjacent vertex that
 /// costs least, and keep the cheapest completed order. Ties break on
 /// ExecutionNode::id() so the result is reproducible.
-auto orderComponent(JoinGraph& graph,
-                    std::vector<Variable const*> const& component,
-                    JoinCostEstimator const& estimator) -> JoinOrder;
+auto getBestOrderForComponent(JoinGraph& graph,
+                              std::vector<Variable const*> const& component,
+                              JoinCostEstimator const& estimator) -> JoinOrder;
 
 /// @brief above this many enumerations in one run the per-component search is
 /// not worth the optimizer time, so the order is left untouched.

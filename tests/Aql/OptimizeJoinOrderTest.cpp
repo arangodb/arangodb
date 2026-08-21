@@ -232,7 +232,7 @@ TEST_F(OptimizeJoinOrderTest, greedy_starts_at_the_cheapest_vertex) {
   estimator.seedCost = {{"a", 100.0}, {"b", 1.0}, {"c", 100.0}};
   estimator.stepCost = {{"a", 1.0}, {"b", 1.0}, {"c", 1.0}};
 
-  auto result = orderComponent(g, components.front(), estimator);
+  auto result = getBestOrderForComponent(g, components.front(), estimator);
   EXPECT_EQ(namesOf(result.order), (std::vector<std::string>{"b", "a", "c"}))
       << "cheapest seed is b; a and c then tie and break on node id";
 }
@@ -254,7 +254,7 @@ TEST_F(OptimizeJoinOrderTest, greedy_can_start_in_the_middle_of_a_chain) {
   estimator.seedCost = {{"a", 100.0}, {"b", 1.0}, {"c", 100.0}};
   estimator.stepCost = {{"a", 5.0}, {"b", 1.0}, {"c", 1.0}};
 
-  auto result = orderComponent(g, components.front(), estimator);
+  auto result = getBestOrderForComponent(g, components.front(), estimator);
   EXPECT_EQ(namesOf(result.order), (std::vector<std::string>{"b", "c", "a"}));
   EXPECT_DOUBLE_EQ(result.estimate.cost, 7.0);
 }
@@ -272,7 +272,7 @@ TEST_F(OptimizeJoinOrderTest, greedy_only_extends_along_edges) {
   estimator.seedCost = {{"a", 1.0}, {"b", 100.0}, {"c", 100.0}};
   estimator.stepCost = {{"a", 1.0}, {"b", 10.0}, {"c", 0.1}};
 
-  auto result = orderComponent(g, components.front(), estimator);
+  auto result = getBestOrderForComponent(g, components.front(), estimator);
   EXPECT_EQ(namesOf(result.order), (std::vector<std::string>{"a", "b", "c"}));
 }
 
@@ -286,15 +286,16 @@ TEST_F(OptimizeJoinOrderTest, equal_costs_break_ties_by_node_id) {
   // Every cost is identical, so the outcome is decided entirely by the
   // tie-break rule: ascending ExecutionNode::id(). This is necessary but not
   // sufficient to prove run-to-run stability -- JoinGraph::nodes is keyed by
-  // Variable const*, and within a single process calling orderComponent
-  // twice on the same graph would see the same map iteration order whether
-  // or not nodesInIdOrder sorts, so that could not have caught the sort
-  // being removed. What this test does catch: id-ascending order coinciding
-  // by chance with Variable-pointer order is exceedingly unlikely, so if the
-  // sort in nodesInIdOrder is ever deleted, this is very likely to fail.
+  // Variable const*, and within a single process calling
+  // getBestOrderForComponent twice on the same graph would see the same map
+  // iteration order whether or not nodesInIdOrder sorts, so that could not have
+  // caught the sort being removed. What this test does catch: id-ascending
+  // order coinciding by chance with Variable-pointer order is exceedingly
+  // unlikely, so if the sort in nodesInIdOrder is ever deleted, this is very
+  // likely to fail.
   FakeCostEstimator estimator;
 
-  auto result = orderComponent(g, components.front(), estimator);
+  auto result = getBestOrderForComponent(g, components.front(), estimator);
   EXPECT_EQ(namesOf(result.order), (std::vector<std::string>{"a", "b", "c"}));
 }
 
@@ -317,7 +318,7 @@ TEST_F(OptimizeJoinOrderTest, multi_start_beats_picking_the_cheapest_seed) {
   estimator.seedCost = {{"a", 1.0}, {"b", 5.0}, {"c", 5.0}};
   estimator.stepCost = {{"a", 1.0}, {"b", 1000.0}, {"c", 5.0}};
 
-  auto result = orderComponent(g, components.front(), estimator);
+  auto result = getBestOrderForComponent(g, components.front(), estimator);
   EXPECT_EQ(namesOf(result.order), (std::vector<std::string>{"b", "a", "c"}));
   EXPECT_DOUBLE_EQ(result.estimate.cost, 11.0);
 }
@@ -402,7 +403,7 @@ TEST_F(OptimizeJoinOrderTest,
 }
 
 TEST_F(OptimizeJoinOrderTest, identical_order_is_a_no_op) {
-  // All costs are uniform, so orderComponent's strict "<" comparison
+  // All costs are uniform, so getBestOrderForComponent's strict "<" comparison
   // converges on the written order: the component's own greedy order is
   // identical to its own written order, so the per-component margin check
   // compares that cost to itself (divided by 1.25) and declines -- the

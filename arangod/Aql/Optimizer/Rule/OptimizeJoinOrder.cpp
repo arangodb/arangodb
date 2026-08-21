@@ -294,9 +294,9 @@ auto getEstimateForOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
   return estimate;
 }
 
-auto orderComponent(JoinGraph& graph,
-                    std::vector<Variable const*> const& component,
-                    JoinCostEstimator const& estimator) -> JoinOrder {
+auto getBestOrderForComponent(JoinGraph& graph,
+                              std::vector<Variable const*> const& component,
+                              JoinCostEstimator const& estimator) -> JoinOrder {
   auto const nodes = nodesInIdOrder(graph, component);
   ADB_PROD_ASSERT(!nodes.empty());
 
@@ -402,7 +402,7 @@ auto chooseJoinOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
   std::vector<JoinOrder> componentOrders;
   std::vector<size_t> firstAppearance;  // parallel to componentOrders
   for (auto const& component : graph.connectedComponents()) {
-    auto greedy = orderComponent(graph, component, estimator);
+    auto greedy = getBestOrderForComponent(graph, component, estimator);
     auto written = writtenComponentOrder(component, currentOrder);
     auto writtenEstimate = getEstimateForOrder(graph, estimator, written);
 
