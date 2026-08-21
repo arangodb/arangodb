@@ -182,6 +182,20 @@ auto writtenComponentOrder(
       order.emplace_back(node);
     }
   }
+
+  // `currentOrder` and the graph's vertices are produced by two separate
+  // walks over the same node range -- buildJoinGraph and
+  // collectEnumerationOrder -- with the same "is an ENUMERATE_COLLECTION"
+  // predicate, and connectedComponents() partitions exactly those vertices.
+  // Every component member therefore appears here exactly once, and this
+  // subsequence has the component's full size. Should the two walks ever
+  // drift apart, a component would silently lose a vertex here; that only
+  // surfaces much later, as the permutation assertion at the end of
+  // chooseJoinOrder. Fail at the cause instead.
+  ADB_PROD_ASSERT(order.size() == component.size())
+      << "component of " << component.size() << " vertices matched only "
+      << order.size() << " of the " << currentOrder.size()
+      << " written enumerations";
   return order;
 }
 
