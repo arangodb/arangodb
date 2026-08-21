@@ -488,19 +488,19 @@ set(BASE_LIBS "$ENV{LIBS}" CACHE STRING "base libraries")
 include(CheckCompilerVersion)
 
 CheckCompilerVersion(
-  19.0 # Clang
+  22.0 # Clang
 )
 
 if(CMAKE_COMPILER_IS_CLANG)
   list(APPEND BASE_LIBS atomic)
 endif()
 
-# need c++20
+# need c++23
 # XXX this should really be set on a per target level using cmake compile_features capabilities
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 
-# turn off compiler language extensions(e.g. don't use -std=gnu++20, but
-# -std=c++20).
+# turn off compiler language extensions(e.g. don't use -std=gnu++23, but
+# -std=c++23).
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${BASE_LD_FLAGS}")

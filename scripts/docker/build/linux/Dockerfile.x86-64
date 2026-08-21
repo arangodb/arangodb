@@ -1,6 +1,6 @@
 # Arguments used through multiple build stages
 ARG COMPILER_VERSION=13
-ARG CLANG_VERSION=19
+ARG CLANG_VERSION=22
 
 # First rebuild glibc with a special option and provide some .deb files:
 FROM ubuntu:24.04 AS glibcdebs
@@ -97,7 +97,7 @@ ARG COMPILER_VERSION
 ARG CLANG_VERSION
 ARG SCCACHE_VERSION="0.10.0"
 
-# We provide gcc 13.2.0 as well as clang 19 (latest) from LLVM
+# We provide gcc 13.2.0 as well as clang 22 (latest) from LLVM
 
 ENV COMPILER_VERSION=${COMPILER_VERSION}
 ENV CLANG_VERSION=${CLANG_VERSION}
