@@ -151,8 +151,7 @@ ServiceImpl::ServiceImpl(std::unique_ptr<Backend> backend)
     : _backend(std::move(backend)) {}
 
 auto ServiceImpl::check(Subject const& subject,
-                        std::span<ActionResource const> queries) noexcept
-    -> Result {
+                        std::span<ActionResource const> queries) -> Result {
   // An empty batch asks nothing, so it is trivially permitted; short-circuit to
   // avoid a needless network round-trip.
   if (queries.empty()) {
