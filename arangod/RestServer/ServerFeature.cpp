@@ -50,11 +50,11 @@ ServerFeature::ServerFeature(ApplicationServer& server, int* res,
   setOptional(true);
   startsAfter<AqlFeaturePhase>();
   startsAfter<UpgradeFeature>();
-
-  server.getFeature<ShutdownFeature>().disable();
 }
 
 void ServerFeature::prepare() {
+  server().getFeature<ShutdownFeature>().disable();
+
   // adjust global settings for UTF-8 string validation
   basics::VelocyPackHelper::strictRequestValidationOptions.validateUtf8Strings =
       _options.validateUtf8Strings;
