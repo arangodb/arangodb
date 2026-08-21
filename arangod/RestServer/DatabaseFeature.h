@@ -122,7 +122,6 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
 
   // used by unit tests
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  void setEngineTesting(StorageEngine* engine) noexcept { _engine = engine; }
   ErrorCode loadDatabases(velocypack::Slice databases) {
     return iterateDatabases(databases);
   }
@@ -185,11 +184,6 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
       std::function<void(Database& vocbase)> const& func) override;
   std::string translateCollectionName(std::string_view dbName,
                                       std::string_view collectionName);
-
-  StorageEngine& engine() const noexcept {
-    TRI_ASSERT(_engine != nullptr);
-    return *_engine;
-  }
 
   bool ignoreDatafileErrors() const noexcept {
     return _options.ignoreDatafileErrors;

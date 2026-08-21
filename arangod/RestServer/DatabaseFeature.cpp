@@ -497,14 +497,7 @@ void DatabaseFeature::unprepare() {
 }
 
 void DatabaseFeature::prepare() {
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  if (_engine == nullptr) {
-    // engine not injected by test code, inject it now
-#endif
-    _engine = &server().getFeature<StorageEngine>();
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  }
-#endif
+  _engine = &server().getFeature<StorageEngine>();
 
   // need this to make calculation analyzer available in database links
   initCalculationVocbase();

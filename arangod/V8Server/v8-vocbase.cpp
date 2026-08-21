@@ -253,7 +253,7 @@ static void JS_Compact(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  StorageEngine& engine = v8g->server().getFeature<DatabaseFeature>().engine();
+  StorageEngine& engine = v8g->server().getFeature<StorageEngine>();
   Result res = engine.compactAll(changeLevel, compactBottomMostLevel);
 
   if (res.fail()) {
@@ -1558,7 +1558,7 @@ static void JS_Engine(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // return engine data
   TRI_GET_GLOBALS();
-  StorageEngine& engine = v8g->server().getFeature<DatabaseFeature>().engine();
+  StorageEngine& engine = v8g->server().getFeature<StorageEngine>();
   VPackBuilder builder;
   engine.getCapabilities(builder);
 
@@ -1577,7 +1577,7 @@ static void JS_EngineStats(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // return engine data
   TRI_GET_GLOBALS();
-  StorageEngine& engine = v8g->server().getFeature<DatabaseFeature>().engine();
+  StorageEngine& engine = v8g->server().getFeature<StorageEngine>();
   VPackBuilder builder;
   engine.getStatistics(builder);
 
@@ -1613,7 +1613,7 @@ static void JS_PathDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   TRI_GET_GLOBALS();
-  StorageEngine& engine = v8g->server().getFeature<DatabaseFeature>().engine();
+  StorageEngine& engine = v8g->server().getFeature<StorageEngine>();
 
   TRI_V8_RETURN_STD_STRING(engine.databasePath());
   TRI_V8_TRY_CATCH_END
@@ -2043,7 +2043,7 @@ static void JS_CurrentWalFiles(
   auto context = TRI_IGETC;
 
   TRI_GET_GLOBALS();
-  StorageEngine& engine = v8g->server().getFeature<DatabaseFeature>().engine();
+  StorageEngine& engine = v8g->server().getFeature<StorageEngine>();
   std::vector<std::string> names = engine.currentWalFiles();
   std::sort(names.begin(), names.end());
 
@@ -2141,8 +2141,8 @@ static void JS_EncryptionKeyReload(
   }
 
   TRI_GET_GLOBALS();
-  auto* engine = dynamic_cast<RocksDBEngine*>(
-      &v8g->server().getFeature<DatabaseFeature>().engine());
+  auto* engine =
+      dynamic_cast<RocksDBEngine*>(&v8g->server().getFeature<StorageEngine>());
   if (engine == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
@@ -2252,7 +2252,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
   TRI_InitV8cursor(context, v8g);
 
-  StorageEngine& engine = server.getFeature<DatabaseFeature>().engine();
+  StorageEngine& engine = server.getFeature<StorageEngine>();
   engine.addV8Functions();
 
   // .............................................................................

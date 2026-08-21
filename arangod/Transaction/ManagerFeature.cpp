@@ -85,14 +85,8 @@ ManagerFeature::~ManagerFeature() {
 
 void ManagerFeature::prepare() {
   TRI_ASSERT(MANAGER.get() == nullptr);
-  StorageEngine* engine = nullptr;
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  if (!server().hasFeature<StorageEngine>()) {
-    engine = &server().getFeature<DatabaseFeature>().engine();
-  } else
-#endif
-    engine = &server().getFeature<StorageEngine>();
-  MANAGER = engine->createTransactionManager(_options, _numExpiredTransactions);
+  auto& engine = server().getFeature<StorageEngine>();
+  MANAGER = engine.createTransactionManager(_options, _numExpiredTransactions);
 }
 
 void ManagerFeature::start() {

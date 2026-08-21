@@ -680,7 +680,8 @@ AgencyCommResult AgencyComm::sendServerState(double timeout) {
 
     if (ServerState::instance()->isDBServer()) {
       // use storage engine health self-assessment and send it to agency too
-      arangodb::HealthData hd = _databaseFeature.engine().healthCheck();
+      arangodb::HealthData hd =
+          _databaseFeature.server().getFeature<StorageEngine>().healthCheck();
       hd.toVelocyPack(builder, /*withDetails*/ false);
     }
 

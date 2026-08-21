@@ -258,10 +258,10 @@ static void SetupAqlPhase(MockServer& server) {
 MockServer::MockServer(ServerState::RoleEnum myRole, bool injectClusterIndexes)
     : _server(std::make_shared<options::ProgramOptions>("", "", "", nullptr),
               nullptr),
-      _engine(
-          std::make_unique<StorageEngineMock>(_server, injectClusterIndexes)),
       _oldRebootId(0),
       _started(false) {
+  _engine = &addFeatureUntracked<StorageEngine, StorageEngineMock>(
+      injectClusterIndexes);
   _oldRole = ServerState::instance()->getRole();
   ServerState::instance()->setRole(myRole);
   _originalMockingState = ClusterEngine::Mocking;
@@ -306,10 +306,6 @@ void MockServer::startFeatures() {
 
   _server.setupDependencies(false);
   auto orderedFeatures = _server.getOrderedFeatures();
-
-  if (_server.hasFeature<DatabaseFeature>()) {
-    _server.getFeature<DatabaseFeature>().setEngineTesting(_engine.get());
-  }
 
   for (ApplicationFeature& f : orderedFeatures) {
     auto info = _features.find(&f);

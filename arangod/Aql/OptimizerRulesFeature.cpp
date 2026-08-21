@@ -1014,7 +1014,7 @@ run in parallel. This is only possible for certain operations in a query.)");
 }
 
 void OptimizerRulesFeature::addStorageEngineRules() {
-  StorageEngine& engine = server().getFeature<DatabaseFeature>().engine();
+  StorageEngine& engine = server().getFeature<StorageEngine>();
   engine.addOptimizerRules(*this);
 }
 

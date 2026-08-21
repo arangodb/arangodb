@@ -50,7 +50,9 @@ namespace arangodb {
 namespace tests {
 namespace graph {
 
-GraphTestSetup::GraphTestSetup() : server(nullptr, nullptr), engine(server) {
+GraphTestSetup::GraphTestSetup()
+    : server(nullptr, nullptr),
+      engine(server.addFeature<StorageEngine, StorageEngineMock>()) {
   arangodb::transaction::Methods::clearDataSourceRegistrationCallbacks();
   arangodb::ClusterEngine::Mocking = true;
   arangodb::RandomGenerator::initialize(
@@ -70,7 +72,6 @@ GraphTestSetup::GraphTestSetup() : server(nullptr, nullptr), engine(server) {
       server.addFeature<arangodb::transaction::ManagerFeature>(metrics), false);
   auto& databaseFeature = server.addFeature<arangodb::DatabaseFeature>();
   features.emplace_back(databaseFeature, false);
-  databaseFeature.setEngineTesting(&engine);
   features.emplace_back(
       server.addFeature<arangodb::QueryRegistryFeature>(
           server.getFeature<arangodb::metrics::MetricsFeature>()),
@@ -108,7 +109,6 @@ GraphTestSetup::GraphTestSetup() : server(nullptr, nullptr), engine(server) {
 GraphTestSetup::~GraphTestSetup() {
   system.reset();                       // destroy before reseting the 'ENGINE'
   arangodb::AqlFeature(server).stop();  // unset singleton instance
-  server.getFeature<DatabaseFeature>().setEngineTesting(nullptr);
 
   // destroy application features
   for (auto& f : features) {

@@ -216,7 +216,7 @@ void MetricsFeature::toPrometheus(std::string& result,
                                      _options.ensureWhitespace);
 
     // Storage engine only provides standard metrics
-    auto& es = _databaseFeature->engine();
+    auto& es = server().getFeature<StorageEngine>();
     if (es.typeName() == RocksDBEngine::kEngineName) {
       es.toPrometheus(result, _globals, _options.ensureWhitespace);
     }

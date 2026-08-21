@@ -521,7 +521,7 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
 
   std::map<std::string, NodePtr> localNodes;
 
-  std::unique_ptr<RocksDBEngine>
+  RocksDBEngine*
       engine;  // arbitrary implementation that has index types registered
 
   MaintenanceTestActionPhaseOne()
@@ -566,16 +566,13 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
                                      : nullptr;
     // need to construct this after adding the MetricsFeature to the application
     // server
-    engine = std::make_unique<RocksDBEngine>(
-        as, roOptions, metrics, dbpath, vectorIndex, flush, dumpLimits,
+    engine = &as.addFeature<StorageEngine, RocksDBEngine>(
+        roOptions, metrics, dbpath, vectorIndex, flush, dumpLimits,
         replicatedLogFeature, scheduler, rocksDbRecoveryManager, dbFeature,
         rocksDbIndexCacheRefillFeature, cacheManagerFeature, agencyFeature);
-    dbFeature.setEngineTesting(engine.get());
   }
 
-  ~MaintenanceTestActionPhaseOne() {
-    as.getFeature<arangodb::DatabaseFeature>().setEngineTesting(nullptr);
-  }
+  ~MaintenanceTestActionPhaseOne() {}
 
   auto dbName() const -> std::string {
     // this is a database known in the test files

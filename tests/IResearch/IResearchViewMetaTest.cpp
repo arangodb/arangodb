@@ -38,16 +38,16 @@
 class IResearchViewMetaTest : public ::testing::Test {
  protected:
   arangodb::application_features::ApplicationServer server;
-  StorageEngineMock engine;
+  StorageEngineMock& engine;
 
-  IResearchViewMetaTest() : server(nullptr, nullptr), engine(server) {
-    auto& dbFeature = server.addFeature<arangodb::DatabaseFeature>();
-    dbFeature.setEngineTesting(&engine);
+  IResearchViewMetaTest()
+      : server(nullptr, nullptr),
+        engine(
+            server.addFeature<arangodb::StorageEngine, StorageEngineMock>()) {
+    server.addFeature<arangodb::DatabaseFeature>();
   }
 
-  ~IResearchViewMetaTest() {
-    server.getFeature<arangodb::DatabaseFeature>().setEngineTesting(nullptr);
-  }
+  ~IResearchViewMetaTest() = default;
 };
 
 TEST_F(IResearchViewMetaTest, test_defaults) {
