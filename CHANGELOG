@@ -1,5 +1,6 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+
 * AQL optimizer rule `optimize-join-order` now reorders adjacent `FOR` loops
   joined by equijoin conditions, choosing an order from estimated join
   cardinalities, instead of only building the join graph. The rule stays
@@ -22,6 +23,13 @@
   `optimize-join-order` can never leave a query less optimized than the
   default.
 
+* Updated ArangoDB Starter to v0.20.0-preview-16.
+
+* Upgraded included rclone to v1.75.0 with go1.25.13 and non-vulnerable
+  dependencies.
+
+* Updated node module js-yaml to 4.3.1 to resolve GHSA-5p4m-2wfm-xmqj.
+
 * COR-742: AQL `MATCH` inline projections support aliasing / flattening via
   `RETURN name = <expr>` in addition to bare attribute keeps. Alias expressions
   use normal AQL scope (explicit pattern-variable references), e.g.
@@ -38,6 +46,30 @@
   edges. The `MATCH` statement remains experimental (`matchStatement:
   "experimental"`).
 
+* Added a debug-symbols TAR.GZ bundle
+  (arangodb4e-dbg-linux-<version>_<arch>.tar.gz), the TAR.GZ analogue of
+  the 3.12 -dbg packages: it contains usr/lib/debug/.build-id/... debug
+  files extracted from the binaries that are stripped for packaging (the
+  client tools). arangod itself ships unstripped with minimal debug info
+  in the binary and is deliberately not part of the bundle. "make install"
+  no longer strips anything; all stripping happens at packaging time.
+
+* ArangoDB is distributed as TAR.GZ bundles and Docker images only: the
+  DEB, RPM, Snap and macOS bundle packaging (and their installation
+  resources) have been removed.
+
+* Renamed packages and their resources from arangodb3 to arangodb4: the
+  TAR.GZ bundles and the object-files archive are now named arangodb4e
+  (enterprise), and the configuration, data, log and resource directories
+  moved from /etc/arangodb3, /var/lib/arangodb3, /var/log/arangodb3 and
+  /usr/share/arangodb3 to their arangodb4 counterparts.
+
+* The server Docker image and the server TAR.GZ bundle no longer contain the
+  client tools (arangosh, arangobackup, arangodump, arangoexport,
+  arangoimport, arangoinspect, arangorestore, arangovpack) and their
+  resources. Use the client-tools Docker image or the client TAR.GZ bundle
+  instead.
+
 * COR-677: Modern WeightAttribute for kShortestPaths and ShortestPaths
   Allow sub-attribute as weightAttribute for SHORTEST_PATH and
   K_SHORTEST_PATHS (same semantics as COR-564 for weighted traversals).
@@ -52,10 +84,9 @@
 * COR-675: Constant-Folding for Object splice, enhanced AQL constant folding 
   for object literals. Object literals with constant object splices and constant computed attribute names are now precomputed during query optimization, reducing runtime overhead and improving query performance
 
-* Upgraded included rclone to v1.74.4 with go1.25.12 and non-vulnerable
-  dependencies.
-
-* Updated ArangoDB Starter to v0.20.0-preview-13.
+* Updated node modules:
+ - brace-expansion to 5.0.9
+ - fast-uri to 3.1.5
 
 * Removed the deprecated `hash` and `skiplist` index types from the index
   aliases reported by the `GET /_api/engine` endpoint, as they can no longer

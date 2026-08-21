@@ -1,5 +1,9 @@
+# Server-only image (arangodb/core-*): arangod, the starter and rclone.
+# Client tools (arangosh, arangodump, ...) are not part of this image;
+# they live in the client-tools image (deploy-alpine-client.dockerfile).
+# The CI job that builds this image prunes them from the install tree.
 FROM alpine:3.24
-MAINTAINER Max Neunhoeffer <hackers@arangodb.com>
+LABEL org.opencontainers.image.authors="hackers@arangodb.com"
 
 ARG arch
 
@@ -17,10 +21,10 @@ RUN echo "UTC" > /etc/timezone
 # Containers in OpenShift by default run with a random UID but with GID 0,
 # and we want that they can access the database and doc directories even
 # without a volume mount:
-RUN chgrp 0 /var/lib/arangodb3 && \
-    chmod 775 /var/lib/arangodb3
+RUN chgrp 0 /var/lib/arangodb4 && \
+    chmod 775 /var/lib/arangodb4
 
-COPY entrypoint.sh /entrypoint.sh
+COPY entrypoint-alpine.sh /entrypoint.sh
 RUN ["chmod", "+x", "/entrypoint.sh"]
 ENTRYPOINT [ "/entrypoint.sh" ]
 
