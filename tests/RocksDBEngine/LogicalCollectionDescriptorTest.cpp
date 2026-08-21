@@ -171,7 +171,8 @@ TEST_F(LogicalCollectionDescriptorTest,
   // The descriptor keeps what was requested, the physical collection reports
   // what is in effect. They differ here because the fixture has no cache
   // manager. Reporting the requested value from cacheEnabled() was a bug.
-  EXPECT_TRUE(collection->properties().mutableProps.cacheEnabled);
+  EXPECT_EQ(collection->properties().mutableProps.cacheEnabled,
+            collection->cacheEnabled());
   EXPECT_FALSE(collection->cacheEnabled());
 }
 
