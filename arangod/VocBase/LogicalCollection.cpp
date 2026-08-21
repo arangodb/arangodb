@@ -415,12 +415,13 @@ CollectionDescriptor LogicalCollection::properties() const {
 
   // Only update the mutable fields with the current values
   d.mutableProps.name = name();
+  d.mutableProps.cacheEnabled = cacheEnabled();
+
   d.clusteringMutable.waitForSync =
       _waitForSync.load(std::memory_order_relaxed);
   d.clusteringMutable.replicationFactor = replicationFactor();
   d.clusteringMutable.writeConcern = writeConcern();
 
-  // ShardingInfo
   d.clusteringConstant.numberOfShards = numberOfShards();
   d.clusteringConstant.shardKeys = shardKeys();
   d.clusteringConstant.shardingStrategy =
@@ -430,7 +431,6 @@ CollectionDescriptor LogicalCollection::properties() const {
   }
 
   d.internal.id = id();
-
   d.internal.usesRevisionsAsDocumentIds = _usesRevisionsAsDocumentIds;
   d.internal.syncByRevision = _syncByRevision.load(std::memory_order_relaxed);
   d.internal.internalValidatorType =
@@ -1531,14 +1531,13 @@ auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
     replication2::replicated_state::document::DocumentLeaderState> {
   auto stateMachine = getDocumentState();
 
-  static constexpr auto throwUnavailable =
-      []<typename... Args>(basics::SourceLocation location,
-                           std::format_string<Args...> formatString,
-                           Args&&... args) {
-        throw basics::Exception(
-            TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
-            std::format(formatString, std::forward<Args>(args)...), location);
-      };
+  static constexpr auto throwUnavailable = []<typename... Args>(
+      basics::SourceLocation location, std::format_string<Args...> formatString,
+      Args && ... args) {
+    throw basics::Exception(
+        TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
+        std::format(formatString, std::forward<Args>(args)...), location);
+  };
 
   auto leader = stateMachine->getLeader();
   if (leader == nullptr) {

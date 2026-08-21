@@ -68,5 +68,4 @@ auto inspect(Inspector& f, CollectionStorageProperties& props) {
   }
 }
 
-
 }  // namespace arangodb
