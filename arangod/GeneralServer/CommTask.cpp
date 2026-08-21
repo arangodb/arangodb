@@ -283,28 +283,6 @@ CommTask::Flow CommTask::prepareExecution(
   if (!::resolveRequestContext(_databaseFeature, *_auth, _rbacFeature,
                                _securityFeature,
                                req)) {  // false if db not found
-    if (_auth->isActive()) {
-      // prevent guessing database names (issue #5030)
-      auth::Level lvl = auth::Level::NONE;
-      if (req.authenticated()) {
-        // If we are authenticated and the user name is empty, then we must
-        // have been authenticated with a superuser JWT token. In this case,
-        // we must not check the databaseAuthLevel here.
-        if (_auth->userManager() != nullptr && !req.user().empty()) {
-          lvl = _auth->userManager()->databaseAuthLevel(
-              req.user(), req.databaseName(), false);
-        } else {
-          lvl = auth::Level::RW;
-        }
-      }
-      if (lvl == auth::Level::NONE) {
-        sendErrorResponse(rest::ResponseCode::UNAUTHORIZED,
-                          req.contentTypeResponse(), req.messageId(),
-                          TRI_ERROR_FORBIDDEN,
-                          "not authorized to execute this request");
-        return Flow::Abort;
-      }
-    }
     sendErrorResponse(rest::ResponseCode::NOT_FOUND, req.contentTypeResponse(),
                       req.messageId(), TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     return Flow::Abort;
