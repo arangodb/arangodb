@@ -48,7 +48,9 @@ if (getOptions === true) {
     'server.authentication': 'true',
     'log.force-direct': 'true',
     // keep background threads from asking questions of their own
-    'foxx.queues': 'false'
+    'foxx.queues': 'false',
+    // disable so it doesn't spoil the test output:
+    'server.statistics': 'false'
   };
 }
 
@@ -153,8 +155,6 @@ function databaseApiAuthzSuite () {
         "UseCollection db=d2 name=_apps level=writemeta",
         "UseCollection db=d2 name=_jobs level=writemeta",
         ...singleOnly([
-          "UseCollection db=_system name=_users level=read",
-          "UseCollection db=_system name=_users level=writedata",
           "UseCollection db=d2 name=_apps level=read",
           "UseCollection db=d2 name=_apps level=writedata",
           "UseCollection db=d2 name=_jobs level=read",
@@ -174,10 +174,6 @@ function databaseApiAuthzSuite () {
         "UseDatabase name=_system level=read",
         "IsReadOnly",
         "DropDatabase name=d2",
-        ...singleOnly([
-          "UseCollection db=_system name=_users level=read",
-          "UseCollection db=_system name=_users level=writedata"
-        ])
       ], endObserve());
     },
   };

@@ -110,9 +110,6 @@ class ExecContext {
   /// @brief cancel execution
   void cancel() noexcept { _canceled.store(true, std::memory_order_relaxed); }
 
-  /// @brief upgrade to internal superuser, preserving request/vocbase refs
-  void forceSuperuser();
-
   /// @brief returns the vocbase associated with this context, if any
   [[nodiscard]] std::optional<std::reference_wrapper<Database>> vocbase()
       const noexcept;
