@@ -1,0 +1,121 @@
+# clang-tidy configuration for ArangoDB
+# =======================================
+#
+# This is the top-level clang-tidy configuration. It applies to every source
+# file in the tree *except* where a more specific `.clang-tidy` overrides it
+# (clang-tidy walks up from each file's directory and uses the nearest config).
+# Notably, `3rdParty/.clang-tidy` disables all checks for vendored code.
+#
+# How to run it:
+#   ./utils/clang-tidy.sh            # check files changed vs. the base branch
+#   ./utils/clang-tidy.sh <files>    # check specific files/directories
+#   ./utils/clang-tidy.sh --help     # options (build dir, -fix, ...)
+#
+# clang-tidy is a *static* analyzer: it never runs the code. It reparses each
+# translation unit using the exact compile flags recorded in the build's
+# `compile_commands.json`, so a configured (and ideally built) build directory
+# is required. See utils/clang-tidy.sh.
+#
+# --- Rollout philosophy -------------------------------------------------------
+# This list is deliberately CONSERVATIVE. The goal for the initial rollout is a
+# signal-to-noise ratio high enough that developers trust the output and CI can
+# eventually gate on it. Whole opinionated groups (the full modernize-*,
+# readability-* and google-* sets) are intentionally left OFF for now; they are
+# large, stylistically loaded, and several collide with our own conventions
+# (e.g. readability-identifier-naming vs. our `_member` / `kConstant` style).
+# Add checks incrementally, each with its own cleanup commit, and record the
+# mechanical auto-fix commits in `.git-blame-ignore-revs`.
+
+Checks: |
+  # Start from a clean slate: disable everything, then opt in explicitly.
+  # This keeps the enabled set auditable instead of inheriting clang-tidy's
+  # (version-dependent) defaults.
+  -*,
+
+  # bugprone-*: likely-bug patterns (use-after-move, sizeof mistakes, macro
+  # pitfalls, ...). Highest value / lowest false-positive group; enable wholesale.
+  bugprone-*,
+
+  # performance-*: cheap, near-always-correct wins (unnecessary copies,
+  # inefficient string ops, pass-by-value that should be by-const-ref, ...).
+  performance-*,
+
+  # misc-* : a grab-bag; mostly useful (definitions-in-headers,
+  # unused-using-decls, redundant expressions). A few noisy members are
+  # switched off individually below.
+  misc-*,
+
+  # clang-analyzer-*: the path-sensitive static analyzer (null derefs, leaks,
+  # uninitialized reads). More expensive per TU but catches real defects that
+  # AST-only checks cannot. Keep it on.
+  clang-analyzer-*,
+
+  # A few hand-picked modernize checks that are unambiguous and align with our
+  # C++20 baseline. The rest of modernize-* is held back (too churny for a first
+  # pass), so we enable these by name rather than enabling the whole group.
+  modernize-use-override,
+  modernize-use-nullptr,
+  modernize-use-equals-default,
+  modernize-use-equals-delete,
+
+  # Correctness-flavoured readability checks worth having from day one.
+  # (The bulk of readability-* is deferred.)
+  readability-misleading-indentation,
+
+  # --- Opt-outs from the groups enabled above -------------------------------
+
+  # Flags every function with two adjacent same-type params. Almost always
+  # noise on an existing codebase; revisit once the baseline is clean.
+  -bugprone-easily-swappable-parameters,
+
+  # We use recursion deliberately in many places (AQL, graph traversal, ...).
+  -misc-no-recursion,
+
+  # We have many legitimate public/protected data members (structs, POD-ish
+  # helpers). Enforcing this now would be a huge, low-value diff.
+  -misc-non-private-member-variables-in-classes,
+
+  # Requires including what you use across the whole tree; extremely noisy to
+  # switch on retroactively. A candidate for a dedicated later effort.
+  -misc-include-cleaner,
+
+  # --- Disabled after the first full-tree survey (~228k findings total) -----
+  # These three dominate the results with pure stylistic churn and negligible
+  # bug-yield; leaving them on drowns out the actionable findings. Revisit
+  # individually as dedicated cleanup efforts.
+
+  # ~42k hits. Suggests a smaller underlying type for every enum; churny and
+  # can affect ABI / on-wire serialization. Not worth it as a default.
+  -performance-enum-size,
+
+  # ~34k hits. Wants `const` on every eligible local variable. Enormous diff
+  # for no correctness gain.
+  -misc-const-correctness,
+
+  # ~25k hits. Fires on unused interface/override/virtual params throughout;
+  # overwhelmingly benign.
+  -misc-unused-parameters,
+
+  # ~750 unique hits. Suggests replacing file-local `static` with an anonymous
+  # namespace. This is a convention we would like to adopt eventually, but
+  # switching wholesale now is a large, purely stylistic diff. Disabled for
+  # now; re-enable when we tackle it as a dedicated effort.
+  -misc-use-anonymous-namespace
+
+# Only emit diagnostics for headers under our own source roots. Without this,
+# clang-tidy would either stay silent on headers or flood us with findings from
+# system and third-party headers pulled in transitively.
+# ExcludeHeaderFilterRegex (clang-tidy >= 19) is belt-and-suspenders: it drops
+# anything under 3rdParty/ or a build directory even if the include regex above
+# happens to match a path segment there (e.g. ".../nghttp2-lib/...").
+HeaderFilterRegex: '/(arangod|lib|client-tools|enterprise)/'
+ExcludeHeaderFilterRegex: '/(3rdParty|build|cmake-build[^/]*)/'
+
+# Do NOT promote findings to hard errors from within the config. Whether a
+# finding fails a build or a CI job is decided by the caller (utils/clang-tidy.sh
+# / the CI job), so that the same config serves advisory and gating use alike.
+WarningsAsErrors: ''
+
+# When a check offers a fix that reformats code, format the result with our
+# repo .clang-format rather than clang-tidy's built-in defaults.
+FormatStyle: file

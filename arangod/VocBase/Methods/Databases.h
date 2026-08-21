@@ -54,9 +54,6 @@ struct Databases {
                      std::string const& dbName);
 
  private:
-  /// @brief will retry for at most <timeout> seconds
-  static Result grantCurrentUser(CreateDatabaseInfo const& info);
-
   static Result createCoordinator(CreateDatabaseInfo const& info);
   static Result createOther(CreateDatabaseInfo const& info);
 };

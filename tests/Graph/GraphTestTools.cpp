@@ -127,7 +127,7 @@ std::shared_ptr<Index> MockIndexHelpers::getEdgeIndexHandle(
   TRI_ASSERT(coll != nullptr);    // no edge collection of this name
   TRI_ASSERT(coll->type() == 3);  // Is not an edge collection
   for (auto const& idx : coll->getPhysical()->getAllIndexes()) {
-    if (idx->type() == Index::TRI_IDX_TYPE_EDGE_INDEX) {
+    if (idx->type() == IndexType::Edge) {
       return idx;
     }
   }

@@ -885,7 +885,7 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
       // the collection caching optimization
       bool const hasViewLink =
           std::any_of(indexes.begin(), indexes.end(), [](auto const& index) {
-            return (index->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK);
+            return (index->type() == IndexType::IResearchLink);
           });
       if (hasViewLink) {
         // we do have a view. set hash to 0, which will disable the caching
@@ -895,7 +895,7 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
           TRI_ASSERT(ServerState::instance()->isCoordinator());
           for (auto const& idx : indexes) {
             TRI_ASSERT(idx);
-            if (idx->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
+            if (idx->type() == IndexType::IResearchLink) {
               auto& coordLink =
                   basics::downCast<iresearch::IResearchLinkCoordinator const>(
                       *idx);

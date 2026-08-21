@@ -131,10 +131,10 @@ std::string defaultIndexName(VPackSlice const& slice) {
   auto type = arangodb::Index::type(
       slice.get(arangodb::StaticStrings::IndexType).stringView());
 
-  if (type == arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+  if (type == arangodb::IndexType::Primary) {
     return arangodb::StaticStrings::IndexNamePrimary;
   }
-  if (type == arangodb::Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
+  if (type == arangodb::IndexType::Edge) {
     auto fields = slice.get(arangodb::StaticStrings::IndexFields);
     TRI_ASSERT(fields.isArray());
     auto firstField = fields.at(0);
@@ -370,7 +370,7 @@ void Index::validateFields(VPackSlice slice) {
   std::string_view type =
       slice.get(arangodb::StaticStrings::IndexType).stringView();
   auto allowExpansion = Index::allowExpansion(Index::type(type));
-  auto const fieldIsObject = TRI_IDX_TYPE_INVERTED_INDEX == Index::type(type);
+  auto const fieldIsObject = IndexType::Inverted == Index::type(type);
 
   auto fields = slice.get(arangodb::StaticStrings::IndexFields);
   if (!fields.isArray()) {
@@ -397,105 +397,105 @@ void Index::validateFields(VPackSlice slice) {
 }
 
 /// @brief return the index type based on a type name
-Index::IndexType Index::type(std::string_view type) {
+IndexType Index::type(std::string_view type) {
   if (type == "primary") {
-    return TRI_IDX_TYPE_PRIMARY_INDEX;
+    return IndexType::Primary;
   }
   if (type == "edge") {
-    return TRI_IDX_TYPE_EDGE_INDEX;
+    return IndexType::Edge;
   }
   if (type == "hash") {
-    return TRI_IDX_TYPE_HASH_INDEX;
+    return IndexType::Hash;
   }
   if (type == "skiplist") {
-    return TRI_IDX_TYPE_SKIPLIST_INDEX;
+    return IndexType::Skiplist;
   }
   if (type == "ttl") {
-    return TRI_IDX_TYPE_TTL_INDEX;
+    return IndexType::TTL;
   }
   if (type == "persistent" || type == "rocksdb") {
-    return TRI_IDX_TYPE_PERSISTENT_INDEX;
+    return IndexType::Persistent;
   }
   if (type == "fulltext") {
-    return TRI_IDX_TYPE_FULLTEXT_INDEX;
+    return IndexType::Fulltext;
   }
   if (type == "geo") {
-    return TRI_IDX_TYPE_GEO_INDEX;
+    return IndexType::Geo;
   }
   if (type == "geo1") {
-    return TRI_IDX_TYPE_GEO1_INDEX;
+    return IndexType::Geo1;
   }
   if (type == "geo2") {
-    return TRI_IDX_TYPE_GEO2_INDEX;
+    return IndexType::Geo2;
   }
   if (type == "mdi") {
-    return TRI_IDX_TYPE_MDI_INDEX;
+    return IndexType::MDI;
   }
   if (type == "zkd") {
-    return TRI_IDX_TYPE_ZKD_INDEX;
+    return IndexType::Zkd;
   }
   if (type == "mdi-prefixed") {
-    return TRI_IDX_TYPE_MDI_PREFIXED_INDEX;
+    return IndexType::MDIPrefixed;
   }
   if (type == iresearch::StaticStrings::ViewArangoSearchType) {
-    return TRI_IDX_TYPE_IRESEARCH_LINK;
+    return IndexType::IResearchLink;
   }
   if (type == "noaccess") {
-    return TRI_IDX_TYPE_NO_ACCESS_INDEX;
+    return IndexType::NoAccess;
   }
   if (type == arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE) {
-    return TRI_IDX_TYPE_INVERTED_INDEX;
+    return IndexType::Inverted;
   }
   if (type == "vector") {
-    return TRI_IDX_TYPE_VECTOR_INDEX;
+    return IndexType::Vector;
   }
-  return TRI_IDX_TYPE_UNKNOWN;
+  return IndexType::Unknown;
 }
 
 bool Index::onlyHintForced(IndexType type) {
   // inverted index is eventually consistent, so usage must be explicilty
   // permitted by the user
-  return type == TRI_IDX_TYPE_INVERTED_INDEX;
+  return type == IndexType::Inverted;
 }
 
 /// @brief return the name of an index type
-char const* Index::oldtypeName(Index::IndexType type) {
+char const* Index::oldtypeName(IndexType type) {
   switch (type) {
-    case TRI_IDX_TYPE_PRIMARY_INDEX:
+    case IndexType::Primary:
       return "primary";
-    case TRI_IDX_TYPE_EDGE_INDEX:
+    case IndexType::Edge:
       return "edge";
-    case TRI_IDX_TYPE_HASH_INDEX:
+    case IndexType::Hash:
       return "hash";
-    case TRI_IDX_TYPE_SKIPLIST_INDEX:
+    case IndexType::Skiplist:
       return "skiplist";
-    case TRI_IDX_TYPE_TTL_INDEX:
+    case IndexType::TTL:
       return "ttl";
-    case TRI_IDX_TYPE_PERSISTENT_INDEX:
+    case IndexType::Persistent:
       return "persistent";
-    case TRI_IDX_TYPE_FULLTEXT_INDEX:
+    case IndexType::Fulltext:
       return "fulltext";
-    case TRI_IDX_TYPE_GEO1_INDEX:
+    case IndexType::Geo1:
       return "geo1";
-    case TRI_IDX_TYPE_GEO2_INDEX:
+    case IndexType::Geo2:
       return "geo2";
-    case TRI_IDX_TYPE_GEO_INDEX:
+    case IndexType::Geo:
       return "geo";
-    case TRI_IDX_TYPE_IRESEARCH_LINK:
+    case IndexType::IResearchLink:
       return iresearch::StaticStrings::ViewArangoSearchType.data();
-    case TRI_IDX_TYPE_NO_ACCESS_INDEX:
+    case IndexType::NoAccess:
       return "noaccess";
-    case TRI_IDX_TYPE_ZKD_INDEX:
+    case IndexType::Zkd:
       return "zkd";
-    case TRI_IDX_TYPE_MDI_INDEX:
+    case IndexType::MDI:
       return "mdi";
-    case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
+    case IndexType::MDIPrefixed:
       return "mdi-prefixed";
-    case TRI_IDX_TYPE_INVERTED_INDEX:
+    case IndexType::Inverted:
       return arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE.data();
-    case TRI_IDX_TYPE_VECTOR_INDEX:
+    case IndexType::Vector:
       return "vector";
-    case TRI_IDX_TYPE_UNKNOWN: {
+    case IndexType::Unknown: {
     }
   }
 
@@ -1258,8 +1258,7 @@ void Index::normalizeFilterCosts(Index::FilterCosts& costs, Index const* idx,
     costs.estimatedCosts *= 0.995 - 0.05 * (numFieldsToConsider - 1);
   }
 
-  if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
-      idx->type() == Index::TRI_IDX_TYPE_EDGE_INDEX) {
+  if (idx->type() == IndexType::Primary || idx->type() == IndexType::Edge) {
     // primary and edge index have faster lookups due to very fast
     // comparators
     costs.estimatedCosts *= 0.9;
