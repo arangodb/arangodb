@@ -191,6 +191,22 @@ TEST_F(LogicalCollectionDescriptorTest,
                 ->objectId());
 }
 
+TEST_F(LogicalCollectionDescriptorTest, Properties_isALiveSnapshot) {
+  auto database = makeDatabase("testDatabase", 42);
+  auto collection =
+      database->createCollection(representativeCreateDescriptor());
+
+  auto d = collection->properties();
+  // the stored descriptor has no id on the load path; properties() fills it in
+  EXPECT_EQ(d.internal.id, collection->id());
+  EXPECT_EQ(d.mutableProps.name, collection->name());
+  EXPECT_EQ(d.clusteringConstant.numberOfShards, collection->numberOfShards());
+  EXPECT_EQ(d.clusteringConstant.shardKeys, collection->shardKeys());
+  EXPECT_EQ(d.clusteringMutable.replicationFactor,
+            collection->replicationFactor());
+  EXPECT_EQ(d.clusteringMutable.writeConcern, collection->writeConcern());
+}
+
 //////////////////////////////////////////////////////////////////////////////////
 // Section 2: create path and load path both work correctly
 //////////////////////////////////////////////////////////////////////////////////
@@ -315,6 +331,22 @@ TEST_F(LogicalCollectionDescriptorTest,
       std::holds_alternative<UpgradeKeyGeneratorProperties>(internalProps));
 
   KeyGeneratorProperties userProps;
+  EXPECT_FALSE(velocypack::deserializeWithStatus(body.slice(), userProps, {},
+                                                 InspectUserContext{})
+                   .ok());
+}
+
+// objectId is user-rejected, internal-accepted.
+TEST_F(LogicalCollectionDescriptorTest, Context_objectIdIsInternalOnly) {
+  auto body = oneKeyObject(StaticStrings::ObjectId, VPackValue("1234"));
+
+  CollectionDescriptor internalProps;
+  EXPECT_TRUE(velocypack::deserializeWithStatus(body.slice(), internalProps, {},
+                                                InspectInternalContext{})
+                  .ok());
+  EXPECT_EQ(internalProps.storage.objectId, 1234u);
+
+  CollectionDescriptor userProps;
   EXPECT_FALSE(velocypack::deserializeWithStatus(body.slice(), userProps, {},
                                                  InspectUserContext{})
                    .ok());
