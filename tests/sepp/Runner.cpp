@@ -210,7 +210,7 @@ auto Runner::createCollection(std::string const& name, std::string const& type)
   config.enforceReplicationFactor = enforceReplicationFactor;
 
   auto planCollection =
-      CollectionDescriptor::fromCreateAPIBody(b.slice(), config);
+      CreateCollectionRequest::fromCreateAPIBody(b.slice(), config);
 
   if (planCollection.fail()) {
     throw std::runtime_error("Failed to create collection: " +
@@ -218,7 +218,7 @@ auto Runner::createCollection(std::string const& name, std::string const& type)
   }
 
   std::vector<CollectionDescriptor> collections{
-      std::move(planCollection.get())};
+      std::move(planCollection->descriptor)};
 
   auto res = methods::Collections::create(
       *_server->vocbase(),  // collection vocbase

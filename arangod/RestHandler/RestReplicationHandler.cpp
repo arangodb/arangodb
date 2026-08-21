@@ -67,7 +67,7 @@
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/Properties/CollectionDescriptor.h"
+#include "VocBase/Properties/CreateCollectionRequest.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 
@@ -1085,13 +1085,14 @@ futures::Future<Result> RestReplicationHandler::processRestoreCollection(
   auto config = _vocbase.getDatabaseConfiguration();
 
   // Original
-  auto input = CollectionDescriptor::fromRestoreAPIBody(parameters, config);
+  auto input =
+      CreateCollectionRequest::fromRestoreAPIBody(parameters, config);
   if (input.fail()) {
     co_return input.result();
   }
   OperationOptions options;
 
-  if (ignoreHiddenEnterpriseCollection(input->mutableProps.name, force)) {
+  if (ignoreHiddenEnterpriseCollection(input->descriptor.mutableProps.name, force)) {
     co_return {TRI_ERROR_NO_ERROR};
   }
 
@@ -1103,7 +1104,7 @@ futures::Future<Result> RestReplicationHandler::processRestoreCollection(
 
   {
     auto result = co_await handlingOfExistingCollection(
-        _vocbase, input->mutableProps.name, dropExisting);
+        _vocbase, input->descriptor.mutableProps.name, dropExisting);
     if (result.fail()) {
       co_return result.result();
     }
@@ -1117,7 +1118,7 @@ futures::Future<Result> RestReplicationHandler::processRestoreCollection(
       } else {
         co_return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME,
                          std::string("duplicate collection name '") +
-                             input->mutableProps.name + "'");
+                             input->descriptor.mutableProps.name + "'");
       }
     }
   }
@@ -1130,11 +1131,12 @@ futures::Future<Result> RestReplicationHandler::processRestoreCollection(
   bool allowEnterpriseCollectionsOnSingleServer = false;
   bool enforceReplicationFactor = true;
 
-  if (input->constant.isSmart || input->clusteringMutable.isSatellite()) {
+  if (input->descriptor.constant.isSmart || input->descriptor.clusteringMutable.isSatellite()) {
     allowEnterpriseCollectionsOnSingleServer = true;
   }
 
-  std::vector<CollectionDescriptor> collections{std::move(input.get())};
+  std::vector<CollectionDescriptor> collections{
+      std::move(input->descriptor)};
   auto result = methods::Collections::create(
       _vocbase, options, collections, waitForSyncReplication,
       enforceReplicationFactor, isNewDatabase,

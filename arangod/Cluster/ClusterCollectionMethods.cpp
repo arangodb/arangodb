@@ -48,6 +48,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/Properties/CollectionDescriptor.h"
+#include "VocBase/Properties/CollectionCreateOptions.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Collection.h>

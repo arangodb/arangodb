@@ -53,7 +53,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Indexes.h"
-#include "VocBase/Properties/CollectionDescriptor.h"
+#include "VocBase/Properties/CreateCollectionRequest.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 
 #include <velocypack/Builder.h>
@@ -268,7 +268,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   auto config = vocbase.getDatabaseConfiguration();
   config.enforceReplicationFactor = enforceReplicationFactor;
 
-  auto planCollection = CollectionDescriptor::fromCreateAPIV8(
+  auto planCollection = CreateCollectionRequest::fromCreateAPIV8(
       propSlice, name, collectionType, config);
 
   if (planCollection.fail()) {
@@ -278,7 +278,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   }
 
   std::vector<CollectionDescriptor> collections{
-      std::move(planCollection.get())};
+      std::move(planCollection->descriptor)};
 
   OperationOptions options;
   std::shared_ptr<LogicalCollection> coll;

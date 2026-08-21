@@ -26,8 +26,8 @@
 #include "Basics/StaticStrings.h"
 #include "Logger/LogMacros.h"
 #include "Inspection/VPack.h"
-#include "VocBase/Properties/CollectionCreateOptions.h"
 #include "VocBase/Properties/CollectionDescriptor.h"
+#include "VocBase/Properties/CreateCollectionRequest.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 
 #include "InspectTestHelperMakros.h"
@@ -38,12 +38,16 @@ namespace arangodb::tests {
 
 namespace {
 // The create API parses the collection properties and the request options from
-// the same body. Only one test cares about the options, the rest go through
-// parse() below and discard them.
+// the same body. Only one test cares about the options, the rest keep just the
+// descriptor.
 ResultT<CollectionDescriptor> parseBody(VPackSlice body,
                                         DatabaseConfiguration const& config) {
-  CollectionCreateOptions options;
-  return CollectionDescriptor::fromCreateAPIBody(body, config, options, false);
+  auto request =
+      CreateCollectionRequest::fromCreateAPIBody(body, config, false);
+  if (request.fail()) {
+    return request.result();
+  }
+  return std::move(request->descriptor);
 }
 }  // namespace
 
@@ -143,17 +147,16 @@ TEST_F(CollectionDescriptorFactoryTest, test_minimal_user_input) {
     VPackObjectBuilder guard(&body);
     body.add("name", VPackValue(colName));
   }
-  CollectionCreateOptions options;
-  auto testee = CollectionDescriptor::fromCreateAPIBody(
-      body.slice(), defaultDBConfig(), options, false);
+  auto testee = CreateCollectionRequest::fromCreateAPIBody(
+      body.slice(), defaultDBConfig(), false);
 
   ASSERT_TRUE(testee.ok()) << testee.errorMessage();
   // Test Default values
 
   // This covers only non-documented APIS
-  EXPECT_TRUE(options.avoidServers.empty());
+  EXPECT_TRUE(testee->options.avoidServers.empty());
 
-  __HELPER_equalsAfterSerializeParseCircle(testee.get());
+  __HELPER_equalsAfterSerializeParseCircle(testee->descriptor);
 }
 
 TEST_F(CollectionDescriptorFactoryTest,
