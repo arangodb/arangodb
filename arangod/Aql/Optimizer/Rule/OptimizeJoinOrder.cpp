@@ -274,8 +274,8 @@ auto buildJoinGraph(ExecutionPlan const* plan, ExecutionNode* firstEnumeration,
 // ordering
 // -----------------------------------------------------------------------------
 
-auto estimateOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
-                   std::vector<EnumerateCollectionNode*> const& order)
+auto getEstimateForOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
+                         std::vector<EnumerateCollectionNode*> const& order)
     -> JoinEstimate {
   JoinEstimate estimate;
   std::unordered_set<JoinGraph::Node const*> placed;
@@ -404,7 +404,7 @@ auto chooseJoinOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
   for (auto const& component : graph.connectedComponents()) {
     auto greedy = orderComponent(graph, component, estimator);
     auto written = writtenComponentOrder(component, currentOrder);
-    auto writtenEstimate = estimateOrder(graph, estimator, written);
+    auto writtenEstimate = getEstimateForOrder(graph, estimator, written);
 
     ADB_PROD_ASSERT(!written.empty());
     auto const positionIt = positionInCurrent.find(written.front());
@@ -487,7 +487,7 @@ auto chooseJoinOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
       auto attempt = candidate;
       attempt.insert(attempt.end(), componentOrders[i].order.begin(),
                      componentOrders[i].order.end());
-      double const cost = estimateOrder(graph, estimator, attempt).cost;
+      double const cost = getEstimateForOrder(graph, estimator, attempt).cost;
       if (!bestCost.has_value() || cost < *bestCost) {
         bestCost = cost;
         bestIndex = i;
@@ -511,8 +511,9 @@ auto chooseJoinOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
   // `defaulted` propagates through every `extend` call, so "neither estimate
   // is defaulted" already reduces to "no component's chosen order rests on
   // a fallback statistic" -- no separate per-component scan is needed here.
-  auto const baselineEstimate = estimateOrder(graph, estimator, baseline);
-  auto const candidateEstimate = estimateOrder(graph, estimator, candidate);
+  auto const baselineEstimate = getEstimateForOrder(graph, estimator, baseline);
+  auto const candidateEstimate =
+      getEstimateForOrder(graph, estimator, candidate);
 
   bool const sequencingDefaulted =
       baselineEstimate.defaulted || candidateEstimate.defaulted;

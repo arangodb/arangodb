@@ -338,7 +338,7 @@ TEST_F(OptimizeJoinOrderTest, estimate_order_passes_every_connecting_edge) {
   auto* b = nodeByName(g, "b")->executionNode;
   auto* c = nodeByName(g, "c")->executionNode;
 
-  estimateOrder(g, estimator, {a, b, c});
+  getEstimateForOrder(g, estimator, {a, b, c});
   EXPECT_EQ(estimator.edgesSeen.at("c"), 2u);
 }
 
@@ -353,8 +353,8 @@ TEST_F(OptimizeJoinOrderTest, estimate_order_replays_a_complete_order) {
   auto* a = nodeByName(g, "a")->executionNode;
   auto* b = nodeByName(g, "b")->executionNode;
 
-  EXPECT_DOUBLE_EQ(estimateOrder(g, estimator, {a, b}).cost, 7.0 + 13.0);
-  EXPECT_DOUBLE_EQ(estimateOrder(g, estimator, {b, a}).cost, 3.0 + 11.0);
+  EXPECT_DOUBLE_EQ(getEstimateForOrder(g, estimator, {a, b}).cost, 7.0 + 13.0);
+  EXPECT_DOUBLE_EQ(getEstimateForOrder(g, estimator, {b, a}).cost, 3.0 + 11.0);
 }
 
 TEST_F(OptimizeJoinOrderTest, estimate_order_charges_a_cross_product) {
@@ -369,7 +369,7 @@ TEST_F(OptimizeJoinOrderTest, estimate_order_charges_a_cross_product) {
   auto* a = nodeByName(g, "a")->executionNode;
   auto* b = nodeByName(g, "b")->executionNode;
   // the fake doubles a cross-product step
-  EXPECT_DOUBLE_EQ(estimateOrder(g, estimator, {a, b}).cost, 1.0 + 10.0);
+  EXPECT_DOUBLE_EQ(getEstimateForOrder(g, estimator, {a, b}).cost, 1.0 + 10.0);
 }
 
 TEST_F(OptimizeJoinOrderTest, chooses_a_cheaper_order_when_the_win_is_large) {

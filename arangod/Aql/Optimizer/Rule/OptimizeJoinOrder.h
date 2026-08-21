@@ -53,8 +53,8 @@ struct JoinOrder {
 /// @brief cost a complete enumeration order by replaying it through the
 /// estimator: seed on the first vertex, then extend by each subsequent vertex
 /// using every edge that connects it to the prefix already placed.
-auto estimateOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
-                   std::vector<EnumerateCollectionNode*> const& order)
+auto getEstimateForOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
+                         std::vector<EnumerateCollectionNode*> const& order)
     -> JoinEstimate;
 
 /// @brief order one connected component by multi-start greedy: try every
