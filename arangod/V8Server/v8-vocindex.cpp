@@ -280,15 +280,14 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   std::vector<CollectionDescriptor> collections{
       std::move(planCollection->descriptor)};
 
+  // isNewDatabase keeps its default
+  CollectionCreateOptions createOptions;
+  createOptions.waitForSyncReplication = createWaitsForSyncReplication;
+  createOptions.enforceReplicationFactor = enforceReplicationFactor;
   OperationOptions options;
   std::shared_ptr<LogicalCollection> coll;
-  auto result = methods::Collections::create(
-      vocbase,  // collection vocbase
-      options, collections,
-      createWaitsForSyncReplication,  // replication wait flag
-      enforceReplicationFactor,       // replication factor flag
-      /*isNewDatabase*/ false         // here always false
-  );
+  auto result = methods::Collections::create(vocbase, options, collections,
+                                             createOptions);
 
   if (result.fail()) {
     TRI_V8_THROW_EXCEPTION(result.result());

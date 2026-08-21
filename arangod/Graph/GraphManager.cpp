@@ -53,6 +53,7 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
+#include "VocBase/Properties/CollectionCreateOptions.h"
 #include "VocBase/Properties/CollectionDescriptor.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/vocbase.h"
@@ -685,21 +686,19 @@ Result GraphManager::ensureCollections(
     return {};
   }
 
-#ifdef USE_ENTERPRISE
-  bool const allowEnterpriseCollectionsOnSingleServer =
-      ServerState::instance()->isSingleServer() &&
-      (graph.isSmart() || graph.isSatellite());
-#else
-  bool const allowEnterpriseCollectionsOnSingleServer = false;
-#endif
   auto& cluster = _vocbase.server().getFeature<ClusterFeature>();
-  bool waitForSyncReplication = cluster.createWaitsForSyncReplication();
 
   OperationOptions opOptions;
+  CollectionCreateOptions createOptions;
+  createOptions.waitForSyncReplication =
+      cluster.createWaitsForSyncReplication();
+#ifdef USE_ENTERPRISE
+  createOptions.allowEnterpriseCollectionsOnSingleServer =
+      ServerState::instance()->isSingleServer() &&
+      (graph.isSmart() || graph.isSatellite());
+#endif
   auto finalResult = methods::Collections::create(
-      ctx()->vocbase(), opOptions, std::move(createRequests),
-      waitForSyncReplication, true, false,
-      allowEnterpriseCollectionsOnSingleServer);
+      ctx()->vocbase(), opOptions, std::move(createRequests), createOptions);
   // We do not care for the Collections here, just forward the result
   // API guarantees all or none.
   if (finalResult.ok() && leadingCollection.has_value() &&

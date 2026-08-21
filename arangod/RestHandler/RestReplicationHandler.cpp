@@ -1092,7 +1092,8 @@ futures::Future<Result> RestReplicationHandler::processRestoreCollection(
   }
   OperationOptions options;
 
-  if (ignoreHiddenEnterpriseCollection(input->descriptor.mutableProps.name, force)) {
+  if (ignoreHiddenEnterpriseCollection(input->descriptor.mutableProps.name,
+                                       force)) {
     co_return {TRI_ERROR_NO_ERROR};
   }
 
@@ -1123,24 +1124,18 @@ futures::Future<Result> RestReplicationHandler::processRestoreCollection(
     }
   }
 
-  // We always wait for Collections to be synced on shards
-  bool waitForSyncReplication = true;
-  bool isNewDatabase = false;
-  bool isRestore = true;
+  // Defaults are what restore wants: waitForSyncReplication and
+  // enforceReplicationFactor true, isNewDatabase false.
+  CollectionCreateOptions createOptions;
+  createOptions.isRestore = true;
+  createOptions.allowEnterpriseCollectionsOnSingleServer =
+      input->descriptor.constant.isSmart ||
+      input->descriptor.clusteringMutable.isSatellite();
 
-  bool allowEnterpriseCollectionsOnSingleServer = false;
-  bool enforceReplicationFactor = true;
+  std::vector<CollectionDescriptor> collections{std::move(input->descriptor)};
 
-  if (input->descriptor.constant.isSmart || input->descriptor.clusteringMutable.isSatellite()) {
-    allowEnterpriseCollectionsOnSingleServer = true;
-  }
-
-  std::vector<CollectionDescriptor> collections{
-      std::move(input->descriptor)};
-  auto result = methods::Collections::create(
-      _vocbase, options, collections, waitForSyncReplication,
-      enforceReplicationFactor, isNewDatabase,
-      allowEnterpriseCollectionsOnSingleServer, isRestore);
+  auto result = methods::Collections::create(_vocbase, options, collections,
+                                             createOptions);
 
   co_return result.result();
 }

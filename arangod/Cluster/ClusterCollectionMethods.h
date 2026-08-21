@@ -58,16 +58,10 @@ struct ClusterCollectionMethods {
   /// @param vocbase the actual database
   /// @param parametersOfCollections vector of parameters of collections to be
   /// created
-  /// @param ignoreDistributeShardsLikeErrors
-  /// @param waitForSyncReplication
-  /// @param enforceReplicationFactor
-  /// @param isNewDatabase
-
+  /// @param options the options of this create request
   [[nodiscard]] static auto createCollectionsOnCoordinator(
       Database& vocbase,
       std::vector<CollectionDescriptor> parametersOfCollections,
-      bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
-      bool enforceReplicationFactor, bool isNewDatabase,
       CollectionCreateOptions const& options)
       -> arangodb::ResultT<std::vector<std::shared_ptr<LogicalCollection>>>;
 
@@ -87,7 +81,7 @@ struct ClusterCollectionMethods {
 
   [[nodiscard]] static auto selectDistributeType(
       ClusterInfo& ci, std::string_view databaseName,
-      CollectionDescriptor const& col, bool enforceReplicationFactor,
+      CollectionDescriptor const& col,
       std::unordered_map<std::string,
                          std::shared_ptr<IShardDistributionFactory>>&
           allUsedDistrbitions,

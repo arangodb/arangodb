@@ -366,7 +366,8 @@ async<void> RestCollectionHandler::handleCommandPost() {
   auto config = _vocbase.getDatabaseConfiguration();
   config.enforceReplicationFactor = enforceReplicationFactor;
 
-  auto planCollection = CreateCollectionRequest::fromCreateAPIBody(body, config);
+  auto planCollection =
+      CreateCollectionRequest::fromCreateAPIBody(body, config);
 
   if (planCollection.fail()) {
     // error message generated in inspect
@@ -384,15 +385,13 @@ async<void> RestCollectionHandler::handleCommandPost() {
   std::vector<CollectionDescriptor> collections{
       std::move(planCollection->descriptor)};
 
+  auto createOptions = std::move(planCollection->options);
+  createOptions.waitForSyncReplication = waitForSyncReplication;
+  createOptions.enforceReplicationFactor = enforceReplicationFactor;
+
   OperationOptions options;
-  auto result = methods::Collections::create(
-      _vocbase,  // collection vocbase
-      options, collections,
-      waitForSyncReplication,    // replication wait flag
-      enforceReplicationFactor,  // replication factor flag
-      /*isNewDatabase*/ false,   // here always false
-      /*allowEnterpriseCollectionsOnSingleServer*/ false,
-      /*isRestore*/ false, planCollection->options);
+  auto result = methods::Collections::create(_vocbase, options, collections,
+                                             createOptions);
 
   std::shared_ptr<LogicalCollection> coll;
   // backwards compatibility transformation:

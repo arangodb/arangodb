@@ -111,11 +111,6 @@ struct Collections {
       Database& vocbase,  // collection vocbase
       OperationOptions const& options,
       std::vector<CollectionDescriptor> collections,  // Collections to create
-      bool createWaitsForSyncReplication,             // replication wait flag
-      bool enforceReplicationFactor,                  // replication factor flag
-      bool isNewDatabase, bool allowEnterpriseCollectionsOnSingleServer = false,
-      // whether this is being called during restore
-      bool isRestore = false,
       CollectionCreateOptions const& createOptions = {});
 
   /// Create shard, can only be used on DBServers.
