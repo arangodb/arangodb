@@ -694,10 +694,9 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
                         std::move(shardDistributionList)};
     }
   });
-  auto res =
-      ::impl(feature.clusterInfo(), vocbase.server(),
-             std::string_view{vocbase.name()}, writer,
-             options.waitForSyncReplication);
+  auto res = ::impl(feature.clusterInfo(), vocbase.server(),
+                    std::string_view{vocbase.name()}, writer,
+                    options.waitForSyncReplication);
   if (res.fail()) {
     // Something went wrong, let's report
     return res;

@@ -180,7 +180,17 @@ Result arangodb::applyDefaultsAndValidate(CollectionDescriptor& d,
     if (leader.clusteringConstant.distributeShardsLike.has_value() ||
         leader.clusteringConstant.distributeShardsLikeCid.has_value()) {
       // We are creating a chain of distributeShardsLike, this is not allowed.
+      // TODO: For Collection groups, we may want to allow this, as the target
+      // distributeShardsLike will be the Collection group, and we have to read
+      // this. This version is for original distributeShardsLike behaviour.
+
+      // At the time this was implemented the internal structure was always
+      // using CID.
       TRI_ASSERT(leader.clusteringConstant.distributeShardsLikeCid.has_value());
+      // This is a bit of an overkill just for the message, but we have the
+      // operations in our hands right now. LongTermPlan: At this point in time
+      // we should see a collection by name, not by cid, and not have two
+      // values, this way we can save the lookup here.
       auto leadersLeader = config.getCollectionGroupSharding(
           leader.clusteringConstant.distributeShardsLikeCid.value());
       // We cannot see a follower to a non-existent leader.
@@ -289,7 +299,6 @@ Result arangodb::applyDefaultsAndValidate(CollectionDescriptor& d,
     return res;
   }
 
-  // was ClusteringProperties::applyDefaultsAndValidateDatabaseConfiguration
   if (!dsl.has_value()) {
     // DistributeShardsLike has been handled above
     d.clusteringMutable.applyDatabaseDefaults(config);
