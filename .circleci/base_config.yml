@@ -123,11 +123,25 @@ parameters:
 
 
 commands:
+  write_paths_to_file:
+    parameters:
+      paths:
+        type: string
+      file:
+        type: string
+    steps:
+      - run:
+          name: Write << parameters.file >> path list
+          command: |
+            cat > "<< parameters.file >>" <<'EOF'
+            << parameters.paths >>
+            EOF
+
   persist_workspace_to_s3:
     parameters:
       root:
         type: string
-      paths:
+      paths-file:
         type: string
       archive:
         type: string
@@ -140,7 +154,7 @@ commands:
             set -x
 
             ROOT="<< parameters.root >>"
-            PATHS="<< parameters.paths >>"
+            PATHS_FILE="<< parameters.paths-file >>"
             ARCHIVE="<< parameters.archive >>"
 
             if [ -z "${AWS_S3_WORKSPACE_BUCKET:-}" ]; then
@@ -153,7 +167,7 @@ commands:
 
             cd "$ROOT"
 
-            tar -czf "$TAR" $PATHS
+            tar -czf "$TAR" -T "$PATHS_FILE"
             du -sh "$TAR"
             aws configure set profile.anon.s3.multipart_threshold 5GB
             aws s3 cp --no-sign-request --profile anon \
@@ -713,10 +727,13 @@ jobs:
       - persist_to_workspace:
           root: .
           paths: js/apps/system/_admin/aardvark/APP/react/build
+      - write_paths_to_file:
+          paths: js/apps/system/_admin/aardvark/APP/react/build
+          file: /tmp/frontend-paths.txt
       - persist_workspace_to_s3:
           root: .
-          paths: js/apps/system/_admin/aardvark/APP/react/build
           archive: frontend.tar.gz
+          paths-file: /tmp/frontend-paths.txt
 
   compile-linux:
     parameters:
@@ -877,15 +894,24 @@ jobs:
                   - tsan_arangodb_suppressions.txt
                   - ubsan_arangodb_suppressions.txt
                   - lsan_arangodb_suppressions.txt
+            - write_paths_to_file:
+                paths: |
+                  build/compile_commands.json
+                file: /tmp/cppcheck-paths.txt
             - persist_workspace_to_s3:
                 root: .
                 archive: cppcheck.tar.gz
-                paths: |
-                  build/compile_commands.json
+                paths-file: /tmp/cppcheck-paths.txt
+            - run:
+                name: Compute ctest metadata file list
+                command: |
+                  pip3 install pyyaml --break-system-packages
+                  python3 .circleci/collect_ctest_metadata.py build tests/ctest.yml /tmp/ctest-metadata-paths.txt
             - persist_workspace_to_s3:
-                # not there? install.tar.gz
                 root: .
-                archive: binaries.tar.gz
+                archive: ctest-metadata.tar.gz
+                paths-file: /tmp/ctest-metadata-paths.txt
+            - write_paths_to_file:
                 paths: |
                   VERSIONS
                   ARANGO-VERSION
@@ -903,6 +929,12 @@ jobs:
                   tsan_arangodb_suppressions.txt
                   ubsan_arangodb_suppressions.txt
                   lsan_arangodb_suppressions.txt
+                file: /tmp/binaries-paths.txt
+            - persist_workspace_to_s3:
+                # not there? install.tar.gz
+                root: .
+                archive: binaries.tar.gz
+                paths-file: /tmp/binaries-paths.txt
 
   # Builds one architecture's Alpine-based image locally and saves it to a
   # workspace tarball. No registry auth here - pushing (and the ECR login)
@@ -1033,6 +1065,30 @@ jobs:
           timeLimit: << parameters.timeLimit >>
           sanitizer: << parameters.sanitizer >>
           extraArgs: << parameters.extraArgs >>
+
+  run-ctest-tests:
+    parameters:
+      <<: *shared-test-job-parameters
+    docker:
+      - image: << parameters.docker_image >>
+    resource_class: << parameters.size >>
+    steps:
+      - checkout-arangodb:
+          with-submodules: false
+          destination: "/root/project"
+      - attach_workspace_from_s3:
+          at: .
+          archive: binaries.tar.gz
+      - attach_workspace_from_s3:
+          at: .
+          archive: ctest-metadata.tar.gz
+      - run:
+          name: Run << parameters.suiteName >> tests
+          command: |
+            set -eo pipefail
+            IFS=',' read -ra TEST_NAMES <<< "<< parameters.suites >>"
+            TESTS_REGEX="^($(IFS='|'; echo "${TEST_NAMES[*]}"))$"
+            ctest --test-dir build -R "$TESTS_REGEX" --output-on-failure
 
   run-driver-tests:
     parameters:
