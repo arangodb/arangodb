@@ -45,6 +45,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Properties/CreateCollectionRequest.h"
+#include "VocBase/Properties/InternalCollectionCreateOptions.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 
 #include <velocypack/Builder.h>
@@ -385,13 +386,15 @@ async<void> RestCollectionHandler::handleCommandPost() {
   std::vector<CollectionDescriptor> collections{
       std::move(planCollection->descriptor)};
 
-  auto createOptions = std::move(planCollection->options);
-  createOptions.waitForSyncReplication = waitForSyncReplication;
-  createOptions.enforceReplicationFactor = enforceReplicationFactor;
+  // isNewDatabase, allowEnterpriseCollectionsOnSingleServer and isRestore keep
+  // their defaults
+  InternalCollectionCreateOptions internalOptions;
+  internalOptions.waitForSyncReplication = waitForSyncReplication;
+  internalOptions.enforceReplicationFactor = enforceReplicationFactor;
 
   OperationOptions options;
-  auto result = methods::Collections::create(_vocbase, options, collections,
-                                             createOptions);
+  auto result = methods::Collections::create(
+      _vocbase, options, collections, internalOptions, planCollection->options);
 
   std::shared_ptr<LogicalCollection> coll;
   // backwards compatibility transformation:

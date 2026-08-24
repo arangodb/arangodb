@@ -49,6 +49,7 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/Properties/CollectionDescriptor.h"
 #include "VocBase/Properties/CollectionCreateOptions.h"
+#include "VocBase/Properties/InternalCollectionCreateOptions.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Collection.h>
@@ -610,6 +611,7 @@ template<replication::Version ReplicationVersion>
 [[nodiscard]] arangodb::ResultT<std::vector<std::shared_ptr<LogicalCollection>>>
 createCollectionsOnCoordinatorImpl(
     TRI_vocbase_t& vocbase, std::vector<CollectionDescriptor> collections,
+    InternalCollectionCreateOptions const& internalOptions,
     CollectionCreateOptions const& options) {
   using EntryType =
       typename std::conditional<ReplicationVersion == replication::Version::TWO,
@@ -670,7 +672,7 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
 
     auto distributionType = ClusterCollectionMethods::selectDistributeType(
         feature.clusterInfo(), vocbase.name(), c, shardDistributionList,
-        options);
+        internalOptions, options);
     if constexpr (ReplicationVersion == replication::Version::TWO) {
       collectionPlanEntries.emplace_back(
           ClusterCollectionMethods::toPlanEntryReplication2(
@@ -696,7 +698,7 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
   });
   auto res = ::impl(feature.clusterInfo(), vocbase.server(),
                     std::string_view{vocbase.name()}, writer,
-                    options.waitForSyncReplication);
+                    internalOptions.waitForSyncReplication);
   if (res.fail()) {
     // Something went wrong, let's report
     return res;
@@ -709,7 +711,7 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
   results.reserve(collectionNamesToLoad.size());
 
   auto& ci = feature.clusterInfo();
-  if (options.isNewDatabase) {
+  if (internalOptions.isNewDatabase) {
     // Call dangerous method on ClusterInfo to generate only collection stubs to
     // use here.
     auto lookupList = ci.generateCollectionStubs(vocbase);
@@ -827,6 +829,7 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
     CollectionDescriptor const& col,
     std::unordered_map<std::string, std::shared_ptr<IShardDistributionFactory>>&
         allUsedDistributions,
+    InternalCollectionCreateOptions const& internalOptions,
     CollectionCreateOptions const& options)
     -> std::shared_ptr<IShardDistributionFactory> {
   if (col.clusteringConstant.distributeShardsLike.has_value()) {
@@ -878,7 +881,7 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
     auto distribution = std::make_shared<EvenDistribution>(
         col.clusteringConstant.numberOfShards.value(),
         col.clusteringMutable.replicationFactor.value(), options.avoidServers,
-        options.enforceReplicationFactor);
+        internalOptions.enforceReplicationFactor);
     allUsedDistributions.emplace(col.mutableProps.name, distribution);
     return distribution;
   }
@@ -887,9 +890,10 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
 [[nodiscard]] arangodb::ResultT<std::vector<std::shared_ptr<LogicalCollection>>>
 ClusterCollectionMethods::createCollectionsOnCoordinator(
     TRI_vocbase_t& vocbase, std::vector<CollectionDescriptor> collections,
+    InternalCollectionCreateOptions const& internalOptions,
     CollectionCreateOptions const& options) {
   TRI_IF_FAILURE("ClusterInfo::requiresWaitForReplication") {
-    if (options.waitForSyncReplication) {
+    if (internalOptions.waitForSyncReplication) {
       return {TRI_ERROR_DEBUG};
     } else {
       TRI_ASSERT(false) << "We required to have waitForReplication, but it "
@@ -906,10 +910,10 @@ ClusterCollectionMethods::createCollectionsOnCoordinator(
 
   if (vocbase.replicationVersion() == replication::Version::TWO) {
     return createCollectionsOnCoordinatorImpl<replication::Version::TWO>(
-        vocbase, std::move(collections), options);
+        vocbase, std::move(collections), internalOptions, options);
   } else {
     return createCollectionsOnCoordinatorImpl<replication::Version::ONE>(
-        vocbase, std::move(collections), options);
+        vocbase, std::move(collections), internalOptions, options);
   }
 }
 ////////////////////////////////////////////////////////////////////////////////

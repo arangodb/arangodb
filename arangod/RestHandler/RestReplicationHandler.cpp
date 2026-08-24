@@ -68,6 +68,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/Properties/CreateCollectionRequest.h"
+#include "VocBase/Properties/InternalCollectionCreateOptions.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 
@@ -1125,16 +1126,16 @@ futures::Future<Result> RestReplicationHandler::processRestoreCollection(
 
   // Defaults are what restore wants: waitForSyncReplication and
   // enforceReplicationFactor true, isNewDatabase false.
-  CollectionCreateOptions createOptions;
-  createOptions.isRestore = true;
-  createOptions.allowEnterpriseCollectionsOnSingleServer =
+  InternalCollectionCreateOptions internalOptions;
+  internalOptions.isRestore = true;
+  internalOptions.allowEnterpriseCollectionsOnSingleServer =
       input->descriptor.constant.isSmart ||
       input->descriptor.clusteringMutable.isSatellite();
 
   std::vector<CollectionDescriptor> collections{std::move(input->descriptor)};
 
   auto result = methods::Collections::create(_vocbase, options, collections,
-                                             createOptions);
+                                             internalOptions, input->options);
 
   co_return result.result();
 }

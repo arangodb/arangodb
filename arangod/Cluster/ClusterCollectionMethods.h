@@ -36,6 +36,7 @@ class ResultT;
 struct AgencyIsBuildingFlags;
 struct CollectionDescriptor;
 struct CollectionCreateOptions;
+struct InternalCollectionCreateOptions;
 struct Database;
 struct PlanCollectionEntry;
 struct PlanCollectionEntryReplication2;
@@ -58,10 +59,12 @@ struct ClusterCollectionMethods {
   /// @param vocbase the actual database
   /// @param parametersOfCollections vector of parameters of collections to be
   /// created
-  /// @param options the options of this create request
+  /// @param internalOptions the options chosen by the calling code
+  /// @param options the options parsed from the request body
   [[nodiscard]] static auto createCollectionsOnCoordinator(
       Database& vocbase,
       std::vector<CollectionDescriptor> parametersOfCollections,
+      InternalCollectionCreateOptions const& internalOptions,
       CollectionCreateOptions const& options)
       -> arangodb::ResultT<std::vector<std::shared_ptr<LogicalCollection>>>;
 
@@ -85,6 +88,7 @@ struct ClusterCollectionMethods {
       std::unordered_map<std::string,
                          std::shared_ptr<IShardDistributionFactory>>&
           allUsedDistrbitions,
+      InternalCollectionCreateOptions const& internalOptions,
       CollectionCreateOptions const& options)
       -> std::shared_ptr<IShardDistributionFactory>;
 

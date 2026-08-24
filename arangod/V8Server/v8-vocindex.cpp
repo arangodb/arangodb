@@ -54,6 +54,7 @@
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Indexes.h"
 #include "VocBase/Properties/CreateCollectionRequest.h"
+#include "VocBase/Properties/InternalCollectionCreateOptions.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 
 #include <velocypack/Builder.h>
@@ -280,14 +281,15 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   std::vector<CollectionDescriptor> collections{
       std::move(planCollection->descriptor)};
 
-  // isNewDatabase keeps its default
-  CollectionCreateOptions createOptions;
-  createOptions.waitForSyncReplication = createWaitsForSyncReplication;
-  createOptions.enforceReplicationFactor = enforceReplicationFactor;
+  // isNewDatabase, allowEnterpriseCollectionsOnSingleServer and isRestore keep
+  // their defaults
+  InternalCollectionCreateOptions internalOptions;
+  internalOptions.waitForSyncReplication = createWaitsForSyncReplication;
+  internalOptions.enforceReplicationFactor = enforceReplicationFactor;
   OperationOptions options;
   std::shared_ptr<LogicalCollection> coll;
-  auto result = methods::Collections::create(vocbase, options, collections,
-                                             createOptions);
+  auto result = methods::Collections::create(
+      vocbase, options, collections, internalOptions, planCollection->options);
 
   if (result.fail()) {
     TRI_V8_THROW_EXCEPTION(result.result());

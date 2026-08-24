@@ -49,7 +49,6 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
-#include "VocBase/Properties/CollectionCreateOptions.h"
 #include "VocBase/Properties/CreateCollectionRequest.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 
@@ -207,10 +206,7 @@ auto Runner::createCollection(std::string const& name, std::string const& type)
         VPackValue(type == "edge" ? TRI_COL_TYPE_EDGE : TRI_COL_TYPE_DOCUMENT));
   b.close();
 
-  // all options keep their defaults
-  CollectionCreateOptions createOptions;
   auto config = _server->vocbase()->getDatabaseConfiguration();
-  config.enforceReplicationFactor = createOptions.enforceReplicationFactor;
 
   auto planCollection =
       CreateCollectionRequest::fromCreateAPIBody(b.slice(), config);
@@ -223,9 +219,10 @@ auto Runner::createCollection(std::string const& name, std::string const& type)
   std::vector<CollectionDescriptor> collections{
       std::move(planCollection->descriptor)};
 
-  auto res = methods::Collections::create(*_server->vocbase(),
-                                          {},  // operation options
-                                          collections, createOptions);
+  OperationOptions options;
+  // all internal options keep their defaults
+  auto res = methods::Collections::create(
+      *_server->vocbase(), options, collections, {}, planCollection->options);
 
   if (!res.ok()) {
     throw std::runtime_error("Failed to create collection: " +

@@ -29,6 +29,7 @@
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/Properties/CollectionCreateOptions.h"
+#include "VocBase/Properties/InternalCollectionCreateOptions.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
@@ -111,6 +112,7 @@ struct Collections {
       Database& vocbase,  // collection vocbase
       OperationOptions const& options,
       std::vector<CollectionDescriptor> collections,  // Collections to create
+      InternalCollectionCreateOptions const& internalOptions,
       CollectionCreateOptions const& createOptions = {});
 
   /// Create shard, can only be used on DBServers.

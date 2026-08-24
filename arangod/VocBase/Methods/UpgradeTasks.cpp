@@ -46,7 +46,7 @@
 #include "VocBase/Methods/CollectionCreationInfo.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Indexes.h"
-#include "VocBase/Properties/CollectionCreateOptions.h"
+#include "VocBase/Properties/InternalCollectionCreateOptions.h"
 #include "VocBase/Properties/CollectionDescriptor.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/vocbase.h"
@@ -222,10 +222,10 @@ Result createSystemCollections(
     }
 
     // waitForSyncReplication and enforceReplicationFactor keep their defaults
-    CollectionCreateOptions createOptions;
-    createOptions.isNewDatabase = true;
+    InternalCollectionCreateOptions internalOptions;
+    internalOptions.isNewDatabase = true;
     auto cols = methods::Collections::create(
-        vocbase, options, testSystemCollectionsToCreate, createOptions);
+        vocbase, options, testSystemCollectionsToCreate, internalOptions);
     if (cols.fail()) {
       return cols.result();
     }
@@ -288,10 +288,10 @@ Result createSystemCollections(
   // to use it to create indices later.
   if (!systemCollectionsToCreate.empty()) {
     // waitForSyncReplication and enforceReplicationFactor keep their defaults
-    CollectionCreateOptions createOptions;
-    createOptions.isNewDatabase = true;
+    InternalCollectionCreateOptions internalOptions;
+    internalOptions.isNewDatabase = true;
     auto cols = methods::Collections::create(
-        vocbase, options, systemCollectionsToCreate, createOptions);
+        vocbase, options, systemCollectionsToCreate, internalOptions);
     if (cols.fail()) {
       return cols.result();
     }

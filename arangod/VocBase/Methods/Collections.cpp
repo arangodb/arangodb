@@ -589,6 +589,7 @@ Collections::create(         // create collection
     TRI_vocbase_t& vocbase,  // collection vocbase
     OperationOptions const& options,
     std::vector<CollectionDescriptor> collections,  // Collections to create
+    InternalCollectionCreateOptions const& internalOptions,
     CollectionCreateOptions const& createOptions) {
   auto collectionNames = absl::StrJoin(
       collections, ",", [](std::string* out, CollectionDescriptor c) {
@@ -619,7 +620,6 @@ Collections::create(         // create collection
   TRI_ASSERT(!vocbase.isDangling());
 
   auto config = vocbase.getDatabaseConfiguration();
-  config.enforceReplicationFactor = createOptions.enforceReplicationFactor;
 
   auto numberOfPublicCollections = collections.size();
   // NOTE: We use index access here, as collections may be modified
@@ -665,7 +665,7 @@ Collections::create(         // create collection
     // Here we do have a cluster setup. In that case, we will create many
     // collections in one go (batch-wise).
     results = ClusterCollectionMethods::createCollectionsOnCoordinator(
-        vocbase, collections, createOptions);
+        vocbase, collections, internalOptions, createOptions);
     if (results.fail()) {
       for (auto const& info : collections) {
         events::CreateCollection(vocbase.name(), info.mutableProps.name,
@@ -691,7 +691,7 @@ Collections::create(         // create collection
     // Therefore, we need to iterate over the infoSlice and create each
     // collection one by one.
     results = vocbase.createCollections(
-        collections, createOptions.allowEnterpriseCollectionsOnSingleServer);
+        collections, internalOptions.allowEnterpriseCollectionsOnSingleServer);
     if (results.fail()) {
       for (auto const& info : collections) {
         events::CreateCollection(vocbase.name(), info.mutableProps.name,
@@ -707,7 +707,7 @@ Collections::create(         // create collection
     // in case of success we grant the creating user RW access
     auth::UserManager* um = AuthenticationFeature::instance()->userManager();
     if (um != nullptr && !exec.isSuperuserOrDisabled() &&
-        !createOptions.isRestore) {
+        !internalOptions.isRestore) {
       // this should not fail, we can not get here without database RW access
       // however, there may be races for updating the users account, so we try
       // a few times in case of a conflict
@@ -954,10 +954,10 @@ void Collections::createSystemCollectionProperties(
         newCollection, vocbase, vocbase.getDatabaseConfiguration(), false);
 
     // waitForSyncReplication and enforceReplicationFactor keep their defaults
-    CollectionCreateOptions createOptions;
-    createOptions.isNewDatabase = isNewDatabase;
+    InternalCollectionCreateOptions internalOptions;
+    internalOptions.isNewDatabase = isNewDatabase;
     auto collection =
-        Collections::create(vocbase, options, {newCollection}, createOptions);
+        Collections::create(vocbase, options, {newCollection}, internalOptions);
     // Operation either failed, or we have created exactly one collection.
     TRI_ASSERT(collection.fail() || collection.get().size() == 1);
     if (collection.ok()) {

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -22,22 +22,18 @@
 
 #pragma once
 
-#include <string>
-#include <vector>
-
 namespace arangodb {
-/// Options parsed from a create request body
-struct CollectionCreateOptions {
-  // Not documented, actually this is an option, not a configuration parameter
-  std::vector<std::string> avoidServers = {};
 
-  bool operator==(CollectionCreateOptions const& other) const = default;
+/// Create options chosen by the calling code, not by the client. They are not
+/// part of the request body, and none of them is stored with the collection.
+struct InternalCollectionCreateOptions {
+  bool waitForSyncReplication = true;
+  bool enforceReplicationFactor = true;
+  bool isNewDatabase = false;
+  bool allowEnterpriseCollectionsOnSingleServer = false;
+  bool isRestore = false;
+
+  bool operator==(InternalCollectionCreateOptions const& other) const = default;
 };
-
-template<class Inspector>
-auto inspect(Inspector& f, CollectionCreateOptions& props) {
-  return f.object(props).fields(
-      f.field("avoidServers", props.avoidServers).fallback(f.keep()));
-}
 
 }  // namespace arangodb
