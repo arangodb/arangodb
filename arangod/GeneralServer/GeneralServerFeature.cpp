@@ -41,6 +41,8 @@
 #include "Cluster/MaintenanceRestHandler.h"
 #include "Cluster/RestAgencyCallbacksHandler.h"
 #include "Cluster/RestClusterHandler.h"
+#include "ClusterEngine/ClusterEngine.h"
+#include "ClusterEngine/ClusterRestHandlers.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServer.h"
@@ -118,8 +120,11 @@
 #include "RestHandler/RestVersionHandler.h"
 #include "RestHandler/RestOpenApiHandler.h"
 #include "RestHandler/RestViewHandler.h"
+#include "RestHandler/RestIResearchHandler.h"
 #include "RestHandler/RestWalAccessHandler.h"
 #include "RestServer/EndpointFeature.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBRestHandlers.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
@@ -177,15 +182,18 @@ static arangodb_http_response_code_total getBuilder(rest::ResponseCode code) {
 GeneralServerFeature::GeneralServerFeature(
     application_features::ApplicationServer& server,
     metrics::MetricsFeature& metricsFeature)
-    : GeneralServerFeature(server, metricsFeature, GeneralServerOptions{}) {}
+    : GeneralServerFeature(server, metricsFeature, GeneralServerOptions{},
+                           LogApiOptions{}) {}
 
 GeneralServerFeature::GeneralServerFeature(
     application_features::ApplicationServer& server,
-    metrics::MetricsFeature& metricsFeature, GeneralServerOptions options)
+    metrics::MetricsFeature& metricsFeature, GeneralServerOptions options,
+    LogApiOptions logApiOptions)
     : ApplicationFeature{server, *this},
       _currentRequestsSize(
           metricsFeature.add(arangodb_requests_memory_usage{})),
       _options(std::move(options)),
+      _logApiOptions(std::move(logApiOptions)),
       _requestBodySizeHttp1(
           metricsFeature.add(arangodb_request_body_size_http1{})),
       _requestBodySizeHttp2(
@@ -654,6 +662,10 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addPrefixHandler(RestVocbaseBaseHandler::VIEW_PATH,
                      RestHandlerCreator<RestViewHandler>::createNoData, {0, 1});
 
+  f.addPrefixHandler(RestVocbaseBaseHandler::STATS_ARANGOSEARCH_PATH,
+                     RestHandlerCreator<RestIResearchHandler>::createNoData,
+                     {api_version::experimentalApiVersion});
+
   if (::arangodb::replication2::EnableReplication2 && cluster.isEnabled()) {
     f.addPrefixHandler(std::string{StaticStrings::ApiLogExternal},
                        RestHandlerCreator<RestLogHandler>::createNoData,
@@ -856,7 +868,9 @@ void GeneralServerFeature::defineRemainingHandlers(
 
   f.addPrefixHandler(
       "/_admin/log",
-      RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData, {0, 1});
+      RestHandlerCreator<arangodb::RestAdminLogHandler>::createData<
+          LogApiOptions const*>,
+      {0, 1}, &_logApiOptions);
 
 #ifdef USE_V8
   if (server().isEnabled<V8DealerFeature>()) {
@@ -939,7 +953,11 @@ void GeneralServerFeature::defineRemainingHandlers(
 
   // engine specific handlers
   StorageEngine& engine = server().getFeature<DatabaseFeature>().engine();
-  engine.addRestHandlers(f);
+  if (ServerState::instance()->isCoordinator()) {
+    ClusterRestHandlers::registerResources(&f);
+  } else {
+    RocksDBRestHandlers::registerResources(&f, engine);
+  }
 }
 
 }  // namespace arangodb

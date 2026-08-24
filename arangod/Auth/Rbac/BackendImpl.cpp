@@ -1,0 +1,232 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Business Source License 1.1 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+////////////////////////////////////////////////////////////////////////////////
+
+#include "BackendImpl.h"
+
+#include "Basics/Result.h"
+#include "Basics/ScopeGuard.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/overload.h"
+#include "Basics/voc-errors.h"
+#include "Inspection/JsonPrintInspector.h"
+#include "Inspection/VPackLoadInspector.h"
+#include "Inspection/VPack.h"
+#include "Logger/LogMacros.h"
+#include "Metrics/Histogram.h"
+#include "Metrics/HistogramBuilder.h"
+#include "Metrics/IRegistry.h"
+#include "Metrics/LogScale.h"
+
+#include <fuerte/types.h>
+#include <velocypack/Buffer.h>
+#include <velocypack/Exception.h>
+#include <velocypack/Parser.h>
+
+#include <chrono>
+#include <sstream>
+#include <utility>
+#include <variant>
+
+namespace arangodb::rbac {
+
+struct RbacRequestDurationScale {
+  using scale_t = metrics::LogScale<std::uint64_t>;
+  static scale_t scale() {
+    // Values in us. The authorization service usually runs as a sidecar on
+    // localhost, so latencies are expected in the microsecond range: the
+    // smallest bucket is up to 10us, and the scale goes up to
+    // 10 * 2^21 us =~ 21s.
+    return {scale_t::kSupplySmallestBucket, 2, 0, 10, 22};
+  }
+};
+
+DECLARE_HISTOGRAM(arangodb_rbac_request_duration, RbacRequestDurationScale,
+                  "Duration of requests to the external RBAC authorization "
+                  "service [us].");
+
+auto addRequestDurationMetric(metrics::IRegistry& registry)
+    -> metrics::Histogram<metrics::LogScale<std::uint64_t>>& {
+  return registry.add(arangodb_rbac_request_duration{});
+}
+
+BackendImpl::BackendImpl(network::ConnectionPool& pool,
+                         std::string authorizationEndpoint,
+                         RequestDurationMetric* requestDuration)
+    : _sendRequest([&pool](network::DestinationId const& dest,
+                           fuerte::RestVerb verb, std::string const& path,
+                           velocypack::Buffer<uint8_t> payload,
+                           network::RequestOptions const& opts,
+                           network::Headers headers) {
+        return network::sendRequest(&pool, network::DestinationId{dest}, verb,
+                                    std::string{path}, std::move(payload), opts,
+                                    std::move(headers));
+      }),
+      _authorizationEndpoint(std::move(authorizationEndpoint)),
+      _requestDuration(requestDuration) {}
+
+BackendImpl::BackendImpl(network::Sender sendRequest,
+                         std::string authorizationEndpoint,
+                         RequestDurationMetric* requestDuration)
+    : _sendRequest(std::move(sendRequest)),
+      _authorizationEndpoint(std::move(authorizationEndpoint)),
+      _requestDuration(requestDuration) {}
+
+namespace {
+
+constexpr std::string_view kEvaluateTokenManyPath =
+    "/_integration/authorization/v1/evaluate-token-many";
+constexpr std::string_view kEvaluateManyPath =
+    "/_integration/authorization/v1/evaluate-many";
+
+template<typename T>
+auto buildJsonBody(T& value) -> std::string {
+  // Note: I've used the JsonPrintInspector first, to avoid the intermediate
+  // step into a VPack. It had some bugs, which I fixed, but just now I can't
+  // risk to spend more time on this, or to introduce a bug.
+  // Let's change this later, when we have a little time to review the
+  // JsonPrintInspector.
+  auto builder = velocypack::Builder{};
+  // Purposefully don't catch exceptions: errors here are either OOM or bugs.
+  velocypack::serialize(builder, value);
+  return builder.toJson();
+}
+
+auto parseEvaluateResponseMany(std::string_view jsonBody)
+    -> ResultT<Backend::EvaluateResponseMany> {
+  // TODO We parse the JSON response into a VelocyPack first, and then
+  //      use the VPackLoadInspector to convert it into a EvaluateResponseMany.
+  //      This is not optimal, but we currently don't have an
+  //      inspection::JsonLoadInspector.
+  std::shared_ptr<velocypack::Builder> builder;
+  try {
+    builder = velocypack::Parser::fromJson(jsonBody);
+  } catch (velocypack::Exception const& e) {
+    LOG_TOPIC("90d0a", ERR, Logger::AUTHORIZATION)
+        << "Failed to parse RBAC response. Error: `" << e.what()
+        << "` Response body: " << jsonBody;
+    return Result{
+        // TODO Choose an appropriate error code, and possibly extend the
+        //      message to clarify.
+        TRI_ERROR_INTERNAL,
+        std::string{"Failed to parse authorization response: "} + e.what()};
+  }
+  inspection::VPackLoadInspector<> inspector(builder->slice(),
+                                             inspection::ParseOptions{});
+  Backend::EvaluateResponseMany result{};
+  auto res = inspector.apply(result);
+  if (!res.ok()) {
+    // TODO Choose an appropriate error code, and possibly extend the message
+    //      to clarify.
+    return Result{TRI_ERROR_INTERNAL, res.error()};
+  }
+  return result;
+}
+
+auto makeJsonRequestOptions(transaction::MethodsApi api)
+    -> network::RequestOptions {
+  return network::RequestOptions{
+      .contentType = StaticStrings::MimeTypeJson,
+      .acceptType = StaticStrings::MimeTypeJson,
+      .skipScheduler = api == transaction::MethodsApi::Synchronous,
+      .sendHLCHeader = false,
+  };
+}
+
+auto jsonToPayload(std::string_view json) -> velocypack::Buffer<uint8_t> {
+  velocypack::Buffer<uint8_t> payload;
+  payload.append(reinterpret_cast<uint8_t const*>(json.data()), json.size());
+  return payload;
+}
+
+}  // namespace
+
+auto BackendImpl::evaluateManyImpl(Subject const& subject,
+                                   RequestItems const& items,
+                                   transaction::MethodsApi api)
+    -> futures::Future<ResultT<EvaluateResponseMany>> {
+  // Measures the whole call: serializing the request, the round trip to the
+  // authorization service, and parsing the response. The guard fires when the
+  // coroutine body ends, i.e. after the co_await below has resumed, on every
+  // exit path (including exceptions).
+  auto const start = std::chrono::steady_clock::now();
+  auto measureDuration = ScopeGuard{[&]() noexcept {
+    if (_requestDuration != nullptr) {
+      _requestDuration->count(
+          std::chrono::duration_cast<std::chrono::microseconds>(
+              std::chrono::steady_clock::now() - start)
+              .count());
+    }
+  }};
+
+  auto [path, bodyResult] =
+      std::visit(overload{
+                     [&](JwtToken const& t) {
+                       auto request = EvaluateTokenManyRequest{
+                           .token = t.jwtToken,
+                           .items = items.items,
+                       };
+                       return std::pair{std::string{kEvaluateTokenManyPath},
+                                        buildJsonBody(request)};
+                     },
+                     [&](Username const& u) {
+                       auto request = EvaluateManyRequest{
+                           .user = u.name,
+                           .items = items.items,
+                       };
+                       return std::pair{std::string{kEvaluateManyPath},
+                                        buildJsonBody(request)};
+                     },
+                 },
+                 subject);
+
+  auto response = co_await sendRequest(fuerte::RestVerb::Post, std::move(path),
+                                       bodyResult, api);
+
+  if (auto result = response.combinedResult(); result.fail()) {
+    co_return result;
+  }
+
+  co_return parseEvaluateResponseMany(
+      response.response().payloadAsStringView());
+}
+
+auto BackendImpl::sendRequest(arangodb::fuerte::RestVerb verb, std::string path,
+                              std::string_view payload,
+                              transaction::MethodsApi api)
+    -> futures::Future<network::Response> {
+  // TODO It's currently necessary to copy the data once again to convert
+  //      between data types.
+  auto fut =
+      _sendRequest(_authorizationEndpoint, verb, std::move(path),
+                   jsonToPayload(payload), makeJsonRequestOptions(api), {});
+  if (api == transaction::MethodsApi::Synchronous) {
+    // Wait here if the caller is synchronous, because in this case,
+    // skipScheduler is set, and we must not execute arbitrary code on the
+    // network thread. Waiting here will ensure that the current thread
+    // continues execution after the following co_await, and not the network
+    // thread resolving the promise.
+    fut.wait();
+  }
+  return fut;
+}
+
+}  // namespace arangodb::rbac

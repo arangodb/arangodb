@@ -32,6 +32,7 @@
 namespace arangodb {
 
 class ClusterFeature;
+class DatabaseFeature;
 
 class ClusterEngine final : public StorageEngine {
  public:
@@ -39,6 +40,8 @@ class ClusterEngine final : public StorageEngine {
 
   // create the storage engine
   explicit ClusterEngine(application_features::ApplicationServer& server,
+                         ClusterFeature& clusterFeature,
+                         DatabaseFeature& database,
                          metrics::IRegistry& metrics);
   ~ClusterEngine();
 
@@ -100,26 +103,6 @@ class ClusterEngine final : public StorageEngine {
 
   void cleanupReplicationContexts() override {}
 
-  velocypack::Builder getReplicationApplierConfiguration(
-      TRI_vocbase_t& vocbase, ErrorCode& status) override;
-  velocypack::Builder getReplicationApplierConfiguration(
-      ErrorCode& status) override;
-  ErrorCode removeReplicationApplierConfiguration(
-      TRI_vocbase_t& vocbase) override {
-    return TRI_ERROR_NOT_IMPLEMENTED;
-  }
-  ErrorCode removeReplicationApplierConfiguration() override {
-    return TRI_ERROR_NOT_IMPLEMENTED;
-  }
-  ErrorCode saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                                velocypack::Slice slice,
-                                                bool doSync) override {
-    return TRI_ERROR_NOT_IMPLEMENTED;
-  }
-  ErrorCode saveReplicationApplierConfiguration(
-      arangodb::velocypack::Slice slice, bool doSync) override {
-    return TRI_ERROR_NOT_IMPLEMENTED;
-  }
   Result handleSyncKeys(DatabaseInitialSyncer& syncer, LogicalCollection& col,
                         std::string const& keysId) override {
     return {TRI_ERROR_NOT_IMPLEMENTED};
@@ -128,16 +111,7 @@ class ClusterEngine final : public StorageEngine {
                            velocypack::Builder& builder) override {
     return {TRI_ERROR_NOT_IMPLEMENTED};
   }
-  Result createTickRanges(velocypack::Builder& builder) override {
-    return {TRI_ERROR_NOT_IMPLEMENTED};
-  }
-  Result firstTick(uint64_t& tick) override {
-    return {TRI_ERROR_NOT_IMPLEMENTED};
-  }
-  Result lastLogger(TRI_vocbase_t& vocbase, uint64_t tickStart,
-                    uint64_t tickEnd, velocypack::Builder& builder) override {
-    return {TRI_ERROR_NOT_IMPLEMENTED};
-  }
+
   WalAccess const* walAccess() const override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
     return nullptr;
@@ -208,9 +182,6 @@ class ClusterEngine final : public StorageEngine {
   /// @brief Add engine-specific V8 functions
   void addV8Functions() override;
 #endif
-
-  /// @brief Add engine-specific REST handlers
-  void addRestHandlers(rest::RestHandlerFactory& handlerFactory) override;
 
   void addParametersForNewCollection(arangodb::velocypack::Builder& builder,
                                      arangodb::velocypack::Slice info) override;

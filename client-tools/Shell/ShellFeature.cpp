@@ -21,7 +21,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShellFeature.h"
-#include "Shell/ShellOptionsProvider.h"
 
 #include "Basics/debugging.h"
 #include "FeaturePhases/V8ShellFeaturePhase.h"
@@ -30,7 +29,6 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Shell/ClientFeature.h"
-#include "Shell/ShellConsoleFeature.h"
 #include "Shell/V8ShellFeature.h"
 
 using namespace arangodb::basics;
@@ -39,34 +37,22 @@ using namespace arangodb::options;
 namespace arangodb {
 
 ShellFeature::ShellFeature(application_features::ApplicationServer& server,
-                           int* result)
-    : ShellFeature(server, result, ShellFeatureOptions{}) {}
+                           int* result, ClientFeature& client,
+                           ShellConsoleFeature& console)
+    : ShellFeature(server, result, client, console, ShellFeatureOptions{}) {}
 
 ShellFeature::ShellFeature(application_features::ApplicationServer& server,
-                           int* result, ShellFeatureOptions options)
+                           int* result, ClientFeature& client,
+                           ShellConsoleFeature& console,
+                           ShellFeatureOptions options)
     : ApplicationFeature(server, *this),
       _options(std::move(options)),
       _result(result),
       _runMode(RunMode::INTERACTIVE) {
   setOptional(false);
   startsAfter<application_features::V8ShellFeaturePhase>();
-}
 
-ShellFeature::~ShellFeature() = default;
-
-void ShellFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  ShellOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void ShellFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  _positionals = options->processingResult()._positionals;
-
-  ClientFeature& client =
-      server().getFeature<HttpEndpointProvider, ClientFeature>();
-  ShellConsoleFeature& console = server().getFeature<ShellConsoleFeature>();
+  _positionals = server.options()->processingResult()._positionals;
 
   if (client.endpoint() == "none") {
     client.disable();
@@ -112,6 +98,8 @@ void ShellFeature::validateOptions(
   }
 #endif
 }
+
+ShellFeature::~ShellFeature() = default;
 
 void ShellFeature::start() {
   *_result = EXIT_SUCCESS;

@@ -23,6 +23,7 @@
 #pragma once
 
 #include "RestHandler/RestBaseHandler.h"
+#include "RestServer/LogApiOptions.h"
 
 namespace arangodb {
 
@@ -40,7 +41,8 @@ class ConnectionPool;
 class RestAdminLogHandler : public RestBaseHandler {
  public:
   explicit RestAdminLogHandler(application_features::ApplicationServer&,
-                               GeneralRequest*, GeneralResponse*);
+                               GeneralRequest*, GeneralResponse*,
+                               LogApiOptions const* logApiOptions);
 
  public:
   char const* name() const override final { return "RestAdminLogHandler"; }
@@ -59,13 +61,14 @@ class RestAdminLogHandler : public RestBaseHandler {
   }
 
  private:
-  arangodb::Result verifyPermitted();
+  arangodb::Result verifyPermitted(RequestType const type);
   void clearLogs();
   auto reportLogs(bool newFormat) -> async<void>;
   auto handleLogLevel() -> async<void>;
   auto handleLogWrite() -> async<void>;
   void handleLogStructuredParams();
 
+  LogApiOptions _logApiOptions;
   LogBufferFeature& _logBufferFeature;
   ClusterFeature& _clusterFeature;
   network::ConnectionPool* _connectionPool;

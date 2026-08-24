@@ -23,7 +23,7 @@ RUN apt-get update --fix-missing && \
       gcovr prometheus bc tcpdump liburing-dev cppcheck libopenblas-dev gfortran \
       cmake ninja-build git liblapack-dev python3-pip libgd3 linux-libc-dev libcrypt-dev \
       libnsl-dev rpcsvc-proto libtirpc-dev curl gnupg gnupg2 \
-      rpm debugedit dwz clamav cpio \
+      rpm debugedit dwz elfutils clamav cpio \
   && rm -rf /var/cache/apt/archives /var/lib/apt/lists
 
 COPY --from=glibcdebs /root/debs /debs

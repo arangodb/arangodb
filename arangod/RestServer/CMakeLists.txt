@@ -66,8 +66,7 @@ add_library(arango_rest_server STATIC
   TtlProperties.cpp
   UpgradeFeature.cpp
   UpgradeOptionsProvider.cpp
-  ViewTypesFeature.cpp
-  VocbaseContext.cpp)
+  ViewTypesFeature.cpp)
 
 if(USE_V8)
   target_sources(arango_rest_server PRIVATE
@@ -81,9 +80,26 @@ endif()
 
 target_link_libraries(arango_rest_server
   PUBLIC
-    arango_basic_utils velocypack
-    arango::validation rocksdb_interface immer arango_actor
-    arango_iresearch arango_v8)
+    arango_auth
+    arango_actions
+    arango_actor
+    arango_basic_utils
+    arango_statistics
+    arango_iresearch
+    arango::validation
+    arango_v8
+    arango_v8server
+    rocksdb_interface
+    immer
+    velocypack)
+
+if(USE_ENTERPRISE)
+  target_link_libraries(arango_rest_server
+    PUBLIC
+      arango_enterprise_storage_engine
+      arango_enterprise_license
+      arango_enterprise_ssl)
+endif()
 
 target_include_directories(arango_rest_server PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"

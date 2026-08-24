@@ -226,14 +226,18 @@ bool AuthenticationFeature::authenticationSystemOnly() const noexcept {
   return _options.authenticationSystemOnly;
 }
 
-std::string_view AuthenticationFeature::externalRBACservice() const noexcept {
-  return _options.externalRBACservice;
+std::string_view AuthenticationFeature::externalRbacService() const noexcept {
+  return _options.externalRbacService;
+}
+
+bool AuthenticationFeature::rbacEnabled() const noexcept {
+  return !_options.externalRbacService.empty();
 }
 
 /// @return Cache to deal with authentication tokens
 auth::TokenCache& AuthenticationFeature::tokenCache() const noexcept {
   TRI_ASSERT(_authCache);
-  return *_authCache.get();
+  return *_authCache;
 }
 
 /// @brief user manager may be null on DBServers and Agency
@@ -336,24 +340,17 @@ Result AuthenticationFeature::loadJwtSecretFolder() try {
   auto list =
       basics::FileUtils::listFiles(_options.jwtSecretFolderProgramOption);
 
-  // filter out empty filenames, hidden files, tmp files and symlinks
-  list.erase(std::remove_if(
-                 list.begin(), list.end(),
-                 [this](std::string const& file) {
-                   if (file.empty() || file[0] == '.') {
-                     return true;
-                   }
-                   if (file.ends_with(".tmp")) {
-                     return true;
-                   }
-                   auto p =
-                       std::filesystem::path(basics::FileUtils::buildFilename(
-                           _options.jwtSecretFolderProgramOption, file));
-                   if (std::filesystem::is_symlink(p)) {
-                     return true;
-                   }
-                   return false;
-                 }),
+  // filter out empty filenames, hidden files, tmp files
+  list.erase(std::remove_if(list.begin(), list.end(),
+                            [](std::string const& file) {
+                              if (file.empty() || file[0] == '.') {
+                                return true;
+                              }
+                              if (file.ends_with(".tmp")) {
+                                return true;
+                              }
+                              return false;
+                            }),
              list.end());
 
   if (list.empty()) {

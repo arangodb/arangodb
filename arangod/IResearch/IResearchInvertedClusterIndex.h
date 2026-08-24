@@ -32,7 +32,7 @@ class IResearchInvertedClusterIndex final : public Index,
   Index const& index() const noexcept final { return *this; }
 
  public:
-  IndexType type() const final { return Index::TRI_IDX_TYPE_INVERTED_INDEX; }
+  IndexType type() const final { return IndexType::Inverted; }
 
   ~IResearchInvertedClusterIndex() final {
     // should be in final dtor, otherwise its vtable already destroyed
@@ -49,9 +49,9 @@ class IResearchInvertedClusterIndex final : public Index,
 
   std::string getCollectionName() const;
 
-  Stats stats() const final;
+  Stats getStats() const final;
 
-  size_t memory() const final { return stats().indexSize; }
+  size_t memory() const final { return getStats().indexSize; }
 
   bool isHidden() const final { return false; }
 

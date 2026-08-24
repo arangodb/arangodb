@@ -52,8 +52,6 @@ class ManagerFeature final : public application_features::ApplicationFeature {
                  metrics::IRegistry& metricsRegistry);
   ~ManagerFeature();
 
-  void collectOptions(
-      std::shared_ptr<arangodb::options::ProgramOptions> options) override;
   void prepare() override;
   void start() override;
   void stop() override;

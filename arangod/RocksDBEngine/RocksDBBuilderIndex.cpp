@@ -250,6 +250,12 @@ RocksDBBuilderIndex::RocksDBBuilderIndex(std::shared_ptr<RocksDBIndex> wp,
 /// @brief return a VelocyPack representation of the index
 void RocksDBBuilderIndex::toVelocyPack(
     VPackBuilder& builder, std::underlying_type<Serialize>::type flags) const {
+  // inventory (dump/restore) gets the wrapped definition, without the
+  // builder-only fields below
+  if (Index::hasFlag(flags, Index::Serialize::Inventory)) {
+    _wrapped->toVelocyPack(builder, flags);
+    return;
+  }
   VPackBuilder inner;
   _wrapped->toVelocyPack(inner, flags);
   TRI_ASSERT(inner.slice().isObject());
@@ -341,7 +347,7 @@ static Result fillIndex(
 
   TRI_IF_FAILURE("RocksDBBuilderIndex::fillIndex") { FATAL_ERROR_EXIT(); }
 
-  if (ridx.type() == Index::TRI_IDX_TYPE_VECTOR_INDEX) {
+  if (ridx.type() == IndexType::Vector) {
     auto& vecIdx = static_cast<RocksDBVectorIndex&>(ridx);
     it->Seek(bounds.start());
     res = vector::ingestVectors(vecIdx, rootDB, std::move(it));
@@ -377,7 +383,7 @@ static Result fillIndex(
 Result RocksDBBuilderIndex::beforeCreate() {
   RocksDBIndex* internal = _wrapped.get();
   TRI_ASSERT(internal != nullptr);
-  if (_wrapped->type() != TRI_IDX_TYPE_VECTOR_INDEX) {
+  if (_wrapped->type() != IndexType::Vector) {
     return {};
   }
 

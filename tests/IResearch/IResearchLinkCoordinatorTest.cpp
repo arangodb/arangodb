@@ -97,8 +97,6 @@ class IResearchLinkCoordinatorTest : public ::testing::Test {
 
 TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
-  feature.validateOptions(server.server().options());
-  feature.collectOptions(server.server().options());
 
   arangodb::ServerState::instance()->setRebootId(
       arangodb::RebootId{1});  // Hack.
@@ -207,8 +205,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     EXPECT_TRUE(false == index->isSorted());
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE(true == index->sparse());
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                 index->type()));
+    EXPECT_TRUE((arangodb::IndexType::IResearchLink == index->type()));
     EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                  index->typeName()));
     EXPECT_TRUE((false == index->unique()));
@@ -367,8 +364,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     EXPECT_TRUE(false == index->isSorted());
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE(true == index->sparse());
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                 index->type()));
+    EXPECT_TRUE((arangodb::IndexType::IResearchLink == index->type()));
     EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                  index->typeName()));
     EXPECT_TRUE((false == index->unique()));

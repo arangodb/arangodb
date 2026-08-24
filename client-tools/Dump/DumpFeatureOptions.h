@@ -29,6 +29,8 @@
 namespace arangodb {
 
 struct DumpFeatureOptions {
+  DumpFeatureOptions();
+
   std::vector<std::string> collections{};
   // Collections in here, will be ignored during the dump
   std::vector<std::string> collectionsToBeIgnored{};

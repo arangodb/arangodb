@@ -25,14 +25,12 @@
 #include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/voc-errors.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Futures/Utilities.h"
 #include "Inspection/VPackWithErrorT.h"
-#include "Logger/LogMacros.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
-#include "Rest/ApiVersion.h"
-#include "Cluster/ClusterFeature.h"
 #include "Rest/CommonDefines.h"
 #include "fuerte/ApiVersion.h"
 
@@ -62,7 +60,7 @@ auto getActivitiesFromServers(R&& servers, std::deque<Agent> agents,
   }
   network::RequestOptions options;
   options.timeout = network::Timeout(30.0);
-  options.apiVersion = api_version::ApiVersion::Experimental;
+  options.apiVersion = arangodb::fuerte::api_version::ApiVersion::Experimental;
 
   std::vector<network::FutureRes> requests;
   std::vector<ServerID> serverIds;
@@ -116,17 +114,19 @@ auto serializeOneServer(VPackBuilder& builder,
 
 }  // namespace
 
+// Mounted at /_admin/activities (prefix)
 auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
   if (_feature.isOnlySuperUserEnabled()) {
-    if (!ExecContext::current().isSuperuser()) {
+    if (!ExecContext::current().isSuperuserOrDisabled()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     "You need super user rights for activities operations");
       co_return;
     }
   } else {
-    if (!ExecContext::current().isAdminUser()) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    "you need admin user rights for activities operations");
+    if (auto r = ExecContext::current().canUseAdminAction(
+            auth::perms::AdminMonitoringInternal{});
+        r.fail()) {
+      generateError(r);
       co_return;
     }
   }

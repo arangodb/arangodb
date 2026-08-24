@@ -30,6 +30,7 @@
 #include "VocBase/Identifiers/TransactionId.h"
 
 #include <string>
+#include <string_view>
 #include <unordered_set>
 
 namespace arangodb {
@@ -38,7 +39,6 @@ class ClusterInfo;
 class CollectionNameResolver;
 class DatabaseFeature;
 class LogicalCollection;
-class ReplicationApplier;
 class ReplicationFeature;
 class SingleCollectionTransaction;
 
@@ -63,21 +63,17 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
                          GeneralRequest*, GeneralResponse*);
 
  public:
-  static std::string const Revisions;
-  static std::string const Tree;
-  static std::string const TreePending;
-  static std::string const Ranges;
-  static std::string const Documents;
+  static constexpr std::string_view Revisions = "revisions";
+  static constexpr std::string_view Tree = "tree";
+  static constexpr std::string_view TreePending = "treepending";
+  static constexpr std::string_view Ranges = "ranges";
+  static constexpr std::string_view Documents = "documents";
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief list of available commands
   //////////////////////////////////////////////////////////////////////////////
   static std::string const LoggerState;
-  static std::string const LoggerTickRanges;
-  static std::string const LoggerFirstTick;
-  static std::string const LoggerLast;
-  static std::string const LoggerFollow;
   static std::string const Batch;
   static std::string const Inventory;
   static std::string const Keys;
@@ -86,8 +82,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   static std::string const RestoreIndexes;
   static std::string const RestoreData;
   static std::string const RestoreView;
-  static std::string const Sync;
-  static std::string const ServerId;
   static std::string const ClusterInventory;
   static std::string const AddFollower;
   static std::string const RemoveFollower;
@@ -148,18 +142,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   void handleCommandRestoreView();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief handle a sync command
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandSync();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief handle a server-id command
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandServerId();
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief add a follower of a shard to the list of followers
   //////////////////////////////////////////////////////////////////////////////
 
@@ -208,36 +190,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   void handleCommandLoggerState();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the first tick available in a logfile
-  /// @route GET logger-first-tick
-  /// @caller js/client/modules/@arangodb/replication.js
-  /// @response VPackObject with minTick of LogfileManager->ranges()
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandLoggerFirstTick();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the first tick available in a logfile
-  /// @route GET logger-first-tick
-  /// @caller js/client/modules/@arangodb/replication.js
-  /// @response VPackObject with minTick of LogfileManager->ranges()
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandLoggerLast();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the available logfile range
-  /// @route GET logger-tick-ranges
-  /// @caller js/client/modules/@arangodb/replication.js
-  /// @response VPackArray, containing info about each datafile
-  ///           * filename
-  ///           * status
-  ///           * tickMin - tickMax
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandLoggerTickRanges();
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief rebuild the revision tree for a given collection, if allowed
   /// @response 204 No Content if all goes well
   //////////////////////////////////////////////////////////////////////////////
@@ -284,11 +236,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   uint64_t determineChunkSize() const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Get correct replication applier, based on global paramerter
-  //////////////////////////////////////////////////////////////////////////////
-  ReplicationApplier* getApplier(bool& global);
 
  protected:
   struct RevisionOperationContext {
@@ -431,12 +378,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// SECTION:
   /// Functions to be implemented by specialization
   //////////////////////////////////////////////////////////////////////////////
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief handle a follow command for the replication log
-  //////////////////////////////////////////////////////////////////////////////
-
-  virtual void handleCommandLoggerFollow() = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handle the command to determine the transactions that were open

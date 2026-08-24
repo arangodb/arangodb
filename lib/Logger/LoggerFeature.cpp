@@ -29,7 +29,8 @@
 #endif
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
+#include "Basics/application-exit.h"
 #include "Logger/LogTimeFormat.h"
 #include "Logger/Logger.h"
 
@@ -45,27 +46,23 @@ void LogHackWriter(std::string_view msg) { LOG_DEVEL << msg; }
 namespace arangodb {
 
 LoggerFeature::LoggerFeature(application_features::ApplicationServer& server,
-                             bool threaded, LoggerOptions options,
-                             LogApiOptions apiOptions)
+                             bool threaded, LoggerOptions options)
     : ApplicationFeature(server, *this),
       _options(std::move(options)),
-      _apiOptions(std::move(apiOptions)),
       _threaded(threaded) {
   startsAfter<ShellColorsFeature>();
-  startsAfter<VersionFeature>();
   setOptional(false);
 }
 
 LoggerFeature::LoggerFeature(application_features::ApplicationServer& server,
                              bool threaded)
-    : LoggerFeature(server, threaded, LoggerOptions{}, LogApiOptions{}) {}
+    : LoggerFeature(server, threaded, LoggerOptions{}) {}
 
 LoggerFeature::LoggerFeature(application_features::ApplicationServer& server,
                              std::type_index registration, bool threaded,
                              LoggerOptions options)
     : ApplicationFeature(server, registration, name()),
       _options(std::move(options)),
-      _apiOptions(LogApiOptions{}),
       _threaded(threaded) {
   // note: we use the _threaded option to determine whether we are arangod
   // (_threaded = true) or one of the client tools (_threaded = false). in

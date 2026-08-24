@@ -3,6 +3,9 @@ version: 2.1
 orbs:
   aws-cli: circleci/aws-cli@4.1.1
   aws-ecr: circleci/aws-ecr@9.0.1
+  # Exact pin: a floating orb range silently changes what runs. Keep in
+  # sync with base_nightly_packages.yml.
+  trivy-scan: arangodb/trivy-scan@1.2.0
 
 parameters:
   enterprise-commit:
@@ -22,7 +25,7 @@ parameters:
     default: ""
   build-docker-image:
     type: string
-    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-312:24.04-d2eb28e68"
+    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-312:24.04-f7032bef0"
     description: "Docker image to use for building ArangoDB - only relevant when trying new build images"
   test-docker-image:
     type: string
@@ -534,6 +537,164 @@ jobs:
               echo "Nothing to cancel"
             fi
 
+  # PR-time lint of what governs the nightly security gates: disposition
+  # hygiene and the required-status-check inventory.
+  security-governance:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: .
+      # No suppression files exist here today; this keeps any future one
+      # dated and in-window. poam-windows matches the trivy-gate-waivers
+      # table; nosem-exclude skips vendored trees.
+      - trivy-scan/disposition-check:
+          poam-windows: "critical=30,high=30,medium=90,low=180"
+          nosem-exclude: ":!:.circleci/* :!:3rdParty/* :!:*/node_modules/*"
+      - run:
+          name: Compare required checks against the live configuration
+          environment:
+            # "true" anywhere in here marks a variant pipeline, which renames
+            # the build workflows by design (generate_config.py appends the
+            # variant to the workflow name).
+            PIPELINE_VARIANTS: "<< pipeline.parameters.with-tsan >>,<< pipeline.parameters.with-alubsan >>,<< pipeline.parameters.full >>,<< pipeline.parameters.replication-two >>"
+          command: |
+            set -eu
+            set -o pipefail
+            LIST=.circleci/required-checks.txt
+            # PR pipelines run on the head branch, so the protected branch
+            # cannot be derived from CIRCLE_BRANCH.
+            PROTECTED=devel
+            DRIFT=0
+            if [ ! -s "${LIST}" ]; then
+              echo "ERROR: ${LIST} is missing or empty. Commit the required-check inventory." >&2
+              exit 1
+            fi
+            # || true: grep exits 1 on a comments-only list; that is reported
+            # as an error on the next line, not as a pipefail abort here.
+            grep -vE '^[[:space:]]*(#|$)' "${LIST}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' | sort -u > /tmp/required-expected.txt || true
+            if [ ! -s /tmp/required-expected.txt ]; then
+              echo "ERROR: ${LIST} lists no contexts." >&2
+              exit 1
+            fi
+            echo "Committed required contexts (${LIST}):"
+            sed -e 's/^/  /' /tmp/required-expected.txt
+            # Live GitHub side. Branch protection needs an administration:read
+            # token, rulesets only a repo token, so both are consulted. No
+            # token means UNVERIFIED, never "no drift".
+            : > /tmp/required-live.txt
+            LIVE_SOURCE=""
+            PROT_OK=0
+            if [ -n "${GITHUB_TOKEN:-}" ]; then
+              GH_API="https://api.github.com/repos/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}"
+              for ENDPOINT in "branches/${PROTECTED}/protection" "rules/branches/${PROTECTED}"; do
+                if curl -sSfL --retry 3 --retry-delay 2 --max-time 60 \
+                     -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                     -H "Accept: application/vnd.github+json" \
+                     -H "X-GitHub-Api-Version: 2022-11-28" \
+                     -o /tmp/gh-rules.json "${GH_API}/${ENDPOINT}"; then
+                  # grep/sed: heredocs collide with CircleCI parameter
+                  # syntax; "context" only appears in required checks.
+                  grep -oE '"context":[[:space:]]*"[^"]*"' /tmp/gh-rules.json \
+                    | sed -e 's/.*"\([^"]*\)"$/\1/' | sort -u >> /tmp/required-live.txt || true
+                  LIVE_SOURCE="${LIVE_SOURCE}${LIVE_SOURCE:+, }${ENDPOINT}"
+                  if [ "${ENDPOINT}" = "branches/${PROTECTED}/protection" ]; then
+                    PROT_OK=1
+                  fi
+                else
+                  echo "NOTICE: could not read ${ENDPOINT} (token scope?), that surface is unverified on this run." >&2
+                fi
+              done
+            elif [ -n "${CIRCLE_PR_REPONAME:-}" ]; then
+              echo "NOTICE: forked PR, no GITHUB_TOKEN; the live GitHub configuration is unverified on this run." >&2
+            else
+              echo "NOTICE: GITHUB_TOKEN is not set; the live GitHub configuration stays UNVERIFIED until a context with a read-only administration:read token is attached." >&2
+            fi
+            # Compare only when a surface that can carry required contexts
+            # answered: an empty read off the rulesets endpoint alone is a
+            # token-scope gap, not proof that nothing is required.
+            if [ -n "${LIVE_SOURCE}" ] && { [ "${PROT_OK}" = "1" ] || [ -s /tmp/required-live.txt ]; }; then
+              sort -u /tmp/required-live.txt -o /tmp/required-live.txt
+              echo "Live required contexts for ${PROTECTED} (${LIVE_SOURCE}):"
+              sed -e 's/^/  /' /tmp/required-live.txt
+              MISSING="$(comm -23 /tmp/required-expected.txt /tmp/required-live.txt)" || true
+              EXTRA="$(comm -13 /tmp/required-expected.txt /tmp/required-live.txt)" || true
+              PARTIAL=0
+              if [ -n "${MISSING}" ]; then
+                # Only branch protection proves absence; a rulesets-only
+                # read may be a partial view of the live configuration.
+                if [ "${PROT_OK}" = "1" ]; then
+                  echo "DRIFT: committed but NOT required by GitHub, so these checks do not block a merge:" >&2
+                  printf '%s\n' "${MISSING}" | sed -e 's/^/  /' >&2
+                  DRIFT=1
+                else
+                  echo "NOTICE: branch protection was unreadable, so it is unknown whether these committed contexts are live:" >&2
+                  printf '%s\n' "${MISSING}" | sed -e 's/^/  /' >&2
+                  PARTIAL=1
+                fi
+              fi
+              if [ -n "${EXTRA}" ]; then
+                echo "DRIFT: required by GitHub but NOT in the committed list:" >&2
+                printf '%s\n' "${EXTRA}" | sed -e 's/^/  /' >&2
+                DRIFT=1
+              fi
+              if [ "${DRIFT}" = "0" ] && [ "${PARTIAL}" = "0" ]; then
+                echo "GitHub configuration matches the committed list."
+              fi
+            elif [ -n "${LIVE_SOURCE}" ]; then
+              echo "NOTICE: the readable surfaces carried no required-context data; merge-gate drift is unverified on this run." >&2
+            fi
+            # Emitted side, read off this live pipeline: GitHub sees one
+            # check per CircleCI WORKFLOW, and deriving the names from the
+            # config instead is how they go stale.
+            if [ -z "${CIRCLECI_TOKEN:-}" ]; then
+              echo "NOTICE: CIRCLECI_TOKEN is not set; emitted workflow names are unverified on this run." >&2
+            elif ! curl -sSfL --retry 3 --retry-delay 2 --max-time 60 \
+                 -H "Circle-Token: ${CIRCLECI_TOKEN}" \
+                 -o /tmp/wf.json \
+                 "https://circleci.com/api/v2/pipeline/${CIRCLE_PIPELINE_ID}/workflow"; then
+              echo "NOTICE: could not list this pipeline's workflows; the emitted-context check is unverified on this run." >&2
+            else
+              grep -oE '"name"[[:space:]]*:[[:space:]]*"[^"]*"' /tmp/wf.json \
+                | sed -e 's/.*"\([^"]*\)"$/\1/' | sort -u > /tmp/required-emitted.txt || true
+              echo "Workflows emitted by this pipeline (${CIRCLE_PIPELINE_ID}):"
+              sed -e 's/^/  /' /tmp/required-emitted.txt
+              FOUND=0
+              while IFS= read -r CTX; do
+                if grep -qxF -- "${CTX}" /tmp/required-emitted.txt; then
+                  FOUND=$((FOUND + 1))
+                fi
+              done < /tmp/required-expected.txt
+              if [ "${FOUND}" = "0" ]; then
+                # Variant and devel pipelines legitimately emit other names;
+                # a default head-branch pipeline emitting none means the
+                # workflows were renamed, which blocks every merge.
+                case "${PIPELINE_VARIANTS:-}" in *true*) VARIANT=1 ;; *) VARIANT=0 ;; esac
+                if [ "${VARIANT}" = "1" ] || [ "${CIRCLE_BRANCH:-}" = "${PROTECTED}" ]; then
+                  echo "NOTICE: variant or ${PROTECTED} pipeline; none of the committed contexts is emitted here, nothing to compare." >&2
+                else
+                  echo "DRIFT: this default pipeline emits none of the committed contexts; if the workflows were renamed, every merge into ${PROTECTED} is blocked by checks nothing emits." >&2
+                  DRIFT=1
+                fi
+              else
+                while IFS= read -r CTX; do
+                  if ! grep -qxF -- "${CTX}" /tmp/required-emitted.txt; then
+                    echo "DRIFT: required context '${CTX}' is not emitted by this pipeline; a required check nothing emits blocks every merge." >&2
+                    DRIFT=1
+                  fi
+                done < /tmp/required-expected.txt
+                [ "${DRIFT}" = "0" ] && echo "Every committed context is emitted by this pipeline."
+              fi
+            fi
+            # Drift fails the job (lint is not a required check, so it
+            # cannot block a merge); missing tokens only skip their half,
+            # keeping forked PRs green.
+            if [ "${DRIFT}" != "0" ]; then
+              echo "ERROR: drift reported above. Fix the committed list or the branch protection." >&2
+              exit 1
+            fi
+
   build-frontend:
     docker:
       - image: << pipeline.parameters.build-docker-image >>
@@ -852,6 +1013,27 @@ jobs:
           sanitizer: << parameters.sanitizer >>
           extraArgs: << parameters.extraArgs >>
 
+  run-linux-tests-with-smocker:
+    parameters:
+      <<: *shared-test-job-parameters
+    docker:
+      - image: << parameters.docker_image >>
+      - image: ghcr.io/smocker-dev/smocker
+        name: smocker
+    resource_class: << parameters.size >>
+    parallelism: << parameters.buckets >>
+    environment:
+      SMOCKER_HOST: smocker
+    steps:
+      - run-test:
+          suiteName: << parameters.suiteName >>
+          suites: << parameters.suites >>
+          cluster: << parameters.cluster >>
+          arangosh_args: << parameters.arangosh_args >>
+          timeLimit: << parameters.timeLimit >>
+          sanitizer: << parameters.sanitizer >>
+          extraArgs: << parameters.extraArgs >>
+
   run-driver-tests:
     parameters:
       <<: *shared-test-job-parameters
@@ -1139,6 +1321,11 @@ workflows:
             - minimal-checkout
       - eslint:
           name: eslint
+          context: [circleci-token]
+          requires:
+            - minimal-checkout
+      - security-governance:
+          name: security-governance
           context: [circleci-token]
           requires:
             - minimal-checkout

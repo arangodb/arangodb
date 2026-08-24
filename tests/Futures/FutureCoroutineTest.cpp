@@ -1,6 +1,10 @@
 #include "Async/Registry/promise.h"
 #include "Async/Registry/registry_variable.h"
+#include "Auth/Common.h"
+#include "Basics/Result.h"
+#include "Basics/voc-errors.h"
 #include "Futures/Future.h"
+#include "Mocks/ExecContextFactory.h"
 
 #include <condition_variable>
 #include <coroutine>
@@ -288,41 +292,54 @@ TYPED_TEST(FutureTest,
   this->wait.await();
 }
 
-struct ExecContext_Waiting : public arangodb::ExecContext {
-  ExecContext_Waiting()
-      : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                              arangodb::ExecContext::Type::Default, "Waiting",
-                              "", arangodb::auth::Level::RW,
-                              arangodb::auth::Level::NONE, true) {}
-};
-struct ExecContext_Calling : public arangodb::ExecContext {
-  ExecContext_Calling()
-      : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                              arangodb::ExecContext::Type::Default, "Calling",
-                              "", arangodb::auth::Level::RW,
-                              arangodb::auth::Level::NONE, true) {}
-};
-struct ExecContext_Begin : public arangodb::ExecContext {
-  ExecContext_Begin()
-      : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                              arangodb::ExecContext::Type::Default, "Begin", "",
-                              arangodb::auth::Level::RW,
-                              arangodb::auth::Level::NONE, true) {}
-};
-struct ExecContext_End : public arangodb::ExecContext {
-  ExecContext_End()
-      : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                              arangodb::ExecContext::Type::Default, "End", "",
-                              arangodb::auth::Level::RW,
-                              arangodb::auth::Level::NONE, true) {}
-};
+// COR-822: transaction::Methods::replicateOperations co_awaits the follower
+// responses (whose futures are fulfilled on a network or scheduler thread)
+// and performs an intermediate commit after resuming. The commit guard in
+// RocksDBTrxBaseMethods::doCommitImpl reads
+// ExecContext::current().isCanceled(); with a plain .thenValue continuation
+// it would run on the fulfilling thread and observe the Superuser fallback
+// (whose _canceled is always false) instead of the initiator's context. This
+// test asserts the property the coroutine conversion relies on: resumption
+// replays the initiator's ExecContext -- in particular for ConcurrentNoWait,
+// where the resumption happens on a foreign thread without any ExecContext --
+// so a cancellation of the initiating request is observed by the commit
+// guard.
+TYPED_TEST(FutureTest, canceled_initiator_context_is_replayed_after_resume) {
+  auto ctx = arangodb::tests::mocks::makeClassicExecContext(
+      "initiator", "", arangodb::auth::Level::RW, arangodb::auth::Level::NONE);
+  ExecContextScope scope(ctx.execContext);
+  ctx.execContext->cancel();
+
+  auto guardResult = [&]() -> Future<Result> {
+    co_await this->wait;
+    // this mirrors the commit guard in RocksDBTrxBaseMethods::doCommitImpl
+    auto const& exec = ExecContext::current();
+    EXPECT_EQ(exec.user(), "initiator");
+    if (exec.isCanceled()) {
+      co_return Result(TRI_ERROR_ARANGO_READ_ONLY);
+    }
+    co_return Result();
+  }();
+
+  this->wait.resume();
+  this->wait.await();
+
+  ASSERT_TRUE(guardResult.isReady());
+  EXPECT_EQ(std::move(guardResult).waitAndGet().errorNumber(),
+            TRI_ERROR_ARANGO_READ_ONLY);
+}
+
 TYPED_TEST(FutureTest, execution_context_is_local_to_coroutine) {
-  ExecContextScope exec(std::make_shared<ExecContext_Begin>());
+  auto ctxBegin = arangodb::tests::mocks::makeClassicExecContext(
+      "Begin", "", arangodb::auth::Level::RW, arangodb::auth::Level::NONE);
+  ExecContextScope exec(ctxBegin.execContext);
   EXPECT_EQ(ExecContext::current().user(), "Begin");
 
   auto waiting_coro = [&]() -> Future<Unit> {
     EXPECT_EQ(ExecContext::current().user(), "Begin");
-    ExecContextScope exec(std::make_shared<ExecContext_Waiting>());
+    auto ctxWaiting = arangodb::tests::mocks::makeClassicExecContext(
+        "Waiting", "", arangodb::auth::Level::RW, arangodb::auth::Level::NONE);
+    ExecContextScope exec(ctxWaiting.execContext);
     EXPECT_EQ(ExecContext::current().user(), "Waiting");
     co_await this->wait;
     EXPECT_EQ(ExecContext::current().user(), "Waiting");
@@ -337,7 +354,9 @@ TYPED_TEST(FutureTest, execution_context_is_local_to_coroutine) {
 
   auto calling_coro = [&]() -> Future<Unit> {
     EXPECT_EQ(ExecContext::current().user(), "Begin");
-    ExecContextScope exec(std::make_shared<ExecContext_Calling>());
+    auto ctxCalling = arangodb::tests::mocks::makeClassicExecContext(
+        "Calling", "", arangodb::auth::Level::RW, arangodb::auth::Level::NONE);
+    ExecContextScope exec(ctxCalling.execContext);
     EXPECT_EQ(ExecContext::current().user(), "Calling");
     co_await std::move(waiting_coro);
     EXPECT_EQ(ExecContext::current().user(), "Calling");
@@ -350,7 +369,9 @@ TYPED_TEST(FutureTest, execution_context_is_local_to_coroutine) {
   std::ignore = calling_coro();
   EXPECT_EQ(ExecContext::current().user(), "Begin");
 
-  ExecContextScope new_exec(std::make_shared<ExecContext_End>());
+  auto ctxEnd = arangodb::tests::mocks::makeClassicExecContext(
+      "End", "", arangodb::auth::Level::RW, arangodb::auth::Level::NONE);
+  ExecContextScope new_exec(ctxEnd.execContext);
   EXPECT_EQ(ExecContext::current().user(), "End");
 
   this->wait.resume();

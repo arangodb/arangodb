@@ -48,7 +48,6 @@
 #include "Metrics/Gauge.h"
 #include "Metrics/MetricsFeature.h"
 #include "Network/ConnectionPool.h"
-#include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
@@ -393,10 +392,10 @@ Result Database::loadCollection(LogicalCollection& collection,
 
   if (checkPermissions) {
     std::string const& dbName = _info.getName();
-    if (!ExecContext::current().canUseCollection(dbName, collection.name(),
-                                                 auth::Level::RO)) {
-      return {TRI_ERROR_FORBIDDEN, std::string("cannot access collection '") +
-                                       collection.name() + "'"};
+    if (auto r = ExecContext::current().canUseCollection(
+            dbName, collection.name(), AccessLevel::Read);
+        !r.ok()) {
+      return r;
     }
   }
 
@@ -504,11 +503,6 @@ void Database::stop() {
 
   try {
     shutdownReplicatedLogs();
-
-    // stop replication
-    if (_replicationApplier != nullptr) {
-      _replicationApplier->stopAndJoin();
-    }
 
     // mark all cursors as deleted so underlying collections can be freed soon
     _cursorRepository->garbageCollect(true);
@@ -635,7 +629,7 @@ void Database::inventory(
       continue;
     }
 
-    if (!exec.canUseCollection(dbName, collection->name(), auth::Level::RO)) {
+    if (exec.canSeeCollection(dbName, collection->name()).fail()) {
       continue;
     }
 
@@ -1464,12 +1458,6 @@ replication::Version Database::replicationVersion() const {
   return _info.replicationVersion();
 }
 
-void Database::addReplicationApplier() {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  auto* applier = DatabaseReplicationApplier::create(*this);
-  _replicationApplier.reset(applier);
-}
-
 void Database::toVelocyPack(VPackBuilder& result) const {
   VPackObjectBuilder b(&result);
   _info.toVelocyPack(result);
@@ -1721,12 +1709,9 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
   config.defaultNumberOfShards = 1;
   config.defaultReplicationFactor = replicationFactor();
   config.defaultWriteConcern = writeConcern();
-
-  config.isOneShardDB = cl.forceOneShard() || isOneShard();
-  if (config.isOneShardDB) {
-    config.defaultDistributeShardsLike = shardingPrototypeName();
-  } else {
-    config.defaultDistributeShardsLike = "";
+  if (cl.forceOneShard() || isOneShard()) {
+    config.oneShardDBConfiguration =
+        OneShardDatabaseConfiguration{shardingPrototypeName()};
   }
 
   config.replicationVersion = replicationVersion();

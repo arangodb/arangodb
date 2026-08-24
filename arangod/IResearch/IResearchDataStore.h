@@ -293,7 +293,14 @@ class IResearchDataStore {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get index stats for current snapshot
   ////////////////////////////////////////////////////////////////////////////////
-  virtual Stats stats() const;
+  virtual Stats getStats() const;
+
+  struct DatastoreStats {
+    Stats summary;
+    std::vector<irs::SegmentInfo> segments;
+  };
+
+  virtual DatastoreStats getDatastoreStats() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set the data store to out of sync. if a data store is out of sync,
@@ -376,7 +383,7 @@ class IResearchDataStore {
   /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
   //////////////////////////////////////////////////////////////////////////////
   UnsafeOpResult commitUnsafe(bool wait,
-                              irs::ProgressReportCallback const& progress,
+                              irs::ProgressReportCallback const progress,
                               CommitResult& code);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -385,8 +392,7 @@ class IResearchDataStore {
   //////////////////////////////////////////////////////////////////////////////
   UnsafeOpResult consolidateUnsafe(
       IResearchDataStoreMeta::ConsolidationPolicy const& policy,
-      irs::MergeWriter::FlushProgress const& progress,
-      bool& emptyConsolidation);
+      irs::MergeWriter::FlushProgress const progress, bool& emptyConsolidation);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief run filesystem cleanup on the data store
@@ -399,8 +405,7 @@ class IResearchDataStore {
   /// @param wait even if other thread is committing
   /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
   //////////////////////////////////////////////////////////////////////////////
-  Result commitUnsafeImpl(bool wait,
-                          irs::ProgressReportCallback const& progress,
+  Result commitUnsafeImpl(bool wait, irs::ProgressReportCallback const progress,
                           CommitResult& code);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -409,8 +414,7 @@ class IResearchDataStore {
   //////////////////////////////////////////////////////////////////////////////
   Result consolidateUnsafeImpl(
       IResearchDataStoreMeta::ConsolidationPolicy const& policy,
-      irs::MergeWriter::FlushProgress const& progress,
-      bool& emptyConsolidation);
+      irs::MergeWriter::FlushProgress const progress, bool& emptyConsolidation);
 
   void initAsyncSelf();
 
@@ -475,7 +479,14 @@ class IResearchDataStore {
   /// @brief Update index stats for current snapshot
   /// @note Unsafe, can only be called is _asyncSelf is locked
   ////////////////////////////////////////////////////////////////////////////////
-  Stats updateStatsUnsafe(DataSnapshotPtr data) const;
+  void updateStatsUnsafe(DataSnapshotPtr data) const;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Fetch index stats for current snapshot
+  /// @note Unsafe, can only be called is _asyncSelf is locked
+  ////////////////////////////////////////////////////////////////////////////////
+  virtual DatastoreStats getDatastoreStatsUnsafe(DataSnapshotPtr data) const;
+  virtual Stats getStatsUnsafe(DataSnapshotPtr data) const;
 
   void initClusterMetrics() const;
 

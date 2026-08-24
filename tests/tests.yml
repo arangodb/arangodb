@@ -39,16 +39,6 @@
       type: single
     args:
       extraArgs:log.level: replication=trace
-- replication_sync:
-    options:
-      priority: 8000
-      buckets: 9
-      parallelity: 3
-      size: medium
-      type: single
-    args:
-      extraArgs:log.level: replication=trace
-
 
 - authentication_audit_endpoints_import_export_agency_fuerte:
     options:
@@ -197,6 +187,8 @@
       priority: 250
       type: single
       suffix: _large
+      buckets: 2
+      parallelity: 6
     args:
       # TODO: BTS-2283
       encryptionAtRest: false
@@ -217,9 +209,21 @@
       type: single
     requires:
       coverage: false
+- gtest_rbac_integration:
+    options:
+      type: single
+      size: small
+    job: run-linux-tests-with-smocker
+    suites:
+      - gtest_rbac_integration
+    requires:
+      coverage: false
+# without coverage this is fast enough:
 - rta_makedata:
     options:
       type: mixed
+    requires:
+      coverage: false
     suites:
       - rta_makedata:
           args:
@@ -236,6 +240,26 @@
             forceOneShard: true
             makedataDB: system_oneshard_makedata
             suffix: cluster-oneshard
+# with coverage we need to have several jobs:
+- rta_makedata:
+    options:
+      priority: 3500
+    requires:
+      coverage: true
+    args:
+      encryptionAtRest: true
+      ssl: true
+- rta_makedata:
+    options:
+      priority: 3000
+      type: cluster
+      suffix: _oneshard
+    requires:
+      coverage: true
+    args:
+      forceOneShard: true
+      makedataDB: system_oneshard_makedata
+      suffix: cluster-oneshard
 
 - chaos:
     options:
@@ -264,6 +288,7 @@
       priority: 1000
       type: mixed
       size: large
+      parallelity: 6
     suites:
       - deadlock:
           args:
@@ -297,11 +322,27 @@
       dumpAgencyOnError: true
       forceJson: true
 
+# coverage needs 2 buckets for this
 - load_balancing:
     options:
       priority: 500
       size: medium
       type: cluster
+      buckets: auto
+    requires:
+      coverage: true
+    args:
+      dumpAgencyOnError: true
+    suites:
+      - load_balancing
+      - load_balancing_auth
+- load_balancing:
+    options:
+      priority: 500
+      size: medium
+      type: cluster
+    requires:
+      coverage: false
     args:
       dumpAgencyOnError: true
     suites:
@@ -326,6 +367,7 @@
       priority: 500
       size: large
       type: cluster
+      parallelity: 6
     args:
       dumpAgencyOnError: true
     suites:
@@ -385,8 +427,9 @@
       priority: 1000
       size: medium+
       type: cluster
-      buckets: 4
+      buckets: 5
       suffix: _large
+      parallelity: 6
     args:
       dumpAgencyOnError: true
       # TODO: BTS-2283
@@ -435,13 +478,19 @@
       - importing
       - export
       - shell_api
+
 - shell_client_aql_vector:
     options:
-      parallelity: 5
+      parallelity: 6
       size: medium+
       type: cluster
     args:
       dumpAgencyOnError: true
+- shell_client_aql_vector:
+    options:
+      parallelity: 5
+      size: medium+
+      type: single
 
 - hot_backup:
     options:
@@ -676,14 +725,6 @@
     options:
       type: cluster
       priority: 500
-    requires:
-      full: true
-    args:
-      dumpAgencyOnError: true
-- wal_cleanup:
-    options:
-      type: cluster
-      priority: 2500
     requires:
       full: true
     args:

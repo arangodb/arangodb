@@ -745,6 +745,25 @@ function AuthSuite() {
       }
     },
 
+    // a malformed access token (valid "v1." prefix, but the hex-decoded
+    // payload is not valid JSON) must be rejected as bad credentials
+    // (401), not crash the request handler with an unhandled exception
+    // (which used to surface as an HTTP 500).
+    testAccessTokenMalformedPayload: function () {
+      const version_url = `/_api/version`;
+      const forbidden = 401;
+
+      // hex encoding of the string "not valid json", which is not
+      // parseable as JSON
+      const malformedToken = "v1.6e6f742076616c6964206a736f6e";
+
+      const res = request.get(version_url, {
+        auth: {username: "root", password: malformedToken}
+      });
+      expect(res).to.be.an.instanceof(request.Response);
+      expect(res).to.have.property('statusCode', forbidden);
+    },
+
     // access token and JWT
     testAccessTokenJWT: function () {
       const other = "other";
@@ -1012,7 +1031,134 @@ function AuthSuite() {
       } finally {
         db._dropDatabase("other");
       }
-    }
+    },
+
+    // access token that expires while it is in use
+    testAccessTokenExpiresWhileValid: function () {
+      const other = "other";
+      const version_url = `/_db/${other}/_api/version`;
+      const pw1 = "foobar";
+      const ok = 200;
+      const forbidden = 401;
+      // Short enough to keep the suite fast, long enough to survive the
+      // request round trip on a loaded CI machine.
+      const lifetimeSecs = 3;
+      try {
+        db._createDatabase(other);
+        users.save(user, pw1);
+        users.grantDatabase(user, other);
+        users.reload();
+        const auth = { username: user, password: pw1 };
+        const now = (new Date()) / 1000;
+        const name = "expires-while-valid";
+        let token;
+        // create a token that is valid right now
+        {
+          const res = request.post(`/_api/token/${user}`, {
+            body: JSON.stringify({name, "valid_until": Math.floor(now + lifetimeSecs)}),
+            auth
+          });
+          expect(res).to.be.an.instanceof(request.Response);
+          expect(res).to.have.property('statusCode', ok);
+          expect(res.body).to.be.an('string');
+          const obj = JSON.parse(res.body);
+          expect(obj.active).to.be.equal(true);
+          expect(obj.token).to.be.a('string');
+          token = obj.token;
+        }
+        // it authenticates while still valid
+        {
+          const res = request.get(version_url, {
+            auth: {username: user, password: token}
+          });
+          expect(res).to.be.an.instanceof(request.Response);
+          expect(res).to.have.property('statusCode', ok);
+        }
+        require('internal').wait(lifetimeSecs + 1, false);
+        // and stops authenticating once valid_until has passed
+        {
+          const res = request.get(version_url, {
+            auth: {username: user, password: token}
+          });
+          expect(res).to.be.an.instanceof(request.Response);
+          expect(res).to.have.property('statusCode', forbidden);
+        }
+      } finally {
+        db._dropDatabase(other);
+      }
+    },
+
+    // access token valid_until must be capped at the server's configured
+    // maximum TTL (--auth.maximal-access-token-expiry-time, default 1 week),
+    // even if a much longer expiry is requested.
+    testAccessTokenExpiryCapped: function () {
+      const other = "other";
+      const pw1 = "foobar";
+      const ok = 200;
+      // matches the built-in default for
+      // --auth.maximal-access-token-expiry-time
+      const maxTtlSecs = 7 * 24 * 3600;
+      // generous slack to account for the time the requests themselves take
+      const slackSecs = 60;
+
+      try {
+        db._createDatabase(other);
+
+        users.save(user, pw1);
+        users.grantDatabase(user, other);
+        users.reload();
+
+        const auth = {
+          username: user,
+          password: pw1
+        };
+
+        // ask for a token that would be valid for a whole year
+        const now = (new Date()) / 1000;
+        const name = "testme-capped";
+        const oneYearSecs = 365 * 24 * 3600;
+        const requested = Math.floor(now + oneYearSecs);
+        const expectedCap = Math.floor(now + maxTtlSecs);
+        let id;
+
+        {
+          const res = request.post(`/_api/token/${user}`, {
+            body: JSON.stringify({name, "valid_until": requested}),
+            auth
+          });
+          expect(res).to.be.an.instanceof(request.Response);
+          expect(res).to.have.property('statusCode', ok);
+          expect(res.body).to.be.an('string');
+          const obj = JSON.parse(res.body);
+          expect(obj.id).to.be.a('number');
+          expect(obj.valid_until).to.be.a('number');
+
+          // the requested year-long expiry must have been capped down
+          expect(obj.valid_until).to.be.below(requested);
+          expect(obj.valid_until).to.be.within(expectedCap - slackSecs, expectedCap + slackSecs);
+
+          id = obj.id;
+        }
+
+        // retrieve the token list again and make sure the capped
+        // valid_until was actually persisted, not just returned once
+        {
+          const res = request.get(`/_api/token/${user}`, {auth});
+          expect(res).to.be.an.instanceof(request.Response);
+          expect(res).to.have.property('statusCode', ok);
+          expect(res.body).to.be.an('string');
+          const obj = JSON.parse(res.body);
+          expect(obj.tokens).to.be.a('array');
+
+          const found = obj.tokens.find((t) => t.id === id);
+          expect(found).to.not.be.equal(undefined);
+          expect(found.valid_until).to.be.below(requested);
+          expect(found.valid_until).to.be.within(expectedCap - slackSecs, expectedCap + slackSecs);
+        }
+      } finally {
+        db._dropDatabase(other);
+      }
+    },
   };
 }
 
@@ -1051,7 +1197,7 @@ function UnauthorizedAccesSuite() {
       assertEqual(res.parsedBody.result.name, "dbTest2");
       res = arango.GET_RAW("/_db/dbTest3/_api/database/current");
       assertEqual(401, res.code);
-      assertEqual(res.parsedBody.errorMessage, "not authorized to execute this request");
+      assertEqual(res.parsedBody.errorMessage, "No read access to database.");
       res = arango.GET_RAW("/_db/dbTest4/_api/database/current");
       assertEqual(401, res.code);
       assertEqual(res.parsedBody.errorMessage, "not authorized to execute this request");

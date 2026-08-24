@@ -323,7 +323,7 @@ Result upgradeArangoSearchLinkCollectionName(
 #endif
       for (auto& index : indexes) {
         TRI_ASSERT(index != nullptr);
-        if (index->type() == Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
+        if (index->type() == IndexType::IResearchLink) {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
           auto* indexPtr = dynamic_cast<IResearchLink*>(index.get());
           TRI_ASSERT(indexPtr != nullptr);
@@ -851,42 +851,11 @@ IResearchFeature::IResearchFeature(
 #endif
   startsAfter<IResearchAnalyzerFeature>();
   startsAfter<aql::AqlFunctionFeature>();
-}
-
-void IResearchFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  IResearchOptionsProvider provider;
-  provider.declareOptions(options, _options);
-
 #ifdef USE_ENTERPRISE
   auto& manager =
       basics::downCast<LimitedResourceManager>(_columnsCacheMemoryUsed);
-  options
-      ->addOption(IResearchOptionsProvider::CACHE_LIMIT,
-                  "The limit (in bytes) for ArangoSearch columns cache "
-                  "(0 = no caching).",
-                  new options::UInt64Parameter(&manager.limit),
-                  options::makeDefaultFlags(options::Flags::DefaultNoComponents,
-                                            options::Flags::OnSingle,
-                                            options::Flags::OnDBServer,
-                                            options::Flags::Enterprise))
-      .setIntroducedIn(3'09'05);
-  options
-      ->addOption(
-          IResearchOptionsProvider::CACHE_ONLY_LEADER,
-          "Cache ArangoSearch columns only for leader shards.",
-          new options::BooleanParameter(&_options.columnsCacheOnlyLeader),
-          options::makeDefaultFlags(options::Flags::DefaultNoComponents,
-                                    options::Flags::OnDBServer,
-                                    options::Flags::Enterprise))
-      .setIntroducedIn(3'10'06);
+  manager.limit = _options.columnsCacheLimit;
 #endif
-}
-
-void IResearchFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  IResearchOptionsProvider provider;
-  provider.validateOptions(options, _options);
 }
 
 void IResearchFeature::prepare() {

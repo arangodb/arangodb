@@ -31,7 +31,6 @@
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
-#include "ApplicationFeatures/VersionFeature.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -60,40 +59,42 @@ ArangoRestoreServer::ArangoRestoreServer(
     std::shared_ptr<options::ProgramOptions> options, char const* binaryPath,
     std::string binaryName, int* ret)
     : OptionProvidingServer<ArangoRestoreOptionProviders>(
-          options, binaryPath, std::move(binaryName), ret) {}
+          options, binaryPath, std::move(binaryName), ret) {
+  // Set a different default for the ClientFeature
+  mutableOptions<ClientOptionsProvider>().allowJwtSecret = true;
+  mutableOptions<ClientOptionsProvider>().maxNumEndpoints =
+      std::numeric_limits<size_t>::max();
+}
 
 void ArangoRestoreServer::addFeatures() {
   addFeature<BasicFeaturePhaseClient>();
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
   auto& client = addFeature<HttpEndpointProvider, ClientFeature>(
-      true, std::numeric_limits<size_t>::max());
+      getOptions<ClientOptionsProvider>());
+  addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());
+  addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
+  addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
   addFeature<OptionsCheckFeature>();
+  addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(
       std::array{std::type_index(typeid(RestoreFeature))});
-  addFeature<SslFeature>();
-  addFeature<RestoreFeature>(client, *_ret);
-}
-
-void ArangoRestoreServer::addFeaturesWithOptionProvider() {
-  addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
-  addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
-  addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());
-  addFeature<TempFeature>(_binaryName, getOptions<TempOptionsProvider>());
-  addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
-  addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   addFeature<ProcessEnvironmentFeature>(
       _binaryName, getOptions<ProcessEnvironmentOptionsProvider>());
 #endif
-#ifdef USE_ENTERPRISE
-  addFeature<EncryptionFeature>(getOptions<EncryptionOptionsProvider>());
-#endif
+  addFeature<SslFeature>();
+  addFeature<TempFeature>(_binaryName, getOptions<TempOptionsProvider>());
 #ifdef TRI_HAVE_GETRLIMIT
   addFeature<BumpFileDescriptorsFeature>(
       getOptions<ClientBumpFileDescriptorsOptionsProvider>());
 #endif
+#ifdef USE_ENTERPRISE
+  addFeature<EncryptionFeature>(getOptions<EncryptionOptionsProvider>());
+#endif
+  addFeature<RestoreFeature>(client, *_ret,
+                             getOptions<RestoreOptionsProvider>());
 }
 
 }  // namespace arangodb

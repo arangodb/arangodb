@@ -26,7 +26,7 @@ export const QueryGeoView = ({
   queryResult: QueryResultType<GeometryResultType>;
 }) => {
   const newResult = queryResult.result?.map(item => {
-    if (item.hasOwnProperty("geometry")) {
+    if (Object.prototype.hasOwnProperty.call(item, "geometry")) {
       return (item as NestedGeometryType).geometry;
     }
     return item as GeoJSONUnionType;
@@ -42,7 +42,7 @@ export const QueryGeoView = ({
           height: "500px"
         }}
         scrollWheelZoom={false}
-        // @ts-ignore
+        // @ts-expect-error gestureHandling is provided by leaflet-gesture-handling, not typed on MapContainer
         gestureHandling={true}
       >
         <MapInner geometryResult={newResult} />
@@ -120,7 +120,7 @@ const SingleGeometry = ({ geometry }: { geometry: GeoJSONUnionType }) => {
           new GeodesicLine().fromGeoJson(geometry) as any as Layer
         ).addTo(map);
         setMarkers([geojson]);
-      } catch (ignore) {
+      } catch {
         // ignore error as the tab will not be displayed after first render
       }
     }

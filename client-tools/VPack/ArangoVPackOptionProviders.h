@@ -21,7 +21,8 @@
 #pragma once
 
 #include "ApplicationFeatures/CoreOptionProviders.h"
+#include "VPack/VPackOptionsProvider.h"
 
 namespace arangodb {
-using ArangoVPackOptionProviders = CoreOptionProviders<>;
+using ArangoVPackOptionProviders = CoreOptionProviders<VPackOptionsProvider>;
 }  // namespace arangodb

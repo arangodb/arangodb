@@ -31,12 +31,10 @@
 #include "Cluster/ClusterAdminOperations.h"
 #include "ClusterEngine/ClusterCollection.h"
 #include "ClusterEngine/ClusterIndexFactory.h"
-#include "ClusterEngine/ClusterRestHandlers.h"
 #include "ClusterEngine/ClusterTransactionState.h"
 #ifdef USE_V8
 #include "ClusterEngine/ClusterV8Functions.h"
 #endif
-#include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
@@ -62,11 +60,13 @@ bool ClusterEngine::Mocking = false;
 
 // create the storage engine
 ClusterEngine::ClusterEngine(application_features::ApplicationServer& server,
+                             ClusterFeature& clusterFeature,
+                             DatabaseFeature& database,
                              metrics::IRegistry& metrics)
     : StorageEngine(server, EngineName, name(), typeid(ClusterEngine),
                     std::make_unique<ClusterIndexFactory>(server, *this),
-                    server.getFeature<DatabaseFeature>()),
-      _clusterFeature(server.getFeature<ClusterFeature>()),
+                    database),
+      _clusterFeature(clusterFeature),
       _metrics(metrics),
       _actualEngine(nullptr) {
   setOptional(true);
@@ -181,16 +181,6 @@ ErrorCode ClusterEngine::getViews(TRI_vocbase_t& vocbase,
   return TRI_ERROR_NO_ERROR;
 }
 
-VPackBuilder ClusterEngine::getReplicationApplierConfiguration(
-    TRI_vocbase_t& vocbase, ErrorCode& status) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-VPackBuilder ClusterEngine::getReplicationApplierConfiguration(
-    ErrorCode& status) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
 // database, collection and index management
 // -----------------------------------------
 
@@ -280,11 +270,6 @@ void ClusterEngine::addV8Functions() {
   ClusterV8Functions::registerResources();
 }
 #endif
-
-/// @brief Add engine-specific REST handlers
-void ClusterEngine::addRestHandlers(rest::RestHandlerFactory& handlerFactory) {
-  ClusterRestHandlers::registerResources(&handlerFactory);
-}
 
 void ClusterEngine::waitForEstimatorSync() {
   // fixes tests by allowing us to reload the cluster selectivity estimates

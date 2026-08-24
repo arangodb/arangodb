@@ -51,6 +51,7 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchOptionsProvider.h"
 #include "IResearch/IResearchFilterContext.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchView.h"
@@ -60,7 +61,7 @@
 #include "Cluster/MaintenanceFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "VectorIndex/VectorIndexFeature.h"
+#include "VectorIndex/Feature.h"
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -284,15 +285,15 @@ struct IResearchExpressionFilterTest
                 fromServer(server)),
         true);
 
-    auto& feature =
-        features
-            .emplace_back(
-                server.addFeature<arangodb::iresearch::IResearchFeature>(
-                    metrics),
-                true)
-            .first;
-    feature.collectOptions(server.options());
-    feature.validateOptions(server.options());
+    arangodb::iresearch::IResearchOptionsProvider optionsProvider;
+    auto irsOptions =
+        std::make_shared<arangodb::options::ProgramOptions>("", "", "", "");
+    optionsProvider.declareOptions(irsOptions);
+    optionsProvider.validateOptions(irsOptions);
+    features.emplace_back(
+        server.addFeature<arangodb::iresearch::IResearchFeature>(
+            metrics, optionsProvider.options()),
+        true);
 
     for (auto& f : features) {
       f.first.prepare();

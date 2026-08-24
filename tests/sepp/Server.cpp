@@ -158,13 +158,12 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(_server),
       LazyApplicationFeatureReference<ClusterFeature>(_server));
   _server.addFeature<metrics::ClusterMetricsFeature>();
-  _server.addFeature<VersionFeature>();
   _server.addFeature<ActionFeature>();
   auto& agency = _server.addFeature<AgencyFeature>();
   _server.addFeature<ApiRecordingFeature>(nullptr, metrics);
   _server.addFeature<AqlFeature>();
   _server.addFeature<async_registry::Feature>();
-  _server.addFeature<AuthenticationFeature>();
+  auto& authenticationFeature = _server.addFeature<AuthenticationFeature>();
   _server.addFeature<BootstrapFeature>();
 #ifdef TRI_HAVE_GETRLIMIT
   _server.addFeature<BumpFileDescriptorsFeature>();
@@ -205,6 +204,7 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<MaxMapCountFeature>();
   _server.addFeature<NetworkFeature>(metrics,
                                      network::ConnectionPool::Config{});
+  _server.addFeature<RbacFeature>(authenticationFeature);
   _server.addFeature<NonceFeature>();
   _server.addFeature<OptionsCheckFeature>();
   _server.addFeature<PrivilegeFeature>();
@@ -250,9 +250,7 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<aql::QueryInfoLoggerFeature>();
   auto& rocksdbCacheRefill =
       _server.addFeature<RocksDBIndexCacheRefillFeature>();
-  _server.addFeature<RocksDBOptionFeature>(
-      _server.hasFeature<AgencyFeature>() ? &_server.getFeature<AgencyFeature>()
-                                          : nullptr);
+  _server.addFeature<RocksDBOptionFeature>();
   auto& rocksdbRecovery =
       _server.addFeature<RocksDBRecoveryManager>(database, database);
 #ifdef TRI_HAVE_GETRLIMIT
@@ -263,7 +261,7 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
 #endif
 #ifdef USE_ENTERPRISE
   _server.addFeature<AuditFeature>();
-  _server.addFeature<LicenseFeature>();
+  _server.addFeature<LicenseFeature>(databasePath);
   _server.addFeature<RCloneFeature>();
   _server.addFeature<HotBackupFeature>();
   _server.addFeature<EncryptionFeature>();

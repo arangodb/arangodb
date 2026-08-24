@@ -29,7 +29,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void ScriptOptionsProvider::declareOptions(
+void ScriptOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, ScriptFeatureOptions& opts) {
   options->addOption(
       "--javascript.script-parameter", "Script parameter.",

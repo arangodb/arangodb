@@ -24,9 +24,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/UserManager.h"
-#include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
@@ -82,6 +80,7 @@ RestUsersHandler::RestUsersHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_api/user (prefix)
 RestStatus RestUsersHandler::execute() {
   RequestType const type = _request->requestType();
   AuthenticationFeature* af = AuthenticationFeature::instance();
@@ -91,6 +90,8 @@ RestStatus RestUsersHandler::execute() {
     return RestStatus::DONE;
   }
 
+  // Note that contrary to versions up to and including 3.12.9 writes are now
+  // forbidden if the server is in read-only mode. This is intentional.
   switch (type) {
     case RequestType::GET:
       return getRequest(af->userManager());
@@ -109,6 +110,20 @@ RestStatus RestUsersHandler::execute() {
   }
 }
 
+async<Result> RestUsersHandler::checkDatabaseAccess() const {
+  constexpr std::string_view pathPrefixApiUser("/_api/user/");
+
+  auto const& path = _request->requestPath();
+
+  if (_request->authenticated() && path.starts_with(pathPrefixApiUser)) {
+    // No database access is required here (everybody may e.g. change their own
+    // password)
+    co_return Result{};
+  }
+
+  co_return co_await RestBaseHandler::checkDatabaseAccess();
+}
+
 /// helper to generate a compliant response for individual user requests
 void RestUsersHandler::generateUserResult(rest::ResponseCode code,
                                           VPackBuilder const& doc) {
@@ -121,26 +136,49 @@ void RestUsersHandler::generateUserResult(rest::ResponseCode code,
 }
 
 RestStatus RestUsersHandler::getRequest(auth::UserManager* um) {
+  auto& exec = ExecContext::current();
+
   std::vector<std::string> suffixes = _request->decodedSuffixes();
   if (suffixes.empty()) {
-    if (isAdminUser()) {
-      VPackBuilder users = um->allUsers();
-      generateOk(ResponseCode::OK, users.slice());
-    } else {
-      generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+    if (auto r = exec.canUseAdminAction(auth::perms::AdminReadUsers{});
+        r.fail()) {
+      generateError(r);
+      return RestStatus::DONE;
     }
+    VPackBuilder usersArray = um->allUsers();
+    TRI_ASSERT(usersArray.slice().isArray());
+    std::vector<std::string_view> userList;
+    userList.reserve(usersArray.slice().length());
+    for (auto const& u : VPackArrayIterator(usersArray.slice())) {
+      VPackSlice un = u.get("user");
+      TRI_ASSERT(un.isString());
+      userList.push_back(un.stringView());
+    }
+    // Now filter out those to which we have access:
+    std::vector<bool> allowed = exec.canReadUsers(userList);
+    TRI_ASSERT(allowed.size() == userList.size());
+    VPackBuilder usersResult;
+    {
+      VPackArrayBuilder guard(&usersResult);
+      for (size_t i = 0; i < allowed.size(); ++i) {
+        if (allowed[i]) {
+          usersResult.add(usersArray.slice()[i]);
+        }
+      }
+    }
+    generateOk(ResponseCode::OK, usersResult.slice());
   } else if (suffixes.size() == 1) {
     std::string const& user = suffixes[0];
-    if (canAccessUser(user)) {
+    if (auto r = exec.canReadUser(user); r.ok()) {
       VPackBuilder doc = um->serializeUser(user);
       generateUserResult(ResponseCode::OK, doc);
     } else {
-      generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+      generateError(r);
     }
   } else {
     std::string const& user = suffixes[0];
-    if (!canAccessUser(user)) {
-      generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+    if (auto r = exec.canReadUser(user); r.fail()) {
+      generateError(r);
       return RestStatus::DONE;
     }
 
@@ -217,12 +255,13 @@ void RestUsersHandler::generateDatabaseResult(auth::UserManager* um,
 
             methods::Collections::enumerate(
                 &vocbase,
-                [&](std::shared_ptr<LogicalCollection> const& c) -> void {
+                [&](std::shared_ptr<LogicalCollection> const& c) -> bool {
                   TRI_ASSERT(c);
                   lvl = user.configuredCollectionAuthLevel(vocbase.name(),
                                                            c->name());
                   data.add(c->name(),
                            velocypack::Value(convertFromAuthLevel(lvl)));
+                  return true;
                 });
             lvl = user.configuredCollectionAuthLevel(vocbase.name(), "*");
             data.add("*", velocypack::Value(convertFromAuthLevel(lvl)));
@@ -285,7 +324,8 @@ static Result StoreUser(auth::UserManager* um, int mode,
 
           VPackSlice oldExtra = u.get("extra");
           if (extra.isObject() && oldExtra.isObject()) {
-            // Both `extra` and `oldExtra` are objects, so perform a deep merge.
+            // Both `extra` and `oldExtra` are objects, so perform a deep
+            // merge.
             entry.setUserData(
                 VPackCollection::merge(oldExtra, extra, true, false));
           } else if (!extra.isNone()) {
@@ -312,19 +352,19 @@ RestStatus RestUsersHandler::postRequest(auth::UserManager* um) {
 
   if (suffixes.empty()) {
     // create a new user
-    if (isAdminUser()) {
-      VPackSlice s = body.get("user");
-      std::string user = s.isString() ? s.copyString() : "";
+    VPackSlice s = body.get("user");
+    std::string user = s.isString() ? s.copyString() : "";
+    auto& exec = ExecContext::current();
+    if (auto r = exec.canCreateUser(user); r.ok()) {
       // create user
-      Result r = StoreUser(um, 0, user, body);
-      if (r.ok()) {
+      if (auto r = StoreUser(um, 0, user, body); r.ok()) {
         VPackBuilder doc = um->serializeUser(user);
         generateUserResult(ResponseCode::CREATED, doc);
       } else {
         generateError(r);
       }
     } else {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+      generateError(r);
     }
 
   } else if (suffixes.size() == 1) {
@@ -356,11 +396,12 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
     return RestStatus::DONE;
   }
 
+  auto& exec = ExecContext::current();
   if (suffixes.size() == 1) {
     // replace existing user
     std::string const& user = suffixes[0];
-    if (!canAccessUser(user)) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+    if (auto r = exec.canModifyUserProfile(user); r.fail()) {
+      generateError(r);
       return RestStatus::DONE;
     }
 
@@ -380,9 +421,8 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
       std::string const& db = suffixes[2];
       std::string coll = suffixes.size() == 4 ? suffixes[3] : "";
 
-      if (!isAdminUser()) {
-        generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
-
+      if (auto r = exec.canGrantUserPermissions(name); r.fail()) {
+        generateError(r);
         return RestStatus::DONE;
       }
 
@@ -433,8 +473,8 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
       }
     } else if (suffixes[1] == "config") {
       // update internal config data, used in the admin dashboard
-      if (!canAccessUser(name)) {
-        generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+      if (auto r = exec.canModifyUserProfile(name); r.fail()) {
+        generateError(r);
         return RestStatus::DONE;
       }
 
@@ -493,19 +533,19 @@ RestStatus RestUsersHandler::patchRequest(auth::UserManager* um) {
     return RestStatus::DONE;
   }
 
+  auto& exec = ExecContext::current();
   if (suffixes.size() == 1) {
     std::string const& user = suffixes[0];
-    if (canAccessUser(user)) {
+    if (auto r = exec.canModifyUserProfile(user); r.ok()) {
       // update a user
-      Result r = StoreUser(um, 2, user, body);
-      if (r.ok()) {
+      if (auto r = StoreUser(um, 2, user, body); r.ok()) {
         VPackBuilder doc = um->serializeUser(user);
         generateUserResult(ResponseCode::OK, doc);
       } else {
         generateError(r);
       }
     } else {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+      generateError(r);
     }
   } else {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
@@ -516,13 +556,14 @@ RestStatus RestUsersHandler::patchRequest(auth::UserManager* um) {
 RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
   std::vector<std::string> suffixes = _request->decodedSuffixes();
 
+  auto& exec = ExecContext::current();
   if (suffixes.size() == 1) {
-    if (!isAdminUser()) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+    std::string const& user = suffixes[0];
+    if (auto r = exec.canDropUser(user); r.fail()) {
+      generateError(r);
       return RestStatus::DONE;
     }
 
-    std::string const& user = suffixes[0];
     Result r = um->removeUser(user);
     if (r.ok()) {
       VPackBuilder b;
@@ -535,21 +576,25 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
     }
   } else if (suffixes.size() == 2) {
     std::string const& user = suffixes[0];
-    if (suffixes[1] == "config" && canAccessUser(user)) {
-      Result r = um->updateUser(
-          user,
-          [&](auth::User& u) {
-            u.setConfigData(VPackBuilder());
-            return TRI_ERROR_NO_ERROR;
-          },
-          auth::UserManager::RetryOnConflict::No);
-      if (r.ok()) {
-        resetResponse(ResponseCode::OK);
+    if (suffixes[1] == "config") {
+      if (auto r2 = exec.canModifyUserProfile(user); r2.ok()) {
+        Result r = um->updateUser(
+            user,
+            [&](auth::User& u) {
+              u.setConfigData(VPackBuilder());
+              return TRI_ERROR_NO_ERROR;
+            },
+            auth::UserManager::RetryOnConflict::No);
+        if (r.ok()) {
+          resetResponse(ResponseCode::OK);
+        } else {
+          generateError(r);
+        }
       } else {
-        generateError(r);
+        generateError(r2);
       }
     } else {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
+      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
     }
   } else if (suffixes.size() == 3 || suffixes.size() == 4) {
     std::string const& user = suffixes[0];
@@ -559,9 +604,8 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
       std::string const& db = suffixes[2];
       std::string coll = suffixes.size() == 4 ? suffixes[3] : "";
 
-      if (!isAdminUser()) {
-        generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
-
+      if (auto r = exec.canGrantUserPermissions(user); r.fail()) {
+        generateError(r);
         return RestStatus::DONE;
       }
 
@@ -600,7 +644,7 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
       }
     } else if (suffixes[1] == "config") {
       // remove internal config data, used in the WebUI
-      if (canAccessUser(user)) {
+      if (auto r1 = exec.canModifyUserProfile(user); r1.ok()) {
         std::string const& key = suffixes[2];
         Result r = um->updateUser(
             user,
@@ -622,7 +666,7 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
           generateError(r);
         }
       } else {
-        generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+        generateError(r1);
       }
     }
 
