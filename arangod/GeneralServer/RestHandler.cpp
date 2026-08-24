@@ -55,8 +55,9 @@
 #include <Async/async.h>
 #include <Ssl/jwt.h>
 #include <absl/strings/str_cat.h>
-#include <unordered_map>
 #include <velocypack/Exception.h>
+
+#include <initializer_list>
 
 using namespace arangodb;
 using namespace arangodb::basics;
