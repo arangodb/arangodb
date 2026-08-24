@@ -974,19 +974,16 @@ TEST(FutureTest, collected_async_promises_in_async_registry_know_their_waiter) {
     auto future = arangodb::futures::collectAll(vec);
     expect_three_connected_promises("collectAll");
   }
-  // {
-  //   arangodb::async_registry::get_thread_registry().garbage_collect();
-  //   auto promise1 = my_promise();
-  //   auto promise2 = my_promise();
-  //   auto future1 = promise1.getFuture();
-  //   auto future2 = promise2.getFuture();
-  //   auto future =
-  //       arangodb::futures::gather(std::move(future1), std::move(future2));
-  //   expect_tree_connected_promises("gather");
-  //   // gather requires cleanup
-  //   promise1.setValue(1);
-  //   promise2.setValue(1);
-  // }
+  {
+    arangodb::async_registry::get_thread_registry().garbage_collect();
+    auto promise1 = my_promise();
+    auto promise2 = my_promise();
+    auto future1 = promise1.getFuture();
+    auto future2 = promise2.getFuture();
+    auto future =
+        arangodb::futures::gather(std::move(future1), std::move(future2));
+    expect_three_connected_promises("gather");
+  }
   {
     arangodb::async_registry::get_thread_registry().garbage_collect();
     auto promise1 = my_promise();

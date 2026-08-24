@@ -133,7 +133,7 @@ TEST_F(
               (std::vector<PromiseSnapshot>{promise.snapshot()}));
   }  // marks promise for deletion
 
-  // promises does not show up because it is already deleted
+  // promises does not show up because it is already marked for deletion
   EXPECT_EQ(promises_in_registry(), (std::vector<PromiseSnapshot>{}));
   EXPECT_EQ(registry.size(), 1);
 
