@@ -435,7 +435,17 @@ auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
     shutdownExecute(false);
   };
 
-  co_await handleAuthorizationChecks();
+  try {
+    co_await handleAuthorizationChecks();
+  } catch (std::exception const& exc) {
+    generateError(
+        ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+        absl::StrCat("Caught exception in `handleAuthorizationChecks`: ",
+                     exc.what()));
+    _sendResponseCallback(this);
+    co_return;
+  }
+
   if (_state == HandlerState::FAILED) {
     co_return fail();
   }
