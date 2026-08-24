@@ -218,15 +218,9 @@ TEST_F(RbacAuthModeTest, DropViewChecksViewThenLinkedCollections) {
   EXPECT_EQ(svc.queries[2].resource, "collection:mydb:c2");
 }
 
-TEST_F(RbacAuthModeTest, UseViewRead) {
-  check(p::UseView{.db = "mydb", .name = "v", .level = ViewAccessLevel::Read});
+TEST_F(RbacAuthModeTest, ReadView) {
+  check(p::ReadView{.db = "mydb", .name = "v"});
   expectSingle(rbac::Action::Read, "view:mydb:v");
-}
-
-TEST_F(RbacAuthModeTest, UseViewModify) {
-  check(
-      p::UseView{.db = "mydb", .name = "v", .level = ViewAccessLevel::Modify});
-  expectSingle(rbac::Action::WriteMeta, "view:mydb:v");
 }
 
 TEST_F(RbacAuthModeTest, CreateViewChecksViewThenLinkedCollections) {
