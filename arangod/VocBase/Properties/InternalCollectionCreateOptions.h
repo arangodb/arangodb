@@ -24,11 +24,13 @@
 
 namespace arangodb {
 
-/// Create options chosen by the calling code, not by the client. They are not
-/// part of the request body, and none of them is stored with the collection.
+/// Create options chosen by the calling code, not by the client
 struct InternalCollectionCreateOptions {
   bool waitForSyncReplication = true;
   bool enforceReplicationFactor = true;
+  // TODO: Rename this flag; misleading. This doesn't mean "is this a new
+  // database", but how the created collections are loaded back at
+  // ClusterCollectionMethods
   bool isNewDatabase = false;
   bool allowEnterpriseCollectionsOnSingleServer = false;
   bool isRestore = false;

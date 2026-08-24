@@ -26,7 +26,6 @@
 #include <vector>
 
 namespace arangodb {
-/// Options parsed from a create request body
 struct CollectionCreateOptions {
   // Not documented, actually this is an option, not a configuration parameter
   std::vector<std::string> avoidServers = {};

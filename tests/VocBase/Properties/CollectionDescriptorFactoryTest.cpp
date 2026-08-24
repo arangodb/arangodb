@@ -559,8 +559,7 @@ TEST_F(CollectionDescriptorFactoryTest, test_satellite_numberOfShards_allowed) {
 #endif
 }
 
-TEST_F(CollectionDescriptorFactoryTest,
-       test_satellite_writeConcern_forbidden) {
+TEST_F(CollectionDescriptorFactoryTest, test_satellite_writeConcern_forbidden) {
   VPackBuilder body;
   {
     VPackObjectBuilder guard(&body);
