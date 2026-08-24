@@ -62,10 +62,12 @@ const testPaths = {
 function makeDataWrapper (options) {
   let stoppedDbServerInstance = {};
   if (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined')) {
-    if (!options.hasOwnProperty('makedata_args')) {
-      options['makedata_args'] = {};
+    if (!options.hasOwnProperty('makedataArgs')) {
+      options['makedataArgs'] = {};
     }
-    options['makedata_args']['test'] = options.test;
+    options['makedataArgs']['test'] = Array.isArray(options.test)
+      ? options.test.join(',')
+      : options.test;
   }
 
   let messages = [
