@@ -695,10 +695,14 @@ async<void> RestCollectionHandler::handleCommandPut() {
 
   auto resExtra = co_await handleExtraCommandPut(coll, sub, _builder);
   if (resExtra.is(TRI_ERROR_NOT_IMPLEMENTED)) {
-    resExtra.reset(
-        TRI_ERROR_HTTP_NOT_FOUND,
-        "expecting one of the actions 'truncate',"
-        " 'properties', 'compact', 'rename', 'loadIndexesIntoMemory'");
+    std::string msg = "expecting one of the actions ";
+    if (_request->requestedApiVersion() == 0) {
+      msg += "'load', 'unload', ";
+    }
+    resExtra.reset(TRI_ERROR_HTTP_NOT_FOUND,
+                   msg +
+                       "'truncate', 'properties', 'compact', 'rename', "
+                       "'loadIndexesIntoMemory'");
     generateError(resExtra);
   } else if (resExtra.fail()) {
     generateError(resExtra);

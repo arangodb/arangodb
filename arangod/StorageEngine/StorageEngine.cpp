@@ -108,7 +108,7 @@ void StorageEngine::getCapabilities(velocypack::Builder& builder,
   builder.add("supports", velocypack::Value(VPackValueType::Object));
 
   builder.add("indexes", velocypack::Value(VPackValueType::Array));
-  for (auto const& it : indexFactory().supportedIndexes()) {
+  for (auto const& it : indexFactory().supportedIndexes(apiVersion)) {
     builder.add(velocypack::Value(it));
   }
   builder.close();  // indexes

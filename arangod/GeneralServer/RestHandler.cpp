@@ -813,7 +813,6 @@ void RestHandler::generateError(arangodb::Result const& r) {
   generateError(code, r.errorNumber(), r.errorMessage());
 }
 
-// checks if the HTTP method is allowed and generates an error if not
 bool RestHandler::isAllowedHttpMethod(
     std::initializer_list<rest::RequestType> allowed) {
   auto method = _request->requestType();
@@ -825,8 +824,6 @@ bool RestHandler::isAllowedHttpMethod(
   return false;
 }
 
-// checks if collection name is a numeric collection id (= all chars are digits)
-// and generates an error if so
 bool RestHandler::rejectNumericCollectionId(std::string_view cname) {
   if (cname.empty() || cname.front() < '0' || cname.front() > '9') {
     return false;  // early exit
