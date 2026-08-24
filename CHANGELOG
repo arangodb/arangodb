@@ -1,6 +1,9 @@
 3.12.11-devel (XXXX-XX-XX)
 --------------------------
 
+* Filters on path expansions with an inline FILTER now run during the traversal,
+  so they prune earlier and no longer drop results with uniqueVertices: "global".
+
 * Updated ArangoDB Starter to v0.19.27.
 
 * Rebuilt included rclone v1.75.0 with go1.25.13 and non-vulnerable
