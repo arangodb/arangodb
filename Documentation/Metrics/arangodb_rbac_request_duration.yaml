@@ -10,7 +10,7 @@ exposedBy:
   - coordinator
   - single
 description: |
-  Histogram of the time spent on a single `evaluate-token-many` request to the
+  Histogram of the time spent on a single batch permission-check request to the
   external RBAC authorization service, in microseconds. This covers serializing
   the request body, the round trip to the authorization service, and parsing the
   response. The buckets start at 10 microseconds and double up to about 21

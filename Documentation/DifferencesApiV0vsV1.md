@@ -158,7 +158,7 @@ hardening that is introduced with V1's RBAC semantics):
     errorNum 11) otherwise — the collection's existence is implicitly
     confirmed in both cases.
 
-* **`UseView` check** (line ~579): identical pattern to `UseDatabase` for
+* **`ReadView` check** (line ~579): identical pattern to `UseDatabase` for
   views: **V1** returns `TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND` (404) when
   the user has no database access at all; **V0** returns `TRI_ERROR_FORBIDDEN`
   (403).
@@ -248,7 +248,7 @@ authorization check that only applies starting with **V1**:
 | Generic authorization failure (`RestHandler::handleAuthorizationChecks`) | Always HTTP 401 + errorNum 11 (`TRI_ERROR_FORBIDDEN`), regardless of actual cause | HTTP/errorNum reflect the actual `Result` (401/403/404 as appropriate) |
 | No DB access at all (`AuthMode::UseDatabase`) | HTTP 403 / errorNum 11 | HTTP 404 / errorNum 1228 (`DATABASE_NOT_FOUND`) — hides existence |
 | No collection access at all (`AuthMode::UseCollection`) | HTTP 403 / errorNum 1004 or 11 | HTTP 404 / errorNum 1203 (`DATA_SOURCE_NOT_FOUND`) — hides existence |
-| No view/db access at all (`AuthMode::UseView`) | HTTP 403 / errorNum 11 | HTTP 404 / errorNum 1203 — hides existence |
+| No view/db access at all (`AuthMode::ReadView`) | HTTP 403 / errorNum 11 | HTTP 404 / errorNum 1203 — hides existence |
 | Drop collection, insufficient DB/collection access (`AuthMode::DropCollection`) | HTTP 403 / errorNum 11 (forced) | HTTP 403 / errorNum 11 or 1004, depending on actual cause |
 | Create graph, no DB write access (`AuthMode::CreateGraph`) | HTTP 403 / errorNum 1004 | HTTP 403 / errorNum 11 |
 | `/_api/index` collection lookup on coordinator | No per-collection read check | Requires `Read` access; otherwise collection "not found" |

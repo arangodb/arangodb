@@ -51,7 +51,9 @@ if (getOptions === true) {
     // not be written by the logging thread
     'log.force-direct': 'true',
     // keep background threads from asking questions of their own
-    'foxx.queues': 'false'
+    'foxx.queues': 'false',
+    // disable so it doesn't spoil the test output:
+    'server.statistics': 'false'
   };
 }
 
