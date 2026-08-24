@@ -100,8 +100,8 @@ Result ClusterCollection::setCacheEnabled(bool cacheEnabled) {
     // note: we have to exclude inverted indexes here,
     // as they are a different class type (no relationship to
     // ClusterIndex).
-    if (idx->type() != Index::TRI_IDX_TYPE_INVERTED_INDEX &&
-        idx->type() != Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
+    if (idx->type() != IndexType::Inverted &&
+        idx->type() != IndexType::IResearchLink) {
       TRI_ASSERT(dynamic_cast<ClusterIndex*>(idx.get()) != nullptr);
       std::static_pointer_cast<ClusterIndex>(idx)->updateProperties(
           _cacheEnabled.load(std::memory_order_relaxed));

@@ -216,7 +216,7 @@ futures::Future<uint64_t> RocksDBMetaCollection::recalculateCounts() {
   {
     RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
     for (auto const& it : _indexes) {
-      if (it->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+      if (it->type() == IndexType::Primary) {
         RocksDBIndex const* rix = static_cast<RocksDBIndex const*>(it.get());
         bounds = RocksDBKeyBounds::PrimaryIndex(rix->objectId());
         set = true;

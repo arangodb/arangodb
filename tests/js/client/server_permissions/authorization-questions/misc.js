@@ -47,7 +47,9 @@ if (getOptions === true) {
     'server.authentication': 'true',
     'log.force-direct': 'true',
     // keep background threads from asking questions of their own
-    'foxx.queues': 'false'
+    'foxx.queues': 'false',
+    // disable so it doesn't spoil the test output:
+    'server.statistics': 'false'
   };
 }
 
@@ -330,6 +332,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_api/query-cache/properties`, { mode: 'off' });
       assertPermissions([
+        "AdminQueryCache",
         "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
@@ -339,6 +342,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_api/query-cache`);
       assertPermissions([
+        "AdminQueryCache",
         "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());

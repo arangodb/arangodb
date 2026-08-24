@@ -46,7 +46,6 @@ enum class CollectionAccessLevel { Read, WriteData, WriteMeta };
 // TODO We call ::Write for DB, but ::Modify for View and Analyzer.
 //      Should we keep it consistent?
 enum class DatabaseAccessLevel { Read, Write };
-enum class ViewAccessLevel { Read, Modify };
 enum class AnalyzerAccessLevel { Read, Modify };
 enum class GraphAccessLevel { Read, Modify };
 
@@ -54,7 +53,6 @@ using AccessLevel = CollectionAccessLevel;
 
 auto to_string(CollectionAccessLevel level) -> std::string_view;
 auto to_string(DatabaseAccessLevel level) -> std::string_view;
-auto to_string(ViewAccessLevel level) -> std::string_view;
 auto to_string(AnalyzerAccessLevel level) -> std::string_view;
 auto to_string(GraphAccessLevel level) -> std::string_view;
 
@@ -260,10 +258,9 @@ struct DropView {
   std::vector<std::string> linkedCollections;
 };
 
-struct UseView {
+struct ReadView {
   std::string db;
   std::string name;
-  ViewAccessLevel level;
 };
 
 // ---------------------------------------------------------------------------
@@ -368,7 +365,7 @@ using NonAdminList = meta::TypeList<
     DumpCollection, RestoreCollection, RestoreCreateIndex, RestoreCreateView,
     RestoreDropView, RestoreWriteData,
     // view permissions
-    SeeView, CreateView, ModifyView, RenameView, DropView, UseView,
+    SeeView, CreateView, ModifyView, RenameView, DropView, ReadView,
     // analyzer permissions
     SeeAnalyzer, CreateAnalyzer, DropAnalyzer, UseAnalyzer,
     // graph permissions

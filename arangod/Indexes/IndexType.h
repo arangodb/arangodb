@@ -19,30 +19,29 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
-#include "Auth/Rbac/Actions.h"
-#include "Basics/Result.h"
+#include <cstdint>
 
-#include <span>
-
-namespace arangodb::rbac {
-
-struct Service {
-  virtual ~Service() = default;
-
-  // Ask a batch of authorization questions for a single subject at once. A
-  // real implementation performs a single network round-trip, so callers that
-  // need several (action, resource) pairs for one logical permission should
-  // pass them together rather than calling check() repeatedly. Returns ok iff
-  // every pair is permitted; otherwise the first/aggregated denial.
-  //
-  // Virtual so that tests (in particular the RBAC auth-mode tests) can inject a
-  // mock Service. The base implementation fails closed; see Service.cpp.
-  virtual auto check(Subject const& subject,
-                     std::span<ActionResource const> queries) noexcept
-      -> Result;
+namespace arangodb {
+enum class IndexType : std::uint8_t {
+  Unknown = 0,
+  Primary = 1,
+  Geo = 2,
+  Geo1 = 3,
+  Geo2 = 4,
+  Hash = 5,
+  Edge = 6,
+  Fulltext = 7,
+  Skiplist = 8,
+  TTL = 9,
+  Persistent = 10,
+  IResearchLink = 11,
+  NoAccess = 12,
+  Zkd = 13,
+  MDI = 14,
+  MDIPrefixed = 15,
+  Inverted = 16,
+  Vector = 17,
 };
-
-}  // namespace arangodb::rbac
+}  // namespace arangodb
