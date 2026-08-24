@@ -1,10 +1,10 @@
 3.12.11-devel (XXXX-XX-XX)
 --------------------------
 
+* Updated ArangoDB Starter to v0.19.27.
+
 * Rebuilt included rclone v1.75.0 with go1.25.13 and non-vulnerable
   dependencies.
-
-* Updated ArangoDB Starter to v0.19.26.
 
 * Fixed access token expiry (COR-825).
 

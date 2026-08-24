@@ -54,19 +54,20 @@ struct Backend {
     std::vector<RequestItem> items;
   };
 
-  // Batched token evaluation, in both an asynchronous and a synchronous form.
-  // The synchronous form sets `skipScheduler` and blocks for the response; the
-  // asynchronous form is currently unused but kept for a future async check().
-  auto evaluateTokenMany(JwtToken const&, RequestItems const&)
+  // Batched evaluation for one subject, in both an asynchronous and a
+  // synchronous form. The synchronous form sets `skipScheduler` and blocks for
+  // the response; the asynchronous form is currently unused but kept for a
+  // future async check().
+  auto evaluateMany(Subject const&, RequestItems const&)
       -> futures::Future<ResultT<EvaluateResponseMany>>;
-  auto evaluateTokenManySync(JwtToken const&, RequestItems const&)
+  auto evaluateManySync(Subject const&, RequestItems const&)
       -> ResultT<EvaluateResponseMany>;
 
  protected:
   // Implementation seam. `transaction::MethodsApi` selects the synchronous vs
   // asynchronous transport behaviour (see BackendImpl).
-  virtual auto evaluateTokenManyImpl(JwtToken const&, RequestItems const&,
-                                     transaction::MethodsApi api)
+  virtual auto evaluateManyImpl(Subject const&, RequestItems const&,
+                                transaction::MethodsApi api)
       -> futures::Future<ResultT<EvaluateResponseMany>> = 0;
 };
 

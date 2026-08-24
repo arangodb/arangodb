@@ -122,7 +122,7 @@ IndexTypeFactory::IndexTypeFactory(
     application_features::ApplicationServer& server)
     : _server(server) {}
 
-bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
+bool IndexTypeFactory::equal(IndexType type, velocypack::Slice lhs,
                              velocypack::Slice rhs,
                              bool attributeOrderMatters) const {
   // unique must be identical if present
@@ -135,10 +135,8 @@ bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
   }
 
   // sparse must be identical if present
-  if (Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX != type &&
-      Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX != type &&
-      Index::IndexType::TRI_IDX_TYPE_GEO_INDEX != type &&
-      Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX != type) {
+  if (IndexType::Geo2 != type && IndexType::Geo1 != type &&
+      IndexType::Geo != type && IndexType::Fulltext != type) {
     bool lhsSparse = basics::VelocyPackHelper::getBooleanValue(
         lhs, StaticStrings::IndexSparse, false);
     bool rhsSparse = basics::VelocyPackHelper::getBooleanValue(
@@ -150,8 +148,7 @@ bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
 
   VPackSlice value;
 
-  if (Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX == type ||
-      Index::IndexType::TRI_IDX_TYPE_GEO_INDEX == type) {
+  if (IndexType::Geo1 == type || IndexType::Geo == type) {
     // geoJson must be identical if present
     value = lhs.get("geoJson");
 
@@ -159,7 +156,7 @@ bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
         !basics::VelocyPackHelper::equal(value, rhs.get("geoJson"), false)) {
       return false;
     }
-  } else if (Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX == type) {
+  } else if (IndexType::Fulltext == type) {
     // minLength
     value = lhs.get("minLength");
 
@@ -167,7 +164,7 @@ bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
         !basics::VelocyPackHelper::equal(value, rhs.get("minLength"), false)) {
       return false;
     }
-  } else if (Index::IndexType::TRI_IDX_TYPE_TTL_INDEX == type) {
+  } else if (IndexType::TTL == type) {
     value = lhs.get(StaticStrings::IndexExpireAfter);
 
     if (value.isNumber() &&
@@ -180,7 +177,7 @@ bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
         return false;
       }
     }
-  } else if (Index::IndexType::TRI_IDX_TYPE_MDI_PREFIXED_INDEX == type) {
+  } else if (IndexType::MDIPrefixed == type) {
     value = lhs.get(StaticStrings::IndexPrefixFields);
 
     if (value.isArray() &&
@@ -188,7 +185,7 @@ bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
             value, rhs.get(StaticStrings::IndexPrefixFields), false)) {
       return false;
     }
-  } else if (Index::IndexType::TRI_IDX_TYPE_VECTOR_INDEX == type) {
+  } else if (IndexType::Vector == type) {
     // check if the parameters are the same
     vector::UserDefinition leftDefinition;
     vector::UserDefinition rightDefinition;
@@ -303,10 +300,9 @@ Result IndexFactory::enhanceIndexDefinition(  // normalize definition
     if (name.empty()) {
       // we should set the name for special types explicitly elsewhere,
       // but just in case...
-      if (auto t = Index::type(type.stringView());
-          t == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+      if (auto t = Index::type(type.stringView()); t == IndexType::Primary) {
         name = StaticStrings::IndexNamePrimary;
-      } else if (t == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
+      } else if (t == IndexType::Edge) {
         name = StaticStrings::IndexNameEdge;
       } else {
         // generate a name
@@ -437,7 +433,7 @@ Result IndexFactory::validateFieldsDefinition(
   auto fieldsSlice = definition.get(attributeName);
   auto const idxType = Index::type(
       definition.get(arangodb::StaticStrings::IndexType).stringView());
-  auto const isInverted = Index::TRI_IDX_TYPE_INVERTED_INDEX == idxType;
+  auto const isInverted = IndexType::Inverted == idxType;
 
   if (fieldsSlice.isArray()) {
     // "fields" is a list of fields

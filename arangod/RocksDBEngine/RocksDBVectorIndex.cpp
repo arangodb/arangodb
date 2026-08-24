@@ -151,7 +151,7 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
           Index::parseFields(info.get(StaticStrings::IndexStoredValues),
                              /*allowEmpty*/ true,
                              /*allowExpansion*/ false)) {
-  TRI_ASSERT(type() == Index::TRI_IDX_TYPE_VECTOR_INDEX);
+  TRI_ASSERT(type() == IndexType::Vector);
   velocypack::deserialize(info.get("params"), _definition);
 
   auto metadata = loadVectorIndexMetadata(info);

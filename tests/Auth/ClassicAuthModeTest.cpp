@@ -499,38 +499,24 @@ TEST_F(ClassicAuthModeTest, DropCollectionReadOnlyCollectionIsReadOnlyUnderV1) {
 // Views
 // ---------------------------------------------------------------------------
 
-TEST_F(ClassicAuthModeTest, UseViewFollowsTheDatabaseLevel) {
+TEST_F(ClassicAuthModeTest, ReadViewRequiresSystemReadAccess) {
   beUserWith(RO);
-  EXPECT_TRUE(check(p::UseView{.db = std::string{kDb},
-                               .name = "v",
-                               .level = ViewAccessLevel::Read})
-                  .ok());
-  expectError(check(p::UseView{.db = std::string{kDb},
-                               .name = "v",
-                               .level = ViewAccessLevel::Modify}),
-              TRI_ERROR_FORBIDDEN);
+  EXPECT_TRUE(check(p::ReadView{.db = std::string{kDb}, .name = "v"}).ok());
   beUserWith(RW);
-  EXPECT_TRUE(check(p::UseView{.db = std::string{kDb},
-                               .name = "v",
-                               .level = ViewAccessLevel::Modify})
-                  .ok());
+  EXPECT_TRUE(check(p::ReadView{.db = std::string{kDb}, .name = "v"}).ok());
 }
 
-TEST_F(ClassicAuthModeTest, UseViewWithoutAccessIsForbiddenUnderV0) {
+TEST_F(ClassicAuthModeTest, ReadViewWithoutAccessIsForbiddenUnderV0) {
   beUserWith(NONE);
-  expectError(
-      check(p::UseView{
-          .db = std::string{kDb}, .name = "v", .level = ViewAccessLevel::Read}),
-      TRI_ERROR_FORBIDDEN);
+  expectError(check(p::ReadView{.db = std::string{kDb}, .name = "v"}),
+              TRI_ERROR_FORBIDDEN);
 }
 
-TEST_F(ClassicAuthModeTest, UseViewWithoutAccessIsNotFoundUnderV1) {
+TEST_F(ClassicAuthModeTest, ReadViewWithoutAccessIsNotFoundUnderV1) {
   beUserWith(NONE);
   useApiVersion(1);
-  expectError(
-      check(p::UseView{
-          .db = std::string{kDb}, .name = "v", .level = ViewAccessLevel::Read}),
-      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  expectError(check(p::ReadView{.db = std::string{kDb}, .name = "v"}),
+              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 }
 
 TEST_F(ClassicAuthModeTest, SeeViewIsAlwaysGranted) {
@@ -941,7 +927,9 @@ TEST_F(ClassicAuthModeTest, UserOperationsAreForbiddenWithoutSystemReadWrite) {
 // ---------------------------------------------------------------------------
 // Admin actions
 //
-// All of them collapse into the same question: RW on _system.
+// All of them collapse into the same question: RW on _system. The one
+// exception is AdminQueryCache, which only needs RO on _system; see
+// AdminQueryCacheIsGrantedBySystemReadOnly below.
 // ---------------------------------------------------------------------------
 
 // Every alternative of auth::perms::detail::AdminList. Kept explicit so that
@@ -959,6 +947,21 @@ using AllAdminPermissions =
                p::AdminWalAccess, p::AdminReadAgency, p::AdminQueryCache>;
 
 static_assert(std::tuple_size_v<AllAdminPermissions> == 26);
+
+// Same as AllAdminPermissions, minus AdminQueryCache: used by the tests below
+// that pin "forbidden without RW", which no longer holds for AdminQueryCache.
+using AllAdminPermissionsExceptQueryCache =
+    std::tuple<p::AdminReadUsers, p::AdminMoveShards, p::AdminMonitoring,
+               p::AdminMonitoringInternal, p::AdminAuthReload,
+               p::AdminCrashHandler, p::AdminApiCalls, p::AdminAqlQueries,
+               p::AdminShutdown, p::AdminReadLogs, p::AdminSetLogLevel,
+               p::AdminOptions, p::AdminSupervisionState, p::AdminRemoveServer,
+               p::AdminClusterInfo, p::AdminMaintenance, p::AdminRebalance,
+               p::AdminLicense, p::AdminBackup, p::AdminReadReplicatedLog,
+               p::AdminWriteReplicatedLog, p::AdminDump, p::AdminRestore,
+               p::AdminWalAccess, p::AdminReadAgency>;
+
+static_assert(std::tuple_size_v<AllAdminPermissionsExceptQueryCache> == 25);
 
 TEST_F(ClassicAuthModeTest, EveryAdminActionIsGrantedBySystemReadWrite) {
   beAdmin();
@@ -987,7 +990,7 @@ TEST_F(ClassicAuthModeTest, EveryAdminActionIsForbiddenWithoutSystemReadWrite) {
         };
         (expectDenied(admins), ...);
       },
-      AllAdminPermissions{});
+      AllAdminPermissionsExceptQueryCache{});
 }
 
 TEST_F(ClassicAuthModeTest, AdminReadUsersIsNotSpecialInClassic) {
@@ -995,6 +998,18 @@ TEST_F(ClassicAuthModeTest, AdminReadUsersIsNotSpecialInClassic) {
   // and fails closed with TRI_ERROR_NOT_IMPLEMENTED.
   beAdmin();
   EXPECT_TRUE(check(p::AdminReadUsers{}).ok());
+}
+
+TEST_F(ClassicAuthModeTest, AdminQueryCacheIsGrantedBySystemReadOnly) {
+  // Unlike every other admin action, AdminQueryCache only needs RO on
+  // _system, not RW.
+  setGrants({{StaticStrings::SystemDatabase, RO}});
+  EXPECT_TRUE(check(p::AdminQueryCache{}).ok());
+}
+
+TEST_F(ClassicAuthModeTest, AdminQueryCacheIsForbiddenWithoutSystemAccess) {
+  setGrants({{StaticStrings::SystemDatabase, NONE}});
+  expectError(check(p::AdminQueryCache{}), TRI_ERROR_FORBIDDEN);
 }
 
 // ---------------------------------------------------------------------------
@@ -1364,12 +1379,7 @@ std::vector<PermCase> permissionCases() {
       {"DropView",
        p::DropView{.db = db, .name = "v", .linkedCollections = links},
        {{{Scope::Db, RW}, {Scope::Coll, RO}}}},
-      {"UseViewRead",
-       p::UseView{.db = db, .name = "v", .level = ViewAccessLevel::Read},
-       {{{Scope::Db, RO}}}},
-      {"UseViewModify",
-       p::UseView{.db = db, .name = "v", .level = ViewAccessLevel::Modify},
-       {{{Scope::Db, RW}}}},
+      {"ReadView", p::ReadView{.db = db, .name = "v"}, {{{Scope::Db, RO}}}},
 
       // Analyzers.
       {"SeeAnalyzer", p::SeeAnalyzer{.db = db, .name = "a"},

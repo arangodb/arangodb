@@ -59,9 +59,8 @@ auto describe(auth::perms::UseCollection const& perm) -> std::string {
       "use collection '{}' in database '{}' with access level '{}'", perm.name,
       perm.db, to_string(perm.level));
 }
-auto describe(auth::perms::UseView const& perm) -> std::string {
-  return std::format("use view '{}' in database '{}' with access level '{}'",
-                     perm.name, perm.db, to_string(perm.level));
+auto describe(auth::perms::ReadView const& perm) -> std::string {
+  return std::format("read view '{}' in database '{}'", perm.name, perm.db);
 }
 auto describe(auth::perms::SeeView const& perm) -> std::string {
   return std::format("see view '{}' in database '{}'", perm.name, perm.db);
@@ -334,15 +333,6 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
         }
         ADB_PROD_CRASH();
       },
-      [](ViewAccessLevel level) {
-        switch (level) {
-          case ViewAccessLevel::Read:
-            return auth::Level::RO;
-          case ViewAccessLevel::Modify:
-            return auth::Level::RW;
-        }
-        ADB_PROD_CRASH();
-      },
       [](AnalyzerAccessLevel level) {
         switch (level) {
           case AnalyzerAccessLevel::Read:
@@ -558,13 +548,12 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             return check(p::UseCollection{data.db, data.collName,
                                           CollectionAccessLevel::WriteData});
           },
-          [&](p::UseView const& view) -> Result {
+          [&](p::ReadView const& view) -> Result {
             // In the classic system views delegate to database-level access
             // (per-view collection-level auth is not used for views).
             auto const effectiveLevel = effectiveDatabaseAuthLevel(view.db);
-            auto const requestedLevel = accessLevelToAuthLevel(view.level);
 
-            if (requestedLevel <= effectiveLevel) {
+            if (auth::Level::RO <= effectiveLevel) {
               return {};
             } else if (_requestedApiVersion > 0 &&
                        effectiveLevel == auth::Level::NONE) {
@@ -573,7 +562,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
               return {
                   TRI_ERROR_FORBIDDEN,
                   failureMessage(view, accessLevelMismatchReason(
-                                           "Request", "view", requestedLevel,
+                                           "Request", "view", auth::Level::RO,
                                            effectiveLevel))};
             }
           },
@@ -592,7 +581,18 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                                      : DatabaseAccessLevel::Read;
             return check(p::UseDatabase{analyzer.db, dbLevel});
           },
-          // Classic admin action requires RW access to the _system database.
+          // AdminQueryCache only requires RO access to _system, unlike every
+          // other admin action, which requires RW (see below).
+          [&](p::AdminQueryCache const&) -> Result {
+            if (_requestedApiVersion == 0) {
+              return check(p::UseDatabase{.name = StaticStrings::SystemDatabase,
+                                          .level = DatabaseAccessLevel::Read});
+            } else {
+              return isAdmin();
+            }
+          },
+          // Every other admin action requires RW access to the _system
+          // database.
           [&](p::AnyAdmin auto const&) -> Result { return isAdmin(); },
           [&](p::SeeDatabase const& database) -> Result {
             return check(
@@ -927,8 +927,24 @@ auto AuthMode::Rbac::username() const noexcept -> std::string_view {
   return _username;
 }
 
+namespace {
+
+auto subjectOf(AuthMode::Rbac const& mode) -> rbac::Subject {
+  if (!mode._jwtToken.empty()) {
+    return rbac::JwtToken{mode._jwtToken};
+  }
+  return rbac::Username{mode._username};
+}
+
+}  // namespace
+
 auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
   namespace p = auth::perms;
+
+  if (_jwtToken.empty() && _username.empty()) {
+    return {TRI_ERROR_FORBIDDEN,
+            "no authenticated subject for RBAC permission check"};
+  }
 
   auto databaseAccessModeToAction =
       [](DatabaseAccessLevel level) -> rbac::Action {
@@ -949,16 +965,6 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
       case CollectionAccessLevel::WriteData:
         return rbac::Action::WriteData;
       case CollectionAccessLevel::WriteMeta:
-        return rbac::Action::WriteMeta;
-    }
-    ADB_PROD_CRASH();
-  };
-
-  auto viewAccessModeToAction = [](ViewAccessLevel level) -> rbac::Action {
-    switch (level) {
-      case ViewAccessLevel::Read:
-        return rbac::Action::Read;
-      case ViewAccessLevel::Modify:
         return rbac::Action::WriteMeta;
     }
     ADB_PROD_CRASH();
@@ -1052,8 +1058,9 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
   // case is passed as a span over a stack-local pair and needs no allocation;
   // only the composite permissions (create/modify view, create/drop graph)
   // build a small vector.
-  auto checkAll = [&](std::span<rbac::ActionResource const> queries) -> Result {
-    return _rbacService.check(rbac::JwtToken{_jwtToken}, queries);
+  auto checkAll = [&, subject = subjectOf(*this)](
+                      std::span<rbac::ActionResource const> queries) -> Result {
+    return _rbacService.check(subject, queries);
   };
   auto checkOne = [&](rbac::Action action, rbac::Resource resource) -> Result {
     rbac::ActionResource query{action, std::move(resource)};
@@ -1105,8 +1112,8 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
                 rbac::resources::Collection{collection.db, collection.name});
           },
           // -- Views -----------------------------------------------------
-          [&](p::UseView const& view) -> Result {
-            return checkOne(viewAccessModeToAction(view.level),
+          [&](p::ReadView const& view) -> Result {
+            return checkOne(rbac::Action::Read,
                             rbac::resources::View{view.db, view.name});
           },
           [&](p::SeeView const& view) -> Result {

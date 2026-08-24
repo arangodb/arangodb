@@ -26,6 +26,7 @@
 #include "Auth/Rbac/ServiceImpl.h"
 
 #include <array>
+#include <variant>
 
 using namespace arangodb;
 
@@ -35,14 +36,14 @@ struct MockBackend : rbac::Backend {
   rbac::Backend::Effect nextEffect = rbac::Backend::Effect::Allow;
   std::string nextMessage;  // top-level message returned to the caller
   std::vector<rbac::Backend::RequestItem> lastItems;
-  std::string lastJwtToken;
+  rbac::Subject lastSubject;
   int calls = 0;
 
-  auto evaluateTokenManyImpl(rbac::JwtToken const& token,
-                             RequestItems const& items, transaction::MethodsApi)
+  auto evaluateManyImpl(rbac::Subject const& subject, RequestItems const& items,
+                        transaction::MethodsApi)
       -> futures::Future<ResultT<EvaluateResponseMany>> override {
     ++calls;
-    lastJwtToken = token.jwtToken;
+    lastSubject = subject;
     lastItems = items.items;
     EvaluateResponseMany resp{};
     resp.effect = nextEffect;
@@ -55,6 +56,10 @@ struct MockBackend : rbac::Backend {
 };
 
 auto constexpr testToken = "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.test";
+
+// The subject used by the translation tests below; which of the two subject
+// kinds is used is irrelevant to them, that is covered separately at the end.
+auto testSubject() -> rbac::Subject { return rbac::JwtToken{testToken}; }
 
 // Helper: build a ServiceImpl over a fresh MockBackend, keeping a raw pointer
 // to the mock for inspection after the move.
@@ -81,12 +86,12 @@ TEST(RbacServiceImplCheckTest, translatesDatabaseRead) {
   auto f = CheckFixture::make();
   std::array queries{rbac::ActionResource{
       rbac::Action::Read, rbac::resources::Database{.name = "mydb"}}};
-  auto r = f.svc.check({testToken}, queries);
+  auto r = f.svc.check(testSubject(), queries);
   EXPECT_TRUE(r.ok());
   ASSERT_EQ(f.mock->lastItems.size(), 1u);
   EXPECT_EQ(f.mock->lastItems[0].action, "db:Read");
   EXPECT_EQ(f.mock->lastItems[0].resource, "db:database:mydb");
-  EXPECT_EQ(f.mock->lastJwtToken, testToken);
+  EXPECT_EQ(std::get<rbac::JwtToken>(f.mock->lastSubject).jwtToken, testToken);
 }
 
 TEST(RbacServiceImplCheckTest, translatesCollectionCreate) {
@@ -94,7 +99,7 @@ TEST(RbacServiceImplCheckTest, translatesCollectionCreate) {
   std::array queries{rbac::ActionResource{
       rbac::Action::Create,
       rbac::resources::Collection{.db = "mydb", .name = "c"}}};
-  f.svc.check({testToken}, queries);
+  f.svc.check(testSubject(), queries);
   ASSERT_EQ(f.mock->lastItems.size(), 1u);
   EXPECT_EQ(f.mock->lastItems[0].action, "db:Create");
   EXPECT_EQ(f.mock->lastItems[0].resource, "db:collection:mydb:c");
@@ -104,7 +109,7 @@ TEST(RbacServiceImplCheckTest, translatesViewDrop) {
   auto f = CheckFixture::make();
   std::array queries{rbac::ActionResource{
       rbac::Action::Drop, rbac::resources::View{.db = "mydb", .name = "v"}}};
-  f.svc.check({testToken}, queries);
+  f.svc.check(testSubject(), queries);
   ASSERT_EQ(f.mock->lastItems.size(), 1u);
   EXPECT_EQ(f.mock->lastItems[0].action, "db:Drop");
   EXPECT_EQ(f.mock->lastItems[0].resource, "db:view:mydb:v");
@@ -115,7 +120,7 @@ TEST(RbacServiceImplCheckTest, translatesAnalyzerWriteMeta) {
   std::array queries{rbac::ActionResource{
       rbac::Action::WriteMeta,
       rbac::resources::Analyzer{.db = "mydb", .name = "a"}}};
-  f.svc.check({testToken}, queries);
+  f.svc.check(testSubject(), queries);
   ASSERT_EQ(f.mock->lastItems.size(), 1u);
   EXPECT_EQ(f.mock->lastItems[0].action, "db:WriteMeta");
   EXPECT_EQ(f.mock->lastItems[0].resource, "db:analyzer:mydb:a");
@@ -126,7 +131,7 @@ TEST(RbacServiceImplCheckTest, translatesCollectionWriteData) {
   std::array queries{rbac::ActionResource{
       rbac::Action::WriteData,
       rbac::resources::Collection{.db = "mydb", .name = "c"}}};
-  f.svc.check({testToken}, queries);
+  f.svc.check(testSubject(), queries);
   ASSERT_EQ(f.mock->lastItems.size(), 1u);
   EXPECT_EQ(f.mock->lastItems[0].action, "db:WriteData");
   EXPECT_EQ(f.mock->lastItems[0].resource, "db:collection:mydb:c");
@@ -136,7 +141,7 @@ TEST(RbacServiceImplCheckTest, translatesGraphRead) {
   auto f = CheckFixture::make();
   std::array queries{rbac::ActionResource{
       rbac::Action::Read, rbac::resources::Graph{.db = "mydb", .name = "g"}}};
-  f.svc.check({testToken}, queries);
+  f.svc.check(testSubject(), queries);
   ASSERT_EQ(f.mock->lastItems.size(), 1u);
   EXPECT_EQ(f.mock->lastItems[0].action, "db:Read");
   EXPECT_EQ(f.mock->lastItems[0].resource, "db:graph:mydb:g");
@@ -146,7 +151,7 @@ TEST(RbacServiceImplCheckTest, translatesUserRead) {
   auto f = CheckFixture::make();
   std::array queries{rbac::ActionResource{
       rbac::Action::Read, rbac::resources::User{.name = "alice"}}};
-  f.svc.check({testToken}, queries);
+  f.svc.check(testSubject(), queries);
   ASSERT_EQ(f.mock->lastItems.size(), 1u);
   EXPECT_EQ(f.mock->lastItems[0].resource, "db:user:alice");
 }
@@ -155,7 +160,7 @@ TEST(RbacServiceImplCheckTest, translatesUseApiVersion) {
   auto f = CheckFixture::make();
   std::array queries{rbac::ActionResource{
       rbac::Action::UseApiVersion, rbac::resources::ApiVersion{.version = 1}}};
-  f.svc.check({testToken}, queries);
+  f.svc.check(testSubject(), queries);
   ASSERT_EQ(f.mock->lastItems.size(), 1u);
   EXPECT_EQ(f.mock->lastItems[0].action, "db:UseApiVersion");
   EXPECT_EQ(f.mock->lastItems[0].resource, "db:apiversion:v1");
@@ -165,7 +170,7 @@ TEST(RbacServiceImplCheckTest, translatesUseApiVersionZero) {
   auto f = CheckFixture::make();
   std::array queries{rbac::ActionResource{
       rbac::Action::UseApiVersion, rbac::resources::ApiVersion{.version = 0}}};
-  f.svc.check({testToken}, queries);
+  f.svc.check(testSubject(), queries);
   ASSERT_EQ(f.mock->lastItems.size(), 1u);
   EXPECT_EQ(f.mock->lastItems[0].action, "db:UseApiVersion");
   EXPECT_EQ(f.mock->lastItems[0].resource, "db:apiversion:v0");
@@ -175,7 +180,7 @@ TEST(RbacServiceImplCheckTest, adminActionHasNoResource) {
   auto f = CheckFixture::make();
   std::array queries{rbac::ActionResource{rbac::Action::AdminQueryCache,
                                           rbac::resources::NoResource{}}};
-  f.svc.check({testToken}, queries);
+  f.svc.check(testSubject(), queries);
   ASSERT_EQ(f.mock->lastItems.size(), 1u);
   EXPECT_EQ(f.mock->lastItems[0].action, "db:AdminQueryCache");
   EXPECT_EQ(f.mock->lastItems[0].resource, "");
@@ -192,7 +197,7 @@ TEST(RbacServiceImplCheckTest, sendsWholeBatchInOrder) {
       rbac::ActionResource{
           rbac::Action::Read,
           rbac::resources::Collection{.db = "mydb", .name = "c2"}}};
-  f.svc.check({testToken}, queries);
+  f.svc.check(testSubject(), queries);
   EXPECT_EQ(f.mock->calls, 1);  // one batch, one round-trip
   ASSERT_EQ(f.mock->lastItems.size(), 3u);
   EXPECT_EQ(f.mock->lastItems[0].resource, "db:graph:mydb:g");
@@ -205,7 +210,7 @@ TEST(RbacServiceImplCheckTest, allowReturnsOk) {
   f.mock->nextEffect = rbac::Backend::Effect::Allow;
   std::array queries{rbac::ActionResource{
       rbac::Action::Read, rbac::resources::Database{.name = "mydb"}}};
-  EXPECT_TRUE(f.svc.check({testToken}, queries).ok());
+  EXPECT_TRUE(f.svc.check(testSubject(), queries).ok());
 }
 
 TEST(RbacServiceImplCheckTest, denyReturnsForbiddenWithMessage) {
@@ -214,15 +219,15 @@ TEST(RbacServiceImplCheckTest, denyReturnsForbiddenWithMessage) {
   f.mock->nextMessage = "role lacks db:Read";
   std::array queries{rbac::ActionResource{
       rbac::Action::Read, rbac::resources::Database{.name = "mydb"}}};
-  auto r = f.svc.check({testToken}, queries);
+  auto r = f.svc.check(testSubject(), queries);
   EXPECT_EQ(r.errorNumber(), TRI_ERROR_FORBIDDEN);
   EXPECT_EQ(r.errorMessage(), "role lacks db:Read");
 }
 
 TEST(RbacServiceImplCheckTest, backendErrorIsPropagated) {
   struct ErrorBackend : rbac::Backend {
-    auto evaluateTokenManyImpl(rbac::JwtToken const&, RequestItems const&,
-                               transaction::MethodsApi)
+    auto evaluateManyImpl(rbac::Subject const&, RequestItems const&,
+                          transaction::MethodsApi)
         -> futures::Future<ResultT<EvaluateResponseMany>> override {
       co_return Result{TRI_ERROR_INTERNAL, "backend failure"};
     }
@@ -230,13 +235,37 @@ TEST(RbacServiceImplCheckTest, backendErrorIsPropagated) {
   rbac::ServiceImpl svc{std::make_unique<ErrorBackend>()};
   std::array queries{rbac::ActionResource{
       rbac::Action::Read, rbac::resources::Database{.name = "mydb"}}};
-  auto r = svc.check({testToken}, queries);
+  auto r = svc.check(testSubject(), queries);
   EXPECT_EQ(r.errorNumber(), TRI_ERROR_INTERNAL);
+}
+
+// ---------------------------------------------------------------------------
+// check(): the subject is passed through to the backend untouched. It decides
+// which endpoint the backend talks to, so a Basic-authenticated caller must
+// arrive as a Username, not as an empty token.
+// ---------------------------------------------------------------------------
+
+TEST(RbacServiceImplCheckTest, forwardsJwtTokenSubject) {
+  auto f = CheckFixture::make();
+  std::array queries{rbac::ActionResource{
+      rbac::Action::Read, rbac::resources::Database{.name = "mydb"}}};
+  f.svc.check(rbac::JwtToken{testToken}, queries);
+  ASSERT_TRUE(std::holds_alternative<rbac::JwtToken>(f.mock->lastSubject));
+  EXPECT_EQ(std::get<rbac::JwtToken>(f.mock->lastSubject).jwtToken, testToken);
+}
+
+TEST(RbacServiceImplCheckTest, forwardsUsernameSubject) {
+  auto f = CheckFixture::make();
+  std::array queries{rbac::ActionResource{
+      rbac::Action::Read, rbac::resources::Database{.name = "mydb"}}};
+  f.svc.check(rbac::Username{"alice"}, queries);
+  ASSERT_TRUE(std::holds_alternative<rbac::Username>(f.mock->lastSubject));
+  EXPECT_EQ(std::get<rbac::Username>(f.mock->lastSubject).name, "alice");
 }
 
 TEST(RbacServiceImplCheckTest, emptyBatchIsOkWithoutBackendCall) {
   auto f = CheckFixture::make();
-  auto r = f.svc.check({testToken}, {});
+  auto r = f.svc.check(testSubject(), {});
   EXPECT_TRUE(r.ok());
   EXPECT_EQ(f.mock->calls, 0);  // no round-trip for an empty batch
 }
