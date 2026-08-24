@@ -41,3 +41,11 @@ changed the `errorNum` reported from 11 (FORBIDDEN) to 1004 (READONLY).
 This happens only in the case that the user actually **has** RW access
 to the collection, but the read-only mode prevents writes. The superuser
 is not affected by this limitation.
+
+## Fix a permission error
+
+The two APIs:
+- `PUT /_db/mydb/_api/query-cache/properties`
+- `DELETE /_db/mydb/_api/query-cache`
+up to 3.12.10 did not execute any permission check at all. Now they both 
+requires read access to the `_system` database.

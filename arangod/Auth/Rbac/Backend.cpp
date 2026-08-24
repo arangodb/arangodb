@@ -24,18 +24,17 @@
 
 namespace arangodb::rbac {
 
-auto Backend::evaluateTokenMany(JwtToken const& jwtToken,
-                                Backend::RequestItems const& items)
+auto Backend::evaluateMany(Subject const& subject,
+                           Backend::RequestItems const& items)
     -> futures::Future<ResultT<EvaluateResponseMany>> {
-  return evaluateTokenManyImpl(jwtToken, items,
-                               transaction::MethodsApi::Asynchronous);
+  return evaluateManyImpl(subject, items,
+                          transaction::MethodsApi::Asynchronous);
 }
 
-auto Backend::evaluateTokenManySync(JwtToken const& jwtToken,
-                                    Backend::RequestItems const& items)
+auto Backend::evaluateManySync(Subject const& subject,
+                               Backend::RequestItems const& items)
     -> ResultT<EvaluateResponseMany> {
-  return evaluateTokenManyImpl(jwtToken, items,
-                               transaction::MethodsApi::Synchronous)
+  return evaluateManyImpl(subject, items, transaction::MethodsApi::Synchronous)
       .waitAndGet();
 }
 
