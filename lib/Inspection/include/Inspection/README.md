@@ -206,6 +206,95 @@ auto inspect(Inspector& f, LogTargetConfig& x) {
 }
 ```
 
+### Conditional fields
+
+Fallbacks let a field be _optional_, but sometimes a field should not take part
+in the inspection at all, based on the data itself. The typical case is schema
+evolution, where a version attribute decides which of the remaining attributes
+exist:
+```cpp
+using arangodb::inspection::FieldCondition;
+
+struct Config {
+  std::uint32_t version = 1;
+  std::size_t writeConcern = 1;
+  bool waitForSync = false;  // added in version 2
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, Config& x) {
+  return f.object(x).fields(
+      f.field("version", x.version),
+      f.field("writeConcern", x.writeConcern),
+      f.field("waitForSync", x.waitForSync).when([&x] {
+        return x.version >= 2 ? FieldCondition::Process : FieldCondition::Reject;
+      }));
+}
+```
+
+The predicate is called without arguments and returns a `FieldCondition`:
+
+  * `Process` - the field is loaded/saved as usual.
+  * `Reject` - the field is skipped. When loading, an attribute of that name
+    present in the input is reported as an unexpected attribute; when saving,
+    the field is omitted from the output.
+  * `Ignore` - the field is skipped. When loading, an attribute of that name
+    present in the input is silently ignored; when saving, the field is omitted
+    from the output.
+
+`Reject` and `Ignore` only differ while loading - both omit the field when
+saving. Use `Ignore` for attributes that may legitimately still be present in
+old data, and `Reject` to catch data that does not match its own version.
+
+Just like fallbacks, conditions are evaluated in the order the fields are
+specified, so a field whose condition inspects another field must be specified
+_after_ it - `version` above is already loaded when the condition of
+`waitForSync` is evaluated.
+
+A condition governs whether the _attribute_ is read and written, not whether
+the _member_ has to be valid. A skipped field therefore takes its value from
+its fallback (or fallback factory) if it declares one, and otherwise keeps the
+value it already had; its invariant is then checked against that value. For
+`Ignore` this holds whether or not the attribute is present, since an ignored
+attribute is never read as this field's data. Because invariants are checked
+either way, adding a condition to a field never silently reduces what is
+verified while loading.
+
+Conditions do not apply to the `ValidateInspector` at all. It reads no
+attributes, so there is nothing for a condition to govern - it validates every
+field unconditionally, including the inner invariants of fields whose type is
+itself an object. Note the consequence for two fields sharing an attribute name
+under complementary conditions: both are validated, so the inactive one has to
+hold a valid value as well.
+
+Note that this collapses "not part of the schema" and "part of the schema but
+omitted" onto the same value. Use `fallbackFactory` if the two need to differ -
+it can inspect fields that were specified before it:
+```cpp
+f.field("waitForSync", x.waitForSync)
+    .fallbackFactory([&x] { return x.version >= 2; })
+    .when([&x] {
+      return x.version >= 2 ? FieldCondition::Process : FieldCondition::Reject;
+    })
+```
+
+`when` applies in both directions. To control only one of them, use
+`whenLoading` or `whenSaving`; the field is unconditionally processed in the
+other direction. A field carries at most one condition - combining two of these
+calls on the same field is a compile error.
+
+If a field needs a _different_ condition per direction, note that the predicate
+is instantiated per Inspector, so a single `when` can still tell them apart:
+```cpp
+f.field("waitForSync", x.waitForSync).when([&x] {
+  if constexpr (Inspector::isLoading) {
+    return x.version >= 2 ? FieldCondition::Process : FieldCondition::Reject;
+  } else {
+    return x.version >= 3 ? FieldCondition::Process : FieldCondition::Reject;
+  }
+})
+```
+
 ### Embedded fields
 
 In some cases we may want to "reuse" the inspect function of some type, e.g.,
