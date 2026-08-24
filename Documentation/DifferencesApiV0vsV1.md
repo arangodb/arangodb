@@ -34,10 +34,15 @@ endpoints exist at all under a given API version.
   of scope for this document.
 * If the requested version number is not in `supportedApiVersions` (and is
   not the experimental version), the version prefix is **not** stripped and
-  **not** stored; this causes routing to fail and the server to answer with
-  HTTP `404` and `errorNum` `404`, with an error message
-  `unknown API version <n> for path '<path>'`
-  (`arangod/GeneralServer/RestHandlerFactory.cpp`).
+  **not** stored: the request keeps its default API version and the unstripped
+  prefix stays part of the path. No route matches such a path, so the client
+  receives HTTP `404` / `TRI_ERROR_HTTP_NOT_FOUND` with the message
+  `unknown path '<path>'`. (Under V0 the catch-all `/` handler answers instead,
+  normally with the same `404`.) Note that
+  `RestHandlerFactory::createHandler` also contains an
+  `unknown API version <n> for path '<path>'` error, but it cannot be reached:
+  `GeneralRequest::detectAndStripApiVersion` never stores an unsupported
+  version, so the value the factory sees is always valid.
 * Leading zeros in the version number (e.g. `/_arango/v01/`) are rejected
   with HTTP `400` (`TRI_ERROR_HTTP_BAD_PARAMETER`).
 
@@ -66,6 +71,10 @@ The following endpoints are V0-only:
 | `/_api/aqlfunction` | `RestAqlUserFunctionsHandler` | user-defined AQL functions (V8-dependent) |
 | `/_admin/execute` | `RestAdminExecuteHandler` | only registered at all if V8/JavaScript is enabled |
 | `/_admin/database/target-version` | `RestAdminDatabaseHandler` | |
+| `/_admin/version` | `RestVersionHandler` | use `/_api/version` |
+| `/_admin/job` | `RestJobHandler` | use `/_api/job` |
+| `/_api/endpoint` | `RestEndpointHandler` | deprecated since 3.4 |
+| `/_api/upload` | `RestUploadHandler` | Foxx-related |
 | `/_admin/routing` | `RestAdminRoutingHandler` | only registered at all if V8/JavaScript is enabled |
 | `/_admin/statistics` | `RestAdminStatisticsHandler` | |
 | `/_admin/statistics-description` | `RestAdminStatisticsHandler` | |
@@ -92,12 +101,12 @@ informational and not a behavioural difference in status codes, but it does
 mean the **response body shape differs** in that this field always mirrors
 the caller's chosen version.
 
-## Authentication/authorization error shape: `RestHandler::checkUserCanAccess` / `handleAuthorizationChecks`
+## Authentication/authorization error shape: `RestHandler::checkDatabaseAccess` / `handleAuthorizationChecks`
 
 This is one of the most consequential differences, since it affects **every**
 authenticated REST call, regardless of endpoint (`arangod/GeneralServer/RestHandler.cpp`).
 
-* `checkUserCanAccess()`:
+* `checkDatabaseAccess()`:
   * If the user is not authenticated at all, this always fails with
     `TRI_ERROR_HTTP_UNAUTHORIZED` (401), independent of API version.
   * If the user is authenticated but has no read access to the database
@@ -113,7 +122,7 @@ authenticated REST call, regardless of endpoint (`arangod/GeneralServer/RestHand
       absolutely no access to the database, `TRI_ERROR_ARANGO_DATABASE_NOT_FOUND`
       (404, see `AuthMode.cpp` below) rather than always 401.
 
-* `handleAuthorizationChecks()`, once `checkUserCanAccess()` has failed:
+* `handleAuthorizationChecks()`, once `checkDatabaseAccess()` has failed:
   * **V0**: the code contains an explicit, commented "special" branch:
     regardless of what the actual error was, the response is *always*
     generated as HTTP status `401 UNAUTHORIZED` combined with `errorNum`
@@ -129,15 +138,21 @@ authenticated REST call, regardless of endpoint (`arangod/GeneralServer/RestHand
     * forbidden (RBAC denies access, resource exists) → HTTP 403 / errorNum 11 (`TRI_ERROR_FORBIDDEN`)
     * resource intentionally hidden (RBAC, resource does not exist for this user) → HTTP 404 / errorNum 1203 or 1228 (see below)
 
-## RBAC-specific "hide existence of resource" behaviour (`arangod/Auth/AuthMode.cpp`)
+## Permission-check differences (`arangod/Auth/AuthMode.cpp`)
 
-`AuthMode.cpp` implements permission checks. Several of the checks return
-different results (and hence different HTTP codes) between V0 and V1
-specifically to avoid leaking the existence of databases/collections/views
-that a user is not allowed to see at all (an information-disclosure
-hardening that is introduced with V1's RBAC semantics):
+`AuthMode.cpp` implements permission checks. Several of the checks in
+`AuthMode::Classic` return different results (and hence different HTTP codes)
+between V0 and V1, mostly to avoid leaking the existence of
+databases/collections/views that a user is not allowed to see at all (an
+information-disclosure hardening introduced with V1):
 
-* **`UseDatabase` check** (line ~385): if the requested access level exceeds
+> Note that `AuthMode::Rbac` — used when an external RBAC service is
+> configured via `--server.external-rbac-service` — does **not** inspect the
+> requested API version at all, so none of the differences in this section
+> apply when RBAC is enabled. RBAC answers every denial with
+> `TRI_ERROR_FORBIDDEN` (403) regardless of API version.
+
+* **`UseDatabase` check** (line ~365): if the requested access level exceeds
   what the user has, and the user has *no* access at all
   (`effectiveLevel == auth::Level::NONE`):
   * **V1**: returns `TRI_ERROR_ARANGO_DATABASE_NOT_FOUND` (HTTP 404,
@@ -147,7 +162,7 @@ hardening that is introduced with V1's RBAC semantics):
     with a descriptive access-level-mismatch message — the database's
     existence is implicitly confirmed.
 
-* **`UseCollection` check** (line ~449): analogous logic for collections.
+* **`UseCollection` check** (line ~429): analogous logic for collections.
   If access is insufficient and the user has no access at all:
   * **V1**: returns `TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND` (HTTP 404,
     errorNum 1203) — with message `"collection not found"` in cluster mode,
@@ -158,7 +173,7 @@ hardening that is introduced with V1's RBAC semantics):
     errorNum 11) otherwise — the collection's existence is implicitly
     confirmed in both cases.
 
-* **`ReadView` check** (line ~579): identical pattern to `UseDatabase` for
+* **`ReadView` check** (line ~558): identical pattern to `UseDatabase` for
   views: **V1** returns `TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND` (404) when
   the user has no database access at all; **V0** returns `TRI_ERROR_FORBIDDEN`
   (403).
@@ -173,7 +188,13 @@ hardening that is introduced with V1's RBAC semantics):
   `TRI_ERROR_ARANGO_READ_ONLY` (403, errorNum 1004) instead of the generic
   forbidden error (403, errorNum 11) — same HTTP status, different errorNum.
 
-* **`CreateGraph` check** (line ~814): if the user lacks write access to the
+* **`AdminQueryCache` check** (line ~587): unlike every other admin action,
+  which requires RW access to `_system`:
+  * **V0**: RO access to the `_system` database is sufficient.
+  * **V1**: requires RW access to `_system` (`isAdmin()`), i.e. the same as
+    all other admin actions.
+
+* **`CreateGraph` check** (line ~804): if the user lacks write access to the
   database needed to create the graph's `_graphs` entry:
   * **V1**: returns `TRI_ERROR_FORBIDDEN` (HTTP 403, errorNum 11).
   * **V0**: returns `TRI_ERROR_ARANGO_READ_ONLY` (HTTP 403, errorNum 1004)
@@ -193,7 +214,7 @@ hardening that is introduced with V1's RBAC semantics):
   collection regardless of their per-collection read access, relying only
   on the database-level check performed earlier.
 
-* **`syncCaches` (`POST /_api/index/sync-caches`)** (line ~1000): this
+* **`syncCaches` (`POST /_api/index/sync-caches`)** (line ~1020): this
   unofficial/internal endpoint, when running on a coordinator:
   * **V1**: returns HTTP `501 Not Implemented` /
     `TRI_ERROR_NOT_IMPLEMENTED` with message `"Not implemented on
@@ -207,19 +228,20 @@ hardening that is introduced with V1's RBAC semantics):
 ## `RestQueryCacheHandler` (`arangod/RestHandler/RestQueryCacheHandler.cpp`)
 
 Both `DELETE /_api/query-cache` (`clearCache`) and
-`PUT /_api/query-cache/properties` (`replaceProperties`) have an additional
-authorization check that only applies starting with **V1**:
+`PUT /_api/query-cache/properties` (`replaceProperties`) require the
+`AdminQueryCache` permission
+(`ExecContext::current().canUseAdminAction(auth::perms::AdminQueryCache{})`)
+in **both** API versions. What differs is how much access that permission
+needs, and whether the `_system` database is enforced:
 
-* **V0**: the only requirement (introduced in 3.12.10) is that the request
-  targets the `_system` database — no admin permission is required to clear
-  the query cache or change its properties (beyond the general "must be
-  authenticated on `_system`" implicit requirement). If not on `_system`,
-  it fails with HTTP 403 / `TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE`.
-* **V1**: in addition to the `_system`-database requirement, the caller
-  must also pass `ExecContext::current().canUseAdminAction(auth::perms::AdminQueryCache{})`.
-  If this RBAC check fails, the request is rejected with whatever `Result`
-  that check returns (typically HTTP 403 / `TRI_ERROR_FORBIDDEN`), which is
-  an additional way for V1 requests to be rejected compared to V0.
+* **Access level** — see the `AdminQueryCache` check above: under **V0** RO
+  access to `_system` is enough, under **V1** RW access is required. So a
+  read-only admin can clear the query cache under V0 but not under V1.
+* **`_system` database requirement** — for
+  `PUT /_api/query-cache/properties` this is enforced under **V1 only**
+  (line ~122); a V0 request may change the properties from any database.
+  If not on `_system`, a V1 request fails with HTTP 403 /
+  `TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE`.
 
 ## `RestCollectionHandler` — `PUT /_api/collection/<name>/compact` (`arangod/RestHandler/RestCollectionHandler.cpp`, line ~485)
 
@@ -232,7 +254,7 @@ authorization check that only applies starting with **V1**:
   `Result` (typically HTTP 403 / `TRI_ERROR_FORBIDDEN`), whereas under V0
   the same request would proceed to actually compact the collection.
 
-## `RestAdminClusterHandler` — `POST /_admin/cluster/removeServer` (`arangod/RestHandler/RestAdminClusterHandler.cpp`, line ~664)
+## `RestAdminClusterHandler` — `POST /_admin/cluster/removeServer` (`arangod/RestHandler/RestAdminClusterHandler.cpp`, line ~674)
 
 * **V1**: if the request is not being handled on a coordinator, it is
   rejected immediately with HTTP `403 Forbidden` /
@@ -240,6 +262,118 @@ authorization check that only applies starting with **V1**:
 * **V0**: this coordinator-only restriction is not enforced at all; the
   request proceeds to attempt removing the server regardless of the
   current server's role.
+
+## Endpoints and HTTP methods rejected under V1
+
+These routes are registered for both versions, but the handler itself refuses
+the request under V1.
+
+* **`GET /_admin/log` and `DELETE /_admin/log` without a suffix**
+  (`RestAdminLogHandler.cpp`, lines ~107 and ~127):
+  * **V0**: `GET` returns the pre-3.8 log format (attributes split into
+    parallel arrays); `DELETE` clears the log.
+  * **V1**: HTTP `410 Gone` / `TRI_ERROR_HTTP_GONE`, pointing at
+    `/_admin/log/entries`, which returns the same data as `total` plus a
+    `messages` array.
+
+* **`POST /_api/transaction` without a suffix** (legacy JavaScript
+  transactions, `RestTransactionHandler.cpp`, line ~117):
+  * **V0**: executes the JS transaction (V8 required).
+  * **V1**: HTTP `404` / `TRI_ERROR_HTTP_NOT_FOUND`, "JavaScript transactions
+    are no longer supported. Use streaming transactions
+    (POST /_api/transaction/begin)".
+
+* **`PUT /_api/cursor/<cursor-id>`** (`RestCursorHandler.cpp`, line ~99):
+  * **V0**: `modifyQueryCursor` — fetches the next batch.
+  * **V1**: the method is not handled, so the request ends in HTTP `405`
+    `TRI_ERROR_HTTP_METHOD_NOT_ALLOWED`. Use
+    `POST /_api/cursor/<cursor-id>` instead.
+
+* **`PUT /_api/collection/<name>/load` and `/unload`**
+  (`RestCollectionHandler.cpp`, lines ~460 and ~469):
+  * **V0**: both are no-ops (since 3.9) returning `200` with a collection
+    representation; `unload` optionally flushes the WAL.
+  * **V1**: the sub-command is not recognised, so the request falls through
+    to the "expecting one of the actions …" HTTP `400`.
+
+* **`GET /_api/wal/open-transactions`** (`RestWalAccessHandler.cpp`, line
+  ~240):
+  * **V0**: served.
+  * **V1**: falls through to the usage error, HTTP `400`. Note the usage
+    message itself is version-dependent: `open-transactions` is only listed
+    under V0.
+
+* **`GET /_admin/cluster/nodeStatistics` and `/_admin/cluster/statistics`**
+  (`RestAdminClusterHandler.cpp`, lines ~425 and ~428):
+  * **V0**: proxied to `/_admin/statistics` on the requested server.
+  * **V1**: the command is not recognised → HTTP `400`. (Consistent with
+    `/_admin/statistics` itself being V0-only.)
+
+* **Non-`GET` requests to `/_api/version`, `/_admin/time` and
+  `/_admin/support-info`** (`RestVersionHandler.cpp` line ~165,
+  `RestTimeHandler.cpp` line ~41, `RestSupportInfoHandler.cpp` line ~44):
+  * **V0**: the handler answers regardless of the HTTP method.
+  * **V1**: only `GET` is accepted; anything else yields HTTP `405` /
+    `TRI_ERROR_HTTP_METHOD_NOT_ALLOWED`.
+
+## Request parameters and body attributes rejected under V1
+
+* **`POST /_api/document` — the `collection` query parameter**
+  (`RestDocumentHandler.cpp`, line ~165): under **V1** the collection must be
+  given as a path suffix (`POST /_api/document/<collection>`); omitting it
+  fails with HTTP `400` /
+  `TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING`. **V0** still accepts
+  `?collection=<name>`.
+
+* **Numeric collection IDs in the path** (`RestDocumentHandler.cpp`, lines
+  ~192, ~357, ~506 and ~711): under **V1** a path segment consisting only of
+  digits is rejected with HTTP `400`, "Numeric collection IDs are not allowed;
+  please use the collection name instead". **V0** resolves them.
+
+* **The `overwrite` query parameter on document inserts**
+  (`RestDocumentHandler.cpp`, line ~219): under **V1** it is rejected with
+  HTTP `400`, "the 'overwrite' option has been removed, use 'overwriteMode'
+  instead". Under **V0** it is still honoured and means
+  `overwriteMode=replace`.
+
+* **`minReplicationFactor` in collection properties**
+  (`RestCollectionHandler.cpp`, line ~640): the deprecated attribute is kept
+  in the accepted property set under **V0** only; under **V1** it is dropped
+  from the request body before the update is applied.
+
+* **`includeFoxxQueues` on `GET /_api/wal/tail`**
+  (`RestWalAccessHandler.cpp`, line ~150): evaluated under **V0** only; under
+  **V1** the parameter has no effect.
+
+* **Deprecated index types on `POST /_api/index`**
+  (`RestIndexHandler.cpp`, line ~919): under **V1**, creating an index of
+  type `geo1`, `geo2`, `hash`, `skiplist` or `fulltext` fails with HTTP `400`
+  / `TRI_ERROR_BAD_PARAMETER`, "index type is not supported in API version 1
+  or higher". Under **V0** these aliases are still accepted.
+
+## Response attributes omitted under V1
+
+* **`GET /_admin/status`** (`RestStatusHandler.cpp`, lines ~122, ~162 and
+  ~205): **V0** additionally reports `mode` and `operationMode` (both the
+  server operation mode), `foxxApi`, `serverInfo.writeOpsEnabled`, and — on a
+  Coordinator — a `coordinator` object with `foxxmaster` and `isFoxxmaster`.
+  None of these are present under **V1**.
+
+* **`GET /_api/version?details=true`** (`RestVersionHandler.cpp`, line ~83):
+  `details.mode` is reported under **V0** only.
+
+* **`GET /_api/database/current`** (`arangod/VocBase/Methods/Databases.cpp`,
+  lines ~133 and ~145): the `path` attribute (the filesystem path of the
+  database, or `"none"` on a Coordinator) is reported under **V0** only.
+
+* **`GET /_admin/cluster/health`** (`RestAdminClusterHandler.cpp`, line
+  ~2353): the deprecated per-node `Timestamp` attribute is reported under
+  **V0** only. `LastAckedTime` carries the same information in both versions.
+
+* **`GET /_api/engine`** (`RestHandler/RestEngineHandler.cpp` line ~85 →
+  `StorageEngine::getCapabilities` → `IndexFactory::indexAliases`): the index
+  name aliases `hash` → `persistent` and `skiplist` → `persistent` are
+  reported under **V0** only; `zkd` → `mdi` is reported under both.
 
 ## Summary table of HTTP status / errorNum differences
 
@@ -253,13 +387,32 @@ authorization check that only applies starting with **V1**:
 | Create graph, no DB write access (`AuthMode::CreateGraph`) | HTTP 403 / errorNum 1004 | HTTP 403 / errorNum 11 |
 | `/_api/index` collection lookup on coordinator | No per-collection read check | Requires `Read` access; otherwise collection "not found" |
 | `POST /_api/index/sync-caches` on coordinator | 200 OK (no-op) | 501 / `TRI_ERROR_NOT_IMPLEMENTED` |
-| `/_api/query-cache` clear/replace-properties | Requires only `_system` DB | Also requires `AdminQueryCache` admin permission |
+| `/_api/query-cache` clear/replace-properties | `AdminQueryCache` with RO on `_system`; no `_system` DB requirement for `properties` | `AdminQueryCache` with RW on `_system`; `properties` additionally requires the `_system` DB |
+| Every other admin action (`AuthMode::AdminQueryCache` aside) | RW on `_system` | unchanged |
 | `PUT /_api/collection/<name>/compact` | No explicit permission check | Requires `WriteMeta` on the collection |
 | `POST /_admin/cluster/removeServer` off-coordinator | Proceeds anyway | HTTP 403 / `TRI_ERROR_HTTP_FORBIDDEN` |
 | Simple-queries API, tasks, user AQL functions, several `/_admin/*` endpoints | Available | Route removed entirely (HTTP 404) |
 | `/openapi.json` | Serves `openapi-v0.csx` | Serves `openapi-v1.csx` |
 | `/_api/version`, `/_admin/version` response body | `requestedApiVersion: "v0"` | `requestedApiVersion: "v1"` |
-| Unsupported/unknown version prefix in URL | n/a | HTTP 404 / errorNum 404, `"unknown API version"` |
+| `/_admin/log`, `/_admin/log` DELETE (no suffix) | Old log format / clears log | HTTP 410 `TRI_ERROR_HTTP_GONE` → use `/_admin/log/entries` |
+| `POST /_api/transaction` (JS transactions) | Executes the JS transaction | HTTP 404 → use `/_api/transaction/begin` |
+| `PUT /_api/cursor/<id>` | Fetches next batch | HTTP 405 → use `POST` |
+| `PUT /_api/collection/<name>/load`, `/unload` | 200 (no-op) | HTTP 400 (unknown action) |
+| `GET /_api/wal/open-transactions` | Served | HTTP 400 (unknown suffix) |
+| `/_admin/cluster/nodeStatistics`, `/_admin/cluster/statistics` | Proxied to `/_admin/statistics` | HTTP 400 (unknown command) |
+| Non-GET on `/_api/version`, `/_admin/time`, `/_admin/support-info` | Handled | HTTP 405 |
+| `POST /_api/document?collection=<name>` | Accepted | HTTP 400 — collection must be a path suffix |
+| Numeric collection ID in path | Resolved | HTTP 400 |
+| `overwrite` query parameter on document inserts | Honoured | HTTP 400 → use `overwriteMode` |
+| `minReplicationFactor` collection property | Accepted | Ignored (dropped from the body) |
+| `includeFoxxQueues` on `GET /_api/wal/tail` | Honoured | Ignored |
+| `POST /_api/index` with `geo1`/`geo2`/`hash`/`skiplist`/`fulltext` | Accepted | HTTP 400 `TRI_ERROR_BAD_PARAMETER` |
+| `GET /_admin/status` response | Includes `mode`, `operationMode`, `foxxApi`, `serverInfo.writeOpsEnabled`, `coordinator` | Those attributes omitted |
+| `GET /_api/version?details=true` response | Includes `details.mode` | Omitted |
+| `GET /_api/database/current` response | Includes `path` | Omitted |
+| `GET /_admin/cluster/health` response | Includes per-node `Timestamp` | Omitted |
+| `GET /_api/engine` response | Index aliases include `hash`, `skiplist` | Only `zkd` → `mdi` |
+| Unsupported/unknown version prefix in URL | n/a | HTTP 404 / `TRI_ERROR_HTTP_NOT_FOUND`, `"unknown path"` |
 
 ## Source locations referenced
 
@@ -276,4 +429,14 @@ authorization check that only applies starting with **V1**:
 * `arangod/RestHandler/RestIndexHandler.cpp`
 * `arangod/RestHandler/RestQueryCacheHandler.cpp`
 * `arangod/RestHandler/RestCollectionHandler.cpp`
+* `arangod/RestHandler/RestAdminLogHandler.cpp`
+* `arangod/RestHandler/RestTransactionHandler.cpp`
+* `arangod/RestHandler/RestCursorHandler.cpp`
+* `arangod/RestHandler/RestDocumentHandler.cpp`
+* `arangod/RestHandler/RestWalAccessHandler.cpp`
+* `arangod/RestHandler/RestStatusHandler.cpp`
+* `arangod/RestHandler/RestEngineHandler.cpp`
+* `arangod/RestHandler/{RestTimeHandler,RestSupportInfoHandler}.cpp`
+* `arangod/VocBase/Methods/Databases.cpp`
+* `arangod/Indexes/IndexFactory.cpp`, `arangod/RocksDBEngine/RocksDBIndexFactory.cpp`
 * `arangod/Auth/AuthMode.cpp`
