@@ -263,6 +263,17 @@ describe('Single Traversal Optimizer', function () {
                       RETURN v._key`, bindVars);
       });
 
+      it('with CURRENT bound again by a nested expansion', () => {
+        // the inner CURRENT is a `bar` element, the outer one an edge. Only
+        // references to the outer one may be rewritten to the edge: `edge < 3`
+        // would compare an object to a number and select nothing, which turns
+        // the implication into a tautology and lets every path through.
+        pushedDown(`WITH @@vertices
+                      FOR v, e, p IN 1..2 OUTBOUND @start @@edges
+                      FILTER p.edges[* FILTER LENGTH(CURRENT.bar[* FILTER CURRENT < 3]) > 0].foo ALL > 3
+                      RETURN v._key`, bindVars);
+      });
+
       it('with a constant true inline FILTER', () => {
         pushedDown(`WITH @@vertices
                       FOR v, e, p IN 1..2 OUTBOUND @start @@edges

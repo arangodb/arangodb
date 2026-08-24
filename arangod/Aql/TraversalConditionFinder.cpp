@@ -156,7 +156,7 @@ AstNode* buildExpansionReplacement(Ast* ast, AstNode const* condition,
   // We have to take the return-value if LHS already is the reference,
   // otherwise the point will not be relocated.
   AstNode* lhs = replaceIteratorReference(expansion->getMemberUnchecked(1),
-                                         iteratorVar, tmpVar);
+                                          iteratorVar, tmpVar);
   AstNode* result = ast->createNodeBinaryOperator(type, lhs, rhs);
 
   AstNode* filter = expansion->getMemberUnchecked(2);
