@@ -58,6 +58,7 @@ if (getOptions === true) {
 }
 
 const jsunity = require('jsunity');
+const { assertEqual } = jsunity.jsUnity.assertions;
 const {
   beginObserve,
   endObserve,
