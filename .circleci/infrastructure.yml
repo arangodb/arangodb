@@ -337,7 +337,11 @@ jobs:
       - persist_to_workspace:
           root: .
           paths:
-            - scripts/docker/*-tag*.txt
+            # Only THIS arch's tag files: amd64-tag.txt is committed in the
+            # repo, so a broader glob would persist the checked-out copy from
+            # the arm64 job too and collide with the amd64 job's fresh one
+            # ("Concurrent upstream jobs persisted the same file(s)").
+            - scripts/docker/<< parameters.arch >>-tag*.txt
       - persist_to_workspace:
           root: /tmp/workspace
           paths:
