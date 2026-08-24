@@ -114,7 +114,8 @@ auto totalObservations(rbac::BackendImpl::RequestDurationMetric const& metric)
 // Tests
 // ---------------------------------------------------------------------------
 
-TEST(RbacBackendTest, evaluateTokenMany_sendsCorrectRequestAndParsesResponse) {
+TEST(RbacBackendTest,
+     evaluateMany_withToken_sendsCorrectRequestAndParsesResponse) {
   auto responseJson = buildAllowResponseJson();
 
   auto sendRequestMock = [&](network::DestinationId const& dest,
@@ -135,18 +136,98 @@ TEST(RbacBackendTest, evaluateTokenMany_sendsCorrectRequestAndParsesResponse) {
   };
   auto testee = rbac::BackendImpl{sendRequestMock, "http://localhost:8080"};
 
-  auto result =
-      testee
-          .evaluateTokenMany(rbac::JwtToken{.jwtToken = "my.jwt.token"},
-                             rbac::Backend::RequestItems{})
-          .waitAndGet();
+  auto result = testee
+                    .evaluateMany(rbac::JwtToken{.jwtToken = "my.jwt.token"},
+                                  rbac::Backend::RequestItems{})
+                    .waitAndGet();
 
   ASSERT_TRUE(result.ok());
   EXPECT_EQ(result.get().effect, rbac::Backend::Effect::Allow);
   EXPECT_TRUE(result.get().items.empty());
 }
 
-TEST(RbacBackendTest, evaluateTokenMany_returnsErrorOnNonOkHttpStatus) {
+// A caller that authenticated without a JWT (HTTP Basic, or a personal access
+// token) is identified by name instead, which goes to the other batch endpoint
+// of the AuthorizationV1 API. Only the subject field of the envelope differs.
+TEST(RbacBackendTest, evaluateMany_withUsername_sendsToEvaluateManyPath) {
+  auto responseJson = buildAllowResponseJson();
+
+  auto sendRequestMock = [&](network::DestinationId const& dest,
+                             fuerte::RestVerb verb, std::string const& path,
+                             velocypack::Buffer<uint8_t> const& payload,
+                             network::RequestOptions const& opts,
+                             network::Headers const&) -> network::FutureRes {
+    EXPECT_EQ(dest, "http://localhost:8080");
+    EXPECT_EQ(verb, fuerte::RestVerb::Post);
+    EXPECT_EQ(path, "/_integration/authorization/v1/evaluate-many");
+    EXPECT_EQ(opts.contentType, "application/json; charset=utf-8");
+    EXPECT_EQ(opts.acceptType, "application/json; charset=utf-8");
+    EXPECT_EQ(normalizeJson(payloadToString(payload)), normalizeJson(R"({
+                    "user": "alice",
+                    "items": []
+                  })"));
+    return makeNetworkResponse(fuerte::StatusOK, responseJson);
+  };
+  auto testee = rbac::BackendImpl{sendRequestMock, "http://localhost:8080"};
+
+  auto result = testee
+                    .evaluateMany(rbac::Username{.name = "alice"},
+                                  rbac::Backend::RequestItems{})
+                    .waitAndGet();
+
+  ASSERT_TRUE(result.ok());
+  EXPECT_EQ(result.get().effect, rbac::Backend::Effect::Allow);
+}
+
+// The items are the same message type on both endpoints, so they must be
+// encoded identically no matter how the subject is given.
+TEST(RbacBackendTest, evaluateMany_encodesItemsIdenticallyForBothSubjects) {
+  auto responseJson = buildAllowResponseJson({rbac::Backend::Effect::Allow});
+  auto items = rbac::Backend::RequestItems{
+      .items = {rbac::Backend::RequestItem{.action = "db:Read",
+                                           .resource = "db:database:mydb",
+                                           .attributeValues = {"a", "b"}}}};
+
+  auto capture = [&](std::string& path, std::string& body) {
+    return [&](network::DestinationId const&, fuerte::RestVerb,
+               std::string const& p, velocypack::Buffer<uint8_t> const& payload,
+               network::RequestOptions const&,
+               network::Headers const&) -> network::FutureRes {
+      path = p;
+      body = payloadToString(payload);
+      return makeNetworkResponse(fuerte::StatusOK, responseJson);
+    };
+  };
+
+  std::string tokenPath, tokenBody;
+  auto tokenSender = capture(tokenPath, tokenBody);
+  auto withToken = rbac::BackendImpl{tokenSender, "http://localhost:8080"};
+  ASSERT_TRUE(
+      withToken.evaluateManySync(rbac::JwtToken{.jwtToken = "t"}, items).ok());
+
+  std::string userPath, userBody;
+  auto userSender = capture(userPath, userBody);
+  auto withUser = rbac::BackendImpl{userSender, "http://localhost:8080"};
+  ASSERT_TRUE(
+      withUser.evaluateManySync(rbac::Username{.name = "alice"}, items).ok());
+
+  EXPECT_EQ(tokenPath, "/_integration/authorization/v1/evaluate-token-many");
+  EXPECT_EQ(userPath, "/_integration/authorization/v1/evaluate-many");
+
+  auto expectedItems = normalizeJson(R"([{
+    "action": "db:Read",
+    "resource": "db:database:mydb",
+    "context": {"parameters": {"attribute": {"values": ["a", "b"]}}}
+  }])");
+  auto itemsOf = [](std::string const& body) {
+    auto builder = velocypack::Parser::fromJson(body);
+    return velocypack::Dumper::toString(builder->slice().get("items"));
+  };
+  EXPECT_EQ(itemsOf(tokenBody), expectedItems);
+  EXPECT_EQ(itemsOf(userBody), expectedItems);
+}
+
+TEST(RbacBackendTest, evaluateMany_returnsErrorOnNonOkHttpStatus) {
   auto sendRequestMock =
       [](network::DestinationId const&, fuerte::RestVerb, std::string const&,
          velocypack::Buffer<uint8_t> const&, network::RequestOptions const&,
@@ -157,14 +238,14 @@ TEST(RbacBackendTest, evaluateTokenMany_returnsErrorOnNonOkHttpStatus) {
       rbac::BackendImpl{std::move(sendRequestMock), "http://localhost:8080"};
 
   auto result = testee
-                    .evaluateTokenMany(rbac::JwtToken{.jwtToken = "bad.token"},
-                                       rbac::Backend::RequestItems{})
+                    .evaluateMany(rbac::JwtToken{.jwtToken = "bad.token"},
+                                  rbac::Backend::RequestItems{})
                     .waitAndGet();
 
   EXPECT_FALSE(result.ok());
 }
 
-TEST(RbacBackendTest, evaluateTokenManySync_setsSkipSchedulerAndReturnsResult) {
+TEST(RbacBackendTest, evaluateManySync_setsSkipSchedulerAndReturnsResult) {
   auto responseJson = buildAllowResponseJson();
 
   auto sendRequestMock = [&](network::DestinationId const&, fuerte::RestVerb,
@@ -178,13 +259,13 @@ TEST(RbacBackendTest, evaluateTokenManySync_setsSkipSchedulerAndReturnsResult) {
   auto testee = rbac::BackendImpl{sendRequestMock, "http://localhost:8080"};
 
   auto result =
-      testee.evaluateTokenManySync(rbac::JwtToken{.jwtToken = "my.jwt.token"},
-                                   rbac::Backend::RequestItems{});
+      testee.evaluateManySync(rbac::JwtToken{.jwtToken = "my.jwt.token"},
+                              rbac::Backend::RequestItems{});
 
   EXPECT_TRUE(result.ok());
 }
 
-TEST(RbacBackendTest, evaluateTokenMany_measuresRequestDuration) {
+TEST(RbacBackendTest, evaluateMany_measuresRequestDuration) {
   auto responseJson = buildAllowResponseJson();
   auto requestDuration = makeRequestDurationMetric();
 
@@ -200,23 +281,23 @@ TEST(RbacBackendTest, evaluateTokenMany_measuresRequestDuration) {
   ASSERT_EQ(totalObservations(requestDuration), 0);
 
   auto result =
-      testee.evaluateTokenManySync(rbac::JwtToken{.jwtToken = "my.jwt.token"},
-                                   rbac::Backend::RequestItems{});
+      testee.evaluateManySync(rbac::JwtToken{.jwtToken = "my.jwt.token"},
+                              rbac::Backend::RequestItems{});
 
   ASSERT_TRUE(result.ok());
   EXPECT_EQ(totalObservations(requestDuration), 1);
 
   auto asyncResult =
       testee
-          .evaluateTokenMany(rbac::JwtToken{.jwtToken = "my.jwt.token"},
-                             rbac::Backend::RequestItems{})
+          .evaluateMany(rbac::JwtToken{.jwtToken = "my.jwt.token"},
+                        rbac::Backend::RequestItems{})
           .waitAndGet();
 
   ASSERT_TRUE(asyncResult.ok());
   EXPECT_EQ(totalObservations(requestDuration), 2);
 }
 
-TEST(RbacBackendTest, evaluateTokenMany_measuresRequestDurationOnError) {
+TEST(RbacBackendTest, evaluateMany_measuresRequestDurationOnError) {
   auto requestDuration = makeRequestDurationMetric();
 
   auto sendRequestMock =
@@ -228,8 +309,8 @@ TEST(RbacBackendTest, evaluateTokenMany_measuresRequestDurationOnError) {
   auto testee = rbac::BackendImpl{sendRequestMock, "http://localhost:8080",
                                   &requestDuration};
 
-  auto result = testee.evaluateTokenManySync(
-      rbac::JwtToken{.jwtToken = "bad.token"}, rbac::Backend::RequestItems{});
+  auto result = testee.evaluateManySync(rbac::JwtToken{.jwtToken = "bad.token"},
+                                        rbac::Backend::RequestItems{});
 
   ASSERT_FALSE(result.ok());
   EXPECT_EQ(totalObservations(requestDuration), 1);

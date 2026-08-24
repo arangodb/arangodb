@@ -28,16 +28,10 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Rest/GeneralResponse.h"
-#include "RestServer/DatabaseFeature.h"
 #include "Transaction/OperationOrigin.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/LogicalCollection.h"
-#include "VocBase/Methods/Collections.h"
-#include "StorageEngine/PhysicalCollection.h"
-#include "Transaction/IndexesSnapshot.h"
-#include "IResearch/IResearchDataStore.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>
@@ -65,8 +59,8 @@ void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
   // end of parameter parsing
   // ...........................................................................
 
-  if (auto r = ExecContext::current().canUseView(
-          view->vocbase().name(), view->name(), ViewAccessLevel::Read);
+  if (auto r = ExecContext::current().canReadView(view->vocbase().name(),
+                                                  view->name());
       !r.ok()) {
     // check auth after ensuring that the view exists
     generateError(r);
@@ -464,15 +458,6 @@ void RestViewHandler::getViews() {
   // ...........................................................................
   // end of parameter parsing
   // ...........................................................................
-
-  // TODO check access right per view
-  //  if (auto const& can = ExecContext::current().can();
-  //  can.readView(_vocbase.name(), name)) {
-  //    generateError(
-  //        Result(TRI_ERROR_FORBIDDEN, "insufficient rights to get views"));
-  //
-  //    return;
-  //  }
 
   std::vector<LogicalView::ptr> views;
 
