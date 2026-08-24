@@ -29,6 +29,7 @@
 
 #include <span>
 #include <string>
+#include <variant>
 #include <vector>
 
 #include "Auth/AuthMode.h"
@@ -92,11 +93,13 @@ struct MockService : rbac::Service {
   std::vector<Query> queries;  // all pairs, flattened across all check() calls
   int checkCalls = 0;          // number of check() invocations
   Result answer{};             // returned from every check(); {} == ok
+  rbac::Subject lastSubject;   // subject of the most recent check() call
 
-  auto check(rbac::JwtToken const& /*token*/,
+  auto check(rbac::Subject const& subject,
              std::span<rbac::ActionResource const> qs) noexcept
       -> Result override {
     ++checkCalls;
+    lastSubject = subject;
     for (auto const& q : qs) {
       queries.push_back({q.action, resourceStr(q.resource)});
     }
@@ -520,6 +523,42 @@ TEST_F(RbacAuthModeTest, CompositeCheckIsSentAsOneBatchAndDenialPropagates) {
   EXPECT_EQ(svc.queries[0].resource, "graph:mydb:g");
   EXPECT_EQ(svc.queries[1].resource, "collection:mydb:cc");
   EXPECT_EQ(svc.queries[2].resource, "collection:mydb:cr");
+}
+
+// ---------------------------------------------------------------------------
+// Which subject the authorization service is asked about (COR-907)
+// ---------------------------------------------------------------------------
+
+TEST_F(RbacAuthModeTest, JwtAuthenticatedRequestIsIdentifiedByToken) {
+  // The fixture's mode has both a username and a token, as a Bearer-
+  // authenticated request does. The token is the more precise identity.
+  auto r = check(p::SeeDatabase{.name = "mydb"});
+  ASSERT_TRUE(r.ok()) << r.errorMessage();
+  ASSERT_TRUE(std::holds_alternative<rbac::JwtToken>(svc.lastSubject));
+  EXPECT_EQ(std::get<rbac::JwtToken>(svc.lastSubject).jwtToken, "mytoken");
+}
+
+TEST(RbacAuthModeSubjectTest, BasicAuthenticatedRequestIsIdentifiedByUsername) {
+  // HTTP Basic authentication (and personal access tokens) produce no JWT, so
+  // the verified username has to identify the caller. Before COR-907 this sent
+  // an empty token, which the authorization service always denied.
+  MockService svc;
+  AuthMode::Rbac rbac{svc, "myuser", ""};
+
+  auto r = rbac.check(p::SeeDatabase{.name = "mydb"});
+  ASSERT_TRUE(r.ok()) << r.errorMessage();
+  EXPECT_EQ(svc.checkCalls, 1);
+  ASSERT_TRUE(std::holds_alternative<rbac::Username>(svc.lastSubject));
+  EXPECT_EQ(std::get<rbac::Username>(svc.lastSubject).name, "myuser");
+}
+
+TEST(RbacAuthModeSubjectTest, NoSubjectFailsClosedWithoutAskingTheService) {
+  MockService svc;
+  AuthMode::Rbac rbac{svc, "", ""};
+
+  auto r = rbac.check(p::SeeDatabase{.name = "mydb"});
+  EXPECT_EQ(r.errorNumber(), TRI_ERROR_FORBIDDEN);
+  EXPECT_EQ(svc.checkCalls, 0);
 }
 
 }  // namespace
