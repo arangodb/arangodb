@@ -203,6 +203,11 @@ void RestTasksHandler::registerTask(bool byId) {
 
   bool isSystem = VelocyPackHelper::getBooleanValue(
       body, StaticStrings::DataSourceSystem, false);
+  if (isSystem && !exec.isSuperuserOrDisabled()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  "registering a task on _system needs superuser");
+    return;
+  }
 
   // offset in seconds into period or from now on if no period
   double offset =
