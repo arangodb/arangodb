@@ -29,3 +29,36 @@ using namespace arangodb::tests;
 TEST_F(StorageEngineFixture, CanConstruct) {
   EXPECT_EQ(engine().kEngineName, "rocksdb");
 }
+
+// Own suite, not the shared one - it's already started by TEST_F time.
+TEST(RocksDBEngineRecoveryTest, StateSequenceAndRecoveryDoneOnce) {
+  using ::testing::Return;
+  using ::testing::ReturnRef;
+
+  StorageEngineFixtureSuite suite;
+  suite.serverState.setRole(ServerState::ROLE_SINGLE);
+
+  ON_CALL(suite.dumpLimits, limits())
+      .WillByDefault(ReturnRef(suite.limitsOptions));
+  ON_CALL(suite.flush, isEnabled()).WillByDefault(Return(true));
+  ON_CALL(suite.logProvider, options())
+      .WillByDefault(Return(suite.logSettings));
+  ON_CALL(suite.dbProvider, defaultReplicationVersion())
+      .WillByDefault(Return(replication::Version::ONE));
+
+  RocksDBEngine::cleanupStaleRecoveryHelpers();
+
+  EXPECT_EQ(suite.engine.engineState(), EngineState::kPreRecovery);
+
+  EXPECT_CALL(suite.dbProvider, recoveryDone()).Times(1);
+
+  suite.engine.prepare();
+  suite.engine.start();
+
+  EXPECT_EQ(suite.engine.engineState(), EngineState::kRunning);
+
+  suite.server.beginShutdown();
+  suite.engine.beginShutdown();
+  suite.engine.stop();
+  suite.engine.unprepare();
+}

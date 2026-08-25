@@ -132,9 +132,6 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
 
   void recoveryDone() override;
 
-  // called by the engine once it's open, not by anything else.
-  void bootstrapDatabases(velocypack::Slice databases) override;
-
   /// @brief whether or not the DatabaseFeature has started (and thus has
   /// completely populated its lists of databases and collections from
   /// persistent storage)
@@ -235,6 +232,9 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
 
  private:
   void initCalculationVocbase();
+
+  // called by the engine once it's open, not by anything else.
+  void bootstrapDatabases(velocypack::Slice databases) override;
 
   /// @brief iterate over all databases in the databases directory and open them
   ErrorCode iterateDatabases(velocypack::Slice databases);

@@ -24,7 +24,7 @@
 
 #include "Basics/Result.h"
 
-#include <functional>
+#include <atomic>
 #include <rocksdb/types.h>
 
 namespace arangodb {
@@ -34,9 +34,8 @@ struct IDatabaseProvider;
 
 class RocksDBRecoveryManager final {
  public:
-  using TickCallback = std::function<void(rocksdb::SequenceNumber)>;
-
-  RocksDBRecoveryManager(RocksDBEngine& engine, TickCallback onTick);
+  RocksDBRecoveryManager(RocksDBEngine& engine,
+                         std::atomic<rocksdb::SequenceNumber>& recoveryTick);
 
   void runRecovery();
 
@@ -45,7 +44,7 @@ class RocksDBRecoveryManager final {
 
   RocksDBEngine& _engine;
   IDatabaseProvider& _dbProvider;
-  TickCallback _onTick;
+  std::atomic<rocksdb::SequenceNumber>& _recoveryTick;
 };
 
 }  // namespace arangodb

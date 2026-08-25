@@ -927,9 +927,7 @@ void RocksDBEngine::start() {
 
 void RocksDBEngine::runRecovery() {
   _engineState.store(EngineState::kRecovering, std::memory_order_release);
-  RocksDBRecoveryManager manager(*this, [this](rocksdb::SequenceNumber seq) {
-    _recoveryTick.store(seq, std::memory_order_relaxed);
-  });
+  RocksDBRecoveryManager manager(*this, _recoveryTick);
   manager.runRecovery();
   _engineState.store(EngineState::kRunning, std::memory_order_release);
 }
