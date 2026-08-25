@@ -287,12 +287,15 @@ CommTask::Flow CommTask::prepareExecution(
     // we do not want to return NOT FOUND unless we are the superuser.
     // Otherwise, a user who has no access to a database could see from the
     // error code if the database exists or not. Therefore:
-    if (_auth->isActive() && req.authenticated() && !req.user().empty()) {
-      sendErrorResponse(rest::ResponseCode::UNAUTHORIZED,
-                        req.contentTypeResponse(), req.messageId(),
-                        TRI_ERROR_FORBIDDEN,
-                        "not authorized to execute this request");
-      return Flow::Abort;
+    if (_auth->isActive()) {
+      if ((req.authenticated() && !req.user().empty()) ||
+          !req.authenticated()) {
+        sendErrorResponse(rest::ResponseCode::UNAUTHORIZED,
+                          req.contentTypeResponse(), req.messageId(),
+                          TRI_ERROR_FORBIDDEN,
+                          "not authorized to execute this request");
+        return Flow::Abort;
+      }
     }
     sendErrorResponse(rest::ResponseCode::NOT_FOUND, req.contentTypeResponse(),
                       req.messageId(), TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
@@ -520,7 +523,8 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION-- statistics handling                             protected methods
+// --SECTION-- statistics handling                             protected
+// methods
 // -----------------------------------------------------------------------------
 
 void CommTask::setStatistics(uint64_t id, RequestStatistics::Item&& stat) {
@@ -608,7 +612,8 @@ void CommTask::sendErrorResponse(rest::ResponseCode code,
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
+// --SECTION--                                                   private
+// methods
 // -----------------------------------------------------------------------------
 
 // Handle a request during the server startup
@@ -656,8 +661,8 @@ void CommTask::handleRequestStartup(std::shared_ptr<RestHandler> handler) {
   });
 }
 
-// Execute a request by queueing it in the scheduler and having it executed via
-// a scheduler worker thread eventually.
+// Execute a request by queueing it in the scheduler and having it executed
+// via a scheduler worker thread eventually.
 void CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   DTRACE_PROBE2(arangod, CommTaskHandleRequestSync, this, handler.get());
 
@@ -835,8 +840,8 @@ void CommTask::processCorsOptions(std::unique_ptr<GeneralRequest> req,
     if (!allowHeaders.empty()) {
       // allow all extra headers the client requested
       // we don't verify them here. the worst that can happen is that the
-      // client sends some broken headers and then later cannot access the data
-      // on the server. that's a client problem.
+      // client sends some broken headers and then later cannot access the
+      // data on the server. that's a client problem.
       resp->setHeaderNCIfNotSet(StaticStrings::AccessControlAllowHeaders,
                                 allowHeaders);
 
@@ -946,9 +951,9 @@ Result CommTask::handleContentEncoding(GeneralRequest& req) {
       VPackBuffer<uint8_t> dst;
       if (ErrorCode r = arangodb::encoding::gzipUncompress(src, len, dst);
           r != TRI_ERROR_NO_ERROR) {
-        return {
-            r,
-            "a decoding error occurred while handling Content-Encoding: gzip"};
+        return {r,
+                "a decoding error occurred while handling Content-Encoding: "
+                "gzip"};
       }
       req.setPayload(std::move(dst));
       // as we have decoded, remove the encoding header.

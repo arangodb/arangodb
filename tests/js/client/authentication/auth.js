@@ -962,7 +962,7 @@ function AuthSuite() {
         }
       });
       expect(res).to.be.an.instanceof(request.Response);
-      expect(res).to.have.property('statusCode', 404);
+      expect(res).to.have.property('statusCode', 401);
 
       // should prevent name guessing by unauthorized users
       res = request.get({
