@@ -1,5 +1,13 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+* COR-741: AQL `MATCH` inline bare attribute keeps support unquoted nested
+  paths. Dot notation preserves object hierarchy, e.g.
+  `MATCH (v:users RETURN profile.name) RETURN v` binds `v` to
+  `{ "_id", "profile": { "name": ... } }`. Sibling paths sharing a prefix
+  merge into one nested object. Quoted keys such as `"profile.name"` remain
+  a single literal top-level attribute. Aliasing (`RETURN name = <expr>`,
+  COR-742) stays flat. The `MATCH` statement remains experimental
+  (`matchStatement: "experimental"`).
 
 * Updated ArangoDB Starter to v0.20.0-preview-16.
 
