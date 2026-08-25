@@ -25,7 +25,6 @@
 #include "Basics/Result.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/overload.h"
 #include "Basics/voc-errors.h"
 #include "Inspection/JsonPrintInspector.h"
 #include "Inspection/VPackLoadInspector.h"
@@ -43,8 +42,6 @@
 
 #include <chrono>
 #include <sstream>
-#include <utility>
-#include <variant>
 
 namespace arangodb::rbac {
 
@@ -91,11 +88,6 @@ BackendImpl::BackendImpl(network::Sender sendRequest,
       _requestDuration(requestDuration) {}
 
 namespace {
-
-constexpr std::string_view kEvaluateTokenManyPath =
-    "/_integration/authorization/v1/evaluate-token-many";
-constexpr std::string_view kEvaluateManyPath =
-    "/_integration/authorization/v1/evaluate-many";
 
 template<typename T>
 auto buildJsonBody(T& value) -> std::string {
@@ -159,9 +151,9 @@ auto jsonToPayload(std::string_view json) -> velocypack::Buffer<uint8_t> {
 
 }  // namespace
 
-auto BackendImpl::evaluateManyImpl(Subject const& subject,
-                                   RequestItems const& items,
-                                   transaction::MethodsApi api)
+auto BackendImpl::evaluateTokenManyImpl(JwtToken const& token,
+                                        RequestItems const& items,
+                                        transaction::MethodsApi api)
     -> futures::Future<ResultT<EvaluateResponseMany>> {
   // Measures the whole call: serializing the request, the round trip to the
   // authorization service, and parsing the response. The guard fires when the
@@ -177,29 +169,16 @@ auto BackendImpl::evaluateManyImpl(Subject const& subject,
     }
   }};
 
-  auto [path, bodyResult] =
-      std::visit(overload{
-                     [&](JwtToken const& t) {
-                       auto request = EvaluateTokenManyRequest{
-                           .token = t.jwtToken,
-                           .items = items.items,
-                       };
-                       return std::pair{std::string{kEvaluateTokenManyPath},
-                                        buildJsonBody(request)};
-                     },
-                     [&](Username const& u) {
-                       auto request = EvaluateManyRequest{
-                           .user = u.name,
-                           .items = items.items,
-                       };
-                       return std::pair{std::string{kEvaluateManyPath},
-                                        buildJsonBody(request)};
-                     },
-                 },
-                 subject);
+  auto requestBody = EvaluateTokenManyRequest{
+      .token = token.jwtToken,
+      .items = items.items,
+  };
 
-  auto response = co_await sendRequest(fuerte::RestVerb::Post, std::move(path),
-                                       bodyResult, api);
+  auto bodyResult = buildJsonBody(requestBody);
+
+  auto response = co_await sendRequest(
+      fuerte::RestVerb::Post,
+      "/_integration/authorization/v1/evaluate-token-many", bodyResult, api);
 
   if (auto result = response.combinedResult(); result.fail()) {
     co_return result;
