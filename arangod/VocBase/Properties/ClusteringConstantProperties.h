@@ -23,6 +23,7 @@
 #pragma once
 
 #include "Basics/StaticStrings.h"
+#include "Containers/FlatHashMap.h"
 #include "Inspection/Access.h"
 #include "Replication2/AgencyCollectionSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
@@ -51,6 +52,11 @@ struct ClusteringConstantProperties {
   // when the shard is created, so only the load path ever carries it.
   inspection::NonNullOptional<replication2::LogId> replicatedStateId{
       std::nullopt};
+  // The shard-to-serever mapping; maintained by the agency at runtime.
+  // CollectionDescriptor only transports a snapshot of it on load path.
+  inspection::NonNullOptional<
+      containers::FlatHashMap<ShardID, std::vector<std::string>>>
+      shards{std::nullopt};
 
   bool operator==(ClusteringConstantProperties const& other) const = default;
 
@@ -95,7 +101,8 @@ auto inspect(Inspector& f, ClusteringConstantProperties& props) {
         f.field("shardsR2", props.shardsR2).fallback(f.keep()),
         f.field(StaticStrings::GroupId, props.groupId).fallback(f.keep()),
         f.field("replicatedStateId", props.replicatedStateId)
-            .fallback(f.keep()));
+            .fallback(f.keep()),
+        f.field("shards", props.shards).fallback(f.keep()));
   } else {
     // If the user specifies the shards list, groupId or replicatedStateId, we
     // reject it.

@@ -252,8 +252,10 @@ ShardingInfo::ShardingInfo(CollectionDescriptor const& descriptor,
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  // COR-885: "shards" is runtime state that only the load path carries,
-  // therefore, we must set it here in load path.
+  if (descriptor.clusteringConstant.shards.has_value()) {
+    _shardIds = std::make_shared<ShardMap>(
+        descriptor.clusteringConstant.shards.value());
+  }
 
   auto& server = _collection->vocbase().server();
 #ifdef ARANGODB_USE_GOOGLE_TESTS
