@@ -119,7 +119,24 @@ void ArangodServer::processOptions() {
   }
 #endif
 
-  // Cap RocksDB memory defaults on agency agents unless explicitly configured.
+  // RBAC has no non-hardened mode. Force the flag on rather than rejecting the
+  // combination, so that `--server.harden` simply has no effect once RBAC is
+  // enabled.
+  if (!getOptions<AuthenticationOptionsProvider>()
+           .externalRbacService.empty()) {
+    if (options()->processingResult().touched("--server.harden") &&
+        !getOptions<security::ServerSecurityOptionsProvider>()
+             .hardenedRestApi) {
+      LOG_TOPIC("f3e1c", WARN, Logger::STARTUP)
+          << "RBAC is enabled, but REST API is not hardened: "
+             "RBAC implies --server.harden=true - forcing hardened REST API";
+    }
+    mutableOptions<security::ServerSecurityOptionsProvider>().hardenedRestApi =
+        true;
+  }
+
+  // Cap RocksDB memory defaults on agency agents unless explicitly
+  // configured.
   auto const& agencyOptions = getOptions<AgencyOptionsProvider>();
   if (agencyOptions.activated) {
     applyAgencyRocksDBMemoryLimits(

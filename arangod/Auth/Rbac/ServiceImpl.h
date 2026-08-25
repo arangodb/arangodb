@@ -32,7 +32,7 @@ namespace arangodb::rbac {
 struct ServiceImpl : Service {
   explicit ServiceImpl(std::unique_ptr<Backend> backend);
 
-  auto check(Subject const& subject,
+  auto check(JwtToken const& token,
              std::span<ActionResource const> queries) noexcept
       -> Result override;
 
