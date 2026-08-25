@@ -97,8 +97,7 @@ bool isEcPublicKey(std::string const& pemContent) {
 auto loadKeyString(std::string contents) -> ResultT<AuthKey> {
   // Check if this is an ES256 key (PEM format)
   if (contents.empty()) {
-    LOG_DEVEL << "trying to load empty key";
-    //    return Result(TRI_ERROR_BAD_PARAMETER, "empty key given");
+    return Result(TRI_ERROR_BAD_PARAMETER, "empty key given");
   }
   if (isPemFormat(contents)) {
     // The active secret must be a private key for signing JWT tokens
@@ -113,7 +112,6 @@ auto loadKeyString(std::string contents) -> ResultT<AuthKey> {
   } else {
     // Non-PEM format, treat it as HS256
     if (contents.length() < HS256Key::kMinSecretLength) {
-      LOG_DEVEL << "TOO SHORT KEY: length " << contents.length();
       return Result(TRI_ERROR_BAD_PARAMETER,
                     "Given JWT secret too short. Minimal length is 32.");
     } else if (contents.length() > HS256Key::kMaxSecretLength) {

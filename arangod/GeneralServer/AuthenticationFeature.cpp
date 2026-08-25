@@ -71,7 +71,7 @@ AuthenticationFeature::AuthenticationFeature(
   if (res.ok()) {
     _authInfo.assign(res.get());
   } else {
-    LOG_TOPIC("d3617", FATAL, Logger::STARTUP) << res.errorMessage();
+    LOG_TOPIC("d4417", FATAL, Logger::STARTUP) << res.errorMessage();
     FATAL_ERROR_EXIT();
   }
 
