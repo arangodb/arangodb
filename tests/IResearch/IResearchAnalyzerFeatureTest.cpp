@@ -63,6 +63,7 @@
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Sharding/ShardingFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "Transaction/StandaloneContext.h"
@@ -1445,7 +1446,7 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
     };
     static const IndexTypeFactory indexTypeFactory(server.server());
     auto& indexFactory = const_cast<arangodb::IndexFactory&>(
-        server.getFeature<arangodb::DatabaseFeature>().engine().indexFactory());
+        server.getFeature<arangodb::StorageEngine>().indexFactory());
     indexFactory.emplace("testType", indexTypeFactory);
   }
 
