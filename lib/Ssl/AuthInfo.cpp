@@ -114,8 +114,8 @@ auto loadKeyString(std::string contents) -> ResultT<AuthKey> {
     // Non-PEM format, treat it as HS256
     if (contents.length() < HS256Key::kMinSecretLength) {
       LOG_DEVEL << "TOO SHORT KEY: length " << contents.length();
-      //      return Result(TRI_ERROR_BAD_PARAMETER,
-      //              "Given JWT secret too short. Minimal length is 32.");
+      return Result(TRI_ERROR_BAD_PARAMETER,
+                    "Given JWT secret too short. Minimal length is 32.");
     } else if (contents.length() > HS256Key::kMaxSecretLength) {
       return Result(TRI_ERROR_BAD_PARAMETER,
                     "Given JWT secret too long. Maximal length is 64.");
