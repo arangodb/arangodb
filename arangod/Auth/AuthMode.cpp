@@ -927,24 +927,8 @@ auto AuthMode::Rbac::username() const noexcept -> std::string_view {
   return _username;
 }
 
-namespace {
-
-auto subjectOf(AuthMode::Rbac const& mode) -> rbac::Subject {
-  if (!mode._jwtToken.empty()) {
-    return rbac::JwtToken{mode._jwtToken};
-  }
-  return rbac::Username{mode._username};
-}
-
-}  // namespace
-
 auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
   namespace p = auth::perms;
-
-  if (_jwtToken.empty() && _username.empty()) {
-    return {TRI_ERROR_FORBIDDEN,
-            "no authenticated subject for RBAC permission check"};
-  }
 
   auto databaseAccessModeToAction =
       [](DatabaseAccessLevel level) -> rbac::Action {
@@ -1058,9 +1042,8 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
   // case is passed as a span over a stack-local pair and needs no allocation;
   // only the composite permissions (create/modify view, create/drop graph)
   // build a small vector.
-  auto checkAll = [&, subject = subjectOf(*this)](
-                      std::span<rbac::ActionResource const> queries) -> Result {
-    return _rbacService.check(subject, queries);
+  auto checkAll = [&](std::span<rbac::ActionResource const> queries) -> Result {
+    return _rbacService.check(rbac::JwtToken{_jwtToken}, queries);
   };
   auto checkOne = [&](rbac::Action action, rbac::Resource resource) -> Result {
     rbac::ActionResource query{action, std::move(resource)};
