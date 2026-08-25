@@ -189,9 +189,7 @@ def create_generator_config(
 
     # Create test execution config
     arangosh_args_list = TestArguments.parse_args_string(arangosh_args or "")
-    extra_args_list = TestArguments.parse_args_string(
-        extra_args or "",
-    )
+    extra_args_list = TestArguments.parse_args_string(extra_args or "")
 
     test_execution = TestExecutionConfig(
         arangosh_args=arangosh_args_list,
@@ -281,10 +279,11 @@ def create_generator_config(
 )
 @click.option(
     "--create-test-docker-images",
-    type=click.Choice(["none", "alpine", "deb"]),
+    type=click.Choice(["none", "alpine"]),
     default="none",
-    help="Build and publish a multi-arch arangodb/enterprise-test Docker "
-    "image (Alpine- or Debian-based) to public ECR from the build results",
+    help="Build and publish the multi-arch arangodb/core-test and "
+    "arangodb/client-tools-test Docker images (Alpine 3.24 based) to "
+    "public ECR from the build results",
 )
 @click.option(
     "--validate-only",

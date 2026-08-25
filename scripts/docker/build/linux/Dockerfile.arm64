@@ -19,11 +19,11 @@ RUN apt-get update --fix-missing && \
     apt-get install -y \
       software-properties-common net-tools lsb-release bzip2 \
       build-essential cmake make bison flex python3 ccache git libjemalloc-dev \
-      vim exuberant-ctags gdb fish psmisc sudo debhelper debconf jq libdb-dev \
+      vim exuberant-ctags gdb fish psmisc sudo jq libdb-dev \
       gcovr prometheus bc tcpdump liburing-dev cppcheck libopenblas-dev gfortran \
       cmake ninja-build git liblapack-dev python3-pip libgd3 linux-libc-dev libcrypt-dev \
       libnsl-dev rpcsvc-proto libtirpc-dev curl gnupg gnupg2 \
-      rpm debugedit dwz elfutils clamav cpio \
+      clamav \
   && rm -rf /var/cache/apt/archives /var/lib/apt/lists
 
 COPY --from=glibcdebs /root/debs /debs
@@ -75,7 +75,7 @@ RUN ln -s $(echo llvm-toolchain-${CLANG_VERSION}-*) /llvm-toolchain-${CLANG_VERS
 WORKDIR /llvm-toolchain-${CLANG_VERSION}
 
 # Patch omp to enable running when it is a static library
-RUN git apply /diff_llvm.patch
+RUN git apply /diff_llvm.patch 
 
 WORKDIR build
 
@@ -85,7 +85,11 @@ RUN cmake -G Ninja -DLLVM_ENABLE_PROJECTS="clang;openmp" -DCMAKE_C_COMPILER=clan
   -DENABLE_LIBOMPTARGET=OFF -DLIBOMP_INSTALL_ALIASES=OFF ../llvm && ninja && \
   mkdir -p /opt/omp && cp ./lib/libomp.so.5 /opt/omp/libomp.a
 
+
+
 # Finally, build the actual build image based on the above preparation:
+
+FROM prepare
 
 LABEL org.opencontainers.image.authors="Max Neunhoeffer <max@arango.ai>"
 
@@ -145,7 +149,6 @@ RUN LC_ALL="C" update-ccache-symlinks
 
 RUN git config --global --add safe.directory '*'
 
-COPY --from=node_modules /root/node_modules.tar.xz /node_modules.tar.xz
 
 RUN pip3 install awscli py7zr psutil cppcheck-junit lcov_cobertura --break-system-packages
 

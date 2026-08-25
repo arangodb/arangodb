@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
 if [ -z "$ARANGO_INIT_PORT" ] ; then
@@ -34,12 +34,12 @@ if [ -d /sys/devices/system/node/node1 -a -f /proc/self/numa_maps ]; then
 fi
 
 if [ "$1" = 'arangod' ]; then
-    # /var/lib/arangodb3 and /var/lib/arangodb3-apps must exist and
+    # /var/lib/arangodb4 must exist and
     # be writable by the user under which we run the container.
 
     # Make a copy of the configuration file to patch it, note that this
     # must work regardless under which user we run:
-    cp /etc/arangodb3/arangod.conf /tmp/arangod.conf
+    cp /etc/arangodb4/arangod.conf /tmp/arangod.conf
 
     ARANGO_STORAGE_ENGINE=rocksdb
     if [ ! -z "$ARANGO_ENCRYPTION_KEYFILE" ]; then
@@ -47,7 +47,7 @@ if [ "$1" = 'arangod' ]; then
         sed -i /tmp/arangod.conf -e "s;^.*encryption-keyfile.*;encryption-keyfile=$ARANGO_ENCRYPTION_KEYFILE;"
     fi
 
-    if [ ! -f /var/lib/arangodb3/SERVER ] && [ "$SKIP_DATABASE_INIT" != "1" ]; then
+    if [ ! -f /var/lib/arangodb4/SERVER ] && [ "$SKIP_DATABASE_INIT" != "1" ]; then
         if [ ! -z "$ARANGO_ROOT_PASSWORD_FILE" ]; then
             if [ -f "$ARANGO_ROOT_PASSWORD_FILE" ]; then
                 ARANGO_ROOT_PASSWORD="$(cat $ARANGO_ROOT_PASSWORD_FILE)"
@@ -75,12 +75,6 @@ if [ "$1" = 'arangod' ]; then
             echo "Initializing root user...Hang on..."
             ARANGODB_DEFAULT_ROOT_PASSWORD="$ARANGO_ROOT_PASSWORD" /usr/sbin/arango-init-database -c /tmp/arangod.conf --server.rest-server false --log.level error --database.init-database true || true
             export ARANGO_ROOT_PASSWORD
-
-            if [ ! -z "${ARANGO_ROOT_PASSWORD}" ]; then
-                ARANGOSH_ARGS=" --server.password ${ARANGO_ROOT_PASSWORD} "
-            fi
-        else
-            ARANGOSH_ARGS=" --server.authentication false"
         fi
 
         echo "Initializing database...Hang on..."
@@ -106,13 +100,10 @@ if [ "$1" = 'arangod' ]; then
                 exit 1
             fi
 
-            let counter=counter+1
+            counter=$((counter+1))
             ARANGO_UP=1
 
-            $NUMACTL arangosh \
-                --server.endpoint=tcp://127.0.0.1:$ARANGO_INIT_PORT \
-                --server.authentication false \
-                --javascript.execute-string "db._version()" \
+            wget -q -O /dev/null "http://127.0.0.1:$ARANGO_INIT_PORT/_api/version" \
                 > /dev/null 2>&1 || ARANGO_UP=0
         done
 
@@ -123,25 +114,14 @@ if [ "$1" = 'arangod' ]; then
                 . "$f"
                 ;;
             *.js)
-                echo "$0: running $f"
-                $NUMACTL arangosh ${ARANGOSH_ARGS} \
-                        --server.endpoint=tcp://127.0.0.1:$ARANGO_INIT_PORT \
-                        --javascript.execute "$f"
+                echo >&2 "$0: cannot run $f: the server image no longer contains arangosh."
+                echo >&2 "  Use the client-tools image (or the client TAR.GZ bundle) to run JS setup scripts against the server."
+                exit 1
                 ;;
             */dumps)
-                echo "$0: restoring databases"
-                for d in $f/*; do
-                    DBName=$(echo ${d}|sed "s;$f/;;")
-                    echo "restoring $d into ${DBName}";
-                    $NUMACTL arangorestore \
-                        ${ARANGOSH_ARGS} \
-                        --server.endpoint=tcp://127.0.0.1:$ARANGO_INIT_PORT \
-                        --create-database true \
-                        --include-system-collections true \
-                        --server.database "$DBName" \
-                        --input-directory "$d"
-                done
-                echo
+                echo >&2 "$0: cannot restore $f: the server image no longer contains arangorestore."
+                echo >&2 "  Use the client-tools image (or the client TAR.GZ bundle) to restore dumps into the server."
+                exit 1
                 ;;
             esac
         done

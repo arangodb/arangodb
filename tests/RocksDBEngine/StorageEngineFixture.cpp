@@ -25,10 +25,6 @@
 
 namespace arangodb::tests {
 
-std::unique_ptr<StorageEngineFixtureSuite> StorageEngineFixture::_suite;
-std::unique_ptr<StorageEngineFixtureSuite>
-    TimeTravelStorageEngineFixture::_suite;
-
 std::unique_ptr<StorageEngineFixtureSuite> makeStartedSuite(bool timeTravel) {
   auto suite = std::make_unique<StorageEngineFixtureSuite>(timeTravel);
   suite->serverState.setRole(ServerState::ROLE_SINGLE);

@@ -39,12 +39,6 @@ unpack() {
     *.tar.gz|*.tar|*.zip|*.exe|*.dmg|*.html)
       cp "${filename}" "${SANDBOX}/work" || return 1
       ;;
-    *.deb)
-      (cd "${SANDBOX}/work" && ar x "${filename}") || return 1
-      ;;
-    *.rpm)
-      (cd "${SANDBOX}/work" && rpm2cpio "${filename}" | cpio -i -d --quiet) || return 1
-      ;;
     *)
       echo "FATAL: unknown file type in '${filename}'" >&2
       return 1
