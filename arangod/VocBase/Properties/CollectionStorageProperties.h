@@ -25,6 +25,7 @@
 #include "Basics/StaticStrings.h"
 #include "Inspection/Access.h"
 #include "Inspection/Status.h"
+#include "VocBase/Properties/CollectionVersion.h"
 #include "VocBase/Properties/InspectContexts.h"
 
 #include <cstdint>
@@ -44,11 +45,26 @@ struct CollectionStorageProperties {
       static inspection::Status fromSerialized(SerializedType const& v,
                                                MemoryType& result);
     };
+
+    /// VPack stores the version as a number (same as today).
+    struct VersionAsNumber {
+      using MemoryType = CollectionVersion;
+      using SerializedType = std::underlying_type_t<CollectionVersion>;
+
+      static inspection::Status toSerialized(MemoryType v,
+                                             SerializedType& result);
+      static inspection::Status fromSerialized(SerializedType const& v,
+                                               MemoryType& result);
+    };
   };
 
   /// RocksDB object id; 0 means not assigned yet / coordinator stub.
   /// cacheEnabled lives only on CollectionMutableProperties.
   uint64_t objectId{0};
+
+  /// On-disk format version. A collection older than
+  /// minimumCollectionVersion() needs --database.auto-upgrade.
+  CollectionVersion version{currentCollectionVersion()};
 
   bool operator==(CollectionStorageProperties const&) const = default;
 };
@@ -60,10 +76,14 @@ auto inspect(Inspector& f, CollectionStorageProperties& props) {
         f.field(StaticStrings::ObjectId, props.objectId)
             .transformWith(
                 CollectionStorageProperties::Transformers::ObjectIdAsString{})
+            .fallback(f.keep()),
+        f.field(StaticStrings::Version, props.version)
+            .transformWith(
+                CollectionStorageProperties::Transformers::VersionAsNumber{})
             .fallback(f.keep()));
   } else {
-    // objectId is assigned by the storage engine. On the user path it must stay
-    // unknown, so the create API rejects it as it always has.
+    // Both are assigned by the server. On the user path they must stay unknown,
+    // so the create API rejects them as it always has.
     return f.object(props).fields();
   }
 }
