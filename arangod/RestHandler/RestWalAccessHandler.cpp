@@ -152,11 +152,11 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
         _request->parsedValue("includeFoxxQueues", false);
   } else {
     bool found = false;
-    _request->value("includeFoxxQueues", found);
+    std::ignore = _request->value("includeFoxxQueues", found);
     if (found) {
-      LOG_TOPIC("f1c3e", ERR, Logger::REQUESTS)
-          << "'includeFoxxQueues' query parameter no longer exists in API "
-             "version 1 and above.";
+      LOG_TOPIC("f1c3e", WARN, Logger::REQUESTS)
+          << "ignoring 'includeFoxxQueues' query parameter: it no longer "
+             "exists in API version 1 and above";
     }
     filter.includeFoxxQueues = false;
   }

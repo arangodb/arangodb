@@ -1863,7 +1863,7 @@ static void JS_DBProperties(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto& vocbase = GetContextVocBase(isolate);
 
   VPackBuilder builder;
-  vocbase.toVelocyPack(builder);
+  vocbase.toVelocyPack(builder, 0);
 
   auto result = TRI_VPackToV8(isolate, builder.slice());
 

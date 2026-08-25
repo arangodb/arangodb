@@ -267,7 +267,7 @@ void buildHealthResult(
         } else {
           for (auto const& agentIter : VPackObjectIterator(member.value)) {
             if (!agentIter.key.isEqualString("Timestamp")) {
-              builder.add(agentIter.key.copyString(), agentIter.value);
+              builder.add(agentIter.key.stringView(), agentIter.value);
             }
           }
         }

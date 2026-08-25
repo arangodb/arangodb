@@ -57,11 +57,11 @@
 #include <absl/strings/str_cat.h>
 #include <velocypack/Exception.h>
 
+#include <algorithm>
 #include <initializer_list>
 
-using namespace arangodb;
+namespace arangodb::rest {
 using namespace arangodb::basics;
-using namespace arangodb::rest;
 
 RestHandler::RestHandler(application_features::ApplicationServer& server,
                          GeneralRequest* request, GeneralResponse* response)
@@ -835,9 +835,7 @@ bool RestHandler::isAllowedHttpMethod(
 }
 
 bool RestHandler::rejectNumericCollectionId(std::string_view cname) {
-  if (cname.empty() || cname.front() < '0' || cname.front() > '9') {
-    return false;  // early exit
-  }
+  TRI_ASSERT(!cname.empty());
   if (std::all_of(cname.begin(), cname.end(),
                   [](unsigned char c) { return c >= '0' && c <= '9'; })) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -910,3 +908,5 @@ void RestHandler::runHandler(
         }
       });
 }
+
+}  // namespace arangodb::rest

@@ -277,7 +277,8 @@ the request under V1.
   * **V0**: both are no-ops (since 3.9) returning `200` with a collection
     representation; `unload` optionally flushes the WAL.
   * **V1**: the sub-command is not recognised, so the request falls through
-    to the "expecting one of the actions …" HTTP `400`.
+    to the "expecting one of the actions …" error, which is
+    `TRI_ERROR_HTTP_NOT_FOUND` — HTTP `404`.
 
 * **`GET /_api/wal/open-transactions`** (`RestWalAccessHandler.cpp`, line
   ~240):
@@ -308,10 +309,21 @@ the request under V1.
   `TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING`. **V0** still accepts
   `?collection=<name>`.
 
-* **Numeric collection IDs in the path** (`RestDocumentHandler.cpp`, lines
-  ~192, ~357, ~506 and ~711): under **V1** a path segment consisting only of
-  digits is rejected with HTTP `400`, "Numeric collection IDs are not allowed;
-  please use the collection name instead". **V0** resolves them.
+* **Numeric collection IDs in the path** (`RestHandler::rejectNumericCollectionId`):
+  under **V1** a path segment consisting only of digits is rejected with HTTP
+  `400`, "Numeric collection IDs are not allowed; please use the collection
+  name instead". **V0** resolves them. Enforced at these entry points:
+  * `RestDocumentHandler.cpp`: `insertDocument`, `readSingleDocument` (also
+    covers `HEAD`), `modifyDocument` (`PUT`/`PATCH`), `readManyDocuments`
+    (`PUT ...?onlyget`) and `removeDocument`.
+  * `RestCollectionHandler.cpp`: `handleCommandGet`, `handleCommandPut` and
+    `handleCommandDelete`.
+
+  Together these cover the surface deprecated in 3.4, which named exactly
+  `/_api/collection/<collection-id>`, `/_api/document/<collection-id>` and
+  `/_api/simple`. The third needs no check: the whole simple-queries API is
+  V0-only (see the route table above), so it cannot be reached under V1 at
+  all.
 
 * **The `overwrite` query parameter on document inserts**
   (`RestDocumentHandler.cpp`, line ~219): under **V1** it is rejected with
@@ -329,10 +341,10 @@ the request under V1.
   **V1** the parameter has no effect.
 
 * **Deprecated index types on `POST /_api/index`**
-  (`RestIndexHandler.cpp`, line ~919): under **V1**, creating an index of
+  (`RestIndexHandler.cpp`, line ~909): under **V1**, creating an index of
   type `geo1`, `geo2`, `hash`, `skiplist` or `fulltext` fails with HTTP `400`
-  / `TRI_ERROR_BAD_PARAMETER`, "index type is not supported in API version 1
-  or higher". Under **V0** these aliases are still accepted.
+  / `TRI_ERROR_BAD_PARAMETER`, "index type '<type>' is not supported in API
+  version 1 or higher". Under **V0** these aliases are still accepted.
 
 ## Response attributes omitted under V1
 
@@ -345,18 +357,29 @@ the request under V1.
 * **`GET /_api/version?details=true`** (`RestVersionHandler.cpp`, line ~83):
   `details.mode` is reported under **V0** only.
 
-* **`GET /_api/database/current`** (`arangod/VocBase/Methods/Databases.cpp`,
-  lines ~133 and ~145): the `path` attribute (the filesystem path of the
-  database, or `"none"` on a Coordinator) is reported under **V0** only.
+* **`GET /_api/database/current`** (`arangod/VocBase/vocbase.cpp`,
+  `Database::toVelocyPack`): the `path` attribute (the filesystem path of the
+  database, or `"none"` outside a Coordinator) is reported under **V0** only.
+
+* **`GET /_api/replication/clusterInventory`**
+  (`RestReplicationHandler.cpp` line ~861): serialises the same
+  `Database::toVelocyPack`, so its `properties.path` attribute is likewise
+  reported under **V0** only. `arangodump` is the only in-tree consumer and
+  does not read the attribute.
 
 * **`GET /_admin/cluster/health`** (`RestAdminClusterHandler.cpp`, line
   ~2353): the deprecated per-node `Timestamp` attribute is reported under
   **V0** only. `LastAckedTime` carries the same information in both versions.
 
 * **`GET /_api/engine`** (`RestHandler/RestEngineHandler.cpp` line ~85 →
-  `StorageEngine::getCapabilities` → `IndexFactory::indexAliases`): the index
-  name aliases `hash` → `persistent` and `skiplist` → `persistent` are
-  reported under **V0** only; `zkd` → `mdi` is reported under both.
+  `StorageEngine::getCapabilities`): two separate parts of the response drop
+  the deprecated types under **V1**:
+  * `supports.aliases.indexes` (`IndexFactory::indexAliases`): the aliases
+    `hash` → `persistent` and `skiplist` → `persistent` are reported under
+    **V0** only; `zkd` → `mdi` is reported under both.
+  * `supports.indexes` (`IndexFactory::supportedIndexes`): `hash`, `skiplist`
+    and `fulltext` are appended under **V0** only, so they are absent from the
+    **V1** list. Array order is not part of the contract.
 
 ## Summary table of HTTP status / errorNum differences
 
@@ -380,7 +403,7 @@ the request under V1.
 | `/_admin/log`, `/_admin/log` DELETE (no suffix) | Old log format / clears log | HTTP 410 `TRI_ERROR_HTTP_GONE` → use `/_admin/log/entries` |
 | `POST /_api/transaction` (JS transactions) | Executes the JS transaction | HTTP 404 → use `/_api/transaction/begin` |
 | `PUT /_api/cursor/<id>` | Fetches next batch | HTTP 405 → use `POST` |
-| `PUT /_api/collection/<name>/load`, `/unload` | 200 (no-op) | HTTP 400 (unknown action) |
+| `PUT /_api/collection/<name>/load`, `/unload` | 200 (no-op) | HTTP 404 (unknown action) |
 | `GET /_api/wal/open-transactions` | Served | HTTP 400 (unknown suffix) |
 | `/_admin/cluster/nodeStatistics`, `/_admin/cluster/statistics` | Proxied to `/_admin/statistics` | HTTP 400 (unknown command) |
 | Non-GET on `/_api/version`, `/_admin/time`, `/_admin/support-info` | Handled | HTTP 405 |
@@ -393,8 +416,9 @@ the request under V1.
 | `GET /_admin/status` response | Includes `mode`, `operationMode`, `foxxApi`, `serverInfo.writeOpsEnabled`, `coordinator` | Those attributes omitted |
 | `GET /_api/version?details=true` response | Includes `details.mode` | Omitted |
 | `GET /_api/database/current` response | Includes `path` | Omitted |
+| `GET /_api/replication/clusterInventory` response | `properties` includes `path` | Omitted |
 | `GET /_admin/cluster/health` response | Includes per-node `Timestamp` | Omitted |
-| `GET /_api/engine` response | Index aliases include `hash`, `skiplist` | Only `zkd` → `mdi` |
+| `GET /_api/engine` response | `supports.indexes` includes `hash`, `skiplist`, `fulltext`; aliases include `hash`, `skiplist` | Those dropped; only the `zkd` → `mdi` alias remains |
 | Unsupported/unknown version prefix in URL | n/a | HTTP 404 / `TRI_ERROR_HTTP_NOT_FOUND`, `"unknown path"` |
 
 ## Source locations referenced
@@ -420,6 +444,6 @@ the request under V1.
 * `arangod/RestHandler/RestStatusHandler.cpp`
 * `arangod/RestHandler/RestEngineHandler.cpp`
 * `arangod/RestHandler/{RestTimeHandler,RestSupportInfoHandler}.cpp`
-* `arangod/VocBase/Methods/Databases.cpp`
+* `arangod/VocBase/vocbase.cpp` (`Database::toVelocyPack`)
 * `arangod/Indexes/IndexFactory.cpp`, `arangod/RocksDBEngine/RocksDBIndexFactory.cpp`
 * `arangod/Auth/AuthMode.cpp`

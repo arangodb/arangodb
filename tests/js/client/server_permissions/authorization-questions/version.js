@@ -129,9 +129,9 @@ function versionApiAuthzSuite () {
       ], endObserve());
     },
 
-    // GET /_arango/v1/_admin/version does not exist
-    testAdminVersioV1DoesNotExist: function () {
-      beginObserve();
+    // GET /_arango/v1/_admin/version does not exist - the route is registered
+    // for API version 0 only, so the handler lookup already fails.
+    testAdminVersionV1DoesNotExist: function () {
       const res = arango.GET_RAW(`/_arango/v1/_admin/version`);
       assertEqual(404, res.code);
     },
