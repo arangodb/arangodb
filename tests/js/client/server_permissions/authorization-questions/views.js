@@ -44,7 +44,6 @@ if (getOptions === true) {
 }
 
 const jsunity = require('jsunity');
-const db = require('@arangodb').db;
 const {
   beginObserve,
   endObserve,
@@ -70,13 +69,6 @@ function viewApiAuthzSuite () {
     links: { c: { includeAllFields: true } }
   };
 
-  // AUDIT: on a single server an arangosearch link is resolved twice - once by
-  // the collection's name and once by its id, i.e. the id is passed where a
-  // name is expected. A coordinator only resolves it by name. The id is the one
-  // value that cannot be spelled out below; it is read in setUpAll, so that no
-  // request is sent while an observation is running.
-  let cId;
-
   function dropView (name) {
     arango.DELETE_RAW(`/_db/${DB}/_api/view/${name}`);
   }
@@ -86,12 +78,7 @@ function viewApiAuthzSuite () {
   }
 
   return {
-    setUpAll: function () {
-      setUpApiTestData();
-      db._useDatabase(DB);
-      cId = db._collection(c)._id;
-      db._useDatabase('_system');
-    },
+    setUpAll: setUpApiTestData,
     tearDownAll: tearDownApiTestData,
 
     tearDown: function () {
@@ -111,10 +98,7 @@ function viewApiAuthzSuite () {
         "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c level=read",
-        "SeeView db=d name=v_apitest",
-        ...singleOnly([
-          `UseCollection db=d name=${cId} level=read`
-        ])
+        "SeeView db=d name=v_apitest"
       ], endObserve());
     },
 
@@ -131,7 +115,6 @@ function viewApiAuthzSuite () {
         "CreateView db=d name=v_apitest linkedCollections=[c]",
         "UseCollection db=d name=c level=read",
         ...singleOnly([
-          `UseCollection db=d name=${cId} level=read`,
           "UseCollection db=d name=c level=writedata"
         ]),
         ...clusterOnly([
@@ -149,10 +132,7 @@ function viewApiAuthzSuite () {
         "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "ReadView db=d name=v_apitest",
-        "UseCollection db=d name=c level=read",
-        ...singleOnly([
-          `UseCollection db=d name=${cId} level=read`
-        ])
+        "UseCollection db=d name=c level=read"
       ], endObserve());
     },
 
@@ -165,10 +145,7 @@ function viewApiAuthzSuite () {
         "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "ReadView db=d name=v_apitest",
-        "UseCollection db=d name=c level=read",
-        ...singleOnly([
-          `UseCollection db=d name=${cId} level=read`
-        ])
+        "UseCollection db=d name=c level=read"
       ], endObserve());
     },
 
@@ -187,10 +164,7 @@ function viewApiAuthzSuite () {
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "ModifyView db=d name=v_apitest linkedCollections=[]",
-        "UseCollection db=d name=c level=read",
-        ...singleOnly([
-          `UseCollection db=d name=${cId} level=read`
-        ])
+        "UseCollection db=d name=c level=read"
       ], endObserve());
     },
 
@@ -208,9 +182,6 @@ function viewApiAuthzSuite () {
         "IsReadOnly",
         "ModifyView db=d name=v_apitest linkedCollections=[]",
         "UseCollection db=d name=c level=read",
-        ...singleOnly([
-          `UseCollection db=d name=${cId} level=read`
-        ]),
         ...clusterOnly([
           "UseCollection db=d name=c level=writemeta",
           "UseDatabase name=d level=write"
@@ -230,10 +201,7 @@ function viewApiAuthzSuite () {
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "RenameView db=d oldName=v_apitest newName=v_apitest_new",
-        "UseCollection db=d name=c level=read",
-        ...singleOnly([
-          `UseCollection db=d name=${cId} level=read`
-        ])
+        "UseCollection db=d name=c level=read"
       ], endObserve());
     },
 
@@ -249,10 +217,7 @@ function viewApiAuthzSuite () {
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "RenameView db=d oldName=v_apitest newName=v_apitest_new",
-        "UseCollection db=d name=c level=read",
-        ...singleOnly([
-          `UseCollection db=d name=${cId} level=read`
-        ])
+        "UseCollection db=d name=c level=read"
       ], endObserve());
     },
 

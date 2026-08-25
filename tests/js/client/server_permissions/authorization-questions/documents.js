@@ -44,6 +44,12 @@
 //
 // The writedata question is accompanied by the server-wide read-only gate, which
 // shows up as the pseudo-question `IsReadOnly`; a pure read never triggers it.
+//
+// The collection in the URL may be a name or a numeric id
+// (Database::lookupDataSource), but grants are keyed by name, so the question
+// has to name the collection either way. The ...ByCollectionId tests below
+// address it by id and expect exactly the same questions as their by-name
+// counterparts.
 
 if (getOptions === true) {
   return {
@@ -57,6 +63,7 @@ if (getOptions === true) {
 }
 
 const jsunity = require('jsunity');
+const db = require('@arangodb').db;
 const {
   beginObserve,
   endObserve,
@@ -75,6 +82,12 @@ function documentApiAuthzSuite () {
   const c = DOC_COLLECTION;
   const key = 'testdoc';
 
+  // The numeric collection id. A collection may be addressed by name or by id
+  // (Database::lookupDataSource), but grants are keyed by name, so every
+  // question below must name the collection even when the request used the id.
+  // Read in setUpAll so that no request is sent while an observation runs.
+  let cId;
+
   function makeDoc () {
     arango.DELETE_RAW(`/_db/${DB}/_api/document/${c}/${key}`);
     arango.POST_RAW(`/_db/${DB}/_api/document/${c}`, { _key: key, value: 1 });
@@ -84,7 +97,12 @@ function documentApiAuthzSuite () {
   }
 
   return {
-    setUpAll: setUpApiTestData,
+    setUpAll: function () {
+      setUpApiTestData();
+      db._useDatabase(DB);
+      cId = db._collection(c)._id;
+      db._useDatabase('_system');
+    },
     tearDownAll: tearDownApiTestData,
 
     tearDown: function () {
@@ -217,6 +235,51 @@ function documentApiAuthzSuite () {
       makeDoc();
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/document/${c}`, [{ _key: key }]);
+      assertPermissions([
+        "UseApiVersion version=0",
+        "UseDatabase name=d level=read",
+        "IsReadOnly",
+        "UseCollection db=d name=c level=writedata",
+        ...singleOnly([
+          "UseCollection db=d name=c level=read"
+        ])
+      ], endObserve());
+    },
+
+    // GET /_api/document/<id>/key - addressing the collection by its numeric id
+    // must not change which collection the question names.
+    testReadDocumentByCollectionId: function () {
+      makeDoc();
+      beginObserve();
+      arango.GET_RAW(`/_db/${DB}/_api/document/${cId}/${key}`);
+      assertPermissions([
+        "UseApiVersion version=0",
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=read"
+      ], endObserve());
+    },
+
+    // POST /_api/document/<id> - as testInsertDocument, by id
+    testInsertDocumentByCollectionId: function () {
+      dropDoc();
+      beginObserve();
+      arango.POST_RAW(`/_db/${DB}/_api/document/${cId}`, { _key: key, value: 1 });
+      assertPermissions([
+        "UseApiVersion version=0",
+        "UseDatabase name=d level=read",
+        "IsReadOnly",
+        "UseCollection db=d name=c level=writedata",
+        ...singleOnly([
+          "UseCollection db=d name=c level=read"
+        ])
+      ], endObserve());
+    },
+
+    // DELETE /_api/document/<id>/key - as testDeleteDocumentWithKey, by id
+    testDeleteDocumentByCollectionId: function () {
+      makeDoc();
+      beginObserve();
+      arango.DELETE_RAW(`/_db/${DB}/_api/document/${cId}/${key}`);
       assertPermissions([
         "UseApiVersion version=0",
         "UseDatabase name=d level=read",

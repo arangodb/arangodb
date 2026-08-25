@@ -2026,14 +2026,20 @@ futures::Future<DataSourceId> Methods::addCollectionAtRuntime(
   auto collection = trxCollection(cid);
 
   if (collection == nullptr) {
-    Result res = co_await _state->addCollection(cid, collectionName, type,
-                                                /*lockUsage*/ true);
+    // `collectionName` may be an id or a GUID; the permission check inside
+    // addCollection() needs the data source's own name, because grants are
+    // keyed by name.
+    auto const dataSource = resolver()->getDataSource(cid);
+
+    Result res = co_await _state->addCollection(
+        cid,
+        dataSource != nullptr ? std::string_view{dataSource->name()}
+                              : collectionName,
+        type, /*lockUsage*/ true);
 
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
     }
-
-    auto dataSource = resolver()->getDataSource(cid);
 
     if (!dataSource) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -2210,7 +2216,7 @@ Future<OperationResult> Methods::documentAsync(
 
 Result Methods::checkCollectionPermission(std::string const& collectionName,
                                           AccessMode::Type accessType) {
-  DataSourceId cid = resolver()->getCollectionId(collectionName);
+  DataSourceId const cid = resolver()->getCollectionId(collectionName);
   if (cid.empty()) {
     // unknown collection: leave the not-found reporting to the operation itself
     return {};
@@ -2220,7 +2226,14 @@ Result Methods::checkCollectionPermission(std::string const& collectionName,
     // sufficient access; it was permission-checked when it was added
     return {};
   }
-  return _state->checkCollectionPermission(cid, collectionName, accessType);
+  // `collectionName` may be an id or a GUID - grants are keyed by name, so
+  // authorize on the collection's own name. When `cid` resolves to nothing
+  // there is no name to derive; the raw string then reaches an auth layer that
+  // grants it no access, and the operation reports not-found.
+  auto const collection = resolver()->getCollection(cid);
+  return _state->checkCollectionPermission(
+      cid, collection != nullptr ? collection->name() : collectionName,
+      accessType);
 }
 
 /// @brief read one or multiple documents in a collection, coordinator
@@ -3297,10 +3310,13 @@ Result Methods::addCollection(DataSourceId cid, std::string_view collectionName,
 
   bool lockUsage = !_mainTransaction;
 
-  auto addCollectionCallback = [this, &collectionName, type,
-                                lockUsage](DataSourceId cid) -> void {
-    auto res = _state->addCollection(cid, collectionName, type, lockUsage)
-                   .waitAndGet();
+  // `name` must be the collection's own name, not the string the caller used to
+  // address it: a collection may be addressed by id or GUID, but grants are
+  // keyed by name, so an unresolved string would be authorized against the
+  // wrong key (see TransactionState::checkCollectionPermission).
+  auto const addCollectionCallback =
+      [this, type, lockUsage](DataSourceId cid, std::string_view name) -> void {
+    auto res = _state->addCollection(cid, name, type, lockUsage).waitAndGet();
 
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
@@ -3312,7 +3328,10 @@ Result Methods::addCollection(DataSourceId cid, std::string_view collectionName,
   std::function<bool(LogicalCollection&)> visitor(
       [this, &addCollectionCallback, &res, cid,
        &visited](LogicalCollection& col) -> bool {
-        addCollectionCallback(col.id());  // will throw on error
+        // visitCollections() hands us the resolved collection. For a view this
+        // is each of its linked collections, which must be authorized under
+        // their own names - not under the view's.
+        addCollectionCallback(col.id(), col.name());  // will throw on error
         res = applyDataSourceRegistrationCallbacks(col, *this);
         visited |= cid == col.id();
 
@@ -3322,7 +3341,10 @@ Result Methods::addCollection(DataSourceId cid, std::string_view collectionName,
   if (!resolver()->visitCollections(visitor, cid) || res.fail()) {
     // trigger exception as per the original behavior (tests depend on this)
     if (res.ok() && !visited) {
-      addCollectionCallback(cid);  // will throw on error
+      // `cid` resolves to no data source, so there is no name to derive and
+      // this call only exists to produce the error. The transaction fails with
+      // TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND below either way.
+      addCollectionCallback(cid, collectionName);  // will throw on error
     }
 
     return res.ok() ? Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)

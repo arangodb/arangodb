@@ -523,12 +523,20 @@ futures::Future<Result> Manager::addCollections(
                       TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND),
                       ": ", cname));
       } else {
+        // `cname` is a raw request-body value and may be an id or a GUID.
+        // Grants are keyed by name, so the permission check inside
+        // addCollection() has to see the collection's own name. Falls back to
+        // the request value when `cid` names no collection (e.g. a view), which
+        // the auth layer then grants no access to.
+        auto const col = resolver.getCollection(cid);
+        std::string_view const authName = col != nullptr
+                                              ? std::string_view{col->name()}
+                                              : std::string_view{cname};
 #ifdef USE_ENTERPRISE
         if (state->isCoordinator()) {
           try {
-            std::shared_ptr<LogicalCollection> col =
-                resolver.getCollection(cname);
-            if (col->isSmart() && col->type() == TRI_COL_TYPE_EDGE) {
+            if (col != nullptr && col->isSmart() &&
+                col->type() == TRI_COL_TYPE_EDGE) {
               auto theEdge =
                   dynamic_cast<arangodb::VirtualClusterSmartEdgeCollection*>(
                       col.get());
@@ -537,22 +545,22 @@ futures::Future<Result> Manager::addCollections(
                     TRI_ERROR_INTERNAL,
                     "cannot cast collection to smart edge collection");
               }
-              res.reset(co_await state->addCollection(theEdge->getLocalCid(),
-                                                      "_local_" + cname, mode,
-                                                      /*lockUsage*/ false));
+              res.reset(co_await state->addCollection(
+                  theEdge->getLocalCid(), absl::StrCat("_local_", authName),
+                  mode, /*lockUsage*/ false));
               if (res.fail()) {
                 co_return false;
               }
               if (!col->isDisjoint()) {
-                res.reset(co_await state->addCollection(theEdge->getFromCid(),
-                                                        "_from_" + cname, mode,
-                                                        /*lockUsage*/ false));
+                res.reset(co_await state->addCollection(
+                    theEdge->getFromCid(), absl::StrCat("_from_", authName),
+                    mode, /*lockUsage*/ false));
                 if (res.fail()) {
                   co_return false;
                 }
-                res.reset(co_await state->addCollection(theEdge->getToCid(),
-                                                        "_to_" + cname, mode,
-                                                        /*lockUsage*/ false));
+                res.reset(co_await state->addCollection(
+                    theEdge->getToCid(), absl::StrCat("_to_", authName), mode,
+                    /*lockUsage*/ false));
                 if (res.fail()) {
                   co_return false;
                 }
@@ -564,7 +572,7 @@ futures::Future<Result> Manager::addCollections(
           }
         }
 #endif
-        res.reset(co_await state->addCollection(cid, cname, mode,
+        res.reset(co_await state->addCollection(cid, authName, mode,
                                                 /*lockUsage*/ false));
       }
 

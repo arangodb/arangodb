@@ -42,6 +42,10 @@
 // Every request additionally asks `UseApiVersion version=0` and
 // `UseDatabase name=d level=read` first.
 // Transactions used as preconditions are created as root BEFORE beginObserve().
+//
+// A declared collection may be given by name or by numeric id, but grants are
+// keyed by name, so the question has to name the collection either way - see
+// testBeginReadTransactionByCollectionId.
 
 if (getOptions === true) {
   return {
@@ -55,6 +59,7 @@ if (getOptions === true) {
 }
 
 const jsunity = require('jsunity');
+const db = require('@arangodb').db;
 const {
   beginObserve,
   endObserve,
@@ -71,6 +76,11 @@ const {
 function transactionApiAuthzSuite () {
   const c = DOC_COLLECTION;
 
+  // The numeric collection id; declared collections may be given by name or by
+  // id, but grants are keyed by name. Read in setUpAll so that no request is
+  // sent while an observation runs.
+  let cId;
+
   // begin a stream transaction as root (before observation) and return its id
   function beginTrx (collections) {
     const res = arango.POST_RAW(`/_db/${DB}/_api/transaction/begin`,
@@ -84,7 +94,12 @@ function transactionApiAuthzSuite () {
   }
 
   return {
-    setUpAll: setUpApiTestData,
+    setUpAll: function () {
+      setUpApiTestData();
+      db._useDatabase(DB);
+      cId = db._collection(c)._id;
+      db._useDatabase('_system');
+    },
     tearDownAll: tearDownApiTestData,
 
     tearDown: function () {
@@ -134,6 +149,22 @@ function transactionApiAuthzSuite () {
       beginObserve();
       const res = arango.POST_RAW(`/_db/${DB}/_api/transaction/begin`,
                                   { collections: { read: [c] } });
+      assertPermissions([
+        "UseApiVersion version=0",
+        "UseDatabase name=d level=read",
+        "UseCollection db=d name=c level=read"
+      ], endObserve());
+      if (res.parsedBody && res.parsedBody.result) {
+        abortTrx(res.parsedBody.result.id);
+      }
+    },
+
+    // POST /_api/transaction/begin declaring the collection by its numeric id -
+    // the question must still name the collection.
+    testBeginReadTransactionByCollectionId: function () {
+      beginObserve();
+      const res = arango.POST_RAW(`/_db/${DB}/_api/transaction/begin`,
+                                  { collections: { read: [cId] } });
       assertPermissions([
         "UseApiVersion version=0",
         "UseDatabase name=d level=read",
