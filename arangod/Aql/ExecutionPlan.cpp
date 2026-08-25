@@ -2632,8 +2632,9 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
         } else {
           auto path = extractPath(item);
           // Skip any RETURN whose first segment is an implicit system attribute
-          // (bare `_id` and nested `_id.foo` / `_from.x`), so we never overwrite
-          // the scalar system attrs with a nested object of the same key.
+          // (bare `_id` and nested `_id.foo` / `_from.x`), so we never
+          // overwrite the scalar system attrs with a nested object of the same
+          // key.
           if (!path.empty() && isSystemAttribute(path[0])) {
             continue;
           }
