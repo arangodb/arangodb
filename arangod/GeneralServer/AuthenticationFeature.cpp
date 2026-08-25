@@ -67,12 +67,14 @@ AuthenticationFeature::AuthenticationFeature(
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 
-  auto res = auth::loadJwtSecretString(_options.jwtSecretProgramOption);
-  if (res.ok()) {
-    _authInfo.assign(res.get());
-  } else {
-    LOG_TOPIC("d4417", FATAL, Logger::STARTUP) << res.errorMessage();
-    FATAL_ERROR_EXIT();
+  if (!_options.jwtSecretProgramOption.empty()) {
+    auto res = auth::loadJwtSecretString(_options.jwtSecretProgramOption);
+    if (res.ok()) {
+      _authInfo.assign(res.get());
+    } else {
+      LOG_TOPIC("d4417", FATAL, Logger::STARTUP) << res.errorMessage();
+      FATAL_ERROR_EXIT();
+    }
   }
 
   if (!_options.jwtSecretKeyfileProgramOption.empty() ||
