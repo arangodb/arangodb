@@ -283,8 +283,28 @@ CommTask::Flow CommTask::prepareExecution(
   if (!::resolveRequestContext(_databaseFeature, *_auth, _rbacFeature,
                                _securityFeature,
                                req)) {  // false if db not found
-    // We get here, if the requested database does not exist, in this case
-    // we simply want to return NOT FOUND.
+    if (_auth->isActive() && !_auth->rbacEnabled()) {
+      // prevent guessing database names (issue #5030)
+      auth::Level lvl = auth::Level::NONE;
+      if (req.authenticated()) {
+        // If we are authenticated and the user name is empty, then we must
+        // have been authenticated with a superuser JWT token. In this case,
+        // we must not check the databaseAuthLevel here.
+        if (_auth->userManager() != nullptr && !req.user().empty()) {
+          lvl = _auth->userManager()->databaseAuthLevel(
+              req.user(), req.databaseName(), false);
+        } else {
+          lvl = auth::Level::RW;
+        }
+      }
+      if (lvl == auth::Level::NONE) {
+        sendErrorResponse(rest::ResponseCode::UNAUTHORIZED,
+                          req.contentTypeResponse(), req.messageId(),
+                          TRI_ERROR_FORBIDDEN,
+                          "not authorized to execute this request");
+        return Flow::Abort;
+      }
+    }
     sendErrorResponse(rest::ResponseCode::NOT_FOUND, req.contentTypeResponse(),
                       req.messageId(), TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     return Flow::Abort;
@@ -511,8 +531,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION-- statistics handling                             protected
-// methods
+// --SECTION-- statistics handling                             protected methods
 // -----------------------------------------------------------------------------
 
 void CommTask::setStatistics(uint64_t id, RequestStatistics::Item&& stat) {
@@ -600,8 +619,7 @@ void CommTask::sendErrorResponse(rest::ResponseCode code,
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   private
-// methods
+// --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
 // Handle a request during the server startup
@@ -649,8 +667,8 @@ void CommTask::handleRequestStartup(std::shared_ptr<RestHandler> handler) {
   });
 }
 
-// Execute a request by queueing it in the scheduler and having it executed
-// via a scheduler worker thread eventually.
+// Execute a request by queueing it in the scheduler and having it executed via
+// a scheduler worker thread eventually.
 void CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   DTRACE_PROBE2(arangod, CommTaskHandleRequestSync, this, handler.get());
 
@@ -828,8 +846,8 @@ void CommTask::processCorsOptions(std::unique_ptr<GeneralRequest> req,
     if (!allowHeaders.empty()) {
       // allow all extra headers the client requested
       // we don't verify them here. the worst that can happen is that the
-      // client sends some broken headers and then later cannot access the
-      // data on the server. that's a client problem.
+      // client sends some broken headers and then later cannot access the data
+      // on the server. that's a client problem.
       resp->setHeaderNCIfNotSet(StaticStrings::AccessControlAllowHeaders,
                                 allowHeaders);
 
@@ -939,9 +957,9 @@ Result CommTask::handleContentEncoding(GeneralRequest& req) {
       VPackBuffer<uint8_t> dst;
       if (ErrorCode r = arangodb::encoding::gzipUncompress(src, len, dst);
           r != TRI_ERROR_NO_ERROR) {
-        return {r,
-                "a decoding error occurred while handling Content-Encoding: "
-                "gzip"};
+        return {
+            r,
+            "a decoding error occurred while handling Content-Encoding: gzip"};
       }
       req.setPayload(std::move(dst));
       // as we have decoded, remove the encoding header.
