@@ -728,6 +728,16 @@ async<RestHandler::AuthenticationGrant> RestHandler::checkUserAuthentication()
 #endif
 
   if (request()->authenticated()) {
+    if (auth->rbacEnabled() && request()->authenticationMethod() ==
+                                   rest::AuthenticationMethod::BASIC) {
+      // When RBAC is enabled, HTTP basic authentication is no longer
+      // accepted for regular endpoints, because the external RBAC service
+      // can only authorize requests that carry a JWT. Handlers that must
+      // remain reachable via basic auth regardless (e.g. RestAuthHandler,
+      // mounted at /_open/auth, which issues the JWT in the first place)
+      // override checkUserAuthentication() and never reach this check.
+      co_return AuthenticationGrant::DENIED;
+    }
     co_return AuthenticationGrant::GRANTED;
   }
 

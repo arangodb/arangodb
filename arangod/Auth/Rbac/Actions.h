@@ -115,7 +115,7 @@ using Resource =
                  resources::Collection, resources::View, resources::Analyzer,
                  resources::Graph, resources::User, resources::ApiVersion>;
 
-// A single authorization question: may the subject perform `action` on
+// A single authorization question: may the token perform `action` on
 // `resource`? A permission check may consist of several of these, which are
 // evaluated together (see Service::check).
 struct ActionResource {
@@ -129,17 +129,5 @@ struct ActionResource {
 struct JwtToken {
   std::string jwtToken;
 };
-
-// The name of a caller that authenticated without a JWT, i.e. via HTTP Basic
-// or a personal access token. arangod has already verified the credentials at
-// this point; the authorization service resolves the user's bindings by name.
-// Owns its string for the same reason as JwtToken.
-struct Username {
-  std::string name;
-};
-
-// Who a permission check is asked for. Also selects the endpoint used to ask
-// it: a JwtToken goes to evaluate-token-many, a Username to evaluate-many.
-using Subject = std::variant<JwtToken, Username>;
 
 }  // namespace arangodb::rbac
