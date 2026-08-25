@@ -1205,7 +1205,8 @@ TEST_F(VPackLoadInspectorTest, load_selects_second_alternative_field) {
   EXPECT_EQ("foo", a.name);
 }
 
-TEST_F(VPackLoadInspectorTest, load_alternative_field_resolves_fallback_through_condition) {
+TEST_F(VPackLoadInspectorTest,
+       load_alternative_field_resolves_fallback_through_condition) {
   builder.openObject();
   builder.add("useId", VPackValue(false));
   builder.close();
