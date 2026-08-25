@@ -85,6 +85,7 @@
 #include <format>
 #include <initializer_list>
 #include <ranges>
+#include <unordered_set>
 
 namespace arangodb::aql {
 using namespace arangodb::basics;
@@ -2630,7 +2631,10 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
               AliasItem{item->getStringView(), item->getMember(0)});
         } else {
           auto path = extractPath(item);
-          if (path.size() == 1 && isSystemAttribute(path[0])) {
+          // Skip any keep whose first segment is an implicit system attribute
+          // (bare `_id` and nested `_id.foo` / `_from.x`), so we never overwrite
+          // the scalar system attrs with a nested object of the same key.
+          if (!path.empty() && isSystemAttribute(path[0])) {
             continue;
           }
           keepPaths.push_back(std::move(path));
@@ -2661,6 +2665,19 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
         keepPaths = std::move(filtered);
       }
 
+      // Top-level keys already claimed by bare keeps (and implicit system
+      // attrs). Alias names must not collide with these, or with each other.
+      std::unordered_set<std::string_view> usedTopLevelKeys;
+      usedTopLevelKeys.emplace("_id");
+      if (isEdge) {
+        usedTopLevelKeys.emplace("_from");
+        usedTopLevelKeys.emplace("_to");
+      }
+      for (auto const& path : keepPaths) {
+        TRI_ASSERT(!path.empty());
+        usedTopLevelKeys.emplace(path[0]);
+      }
+
       for (auto const& path : keepPaths) {
         addProjectedAttribute(path);
       }
@@ -2668,6 +2685,12 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
       for (auto const& alias : aliases) {
         if (isSystemAttribute(alias.name)) {
           continue;
+        }
+        if (!usedTopLevelKeys.emplace(alias.name).second) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_QUERY_PARSE,
+              absl::StrCat("duplicate projection attribute name '", alias.name,
+                           "'"));
         }
         // alias = expression: evaluate in normal query scope (explicit
         // variable references required, e.g. v.profile.first_name).

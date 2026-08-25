@@ -46,7 +46,7 @@ function aqlMatchStatementTestSuite() {
                     i,
                     j: i % 5,
                     profile: {name: `user${i}`, age: i % 40},
-                    a: {b: {c: i}},
+                    a: {b: {c: i, d: i + 100}},
                     "profile.name": `literal${i}`
                 });
             }
@@ -802,6 +802,26 @@ function aqlMatchStatementTestSuite() {
             }
         },
 
+        testSelectVerticesWithSharedNestedParent: function () {
+            // RETURN a.b.c, a.b.d → one shared a.b object with both leaves.
+            const result = db._query(
+                "MATCH (v :vc RETURN a.b.c, a.b.d) RETURN v",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 100);
+
+            for (const v of result) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertTrue(v.hasOwnProperty("a"));
+                assertTrue(v.a.hasOwnProperty("b"));
+                assertEqual(typeof v.a.b.c, "number");
+                assertEqual(v.a.b.d, v.a.b.c + 100);
+                assertFalse(v.hasOwnProperty("i"));
+                assertFalse(v.hasOwnProperty("profile"));
+            }
+        },
+
         testSelectVerticesWithFlatAndNestedProjection: function () {
             const result = db._query(
                 "MATCH (v :vc RETURN i, profile.name) RETURN v",
@@ -919,6 +939,121 @@ function aqlMatchStatementTestSuite() {
                 assertTrue(v.profile.hasOwnProperty("name"));
                 assertTrue(v.profile.hasOwnProperty("age"));
                 assertFalse(v.hasOwnProperty("i"));
+            }
+        },
+
+        testSelectVerticesWithPrefixOverlapKeepsShorterDeep: function () {
+            // RETURN a.b, a.b.c.d → keep only a.b (shorter prefix wins).
+            const result = db._query(
+                "MATCH (v :vc RETURN a.b, a.b.c.d) RETURN v",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 100);
+
+            for (const v of result) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertTrue(v.hasOwnProperty("a"));
+                assertTrue(v.a.hasOwnProperty("b"));
+                // Whole a.b object kept (both c and d leaves), not only a.b.c.d.
+                assertEqual(typeof v.a.b.c, "number");
+                assertEqual(v.a.b.d, v.a.b.c + 100);
+                assertFalse(v.hasOwnProperty("i"));
+                assertFalse(v.hasOwnProperty("profile"));
+            }
+        },
+
+        testSelectVerticesWithPrefixOverlapNestedLeaf: function () {
+            // RETURN profile.name, profile.name.first → just profile.name.
+            const result = db._query(
+                "MATCH (v :vc RETURN profile.name, profile.name.first) RETURN v",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 100);
+
+            for (const v of result) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertTrue(v.hasOwnProperty("profile"));
+                assertTrue(typeof v.profile.name === "string");
+                assertTrue(v.profile.name.startsWith("user"));
+                assertFalse(v.profile.hasOwnProperty("age"));
+                assertFalse(v.hasOwnProperty("i"));
+            }
+        },
+
+        testProjectionIgnoresNestedSystemAttributePath: function () {
+            // Nested keeps under system attrs must not overwrite scalar _id.
+            const result = db._query(
+                "MATCH (v :vc RETURN _id.foo, i) RETURN v",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 100);
+
+            for (const v of result) {
+                assertTrue(typeof v._id === "string");
+                assertTrue(v._id.startsWith("vc/"));
+                assertEqual(typeof v.i, "number");
+                assertFalse(v.hasOwnProperty("foo"));
+            }
+        },
+
+        testEdgeProjectionIgnoresNestedSystemAttributePath: function () {
+            const result = db._query(
+                "MATCH (u :vc)-[e :ec RETURN _from.x, i]->(v :vc) RETURN e",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 50);
+
+            for (const e of result) {
+                assertTrue(typeof e._id === "string");
+                assertTrue(typeof e._from === "string");
+                assertTrue(typeof e._to === "string");
+                assertTrue(e._from.startsWith("vc/"));
+                assertEqual(typeof e.i, "number");
+                assertFalse(e.hasOwnProperty("x"));
+            }
+        },
+
+        testProjectionAliasCollidesWithBareKeep: function () {
+            try {
+                db._query(
+                    "MATCH (v :vc RETURN i, i = v.j) RETURN v",
+                    {},
+                    options
+                );
+                fail();
+            } catch (err) {
+                assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+            }
+        },
+
+        testProjectionAliasCollidesWithNestedKeepRoot: function () {
+            // Nested keep claims top-level key "profile"; alias must not reuse it.
+            try {
+                db._query(
+                    "MATCH (v :vc RETURN profile.name, profile = v.i) RETURN v",
+                    {},
+                    options
+                );
+                fail();
+            } catch (err) {
+                assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+            }
+        },
+
+        testProjectionDuplicateAliasNames: function () {
+            try {
+                db._query(
+                    "MATCH (v :vc RETURN a = v.i, a = v.j) RETURN v",
+                    {},
+                    options
+                );
+                fail();
+            } catch (err) {
+                assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
             }
         },
 
