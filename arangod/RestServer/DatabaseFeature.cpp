@@ -285,8 +285,8 @@ DatabaseFeature::~DatabaseFeature() = default;
 
 void DatabaseFeature::initCalculationVocbase() {
   calculationVocbase = std::make_unique<TRI_vocbase_t>(
-      createExpressionVocbaseInfo(server()), engine(), *this,
-      /*isInternal*/ true);
+      createExpressionVocbaseInfo(server()),
+      server().getFeature<StorageEngine>(), *this, /*isInternal*/ true);
 }
 
 void DatabaseFeature::start() {
