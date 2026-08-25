@@ -22,10 +22,12 @@
 
 #pragma once
 
+#include "Basics/StaticStrings.h"
 #include "VocBase/Properties/ClusteringConstantProperties.h"
 #include "VocBase/Properties/ClusteringMutableProperties.h"
 #include "VocBase/Properties/CollectionConstantProperties.h"
 #include "VocBase/Properties/CollectionIdentity.h"
+#include "VocBase/Properties/CollectionIndexesProperties.h"
 #include "VocBase/Properties/CollectionMutableProperties.h"
 #include "VocBase/Properties/CollectionInternalProperties.h"
 #include "VocBase/Properties/CollectionStorageProperties.h"
@@ -44,6 +46,8 @@ struct CollectionDescriptor {
   ClusteringMutableProperties clusteringMutable{};
   CollectionMutableProperties mutableProps{};
   CollectionStorageProperties storage{};
+  // Serializes as a bare array, so this cannot be embedded like the others.
+  CollectionIndexesProperties indexes{};
   bool operator==(CollectionDescriptor const&) const = default;
 
   static CollectionDescriptor fromVelocyPack(velocypack::Slice info);
@@ -57,18 +61,24 @@ struct CollectionDescriptor {
 [[nodiscard]] velocypack::Builder collectionCreateResponse(
     CollectionDescriptor const& d);
 
-template<class Inspector>
-auto inspect(Inspector& f, CollectionDescriptor& d) {
-  auto result = f.object(d).fields(
+// The fields every context shares, plus whatever the caller adds
+template<class Inspector, class... Extra>
+auto inspectSharedFields(Inspector& f, CollectionDescriptor& d,
+                         Extra&&... extra) {
+  return f.object(d).fields(
       f.embedFields(d.constant), f.embedFields(d.identity),
       f.embedFields(d.internal), f.embedFields(d.clusteringConstant),
       f.embedFields(d.clusteringMutable), f.embedFields(d.mutableProps),
-      f.embedFields(d.storage));
+      f.embedFields(d.storage), std::forward<Extra>(extra)...);
+}
 
+template<class Inspector>
+auto inspect(Inspector& f, CollectionDescriptor& d) {
   if constexpr (isInternalContext<Inspector>) {
-    return inspection::Status{std::move(result)};
+    return inspection::Status{inspectSharedFields(
+        f, d, f.field(StaticStrings::Indexes, d.indexes).fallback(f.keep()))};
   } else {
-    return result.invariant(
+    return inspectSharedFields(f, d).invariant(
         CollectionDescriptor::Invariants::isSmartConfiguration);
   }
 }
