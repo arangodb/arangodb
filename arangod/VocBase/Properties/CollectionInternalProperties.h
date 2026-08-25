@@ -56,6 +56,9 @@ struct CollectionInternalProperties {
   };
 
   DataSourceId id{0};
+  // Assigned by the server on create, read back on load. Empty means the
+  // collection does not have one yet.
+  std::string guid = StaticStrings::Empty;
   bool syncByRevision = true;
   bool usesRevisionsAsDocumentIds = true;
   bool isSmartChild = false;
@@ -87,8 +90,19 @@ auto inspect(Inspector& f, CollectionInternalProperties& props) {
     }
   });
 
+  auto guidField = std::invoke([&]() {
+    if constexpr (isInternalContext<Inspector>) {
+      return f.field(StaticStrings::DataSourceGuid, props.guid)
+          .fallback(f.keep());
+    } else {
+      // Documented, but the user cannot choose a guid. Keep accepting it on
+      // the create API and drop the value.
+      return f.ignoreField(StaticStrings::DataSourceGuid);
+    }
+  });
+
   return f.object(props).fields(
-      std::move(idField),
+      std::move(idField), std::move(guidField),
       f.field(StaticStrings::SyncByRevision, props.syncByRevision)
           .fallback(f.keep()),
       f.field(StaticStrings::UsesRevisionsAsDocumentIds,
@@ -106,7 +120,6 @@ auto inspect(Inspector& f, CollectionInternalProperties& props) {
       /* Backwards compatibility, field is documented but does not have an
        * effect
        */
-      f.ignoreField(StaticStrings::DataSourceGuid),
       f.ignoreField(StaticStrings::DataSourceDeleted));
 }
 
