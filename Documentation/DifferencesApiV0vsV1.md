@@ -101,42 +101,32 @@ informational and not a behavioural difference in status codes, but it does
 mean the **response body shape differs** in that this field always mirrors
 the caller's chosen version.
 
-## Authentication/authorization error shape: `RestHandler::checkDatabaseAccess` / `handleAuthorizationChecks`
+## Authentication/authorization error shape: `handleAuthorizationChecks`
 
 This is one of the most consequential differences, since it affects **every**
 authenticated REST call, regardless of endpoint (`arangod/GeneralServer/RestHandler.cpp`).
 
-* `checkDatabaseAccess()`:
-  * If the user is not authenticated at all, this always fails with
-    `TRI_ERROR_HTTP_UNAUTHORIZED` (401), independent of API version.
-  * If the user is authenticated but has no read access to the database
-    (`ec->canUseDatabase(...)` fails):
-    * **V0** (and only when the execution context is in "classic"
-      authorization mode, `ec->isClassic()`): the failure is always
-      normalized to `TRI_ERROR_HTTP_UNAUTHORIZED` ("No read access to
-      database."), i.e. HTTP `401`, no matter what the underlying access
-      check actually returned.
-    * **V1** (or non-classic/RBAC mode): the original `Result` from
-      `canUseDatabase()` is passed through unmodified. Depending on RBAC
-      policy this can be `TRI_ERROR_FORBIDDEN` (403) or, if the user has
-      absolutely no access to the database, `TRI_ERROR_ARANGO_DATABASE_NOT_FOUND`
-      (404, see `AuthMode.cpp` below) rather than always 401.
+The RestHandler has three methods that guard access. They all have a default 
+implementation but each RestHandler can override each one of these:
+* `checkUserAuthentication()`: check that user authentication is required that 
+  the request is authenticated
+* `checkApiVersionAccess()`: check that user is allowed to access the requested 
+  api version
+* `checkDatabaseAccess()`: check that user can read the requested database
 
-* `handleAuthorizationChecks()`, once `checkDatabaseAccess()` has failed:
-  * **V0**: the code contains an explicit, commented "special" branch:
-    regardless of what the actual error was, the response is *always*
-    generated as HTTP status `401 UNAUTHORIZED` combined with `errorNum`
-    `TRI_ERROR_FORBIDDEN` (`11`), using the underlying error's message text.
-    This exact combination (401 status + errorNum 11) is preserved
-    deliberately for backwards compatibility and cannot be produced by the
-    generic `generateError(Result)` overload.
-  * **V1**: `generateError(res)` is called, which derives the HTTP status
-    code from the actual error via `GeneralResponse::responseCode()`. This
-    means the HTTP status and errorNum now vary correctly with the actual
-    cause, e.g.:
-    * not authenticated → HTTP 401 / errorNum 401
-    * forbidden (RBAC denies access, resource exists) → HTTP 403 / errorNum 11 (`TRI_ERROR_FORBIDDEN`)
-    * resource intentionally hidden (RBAC, resource does not exist for this user) → HTTP 404 / errorNum 1203 or 1228 (see below)
+All these methods are called in `RestHandler::handleAuthorizationChecks()`:
+
+* first checks `checkUserAuthentication()` which can grant access early
+  without checking the subsequent checks or deny access with `UNAUTHORIZED`.
+* then executes `checkApiVersionAccess()` which can fail early with an
+  error coming from the permission system
+* then `checkDatabaseAccess()` which can fail with an error which is different
+  per api version:
+  * **V0**: in case of an error it always gives `UNAUTHORIZED` to preserve
+    backwards compatibility. If used with classic authentication the error
+    message is always "No read access to database.".
+  * **V1**: in case of an error it returns any error code returned by the
+    permission system
 
 ## Permission-check differences (`arangod/Auth/AuthMode.cpp`)
 
@@ -227,21 +217,14 @@ information-disclosure hardening introduced with V1):
 
 ## `RestQueryCacheHandler` (`arangod/RestHandler/RestQueryCacheHandler.cpp`)
 
-Both `DELETE /_api/query-cache` (`clearCache`) and
-`PUT /_api/query-cache/properties` (`replaceProperties`) require the
-`AdminQueryCache` permission
-(`ExecContext::current().canUseAdminAction(auth::perms::AdminQueryCache{})`)
-in **both** API versions. What differs is how much access that permission
-needs, and whether the `_system` database is enforced:
+`DELETE /_api/query-cache`
+* **V0** requires read-access to `_system`
+* **V1** requires write-access to `_system`
 
-* **Access level** — see the `AdminQueryCache` check above: under **V0** RO
-  access to `_system` is enough, under **V1** RW access is required. So a
-  read-only admin can clear the query cache under V0 but not under V1.
-* **`_system` database requirement** — for
-  `PUT /_api/query-cache/properties` this is enforced under **V1 only**
-  (line ~122); a V0 request may change the properties from any database.
-  If not on `_system`, a V1 request fails with HTTP 403 /
-  `TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE`.
+`PUT /_api/query-cache/properties`
+* **V0** accepts any database given; requires read-access to `_system`
+* **V1** fails with `TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE` if given database 
+  is not `_system`; requires write-access to `_system`
 
 ## `RestCollectionHandler` — `PUT /_api/collection/<name>/compact` (`arangod/RestHandler/RestCollectionHandler.cpp`, line ~485)
 
