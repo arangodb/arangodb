@@ -26,7 +26,6 @@
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Properties/InspectContexts.h"
 
-#include <functional>
 #include <string>
 
 namespace arangodb {
@@ -57,6 +56,9 @@ struct CollectionIdentity {
   DataSourceId id{0};
   // Read back on load. Empty means the collection does not have one yet.
   std::string guid = StaticStrings::Empty;
+  // The cluster-wide id of the collection a shard belongs to. Zero means the
+  // collection is its own plan entry, which LogicalDataSource resolves to `id`.
+  DataSourceId planId{DataSourceId::none()};
 
   [[nodiscard]] arangodb::Result applyDefaultsAndValidateDatabaseConfiguration(
       DatabaseConfiguration const& config);
@@ -66,21 +68,25 @@ struct CollectionIdentity {
 
 template<class Inspector>
 auto inspect(Inspector& f, CollectionIdentity& props) {
-  auto idField = std::invoke([&]() {
-    if constexpr (isInternalContext<Inspector>) {
-      // Markers and plan entries store the id as a number or under "cid".
-      // LogicalDataSource owns the id on that path, so skip it here.
-      return f.ignoreField(StaticStrings::Id);
-    } else {
-      return f.field(StaticStrings::Id, props.id)
-          .transformWith(CollectionIdentity::Transformers::IdIdentifier{})
-          .fallback(f.keep());
-    }
-  });
-
-  return f.object(props).fields(
-      std::move(idField),
-      internalOnlyField(f, StaticStrings::DataSourceGuid, props.guid));
+  if constexpr (isInternalContext<Inspector>) {
+    // Markers and plan entries store the id as a number or under "cid".
+    // LogicalDataSource owns the id on that path, so skip it here.
+    return f.object(props).fields(
+        f.ignoreField(StaticStrings::Id),
+        f.field(StaticStrings::DataSourceGuid, props.guid).fallback(f.keep()),
+        f.field(StaticStrings::DataSourcePlanId, props.planId)
+            .transformWith(CollectionIdentity::Transformers::IdIdentifier{})
+            .fallback(f.keep()));
+  } else {
+    // guid is documented as having no effect, so it stays accepted and is
+    // dropped. planId is not declared at all, which keeps the create API
+    // rejecting it as it always has.
+    return f.object(props).fields(
+        f.field(StaticStrings::Id, props.id)
+            .transformWith(CollectionIdentity::Transformers::IdIdentifier{})
+            .fallback(f.keep()),
+        f.ignoreField(StaticStrings::DataSourceGuid));
+  }
 }
 
 }  // namespace arangodb
