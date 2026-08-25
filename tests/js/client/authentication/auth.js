@@ -1199,7 +1199,7 @@ function UnauthorizedAccesSuite() {
       assertEqual(401, res.code);
       assertEqual(res.parsedBody.errorMessage, "No read access to database.");
       res = arango.GET_RAW("/_db/dbTest4/_api/database/current");
-      assertEqual(401, res.code);
+      assertEqual(404, res.code);
       assertEqual(res.parsedBody.errorMessage, "not authorized to execute this request");
     },
   };
