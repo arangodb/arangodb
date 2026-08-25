@@ -239,7 +239,7 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(
   std::string const& body = parts[1];
   std::string const& signature = parts[2];
 
-  // TODO: return the JwtAlgorithm from Jwt header parse
+  // TODO(COR-922): return the JwtAlgorithm from Jwt header parse
   bool isES256 = false;
   if (!validateJwtHeader(header, isES256)) {
     LOG_TOPIC("2eb8a", TRACE, arangodb::Logger::AUTHENTICATION)
@@ -249,7 +249,7 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(
 
   std::string const message = header + "." + body;
 
-  // TODO: constructor maybe?
+  // TODO(COR-923): constructor maybe?
   auto jwtSignature =
       JwtSignature{.algorithm = isES256 ? auth::JwtAlgorithm::ES256
                                         : auth::JwtAlgorithm::HS256};
