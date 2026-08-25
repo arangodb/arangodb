@@ -801,7 +801,7 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
           col.clusteringConstant.distributeShardsLike.value();
       if (selfCreatedGroups.contains(leadingName)) {
         auto groupId = selfCreatedGroups.at(leadingName);
-        groups.addToNewGroup(groupId, col.internal.id);
+        groups.addToNewGroup(groupId, col.identity.id);
         col.clusteringConstant.groupId = groupId;
       } else {
         auto c = ci.getCollection(databaseName, leadingName);
@@ -810,7 +810,7 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
         // collection does not exist. Also, the createCollection should have
         // failed before.
         auto groupId = c->groupID();
-        groups.addToExistingGroup(groupId, col.internal.id);
+        groups.addToExistingGroup(groupId, col.identity.id);
         col.clusteringConstant.groupId = groupId;
       }
     } else {

@@ -39,8 +39,8 @@ PlanCollectionEntry::PlanCollectionEntry(CollectionDescriptor col,
       _shardDistribution(std::move(shardDistribution)) {}
 
 std::string PlanCollectionEntry::getCID() const {
-  TRI_ASSERT(!_properties.internal.id.empty());
-  return std::to_string(_properties.internal.id.id());
+  TRI_ASSERT(!_properties.identity.id.empty());
+  return std::to_string(_properties.identity.id.id());
 }
 
 std::string const& PlanCollectionEntry::getName() const {

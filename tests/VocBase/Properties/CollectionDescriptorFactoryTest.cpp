@@ -126,7 +126,7 @@ class CollectionDescriptorFactoryTest : public ::testing::Test {
     res.clusteringConstant.numberOfShards = 1;
     res.clusteringMutable.replicationFactor = 3;
     res.clusteringMutable.writeConcern = 2;
-    res.internal.id = DataSourceId{42};
+    res.identity.id = DataSourceId{42};
     res.clusteringConstant.shardingStrategy = "hash";
     res.clusteringConstant.shardKeys =
         std::vector<std::string>{StaticStrings::KeyString};
