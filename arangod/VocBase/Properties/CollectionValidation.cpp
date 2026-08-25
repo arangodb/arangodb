@@ -151,7 +151,7 @@ Result arangodb::applyDefaultsAndValidate(CollectionDescriptor& d,
     return res;
   }
 
-  auto res = d.internal.applyDefaultsAndValidateDatabaseConfiguration(config);
+  auto res = d.identity.applyDefaultsAndValidateDatabaseConfiguration(config);
   if (res.fail()) {
     return res;
   }
@@ -206,7 +206,7 @@ Result arangodb::applyDefaultsAndValidate(CollectionDescriptor& d,
     // agency which is not yet implemented using this path.
     TRI_ASSERT(!d.clusteringConstant.distributeShardsLikeCid.has_value());
     d.clusteringConstant.distributeShardsLikeCid =
-        std::to_string(leader.internal.id.id());
+        std::to_string(leader.identity.id.id());
 
     TRI_ASSERT(leader.clusteringConstant.numberOfShards.has_value());
     if (d.clusteringConstant.numberOfShards.has_value()) {

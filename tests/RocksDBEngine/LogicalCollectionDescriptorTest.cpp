@@ -73,7 +73,7 @@ VPackBuilder representativeCreateSlice() {
 
 CollectionDescriptor representativeCreateDescriptor() {
   CollectionDescriptor d;
-  d.internal.id = DataSourceId{9988488};
+  d.identity.id = DataSourceId{9988488};
   d.mutableProps.name = "books";
   d.constant.type = TRI_COL_TYPE_DOCUMENT;
   d.constant.keyOptions =
@@ -198,7 +198,7 @@ TEST_F(LogicalCollectionDescriptorTest, Properties_isALiveSnapshot) {
 
   auto d = collection->properties();
   // the stored descriptor has no id on the load path; properties() fills it in
-  EXPECT_EQ(d.internal.id, collection->id());
+  EXPECT_EQ(d.identity.id, collection->id());
   EXPECT_EQ(d.mutableProps.name, collection->name());
   EXPECT_EQ(d.clusteringConstant.numberOfShards, collection->numberOfShards());
   EXPECT_EQ(d.clusteringConstant.shardKeys, collection->shardKeys());

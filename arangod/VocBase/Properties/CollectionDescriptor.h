@@ -25,6 +25,7 @@
 #include "VocBase/Properties/ClusteringConstantProperties.h"
 #include "VocBase/Properties/ClusteringMutableProperties.h"
 #include "VocBase/Properties/CollectionConstantProperties.h"
+#include "VocBase/Properties/CollectionIdentity.h"
 #include "VocBase/Properties/CollectionMutableProperties.h"
 #include "VocBase/Properties/CollectionInternalProperties.h"
 #include "VocBase/Properties/CollectionStorageProperties.h"
@@ -37,6 +38,7 @@ struct DatabaseConfiguration;
 
 struct CollectionDescriptor {
   CollectionConstantProperties constant{};
+  CollectionIdentity identity{};
   CollectionInternalProperties internal{};
   ClusteringConstantProperties clusteringConstant{};
   ClusteringMutableProperties clusteringMutable{};
@@ -58,9 +60,10 @@ struct CollectionDescriptor {
 template<class Inspector>
 auto inspect(Inspector& f, CollectionDescriptor& d) {
   auto result = f.object(d).fields(
-      f.embedFields(d.constant), f.embedFields(d.internal),
-      f.embedFields(d.clusteringConstant), f.embedFields(d.clusteringMutable),
-      f.embedFields(d.mutableProps), f.embedFields(d.storage));
+      f.embedFields(d.constant), f.embedFields(d.identity),
+      f.embedFields(d.internal), f.embedFields(d.clusteringConstant),
+      f.embedFields(d.clusteringMutable), f.embedFields(d.mutableProps),
+      f.embedFields(d.storage));
 
   if constexpr (isInternalContext<Inspector>) {
     return inspection::Status{std::move(result)};

@@ -24,12 +24,10 @@
 
 #include "Basics/StaticStrings.h"
 #include "Inspection/Access.h"
-#include "VocBase/Identifiers/DataSourceId.h"
-#include "VocBase/voc-types.h"
 #include "VocBase/Properties/InspectContexts.h"
 #include "VocBase/Properties/UtilityInvariants.h"
 
-#include <functional>
+#include <cstdint>
 #include <string>
 
 namespace arangodb {
@@ -42,23 +40,6 @@ struct Status;
 }
 
 struct CollectionInternalProperties {
-  struct Transformers {
-    struct IdIdentifier {
-      using MemoryType = DataSourceId;
-      using SerializedType = std::string;
-
-      static arangodb::inspection::Status toSerialized(MemoryType v,
-                                                       SerializedType& result);
-
-      static arangodb::inspection::Status fromSerialized(
-          SerializedType const& v, MemoryType& result);
-    };
-  };
-
-  DataSourceId id{0};
-  // Assigned by the server on create, read back on load. Empty means the
-  // collection does not have one yet.
-  std::string guid = StaticStrings::Empty;
   // Set when the collection is dropped, read back on load.
   bool deleted = false;
 
@@ -72,41 +53,12 @@ struct CollectionInternalProperties {
   // runtime and cannot live with the immutable properties.
   inspection::NonNullOptional<std::string> smartGraphAttribute = std::nullopt;
 
-  [[nodiscard]] arangodb::Result applyDefaultsAndValidateDatabaseConfiguration(
-      DatabaseConfiguration const& config);
-
   bool operator==(CollectionInternalProperties const&) const = default;
 };
 
-// Assigned by the server, never chosen by the client. Parsed on the load path;
-// on the user path the key stays accepted but its value is dropped
-template<class Inspector, class T>
-auto internalOnlyField(Inspector& f, std::string_view name, T& value) {
-  if constexpr (isInternalContext<Inspector>) {
-    return f.field(name, value).fallback(f.keep());
-  } else {
-    return f.ignoreField(name);
-  }
-}
-
 template<class Inspector>
 auto inspect(Inspector& f, CollectionInternalProperties& props) {
-  auto idField = std::invoke([&]() {
-    if constexpr (isInternalContext<Inspector>) {
-      // Markers and plan entries store the id as a number or under "cid".
-      // LogicalDataSource owns the id on that path, so skip it here.
-      return f.ignoreField(StaticStrings::Id);
-    } else {
-      return f.field(StaticStrings::Id, props.id)
-          .transformWith(
-              CollectionInternalProperties::Transformers::IdIdentifier{})
-          .fallback(f.keep());
-    }
-  });
-
   return f.object(props).fields(
-      std::move(idField),
-      internalOnlyField(f, StaticStrings::DataSourceGuid, props.guid),
       internalOnlyField(f, StaticStrings::DataSourceDeleted, props.deleted),
       f.field(StaticStrings::SyncByRevision, props.syncByRevision)
           .fallback(f.keep()),

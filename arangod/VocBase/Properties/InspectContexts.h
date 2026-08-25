@@ -24,6 +24,7 @@
 
 #include "Inspection/InspectorBase.h"
 
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -59,6 +60,17 @@ template<class Inspector>
 inline constexpr bool isAgencyContext =
     std::is_same_v<typename detail::ContextOf<Inspector>::type,
                    InspectAgencyContext>;
+
+// Assigned by the server, never chosen by the client. Parsed on the load path;
+// on the user path the key stays accepted but its value is dropped
+template<class Inspector, class T>
+auto internalOnlyField(Inspector& f, std::string_view name, T& value) {
+  if constexpr (isInternalContext<Inspector>) {
+    return f.field(name, value).fallback(f.keep());
+  } else {
+    return f.ignoreField(name);
+  }
+}
 
 // Applies `invariant` to `field` only when the value come from user input
 template<class Inspector, class Field, class Invariant>

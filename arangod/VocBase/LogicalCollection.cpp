@@ -229,7 +229,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase,
                                      CollectionDescriptor descriptor,
                                      bool isAStub)
     : LogicalDataSource(
-          *this, vocbase, descriptor.internal.id,
+          *this, vocbase, descriptor.identity.id,
           // COR-885: load path must pass the stored id
           std::string{},
           // COR-885: load path must pass the stored planId
@@ -430,7 +430,7 @@ CollectionDescriptor LogicalCollection::properties() const {
     d.clusteringConstant.distributeShardsLikeCid = std::move(distLike);
   }
 
-  d.internal.id = id();
+  d.identity.id = id();
   d.internal.usesRevisionsAsDocumentIds = _usesRevisionsAsDocumentIds;
   d.internal.syncByRevision = _syncByRevision.load(std::memory_order_relaxed);
   d.internal.internalValidatorType =
