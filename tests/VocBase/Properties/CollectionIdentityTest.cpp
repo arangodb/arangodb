@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -22,7 +22,7 @@
 
 #include "gtest/gtest.h"
 
-#include "VocBase/Properties/CollectionInternalProperties.h"
+#include "VocBase/Properties/CollectionIdentity.h"
 #include "Basics/ResultT.h"
 #include "Inspection/VPack.h"
 
@@ -31,7 +31,7 @@
 #include <velocypack/Builder.h>
 
 namespace arangodb::tests {
-class CollectionInternalPropertiesTest : public ::testing::Test {
+class CollectionIdentityTest : public ::testing::Test {
  protected:
   // Returns minimal, valid JSON object for the struct to test.
   // Only the given attributeName has the given value.
@@ -58,8 +58,8 @@ class CollectionInternalPropertiesTest : public ::testing::Test {
 
   // Tries to parse the given body and returns a ResulT of your Type under
   // test.
-  static ResultT<CollectionInternalProperties> parse(VPackSlice body) {
-    CollectionInternalProperties res;
+  static ResultT<CollectionIdentity> parse(VPackSlice body) {
+    CollectionIdentity res;
     try {
       auto status = velocypack::deserializeWithStatus(body, res);
       if (!status.ok()) {
@@ -76,36 +76,59 @@ class CollectionInternalPropertiesTest : public ::testing::Test {
     }
   }
 
-  static VPackBuilder serialize(CollectionInternalProperties testee) {
+  static VPackBuilder serialize(CollectionIdentity testee) {
     VPackBuilder result;
     velocypack::serialize(result, testee);
     return result;
   }
 };
 
-TEST_F(CollectionInternalPropertiesTest, test_minimal_user_input) {
+TEST_F(CollectionIdentityTest, test_minimal_user_input) {
   VPackBuilder body;
   { VPackObjectBuilder guard(&body); }
   auto testee = parse(body.slice());
   ASSERT_TRUE(testee.ok());
-  EXPECT_TRUE(testee->syncByRevision);
-  EXPECT_TRUE(testee->usesRevisionsAsDocumentIds);
-  EXPECT_FALSE(testee->deleted);
-  EXPECT_FALSE(testee->isSmartChild);
-  EXPECT_EQ(testee->internalValidatorType, 0);
-  EXPECT_FALSE(testee->smartGraphAttribute.has_value());
+  EXPECT_EQ(testee->id.id(), 0);
+  EXPECT_TRUE(testee->guid.empty());
+  EXPECT_EQ(testee->planId, DataSourceId::none());
+}
+
+TEST_F(CollectionIdentityTest, test_id) {
+  auto shouldBeEvaluatedTo = [&](VPackBuilder const& body,
+                                 DataSourceId const& expected) {
+    auto testee = parse(body.slice());
+    EXPECT_EQ(testee->id, expected) << "Parsing error in " << body.toJson();
+    __HELPER_equalsAfterSerializeParseCircle(testee.get())
+  };
+  shouldBeEvaluatedTo(createMinimumBodyWithOneValue("id", "test"),
+                      DataSourceId(0));
+  shouldBeEvaluatedTo(createMinimumBodyWithOneValue("id", "unknown"),
+                      DataSourceId(0));
+
+  shouldBeEvaluatedTo(createMinimumBodyWithOneValue("id", "123"),
+                      DataSourceId(123));
+  shouldBeEvaluatedTo(createMinimumBodyWithOneValue("id", "42"),
+                      DataSourceId(42));
+
+  shouldBeEvaluatedTo(createMinimumBodyWithOneValue("id", "4.2"),
+                      DataSourceId(0));
+
+  GenerateFailsOnBool(id);
+  GenerateFailsOnInteger(id);
+  GenerateFailsOnDouble(id);
+  GenerateFailsOnArray(id);
+  GenerateFailsOnObject(id);
 }
 
 // Covers a non-documented API
-GenerateIgnoredAttributeTest(CollectionInternalPropertiesTest, deleted);
-GenerateBoolAttributeTest(CollectionInternalPropertiesTest, syncByRevision);
-GenerateBoolAttributeTest(CollectionInternalPropertiesTest,
-                          usesRevisionsAsDocumentIds);
+GenerateIgnoredAttributeTest(CollectionIdentityTest, globallyUniqueId);
 
-GenerateBoolAttributeTest(CollectionInternalPropertiesTest, isSmartChild);
-GenerateIntegerAttributeTest(CollectionInternalPropertiesTest,
-                             internalValidatorType);
+// planId is not declared outside the internal context, so the create API
+// rejects it. guid is documented and therefore only ignored, see above.
+TEST_F(CollectionIdentityTest, test_planId_is_rejected) {
+  auto testee = parse(createMinimumBodyWithOneValue("planId", "123").slice());
+  EXPECT_TRUE(testee.fail());
+  EXPECT_EQ(testee.errorNumber(), TRI_ERROR_BAD_PARAMETER);
+}
 
-GenerateOptionalStringAttributeTest(CollectionInternalPropertiesTest,
-                                    smartGraphAttribute);
 }  // namespace arangodb::tests
