@@ -73,7 +73,7 @@ auth::TokenCache::~TokenCache() {
     _basicCache.clear();
   }
   {
-    auto guard = _jwtSecrets.getLockedGuard();
+    auto guard = std::lock_guard<std::mutex>(_jwtCacheMutex);
     _jwtCache.clear();
   }
 }
