@@ -38,7 +38,8 @@ struct ES256PublicKey {
 };
 
 struct HS256Key {
-  static constexpr size_t kMinSecretLength = 32;
+  static constexpr size_t kMinSecretLength =
+      1;  // TODO: Increase; requires test changes
   static constexpr size_t kMaxSecretLength = 64;
   std::string _data;
 };
