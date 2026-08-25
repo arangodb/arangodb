@@ -34,6 +34,7 @@
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/Properties/CollectionDescriptor.h"
+#include "VocBase/Properties/CollectionVersion.h"
 #include "VocBase/Validators.h"
 #include "VocBase/voc-types.h"
 
@@ -106,7 +107,7 @@ class LogicalCollection : public LogicalDataSource {
   LogicalCollection& operator=(LogicalCollection const&) = delete;
   ~LogicalCollection() override;
 
-  enum class Version { v30 = 5, v31 = 6, v33 = 7, v34 = 8, v37 = 9 };
+  using Version = CollectionVersion;
 
   constexpr static Category category() noexcept {
     return Category::kCollection;
@@ -132,9 +133,13 @@ class LogicalCollection : public LogicalDataSource {
   };
 
   /// @brief hard-coded minimum version number for collections
-  static constexpr Version minimumVersion() { return Version::v30; }
+  static constexpr Version minimumVersion() {
+    return minimumCollectionVersion();
+  }
   /// @brief current version for collections
-  static constexpr Version currentVersion() { return Version::v37; }
+  static constexpr Version currentVersion() {
+    return currentCollectionVersion();
+  }
 
   static replication2::LogId shardIdToStateId(ShardID const& shardId);
   static std::optional<replication2::LogId> tryShardIdToStateId(
