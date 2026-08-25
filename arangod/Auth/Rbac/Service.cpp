@@ -25,7 +25,7 @@
 
 namespace arangodb::rbac {
 
-auto Service::check(Subject const& /*subject*/,
+auto Service::check(JwtToken const& /*token*/,
                     std::span<ActionResource const> /*queries*/) noexcept
     -> Result {
   // The base implementation fails closed. The production ServiceImpl overrides
