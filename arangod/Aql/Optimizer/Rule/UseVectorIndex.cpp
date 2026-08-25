@@ -223,13 +223,15 @@ std::vector<std::shared_ptr<Index>> getVectorIndexes(
     auto& idxNames = indexHint.candidateIndexes();
     auto currentIt = vectorIndexes.begin();
     for (auto const& idxName : idxNames) {
+      if (currentIt == vectorIndexes.end()) {
+        break;
+      }
       if (auto foundHintedIndexIt = std::ranges::find_if(
-              vectorIndexes,
+              currentIt, vectorIndexes.end(),
               [&idxName](const auto& elem) { return elem->name() == idxName; });
           foundHintedIndexIt != vectorIndexes.end()) {
-        auto oldIt = currentIt;
-        std::iter_swap(oldIt, foundHintedIndexIt);
-        currentIt++;
+        std::iter_swap(currentIt, foundHintedIndexIt);
+        ++currentIt;
       }
     }
   }
