@@ -962,14 +962,14 @@ function AuthSuite() {
         }
       });
       expect(res).to.be.an.instanceof(request.Response);
-      expect(res).to.have.property('statusCode', 401);
+      expect(res).to.have.property('statusCode', 404);
 
       // should prevent name guessing by unauthorized users
       res = request.get({
         url: baseUrl() + "/_db/nonexisting/_api/version"
       });
       expect(res).to.be.an.instanceof(request.Response);
-      expect(res).to.have.property('statusCode', 401);
+      expect(res).to.have.property('statusCode', 404);
     },
 
     testDatabaseGuessingSuperUser: function () {
@@ -992,7 +992,7 @@ function AuthSuite() {
         url: baseUrl() + "/_db/nonexisting/_api/version"
       });
       expect(res).to.be.an.instanceof(request.Response);
-      expect(res).to.have.property('statusCode', 401);
+      expect(res).to.have.property('statusCode', 404);
     },
 
     testDatabaseListNonSystem: function () {

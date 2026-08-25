@@ -284,19 +284,7 @@ CommTask::Flow CommTask::prepareExecution(
                                _securityFeature,
                                req)) {  // false if db not found
     // We get here, if the requested database does not exist, in this case
-    // we do not want to return NOT FOUND unless we are the superuser.
-    // Otherwise, a user who has no access to a database could see from the
-    // error code if the database exists or not. Therefore:
-    if (_auth->isActive()) {
-      if ((req.authenticated() && !req.user().empty()) ||
-          !req.authenticated()) {
-        sendErrorResponse(rest::ResponseCode::UNAUTHORIZED,
-                          req.contentTypeResponse(), req.messageId(),
-                          TRI_ERROR_FORBIDDEN,
-                          "not authorized to execute this request");
-        return Flow::Abort;
-      }
-    }
+    // we simply want to return NOT FOUND.
     sendErrorResponse(rest::ResponseCode::NOT_FOUND, req.contentTypeResponse(),
                       req.messageId(), TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     return Flow::Abort;
