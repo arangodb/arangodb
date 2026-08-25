@@ -969,7 +969,7 @@ function AuthSuite() {
         url: baseUrl() + "/_db/nonexisting/_api/version"
       });
       expect(res).to.be.an.instanceof(request.Response);
-      expect(res).to.have.property('statusCode', 404);
+      expect(res).to.have.property('statusCode', 401);
     },
 
     testDatabaseGuessingSuperUser: function () {
@@ -992,7 +992,7 @@ function AuthSuite() {
         url: baseUrl() + "/_db/nonexisting/_api/version"
       });
       expect(res).to.be.an.instanceof(request.Response);
-      expect(res).to.have.property('statusCode', 404);
+      expect(res).to.have.property('statusCode', 401);
     },
 
     testDatabaseListNonSystem: function () {
@@ -1199,8 +1199,8 @@ function UnauthorizedAccesSuite() {
       assertEqual(401, res.code);
       assertEqual(res.parsedBody.errorMessage, "No read access to database.");
       res = arango.GET_RAW("/_db/dbTest4/_api/database/current");
-      assertEqual(404, res.code);
-      assertEqual(res.parsedBody.errorMessage, "database not found");
+      assertEqual(401, res.code);
+      assertEqual(res.parsedBody.errorMessage, "not authorized to execute this request");
     },
   };
 }
