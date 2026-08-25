@@ -70,6 +70,9 @@ AuthenticationFeature::AuthenticationFeature(
   auto res = auth::loadJwtSecretString(_options.jwtSecretProgramOption);
   if (res.ok()) {
     _authInfo.assign(res.get());
+  } else {
+    LOG_TOPIC("d3617", FATAL, Logger::STARTUP) << res.errorMessage();
+    FATAL_ERROR_EXIT();
   }
 
   if (!_options.jwtSecretKeyfileProgramOption.empty() ||
