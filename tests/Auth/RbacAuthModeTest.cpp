@@ -391,8 +391,9 @@ TEST_F(RbacAuthModeTest, ModifyUserProfile) {
 }
 
 TEST_F(RbacAuthModeTest, GrantUserPermissions) {
-  check(p::GrantUserPermissions{.name = "alice"});
-  expectSingle(rbac::Action::WriteMeta, "user:alice");
+  auto r = check(p::GrantUserPermissions{.name = "alice"});
+  ASSERT_EQ(r.errorNumber(), ErrorCode{11});
+  ASSERT_TRUE(svc.queries.empty());
 }
 
 // ---------------------------------------------------------------------------

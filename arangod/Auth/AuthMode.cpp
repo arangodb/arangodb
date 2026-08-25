@@ -1282,8 +1282,8 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
                             rbac::resources::User{user.name});
           },
           [&](p::GrantUserPermissions const& user) -> Result {
-            return checkOne(rbac::Action::WriteMeta,
-                            rbac::resources::User{user.name});
+            return {TRI_ERROR_FORBIDDEN,
+                    "Cannot modify classic user permissions in RBAC mode!"};
           },
           // -- API versions ----------------------------------------------
           [&](p::UseApiVersion const& apiVersion) -> Result {
