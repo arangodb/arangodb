@@ -438,6 +438,15 @@ class LogicalCollection : public LogicalDataSource {
 
   void decorateWithInternalValidators();
 
+  std::optional<uint64_t> groupId() const noexcept;
+
+  // The value as stored; the public replicatedStateId() additionally requires
+  // that it is set.
+  std::optional<replication2::LogId> const& replicatedStateIdIfAny()
+      const noexcept {
+    return _properties.clusteringConstant.replicatedStateId;
+  }
+
   // Parsed once at construction; only its immutable fields are authoritative;
   // the mutable ones are seeded from here into the attributes below and are
   // stale afterwards
@@ -515,12 +524,6 @@ class LogicalCollection : public LogicalDataSource {
   std::shared_ptr<ValidatorBase> _schema;
 
   std::vector<std::unique_ptr<ValidatorBase>> _internalValidators;
-
-  // Temporarily here, used for shards, only on DBServers
-  std::optional<arangodb::replication2::LogId> _replicatedStateId;
-
-  // TODO: Only quickly added
-  std::optional<uint64_t> _groupId;
 };
 
 }  // namespace arangodb
