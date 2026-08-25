@@ -2631,7 +2631,7 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
               AliasItem{item->getStringView(), item->getMember(0)});
         } else {
           auto path = extractPath(item);
-          // Skip any keep whose first segment is an implicit system attribute
+          // Skip any RETURN whose first segment is an implicit system attribute
           // (bare `_id` and nested `_id.foo` / `_from.x`), so we never overwrite
           // the scalar system attrs with a nested object of the same key.
           if (!path.empty() && isSystemAttribute(path[0])) {
