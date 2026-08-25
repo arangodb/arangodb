@@ -25,6 +25,7 @@
 #include "Basics/StaticStrings.h"
 #include "Inspection/Access.h"
 #include "Replication2/AgencyCollectionSpecification.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "VocBase/Properties/InspectContexts.h"
 #include "VocBase/Properties/UtilityInvariants.h"
 
@@ -45,6 +46,10 @@ struct ClusteringConstantProperties {
   inspection::NonNullOptional<std::vector<std::string>> shardKeys{std::nullopt};
   inspection::NonNullOptional<std::vector<ShardID>> shardsR2{std::nullopt};
   inspection::NonNullOptional<replication2::agency::CollectionGroupId> groupId{
+      std::nullopt};
+  // The replicated log backing this shard. Chosen by the DBServer maintenance
+  // when the shard is created, so only the load path ever carries it.
+  inspection::NonNullOptional<replication2::LogId> replicatedStateId{
       std::nullopt};
 
   bool operator==(ClusteringConstantProperties const& other) const = default;
@@ -88,9 +93,12 @@ auto inspect(Inspector& f, ClusteringConstantProperties& props) {
         std::move(shardingStrategyField),
         f.field(StaticStrings::ShardKeys, props.shardKeys).fallback(f.keep()),
         f.field("shardsR2", props.shardsR2).fallback(f.keep()),
-        f.field(StaticStrings::GroupId, props.groupId).fallback(f.keep()));
+        f.field(StaticStrings::GroupId, props.groupId).fallback(f.keep()),
+        f.field("replicatedStateId", props.replicatedStateId)
+            .fallback(f.keep()));
   } else {
-    // If the user specifies the shards list and groupId, we reject it.
+    // If the user specifies the shards list, groupId or replicatedStateId, we
+    // reject it.
     return f.object(props).fields(
         std::move(numberOfShardsField), std::move(distShardsLikeField),
         std::move(shardingStrategyField),
