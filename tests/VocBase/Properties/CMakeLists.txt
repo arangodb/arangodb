@@ -4,6 +4,7 @@ set(ARANGODB_VOCBASE_PROPERTIES_TEST_SOURCES
         CollectionPropertiesTest.cpp
         CollectionConstantPropertiesTest.cpp
         CollectionMutablePropertiesTest.cpp
+        CollectionIdentityTest.cpp
         CollectionInternalPropertiesTest.cpp
         CollectionCreateOptionsTest.cpp
         CollectionDescriptorFactoryTest.cpp
