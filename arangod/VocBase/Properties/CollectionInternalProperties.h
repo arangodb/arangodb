@@ -59,6 +59,9 @@ struct CollectionInternalProperties {
   // Assigned by the server on create, read back on load. Empty means the
   // collection does not have one yet.
   std::string guid = StaticStrings::Empty;
+  // Set when the collection is dropped, read back on load.
+  bool deleted = false;
+
   bool syncByRevision = true;
   bool usesRevisionsAsDocumentIds = true;
   bool isSmartChild = false;
@@ -75,6 +78,17 @@ struct CollectionInternalProperties {
   bool operator==(CollectionInternalProperties const&) const = default;
 };
 
+// Assigned by the server, never chosen by the client. Parsed on the load path;
+// on the user path the key stays accepted but its value is dropped
+template<class Inspector, class T>
+auto internalOnlyField(Inspector& f, std::string_view name, T& value) {
+  if constexpr (isInternalContext<Inspector>) {
+    return f.field(name, value).fallback(f.keep());
+  } else {
+    return f.ignoreField(name);
+  }
+}
+
 template<class Inspector>
 auto inspect(Inspector& f, CollectionInternalProperties& props) {
   auto idField = std::invoke([&]() {
@@ -90,19 +104,10 @@ auto inspect(Inspector& f, CollectionInternalProperties& props) {
     }
   });
 
-  auto guidField = std::invoke([&]() {
-    if constexpr (isInternalContext<Inspector>) {
-      return f.field(StaticStrings::DataSourceGuid, props.guid)
-          .fallback(f.keep());
-    } else {
-      // Documented, but the user cannot choose a guid. Keep accepting it on
-      // the create API and drop the value.
-      return f.ignoreField(StaticStrings::DataSourceGuid);
-    }
-  });
-
   return f.object(props).fields(
-      std::move(idField), std::move(guidField),
+      std::move(idField),
+      internalOnlyField(f, StaticStrings::DataSourceGuid, props.guid),
+      internalOnlyField(f, StaticStrings::DataSourceDeleted, props.deleted),
       f.field(StaticStrings::SyncByRevision, props.syncByRevision)
           .fallback(f.keep()),
       f.field(StaticStrings::UsesRevisionsAsDocumentIds,
@@ -116,11 +121,7 @@ auto inspect(Inspector& f, CollectionInternalProperties& props) {
       userInvariant(f,
                     f.field(StaticStrings::GraphSmartGraphAttribute,
                             props.smartGraphAttribute),
-                    UtilityInvariants::isNonEmptyIfPresent),
-      /* Backwards compatibility, field is documented but does not have an
-       * effect
-       */
-      f.ignoreField(StaticStrings::DataSourceDeleted));
+                    UtilityInvariants::isNonEmptyIfPresent));
 }
 
 }  // namespace arangodb
