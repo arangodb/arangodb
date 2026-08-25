@@ -461,7 +461,7 @@ async<void> RestCollectionHandler::handleCommandPut() {
     // "load" is a no-op starting with 3.9
     bool cc = VelocyPackHelper::getBooleanValue(body, "count", true);
     co_await collectionRepresentation(
-        name, /*showProperties*/ false,
+        coll->name(), /*showProperties*/ false,
         /*showFigures*/ FiguresType::None,
         /*showCount*/ cc ? CountType::Standard : CountType::None);
     co_return standardResponse();
@@ -474,7 +474,7 @@ async<void> RestCollectionHandler::handleCommandPut() {
     }
 
     // apart from WAL flushing, unload is a no-op starting with 3.9
-    co_await collectionRepresentation(name, /*showProperties*/ false,
+    co_await collectionRepresentation(coll->name(), /*showProperties*/ false,
                                       /*showFigures*/ FiguresType::None,
                                       /*showCount*/ CountType::None);
     co_return standardResponse();
@@ -484,7 +484,7 @@ async<void> RestCollectionHandler::handleCommandPut() {
     // than 0 for backwards compatibility:
     if (_request.get()->requestedApiVersion() > 0) {
       if (auto r = ExecContext::current().canUseCollection(
-              _vocbase.name(), name, AccessLevel::WriteMeta);
+              _vocbase.name(), coll->name(), AccessLevel::WriteMeta);
           r.fail()) {
         generateError(r);
         co_return;
@@ -495,7 +495,7 @@ async<void> RestCollectionHandler::handleCommandPut() {
       // while this call is technically blocking, the requests to the
       // DB servers only schedule the compactions, but they do not
       // block until they are completed.
-      auto res = compactOnAllDBServers(feature, _vocbase.name(), name);
+      auto res = compactOnAllDBServers(feature, _vocbase.name(), coll->name());
       if (res.fail()) {
         generateError(res);
         co_return;
@@ -504,7 +504,7 @@ async<void> RestCollectionHandler::handleCommandPut() {
       coll->compact();
     }
 
-    co_await collectionRepresentation(name, /*showProperties*/ false,
+    co_await collectionRepresentation(coll->name(), /*showProperties*/ false,
                                       /*showFigures*/ FiguresType::None,
                                       /*showCount*/ CountType::None);
     co_return standardResponse();
@@ -666,7 +666,7 @@ async<void> RestCollectionHandler::handleCommandPut() {
     res = methods::Collections::rename(*coll, newName, false);
 
     if (res.ok()) {
-      co_await collectionRepresentation(newName, /*showProperties*/ false,
+      co_await collectionRepresentation(coll->name(), /*showProperties*/ false,
                                         /*showFigures*/ FiguresType::None,
                                         /*showCount*/ CountType::None);
       co_return standardResponse();

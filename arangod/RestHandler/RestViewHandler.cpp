@@ -268,10 +268,8 @@ void RestViewHandler::modifyView(bool partialUpdate) {
         "PUT /_api/view/<view-name>/rename");
   }
 
-  auto name = basics::StringUtils::urlDecode(suffixes[0]);
-
   CollectionNameResolver resolver{_vocbase};
-  auto view = resolver.getView(name);
+  auto view = resolver.getView(basics::StringUtils::urlDecode(suffixes[0]));
   if (!view) {
     return generateError(rest::ResponseCode::NOT_FOUND,
                          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -294,9 +292,9 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
   auto const& execContext = ExecContext::current();
   if (isRename) {
-    if (auto r =
-            execContext.canRenameView(_vocbase.name(), name, body.stringView(),
-                                      view->linkedCollectionNames());
+    if (auto r = execContext.canRenameView(_vocbase.name(), view->name(),
+                                           body.stringView(),
+                                           view->linkedCollectionNames());
         !r.ok()) {
       return generateError(r);
     }
@@ -307,8 +305,8 @@ void RestViewHandler::modifyView(bool partialUpdate) {
         linkedCollections.push_back(pair.key.copyString());
       }
     }
-    if (auto r =
-            execContext.canModifyView(_vocbase.name(), name, linkedCollections);
+    if (auto r = execContext.canModifyView(_vocbase.name(), view->name(),
+                                           linkedCollections);
         !r.ok()) {
       return generateError(r);
     }
@@ -386,7 +384,8 @@ void RestViewHandler::deleteView() {
 
   auto allowDropSystem =
       _request->parsedValue(StaticStrings::DataSourceSystem, false);
-  auto view = CollectionNameResolver(_vocbase).getView(name);
+  auto view = CollectionNameResolver(_vocbase).getView(
+      arangodb::basics::StringUtils::urlDecode(suffixes[0]));
 
   if (!view) {
     generateError(rest::ResponseCode::NOT_FOUND,
@@ -402,7 +401,7 @@ void RestViewHandler::deleteView() {
   // ...........................................................................
 
   if (auto r = ExecContext::current().canDropView(
-          _vocbase.name(), name, view->linkedCollectionNames());
+          _vocbase.name(), view->name(), view->linkedCollectionNames());
       !r.ok()) {
     // check auth after ensuring that the view exists
     generateError(r);
