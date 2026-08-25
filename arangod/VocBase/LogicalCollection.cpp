@@ -65,6 +65,7 @@
 #include <velocypack/Utf8Helper.h>
 
 #include <format>
+#include <functional>
 
 using namespace arangodb;
 using Helper = basics::VelocyPackHelper;
@@ -429,32 +430,35 @@ bool LogicalCollection::cacheEnabled() const noexcept {
 }
 
 CollectionDescriptor LogicalCollection::properties() const {
+  // _properties holds the values the collection was built with. Everything
+  // another object owns at runtime is refreshed here, so the result is a
+  // snapshot rather than a copy of the construction input.
   auto d = _properties;
 
-  // Only update the mutable fields with the current values
+  d.identity.id = id();
+
+  d.internal.deleted = deleted();
+  d.internal.usesRevisionsAsDocumentIds = _usesRevisionsAsDocumentIds;
+  d.internal.syncByRevision = _syncByRevision.load(std::memory_order_relaxed);
+  d.internal.internalValidatorType =
+      _internalValidatorTypes.load(std::memory_order_relaxed);
+
   d.mutableProps.name = name();
   d.mutableProps.cacheEnabled = cacheEnabled();
-
-  d.clusteringMutable.waitForSync =
-      _waitForSync.load(std::memory_order_relaxed);
-  d.clusteringMutable.replicationFactor = replicationFactor();
-  d.clusteringMutable.writeConcern = writeConcern();
 
   d.clusteringConstant.numberOfShards = numberOfShards();
   d.clusteringConstant.shardKeys = shardKeys();
   d.clusteringConstant.shardingStrategy =
       shardingInfo()->shardingStrategyName();
+  d.clusteringConstant.shards = *shardIds();
   if (auto distLike = distributeShardsLike(); !distLike.empty()) {
     d.clusteringConstant.distributeShardsLikeCid = std::move(distLike);
   }
-  d.clusteringConstant.shards = *shardIds();
 
-  d.identity.id = id();
-  d.internal.usesRevisionsAsDocumentIds = _usesRevisionsAsDocumentIds;
-  d.internal.syncByRevision = _syncByRevision.load(std::memory_order_relaxed);
-  d.internal.internalValidatorType =
-      _internalValidatorTypes.load(std::memory_order_relaxed);
-  d.internal.deleted = deleted();
+  d.clusteringMutable.waitForSync =
+      _waitForSync.load(std::memory_order_relaxed);
+  d.clusteringMutable.replicationFactor = replicationFactor();
+  d.clusteringMutable.writeConcern = writeConcern();
 
   d.storage.version = _version;
 
@@ -875,35 +879,24 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
     build.add("status", VPackValue(/*TRI_VOC_COL_STATUS_LOADED*/ 3));
     build.add("statusString", VPackValue("loaded"));
   }
+  // Keys another object owns the live value for. It emits them below, so the
+  // descriptor's copy is skipped here to avoid a duplicate key.
+  static constexpr std::array kEmittedElsewhere{
+      // LogicalDataSource
+      "name", "isSystem", "deleted",
+      // ShardingInfo
+      "numberOfShards", "shardKeys", "shards", "shardingStrategy",
+      "distributeShardsLike", "replicationFactor", "writeConcern",
+      "minReplicationFactor",
+      // PhysicalCollection
+      "objectId", "cacheEnabled", "indexes",
+      // LogicalCollection, below
+      "version", "keyOptions", "schema", "computedValues",
+      "smartGraphAttribute", "smartJoinAttribute"};
 
-  build.add(StaticStrings::Version,
-            VPackValue(static_cast<uint32_t>(_version)));
-  // Collection Flags
   auto props = properties();
-
   VPackBuilder tmp;
   velocypack::serializeWithContext(tmp, props, InspectInternalContext{});
-  // For these, the descriptor's copy is not the value to publish -- another
-  // object owns the live one and emits it below. We want to skipping them to
-  // avoid adding duplicate key holding a stale value.
-  static constexpr std::array kEmittedElsewhere{"name",
-                                                "isSystem",
-                                                "keyOptions",
-                                                "numberOfShards",
-                                                "shardKeys",
-                                                "shards",
-                                                "replicationFactor",
-                                                "writeConcern",
-                                                "minReplicationFactor",
-                                                "distributeShardsLike",
-                                                "shardingStrategy",
-                                                "objectId",
-                                                "cacheEnabled",
-                                                "smartGraphAttribute",
-                                                "smartJoinAttribute",
-                                                "schema",
-                                                "computedValues"};
-
   for (auto it : VPackObjectIterator(tmp.slice())) {
     auto key = it.key.stringView();
     if (std::ranges::find(kEmittedElsewhere, key) != kEmittedElsewhere.end()) {
@@ -936,26 +929,26 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
 
   // Physical Information
   getPhysical()->getPropertiesVPack(build);
-  // Indexes
-  build.add(VPackValue(StaticStrings::Indexes));
-  auto indexFlags = Index::makeFlags();
-  // hide hidden indexes. In effect hides unfinished indexes,
-  // and iResearch links (only on a single-server and coordinator)
-  if (forPersistence) {
-    indexFlags = Index::makeFlags(Index::Serialize::Internals);
-  }
-  if (forMaintance) {
-    indexFlags = Index::makeFlags(Index::Serialize::Internals,
-                                  Index::Serialize::Maintenance);
-  }
 
+  // Indexes. Hidden ones (unfinished indexes and iResearch links) are only
+  // shown when persisting; the vector index reports its trainingState to the
+  // agency even while in progress.
+  build.add(VPackValue(StaticStrings::Indexes));
+  auto const indexFlags = std::invoke([&] {
+    if (forMaintance) {
+      return Index::makeFlags(Index::Serialize::Internals,
+                              Index::Serialize::Maintenance);
+    }
+    if (forPersistence) {
+      return Index::makeFlags(Index::Serialize::Internals);
+    }
+    return Index::makeFlags();
+  });
   auto const filter = [indexFlags, forPersistence, forMaintance,
                        showInProgress](Index const* idx,
                                        decltype(Index::makeFlags())& flags) {
     if ((forPersistence || !idx->isHidden()) &&
         (showInProgress || !idx->inProgress() ||
-         // We do this since we need trainingState of the vector index in agency
-         // so we can report it to the end user
          (forMaintance && idx->type() == IndexType::Vector))) {
       flags = indexFlags;
       return true;
@@ -973,40 +966,30 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
 
   std::shared_ptr<replication2::agency::CollectionGroupPlanSpecification const>
       group;
-  if (groupId().has_value()) {
+  if (auto gid = groupId(); gid.has_value()) {
     TRI_ASSERT(replicationVersion() == replication::Version::TWO)
         << "Set a groupId although we are not in Replication Two";
     auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
     group = ci.getCollectionGroupById(
-        replication2::agency::CollectionGroupId{groupId().value()});
+        replication2::agency::CollectionGroupId{gid.value()});
   }
-  bool isReplicationTWO = group != nullptr;
+  bool const isReplicationTWO = group != nullptr;
+
+  bool includeShardsEntry = true;
 #ifdef USE_ENTERPRISE
   if (isSmart() && type() == TRI_COL_TYPE_EDGE &&
       ServerState::instance()->isRunningInCluster()) {
     TRI_ASSERT(!isSmartChild());
-    VirtualClusterSmartEdgeCollection const* edgeCollection =
-        static_cast<arangodb::VirtualClusterSmartEdgeCollection const*>(this);
-    if (edgeCollection == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "unable to cast smart edge collection");
-    }
-    edgeCollection->shardMapToVelocyPack(build);
-    bool includeShardsEntry = false;
-    _sharding->toVelocyPack(build, isReplicationTWO, ctx != Serialization::List,
-                            includeShardsEntry);
-  } else {
-    _sharding->toVelocyPack(build, isReplicationTWO,
-                            ctx != Serialization::List);
+    // A smart edge collection publishes the shard map of its children instead.
+    static_cast<VirtualClusterSmartEdgeCollection const*>(this)
+        ->shardMapToVelocyPack(build);
+    includeShardsEntry = false;
   }
-#else
-  _sharding->toVelocyPack(build, isReplicationTWO, ctx != Serialization::List);
 #endif
+  _sharding->toVelocyPack(build, isReplicationTWO, ctx != Serialization::List,
+                          includeShardsEntry);
+
   if (group) {
-    build.add("groupId", VPackValue(groupId().value()));
-    if (replicatedStateIdIfAny().has_value()) {
-      build.add("replicatedStateId", VPackValue(*replicatedStateIdIfAny()));
-    }
     // For replication1 the _sharding is responsible.
     // For TWO the group contains those attributes
 
