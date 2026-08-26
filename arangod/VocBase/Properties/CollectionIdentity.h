@@ -69,10 +69,14 @@ struct CollectionIdentity {
 template<class Inspector>
 auto inspect(Inspector& f, CollectionIdentity& props) {
   if constexpr (isInternalContext<Inspector>) {
-    // Markers and plan entries store the id as a number or under "cid".
-    // LogicalDataSource owns the id on that path, so skip it here.
     return f.object(props).fields(
-        f.ignoreField(StaticStrings::Id),
+        // pre-3.1 collections store the id only under "cid"
+        f.field(StaticStrings::DataSourceCid, props.id)
+            .transformWith(CollectionIdentity::Transformers::IdIdentifier{})
+            .fallback(f.keep()),
+        f.field(StaticStrings::Id, props.id)
+            .transformWith(CollectionIdentity::Transformers::IdIdentifier{})
+            .fallback(f.keep()),
         f.field(StaticStrings::DataSourceGuid, props.guid).fallback(f.keep()),
         f.field(StaticStrings::DataSourcePlanId, props.planId)
             .transformWith(CollectionIdentity::Transformers::IdIdentifier{})

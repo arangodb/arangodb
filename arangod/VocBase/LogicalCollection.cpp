@@ -883,7 +883,7 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
   // descriptor's copy is skipped here to avoid a duplicate key.
   static constexpr std::array kEmittedElsewhere{
       // LogicalDataSource
-      "name", "isSystem", "deleted",
+      "id", "cid", "name", "isSystem", "deleted",
       // ShardingInfo
       "numberOfShards", "shardKeys", "shards", "shardingStrategy",
       "distributeShardsLike", "replicationFactor", "writeConcern",
