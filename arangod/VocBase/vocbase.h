@@ -207,7 +207,8 @@ struct Database {
 
   template<typename As>
   As& engine() const noexcept
-      requires(std::derived_from<As, arangodb::StorageEngine>) {
+    requires(std::derived_from<As, arangodb::StorageEngine>)
+  {
     TRI_ASSERT(dynamic_cast<As*>(&_engine) != nullptr);
     return static_cast<As&>(_engine);
   }
@@ -506,6 +507,11 @@ struct Database {
   /// in community edition or if the collection is not a SmartGraph collection.
   arangodb::Result validateExtendedCollectionParameters(
       arangodb::velocypack::Slice parameters);
+
+  /// @brief checks the licence for SmartGraph collections. does nothing in
+  /// community edition or if the collection is not a SmartGraph collection.
+  arangodb::Result validateEnterpriseLicense(
+      CollectionDescriptor const& descriptor);
 
   /// @brief stores the collection object in the list of available collections,
   /// so it can later be looked up and found by name, guid etc.

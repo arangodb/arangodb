@@ -978,6 +978,12 @@ std::vector<std::shared_ptr<LogicalCollection>> Database::createCollections(
   collections.reserve(descriptors.size());
 
   for (auto& descriptor : descriptors) {
+    // license check for enterprise features
+    if (auto res = validateEnterpriseLicense(descriptor); res.fail()) {
+      events::CreateCollection(dbName, descriptor.mutableProps.name,
+                               res.errorNumber());
+      THROW_ARANGO_EXCEPTION(res);
+    }
     auto col = createCollectionObject(std::move(descriptor), /*isAStub*/ false);
     TRI_ASSERT(col != nullptr);
     collections.emplace_back(std::move(col));
@@ -1079,6 +1085,11 @@ void Database::addSmartGraphCollections(
 }
 
 Result Database::validateExtendedCollectionParameters(velocypack::Slice) {
+  // nothing to be done here. more in EE version
+  return {};
+}
+
+Result Database::validateEnterpriseLicense(CollectionDescriptor const&) {
   // nothing to be done here. more in EE version
   return {};
 }
