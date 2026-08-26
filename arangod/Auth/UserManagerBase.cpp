@@ -277,12 +277,8 @@ Level UserManagerBase::collectionAuthLevel(std::string_view user,
   TRI_ASSERT(!coll.empty());
   Level level = Level::UNDEFINED;
   if (coll[0] >= '0' && coll[0] <= '9') {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "Cannot use collection id for permission check!");
-#if 0
     std::string tmpColl = translateCollectionName(dbname, coll);
     level = it->second.collectionAuthLevel(dbname, tmpColl);
-#endif
   } else {
     level = it->second.collectionAuthLevel(dbname, coll);
   }
