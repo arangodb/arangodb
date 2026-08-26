@@ -201,6 +201,37 @@ struct InspectorBase : detail::ContextContainer<Context> {
   }
 
   template<class T>
+  static decltype(auto) getConditionalField(T& field) noexcept {
+    using TT = std::remove_cvref_t<T>;
+    if constexpr (detail::IsConditionalField<TT>::value) {
+      return field;
+    } else if constexpr (!detail::IsRawField<TT>::value) {
+      return getConditionalField(field.inner);
+    }
+  }
+
+  /// Evaluates the field's condition for the direction this inspector runs in.
+  /// Fields without an applicable condition are always processed.
+  template<class T>
+  static FieldCondition evaluateCondition(T& field) {
+    using Conditional = decltype(getConditionalField(field));
+    if constexpr (std::is_void_v<Conditional>) {
+      return FieldCondition::Process;
+    } else {
+      constexpr auto scope = std::remove_cvref_t<Conditional>::scope;
+      constexpr bool applies =
+          scope == detail::ConditionScope::Always ||
+          (Derived::isLoading ? scope == detail::ConditionScope::Loading
+                              : scope == detail::ConditionScope::Saving);
+      if constexpr (applies) {
+        return std::invoke(getConditionalField(field).predicate);
+      } else {
+        return FieldCondition::Process;
+      }
+    }
+  }
+
+  template<class T>
   static decltype(auto) getTransformer(T& field) noexcept {
     using TT = std::remove_cvref_t<T>;
     if constexpr (detail::IsTransformField<TT>::value) {
