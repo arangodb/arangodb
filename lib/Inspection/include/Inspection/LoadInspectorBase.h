@@ -299,11 +299,10 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
            [&]() { return f.parseFields(fields, std::forward<Args>(args)...); };
   }
 
-  [[nodiscard]] Status parseField(
-      FieldsMap& fields,
-      std::unique_ptr<detail::EmbeddedFields<Derived>>&& embeddedFields) {
-    return embeddedFields->apply(this->self(), fields)  //
-           | [&]() { return embeddedFields->checkInvariant(); };
+  template<class T>
+  [[nodiscard]] Status parseField(FieldsMap& fields,
+                                  detail::EmbeddedFieldsRef<T>&& embedded) {
+    return this->applyEmbeddedFields(fields, embedded.value);
   }
 
   static void markFieldProcessed(FieldsMap& fields, std::string_view name) {

@@ -161,8 +161,13 @@ struct InspectorBase : detail::ContextContainer<Context> {
     return RawField<T&>{{name}, value};
   }
 
+  /// Splices the fields of `value` into the enclosing object. The nested
+  /// `inspect` is not run here - only a reference is captured, and the fields
+  /// are produced when the enclosing inspector processes this entry.
   template<class T>
-  [[nodiscard]] auto embedFields(T& value) const;
+  [[nodiscard]] auto embedFields(T& value) const noexcept {
+    return detail::EmbeddedFieldsRef<T>{value};
+  }
 
   [[nodiscard]] IgnoreField ignoreField(std::string_view name) const noexcept {
     return IgnoreField{name};
@@ -170,6 +175,12 @@ struct InspectorBase : detail::ContextContainer<Context> {
 
  protected:
   Derived& self() { return static_cast<Derived&>(*this); }
+
+  /// Runs the nested `inspect` for an embedded group, splicing its fields into
+  /// `param` - the field collection the enclosing object is being processed
+  /// against.
+  template<class Param, class T>
+  Status applyEmbeddedFields(Param& param, T& value);
 
   template<class T>
   static std::string_view getFieldName(T& field) noexcept {
@@ -485,12 +496,15 @@ struct InspectorBase : detail::ContextContainer<Context> {
       return std::invoke(std::forward<Func>(func), std::forward<Args>(args)...);
     }
   }
-
-  template<class, class, class>
-  friend struct detail::EmbeddedFieldsWithObjectInvariant;
 };
 
 namespace detail {
+// The EmbeddedFieldInspector is used to process embedded fields of an object.
+// It forwards the processing of fields to the parent inspector, allowing for
+// nested structures to be handled seamlessly.
+// It has to implement the full inspector interface, but since it is only meant
+// to be used for objects with a fields, all other methods have to fail _at
+// compile time_.
 template<class Parent, class Context>
 struct EmbeddedFieldInspector
     : InspectorBase<EmbeddedFieldInspector<Parent, Context>, Context, Parent> {
@@ -499,10 +513,14 @@ struct EmbeddedFieldInspector
 
   static constexpr bool isLoading = Parent::isLoading;
 
-  explicit EmbeddedFieldInspector(Parent& parent) : Base(), _parent(parent) {}
+  using EmbeddedParam = typename Parent::EmbeddedParam;
 
-  explicit EmbeddedFieldInspector(Parent& parent, Context const& context)
-      : Base(context), _parent(parent) {}
+  EmbeddedFieldInspector(Parent& parent, EmbeddedParam& param)
+      : Base(), _parent(parent), _param(param) {}
+
+  EmbeddedFieldInspector(Parent& parent, EmbeddedParam& param,
+                         Context const& context)
+      : Base(context), _parent(parent), _param(param) {}
 
   [[nodiscard]] Status::Success beginObject() { return {}; }
 
@@ -532,11 +550,11 @@ struct EmbeddedFieldInspector
     return fail();
   }
 
+  /// The whole point of this inspector: hand the fields straight to the
+  /// enclosing one, so they are processed as if they had been written there.
   template<class... Args>
   Status applyFields(Args&&... args) {
-    fields = std::make_unique<EmbeddedFieldsImpl<Parent, Args...>>(
-        std::forward<Args>(args)...);
-    return {};
+    return _parent.processEmbeddedFields(_param, std::forward<Args>(args)...);
   }
 
   template<class... Ts, class... Args>
@@ -573,22 +591,19 @@ struct EmbeddedFieldInspector
   template<class, class, class>
   friend struct ::arangodb::inspection::InspectorBase;
 
-  using EmbeddedParam = typename Parent::EmbeddedParam;
-
   template<class... Args>
   auto processEmbeddedFields(EmbeddedParam& param, Args&&... args) {
     return _parent.processEmbeddedFields(param, std::forward<Args>(args)...);
   }
 
+  /// The fields have already been processed by the time this runs, so the
+  /// invariant can simply be handed to the enclosing inspector - which knows
+  /// whether invariants apply in this direction at all.
   template<class Fn, class T>
   Status objectInvariant(T& object, Fn&& invariant, Status result) {
-    assert(result.ok());
-    fields = std::make_unique<EmbeddedFieldsWithObjectInvariant<Parent, T, Fn>>(
-        object, std::forward<Fn>(invariant), std::move(fields));
-    return result;
+    return _parent.objectInvariant(object, std::forward<Fn>(invariant),
+                                   std::move(result));
   }
-
-  Parent& parent() { return _parent; }
 
   template<bool Fail = true>
   Status::Success fail() {
@@ -596,38 +611,25 @@ struct EmbeddedFieldInspector
     return {};
   }
 
-  std::unique_ptr<EmbeddedFields<Parent>> fields;
-
   Parent& _parent;
+  EmbeddedParam& _param;
 };
 
 }  // namespace detail
 
 template<class Derived, class Context, class TargetInspector>
-template<class T>
-auto InspectorBase<Derived, Context, TargetInspector>::embedFields(
-    T& value) const {
-  auto& parentInspector =
-      [p = const_cast<InspectorBase*>(this)]() -> decltype(auto) {
-    if constexpr (std::is_same_v<Derived, TargetInspector>) {
-      return p->self();
-    } else {
-      // we are an embedded inspector
-      return p->self().parent();
-    }
-  }();
+template<class Param, class T>
+Status InspectorBase<Derived, Context, TargetInspector>::applyEmbeddedFields(
+    Param& param, T& value) {
   auto insp = [&]() {
     if constexpr (InspectorBase::hasContext) {
-      return detail::EmbeddedFieldInspector<TargetInspector, Context>(
-          parentInspector, this->getContext());
+      return detail::EmbeddedFieldInspector<Derived, Context>(
+          self(), param, this->getContext());
     } else {
-      return detail::EmbeddedFieldInspector<TargetInspector, Context>(
-          parentInspector);
+      return detail::EmbeddedFieldInspector<Derived, Context>(self(), param);
     }
   }();
-  auto res = insp.apply(value);
-  assert(res.ok());
-  return std::move(insp.fields);
+  return insp.apply(value);
 }
 
 }  // namespace arangodb::inspection

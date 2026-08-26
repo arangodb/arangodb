@@ -123,12 +123,6 @@ struct ValidateInspector : InspectorBase<ValidateInspector<Context>, Context> {
   }
 
  private:
-  template<class>
-  friend struct detail::EmbeddedFields;
-  template<class, class...>
-  friend struct detail::EmbeddedFieldsImpl;
-  template<class, class, class>
-  friend struct detail::EmbeddedFieldsWithObjectInvariant;
   template<class, class>
   friend struct detail::EmbeddedFieldInspector;
 
@@ -152,12 +146,11 @@ struct ValidateInspector : InspectorBase<ValidateInspector<Context>, Context> {
            [&]() { return validateFields(std::forward<Args>(args)...); };
   }
 
+  template<class T>
   [[nodiscard]] Status validateField(
-      std::unique_ptr<detail::EmbeddedFields<ValidateInspector>>&&
-          embeddedFields) {
+      detail::EmbeddedFieldsRef<T>&& embedded) {
     EmbeddedParam params;
-    return embeddedFields->apply(*this, params)  //
-           | [&]() { return embeddedFields->checkInvariant(); };
+    return this->applyEmbeddedFields(params, embedded.value);
   }
 
   template<class T>

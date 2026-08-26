@@ -328,58 +328,17 @@ static constexpr const char FieldInvariantFailedError[] =
 static constexpr const char ObjectInvariantFailedError[] =
     "Object invariant failed";
 
-template<class Inspector>
-struct EmbeddedFields {
-  virtual ~EmbeddedFields() = default;
-  virtual Status apply(Inspector&, typename Inspector::EmbeddedParam&) = 0;
-  virtual Status checkInvariant() { return {}; };
+/// `embedFields` returns simply a reference to the object whose fields are to
+/// be spliced into the enclosing one. The nested `inspect` runs later, when the
+/// enclosing inspector actually processes this entry.
+template<class T>
+struct EmbeddedFieldsRef {
+  T& value;
 };
 
-template<class Inspector, class... Ts>
-struct EmbeddedFieldsImpl : EmbeddedFields<Inspector> {
-  template<class... Args>
-  explicit EmbeddedFieldsImpl(Args&&... args)
-      : fields(std::forward<Args>(args)...) {}
-
-  Status apply(Inspector& inspector,
-               typename Inspector::EmbeddedParam& param) override {
-    return std::invoke(
-        [&]<std::size_t... I>(std::index_sequence<I...>) {
-          return inspector.processEmbeddedFields(
-              param, std::get<I>(std::move(fields))...);
-        },
-        std::make_index_sequence<sizeof...(Ts)>{});
-  }
-
- private:
-  std::tuple<Ts...> fields;
-};
-
-template<class Inspector, class Object, class Invariant>
-struct EmbeddedFieldsWithObjectInvariant : EmbeddedFields<Inspector> {
-  template<class Fn>
-  explicit EmbeddedFieldsWithObjectInvariant(
-      Object& object, Fn&& invariant,
-      std::unique_ptr<EmbeddedFields<Inspector>> fields)
-      : fields(std::move(fields)),
-        invariant(std::forward<Fn>(invariant)),
-        object(object) {}
-
-  Status apply(Inspector& inspector,
-               typename Inspector::EmbeddedParam& param) override {
-    return fields->apply(inspector, param);
-  }
-
-  Status checkInvariant() override {
-    return Inspector::Base::template doCheckInvariant<
-        detail::ObjectInvariantFailedError>(std::forward<Invariant>(invariant),
-                                            object);
-  }
-
- private:
-  std::unique_ptr<EmbeddedFields<Inspector>> fields;
-  Invariant invariant;
-  Object& object;
-};
+template<class T>
+struct IsEmbeddedFieldsRef : std::false_type {};
+template<class T>
+struct IsEmbeddedFieldsRef<EmbeddedFieldsRef<T>> : std::true_type {};
 
 }  // namespace arangodb::inspection::detail

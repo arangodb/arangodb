@@ -164,12 +164,6 @@ struct SaveInspectorBase : InspectorBase<Derived, Context> {
   }
 
  private:
-  template<class>
-  friend struct detail::EmbeddedFields;
-  template<class, class...>
-  friend struct detail::EmbeddedFieldsImpl;
-  template<class, class, class>
-  friend struct detail::EmbeddedFieldsWithObjectInvariant;
   template<class, class>
   friend struct detail::EmbeddedFieldInspector;
 
@@ -180,10 +174,10 @@ struct SaveInspectorBase : InspectorBase<Derived, Context> {
     return this->applyFields(std::forward<Args>(args)...);
   }
 
-  [[nodiscard]] auto applyField(
-      std::unique_ptr<detail::EmbeddedFields<Derived>> const& fields) {
+  template<class T>
+  [[nodiscard]] auto applyField(detail::EmbeddedFieldsRef<T> const& embedded) {
     typename Derived::EmbeddedParam param;
-    return fields->apply(this->self(), param);
+    return this->applyEmbeddedFields(param, embedded.value);
   }
 
   template<class T>
