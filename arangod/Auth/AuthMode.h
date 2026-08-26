@@ -115,11 +115,14 @@ struct AuthMode {
     rbac::Service& _rbacService;
     std::string const _username;
     std::string const _jwtToken;
+    uint32_t _requestedApiVersion;
 
-    Rbac(rbac::Service& rbacService, std::string username, std::string jwtToken)
+    Rbac(rbac::Service& rbacService, std::string username, std::string jwtToken,
+         uint32_t requestedApiVersion)
         : _rbacService(rbacService),
           _username(std::move(username)),
-          _jwtToken(std::move(jwtToken)) {}
+          _jwtToken(std::move(jwtToken)),
+          _requestedApiVersion(requestedApiVersion) {}
 
     [[nodiscard]] auto username() const noexcept -> std::string_view override;
 

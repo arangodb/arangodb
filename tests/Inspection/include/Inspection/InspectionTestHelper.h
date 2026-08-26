@@ -703,6 +703,216 @@ auto inspect(Inspector& f, NestedEmbeddingWithObjectInvariant& v) {
       f.embedFields(static_cast<EmbeddedObjectInvariant&>(v)));
 }
 
+// Conditions are evaluated in field declaration order while loading, so a
+// field whose condition inspects `version` must be declared after it.
+inline auto processFromV2(int const& version) {
+  return [&version] {
+    return version >= 2 ? arangodb::inspection::FieldCondition::Process
+                        : arangodb::inspection::FieldCondition::Reject;
+  };
+}
+
+inline auto ignoreBeforeV2(int const& version) {
+  return [&version] {
+    return version >= 2 ? arangodb::inspection::FieldCondition::Process
+                        : arangodb::inspection::FieldCondition::Ignore;
+  };
+}
+
+struct ConditionalReject {
+  int version = 1;
+  int newField = 0;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, ConditionalReject& x) {
+  return f.object(x).fields(
+      f.field("version", x.version),
+      f.field("newField", x.newField).when(processFromV2(x.version)));
+}
+
+struct ConditionalIgnore {
+  int version = 1;
+  int newField = 0;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, ConditionalIgnore& x) {
+  return f.object(x).fields(
+      f.field("version", x.version),
+      f.field("newField", x.newField).when(ignoreBeforeV2(x.version)));
+}
+
+struct ConditionalLoadOnly {
+  int version = 1;
+  int newField = 0;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, ConditionalLoadOnly& x) {
+  return f.object(x).fields(
+      f.field("version", x.version),
+      f.field("newField", x.newField).whenLoading(processFromV2(x.version)));
+}
+
+struct ConditionalSaveOnly {
+  int version = 1;
+  int newField = 0;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, ConditionalSaveOnly& x) {
+  return f.object(x).fields(
+      f.field("version", x.version),
+      f.field("newField", x.newField).whenSaving(processFromV2(x.version)));
+}
+
+// A single `when` can still distinguish the directions, because the predicate
+// body is instantiated per Inspector.
+struct AsymmetricCondition {
+  int version = 1;
+  int newField = 0;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, AsymmetricCondition& x) {
+  return f.object(x).fields(f.field("version", x.version),
+                            f.field("newField", x.newField).when([&x] {
+                              using arangodb::inspection::FieldCondition;
+                              if constexpr (Inspector::isLoading) {
+                                return x.version >= 2 ? FieldCondition::Process
+                                                      : FieldCondition::Reject;
+                              } else {
+                                return x.version >= 3 ? FieldCondition::Process
+                                                      : FieldCondition::Reject;
+                              }
+                            }));
+}
+
+// The only chain where a decorator follows `when`, i.e. where ConditionalField
+// is *not* outermost and evaluateCondition has to find the condition by
+// recursing through another wrapper. Every other conditional struct ends in
+// `when`, so this is the sole coverage of that traversal.
+struct ConditionalWithFallback {
+  int version = 1;
+  int newField = 0;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, ConditionalWithFallback& x) {
+  return f.object(x).fields(f.field("version", x.version),
+                            f.field("newField", x.newField)
+                                .when(processFromV2(x.version))
+                                .fallback(42));
+}
+
+// The fallback has to be applied before the invariant is checked.
+struct ConditionalFallbackAndInvariant {
+  int version = 1;
+  int newField = 0;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, ConditionalFallbackAndInvariant& x) {
+  return f.object(x).fields(f.field("version", x.version),
+                            f.field("newField", x.newField)
+                                .fallback(42)
+                                .invariant([](int v) { return v != 0; })
+                                .when(processFromV2(x.version)));
+}
+
+struct ConditionalWithInvariant {
+  int version = 1;
+  int newField = 0;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, ConditionalWithInvariant& x) {
+  return f.object(x).fields(f.field("version", x.version),
+                            f.field("newField", x.newField)
+                                .invariant([](int v) { return v != 0; })
+                                .when(processFromV2(x.version)));
+}
+
+// A skipped field of a complex type. The field itself declares no invariant -
+// the meaningful checks all live inside `Invariant`.
+struct ConditionalNested {
+  int version = 1;
+  Invariant inner;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, ConditionalNested& x) {
+  return f.object(x).fields(
+      f.field("version", x.version),
+      f.field("inner", x.inner).when(processFromV2(x.version)));
+}
+
+struct ConditionalWithTransform {
+  int version = 1;
+  int newField = 0;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, ConditionalWithTransform& x) {
+  return f.object(x).fields(f.field("version", x.version),
+                            f.field("newField", x.newField)
+                                .transformWith(MyTransformer{})
+                                .when(processFromV2(x.version)));
+}
+
+// Two alternative definitions of the same attribute, kept apart by
+// complementary conditions. Exactly one of them may be processed.
+struct AlternativeFields {
+  bool useId = false;
+  std::uint64_t id = 0;
+  std::string name;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, AlternativeFields& x) {
+  auto ifUsingId = [&x] {
+    return x.useId ? arangodb::inspection::FieldCondition::Process
+                   : arangodb::inspection::FieldCondition::Reject;
+  };
+  auto ifUsingName = [&x] {
+    return x.useId ? arangodb::inspection::FieldCondition::Reject
+                   : arangodb::inspection::FieldCondition::Process;
+  };
+  return f.object(x).fields(
+      f.field("useId", x.useId),
+      f.field("target", x.id)
+          .invariant([](std::uint64_t v) { return v != 99; })
+          .when(ifUsingId),
+      f.field("target", x.name)
+          .fallback(f.keep())
+          .invariant([](std::string const& v) { return !v.empty(); })
+          .when(ifUsingName));
+}
+
+struct ConditionalEmbeddable {
+  int innerVersion = 1;
+  int newField = 0;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, ConditionalEmbeddable& x) {
+  return f.object(x).fields(
+      f.field("innerVersion", x.innerVersion),
+      f.field("newField", x.newField).when(processFromV2(x.innerVersion)));
+}
+
+struct ConditionalEmbedded {
+  int version = 1;
+  ConditionalEmbeddable inner;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, ConditionalEmbedded& x) {
+  return f.object(x).fields(f.field("version", x.version),
+                            f.embedFields(x.inner));
+}
+
 struct WithContext {
   int i;
   std::string s;
