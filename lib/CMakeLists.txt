@@ -280,6 +280,9 @@ add_library(arango_basic_http_client STATIC
         Ssl/SslInterface.cpp
         Ssl/ssl-helper.cpp
         Ssl/jwt.cpp
+        Ssl/AuthInfo.cpp
+        Ssl/JwtKeys.cpp
+        Ssl/JwtSignature.cpp
 
         Endpoint/Endpoint.cpp
         Endpoint/EndpointIp.cpp

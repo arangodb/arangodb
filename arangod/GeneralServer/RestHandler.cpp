@@ -294,8 +294,8 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
       if (!username.empty()) {
         headers.emplace(
             StaticStrings::Authorization,
-            "bearer " + arangodb::rest::SslInterface::jwt::generateUserToken(
-                            auth->tokenCache().jwtSecret(), username));
+            "bearer " + auth::generateUserToken(auth->tokenCache().jwtSecret(),
+                                                username));
       }
     }
   }
