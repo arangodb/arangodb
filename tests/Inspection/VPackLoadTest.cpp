@@ -1280,6 +1280,74 @@ TEST_F(VPackLoadInspectorTest, load_conditional_transformed_field) {
   EXPECT_EQ(42, c.newField);
 }
 
+TEST_F(VPackLoadInspectorTest, load_conditional_group_when_condition_is_met) {
+  builder.openObject();
+  builder.add("version", VPackValue(2));
+  builder.add("a", VPackValue(1));
+  builder.add("b", VPackValue(2));
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  ConditionalGroupReject c;
+  auto result = inspector.apply(c);
+  ASSERT_TRUE(result.ok()) << result.error();
+  EXPECT_EQ(1, c.group.a);
+  EXPECT_EQ(2, c.group.b);
+}
+
+TEST_F(VPackLoadInspectorTest, load_rejecting_group_leaves_members_untouched) {
+  builder.openObject();
+  builder.add("version", VPackValue(1));
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  ConditionalGroupReject c{.version = 0, .group = {.a = 7, .b = 8}};
+  auto result = inspector.apply(c);
+  ASSERT_TRUE(result.ok()) << result.error();
+  EXPECT_EQ(7, c.group.a);
+  EXPECT_EQ(8, c.group.b);
+}
+
+TEST_F(VPackLoadInspectorTest, load_rejecting_group_rejects_present_attribute) {
+  builder.openObject();
+  builder.add("version", VPackValue(1));
+  builder.add("a", VPackValue(1));
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  ConditionalGroupReject c;
+  auto result = inspector.apply(c);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Found unexpected attribute 'a'", result.error());
+}
+
+TEST_F(VPackLoadInspectorTest, load_ignoring_group_tolerates_present_attributes) {
+  builder.openObject();
+  builder.add("version", VPackValue(1));
+  builder.add("a", VPackValue(1));
+  builder.add("b", VPackValue(2));
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  ConditionalGroupIgnore c{.version = 0, .group = {.a = 7, .b = 8}};
+  auto result = inspector.apply(c);
+  ASSERT_TRUE(result.ok()) << result.error();
+  EXPECT_EQ(7, c.group.a);
+  EXPECT_EQ(8, c.group.b);
+}
+
+TEST_F(VPackLoadInspectorTest, load_skipped_group_still_checks_object_invariant) {
+  builder.openObject();
+  builder.add("version", VPackValue(1));
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  ConditionalGroupWithObjectInvariant c{.version = 0, .group = {.a = 99}};
+  auto result = inspector.apply(c);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Object invariant failed", result.error());
+}
+
 TEST_F(VPackLoadInspectorTest, load_conditional_embedded_field) {
   builder.openObject();
   builder.add("version", VPackValue(1));

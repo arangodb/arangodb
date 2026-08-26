@@ -179,7 +179,9 @@ struct InspectorBase : detail::ContextContainer<Context> {
   /// Runs the nested `inspect` for an embedded group, splicing its fields into
   /// `param` - the field collection the enclosing object is being processed
   /// against.
-  template<class Param, class T>
+  /// `Condition` is the outcome of the group's condition, if it has one.
+  template<FieldCondition Condition = FieldCondition::Process, class Param,
+           class T>
   Status applyEmbeddedFields(Param& param, T& value);
 
   template<class T>
@@ -230,15 +232,8 @@ struct InspectorBase : detail::ContextContainer<Context> {
       return FieldCondition::Process;
     } else {
       constexpr auto scope = std::remove_cvref_t<Conditional>::scope;
-      constexpr bool applies =
-          scope == detail::ConditionScope::Always ||
-          (Derived::isLoading ? scope == detail::ConditionScope::Loading
-                              : scope == detail::ConditionScope::Saving);
-      if constexpr (applies) {
-        return std::invoke(getConditionalField(field).predicate);
-      } else {
-        return FieldCondition::Process;
-      }
+      return detail::evaluateScopedCondition<Derived, scope>(
+          getConditionalField(field).predicate);
     }
   }
 
@@ -505,11 +500,13 @@ namespace detail {
 // It has to implement the full inspector interface, but since it is only meant
 // to be used for objects with a fields, all other methods have to fail _at
 // compile time_.
-template<class Parent, class Context>
+template<class Parent, class Context,
+         FieldCondition Condition = FieldCondition::Process>
 struct EmbeddedFieldInspector
-    : InspectorBase<EmbeddedFieldInspector<Parent, Context>, Context, Parent> {
-  using Base =
-      InspectorBase<EmbeddedFieldInspector<Parent, Context>, Context, Parent>;
+    : InspectorBase<EmbeddedFieldInspector<Parent, Context, Condition>, Context,
+                    Parent> {
+  using Base = InspectorBase<EmbeddedFieldInspector<Parent, Context, Condition>,
+                             Context, Parent>;
 
   static constexpr bool isLoading = Parent::isLoading;
 
@@ -552,9 +549,20 @@ struct EmbeddedFieldInspector
 
   /// The whole point of this inspector: hand the fields straight to the
   /// enclosing one, so they are processed as if they had been written there.
+  /// A skipped group either only consumes its attributes or does nothing at
+  /// all; in both cases the object invariant below still runs.
   template<class... Args>
   Status applyFields(Args&&... args) {
-    return _parent.processEmbeddedFields(_param, std::forward<Args>(args)...);
+    if constexpr (Condition == FieldCondition::Process) {
+      return _parent.processEmbeddedFields(_param, std::forward<Args>(args)...);
+    } else if constexpr (Condition == FieldCondition::Ignore) {
+      _parent.markEmbeddedFieldsProcessed(_param, args...);
+      return {};
+    } else {
+      // Reject: the attributes stay unprocessed, so each one present in the
+      // input is reported by the unexpected-attribute check.
+      return {};
+    }
   }
 
   template<class... Ts, class... Args>
@@ -618,15 +626,15 @@ struct EmbeddedFieldInspector
 }  // namespace detail
 
 template<class Derived, class Context, class TargetInspector>
-template<class Param, class T>
+template<FieldCondition Condition, class Param, class T>
 Status InspectorBase<Derived, Context, TargetInspector>::applyEmbeddedFields(
     Param& param, T& value) {
+  using Inspector = detail::EmbeddedFieldInspector<Derived, Context, Condition>;
   auto insp = [&]() {
     if constexpr (InspectorBase::hasContext) {
-      return detail::EmbeddedFieldInspector<Derived, Context>(
-          self(), param, this->getContext());
+      return Inspector(self(), param, this->getContext());
     } else {
-      return detail::EmbeddedFieldInspector<Derived, Context>(self(), param);
+      return Inspector(self(), param);
     }
   }();
   return insp.apply(value);

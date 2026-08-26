@@ -123,7 +123,7 @@ struct ValidateInspector : InspectorBase<ValidateInspector<Context>, Context> {
   }
 
  private:
-  template<class, class>
+  template<class, class, FieldCondition>
   friend struct detail::EmbeddedFieldInspector;
 
   using EmbeddedParam = std::monostate;
@@ -146,12 +146,15 @@ struct ValidateInspector : InspectorBase<ValidateInspector<Context>, Context> {
            [&]() { return validateFields(std::forward<Args>(args)...); };
   }
 
-  template<class T>
+  template<class T, class P, detail::ConditionScope S>
   [[nodiscard]] Status validateField(
-      detail::EmbeddedFieldsRef<T>&& embedded) {
+      detail::EmbeddedFieldsRef<T, P, S>&& embedded) {
     EmbeddedParam params;
     return this->applyEmbeddedFields(params, embedded.value);
   }
+
+  template<class... Args>
+  void markEmbeddedFieldsProcessed(EmbeddedParam&, Args&...) {}
 
   template<class T>
   [[nodiscard]] Status validateField(T&& field) {

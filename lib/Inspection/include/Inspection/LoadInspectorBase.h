@@ -299,10 +299,21 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
            [&]() { return f.parseFields(fields, std::forward<Args>(args)...); };
   }
 
+  /// Marks the attributes an embedded group would have read as processed,
+  /// recursing into groups nested inside it.
+  template<class... Args>
+  void markEmbeddedFieldsProcessed(FieldsMap& fields, Args&... args) {
+    (markEmbeddedFieldProcessed(fields, args), ...);
+  }
+
   template<class T>
-  [[nodiscard]] Status parseField(FieldsMap& fields,
-                                  detail::EmbeddedFieldsRef<T>&& embedded) {
-    return this->applyEmbeddedFields(fields, embedded.value);
+  void markEmbeddedFieldProcessed(FieldsMap& fields, T& arg) {
+    if constexpr (detail::IsEmbeddedFieldsRef<std::remove_cvref_t<T>>::value) {
+      this->template applyEmbeddedFields<FieldCondition::Ignore>(fields,
+                                                                 arg.value);
+    } else {
+      markFieldProcessed(fields, Base::getFieldName(arg));
+    }
   }
 
   static void markFieldProcessed(FieldsMap& fields, std::string_view name) {
@@ -318,6 +329,29 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
                                            typename Base::IgnoreField&& field) {
     markFieldProcessed(fields, field.name);
     return {};
+  }
+
+  template<class T, class P, detail::ConditionScope S>
+  [[nodiscard]] Status parseField(
+      FieldsMap& fields, detail::EmbeddedFieldsRef<T, P, S>&& embedded) {
+    // Lifts the condition to a template argument; the group's object invariant
+    // runs in every case, because - as for a single field - the condition
+    // governs whether the attributes are read, not whether the object has to
+    // be valid.
+    if constexpr (!std::is_same_v<P, detail::NoCondition>) {
+      switch (detail::embeddedFieldsCondition<Derived>(embedded)) {
+        case FieldCondition::Ignore:
+          return this->template applyEmbeddedFields<FieldCondition::Ignore>(
+              fields, embedded.value);
+        case FieldCondition::Reject:
+          return this->template applyEmbeddedFields<FieldCondition::Reject>(
+              fields, embedded.value);
+        case FieldCondition::Process:
+          break;
+      }
+    }
+    return this->template applyEmbeddedFields<FieldCondition::Process>(
+        fields, embedded.value);
   }
 
   template<class T>

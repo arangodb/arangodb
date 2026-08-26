@@ -164,7 +164,7 @@ struct SaveInspectorBase : InspectorBase<Derived, Context> {
   }
 
  private:
-  template<class, class>
+  template<class, class, FieldCondition>
   friend struct detail::EmbeddedFieldInspector;
 
   using EmbeddedParam = std::monostate;
@@ -174,11 +174,20 @@ struct SaveInspectorBase : InspectorBase<Derived, Context> {
     return this->applyFields(std::forward<Args>(args)...);
   }
 
-  template<class T>
-  [[nodiscard]] auto applyField(detail::EmbeddedFieldsRef<T> const& embedded) {
+  template<class T, class P, detail::ConditionScope S>
+  [[nodiscard]] auto applyField(
+      detail::EmbeddedFieldsRef<T, P, S> const& embedded) {
+    if (detail::embeddedFieldsCondition<Derived>(embedded) !=
+        FieldCondition::Process) {
+      return Status{};
+    }
     typename Derived::EmbeddedParam param;
     return this->applyEmbeddedFields(param, embedded.value);
   }
+
+  // saving never consumes attributes, so there is nothing to mark
+  template<class... Args>
+  void markEmbeddedFieldsProcessed(std::monostate&, Args&...) {}
 
   template<class T>
   [[nodiscard]] auto applyField(T const& field) {
