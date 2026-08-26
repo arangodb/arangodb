@@ -1066,10 +1066,16 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
           },
           // -- Databases -------------------------------------------------
           [&](p::UseDatabase const& database) -> Result {
+            if (auto r = auth::isNameAndNoId(database.name); r.fail()) {
+              return r;
+            }
             return checkOne(databaseAccessModeToAction(database.level),
                             rbac::resources::Database{database.name});
           },
           [&](p::SeeDatabase const& database) -> Result {
+            if (auto r = auth::isNameAndNoId(database.name); r.fail()) {
+              return r;
+            }
             return checkOne(rbac::Action::Read,
                             rbac::resources::Database{database.name});
           },
@@ -1078,6 +1084,9 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
                             rbac::resources::Database{database.name});
           },
           [&](p::DropDatabase const& database) -> Result {
+            if (auto r = auth::isNameAndNoId(database.name); r.fail()) {
+              return r;
+            }
             return checkOne(rbac::Action::Drop,
                             rbac::resources::Database{database.name});
           },
@@ -1095,6 +1104,9 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
                                              StaticStrings::UsersCollection,
                                              StaticStrings::SystemDatabase))};
             }
+            if (auto r = auth::isNameAndNoId(collection.name); r.fail()) {
+              return r;
+            }
             return checkOne(
                 collectionAccessModeToAction(collection.level),
                 rbac::resources::Collection{collection.db, collection.name});
@@ -1111,6 +1123,9 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
                                              "database is forbidden",
                                              StaticStrings::UsersCollection,
                                              StaticStrings::SystemDatabase))};
+            }
+            if (auto r = auth::isNameAndNoId(collection.name); r.fail()) {
+              return r;
             }
             return checkOne(
                 rbac::Action::Read,
@@ -1146,16 +1161,25 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
                                              StaticStrings::UsersCollection,
                                              StaticStrings::SystemDatabase))};
             }
+            if (auto r = auth::isNameAndNoId(collection.name); r.fail()) {
+              return r;
+            }
             return checkOne(
                 rbac::Action::Drop,
                 rbac::resources::Collection{collection.db, collection.name});
           },
           // -- Views -----------------------------------------------------
           [&](p::ReadView const& view) -> Result {
+            if (auto r = auth::isNameAndNoId(view.name); r.fail()) {
+              return r;
+            }
             return checkOne(rbac::Action::Read,
                             rbac::resources::View{view.db, view.name});
           },
           [&](p::SeeView const& view) -> Result {
+            if (auto r = auth::isNameAndNoId(view.name); r.fail()) {
+              return r;
+            }
             return checkOne(rbac::Action::Read,
                             rbac::resources::View{view.db, view.name});
           },
@@ -1173,6 +1197,9 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
             return checkAll(queries);
           },
           [&](p::ModifyView const& view) -> Result {
+            if (auto r = auth::isNameAndNoId(view.name); r.fail()) {
+              return r;
+            }
             // Modifying a view additionally requires read access to every
             // newly linked collection.
             std::vector<rbac::ActionResource> queries;
@@ -1186,6 +1213,9 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
             return checkAll(queries);
           },
           [&](p::RenameView const& view) -> Result {
+            if (auto r = auth::isNameAndNoId(view.oldName); r.fail()) {
+              return r;
+            }
             if (view.oldName == view.newName) {
               return {TRI_ERROR_BAD_PARAMETER,
                       "new view name must be different from old view name"};
@@ -1206,6 +1236,9 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
             return checkAll(queries);
           },
           [&](p::DropView const& view) -> Result {
+            if (auto r = auth::isNameAndNoId(view.name); r.fail()) {
+              return r;
+            }
             // Dropping a view additionally requires read access to every
             // linked collection (mirrors the classic behaviour).
             std::vector<rbac::ActionResource> queries;
@@ -1220,11 +1253,17 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
           },
           // -- Analyzers -------------------------------------------------
           [&](p::UseAnalyzer const& analyzer) -> Result {
+            if (auto r = auth::isNameAndNoId(analyzer.name); r.fail()) {
+              return r;
+            }
             return checkOne(
                 analyzerAccessModeToAction(analyzer.level),
                 rbac::resources::Analyzer{analyzer.db, analyzer.name});
           },
           [&](p::SeeAnalyzer const& analyzer) -> Result {
+            if (auto r = auth::isNameAndNoId(analyzer.name); r.fail()) {
+              return r;
+            }
             return checkOne(
                 rbac::Action::Read,
                 rbac::resources::Analyzer{analyzer.db, analyzer.name});
@@ -1235,6 +1274,9 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
                 rbac::resources::Analyzer{analyzer.db, analyzer.name});
           },
           [&](p::DropAnalyzer const& analyzer) -> Result {
+            if (auto r = auth::isNameAndNoId(analyzer.name); r.fail()) {
+              return r;
+            }
             return checkOne(
                 rbac::Action::Drop,
                 rbac::resources::Analyzer{analyzer.db, analyzer.name});
