@@ -246,10 +246,8 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
                          velocypack::Builder& result, bool includeIndexes,
                          TRI_voc_tick_t maxTick) override;
 
-  ErrorCode getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
-                                     velocypack::Builder& result,
-                                     bool wasCleanShutdown,
-                                     bool isUpgrade) override;
+  std::vector<CollectionDescriptor> getCollectionsAndIndexes(
+      TRI_vocbase_t& vocbase);
 
   ErrorCode getViews(TRI_vocbase_t& vocbase,
                      velocypack::Builder& result) override;
