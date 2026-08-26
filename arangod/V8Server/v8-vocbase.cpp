@@ -1560,7 +1560,7 @@ static void JS_Engine(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_GET_GLOBALS();
   StorageEngine& engine = v8g->server().getFeature<DatabaseFeature>().engine();
   VPackBuilder builder;
-  engine.getCapabilities(builder);
+  engine.getCapabilities(builder, 0);
 
   TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
 
@@ -1863,7 +1863,7 @@ static void JS_DBProperties(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto& vocbase = GetContextVocBase(isolate);
 
   VPackBuilder builder;
-  vocbase.toVelocyPack(builder);
+  vocbase.toVelocyPack(builder, 0);
 
   auto result = TRI_VPackToV8(isolate, builder.slice());
 

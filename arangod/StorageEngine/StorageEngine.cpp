@@ -101,21 +101,22 @@ IndexFactory const& StorageEngine::indexFactory() const {
   return *_indexFactory;
 }
 
-void StorageEngine::getCapabilities(velocypack::Builder& builder) const {
+void StorageEngine::getCapabilities(velocypack::Builder& builder,
+                                    uint32_t apiVersion) const {
   builder.openObject();
   builder.add("name", velocypack::Value(typeName()));
 
   builder.add("supports", velocypack::Value(VPackValueType::Object));
 
   builder.add("indexes", velocypack::Value(VPackValueType::Array));
-  for (auto const& it : indexFactory().supportedIndexes()) {
+  for (auto const& it : indexFactory().supportedIndexes(apiVersion)) {
     builder.add(velocypack::Value(it));
   }
   builder.close();  // indexes
 
   builder.add("aliases", velocypack::Value(VPackValueType::Object));
   builder.add("indexes", velocypack::Value(VPackValueType::Object));
-  for (auto const& [alias, type] : indexFactory().indexAliases()) {
+  for (auto const& [alias, type] : indexFactory().indexAliases(apiVersion)) {
     builder.add(alias, velocypack::Value(type));
   }
   builder.close();  // indexes

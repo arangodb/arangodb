@@ -111,10 +111,7 @@ function viewApiAuthzSuite () {
         "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c level=read",
-        "SeeView db=d name=v_apitest",
-        ...singleOnly([
-          `UseCollection db=d name=${cId} level=read`
-        ])
+        "SeeView db=d name=v_apitest"
       ], endObserve());
     },
 
@@ -131,7 +128,6 @@ function viewApiAuthzSuite () {
         "CreateView db=d name=v_apitest linkedCollections=[c]",
         "UseCollection db=d name=c level=read",
         ...singleOnly([
-          `UseCollection db=d name=${cId} level=read`,
           "UseCollection db=d name=c level=writedata"
         ]),
         ...clusterOnly([
@@ -149,10 +145,7 @@ function viewApiAuthzSuite () {
         "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "ReadView db=d name=v_apitest",
-        "UseCollection db=d name=c level=read",
-        ...singleOnly([
-          `UseCollection db=d name=${cId} level=read`
-        ])
+        "UseCollection db=d name=c level=read"
       ], endObserve());
     },
 
@@ -165,10 +158,7 @@ function viewApiAuthzSuite () {
         "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "ReadView db=d name=v_apitest",
-        "UseCollection db=d name=c level=read",
-        ...singleOnly([
-          `UseCollection db=d name=${cId} level=read`
-        ])
+        "UseCollection db=d name=c level=read"
       ], endObserve());
     },
 
@@ -187,10 +177,7 @@ function viewApiAuthzSuite () {
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "ModifyView db=d name=v_apitest linkedCollections=[]",
-        "UseCollection db=d name=c level=read",
-        ...singleOnly([
-          `UseCollection db=d name=${cId} level=read`
-        ])
+        "UseCollection db=d name=c level=read"
       ], endObserve());
     },
 
@@ -208,9 +195,6 @@ function viewApiAuthzSuite () {
         "IsReadOnly",
         "ModifyView db=d name=v_apitest linkedCollections=[]",
         "UseCollection db=d name=c level=read",
-        ...singleOnly([
-          `UseCollection db=d name=${cId} level=read`
-        ]),
         ...clusterOnly([
           "UseCollection db=d name=c level=writemeta",
           "UseDatabase name=d level=write"
@@ -230,10 +214,7 @@ function viewApiAuthzSuite () {
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "RenameView db=d oldName=v_apitest newName=v_apitest_new",
-        "UseCollection db=d name=c level=read",
-        ...singleOnly([
-          `UseCollection db=d name=${cId} level=read`
-        ])
+        "UseCollection db=d name=c level=read"
       ], endObserve());
     },
 
@@ -249,10 +230,7 @@ function viewApiAuthzSuite () {
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "RenameView db=d oldName=v_apitest newName=v_apitest_new",
-        "UseCollection db=d name=c level=read",
-        ...singleOnly([
-          `UseCollection db=d name=${cId} level=read`
-        ])
+        "UseCollection db=d name=c level=read"
       ], endObserve());
     },
 

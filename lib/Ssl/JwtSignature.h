@@ -19,19 +19,21 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 ////////////////////////////////////////////////////////////////////////////////
-#include "Service.h"
 
-#include "Basics/voc-errors.h"
+#pragma once
 
-namespace arangodb::rbac {
+#include <string>
 
-auto Service::check(JwtToken const& /*token*/,
-                    std::span<ActionResource const> /*queries*/) -> Result {
-  // The base implementation fails closed. The production ServiceImpl overrides
-  // this to evaluate the batch against the RBAC backend; test mocks override it
-  // with programmed answers.
-  return {TRI_ERROR_NOT_IMPLEMENTED,
-          "RBAC authorization service check is not yet implemented"};
-}
+#include "Ssl/AuthInfo.h"
 
-}  // namespace arangodb::rbac
+namespace arangodb::auth {
+
+enum class JwtAlgorithm { ES256, HS256 };
+struct JwtSignature {
+  JwtAlgorithm algorithm;
+  std::string signature;
+};
+
+auto validateJwtSignature(AuthInfo const& authInfo, std::string_view message,
+                          JwtSignature const& sig) -> bool;
+}  // namespace arangodb::auth
