@@ -858,7 +858,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   }
 
   resultBuilder.add(VPackValue(StaticStrings::Properties));
-  vocbase->toVelocyPack(resultBuilder);
+  vocbase->toVelocyPack(resultBuilder, _request->requestedApiVersion());
   vocbase.reset();
 
   auto& exec = ExecContext::current();
