@@ -53,8 +53,7 @@ auto authKeyInfo(AuthKey key) -> std::string {
                                     key._data.size());
                },
                [](HS256Key& key) {
-                 return std::format("HS256  Key (length: {})",
-                                    key._data.size());
+                 return std::format("HS256 Key (length: {})", key._data.size());
                }},
       key);
 }
