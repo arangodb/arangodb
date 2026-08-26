@@ -151,12 +151,14 @@ arangodb.acquireHostList=true
       }
     } catch (ex) {
       let timeout = SetGlobalExecutionDeadlineTo(0.0);
+      status = false;
       results = {
         status: false,
         failed: 1,
         message: `testrun has thrown ${ex.message} \n ${ex.stack}`
       };
     }
+    SetGlobalExecutionDeadlineTo(0.0);
     let txtfile = fs.join(cwd, "test-functional/target/unicode_names.txt");
     if (fs.exists(txtfile)) {
       print(`copying ${txtfile}`);
@@ -243,6 +245,7 @@ class runInKafkaTest extends runWithAllureReport {
         status = false;
       }
     } catch (ex) {
+      status = false;
       let timeout = SetGlobalExecutionDeadlineTo(0.0);
       results = {
         status: false,
@@ -250,6 +253,7 @@ class runInKafkaTest extends runWithAllureReport {
         message: `testrun has thrown ${ex.message} \n ${ex.stack}`
       };
     }
+    SetGlobalExecutionDeadlineTo(0.0);
     this.getAllureResults(testResultsDir, results, status, 'kafkadriver');
     return results;
   }
@@ -322,6 +326,7 @@ class runInSparkDatasourceTest extends runWithAllureReport {
         status = false;
       }
     } catch (ex) {
+      status = false;
       let timeout = SetGlobalExecutionDeadlineTo(0.0);
       results = {
         status: false,
@@ -329,6 +334,7 @@ class runInSparkDatasourceTest extends runWithAllureReport {
         message: `testrun has thrown ${ex.message} \n ${ex.stack}`
       };
     }
+    SetGlobalExecutionDeadlineTo(0.0);
     this.getAllureResults(testResultsDir, results, status, 'sparkdriver');
     return results;
   }
@@ -398,6 +404,7 @@ class runInSpringDataTest extends runWithAllureReport {
         status = false;
       }
     } catch (ex) {
+      status = false;
       let timeout = SetGlobalExecutionDeadlineTo(0.0);
       results = {
         status: false,
@@ -405,6 +412,7 @@ class runInSpringDataTest extends runWithAllureReport {
         message: `testrun has thrown ${ex.message} \n ${ex.stack}`
       };
     }
+    SetGlobalExecutionDeadlineTo(0.0);
     this.getAllureResults(testResultsDir, results, status, 'springdatatest');
     return results;
   }
@@ -483,6 +491,7 @@ class runInTinkerpopProvider extends runWithAllureReport {
         status = false;
       }
     } catch (ex) {
+      status = false;
       let timeout = SetGlobalExecutionDeadlineTo(0.0);
       results = {
         status: false,
@@ -490,6 +499,7 @@ class runInTinkerpopProvider extends runWithAllureReport {
         message: `testrun has thrown ${ex.message} \n ${ex.stack}`
       };
     }
+    SetGlobalExecutionDeadlineTo(0.0);
     this.getAllureResults(testResultsDir, results, status, 'tinkerpopdriver');
     return results;
   }

@@ -35,9 +35,12 @@ const optionsDocumentation = [
 const internal = require('internal');
 
 const {
+  SetGlobalExecutionDeadlineTo,
+  IsDeadlineReached,
   executeExternal,
   statusExternal,
-  SetGlobalExecutionDeadlineTo } = internal;
+  killExternal,
+} = internal;
 
 /* Modules: */
 const _ = require('lodash');
@@ -112,14 +115,16 @@ function jsDriver (options) {
       }
       let start = Date();
       let status = true;
+      let res;
       SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout);
       try {
-        const res = executeExternal('npx', args, true, [], this.options.jssource);
+        res = executeExternal('npx', args, true, [], this.options.jssource);
 
         let allBuff = '';
         let count = 0;
         let rc;
         do {
+          IsDeadlineReached();
           let buf = fs.readPipe(res.pid);
           allBuff += buf;
           while ((buf.length === 1023) || count === 0) {
@@ -162,13 +167,17 @@ function jsDriver (options) {
         results['status'] = totalSuccess;
         results['message'] = totalSuccess?'':buildMsg;
         // this.instanceManager.dumpAgency();
+        SetGlobalExecutionDeadlineTo(0.0);
         return results;
       } catch (ex) {
         let timeout = SetGlobalExecutionDeadlineTo(0.0);
-        results = {
+        res = killExternal(res.pid);
+        let msg = `testrun has thrown ${ex.message} \n ${ex.stack} ${res}`;
+        print(`${RED}${msg}${RESET}`);
+        return {
           status: false,
           failed: 1,
-          message: `testrun has thrown ${ex.message} \n ${ex.stack}`
+          message: msg
         };
       }
     }

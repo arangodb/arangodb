@@ -35,9 +35,12 @@ const optionsDocumentation = [
 const internal = require('internal');
 
 const {
+  SetGlobalExecutionDeadlineTo,
+  IsDeadlineReached,
   executeExternal,
   statusExternal,
-  SetGlobalExecutionDeadlineTo } = internal;
+  killExternal,
+} = internal;
 
 /* Modules: */
 const _ = require('lodash');
@@ -53,8 +56,8 @@ const path = require('path');
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 // const CYAN = require('internal').COLORS.COLOR_CYAN;
 // const GREEN = require('internal').COLORS.COLOR_GREEN;
-// const RED = require('internal').COLORS.COLOR_RED;
-// const RESET = require('internal').COLORS.COLOR_RESET;
+const RED = require('internal').COLORS.COLOR_RED;
+const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
 const testPaths = {
@@ -133,9 +136,10 @@ function goDriver (options) {
       }
       let results = {};
       SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout);
+      let res;
       try {
         let start = Date();
-        const res = executeExternal('go', args, true, [], path.join(this.options.gosource, 'v2'));
+        res = executeExternal('go', args, true, [], path.join(this.options.gosource, 'v2'));
         // let alljsonLines = []
         let b = '';
         let status = true;
@@ -145,6 +149,7 @@ function goDriver (options) {
           let buf = fs.readPipe(res.pid);
           b += buf;
           while ((buf.length === 1023) || count === 0) {
+            IsDeadlineReached();
             count += 1;
             let lineStart = 0;
             let maxBuffer = b.length;
@@ -251,12 +256,16 @@ function goDriver (options) {
         results['message'] = '';
       } catch (ex) {
         let timeout = SetGlobalExecutionDeadlineTo(0.0);
-        results = {
+        res = killExternal(res.pid);
+        let msg = `testrun has thrown ${ex.message} \n ${ex.stack} ${res}`;
+        print(`${RED}${msg}${RESET}`);
+        return {
           status: false,
           failed: 1,
-          message: `testrun has thrown ${ex.message} \n ${ex.stack}`
+          message: msg
         };
       }
+      SetGlobalExecutionDeadlineTo(0.0);
       return results;
     }
   }
