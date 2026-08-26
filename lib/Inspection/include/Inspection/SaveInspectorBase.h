@@ -191,6 +191,10 @@ struct SaveInspectorBase : InspectorBase<Derived, Context> {
     if constexpr (std::is_same_v<typename Base::IgnoreField, T>) {
       return Status::Success{};
     } else {
+      if (Base::evaluateCondition(field) != FieldCondition::Process) {
+        return Status{};
+      }
+
       auto name = Base::getFieldName(field);
       auto& value = Base::getFieldValue(field);
       constexpr bool hasFallback =
