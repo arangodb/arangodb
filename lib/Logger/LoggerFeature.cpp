@@ -29,7 +29,8 @@
 #endif
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
+#include "Basics/application-exit.h"
 #include "Logger/LogTimeFormat.h"
 #include "Logger/Logger.h"
 
@@ -50,7 +51,6 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer& server,
       _options(std::move(options)),
       _threaded(threaded) {
   startsAfter<ShellColorsFeature>();
-  startsAfter<VersionFeature>();
   setOptional(false);
 }
 

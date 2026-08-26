@@ -130,6 +130,10 @@ std::string const RestVocbaseBaseHandler::USERS_PATH = "/_api/user";
 // view path
 std::string const RestVocbaseBaseHandler::VIEW_PATH = "/_api/view";
 
+// stats arangosearch path
+std::string const RestVocbaseBaseHandler::STATS_ARANGOSEARCH_PATH =
+    "/_admin/arangosearch/stats";
+
 // Internal Traverser path
 
 std::string const RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH =
@@ -145,9 +149,10 @@ RestVocbaseBaseHandler::RestVocbaseBaseHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
     : RestBaseHandler(server, request, response),
-      _context(static_cast<VocbaseContext&>(*request->requestContext())),
-      _vocbase(_context.vocbase()) {
+      _context(*request->requestContext()),
+      _vocbase(_context.vocbase().value()) {
   TRI_ASSERT(request->requestContext());
+  TRI_ASSERT(_context.vocbase().has_value());
 }
 
 RestVocbaseBaseHandler::~RestVocbaseBaseHandler() = default;

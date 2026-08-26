@@ -619,6 +619,60 @@ if(USE_GOOGLE_TESTS)
   add_definitions("-DARANGODB_USE_GOOGLE_TESTS=1")
 endif()
 
+################################################################################
+## clang-tidy (static analysis during the build)
+################################################################################
+#
+# When USE_CLANG_TIDY is ON, clang-tidy runs on every first-party C++
+# translation unit as it is compiled, via the CXX_CLANG_TIDY target property.
+# This is separate from utils/clang-tidy.sh (which runs clang-tidy standalone
+# over compile_commands.json); both read the same check configuration from the
+# .clang-tidy files, so results are consistent.
+#
+# * The default is OFF.
+#   Rationale: it's expensive (†), plus, at the time of this writing, we get a
+#   bunch of warnings.
+# * The configuration for checks and header filters is part of .clang-tidy, not
+#   cmake.
+# * The 3rdParty subdirectories are excluded: CMAKE_CXX_CLANG_TIDY is set after
+#   add_subdirectory(3rdParty), so it's not inherited by it.
+# * Note that clang-tidy gets passed the very same flags as the compiler. If
+#   a different compiler than clang is used, it might not understand everything.
+#
+# (†) On my machine, compiling (only) arango_aql takes ~150s. Running clang-tidy
+#     on the same files takes ~530s. Which means a build time
+#     increase of about factor 4.5. This was with ccache disabled, -j32,
+#     and arango_aql contained 345 translation units.
+#     Of course, YMMV, and don't extrapolate it for a full build, as 3rdParty
+#     libraries are not checked. It's just here to give a rough idea.
+option(USE_CLANG_TIDY "run clang-tidy on first-party sources during the build" OFF)
+
+if(USE_CLANG_TIDY)
+  find_program(CLANG_TIDY_EXE NAMES clang-tidy DOC "Path to clang-tidy executable")
+  if(NOT CLANG_TIDY_EXE)
+    # Don't skip checks if they've been requested
+    message(FATAL_ERROR
+      "USE_CLANG_TIDY is ON but clang-tidy was not found on PATH. Install it "
+      "(the pinned toolchain ships a matching clang-tidy), or reconfigure with "
+      "-DUSE_CLANG_TIDY=OFF.")
+  endif()
+  message(STATUS "clang-tidy enabled for first-party targets: ${CLANG_TIDY_EXE}")
+  if(NOT CMAKE_COMPILER_IS_CLANG)
+    # clang-tidy still runs (CMake passes --driver-mode=g++), but the clang
+    # front-end may not understand every compiler-specific flag/pragma, so
+    # results can differ from a real clang build.
+    message(WARNING
+      "USE_CLANG_TIDY is ON but the C++ compiler is not clang "
+      "(${CMAKE_CXX_COMPILER_ID}). clang-tidy uses a clang front-end; some "
+      "compiler-specific flags may be misparsed and results may differ. "
+      "Building with clang is recommended when running clang-tidy.")
+  endif()
+  # --quiet suppresses the per-file "N warnings generated" summary lines. Checks
+  # and header filtering come from the .clang-tidy files (one source of truth),
+  # so they are intentionally not passed on the command line here.
+  set(CLANG_TIDY_COMMAND "${CLANG_TIDY_EXE}" "--quiet")
+endif()
+
 include(debugInformation)
 find_program(READELF_EXECUTABLE readelf)
 detect_binary_id_type(CMAKE_DEBUG_FILENAMES_SHA_SUM)
@@ -835,8 +889,8 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(EXTRA_CXX_FLAGS "-Wsuggest-override ${EXTRA_CXX_FLAGS}")
   endif()
   if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "19.0")
-  # broken warnings in clang-19
-    set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=missing-designated-field-initializers")
+    # We explicitly want to be able to use field initializers for partial initialization.
+    set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-missing-designated-field-initializers")
   endif()
 else()
   # unknown compiler
@@ -1264,6 +1318,15 @@ list(INSERT SYSTEM_LIBRARIES 0
   ${CMAKE_DL_LIBS}
   ${CMAKE_THREAD_LIBS_INIT}
 )
+
+# Enable clang-tidy for first-party code. Set here -- after the 3rdParty and
+# faiss subdirectories above -- so they do not inherit the CXX_CLANG_TIDY
+# property. Everything configured from here on (lib, including lib/iresearch,
+# client-tools, arangod, enterprise) inherits it. See the USE_CLANG_TIDY block
+# earlier.
+if(USE_CLANG_TIDY)
+  set(CMAKE_CXX_CLANG_TIDY ${CLANG_TIDY_COMMAND})
+endif()
 
 add_subdirectory(lib)
 add_subdirectory(client-tools)

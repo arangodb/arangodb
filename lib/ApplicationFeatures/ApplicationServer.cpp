@@ -53,6 +53,7 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Rest/Version.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -151,7 +152,9 @@ void ApplicationServer::disableFeatures(std::span<const std::type_index> types,
                                         bool force) {
   for (std::type_index type : types) {
     auto it = _features.find(type);
+    TRI_ASSERT(it != _features.end());
     if (it != _features.end()) {
+      // TODO (COR-861): remove this function by conditional registration logic
       TRI_ASSERT(it->second != nullptr);
       if (force) {
         it->second->forceDisable();
@@ -172,19 +175,11 @@ void ApplicationServer::run(int argc, char* argv[]) {
   // in this phase, all features are order-independent
   _state.store(State::IN_COLLECT_OPTIONS, std::memory_order_release);
   reportServerProgress(State::IN_COLLECT_OPTIONS);
-  collectOptions();
-
-  // setup dependency, but ignore any failure for now
-  setupDependencies(false);
+  declareOptions();
 
   // parse the command line parameters and load any configuration
   // file(s)
   parseOptions(argc, argv);
-
-  if (!_helpSection.empty()) {
-    // help shown. we can exit early
-    return;
-  }
 
   // seal the options
   _options->seal();
@@ -196,11 +191,11 @@ void ApplicationServer::run(int argc, char* argv[]) {
   reportServerProgress(State::IN_VALIDATE_OPTIONS);
   validateOptions();
 
-  addFeaturesWithOptionProvider();
+  addFeatures();
 
   // setup and validate all feature dependencies
   // This is needed to also add the feature coming from
-  // addFeaturesWithOptionProvider to the _orderedFeatures vector
+  // addFeatures to the _orderedFeatures vector
   setupDependencies(true);
 
   // turn off all features that depend on other features that have been
@@ -354,7 +349,7 @@ void ApplicationServer::apply(std::function<void(ApplicationFeature&)> callback,
   }
 }
 
-void ApplicationServer::collectOptions() {
+void ApplicationServer::declareOptions() {
   LOG_TOPIC("0eac7", TRACE, Logger::STARTUP)
       << "ApplicationServer::collectOptions";
 
@@ -375,15 +370,18 @@ void ApplicationServer::collectOptions() {
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Command));
 
-  apply(
-      [this](ApplicationFeature& feature) {
-        LOG_TOPIC("b2731", TRACE, Logger::STARTUP)
-            << feature.name() << "::collectOptions";
-        reportFeatureProgress(_state.load(std::memory_order_relaxed),
-                              feature.name());
-        feature.collectOptions(_options);
-      },
-      true);
+  _options->addOption(
+      "--version",
+      "Print the version and other related information, then exit.",
+      new BooleanParameter(&_printVersion), makeDefaultFlags(Flags::Command));
+
+  _options
+      ->addOption("--version-json",
+                  "Print the version and other related information in JSON "
+                  "format, then exit.",
+                  new BooleanParameter(&_printVersionJson),
+                  makeDefaultFlags(Flags::Command))
+      .setIntroducedIn(30900);
 }
 
 void ApplicationServer::parseOptions(int argc, char* argv[]) {
@@ -399,13 +397,25 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
       _helpSection = ".";
     }
     _options->printHelp(_helpSection);
-    return;
+    exit(EXIT_SUCCESS);
   }
 
   if (!parser.parse(argc, argv)) {
     // command-line option parsing failed. an error was already printed
     // by now, so we can exit
     FATAL_ERROR_EXIT_CODE(_options->processingResult().exitCodeOrFailure());
+  }
+
+  // handle `--version-json` command
+  if (_printVersionJson) {
+    rest::Version::printJson(std::cout);
+    exit(EXIT_SUCCESS);
+  }
+
+  // handle `--version` command
+  if (_printVersion) {
+    rest::Version::print(std::cout);
+    exit(EXIT_SUCCESS);
   }
 
   if (_dumpDependencies) {
@@ -432,22 +442,6 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
     options.prettyPrint = true;
     std::cout << builder.slice().toJson(&options) << std::endl;
     exit(EXIT_SUCCESS);
-  }
-}
-
-void ApplicationServer::validateOptions() {
-  LOG_TOPIC("1ed27", TRACE, Logger::STARTUP)
-      << "ApplicationServer::validateOptions";
-
-  for (ApplicationFeature& feature : _orderedFeatures) {
-    if (feature.isEnabled()) {
-      LOG_TOPIC("fa73c", TRACE, Logger::STARTUP)
-          << feature.name() << "::validateOptions";
-      reportFeatureProgress(_state.load(std::memory_order_relaxed),
-                            feature.name());
-      feature.validateOptions(_options);
-      feature.state(ApplicationFeature::State::VALIDATED);
-    }
   }
 }
 
@@ -524,6 +518,20 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
     }
     features.insert(insertPosition, *us);
   }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // validate that features is totally ordered
+  for (std::size_t i = 0; i < features.size(); ++i) {
+    auto const& feature = features[i].get();
+    for (std::size_t j = i + 1; j < features.size(); ++j) {
+      auto const& other = features[j].get();
+      if (other.doesStartBefore(feature.registration())) {
+        LOG_DEVEL << "feature '" << feature.name() << "' is ordered BEFORE '"
+                  << other.name() << "' but should start AFTER it";
+      }
+    }
+  }
+#endif
 
   if (Logger::isEnabled(LogLevel::TRACE, Logger::STARTUP)) {
     LOG_TOPIC("0fafb", TRACE, Logger::STARTUP) << "ordered features:";

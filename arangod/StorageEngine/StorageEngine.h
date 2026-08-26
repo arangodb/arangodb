@@ -336,26 +336,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void addV8Functions();
 #endif
 
-  /// @brief Add engine-specific REST handlers
-  virtual void addRestHandlers(rest::RestHandlerFactory& handlerFactory);
-
   // replication
   virtual void cleanupReplicationContexts() = 0;
-
-  virtual velocypack::Builder getReplicationApplierConfiguration(
-      TRI_vocbase_t& vocbase, ErrorCode& status) = 0;
-  virtual arangodb::velocypack::Builder getReplicationApplierConfiguration(
-      ErrorCode&) = 0;
-
-  virtual ErrorCode removeReplicationApplierConfiguration(
-      TRI_vocbase_t& vocbase) = 0;
-  virtual ErrorCode removeReplicationApplierConfiguration() = 0;
-
-  virtual ErrorCode saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                                        velocypack::Slice slice,
-                                                        bool doSync) = 0;
-  virtual ErrorCode saveReplicationApplierConfiguration(velocypack::Slice slice,
-                                                        bool doSync) = 0;
 
   virtual Result handleSyncKeys(DatabaseInitialSyncer& syncer,
                                 LogicalCollection& col,

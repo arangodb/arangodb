@@ -38,6 +38,9 @@ class RestAccessTokenHandler : public RestVocbaseBaseHandler {
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   RestStatus execute() override;
 
+ protected:
+  async<Result> checkDatabaseAccess() const override { co_return Result{}; }
+
  private:
   RestStatus createAccessToken(auth::UserManager*, std::string const& user);
   RestStatus deleteAccessToken(auth::UserManager*, std::string const& user);

@@ -184,9 +184,14 @@ static void JS_Transactions(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
   std::string user;
-  if (arangodb::ExecContext::isAuthEnabled()) {
-    user = ExecContext::current().user();
-  }
+  auto const& execContext = ExecContext::current();
+  // TODO Let's drop this auth check. To keep the existing behavior,
+  //      we must make sure we get an empty user string when
+  //      authentication is disabled, even if a username was provided
+  //      in the request. As ExecContext is currently being refactored
+  //      / rewritten, I'm leaving this for later.
+  //      We can add a simple test any time, then change it.
+  user = execContext.user();
   mgr->toVelocyPack(builder, vocbase.name(), user, fanout, /*details*/ false);
 
   builder.close();
@@ -220,7 +225,8 @@ static void JS_Compact(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
-  if (ExecContext::isAuthEnabled() && !ExecContext::current().isSuperuser()) {
+  auto const& execContext = ExecContext::current();
+  if (!execContext.isSuperuserOrDisabled()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -1317,11 +1323,15 @@ static void JS_QueryPlanCacheInvalidate(
     TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERY_PLAN_CACHE_INVALIDATE()");
   }
 
-  if (!ExecContext::current().canUseDatabase(auth::Level::RW)) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+  auto& vocbase = GetContextVocBase(isolate);
+
+  // TODO Should this be a separate permission/action?
+  if (auto r = ExecContext::current().canUseDatabase(
+          vocbase.name(), DatabaseAccessLevel::Write);
+      r.fail()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
   }
 
-  auto& vocbase = GetContextVocBase(isolate);
   vocbase.queryPlanCache().invalidateAll();
   TRI_V8_TRY_CATCH_END
 }
@@ -1335,22 +1345,28 @@ static void JS_QueryPlanCachePlans(
     TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERY_PLAN_CACHE_PLANS()");
   }
 
-  if (!ExecContext::current().canUseDatabase(auth::Level::RO)) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
-  }
-
   auto& vocbase = GetContextVocBase(isolate);
 
-  auto filter = [](aql::QueryPlanCache::Key const& key,
-                   aql::QueryPlanCache::Value const& value) -> bool {
-    if (ExecContext::isAuthEnabled() && !ExecContext::current().isSuperuser()) {
-      // check if non-superusers have at least read permissions on all
-      // collections/views used in the query
-      for (auto const& dataSource : value.dataSources) {
-        if (!ExecContext::current().canUseCollection(dataSource.second.name,
-                                                     auth::Level::RO)) {
-          return false;
-        }
+  // TODO Should this be a separate permission/action?
+  if (auto r = ExecContext::current().canUseDatabase(vocbase.name(),
+                                                     DatabaseAccessLevel::Read);
+      r.fail()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
+  }
+
+  auto filter = [&vocbase](aql::QueryPlanCache::Key const& key,
+                           aql::QueryPlanCache::Value const& value) -> bool {
+    // check if non-superusers have at least read permissions on all
+    // collections/views used in the query
+    for (auto const& dataSource : value.dataSources) {
+      // TODO Should this be a separate permission/action?
+      // TODO `dataSource` can be either a collection or view; we need to
+      //      distinguish what it is to determine its permissions!
+      if (ExecContext::current()
+              .canUseCollection(vocbase.name(), dataSource.second.name,
+                                CollectionAccessLevel::Read)
+              .fail()) {
+        return false;
       }
     }
     return true;
@@ -1709,15 +1725,24 @@ static void JS_Databases(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
 
+  bool onlyCurrentUser = false;
   std::string user;
-
   if (argc > 0) {
     user = TRI_ObjectToString(isolate, args[0]);
+    if (!user.empty()) {
+      // Prior to 3.12.10, the given username was handed on here. However,
+      // it was ignored subsequently. So although this method appeared
+      // to deliver the list of databases visible to the given user name,
+      // it has always returned the list of databases visible to the
+      // current user. So we keep the behaviour and the signature of
+      // the function, but implement it in a more reasonable way.
+      onlyCurrentUser = true;
+    }
   }
 
   TRI_GET_GLOBALS();
   std::vector<std::string> names =
-      methods::Databases::list(v8g->server(), user);
+      methods::Databases::list(v8g->server(), onlyCurrentUser);
   v8::Handle<v8::Array> result = v8::Array::New(isolate, (int)names.size());
 
   for (size_t i = 0; i < names.size(); ++i) {
@@ -1780,6 +1805,9 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
+  // The check for authorization to create the database is done in the
+  // following method.
+
   std::string const dbName = TRI_ObjectToString(isolate, args[0]);
   Result res = methods::Databases::create(vocbase.server(), vocbase.engine(),
                                           ExecContext::current(), dbName,
@@ -1812,6 +1840,7 @@ static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string const name = TRI_ObjectToString(isolate, args[0]);
+
   auto res = methods::Databases::drop(ExecContext::current(), &vocbase, name);
 
   if (res.fail()) {

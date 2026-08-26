@@ -38,7 +38,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "Replication/InitialSyncer.h"
-#include "Replication/ReplicationApplier.h"
 #include "Replication/ReplicationTransaction.h"
 #include "Rest/HttpRequest.h"
 #include "RestServer/DatabaseFeature.h"
@@ -74,71 +73,35 @@ constexpr std::string_view dataRef("data");
 constexpr std::string_view tickRef("tick");
 constexpr std::string_view dbRef("db");
 
-bool hasHeader(std::unique_ptr<httpclient::SimpleHttpResult> const& response,
-               std::string const& name) {
-  return response->hasHeaderField(name);
-}
-
-bool getBoolHeader(
-    std::unique_ptr<httpclient::SimpleHttpResult> const& response,
-    std::string const& name) {
-  bool found = false;
-  std::string header = response->getHeaderField(name, found);
-  if (found) {
-    return StringUtils::boolean(header);
-  }
-  return false;
-}
-
-uint64_t getUIntHeader(
-    std::unique_ptr<httpclient::SimpleHttpResult> const& response,
-    std::string const& name) {
-  bool found = false;
-  std::string header = response->getHeaderField(name, found);
-  if (found) {
-    return StringUtils::uint64(header);
-  }
-  return 0;
-}
-
 }  // namespace
 
 /// @brief base url of the replication API
 std::string const TailingSyncer::WalAccessUrl = "/_api/wal";
 
-TailingSyncer::TailingSyncer(
-    ReplicationApplier* applier,
-    ReplicationApplierConfiguration const& configuration,
-    TRI_voc_tick_t initialTick, bool useTick)
+TailingSyncer::TailingSyncer(ReplicationSyncConfiguration const& configuration)
     : Syncer(configuration),
-      _applier(applier),
-      _hasWrittenState(false),
-      _initialTick(initialTick),
+      _initialTick(0),
       _usersModified(false),
-      _useTick(useTick),
-      _requireFromPresent(configuration._requireFromPresent),
       _ignoreRenameCreateDrop(false),
       _ignoreDatabaseMarkers(true),
-      _stats(_state.applier._server
+      _stats(_state.config._server
                  .getFeature<arangodb::ReplicationMetricsFeature>(),
              true) {}
 
 TailingSyncer::~TailingSyncer() { abortOngoingTransactions(); }
 
 /// @brief decide based on _state.leader which api to use
-///        GlobalTailingSyncer should overwrite this probably
 std::string TailingSyncer::tailingBaseUrl(std::string const& cc) {
   return absl::StrCat(TailingSyncer::WalAccessUrl, "/", cc, "?");
 }
 
-/// @brief set the applier progress
+/// @brief set the sync progress
 void TailingSyncer::setProgress(std::string const& msg) {
-  if (_state.applier._verbose) {
+  if (_state.config._verbose) {
     LOG_TOPIC("cb1ba", INFO, Logger::REPLICATION) << msg;
   } else {
     LOG_TOPIC("452fc", DEBUG, Logger::REPLICATION) << msg;
   }
-  _applier->setProgress(msg);
 }
 
 /// @brief abort all ongoing transactions
@@ -242,14 +205,14 @@ bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick,
     }
   }
 
-  // the transient applier state is just used for one shard / collection
-  if (_state.applier._restrictCollections.empty()) {
+  // the transient sync config is just used for one shard / collection
+  if (_state.config._restrictCollections.empty()) {
     return false;
   }
 
-  if (_state.applier._restrictType ==
-          ReplicationApplierConfiguration::RestrictType::None &&
-      _state.applier._includeSystem) {
+  if (_state.config._restrictType ==
+          ReplicationSyncConfiguration::RestrictType::None &&
+      _state.config._includeSystem) {
     return false;
   }
 
@@ -265,29 +228,29 @@ bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick,
 /// @brief whether or not a collection should be excluded
 bool TailingSyncer::isExcludedCollection(
     std::string const& collectionName) const {
-  if (collectionName.starts_with('_') && !_state.applier._includeSystem) {
+  if (collectionName.starts_with('_') && !_state.config._includeSystem) {
     // system collection
     return true;
   }
 
-  auto const it = _state.applier._restrictCollections.find(collectionName);
+  auto const it = _state.config._restrictCollections.find(collectionName);
 
-  bool found = (it != _state.applier._restrictCollections.end());
+  bool found = (it != _state.config._restrictCollections.end());
 
-  if (_state.applier._restrictType ==
-          ReplicationApplierConfiguration::RestrictType::Include &&
+  if (_state.config._restrictType ==
+          ReplicationSyncConfiguration::RestrictType::Include &&
       !found) {
     // collection should not be included
     return true;
-  } else if (_state.applier._restrictType ==
-                 ReplicationApplierConfiguration::RestrictType::Exclude &&
+  } else if (_state.config._restrictType ==
+                 ReplicationSyncConfiguration::RestrictType::Exclude &&
              found) {
     // collection should be excluded
     return true;
   }
 
   if (TRI_ExcludeCollectionReplication(collectionName, /*includeSystem*/ true,
-                                       _state.applier._includeFoxxQueues)) {
+                                       _state.config._includeFoxxQueues)) {
     return true;
   }
 
@@ -314,11 +277,11 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
             "illegal name: database named invalid"};
   }
 
-  if (!_state.applier._server.hasFeature<arangodb::SystemDatabaseFeature>()) {
+  if (!_state.config._server.hasFeature<arangodb::SystemDatabaseFeature>()) {
     return arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
   auto& sysDbFeature =
-      _state.applier._server.getFeature<arangodb::SystemDatabaseFeature>();
+      _state.config._server.getFeature<arangodb::SystemDatabaseFeature>();
 
   if (type == REPLICATION_DATABASE_CREATE) {
     VPackSlice const data = slice.get("data");
@@ -349,7 +312,7 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
       }
     }
 
-    auto& server = _state.applier._server;
+    auto& server = _state.config._server;
     auto& engine = server.getFeature<DatabaseFeature>().engine();
     VPackSlice users = VPackSlice::emptyArraySlice();
     Result res =
@@ -876,7 +839,7 @@ Result TailingSyncer::truncateCollection(
       return res;
     }
 
-    OperationOptions opts(ExecContext::current());
+    OperationOptions opts;
     OperationResult opRes =
         trx.count(col->name(), transaction::CountType::kNormal, opts);
     if (opRes.ok() && opRes.slice().isNumber()) {
@@ -1250,902 +1213,8 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response,
             << _state.databaseName << "': " << errorMsg;
       }
     }
-
-    // update tick value
-    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
-
-    if (markerTick > firstRegularTick &&
-        markerTick > _applier->_state._lastProcessedContinuousTick) {
-      TRI_ASSERT(markerTick > 0);
-      _applier->_state._lastProcessedContinuousTick = markerTick;
-    }
-
-    if (_applier->_state._lastProcessedContinuousTick >
-        _applier->_state._lastAppliedContinuousTick) {
-      _applier->_state._lastAppliedContinuousTick =
-          _applier->_state._lastProcessedContinuousTick;
-    }
-
-    if (skipped) {
-      ++_applier->_state._totalSkippedOperations;
-    } else if (_ongoingTransactions.empty()) {
-      _applier->_state._safeResumeTick =
-          _applier->_state._lastProcessedContinuousTick;
-    }
   }
 
   // reached the end
-  return Result();
-}
-
-/// @brief run method, performs continuous synchronization
-/// catches exceptions
-Result TailingSyncer::run() {
-  try {
-    auto guard = scopeGuard([this]() noexcept {
-      try {
-        abortOngoingTransactions();
-      } catch (std::exception const& ex) {
-        LOG_TOPIC("6f832", ERR, Logger::REPLICATION)
-            << "Failed to abort ongoing transactions: " << ex.what();
-      }
-    });
-    return runInternal();
-  } catch (arangodb::basics::Exception const& ex) {
-    return Result(ex.code(),
-                  absl::StrCat("continuous synchronization for database '",
-                               _state.databaseName,
-                               "' failed with exception: ", ex.what()));
-  } catch (std::exception const& ex) {
-    return Result(TRI_ERROR_INTERNAL,
-                  absl::StrCat("continuous synchronization for database '",
-                               _state.databaseName,
-                               "' failed with exception: ", ex.what()));
-  } catch (...) {
-    return Result(
-        TRI_ERROR_INTERNAL,
-        absl::StrCat("continuous synchronization for database '",
-                     _state.databaseName, "' failed with unknown exception"));
-  }
-}
-
-/// @brief run method, performs continuous synchronization
-/// internal method, may throw exceptions
-Result TailingSyncer::runInternal() {
-  if (!_state.connection.valid()) {
-    return Result(TRI_ERROR_INTERNAL);
-  }
-
-  setAborted(false);
-
-  uint64_t shortTermFailsInRow = 0;
-
-retry:
-  // just to be sure we are starting/restarting from a clean state
-  abortOngoingTransactions();
-
-  double const start = TRI_microtime();
-
-  Result res;
-  uint64_t connectRetries = 0;
-
-  // reset failed connects
-  {
-    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
-    _applier->_state._failedConnects = 0;
-    _applier->_state.setStartTime();
-  }
-
-  while (true) {
-    setProgress("fetching leader state information");
-    res = _state.leader.getState(_state.connection, _state.isChildSyncer,
-                                 nullptr);
-
-    if (res.is(TRI_ERROR_REPLICATION_NO_RESPONSE)) {
-      // leader error. try again after a sleep period
-      ++_stats.numFailedConnects;
-      connectRetries++;
-      {
-        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
-        _applier->_state._failedConnects = connectRetries;
-        _applier->_state._totalRequests++;
-        _applier->_state._totalFailedConnects++;
-      }
-
-      if (connectRetries <= _state.applier._maxConnectRetries) {
-        // check if we are aborted externally
-        if (_applier->sleepIfStillActive(
-                _state.applier._connectionRetryWaitTime)) {
-          setProgress(absl::StrCat(
-              "fetching leader state information failed. will retry now. "
-              "retries left: ",
-              (_state.applier._maxConnectRetries - connectRetries)));
-          continue;
-        }
-
-        // somebody stopped the applier
-        res.reset(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
-      }
-    }
-
-    // we either got a connection or an error
-    break;
-  }
-
-  if (res.ok()) {
-    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
-    try {
-      getLocalState();
-      _applier->_state._failedConnects = 0;
-      _applier->_state._totalRequests++;
-    } catch (basics::Exception const& ex) {
-      res = Result(ex.code(), ex.what());
-    } catch (std::exception const& ex) {
-      res = Result(TRI_ERROR_INTERNAL, ex.what());
-    } catch (...) {
-      res.reset(TRI_ERROR_INTERNAL, "caught unknown exception");
-    }
-  }
-
-  if (res.fail()) {
-    // stop ourselves
-    LOG_TOPIC("06384", INFO, Logger::REPLICATION)
-        << "stopping applier: " << res.errorMessage();
-    try {
-      WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
-      _applier->_state._totalRequests++;
-      getLocalState();
-    } catch (basics::Exception const& ex) {
-      res = Result(ex.code(), ex.what());
-    } catch (std::exception const& ex) {
-      res = Result(TRI_ERROR_INTERNAL, ex.what());
-    } catch (...) {
-      res.reset(TRI_ERROR_INTERNAL, "caught unknown exception");
-    }
-
-    _applier->stop(res);
-
-    return res;
-  }
-
-  if (res.ok()) {
-    res = runContinuousSync();
-  }
-
-  if (res.fail()) {
-    // stop ourselves
-    if (res.is(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT) ||
-        res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) ||  // data source --
-                                                           // collection or view
-        res.is(TRI_ERROR_REPLICATION_NO_START_TICK)) {
-      // additional logging
-      if (res.is(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT)) {
-        LOG_TOPIC("a1040", WARN, Logger::REPLICATION)
-            << "replication applier stopped for database '"
-            << _applier->databaseName()
-            << "' because required tick is not present on leader";
-      } else {
-        LOG_TOPIC("33feb", WARN, Logger::REPLICATION)
-            << "replication applier stopped for database '"
-            << _applier->databaseName() << "': " << res.errorMessage();
-      }
-
-      // remove previous applier state
-      abortOngoingTransactions();  // tries to clear map - no further side
-                                   // effects
-
-      LOG_TOPIC("902e2", DEBUG, Logger::REPLICATION)
-          << "stopped replication applier for database '"
-          << _applier->databaseName();
-      auto rv = _applier->resetState(true /*reducedSet*/);
-
-      setAborted(false);
-
-      if (rv.fail()) {
-        return rv;
-      }
-
-      if (!_state.applier._autoResync) {
-        LOG_TOPIC("713c2", INFO, Logger::REPLICATION)
-            << "Auto resync disabled, applier for " << _applier->databaseName()
-            << " will stop";
-        _applier->stop(res);
-        return res;
-      }
-
-      if (TRI_microtime() - start < 120.0) {
-        // the applier only ran for less than 2 minutes. probably
-        // auto-restarting it won't help much
-        shortTermFailsInRow++;
-      } else {
-        shortTermFailsInRow = 0;
-      }
-
-      // check if we've made too many retries
-      if (shortTermFailsInRow > _state.applier._autoResyncRetries) {
-        if (_state.applier._autoResyncRetries > 0) {
-          // message only makes sense if there's at least one retry
-          LOG_TOPIC("91bb3", WARN, Logger::REPLICATION)
-              << "aborting automatic resynchronization for "
-              << _applier->databaseName() << " after "
-              << _state.applier._autoResyncRetries << " short-term retries";
-        } else {
-          LOG_TOPIC("7db04", WARN, Logger::REPLICATION)
-              << "aborting automatic resynchronization for "
-              << _applier->databaseName() << " because autoResyncRetries is 0";
-        }
-
-        // always abort if we get here
-        _applier->stop(res);
-        return res;
-      }
-
-      // do an automatic full resync
-      LOG_TOPIC("41845", WARN, Logger::REPLICATION)
-          << "restarting initial synchronization for "
-          << _applier->databaseName()
-          << " because autoResync option is set. retry #" << shortTermFailsInRow
-          << " of " << _state.applier._autoResyncRetries;
-
-      {
-        // increase number of syncs counter
-        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
-        ++_applier->_state._totalResyncs;
-
-        // necessary to reset the state here, because otherwise running the
-        // InitialSyncer may fail with "applier is running" errors
-        _applier->_state._phase =
-            ReplicationApplierState::ActivityPhase::INITIAL;
-        _applier->_state._stopInitialSynchronization = false;
-        _applier->_state._preventStart = false;
-      }
-
-      // start initial synchronization
-      try {
-        std::shared_ptr<InitialSyncer> syncer = _applier->buildInitialSyncer();
-        Result r = syncer->run(_state.applier._incremental);
-        if (r.ok()) {
-          TRI_voc_tick_t lastLogTick = syncer->getLastLogTick();
-          TRI_ASSERT(lastLogTick > 0);
-          LOG_TOPIC("ee130", INFO, Logger::REPLICATION)
-              << "automatic resynchronization for " << _applier->databaseName()
-              << " finished. restarting continuous replication applier from "
-                 "tick "
-              << lastLogTick;
-          _initialTick = lastLogTick;
-          _useTick = true;
-
-          {
-            WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
-            _applier->_state.setStartTime();
-          }
-          _applier->markThreadTailing();
-          goto retry;
-        }
-        res.reset(r.errorNumber(), r.errorMessage());
-        LOG_TOPIC("45736", WARN, Logger::REPLICATION)
-            << "initial replication for " << _applier->databaseName()
-            << " failed: " << res.errorMessage();
-        // fall through otherwise
-      } catch (...) {
-        res.reset(TRI_ERROR_INTERNAL,
-                  "caught unknown exception during initial replication");
-      }
-
-      WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
-      _applier->_state._phase =
-          ReplicationApplierState::ActivityPhase::INACTIVE;
-    }
-
-    abortOngoingTransactions();
-
-    _applier->stop(res);
-    return res;
-  }
-
-  return Result();
-}
-
-/// @brief get local replication apply state
-void TailingSyncer::getLocalState() {
-  uint64_t oldTotalRequests = _applier->_state._totalRequests;
-  uint64_t oldTotalFailedConnects = _applier->_state._totalFailedConnects;
-
-  bool const foundState = _applier->loadStateNoLock();
-  _applier->_state._totalRequests = oldTotalRequests;
-  _applier->_state._totalFailedConnects = oldTotalFailedConnects;
-
-  if (!foundState) {
-    // no state file found, so this is the initialization
-    _applier->_state._serverId = _state.leader.serverId;
-    if (_useTick && _initialTick > 0) {
-      _applier->_state._lastProcessedContinuousTick = _initialTick - 1;
-      _applier->_state._lastAppliedContinuousTick = _initialTick - 1;
-    }
-    _applier->persistState(true);
-    return;
-  }
-
-  // a _state.leader.serverId value of 0 may occur if no proper connection could
-  // be established to the leader initially
-  if (_state.leader.serverId != _applier->_state._serverId &&
-      _applier->_state._serverId.isSet() && _state.leader.serverId.isSet()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_REPLICATION_LEADER_CHANGE,
-        absl::StrCat(
-            "encountered wrong leader id in replication state file. found: ",
-            _state.leader.serverId.id(),
-            ", expected: ", _applier->_state._serverId.id()));
-  }
-}
-
-/// @brief perform a continuous sync with the leader
-Result TailingSyncer::runContinuousSync() {
-  constexpr uint64_t MinWaitTime = 250 * 1000;        // 0.25 seconds
-  constexpr uint64_t MaxWaitTime = 60 * 1000 * 1000;  // 60 seconds
-  uint64_t connectRetries = 0;
-  uint64_t inactiveCycles = 0;
-
-  // get start tick
-  // ---------------------------------------
-  TRI_voc_tick_t fromTick = 0;
-  TRI_voc_tick_t safeResumeTick = 0;
-
-  {
-    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
-
-    if (_useTick) {
-      // use user-defined tick
-      fromTick = _initialTick;
-      _applier->_state._lastAppliedContinuousTick = 0;
-      _applier->_state._lastProcessedContinuousTick = 0;
-      // saveApplierState();
-    } else {
-      // if we already transferred some data, we'll use the last applied tick
-      LOG_TOPIC("7045d", DEBUG, Logger::REPLICATION)
-          << "restarting continuous synchronization from previous state"
-          << ", lastAppliedContinuousTick in state: "
-          << _applier->_state._lastAppliedContinuousTick
-          << ", lastProcessedContinuousTick in state: "
-          << _applier->_state._lastProcessedContinuousTick
-          << ", safeResumeTick in state: " << _applier->_state._safeResumeTick
-          << ", fromTick: 0";
-
-      fromTick = _applier->_state._lastAppliedContinuousTick;
-      safeResumeTick = _applier->_state._safeResumeTick;
-    }
-  }
-
-  LOG_TOPIC("daf0b", DEBUG, Logger::REPLICATION)
-      << "requesting continuous synchronization, fromTick: " << fromTick
-      << ", safeResumeTick " << safeResumeTick << ", useTick: " << _useTick
-      << ", initialTick: " << _initialTick;
-
-  if (fromTick == 0) {
-    return Result(TRI_ERROR_REPLICATION_NO_START_TICK);
-  }
-
-  // get the applier into a sensible start state by fetching the list of
-  // open transactions from the leader
-  TRI_voc_tick_t fetchTick = safeResumeTick;
-  TRI_voc_tick_t lastScannedTick =
-      safeResumeTick;  // hint where server MAY scan from
-  if (safeResumeTick == 0 || safeResumeTick != fromTick) {
-    // adjust fetchTick so we can tail starting from the tick containing
-    // the open transactions we did not commit locally
-    if (safeResumeTick > 0) {
-      // important: we must not resume tailing in the middle of a RocksDB
-      // transaction, as this would mean we would be missing the transaction
-      // begin marker. this would cause "unexpected transaction errors"
-      fromTick = safeResumeTick;
-    }
-
-    fetchTick = fromTick;
-  }
-
-  if (fetchTick > fromTick) {
-    // must not happen
-    return Result(TRI_ERROR_INTERNAL);
-  }
-
-  setProgress(absl::StrCat(
-      "starting with from tick ", fromTick, ", fetch tick ", fetchTick,
-      ", open transactions: ", _ongoingTransactions.size(), ", parallel: yes"));
-
-  // when we leave this method, we must unregister ourselves from the leader,
-  // otherwise the leader may keep WAL logs around for us for too long
-  auto unregister = scopeGuard([&]() noexcept {
-    if (ServerState::instance()->isRunningInCluster()) {
-      try {
-        _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
-          std::unique_ptr<httpclient::SimpleHttpResult> response;
-          std::string const url = absl::StrCat(
-              tailingBaseUrl("tail"), "serverId=", _state.localServerIdString,
-              "&syncerId=", syncerId().toString());
-          // simply send the request, but don't care about the response. if it
-          // fails, there is not much we can do from here.
-          auto headers = replutils::createHeaders();
-          response.reset(client->request(rest::RequestType::DELETE_REQ, url,
-                                         nullptr, 0, headers));
-        });
-      } catch (...) {
-        // this must be exception-safe, but if an exception occurs, there is not
-        // much we can do
-      }
-    }
-  });
-
-  // the shared status will wait in its destructor until all posted
-  // requests have been completed/canceled!
-  auto self = shared_from_this();
-  Syncer::JobSynchronizerScope sharedStatus(self);
-
-  bool worked = false;
-  bool mustFetchBatch = true;
-
-  // will be recycled for every batch
-  VPackBuilder builder;
-
-  // run in a loop. the loop is terminated when the applier is stopped or an
-  // error occurs
-  while (true) {
-    builder.clear();
-
-    // fetchTick, worked and mustFetchBatch are passed by reference and are
-    // updated by processLeaderLog!
-
-    // passing "mustFetchBatch = true" to processLeaderLog will make it
-    // initially fetch the next batch from the leader passing "mustFetchBatch =
-    // false" to processLeaderLog requires that processLeaderLog has already
-    // requested the next batch in the background on the previous invocation
-    Result res = processLeaderLog(
-        sharedStatus.clone(), builder, fetchTick, lastScannedTick, fromTick,
-        _state.applier._ignoreErrors, worked, mustFetchBatch);
-
-    uint64_t sleepTime;
-
-    if (res.is(TRI_ERROR_REPLICATION_NO_RESPONSE) ||
-        res.is(TRI_ERROR_REPLICATION_LEADER_ERROR)) {
-      // leader error. try again after a sleep period
-      if (_state.applier._connectionRetryWaitTime > 0) {
-        sleepTime = _state.applier._connectionRetryWaitTime;
-        if (sleepTime < MinWaitTime) {
-          sleepTime = MinWaitTime;
-        }
-      } else {
-        // default to prevent spinning too busy here
-        sleepTime = 30 * 1000 * 1000;
-      }
-
-      connectRetries++;
-
-      {
-        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
-
-        _applier->_state._failedConnects = connectRetries;
-        _applier->_state._totalRequests++;
-        _applier->_state._totalFailedConnects++;
-      }
-
-      if (connectRetries > _state.applier._maxConnectRetries) {
-        // halt
-        return res;
-      }
-    } else {
-      connectRetries = 0;
-
-      if (res.fail()) {
-        // some other error we will not ignore
-        return res;
-      }
-
-      // no error
-      if (worked) {
-        // we have done something, so we won't sleep (but check for cancelation)
-        inactiveCycles = 0;
-        sleepTime = 0;
-      } else {
-        sleepTime = _state.applier._idleMinWaitTime;
-        if (sleepTime < MinWaitTime) {
-          sleepTime = MinWaitTime;  // hard-coded minimum wait time
-        }
-
-        if (_state.applier._adaptivePolling) {
-          inactiveCycles++;
-          if (inactiveCycles > 60) {
-            sleepTime *= 5;
-          } else if (inactiveCycles > 30) {
-            sleepTime *= 3;
-          }
-          if (inactiveCycles > 15) {
-            sleepTime *= 2;
-          }
-
-          if (sleepTime > _state.applier._idleMaxWaitTime) {
-            sleepTime = _state.applier._idleMaxWaitTime;
-          }
-        }
-
-        if (sleepTime > MaxWaitTime) {
-          sleepTime = MaxWaitTime;  // hard-coded maximum wait time
-        }
-      }
-    }
-
-    LOG_TOPIC("21d90", TRACE, Logger::REPLICATION)
-        << "worked: " << worked << ", sleepTime: " << sleepTime;
-
-    // this will make the applier thread sleep if there is nothing to do,
-    // but will also check for cancelation
-    if (!_applier->sleepIfStillActive(sleepTime)) {
-      return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
-    }
-  }
-
-  // won't be reached
-  return Result(TRI_ERROR_INTERNAL);
-}
-
-/// @brief fetch data for the continuous synchronization
-/// @param fetchTick tick from which we want results
-/// @param lastScannedTick tick which the server MAY start scanning from
-/// @param firstRegularTick if we got openTransactions server will return the
-///                         only operations belonging to these for ticks <
-///                         firstRegularTick
-void TailingSyncer::fetchLeaderLog(
-    std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
-    TRI_voc_tick_t fetchTick, TRI_voc_tick_t lastScannedTick,
-    TRI_voc_tick_t firstRegularTick) {
-  try {
-    std::string url = absl::StrCat(
-        tailingBaseUrl("tail"), "chunkSize=", _state.applier._chunkSize,
-        "&from=", fetchTick, "&lastScanned=", lastScannedTick,
-        (firstRegularTick > fetchTick ? "&firstRegular=" : "&unusedOption="),
-        firstRegularTick, "&serverId=", _state.localServerIdString,
-        "&includeSystem=", (_state.applier._includeSystem ? "true" : "false"),
-        "&includeFoxxQueues=",
-        (_state.applier._includeFoxxQueues ? "true" : "false"));
-
-    if (syncerId().value > 0) {
-      // we must only send the syncerId along if it is != 0, otherwise we will
-      // trigger an error on the leader
-      absl::StrAppend(&url, "&syncerId=", syncerId().toString());
-    }
-
-    // send request
-    setProgress(absl::StrCat("fetching leader log from tick ", fetchTick,
-                             ", last scanned tick ", lastScannedTick,
-                             ", first regular tick ", firstRegularTick,
-                             ", chunk size ", _state.applier._chunkSize));
-
-    // stringify list of open transactions
-    std::string body = "[]";
-
-    std::unique_ptr<httpclient::SimpleHttpResult> response;
-    double time = TRI_microtime();
-
-    _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
-      // set request timeout to a maximum of 10 seconds. we do this to be able
-      // to get out of stalled requests to failed/non-responsive leaders
-      // quicker.
-      double oldTimeout = client->params().getRequestTimeout();
-      client->params().setRequestTimeout(
-          std::min(_state.applier._requestTimeout, 10.0));
-      auto guard = scopeGuard(
-          [&]() noexcept { client->params().setRequestTimeout(oldTimeout); });
-      auto headers = replutils::createHeaders();
-      response.reset(client->request(rest::RequestType::PUT, url, body.c_str(),
-                                     body.size(), headers));
-    });
-
-    time = TRI_microtime() - time;
-
-    if (replutils::hasFailed(response.get())) {
-      // failure
-      sharedStatus->gotResponse(
-          replutils::buildHttpError(response.get(), url, _state.connection),
-          time);
-    } else {
-      // success!
-      LOG_TOPIC("a4822", DEBUG, Logger::REPLICATION)
-          << "fetching leader log from tick " << fetchTick << " took " << time
-          << " s";
-      sharedStatus->gotResponse(std::move(response), time);
-    }
-  } catch (basics::Exception const& ex) {
-    sharedStatus->gotResponse(Result(ex.code(), ex.what()));
-  } catch (std::exception const& ex) {
-    sharedStatus->gotResponse(Result(TRI_ERROR_INTERNAL, ex.what()));
-  }
-}
-
-/// @brief apply continuous synchronization data from a batch
-Result TailingSyncer::processLeaderLog(
-    std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
-    arangodb::velocypack::Builder& builder, TRI_voc_tick_t& fetchTick,
-    TRI_voc_tick_t& lastScannedTick, TRI_voc_tick_t firstRegularTick,
-    uint64_t& ignoreCount, bool& worked, bool& mustFetchBatch) {
-  LOG_TOPIC("26a5b", DEBUG, Logger::REPLICATION)
-      << "entering processLeaderLog. fetchTick: " << fetchTick
-      << ", worked: " << worked << ", mustFetchBatch: " << mustFetchBatch;
-
-  // a batch must have been requested before
-  if (mustFetchBatch) {
-    TRI_ASSERT(!sharedStatus->gotResponse());
-    fetchLeaderLog(sharedStatus, fetchTick, lastScannedTick, firstRegularTick);
-  }
-
-  // make sure that on the next invocation we will fetch a new batch
-  // note that under some conditions we will fetch the next batch in the
-  // background and will reset this value to false a bit more below
-  mustFetchBatch = true;
-
-  std::unique_ptr<httpclient::SimpleHttpResult> response;
-
-  // block until we either got a response or were shut down
-  Result res = sharedStatus->waitForResponse(response);
-
-  ++_stats.numTailingRequests;
-  _stats.waitedForTailing += sharedStatus->time();
-
-  if (res.fail()) {
-    // no response or error or shutdown
-    return res;
-  }
-
-  // now we have got a response!
-  TRI_ASSERT(response != nullptr);
-
-  if (response->hasContentLength()) {
-    _stats.numTailingBytesReceived += response->getContentLength();
-  }
-
-  worked = false;
-
-  if (!hasHeader(response, StaticStrings::ReplicationHeaderCheckMore)) {
-    return Result(
-        TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-        absl::StrCat("got invalid response from leader at ",
-                     _state.leader.endpoint, ": required header ",
-                     StaticStrings::ReplicationHeaderCheckMore, " is missing"));
-  }
-
-  bool checkMore =
-      getBoolHeader(response, StaticStrings::ReplicationHeaderCheckMore);
-
-  // was the specified from value included the result?
-  bool const fromIncluded =
-      getBoolHeader(response, StaticStrings::ReplicationHeaderFromPresent);
-  lastScannedTick =
-      getUIntHeader(response, StaticStrings::ReplicationHeaderLastScanned);
-
-  if (!hasHeader(response, StaticStrings::ReplicationHeaderLastIncluded)) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  absl::StrCat("got invalid response from leader at ",
-                               _state.leader.endpoint, ": required header ",
-                               StaticStrings::ReplicationHeaderLastIncluded,
-                               " is missing in tailing response"));
-  }
-
-  TRI_voc_tick_t lastIncludedTick =
-      getUIntHeader(response, StaticStrings::ReplicationHeaderLastIncluded);
-  TRI_voc_tick_t const tick =
-      getUIntHeader(response, StaticStrings::ReplicationHeaderLastTick);
-
-  LOG_TOPIC("5e543", DEBUG, Logger::REPLICATION)
-      << "applyLog. fetchTick: " << fetchTick << ", checkMore: " << checkMore
-      << ", fromIncluded: " << fromIncluded
-      << ", lastScannedTick: " << lastScannedTick
-      << ", lastIncludedTick: " << lastIncludedTick << ", tick: " << tick;
-
-  TRI_ASSERT(tick >= lastIncludedTick);
-
-  if (lastIncludedTick == 0 && lastScannedTick > 0 &&
-      lastScannedTick > fetchTick) {
-    // leader did not have any news for us
-    // still we can move forward the place from which to tail the WAL files
-    fetchTick = lastScannedTick - 1;
-  }
-
-  if (lastIncludedTick > fetchTick) {
-    fetchTick = lastIncludedTick;
-    worked = true;
-  } else {
-    // we got the same tick again, this indicates we're at the end
-    checkMore = false;
-    LOG_TOPIC("425e4", DEBUG, Logger::REPLICATION)
-        << "applyLog. got the same tick again, turning off checkMore";
-  }
-
-  if (!hasHeader(response, StaticStrings::ReplicationHeaderLastTick)) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  absl::StrCat("got invalid response from leader at ",
-                               _state.leader.endpoint, ": required header ",
-                               StaticStrings::ReplicationHeaderLastTick,
-                               " is missing in tailing response"));
-  }
-
-  bool bumpTick = false;
-
-  if (!checkMore && tick > lastIncludedTick) {
-    // the leader has a tick value which is not contained in this result
-    // but it claims it does not have any more data
-    // so it's probably a tick from an invisible operation (such as
-    // closing a WAL file)
-    bumpTick = true;
-    LOG_TOPIC("854e2", DEBUG, Logger::REPLICATION) << "applyLog. bumping tick";
-  }
-
-  TRI_voc_tick_t lastAppliedTick;
-  {
-    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
-    _applier->_state._lastAvailableContinuousTick = tick;
-
-    lastAppliedTick = _applier->_state._lastAppliedContinuousTick;
-
-    TRI_ASSERT(_applier->_state._lastAvailableContinuousTick >=
-               _applier->_state._lastAppliedContinuousTick)
-        << ", lastAvailable: " << _applier->_state._lastAvailableContinuousTick
-        << ", lastContinuous: " << _applier->_state._lastAppliedContinuousTick
-        << ", checkMore: " << checkMore
-        << ", lastIncludedTick: " << lastIncludedTick
-        << ", fetchTick: " << fetchTick
-        << ", lastScannedTick: " << lastScannedTick
-        << ", bumpTick: " << bumpTick;
-
-    _applier->_state._totalFetchTime += sharedStatus->time();
-    _applier->_state._totalFetchInstances++;
-  }
-
-  if (!fromIncluded && fetchTick > 0) {
-    Result r = handleRequiredFromPresentFailure(fetchTick, tick, "ongoing");
-    TRI_ASSERT(_ongoingTransactions.empty());
-
-    if (r.fail()) {
-      return r;
-    }
-  }
-
-  // already fetch next batch of data in the background...
-  if (checkMore && !isAborted()) {
-    TRI_ASSERT(worked);
-
-    // do not fetch the same batch next time we enter processLeaderLog
-    // (that would be duplicate work)
-    mustFetchBatch = false;
-    sharedStatus->request([self = shared_from_this(), sharedStatus, fetchTick,
-                           lastScannedTick, firstRegularTick]() {
-      std::static_pointer_cast<TailingSyncer>(self)->fetchLeaderLog(
-          sharedStatus, fetchTick, lastScannedTick, firstRegularTick);
-    });
-  }
-
-  TRI_ASSERT(builder.isEmpty());
-
-  ApplyStats applyStats;
-  double time = TRI_microtime();
-  Result r = applyLog(response.get(), firstRegularTick, applyStats, builder,
-                      ignoreCount);
-  time = TRI_microtime() - time;
-
-  _stats.numProcessedMarkers += applyStats.processedMarkers;
-  _stats.numProcessedDocuments += applyStats.processedDocuments;
-  _stats.numProcessedRemovals += applyStats.processedRemovals;
-  _stats.waitedForTailingApply += time;
-  _stats.publish();
-
-  if (r.fail()) {
-    LOG_TOPIC("04ba9", DEBUG, Logger::REPLICATION)
-        << "applyLog failed with error: " << r.errorMessage();
-    return r;
-  }
-
-  // success!
-  LOG_TOPIC("608c2", DEBUG, Logger::REPLICATION)
-      << "applyLog successful, lastAppliedTick: " << lastAppliedTick
-      << ", firstRegularTick: " << firstRegularTick
-      << ", processedMarkers: " << applyStats.processedMarkers
-      << ", took: " << time << " s";
-
-  // we grab the write-lock here and hold it until the end of this function
-  WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
-
-  _applier->_state._failedConnects = 0;
-  _applier->_state._totalRequests++;
-
-  // cppcheck-suppress *
-  if (applyStats.processedMarkers > 0) {
-    worked = true;
-
-    _applier->_state._totalApplyTime += time;
-    _applier->_state._totalApplyInstances++;
-    _applier->_state._totalEvents += applyStats.processedMarkers;
-    _applier->_state._totalDocuments += applyStats.processedDocuments;
-    _applier->_state._totalRemovals += applyStats.processedRemovals;
-
-    if (_applier->_state._lastAppliedContinuousTick != lastAppliedTick) {
-      _hasWrittenState = true;
-      saveApplierState();
-    }
-
-    TRI_ASSERT(_applier->_state._lastAvailableContinuousTick >=
-               _applier->_state._lastAppliedContinuousTick);
-  } else if (bumpTick) {
-    if (_applier->_state._lastProcessedContinuousTick < tick) {
-      _applier->_state._lastProcessedContinuousTick = tick;
-    }
-
-    if (_ongoingTransactions.empty() && _applier->_state._safeResumeTick == 0) {
-      _applier->_state._safeResumeTick = tick;
-    }
-
-    if (_ongoingTransactions.empty() &&
-        _applier->_state._lastAppliedContinuousTick == 0) {
-      _applier->_state._lastAppliedContinuousTick =
-          _applier->_state._lastProcessedContinuousTick;
-    }
-
-    if (!_hasWrittenState) {
-      _hasWrittenState = true;
-      saveApplierState();
-    }
-
-    TRI_ASSERT(_applier->_state._lastAvailableContinuousTick >=
-               _applier->_state._lastAppliedContinuousTick);
-  }
-
-  if (!_hasWrittenState && _useTick) {
-    // write state at least once so the start tick gets saved
-    _hasWrittenState = true;
-
-    _applier->_state._lastAppliedContinuousTick = firstRegularTick;
-    _applier->_state._lastProcessedContinuousTick = firstRegularTick;
-
-    if (_ongoingTransactions.empty() && _applier->_state._safeResumeTick == 0) {
-      _applier->_state._safeResumeTick = firstRegularTick;
-    }
-
-    saveApplierState();
-
-    TRI_ASSERT(_applier->_state._lastAvailableContinuousTick >=
-               _applier->_state._lastAppliedContinuousTick);
-  }
-
-  if (!worked && checkMore) {
-    worked = true;
-  }
-
-  return r;
-}
-
-Result TailingSyncer::handleRequiredFromPresentFailure(TRI_voc_tick_t fromTick,
-                                                       TRI_voc_tick_t readTick,
-                                                       char const* type) {
-  std::string const msg = absl::StrCat(
-      "required ", type, " tick value '", fromTick,
-      "' is not present (anymore?) on leader at ", _state.leader.endpoint,
-      ". Last tick available on leader is '", readTick,
-      "'. It may be required to do a full resync and increase the number "
-      "of historic logfiles/WAL file timeout or archive size on the leader.");
-  LOG_TOPIC("4c6d2", WARN, Logger::REPLICATION) << msg;
-
-  if (_requireFromPresent) {  // hard fail
-    abortOngoingTransactions();
-    return Result(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT, msg);
-  }
-
-  // only print a warning about the failure, abort ongoing transactions and go
-  // on... we may have data loss and follow-up failures here, but at least all
-  // these will be either logged or make the replication fail later on
-
-  // we have to abort any running ongoing transactions, as they will be
-  // holding exclusive locks on the underlying collection(s)
-  if (!_ongoingTransactions.empty()) {
-    LOG_TOPIC("63e32", WARN, Logger::REPLICATION)
-        << "aborting ongoing open transactions (" << _ongoingTransactions.size()
-        << ")";
-    abortOngoingTransactions();
-  }
-
   return Result();
 }

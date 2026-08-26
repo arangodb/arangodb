@@ -55,7 +55,7 @@ ClusteringConstantProperties::validateDatabaseConfiguration(
     }
   }
 
-  if (config.isOneShardDB) {
+  if (config.oneShardDBConfiguration.has_value()) {
     if (numberOfShards.value() != 1) {
       return {TRI_ERROR_BAD_PARAMETER,
               "Collection in a 'oneShardDatabase' must have 1 shard"};

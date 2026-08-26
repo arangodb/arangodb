@@ -22,44 +22,58 @@
 
 #pragma once
 
-#include "Auth/Common.h"
-#include "Rest/RequestContext.h"
+#include "Assertions/ProdAssert.h"
+#include "Auth/AuthMode.h"
+#include "Auth/Permissions.h"
+#include "Basics/Result.h"
+#include "Utils/DatabaseGuard.h"
 
+#include <atomic>
+#include <functional>
 #include <memory>
+#include <optional>
+#include <span>
+#include <vector>
 #include <string>
 
 namespace arangodb {
+struct Database;
+
 namespace transaction {
 class Methods;
 }
+class AuthenticationFeature;
+class GeneralRequest;
+class RbacFeature;
+class ServerSecurityFeature;
 
 /// Carries some information about the current
 /// context in which this thread is executed.
 /// We should strive to have it always accessible
-/// from ExecContext::CURRENT. Inherits from request
-/// context for convenience
-class ExecContext : public RequestContext {
+/// from ExecContext::CURRENT.
+class ExecContext {
   friend struct ExecContextScope;
   friend struct ExecContextSuperuserScope;
 
  protected:
-  enum class Type { Default, Internal };
   class ConstructorToken {};
 
  public:
-  ExecContext(ConstructorToken, ExecContext::Type type, std::string const& user,
-              std::string const& database, auth::Level systemLevel,
-              auth::Level dbLevel, bool isAdminUser,
-              std::vector<std::string> const& roles = {},
-              std::string const& jwtToken = "");
+  ExecContext(ConstructorToken, AuthMode authMode, bool isRestApiHardened,
+              VocbasePtr vocbase, std::string clientAddress = {},
+              std::string requestUrl = {}, std::string authMethod = "n/a",
+              bool hasRequestInfo = false);
   ExecContext(ExecContext const&) = delete;
   ExecContext(ExecContext&&) = delete;
 
- public:
-  virtual ~ExecContext() = default;
-
-  /// shortcut helper to check the AuthenticationFeature
-  static bool isAuthEnabled();
+  /// @brief Create an ExecContext from an incoming request with a vocbase.
+  /// This is the main factory for creating real ExecContexts.
+  /// Superuser JWT requests create a dynamic Superuser context (not the static
+  /// one) so that vocbase and request information is preserved.
+  [[nodiscard]] static std::shared_ptr<ExecContext> create(
+      AuthenticationFeature& authenticationFeature, RbacFeature& rbacFeature,
+      ServerSecurityFeature const& securityFeature, GeneralRequest& req,
+      VocbasePtr vocbase);
 
   /// Should always contain a reference to current user context
   static ExecContext const& current();
@@ -72,136 +86,253 @@ class ExecContext : public RequestContext {
   static ExecContext const& superuser();
   static std::shared_ptr<ExecContext const> superuserAsShared();
 
-  /// @brief create user context
-  static std::shared_ptr<ExecContext> create(std::string const& user,
-                                             std::string const& db);
-
-  /// @brief an internal user is none / ro / rw for all collections / dbs
-  /// mainly used to override further permission resolution
-  bool isInternal() const noexcept { return _type == Type::Internal; }
-
-  /// @brief any internal operation is a superuser.
-  bool isSuperuser() const noexcept {
-    return isInternal() && _systemDbAuthLevel == auth::Level::RW &&
-           _databaseAuthLevel == auth::Level::RW;
+  [[nodiscard]] bool isDisabled() const noexcept {
+    return _authMode.isDisabled();
   }
 
-  /// @brief is this an internal read-only user
-  bool isReadOnly() const noexcept {
-    return isInternal() && _systemDbAuthLevel == auth::Level::RO;
+  [[nodiscard]] bool isSuperuserOrDisabled() const noexcept {
+    // This will report `true` if authentication is disabled!
+    return _authMode.isSuperuser() || _authMode.isDisabled();
   }
 
-  /// @brief is allowed to manage users, create databases, ...
-  bool isAdminUser() const noexcept { return _isAdminUser; }
+  [[nodiscard]] bool isSuperuser() const noexcept {
+    return _authMode.isSuperuser();
+  }
+  [[nodiscard]] bool isClassic() const noexcept {
+    return _authMode.isClassic();
+  }
 
   /// @brief tells you if this execution was canceled
-  virtual bool isCanceled() const { return false; }
+  bool isCanceled() const noexcept {
+    return _canceled.load(std::memory_order_relaxed);
+  }
+
+  /// @brief cancel execution
+  void cancel() noexcept { _canceled.store(true, std::memory_order_relaxed); }
+
+  /// @brief returns the vocbase associated with this context, if any
+  [[nodiscard]] std::optional<std::reference_wrapper<Database>> vocbase()
+      const noexcept;
 
   /// @brief current user, may be empty for internal users
-  std::string const& user() const { return _user; }
-
-  /// @brief current database
-  std::string const& database() const { return _database; }
-
-  /// @brief roles from JWT token (if authenticated via JWT)
-  std::vector<std::string> const& roles() const { return _roles; }
-
-  /// @brief JWT token string (if authenticated via JWT)
-  std::string const& jwtToken() const { return _jwtToken; }
-
-  /// @brief returns true if authenticated via JWT
-  bool hasJwtToken() const { return !_jwtToken.empty(); }
-  /// @brief authentication level on _system. Always RW for superuser
-  auth::Level systemAuthLevel() const noexcept { return _systemDbAuthLevel; }
-
-  /// @brief Authentication level on database selected in the current
-  ///        request scope. Should almost always contain something,
-  ///        if this thread originated in v8 or from HTTP
-  auth::Level databaseAuthLevel() const noexcept { return _databaseAuthLevel; }
-
-  /// @brief returns true if auth level is above or equal `requested`
-  bool canUseDatabase(auth::Level requested) const noexcept {
-    return requested <= _databaseAuthLevel;
+  [[nodiscard]] std::string_view user() const {
+    return _authMode.getIAuth().username();
   }
 
-  /// @brief returns true if auth level is above or equal `requested`
-  bool canUseDatabase(std::string const& db, auth::Level requested) const;
+  // Unified permission-check entry point. Prefer this over the canXxx()
+  // methods below for new code; eventually they are going to be removed.
+  //
+  // Since `auth::Permission` is a `std::variant`, it is implicitly
+  // constructed from any of its alternatives in `auth::perms::...`. Typical
+  // usage:
+  //
+  //   using namespace arangodb::auth::perms;
+  //   if (auto r = ec.can(SeeCollection{.db = db, .name = coll});
+  //       !r.ok()) { /* ... */ }
+  //
+  // Every question asked here is traced on `Logger::AUTHORIZATION` (TRACE);
+  // see tests/js/client/server_permissions/authorization-questions.js.
+  [[nodiscard]] Result can(auth::Permission permission) const;
 
-  /// @brief returns auth level for user
-  auth::Level collectionAuthLevel(std::string const& dbname,
-                                  std::string_view collection) const;
+  // The server-wide read-only gate, which every modifying operation has to
+  // pass in addition to its permission question. It is consulted after that
+  // question has been answered positively. Like `can()`, it is traced on
+  // `Logger::AUTHORIZATION` (TRACE) as `AUTHZ-CHECK IsReadOnly` - the trace
+  // is emitted whenever the gate is consulted, no matter how it answers, so
+  // that the authorization-questions tests can see which operations are
+  // gated by it.
+  //
+  // Note that `arangod/Auth/UserManagerBase.cpp` has read-only checks of its
+  // own which are not routed through here and hence not traced.
+  [[nodiscard]] Result checkNotReadOnly() const;
 
-  /// @brief returns true if auth levels is above or equal `requested`
-  bool canUseCollection(std::string const& collection,
-                        auth::Level requested) const {
-    return canUseCollection(_database, collection, requested);
+  // New Result-returning permission check methods:
+
+  // Check an admin-class action. This is a thin wrapper around can(); it is
+  // likely to be removed in favor of calling can() directly.
+  Result canUseAdminAction(auth::perms::AnyAdmin auto action) const {
+    return can(std::move(action));
   }
-  /// @brief returns true if auth level is above or equal `requested`
-  bool canUseCollection(std::string const& db, std::string const& coll,
-                        auth::Level requested) const {
-    return requested <= collectionAuthLevel(db, coll);
+
+  // Like canUseAdminAction, but the check is only performed when the REST API
+  // is hardened; otherwise the action is allowed. RBAC always implies a
+  // hardened REST API.
+  Result canUseHardenedAction(auth::perms::AnyAdmin auto action) const {
+    ADB_PROD_ASSERT(!_authMode.isRbac() || _isRestApiHardened)
+        << "RBAC is enabled, but REST API is not hardened: "
+           "RBAC implies --server.harden=true ("
+           "ServerSecurityFeatureOptions::hardenedRestApi = true).";
+    if (!_isRestApiHardened) {
+      return {};
+    }
+    Result r = can(std::move(action));
+    if (r.ok()) {
+      return r;
+    }
+    // Compatibility with 3.12.10:
+    return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
   }
+
+  Result canSeeDatabase(std::string_view db) const;
+  Result canCreateDatabase(std::string_view db) const;
+  Result canDropDatabase(std::string_view db) const;
+  Result canUseDatabase(std::string_view db, DatabaseAccessLevel level) const;
+
+  Result canSeeCollection(std::string_view db, std::string_view coll) const;
+  Result canCreateCollection(std::string_view db, std::string_view coll) const;
+  Result canDropCollection(std::string_view db, std::string_view coll) const;
+  Result canUseCollection(std::string_view db, std::string_view coll,
+                          CollectionAccessLevel level) const;
+
+  // May the current identity dump (via arangodump) this collection?
+  // Behaves like `canUseCollection(db, coll, CollectionAccessLevel::Read)`,
+  // except that in Classic Mode it is additionally granted to identities
+  // with RW access to the `_system` database (i.e. "admins", equivalent to
+  // `canUseAdminAction(rbac::Category::AdminDump{})`).
+  Result canDumpCollection(std::string_view db, std::string_view coll) const;
+
+  // May the current identity restore (via arangorestore) this collection?
+  // Behaves like
+  // `canUseCollection(db, coll, CollectionAccessLevel::WriteData)`, except
+  // that in Classic Mode it is additionally granted to identities with RW
+  // access to the `_system` database (i.e. "admins", equivalent to
+  // `canUseAdminAction(rbac::Category::AdminRestore{})`).
+  // The flag `overwrite` indicates if we need to drop and recreate the
+  // collection in the "overwrite" case.
+  Result canRestoreCollection(std::string_view db, std::string_view coll,
+                              bool overwrite) const;
+
+  Result canRestoreCreateIndex(std::string_view db,
+                               std::string_view coll) const;
+  Result canRestoreCreateView(std::string_view db, std::string_view viewName,
+                              std::vector<std::string> view) const;
+  Result canRestoreDropView(std::string_view db, std::string_view view) const;
+  Result canRestoreWriteData(std::string_view db, std::string_view coll) const;
+
+  Result canCreateIndex(std::string_view db, std::string_view coll) const;
+  Result canDropIndex(std::string_view db, std::string_view coll) const;
+
+  Result canSeeView(std::string_view db, std::string_view view) const;
+  Result canCreateView(std::string_view db, std::string_view view,
+                       std::vector<std::string> const& linkedCollections) const;
+  Result canModifyView(std::string_view db, std::string_view view,
+                       std::vector<std::string> const& linkedCollections) const;
+  Result canDropView(std::string_view db, std::string_view view,
+                     std::vector<std::string> const& linkedCollections) const;
+  Result canReadView(std::string_view db, std::string_view view) const;
+
+  Result canSeeGraph(std::string_view db, std::string_view graph) const;
+  Result canCreateGraph(std::string_view db, std::string_view graph,
+                        std::span<std::string> collectionNamesToCreate,
+                        std::span<std::string> collectionNamesToRead) const;
+  Result canDropGraph(std::string_view db, std::string_view graph,
+                      std::span<std::string> collectionNames) const;
+  Result canUseGraph(std::string_view db, std::string_view graph,
+                     GraphAccessLevel const level) const;
+  Result canRenameView(std::string_view db, std::string_view oldViewName,
+                       std::string_view newViewName,
+                       std::vector<std::string> const& linkedCollections) const;
+
+  Result canSeeAnalyzer(std::string_view db, std::string_view analyzer) const;
+  Result canCreateAnalyzer(std::string_view db,
+                           std::string_view analyzer) const;
+  Result canDropAnalyzer(std::string_view db, std::string_view analyzer) const;
+  Result canUseAnalyzer(std::string_view db, std::string_view analyzer,
+                        AnalyzerAccessLevel level) const;
+
+  /// @brief returns true if the user can be read
+  Result canReadUser(std::string_view userName) const;
+
+  /// @brief returns true for each user which can be read
+  // TODO Should this return a std::vector<Result>?
+  // MAX: I do not think so, it is used only once to filter the visible
+  // users. All we need is the bool.
+  std::vector<bool> canReadUsers(std::span<std::string_view> users) const;
+
+  /// @brief returns true if the given user may be created.
+  Result canCreateUser(std::string_view userName) const;
+
+  /// @brief returns true if the given user may be dropped.
+  Result canDropUser(std::string_view userName) const;
+
+  /// @brief returns true if the given user's own profile (password, active
+  /// flag, config blob) may be modified. Note that everybody can modify
+  /// their own profile (if only to change the password).
+  Result canModifyUserProfile(std::string_view userName) const;
+
+  /// @brief returns true if the given user's permissions on databases and
+  /// collections may be granted/revoked.
+  Result canGrantUserPermissions(std::string_view userName) const;
+
+  /// @brief returns whether the given REST API version may be used, e.g. 1 for
+  /// `/_arango/v1`. Note that this does not ask whether the version exists -
+  /// that is decided by the handler factory.
+  Result canUseApiVersion(uint32_t version) const;
 
   static std::shared_ptr<ExecContext const> set(
       std::shared_ptr<ExecContext const> ctx) {
-    auto tmp = CURRENT;
-    CURRENT = ctx;
-    return tmp;
+    std::swap(CURRENT, ctx);
+    return ctx;
   }
 
 #ifdef USE_ENTERPRISE
-  virtual std::string clientAddress() const { return ""; }
-  virtual std::string requestUrl() const { return ""; }
-  virtual std::string authMethod() const { return ""; }
+  [[nodiscard]] std::string clientAddress() const;
+  [[nodiscard]] std::string requestUrl() const;
+  [[nodiscard]] std::string authMethod() const;
 #endif
 
- protected:
-  /// current user, may be empty for internal users
-  std::string const _user;
-  /// current database to use, superuser db is empty
-  std::string const _database;
-  /// roles from JWT token (if authenticated via JWT)
-  std::vector<std::string> const _roles;
-  /// JWT token string (if authenticated via JWT)
-  std::string const _jwtToken;
-
-  Type _type;
-  /// Flag if admin user access (not regarding cluster RO mode)
-  bool _isAdminUser;
-  /// level of system database
-  auth::Level _systemDbAuthLevel;
-  /// level of current database
-  auth::Level _databaseAuthLevel;
-
  private:
+  AuthMode _authMode;
+  bool const _isRestApiHardened;
+  VocbasePtr _vocbase;
+
+  // Client address, request URL and authentication method of the request
+  // this context was created from, if any (see ExecContext::create()).
+  // Preserved across forceSuperuser()/ExecContextSuperuserScope so that
+  // auditing keeps working after a privilege upgrade.
+  std::string _clientAddress;
+  std::string _requestUrl;
+  std::string _authMethod{"n/a"};
+  bool _hasRequestInfo{false};
+
+  // TODO (Tobias) this feels out of place. Look into it.
+  /// should be used to indicate a canceled request / thread
+  std::atomic<bool> _canceled{false};
+
   static std::shared_ptr<ExecContext const> const Superuser;
   static thread_local std::shared_ptr<ExecContext const> CURRENT;
 };
 
 /// @brief scope guard for the exec context
 struct ExecContextScope {
-  explicit ExecContextScope(std::shared_ptr<ExecContext const> exe);
+  explicit ExecContextScope(std::shared_ptr<ExecContext const> exe) noexcept;
 
-  ~ExecContextScope();
+  ~ExecContextScope() noexcept;
 
  private:
   std::shared_ptr<ExecContext const> _old;
 };
 
+/// @brief scope guard installing a Superuser exec context
+///
+/// Use this to deliberately run an internal execution path with a clear
+/// purpose -- e.g. the startup thread, a dedicated background thread, or
+/// system-collection maintenance -- as Superuser.
+///
+/// Avoid using this to escalate privileges during request handling in order to
+/// skip subsequent permission checks; authorization methods on ExecContext
+/// should handle such cases properly on their own, whenever possible.
 struct ExecContextSuperuserScope {
-  explicit ExecContextSuperuserScope() : _old(ExecContext::CURRENT) {
-    ExecContext::CURRENT = ExecContext::Superuser;
-  }
+  explicit ExecContextSuperuserScope();
 
-  explicit ExecContextSuperuserScope(bool cond) : _old(ExecContext::CURRENT) {
-    if (cond) {
-      ExecContext::CURRENT = ExecContext::Superuser;
-    }
-  }
+  explicit ExecContextSuperuserScope(bool cond);
 
   ~ExecContextSuperuserScope() { ExecContext::CURRENT = _old; }
 
  private:
+  static auto getSuperuserContextFrom(ExecContext const* old)
+      -> std::shared_ptr<ExecContext const>;
+
   std::shared_ptr<ExecContext const> _old;
 };
 

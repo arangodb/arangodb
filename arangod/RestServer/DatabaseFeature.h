@@ -23,7 +23,7 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
 #include "Metrics/GaugeBuilder.h"
@@ -33,6 +33,7 @@
 #include "RestServer/IDatabaseProvider.h"
 #include "RestServer/IRecoveryCallback.h"
 #include "Utils/DatabaseGuard.h"
+#include "Utils/Thread.h"
 #include "Utils/VersionTracker.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/Methods/Databases.h"
@@ -49,7 +50,6 @@ class ApplicationServer;
 struct Database;
 class IOHeartbeatThread;
 class LogicalCollection;
-class ReplicationFeature;
 class StorageEngine;
 class ClusterEngine;
 class RocksDBEngine;
@@ -109,13 +109,11 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
  public:
   static constexpr std::string_view name() noexcept { return "Database"; }
 
-  explicit DatabaseFeature(application_features::ApplicationServer& server,
-                           DatabaseFeatureOptions options);
   explicit DatabaseFeature(application_features::ApplicationServer& server);
+  DatabaseFeature(application_features::ApplicationServer& server,
+                  DatabaseFeatureOptions options);
   ~DatabaseFeature() final;
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) final;
   void start() final;
   void beginShutdown() final;
   void stop() final;
@@ -161,7 +159,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
   /// @brief get the ids of all local databases
   std::vector<TRI_voc_tick_t> getDatabaseIds(bool includeSystem);
   std::vector<std::string> getDatabaseNames();
-  std::vector<std::string> getDatabaseNamesForUser(std::string const& user);
+  std::vector<std::string> getDatabaseNamesForCurrentUser();
 
   Result createDatabase(arangodb::CreateDatabaseInfo&&, Database*& result);
 
@@ -237,8 +235,6 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
  private:
   void initCalculationVocbase();
 
-  void stopAppliers();
-
   /// @brief iterate over all databases in the databases directory and open them
   ErrorCode iterateDatabases(velocypack::Slice databases);
 
@@ -299,7 +295,6 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
   VersionTracker _versionTracker;
 
   StorageEngine* _engine = nullptr;
-  ReplicationFeature* _replicationFeature = nullptr;
 
   /// @brief metadata metrics structure for single servers only
   struct MetadataMetrics {

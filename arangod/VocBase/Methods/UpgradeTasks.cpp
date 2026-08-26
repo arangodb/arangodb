@@ -27,10 +27,8 @@
 #include "Auth/UserManager.h"
 #include "Basics/DownCast.h"
 #include "Basics/Exceptions.h"
-#include "Basics/FileUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
-#include "Basics/files.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "Containers/SmallVector.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -52,7 +50,6 @@
 #include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/vocbase.h"
 
-#include <filesystem>
 #include <velocypack/Collection.h>
 
 using namespace arangodb;
@@ -76,7 +73,7 @@ arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
   overw.openObject();
   overw.add(arangodb::StaticStrings::IndexType,
             arangodb::velocypack::Value(
-                arangodb::Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
+                arangodb::Index::oldtypeName(IndexType::Geo)));
   overw.close();
 
   VPackBuilder newDesc =
@@ -97,7 +94,7 @@ arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
   }
 
   TRI_ASSERT(newIndex->id() == iid);  // will break cluster otherwise
-  TRI_ASSERT(newIndex->type() == Index::TRI_IDX_TYPE_GEO_INDEX);
+  TRI_ASSERT(newIndex->type() == IndexType::Geo);
 
   return res;
 }
@@ -109,8 +106,8 @@ Result upgradeGeoIndexes(TRI_vocbase_t& vocbase) {
     auto indexes = collection->getPhysical()->getReadyIndexes();
     for (auto const& index : indexes) {
       auto* rIndex = basics::downCast<RocksDBIndex>(index.get());
-      if (index->type() == Index::TRI_IDX_TYPE_GEO1_INDEX ||
-          index->type() == Index::TRI_IDX_TYPE_GEO2_INDEX) {
+      if (index->type() == IndexType::Geo1 ||
+          index->type() == IndexType::Geo2) {
         LOG_TOPIC("5e53d", INFO, Logger::STARTUP)
             << "Upgrading legacy geo index '" << rIndex->id().id() << "'";
 
@@ -130,7 +127,7 @@ Result upgradeGeoIndexes(TRI_vocbase_t& vocbase) {
 Result createSystemCollections(
     TRI_vocbase_t& vocbase,
     std::vector<std::shared_ptr<LogicalCollection>>& createdCollections) {
-  OperationOptions options(ExecContext::current());
+  OperationOptions options;
 
   std::vector<CreateCollectionBody> systemCollectionsToCreate;
   // the order of systemCollections is important. If we're in _system db, the
@@ -339,7 +336,7 @@ Result createSystemStatisticsCollections(
 }
 
 Result createIndex(
-    std::string const& name, Index::IndexType type,
+    std::string const& name, IndexType type,
     std::vector<std::string> const& fields, bool unique, bool sparse,
     std::vector<std::shared_ptr<LogicalCollection>> const& collections) {
   // Static helper function that wraps creating an index. If we fail to
@@ -365,21 +362,21 @@ Result createSystemStatisticsIndices(
     std::vector<std::shared_ptr<LogicalCollection>>& collections) {
   Result res;
   if (vocbase.isSystem()) {
-    res = ::createIndex(StaticStrings::StatisticsCollection,
-                        arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, {"time"},
-                        false, false, collections);
+    res =
+        ::createIndex(StaticStrings::StatisticsCollection, IndexType::Skiplist,
+                      {"time"}, false, false, collections);
     if (!res.ok() && !res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
       return res;
     }
-    res = ::createIndex(StaticStrings::Statistics15Collection,
-                        arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, {"time"},
-                        false, false, collections);
+    res =
+        ::createIndex(StaticStrings::Statistics15Collection,
+                      IndexType::Skiplist, {"time"}, false, false, collections);
     if (!res.ok() && !res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
       return res;
     }
-    res = ::createIndex(StaticStrings::StatisticsRawCollection,
-                        arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, {"time"},
-                        false, false, collections);
+    res =
+        ::createIndex(StaticStrings::StatisticsRawCollection,
+                      IndexType::Skiplist, {"time"}, false, false, collections);
     if (!res.ok() && !res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
       return res;
     }
@@ -392,9 +389,8 @@ Result createSystemCollectionsIndices(
     std::vector<std::shared_ptr<LogicalCollection>>& collections) {
   Result res;
   if (vocbase.isSystem()) {
-    res = ::createIndex(StaticStrings::UsersCollection,
-                        arangodb::Index::TRI_IDX_TYPE_HASH_INDEX, {"user"},
-                        true, true, collections);
+    res = ::createIndex(StaticStrings::UsersCollection, IndexType::Hash,
+                        {"user"}, true, true, collections);
     if (!res.ok()) {
       return res;
     }
@@ -410,21 +406,18 @@ Result createSystemCollectionsIndices(
     return res;
   }
 
-  res = ::createIndex(StaticStrings::AppsCollection,
-                      arangodb::Index::TRI_IDX_TYPE_HASH_INDEX, {"mount"}, true,
-                      true, collections);
+  res = ::createIndex(StaticStrings::AppsCollection, IndexType::Hash, {"mount"},
+                      true, true, collections);
   if (!res.ok()) {
     return res;
   }
-  res = ::createIndex(StaticStrings::JobsCollection,
-                      arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
+  res = ::createIndex(StaticStrings::JobsCollection, IndexType::Skiplist,
                       {"queue", "status", "delayUntil"}, false, false,
                       collections);
   if (!res.ok()) {
     return res;
   }
-  res = ::createIndex(StaticStrings::JobsCollection,
-                      arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
+  res = ::createIndex(StaticStrings::JobsCollection, IndexType::Skiplist,
                       {"status", "queue", "delayUntil"}, false, false,
                       collections);
   if (!res.ok()) {
@@ -602,38 +595,6 @@ Result UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
     }
   }
   return {};
-}
-
-Result UpgradeTasks::renameReplicationApplierStateFiles(
-    TRI_vocbase_t& vocbase, velocypack::Slice slice) {
-  std::string const path = vocbase.engine().databasePath();
-
-  std::string const source = arangodb::basics::FileUtils::buildFilename(
-      path, "REPLICATION-APPLIER-STATE");
-
-  if (!std::filesystem::is_regular_file(source)) {
-    // source file does not exist (or not a regular file)
-    return {};
-  }
-
-  // copy file REPLICATION-APPLIER-STATE to REPLICATION-APPLIER-STATE-<id>
-  return basics::catchToResult([&vocbase, &path, &source]() -> Result {
-    std::string const dest = arangodb::basics::FileUtils::buildFilename(
-        path, "REPLICATION-APPLIER-STATE-" + std::to_string(vocbase.id()));
-
-    LOG_TOPIC("75337", TRACE, Logger::STARTUP)
-        << "copying replication applier file '" << source << "' to '" << dest
-        << "'";
-
-    std::string error;
-    if (!TRI_CopyFile(source, dest, error)) {
-      auto msg = absl::StrCat("could not copy replication applier file '",
-                              source, "' to '", dest, "'");
-      LOG_TOPIC("6c90c", WARN, Logger::STARTUP) << msg;
-      return {TRI_ERROR_INTERNAL, std::move(msg)};
-    }
-    return {};
-  });
 }
 
 ////////////////////////////////////////////////////////////////////////////////

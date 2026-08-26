@@ -109,14 +109,11 @@ void ImportOptionsProvider::declareOptionsImpl(
           "The maximum number of errors after which the import will stop.",
           new UInt64Parameter(&opts.maxErrors))
       .setIntroducedIn(31200)
-      .setLongDescription(R"(The maximum number of errors after which the
-import is stopped.
-
-Note that this is not an exact limit for the number of errors.
-arangoimport will send data to the server in batches, and likely also in parallel.
-The server will process these in-flight batches regardless of the maximum number
-of errors configured here. arangoimport will however stop processing more input
-data once the server reported at least this many errors back.)");
+      .setLongDescription(R"(This is not an exact limit for the number of
+errors. arangoimport sends data to the server in batches, and likely also in
+parallel. The server processes these in-flight batches regardless of the maximum
+number of errors configured here. However, arangoimport stops processing more
+input data once the server reported at least this many errors back.)");
 
   options->addOption(
       "--convert",

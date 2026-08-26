@@ -815,10 +815,15 @@ jobs:
                   DESTDIR=`pwd`/install cmake --build --preset << parameters.preset >> --parallel 16 --target install
                   cp build/bin/arangodb ./install/usr/bin/
                   if [ << parameters.enterprise >> = true ]; then
-                    cp build/bin/rclone-arangodb ./install/usr/bin/
+                    # Same location as the nightly images (fetch-aux-binaries.sh):
+                    # usr/sbin, so consumers find it where the published images
+                    # have it.
+                    cp build/bin/rclone-arangodb ./install/usr/sbin/
                   fi
-                  strip ./install/usr/bin/arango*
-                  strip ./install/usr/sbin/arangod
+                  # Strip per the packaging policy (client tools only; the
+                  # starter and arangod keep their symbols).
+                  if [ << parameters.enterprise >> = true ]; then EDITION=enterprise; else EDITION=community; fi
+                  EDITION="${EDITION}" scripts/packaging/strip-install-tree.sh ./install
                   tar -czf install-<< parameters.arch >>.tar.gz -C install ./
                   cp -a scripts/docker/deploy docker-context-<< parameters.arch >>
             # Everything persisted here must be arch-specific: the x64 and
@@ -1003,6 +1008,27 @@ jobs:
       - image: << parameters.docker_image >>
     resource_class: << parameters.size >>
     parallelism: << parameters.buckets >>
+    steps:
+      - run-test:
+          suiteName: << parameters.suiteName >>
+          suites: << parameters.suites >>
+          cluster: << parameters.cluster >>
+          arangosh_args: << parameters.arangosh_args >>
+          timeLimit: << parameters.timeLimit >>
+          sanitizer: << parameters.sanitizer >>
+          extraArgs: << parameters.extraArgs >>
+
+  run-linux-tests-with-smocker:
+    parameters:
+      <<: *shared-test-job-parameters
+    docker:
+      - image: << parameters.docker_image >>
+      - image: ghcr.io/smocker-dev/smocker
+        name: smocker
+    resource_class: << parameters.size >>
+    parallelism: << parameters.buckets >>
+    environment:
+      SMOCKER_HOST: smocker
     steps:
       - run-test:
           suiteName: << parameters.suiteName >>

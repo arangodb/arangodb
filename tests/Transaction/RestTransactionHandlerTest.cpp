@@ -32,6 +32,7 @@
 
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "Mocks/ExecContextFactory.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Parser.h>
@@ -190,7 +191,9 @@ TEST_F(RestTransactionHandlerTest, simple_transaction_abort) {
 
   request.setRequestType(arangodb::rest::RequestType::POST);
   request.addSuffix("begin");
-  parser.parse("{ \"collections\":{\"read\": [\"42\"]}}");
+  // Need to use collection name here, since the UserManagerTester cannot
+  // do the lookup from id.
+  parser.parse("{ \"collections\":{\"read\": [\"testCollection\"]}}");
 
   handler.executeAsync().wait();
   EXPECT_EQ(arangodb::rest::ResponseCode::CREATED, responce.responseCode());
@@ -268,7 +271,9 @@ TEST_F(RestTransactionHandlerTest, simple_transaction_and_commit) {
 
   request.setRequestType(arangodb::rest::RequestType::POST);
   request.addSuffix("begin");
-  parser.parse("{ \"collections\":{\"read\": [\"42\"]}}");
+  // Need to use the collection name here, since the UserManagerTester
+  // cannot lookup the name.
+  parser.parse("{ \"collections\":{\"read\": [\"testCollection\"]}}");
 
   handler.executeAsync().wait();
   EXPECT_EQ(arangodb::rest::ResponseCode::CREATED, responce.responseCode());
@@ -322,19 +327,16 @@ TEST_F(RestTransactionHandlerTest, permission_denied_read_only) {
   }
   ASSERT_NE(coll, nullptr);
 
-  struct ExecContext : public arangodb::ExecContext {
-    ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                arangodb::ExecContext::Type::Internal, "dummy",
-                                "testVocbase", arangodb::auth::Level::RO,
-                                arangodb::auth::Level::RO, false) {}
-  };
-  auto execContext = std::make_shared<ExecContext>();
-  arangodb::ExecContextScope execContextScope(execContext);
+  auto classicCtx = arangodb::tests::mocks::makeClassicExecContext(
+      "dummy", "testVocbase", arangodb::auth::Level::RO,
+      arangodb::auth::Level::RO);
+  arangodb::ExecContextScope execContextScope(classicCtx.execContext);
 
   request.setRequestType(arangodb::rest::RequestType::POST);
   request.addSuffix("begin");
-  parser.parse("{ \"collections\":{\"write\": [\"42\"]}}");
+  // Need to use the colleciton name here, since the UserManagerTester
+  // cannot lookup the name:
+  parser.parse("{ \"collections\":{\"write\": [\"testCollection\"]}}");
 
   handler.executeAsync().wait();
   EXPECT_EQ(arangodb::rest::ResponseCode::FORBIDDEN, responce.responseCode());
@@ -365,19 +367,16 @@ TEST_F(RestTransactionHandlerTest, permission_denied_forbidden) {
   }
   ASSERT_NE(coll, nullptr);
 
-  struct ExecContext : public arangodb::ExecContext {
-    ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                arangodb::ExecContext::Type::Internal, "dummy",
-                                "testVocbase", arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE, false) {}
-  };
-  auto execContext = std::make_shared<ExecContext>();
-  arangodb::ExecContextScope execContextScope(execContext);
+  auto classicCtx = arangodb::tests::mocks::makeClassicExecContext(
+      "dummy", "testVocbase", arangodb::auth::Level::NONE,
+      arangodb::auth::Level::NONE);
+  arangodb::ExecContextScope execContextScope(classicCtx.execContext);
 
   request.setRequestType(arangodb::rest::RequestType::POST);
   request.addSuffix("begin");
-  parser.parse("{ \"collections\":{\"write\": [\"42\"]}}");
+  // Need to use the collection name here, since the UserManagerTester
+  // cannot lookup the name:
+  parser.parse("{ \"collections\":{\"write\": [\"testCollection\"]}}");
 
   handler.executeAsync().wait();
   EXPECT_EQ(arangodb::rest::ResponseCode::FORBIDDEN, responce.responseCode());
