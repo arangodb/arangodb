@@ -447,12 +447,12 @@ class LogicalCollection : public LogicalDataSource {
     return _properties.clusteringConstant.replicatedStateId;
   }
 
+ protected:
   // Parsed once at construction; only its immutable fields are authoritative;
   // the mutable ones are seeded from here into the attributes below and are
   // stale afterwards
   CollectionDescriptor const _properties;
 
- protected:
   void addInternalValidator(std::unique_ptr<ValidatorBase>);
 
   Result appendVPack(velocypack::Builder& build, Serialization ctx,
