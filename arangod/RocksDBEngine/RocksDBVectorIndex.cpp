@@ -708,12 +708,7 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
   rocksdbKey.constructVectorIndexValue(objectId(), listId, documentId);
   auto const status = methods->Delete(_cf, rocksdbKey);
 
-  if (!status.ok()) {
-    auto const res = rocksutils::convertStatus(status);
-    THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
-  }
-
-  return {};
+  return rocksutils::convertStatus(status);
 }
 
 vector::UserDefinition const& RocksDBVectorIndex::getVectorIndexDefinition()
