@@ -1058,7 +1058,9 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
                     checkOne(adminAction(admin), rbac::resources::NoResource{});
                 r.fail()) {
               // This is for backwards compatibility with the classic case
-              return {TRI_ERROR_HTTP_FORBIDDEN, r.errorMessage()};
+              return _requestedApiVersion == 0
+                         ? Result{TRI_ERROR_HTTP_FORBIDDEN, r.errorMessage()}
+                         : r;
             }
             return {};
           },
@@ -1323,7 +1325,9 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
             if (auto r = checkOne(rbac::Action::Read,
                                   rbac::resources::User{user.name});
                 r.fail()) {
-              return {TRI_ERROR_HTTP_FORBIDDEN, r.errorMessage()};
+              return _requestedApiVersion == 0
+                         ? Result{TRI_ERROR_HTTP_FORBIDDEN, r.errorMessage()}
+                         : r;
             }
             return {};
           },
