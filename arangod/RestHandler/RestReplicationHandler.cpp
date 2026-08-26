@@ -2762,7 +2762,6 @@ bool RestReplicationHandler::prepareCollectionForRevisionOperation(
     RevisionOperationContext& ctx) {
   // get collection Name
   ctx.cname = _request->value("collection");
-  // We only accept collection names, not IDs:
   if (ctx.cname.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid collection parameter");
