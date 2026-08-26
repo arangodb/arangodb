@@ -4,6 +4,10 @@
 * Filters on path expansions with an inline FILTER now run during the traversal,
   so they prune earlier and no longer drop results with uniqueVertices: "global".
 
+* Updated aardvark node modules:
+ - fast-uri to 3.1.5 to resolve CVE-2026-18446
+ - brace-expansion to 5.0.9 to resolve CVE-2026-69152
+
 * Updated ArangoDB Starter to v0.19.27.
 
 * Rebuilt included rclone v1.75.0 with go1.25.13 and non-vulnerable
@@ -33,7 +37,7 @@
 
 * COR-569: Added activity to report ArangoSearch consolidation.
 
-* BTS-2425:
+* BTS-2425: Updated node modules:
  - fast-uri to 3.1.5 to resolve CVE-2026-18446
  - brace-expansion to 5.0.9 to resolve CVE-2026-69152
 

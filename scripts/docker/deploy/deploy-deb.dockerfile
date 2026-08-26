@@ -1,5 +1,5 @@
 FROM ubuntu:24.04
-MAINTAINER Max Neunhoeffer <hackers@arangodb.com>
+LABEL org.opencontainers.image.authors="hackers@arangodb.com"
 
 ARG arch
 

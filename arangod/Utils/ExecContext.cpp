@@ -133,8 +133,6 @@ ExecContext::ExecContext(ConstructorToken, AuthMode authMode,
       /*hasRequestInfo*/ true);
 }
 
-void ExecContext::forceSuperuser() { _authMode.reset<AuthMode::Superuser>(); }
-
 std::optional<std::reference_wrapper<TRI_vocbase_t>> ExecContext::vocbase()
     const noexcept {
   if (_vocbase) {
@@ -409,17 +407,11 @@ Result ExecContext::canDropView(
   return {};
 }
 
-Result ExecContext::canUseView(std::string_view db, std::string_view viewName,
-                               ViewAccessLevel requested) const {
+Result ExecContext::canReadView(std::string_view db,
+                                std::string_view viewName) const {
   using namespace auth::perms;
-  if (auto r = can(UseView{.db{db}, .name{viewName}, .level = requested});
-      r.fail()) {
+  if (auto r = can(ReadView{.db{db}, .name{viewName}}); r.fail()) {
     return r;
-  }
-  if (requested == ViewAccessLevel::Modify) {
-    if (auto r = checkNotReadOnly(); r.fail()) {
-      return r;
-    }
   }
   return {};
 }

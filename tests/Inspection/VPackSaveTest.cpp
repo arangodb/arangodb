@@ -439,6 +439,94 @@ TEST_F(VPackSaveInspectorTest, store_object_with_invariant_and_fallback) {
       sizeof(inspector.field("i", i.i).fallback(42).invariant(invariant)));
 }
 
+TEST_F(VPackSaveInspectorTest, conditions_are_detected_anywhere_in_the_chain) {
+  // A field carries at most one condition; the detection that enforces this
+  // must see through the other decorators.
+  int i = 0;
+  auto condition = [] { return inspection::FieldCondition::Process; };
+  auto plain = inspector.field("i", i);
+  auto conditional = inspector.field("i", i).when(condition).fallback(42);
+
+  static_assert(!inspection::detail::ContainsCondition<decltype(plain)>::value);
+  static_assert(
+      inspection::detail::ContainsCondition<decltype(conditional)>::value);
+}
+
+TEST_F(VPackSaveInspectorTest, store_writes_only_the_active_alternative_field) {
+  AlternativeFields a{.useId = false, .id = 7, .name = "foo"};
+  auto result = inspector.apply(a);
+  ASSERT_TRUE(result.ok()) << result.error();
+  EXPECT_EQ(2u, builder.slice().length());
+  EXPECT_EQ("foo", builder.slice()["target"].copyString());
+}
+
+TEST_F(VPackSaveInspectorTest, store_uses_the_saving_branch_of_a_condition) {
+  {
+    // the loading branch would already include the field at version 2
+    AsymmetricCondition c{.version = 2, .newField = 42};
+    auto result = inspector.apply(c);
+    ASSERT_TRUE(result.ok()) << result.error();
+    EXPECT_TRUE(builder.slice()["newField"].isNone());
+  }
+  {
+    velocypack::Builder b;
+    VPackSaveInspector i{b};
+    AsymmetricCondition c{.version = 3, .newField = 42};
+    auto result = i.apply(c);
+    ASSERT_TRUE(result.ok()) << result.error();
+    EXPECT_EQ(42, b.slice()["newField"].getInt());
+  }
+}
+
+TEST_F(VPackSaveInspectorTest, store_conditional_field_when_condition_is_met) {
+  ConditionalReject c{.version = 2, .newField = 42};
+  auto result = inspector.apply(c);
+  ASSERT_TRUE(result.ok()) << result.error();
+  EXPECT_EQ(2, builder.slice()["version"].getInt());
+  EXPECT_EQ(42, builder.slice()["newField"].getInt());
+}
+
+TEST_F(VPackSaveInspectorTest, store_omits_field_for_any_skipping_condition) {
+  {  // Reject and Ignore are indistinguishable when saving
+    ConditionalReject c{.version = 1, .newField = 42};
+    auto result = inspector.apply(c);
+    ASSERT_TRUE(result.ok()) << result.error();
+    EXPECT_EQ(1, builder.slice()["version"].getInt());
+    EXPECT_TRUE(builder.slice()["newField"].isNone());
+  }
+  {
+    velocypack::Builder b;
+    VPackSaveInspector i{b};
+    ConditionalIgnore c{.version = 1, .newField = 42};
+    auto result = i.apply(c);
+    ASSERT_TRUE(result.ok()) << result.error();
+    EXPECT_TRUE(b.slice()["newField"].isNone());
+  }
+}
+
+TEST_F(VPackSaveInspectorTest, store_applies_save_scoped_condition) {
+  ConditionalSaveOnly c{.version = 1, .newField = 42};
+  auto result = inspector.apply(c);
+  ASSERT_TRUE(result.ok()) << result.error();
+  EXPECT_TRUE(builder.slice()["newField"].isNone());
+}
+
+TEST_F(VPackSaveInspectorTest, store_ignores_load_scoped_condition) {
+  ConditionalLoadOnly c{.version = 1, .newField = 42};
+  auto result = inspector.apply(c);
+  ASSERT_TRUE(result.ok()) << result.error();
+  EXPECT_EQ(42, builder.slice()["newField"].getInt());
+}
+
+TEST_F(VPackSaveInspectorTest, store_omits_conditional_embedded_field) {
+  ConditionalEmbedded c;
+  c.inner.newField = 42;
+  auto result = inspector.apply(c);
+  ASSERT_TRUE(result.ok()) << result.error();
+  EXPECT_EQ(1, builder.slice()["innerVersion"].getInt());
+  EXPECT_TRUE(builder.slice()["newField"].isNone());
+}
+
 TEST_F(VPackSaveInspectorTest, store_object_with_field_transform) {
   FieldTransform f{.x = 42};
   auto result = inspector.apply(f);
