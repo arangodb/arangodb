@@ -24,7 +24,7 @@
 
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
-#include "Aql/Optimizer/Utils/IndexJoinStatistics.h"
+#include "Aql/Optimizer/Rule/OptimizeJoinOrder/IndexJoinStatistics.h"
 #include "Assertions/ProdAssert.h"
 
 #include <algorithm>

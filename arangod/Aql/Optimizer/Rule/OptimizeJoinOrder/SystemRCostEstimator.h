@@ -22,8 +22,8 @@
 
 #pragma once
 
-#include "Aql/Optimizer/Utils/JoinCostEstimator.h"
-#include "Aql/Optimizer/Utils/JoinStatistics.h"
+#include "Aql/Optimizer/Rule/OptimizeJoinOrder/JoinCostEstimator.h"
+#include "Aql/Optimizer/Rule/OptimizeJoinOrder/JoinStatistics.h"
 
 #include <memory>
 #include <span>

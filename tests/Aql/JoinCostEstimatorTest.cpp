@@ -22,8 +22,8 @@
 
 #include "gtest/gtest.h"
 
-#include "Aql/Optimizer/Utils/JoinCostEstimator.h"
-#include "Aql/Optimizer/Utils/SystemRCostEstimator.h"
+#include "Aql/Optimizer/Rule/OptimizeJoinOrder/JoinCostEstimator.h"
+#include "Aql/Optimizer/Rule/OptimizeJoinOrder/SystemRCostEstimator.h"
 
 #include "JoinGraphTestHelper.h"
 

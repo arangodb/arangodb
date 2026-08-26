@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include "Aql/Optimizer/Utils/JoinGraph.h"
+#include "Aql/Optimizer/Rule/OptimizeJoinOrder/JoinGraph.h"
 
 #include <span>
 

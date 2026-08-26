@@ -22,7 +22,7 @@
 
 #include "gtest/gtest.h"
 
-#include "Aql/Optimizer/Utils/IndexJoinStatistics.h"
+#include "Aql/Optimizer/Rule/OptimizeJoinOrder/IndexJoinStatistics.h"
 #include "JoinGraphTestHelper.h"
 // trx.abort() below needs the full transaction::Methods definition, which
 // none of the above only-forward-declaring headers provide.
