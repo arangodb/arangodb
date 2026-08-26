@@ -68,6 +68,45 @@ TEST_F(OptimizeJoinOrderTest, linear_three_way_chain) {
   EXPECT_EQ(g.connectedComponents().size(), 1u);
 }
 
+TEST_F(OptimizeJoinOrderTest, adding_an_edge_invalidates_the_adjacency_index) {
+  // getEdgesForNode caches an adjacency index of Edge* into the `edges`
+  // vector, which appending reallocates. Production never interleaves the two
+  // -- the graph is fully built before the search reads it -- so nothing else
+  // exercises addJoinCondition's invalidation, and it would rot silently.
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FOR c IN c3 FILTER b.z == c.w RETURN [a, b, c]");
+  auto g = buildGraph(*q);
+  ASSERT_EQ(g.edges.size(), 2u);
+
+  auto* b = nodeByName(g, "b");
+  ASSERT_NE(b, nullptr);
+  // Populate the cache, and read the count through it.
+  auto const before = g.getEdgesForNode(b).size();
+  ASSERT_EQ(before, 2u);
+
+  // A fresh edge on the same vertex. Appending reallocates `edges`, so a
+  // stale index would hand back dangling pointers or a stale count.
+  auto* a = nodeByName(g, "a");
+  auto* c = nodeByName(g, "c");
+  ASSERT_NE(a, nullptr);
+  ASSERT_NE(c, nullptr);
+  g.addJoinCondition(a->executionNode->outVariable(), {"p"},
+                     c->executionNode->outVariable(), {"q"});
+  ASSERT_EQ(g.edges.size(), 3u);
+
+  // b is untouched by the new edge, but its cached Edge* all pointed into the
+  // reallocated buffer; the rebuilt index must still report exactly 2, and
+  // dereferencing must be safe.
+  auto const& after = g.getEdgesForNode(b);
+  EXPECT_EQ(after.size(), 2u);
+  for (auto const* edge : after) {
+    EXPECT_TRUE(edge->from == b || edge->to == b);
+  }
+  // and a's adjacency must now include the new edge
+  EXPECT_EQ(g.getEdgesForNode(a).size(), 2u);
+}
+
 TEST_F(OptimizeJoinOrderTest, equijoin_edge_records_attribute_paths) {
   auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
   auto g = buildGraph(*q);

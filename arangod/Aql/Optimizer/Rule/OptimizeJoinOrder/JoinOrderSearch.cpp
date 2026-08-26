@@ -47,22 +47,25 @@ namespace {
 /// exact figure matters far less than its direction: bias toward not rewriting.
 constexpr double kImprovementMargin = 0.25;
 
-/// @brief every edge joining `candidate` to a vertex already in `placed`.
-/// Self-loops are skipped: they are single-node filters, not join predicates.
-auto edgesToPrefix(JoinGraph& graph, JoinGraph::Node* candidate,
-                   std::unordered_set<JoinGraph::Node const*> const& placed)
-    -> std::vector<JoinGraph::Edge const*> {
-  std::vector<JoinGraph::Edge const*> result;
+/// @brief every edge joining `candidate` to a vertex already in `placed`,
+/// written into `out`, which is cleared first. Self-loops are skipped: they
+/// are single-node filters, not join predicates.
+///
+/// The caller owns the buffer so it can be reused across the search's inner
+/// loop rather than reallocated on each of its O(n^3) iterations.
+void edgesToPrefix(JoinGraph& graph, JoinGraph::Node* candidate,
+                   std::unordered_set<JoinGraph::Node const*> const& placed,
+                   std::vector<JoinGraph::Edge const*>& out) {
+  out.clear();
   for (auto* edge : graph.getEdgesForNode(candidate)) {
     if (edge->from == edge->to) {
       continue;
     }
     auto const* other = (edge->from == candidate) ? edge->to : edge->from;
     if (placed.contains(other)) {
-      result.emplace_back(edge);
+      out.emplace_back(edge);
     }
   }
-  return result;
 }
 
 /// @brief the component's nodes in a reproducible order. JoinGraph::nodes is
@@ -318,6 +321,7 @@ auto getEstimateForOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
     -> JoinEstimate {
   JoinEstimate estimate;
   std::unordered_set<JoinGraph::Node const*> placed;
+  std::vector<JoinGraph::Edge const*> connecting;
 
   for (size_t i = 0; i < order.size(); ++i) {
     auto* node = graph.nodeForVariable(order[i]->outVariable());
@@ -325,7 +329,7 @@ auto getEstimateForOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
     if (i == 0) {
       estimate = estimator.seed(*node);
     } else {
-      auto const connecting = edgesToPrefix(graph, node, placed);
+      edgesToPrefix(graph, node, placed, connecting);
       estimate = estimator.extend(estimate, *node, connecting);
     }
     placed.insert(node);
@@ -340,6 +344,7 @@ auto getBestOrderForComponent(JoinGraph& graph,
   ADB_PROD_ASSERT(!nodes.empty());
 
   std::optional<JoinOrder> best;
+  std::vector<JoinGraph::Edge const*> connecting;
 
   for (auto* start : nodes) {
     JoinOrder candidate;
@@ -357,7 +362,7 @@ auto getBestOrderForComponent(JoinGraph& graph,
         if (placed.contains(next)) {
           continue;
         }
-        auto connecting = edgesToPrefix(graph, next, placed);
+        edgesToPrefix(graph, next, placed, connecting);
         if (connecting.empty()) {
           // not adjacent to the prefix yet; within a connected component some
           // other vertex is, so defer this one rather than cross-producting.

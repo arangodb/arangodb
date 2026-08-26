@@ -23,6 +23,7 @@
 #pragma once
 
 #include <map>
+#include <unordered_map>
 #include <optional>
 #include <string_view>
 #include <utility>
@@ -87,7 +88,12 @@ struct JoinGraph {
   /// for later optimizer stages.
   void addResidual(AstNode const* node);
 
-  auto getEdgesForNode(Node* node) -> std::vector<Edge*>;
+  /// @brief the edges incident to `node`. The returned reference is valid
+  /// until the next addJoinCondition() call. Backed by a lazily built
+  /// adjacency index: the order search asks this O(n^3) times per component,
+  /// and answering each one by scanning every edge in the graph dominated its
+  /// cost.
+  auto getEdgesForNode(Node* node) -> std::vector<Edge*> const&;
 
   /// @brief partition the vertices into connected components (the graph may be
   /// disconnected). Each returned vector holds the out variables of one
@@ -111,6 +117,14 @@ struct JoinGraph {
 
  private:
   auto ensureEdge(Variable const* v, Variable const* w) -> Edge&;
+
+  /// @brief incident edges per vertex, built on first use. Holds `Edge*` into
+  /// `edges`, which appending reallocates, so ensureEdge() drops it whenever
+  /// it adds an edge; the graph is fully built before the search reads it.
+  void buildAdjacency();
+
+  std::unordered_map<Node const*, std::vector<Edge*>> _adjacency;
+  bool _adjacencyBuilt = false;
 };
 
 }  // namespace arangodb::aql
