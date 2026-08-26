@@ -376,6 +376,7 @@ struct EmbeddedFieldsRef {
   }
 
  private:
+  // need a comment here to work around stupid clang-format behavior
   template<ConditionScope S, class P>
   auto makeConditional(P&& predicate) {
     static_assert(

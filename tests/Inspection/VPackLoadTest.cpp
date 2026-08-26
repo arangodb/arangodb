@@ -1321,7 +1321,8 @@ TEST_F(VPackLoadInspectorTest, load_rejecting_group_rejects_present_attribute) {
   EXPECT_EQ("Found unexpected attribute 'a'", result.error());
 }
 
-TEST_F(VPackLoadInspectorTest, load_ignoring_group_tolerates_present_attributes) {
+TEST_F(VPackLoadInspectorTest,
+       load_ignoring_group_tolerates_present_attributes) {
   builder.openObject();
   builder.add("version", VPackValue(1));
   builder.add("a", VPackValue(1));
@@ -1336,7 +1337,8 @@ TEST_F(VPackLoadInspectorTest, load_ignoring_group_tolerates_present_attributes)
   EXPECT_EQ(8, c.group.b);
 }
 
-TEST_F(VPackLoadInspectorTest, load_skipped_group_still_checks_object_invariant) {
+TEST_F(VPackLoadInspectorTest,
+       load_skipped_group_still_checks_object_invariant) {
   builder.openObject();
   builder.add("version", VPackValue(1));
   builder.close();
