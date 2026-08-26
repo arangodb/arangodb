@@ -350,7 +350,8 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   virtual WalAccess const* walAccess() const = 0;
 
-  virtual void getCapabilities(velocypack::Builder& builder) const;
+  virtual void getCapabilities(velocypack::Builder& builder,
+                               uint32_t apiVersion) const;
 
   virtual void getStatistics(velocypack::Builder& builder) const;
 
