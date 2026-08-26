@@ -21,6 +21,8 @@
 
 #include "JoinGraphTestHelper.h"
 
+#include "Aql/Optimizer/Rule/OptimizeJoinOrder/JoinOrderSearch.h"
+
 #include "Aql/OptimizerRule.h"
 
 #include <algorithm>
