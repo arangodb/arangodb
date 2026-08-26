@@ -82,8 +82,8 @@ void optimizeJoinOrder(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       traceJoinGraph(graph);
 #endif
-      auto const current = collectEnumerationOrder(firstEnumeration, next);
-      if (auto chosen = chooseJoinOrder(graph, *estimator, current);
+      auto const writtenOrder = collectEnumerationOrder(firstEnumeration, next);
+      if (auto chosen = chooseJoinOrder(graph, *estimator, writtenOrder);
           chosen.has_value()) {
         rewriteJoinGraph(*plan, firstEnumeration, next, *chosen);
         modified = true;

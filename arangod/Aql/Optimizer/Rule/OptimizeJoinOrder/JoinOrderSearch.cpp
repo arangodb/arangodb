@@ -85,25 +85,25 @@ auto nodesInIdOrder(JoinGraph& graph,
 }
 
 /// @brief one component's vertices, in the order they already appear in
-/// `currentOrder` (i.e. the plan as written). This is the baseline a
+/// `writtenOrder` (i.e. the plan as written). This is the baseline a
 /// component's greedy order is judged against: each component's accept/
 /// decline decision compares against its own written order, never the whole
 /// graph's.
 auto writtenComponentOrder(
     std::vector<Variable const*> const& component,
-    std::vector<EnumerateCollectionNode*> const& currentOrder)
+    std::vector<EnumerateCollectionNode*> const& writtenOrder)
     -> std::vector<EnumerateCollectionNode*> {
   std::unordered_set<Variable const*> members(component.begin(),
                                               component.end());
   std::vector<EnumerateCollectionNode*> order;
   order.reserve(component.size());
-  for (auto* node : currentOrder) {
+  for (auto* node : writtenOrder) {
     if (members.contains(node->outVariable())) {
       order.emplace_back(node);
     }
   }
 
-  // `currentOrder` and the graph's vertices are produced by two separate
+  // `writtenOrder` and the graph's vertices are produced by two separate
   // walks over the same node range -- buildJoinGraph and
   // collectEnumerationOrder -- with the same "is an ENUMERATE_COLLECTION"
   // predicate, and connectedComponents() partitions exactly those vertices.
@@ -114,7 +114,7 @@ auto writtenComponentOrder(
   // chooseJoinOrder. Fail at the cause instead.
   ADB_PROD_ASSERT(order.size() == component.size())
       << "component of " << component.size() << " vertices matched only "
-      << order.size() << " of the " << currentOrder.size()
+      << order.size() << " of the " << writtenOrder.size()
       << " written enumerations";
   return order;
 }
@@ -223,7 +223,7 @@ auto collectEnumerationOrder(ExecutionNode* firstEnumeration,
 }
 
 auto chooseJoinOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
-                     std::vector<EnumerateCollectionNode*> const& currentOrder)
+                     std::vector<EnumerateCollectionNode*> const& writtenOrder)
     -> std::optional<std::vector<EnumerateCollectionNode*>> {
   if (graph.nodes.size() > kMaxEnumerationsToReorder) {
     LOG_TOPIC("a7f03", TRACE, Logger::AQL)
@@ -235,10 +235,10 @@ auto chooseJoinOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
   // Position of each enumeration in the written order, so each component's
   // place in the written *sequence of components* (used by the resequencing
   // guard below) can be recovered from where its first vertex sits here.
-  std::unordered_map<EnumerateCollectionNode*, size_t> positionInCurrent;
-  positionInCurrent.reserve(currentOrder.size());
-  for (size_t i = 0; i < currentOrder.size(); ++i) {
-    positionInCurrent.emplace(currentOrder[i], i);
+  std::unordered_map<EnumerateCollectionNode*, size_t> positionInWritten;
+  positionInWritten.reserve(writtenOrder.size());
+  for (size_t i = 0; i < writtenOrder.size(); ++i) {
+    positionInWritten.emplace(writtenOrder[i], i);
   }
 
   // Order each component internally, then -- independently for each
@@ -254,12 +254,12 @@ auto chooseJoinOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
   std::vector<size_t> firstAppearance;  // parallel to componentOrders
   for (auto const& component : graph.connectedComponents()) {
     auto greedy = getBestOrderForComponent(graph, component, estimator);
-    auto written = writtenComponentOrder(component, currentOrder);
+    auto written = writtenComponentOrder(component, writtenOrder);
     auto writtenEstimate = getEstimateForOrder(graph, estimator, written);
 
     ADB_PROD_ASSERT(!written.empty());
-    auto const positionIt = positionInCurrent.find(written.front());
-    ADB_PROD_ASSERT(positionIt != positionInCurrent.end());
+    auto const positionIt = positionInWritten.find(written.front());
+    ADB_PROD_ASSERT(positionIt != positionInWritten.end());
     firstAppearance.emplace_back(positionIt->second);
 
     // If either side of this component's comparison rests on a fallback
@@ -293,7 +293,7 @@ auto chooseJoinOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
 
   // The written *sequence* of components: each component's own final order
   // (as just decided above), concatenated in the order those components
-  // first appear in currentOrder. This is the baseline the resequencing
+  // first appear in writtenOrder. This is the baseline the resequencing
   // decision below is judged against. With a single component there is only
   // one possible sequence, so that decision is a structural no-op there.
   std::vector<size_t> byAppearance(componentOrders.size());
@@ -405,9 +405,9 @@ auto chooseJoinOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
 
   // Defensive: anyComponentReordered or sequenceChanged being true means
   // `chosen` differs from its respective baseline, so it should differ from
-  // currentOrder too -- but guard the invariant explicitly rather than
+  // writtenOrder too -- but guard the invariant explicitly rather than
   // relying on that argument holding for every future change above.
-  if (chosen == currentOrder) {
+  if (chosen == writtenOrder) {
     return std::nullopt;
   }
 

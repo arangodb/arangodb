@@ -79,7 +79,7 @@ auto collectEnumerationOrder(ExecutionNode* firstEnumeration,
 ///   (ties broken by node id), using whichever order each component ended up
 ///   with -- but that resequencing itself is only adopted when neither it nor
 ///   the written component sequence (components in the order they first
-///   appear in currentOrder) rests on a fallback statistic, and the
+///   appear in writtenOrder) rests on a fallback statistic, and the
 ///   resequenced concatenation clears kImprovementMargin against that
 ///   written sequence. Otherwise components stay in their written relative
 ///   order. With a single component this is a structural no-op.
@@ -87,7 +87,7 @@ auto collectEnumerationOrder(ExecutionNode* firstEnumeration,
 /// Returns nullopt when neither decision actually changed anything, so a
 /// graph left untouched is still reported unapplied.
 auto chooseJoinOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
-                     std::vector<EnumerateCollectionNode*> const& currentOrder)
+                     std::vector<EnumerateCollectionNode*> const& writtenOrder)
     -> std::optional<std::vector<EnumerateCollectionNode*>>;
 
 /// @brief splice `order` into the plan in place of the run's current
