@@ -165,6 +165,9 @@ struct ValidateInspector : InspectorBase<ValidateInspector<Context>, Context> {
     auto name = Base::getFieldName(field);
     auto& value = Base::getFieldValue(field);
 
+    // Conditions govern whether an *attribute* is read or written. This
+    // inspector reads nothing, so they do not apply here: every field is
+    // validated, including the inner invariants of complex types.
     auto res = loadField(*this, name, true, value)         //
                | [&]() { return checkInvariant(field); };  //
 

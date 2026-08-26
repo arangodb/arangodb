@@ -366,19 +366,23 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
 }
 
 /// same for both storage engines
-std::vector<std::string_view> IndexFactory::supportedIndexes() const {
+std::vector<std::string_view> IndexFactory::supportedIndexes(
+    uint32_t apiVersion) const {
   std::vector<std::string_view> enabledFeatures{
       "primary",
       "edge",
-      "hash",
-      "skiplist",
       "ttl",
       "persistent",
       "geo",
-      "fulltext",
+
       "mdi",
       "mdi-prefixed",
       arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE};
+  if (apiVersion == 0) {
+    enabledFeatures.push_back("hash");
+    enabledFeatures.push_back("skiplist");
+    enabledFeatures.push_back("fulltext");
+  }
   if (_server.getFeature<VectorIndexFeature>().isVectorIndexEnabled()) {
     enabledFeatures.push_back("vector");
   }
@@ -387,7 +391,7 @@ std::vector<std::string_view> IndexFactory::supportedIndexes() const {
 }
 
 std::vector<std::pair<std::string_view, std::string_view>>
-IndexFactory::indexAliases() const {
+IndexFactory::indexAliases(uint32_t apiVersion) const {
   return {};
 }
 
