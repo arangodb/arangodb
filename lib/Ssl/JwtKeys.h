@@ -19,19 +19,37 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 ////////////////////////////////////////////////////////////////////////////////
-#include "Service.h"
 
-#include "Basics/voc-errors.h"
+#pragma once
 
-namespace arangodb::rbac {
+#include <string>
+#include <string_view>
+#include <variant>
+#include <chrono>
 
-auto Service::check(JwtToken const& /*token*/,
-                    std::span<ActionResource const> /*queries*/) -> Result {
-  // The base implementation fails closed. The production ServiceImpl overrides
-  // this to evaluate the batch against the RBAC backend; test mocks override it
-  // with programmed answers.
-  return {TRI_ERROR_NOT_IMPLEMENTED,
-          "RBAC authorization service check is not yet implemented"};
-}
+namespace arangodb::auth {
 
-}  // namespace arangodb::rbac
+struct ES256PrivateKey {
+  std::string _data;
+};
+
+struct ES256PublicKey {
+  std::string _data;
+};
+
+struct HS256Key {
+  static constexpr size_t kMinSecretLength =
+      1;  // TODO(COR-924): Increase; requires test changes
+  static constexpr size_t kMaxSecretLength = 64;
+  std::string _data;
+};
+
+using AuthKey = std::variant<ES256PrivateKey, ES256PublicKey, HS256Key>;
+
+auto shaHashKey(AuthKey key) -> std::string;
+auto authKeyInfo(AuthKey key) -> std::string;
+auto generateUserToken(AuthKey key, std::string_view username,
+                       std::chrono::seconds validFor = std::chrono::seconds{0})
+    -> std::string;
+
+}  // namespace arangodb::auth

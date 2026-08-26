@@ -213,8 +213,8 @@ std::string RestAuthHandler::generateJwt(
     std::string const& username, std::chrono::seconds expiryTime) const {
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
-  return arangodb::rest::SslInterface::jwt::generateUserToken(
-      af->tokenCache().jwtSecret(), username, expiryTime);
+  return auth::generateUserToken(af->tokenCache().jwtSecret(), username,
+                                 expiryTime);
 }
 
 RestStatus RestAuthHandler::badRequest() {

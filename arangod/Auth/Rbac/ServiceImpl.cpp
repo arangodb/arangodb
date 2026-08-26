@@ -150,9 +150,8 @@ auto resourceToWireString(Resource const& resource) -> std::string {
 ServiceImpl::ServiceImpl(std::unique_ptr<Backend> backend)
     : _backend(std::move(backend)) {}
 
-auto ServiceImpl::check(Subject const& subject,
-                        std::span<ActionResource const> queries) noexcept
-    -> Result {
+auto ServiceImpl::check(JwtToken const& token,
+                        std::span<ActionResource const> queries) -> Result {
   // An empty batch asks nothing, so it is trivially permitted; short-circuit to
   // avoid a needless network round-trip.
   if (queries.empty()) {
@@ -170,7 +169,7 @@ auto ServiceImpl::check(Subject const& subject,
 
   // Service::check (and the whole IAuth::check chain) is synchronous for now,
   // so we use the synchronous backend call directly.
-  auto result = _backend->evaluateManySync(subject, items);
+  auto result = _backend->evaluateTokenManySync(token, items);
 
   if (!result.ok()) {
     // Transport or parsing error: propagate it verbatim.

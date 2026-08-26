@@ -142,12 +142,14 @@ void RestVersionHandler::getVersion(
   result.add("license", VPackValue("community"));
 #endif
 
-  if (allowInfo) {
+  // "version" can be added unconditionally in 4.0
+  if (allowInfo || !ExecContext::current().isClassic() ||
+      requestedApiVersion > 0) {
     result.add("version", VPackValue(ARANGODB_VERSION));
+  }
 
-    if (includeDetails) {
-      addVersionDetails(server, result, requestedApiVersion);
-    }
+  if (allowInfo && includeDetails) {
+    addVersionDetails(server, result, requestedApiVersion);
   }
 
   // Add API version information (both in short and long form)
