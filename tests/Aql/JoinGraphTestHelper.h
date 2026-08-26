@@ -28,6 +28,7 @@
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Optimizer/Rule/OptimizeJoinOrder.h"
+#include "Aql/Optimizer/Rule/OptimizeJoinOrder/JoinGraphConstruction.h"
 #include "Aql/Optimizer/Rule/OptimizeJoinOrder/JoinCostEstimator.h"
 #include "Aql/Optimizer/Rule/OptimizeJoinOrder/JoinStatistics.h"
 #include "Aql/Query.h"

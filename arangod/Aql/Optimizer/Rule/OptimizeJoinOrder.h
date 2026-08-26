@@ -35,15 +35,6 @@ class ExecutionPlan;
 class Optimizer;
 struct OptimizerRule;
 
-/// @brief build the join graph for the maximal run of adjacent collection
-/// enumerations that starts at `firstEnumeration`. Walks upwards (towards the
-/// root) collecting enumerations and classifying the filters between them.
-/// Returns the graph and, via `next`, the first node that terminated the run
-/// (or nullptr if the run reached the top of the plan). This is a read-only
-/// analysis: the plan is not modified.
-auto buildJoinGraph(ExecutionPlan const* plan, ExecutionNode* firstEnumeration,
-                    ExecutionNode*& next) -> JoinGraph;
-
 /// @brief a chosen enumeration order together with the estimate that chose it.
 struct JoinOrder {
   std::vector<EnumerateCollectionNode*> order;
