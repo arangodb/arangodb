@@ -359,7 +359,8 @@ the request under V1.
 
 * **`GET /_api/database/current`** (`arangod/VocBase/vocbase.cpp`,
   `Database::toVelocyPack`): the `path` attribute (the filesystem path of the
-  database, or `"none"` outside a Coordinator) is reported under **V0** only.
+  database, or `"none"` on a Coordinator, which has no local database
+  directory) is reported under **V0** only.
 
 * **`GET /_api/replication/clusterInventory`**
   (`RestReplicationHandler.cpp` line ~861): serialises the same
