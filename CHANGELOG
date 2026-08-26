@@ -1,6 +1,8 @@
 3.12.11-devel (XXXX-XX-XX)
 --------------------------
 
+* Dummy record.
+
 * Filters on path expansions with an inline FILTER now run during the traversal,
   so they prune earlier and no longer drop results with uniqueVertices: "global".
 
