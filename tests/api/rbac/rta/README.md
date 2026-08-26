@@ -186,13 +186,11 @@ When the predefined roles gain real bundled policies, the natural follow-up is a
 
 **`--server.harden true` is mandatory.** `ExecContext.h:164` asserts `!isRbac() || _isRestApiHardened` and aborts the process — release builds included — on the first authenticated hardened-endpoint hit. `start_arangod.sh` passes it.
 
-**Suite filter.** Default `--test 050,100,400` (databases; collections, indexes and documents; views). Deliberately omitted:
+**Suite filter.** Default `--test 050,100,400,500,580,607,612` — databases; collections, indexes and documents; views; graphs; analyzers. Every suite in that list has been verified to run under both authorization models.
 
-- `100` (collections, indexes, documents) gates itself on `semver.coerce(db._version())`, which needs `db:AdminMonitoringInternal` under RBAC. The scenarios grant it, so this suite **is** in the default filter.
-- `070`/`071` (Foxx) need server-side JavaScript and add a large, slow surface that is not about CoreDB resource permissions.
-- `700` (users) exercises `db:user:*`, where `AuthMode::Rbac` still has a fail-closed `AdminReadUsers` stub returning 501. Including it would mix a known-unimplemented path into every result.
+Suite `100` gates itself on `semver.coerce(db._version())`, which needs `db:AdminMonitoringInternal` under RBAC; the scenarios grant it, so it is included. This requirement will change some time soon.
 
-Pass `--test ''` for the full set once those are settled. Coverage today is databases, collections, indexes, documents and views — not analyzers, graphs, Foxx or users.
+Pass `--test ''` for everything, bearing the Foxx blocker in mind.
 
 **Deny scenarios are slow.** rta-makedata's `createSafe()` retries a failing create 50 times with a growing sleep before giving up, so a step that is *meant* to be denied still takes roughly two minutes. `--phase-timeout` defaults to 1800s to accommodate it.
 

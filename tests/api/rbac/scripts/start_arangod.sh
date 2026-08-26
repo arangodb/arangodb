@@ -13,6 +13,11 @@ for i in $(seq 1 30); do ss -ltn 2>/dev/null | grep -qE '127.0.0.1:8529' || brea
 rm -rf "$WORK/arangod-data"
 mkdir -p "$WORK/arangod-data" "$WORK/arangod-apps"
 
+EE_MODULES=()
+if [ -d "$ARANGODB_SRC/enterprise/js" ]; then
+  EE_MODULES=(--javascript.module-directory "$ARANGODB_SRC/enterprise/js")
+fi
+
 nohup "$ARANGOD" \
   --configuration none \
   --server.rest-server true \
@@ -23,6 +28,7 @@ nohup "$ARANGOD" \
   --server.external-rbac-service="$RBAC_ENDPOINT" \
   --database.directory "$WORK/arangod-data" \
   --javascript.startup-directory "$ARANGODB_SRC/js" \
+  "${EE_MODULES[@]+"${EE_MODULES[@]}"}" \
   --javascript.app-path "$WORK/arangod-apps" \
   --log.output "file://$LOG_DIR/arangod.log" \
   --log.level info \
