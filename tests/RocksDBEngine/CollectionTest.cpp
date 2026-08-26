@@ -45,20 +45,13 @@ TEST_F(StorageEngineDataTest, CreatedCollectionIsListedInInventory) {
   auto collection = makeCollection(*database, "testCollection");
 
   VPackBuilder builder;
-  auto err = engine().getCollectionsAndIndexes(*database, builder,
-                                               /*wasCleanShutdown*/ true,
-                                               /*isUpgrade*/ false);
-  ASSERT_EQ(err, TRI_ERROR_NO_ERROR);
-
-  auto slice = builder.slice();
-  ASSERT_TRUE(slice.isArray());
+  auto descriptors = engine().getCollectionsAndIndexes(*database);
 
   bool found = false;
-  for (auto c : VPackArrayIterator(slice)) {
-    if (c.get(StaticStrings::DataSourceName).stringView() == "testCollection") {
+  for (auto const& d : descriptors) {
+    if (d.mutableProps.name == "testCollection") {
       found = true;
-      EXPECT_EQ(c.get(StaticStrings::DataSourceId).stringView(),
-                std::to_string(collection->id().id()));
+      EXPECT_EQ(d.identity.id, collection->id());
     }
   }
   EXPECT_TRUE(found)

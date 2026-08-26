@@ -22,6 +22,7 @@
 
 #include "RocksDBEngine.h"
 
+#include <algorithm>
 #include <filesystem>
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -2698,7 +2699,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
         << "processing metadata of " << descriptors.size()
         << " collections in database '" << vocbase->name() << "'";
 
-    for (const auto& descriptor : descriptors) {
+    for (auto& descriptor : descriptors) {
       // we found a collection that is still active
       LOG_TOPIC("b2ef2", TRACE, arangodb::Logger::ENGINES)
           << "processing collection metadata in database '" << vocbase->name()
@@ -2706,8 +2707,8 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 
       TRI_ASSERT(!descriptor.identity.id.empty());
 
-      auto collection =
-          vocbase->createCollectionObject(descriptor, /*isAStub*/ false);
+      auto collection = vocbase->createCollectionObject(std::move(descriptor),
+                                                        /*isAStub*/ false);
       TRI_ASSERT(collection != nullptr);
 
       auto phy = static_cast<RocksDBCollection*>(collection->getPhysical());
