@@ -81,9 +81,11 @@
 #include <absl/strings/str_join.h>
 #include <velocypack/Iterator.h>
 
+#include <algorithm>
 #include <format>
 #include <initializer_list>
 #include <ranges>
+#include <unordered_set>
 
 namespace arangodb::aql {
 using namespace arangodb::basics;
@@ -2541,43 +2543,162 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
 
       auto* ref = _ast->createNodeReference(fullDocumentVar);
 
-      auto addProjectedAttribute = [&](std::string_view path) {
-        auto* attrAccess = _ast->createNodeAttributeAccess(ref, path);
-        auto* elt = _ast->createNodeObjectElement(path, attrAccess);
-        root->addMember(elt);
-      };
-
       auto isSystemAttribute = [&](std::string_view name) {
         return name == "_id" || (isEdge && (name == "_from" || name == "_to"));
       };
 
+      // createNodeObjectElement stores the raw pointer from string_view. keys
+      // must outlive the AST (register into Ast resources).
+      auto registerKey = [&](std::string_view key) -> std::string_view {
+        char const* p = _ast->resources().registerString(key);
+        return {p, key.size()};
+      };
+
+      // Find an existing nested OBJECT member named `key`, or create one.
+      auto findOrCreateNestedObject = [&](AstNode* object,
+                                          std::string_view key) -> AstNode* {
+        for (size_t i = 0; i < object->numMembers(); ++i) {
+          AstNode* elt = object->getMemberUnchecked(i);
+          if (elt->type == NODE_TYPE_OBJECT_ELEMENT &&
+              elt->getStringView() == key &&
+              elt->getMember(0)->type == NODE_TYPE_OBJECT) {
+            return elt->getMember(0);
+          }
+        }
+        auto* nested = _ast->createNodeObject();
+        object->addMember(
+            _ast->createNodeObjectElement(registerKey(key), nested));
+        return nested;
+      };
+
+      // Insert valueExpr at path segments under object, rebuilding hierarchy
+      // (e.g. ["profile","name"] → { profile: { name: valueExpr } }).
+      auto insertNestedPath = [&](AstNode* object,
+                                  std::vector<std::string> const& path,
+                                  AstNode* valueExpr) {
+        TRI_ASSERT(!path.empty());
+        AstNode* cursor = object;
+        for (size_t i = 0; i + 1 < path.size(); ++i) {
+          cursor = findOrCreateNestedObject(cursor, path[i]);
+        }
+        cursor->addMember(
+            _ast->createNodeObjectElement(registerKey(path.back()), valueExpr));
+      };
+
+      auto addProjectedAttribute = [&](std::vector<std::string> const& path) {
+        TRI_ASSERT(!path.empty());
+        auto* attrAccess = _ast->createNodeAttributeAccess(ref, path);
+        insertNestedPath(root, path, attrAccess);
+      };
+
       // Implicit system attributes required for graph topology.
-      addProjectedAttribute("_id");
+      addProjectedAttribute({"_id"});
       if (isEdge) {
-        addProjectedAttribute("_from");
-        addProjectedAttribute("_to");
+        addProjectedAttribute({"_from"});
+        addProjectedAttribute({"_to"});
       }
+
+      // Collect bare keep paths and alias items, bare keeps use PATH arrays
+      // (unquoted dotted) or VALUE strings (quoted literal keys).
+      std::vector<std::vector<std::string>> keepPaths;
+      struct AliasItem {
+        std::string_view name;
+        AstNode* expr;
+      };
+      std::vector<AliasItem> aliases;
+
+      auto extractPath = [](AstNode const* item) -> std::vector<std::string> {
+        std::vector<std::string> path;
+        if (item->type == NODE_TYPE_ARRAY) {
+          path.reserve(item->numMembers());
+          for (size_t j = 0; j < item->numMembers(); ++j) {
+            AstNode const* part = item->getMemberUnchecked(j);
+            TRI_ASSERT(part->isStringValue());
+            path.emplace_back(part->getString());
+          }
+        } else {
+          // Quoted literal keep: single top-level key (dots not hierarchy).
+          TRI_ASSERT(item->isStringValue());
+          path.emplace_back(item->getString());
+        }
+        return path;
+      };
 
       for (auto i = size_t{0}; i < projections->numMembers(); ++i) {
         AstNode* item = projections->getMemberUnchecked(i);
         if (item->type == NODE_TYPE_OBJECT_ELEMENT) {
-          // alias = expression: evaluate in normal query scope (explicit
-          // variable references required, e.g. v.profile.first_name).
-          auto name = item->getStringView();
-          if (isSystemAttribute(name)) {
-            continue;
-          }
-          AstNode* expr = Ast::replaceVariables(item->getMember(0), subst);
-          root->addMember(_ast->createNodeObjectElement(name, expr));
+          aliases.push_back(
+              AliasItem{item->getStringView(), item->getMember(0)});
         } else {
-          // bare keep: copy attribute from the full document
-          auto path = item->getStringView();
-          if (isSystemAttribute(path)) {
+          auto path = extractPath(item);
+          // Skip any RETURN whose first segment is an implicit system attribute
+          // (bare `_id` and nested `_id.foo` / `_from.x`), so we never
+          // overwrite the scalar system attrs with a nested object of the same
+          // key.
+          if (!path.empty() && isSystemAttribute(path[0])) {
             continue;
           }
-          addProjectedAttribute(path);
+          keepPaths.push_back(std::move(path));
         }
       }
+
+      // Drop paths that are duplicates or have a shorter kept prefix
+      // (same policy as Projections::handleSharedPrefixes).
+      {
+        std::sort(keepPaths.begin(), keepPaths.end());
+        keepPaths.erase(std::unique(keepPaths.begin(), keepPaths.end()),
+                        keepPaths.end());
+        std::vector<std::vector<std::string>> filtered;
+        filtered.reserve(keepPaths.size());
+        for (auto const& path : keepPaths) {
+          bool covered = false;
+          for (auto const& kept : filtered) {
+            if (kept.size() <= path.size() &&
+                std::equal(kept.begin(), kept.end(), path.begin())) {
+              covered = true;
+              break;
+            }
+          }
+          if (!covered) {
+            filtered.push_back(path);
+          }
+        }
+        keepPaths = std::move(filtered);
+      }
+
+      // Top-level keys already claimed by bare keeps (and implicit system
+      // attrs). Alias names must not collide with these, or with each other.
+      std::unordered_set<std::string_view> usedTopLevelKeys;
+      usedTopLevelKeys.emplace("_id");
+      if (isEdge) {
+        usedTopLevelKeys.emplace("_from");
+        usedTopLevelKeys.emplace("_to");
+      }
+      for (auto const& path : keepPaths) {
+        TRI_ASSERT(!path.empty());
+        usedTopLevelKeys.emplace(path[0]);
+      }
+
+      for (auto const& path : keepPaths) {
+        addProjectedAttribute(path);
+      }
+
+      for (auto const& alias : aliases) {
+        if (isSystemAttribute(alias.name)) {
+          continue;
+        }
+        if (!usedTopLevelKeys.emplace(alias.name).second) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_QUERY_PARSE,
+              absl::StrCat("duplicate projection attribute name '", alias.name,
+                           "'"));
+        }
+        // alias = expression: evaluate in normal query scope (explicit
+        // variable references required, e.g. v.profile.first_name).
+        AstNode* expr = Ast::replaceVariables(alias.expr, subst);
+        root->addMember(_ast->createNodeObjectElement(alias.name, expr));
+      }
+
       auto* calc = createNode<CalculationNode>(
           this, nextId(), std::make_unique<Expression>(_ast, root), variable);
       return calc;
