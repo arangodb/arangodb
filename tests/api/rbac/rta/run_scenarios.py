@@ -885,14 +885,13 @@ def main():
                         help="database for the workload. Keep the system_ prefix: "
                              "makedata.js warns that other names may be dropped by "
                              "replication fuzzing. (default: %(default)s)")
-    parser.add_argument("--test", default="050,100,400",
-                        help="rta-makedata suite filter: databases, "
-                             "collections/indexes/documents, and views. Suite 100 needs "
-                             "the server version, so the scenarios grant "
-                             "db:AdminMonitoringInternal - see MONITORING in "
-                             "scenarios.py and the documented-admin-set-only scenario for "
-                             "what happens without it. 070/071 (foxx) and 700 (users) are "
-                             "omitted; see README.md. (default: %(default)s)")
+    parser.add_argument("--test", default="050,100,400,500,580,607,612",
+                        help="rta-makedata suite filter: databases; collections, indexes "
+                             "and documents; views; graphs; analyzers. Every suite here "
+                             "has been verified to run under both authorization models. "
+                             "070/071 (Foxx) cannot run under RBAC at all and 700 (users) "
+                             "needs a tenant-admin scenario first; see README.md. "
+                             "(default: %(default)s)")
     parser.add_argument("--scenario", action="append", default=[],
                         help="run only these scenarios (repeatable)")
     parser.add_argument("--group", action="append", default=[],
@@ -955,6 +954,20 @@ def main():
     tokens = Tokens(config)
     sidecar = Sidecar(config, tokens)
     grants = ClassicGrants(config, tokens)
+
+    # The stack has to be up before the mode can be probed - the probe talks to
+    # both arangod and the sidecar - so --setup happens here rather than further
+    # down, next to the scenario loop.
+    started_mode = None
+    if args.setup and not args.list:
+        print("=== bringing up the RBAC stack ===")
+        # arangod's policy decision point is the sidecar's own HTTP gateway: the
+        # sidecar serves authentication.v1 and authorization.v1 alongside the
+        # management API, so there is no separate integration service here.
+        run_script(config, "start_arangod.sh", config.integration_url)
+        wait_for_arangod(config)
+        run_script(config, "start_sidecar.sh", "central")
+        started_mode = "central"
 
     # Which authorization model is in force decides which catalog is meaningful.
     # `--list` must not need a server, so defer the probe until it is needed.
@@ -1023,15 +1036,9 @@ def main():
     # as possible - its mode is fixed at startup and cannot change at runtime.
     selected = sorted(selected, key=lambda s: (s.mode != "central", s.mode))
 
-    if args.setup:
-        print("=== bringing up the RBAC stack ===")
-        # arangod's policy decision point is the sidecar's own HTTP gateway: the
-        # sidecar serves authentication.v1 and authorization.v1 alongside the
-        # management API, so there is no separate integration service here.
-        run_script(config, "start_arangod.sh", config.integration_url)
-        wait_for_arangod(config)
-
-    current_mode = None
+    # `started_mode` is whatever --setup already brought up, so the loop below
+    # does not restart the sidecar just to put it into the mode it is in.
+    current_mode = started_mode
     results = []
     try:
         for scenario in selected:
