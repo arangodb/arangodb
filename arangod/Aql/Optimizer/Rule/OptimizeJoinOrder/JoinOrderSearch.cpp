@@ -119,6 +119,194 @@ auto writtenComponentOrder(
   return order;
 }
 
+/// @brief one connected component after its own accept/decline decision.
+/// `order` is the component's greedy order when that was accepted and the
+/// order it was written in otherwise, so a caller can concatenate these
+/// without knowing which way each decision went. `firstAppearance` and
+/// `order` are kept in one struct deliberately: the sequencing search below
+/// re-sorts these by node id, which would silently desynchronise a parallel
+/// array of positions.
+struct DecidedComponent {
+  JoinOrder order;
+  size_t firstAppearance;
+  bool reordered;
+};
+
+/// @brief order each connected component internally, then -- independently
+/// for each -- decide whether its greedy order is confident and cheap enough
+/// to replace the order it was written in. This decision must be made per
+/// component, not once for the whole graph: a run with two components, one
+/// fully indexed and one not, must not lose the confident reordering of the
+/// first just because the second's statistics are guesses. Each component
+/// stands or falls on a comparison against its own written order.
+auto decideComponentOrders(
+    JoinGraph& graph, JoinCostEstimator const& estimator,
+    std::vector<EnumerateCollectionNode*> const& writtenOrder)
+    -> std::vector<DecidedComponent> {
+  // Position of each enumeration in the written order, so each component's
+  // place in the written *sequence of components* can be recovered from
+  // where its first vertex sits here.
+  std::unordered_map<EnumerateCollectionNode*, size_t> positionInWritten;
+  positionInWritten.reserve(writtenOrder.size());
+  for (size_t i = 0; i < writtenOrder.size(); ++i) {
+    positionInWritten.emplace(writtenOrder[i], i);
+  }
+
+  std::vector<DecidedComponent> decided;
+  for (auto const& component : graph.connectedComponents()) {
+    auto greedy = getBestOrderForComponent(graph, component, estimator);
+    auto written = writtenComponentOrder(component, writtenOrder);
+    auto writtenEstimate = getEstimateForOrder(graph, estimator, written);
+
+    ADB_PROD_ASSERT(!written.empty());
+    auto const positionIt = positionInWritten.find(written.front());
+    ADB_PROD_ASSERT(positionIt != positionInWritten.end());
+    size_t const firstAppearance = positionIt->second;
+
+    // If either side of this component's comparison rests on a fallback
+    // statistic, the comparison is between two guesses -- decline, same
+    // reasoning as the old whole-graph guard, just scoped to this component.
+    if (greedy.estimate.defaulted || writtenEstimate.defaulted) {
+      LOG_TOPIC("a7f04", TRACE, Logger::AQL)
+          << "optimize-join-order: keeping a component's written order, "
+             "estimate rests on defaulted statistics";
+      decided.emplace_back(DecidedComponent{
+          JoinOrder{std::move(written), std::move(writtenEstimate)},
+          firstAppearance, false});
+      continue;
+    }
+
+    // Require a real margin against this component's own written cost:
+    // differences below the estimator's own error are not signal.
+    if (greedy.estimate.cost >=
+        writtenEstimate.cost / (1.0 + kImprovementMargin)) {
+      LOG_TOPIC("a7f05", TRACE, Logger::AQL)
+          << "optimize-join-order: keeping a component's written order, "
+          << writtenEstimate.cost << " -> " << greedy.estimate.cost
+          << " does not clear the margin";
+      decided.emplace_back(DecidedComponent{
+          JoinOrder{std::move(written), std::move(writtenEstimate)},
+          firstAppearance, false});
+      continue;
+    }
+
+    decided.emplace_back(
+        DecidedComponent{std::move(greedy), firstAppearance, true});
+  }
+
+  return decided;
+}
+
+/// @brief the components' own final orders concatenated in the order those
+/// components first appear in the written plan. This is the baseline the
+/// resequencing decision is judged against. With a single component there is
+/// only one possible sequence, so that decision is a structural no-op.
+auto concatenateInWrittenSequence(std::vector<DecidedComponent> const& decided,
+                                  size_t total)
+    -> std::vector<EnumerateCollectionNode*> {
+  std::vector<size_t> byAppearance(decided.size());
+  for (size_t i = 0; i < byAppearance.size(); ++i) {
+    byAppearance[i] = i;
+  }
+  std::sort(byAppearance.begin(), byAppearance.end(), [&](size_t l, size_t r) {
+    return decided[l].firstAppearance < decided[r].firstAppearance;
+  });
+
+  std::vector<EnumerateCollectionNode*> baseline;
+  baseline.reserve(total);
+  for (size_t index : byAppearance) {
+    auto const& order = decided[index].order.order;
+    baseline.insert(baseline.end(), order.begin(), order.end());
+  }
+  return baseline;
+}
+
+/// @brief the cheapest concatenation of the components: they join by cross
+/// product, so they are sequenced greedily too, one winner at a time. Takes
+/// `decided` by value because it consumes it.
+auto getCheapestConcatenation(JoinGraph& graph,
+                              JoinCostEstimator const& estimator,
+                              std::vector<DecidedComponent> decided,
+                              size_t total)
+    -> std::vector<EnumerateCollectionNode*> {
+  // connectedComponents() iterates a std::map<Variable const*, Node>, so the
+  // component list it returns comes out in heap-address order, which varies
+  // between processes. Without this sort, the selection loop below -- which
+  // only replaces `bestIndex` on a strict cost improvement -- tie-breaks
+  // equal-cost components by that address order, making the final
+  // concatenation (and therefore whether it clears the improvement margin)
+  // non-deterministic. Sorting by each component's first vertex id here
+  // fixes the tie-break for every round below: erasing the winner each round
+  // never disturbs the relative id-order of what remains, so this single
+  // sort is enough for the whole loop. Do not remove this as "redundant" --
+  // ties are the common case, not an edge case, here.
+  std::sort(decided.begin(), decided.end(),
+            [](DecidedComponent const& lhs, DecidedComponent const& rhs) {
+              return lhs.order.order.front()->id() <
+                     rhs.order.order.front()->id();
+            });
+
+  std::vector<EnumerateCollectionNode*> candidate;
+  candidate.reserve(total);
+  while (!decided.empty()) {
+    size_t bestIndex = 0;
+    std::optional<double> bestCost;
+    for (size_t i = 0; i < decided.size(); ++i) {
+      auto attempt = candidate;
+      attempt.insert(attempt.end(), decided[i].order.order.begin(),
+                     decided[i].order.order.end());
+      double const cost = getEstimateForOrder(graph, estimator, attempt).cost;
+      if (!bestCost.has_value() || cost < *bestCost) {
+        bestCost = cost;
+        bestIndex = i;
+      }
+    }
+    auto const& winner = decided[bestIndex].order.order;
+    candidate.insert(candidate.end(), winner.begin(), winner.end());
+    decided.erase(decided.begin() + static_cast<std::ptrdiff_t>(bestIndex));
+  }
+  return candidate;
+}
+
+/// @brief whether the cheapest concatenation may replace the written
+/// sequence of components. The selection in getCheapestConcatenation has no
+/// guard of its own -- it always picks the cheapest, unconditionally, and
+/// that cost is computed by replaying every component's vertices, including
+/// one that may have been declined for resting on defaulted statistics. Left
+/// unguarded, resequencing would apply exactly the statistics the
+/// per-component pass declared untrustworthy to decide which component runs
+/// first. So resequencing gets the same defaulted/margin treatment as a
+/// component's own internal order, just judged against the written
+/// *sequence* of components rather than any one component's written order.
+/// `defaulted` propagates through every `extend` call, so "neither estimate
+/// is defaulted" already reduces to "no component's chosen order rests on a
+/// fallback statistic" -- no separate per-component scan is needed.
+auto acceptsResequencing(JoinGraph& graph, JoinCostEstimator const& estimator,
+                         std::vector<EnumerateCollectionNode*> const& baseline,
+                         std::vector<EnumerateCollectionNode*> const& candidate)
+    -> bool {
+  auto const baselineEstimate = getEstimateForOrder(graph, estimator, baseline);
+  auto const candidateEstimate =
+      getEstimateForOrder(graph, estimator, candidate);
+
+  if (baselineEstimate.defaulted || candidateEstimate.defaulted) {
+    LOG_TOPIC("a7f06", TRACE, Logger::AQL)
+        << "optimize-join-order: keeping the written component sequence, "
+           "estimate rests on defaulted statistics";
+    return false;
+  }
+
+  if (candidateEstimate.cost >=
+      baselineEstimate.cost / (1.0 + kImprovementMargin)) {
+    LOG_TOPIC("a7f07", TRACE, Logger::AQL)
+        << "optimize-join-order: keeping the written component sequence, "
+        << baselineEstimate.cost << " -> " << candidateEstimate.cost
+        << " does not clear the margin";
+    return false;
+  }
+
+  return true;
+}
 }  // namespace
 
 // -----------------------------------------------------------------------------
@@ -232,160 +420,17 @@ auto chooseJoinOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
     return std::nullopt;
   }
 
-  // Position of each enumeration in the written order, so each component's
-  // place in the written *sequence of components* (used by the resequencing
-  // guard below) can be recovered from where its first vertex sits here.
-  std::unordered_map<EnumerateCollectionNode*, size_t> positionInWritten;
-  positionInWritten.reserve(writtenOrder.size());
-  for (size_t i = 0; i < writtenOrder.size(); ++i) {
-    positionInWritten.emplace(writtenOrder[i], i);
-  }
+  auto const decided = decideComponentOrders(graph, estimator, writtenOrder);
+  bool const anyComponentReordered =
+      std::any_of(decided.begin(), decided.end(),
+                  [](DecidedComponent const& c) { return c.reordered; });
 
-  // Order each component internally, then -- independently for each
-  // component -- decide whether its greedy order is confident and cheap
-  // enough to replace the order it was written in. This decision must be
-  // made per component, not once for the whole graph: a run with two
-  // components, one fully indexed and one not, must not lose the confident
-  // reordering of the first just because the second's statistics are
-  // guesses. Each component stands or falls on a comparison against its own
-  // written order.
-  bool anyComponentReordered = false;
-  std::vector<JoinOrder> componentOrders;
-  std::vector<size_t> firstAppearance;  // parallel to componentOrders
-  for (auto const& component : graph.connectedComponents()) {
-    auto greedy = getBestOrderForComponent(graph, component, estimator);
-    auto written = writtenComponentOrder(component, writtenOrder);
-    auto writtenEstimate = getEstimateForOrder(graph, estimator, written);
+  auto baseline = concatenateInWrittenSequence(decided, graph.nodes.size());
+  auto candidate =
+      getCheapestConcatenation(graph, estimator, decided, graph.nodes.size());
 
-    ADB_PROD_ASSERT(!written.empty());
-    auto const positionIt = positionInWritten.find(written.front());
-    ADB_PROD_ASSERT(positionIt != positionInWritten.end());
-    firstAppearance.emplace_back(positionIt->second);
-
-    // If either side of this component's comparison rests on a fallback
-    // statistic, the comparison is between two guesses -- decline, same
-    // reasoning as the old whole-graph guard, just scoped to this component.
-    if (greedy.estimate.defaulted || writtenEstimate.defaulted) {
-      LOG_TOPIC("a7f04", TRACE, Logger::AQL)
-          << "optimize-join-order: keeping a component's written order, "
-             "estimate rests on defaulted statistics";
-      componentOrders.emplace_back(
-          JoinOrder{std::move(written), std::move(writtenEstimate)});
-      continue;
-    }
-
-    // Require a real margin against this component's own written cost:
-    // differences below the estimator's own error are not signal.
-    if (greedy.estimate.cost >=
-        writtenEstimate.cost / (1.0 + kImprovementMargin)) {
-      LOG_TOPIC("a7f05", TRACE, Logger::AQL)
-          << "optimize-join-order: keeping a component's written order, "
-          << writtenEstimate.cost << " -> " << greedy.estimate.cost
-          << " does not clear the margin";
-      componentOrders.emplace_back(
-          JoinOrder{std::move(written), std::move(writtenEstimate)});
-      continue;
-    }
-
-    componentOrders.emplace_back(std::move(greedy));
-    anyComponentReordered = true;
-  }
-
-  // The written *sequence* of components: each component's own final order
-  // (as just decided above), concatenated in the order those components
-  // first appear in writtenOrder. This is the baseline the resequencing
-  // decision below is judged against. With a single component there is only
-  // one possible sequence, so that decision is a structural no-op there.
-  std::vector<size_t> byAppearance(componentOrders.size());
-  for (size_t i = 0; i < byAppearance.size(); ++i) {
-    byAppearance[i] = i;
-  }
-  std::sort(byAppearance.begin(), byAppearance.end(), [&](size_t l, size_t r) {
-    return firstAppearance[l] < firstAppearance[r];
-  });
-
-  std::vector<EnumerateCollectionNode*> baseline;
-  baseline.reserve(graph.nodes.size());
-  for (size_t index : byAppearance) {
-    auto const& order = componentOrders[index].order;
-    baseline.insert(baseline.end(), order.begin(), order.end());
-  }
-
-  // connectedComponents() iterates a std::map<Variable const*, Node>, so the
-  // component list it returns comes out in heap-address order, which varies
-  // between processes. Without this sort, the selection loop below -- which
-  // only replaces `bestIndex` on a strict cost improvement -- tie-breaks
-  // equal-cost components by that address order, making the final
-  // concatenation (and therefore whether it clears the improvement margin)
-  // non-deterministic. Sorting by each component's first vertex id here
-  // fixes the tie-break for every round below: erasing the winner each round
-  // never disturbs the relative id-order of what remains, so this single
-  // sort is enough for the whole sequencing loop. Do not remove this as
-  // "redundant" -- ties are the common case, not an edge case, here.
-  std::sort(componentOrders.begin(), componentOrders.end(),
-            [](JoinOrder const& lhs, JoinOrder const& rhs) {
-              return lhs.order.front()->id() < rhs.order.front()->id();
-            });
-
-  // The cheapest concatenation of components, same greedy selection as
-  // before this change: components join by cross product, so they are
-  // sequenced greedily too, one winner at a time.
-  std::vector<EnumerateCollectionNode*> candidate;
-  while (!componentOrders.empty()) {
-    size_t bestIndex = 0;
-    std::optional<double> bestCost;
-    for (size_t i = 0; i < componentOrders.size(); ++i) {
-      auto attempt = candidate;
-      attempt.insert(attempt.end(), componentOrders[i].order.begin(),
-                     componentOrders[i].order.end());
-      double const cost = getEstimateForOrder(graph, estimator, attempt).cost;
-      if (!bestCost.has_value() || cost < *bestCost) {
-        bestCost = cost;
-        bestIndex = i;
-      }
-    }
-    auto& winner = componentOrders[bestIndex];
-    candidate.insert(candidate.end(), winner.order.begin(), winner.order.end());
-    componentOrders.erase(componentOrders.begin() +
-                          static_cast<std::ptrdiff_t>(bestIndex));
-  }
-
-  // The selection loop above has no guard of its own -- it always picks the
-  // cheapest concatenation, unconditionally, and that cost is computed by
-  // replaying every component's vertices, including one that was just
-  // declined above for resting on defaulted statistics. Left unguarded,
-  // resequencing would apply exactly the statistics one branch earlier
-  // declared untrustworthy to decide which component runs first. So
-  // resequencing gets the same defaulted/margin treatment as a component's
-  // own internal order, just judged against the written *sequence* of
-  // components (`baseline`) rather than any one component's written order.
-  // `defaulted` propagates through every `extend` call, so "neither estimate
-  // is defaulted" already reduces to "no component's chosen order rests on
-  // a fallback statistic" -- no separate per-component scan is needed here.
-  auto const baselineEstimate = getEstimateForOrder(graph, estimator, baseline);
-  auto const candidateEstimate =
-      getEstimateForOrder(graph, estimator, candidate);
-
-  bool const sequencingDefaulted =
-      baselineEstimate.defaulted || candidateEstimate.defaulted;
-  bool const sequencingClearsMargin =
-      candidateEstimate.cost <
-      baselineEstimate.cost / (1.0 + kImprovementMargin);
-  bool const acceptSequencing = !sequencingDefaulted && sequencingClearsMargin;
-
-  if (!acceptSequencing) {
-    if (sequencingDefaulted) {
-      LOG_TOPIC("a7f06", TRACE, Logger::AQL)
-          << "optimize-join-order: keeping the written component sequence, "
-             "estimate rests on defaulted statistics";
-    } else {
-      LOG_TOPIC("a7f07", TRACE, Logger::AQL)
-          << "optimize-join-order: keeping the written component sequence, "
-          << baselineEstimate.cost << " -> " << candidateEstimate.cost
-          << " does not clear the margin";
-    }
-  }
-
+  bool const acceptSequencing =
+      acceptsResequencing(graph, estimator, baseline, candidate);
   bool const sequenceChanged = acceptSequencing && candidate != baseline;
   std::vector<EnumerateCollectionNode*> chosen =
       acceptSequencing ? std::move(candidate) : std::move(baseline);
