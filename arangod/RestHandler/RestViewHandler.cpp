@@ -295,8 +295,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
   // From API V1 we only allow view names here:
   if (request()->requestedApiVersion() > 0) {
     if (auto r = isNameAndNoId(name); r.fail()) {
-      generateError(r);
-      co_return;
+      return generateError(r);
     }
   }
 
