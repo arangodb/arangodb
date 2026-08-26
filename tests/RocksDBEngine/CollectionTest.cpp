@@ -23,7 +23,6 @@
 
 #include "RocksDBEngine/StorageEngineDataTest.h"
 
-#include "Basics/StaticStrings.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -43,8 +42,6 @@ std::shared_ptr<transaction::Manager>
 TEST_F(StorageEngineDataTest, CreatedCollectionIsListedInInventory) {
   auto database = makeDatabase("testDatabase", 42);
   auto collection = makeCollection(*database, "testCollection");
-
-  VPackBuilder builder;
   auto descriptors = engine().getCollectionsAndIndexes(*database);
 
   bool found = false;
