@@ -31,9 +31,6 @@
 #include "Containers/FlatHashSet.h"
 
 namespace arangodb {
-namespace options {
-class ProgramOptions;
-}
 namespace application_features {
 class ApplicationServer;
 
@@ -109,22 +106,6 @@ class ApplicationFeature {
   bool doesStartAfter() const {
     return !doesStartBefore<T>();
   }
-
-  // add the feature's options to the global list of options. this method will
-  // be called regardless of whether to feature is enabled or disabled
-  virtual void collectOptions(std::shared_ptr<options::ProgramOptions>);
-
-  // load options from somewhere. this method will only be called for enabled
-  // features
-  virtual void loadOptions(std::shared_ptr<options::ProgramOptions>,
-                           char const* binaryPath);
-
-  // validate the feature's options. this method will only be called for active
-  // features, after the ApplicationServer has determined which features should
-  // be turned off globally. in order to abort further processing in case of
-  // invalid parameter values, the feature should bail out by calling
-  // FATAL_ERROR_EXIT.
-  virtual void validateOptions(std::shared_ptr<options::ProgramOptions>);
 
   // allows process control
   virtual void daemonize();

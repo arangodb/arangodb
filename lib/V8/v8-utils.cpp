@@ -63,7 +63,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/build.h"
 #include "Basics/debugging.h"
@@ -733,11 +733,8 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string url = inputUrl;
   std::vector<std::string> endpoints;
 
-  bool isLocalUrl = false;
-
   if (url.starts_with('/')) {
     // check if we are a server
-    isLocalUrl = true;
     endpoints = v8g->_endpoints.httpEndpoints();
 
     // a relative url. now make this an absolute URL if possible
@@ -984,11 +981,11 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
         << "downloading file. endpoint: " << endpoint
         << ", relative URL: " << url;
 
-    if (!isLocalUrl &&
-        !v8security.isAllowedToConnectToEndpoint(isolate, endpoint, inputUrl)) {
+    if (!v8security.isAllowedToConnectToUrl(isolate, url)) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(
           TRI_ERROR_FORBIDDEN,
-          "not allowed to connect to this URL: " + inputUrl);
+          "while connecting to " + inputUrl +
+              " not allowed to connect to this URL: " + url);
     }
 
     std::unique_ptr<Endpoint> ep(Endpoint::clientFactory(endpoint));
@@ -1072,10 +1069,6 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
         numRedirects++;
 
-        isLocalUrl = false;
-        if (url.starts_with('/')) {
-          isLocalUrl = true;
-        }
         if (url.starts_with("http:") || url.starts_with("https:")) {
           lastEndpoint = basics::StringUtils::getEndpointFromUrl(url);
         }
@@ -2957,7 +2950,7 @@ static void JS_GetPid(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("getPid()");
   }
-  TRI_pid_t pid = Thread::currentProcessId();
+  TRI_pid_t pid = BasicThread::currentProcessId();
   TRI_V8_RETURN_INTEGER(pid);
 
   TRI_V8_TRY_CATCH_END

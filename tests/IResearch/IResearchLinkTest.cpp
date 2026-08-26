@@ -89,20 +89,8 @@ class IResearchLinkTest
     arangodb::tests::init();
 
     // ensure ArangoSearch start 1 maintenance for each group
-    auto opts = server.server().options();
     auto& ars = server.getFeature<arangodb::iresearch::IResearchFeature>();
-    ars.collectOptions(opts);
-    auto* commitThreads = opts->get<arangodb::options::UInt32Parameter>(
-        "--arangosearch.commit-threads");
-    opts->processingResult().touch("arangosearch.commit-threads");
-    EXPECT_NE(nullptr, commitThreads);
-    *commitThreads->ptr = 1;
-    auto* consolidationThreads = opts->get<arangodb::options::UInt32Parameter>(
-        "--arangosearch.consolidation-threads");
-    opts->processingResult().touch("arangosearch.consolidation-threads");
-    EXPECT_NE(nullptr, consolidationThreads);
-    *consolidationThreads->ptr = 1;
-    ars.validateOptions(opts);
+    ars.setMaintenanceThreads(1, 1);
 
     auto& metrics = server.getFeature<arangodb::metrics::MetricsFeature>();
     server.addFeature<arangodb::FlushFeature>(false, metrics);
@@ -202,8 +190,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_FALSE(link->isSorted());
     EXPECT_EQ(0, link->memory());
     EXPECT_TRUE(link->sparse());
-    EXPECT_TRUE(arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                link->type());
+    EXPECT_TRUE(arangodb::IndexType::IResearchLink == link->type());
     EXPECT_TRUE(arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                 link->typeName());
     EXPECT_FALSE(link->unique());
@@ -278,8 +265,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_FALSE(link->isSorted());
     EXPECT_EQ(0, link->memory());
     EXPECT_TRUE(link->sparse());
-    EXPECT_TRUE(arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                link->type());
+    EXPECT_TRUE(arangodb::IndexType::IResearchLink == link->type());
     EXPECT_TRUE(arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                 link->typeName());
     EXPECT_FALSE(link->unique());
@@ -354,8 +340,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_FALSE(link->isSorted());
     EXPECT_EQ(0, link->memory());
     EXPECT_TRUE(link->sparse());
-    EXPECT_EQ(arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK,
-              link->type());
+    EXPECT_EQ(arangodb::IndexType::IResearchLink, link->type());
     EXPECT_EQ(arangodb::iresearch::StaticStrings::ViewArangoSearchType,
               link->typeName());
     EXPECT_FALSE(link->unique());
@@ -2569,7 +2554,7 @@ arangodb_search_index_size{{db="testVocbase",view="h3039/42",collection="{0}",in
     // should increase numFiles in expected stat
     ++expectedStats.numFiles;
 
-    LinkStats actualStats = l->stats();
+    LinkStats actualStats = l->getStats();
     EXPECT_TRUE(expectedStats == actualStats);
   }
   {
@@ -2596,7 +2581,7 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics2) {
                        expectedStats.numFiles);
     ++expectedStats.numFiles;
     expectedStats.numSegments = 1;
-    LinkStats actualStats = l->stats();
+    LinkStats actualStats = l->getStats();
     EXPECT_TRUE(expectedStats == actualStats);
   }
   {
@@ -2611,7 +2596,7 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics2) {
 
     ++expectedStats.numFiles;
     expectedStats.numSegments = 2;
-    LinkStats actualStats = l->stats();
+    LinkStats actualStats = l->getStats();
     EXPECT_TRUE(expectedStats == actualStats);
   }
   {
@@ -2653,7 +2638,7 @@ arangodb_search_index_size{{db="testVocbase",view="h3039/42",collection="{0}",in
     expectedStats.numSegments = 2;  // we have 2 segments
     expectedStats.indexSize = 1561;
 
-    LinkStats actualStats = l->stats();
+    LinkStats actualStats = l->getStats();
     EXPECT_TRUE(expectedStats == actualStats);
   }
   {
@@ -2781,20 +2766,8 @@ class IResearchLinkInRecoveryDBServerOnUpgradeTest
     arangodb::tests::init();
 
     // ensure ArangoSearch start 1 maintenance for each group
-    auto opts = server.server().options();
     auto& ars = server.getFeature<arangodb::iresearch::IResearchFeature>();
-    ars.collectOptions(opts);
-    auto* commitThreads = opts->get<arangodb::options::UInt32Parameter>(
-        "--arangosearch.commit-threads");
-    opts->processingResult().touch("arangosearch.commit-threads");
-    EXPECT_NE(nullptr, commitThreads);
-    *commitThreads->ptr = 1;
-    auto* consolidationThreads = opts->get<arangodb::options::UInt32Parameter>(
-        "--arangosearch.consolidation-threads");
-    opts->processingResult().touch("arangosearch.consolidation-threads");
-    EXPECT_NE(nullptr, consolidationThreads);
-    *consolidationThreads->ptr = 1;
-    ars.validateOptions(opts);
+    ars.setMaintenanceThreads(1, 1);
     server.getFeature<arangodb::ClusterFeature>().disable();
     server.startFeatures();
     EXPECT_EQ((std::pair<size_t, size_t>{1, 1}),
@@ -2996,7 +2969,7 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
     EXPECT_NE(nullptr, link.get());
 
     // Data store should contain at least segments file
-    ASSERT_GT(link->stats().numFiles, 0);
+    ASSERT_GT(link->getStats().numFiles, 0);
 
     // collection in view on destruct
     {
@@ -3043,7 +3016,7 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest, test_init_in_recovery) {
     EXPECT_NE(nullptr, link.get());
 
     // Data store should contain at least segments file
-    ASSERT_GT(link->stats().numFiles, 0);
+    ASSERT_GT(link->getStats().numFiles, 0);
 
     // no collection in view after
     {

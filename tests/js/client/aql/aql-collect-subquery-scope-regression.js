@@ -81,6 +81,40 @@ function subqueryCollectScopeSuite() {
       });
     },
 
+    // Regression: group assignments must not reference other group outputs from
+    // the same COLLECT. Those outputs only exist after CollectNode; evaluating
+    // them earlier produced an invalid plan and MissingVariablesException.
+    testCollectUsingItsOwnVariablesInGroupExpression : function () {
+      const queries = [
+        "FOR x IN [] COLLECT a = 1, b = a RETURN b",
+        "FOR x IN [] COLLECT a = 1, b = [a] RETURN b",
+        "FOR x IN [] COLLECT a = 1, b = 2, c = [a, b] RETURN c",
+        "FOR x IN [] COLLECT a = 1, b = (RETURN a) RETURN b",
+        "FOR x IN [] COLLECT a = 1, b = (FOR j IN [] RETURN a) RETURN b",
+        `FOR br IN [
+           { name: "Magic Hat", abv: 5.0 },
+           { name: "Midnight Sun Brewing Co.", abv: 6.5 }
+         ]
+         COLLECT
+           br_name = br.name,
+           nestedVar = 1,
+           nestedVar_1 = 2,
+           nestedVar_2 = 3,
+           a_1_2_3_ = [nestedVar, nestedVar_1, nestedVar_2]
+         AGGREGATE max = MAX(br.abv)
+         RETURN { br_name, a_1_2_3_, max }`,
+      ];
+
+      queries.forEach((query) => {
+        try {
+          db._query(query);
+          fail();
+        } catch (e) {
+          assertEqual(e.errorNum, errors.ERROR_QUERY_VARIABLE_NAME_UNKNOWN.code, query);
+        }
+      });
+    },
+
   };
 }
 

@@ -131,8 +131,6 @@ class StorageEngineMock : private StorageEngineMockBase,
   arangodb::HealthData healthCheck() override;
   void addOptimizerRules(
       arangodb::aql::OptimizerRulesFeature& feature) override;
-  void addRestHandlers(
-      arangodb::rest::RestHandlerFactory& handlerFactory) override;
 #ifdef USE_V8
   void addV8Functions() override;
 #endif
@@ -147,7 +145,6 @@ class StorageEngineMock : private StorageEngineMockBase,
   std::unique_ptr<arangodb::PhysicalCollection> createPhysicalCollection(
       arangodb::LogicalCollection& collection,
       arangodb::velocypack::Slice /*info*/) override;
-  arangodb::Result createTickRanges(VPackBuilder&) override;
   std::shared_ptr<arangodb::TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
       arangodb::transaction::Options const& options,
@@ -162,7 +159,6 @@ class StorageEngineMock : private StorageEngineMockBase,
   arangodb::Result dropDatabase(TRI_vocbase_t& vocbase) override;
   arangodb::Result dropView(TRI_vocbase_t const& vocbase,
                             arangodb::LogicalView const& view) override;
-  arangodb::Result firstTick(uint64_t&) override;
   std::vector<std::string> currentWalFiles() const override;
   arangodb::Result flushWal(bool waitForSync, bool waitForCollector) override;
   void getCollectionInfo(TRI_vocbase_t& vocbase, arangodb::DataSourceId cid,
@@ -174,10 +170,6 @@ class StorageEngineMock : private StorageEngineMockBase,
                                      bool isUpgrade) override;
   void getDatabases(arangodb::velocypack::Builder& result) override;
   void cleanupReplicationContexts() override;
-  arangodb::velocypack::Builder getReplicationApplierConfiguration(
-      TRI_vocbase_t& vocbase, ErrorCode& result) override;
-  arangodb::velocypack::Builder getReplicationApplierConfiguration(
-      ErrorCode& result) override;
   ErrorCode getViews(TRI_vocbase_t& vocbase,
                      arangodb::velocypack::Builder& result) override;
   arangodb::Result handleSyncKeys(arangodb::DatabaseInitialSyncer& syncer,
@@ -186,27 +178,15 @@ class StorageEngineMock : private StorageEngineMockBase,
   arangodb::RecoveryState recoveryState() override;
   TRI_voc_tick_t recoveryTick() override;
 
-  arangodb::Result lastLogger(
-      TRI_vocbase_t& vocbase, uint64_t tickStart, uint64_t tickEnd,
-      arangodb::velocypack::Builder& builderSPtr) override;
-
   std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::CreateDatabaseInfo&&,
                                               bool isUpgrade) override;
   using StorageEngine::registerCollection;
   using StorageEngine::registerView;
   TRI_voc_tick_t releasedTick() const override;
   void releaseTick(TRI_voc_tick_t) override;
-  ErrorCode removeReplicationApplierConfiguration(
-      TRI_vocbase_t& vocbase) override;
-  ErrorCode removeReplicationApplierConfiguration() override;
   arangodb::Result renameCollection(
       TRI_vocbase_t& vocbase, arangodb::LogicalCollection const& collection,
       std::string const& oldName) override;
-  ErrorCode saveReplicationApplierConfiguration(
-      TRI_vocbase_t& vocbase, arangodb::velocypack::Slice slice,
-      bool doSync) override;
-  ErrorCode saveReplicationApplierConfiguration(arangodb::velocypack::Slice,
-                                                bool) override;
   std::string versionFilename(TRI_voc_tick_t) const override;
   void waitForEstimatorSync() override;
   arangodb::WalAccess const* walAccess() const override;

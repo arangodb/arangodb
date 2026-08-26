@@ -24,6 +24,8 @@
 
 #include "Basics/Meta/TypeList.h"
 
+#include <cstdint>
+#include <iosfwd>
 #include <span>
 #include <string>
 #include <string_view>
@@ -44,7 +46,6 @@ enum class CollectionAccessLevel { Read, WriteData, WriteMeta };
 // TODO We call ::Write for DB, but ::Modify for View and Analyzer.
 //      Should we keep it consistent?
 enum class DatabaseAccessLevel { Read, Write };
-enum class ViewAccessLevel { Read, Modify };
 enum class AnalyzerAccessLevel { Read, Modify };
 enum class GraphAccessLevel { Read, Modify };
 
@@ -52,7 +53,6 @@ using AccessLevel = CollectionAccessLevel;
 
 auto to_string(CollectionAccessLevel level) -> std::string_view;
 auto to_string(DatabaseAccessLevel level) -> std::string_view;
-auto to_string(ViewAccessLevel level) -> std::string_view;
 auto to_string(AnalyzerAccessLevel level) -> std::string_view;
 auto to_string(GraphAccessLevel level) -> std::string_view;
 
@@ -249,17 +249,18 @@ struct RenameView {
   std::string db;
   std::string oldName;
   std::string newName;
+  std::vector<std::string> linkedCollections;
 };
 
 struct DropView {
   std::string db;
   std::string name;
+  std::vector<std::string> linkedCollections;
 };
 
-struct UseView {
+struct ReadView {
   std::string db;
   std::string name;
-  ViewAccessLevel level;
 };
 
 // ---------------------------------------------------------------------------
@@ -344,6 +345,15 @@ struct GrantUserPermissions {
   std::string name;
 };
 
+// ---------------------------------------------------------------------------
+// API versions
+// ---------------------------------------------------------------------------
+
+// Grant permission to a specific api version
+struct UseApiVersion {
+  uint32_t version;
+};
+
 namespace detail {
 // Currently there's no need to subdivide this list, but feel free to
 // do that when it becomes useful.
@@ -355,13 +365,15 @@ using NonAdminList = meta::TypeList<
     DumpCollection, RestoreCollection, RestoreCreateIndex, RestoreCreateView,
     RestoreDropView, RestoreWriteData,
     // view permissions
-    SeeView, CreateView, ModifyView, RenameView, DropView, UseView,
+    SeeView, CreateView, ModifyView, RenameView, DropView, ReadView,
     // analyzer permissions
     SeeAnalyzer, CreateAnalyzer, DropAnalyzer, UseAnalyzer,
     // graph permissions
     SeeGraph, CreateGraph, DropGraph, UseGraph,
     // user permissions
-    ReadUser, CreateUser, DropUser, ModifyUserProfile, GrantUserPermissions>;
+    ReadUser, CreateUser, DropUser, ModifyUserProfile, GrantUserPermissions,
+    // api version permissions
+    UseApiVersion>;
 
 using CompleteList = meta::detail::Union<AdminList, NonAdminList>::type;
 }  // namespace detail
@@ -373,5 +385,26 @@ using CompleteList = meta::detail::Union<AdminList, NonAdminList>::type;
 // implicitly constructible from any of its alternatives, so callers just
 // pass a `perms::Xxx{...}` and it is wrapped automatically.
 using Permission = perms::detail::CompleteList::asVariant;
+
+namespace perms {
+
+// Streams one authorization question as a human- and machine-readable list of
+// the permission's type name followed by its fields, e.g.
+//
+//   UseCollection db=_system name=foo level=read
+//   AdminBackup
+//
+// Used by `ExecContext::can()` to trace every authorization question on
+// `Logger::AUTHORIZATION`; the format is asserted on by
+// tests/js/client/server_permissions/authorization-questions*.js, so treat it
+// as a (loose) contract. Values never contain whitespace, so a reader can
+// tokenize on spaces and split each token at its first '='.
+//
+// NOTE: this has to be declared in `perms`, not in `auth`, even though it is
+// about `auth::Permission`: that is an alias for `std::variant<perms::...>`,
+// so ADL only ever considers `std` and `perms`.
+std::ostream& operator<<(std::ostream& os, Permission const& permission);
+
+}  // namespace perms
 
 }  // namespace arangodb::auth

@@ -27,7 +27,7 @@
 
 #include "Basics/files.h"
 #include "Basics/FileUtils.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Inspection/Types.h"
 #include "Inspection/VPackLoadInspector.h"
 
@@ -114,7 +114,7 @@ auto inspect(Inspector& f, Options& o) {
       f.field("databaseDirectory", o.databaseDirectory)
           .fallback(basics::FileUtils::buildFilename(
               TRI_GetTempPath(),
-              "sepp-" + std::to_string(Thread::currentProcessId()))),
+              "sepp-" + std::to_string(BasicThread::currentProcessId()))),
       f.field("clearDatabaseDirectory", o.clearDatabaseDirectory)
           .fallback(true),
       f.field("setup", o.setup).fallback(f.keep()),

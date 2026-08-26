@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <string>
 #include <variant>
 
@@ -68,6 +69,7 @@ enum class Action {
   AdminReadAqlFunctions,
   AdminWriteAqlFunctions,
   AdminQueryCache,
+  AdminReadUsers,
 };
 
 namespace resources {
@@ -102,12 +104,16 @@ struct User {
   std::string_view name;
 };
 
+struct ApiVersion {
+  uint32_t version;
+};
+
 }  // namespace resources
 
 using Resource =
     std::variant<resources::NoResource, resources::Database,
                  resources::Collection, resources::View, resources::Analyzer,
-                 resources::Graph, resources::User>;
+                 resources::Graph, resources::User, resources::ApiVersion>;
 
 // A single authorization question: may the token perform `action` on
 // `resource`? A permission check may consist of several of these, which are

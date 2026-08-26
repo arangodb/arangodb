@@ -42,11 +42,15 @@ class RestActionHandler : public RestVocbaseBaseHandler {
   void cancel() override;
 
  protected:
-  async<Result> checkUserCanAccess() const override;
+  async<RestHandler::AuthenticationGrant> checkUserAuthentication()
+      const override;
+  async<Result> checkApiVersionAccess() const override;
+  async<Result> checkDatabaseAccess() const override;
 
  private:
   // executes an action
   void executeAction();
+  bool hasAllowedUnauthenticatedPath() const;
 
  protected:
   // action
@@ -57,5 +61,8 @@ class RestActionHandler : public RestVocbaseBaseHandler {
 
   // data for cancelation
   void* _data;
+
+  // Flag to remember to escalate to superuser:
+  mutable bool _mustEscalateToSuperuser = false;
 };
 }  // namespace arangodb

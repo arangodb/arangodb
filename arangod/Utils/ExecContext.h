@@ -60,7 +60,9 @@ class ExecContext {
 
  public:
   ExecContext(ConstructorToken, AuthMode authMode, bool isRestApiHardened,
-              VocbasePtr vocbase);
+              VocbasePtr vocbase, std::string clientAddress = {},
+              std::string requestUrl = {}, std::string authMethod = "n/a",
+              bool hasRequestInfo = false);
   ExecContext(ExecContext const&) = delete;
   ExecContext(ExecContext&&) = delete;
 
@@ -84,6 +86,10 @@ class ExecContext {
   static ExecContext const& superuser();
   static std::shared_ptr<ExecContext const> superuserAsShared();
 
+  [[nodiscard]] bool isDisabled() const noexcept {
+    return _authMode.isDisabled();
+  }
+
   [[nodiscard]] bool isSuperuserOrDisabled() const noexcept {
     // This will report `true` if authentication is disabled!
     return _authMode.isSuperuser() || _authMode.isDisabled();
@@ -91,6 +97,9 @@ class ExecContext {
 
   [[nodiscard]] bool isSuperuser() const noexcept {
     return _authMode.isSuperuser();
+  }
+  [[nodiscard]] bool isClassic() const noexcept {
+    return _authMode.isClassic();
   }
 
   /// @brief tells you if this execution was canceled
@@ -101,18 +110,9 @@ class ExecContext {
   /// @brief cancel execution
   void cancel() noexcept { _canceled.store(true, std::memory_order_relaxed); }
 
-  /// @brief upgrade to internal superuser, preserving request/vocbase refs
-  void forceSuperuser();
-
   /// @brief returns the vocbase associated with this context, if any
   [[nodiscard]] std::optional<std::reference_wrapper<Database>> vocbase()
       const noexcept;
-
-  /// @brief returns the request associated with this context, if any
-  [[nodiscard]] std::optional<std::reference_wrapper<GeneralRequest>> request()
-      const noexcept {
-    return _authMode.getIAuth().request();
-  }
 
   /// @brief current user, may be empty for internal users
   [[nodiscard]] std::string_view user() const {
@@ -129,9 +129,22 @@ class ExecContext {
   //   using namespace arangodb::auth::perms;
   //   if (auto r = ec.can(SeeCollection{.db = db, .name = coll});
   //       !r.ok()) { /* ... */ }
-  [[nodiscard]] Result can(auth::Permission permission) const {
-    return _authMode.getIAuth().check(std::move(permission));
-  }
+  //
+  // Every question asked here is traced on `Logger::AUTHORIZATION` (TRACE);
+  // see tests/js/client/server_permissions/authorization-questions.js.
+  [[nodiscard]] Result can(auth::Permission permission) const;
+
+  // The server-wide read-only gate, which every modifying operation has to
+  // pass in addition to its permission question. It is consulted after that
+  // question has been answered positively. Like `can()`, it is traced on
+  // `Logger::AUTHORIZATION` (TRACE) as `AUTHZ-CHECK IsReadOnly` - the trace
+  // is emitted whenever the gate is consulted, no matter how it answers, so
+  // that the authorization-questions tests can see which operations are
+  // gated by it.
+  //
+  // Note that `arangod/Auth/UserManagerBase.cpp` has read-only checks of its
+  // own which are not routed through here and hence not traced.
+  [[nodiscard]] Result checkNotReadOnly() const;
 
   // New Result-returning permission check methods:
 
@@ -152,7 +165,12 @@ class ExecContext {
     if (!_isRestApiHardened) {
       return {};
     }
-    return can(std::move(action));
+    Result r = can(std::move(action));
+    if (r.ok()) {
+      return r;
+    }
+    // Compatibility with 3.12.10:
+    return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
   }
 
   Result canSeeDatabase(std::string_view db) const;
@@ -199,9 +217,9 @@ class ExecContext {
                        std::vector<std::string> const& linkedCollections) const;
   Result canModifyView(std::string_view db, std::string_view view,
                        std::vector<std::string> const& linkedCollections) const;
-  Result canDropView(std::string_view db, std::string_view view) const;
-  Result canUseView(std::string_view db, std::string_view view,
-                    ViewAccessLevel level) const;
+  Result canDropView(std::string_view db, std::string_view view,
+                     std::vector<std::string> const& linkedCollections) const;
+  Result canReadView(std::string_view db, std::string_view view) const;
 
   Result canSeeGraph(std::string_view db, std::string_view graph) const;
   Result canCreateGraph(std::string_view db, std::string_view graph,
@@ -212,7 +230,8 @@ class ExecContext {
   Result canUseGraph(std::string_view db, std::string_view graph,
                      GraphAccessLevel const level) const;
   Result canRenameView(std::string_view db, std::string_view oldViewName,
-                       std::string_view newViewName) const;
+                       std::string_view newViewName,
+                       std::vector<std::string> const& linkedCollections) const;
 
   Result canSeeAnalyzer(std::string_view db, std::string_view analyzer) const;
   Result canCreateAnalyzer(std::string_view db,
@@ -245,6 +264,11 @@ class ExecContext {
   /// collections may be granted/revoked.
   Result canGrantUserPermissions(std::string_view userName) const;
 
+  /// @brief returns whether the given REST API version may be used, e.g. 1 for
+  /// `/_arango/v1`. Note that this does not ask whether the version exists -
+  /// that is decided by the handler factory.
+  Result canUseApiVersion(uint32_t version) const;
+
   static std::shared_ptr<ExecContext const> set(
       std::shared_ptr<ExecContext const> ctx) {
     std::swap(CURRENT, ctx);
@@ -262,6 +286,15 @@ class ExecContext {
   bool const _isRestApiHardened;
   VocbasePtr _vocbase;
 
+  // Client address, request URL and authentication method of the request
+  // this context was created from, if any (see ExecContext::create()).
+  // Preserved across forceSuperuser()/ExecContextSuperuserScope so that
+  // auditing keeps working after a privilege upgrade.
+  std::string _clientAddress;
+  std::string _requestUrl;
+  std::string _authMethod{"n/a"};
+  bool _hasRequestInfo{false};
+
   // TODO (Tobias) this feels out of place. Look into it.
   /// should be used to indicate a canceled request / thread
   std::atomic<bool> _canceled{false};
@@ -272,18 +305,24 @@ class ExecContext {
 
 /// @brief scope guard for the exec context
 struct ExecContextScope {
-  explicit ExecContextScope(std::shared_ptr<ExecContext const> exe);
+  explicit ExecContextScope(std::shared_ptr<ExecContext const> exe) noexcept;
 
-  ~ExecContextScope();
+  ~ExecContextScope() noexcept;
 
  private:
   std::shared_ptr<ExecContext const> _old;
 };
 
-struct [[deprecated(
-    "Upgrading to Superuser rights should not be necessary; instead, "
-    "authorization methods on ExecContext should handle the case properly on "
-    "their own.")]] ExecContextSuperuserScope {
+/// @brief scope guard installing a Superuser exec context
+///
+/// Use this to deliberately run an internal execution path with a clear
+/// purpose -- e.g. the startup thread, a dedicated background thread, or
+/// system-collection maintenance -- as Superuser.
+///
+/// Avoid using this to escalate privileges during request handling in order to
+/// skip subsequent permission checks; authorization methods on ExecContext
+/// should handle such cases properly on their own, whenever possible.
+struct ExecContextSuperuserScope {
   explicit ExecContextSuperuserScope();
 
   explicit ExecContextSuperuserScope(bool cond);
@@ -292,7 +331,7 @@ struct [[deprecated(
 
  private:
   static auto getSuperuserContextFrom(ExecContext const* old)
-      ->std::shared_ptr<ExecContext const>;
+      -> std::shared_ptr<ExecContext const>;
 
   std::shared_ptr<ExecContext const> _old;
 };

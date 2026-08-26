@@ -100,6 +100,7 @@ function hotBackup (options) {
   try {
     if (!PTK.runSetupSuite(setupFile) ||
         !PTK.runRtaMakedata() ||
+        !PTK.runRtaWaitdata() ||
         !PTK.dumpFrom('UnitTestsDumpSrc') ||
         !PTK.restartInstance() ||
         !PTK.restoreTo('UnitTestsDumpDst') ||
@@ -113,6 +114,7 @@ function hotBackup (options) {
         !PTK.runReTests(dumpRecheck,'UnitTestsDumpDst') ||
         !PTK.isAlive() ||
         !PTK.restoreHotBackup() ||
+        !PTK.instanceManager.waitForAllShardsInSync() ||
         !PTK.runTests(dumpCheck, 'UnitTestsDumpDst')||
         !PTK.runRtaCheckData() ||
         !PTK.tearDown(tearDownFile)) {
@@ -189,11 +191,17 @@ function hotBackup_load_backend (options, which, args) {
       try {
         return PTK.runTestFn(testFn, args, 'postRestore');
       } catch (ex) {
-        if (ex.errorNum === errors.ERROR_CLUSTER_BACKEND_UNAVAILABLE.code) {
+        if (ex.hasOwnProperty('errorNum') && ex.errorNum === errors.ERROR_CLUSTER_BACKEND_UNAVAILABLE.code) {
+          print('.');
           sleep(2);
-          continue;
+        } else {
+          let errorNum = null;
+          if (ex.hasOwnProperty('errorNum')) {
+            errorNum = ex.errorNum;
+          }
+          print(`${Date()} Aborting retryWaitRestore because of ${errorNum} ${ex.message} - ${ex.stack}`);
+          throw ex;
         }
-        throw ex;
       }
     }
   }

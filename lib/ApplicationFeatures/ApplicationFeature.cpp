@@ -32,8 +32,6 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 
-using namespace arangodb::options;
-
 namespace arangodb {
 namespace application_features {
 
@@ -47,22 +45,6 @@ ApplicationFeature::ApplicationFeature(ApplicationServer& server,
       _enabled(true),
       _optional(false),
       _ancestorsDetermined(false) {}
-
-// add the feature's options to the global list of options. this method will be
-// called regardless of whether to feature is enabled or disabled
-void ApplicationFeature::collectOptions(std::shared_ptr<ProgramOptions>) {}
-
-// load options from somewhere. this method will only be called for enabled
-// features
-void ApplicationFeature::loadOptions(std::shared_ptr<ProgramOptions>,
-                                     char const* /*binaryPath*/) {}
-
-// validate the feature's options. this method will only be called for active
-// features, after the ApplicationServer has determined which features should be
-// turned off globally. in order to abort further processing in case of invalid
-// parameter values, the feature should bail out by calling
-// `abortInvalidParameters()`
-void ApplicationFeature::validateOptions(std::shared_ptr<ProgramOptions>) {}
 
 // allows process control
 void ApplicationFeature::daemonize() {}

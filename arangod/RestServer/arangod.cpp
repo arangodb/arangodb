@@ -39,6 +39,7 @@
 #include "RestServer/PrivilegeFeature.h"
 #include "RestServer/RestartAction.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "Utils/ExecContext.h"
 
 using namespace arangodb;
 
@@ -58,8 +59,8 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         "For more information use:", SBIN_DIRECTORY);
 
     int ret{EXIT_FAILURE};
-    ArangodServer server{options, SBIN_DIRECTORY, name, crashDumpManager,
-                         dataSourceRegistry};
+    ArangodServer server{options, SBIN_DIRECTORY,   std::move(name),
+                         &ret,    crashDumpManager, dataSourceRegistry};
     ServerState state{server};
 
     server.addReporter(
@@ -74,14 +75,14 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
          },
          {}});
 
-    server.addFeatures(&ret);
+    // Everything the application server runs on this thread -- feature
+    // preparation and start (including recovery, upgrade, and bootstrap),
+    // the wait loop, and shutdown -- acts on behalf of the server itself,
+    // not on behalf of any user, and must therefore run as Superuser.
+    ExecContextSuperuserScope superuserScope;
 
     try {
       server.run(argc, argv);
-      if (server.helpShown()) {
-        // --help was displayed
-        ret = EXIT_SUCCESS;
-      }
     } catch (std::exception const& ex) {
       LOG_TOPIC("5d508", ERR, Logger::FIXME)
           << "arangod terminated because of an exception: " << ex.what();

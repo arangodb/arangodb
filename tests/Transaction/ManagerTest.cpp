@@ -612,8 +612,6 @@ TEST_F(TransactionManagerTest, permission_denied_readonly) {
       arangodb::auth::Level::RO);
   arangodb::ExecContextScope execContextScope(classicCtx.execContext);
 
-  // Need to use collection name here, because in the UserManagerTester we
-  // cannot translate to name:
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"read\": [\"testCollection\"]}}");
   Result res =
@@ -623,8 +621,6 @@ TEST_F(TransactionManagerTest, permission_denied_readonly) {
   EXPECT_TRUE(res.ok());
   ASSERT_TRUE(mgr->abortManagedTrx(tid, vocbase.name()).waitAndGet().ok());
 
-  // Need to use collection name here, because in the UserManagerTester we
-  // cannot translate to name:
   tid = TransactionId::createSingleServer();
   json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": [\"testCollection\"]}}");

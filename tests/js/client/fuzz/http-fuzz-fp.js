@@ -115,6 +115,7 @@ const wordListForKeys = [
 
 const messages = [
   "creating data",
+  "waiting for database to settle",
   "cleaning up"
 ];
 
@@ -157,6 +158,12 @@ function httpRequestsFuzzerTestSuite() {
         throw("http_fuzz: failed to create testdatas:\n" + fs.read(logFile).replace(rx, '\n'));
       }
 
+      rc = ct.run.rtaMakedata(IM.options, IM, 2, messages[1], logFile, moreargv);
+      if (!rc.status) {
+        let rx = new RegExp(/\\n/g);
+        throw("http_fuzz: failed to wait for testdatas:\n" + fs.read(logFile).replace(rx, '\n'));
+      }
+
       IM.rememberConnection();
       gatherResources();
     },
@@ -166,7 +173,7 @@ function httpRequestsFuzzerTestSuite() {
         moreargv = ['--skip', "070,071,801,550,900,960"].concat(moreargv);
       }
       let logFile = fs.join(fs.getTempPath(), `rta_out_clean.log`);
-      let rc = ct.run.rtaMakedata(IM.options, IM, 2, messages[1], logFile, moreargv);
+      let rc = ct.run.rtaMakedata(IM.options, IM, 3, messages[2], logFile, moreargv);
       if (!rc.status) {
         let rx = new RegExp(/\\n/g);
         print("http_fuzz: failed to clear testdatas:\n" + fs.read(logFile).replace(rx, '\n'));

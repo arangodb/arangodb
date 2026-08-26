@@ -33,7 +33,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void GeneralServerOptionsProvider::declareOptions(
+void GeneralServerOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, GeneralServerOptions& options) {
   opts->addOldOption("server.allow-method-override",
                      "http.allow-method-override");
@@ -118,15 +118,16 @@ and also react on overload.)");
                   "transparently compressed in case the client asks for it.",
                   new UInt64Parameter(&options.compressResponseThreshold))
       .setIntroducedIn(31200)
-      .setLongDescription(
-          R"(Automatically compress outgoing HTTP responses with the
-deflate or gzip compression format, in case the client request advertises
-support for this. Compression will only happen for HTTP/1.1 and HTTP/2
-connections, if the size of the uncompressed response body exceeds
-the threshold value controlled by this startup option,
-and if the response body size after compression is less than the original
-response body size.
-Using the value 0 disables the automatic response compression.)");
+      .setLongDescription(R"(Automatically compress outgoing HTTP responses with
+the deflate or gzip compression format, in case the client request advertises
+support for this.
+
+Compression only happens for HTTP/1.1 and HTTP/2 connections, if the size of the
+uncompressed response body exceeds the threshold value controlled by this
+startup option, and if the response body size after compression is less than the
+original response body size.
+
+Using the value `0` disables the automatic response compression.)");
 
   opts->addOption("--server.early-connections",
                   "Allow requests to a limited set of APIs early during the "
@@ -172,13 +173,12 @@ Using the value 0 disables the automatic response compression.)");
           new BooleanParameter(
               &options.handleContentEncodingForUnauthenticatedRequests))
       .setIntroducedIn(31200)
-      .setLongDescription(
-          R"(If the option is set to `true`, the server will automatically
-uncompress incoming HTTP requests with Content-Encodings gzip and deflate
-even if the request is not authenticated.)");
+      .setLongDescription(R"(If the option is set to `true`, the server
+automatically decompresses incoming HTTP requests with `gzip` or `deflate` in
+the `Content-Encoding` header even if the request is not authenticated.)");
 }
 
-void GeneralServerOptionsProvider::validateOptions(
+void GeneralServerOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions>, GeneralServerOptions& options) {
   if (!options.accessControlAllowOrigins.empty()) {
     // trim trailing slash from all members

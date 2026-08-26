@@ -307,9 +307,6 @@ Result RestDumpHandler::validateRequest() {
       }
 
       if (!ServerState::instance()->isDBServer()) {
-        // We no longer check admin access here, since it is done in
-        // ExecContext::canDumpCollection for Classic mode, for RBAC
-        // we might want to do a different check.
         RocksDBDumpContextOptions opts;
         velocypack::deserializeUnsafe(body, opts);
 

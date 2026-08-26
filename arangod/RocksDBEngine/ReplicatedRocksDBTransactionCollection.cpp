@@ -95,8 +95,7 @@ void ReplicatedRocksDBTransactionCollection::maybeDisableIndexing() {
         // primary index is unique, but we can ignore it here.
         // for secondary unique indexes we need to turn off the
         // NO_INDEXING optimization
-        return idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX &&
-               idx->unique();
+        return idx->type() != IndexType::Primary && idx->unique();
       });
 
   if (disableIndexing) {
@@ -233,18 +232,16 @@ ReplicatedRocksDBTransactionCollection::performIntermediateCommitIfRequired() {
             _transaction->id().asFollowerTransactionId());
     auto options = replication2::replicated_state::document::ReplicationOptions{
         .waitForCommit = true};
-    return leader->replicateOperation(operation, options)
-        .thenValue([leader, state = _transaction->shared_from_this(),
-                    this](auto&& res) -> Result {
-          if (res.fail()) {
-            return res.result();
-          }
-          if (auto localCommitRes = _rocksMethods->triggerIntermediateCommit();
-              localCommitRes.fail()) {
-            return localCommitRes;
-          }
-          return Result{};
-        });
+    // keep the transaction (and thus this object) alive across the co_await
+    auto state = _transaction->shared_from_this();
+    auto res = co_await leader->replicateOperation(operation, options);
+    if (res.fail()) {
+      co_return res.result();
+    }
+    if (auto localCommitRes = _rocksMethods->triggerIntermediateCommit();
+        localCommitRes.fail()) {
+      co_return localCommitRes;
+    }
   }
-  return Result{};
+  co_return Result{};
 }

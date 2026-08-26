@@ -184,6 +184,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/SplicedSubqueryIntegrationTest.cpp
   Aql/WaitingExecutionBlockMock.cpp
   AsyncAgencyComm/AsyncAgencyCommTest.cpp
+  Auth/ClassicAuthModeTest.cpp
   Auth/RbacAuthModeTest.cpp
   Auth/RbacBackendTest.cpp
   # Disabled for now, since this needs docker and does not work in CI:
@@ -263,6 +264,7 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/KeyTest.cpp
   RocksDBEngine/MemoryUsageTest.cpp
   RocksDBEngine/TransactionManagerTest.cpp
+  Scheduler/SchedulerExecContextTest.cpp
   Sharding/ShardDistributionReporterTest.cpp
   SimpleHttpClient/ConnectionCacheTest.cpp
   SimpleHttpClient/HttpResponseCheckerTest.cpp
@@ -275,7 +277,7 @@ set(ARANGODB_TESTS_SOURCES
   Utils/ExecContextTest.cpp
   Utils/NameValidatorTest.cpp
   Utils/QuickGen.cpp
-  VectorIndex/VectorIndexTrainingSamplerTest.cpp
+  VectorIndex/TrainingSamplerTest.cpp
   VocBase/ComputedValuesTest.cpp
   VocBase/KeyGeneratorTest.cpp
   VocBase/LogicalDataSourceTest.cpp
@@ -354,8 +356,7 @@ target_link_libraries(arangodbtests
   arango_tests_actor
   arango_tests_inspection
   arango_tests_internal_rest_handler
-  # Disabled until Scheduler dependency is fixed
-  # arango_tests_rocksdb_engine
+  arango_tests_rocksdb_engine
   arango_inspection_test_helper
   arango_agency
   arango_cluster_engine
@@ -442,3 +443,4 @@ add_subdirectory(VocBase/Properties)
 add_subdirectory(SystemMonitor)
 add_subdirectory(InternalRestHandler)
 add_subdirectory(Scheduler)
+add_subdirectory(Probe)

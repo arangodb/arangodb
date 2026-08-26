@@ -33,9 +33,7 @@ class ApplicationServer;
 class CommunicationFeaturePhase;
 }  // namespace application_features
 
-struct Database;
 class GeneralResponse;
-class GlobalReplicationApplier;
 
 class ReplicationFeature final
     : public application_features::ApplicationFeature {
@@ -52,28 +50,9 @@ class ReplicationFeature final
       metrics::IRegistry& metricsRegistry);
   ~ReplicationFeature();
 
-  void collectOptions(
-      std::shared_ptr<options::ProgramOptions> options) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
-  void start() override final;
-  void beginShutdown() override final;
-  void stop() override final;
-  void unprepare() override final;
 
   httpclient::ConnectionCache& connectionCache();
-
-  /// @brief return a pointer to the global replication applier
-  GlobalReplicationApplier* globalReplicationApplier() const;
-
-  /// @brief disable replication appliers
-  void disableReplicationApplier();
-
-  /// @brief start the replication applier for a single database
-  void startApplier(Database* vocbase);
-
-  /// @brief stop the replication applier for a single database
-  void stopApplier(Database* vocbase);
 
   /// @brief returns the connect timeout for replication requests
   double connectTimeout() const;
@@ -128,8 +107,6 @@ class ReplicationFeature final
 
   /// @brief number of currently operating tailing operations
   std::atomic<uint64_t> _parallelTailingInvocations;
-
-  std::unique_ptr<GlobalReplicationApplier> _globalReplicationApplier;
 
   metrics::Counter& _inventoryRequests;
 

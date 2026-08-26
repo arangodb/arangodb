@@ -19,14 +19,18 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Logger/Logger.h"
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/ArangodServer.h"
 
 #include <type_traits>
 
+#include "Basics/application-exit.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+
 // The list of includes for the features is defined in the following file -
 // please add new includes there!
-#include "RestServer/CrashHandlerFeature.h"
 #include "RestServer/arangod_includes.h"
 #include "V8/V8SecurityFeature.h"
 
@@ -56,22 +60,129 @@ auto const kNonServerFeatures =
                std::type_index(typeid(ServerFeature)),
                std::type_index(typeid(SslServerFeature)),
                std::type_index(typeid(StatisticsFeature))};
+
+void applyAgencyRocksDBMemoryLimits(
+    options::ProgramOptions::ProcessingResult const& result,
+    RocksDBOptionFeatureOptions& rocksdbOptions) {
+  if (!result.touched("--rocksdb.block-cache-size")) {
+    rocksdbOptions.blockCacheSize =
+        std::min(rocksdbOptions.blockCacheSize, uint64_t{1} << 30);  // 1 GiB
+  }
+  if (!result.touched("--rocksdb.total-write-buffer-size")) {
+    rocksdbOptions.totalWriteBufferSize = std::min(
+        rocksdbOptions.totalWriteBufferSize, uint64_t{512} << 20);  // 512 MiB
+  }
+}
 }  // namespace
 
-void ArangodServer::collectOptions() {
-  LOG_TOPIC("0eac8", TRACE, Logger::STARTUP) << "ArangodServer::collectOptions";
-  ApplicationServer::collectOptions();
-  _optionProviders.declareOptions(_programOptions);
+void ArangodServer::processOptions() {
+  OptionProvidingServer<ArangodOptionProviders>::processOptions();
+
+#ifdef ARANGODB_HAVE_FORK
+  if (getOptions<SupervisorOptionsProvider>().supervisor) {
+    mutableOptions<DaemonOptionsProvider>().daemon = true;
+  }
+#endif
+  Logger::setKeepLogrotate(
+      getOptions<LogRotateOptionsProvider>().keepLogRotate);
+
+  // must run after the OptionProvidingServer::processOptions() call above,
+  // since ClusterOptions::enableCluster is only resolved there, and before
+  // validateOptions(), since unmigrated features still read the role there
+  auto const& clusterOptions = getOptions<ClusterOptionsProvider>();
+  ServerState::instance()->setRole(
+      resolveRole(clusterOptions, getOptions<AgencyOptionsProvider>()));
+
+  if (!clusterOptions.enableCluster) {
+    ServerState::instance()->findHost("localhost");
+  } else {
+    std::string fallback = clusterOptions.myEndpoint;
+    auto pos = fallback.find("://");
+    if (pos != std::string::npos) {
+      fallback = fallback.substr(pos + 3);
+    }
+    pos = fallback.rfind(':');
+    if (pos != std::string::npos) {
+      fallback.resize(pos);
+    }
+    ServerState::instance()->findHost(fallback);
+  }
+
+#ifdef USE_V8
+  // Agents/DB-Servers don't need V8 unless the user explicitly asked for it.
+  // 'enableJS' can be only set after setRole() is called.
+  auto& v8Opts = mutableOptions<V8DealerOptionsProvider>();
+  if (!V8DealerFeature::javascriptRequestedViaOptions(options()) &&
+      (ServerState::instance()->isAgent() ||
+       ServerState::instance()->isDBServer())) {
+    v8Opts.enableJS = false;
+  }
+#endif
+
+  // RBAC has no non-hardened mode. Force the flag on rather than rejecting the
+  // combination, so that `--server.harden` simply has no effect once RBAC is
+  // enabled.
+  if (!getOptions<AuthenticationOptionsProvider>()
+           .externalRbacService.empty()) {
+    if (options()->processingResult().touched("--server.harden") &&
+        !getOptions<security::ServerSecurityOptionsProvider>()
+             .hardenedRestApi) {
+      LOG_TOPIC("f3e1c", WARN, Logger::STARTUP)
+          << "RBAC is enabled, but REST API is not hardened: "
+             "RBAC implies --server.harden=true - forcing hardened REST API";
+    }
+    mutableOptions<security::ServerSecurityOptionsProvider>().hardenedRestApi =
+        true;
+  }
+
+  // Cap RocksDB memory defaults on agency agents unless explicitly
+  // configured.
+  auto const& agencyOptions = getOptions<AgencyOptionsProvider>();
+  if (agencyOptions.activated) {
+    applyAgencyRocksDBMemoryLimits(
+        options()->processingResult(),
+        mutableOptions<RocksDBOptionFeatureOptionsProvider>());
+  }
 }
 
 void ArangodServer::validateOptions() {
-  LOG_TOPIC("1ed28", TRACE, Logger::STARTUP)
-      << "ArangodServer::validateOptions";
-  ApplicationServer::validateOptions();
-  _optionProviders.validateOptions(_programOptions);
+  OptionProvidingServer<ArangodOptionProviders>::validateOptions();
+
+  if (getOptions<check_version::CheckVersionOptionsProvider>().checkVersion &&
+      getOptions<UpgradeOptionsProvider>().upgrade) {
+    LOG_TOPIC("a25b0", FATAL, Logger::FIXME)
+        << "cannot specify both '--database.check-version' and "
+           "'--database.auto-upgrade'";
+    FATAL_ERROR_EXIT();
+  }
 }
 
-void ArangodServer::addFeatures(int* ret) {
+ServerState::RoleEnum ArangodServer::resolveRole(
+    ClusterOptions const& clusterOptions, AgencyOptions const& agencyOptions) {
+  if (agencyOptions.activated && !clusterOptions.myRole.empty()) {
+    LOG_TOPIC("a3f61", FATAL, Logger::CLUSTER)
+        << "cannot specify both '--agency.activate true' and "
+           "'--cluster.my-role': an agent cannot also be assigned a "
+           "separate cluster role";
+    FATAL_ERROR_EXIT();
+  }
+  if (agencyOptions.activated) {
+    return ServerState::ROLE_AGENT;
+  }
+  if (!clusterOptions.enableCluster) {
+    return ServerState::ROLE_SINGLE;
+  }
+  if (!clusterOptions.myRole.empty()) {
+    return ServerState::stringToRole(clusterOptions.myRole);
+  }
+  LOG_TOPIC("26795", FATAL, Logger::CLUSTER)
+      << "unable to determine server role: cluster is enabled via "
+         "'--cluster.agency-endpoint' but '--cluster.my-role' was not "
+         "specified";
+  FATAL_ERROR_EXIT();
+}
+
+void ArangodServer::addFeatures() {
   // Adding the Phases - these must come first and in this order
   addFeature<AgencyFeaturePhase>();
   auto& comm = addFeature<CommunicationFeaturePhase>();
@@ -89,94 +200,120 @@ void ArangodServer::addFeatures(int* ret) {
   addFeature<V8FeaturePhase>();
 #endif
 
-  // Adding the features - order matters for dependency resolution
-  // metrics::MetricsFeature must go first
   auto& metrics = addFeature<metrics::MetricsFeature>(
       LazyApplicationFeatureReference<QueryRegistryFeature>(*this),
       LazyApplicationFeatureReference<StatisticsFeature>(*this),
       LazyApplicationFeatureReference<DatabaseFeature>(*this),
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(*this),
-      LazyApplicationFeatureReference<ClusterFeature>(*this));
-  addFeature<metrics::ClusterMetricsFeature>();
-  addFeature<VersionFeature>();
-  addFeature<ActionFeature>();
-  addFeature<AgencyFeature>();
-  addFeature<ApiRecordingFeature>(_dataSourceRegistry, metrics);
+      LazyApplicationFeatureReference<ClusterFeature>(*this),
+      getOptions<metrics::MetricsOptionsProvider>());
+  addFeature<metrics::ClusterMetricsFeature>(
+      getOptions<metrics::ClusterMetricsOptionsProvider>());
+  addFeature<ActionFeature>(getOptions<ActionOptionsProvider>());
+  addFeature<ApiRecordingFeature>(_dataSourceRegistry, metrics,
+                                  getOptions<ApiRecordingOptionsProvider>());
   addFeature<AqlFeature>();
-  addFeature<async_registry::Feature>(_dataSourceRegistry);
-  addFeature<activities::Feature>(_dataSourceRegistry);
-  auto& authenticationFeature = addFeature<AuthenticationFeature>();
-
+  addFeature<async_registry::Feature>(
+      _dataSourceRegistry, getOptions<async_registry::OptionsProvider>());
+  addFeature<activities::Feature>(_dataSourceRegistry,
+                                  getOptions<activities::OptionsProvider>());
+  auto& authentication = addFeature<AuthenticationFeature>(
+      getOptions<AuthenticationOptionsProvider>());
 #ifdef TRI_HAVE_GETRLIMIT
-  addFeature<BumpFileDescriptorsFeature>("--server.descriptors-minimum");
+  addFeature<BumpFileDescriptorsFeature>(
+      getOptions<ServerBumpFileDescriptorsOptionsProvider>());
 #endif
-  addFeature<CacheOptionsFeature>();
-  auto& cacheOptions = getFeature<CacheOptionsFeature>();
+  auto& cacheOptionsFeature = addFeature<CacheOptionsFeature>(
+      getOptions<CacheFeatureOptionsProvider>());
   auto& sharedPRNGFeature = addFeature<SharedPRNGFeature>();
-  addFeature<CacheManagerFeature>(cacheOptions, sharedPRNGFeature.getPRNG());
-  addFeature<CheckVersionFeature>(ret, kNonServerFeatures);
-  auto& clusterFeature = addFeature<ClusterFeature>(metrics);
-  addFeature<CrashHandlerFeature>(_dumpManager);
-  auto& database = addFeature<DatabaseFeature>();
-  auto& clusterUpgradeFeature = addFeature<ClusterUpgradeFeature>(database);
-  addFeature<ConfigFeature>(std::string{_binaryName});
+  auto& cacheManager = addFeature<CacheManagerFeature>(
+      cacheOptionsFeature, sharedPRNGFeature.getPRNG());
+  auto& clusterFeature =
+      addFeature<ClusterFeature>(metrics, getOptions<ClusterOptionsProvider>());
+  addFeature<CrashHandlerFeature>(
+      _dumpManager, getOptions<crash_handler::CrashHandlerOptionsProvider>());
+  auto& database =
+      addFeature<DatabaseFeature>(getOptions<DatabaseOptionsProvider>());
+  auto& clusterUpgradeFeature = addFeature<ClusterUpgradeFeature>(
+      database, getOptions<upgrade::ClusterUpgradeOptionsProvider>());
+  addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());
 #ifdef USE_V8
   addFeature<ConsoleFeature>();
-  auto& v8DealerFeature = addFeature<V8DealerFeature>(metrics);
-  addFeature<V8PlatformFeature>();
-  addFeature<V8SecurityFeature>(AllowListStrictness::STRICT);
+  addFeature<V8PlatformFeature>(getOptions<V8PlatformOptionsProvider>());
+  addFeature<V8SecurityFeature>(AllowListStrictness::STRICT,
+                                getOptions<V8SecurityOptionsProvider>());
 #endif
   addFeature<CpuUsageFeature>();
-  addFeature<HttpEndpointProvider, EndpointFeature>();
+  auto& databasePath = addFeature<DatabasePathFeature>(
+      getOptions<DatabasePathOptionsProvider>());
+  auto& dumpLimits =
+      addFeature<DumpLimitsFeature>(getOptions<DumpLimitsOptionsProvider>());
+  addFeature<HttpEndpointProvider, EndpointFeature>(
+      getOptions<EndpointOptionsProvider>());
   auto& systemDatabaseFeature = addFeature<SystemDatabaseFeature>();
-  addFeature<BootstrapFeature>(clusterFeature, database, &systemDatabaseFeature,
-                               &clusterUpgradeFeature
-#ifdef USE_V8
-                               ,
-                               &v8DealerFeature
-#endif
-  );
   addFeature<EnvironmentFeature>();
-  addFeature<FileSystemFeature>();
+  addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
+  auto& flush = addFeature<FlushFeature>(metrics);
+  addFeature<FortuneFeature>(getOptions<fortune::FortuneOptionsProvider>());
 #ifdef USE_V8
-  addFeature<FoxxFeature>();
-  addFeature<FrontendFeature>();
+  addFeature<FoxxFeature>(getOptions<FoxxOptionsProvider>());
+  addFeature<FrontendFeature>(getOptions<FrontendOptionsProvider>());
 #endif
-  addFeature<GeneralServerFeature>(metrics);
+  addFeature<GeneralServerFeature>(metrics,
+                                   getOptions<GeneralServerOptionsProvider>(),
+                                   getOptions<LogApiOptionsProvider>());
   addFeature<GreetingsFeature>();
-  addFeature<InitDatabaseFeature>(kNonServerFeatures);
   addFeature<LanguageCheckFeature>();
-  addFeature<LanguageFeature>();
+  addFeature<LanguageFeature>(getOptions<LanguageOptionsProvider>());
   addFeature<TimeZoneFeature>();
   addFeature<LockfileFeature>();
-  addFeature<LogBufferFeature>(metrics);
-  addFeature<LoggerFeature>(true);
-  addFeature<MaintenanceFeature>(&clusterFeature);
+  addFeature<LogBufferFeature>(metrics, getOptions<LogBufferOptionsProvider>());
+  addFeature<LoggerFeature>(true, getOptions<LoggerOptionsProvider>());
+  addFeature<MaintenanceFeature>(&clusterFeature,
+                                 getOptions<MaintenanceOptionsProvider>());
   addFeature<MaxMapCountFeature>();
   auto& networkFeature =
-      addFeature<NetworkFeature>(metrics, network::ConnectionPool::Config{});
-  addFeature<RbacFeature>(authenticationFeature);
+      addFeature<NetworkFeature>(metrics, getOptions<NetworkOptionsProvider>());
   addFeature<NonceFeature>();
   addFeature<OptionsCheckFeature>();
-  addFeature<PrivilegeFeature>();
-  addFeature<QueryRegistryFeature>(metrics);
-  addFeature<RandomFeature>();
-  addFeature<ReplicationFeature>(comm, metrics);
-  addFeature<ReplicatedLogFeature>();
+  addFeature<PrivilegeFeature>(getOptions<PrivilegeOptionsProvider>());
+  addFeature<QueryRegistryFeature>(metrics,
+                                   getOptions<QueryRegistryOptionsProvider>());
+  addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
+  addFeature<ReplicationFeature>(comm, metrics,
+                                 getOptions<ReplicationOptionsProvider>());
+  auto& replicatedLogFeature = addFeature<ReplicatedLogFeature>(
+      getOptions<replication2::ReplicatedLogOptionsProvider>());
   addFeature<ReplicationMetricsFeature>(metrics);
-  addFeature<ReplicationTimeoutFeature>();
+  addFeature<ReplicationTimeoutFeature>(
+      getOptions<ReplicationTimeoutOptionsProvider>());
   auto& scheduler =
-      addFeature<SchedulerFeature>(metrics, sharedPRNGFeature.getPRNG());
-  addFeature<VectorIndexFeature>(database);
+      addFeature<SchedulerFeature>(metrics, sharedPRNGFeature.getPRNG(),
+                                   getOptions<SchedulerOptionsProvider>());
+  auto& vectorIndex = addFeature<VectorIndexFeature>(
+      database, getOptions<vector_index::OptionsProvider>());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  addFeature<ProcessEnvironmentFeature>(std::string{_binaryName});
+  addFeature<ProcessEnvironmentFeature>(
+      std::string{_binaryName},
+      getOptions<ProcessEnvironmentOptionsProvider>());
 #endif
 #ifdef USE_V8
-  addFeature<ScriptFeature>(ret);
+  addFeature<ScriptFeature>(_ret, getOptions<ScriptOptionsProvider>());
+  auto& v8DealerFeature = addFeature<V8DealerFeature>(
+      metrics, getOptions<V8DealerOptionsProvider>());
 #endif
-  addFeature<ServerFeature>(ret);
+  addFeature<BootstrapFeature>(
+      clusterFeature, database, &systemDatabaseFeature, &clusterUpgradeFeature
+#ifdef USE_V8
+      ,
+      &v8DealerFeature
+#endif
+      ,
+      getOptions<bootstrap::BootstrapOptionsProvider>());
+  addFeature<ServerFeature>(_ret, getOptions<ServerOptionsProvider>());
   addFeature<ServerIdFeature>();
-  addFeature<ServerSecurityFeature>();
+  addFeature<ServerSecurityFeature>(
+      getOptions<security::ServerSecurityOptionsProvider>());
   addFeature<ShardingFeature>();
   addFeature<ShellColorsFeature>();
 #ifdef USE_V8
@@ -188,33 +325,48 @@ void ArangodServer::addFeatures(int* ret) {
 #endif
   addFeature<SoftShutdownFeature>();
   addFeature<SslFeature>();
-  addFeature<StatisticsFeature>(metrics);
-  addFeature<TempFeature>(std::string{_binaryName});
-  addFeature<TtlFeature>();
-  addFeature<UpgradeFeature>(ret, kNonServerFeatures);
-  addFeature<transaction::ManagerFeature>(metrics);
+  addFeature<StatisticsFeature>(
+      metrics, getOptions<statistics::StatisticsOptionsProvider>());
+  addFeature<TempFeature>(std::string{_binaryName},
+                          getOptions<TempOptionsProvider>());
+  addFeature<TemporaryStorageFeature>(
+      databasePath, getOptions<TemporaryStorageOptionsProvider>());
+  addFeature<TtlFeature>(getOptions<TtlOptionsProvider>());
+  addFeature<transaction::ManagerFeature>(
+      metrics, getOptions<transaction::ManagerOptionsProvider>());
   addFeature<ViewTypesFeature>();
   auto& aqlFunctionFeature = addFeature<aql::AqlFunctionFeature>();
-  addFeature<aql::OptimizerRulesFeature>();
-  addFeature<aql::QueryInfoLoggerFeature>();
-  addFeature<RocksDBRecoveryManager>(database, database);
+  addFeature<aql::OptimizerRulesFeature>(
+      getOptions<aql::OptimizerRulesOptionsProvider>());
+  addFeature<aql::QueryInfoLoggerFeature>(
+      getOptions<aql::QueryInfoLoggerOptionsProvider>());
+  auto& rocksdbCacheRefill = addFeature<RocksDBIndexCacheRefillFeature>(
+      database, &clusterFeature, metrics,
+      getOptions<RocksDBIndexCacheRefillOptionsProvider>());
+  auto& rocksdbRecovery =
+      addFeature<RocksDBRecoveryManager>(database, database);
 #ifdef TRI_HAVE_GETRLIMIT
-  addFeature<FileDescriptorsFeature>(metrics);
+  addFeature<FileDescriptorsFeature>(
+      metrics, getOptions<file_descriptors::FileDescriptorsOptionsProvider>());
 #endif
 #ifdef ARANGODB_HAVE_FORK
-  addFeature<DaemonFeature>();
-  addFeature<SupervisorFeature>();
+  addFeature<DaemonFeature>(getOptions<DaemonOptionsProvider>());
+  addFeature<SupervisorFeature>(getOptions<SupervisorOptionsProvider>());
 #endif
 #ifdef USE_ENTERPRISE
-  addFeature<AuditFeature>();
-  addFeature<LicenseFeature>();
-  addFeature<RCloneFeature>();
-  addFeature<HotBackupFeature>();
-  addFeature<EncryptionFeature>();
-  addFeature<SslServerFeature, SslServerFeatureEE>();
+  addFeature<AuditFeature>(getOptions<AuditOptionsProvider>());
+  addFeature<LicenseFeature>(databasePath,
+                             getOptions<LicenseOptionsProvider>());
+  addFeature<RCloneFeature>(getOptions<RCloneOptionsProvider>());
+  addFeature<HotBackupFeature>(getOptions<HotBackupOptionsProvider>());
+  addFeature<EncryptionFeature>(getOptions<EncryptionOptionsProvider>());
+  addFeature<SslServerFeature, SslServerFeatureEE>(
+      getOptions<SslServerOptionsProvider>(),
+      getOptions<SslServerEEOptionsProvider>());
 #else
-  addFeature<SslServerFeature>();
+  addFeature<SslServerFeature>(getOptions<SslServerOptionsProvider>());
 #endif
+  addFeature<RbacFeature>(authentication);
   addFeature<iresearch::IResearchAnalyzerFeature>(
       iresearch::IResearchAnalyzerFeature::Dependencies{
           .databaseFeature = database,
@@ -224,69 +376,24 @@ void ArangodServer::addFeatures(int* ret) {
           .schedulerFeature = &scheduler,
           .aqlFunctionFeature = &aqlFunctionFeature,
       });
-  addFeature<iresearch::IResearchFeature>(metrics);
-  addFeature<ClusterEngine>(metrics);
-}
-
-void ArangodServer::addFeaturesWithOptionProvider() {
-  auto& metrics = getFeature<metrics::MetricsFeature>();
-  auto& database = getFeature<DatabaseFeature>();
-  auto& vectorIndex = getFeature<VectorIndexFeature>();
-  auto& scheduler = getFeature<SchedulerFeature>();
-  auto& rocksdbRecovery = getFeature<RocksDBRecoveryManager>();
-  auto& cacheManager = getFeature<CacheManagerFeature>();
-  auto& agency = getFeature<AgencyFeature>();
-  auto& clusterFeature = getFeature<ClusterFeature>();
-
-  // Add RocksDBIndexCacheRefillFeature
-  auto rocksdbCacheRefillOptions =
-      _optionProviders.getOptions<RocksDBIndexCacheRefillOptionsProvider>();
-  auto& rocksdbCacheRefill = addFeature<RocksDBIndexCacheRefillFeature>(
-      database, &clusterFeature, metrics, std::move(rocksdbCacheRefillOptions));
-
-  // Add RocksDBOptionFeature
-  auto rocksdbOptionFeatureOptions =
-      _optionProviders.getOptions<RocksDBOptionFeatureOptionsProvider>();
+  addFeature<iresearch::IResearchFeature>(
+      metrics, getOptions<iresearch::IResearchOptionsProvider>());
+  auto& agency = addFeature<AgencyFeature>(getOptions<AgencyOptionsProvider>());
+  addFeature<CheckVersionFeature>(
+      _ret, kNonServerFeatures,
+      getOptions<check_version::CheckVersionOptionsProvider>());
+  addFeature<InitDatabaseFeature>(kNonServerFeatures,
+                                  getOptions<InitDatabaseOptionsProvider>());
+  addFeature<UpgradeFeature>(_ret, kNonServerFeatures,
+                             getOptions<UpgradeOptionsProvider>());
   auto& rocksdbOption = addFeature<RocksDBOptionFeature>(
-      &agency, std::move(rocksdbOptionFeatureOptions));
-
-  // Add DatabasePathFeature
-  auto databasePathOptions =
-      _optionProviders.getOptions<DatabasePathOptionsProvider>();
-  auto& databasePath =
-      addFeature<DatabasePathFeature>(std::move(databasePathOptions));
-
-  // Add TemporaryStorageFeature
-  auto temporaryStorageOptions =
-      _optionProviders.getOptions<TemporaryStorageOptionsProvider>();
-  addFeature<TemporaryStorageFeature>(databasePath,
-                                      std::move(temporaryStorageOptions));
-
-  // Add DumpLimitsFeature
-  auto dumpLimitsOptions =
-      _optionProviders.getOptions<DumpLimitsOptionsProvider>();
-  auto& dumpLimits =
-      addFeature<DumpLimitsFeature>(std::move(dumpLimitsOptions));
-
-  // Add FlushFeature
-  auto flushOptions = _optionProviders.getOptions<FlushOptionsProvider>();
-  auto& flush = addFeature<FlushFeature>(metrics, std::move(flushOptions));
-
-  // Add RocksDBEngine
-  RocksDBEngineOptions rocksDBEngineOptions =
-      _optionProviders.getOptions<RocksDBEngineOptionsProvider>();
+      getOptions<RocksDBOptionFeatureOptionsProvider>());
+  addFeature<ClusterEngine>(clusterFeature, database, metrics);
   addFeature<RocksDBEngine>(
       rocksdbOption, metrics, databasePath, vectorIndex, flush, dumpLimits,
-      replication2::EnableReplication2 ? &getFeature<ReplicatedLogFeature>()
-                                       : nullptr,
+      replication2::EnableReplication2 ? &replicatedLogFeature : nullptr,
       scheduler, rocksdbRecovery, database, rocksdbCacheRefill, cacheManager,
-      agency, rocksDBEngineOptions);
-
-  // Add FortuneFeature
-  auto fortuneOptions =
-      _optionProviders.getOptions<fortune::FortuneOptionsProvider>();
-  addFeature<FortuneFeature>(std::move(fortuneOptions));
-
+      agency, getOptions<RocksDBEngineOptionsProvider>());
   addFeature<replication2::replicated_state::ReplicatedStateAppFeature>();
   addFeature<replication2::replicated_state::black_hole::
                  BlackHoleStateMachineFeature>();

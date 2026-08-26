@@ -45,7 +45,7 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/Events.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "VectorIndex/VectorIndexFeature.h"
+#include "VectorIndex/Feature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Indexes.h"
 
@@ -316,8 +316,7 @@ async<void> RestIndexHandler::getIndexes() {
               std::unordered_map<std::string, VectorIndexShardState> states;
               auto idx = coll->lookupIndex(
                   IndexId{basics::StringUtils::uint64(bareId)});
-              if (idx != nullptr &&
-                  idx->type() == Index::TRI_IDX_TYPE_VECTOR_INDEX) {
+              if (idx != nullptr && idx->type() == IndexType::Vector) {
                 // During ingestion the real index is swapped for a
                 // RocksDBBuilderIndex; unwrap to reach vector-specific state.
                 Index const* raw = idx.get();
@@ -741,7 +740,7 @@ futures::Future<ResultT<std::string>> RestIndexHandler::waitForVectorIndexReady(
     // state directly.
     auto idx = coll->lookupIndex(indexId);
     if (idx != nullptr) {
-      TRI_ASSERT(idx->type() == Index::TRI_IDX_TYPE_VECTOR_INDEX);
+      TRI_ASSERT(idx->type() == IndexType::Vector);
       auto* vecIdx = static_cast<RocksDBVectorIndex*>(idx.get());
       if (vecIdx->trainingState() == VectorIndexTrainingState::kUnusable) {
         auto msg = vecIdx->trainingError();

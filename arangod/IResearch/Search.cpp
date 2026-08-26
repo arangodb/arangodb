@@ -593,8 +593,7 @@ Result Search::appendVPackImpl(velocypack::Builder& build, Serialization ctx,
     // we may need to check the permissions of the underlying
     // collections
     auto const& execCtx = ExecContext::current();
-    bool const checkPermissions =
-        ctx == Serialization::Properties && !execCtx.isSuperuserOrDisabled();
+    bool const checkPermissions = ctx == Serialization::Properties;
 
     for (auto& [cid, handles] : _indexes) {
       for (auto& handle : handles) {
@@ -692,8 +691,8 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
       }
       return {TRI_ERROR_BAD_PARAMETER, "Cannot find collection"};
     }
-    if (auto const& ctx = ExecContext::current();
-        !ctx.isSuperuserOrDisabled()) {
+    {
+      auto const& ctx = ExecContext::current();
       if (auto r = ctx.canUseCollection(vocbase().name(), collection->name(),
                                         AccessLevel::Read);
           !r.ok()) {
@@ -719,7 +718,7 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
       return {TRI_ERROR_BAD_PARAMETER, "'index' should be a string"};
     }
     auto index = getIndex(*collection, indexSlice.stringView());
-    if (!index || index->type() != Index::TRI_IDX_TYPE_INVERTED_INDEX) {
+    if (!index || index->type() != IndexType::Inverted) {
       if (!isUserRequest) {
         continue;
       }

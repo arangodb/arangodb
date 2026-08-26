@@ -25,13 +25,15 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal');
-const sleep = internal.sleep;
 const _ = require('lodash');
 const tu = require('@arangodb/testutils/test-utils');
 const pu = require('@arangodb/testutils/process-utils');
 const fs = require('fs');
 const { sanHandler } = require('@arangodb/testutils/san-file-handler');
-const executeExternal = internal.executeExternal;
+const {
+  sleep,
+  executeExternal,
+  SetGlobalExecutionDeadlineTo } = internal;
 const { versionHas } = require("@arangodb/test-helper");
 const isCov = versionHas('coverage');
 const isSan = versionHas('tsan') || versionHas('aulsan');
@@ -741,9 +743,10 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
     'log.file': logFile,
     'log.level': ['warning', 'httpclient=debug', 'V8=debug'],
     'javascript.execute': [
-        fs.join(options.rtasource, 'test_data', 'makedata.js'),
-        fs.join(options.rtasource, 'test_data', 'checkdata.js'),
-        fs.join(options.rtasource, 'test_data', 'cleardata.js')
+      fs.join(options.rtasource, 'test_data', 'makedata.js'),
+      fs.join(options.rtasource, 'test_data', 'checkdata.js'),
+      fs.join(options.rtasource, 'test_data', 'waitdata.js'),
+      fs.join(options.rtasource, 'test_data', 'cleardata.js')
     ][writeReadClean],
     'server.force-json': options.forceJson,
   });
@@ -774,8 +777,14 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
     print(argv);
   }
   
-  let timeout = (options.isInstrumented) ? 60 * 30 : 60 * 15;
-  return pu.executeAndWait(pu.ARANGOSH_BIN, argv, options, 'arangosh', instanceManager.rootDir, options.coreCheck, timeout);
+  let timeout = (options.isInstrumented) ? 60 * 45 : 60 * 15;
+  SetGlobalExecutionDeadlineTo(timeout);
+  let ret = pu.executeAndWait(pu.ARANGOSH_BIN, argv, options, 'arangosh', instanceManager.rootDir, options.coreCheck, timeout);
+  timeout = SetGlobalExecutionDeadlineTo(0.0);
+  if (timeout) {
+    ret.status = false;
+  }
+  return ret;
 }
 function rtaWaitShardsInSync(options, instanceManager) {
   let args = Object.assign(makeArgsArangosh(options), {

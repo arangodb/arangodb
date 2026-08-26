@@ -55,8 +55,8 @@ TEST(ExecContextTest, superuser_requires_superuser_authmode) {
   // In the new API, isSuperuserOrDisabled() is true only for
   // AuthMode::Superuser (or AuthMode::Disabled). The old Type::Internal+RW/RW
   // maps to Superuser here.
-  auto ctx = ExecContextAccessor::make(AuthMode{AuthMode::Superuser{}}, false,
-                                       VocbasePtr{nullptr});
+  auto ctx = createSharedExecContext(AuthMode{AuthMode::Superuser{}}, false,
+                                     VocbasePtr{nullptr});
 
   EXPECT_TRUE(ctx->isSuperuserOrDisabled());
   EXPECT_TRUE(ctx->isSuperuser());
@@ -66,18 +66,16 @@ TEST(ExecContextTest, disabled_is_not_superuser_authmode) {
   // In the new API, isSuperuserOrDisabled() is true only for
   // AuthMode::Superuser (or AuthMode::Disabled). The old Type::Internal+RW/RW
   // maps to Superuser here.
-  FakeGeneralRequest fakeRequest;
-  auto ctx = ExecContextAccessor::make(
-      AuthMode{AuthMode::Disabled{"dummy", fakeRequest}}, false,
-      VocbasePtr{nullptr});
+  auto ctx = createSharedExecContext(AuthMode{AuthMode::Disabled{"dummy"}},
+                                     false, VocbasePtr{nullptr});
 
   EXPECT_TRUE(ctx->isSuperuserOrDisabled());
   EXPECT_FALSE(ctx->isSuperuser());
 }
 
-TEST(ExecContextTest, classic_ro_ro_is_not_superuser) {
+TEST(ExecContextTest, classic_rw_rw_is_not_superuser) {
   // "Normal" classic ExecContexts are not superuser or disabled:
-  auto cec = makeClassicExecContext("", "db", auth::Level::RO, auth::Level::RO);
+  auto cec = makeClassicExecContext("", "db", auth::Level::RW, auth::Level::RW);
 
   EXPECT_FALSE(cec.execContext->isSuperuserOrDisabled());
   EXPECT_FALSE(cec.execContext->isSuperuser());
@@ -88,8 +86,8 @@ TEST(ExecContextTest, classic_ro_ro_is_not_superuser) {
 TEST(ExecContextTest, canUseDatabase_superuser_grants_all_databases) {
   // AuthMode::Superuser grants access to any database at any level (the old
   // Type::Internal+WriteMeta/WriteMeta behaviour maps to this).
-  auto ctx = ExecContextAccessor::make(AuthMode{AuthMode::Superuser{}}, false,
-                                       VocbasePtr{nullptr});
+  auto ctx = createSharedExecContext(AuthMode{AuthMode::Superuser{}}, false,
+                                     VocbasePtr{nullptr});
 
   EXPECT_TRUE(ctx->canUseDatabase("anydb", DatabaseAccessLevel::Write).ok());
   EXPECT_TRUE(ctx->canUseDatabase("anotherdb", DatabaseAccessLevel::Read).ok());
@@ -119,12 +117,44 @@ TEST(ExecContextTest, canUseDatabase_same_db_uses_dbAuthLevel) {
       cec.execContext->canUseDatabase("mydb", DatabaseAccessLevel::Write).ok());
 }
 
+// --- canUseApiVersion ---
+
+TEST(ExecContextTest, canUseApiVersion_classic_grants_every_version) {
+  // Classic auth knows no per-identity API version restrictions: which
+  // versions exist is decided by the handler factory, not by permissions. So
+  // even an identity without any access grants may use any API version.
+  auto cec = makeClassicExecContext("user", "mydb", auth::Level::NONE,
+                                    auth::Level::NONE);
+
+  EXPECT_TRUE(cec.execContext->canUseApiVersion(0).ok());
+  EXPECT_TRUE(cec.execContext->canUseApiVersion(1).ok());
+}
+
+TEST(ExecContextTest, canUseApiVersion_superuser_grants_every_version) {
+  auto ctx = createSharedExecContext(AuthMode{AuthMode::Superuser{}}, false,
+                                     VocbasePtr{nullptr});
+
+  EXPECT_TRUE(ctx->canUseApiVersion(1).ok());
+}
+
+TEST(ExecContextTest, canUseApiVersion_unauthenticated_is_denied) {
+  auto ctx = createSharedExecContext(
+      AuthMode{AuthMode::Unauthenticated{"dummy"}}, false, VocbasePtr{nullptr});
+
+  auto const result = ctx->canUseApiVersion(1);
+  EXPECT_EQ(result.errorNumber(), TRI_ERROR_FORBIDDEN);
+  EXPECT_TRUE(result.errorMessage().find("API version '1'") !=
+              std::string_view::npos)
+      << result.errorMessage();
+}
+
 // --- Static superuser singleton ---
 
 TEST(ExecContextTest, superuser_singleton) {
   auto const& su = ExecContext::superuser();
 
   EXPECT_TRUE(su.isSuperuserOrDisabled());
+  EXPECT_TRUE(su.isSuperuser());
 }
 
 TEST(ExecContextTest, superuser_as_shared_returns_same_object) {
@@ -142,6 +172,7 @@ TEST(ExecContextTest, current_returns_superuser_when_no_context_set) {
   auto old = ExecContext::set(nullptr);
 
   EXPECT_TRUE(ExecContext::current().isSuperuserOrDisabled());
+  EXPECT_TRUE(ExecContext::current().isSuperuser());
   EXPECT_EQ(ExecContext::currentAsShared(), nullptr);
 
   ExecContext::set(old);
@@ -210,6 +241,7 @@ TEST(ExecContextTest, superuser_scope_sets_and_restores) {
     {
       ExecContextSuperuserScope su;
       EXPECT_TRUE(ExecContext::current().isSuperuserOrDisabled());
+      EXPECT_TRUE(ExecContext::current().isSuperuser());
     }
     EXPECT_EQ(ExecContext::current().user(), "regular");
   }
@@ -229,6 +261,7 @@ TEST(ExecContextTest, superuser_scope_false_is_noop) {
       ExecContextSuperuserScope noop(false);
       EXPECT_EQ(ExecContext::current().user(), "regular");
       EXPECT_FALSE(ExecContext::current().isSuperuserOrDisabled());
+      EXPECT_FALSE(ExecContext::current().isSuperuser());
     }
     EXPECT_EQ(ExecContext::current().user(), "regular");
   }

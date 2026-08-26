@@ -79,16 +79,14 @@ RestStatus RestAdminServerHandler::execute() {
   return RestStatus::DONE;
 }
 
-async<Result> RestAdminServerHandler::checkUserCanAccess() const {
+async<RestHandler::AuthenticationGrant>
+RestAdminServerHandler::checkUserAuthentication() const {
   auto const& suffixes = _request->suffixes();
   if (suffixes.size() == 1 && suffixes[0] == "availability") {
-    auto ec = _request->requestContext();
-    TRI_ASSERT(ec != nullptr);
-    ec->forceSuperuser();
-    co_return Result{};
+    co_return AuthenticationGrant::GRANTED_EARLY;
   }
 
-  co_return co_await RestBaseHandler::checkUserCanAccess();
+  co_return co_await RestBaseHandler::checkUserAuthentication();
 }
 
 void RestAdminServerHandler::writeModeResult(bool readOnly) {
@@ -152,6 +150,8 @@ void RestAdminServerHandler::handleAvailability() {
     return;
   }
 
+  ExecContextSuperuserScope scope;
+
   bool available = false;
   switch (ServerState::mode()) {
     case ServerState::Mode::DEFAULT: {
@@ -201,7 +201,8 @@ void RestAdminServerHandler::handleMode() {
     if (auto r = ExecContext::current().canUseAdminAction(
             auth::perms::AdminMaintenance{});
         r.fail()) {
-      generateError(r);
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                    r.errorMessage());
       return;
     }
 

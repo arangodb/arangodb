@@ -35,12 +35,12 @@
 #include "Agency/v8-agency.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
-#include "Basics/ArangoGlobalContext.h"
+#include "Basics/application-exit.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
@@ -53,8 +53,6 @@
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/IRegistry.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "V8Server/V8DealerOptionsProvider.h"
-#include "ProgramOptions/Section.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -64,6 +62,8 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Utilities/NameValidator.h"
+#include "Utils/ExecContext.h"
+#include "Utils/Thread.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/V8PlatformFeature.h"
 #include "V8/V8SecurityFeature.h"
@@ -92,7 +92,7 @@ namespace {
 class V8GcThread : public Thread {
  public:
   explicit V8GcThread(V8DealerFeature& dealer)
-      : Thread("V8GarbageCollector"),
+      : Thread("V8GarbageCollector", ExecContext::superuserAsShared()),
         _dealer(dealer),
         _lastGcStamp(static_cast<uint64_t>(TRI_microtime())) {}
 
@@ -156,78 +156,13 @@ V8DealerFeature::V8DealerFeature(
   startsAfter<ActionFeature>();
   startsAfter<V8PlatformFeature>();
   startsAfter<V8SecurityFeature>();
-}
-
-void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  V8DealerOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  ProgramOptions::ProcessingResult const& result = options->processingResult();
-
-  // a bit of duck typing here to check if we are an agent.
-  // the problem is that the server role may be still unclear in this early
-  // phase, so we are also looking for startup options that identify an agent
-  bool const isAgent =
-      (ServerState::instance()->getRole() ==
-       ServerState::RoleEnum::ROLE_AGENT) ||
-      (result.touched("agency.activate") &&
-       *(options->get<BooleanParameter>("agency.activate")->ptr));
-
-  // DBServer and Agent don't need JS. Agent role handled in AgencyFeature
-  if (!javascriptRequestedViaOptions(options) &&
-      (isAgent || ServerState::instance()->getRole() ==
-                      ServerState::RoleEnum::ROLE_DBSERVER)) {
-    // specifying --console requires JavaScript, so we can only turn it off
-    // if not requested
-    _options.enableJS = false;
-  }
 
   if (!_options.enableJS) {
     disable();
 
-    server()
-        .disableFeatures<V8PlatformFeature, ActionFeature, ScriptFeature,
-                         FoxxFeature, FrontendFeature>();
+    server.disableFeatures<V8PlatformFeature, ActionFeature, ScriptFeature,
+                           FoxxFeature, FrontendFeature>();
     return;
-  }
-
-  // check the startup path
-  if (_options.startupDirectory.empty()) {
-    LOG_TOPIC("6330a", FATAL, arangodb::Logger::V8)
-        << "no 'javascript.startup-directory' has been supplied, giving up";
-    FATAL_ERROR_EXIT();
-  }
-
-  // remove trailing / from path and set path
-  auto ctx = ArangoGlobalContext::CONTEXT;
-
-  if (ctx == nullptr) {
-    LOG_TOPIC("ae845", FATAL, arangodb::Logger::V8)
-        << "failed to get global context";
-    FATAL_ERROR_EXIT();
-  }
-
-  ctx->normalizePath(_options.startupDirectory, "javascript.startup-directory",
-                     true);
-  ctx->normalizePath(_options.moduleDirectories, "javascript.module-directory",
-                     false);
-
-  // check whether app-path was specified
-  if (_options.appPath.empty()) {
-    LOG_TOPIC("a161b", FATAL, arangodb::Logger::V8)
-        << "no value has been specified for --javascript.app-path";
-    FATAL_ERROR_EXIT();
-  }
-
-  // Tests if this path is either a directory (ok) or does not exist (we create
-  // it in ::start) If it is something else this will throw an error.
-  ctx->normalizePath(_options.appPath, "javascript.app-path", false);
-
-  // use a minimum of 1 second for GC
-  if (_options.gcFrequency < 1) {
-    _options.gcFrequency = 1;
   }
 }
 

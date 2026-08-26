@@ -55,8 +55,6 @@ class AuthenticationFeature final
       application_features::ApplicationServer& server);
   ~AuthenticationFeature();
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
   void stop() override final;
@@ -86,6 +84,9 @@ class AuthenticationFeature final
   double sessionTimeout() const { return _options.sessionTimeout; }
   double minimalJwtExpiryTime() const { return _options.minimalJwtExpiryTime; }
   double maximalJwtExpiryTime() const { return _options.maximalJwtExpiryTime; }
+  double maximalAccessTokenExpiryTime() const {
+    return _options.maximalAccessTokenExpiryTime;
+  }
 
   // load secrets from file(s)
   [[nodiscard]] Result loadJwtSecretsFromFile();
@@ -100,8 +101,6 @@ class AuthenticationFeature final
 
   /// load JWT secrets from folder
   [[nodiscard]] Result loadJwtSecretFolder();
-
-  static constexpr size_t kMaxSecretLength = 64;
 
   AuthenticationOptions _options;
   std::unique_ptr<auth::UserManager> _userManager;

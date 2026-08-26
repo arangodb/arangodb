@@ -103,6 +103,7 @@ add_library(arango_basic_utils STATIC
 
         # arango_lightweight
         Basics/ArangoGlobalContext.cpp
+        Basics/BasicThread.cpp
         Basics/CleanupFunctions.cpp
         Basics/Exceptions.cpp Basics/Exceptions.tpp Basics/Exceptions.h
         Basics/FileResult.cpp
@@ -121,7 +122,6 @@ add_library(arango_basic_utils STATIC
         Basics/StringHeap.cpp
         Basics/StringUtils.cpp
         Basics/TransparentStringHash.h
-        Basics/Thread.cpp
         Basics/UnshackledMutex.cpp
         Basics/conversions.cpp
         Basics/debugging.cpp
@@ -204,7 +204,6 @@ add_library(arango_basic_features STATIC
         ApplicationFeatures/CommunicationFeaturePhase.cpp
         ApplicationFeatures/ConfigFeature.cpp
         ApplicationFeatures/ConfigOptionsProvider.cpp
-        ApplicationFeatures/FeatureOptionProviderContainer.cpp
         ApplicationFeatures/FileSystemFeature.cpp
         ApplicationFeatures/FileSystemOptionsProvider.cpp
         ApplicationFeatures/GreetingsFeature.cpp
@@ -214,8 +213,6 @@ add_library(arango_basic_features STATIC
         ApplicationFeatures/ShutdownFeature.cpp
         ApplicationFeatures/TempFeature.cpp
         ApplicationFeatures/TempOptionsProvider.cpp
-        ApplicationFeatures/VersionFeature.cpp
-        ApplicationFeatures/VersionOptionsProvider.cpp
         ApplicationFeatures/ProcessEnvironmentFeature.cpp
         ApplicationFeatures/ProcessEnvironmentOptionsProvider.cpp
 )

@@ -42,8 +42,8 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void ClientOptionsProvider::declareOptions(std::shared_ptr<ProgramOptions> opts,
-                                           ClientFeatureOptions& options) {
+void ClientOptionsProvider::declareOptionsImpl(
+    std::shared_ptr<ProgramOptions> opts, ClientFeatureOptions& options) {
   opts->addSection("server", "server connection");
 
   opts->addOption("--server.database",
@@ -183,17 +183,18 @@ received by an ArangoDB server.)");
                   "transparently compressed when sending them to the server.",
                   new UInt64Parameter(&options.compressRequestThreshold))
       .setIntroducedIn(31200)
-      .setLongDescription(
-          R"(Automatically compress outgoing HTTP requests
-with the deflate compression format. Compression will only happen for
-HTTP/1.1 and HTTP/2 connections, if the size of the uncompressed request
-body exceeds the threshold value controlled by this startup option,
-and if the request body size after compression is less than the original
-request body size.
-Using the value 0 disables the automatic request compression.)");
+      .setLongDescription(R"(Automatically compress outgoing HTTP requests
+with the deflate compression format.
+
+Compression only happens for HTTP/1.1 and HTTP/2 connections, if the size of the
+uncompressed request body exceeds the threshold value controlled by this
+startup option, and if the request body size after compression is less than the
+original request body size.
+
+Using the value `0` disables the automatic request compression.)");
 }
 
-void ClientOptionsProvider::validateOptions(
+void ClientOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, ClientFeatureOptions& options) {
   if (options.sslProtocol == SslProtocol::SSL_V2) {
     LOG_TOPIC("64f4f", FATAL, arangodb::Logger::SSL)

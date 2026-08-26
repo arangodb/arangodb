@@ -40,7 +40,7 @@ class RestUsersHandler : public arangodb::RestBaseHandler {
   RestStatus execute() override;
 
  protected:
-  async<Result> checkUserCanAccess() const override;
+  async<Result> checkDatabaseAccess() const override;
 
  private:
   // helper to generate a compliant response for individual user requests

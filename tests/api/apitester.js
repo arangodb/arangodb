@@ -352,19 +352,60 @@ function centerStr(s, width) {
   return ' '.repeat(left) + s + ' '.repeat(right);
 }
 
-// Column widths (matching the Rust implementation):
-//   regular columns  – 8-char content → "| <8chars> " = 11 chars total
-//   admin columns    – 10-char content → "| <10chars> " = 13 chars total
+/** Base column widths (matching the Rust implementation), widened as needed
+ *  to fit an "(errorNum)" suffix – see printTable(). */
+const REGULAR_MIN_WIDTH = 8;
+const ADMIN_MIN_WIDTH   = 10;
 
-function colCell(content)      { return `| ${content.padEnd(8)} `; }
-function codeCell(code)        { return `| ${centerStr(String(code), 8)} `; }
-function adminColCell(content) { return `| ${content.padEnd(10)} `; }
-function adminCodeCell(code)   { return `| ${centerStr(String(code), 10)} `; }
+function cell(content, width) { return `| ${centerStr(String(content), width)} `; }
 
-const COLL_SEP        = '----------------------|----------|----------|----------|----------|';
-const LEVEL_SEP       = '|----------|----------|----------|----------|';
-const ADMIN_SEP       = '|------------|------------|------------|------------|';
-const ADMIN_SEP_SUPER = '|------------|------------|------------|------------|------------|';
+/**
+ * Format the "status" cell for a response: the HTTP status code, plus the
+ * ArangoDB errorNum in brackets, e.g. "200 (  11)". The errorNum is always
+ * padded to 4 characters so that the column spacing never shifts between
+ * different error codes, making diffs easier to read. When the body is not
+ * a JSON error response (error !== true) or has no errorNum, "   0" is used.
+ */
+function formatStatusCell(resp) {
+  const b = resp.body;
+  const errorNum = (b && typeof b === 'object' && b.error === true && b.errorNum) ? b.errorNum : 0;
+  return `${resp.status} (${String(errorNum).padStart(4, ' ')})`;
+}
+
+/** Build a '|---|---|...' separator line for the given column widths. */
+function buildSeparator(colWidths, leadingWidth = 0) {
+  let s = leadingWidth > 0 ? '-'.repeat(leadingWidth) : '';
+  for (const w of colWidths) {
+    s += '|' + '-'.repeat(w + 2);
+  }
+  return s + '|';
+}
+
+/**
+ * Print a table whose column width is chosen wide enough to fit every
+ * header label and every cell value (so "404 (1203)" style entries still
+ * line up neatly), falling back to `minWidth` when everything is short.
+ *
+ * rows: [{ label?: string, cells: string[] }, ...]
+ * leadingWidth: width reserved for the row-label column (0 = none).
+ */
+function printTable({ headerLabels, minWidth, rows, leadingWidth = 0 }) {
+  let width = minWidth;
+  for (const lbl of headerLabels) width = Math.max(width, lbl.length);
+  for (const row of rows) {
+    for (const c of row.cells) width = Math.max(width, String(c).length);
+  }
+
+  const headerLine = (leadingWidth > 0 ? ' '.repeat(leadingWidth) : '')
+    + headerLabels.map(l => cell(l, width)).join('') + '|';
+  console.log(headerLine);
+  console.log(buildSeparator(new Array(headerLabels.length).fill(width), leadingWidth));
+
+  for (const row of rows) {
+    const rowLabel = leadingWidth > 0 ? (row.label || '').padEnd(leadingWidth) : '';
+    console.log(rowLabel + row.cells.map(c => cell(c, width)).join('') + '|');
+  }
+}
 
 // ─── Setup / Teardown ────────────────────────────────────────────────────────
 
@@ -632,7 +673,9 @@ function resolveDeep(value, ctx) {
 
 /**
  * Run a collection-level test.
- * Matrix: rows = COLL × wildcard (16 rows), columns = DB level (4 cols).
+ * Matrix: rows = COLL × wildcard (16 rows), columns = DB level (4 cols) plus
+ * a trailing "no auth" column that sends the request with no Authorization
+ * header at all.
  * User name = <DB><WC><COLL>  (e.g. "UNR"), password == username.
  */
 async function runCollectionTest(endpoint, superuserToken, test) {
@@ -643,15 +686,13 @@ async function runCollectionTest(endpoint, superuserToken, test) {
   console.log(`${method} ${path}`);
   if (Object.keys(headers).length > 0) console.log(JSON.stringify(headers));
 
-  const hdr = ' '.repeat(22)
-    + colCell('DB undef') + colCell('DB none') + colCell('DB ro') + colCell('DB rw') + '|';
-  console.log(hdr);
-  console.log(COLL_SEP);
+  const headerLabels = ['DB undef', 'DB none', 'DB ro', 'DB rw', 'no auth'];
+  const rows = [];
 
   for (const coll of LEVELS) {
     for (const wc of LEVELS) {
       const label = `COLL ${LEVEL_LABEL[coll]}, * ${LEVEL_LABEL[wc]}`;
-      let row = label.padEnd(22);
+      const cells = [];
 
       for (const db of LEVELS) {
         const username = `${db}${wc}${coll}`;
@@ -663,7 +704,7 @@ async function runCollectionTest(endpoint, superuserToken, test) {
 
         if (ctx.data && ctx.data.skipTest === true) {
           ctx.data = undefined;
-          row += codeCell('SKIP');
+          cells.push('SKIP');
           continue;
         }
 
@@ -682,18 +723,45 @@ async function runCollectionTest(endpoint, superuserToken, test) {
         ctx.data = undefined;
         ctx.response = undefined;
 
-        row += codeCell(resp.status);
+        cells.push(formatStatusCell(resp));
       }
 
-      row += '|';
-      console.log(row);
+      // Unauthenticated request (no Authorization header at all).
+      if (setup) {
+        ctx.data = await runPhase(setup, ctx, 'setup', name);
+      }
+
+      if (ctx.data && ctx.data.skipTest === true) {
+        ctx.data = undefined;
+        cells.push('SKIP');
+      } else {
+        const resolvedPath    = resolveString(path, ctx);
+        const resolvedBody    = resolveDeep(body, ctx);
+        const resolvedHeaders = resolveDeep(headers, ctx);
+        const noAuthResp = await httpRequest(endpoint, method, resolvedPath, resolvedBody, resolvedHeaders);
+
+        ctx.response = noAuthResp;
+        if (teardown) {
+          await runPhase(teardown, ctx, 'teardown', name);
+        }
+        ctx.data = undefined;
+        ctx.response = undefined;
+
+        cells.push(formatStatusCell(noAuthResp));
+      }
+
+      rows.push({ label, cells });
     }
   }
+
+  printTable({ headerLabels, minWidth: REGULAR_MIN_WIDTH, rows, leadingWidth: 22 });
 }
 
 /**
  * Run a database-level test.
- * Single row with 4 columns (DB level); uses users XUU (wildcard/coll = undef).
+ * Single row with 4 columns (DB level) plus a trailing "no auth" column that
+ * sends the request with no Authorization header at all; uses users XUU
+ * (wildcard/coll = undef).
  */
 async function runDatabaseTest(endpoint, superuserToken, test) {
   const { name, method, path, body = null, headers = {}, setup, teardown } = test;
@@ -703,11 +771,9 @@ async function runDatabaseTest(endpoint, superuserToken, test) {
   console.log(`${method} ${path}`);
   if (Object.keys(headers).length > 0) console.log(JSON.stringify(headers));
 
-  const hdr = colCell('DB undef') + colCell('DB none') + colCell('DB ro') + colCell('DB rw') + '|';
-  console.log(hdr);
-  console.log(LEVEL_SEP);
+  const headerLabels = ['DB undef', 'DB none', 'DB ro', 'DB rw', 'no auth'];
+  const cells = [];
 
-  let row = '';
   for (const db of LEVELS) {
     const username = `${db}UU`;
     const authHeader = `Basic ${Buffer.from(`${username}:${username}`).toString('base64')}`;
@@ -718,7 +784,7 @@ async function runDatabaseTest(endpoint, superuserToken, test) {
 
     if (ctx.data && ctx.data.skipTest === true) {
       ctx.data = undefined;
-      row += codeCell('SKIP');
+      cells.push('SKIP');
       continue;
     }
 
@@ -737,16 +803,41 @@ async function runDatabaseTest(endpoint, superuserToken, test) {
     ctx.data = undefined;
     ctx.response = undefined;
 
-    row += codeCell(resp.status);
+    cells.push(formatStatusCell(resp));
   }
-  row += '|';
-  console.log(row);
+
+  // Unauthenticated request (no Authorization header at all).
+  if (setup) {
+    ctx.data = await runPhase(setup, ctx, 'setup', name);
+  }
+
+  if (ctx.data && ctx.data.skipTest === true) {
+    ctx.data = undefined;
+    cells.push('SKIP');
+  } else {
+    const resolvedPath    = resolveString(path, ctx);
+    const resolvedBody    = resolveDeep(body, ctx);
+    const resolvedHeaders = resolveDeep(headers, ctx);
+    const noAuthResp = await httpRequest(endpoint, method, resolvedPath, resolvedBody, resolvedHeaders);
+
+    ctx.response = noAuthResp;
+    if (teardown) {
+      await runPhase(teardown, ctx, 'teardown', name);
+    }
+    ctx.data = undefined;
+    ctx.response = undefined;
+
+    cells.push(formatStatusCell(noAuthResp));
+  }
+
+  printTable({ headerLabels, minWidth: REGULAR_MIN_WIDTH, rows: [{ cells }] });
 }
 
 /**
  * Run an admin test.
- * Columns: AU / AN / AR / AW (users with _system db access undef/none/ro/rw)
- * plus a final superuser column (JWT, no user restrictions).
+ * Columns: AU / AN / AR / AW (users with _system db access undef/none/ro/rw),
+ * a superuser column (JWT, no user restrictions), and a final "no auth"
+ * column that sends the request with no Authorization header at all.
  */
 async function runAdminTest(endpoint, superuserToken, test) {
   const { name, method, path, body = null, headers = {}, setup, teardown } = test;
@@ -756,16 +847,8 @@ async function runAdminTest(endpoint, superuserToken, test) {
   console.log(`${method} ${path}`);
   if (Object.keys(headers).length > 0) console.log(JSON.stringify(headers));
 
-  const hdr = adminColCell('_sys undef')
-    + adminColCell('_sys none')
-    + adminColCell('_sys ro')
-    + adminColCell('_sys rw')
-    + adminColCell('superuser')
-    + '|';
-  console.log(hdr);
-  console.log(ADMIN_SEP_SUPER);
-
-  let row = '';
+  const headerLabels = ['_sys undef', '_sys none', '_sys ro', '_sys rw', 'superuser', 'no auth'];
+  const cells = [];
 
   // Four named admin users
   for (const username of ['AU', 'AN', 'AR', 'AW']) {
@@ -777,7 +860,7 @@ async function runAdminTest(endpoint, superuserToken, test) {
 
     if (ctx.data && ctx.data.skipTest === true) {
       ctx.data = undefined;
-      row += adminCodeCell('SKIP');
+      cells.push('SKIP');
       continue;
     }
 
@@ -796,7 +879,7 @@ async function runAdminTest(endpoint, superuserToken, test) {
     ctx.data = undefined;
     ctx.response = undefined;
 
-    row += adminCodeCell(resp.status);
+    cells.push(formatStatusCell(resp));
   }
 
   // Superuser column
@@ -806,7 +889,7 @@ async function runAdminTest(endpoint, superuserToken, test) {
 
   if (ctx.data && ctx.data.skipTest === true) {
     ctx.data = undefined;
-    row += adminCodeCell('SKIP') + '|';
+    cells.push('SKIP');
   } else {
     const resolvedPath    = resolveString(path, ctx);
     const resolvedBody    = resolveDeep(body, ctx);
@@ -823,9 +906,34 @@ async function runAdminTest(endpoint, superuserToken, test) {
     ctx.data = undefined;
     ctx.response = undefined;
 
-    row += adminCodeCell(suResp.status) + '|';
+    cells.push(formatStatusCell(suResp));
   }
-  console.log(row);
+
+  // Unauthenticated request (no Authorization header at all).
+  if (setup) {
+    ctx.data = await runPhase(setup, ctx, 'setup', name);
+  }
+
+  if (ctx.data && ctx.data.skipTest === true) {
+    ctx.data = undefined;
+    cells.push('SKIP');
+  } else {
+    const resolvedPath    = resolveString(path, ctx);
+    const resolvedBody    = resolveDeep(body, ctx);
+    const resolvedHeaders = resolveDeep(headers, ctx);
+    const noAuthResp = await httpRequest(endpoint, method, resolvedPath, resolvedBody, resolvedHeaders);
+
+    ctx.response = noAuthResp;
+    if (teardown) {
+      await runPhase(teardown, ctx, 'teardown', name);
+    }
+    ctx.data = undefined;
+    ctx.response = undefined;
+
+    cells.push(formatStatusCell(noAuthResp));
+  }
+
+  printTable({ headerLabels, minWidth: ADMIN_MIN_WIDTH, rows: [{ cells }] });
 }
 
 /**

@@ -336,36 +336,15 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void addV8Functions();
 #endif
 
-  /// @brief Add engine-specific REST handlers
-  virtual void addRestHandlers(rest::RestHandlerFactory& handlerFactory);
-
   // replication
   virtual void cleanupReplicationContexts() = 0;
-
-  virtual velocypack::Builder getReplicationApplierConfiguration(
-      TRI_vocbase_t& vocbase, ErrorCode& status) = 0;
-  virtual arangodb::velocypack::Builder getReplicationApplierConfiguration(
-      ErrorCode&) = 0;
-
-  virtual ErrorCode removeReplicationApplierConfiguration(
-      TRI_vocbase_t& vocbase) = 0;
-  virtual ErrorCode removeReplicationApplierConfiguration() = 0;
-
-  virtual ErrorCode saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                                        velocypack::Slice slice,
-                                                        bool doSync) = 0;
-  virtual ErrorCode saveReplicationApplierConfiguration(velocypack::Slice slice,
-                                                        bool doSync) = 0;
 
   virtual Result handleSyncKeys(DatabaseInitialSyncer& syncer,
                                 LogicalCollection& col,
                                 std::string const& keysId) = 0;
   virtual Result createLoggerState(TRI_vocbase_t* vocbase,
                                    velocypack::Builder& builder) = 0;
-  virtual Result createTickRanges(velocypack::Builder& builder) = 0;
-  virtual Result firstTick(uint64_t& tick) = 0;
-  virtual Result lastLogger(TRI_vocbase_t& vocbase, uint64_t tickStart,
-                            uint64_t tickEnd, velocypack::Builder& builder) = 0;
+
   virtual WalAccess const* walAccess() const = 0;
 
   virtual void getCapabilities(velocypack::Builder& builder) const;
@@ -391,6 +370,10 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   TransactionStatistics& transactionStatistics() noexcept;
   TransactionStatistics const& transactionStatistics() const noexcept;
+
+#if USE_ENTERPRISE
+  virtual bool isEncryptionEnabled() const { return false; }
+#endif
 
  protected:
   void initTransactionStatistics(metrics::IRegistry& metrics);

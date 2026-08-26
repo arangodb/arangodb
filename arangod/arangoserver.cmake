@@ -1,296 +1,57 @@
-add_library(arangoserver STATIC
-  Actions/ActionFeature.cpp
-  Actions/ActionOptionsProvider.cpp
-  Actions/RestActionHandler.cpp
-  Actions/actions.cpp
-  Auth/AuthMode.cpp Auth/AuthMode.h
-  Auth/Common.cpp
-  Auth/Permissions.cpp Auth/Permissions.h
-  Auth/TokenCache.cpp
-  Auth/User.cpp
-  Auth/UserManagerBase.cpp
-  Auth/UserManagerImpl.cpp
-  Auth/Rbac/Backend.cpp Auth/Rbac/Backend.h
-  Auth/Rbac/BackendImpl.cpp Auth/Rbac/BackendImpl.h
-  Auth/Rbac/RbacFeature.cpp Auth/Rbac/RbacFeature.h
-  Auth/Rbac/Service.cpp Auth/Rbac/Service.h
-  Auth/Rbac/ServiceImpl.cpp Auth/Rbac/ServiceImpl.h
-  Cluster/Action.cpp
-  Cluster/ActionBase.cpp
-  Cluster/ActionDescription.cpp
-  Cluster/AgencyCache.cpp
-  Cluster/AgencyCallback.cpp
-  Cluster/AgencyCallbackRegistry.cpp
-  Cluster/AutoRebalance.cpp
-  Cluster/ClusterCollectionCreationInfo.cpp
-  Cluster/ClusterFeature.cpp
-  Cluster/ClusterOptionsProvider.cpp
-  Cluster/ClusterHelpers.cpp
-  Cluster/ClusterInfo.cpp
-  Cluster/ClusterTrxMethods.cpp
-  Cluster/ClusterTypes.cpp
-  Cluster/ClusterUpgradeFeature.cpp
-  Cluster/ClusterUpgradeOptionsProvider.cpp
-  Cluster/CollectionInfoCurrent.cpp
-  Cluster/CreateCollection.cpp
-  Cluster/CreateDatabase.cpp
-  Cluster/DBServerAgencySync.cpp
-  Cluster/DropCollection.cpp
-  Cluster/DropDatabase.cpp
-  Cluster/DropIndex.cpp
-  Cluster/EnsureIndex.cpp
-  Cluster/FollowerInfo.cpp
-  Cluster/HeartbeatThread.cpp
-  Cluster/Maintenance.cpp
-  Cluster/MaintenanceFeature.cpp
-  Cluster/MaintenanceOptionsProvider.cpp
-  Cluster/MaintenanceRestHandler.cpp
-  Cluster/MaintenanceWorker.cpp
-  Cluster/RebootTracker.cpp
-  Cluster/ReplicationTimeoutFeature.cpp
-  Cluster/ReplicationTimeoutOptionsProvider.cpp
-  Cluster/ResignShardLeadership.cpp
-  Cluster/RestAgencyCallbacksHandler.cpp
-  Cluster/RestClusterHandler.cpp
-  Cluster/ServerDefaults.cpp
-  Cluster/ServerState.cpp
-  Cluster/SynchronizeShard.cpp
-  Cluster/TakeoverShardLeadership.cpp
-  Cluster/UpdateCollection.cpp
-  Cluster/UpdateReplicatedLogAction.cpp
-  FeaturePhases/AgencyFeaturePhase.cpp
-  FeaturePhases/AqlFeaturePhase.cpp
-  FeaturePhases/BasicFeaturePhaseServer.cpp
-  FeaturePhases/ClusterFeaturePhase.cpp
-  FeaturePhases/DatabaseFeaturePhase.cpp
-  FeaturePhases/FinalFeaturePhase.cpp
-  FeaturePhases/ServerFeaturePhase.cpp
-  GeneralServer/Acceptor.cpp
-  GeneralServer/AcceptorTcp.cpp
-  GeneralServer/AcceptorUnixDomain.cpp
-  GeneralServer/AsyncJobManager.cpp
-  GeneralServer/AuthenticationFeature.cpp
-  GeneralServer/AuthenticationOptionsProvider.cpp
-  GeneralServer/CommTask.cpp
-  GeneralServer/GeneralCommTask.cpp
-  GeneralServer/GeneralServer.cpp
-  GeneralServer/GeneralServerFeature.cpp
-  GeneralServer/GeneralServerOptionsProvider.cpp
-  GeneralServer/GeneralServerOptions.cpp
-  GeneralServer/H2CommTask.cpp
-  GeneralServer/HttpCommTask.cpp
-  GeneralServer/IoContext.cpp
-  GeneralServer/RequestLane.cpp
-  GeneralServer/RestHandler.cpp
-  GeneralServer/RestHandlerFactory.cpp
-  GeneralServer/ServerSecurityFeature.cpp
-  GeneralServer/ServerSecurityOptionsProvider.cpp
-  GeneralServer/SslServerFeature.cpp
-  GeneralServer/SslServerOptionsProvider.cpp
-  RestHandler/RestAccessTokenHandler.cpp
-  RestHandler/RestAdminClusterHandler.cpp
-  RestHandler/RestAdminDatabaseHandler.cpp
-  RestHandler/RestAdminDeploymentHandler.cpp
-  RestHandler/RestAdminLogHandler.cpp
-  RestHandler/RestAdminServerHandler.cpp
-  RestHandler/RestAdminStatisticsHandler.cpp
-  RestHandler/RestAqlFunctionsHandler.cpp
-  RestHandler/RestAuthHandler.cpp
-  RestHandler/RestAuthReloadHandler.cpp
-  RestHandler/RestBaseHandler.cpp
-  RestHandler/RestCompactHandler.cpp
-  RestHandler/RestCursorHandler.cpp
-  RestHandler/RestDatabaseHandler.cpp
-  RestHandler/RestDebugHandler.cpp
-  RestHandler/RestDocumentHandler.cpp
-  RestHandler/RestDumpHandler.cpp
-  RestHandler/RestEdgesHandler.cpp
-  RestHandler/RestEndpointHandler.cpp
-  RestHandler/RestEngineHandler.cpp
-  RestHandler/RestExplainHandler.cpp
-  RestHandler/RestImportHandler.cpp
-  RestHandler/RestIndexHandler.cpp
-  RestHandler/RestJobHandler.cpp
-  RestHandler/RestKeyGeneratorsHandler.cpp
-  RestHandler/RestLicenseHandler.cpp
-  RestHandler/RestOptionsBaseHandler.cpp
-  RestHandler/RestOptionsDescriptionHandler.cpp
-  RestHandler/RestOptionsHandler.cpp
-  RestHandler/RestPublicOptionsHandler.cpp
-  RestHandler/RestQueryCacheHandler.cpp
-  RestHandler/RestQueryHandler.cpp
-  RestHandler/RestQueryPlanCacheHandler.cpp
-  RestHandler/RestShutdownHandler.cpp
-  RestHandler/RestSimpleHandler.cpp
-  RestHandler/RestSimpleQueryHandler.cpp
-  RestHandler/RestStatusHandler.cpp
-  RestHandler/RestSupervisionStateHandler.cpp
-  RestHandler/RestSupportInfoHandler.cpp
-  RestHandler/RestSystemReportHandler.cpp
-  RestHandler/RestTimeHandler.cpp
-  RestHandler/RestTransactionHandler.cpp
-  RestHandler/RestTtlHandler.cpp
-  RestHandler/RestUploadHandler.cpp
-  RestHandler/RestUsersHandler.cpp
-  RestHandler/RestVersionHandler.cpp
-  RestHandler/RestOpenApiHandler.cpp
-  RestHandler/RestViewHandler.cpp
-  RestHandler/RestVocbaseBaseHandler.cpp
-  RestHandler/RestWalAccessHandler.cpp
-  RestServer/ArangodServer.cpp
-  RestServer/AqlFeature.cpp
-  RestServer/BootstrapFeature.cpp
-  RestServer/BootstrapOptionsProvider.cpp
-  RestServer/CheckVersionFeature.cpp
-  RestServer/CheckVersionOptionsProvider.cpp
-  RestServer/CrashHandlerFeature.cpp
-  RestServer/CrashHandlerOptionsProvider.cpp
-  RestServer/CpuUsageFeature.cpp
-  RestServer/DaemonFeature.cpp
-  RestServer/DaemonOptionsProvider.cpp
-  RestServer/DatabaseFeature.cpp
-  RestServer/DatabaseOptionsProvider.cpp
-  RestServer/DatabasePathFeature.cpp
-  RestServer/DatabasePathOptionsProvider.cpp
-  RestServer/DumpLimitsFeature.cpp
-  RestServer/DumpLimitsFeatureOptions.cpp
-  RestServer/DumpLimitsOptionsProvider.cpp
-  RestServer/EndpointFeature.cpp
-  RestServer/EndpointFeatureOptions.cpp
-  RestServer/EndpointOptionsProvider.cpp
-  RestServer/EnvironmentFeature.cpp
-  RestServer/FileDescriptorsFeature.cpp
-  RestServer/FileDescriptorsOptionsProvider.cpp
-  RestServer/FlushFeature.cpp
-  RestServer/FlushOptionsProvider.cpp
-  RestServer/FortuneFeature.cpp
-  RestServer/FortuneOptionsProvider.cpp
-  RestServer/IOHeartbeatThread.cpp
-  RestServer/InitDatabaseFeature.cpp
-  RestServer/InitDatabaseOptionsProvider.cpp
-  RestServer/LanguageCheckFeature.cpp
-  RestServer/LockfileFeature.cpp
-  RestServer/LogBufferFeature.cpp
-  RestServer/LogBufferOptionsProvider.cpp
-  RestServer/MaxMapCountFeature.cpp
-  RestServer/MaxMapCountOptionsProvider.cpp
-  RestServer/NonceFeature.cpp
-  RestServer/NonceOptionsProvider.cpp
-  RestServer/ApiRecordingFeature.cpp
-  RestServer/ApiRecordingOptionsProvider.cpp
-  RestServer/PrivilegeFeature.cpp
-  RestServer/PrivilegeOptionsProvider.cpp
-  RestServer/QueryRegistryFeature.cpp
-  RestServer/QueryRegistryFeatureOptions.cpp
-  RestServer/QueryRegistryOptionsProvider.cpp
-  RestServer/ServerFeature.cpp
-  RestServer/ServerOptionsProvider.cpp
-  RestServer/ServerIdFeature.cpp
-  RestServer/SharedPRNGFeature.cpp
-  RestServer/SoftShutdownFeature.cpp
-  RestServer/SupervisorFeature.cpp
-  RestServer/SupervisorOptionsProvider.cpp
-  RestServer/SystemDatabaseFeature.cpp
-  RestServer/TemporaryStorageFeature.cpp
-  RestServer/TemporaryStorageOptionsProvider.cpp
-  RestServer/TimeZoneFeature.cpp
-  RestServer/TtlFeature.cpp
-  RestServer/TtlOptionsProvider.cpp
-  RestServer/TtlProperties.cpp
-  RestServer/UpgradeFeature.cpp
-  RestServer/UpgradeOptionsProvider.cpp
-  VectorIndex/VectorIndexFeature.cpp
-  VectorIndex/VectorIndexBuildManager.cpp
-  VectorIndex/VectorIndexOptionsProvider.cpp
-  VectorIndex/VectorIndexTrainingSampler.cpp
-  RestServer/ViewTypesFeature.cpp
-  Sharding/ShardDistributionReporter.cpp
-  Sharding/ShardingFeature.cpp
-  Sharding/ShardingInfo.cpp
-  Sharding/ShardingStrategy.cpp
-  Sharding/ShardingStrategyDefault.cpp
-  Statistics/ConnectionStatistics.cpp
-  Statistics/Descriptions.cpp
-  Statistics/RequestStatistics.cpp
-  Statistics/StatisticsFeature.cpp
-  Statistics/StatisticsWorker.cpp
-  Statistics/StatisticsOptionsProvider.cpp
-  Transaction/BatchOptions.cpp
-  Transaction/ClusterUtils.cpp
-  Transaction/Context.cpp
-  Transaction/CountCache.cpp
-  Transaction/Helpers.cpp
-  Transaction/Hints.cpp
-  Transaction/History.cpp
-  Transaction/IndexesSnapshot.cpp
-  Transaction/ManagedContext.cpp
-  Transaction/Manager.cpp
-  Transaction/ManagerFeature.cpp
-  Transaction/ManagerOptionsProvider.cpp
-  Transaction/Methods.cpp
-  Transaction/Options.cpp
-  Transaction/ReplicatedContext.cpp
-  Transaction/SmartContext.cpp
-  Transaction/StandaloneContext.cpp
-  Transaction/Status.cpp
-)
+add_library(arangoserver INTERFACE)
 
-if(USE_V8)
-  target_sources(arangoserver PRIVATE
-    FeaturePhases/FoxxFeaturePhase.cpp
-    FeaturePhases/V8FeaturePhase.cpp
-    RestHandler/RestAdminExecuteHandler.cpp
-    RestHandler/RestAdminRoutingHandler.cpp
-    RestHandler/RestAqlUserFunctionsHandler.cpp
-    RestHandler/RestTasksHandler.cpp
-    RestServer/ConsoleFeature.cpp
-    RestServer/ConsoleThread.cpp
-    RestServer/FrontendFeature.cpp
-    RestServer/FrontendOptionsProvider.cpp
-    RestServer/ScriptFeature.cpp
-    RestServer/ScriptOptionsProvider.cpp)
+target_link_libraries(arangoserver INTERFACE
+        arango_actions
+        arango_auth
+        arango_cluster
+        arango_feature_phases
+        arango_general_server
+        arango_rest_handler
+        arango_rest_server
+        arango_sharding
+        arango_statistics
+        arango_transaction
+        arango_vector_index
+        arango_system_monitor_activities
+        arango_system_monitor_async_registry
+        arango_agency
+        arango_cluster_engine
+        arango_cluster_engine_rest
+        arango_cluster_methods
+        arango_common_rest_handler
+        arango_futures
+        arango_geo
+        arango_graph
+        arango_indexes
+        arango_inspection
+        arango_iresearch
+        arango_metrics
+        arango_network
+        arango_replication
+        arango_storage_engine
+        arango_rocksdb_rest
+        arango_utils
+        arango_vocbase
+        arango_scheduler
+        boost_boost
+        ${MSVC_LIBS})
+
+if(USE_ENTERPRISE)
+  target_link_libraries(arangoserver INTERFACE
+    arango_enterprise_audit
+    arango_enterprise_license
+    arango_enterprise_sharding
+    arango_enterprise_ssl
+    arango_enterprise_rest_handler
+    arango_enterprise_storage_engine)
 endif()
-
-if(USE_MAINTAINER_MODE)
-  target_sources(arangoserver PRIVATE
-    RestHandler/RestTestHandler.cpp)
-endif()
-
-target_sources(arangoserver PRIVATE
-  RestHandler/RestCrashHandler.cpp)
-
-target_link_libraries(arangoserver
-  arango_agency
-  arango_aql
-  arango_cluster_engine
-  arango_cluster_methods
-  arango_common_rest_handler
-  arango_futures
-  arango_geo
-  arango_graph
-  arango_indexes
-  arango_inspection
-  arango_iresearch
-  arango_metrics
-  arango_network
-  arango_replication
-  arango_storage_engine
-  arango_utils
-  arango_vocbase
-  arango_scheduler
-  boost_boost
-  ${MSVC_LIBS})
 
 if(MSVC)
-  target_link_libraries(arangoserver Bcrypt.lib)
+  target_link_libraries(arangoserver INTERFACE Bcrypt.lib)
 endif()
 
 if(USE_V8)
-  target_link_libraries(arangoserver arango_v8server)
+  target_link_libraries(arangoserver INTERFACE arango_v8server)
 endif()
-
-target_include_directories(arangoserver PRIVATE
-  "${PROJECT_SOURCE_DIR}/arangod"
-  "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
 add_dependencies(arangoserver tzdata)

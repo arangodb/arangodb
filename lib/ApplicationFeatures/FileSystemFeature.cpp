@@ -43,12 +43,6 @@ FileSystemFeature::FileSystemFeature(
   startsAfter<LoggerFeature>();
 }
 
-void FileSystemFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  FileSystemOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
 void FileSystemFeature::prepare() { TRI_SetCanUseSplice(_options.useSplice); }
 
 }  // namespace arangodb

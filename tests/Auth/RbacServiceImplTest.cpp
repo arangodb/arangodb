@@ -151,6 +151,26 @@ TEST(RbacServiceImplCheckTest, translatesUserRead) {
   EXPECT_EQ(f.mock->lastItems[0].resource, "db:user:alice");
 }
 
+TEST(RbacServiceImplCheckTest, translatesUseApiVersion) {
+  auto f = CheckFixture::make();
+  std::array queries{rbac::ActionResource{
+      rbac::Action::UseApiVersion, rbac::resources::ApiVersion{.version = 1}}};
+  f.svc.check({testToken}, queries);
+  ASSERT_EQ(f.mock->lastItems.size(), 1u);
+  EXPECT_EQ(f.mock->lastItems[0].action, "db:UseApiVersion");
+  EXPECT_EQ(f.mock->lastItems[0].resource, "db:apiversion:v1");
+}
+
+TEST(RbacServiceImplCheckTest, translatesUseApiVersionZero) {
+  auto f = CheckFixture::make();
+  std::array queries{rbac::ActionResource{
+      rbac::Action::UseApiVersion, rbac::resources::ApiVersion{.version = 0}}};
+  f.svc.check({testToken}, queries);
+  ASSERT_EQ(f.mock->lastItems.size(), 1u);
+  EXPECT_EQ(f.mock->lastItems[0].action, "db:UseApiVersion");
+  EXPECT_EQ(f.mock->lastItems[0].resource, "db:apiversion:v0");
+}
+
 TEST(RbacServiceImplCheckTest, adminActionHasNoResource) {
   auto f = CheckFixture::make();
   std::array queries{rbac::ActionResource{rbac::Action::AdminQueryCache,

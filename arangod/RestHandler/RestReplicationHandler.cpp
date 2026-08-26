@@ -48,16 +48,11 @@
 #include "Indexes/Index.h"
 #include "Metrics/Counter.h"
 #include "Network/NetworkFeature.h"
-#include "Replication/DatabaseInitialSyncer.h"
-#include "Replication/DatabaseReplicationApplier.h"
-#include "Replication/GlobalInitialSyncer.h"
-#include "Replication/GlobalReplicationApplier.h"
-#include "Replication/ReplicationApplierConfiguration.h"
+#include "Network/Utils.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/ServerIdFeature.h"
-#include "VectorIndex/VectorIndexFeature.h"
+#include "VectorIndex/Feature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -405,33 +400,15 @@ bool RestReplicationHandler::isCoordinatorError() {
 }
 
 std::string const RestReplicationHandler::LoggerState = "logger-state";
-std::string const RestReplicationHandler::LoggerTickRanges =
-    "logger-tick-ranges";
-std::string const RestReplicationHandler::LoggerFirstTick = "logger-first-tick";
-std::string const RestReplicationHandler::LoggerLast = "logger-last";
-std::string const RestReplicationHandler::LoggerFollow = "logger-follow";
 std::string const RestReplicationHandler::Batch = "batch";
 std::string const RestReplicationHandler::Inventory = "inventory";
 std::string const RestReplicationHandler::Keys = "keys";
-std::string const RestReplicationHandler::Revisions = "revisions";
-std::string const RestReplicationHandler::Tree = "tree";
-std::string const RestReplicationHandler::TreePending = "treepending";
-std::string const RestReplicationHandler::Ranges = "ranges";
-std::string const RestReplicationHandler::Documents = "documents";
 std::string const RestReplicationHandler::Dump = "dump";
 std::string const RestReplicationHandler::RestoreCollection =
     "restore-collection";
 std::string const RestReplicationHandler::RestoreIndexes = "restore-indexes";
 std::string const RestReplicationHandler::RestoreData = "restore-data";
 std::string const RestReplicationHandler::RestoreView = "restore-view";
-std::string const RestReplicationHandler::Sync = "sync";
-std::string const RestReplicationHandler::MakeFollower = "make-follower";
-std::string const RestReplicationHandler::ServerId = "server-id";
-std::string const RestReplicationHandler::ApplierConfig = "applier-config";
-std::string const RestReplicationHandler::ApplierStart = "applier-start";
-std::string const RestReplicationHandler::ApplierStop = "applier-stop";
-std::string const RestReplicationHandler::ApplierState = "applier-state";
-std::string const RestReplicationHandler::ApplierStateAll = "applier-state-all";
 std::string const RestReplicationHandler::ClusterInventory = "clusterInventory";
 std::string const RestReplicationHandler::AddFollower = "addFollower";
 std::string const RestReplicationHandler::RemoveFollower = "removeFollower";
@@ -461,45 +438,6 @@ auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
         goto BAD_CALL;
       }
       handleCommandLoggerState();
-    } else if (command == LoggerTickRanges) {
-      if (type != rest::RequestType::GET) {
-        goto BAD_CALL;
-      }
-      if (isCoordinatorError()) {
-        co_return;
-      }
-      handleCommandLoggerTickRanges();
-    } else if (command == LoggerFirstTick) {
-      if (type != rest::RequestType::GET) {
-        goto BAD_CALL;
-      }
-      if (isCoordinatorError()) {
-        co_return;
-      }
-      handleCommandLoggerFirstTick();
-    } else if (command == LoggerLast) {
-      if (type != rest::RequestType::GET) {
-        goto BAD_CALL;
-      }
-      if (isCoordinatorError()) {
-        co_return;
-      }
-      handleCommandLoggerLast();
-    } else if (command == LoggerFollow) {
-      if (type != rest::RequestType::GET && type != rest::RequestType::PUT) {
-        goto BAD_CALL;
-      }
-      if (isCoordinatorError()) {
-        co_return;
-      }
-      // track the number of parallel invocations of the tailing API
-      auto& rf = _replicationFeature;
-      // this may throw when too many threads are going into tailing
-      rf.trackTailingStart();
-
-      auto guard = scopeGuard([&rf]() noexcept { rf.trackTailingEnd(); });
-
-      handleCommandLoggerFollow();
     } else if (command == Batch) {
       // access batch context in context manager
       // example call: curl -XPOST --dump - --data '{}'
@@ -647,88 +585,6 @@ auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
       }
 
       handleCommandRestoreView();
-    } else if (command == Sync) {
-      if (type != rest::RequestType::PUT) {
-        goto BAD_CALL;
-      }
-
-      if (isCoordinatorError()) {
-        co_return;
-      }
-
-      handleCommandSync();
-    } else if (command == MakeFollower ||
-               command == "make-slave" /*deprecated*/) {
-      if (type != rest::RequestType::PUT) {
-        goto BAD_CALL;
-      }
-
-      if (isCoordinatorError()) {
-        co_return;
-      }
-
-      handleCommandMakeFollower();
-    } else if (command == ServerId) {
-      if (type != rest::RequestType::GET) {
-        goto BAD_CALL;
-      }
-      handleCommandServerId();
-    } else if (command == ApplierConfig) {
-      if (isCoordinatorError()) {
-        // Makes no sense on coordinators
-        co_return;
-      }
-
-      if (type == rest::RequestType::GET) {
-        handleCommandApplierGetConfig();
-      } else {
-        if (type != rest::RequestType::PUT) {
-          goto BAD_CALL;
-        }
-        handleCommandApplierSetConfig();
-      }
-    } else if (command == ApplierStart) {
-      if (type != rest::RequestType::PUT) {
-        goto BAD_CALL;
-      }
-
-      if (isCoordinatorError()) {
-        co_return;
-      }
-
-      handleCommandApplierStart();
-    } else if (command == ApplierStop) {
-      if (type != rest::RequestType::PUT) {
-        goto BAD_CALL;
-      }
-
-      if (isCoordinatorError()) {
-        co_return;
-      }
-
-      handleCommandApplierStop();
-    } else if (command == ApplierState) {
-      if (isCoordinatorError()) {
-        co_return;
-      }
-
-      if (type == rest::RequestType::DELETE_REQ) {
-        handleCommandApplierDeleteState();
-      } else {
-        if (type != rest::RequestType::GET) {
-          goto BAD_CALL;
-        }
-        handleCommandApplierGetState();
-      }
-    } else if (command == ApplierStateAll) {
-      if (type != rest::RequestType::GET) {
-        goto BAD_CALL;
-      }
-      if (isCoordinatorError()) {
-        co_return;
-      }
-
-      handleCommandApplierGetStateAll();
     } else if (command == ClusterInventory) {
       if (type != rest::RequestType::GET) {
         goto BAD_CALL;
@@ -787,7 +643,7 @@ auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
         }
       }
     } else {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                     std::string("invalid command '") + command + "'");
     }
 
@@ -878,6 +734,7 @@ Result RestReplicationHandler::testPermissions() {
                 return r;
               }
             }
+
           } else {
             return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
                           "empty collection name");
@@ -953,57 +810,6 @@ bool RestReplicationHandler::isDBserverForwardingAllowed() const {
   // authorization stripped; see forwardingTarget().
   return (command == Dump and method == rest::RequestType::GET) or
          command == Batch;
-}
-
-void RestReplicationHandler::handleCommandMakeFollower() {
-  bool isGlobal = false;
-  ReplicationApplier* applier = getApplier(isGlobal);
-  if (applier == nullptr) {
-    return;
-  }
-
-  bool success = false;
-  VPackSlice body = this->parseVPackBody(success);
-  if (!success) {
-    // error already created
-    return;
-  }
-
-  std::string databaseName;
-
-  if (!isGlobal) {
-    databaseName = _vocbase.name();
-  }
-
-  ReplicationApplierConfiguration configuration =
-      ReplicationApplierConfiguration::fromVelocyPack(_vocbase.server(), body,
-                                                      databaseName);
-  configuration._skipCreateDrop = false;
-
-  // will throw if invalid
-  configuration.validate();
-
-  // We are on a DBServer anyway, so we are SuperUser if we get here.
-
-  // forget about any existing replication applier configuration
-  applier->forget();
-  applier->reconfigure(configuration);
-  applier->startReplication();
-
-  while (applier->isInitializing()) {  // wait for initial sync
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    if (_vocbase.server().isStopping()) {
-      generateError(Result(TRI_ERROR_SHUTTING_DOWN));
-      return;
-    }
-  }
-  // applier->startTailing(lastLogTick, true, barrierId);
-
-  VPackBuilder result;
-  result.openObject();
-  applier->toVelocyPack(result);
-  result.close();
-  generateResult(rest::ResponseCode::OK, result.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2248,224 +2054,6 @@ void RestReplicationHandler::handleCommandRestoreView() {
   generateResult(rest::ResponseCode::OK, result.slice());
 }
 
-void RestReplicationHandler::handleCommandServerId() {
-  VPackBuilder result;
-  result.add(VPackValue(VPackValueType::Object));
-  std::string const serverId = StringUtils::itoa(ServerIdFeature::getId().id());
-  result.add("serverId", VPackValue(serverId));
-  result.close();
-  generateResult(rest::ResponseCode::OK, result.slice());
-}
-
-void RestReplicationHandler::handleCommandSync() {
-  bool isGlobal;
-  ReplicationApplier* applier = getApplier(isGlobal);
-  if (applier == nullptr) {
-    return;
-  }
-
-  bool success = false;
-  VPackSlice const body = this->parseVPackBody(success);
-  if (!success) {
-    // error already created
-    return;
-  }
-
-  std::string const endpoint =
-      VelocyPackHelper::getStringValue(body, "endpoint", "");
-  if (endpoint.empty()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "<endpoint> must be a valid endpoint");
-    return;
-  }
-
-  std::string dbname = isGlobal ? "" : _vocbase.name();
-  auto config = ReplicationApplierConfiguration::fromVelocyPack(
-      _vocbase.server(), body, dbname);
-
-  // will throw if invalid
-  config.validate();
-
-  std::shared_ptr<InitialSyncer> syncer;
-
-  if (isGlobal) {
-    syncer = GlobalInitialSyncer::create(config);
-  } else {
-    syncer = DatabaseInitialSyncer::create(_vocbase, config);
-  }
-
-  Result r = syncer->run(config._incremental);
-
-  if (r.fail()) {
-    LOG_TOPIC("c4818", ERR, Logger::REPLICATION)
-        << "failed to sync: " << r.errorMessage();
-    generateError(r);
-    return;
-  }
-
-  // FIXME: change response for databases
-  VPackBuilder result;
-  result.add(VPackValue(VPackValueType::Object));
-  result.add("collections", VPackValue(VPackValueType::Array));
-  for (auto const& it : syncer->getProcessedCollections()) {
-    std::string const cidString = StringUtils::itoa(it.first.id());
-    // Insert a collection
-    result.add(VPackValue(VPackValueType::Object));
-    result.add("id", VPackValue(cidString));
-    result.add("name", VPackValue(it.second));
-    result.close();  // one collection
-  }
-  result.close();  // collections
-
-  auto tickString = std::to_string(syncer->getLastLogTick());
-  result.add("lastLogTick", VPackValue(tickString));
-
-  result.close();  // base
-  generateResult(rest::ResponseCode::OK, result.slice());
-}
-
-void RestReplicationHandler::handleCommandApplierGetConfig() {
-  bool isGlobal;
-  ReplicationApplier* applier = getApplier(isGlobal);
-  if (applier == nullptr) {
-    return;
-  }
-
-  auto configuration = applier->configuration();
-  VPackBuilder builder;
-  builder.openObject();
-  configuration.toVelocyPack(builder, false, false);
-  builder.close();
-
-  generateResult(rest::ResponseCode::OK, builder.slice());
-}
-
-void RestReplicationHandler::handleCommandApplierSetConfig() {
-  bool isGlobal;
-  ReplicationApplier* applier = getApplier(isGlobal);
-  if (applier == nullptr) {
-    return;
-  }
-
-  bool success = false;
-  VPackSlice const body = this->parseVPackBody(success);
-  if (!success) {
-    // error already created
-    return;
-  }
-
-  std::string databaseName;
-
-  if (!isGlobal) {
-    databaseName = _vocbase.name();
-  }
-
-  auto config = ReplicationApplierConfiguration::fromVelocyPack(
-      applier->configuration(), body, databaseName);
-  // will throw if invalid
-  config.validate();
-
-  applier->reconfigure(config);
-  handleCommandApplierGetConfig();
-}
-
-void RestReplicationHandler::handleCommandApplierStart() {
-  bool isGlobal;
-  ReplicationApplier* applier = getApplier(isGlobal);
-  if (applier == nullptr) {
-    return;
-  }
-
-  bool found;
-  std::string const& value1 = _request->value("from", found);
-
-  TRI_voc_tick_t initialTick = 0;
-  bool useTick = false;
-
-  if (found) {
-    // query parameter "from" specified
-    initialTick = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value1));
-    useTick = true;
-  }
-
-  applier->startTailing(initialTick, useTick);
-  handleCommandApplierGetState();
-}
-
-void RestReplicationHandler::handleCommandApplierStop() {
-  bool isGlobal;
-  ReplicationApplier* applier = getApplier(isGlobal);
-  if (applier == nullptr) {
-    return;
-  }
-
-  applier->stopAndJoin();
-  handleCommandApplierGetState();
-}
-
-void RestReplicationHandler::handleCommandApplierGetState() {
-  bool isGlobal;
-  ReplicationApplier* applier = getApplier(isGlobal);
-  if (applier == nullptr) {
-    return;
-  }
-
-  VPackBuilder builder;
-  builder.openObject();
-  applier->toVelocyPack(builder);
-  builder.close();
-  generateResult(rest::ResponseCode::OK, builder.slice());
-}
-
-void RestReplicationHandler::handleCommandApplierGetStateAll() {
-  if (_request->databaseName() != StaticStrings::SystemDatabase) {
-    generateError(
-        rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
-        "global inventory can only be fetched from within _system database");
-    return;
-  }
-  DatabaseFeature& databaseFeature = _databaseFeature;
-
-  VPackBuilder builder;
-  builder.openObject();
-  for (auto& name : databaseFeature.getDatabaseNames()) {
-    auto vocbase = databaseFeature.useDatabase(name);
-
-    if (vocbase == nullptr) {
-      continue;
-    }
-
-    ReplicationApplier* applier = vocbase->replicationApplier();
-
-    if (applier == nullptr) {
-      continue;
-    }
-
-    builder.add(name, VPackValue(VPackValueType::Object));
-    applier->toVelocyPack(builder);
-    builder.close();
-  }
-  builder.close();
-
-  generateResult(rest::ResponseCode::OK, builder.slice());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief delete the state of the replication applier
-////////////////////////////////////////////////////////////////////////////////
-
-void RestReplicationHandler::handleCommandApplierDeleteState() {
-  bool isGlobal;
-  ReplicationApplier* applier = getApplier(isGlobal);
-  if (applier == nullptr) {
-    return;
-  }
-
-  applier->forget();
-
-  handleCommandApplierGetState();
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a follower of a shard to the list of followers
 ////////////////////////////////////////////////////////////////////////////////
@@ -3111,65 +2699,6 @@ void RestReplicationHandler::handleCommandLoggerState() {
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief return the first tick available in a logfile
-/// @route GET logger-first-tick
-/// @caller js/client/modules/@arangodb/replication.js
-/// @response VPackObject with minTick of LogfileManager->ranges()
-//////////////////////////////////////////////////////////////////////////////
-void RestReplicationHandler::handleCommandLoggerFirstTick() {
-  TRI_voc_tick_t tick = UINT64_MAX;
-  Result res = _vocbase.engine().firstTick(tick);
-
-  VPackBuilder b;
-  b.add(VPackValue(VPackValueType::Object));
-  if (tick == UINT64_MAX || res.fail()) {
-    b.add("firstTick", VPackValue(VPackValueType::Null));
-  } else {
-    auto tickString = std::to_string(tick);
-    b.add("firstTick", VPackValue(tickString));
-  }
-  b.close();
-  generateResult(rest::ResponseCode::OK, b.slice());
-}
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief return the first tick available in a logfile
-/// @route GET logger-last
-/// @caller js/client/modules/@arangodb/replication.js
-/// @response VPackObject with minTick of LogfileManager->lastLogger()
-//////////////////////////////////////////////////////////////////////////////
-void RestReplicationHandler::handleCommandLoggerLast() {
-  VPackBuilder builder;
-  auto tickStart = _request->parsedValue("tickStart", uint64_t(0));
-  auto tickEnd = _request->parsedValue("tickEnd", uint64_t(0xbadbadbadbadULL));
-
-  Result res =
-      _vocbase.engine().lastLogger(_vocbase, tickStart, tickEnd, builder);
-  generateResult(rest::ResponseCode::OK, builder.slice());
-}
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief return the available logfile range
-/// @route GET logger-tick-ranges
-/// @caller js/client/modules/@arangodb/replication.js
-/// @response VPackArray, containing info about each datafile
-///           * filename
-///           * status
-///           * tickMin - tickMax
-//////////////////////////////////////////////////////////////////////////////
-
-void RestReplicationHandler::handleCommandLoggerTickRanges() {
-  auto& engine = _vocbase.engine();
-  VPackBuilder b;
-  Result res = engine.createTickRanges(b);
-  if (res.ok()) {
-    generateResult(rest::ResponseCode::OK, b.slice());
-  } else {
-    generateError(res);
-  }
-}
-
 bool RestReplicationHandler::prepareRevisionOperation(
     RevisionOperationContext& ctx) {
   LOG_TOPIC("253e2", TRACE, arangodb::Logger::REPLICATION)
@@ -3625,24 +3154,6 @@ uint64_t RestReplicationHandler::determineChunkSize() const {
   return chunkSize;
 }
 
-ReplicationApplier* RestReplicationHandler::getApplier(bool& global) {
-  global = _request->parsedValue("global", false);
-
-  if (global && _request->databaseName() != StaticStrings::SystemDatabase) {
-    generateError(
-        rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
-        "global inventory can only be created from within _system database");
-    return nullptr;
-  }
-
-  if (global) {
-    auto& replicationFeature = _replicationFeature;
-    return replicationFeature.globalReplicationApplier();
-  } else {
-    return _vocbase.replicationApplier();
-  }
-}
-
 namespace {
 
 struct RebootCookie final : public arangodb::TransactionState::Cookie {
@@ -3921,9 +3432,8 @@ RequestLane RestReplicationHandler::lane() const {
       return RequestLane::CLUSTER_INTERNAL;
     }
 
-    if (command == RemoveFollower || command == LoggerFollow ||
-        command == Batch || command == Inventory || command == Revisions ||
-        command == Dump) {
+    if (command == RemoveFollower || command == Batch || command == Inventory ||
+        command == Revisions || command == Dump) {
       return RequestLane::SERVER_REPLICATION_CATCHUP;
     }
   }

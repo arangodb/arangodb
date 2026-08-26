@@ -23,24 +23,51 @@
 #include "BackendImpl.h"
 
 #include "Basics/Result.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/voc-errors.h"
 #include "Inspection/JsonPrintInspector.h"
 #include "Inspection/VPackLoadInspector.h"
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
+#include "Metrics/Histogram.h"
+#include "Metrics/HistogramBuilder.h"
+#include "Metrics/IRegistry.h"
+#include "Metrics/LogScale.h"
 
 #include <fuerte/types.h>
 #include <velocypack/Buffer.h>
 #include <velocypack/Exception.h>
 #include <velocypack/Parser.h>
 
+#include <chrono>
 #include <sstream>
 
 namespace arangodb::rbac {
 
+struct RbacRequestDurationScale {
+  using scale_t = metrics::LogScale<std::uint64_t>;
+  static scale_t scale() {
+    // Values in us. The authorization service usually runs as a sidecar on
+    // localhost, so latencies are expected in the microsecond range: the
+    // smallest bucket is up to 10us, and the scale goes up to
+    // 10 * 2^21 us =~ 21s.
+    return {scale_t::kSupplySmallestBucket, 2, 0, 10, 22};
+  }
+};
+
+DECLARE_HISTOGRAM(arangodb_rbac_request_duration, RbacRequestDurationScale,
+                  "Duration of requests to the external RBAC authorization "
+                  "service [us].");
+
+auto addRequestDurationMetric(metrics::IRegistry& registry)
+    -> metrics::Histogram<metrics::LogScale<std::uint64_t>>& {
+  return registry.add(arangodb_rbac_request_duration{});
+}
+
 BackendImpl::BackendImpl(network::ConnectionPool& pool,
-                         std::string authorizationEndpoint)
+                         std::string authorizationEndpoint,
+                         RequestDurationMetric* requestDuration)
     : _sendRequest([&pool](network::DestinationId const& dest,
                            fuerte::RestVerb verb, std::string const& path,
                            velocypack::Buffer<uint8_t> payload,
@@ -50,12 +77,15 @@ BackendImpl::BackendImpl(network::ConnectionPool& pool,
                                     std::string{path}, std::move(payload), opts,
                                     std::move(headers));
       }),
-      _authorizationEndpoint(std::move(authorizationEndpoint)) {}
+      _authorizationEndpoint(std::move(authorizationEndpoint)),
+      _requestDuration(requestDuration) {}
 
 BackendImpl::BackendImpl(network::Sender sendRequest,
-                         std::string authorizationEndpoint)
+                         std::string authorizationEndpoint,
+                         RequestDurationMetric* requestDuration)
     : _sendRequest(std::move(sendRequest)),
-      _authorizationEndpoint(std::move(authorizationEndpoint)) {}
+      _authorizationEndpoint(std::move(authorizationEndpoint)),
+      _requestDuration(requestDuration) {}
 
 namespace {
 
@@ -125,6 +155,20 @@ auto BackendImpl::evaluateTokenManyImpl(JwtToken const& token,
                                         RequestItems const& items,
                                         transaction::MethodsApi api)
     -> futures::Future<ResultT<EvaluateResponseMany>> {
+  // Measures the whole call: serializing the request, the round trip to the
+  // authorization service, and parsing the response. The guard fires when the
+  // coroutine body ends, i.e. after the co_await below has resumed, on every
+  // exit path (including exceptions).
+  auto const start = std::chrono::steady_clock::now();
+  auto measureDuration = ScopeGuard{[&]() noexcept {
+    if (_requestDuration != nullptr) {
+      _requestDuration->count(
+          std::chrono::duration_cast<std::chrono::microseconds>(
+              std::chrono::steady_clock::now() - start)
+              .count());
+    }
+  }};
+
   auto requestBody = EvaluateTokenManyRequest{
       .token = token.jwtToken,
       .items = items.items,

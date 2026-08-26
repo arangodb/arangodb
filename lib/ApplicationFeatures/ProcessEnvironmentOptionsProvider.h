@@ -25,16 +25,13 @@
 #include "ApplicationFeatures/OptionsProvider.h"
 #include "ProcessEnvironmentFeatureOptions.h"
 
-namespace arangodb::options {
-class ProgramOptions;
-}
-
 namespace arangodb {
 
 struct ProcessEnvironmentOptionsProvider
-    : OptionsProvider<ProcessEnvironmentFeatureOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      ProcessEnvironmentFeatureOptions& options) override;
+    : OptionsProviderImpl<ProcessEnvironmentOptionsProvider,
+                          ProcessEnvironmentFeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          ProcessEnvironmentFeatureOptions& options);
 };
 
 }  // namespace arangodb

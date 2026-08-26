@@ -38,26 +38,8 @@
 
 namespace arangodb::tests::mocks {
 
-/// @brief Thin subclass of ExecContext whose sole purpose is to expose the
-/// protected ConstructorToken to the factory functions in this file.
-/// Never subclass this for any other reason.
-struct ExecContextAccessor final : ExecContext {
-  static std::shared_ptr<ExecContext> make(AuthMode authMode, bool apiHardened,
-                                           VocbasePtr vocbase) {
-    // std::make_shared cannot call a private constructor, so we use new
-    // directly here, which is valid inside the class scope.
-    return std::shared_ptr<ExecContext>(
-        new ExecContextAccessor(ConstructorToken{}, std::move(authMode),
-                                apiHardened, std::move(vocbase)));
-  }
-
- private:
-  ExecContextAccessor(ConstructorToken token, AuthMode authMode,
-                      bool apiHardened, VocbasePtr vocbase)
-      : ExecContext(token, std::move(authMode), apiHardened,
-                    std::move(vocbase)) {}
-};
-
+/// @brief Create an ExecContext without needing access to its protected
+/// constructor token.
 auto inline createSharedExecContext(AuthMode authMode, bool isRestApiHardened,
                                     VocbasePtr vocbase) {
   struct EC : ExecContext {
@@ -72,8 +54,9 @@ auto inline createSharedExecContext(AuthMode authMode, bool isRestApiHardened,
 /// It satisfies the four pure-virtual requirements of GeneralRequest and
 /// leaves requestedApiVersion() at its default value of 0 (= V0 /
 /// "no versioned prefix"). This means the "return NOT_FOUND to hide existence"
-/// branches in AuthMode::Classic::check() are never taken, which is the
-/// correct behaviour for tests that only check FORBIDDEN / READ_ONLY outcomes.
+/// branches in AuthMode::Classic::check() are not taken, which is the correct
+/// behaviour for tests that only check FORBIDDEN / READ_ONLY outcomes. Tests
+/// that do want to reach those branches can call setRequestedApiVersion().
 struct FakeGeneralRequest final : GeneralRequest {
   FakeGeneralRequest() : GeneralRequest(ConnectionInfo{}, 0) {}
 
@@ -83,12 +66,19 @@ struct FakeGeneralRequest final : GeneralRequest {
     return velocypack::Slice::noneSlice();
   }
   void setDefaultContentType() noexcept override {}
+
+  /// @brief Select the requested API version (0 = V0, the default). Normally
+  /// this is derived from the /_arango/vX URL prefix, which a fake request has
+  /// no way of carrying.
+  void setRequestedApiVersion(uint32_t version) noexcept {
+    _requestedApiVersion = version;
+  }
 };
 
 /// @brief Bundled ownership for a Classic-auth ExecContext created by the
 /// factory. All three members must outlive any ExecContextScope that uses
-/// execContext, because AuthMode::Classic holds raw references to userManager
-/// and request.
+/// execContext, because AuthMode::Classic holds a raw reference to
+/// userManager.
 struct ClassicExecContext {
   std::shared_ptr<auth::UserManagerTester> userManager;
   std::shared_ptr<FakeGeneralRequest> request;

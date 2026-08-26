@@ -65,14 +65,8 @@ jsunity.run(function dump_single_testsuite() {
       removedCount: 8001,
       removedSingleIndices: 2,
       removedModulo: 5,
-      // testKeygenAutoInc
-      indexesCount: 10,
-      keygenAutoInc: 84049,
-      autoIncDocCount: 2001,
-      // testKeygenPadded
-      paddedDocCount: 1002,
-      // testKeygenUuid
-      uuidDocCount: 2001
+      // testIndexes
+      indexesCount: 10
     }),
     suite,
     "_modified",
@@ -101,16 +95,9 @@ jsunity.run(function dump_single_testsuite() {
       "testAqlGraphQueryOutbound",
       "testAqlGraphQueryAny",
       "testSmartGraphSharding",
-      "testViewOnSmartEdgeCollection",
       "testSmartGraphAttribute",
 
       // enterprise sharded graphs on single server tests
-      "testEmptySmartGraph",
-      "testEmptyEnterpriseGraph",
-      "testEmptySatelliteGraph",
-      "testEmptyDisjointGraph",
-      "testSmartGraphWithoutData",
-      "testEnterpriseGraphWithoutData",
       "testSmartGraphSingleServer",
       "testEnterpriseGraphSingleServer",
       "testSatelliteSmartGraphSingleServer",

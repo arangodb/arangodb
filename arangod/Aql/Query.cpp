@@ -198,8 +198,11 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
   _resourceMonitor->memoryLimit(_queryOptions.memoryLimit);
   _warnings.updateFromOptions(_queryOptions);
 
-  // store name of user that started the query
+  // store name of user that started the query, plus the full ExecContext
+  // for the maintainer-mode identity assertion in the execution entry
+  // points
   _user = ExecContext::current().user();
+  _execContext = ExecContext::currentAsShared();
 
   _activity = activities::make<aql::query_activity::AqlQueryActivity>(
       query_activity::AqlQueryActivityData{
@@ -414,14 +417,12 @@ bool Query::tryLoadPlanFromCache() {
         // check if the current user has permissions on all the collections
         ExecContext const& exec = ExecContext::current();
 
-        if (!exec.isSuperuserOrDisabled()) {
-          for (auto const& dataSource : cacheEntry->dataSources) {
-            if (exec.canUseCollection(_vocbase.name(), dataSource.second.name,
-                                      dataSource.second.level)
-                    .fail()) {
-              // cannot use query cache result because of permissions
-              return false;
-            }
+        for (auto const& dataSource : cacheEntry->dataSources) {
+          if (exec.canUseCollection(_vocbase.name(), dataSource.second.name,
+                                    dataSource.second.level)
+                  .fail()) {
+            // cannot use query cache result because of permissions
+            return false;
           }
         }
 
@@ -651,7 +652,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
       << " this: " << (uintptr_t)this;
 
   TRI_ASSERT(_ast != nullptr);
-  Parser parser(*this, *_ast, _queryString);
+  Parser parser(*this, &_warnings, *_ast, _queryString);
   parser.parse();
 
   // any usage of one of the following features make the query ineligible
@@ -861,6 +862,14 @@ futures::Future<futures::Unit> Query::execute(
   LOG_TOPIC("e8ed7", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " Query::execute"
       << " this: " << (uintptr_t)this;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // the query must execute under the same identity it was created with; a
+  // mismatch means some spawn path failed to propagate the ExecContext
+  if (_execContext != nullptr) {
+    TRI_ASSERT(ExecContext::current().user() == _execContext->user());
+  }
+#endif
 
   try {
     if (killed()) {
@@ -1116,6 +1125,15 @@ futures::Future<futures::Unit> Query::execute(
  */
 QueryResult Query::executeSync() {
   _queryApiSynchronicity = QueryApiSynchronicity::Synchronous;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // the query must execute under the same identity it was created with; a
+  // mismatch means some spawn path failed to propagate the ExecContext
+  if (_execContext != nullptr) {
+    TRI_ASSERT(ExecContext::current().user() == _execContext->user());
+  }
+#endif
+
   auto ss = sharedState();
   TRI_ASSERT(ss != nullptr);
 
@@ -1136,6 +1154,14 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
   LOG_TOPIC("6cac7", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " Query::executeV8"
       << " this: " << (uintptr_t)this;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // the query must execute under the same identity it was created with; a
+  // mismatch means some spawn path failed to propagate the ExecContext
+  if (_execContext != nullptr) {
+    TRI_ASSERT(ExecContext::current().user() == _execContext->user());
+  }
+#endif
 
   QueryResultV8 queryResult;
   try {
@@ -1415,7 +1441,7 @@ QueryResult Query::parse() {
 
   try {
     init(/*createProfile*/ false);
-    Parser parser(*this, *_ast, _queryString);
+    Parser parser(*this, &_warnings, *_ast, _queryString);
     return parser.parseWithDetails();
 
   } catch (Exception const& ex) {
@@ -1469,7 +1495,7 @@ QueryResult Query::explain() {
     init(/*createProfile*/ false);
     enterState(QueryExecutionState::ValueType::PARSING);
 
-    Parser parser(*this, *_ast, _queryString);
+    Parser parser(*this, &_warnings, *_ast, _queryString);
     parser.parse();
 
     // any usage of one of the following features make the query ineligible

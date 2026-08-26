@@ -90,6 +90,8 @@ RestStatus RestUsersHandler::execute() {
     return RestStatus::DONE;
   }
 
+  // Note that contrary to versions up to and including 3.12.9 writes are now
+  // forbidden if the server is in read-only mode. This is intentional.
   switch (type) {
     case RequestType::GET:
       return getRequest(af->userManager());
@@ -108,16 +110,18 @@ RestStatus RestUsersHandler::execute() {
   }
 }
 
-async<Result> RestUsersHandler::checkUserCanAccess() const {
+async<Result> RestUsersHandler::checkDatabaseAccess() const {
   constexpr std::string_view pathPrefixApiUser("/_api/user/");
 
   auto const& path = _request->requestPath();
 
   if (_request->authenticated() && path.starts_with(pathPrefixApiUser)) {
+    // No database access is required here (everybody may e.g. change their own
+    // password)
     co_return Result{};
   }
 
-  co_return co_await RestBaseHandler::checkUserCanAccess();
+  co_return co_await RestBaseHandler::checkDatabaseAccess();
 }
 
 /// helper to generate a compliant response for individual user requests
@@ -251,12 +255,13 @@ void RestUsersHandler::generateDatabaseResult(auth::UserManager* um,
 
             methods::Collections::enumerate(
                 &vocbase,
-                [&](std::shared_ptr<LogicalCollection> const& c) -> void {
+                [&](std::shared_ptr<LogicalCollection> const& c) -> bool {
                   TRI_ASSERT(c);
                   lvl = user.configuredCollectionAuthLevel(vocbase.name(),
                                                            c->name());
                   data.add(c->name(),
                            velocypack::Value(convertFromAuthLevel(lvl)));
+                  return true;
                 });
             lvl = user.configuredCollectionAuthLevel(vocbase.name(), "*");
             data.add("*", velocypack::Value(convertFromAuthLevel(lvl)));

@@ -328,7 +328,8 @@ static void JS_DropViewVocbase(
   auto view = CollectionNameResolver(vocbase).getView(name);
 
   if (view) {
-    if (auto r = ExecContext::current().canDropView(vocbase.name(), name);
+    if (auto r = ExecContext::current().canDropView(
+            vocbase.name(), name, view->linkedCollectionNames());
         r.fail()) {  // check auth after ensuring
                      // that the view exists
       events::DropView(vocbase.name(), view->name(), TRI_ERROR_FORBIDDEN);
@@ -395,7 +396,8 @@ static void JS_DropViewVocbaseObj(
   // end of parameter parsing
   // ...........................................................................
 
-  if (auto r = ExecContext::current().canDropView(vocbase.name(), view->name());
+  if (auto r = ExecContext::current().canDropView(
+          vocbase.name(), view->name(), view->linkedCollectionNames());
       r.fail()) {
     // check auth after ensuring that the view exists
     events::DropView(vocbase.name(), view->name(), TRI_ERROR_FORBIDDEN);
@@ -444,8 +446,7 @@ static void JS_ViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // end of parameter parsing
   // ...........................................................................
 
-  if (auto r = ExecContext::current().canUseView(vocbase.name(), view->name(),
-                                                 ViewAccessLevel::Read);
+  if (auto r = ExecContext::current().canReadView(vocbase.name(), view->name());
       r.fail()) {  // check auth after ensuring
                    // that the view exists
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
@@ -521,8 +522,7 @@ static void JS_ViewsVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     auto view = views[i];
 
     if (!view || ExecContext::current()
-                     .canUseView(vocbase.name(), view->name(),
-                                 ViewAccessLevel::Read)
+                     .canReadView(vocbase.name(), view->name())
                      .fail()) {  // check auth after ensuring
                                  // that the view exists
       continue;  // skip views that are not authorized to be read
@@ -579,8 +579,7 @@ static void JS_NameViewVocbase(
   // end of parameter parsing
   // ...........................................................................
 
-  if (auto r = ExecContext::current().canUseView(vocbase.name(), view->name(),
-                                                 ViewAccessLevel::Read);
+  if (auto r = ExecContext::current().canReadView(vocbase.name(), view->name());
       r.fail()) {  // check auth after ensuring that the
                    // view exists
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
@@ -631,11 +630,15 @@ static void JS_PropertiesViewVocbase(
     // end of parameter parsing
     // ...........................................................................
 
-    if (auto r = ExecContext::current().canUseView(viewPtr->vocbase().name(),
-                                                   viewPtr->name(),
-                                                   ViewAccessLevel::Modify);
-        r.fail()) {  // check auth after ensuring that
-      // the view exists
+    std::vector<std::string> linkedCollections;
+    if (auto linksSlice = builder.slice().get("links"); linksSlice.isObject()) {
+      for (auto const& pair : VPackObjectIterator(linksSlice)) {
+        linkedCollections.push_back(pair.key.copyString());
+      }
+    }
+    if (auto r = ExecContext::current().canModifyView(
+            viewPtr->vocbase().name(), viewPtr->name(), linkedCollections);
+        !r.ok()) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
     }
 
@@ -686,13 +689,8 @@ static void JS_PropertiesViewVocbase(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
-  // ...........................................................................
-  // end of parameter parsing
-  // ...........................................................................
-
-  if (auto r = ExecContext::current().canUseView(view->vocbase().name(),
-                                                 view->name(),
-                                                 ViewAccessLevel::Read);
+  if (auto r = ExecContext::current().canReadView(view->vocbase().name(),
+                                                  view->name());
       r.fail()) {  // check auth after ensuring that the
                    // view exists
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
@@ -751,12 +749,10 @@ static void JS_RenameViewVocbase(
   // end of parameter parsing
   // ...........................................................................
 
-  // TODO We need to check permissions for the old AND new view name!
-  if (auto r = ExecContext::current().canUseView(view->vocbase().name(),
-                                                 view->name(),
-                                                 ViewAccessLevel::Modify);
-      r.fail()) {  // check auth after ensuring
-                   // that the view exists
+  if (auto r = ExecContext::current().canRenameView(
+          view->vocbase().name(), view->name(), name,
+          view->linkedCollectionNames());
+      r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
   }
 
@@ -802,9 +798,8 @@ static void JS_TypeViewVocbase(
   // end of parameter parsing
   // ...........................................................................
 
-  if (auto r = ExecContext::current().canUseView(view->vocbase().name(),
-                                                 view->name(),
-                                                 ViewAccessLevel::Read);
+  if (auto r = ExecContext::current().canReadView(view->vocbase().name(),
+                                                  view->name());
       r.fail()) {  // check auth after ensuring that the
                    // view exists
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());

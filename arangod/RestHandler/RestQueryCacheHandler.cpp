@@ -50,7 +50,7 @@ RestStatus RestQueryCacheHandler::execute() {
       replaceProperties();
       break;
     default:
-      generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);
+      generateNotImplemented("ILLEGAL /_api/query-cache");
       break;
   }
 
@@ -59,18 +59,11 @@ RestStatus RestQueryCacheHandler::execute() {
 }
 
 void RestQueryCacheHandler::clearCache() {
-  if (_request->requestedApiVersion() > 0) {
-    if (!_vocbase.isSystem()) {
-      generateError(rest::ResponseCode::FORBIDDEN,
-                    TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
-      return;
-    }
-    if (auto r = ExecContext::current().canUseAdminAction(
-            auth::perms::AdminQueryCache{});
-        r.fail()) {
-      generateError(r);
-      return;
-    }
+  if (auto r = ExecContext::current().canUseAdminAction(
+          auth::perms::AdminQueryCache{});
+      r.fail()) {
+    generateError(r);
+    return;
   }
   auto queryCache = arangodb::aql::QueryCache::instance();
   queryCache->invalidate(&_vocbase);
@@ -132,12 +125,12 @@ void RestQueryCacheHandler::replaceProperties() {
                     TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
       return;
     }
-    if (auto r = ExecContext::current().canUseAdminAction(
-            auth::perms::AdminQueryCache{});
-        r.fail()) {
-      generateError(r);
-      return;
-    }
+  }
+  if (auto r = ExecContext::current().canUseAdminAction(
+          auth::perms::AdminQueryCache{});
+      r.fail()) {
+    generateError(r);
+    return;
   }
 
   bool validBody = false;

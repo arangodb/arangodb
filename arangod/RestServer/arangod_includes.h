@@ -47,7 +47,6 @@
 #include "V8/V8PlatformFeature.h"
 #include "V8/V8SecurityFeature.h"
 #endif
-#include "ApplicationFeatures/VersionFeature.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/QueryInfoLoggerFeature.h"
@@ -154,7 +153,7 @@
 #include "Statistics/StatisticsFeature.h"
 #include "Statistics/StatisticsWorker.h"
 #include "Transaction/ManagerFeature.h"
-#include "VectorIndex/VectorIndexFeature.h"
+#include "VectorIndex/Feature.h"
 #ifdef USE_V8
 #include "V8Server/FoxxFeature.h"
 #include "V8Server/V8DealerFeature.h"

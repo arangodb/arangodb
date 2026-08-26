@@ -28,7 +28,6 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Rest/GeneralResponse.h"
-#include "RestServer/DatabaseFeature.h"
 #include "Transaction/OperationOrigin.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
@@ -60,8 +59,8 @@ void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
   // end of parameter parsing
   // ...........................................................................
 
-  if (auto r = ExecContext::current().canUseView(
-          view->vocbase().name(), view->name(), ViewAccessLevel::Read);
+  if (auto r = ExecContext::current().canReadView(view->vocbase().name(),
+                                                  view->name());
       !r.ok()) {
     // check auth after ensuring that the view exists
     generateError(r);
@@ -284,14 +283,6 @@ void RestViewHandler::modifyView(bool partialUpdate) {
     return;
   }
 
-  auto& analyzers = server().getFeature<iresearch::IResearchAnalyzerFeature>();
-  // First refresh our analyzers cache to see all latest changes in analyzers
-  if (auto r = analyzers.loadAvailableAnalyzers(
-          _vocbase.name(), transaction::OperationOriginREST{"modifying view"});
-      !r.ok()) {
-    return generateError(r);
-  }
-
   bool const isRename = suffixes[1] == "rename";
   if (isRename) {
     body = body.get("name");
@@ -302,10 +293,10 @@ void RestViewHandler::modifyView(bool partialUpdate) {
   }
 
   auto const& execContext = ExecContext::current();
-
   if (isRename) {
     if (auto r =
-            execContext.canRenameView(_vocbase.name(), name, body.stringView());
+            execContext.canRenameView(_vocbase.name(), name, body.stringView(),
+                                      view->linkedCollectionNames());
         !r.ok()) {
       return generateError(r);
     }
@@ -322,6 +313,15 @@ void RestViewHandler::modifyView(bool partialUpdate) {
       return generateError(r);
     }
   }
+
+  auto& analyzers = server().getFeature<iresearch::IResearchAnalyzerFeature>();
+  // First refresh our analyzers cache to see all latest changes in analyzers
+  if (auto r = analyzers.loadAvailableAnalyzers(
+          _vocbase.name(), transaction::OperationOriginREST{"modifying view"});
+      !r.ok()) {
+    return generateError(r);
+  }
+
   velocypack::Builder builder;
   // skip views for which the full view definition cannot be generated, as
   // per https://github.com/arangodb/backlog/issues/459
@@ -401,7 +401,8 @@ void RestViewHandler::deleteView() {
   // end of parameter parsing
   // ...........................................................................
 
-  if (auto r = ExecContext::current().canDropView(_vocbase.name(), name);
+  if (auto r = ExecContext::current().canDropView(
+          _vocbase.name(), name, view->linkedCollectionNames());
       !r.ok()) {
     // check auth after ensuring that the view exists
     generateError(r);
@@ -457,15 +458,6 @@ void RestViewHandler::getViews() {
   // ...........................................................................
   // end of parameter parsing
   // ...........................................................................
-
-  // TODO check access right per view
-  //  if (auto const& can = ExecContext::current().can();
-  //  can.readView(_vocbase.name(), name)) {
-  //    generateError(
-  //        Result(TRI_ERROR_FORBIDDEN, "insufficient rights to get views"));
-  //
-  //    return;
-  //  }
 
   std::vector<LogicalView::ptr> views;
 

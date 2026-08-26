@@ -92,11 +92,6 @@ void Feature::start() {
 
 void Feature::stop() { _cleanupThread.reset(); }
 
-void Feature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
-  activities::OptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
 velocypack::SharedSlice Feature::getData() const {
   auto res = registry.snapshot();
   if (res.ok()) {

@@ -43,11 +43,6 @@ FrontendFeature::FrontendFeature(ApplicationServer& server,
   startsAfter<ServerFeaturePhase>();
 }
 
-void FrontendFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  FrontendOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
 void FrontendFeature::prepare() {
   V8DealerFeature& dealer = server().getFeature<V8DealerFeature>();
   dealer.defineBoolean("FE_VERSION_CHECK", _options.versionCheck);

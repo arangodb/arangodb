@@ -482,11 +482,14 @@ std::vector<std::shared_ptr<LogicalCollection>> Collections::sorted(
 
 void Collections::enumerate(
     TRI_vocbase_t* vocbase,
-    std::function<void(std::shared_ptr<LogicalCollection> const&)> const&
+    std::function<bool(std::shared_ptr<LogicalCollection> const&)> const&
         func) {
   auto const collections = getNotDeleted(*vocbase);
   for (auto& collection : collections) {
-    func(collection);
+    auto continueEnumeration = func(collection);
+    if (!continueEnumeration) {
+      break;
+    }
   }
 }
 
@@ -1023,6 +1026,7 @@ futures::Future<Result> Collections::updateProperties(
   if (auto r = exec.canUseCollection(collection.vocbase().name(),
                                      collection.name(), AccessLevel::WriteMeta);
       r.fail()) {
+    // Needed for backwards compatibility!
     co_return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
   }
 

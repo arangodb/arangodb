@@ -22,7 +22,9 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ServerState.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
+#include "Logger/LogMacros.h"
 #include "Rest/ApiVersion.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerFeature.h"
@@ -100,19 +102,30 @@ RestVersionHandler::RestVersionHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
-async<Result> RestVersionHandler::checkUserCanAccess() const {
+async<RestHandler::AuthenticationGrant>
+RestVersionHandler::checkUserAuthentication() const {
   // Note that this particular RestHandler might be called during startup (or
   // in maintenance mode). The AuthenticationFeature might not yet be available
   // for authorization, and must not be consulted.
   if (auto const mode = ServerState::mode();
       mode == ServerState::Mode::STARTUP ||
       mode == ServerState::Mode::MAINTENANCE) {
-    co_return request()->authenticated()
-        ? Result{}
-        : Result{TRI_ERROR_HTTP_UNAUTHORIZED, "Not authenticated."};
+    co_return request()->authenticated()  // with JWT can also be authenticated
+        ? AuthenticationGrant::GRANTED_EARLY
+        : AuthenticationGrant::DENIED;
   }
 
-  co_return co_await RestBaseHandler::checkUserCanAccess();
+  co_return co_await RestBaseHandler::checkUserAuthentication();
+}
+
+async<Result> RestVersionHandler::checkApiVersionAccess() const {
+  auto version = request()->requestedApiVersion();
+  if (version == api_version::defaultApiVersion) {
+    // default api-version is always allowed
+    co_return Result{};
+  }
+
+  co_return co_await RestBaseHandler::checkApiVersionAccess();
 }
 
 void RestVersionHandler::getVersion(

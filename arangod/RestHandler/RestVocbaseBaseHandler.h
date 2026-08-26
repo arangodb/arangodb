@@ -116,6 +116,9 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   // view path
   static std::string const VIEW_PATH;
 
+  // stats arangosearch path
+  static std::string const STATS_ARANGOSEARCH_PATH;
+
   // Internal Traverser path
   static std::string const INTERNAL_TRAVERSER_PATH;
 

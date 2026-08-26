@@ -23,6 +23,8 @@
 // /
 // //////////////////////////////////////////////////////////////////////////////
 
+const mountPoint = '/test-redirect';
+
 
 if (getOptions === true) {
   return {
@@ -34,15 +36,23 @@ if (getOptions === true) {
       '^$'
     ],
     'javascript.endpoints-allowlist' : [
-      'ssl://arango.ai:443'
+      'ssl://arango.ai:443',
     ],
+    'javascript.endpoints-denylist' : [
+      '.*://.*:[0-9]+/test-redirect/redirectloop/3'
+    ]
   };
 }
 
 const jsunity = require('jsunity');
+const FoxxManager = require('@arangodb/foxx/manager');
 
 const internal = require('internal');
+const fs = require('fs');
 const db = internal.db;
+const basePath = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-data', 'apps'));
+const foxxApp = fs.join(basePath, 'redirect');
+let IM = global.instanceManager;
 
 // HELPER FUNCTIONS
 //get first document in collection that has one of the given states
@@ -123,9 +133,12 @@ function testSuite() {
       try {
         tasks.unregister(taskName);
       } catch (err) {}
+      FoxxManager.uninstall(mountPoint, { force: true });
+      FoxxManager.install(foxxApp, mountPoint);
     },
 
     tearDown: function() {
+      FoxxManager.uninstall(mountPoint, { force: true });
       try {
         tasks.unregister(taskName);
       } catch (err) {}
@@ -159,6 +172,10 @@ function testSuite() {
 
     testDownload : function() {
       assertFailing(`require("internal").download("https://heise:443/foo/bar");`);
+    },
+
+    testDownloadRedirect : function() {
+      assertFailing(`require("@arangodb/request").get({url: "${IM.url}${mountPoint}/redirectloop/0", maxRedirects: 5, followRedirects: true });`);
     },
   };
 }

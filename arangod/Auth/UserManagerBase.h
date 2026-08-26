@@ -25,10 +25,16 @@
 #include "Auth/UserManager.h"
 
 #include "Basics/ReadWriteLock.h"
+#include "Basics/TransparentStringHash.h"
 
 #include <atomic>
+#include <unordered_map>
 
 namespace arangodb::auth {
+
+using UserMap =
+    std::unordered_map<std::string, User, basics::TransparentStringHash,
+                       std::equal_to<>>;
 
 /// @brief Abstract intermediate class that owns the in-memory user cache and
 /// provides concrete, read-only implementations of the UserManager interface.
@@ -59,7 +65,10 @@ class UserManagerBase : public UserManager {
   velocypack::Builder serializeUser(std::string const& user) override final;
 
   bool checkCredentials(std::string const& username, std::string const& token,
-                        std::string& un) override final;
+                        std::string& un,
+                        std::optional<double>& tokenValidUntil) override final;
+  bool checkCredentials(std::string const& username, std::string const& token,
+                        std::string& un);
 
   Level databaseAuthLevel(std::string_view username, std::string_view dbname,
                           bool configured) override final;
@@ -105,7 +114,7 @@ class UserManagerBase : public UserManager {
   bool checkPassword(std::string const& username, std::string const& password);
   Result extractUsername(std::string const& token, std::string& username) const;
   bool checkAccessToken(std::string const& username, std::string const& token,
-                        std::string& un);
+                        std::string& un, std::optional<double>& validUntil);
 };
 
 }  // namespace arangodb::auth

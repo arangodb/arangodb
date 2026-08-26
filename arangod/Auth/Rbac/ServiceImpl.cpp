@@ -109,6 +109,8 @@ auto actionToWireString(Action action) -> std::string_view {
       return "db:AdminWriteAqlFunctions";
     case Action::AdminQueryCache:
       return "db:AdminQueryCache";
+    case Action::AdminReadUsers:
+      return "db:AdminReadUsers";
   }
   ADB_PROD_CRASH();
 }
@@ -137,6 +139,9 @@ auto resourceToWireString(Resource const& resource) -> std::string {
           [](resources::User const& r) {
             return std::format("db:user:{}", r.name);
           },
+          [](resources::ApiVersion const& r) {
+            return std::format("db:apiversion:v{}", r.version);
+          },
       },
       resource);
 }
@@ -147,8 +152,7 @@ ServiceImpl::ServiceImpl(std::unique_ptr<Backend> backend)
     : _backend(std::move(backend)) {}
 
 auto ServiceImpl::check(JwtToken const& token,
-                        std::span<ActionResource const> queries) noexcept
-    -> Result {
+                        std::span<ActionResource const> queries) -> Result {
   LOG_DEVEL << "[RBAC-TRACE] ServiceImpl::check called with " << queries.size()
             << " queries";
 

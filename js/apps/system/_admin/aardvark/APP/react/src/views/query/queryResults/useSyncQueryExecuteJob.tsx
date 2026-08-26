@@ -109,7 +109,7 @@ export const useSyncQueryExecuteJob = ({
                 cursorId,
                 asyncJobId: asyncJobId
               });
-            } catch (e) {
+            } catch {
               // ignore
             }
           }

@@ -25,8 +25,7 @@
 #include "Auth/Permissions.h"
 #include "Basics/Result.h"
 
-#include <functional>
-#include <optional>
+#include <cstdint>
 #include <variant>
 
 namespace arangodb::auth {
@@ -71,35 +70,21 @@ struct AuthMode {
     // TODO Make this async
     [[nodiscard]] virtual auto check(auth::Permission permission) const
         -> Result = 0;
-
-    // Returns the GeneralRequest associated with this auth context, if any.
-    [[nodiscard]] virtual auto request() const noexcept
-        -> std::optional<std::reference_wrapper<GeneralRequest>> = 0;
   };
 
   // Superuser; may do anything, without further checks.
-  // Optionally holds a reference to a request (when created from
-  // a superuser JWT token on a real request).
   struct Superuser : IAuth {
-    // For the static singleton superuser (no request).
     Superuser() = default;
-    // For a dynamically created superuser context with request.
-    Superuser(GeneralRequest& req) : _request(&req) {}
 
     [[nodiscard]] auto username() const noexcept -> std::string_view override;
     [[nodiscard]] auto check(auth::Permission permission) const
         -> Result override;
-    [[nodiscard]] auto request() const noexcept
-        -> std::optional<std::reference_wrapper<GeneralRequest>> override;
-
-    GeneralRequest* _request{nullptr};
   };
 
   // Classic, arangodb-internal authorization, based on permissions in _users.
   struct Classic : IAuth {
     auth::UserManager& _userManager;
     std::string const _username;
-    GeneralRequest& _request;
 
     Classic(auth::UserManager& userManager, std::string username,
             GeneralRequest& req);
@@ -109,12 +94,20 @@ struct AuthMode {
     [[nodiscard]] auto check(auth::Permission permission) const
         -> Result override;
 
-    [[nodiscard]] auto request() const noexcept
-        -> std::optional<std::reference_wrapper<GeneralRequest>> override;
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+    // Only used in tests.
+    void setRequestedApiVersion(uint32_t apiVersion) {
+      _requestedApiVersion = apiVersion;
+    }
+#endif
 
    protected:
     // has _system RW access
     [[nodiscard]] Result isAdmin() const;
+
+   private:
+    // Recall requested API version:
+    uint32_t _requestedApiVersion;
   };
 
   // Role-based access control, based on an external authorization service.
@@ -122,55 +115,41 @@ struct AuthMode {
     rbac::Service& _rbacService;
     std::string const _username;
     std::string const _jwtToken;
-    GeneralRequest& _request;
 
-    Rbac(rbac::Service& rbacService, std::string username, std::string jwtToken,
-         GeneralRequest& req)
+    Rbac(rbac::Service& rbacService, std::string username, std::string jwtToken)
         : _rbacService(rbacService),
           _username(std::move(username)),
-          _jwtToken(std::move(jwtToken)),
-          _request(req) {}
+          _jwtToken(std::move(jwtToken)) {}
 
     [[nodiscard]] auto username() const noexcept -> std::string_view override;
 
     [[nodiscard]] auto check(auth::Permission permission) const
         -> Result override;
-
-    [[nodiscard]] auto request() const noexcept
-        -> std::optional<std::reference_wrapper<GeneralRequest>> override;
   };
 
   // Authentication is on, but the current user is without authentication.
   // Has basically no permissions.
   struct Unauthenticated : IAuth {
     std::string _username;
-    GeneralRequest& _request;
 
-    explicit Unauthenticated(std::string username, GeneralRequest& req);
+    explicit Unauthenticated(std::string username);
 
     [[nodiscard]] auto username() const noexcept -> std::string_view override;
 
     [[nodiscard]] auto check(auth::Permission permission) const
         -> Result override;
-
-    [[nodiscard]] auto request() const noexcept
-        -> std::optional<std::reference_wrapper<GeneralRequest>> override;
   };
 
   // Authentication is disabled, barely any restrictions.
   struct Disabled : IAuth {
     std::string _username;
-    GeneralRequest& _request;
 
-    explicit Disabled(std::string username, GeneralRequest& req);
+    explicit Disabled(std::string username);
 
     [[nodiscard]] auto username() const noexcept -> std::string_view override;
 
     [[nodiscard]] auto check(auth::Permission permission) const
         -> Result override;
-
-    [[nodiscard]] auto request() const noexcept
-        -> std::optional<std::reference_wrapper<GeneralRequest>> override;
   };
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -193,8 +172,6 @@ struct AuthMode {
     [[nodiscard]] auto username() const noexcept -> std::string_view override;
     [[nodiscard]] auto check(auth::Permission permission) const
         -> Result override;
-    [[nodiscard]] auto request() const noexcept
-        -> std::optional<std::reference_wrapper<GeneralRequest>> override;
   };
 #define MOCKABLE , Mockable
 #else
@@ -209,9 +186,11 @@ struct AuthMode {
 
   Any authMode;
 
+  [[nodiscard]] bool isClassic() const noexcept;
   [[nodiscard]] bool isRbac() const noexcept;
   [[nodiscard]] bool isSuperuser() const noexcept;
   [[nodiscard]] bool isDisabled() const noexcept;
+  [[nodiscard]] bool isUnauthenticated() const noexcept;
 
   template<typename T, typename... Args>
   void reset(Args&&... args) {

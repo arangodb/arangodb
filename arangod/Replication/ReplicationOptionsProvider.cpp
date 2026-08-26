@@ -29,14 +29,12 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void ReplicationOptionsProvider::declareOptions(
+void ReplicationOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, ReplicationOptions& options) {
   opts->addSection("replication", "replication");
-  opts->addOption(
+  opts->addObsoleteOption(
       "--replication.auto-start",
-      "Enable or disable the automatic start of replication appliers.",
-      new BooleanParameter(&options.replicationApplierAutoStart),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+      "Enable or disable the automatic start of replication appliers.", true);
 
   opts->addOldOption("server.disable-replication-applier",
                      "replication.auto-start");
@@ -93,7 +91,7 @@ void ReplicationOptionsProvider::declareOptions(
       true);
 }
 
-void ReplicationOptionsProvider::validateOptions(
+void ReplicationOptionsProvider::processOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, ReplicationOptions& options) {
   if (options.connectTimeout < 1.0) {
     options.connectTimeout = 1.0;

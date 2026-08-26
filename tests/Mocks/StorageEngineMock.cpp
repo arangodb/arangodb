@@ -229,11 +229,6 @@ void StorageEngineMock::addOptimizerRules(
   // NOOP
 }
 
-void StorageEngineMock::addRestHandlers(
-    arangodb::rest::RestHandlerFactory& handlerFactory) {
-  TRI_ASSERT(false);
-}
-
 #ifdef USE_V8
 void StorageEngineMock::addV8Functions() { TRI_ASSERT(false); }
 #endif
@@ -267,11 +262,6 @@ StorageEngineMock::createPhysicalCollection(
     arangodb::velocypack::Slice /*info*/) {
   before();
   return std::make_unique<PhysicalCollectionMock>(collection);
-}
-
-arangodb::Result StorageEngineMock::createTickRanges(VPackBuilder&) {
-  TRI_ASSERT(false);
-  return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 std::shared_ptr<arangodb::TransactionState>
@@ -334,11 +324,6 @@ arangodb::Result StorageEngineMock::dropView(
   return arangodb::Result(TRI_ERROR_NO_ERROR);  // assume mock view dropped OK
 }
 
-arangodb::Result StorageEngineMock::firstTick(uint64_t&) {
-  TRI_ASSERT(false);
-  return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
 void StorageEngineMock::getCollectionInfo(TRI_vocbase_t& vocbase,
                                           arangodb::DataSourceId cid,
                                           arangodb::velocypack::Builder& result,
@@ -383,25 +368,6 @@ void StorageEngineMock::cleanupReplicationContexts() {
   // nothing to do here
 }
 
-arangodb::velocypack::Builder
-StorageEngineMock::getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                                      ErrorCode& result) {
-  before();
-  result =
-      TRI_ERROR_FILE_NOT_FOUND;  // assume no ReplicationApplierConfiguration
-                                 // for vocbase
-
-  return arangodb::velocypack::Builder();
-}
-
-arangodb::velocypack::Builder
-StorageEngineMock::getReplicationApplierConfiguration(ErrorCode& status) {
-  before();
-  status = TRI_ERROR_FILE_NOT_FOUND;
-
-  return arangodb::velocypack::Builder();
-}
-
 ErrorCode StorageEngineMock::getViews(TRI_vocbase_t& vocbase,
                                       arangodb::velocypack::Builder& result) {
   result.openArray();
@@ -432,13 +398,6 @@ TRI_voc_tick_t StorageEngineMock::recoveryTick() {
   return recoveryTickResult;
 }
 
-arangodb::Result StorageEngineMock::lastLogger(
-    TRI_vocbase_t& vocbase, uint64_t tickStart, uint64_t tickEnd,
-    arangodb::velocypack::Builder& builderSPtr) {
-  TRI_ASSERT(false);
-  return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
 std::unique_ptr<TRI_vocbase_t> StorageEngineMock::openDatabase(
     arangodb::CreateDatabaseInfo&& info, bool isUpgrade) {
   before();
@@ -460,34 +419,11 @@ void StorageEngineMock::releaseTick(TRI_voc_tick_t tick) {
   _releasedTick = tick;
 }
 
-ErrorCode StorageEngineMock::removeReplicationApplierConfiguration(
-    TRI_vocbase_t& vocbase) {
-  TRI_ASSERT(false);
-  return TRI_ERROR_NO_ERROR;
-}
-
-ErrorCode StorageEngineMock::removeReplicationApplierConfiguration() {
-  TRI_ASSERT(false);
-  return TRI_ERROR_NO_ERROR;
-}
-
 arangodb::Result StorageEngineMock::renameCollection(
     TRI_vocbase_t& vocbase, arangodb::LogicalCollection const& collection,
     std::string const& oldName) {
   TRI_ASSERT(false);
   return arangodb::Result(TRI_ERROR_INTERNAL);
-}
-
-ErrorCode StorageEngineMock::saveReplicationApplierConfiguration(
-    TRI_vocbase_t& vocbase, arangodb::velocypack::Slice slice, bool doSync) {
-  TRI_ASSERT(false);
-  return TRI_ERROR_NO_ERROR;
-}
-
-ErrorCode StorageEngineMock::saveReplicationApplierConfiguration(
-    arangodb::velocypack::Slice, bool) {
-  TRI_ASSERT(false);
-  return TRI_ERROR_NO_ERROR;
 }
 
 std::string StorageEngineMock::versionFilename(TRI_voc_tick_t) const {

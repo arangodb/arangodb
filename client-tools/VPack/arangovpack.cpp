@@ -20,70 +20,35 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/signals.h"
-#include "Basics/directories.h"
-
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/ConfigFeature.h"
-#include "ApplicationFeatures/FileSystemFeature.h"
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "ApplicationFeatures/ProcessEnvironmentFeature.h"
-#include "ApplicationFeatures/OptionsCheckFeature.h"
-#include "ApplicationFeatures/ShellColorsFeature.h"
-#include "ApplicationFeatures/ShutdownFeature.h"
-#include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
-#include "FeaturePhases/BasicFeaturePhaseClient.h"
+#include "Basics/directories.h"
+#include "Basics/signals.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Logger/LoggerFeature.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "Random/RandomFeature.h"
 #include "Shell/ClientFeature.h"
-#include "VPack/VPackFeature.h"
+#include "VPack/ArangoVPackServer.h"
 
 using namespace arangodb;
-using namespace arangodb::application_features;
 
 int main(int argc, char* argv[]) {
   TRI_GET_ARGV(argc, argv);
   return ClientFeature::runMain(argc, argv, [&](int argc, char* argv[]) -> int {
+    int ret = EXIT_SUCCESS;
+
     ArangoGlobalContext context(argc, argv, BIN_DIRECTORY);
     arangodb::signals::maskAllSignalsClient();
     context.installHup();
 
-    std::shared_ptr<options::ProgramOptions> options(
-        new options::ProgramOptions(
-            argv[0], "Usage: arangovpack [<options>]",
-            "For more information use:", BIN_DIRECTORY));
+    auto options = std::make_shared<options::ProgramOptions>(
+        argv[0], "Usage: arangovpack [<options>]",
+        "For more information use:", BIN_DIRECTORY);
 
-    int ret = EXIT_SUCCESS;
-    application_features::ApplicationServer server(options, BIN_DIRECTORY);
-
-    // Add features in order
-    server.addFeature<BasicFeaturePhaseClient>();
-    server.addFeature<GreetingsFeaturePhase>(std::true_type{});
-    server.addFeature<VersionFeature>();
-    server.addFeature<ConfigFeature>(context.binaryName(), "none");
-    server.addFeature<LoggerFeature>(false);
-    server.addFeature<OptionsCheckFeature>();
-    server.addFeature<FileSystemFeature>();
-    server.addFeature<RandomFeature>();
-    server.addFeature<ShellColorsFeature>();
-    server.addFeature<ShutdownFeature>(
-        std::array{std::type_index(typeid(VPackFeature))});
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    server.addFeature<ProcessEnvironmentFeature>(context.binaryName());
-#endif
-    server.addFeature<VPackFeature>(&ret);
-
+    ArangoVPackServer server(options, BIN_DIRECTORY, context.binaryName(),
+                             &ret);
     try {
       server.run(argc, argv);
-      if (server.helpShown()) {
-        // --help was displayed
-        ret = EXIT_SUCCESS;
-      }
     } catch (std::exception const& ex) {
       LOG_TOPIC("f8d39", ERR, arangodb::Logger::FIXME)
           << "arangovpack terminated because of an unhandled exception: "

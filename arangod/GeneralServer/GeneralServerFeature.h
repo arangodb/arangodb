@@ -35,6 +35,7 @@
 #include "Metrics/MetricsFeature.h"
 #include "Rest/ApiVersion.h"
 #include "Rest/CommonDefines.h"
+#include "RestServer/LogApiOptions.h"
 
 #include <cstdint>
 #include <memory>
@@ -52,12 +53,11 @@ class GeneralServerFeature final
 
   explicit GeneralServerFeature(application_features::ApplicationServer& server,
                                 metrics::MetricsFeature& metricsFeature,
-                                GeneralServerOptions options);
+                                GeneralServerOptions options,
+                                LogApiOptions logApiOptions);
   explicit GeneralServerFeature(application_features::ApplicationServer& server,
                                 metrics::MetricsFeature& metricsFeature);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
   void initiateSoftShutdown() override final;
@@ -114,6 +114,7 @@ class GeneralServerFeature final
   void initResponseCodeCounters();
 
   GeneralServerOptions _options;
+  LogApiOptions _logApiOptions;
   std::shared_ptr<rest::RestHandlerFactory> _handlerFactory;
   std::unique_ptr<rest::AsyncJobManager> _jobManager;
   std::vector<std::unique_ptr<rest::GeneralServer>> _servers;

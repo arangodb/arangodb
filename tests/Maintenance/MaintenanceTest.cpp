@@ -53,7 +53,7 @@
 #include "RestServer/FlushFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SharedPRNGFeature.h"
-#include "VectorIndex/VectorIndexFeature.h"
+#include "VectorIndex/Feature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
 #include "RocksDBEngine/RocksDBOptionFeature.h"
@@ -534,7 +534,7 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
                    {dbsIds[shortNames[1]], createNode(dbs1Str)},
                    {dbsIds[shortNames[2]], createNode(dbs2Str)}} {
     auto& agencyFeature = as.addFeature<AgencyFeature>();
-    auto& roOptions = as.addFeature<RocksDBOptionFeature>(&agencyFeature);
+    auto& roOptions = as.addFeature<RocksDBOptionFeature>();
     as.addFeature<application_features::GreetingsFeaturePhase>(
         std::false_type{});
     auto& dbFeature = as.addFeature<DatabaseFeature>();

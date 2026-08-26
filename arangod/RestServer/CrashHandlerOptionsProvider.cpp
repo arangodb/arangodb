@@ -29,7 +29,7 @@ namespace arangodb::crash_handler {
 
 using namespace arangodb::options;
 
-void CrashHandlerOptionsProvider::declareOptions(
+void CrashHandlerOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, CrashHandlerFeatureOptions& opts) {
   options->addOption(
       "--crash-handler.enable-dumps",
