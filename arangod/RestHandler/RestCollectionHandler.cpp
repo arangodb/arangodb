@@ -145,6 +145,11 @@ async<void> RestCollectionHandler::handleCommandGet() {
   // This checks canUseCollection(Read)
 
   std::string const& name = suffixes[0];
+
+  if (_request->requestedApiVersion() > 0 && rejectNumericCollectionId(name)) {
+    co_return;
+  }
+
   // /_api/collection/<name>
   if (suffixes.size() == 1) {
     try {
@@ -430,6 +435,11 @@ async<void> RestCollectionHandler::handleCommandPut() {
   }
 
   std::string const& name = suffixes[0];
+
+  if (_request->requestedApiVersion() > 0 && rejectNumericCollectionId(name)) {
+    co_return;
+  }
+
   std::string const& sub = suffixes[1];
 
   if (sub != "responsibleShard" && !body.isObject()) {
@@ -457,7 +467,7 @@ async<void> RestCollectionHandler::handleCommandPut() {
   }
   TRI_ASSERT(coll);
 
-  if (sub == "load") {
+  if (sub == "load" && _request->requestedApiVersion() == 0) {
     // "load" is a no-op starting with 3.9
     bool cc = VelocyPackHelper::getBooleanValue(body, "count", true);
     co_await collectionRepresentation(
@@ -466,7 +476,7 @@ async<void> RestCollectionHandler::handleCommandPut() {
         /*showCount*/ cc ? CountType::Standard : CountType::None);
     co_return standardResponse();
   }
-  if (sub == "unload") {
+  if (sub == "unload" && _request->requestedApiVersion() == 0) {
     bool flush = _request->parsedValue("flush", false);
 
     if (flush && !coll->deleted()) {
@@ -634,11 +644,12 @@ async<void> RestCollectionHandler::handleCommandPut() {
   }
   if (sub == "properties") {
     std::vector<std::string> keep = {
-        StaticStrings::WaitForSyncString,    StaticStrings::Schema,
-        StaticStrings::ReplicationFactor,
-        StaticStrings::MinReplicationFactor,  // deprecated
-        StaticStrings::WriteConcern,         StaticStrings::ComputedValues,
-        StaticStrings::CacheEnabled};
+        StaticStrings::WaitForSyncString, StaticStrings::Schema,
+        StaticStrings::ReplicationFactor, StaticStrings::WriteConcern,
+        StaticStrings::ComputedValues,    StaticStrings::CacheEnabled};
+    if (_request->requestedApiVersion() == 0) {
+      keep.emplace_back(StaticStrings::MinReplicationFactor);  // deprecated
+    }
     VPackBuilder props = VPackCollection::keep(body, keep);
 
     OperationOptions options;
@@ -694,10 +705,14 @@ async<void> RestCollectionHandler::handleCommandPut() {
 
   auto resExtra = co_await handleExtraCommandPut(coll, sub, _builder);
   if (resExtra.is(TRI_ERROR_NOT_IMPLEMENTED)) {
-    resExtra.reset(
-        TRI_ERROR_HTTP_NOT_FOUND,
-        "expecting one of the actions 'load', 'unload', 'truncate',"
-        " 'properties', 'compact', 'rename', 'loadIndexesIntoMemory'");
+    std::string msg = "expecting one of the actions ";
+    if (_request->requestedApiVersion() == 0) {
+      msg += "'load', 'unload', ";
+    }
+    resExtra.reset(TRI_ERROR_HTTP_NOT_FOUND,
+                   msg +
+                       "'truncate', 'properties', 'compact', 'rename', "
+                       "'loadIndexesIntoMemory'");
     generateError(resExtra);
   } else if (resExtra.fail()) {
     generateError(resExtra);
@@ -718,6 +733,11 @@ async<void> RestCollectionHandler::handleCommandDelete() {
   }
 
   std::string const& name = suffixes[0];
+
+  if (_request->requestedApiVersion() > 0 && rejectNumericCollectionId(name)) {
+    co_return;
+  }
+
   bool allowDropSystem =
       _request->parsedValue(StaticStrings::DataSourceSystem, false);
   _builder.clear();
