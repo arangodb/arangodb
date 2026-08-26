@@ -24,6 +24,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Async/async.h"
+#include "Auth/Common.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
@@ -229,6 +230,9 @@ std::shared_ptr<LogicalCollection> RestIndexHandler::collection(
     if (ServerState::instance()->isCoordinator()) {
       // Restrict access properly from API version 1 on:
       if (_request->requestedApiVersion() > 0) {
+        if (auth::isNameAndNoId(cName).fail()) {
+          return nullptr;
+        }
         if (auto r = ExecContext::current().canUseCollection(
                 _vocbase.name(), cName, AccessLevel::Read);
             r.fail()) {
