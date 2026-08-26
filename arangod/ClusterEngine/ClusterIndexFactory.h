@@ -45,8 +45,8 @@ class ClusterIndexFactory final : public IndexFactory {
 
   /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
   /// "hash") used to display storage engine capabilities
-  std::vector<std::pair<std::string_view, std::string_view>> indexAliases()
-      const override;
+  std::vector<std::pair<std::string_view, std::string_view>> indexAliases(
+      uint32_t apiVersion) const override;
 
   void fillSystemIndexes(
       LogicalCollection& col,

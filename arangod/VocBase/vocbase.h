@@ -285,7 +285,8 @@ struct Database {
   decltype(auto) sharding() const { return _info.sharding(); }
   bool isOneShard() const;
 
-  void toVelocyPack(arangodb::velocypack::Builder& result) const;
+  void toVelocyPack(arangodb::velocypack::Builder& result,
+                    uint32_t apiVersion) const;
   arangodb::ReplicationClientsProgressTracker& replicationClients() {
     return *_replicationClients;
   }
