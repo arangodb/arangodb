@@ -24,15 +24,16 @@ set -u -o pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPTS="$(cd "$HERE/.." && pwd)/scripts"
 RUNNER="$HERE/run_scenarios.py"
-ROOT="$(cd "$HERE/../../.." && pwd)"
+# tests/api/rbac/rta -> rbac -> api -> tests -> source root. Four levels, not
+# three: run_scenarios.py counts from tests/api/rbac, this file from one deeper.
+ROOT="$(cd "$HERE/../../../.." && pwd)"
 
 LAYERS="offline,rbac,role-modelling,classic"
-# Empty means "use the runner's default", which is the same 050,100,400 as the
-# classic layer below. Both configurations cover the same suites: the RBAC
-# scenarios grant db:AdminMonitoringInternal, so the version-dependent suites
-# work there too (see MONITORING in scenarios.py).
+# Both empty means "use the runner's default" for both layers, so the two
+# configurations cover exactly the same suites. Override either independently
+# with --test / --classic-test.
 RBAC_FILTER=""
-CLASSIC_FILTER="050,100,400"
+CLASSIC_FILTER=""
 CLASSIC_ENDPOINT="tcp://127.0.0.1:8530"
 
 while [ $# -gt 0 ]; do
@@ -123,7 +124,9 @@ if wants classic; then
     done
     # The catalog is chosen by probing, so --auth-mode is not passed here: a
     # wrong verdict should surface as a failure rather than be papered over.
-    python3 "$RUNNER" --endpoint "$CLASSIC_ENDPOINT" --test "$CLASSIC_FILTER"
+    cargs=(--endpoint "$CLASSIC_ENDPOINT")
+    [ -n "$CLASSIC_FILTER" ] && cargs+=(--test "$CLASSIC_FILTER")
+    python3 "$RUNNER" "${cargs[@]}"
     record "classic: grant matrix" $?
 fi
 
