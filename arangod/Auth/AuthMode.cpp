@@ -1054,7 +1054,13 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
       overload{
           // -- Admin actions ---------------------------------------------
           [&](p::AnyAdmin auto const& admin) -> Result {
-            return checkOne(adminAction(admin), rbac::resources::NoResource{});
+            if (auto r =
+                    checkOne(adminAction(admin), rbac::resources::NoResource{});
+                r.fail()) {
+              // This is for backwards compatibility with the classic case
+              return {TRI_ERROR_HTTP_FORBIDDEN, r.errorMessage()};
+            }
+            return {};
           },
           // -- Databases -------------------------------------------------
           [&](p::UseDatabase const& database) -> Result {
@@ -1075,21 +1081,69 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
           },
           // -- Collections -----------------------------------------------
           [&](p::UseCollection const& collection) -> Result {
+            // _system._users: always NONE access (no user may touch it
+            // through normal APIs).
+            if (collection.db == StaticStrings::SystemDatabase &&
+                collection.name == StaticStrings::UsersCollection) {
+              return {
+                  TRI_ERROR_FORBIDDEN,
+                  failureMessage(collection,
+                                 std::format("Access to {} collection in {} "
+                                             "database is forbidden",
+                                             StaticStrings::UsersCollection,
+                                             StaticStrings::SystemDatabase))};
+            }
             return checkOne(
                 collectionAccessModeToAction(collection.level),
                 rbac::resources::Collection{collection.db, collection.name});
           },
           [&](p::SeeCollection const& collection) -> Result {
+            // _system._users: always NONE access (no user may touch it
+            // through normal APIs).
+            if (collection.db == StaticStrings::SystemDatabase &&
+                collection.name == StaticStrings::UsersCollection) {
+              return {
+                  TRI_ERROR_FORBIDDEN,
+                  failureMessage(collection,
+                                 std::format("Access to {} collection in {} "
+                                             "database is forbidden",
+                                             StaticStrings::UsersCollection,
+                                             StaticStrings::SystemDatabase))};
+            }
             return checkOne(
                 rbac::Action::Read,
                 rbac::resources::Collection{collection.db, collection.name});
           },
           [&](p::CreateCollection const& collection) -> Result {
+            // _system._users: always NONE access (no user may touch it
+            // through normal APIs).
+            if (collection.db == StaticStrings::SystemDatabase &&
+                collection.name == StaticStrings::UsersCollection) {
+              return {
+                  TRI_ERROR_FORBIDDEN,
+                  failureMessage(collection,
+                                 std::format("Access to {} collection in {} "
+                                             "database is forbidden",
+                                             StaticStrings::UsersCollection,
+                                             StaticStrings::SystemDatabase))};
+            }
             return checkOne(
                 rbac::Action::Create,
                 rbac::resources::Collection{collection.db, collection.name});
           },
           [&](p::DropCollection const& collection) -> Result {
+            // _system._users: always NONE access (no user may touch it
+            // through normal APIs).
+            if (collection.db == StaticStrings::SystemDatabase &&
+                collection.name == StaticStrings::UsersCollection) {
+              return {
+                  TRI_ERROR_FORBIDDEN,
+                  failureMessage(collection,
+                                 std::format("Access to {} collection in {} "
+                                             "database is forbidden",
+                                             StaticStrings::UsersCollection,
+                                             StaticStrings::SystemDatabase))};
+            }
             return checkOne(
                 rbac::Action::Drop,
                 rbac::resources::Collection{collection.db, collection.name});
@@ -1266,8 +1320,12 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
           // Each user operation maps to the identically-scoped action on the
           // db:user:<name> resource.
           [&](p::ReadUser const& user) -> Result {
-            return checkOne(rbac::Action::Read,
-                            rbac::resources::User{user.name});
+            if (auto r = checkOne(rbac::Action::Read,
+                                  rbac::resources::User{user.name});
+                r.fail()) {
+              return {TRI_ERROR_HTTP_FORBIDDEN, r.errorMessage()};
+            }
+            return {};
           },
           [&](p::CreateUser const& user) -> Result {
             return checkOne(rbac::Action::Create,
