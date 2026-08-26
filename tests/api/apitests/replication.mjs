@@ -104,7 +104,7 @@ export default [
 
   {
     // GET /_api/replication/clusterInventory
-    // Auth: AdminClusterInfo OR COLL RO (auth check inside handler).
+    // Auth: AdminDump OR COLL RO (auth check inside handler).
     // Only meaningful on coordinator; single-server → 403 CLUSTER_ONLY_ON_COORDINATOR.
     // Expected on coordinator: AU→403, AN→403, AR→403, AW→200, SU→200
     name: "Replication clusterInventory (GET /_api/replication/clusterInventory)",

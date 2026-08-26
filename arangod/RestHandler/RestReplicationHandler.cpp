@@ -858,14 +858,14 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   }
 
   resultBuilder.add(VPackValue(StaticStrings::Properties));
-  vocbase->toVelocyPack(resultBuilder);
+  vocbase->toVelocyPack(resultBuilder, _request->requestedApiVersion());
   vocbase.reset();
 
   auto& exec = ExecContext::current();
 
   resultBuilder.add("collections", VPackValue(VPackValueType::Array));
   for (std::shared_ptr<LogicalCollection> const& c : cols) {
-    if (exec.canUseAdminAction(auth::perms::AdminClusterInfo{}).fail() &&
+    if (exec.canUseAdminAction(auth::perms::AdminDump{}).fail() &&
         exec.canUseCollection(dbName, c->name(), AccessLevel::Read).fail()) {
       continue;
     }
