@@ -209,8 +209,8 @@ ClusterIndexFactory::ClusterIndexFactory(
 /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
 /// "hash") used to display storage engine capabilities
 std::vector<std::pair<std::string_view, std::string_view>>
-ClusterIndexFactory::indexAliases() const {
-  return _engine.rocksDBIndexFactory().indexAliases();
+ClusterIndexFactory::indexAliases(uint32_t apiVersion) const {
+  return _engine.rocksDBIndexFactory().indexAliases(apiVersion);
 }
 
 Result ClusterIndexFactory::enhanceIndexDefinition(  // normalize definition

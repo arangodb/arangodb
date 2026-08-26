@@ -28,6 +28,7 @@
 #include <variant>
 
 #include "Inspection/Status.h"
+#include "Inspection/Types.h"
 
 namespace arangodb::inspection::detail {
 
@@ -49,6 +50,30 @@ struct FallbackFactoryField;
 
 template<class Inspector, class InnerField, class Invariant>
 struct InvariantField;
+
+/// Determines for which inspection direction a field condition is evaluated.
+/// In the direction it does not apply to, the field is always processed.
+enum class ConditionScope { Always, Loading, Saving };
+
+template<class Inspector, class InnerField, class Predicate,
+         ConditionScope Scope>
+struct ConditionalField;
+
+template<class T>
+struct IsConditionalField : std::false_type {};
+template<class Inspector, class T, class P, ConditionScope S>
+struct IsConditionalField<ConditionalField<Inspector, T, P, S>>
+    : std::true_type {};
+
+/// True if `Field` or any of the fields it wraps carries a condition.
+template<class Field, class = void>
+struct ContainsCondition : std::false_type {};
+
+template<class Field>
+struct ContainsCondition<Field, std::void_t<decltype(Field::inner)>>
+    : std::disjunction<
+          IsConditionalField<Field>,
+          ContainsCondition<std::remove_cvref_t<decltype(Field::inner)>>> {};
 
 template<class Inspector, class Field>
 struct InvariantMixin {
@@ -86,6 +111,46 @@ struct TransformMixin {
   [[nodiscard]] auto transformWith(T transformer) && {
     return TransformField<Inspector, Field, T>(
         std::move(static_cast<Field&>(*this)), std::move(transformer));
+  }
+};
+
+/// Attaches a condition to a field. A field carries at most one condition, so
+/// `ConditionalField` deliberately does not inherit this mixin - chaining two
+/// conditions is a compile error instead of one of them being dropped.
+template<class Inspector, class Field>
+struct ConditionMixin {
+  /// Evaluates `predicate` both when loading and when saving.
+  template<class Predicate>
+  [[nodiscard]] auto when(Predicate predicate) && {
+    return makeConditional<ConditionScope::Always>(std::move(predicate));
+  }
+
+  /// Evaluates `predicate` when loading; the field is always saved.
+  template<class Predicate>
+  [[nodiscard]] auto whenLoading(Predicate predicate) && {
+    return makeConditional<ConditionScope::Loading>(std::move(predicate));
+  }
+
+  /// Evaluates `predicate` when saving; the field is always loaded.
+  template<class Predicate>
+  [[nodiscard]] auto whenSaving(Predicate predicate) && {
+    return makeConditional<ConditionScope::Saving>(std::move(predicate));
+  }
+
+ private:
+  template<ConditionScope Scope, class Predicate>
+  auto makeConditional(Predicate&& predicate) {
+    static_assert(
+        std::is_invocable_r_v<FieldCondition, Predicate> &&
+            std::is_same_v<std::invoke_result_t<Predicate>, FieldCondition>,
+        "Field conditions must be invocable without arguments and return "
+        "inspection::FieldCondition");
+    static_assert(!ContainsCondition<Field>::value,
+                  "A field must not carry more than one condition");
+
+    return ConditionalField<Inspector, Field, Predicate, Scope>(
+        std::move(static_cast<Field&>(*this)),
+        std::forward<Predicate>(predicate));
   }
 };
 
@@ -139,7 +204,8 @@ using WithTransform =
 template<class Inspector, typename DerivedField>
 struct BasicField : InvariantMixin<Inspector, DerivedField>,
                     FallbackMixin<Inspector, DerivedField>,
-                    TransformMixin<Inspector, DerivedField> {
+                    TransformMixin<Inspector, DerivedField>,
+                    ConditionMixin<Inspector, DerivedField> {
   explicit BasicField(std::string_view name) : name(name) {}
   std::string_view name;
 };
@@ -164,7 +230,9 @@ struct FallbackField
       WithInvariant<Inspector,
                     FallbackField<Inspector, InnerField, FallbackValue>>,
       WithTransform<Inspector,
-                    FallbackField<Inspector, InnerField, FallbackValue>> {
+                    FallbackField<Inspector, InnerField, FallbackValue>>,
+      ConditionMixin<Inspector,
+                     FallbackField<Inspector, InnerField, FallbackValue>> {
   FallbackField(InnerField inner, FallbackValue&& val)
       : Inspector::template FallbackContainer<FallbackValue>(std::move(val)),
         inner(std::move(inner)) {}
@@ -178,7 +246,9 @@ struct FallbackFactoryField
       WithInvariant<Inspector, FallbackFactoryField<Inspector, InnerField,
                                                     FallbackFactory>>,
       WithTransform<Inspector, FallbackFactoryField<Inspector, InnerField,
-                                                    FallbackFactory>> {
+                                                    FallbackFactory>>,
+      ConditionMixin<Inspector, FallbackFactoryField<Inspector, InnerField,
+                                                     FallbackFactory>> {
   FallbackFactoryField(InnerField inner, FallbackFactory&& fn)
       : Inspector::template FallbackFactoryContainer<FallbackFactory>(
             std::move(fn)),
@@ -192,7 +262,9 @@ struct InvariantField
     : Inspector::template InvariantContainer<Invariant>,
       WithFallback<Inspector, InvariantField<Inspector, InnerField, Invariant>>,
       WithTransform<Inspector,
-                    InvariantField<Inspector, InnerField, Invariant>> {
+                    InvariantField<Inspector, InnerField, Invariant>>,
+      ConditionMixin<Inspector,
+                     InvariantField<Inspector, InnerField, Invariant>> {
   InvariantField(InnerField inner, Invariant&& invariant)
       : Inspector::template InvariantContainer<Invariant>(std::move(invariant)),
         inner(std::move(inner)) {}
@@ -205,12 +277,31 @@ struct TransformField
     : WithInvariant<Inspector,
                     TransformField<Inspector, InnerField, Transformer>>,
       WithFallback<Inspector,
-                   TransformField<Inspector, InnerField, Transformer>> {
+                   TransformField<Inspector, InnerField, Transformer>>,
+      ConditionMixin<Inspector,
+                     TransformField<Inspector, InnerField, Transformer>> {
   TransformField(InnerField inner, Transformer&& transformer)
       : inner(std::move(inner)), transformer(std::move(transformer)) {}
   using value_type = typename InnerField::value_type;
   InnerField inner;
   Transformer transformer;
+};
+
+template<class Inspector, class InnerField, class Predicate,
+         ConditionScope Scope>
+struct ConditionalField
+    : WithInvariant<Inspector,
+                    ConditionalField<Inspector, InnerField, Predicate, Scope>>,
+      WithFallback<Inspector,
+                   ConditionalField<Inspector, InnerField, Predicate, Scope>>,
+      WithTransform<Inspector,
+                    ConditionalField<Inspector, InnerField, Predicate, Scope>> {
+  ConditionalField(InnerField inner, Predicate&& predicate)
+      : inner(std::move(inner)), predicate(std::move(predicate)) {}
+  using value_type = typename InnerField::value_type;
+  static constexpr ConditionScope scope = Scope;
+  InnerField inner;
+  Predicate predicate;
 };
 
 template<class T>
