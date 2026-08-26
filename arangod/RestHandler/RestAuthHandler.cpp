@@ -32,6 +32,7 @@
 #include "Logger/LoggerStream.h"
 #include "Utils/Events.h"
 #include "Ssl/jwt.h"
+#include "Utils/ExecContext.h"
 
 #include <velocypack/Builder.h>
 
@@ -55,6 +56,8 @@ RestStatus RestAuthHandler::execute() {
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
+
+  ExecContextSuperuserScope scope;
 
   if (!AuthenticationFeature::instance()->isActive()) {
     // Since 3.12.6 we actually mount this RestHandler in the case that
@@ -203,9 +206,6 @@ RestStatus RestAuthHandler::execute() {
 
 async<RestHandler::AuthenticationGrant>
 RestAuthHandler::checkUserAuthentication() const {
-  auto ec = _request->requestContext();
-  TRI_ASSERT(ec != nullptr);
-  ec->forceSuperuser();
   co_return AuthenticationGrant::GRANTED;
 }
 
@@ -213,8 +213,8 @@ std::string RestAuthHandler::generateJwt(
     std::string const& username, std::chrono::seconds expiryTime) const {
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
-  return arangodb::rest::SslInterface::jwt::generateUserToken(
-      af->tokenCache().jwtSecret(), username, expiryTime);
+  return auth::generateUserToken(af->tokenCache().jwtSecret(), username,
+                                 expiryTime);
 }
 
 RestStatus RestAuthHandler::badRequest() {

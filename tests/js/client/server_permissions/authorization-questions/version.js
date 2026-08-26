@@ -51,11 +51,14 @@ if (getOptions === true) {
     // not be written by the logging thread
     'log.force-direct': 'true',
     // keep background threads from asking questions of their own
-    'foxx.queues': 'false'
+    'foxx.queues': 'false',
+    // disable so it doesn't spoil the test output:
+    'server.statistics': 'false'
   };
 }
 
 const jsunity = require('jsunity');
+const { assertEqual } = jsunity.jsUnity.assertions;
 const {
   beginObserve,
   endObserve,
@@ -82,7 +85,8 @@ function versionApiAuthzSuite () {
     // whichever versions the identity may use, it gets the version.
     testVersion: function () {
       beginObserve();
-      arango.GET_RAW(`/_api/version`);
+      const res = arango.GET_RAW(`/_api/version`);
+      assertEqual(200, res.code);
       assertPermissions([
         "UseDatabase name=_system level=read"
       ], endObserve());
@@ -92,7 +96,8 @@ function versionApiAuthzSuite () {
     // depend on it
     testVersionInOtherDatabase: function () {
       beginObserve();
-      arango.GET_RAW(`/_db/${DB}/_api/version`);
+      const res = arango.GET_RAW(`/_db/${DB}/_api/version`);
+      assertEqual(200, res.code);
       assertPermissions([
         "UseDatabase name=d level=read"
       ], endObserve());
@@ -102,7 +107,8 @@ function versionApiAuthzSuite () {
     // only, so a versioned request to the very same handler is gated.
     testVersionWithNonDefaultApiVersion: function () {
       beginObserve();
-      arango.GET_RAW(`/_arango/v1/_api/version`);
+      const res = arango.GET_RAW(`/_arango/v1/_api/version`);
+      assertEqual(200, res.code);
       assertPermissions([
         "UseApiVersion version=1",
         "UseDatabase name=_system level=read"
@@ -116,23 +122,19 @@ function versionApiAuthzSuite () {
     // question without --server.harden.
     testAdminVersion: function () {
       beginObserve();
-      arango.GET_RAW(`/_db/_system/_admin/version`);
+      const res = arango.GET_RAW(`/_db/_system/_admin/version`);
+      assertEqual(200, res.code);
       assertPermissions([
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
 
-    // GET /_arango/v1/admon/version - also here for non-default api-version
-    // we check the api-version permission
-    testAdminVersionWithNonDefaultApiVersion: function () {
-      beginObserve();
-      arango.GET_RAW(`/_arango/v1/_admin/version`);
-      assertPermissions([
-        "UseApiVersion version=1",
-        "UseDatabase name=_system level=read"
-      ], endObserve());
+    // GET /_arango/v1/_admin/version does not exist - the route is registered
+    // for API version 0 only, so the handler lookup already fails.
+    testAdminVersionV1DoesNotExist: function () {
+      const res = arango.GET_RAW(`/_arango/v1/_admin/version`);
+      assertEqual(404, res.code);
     },
-
   };
 }
 

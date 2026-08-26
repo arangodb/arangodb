@@ -306,20 +306,44 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
            | [&]() { return embeddedFields->checkInvariant(); };
   }
 
-  [[nodiscard]] Status::Success parseField(FieldsMap& fields,
-                                           typename Base::IgnoreField&& field) {
-    if (auto it = fields.find(field.name); it != fields.end()) {
+  static void markFieldProcessed(FieldsMap& fields, std::string_view name) {
+    if (auto it = fields.find(name); it != fields.end()) {
       assert(!it->second.second &&
              "field processed twice during inspection. Make sure field names "
              "are unique!");
-      it->second.second = true;  // mark the field as processed
+      it->second.second = true;
     }
+  }
+
+  [[nodiscard]] Status::Success parseField(FieldsMap& fields,
+                                           typename Base::IgnoreField&& field) {
+    markFieldProcessed(fields, field.name);
     return {};
   }
 
   template<class T>
   [[nodiscard]] Status parseField(FieldsMap& fields, T&& field) {
     auto name = Base::getFieldName(field);
+    if (auto condition = Base::evaluateCondition(field);
+        condition != FieldCondition::Process) {
+      // A rejected field stays unprocessed, so an attribute of that name is
+      // reported by the unexpected-attribute check in applyFields.
+      if (condition == FieldCondition::Ignore) {
+        markFieldProcessed(fields, name);
+      }
+      // The attribute is not read, so the fallback provides the value - just
+      // as it does for an attribute that is missing from the input.
+      if constexpr (!std::is_void_v<decltype(Base::getFallbackField(field))>) {
+        Base::getFallbackField(field).apply(Base::getFieldValue(field));
+      }
+      // The condition governs whether the attribute is read, not whether the
+      // member must be valid - the invariant is checked either way.
+      if (auto res = this->checkInvariant(field); !res.ok()) {
+        return {std::move(res), name, Status::AttributeTag{}};
+      }
+      return {};
+    }
+
     bool isPresent = false;
     auto getFieldData = [&]() -> ValueType {
       if (auto it = fields.find(name); it != fields.end()) {
