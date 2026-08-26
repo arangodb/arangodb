@@ -2768,7 +2768,7 @@ bool RestReplicationHandler::prepareCollectionForRevisionOperation(
     return false;
   }
   if (_request->requestedApiVersion() > 0) {
-    if (auto r = isNameAndNoId(ctx.cname); r.fail()) {
+    if (auto r = auth::isNameAndNoId(ctx.cname); r.fail()) {
       generateError(r);
       return false;
     }

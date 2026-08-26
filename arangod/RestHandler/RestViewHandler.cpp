@@ -294,7 +294,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
   // From API V1 we only allow view names here:
   if (request()->requestedApiVersion() > 0) {
-    if (auto r = isNameAndNoId(name); r.fail()) {
+    if (auto r = auth::isNameAndNoId(name); r.fail()) {
       return generateError(r);
     }
   }
@@ -410,7 +410,7 @@ void RestViewHandler::deleteView() {
 
   // From API V1 on, we will only accept view names here:
   if (request()->requestedApiVersion() > 0) {
-    if (auto r = isNameAndNoId(name); r.fail()) {
+    if (auto r = auth::isNameAndNoId(name); r.fail()) {
       generateError(r);
       events::DropView(_vocbase.name(), name, r.errorNumber());
       return;

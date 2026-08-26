@@ -115,13 +115,6 @@ inline constexpr char TRI_INDEX_HANDLE_SEPARATOR_CHR = '/';
 /// @brief index handle separator as string
 inline constexpr auto TRI_INDEX_HANDLE_SEPARATOR_STR = "/";
 
-inline Result isNameAndNoId(std::string_view name) {
-  if (!name.empty() && (name[0] >= '0' && name[0] <= '9')) {
-    return {TRI_ERROR_FORBIDDEN, "Name must not be an ID (numerical) here!"};
-  }
-  return {};
-}
-
 /// @brief database
 struct Database {
   friend class arangodb::StorageEngine;

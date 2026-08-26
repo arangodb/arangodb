@@ -24,6 +24,7 @@
 
 #include "Async/async.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/Common.h"
 #include "Cluster/ActionDescription.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -744,7 +745,7 @@ async<void> RestCollectionHandler::handleCommandDelete() {
 
   // From API V1 we only allow collection names here:
   if (request()->requestedApiVersion() > 0) {
-    if (auto r = isNameAndNoId(name); r.fail()) {
+    if (auto r = auth::isNameAndNoId(name); r.fail()) {
       events::DropCollection(_vocbase.name(), name, r.errorNumber());
       generateError(r);
       co_return;
