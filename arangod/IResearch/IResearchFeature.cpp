@@ -566,11 +566,14 @@ void registerFilters(aql::AqlFunctionFeature& functions) {
 template<typename T>
 void registerSingleFactory(IndexTypeFactory& factory,
                            application_features::ApplicationServer& server) {
-  if (!server.hasFeature<T>()) {
+  if (!server.hasFeature<StorageEngine>()) {
     return;
   }
-  auto& engine = server.getFeature<T>();
-  auto& engineFactory = const_cast<IndexFactory&>(engine.indexFactory());
+  auto* engine = dynamic_cast<T*>(&server.getFeature<StorageEngine>());
+  if (engine == nullptr) {
+    return;
+  }
+  auto& engineFactory = const_cast<IndexFactory&>(engine->indexFactory());
   // TODO(MBkkt) remove std::string and update IndexFactory interface
   auto r = engineFactory.emplace(
       std::string{StaticStrings::ViewArangoSearchType}, factory);
@@ -579,7 +582,7 @@ void registerSingleFactory(IndexTypeFactory& factory,
         r.errorNumber(),
         absl::StrCat("failure registering IResearch link factory with index "
                      "factory from feature '",
-                     engine.name(), "': ", r.errorMessage()));
+                     engine->name(), "': ", r.errorMessage()));
   }
 }
 

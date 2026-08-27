@@ -54,7 +54,7 @@ struct MockVocbase : TRI_vocbase_t {
                        std::string const& name, std::uint64_t id)
       : TRI_vocbase_t(
             TRI_vocbase_t::mockConstruct, createDatabaseInfo(server, name, id),
-            server.addFeature<StorageEngine, StorageEngineMock>(), dbProvider),
+            server.getFeature<StorageEngine, StorageEngineMock>(), dbProvider),
         storageEngine(server.getFeature<StorageEngine, StorageEngineMock>()) {}
 
   virtual ~MockVocbase() = default;

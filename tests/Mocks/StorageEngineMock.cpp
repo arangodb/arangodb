@@ -33,8 +33,6 @@
 #include "Basics/asio_ns.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
-#include "ClusterEngine/ClusterEngine.h"
-#include "ClusterEngine/ClusterIndexFactory.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchInvertedIndex.h"
@@ -73,10 +71,9 @@ struct IndexFactoryMock : arangodb::IndexFactory {
   IndexFactoryMock(arangodb::application_features::ApplicationServer& server,
                    bool injectClusterIndexes)
       : IndexFactory(server) {
-    if (injectClusterIndexes) {
-      arangodb::ClusterIndexFactory::linkIndexFactories(
-          server, *this, server.getFeature<arangodb::ClusterEngine>());
-    }
+    // there is only a single StorageEngine slot now, and StorageEngineMock
+    // always occupies it, so a real ClusterEngine can never be fetched here.
+    TRI_ASSERT(!injectClusterIndexes);
   }
 
   virtual void fillSystemIndexes(arangodb::LogicalCollection& col,
