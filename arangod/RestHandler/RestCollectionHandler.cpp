@@ -24,6 +24,7 @@
 
 #include "Async/async.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/Common.h"
 #include "Cluster/ActionDescription.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -494,7 +495,7 @@ async<void> RestCollectionHandler::handleCommandPut() {
     // than 0 for backwards compatibility:
     if (_request.get()->requestedApiVersion() > 0) {
       if (auto r = ExecContext::current().canUseCollection(
-              _vocbase.name(), name, AccessLevel::WriteMeta);
+              _vocbase.name(), coll->name(), AccessLevel::WriteMeta);
           r.fail()) {
         generateError(r);
         co_return;
@@ -741,6 +742,15 @@ async<void> RestCollectionHandler::handleCommandDelete() {
   bool allowDropSystem =
       _request->parsedValue(StaticStrings::DataSourceSystem, false);
   _builder.clear();
+
+  // From API V1 we only allow collection names here:
+  if (request()->requestedApiVersion() > 0) {
+    if (auto r = auth::isNameAndNoId(name); r.fail()) {
+      events::DropCollection(_vocbase.name(), name, r.errorNumber());
+      generateError(r);
+      co_return;
+    }
+  }
 
   // Note that this check will be done in methods::Collections::drop below
   // again. However, we need to check before the lookup, or else somebody
