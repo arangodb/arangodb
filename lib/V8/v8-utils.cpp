@@ -3066,9 +3066,18 @@ static void JS_ReadPipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
         "the pipe from.");
   }
 
+  if (isExecutionDeadlineReached(isolate)) {
+    return;  // an exception has been scheduled
+  }
   char content[1024];
   size_t length = sizeof(content) - 1;
-  auto readLen = TRI_ReadPipe(proc, content, length);
+  // note: the callback deliberately uses the non-throwing overload, so that we
+  // don't create a v8 error object on every poll iteration.
+  auto readLen = TRI_ReadPipe(proc, content, length,
+                              []() { return isExecutionDeadlineReached(); });
+  if (isExecutionDeadlineReached(isolate)) {
+    return;  // the read was aborted, an exception has been scheduled
+  }
 
   auto result = TRI_V8_PAIR_STRING(isolate, content, readLen);
 
