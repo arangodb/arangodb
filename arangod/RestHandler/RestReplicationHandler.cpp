@@ -711,12 +711,12 @@ Result RestReplicationHandler::testPermissions() {
               return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
             }
 
-            std::string const& overwriteCollection =
-                _request->value("overwrite");
+            bool overwriteCollection =
+                _request->parsedValue<bool>("overwrite", false);
 
             auto& exec = ExecContext::current();
 
-            if (overwriteCollection == "true" ||
+            if (overwriteCollection ||
                 vocbase->lookupCollection(collectionName) == nullptr) {
               // 1.) re-create collection, means: overwrite=true (rw database)
               // OR 2.) not existing, new collection (rw database)
