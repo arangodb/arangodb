@@ -808,9 +808,7 @@ async<void> RestHandler::handleAuthorizationChecks() {
   // This is a temporary band-aid so we answer with a 500 rather than crashing
   // in that situation. A proper fix will be implemented soon.
   if (request()->requestContext() == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "Missing ExecContext");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Missing ExecContext");
   }
 
   if (auto res = co_await checkApiVersionAccess(); res.fail()) {
