@@ -97,8 +97,10 @@ MatchBuilder::MatchBuilder(ExecutionPlan& plan, Ast* ast)
 
 AstNode* MatchBuilder::createPropertyAccess(Variable const* variable,
                                             std::string_view property) {
-  return _ast->createNodeAttributeAccess(_ast->createNodeReference(variable),
-                                         property);
+  char const* registered = _ast->resources().registerString(property);
+  return _ast->createNodeAttributeAccess(
+      _ast->createNodeReference(variable),
+      std::string_view(registered, property.size()));
 }
 
 AstNode* MatchBuilder::buildEdgeCollectionList(NormalizedEdge const& edge) {
@@ -315,7 +317,8 @@ ExecutionNode* MatchBuilder::createPatternProjection(
     // alias = expression: evaluate in normal query scope (explicit
     // variable references required, e.g. v.profile.first_name).
     AstNode* expr = Ast::replaceVariables(alias.expr, subst);
-    root->addMember(_ast->createNodeObjectElement(alias.name, expr));
+    root->addMember(
+        _ast->createNodeObjectElement(registerKey(alias.name), expr));
   }
 
   return _plan.createNode<CalculationNode>(
@@ -469,11 +472,13 @@ MatchBuilder::createTraversalForPattern(Variable const* startNodeVar,
       auto traversalVertexOutputId =
           createPropertyAccess(traversalVertexOutputVar, "_id");
       auto vertexCollectionName = requireCollectionName(vertex.collection);
+      char const* registeredCollectionName =
+          _ast->resources().registerString(vertexCollectionName);
 
       auto args = _ast->createNodeArray();
       args->addMember(traversalVertexOutputId);
       args->addMember(_ast->createNodeValueString(
-          vertexCollectionName.data(), vertexCollectionName.length()));
+          registeredCollectionName, vertexCollectionName.length()));
 
       auto root =
           _ast->createNodeFunctionCall("IS_SAME_COLLECTION", args, true);

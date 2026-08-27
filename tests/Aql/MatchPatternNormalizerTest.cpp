@@ -506,6 +506,27 @@ TEST_F(MatchPatternNormalizerTest, vertexPropertiesAndWhereFilter) {
   ASSERT_TRUE(edge.filter.has_value());
 }
 
+TEST_F(MatchPatternNormalizerTest, vertexPropertiesAfterOptimize) {
+  auto parsed = parseMatch("MATCH (v :vc {j: 0}) RETURN v");
+  optimizeAst(parsed);
+
+  AstNode const* vertexPattern = parsed.matchNode->getMember(0)->getMember(0);
+  ASSERT_EQ(NODE_TYPE_PATTERN_NODE_PATTERN, vertexPattern->type);
+  AstNode const* propsNode = vertexPattern->getMember(2);
+  ASSERT_NE(nullptr, propsNode);
+  ASSERT_EQ(NODE_TYPE_OBJECT, propsNode->type) << propsNode->getTypeString();
+  ASSERT_EQ(1U, propsNode->numMembers());
+  AstNode const* propMember = propsNode->getMember(0);
+  ASSERT_EQ(NODE_TYPE_OBJECT_ELEMENT, propMember->type);
+  EXPECT_EQ("j", propMember->getStringView());
+
+  auto statement = normalize(parsed);
+  auto const& vertex = statement.patterns.front().start.vertex;
+  ASSERT_TRUE(vertex.has_value());
+  ASSERT_EQ(1U, vertex->properties.size());
+  EXPECT_EQ("j", vertex->properties.front().key);
+}
+
 TEST_F(MatchPatternNormalizerTest, combinedPattern) {
   auto parsed = parseMatch(
       "MATCH p = (v :@@vc RETURN i) "
