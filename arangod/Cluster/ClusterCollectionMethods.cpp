@@ -908,6 +908,12 @@ ClusterCollectionMethods::createCollectionsOnCoordinator(
         "Trying to create an empty list of collections on coordinator."};
   }
 
+  for (auto const& col : collections) {
+    if (auto res = vocbase.validateCollectionDescriptor(col); res.fail()) {
+      return res;
+    }
+  }
+
   if (vocbase.replicationVersion() == replication::Version::TWO) {
     return createCollectionsOnCoordinatorImpl<replication::Version::TWO>(
         vocbase, std::move(collections), internalOptions, options);

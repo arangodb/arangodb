@@ -206,7 +206,8 @@ struct Database {
 
   template<typename As>
   As& engine() const noexcept
-      requires(std::derived_from<As, arangodb::StorageEngine>) {
+    requires(std::derived_from<As, arangodb::StorageEngine>)
+  {
     TRI_ASSERT(dynamic_cast<As*>(&_engine) != nullptr);
     return static_cast<As&>(_engine);
   }
@@ -449,6 +450,12 @@ struct Database {
   /// @brief validate parameters for collection creation.
   arangodb::Result validateCollectionParameters(
       arangodb::velocypack::Slice parameters);
+
+  /// @brief checks a descriptor on its own. Checks that need the
+  /// `DatabaseConfiguration` are in `applyDefaultsAndValidate()`,
+  /// at construction site of the descriptor.
+  arangodb::Result validateCollectionDescriptor(
+      CollectionDescriptor const& descriptor);
 
   /// @brief locks a collection for usage by id.
   /// note: when the collection is not used anymore, the caller *must*
