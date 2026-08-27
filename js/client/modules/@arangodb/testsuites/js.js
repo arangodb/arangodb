@@ -89,7 +89,7 @@ function jsDriver (options) {
       process.env['ARANGO_VERSION']='30700'; // todo db._version(),
       process.env['TEST_ARANGODB_URL'] = this.instanceManager.endpoints.join(',');
       process.env['TEST_ARANGODB_URL_SELF_REACHABLE'] = this.instanceManager.url;
-      
+
       // testResultsDir
       let args = [
         "mocha",
@@ -128,6 +128,7 @@ function jsDriver (options) {
           let buf = fs.readPipe(res.pid);
           allBuff += buf;
           while ((buf.length === 1023) || count === 0) {
+            IsDeadlineReached();
             count += 1;
             buf = fs.readPipe(res.pid);
             allBuff += buf;
@@ -153,7 +154,7 @@ function jsDriver (options) {
             totalSuccess = false;
             message += test.err.message + '\n' + test.err.stack;
           }
-          
+
           results[test.title] = {
             "setUpDuration": 0,
             "tearDownDuration": 0,
