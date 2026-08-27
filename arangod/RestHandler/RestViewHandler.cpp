@@ -292,6 +292,13 @@ void RestViewHandler::modifyView(bool partialUpdate) {
     }
   }
 
+  // From API V1 we only allow view names here:
+  if (request()->requestedApiVersion() > 0) {
+    if (auto r = auth::isNameAndNoId(name); r.fail()) {
+      return generateError(r);
+    }
+  }
+
   auto const& execContext = ExecContext::current();
   if (isRename) {
     if (auto r =
@@ -400,6 +407,15 @@ void RestViewHandler::deleteView() {
   // ...........................................................................
   // end of parameter parsing
   // ...........................................................................
+
+  // From API V1 on, we will only accept view names here:
+  if (request()->requestedApiVersion() > 0) {
+    if (auto r = auth::isNameAndNoId(name); r.fail()) {
+      generateError(r);
+      events::DropView(_vocbase.name(), name, r.errorNumber());
+      return;
+    }
+  }
 
   if (auto r = ExecContext::current().canDropView(
           _vocbase.name(), name, view->linkedCollectionNames());
