@@ -229,34 +229,37 @@ You can use this feature to roll out new JWT secrets throughout a cluster.)");
           "A folder containing one or more JWT secret files to use for JWT "
           "authentication.",
           new StringParameter(&options.jwtSecretFolderProgramOption))
-      .setLongDescription(R"(The files in the specified folder are processed
-as follows:
+      .setLongDescription(R"(The server reads JWT secrets from every file in
+the configured folder.
 
-1. The files are sorted alphabetically by their name.
-2. Hidden files (starting with a `.`) and files with the extension `.tmp` are
-   skipped.
-3. The content of the first non-skipped file is used for the first secret. The
-   first secret is used for signing and verifying JWT tokens (_active_ secret).
-   - If the file contains a PEM-encoded public/private key pair, the public key
-     is used for verification and the private key to sign JWT.
-   - If the file contains a PEM-encoded public key only, the server can't sign
-     JWT because it lacks the private key and communication may be defunct.
-   - If the file is PEM-encoded but contains no private or public key, an error
-     is raised.
-   - In all other cases, the binary content of the file is used as a symmetric
-     HMAC secret, used for both verifying and signing JWT.
-4. All other non-skipped files are read and used for additional secrets.
-   They are only used to validate incoming JWT tokens (_passive_ secrets).
-   Only one secret needs to verify a JWT token for it to be accepted.
-   - If the file contains a PEM-encoded public/private key pair or public key,
-     the public key is used for verification.
-   - If the file isn't PEM-encoded, the binary content of the file is used as a
-     symmetric HMAC secret, used for verifying JWT.
-   - If the file is PEM-encoded but contains no public key, an error is raised.
+Files are sorted lexicographically by name.
+Two kinds are ignored: hidden files (names starting with `.`) and files ending
+in `.tmp`.
 
-You can reload JWT secrets from disk without restarting the server or the nodes
-of a cluster deployment via the `POST /_admin/server/jwt` HTTP API endpoint.
-You can use this feature to roll out new JWT secrets throughout a cluster.)");
+- **First remaining file = active secret.** Signs new tokens and verifies
+  incoming ones.
+- **Every other file = passive secret.** Verifies only, never signs.
+
+A token is accepted if *any* secret verifies it. This allows zero-downtime
+rotation: keep the old secret in the folder as a passive secret so existing
+tokens stay valid, and put the new one first so it takes over signing
+(e.g. name the files like `01-current`, `02-previous` to control the order).
+
+To reload the JWT secrets from disk without restarting, call the
+`POST /_admin/server/jwt` HTTP API endpoint. This lets you roll out new
+JWT secrets throughout a cluster.
+
+**File contents:**
+
+Each file is either a PEM-encoded key or raw bytes; the server decides by
+inspecting the content.
+
+| File contains | As active secret | As passive secret |
+|---|---|---|
+| PEM public/private key pair | Signs with the private key, verifies with the public key | Verifies with the public key |
+| PEM public key only | ⚠️ Cannot sign — server starts but can't issue tokens | Verifies with the public key |
+| PEM with no usable key | Error | Error |
+| Anything else | Raw bytes used as an HMAC secret; signs and verifies | Raw bytes used as an HMAC secret; verifies |)");
 }
 
 void AuthenticationOptionsProvider::validateOptionsImpl(
