@@ -186,6 +186,8 @@ void ApplicationServer::run(int argc, char* argv[]) {
 
   processOptions();
 
+  maybeDumpOptions();
+
   // validate options of all features
   _state.store(State::IN_VALIDATE_OPTIONS, std::memory_order_release);
   reportServerProgress(State::IN_VALIDATE_OPTIONS);
@@ -201,6 +203,8 @@ void ApplicationServer::run(int argc, char* argv[]) {
   // turn off all features that depend on other features that have been
   // turned off
   disableDependentFeatures();
+
+  maybeDumpDependencies();
 
   // allows process control
   daemonize();
@@ -246,6 +250,36 @@ void ApplicationServer::run(int argc, char* argv[]) {
   // stopped
   _state.store(State::STOPPED, std::memory_order_release);
   reportServerProgress(State::STOPPED);
+}
+
+void ApplicationServer::maybeDumpOptions() {
+  if (_dumpOptions) {
+    auto builder = _options->toVelocyPack(
+        false, true, [](std::string const&) { return true; });
+    arangodb::velocypack::Options options;
+    options.prettyPrint = true;
+    std::cout << builder.slice().toJson(&options) << std::endl;
+    exit(EXIT_SUCCESS);
+  }
+}
+
+void ApplicationServer::maybeDumpDependencies() {
+  if (_dumpDependencies) {
+    std::cout << "digraph dependencies\n"
+              << "{\n"
+              << "  overlap = false;\n";
+    for (auto& [_id, feature] : _features) {
+      for (auto& before : feature->startsAfter()) {
+        std::string_view depName;
+        if (hasFeature(before)) {
+          depName = getFeature(before).name();
+        }
+        std::cout << "  " << feature->name() << " -> " << depName << ";\n";
+      }
+    }
+    std::cout << "}\n";
+    exit(EXIT_SUCCESS);
+  }
 }
 
 // signal the server to initiate a soft shutdown
@@ -415,32 +449,6 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
   // handle `--version` command
   if (_printVersion) {
     rest::Version::print(std::cout);
-    exit(EXIT_SUCCESS);
-  }
-
-  if (_dumpDependencies) {
-    std::cout << "digraph dependencies\n"
-              << "{\n"
-              << "  overlap = false;\n";
-    for (auto& [_id, feature] : _features) {
-      for (auto& before : feature->startsAfter()) {
-        std::string_view depName;
-        if (hasFeature(before)) {
-          depName = getFeature(before).name();
-        }
-        std::cout << "  " << feature->name() << " -> " << depName << ";\n";
-      }
-    }
-    std::cout << "}\n";
-    exit(EXIT_SUCCESS);
-  }
-
-  if (_dumpOptions) {
-    auto builder = _options->toVelocyPack(
-        false, true, [](std::string const&) { return true; });
-    arangodb::velocypack::Options options;
-    options.prettyPrint = true;
-    std::cout << builder.slice().toJson(&options) << std::endl;
     exit(EXIT_SUCCESS);
   }
 }
