@@ -145,7 +145,8 @@ class MatchPatternNormalizerTest : public ::testing::Test {
     return normalizer.normalize(*parsed.matchNode);
   }
 
-  static std::unique_ptr<ExecutionPlan> instantiatePlan(ParsedMatch const& parsed) {
+  static std::unique_ptr<ExecutionPlan> instantiatePlan(
+      ParsedMatch const& parsed) {
     return ExecutionPlan::instantiateFromAst(parsed.ast.get(), false);
   }
 
@@ -553,16 +554,16 @@ TEST_F(MatchPatternNormalizerTest, rejectsInvalidDirectionValue) {
   edge->getMember(4)->setIntValue(99);
 
   MatchPatternNormalizer normalizer(*parsed.ast);
-  EXPECT_THROW(
-      { (void)normalizer.normalize(*parsed.matchNode); }, basics::Exception);
+  EXPECT_THROW({ (void)normalizer.normalize(*parsed.matchNode); },
+               basics::Exception);
 }
 
 TEST_F(MatchPatternNormalizerTest, rejectsInvalidRange) {
   auto parsed =
       parseMatch("MATCH (v :vc) -[ e :ec * 5..2 ]-> (w :vc) RETURN 1");
   MatchPatternNormalizer normalizer(*parsed.ast);
-  EXPECT_THROW(
-      { (void)normalizer.normalize(*parsed.matchNode); }, basics::Exception);
+  EXPECT_THROW({ (void)normalizer.normalize(*parsed.matchNode); },
+               basics::Exception);
 }
 
 TEST_F(MatchPatternNormalizerTest, whereNestedDottedAttributeAccess) {
@@ -736,15 +737,15 @@ TEST_F(MatchPatternNormalizerTest,
       parseMatch("MATCH (v :vc) -[ e :ec|ec2 ]-> (w :vc) RETURN [v, e, w]");
   auto statement = normalize(parsed);
 
-  ASSERT_EQ(2U, statement.patterns.front()
-                    .segments.front()
-                    .edge.collections.size());
+  ASSERT_EQ(
+      2U, statement.patterns.front().segments.front().edge.collections.size());
 
   auto plan = instantiatePlan(parsed);
   ASSERT_NE(nullptr, plan);
 }
 
-TEST_F(MatchPatternNormalizerTest, matchBuilderConsumesNormalizedFixedPathRange) {
+TEST_F(MatchPatternNormalizerTest,
+       matchBuilderConsumesNormalizedFixedPathRange) {
   auto parsed =
       parseMatch("MATCH (v :vc) -[ e :ec * 2..2 ]-> (w :vc) RETURN [v, e, w]");
   auto statement = normalize(parsed);
