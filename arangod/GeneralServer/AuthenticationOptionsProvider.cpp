@@ -134,8 +134,9 @@ option's value.)");
 
   opts->addOption("--server.external-rbac-service",
                   "Enable role-based access control (RBAC) and set the "
-                  "external RBAC service endpoint. If the string is empty, "
-                  "RBAC is disabled.",
+                  "external RBAC service endpoint "
+                  "(empty string = RBAC disabled). "
+                  "Requires the Arango Contextual Data Platform.",
                   new StringParameter(&options.externalRbacService),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
@@ -144,11 +145,16 @@ option's value.)");
                       arangodb::options::Flags::Uncommon,
                       arangodb::options::Flags::Experimental))
       .setLongDescription(
-          R"(When set to a non-empty string, this must be the HTTP or HTTPS
-endpoint of an external RBAC authorization service for use by Coordinators and
-single servers. In this case, all requests use role-based-access-control
-(RBAC) via the specified service for authorization decisions. When set to an
-empty string, RBAC is disabled and instead the old permission system is used.)");
+          R"(Specify the HTTP or HTTPS endpoint of an external RBAC
+authorization service for use by Coordinators and single servers.
+This service is provided by the Arango Contextual Data Platform, and you cannot
+use RBAC if you run ArangoDB standalone.
+
+- When set to a non-empty string, all requests use role-based access control
+  (RBAC) via the specified service for authorization decisions.
+
+- When set to an empty string, RBAC is disabled and instead the classic
+  permission system is used.)");
 
   opts->addObsoleteOption(
       "--server.local-authentication",
