@@ -93,11 +93,19 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether the current command may be forwarded to a client-supplied
-  /// DBserver with the caller's authorization stripped. Only true for the
-  /// commands used by arangodump ("dump"/"batch").
+  /// DBserver with the caller's authorization stripped.
+  ///
+  /// Only the commands used by arangodump ("dump"/"batch") may be forwarded,
+  /// and "dump" only if the caller has the permissions for it - forwarding
+  /// happens with cluster-internal superuser privileges, so the permissions
+  /// must be validated here.
+  ///
+  /// Returns TRI_ERROR_NO_ERROR if the command may be forwarded,
+  /// TRI_ERROR_FORBIDDEN if it may not, and the error of the permission check
+  /// otherwise.
   //////////////////////////////////////////////////////////////////////////////
 
-  bool isDBserverForwardingAllowed() const;
+  Result checkDBserverForwardingAllowed() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates an error if called on a coordinator server
@@ -482,11 +490,17 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
       TransactionId id) const;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Validate that the requesting user has access rights to this route
-  ///        Will return TRI_ERROR_NO_ERROR if user has access
-  ///        Will return error code otherwise.
+  /// @brief Validate that the requesting user may dump the collection given in
+  ///        the "collection" request parameter
+  ///
+  ///        On a coordinator the parameter holds a shard, which is translated
+  ///        to its collection first.
+  ///
+  ///        Will return TRI_ERROR_NO_ERROR if the user has access,
+  ///        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND if there is no such
+  ///        collection, and the error of the permission check otherwise.
   //////////////////////////////////////////////////////////////////////////////
-  Result testPermissions();
+  Result checkDumpPermissions() const;
 
   static constexpr uint64_t defaultChunkSize = 128 * 1024;
   static constexpr uint64_t maxChunkSize = 64 * 1024 * 1024;
