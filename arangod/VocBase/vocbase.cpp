@@ -975,7 +975,6 @@ std::vector<std::shared_ptr<LogicalCollection>> Database::createCollections(
   collections.reserve(descriptors.size());
 
   for (auto& descriptor : descriptors) {
-    // license check for enterprise features
     if (auto res = validateCollectionDescriptor(descriptor); res.fail()) {
       events::CreateCollection(dbName, descriptor.mutableProps.name,
                                res.errorNumber());
