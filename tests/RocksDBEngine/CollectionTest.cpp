@@ -54,3 +54,19 @@ TEST_F(StorageEngineDataTest, CreatedCollectionIsListedInInventory) {
   EXPECT_TRUE(found)
       << "created collection not reported by getCollectionsAndIndexes()";
 }
+
+// A dropped collection's marker stays on disk with deleted: true until
+// compaction removes it. Recovery must skip those, or the collection comes
+// back after a restart.
+TEST_F(StorageEngineDataTest, DeletedCollectionIsNotListedInInventory) {
+  auto database = makeDatabase("deletedTestDatabase", 43);
+  auto collection = makeCollection(*database, "deletedCollection");
+
+  collection->setDeleted();
+  engine().changeCollection(*database, *collection);
+
+  for (auto const& d : engine().getCollectionsAndIndexes(*database)) {
+    EXPECT_NE(d.mutableProps.name, "deletedCollection")
+        << "deleted collection reported by getCollectionsAndIndexes()";
+  }
+}

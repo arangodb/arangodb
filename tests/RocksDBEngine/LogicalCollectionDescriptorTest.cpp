@@ -25,11 +25,14 @@
 #include "RocksDBEngine/StorageEngineDataTest.h"
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "Basics/StaticStrings.h"
+#include "Cluster/Utils/ShardID.h"
 #include "Inspection/VPack.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Properties/ClusteringConstantProperties.h"
 #include "VocBase/Properties/CollectionDescriptor.h"
+#include "VocBase/Properties/CollectionVersion.h"
+#include "VocBase/Properties/CollectionIndexesProperties.h"
 #include "VocBase/Properties/CreateCollectionRequest.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/Properties/KeyGeneratorProperties.h"
@@ -88,6 +91,69 @@ CollectionDescriptor representativeCreateDescriptor() {
   return d;
 }
 
+// Everything the load path reads and the create API rejects. Every value here
+// differs from its default, so a field that stops being parsed fails the test.
+VPackBuilder representativeLoadSlice() {
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder obj(&builder);
+    builder.add(VPackObjectIterator(representativeCreateSlice().slice()));
+
+    // CollectionIdentity: ids travel as strings
+    builder.add(StaticStrings::Id, VPackValue("9988488"));
+    builder.add(StaticStrings::DataSourceGuid, VPackValue("h1234/9988488"));
+    builder.add(StaticStrings::DataSourcePlanId, VPackValue("9988489"));
+
+    // CollectionStorageProperties
+    builder.add(StaticStrings::ObjectId, VPackValue("777"));
+    builder.add(StaticStrings::Version,
+                VPackValue(static_cast<std::uint32_t>(CollectionVersion::v34)));
+
+    // CollectionInternalProperties
+    builder.add(StaticStrings::DataSourceDeleted, VPackValue(true));
+
+    // ClusteringConstantProperties
+    builder.add(StaticStrings::GroupId, VPackValue(1234));
+    builder.add("replicatedStateId", VPackValue(5678));
+    {
+      VPackObjectBuilder shards(&builder, "shards");
+      builder.add(VPackValue("s100001"));
+      {
+        VPackArrayBuilder servers(&builder);
+        builder.add(VPackValue("PRMR-a"));
+        builder.add(VPackValue("PRMR-b"));
+      }
+    }
+
+    // indexes are opaque Builders, so nested objects exercise the
+    // hand-written operator== that compares slices
+    {
+      VPackArrayBuilder indexes(&builder, StaticStrings::Indexes);
+      {
+        VPackObjectBuilder idx(&builder);
+        builder.add("id", VPackValue("0"));
+        builder.add("type", VPackValue("primary"));
+        {
+          VPackArrayBuilder fields(&builder, "fields");
+          builder.add(VPackValue("_key"));
+        }
+        builder.add("unique", VPackValue(true));
+      }
+      {
+        VPackObjectBuilder idx(&builder);
+        builder.add("id", VPackValue("42"));
+        builder.add("type", VPackValue("persistent"));
+        {
+          VPackArrayBuilder fields(&builder, "fields");
+          builder.add(VPackValue("author"));
+        }
+        builder.add("unique", VPackValue(false));
+      }
+    }
+  }
+  return builder;
+}
+
 // Identity and index keys are assigned per collection, so they can neither be
 // compared between two collections nor pinned.
 std::unordered_set<std::string> const& volatileKeys() {
@@ -105,6 +171,24 @@ VPackBuilder oneKeyObject(std::string_view key, VPackValue value) {
     builder.add(key, value);
   }
   return builder;
+}
+
+void expectDescriptorRoundTripIsStable(VPackSlice input) {
+  CollectionDescriptor first;
+  auto status = velocypack::deserializeWithStatus(
+      input, first, {.ignoreUnknownFields = true}, InspectInternalContext{});
+  ASSERT_TRUE(status.ok()) << status.error();
+
+  VPackBuilder out;
+  velocypack::serializeWithContext(out, first, InspectInternalContext{});
+
+  CollectionDescriptor second;
+  status = velocypack::deserializeWithStatus(out.slice(), second,
+                                             {.ignoreUnknownFields = true},
+                                             InspectInternalContext{});
+  ASSERT_TRUE(status.ok()) << status.error();
+
+  EXPECT_EQ(first, second) << out.slice().toJson();
 }
 
 }  // namespace
@@ -225,19 +309,113 @@ TEST_F(LogicalCollectionDescriptorTest, LoadPath_acceptsInternalOnlyValues) {
     builder.add(StaticStrings::DataSourceType,
                 VPackValue(static_cast<int>(TRI_COL_TYPE_EDGE)));
     builder.add(StaticStrings::NumberOfShards, VPackValue(0));
-    // markers store the id as a number, not a string
-    builder.add(StaticStrings::Id, VPackValue(9988488));
+    // LogicalDataSource::toVelocyPack writes the id as a string
+    builder.add(StaticStrings::Id, VPackValue("9988488"));
     {
       VPackObjectBuilder keyOpts(&builder, StaticStrings::KeyOptions);
       builder.add("type", VPackValue("upgrade"));
     }
+    // every persisted marker carries these; ShardingInfo requires the strategy
+    builder.add(StaticStrings::ShardingStrategy, VPackValue("hash"));
+    {
+      VPackArrayBuilder shardKeys(&builder, StaticStrings::ShardKeys);
+      builder.add(VPackValue(StaticStrings::KeyString));
+    }
   }
 
   std::shared_ptr<LogicalCollection> collection;
-  ASSERT_NO_THROW(collection = database->createCollection(builder.slice()));
+  ASSERT_NO_THROW(collection = database->createCollection(
+                      CollectionDescriptor::fromVelocyPack(builder.slice())));
   ASSERT_NE(collection, nullptr);
   EXPECT_EQ(collection->name(), "edges");
   EXPECT_EQ(collection->type(), TRI_COL_TYPE_EDGE);
+}
+
+TEST_F(LogicalCollectionDescriptorTest, LoadPath_parsesEveryLoadOnlyField) {
+  CollectionDescriptor d;
+  auto status = velocypack::deserializeWithStatus(
+      representativeLoadSlice().slice(), d, {.ignoreUnknownFields = true},
+      InspectInternalContext{});
+  ASSERT_TRUE(status.ok()) << status.error();
+
+  EXPECT_EQ(d.identity.id, DataSourceId{9988488});
+  EXPECT_EQ(d.identity.guid, "h1234/9988488");
+  EXPECT_EQ(d.identity.planId, DataSourceId{9988489});
+
+  EXPECT_EQ(d.storage.objectId, 777U);
+  EXPECT_EQ(d.storage.version, CollectionVersion::v34);
+
+  EXPECT_TRUE(d.internal.deleted);
+
+  ASSERT_TRUE(d.clusteringConstant.groupId.has_value());
+  EXPECT_EQ(d.clusteringConstant.groupId->id(), 1234U);
+  ASSERT_TRUE(d.clusteringConstant.replicatedStateId.has_value());
+  EXPECT_EQ(d.clusteringConstant.replicatedStateId->id(), 5678U);
+  ASSERT_TRUE(d.clusteringConstant.shards.has_value());
+  ASSERT_EQ(d.clusteringConstant.shards->size(), 1U);
+  EXPECT_EQ(d.clusteringConstant.shards->at(ShardID{100001}),
+            (std::vector<std::string>{"PRMR-a", "PRMR-b"}));
+
+  ASSERT_EQ(d.indexes.indexes.size(), 2U);
+  EXPECT_EQ(d.indexes.indexes[1].slice().get("type").copyString(),
+            "persistent");
+}
+
+// Pre-3.1 collections store the id only under "cid", so both keys feed
+// identity.id. "id" is declared last in CollectionIdentity's inspect and
+// therefore wins when both are present. Declaration order decides this, not
+// the order of the keys in the input, so swapping those two f.field() calls
+// must fail this test.
+TEST_F(LogicalCollectionDescriptorTest, LoadPath_idWinsOverCid) {
+  auto sliceWith = [](std::string_view id, std::string_view cid) {
+    VPackBuilder builder;
+    {
+      VPackObjectBuilder obj(&builder);
+      builder.add(VPackObjectIterator(representativeCreateSlice().slice()));
+      if (!id.empty()) {
+        builder.add(StaticStrings::Id, VPackValue(id));
+      }
+      if (!cid.empty()) {
+        builder.add(StaticStrings::DataSourceCid, VPackValue(cid));
+      }
+    }
+    return builder;
+  };
+
+  auto parsedId = [](VPackSlice input) {
+    CollectionDescriptor d;
+    auto status = velocypack::deserializeWithStatus(
+        input, d, {.ignoreUnknownFields = true}, InspectInternalContext{});
+    EXPECT_TRUE(status.ok()) << status.error();
+    return d.identity.id;
+  };
+
+  EXPECT_EQ(parsedId(sliceWith("11", "").slice()), DataSourceId{11});
+  EXPECT_EQ(parsedId(sliceWith("", "22").slice()), DataSourceId{22});
+  EXPECT_EQ(parsedId(sliceWith("11", "22").slice()), DataSourceId{11});
+}
+
+// Collections older than v33 have no globallyUniqueId on disk, so their name
+// becomes the guid to keep the value stable across restarts. A non-system name
+// is required: ensureGuid also uses the name for system collections, which
+// would make both cases look identical.
+TEST_F(LogicalCollectionDescriptorTest, LoadPath_legacyVersionUsesNameAsGuid) {
+  auto database = makeDatabase("testDatabase", 42);
+
+  auto load = [&](std::string name, CollectionVersion version) {
+    auto descriptor = representativeCreateDescriptor();
+    descriptor.mutableProps.name = std::move(name);
+    // each collection needs its own id; the fixture pins one
+    descriptor.identity.id = DataSourceId::none();
+    descriptor.storage.version = version;
+    return database->createCollection(std::move(descriptor));
+  };
+
+  EXPECT_EQ(load("legacy", CollectionVersion::v30)->guid(), "legacy");
+
+  auto current = load("modern", CollectionVersion::v37);
+  EXPECT_NE(current->guid(), "modern");
+  EXPECT_TRUE(current->guid().starts_with("h")) << current->guid();
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -251,14 +429,19 @@ TEST_F(LogicalCollectionDescriptorTest,
       database->createCollection(representativeCreateDescriptor());
   engine().createCollection(*database, *collection);
 
-  auto out = collection->toVelocyPackIgnore(
-      volatileKeys(), LogicalDataSource::Serialization::Persistence);
+  // the duplicate scan has to run on the unfiltered object: volatileKeys()
+  // removes globallyUniqueId and planId, which is where duplicates appeared
+  auto full = collection->toVelocyPackIgnore(
+      {}, LogicalDataSource::Serialization::Persistence);
 
   std::set<std::string> keys;
-  for (auto it : VPackObjectIterator(out.slice())) {
+  for (auto it : VPackObjectIterator(full.slice())) {
     EXPECT_TRUE(keys.insert(it.key.copyString()).second)
         << "duplicate key " << it.key.stringView();
   }
+
+  auto out = collection->toVelocyPackIgnore(
+      volatileKeys(), LogicalDataSource::Serialization::Persistence);
 
   for (auto const& key :
        {StaticStrings::DataSourceName, StaticStrings::KeyOptions,
@@ -279,24 +462,14 @@ TEST_F(LogicalCollectionDescriptorTest,
 
 TEST_F(LogicalCollectionDescriptorTest,
        Serialization_descriptorRoundTripIsStable) {
-  auto sliceBuilder = representativeCreateSlice();
+  ASSERT_NO_FATAL_FAILURE(
+      expectDescriptorRoundTripIsStable(representativeCreateSlice().slice()));
+}
 
-  CollectionDescriptor first;
-  auto status = velocypack::deserializeWithStatus(sliceBuilder.slice(), first,
-                                                  {.ignoreUnknownFields = true},
-                                                  InspectInternalContext{});
-  ASSERT_TRUE(status.ok()) << status.error();
-
-  VPackBuilder out;
-  velocypack::serializeWithContext(out, first, InspectInternalContext{});
-
-  CollectionDescriptor second;
-  status = velocypack::deserializeWithStatus(out.slice(), second,
-                                             {.ignoreUnknownFields = true},
-                                             InspectInternalContext{});
-  ASSERT_TRUE(status.ok()) << status.error();
-
-  EXPECT_EQ(first, second) << out.slice().toJson();
+TEST_F(LogicalCollectionDescriptorTest,
+       Serialization_loadOnlyFieldsRoundTripIsStable) {
+  ASSERT_NO_FATAL_FAILURE(
+      expectDescriptorRoundTripIsStable(representativeLoadSlice().slice()));
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -352,7 +525,7 @@ TEST_F(LogicalCollectionDescriptorTest, Context_objectIdIsInternalOnly) {
                    .ok());
 }
 
-// The slice ctor goes away in COR-885. Until then, one test keeps it honest:
+// Until the slice ctor goes away, one test keeps it honest:
 // the same input through either ctor must produce the same collection. Delete
 // this block together with the ctor.
 
