@@ -829,6 +829,10 @@ std::shared_ptr<LogicalCollection> Database::createCollection(
   auto const& dbName = _info.getName();
   std::string name = descriptor.mutableProps.name;
 
+  if (auto res = validateCollectionDescriptor(descriptor); res.fail()) {
+    events::CreateCollection(dbName, name, res.errorNumber());
+    THROW_ARANGO_EXCEPTION(res);
+  }
   try {
     auto collection =
         createCollectionObject(std::move(descriptor), /*isAStub*/ false);
@@ -971,8 +975,7 @@ std::vector<std::shared_ptr<LogicalCollection>> Database::createCollections(
   collections.reserve(descriptors.size());
 
   for (auto& descriptor : descriptors) {
-    // license check for enterprise features
-    if (auto res = validateEnterpriseLicense(descriptor); res.fail()) {
+    if (auto res = validateCollectionDescriptor(descriptor); res.fail()) {
       events::CreateCollection(dbName, descriptor.mutableProps.name,
                                res.errorNumber());
       THROW_ARANGO_EXCEPTION(res);
@@ -1068,6 +1071,29 @@ Result Database::validateCollectionParameters(velocypack::Slice parameters) {
 
   // needed for EE
   return validateExtendedCollectionParameters(parameters);
+}
+
+Result Database::validateCollectionDescriptor(CollectionDescriptor const& d) {
+  if (auto res = CollectionNameValidator::validateName(
+          d.constant.isSystem, extendedNames(), d.mutableProps.name);
+      res.fail()) {
+    return res;
+  }
+
+  auto type = d.constant.getType();
+  if (type != TRI_COL_TYPE_DOCUMENT && type != TRI_COL_TYPE_EDGE) {
+    return {TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+            "invalid collection type for collection '" +
+                std::string{d.mutableProps.name} + "'"};
+  }
+
+  // a userInvariant, so it does not run on descriptors we build ourselves
+  if (auto status = CollectionDescriptor::Invariants::isSmartConfiguration(d);
+      !status.ok()) {
+    return {TRI_ERROR_BAD_PARAMETER, status.error()};
+  }
+
+  return validateEnterpriseLicense(d);
 }
 
 #ifndef USE_ENTERPRISE
