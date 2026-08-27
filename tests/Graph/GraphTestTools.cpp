@@ -62,7 +62,6 @@ GraphTestSetup::GraphTestSetup()
   auto& metrics = server.addFeature<arangodb::metrics::MetricsFeature>(
       LazyApplicationFeatureReference<QueryRegistryFeature>(server),
       LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
-      LazyApplicationFeatureReference<DatabaseFeature>(server),
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(nullptr),
       LazyApplicationFeatureReference<ClusterFeature>(nullptr));
   features.emplace_back(metrics, false);

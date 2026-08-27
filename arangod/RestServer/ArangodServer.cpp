@@ -203,7 +203,6 @@ void ArangodServer::addFeatures() {
   auto& metrics = addFeature<metrics::MetricsFeature>(
       LazyApplicationFeatureReference<QueryRegistryFeature>(*this),
       LazyApplicationFeatureReference<StatisticsFeature>(*this),
-      LazyApplicationFeatureReference<DatabaseFeature>(*this),
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(*this),
       LazyApplicationFeatureReference<ClusterFeature>(*this),
       getOptions<metrics::MetricsOptionsProvider>());

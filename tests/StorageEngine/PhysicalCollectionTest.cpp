@@ -78,7 +78,7 @@ class PhysicalCollectionTest
     features.emplace_back(dbFeature);
     features.emplace_back(server.addFeature<metrics::MetricsFeature>(
         LazyApplicationFeatureReference<QueryRegistryFeature>(server),
-        LazyApplicationFeatureReference<StatisticsFeature>(nullptr), dbFeature,
+        LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
         LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
             nullptr),
         LazyApplicationFeatureReference<ClusterFeature>(nullptr)));
