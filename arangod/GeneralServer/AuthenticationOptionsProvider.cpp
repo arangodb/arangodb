@@ -235,14 +235,37 @@ You can use this feature to roll out new JWT secrets throughout a cluster.)");
           "A folder containing one or more JWT secret files to use for JWT "
           "authentication.",
           new StringParameter(&options.jwtSecretFolderProgramOption))
-      .setLongDescription(R"(Files are sorted alphabetically, the first secret
-is used for signing + verifying JWT tokens (_active_ secret), and all other
-secrets are only used to validate incoming JWT tokens (_passive_ secrets).
-Only one secret needs to verify a JWT token for it to be accepted.
+      .setLongDescription(R"(The server reads JWT secrets from every file in
+the configured folder.
 
-You can reload JWT secrets from disk without restarting the server or the nodes
-of a cluster deployment via the `POST /_admin/server/jwt` HTTP API endpoint.
-You can use this feature to roll out new JWT secrets throughout a cluster.)");
+Files are sorted lexicographically by name.
+Two kinds are ignored: hidden files (names starting with `.`) and files ending
+in `.tmp`.
+
+- **First remaining file = active secret.** Signs new tokens and verifies
+  incoming ones.
+- **Every other file = passive secret.** Verifies only, never signs.
+
+A token is accepted if *any* secret verifies it. This allows zero-downtime
+rotation: keep the old secret in the folder as a passive secret so existing
+tokens stay valid, and put the new one first so it takes over signing
+(e.g. name the files like `01-current`, `02-previous` to control the order).
+
+To reload the JWT secrets from disk without restarting, call the
+`POST /_admin/server/jwt` HTTP API endpoint. This lets you roll out new
+JWT secrets throughout a cluster.
+
+**File contents:**
+
+Each file is either a PEM-encoded key or raw bytes; the server decides by
+inspecting the content.
+
+| File contains | As active secret | As passive secret |
+|---|---|---|
+| PEM public/private key pair | Signs with the private key, verifies with the public key | Verifies with the public key |
+| PEM public key only | ⚠️ Cannot sign — server starts but can't issue tokens | Verifies with the public key |
+| PEM with no usable key | Error | Error |
+| Anything else | Raw bytes used as an HMAC secret; signs and verifies | Raw bytes used as an HMAC secret; verifies |)");
 }
 
 void AuthenticationOptionsProvider::validateOptionsImpl(
