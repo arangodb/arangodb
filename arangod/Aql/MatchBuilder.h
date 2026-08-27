@@ -88,8 +88,7 @@ class MatchBuilder {
   AstNode* constructArray(std::vector<AstNode const*> const& vars);
 
   CalculationNode* constructPathObject(
-      Variable const* outVariable,
-      std::vector<AstNode const*> const& vertices,
+      Variable const* outVariable, std::vector<AstNode const*> const& vertices,
       std::vector<AstNode const*> const& edges);
 
   ExecutionPlan& _plan;
