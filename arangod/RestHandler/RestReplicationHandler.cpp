@@ -858,7 +858,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   }
 
   resultBuilder.add(VPackValue(StaticStrings::Properties));
-  vocbase->toVelocyPack(resultBuilder);
+  vocbase->toVelocyPack(resultBuilder, _request->requestedApiVersion());
   vocbase.reset();
 
   auto& exec = ExecContext::current();
@@ -2766,6 +2766,12 @@ bool RestReplicationHandler::prepareCollectionForRevisionOperation(
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid collection parameter");
     return false;
+  }
+  if (_request->requestedApiVersion() > 0) {
+    if (auto r = auth::isNameAndNoId(ctx.cname); r.fail()) {
+      generateError(r);
+      return false;
+    }
   }
 
   // print request
