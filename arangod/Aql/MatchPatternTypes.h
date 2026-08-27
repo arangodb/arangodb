@@ -128,9 +128,9 @@ struct NormalizedVertex {
 struct NormalizedEdge {
   Variable const* variable{nullptr};
   std::vector<MatchDataSource> collections;
-  /// @brief parser-owned collection datasource nodes (member 1 of PATTERN_EDGE).
-  /// Used by MatchBuilder when constructing traversal collection lists so
-  /// collection nodes match parser registration/lifetime semantics.
+  /// @brief parser-owned collection datasource nodes (member 1 of
+  /// PATTERN_EDGE). Used by MatchBuilder when constructing traversal collection
+  /// lists so collection nodes match parser registration/lifetime semantics.
   std::vector<AstNode const*> collectionAstNodes;
   std::vector<MatchPropertyConstraint> properties;
   std::optional<MatchExpressionRef> filter;

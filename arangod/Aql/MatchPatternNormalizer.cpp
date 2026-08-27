@@ -263,11 +263,11 @@ std::optional<MatchProjection> MatchPatternNormalizer::normalizeProjection(
   for (size_t i = 0; i < node->numMembers(); ++i) {
     AstNode const* item = node->getMemberUnchecked(i);
     if (item->type == NODE_TYPE_OBJECT_ELEMENT) {
-      projection.items.push_back(MatchProjectionItem{
-          MatchProjectionItem::Kind::kAlias,
-          std::string(item->getStringView()),
-          {},
-          {item->getMember(0)}});
+      projection.items.push_back(
+          MatchProjectionItem{MatchProjectionItem::Kind::kAlias,
+                              std::string(item->getStringView()),
+                              {},
+                              {item->getMember(0)}});
     } else if (item->type == NODE_TYPE_ARRAY) {
       // Unquoted keep path: ARRAY of path segments (nested when size > 1).
       std::vector<std::string> path;
@@ -279,16 +279,20 @@ std::optional<MatchProjection> MatchPatternNormalizer::normalizeProjection(
       }
       TRI_ASSERT(!path.empty());
       std::string name = path.size() == 1 ? path.front() : std::string{};
-      projection.items.push_back(MatchProjectionItem{
-          MatchProjectionItem::Kind::kKeepAttribute, std::move(name),
-          std::move(path), {}});
+      projection.items.push_back(
+          MatchProjectionItem{MatchProjectionItem::Kind::kKeepAttribute,
+                              std::move(name),
+                              std::move(path),
+                              {}});
     } else if (item->type == NODE_TYPE_VALUE && item->isStringValue()) {
       // Quoted literal keep: single top-level key (dots are not hierarchy).
       std::string name{item->getStringView()};
       std::vector<std::string> path{name};
-      projection.items.push_back(MatchProjectionItem{
-          MatchProjectionItem::Kind::kKeepAttribute, std::move(name),
-          std::move(path), {}});
+      projection.items.push_back(
+          MatchProjectionItem{MatchProjectionItem::Kind::kKeepAttribute,
+                              std::move(name),
+                              std::move(path),
+                              {}});
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "unexpected match projection item");
