@@ -375,10 +375,11 @@ struct EmbeddedFieldsRef {
     return makeConditional<ConditionScope::Saving>(std::move(predicate));
   }
 
- private:
-  // need a comment here to work around stupid clang-format behavior
-  template<ConditionScope S, class P>
-  auto makeConditional(P&& predicate) {
+ private :
+     // need a comment here to work around stupid clang-format behavior
+     template<ConditionScope S, class P>
+     auto
+     makeConditional(P&& predicate) {
     static_assert(
         std::is_invocable_r_v<FieldCondition, P> &&
             std::is_same_v<std::invoke_result_t<P>, FieldCondition>,
