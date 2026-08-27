@@ -68,8 +68,7 @@ PlanCollectionEntryReplication2::PlanCollectionEntryReplication2(
     : _properties{::transform(std::move(col))} {}
 
 std::string PlanCollectionEntryReplication2::getCID() const {
-  TRI_ASSERT(!_properties.immutableProperties.
-    id.empty());
+  TRI_ASSERT(!_properties.immutableProperties.id.empty());
   return std::to_string(_properties.immutableProperties.id.id());
 }
 

@@ -100,7 +100,6 @@ class LogicalCollection : public LogicalDataSource {
  public:
   LogicalCollection() = delete;
   LogicalCollection(Database& vocbase, velocypack::Slice info, bool isAStub);
-  // TODO (COR-885): This ctor only works for create path
   LogicalCollection(Database& vocbase, CollectionDescriptor descriptor,
                     bool isAStub);
   LogicalCollection(LogicalCollection const&) = delete;
