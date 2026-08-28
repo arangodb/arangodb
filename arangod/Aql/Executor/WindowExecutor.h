@@ -23,6 +23,7 @@
 #pragma once
 
 #include "Aql/Aggregator.h"
+#include "Aql/CollectOptions.h"
 #include "Aql/AqlValueGroup.h"
 #include "Aql/ExecutionNode/WindowNode.h"
 #include "Aql/ExecutionState.h"
@@ -54,12 +55,12 @@ class WindowExecutorInfos {
    * @param aggregateRegisters Input and output Register for Aggregation
    * @param options The AQL transaction, as it might be needed for aggregates
    */
-  WindowExecutorInfos(
-      WindowBounds const& b, RegisterId rangeRegister,
-      std::vector<std::string> aggregateTypes,
-      std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-      QueryWarnings& warnings, velocypack::Options const* options,
-      ResourceMonitor& resourceMonitor);
+  WindowExecutorInfos(WindowBounds const& b, RegisterId rangeRegister,
+                      std::vector<std::string> aggregateTypes,
+                      std::vector<AggregateRegisters>&& aggregateRegisters,
+                      QueryWarnings& warnings,
+                      velocypack::Options const* options,
+                      ResourceMonitor& resourceMonitor);
 
   WindowExecutorInfos() = delete;
   WindowExecutorInfos(WindowExecutorInfos&&) = default;
@@ -69,7 +70,7 @@ class WindowExecutorInfos {
  public:
   WindowBounds const& bounds() const;
   RegisterId rangeRegister() const;
-  std::vector<std::pair<RegisterId, RegisterId>> getAggregatedRegisters() const;
+  std::vector<AggregateRegisters> getAggregatedRegisters() const;
   std::vector<std::string> const& getAggregateTypes() const;
   QueryWarnings& warnings() const;
   velocypack::Options const* getVPackOptions() const;
@@ -83,8 +84,8 @@ class WindowExecutorInfos {
   /// @brief aggregate types
   std::vector<std::string> _aggregateTypes;
 
-  /// @brief pairs, consisting of out register and in register
-  std::vector<std::pair<RegisterId, RegisterId>> _aggregateRegisters;
+  /// @brief out register plus the in registers feeding each aggregate
+  std::vector<AggregateRegisters> _aggregateRegisters;
 
   QueryWarnings& _warnings;
 
@@ -111,6 +112,11 @@ class BaseWindowExecutor {
 
   static AggregatorList createAggregators(
       BaseWindowExecutor::Infos const& infos);
+
+  /// @brief scratch buffer holding one aggregate's input values for the
+  /// current row. Reused so that a multi-argument aggregate does not allocate
+  /// per row.
+  std::vector<AqlValue> _inputValues;
 
   void applyAggregators(InputAqlItemRow& input);
   void resetAggregators();

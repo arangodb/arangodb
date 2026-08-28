@@ -1900,14 +1900,13 @@ AstNode* Ast::createNodeAggregateFunctionCall(std::string_view functionName,
   TRI_ASSERT(arguments->type == NODE_TYPE_ARRAY);
 
   if (Aggregator::requiresInput(normalized)) {
-    // validate number of function call arguments
-    size_t numExpectedArguments =
-        1;  // at the moment all aggregators take only a single argument
+    size_t const numExpectedArguments = Aggregator::numArguments(normalized);
     if (arguments->numMembers() != numExpectedArguments) {
       std::string temp(functionName);
+      int const expected = static_cast<int>(numExpectedArguments);
       THROW_ARANGO_EXCEPTION_PARAMS(
-          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, temp.c_str(), 1,
-          1);
+          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, temp.c_str(),
+          expected, expected);
     }
   }
 

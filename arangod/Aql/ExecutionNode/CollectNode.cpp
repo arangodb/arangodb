@@ -103,9 +103,17 @@ void CollectNode::doToVelocyPack(VPackBuilder& nodes,
       VPackObjectBuilder obj(&nodes);
       nodes.add(VPackValue("outVariable"));
       aggregateVariable.outVar->toVelocyPack(nodes);
-      if (aggregateVariable.inVar) {
+      nodes.add(VPackValue("inVariables"));
+      {
+        VPackArrayBuilder inVarsGuard(&nodes);
+        for (auto const* inVar : aggregateVariable.inVars) {
+          inVar->toVelocyPack(nodes);
+        }
+      }
+      if (aggregateVariable.inVars.size() == 1) {
+        // keep the shape that explain() had before multi-argument aggregates
         nodes.add(VPackValue("inVariable"));
-        aggregateVariable.inVar->toVelocyPack(nodes);
+        aggregateVariable.inVars[0]->toVelocyPack(nodes);
       }
       nodes.add("type", VPackValue(aggregateVariable.type));
     }
@@ -199,7 +207,7 @@ void CollectNode::calcGroupRegisters(
 }
 
 void CollectNode::calcAggregateRegisters(
-    std::vector<std::pair<RegisterId, RegisterId>>& aggregateRegisters,
+    std::vector<AggregateRegisters>& aggregateRegisters,
     RegIdSet& readableInputRegisters,
     RegIdSet& writeableOutputRegisters) const {
   for (auto const& p : _aggregateVariables) {
@@ -210,17 +218,22 @@ void CollectNode::calcAggregateRegisters(
     RegisterId outReg = itOut->second.registerId;
     TRI_ASSERT(outReg.isValid());
 
-    RegisterId inReg{RegisterId::maxRegisterId};
-    if (Aggregator::requiresInput(p.type)) {
-      auto itIn = getRegisterPlan()->varInfo.find(p.inVar->id);
+    std::vector<RegisterId> inRegs;
+    // aggregators whose input is optimized away (COUNT/LENGTH) have no input
+    // variables, and therefore no input registers
+    TRI_ASSERT(Aggregator::requiresInput(p.type) || p.inVars.empty());
+    inRegs.reserve(p.inVars.size());
+    for (auto const* inVar : p.inVars) {
+      auto itIn = getRegisterPlan()->varInfo.find(inVar->id);
       TRI_ASSERT(itIn != getRegisterPlan()->varInfo.end());
-      inReg = itIn->second.registerId;
+      RegisterId inReg = itIn->second.registerId;
       TRI_ASSERT(inReg.isValid());
       readableInputRegisters.insert(inReg);
+      inRegs.emplace_back(inReg);
     }
-    // else: no input variable required
 
-    aggregateRegisters.emplace_back(std::make_pair(outReg, inReg));
+    aggregateRegisters.emplace_back(
+        AggregateRegisters{outReg, std::move(inRegs)});
     writeableOutputRegisters.insert((outReg));
   }
   TRI_ASSERT(aggregateRegisters.size() == _aggregateVariables.size());
@@ -280,7 +293,7 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
                          writeableOutputRegisters);
 
       // calculate the aggregate registers
-      std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
+      std::vector<AggregateRegisters> aggregateRegisters;
       calcAggregateRegisters(aggregateRegisters, readableInputRegisters,
                              writeableOutputRegisters);
 
@@ -329,7 +342,7 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
                          writeableOutputRegisters);
 
       // calculate the aggregate registers
-      std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
+      std::vector<AggregateRegisters> aggregateRegisters;
       calcAggregateRegisters(aggregateRegisters, readableInputRegisters,
                              writeableOutputRegisters);
 
@@ -657,7 +670,9 @@ void CollectNode::replaceVariables(
     variable.first = Variable::replace(old, replacements);
   }
   for (auto& variable : _aggregateVariables) {
-    variable.inVar = Variable::replace(variable.inVar, replacements);
+    for (auto& inVar : variable.inVars) {
+      inVar = Variable::replace(inVar, replacements);
+    }
   }
   if (_expressionVariable != nullptr) {
     _expressionVariable = Variable::replace(_expressionVariable, replacements);
@@ -673,8 +688,8 @@ void CollectNode::getVariablesUsedHere(VarSet& vars) const {
     vars.emplace(p.inVar);
   }
   for (auto const& p : _aggregateVariables) {
-    if (p.inVar) {
-      vars.emplace(p.inVar);
+    for (auto const* inVar : p.inVars) {
+      vars.emplace(inVar);
     }
   }
 
@@ -773,9 +788,9 @@ void CollectNode::clearAggregates(
       it = _aggregateVariables.erase(it);
     } else {
       if (!Aggregator::requiresInput(it->type)) {
-        // aggregator has an input variable attached, but doesn't need it.
+        // aggregator has input variables attached, but doesn't need them.
         // remove the dependency, e.g.  COUNT(1) => COUNT()
-        it->inVar = nullptr;
+        it->inVars.clear();
       }
       ++it;
     }
@@ -852,8 +867,8 @@ std::vector<Variable const*> CollectNode::getVariablesSetHere() const {
 }
 
 void CollectNode::setMergeListsAggregation(Variable const* outVariable) {
-  _aggregateVariables.emplace_back(
-      AggregateVarInfo{_outVariable, outVariable, "MERGE_LISTS"});
+  _aggregateVariables.emplace_back(AggregateVarInfo{
+      _outVariable, std::vector<Variable const*>{outVariable}, "MERGE_LISTS"});
 
   // clear out variable and expression variable
   _outVariable = _expressionVariable = nullptr;

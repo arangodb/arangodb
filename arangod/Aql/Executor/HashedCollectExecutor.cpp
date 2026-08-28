@@ -41,14 +41,12 @@
 
 namespace arangodb::aql {
 
-static const AqlValue EmptyValue;
-
 HashedCollectExecutorInfos::HashedCollectExecutorInfos(
     std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
     RegisterId collectRegister, RegisterId expressionRegister,
     Variable const* expressionVariable, std::vector<std::string> aggregateTypes,
     std::vector<std::pair<std::string, RegisterId>>&& inputVariables,
-    std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
+    std::vector<AggregateRegisters>&& aggregateRegisters,
     velocypack::Options const* opts, arangodb::ResourceMonitor& resourceMonitor)
     : _aggregateTypes(aggregateTypes),
       _aggregateRegisters(aggregateRegisters),
@@ -67,7 +65,7 @@ HashedCollectExecutorInfos::getGroupRegisters() const {
   return _groupRegisters;
 }
 
-std::vector<std::pair<RegisterId, RegisterId>> const&
+std::vector<AggregateRegisters> const&
 HashedCollectExecutorInfos::getAggregatedRegisters() const {
   return _aggregateRegisters;
 }
@@ -156,11 +154,11 @@ void HashedCollectExecutor::consumeInputRow(InputAqlItemRow& input) {
                    _infos.getAggregatedRegisters().size());
     size_t j = 0;
     for (auto const& r : _infos.getAggregatedRegisters()) {
-      if (r.second.value() == RegisterId::maxRegisterId) {
-        (*aggregateValues)[j].reduce(EmptyValue);
-      } else {
-        (*aggregateValues)[j].reduce(input.getValue(r.second));
+      _inputValues.clear();
+      for (auto const& reg : r.inRegs) {
+        _inputValues.emplace_back(input.getValue(reg));
       }
+      (*aggregateValues)[j].reduce(_inputValues);
       ++j;
     }
   }
@@ -192,7 +190,7 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(
          ++aggregatorIdx) {
       AqlValue r = aggregators[aggregatorIdx].stealValue();
       AqlValueGuard guard{r, true};
-      output.moveValueInto(_infos.getAggregatedRegisters()[j++].first,
+      output.moveValueInto(_infos.getAggregatedRegisters()[j++].outReg,
                            _lastInitializedInputRow, &guard);
     }
   }

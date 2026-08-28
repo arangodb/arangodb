@@ -50,6 +50,18 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
+namespace {
+/// @brief build the register info for a single aggregate. MaxRegisterId means
+/// the aggregator takes no arguments at all, as COUNT/LENGTH do.
+AggregateRegisters aggRegs(RegisterId out, RegisterId in) {
+  std::vector<RegisterId> inRegs;
+  if (in != RegisterPlan::MaxRegisterId) {
+    inRegs.emplace_back(in);
+  }
+  return AggregateRegisters{out, std::move(inRegs)};
+}
+}  // namespace
+
 struct WindowInput {
   WindowBounds bounds;
   RegisterId rangeReg;
@@ -123,8 +135,7 @@ class WindowExecutorTest
   auto buildExecutorInfos() -> WindowExecutorInfos {
     WindowInput const& input = getWindowParams();
     std::vector<std::string> aggregateTypes{input.name};
-    std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters{
-        {2, input.inReg}};
+    std::vector<AggregateRegisters> aggregateRegisters{aggRegs(2, input.inReg)};
 
     return WindowExecutorInfos(
         input.bounds, input.rangeReg, std::move(aggregateTypes),
@@ -441,7 +452,7 @@ class WindowExecutorInSubqueryTest : public AqlExecutorTestCase<false> {
 
   auto buildExecutorInfos() -> WindowExecutorInfos {
     std::vector<std::string> aggregateTypes{"SUM"};
-    std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters{{1, 0}};
+    std::vector<AggregateRegisters> aggregateRegisters{aggRegs(1, 0)};
 
     return WindowExecutorInfos(_preOnePostOne, 0, std::move(aggregateTypes),
                                std::move(aggregateRegisters),

@@ -108,6 +108,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/EngineInfoContainerCoordinatorTest.cpp
   Aql/ExecutionBlockImplTest.cpp
   Aql/ExecutionNode/EnumeratePathsNodeTest.cpp
+  Aql/AggregateVarInfoTest.cpp
   Aql/ExecutionNode/ExecutionNodeTest.cpp
   Aql/ExecutionNode/IndexNodeTest.cpp
   Aql/ExecutionNode/LocalGraphNodeCompatibilityTest.cpp

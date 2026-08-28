@@ -26,7 +26,9 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/Aggregator.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Containers/SmallVector.h"
 
 #define LOG_AGG_SCAN LOG_DEVEL_IF(false)
 
@@ -97,12 +99,29 @@ void aggregate(
     std::vector<IndexAggregateScanInfos::Aggregation> const& aggregations,
     SliceSpanExpressionContext& context) {
   for (size_t k = 0; k < aggregations.size(); k++) {
-    bool mustDestroy;
-    AqlValue result =
-        aggregations[k].expression->execute(&context, mustDestroy);
-    AqlValueGuard guard(result, mustDestroy);
-    LOG_AGG_SCAN << "[SCAN] Agg " << k << " reduce with value ";
-    aggregators[k]->reduce(result);
+    auto const& expressions = aggregations[k].expressions;
+    // one value per argument of the aggregate call. AqlValueGuard is not
+    // movable, so it cannot be kept per value in a container; release them
+    // together once the aggregator has consumed the span.
+    containers::SmallVector<AqlValue, 4> values;
+    containers::SmallVector<bool, 4> mustDestroy;
+    values.reserve(expressions.size());
+    mustDestroy.reserve(expressions.size());
+    auto releaseValues = scopeGuard([&]() noexcept {
+      for (size_t i = 0; i < values.size(); ++i) {
+        if (mustDestroy[i]) {
+          values[i].destroy();
+        }
+      }
+    });
+    for (auto const& expression : expressions) {
+      bool destroy = false;
+      values.emplace_back(expression->execute(&context, destroy));
+      mustDestroy.emplace_back(destroy);
+    }
+    LOG_AGG_SCAN << "[SCAN] Agg " << k << " reduce with " << values.size()
+                 << " value(s)";
+    aggregators[k]->reduce(values);
   }
 }
 

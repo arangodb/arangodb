@@ -3004,26 +3004,25 @@ std::vector<AggregateVarInfo> ExecutionPlan::prepareAggregateVars(
     auto func = funcCall.getFunction();
     TRI_ASSERT(func != nullptr);
 
-    // function should have one argument (an array with the parameters)
+    // one input variable per argument of the aggregate call
     auto args = funcCall.getArguments().getElements();
     std::string_view functionName = Aggregator::translateAlias(func->name);
-    Variable const* variable = nullptr;
-    if (args.size() == 1) {
-      auto arg = args[0];
+    std::vector<Variable const*> inVars;
+    TRI_ASSERT(!args.empty() || !Aggregator::requiresInput(func->name));
+    inVars.reserve(args.size());
+    for (auto const* arg : args) {
       if (arg->type == NODE_TYPE_REFERENCE) {
         // operand is a variable
         ast::ReferenceNode refNode(arg);
-        variable = refNode.getVariable();
+        inVars.emplace_back(refNode.getVariable());
       } else {
         auto calc = createTemporaryCalculation(arg, *previous);
         *previous = calc;
-        variable = getOutVariable(calc);
+        inVars.emplace_back(getOutVariable(calc));
       }
-    } else {
-      TRI_ASSERT(!Aggregator::requiresInput(func->name));
     }
     aggregateVariables.emplace_back(
-        AggregateVarInfo{outVar, variable, std::string(functionName)});
+        AggregateVarInfo{outVar, std::move(inVars), std::string(functionName)});
   }
 
   return aggregateVariables;

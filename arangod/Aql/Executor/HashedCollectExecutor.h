@@ -23,6 +23,7 @@
 #pragma once
 
 #include "Aql/Aggregator.h"
+#include "Aql/CollectOptions.h"
 #include "Aql/AqlValueGroup.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
@@ -76,7 +77,7 @@ class HashedCollectExecutorInfos {
       Variable const* expressionVariable,
       std::vector<std::string> aggregateTypes,
       std::vector<std::pair<std::string, RegisterId>>&& inputVariables,
-      std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
+      std::vector<AggregateRegisters>&& aggregateRegisters,
       velocypack::Options const* vpackOptions,
       arangodb::ResourceMonitor& resourceMonitor);
 
@@ -88,8 +89,7 @@ class HashedCollectExecutorInfos {
  public:
   std::vector<std::pair<RegisterId, RegisterId>> const& getGroupRegisters()
       const;
-  std::vector<std::pair<RegisterId, RegisterId>> const& getAggregatedRegisters()
-      const;
+  std::vector<AggregateRegisters> const& getAggregatedRegisters() const;
   std::vector<std::string> const& getAggregateTypes() const;
   velocypack::Options const* getVPackOptions() const;
   RegisterId getCollectRegister() const noexcept;
@@ -107,8 +107,8 @@ class HashedCollectExecutorInfos {
   /// @brief aggregate types
   std::vector<std::string> _aggregateTypes;
 
-  /// @brief pairs, consisting of out register and in register
-  std::vector<std::pair<RegisterId, RegisterId>> _aggregateRegisters;
+  /// @brief out register plus the in registers feeding each aggregate
+  std::vector<AggregateRegisters> _aggregateRegisters;
 
   /// @brief pairs, consisting of out register and in register
   std::vector<std::pair<RegisterId, RegisterId>> _groupRegisters;
@@ -187,6 +187,11 @@ class HashedCollectExecutor {
       -> size_t;
 
  private:
+  /// @brief scratch buffer holding one aggregate's input values for the
+  /// current row. Reused so that a multi-argument aggregate does not allocate
+  /// per row.
+  std::vector<AqlValue> _inputValues;
+
   struct ValueAggregators {
     ValueAggregators(std::vector<Aggregator::Factory const*> factories,
                      velocypack::Options const* opts,

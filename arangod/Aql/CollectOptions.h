@@ -22,8 +22,11 @@
 
 #pragma once
 
+#include "Aql/RegisterId.h"
+
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace arangodb {
 namespace velocypack {
@@ -31,6 +34,7 @@ class Builder;
 class Slice;
 }  // namespace velocypack
 namespace aql {
+class Ast;
 struct Variable;
 
 /// @brief CollectOptions
@@ -94,8 +98,24 @@ struct GroupVarInfo final {
 
 struct AggregateVarInfo final {
   Variable const* outVar;
-  Variable const* inVar;
+  /// @brief one entry per argument of the aggregate call, so MIN(x) has one.
+  /// Empty for aggregators whose input is optimized away (COUNT/LENGTH).
+  std::vector<Variable const*> inVars;
   std::string type;
+
+  /// @brief read the "aggregates" array of a serialized CollectNode or
+  /// WindowNode. Accepts both the current "inVariables" array and the single
+  /// "inVariable" that coordinators wrote before multi-argument aggregates
+  /// existed.
+  static std::vector<AggregateVarInfo> fromVelocyPack(
+      Ast* ast, velocypack::Slice aggregates);
+};
+
+/// @brief output register of an aggregate plus the input registers feeding it,
+/// one per argument. `inRegs` is empty for COUNT/LENGTH.
+struct AggregateRegisters final {
+  RegisterId outReg;
+  std::vector<RegisterId> inRegs;
 };
 
 }  // namespace aql

@@ -33,6 +33,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
+#include <functional>
 #include <set>
 
 using namespace arangodb;
@@ -78,6 +79,29 @@ struct AggregatorInfo {
   /// needs to be converted to SUM to sum up the partial lengths from the DB
   /// servers
   std::string_view runOnCoordinatorAs;
+
+  /// @brief number of arguments the aggregator expects in a user query, e.g.
+  /// MIN(x) takes one. only relevant for aggregators that require input at
+  /// all.
+  std::size_t numArguments = 1;
+};
+
+/// @brief adapts an aggregator that consumes exactly one value per row to the
+/// span-based Aggregator interface.
+///
+/// `Derived` must provide `void reduceValue(AqlValue const&)`. That call is
+/// resolved statically, so a subclass which changes the single-value behaviour
+/// cannot rely on a base that already applied this adapter: it has to apply
+/// the adapter itself, passing the shared state as `Base` and itself as
+/// `Derived`. Forgetting to do so silently keeps the base's behaviour.
+template<typename Derived, typename Base = Aggregator>
+struct SingleValueAggregator : Base {
+  using Base::Base;
+
+  void reduce(std::span<AqlValue const> values) override {
+    TRI_ASSERT(values.size() == 1);
+    static_cast<Derived*>(this)->reduceValue(values[0]);
+  }
 };
 
 /// @brief helper class for block-wise memory allocations
@@ -153,7 +177,9 @@ struct AggregatorLength final : public Aggregator {
 
   void reset() override { count = 0; }
 
-  void reduce(AqlValue const&) override { ++count; }
+  /// @brief COUNT/LENGTH have their input optimized away, so the span is
+  /// empty. Take it directly rather than through SingleValueAggregator.
+  void reduce(std::span<AqlValue const>) override { ++count; }
 
   AqlValue get() const override {
     uint64_t value = count;
@@ -163,10 +189,10 @@ struct AggregatorLength final : public Aggregator {
   uint64_t count;
 };
 
-struct AggregatorMin final : public Aggregator {
+struct AggregatorMin final : public SingleValueAggregator<AggregatorMin> {
   explicit AggregatorMin(velocypack::Options const* opts,
                          ResourceMonitor& resourceMonitor)
-      : Aggregator(opts, resourceMonitor), value() {}
+      : SingleValueAggregator(opts, resourceMonitor), value() {}
 
   ~AggregatorMin() { value.destroy(); }
 
@@ -179,7 +205,7 @@ struct AggregatorMin final : public Aggregator {
     }
   }
 
-  void reduce(AqlValue const& cmpValue) override {
+  void reduceValue(AqlValue const& cmpValue) {
     if (!cmpValue.isNull(true) &&
         (value.isEmpty() ||
          AqlValue::Compare(_vpackOptions, value, cmpValue, true) > 0)) {
@@ -208,10 +234,10 @@ struct AggregatorMin final : public Aggregator {
   AqlValue value;
 };
 
-struct AggregatorMax final : public Aggregator {
+struct AggregatorMax final : public SingleValueAggregator<AggregatorMax> {
   explicit AggregatorMax(velocypack::Options const* opts,
                          ResourceMonitor& resourceMonitor)
-      : Aggregator(opts, resourceMonitor), value() {}
+      : SingleValueAggregator(opts, resourceMonitor), value() {}
 
   ~AggregatorMax() { value.destroy(); }
 
@@ -224,7 +250,7 @@ struct AggregatorMax final : public Aggregator {
     }
   }
 
-  void reduce(AqlValue const& cmpValue) override {
+  void reduceValue(AqlValue const& cmpValue) {
     if (value.isEmpty() ||
         AqlValue::Compare(_vpackOptions, value, cmpValue, true) < 0) {
       auto memoryUsage = value.memoryUsage();
@@ -250,10 +276,10 @@ struct AggregatorMax final : public Aggregator {
   AqlValue value;
 };
 
-struct AggregatorSum final : public Aggregator {
+struct AggregatorSum final : public SingleValueAggregator<AggregatorSum> {
   explicit AggregatorSum(velocypack::Options const* opts,
                          ResourceMonitor& resourceMonitor)
-      : Aggregator(opts, resourceMonitor),
+      : SingleValueAggregator(opts, resourceMonitor),
         sum(0.0),
         invalid(false),
         invoked(false) {}
@@ -264,7 +290,7 @@ struct AggregatorSum final : public Aggregator {
     invoked = false;
   }
 
-  void reduce(AqlValue const& cmpValue) override {
+  void reduceValue(AqlValue const& cmpValue) {
     if (!invalid) {
       invoked = true;
       if (cmpValue.isNull(true)) {
@@ -298,10 +324,13 @@ struct AggregatorSum final : public Aggregator {
 };
 
 /// @brief the single-server variant of AVERAGE
-struct AggregatorAverage : public Aggregator {
+struct AggregatorAverage : public SingleValueAggregator<AggregatorAverage> {
   explicit AggregatorAverage(velocypack::Options const* opts,
                              ResourceMonitor& resourceMonitor)
-      : Aggregator(opts, resourceMonitor), count(0), sum(0.0), invalid(false) {}
+      : SingleValueAggregator(opts, resourceMonitor),
+        count(0),
+        sum(0.0),
+        invalid(false) {}
 
   void reset() override final {
     count = 0;
@@ -309,7 +338,7 @@ struct AggregatorAverage : public Aggregator {
     invalid = false;
   }
 
-  virtual void reduce(AqlValue const& cmpValue) override {
+  void reduceValue(AqlValue const& cmpValue) {
     if (!invalid) {
       if (cmpValue.isNull(true)) {
         // ignore `null` values here
@@ -374,12 +403,13 @@ struct AggregatorAverageStep1 final : public AggregatorAverage {
 
 /// @brief the coordinator variant of AVERAGE, aggregating partial sums and
 /// counts
-struct AggregatorAverageStep2 final : public AggregatorAverage {
+struct AggregatorAverageStep2 final
+    : public SingleValueAggregator<AggregatorAverageStep2, AggregatorAverage> {
   explicit AggregatorAverageStep2(velocypack::Options const* opts,
                                   ResourceMonitor& resourceMonitor)
-      : AggregatorAverage(opts, resourceMonitor) {}
+      : SingleValueAggregator(opts, resourceMonitor) {}
 
-  void reduce(AqlValue const& cmpValue) override {
+  void reduceValue(AqlValue const& cmpValue) {
     if (!cmpValue.isArray()) {
       invalid = true;
       return;
@@ -406,10 +436,11 @@ struct AggregatorAverageStep2 final : public AggregatorAverage {
 };
 
 /// @brief base functionality for VARIANCE
-struct AggregatorVarianceBase : public Aggregator {
+struct AggregatorVarianceBase
+    : public SingleValueAggregator<AggregatorVarianceBase> {
   AggregatorVarianceBase(velocypack::Options const* opts, bool population,
                          ResourceMonitor& resourceMonitor)
-      : Aggregator(opts, resourceMonitor),
+      : SingleValueAggregator(opts, resourceMonitor),
         count(0),
         sum(0.0),
         mean(0.0),
@@ -423,7 +454,7 @@ struct AggregatorVarianceBase : public Aggregator {
     invalid = false;
   }
 
-  void reduce(AqlValue const& cmpValue) override {
+  void reduceValue(AqlValue const& cmpValue) {
     if (!invalid) {
       if (cmpValue.isNull(true)) {
         // ignore `null` values here
@@ -508,10 +539,12 @@ struct AggregatorVarianceBaseStep1 final : public AggregatorVarianceBase {
 };
 
 /// @brief the coordinator variant of VARIANCE
-struct AggregatorVarianceBaseStep2 : public AggregatorVarianceBase {
+struct AggregatorVarianceBaseStep2
+    : public SingleValueAggregator<AggregatorVarianceBaseStep2,
+                                   AggregatorVarianceBase> {
   AggregatorVarianceBaseStep2(velocypack::Options const* opts, bool population,
                               ResourceMonitor& resourceMonitor)
-      : AggregatorVarianceBase(opts, population, resourceMonitor) {}
+      : SingleValueAggregator(opts, population, resourceMonitor) {}
 
   void reset() override {
     AggregatorVarianceBase::reset();
@@ -520,7 +553,7 @@ struct AggregatorVarianceBaseStep2 : public AggregatorVarianceBase {
         .revert();  // revert after it actually clears the values
   }
 
-  void reduce(AqlValue const& cmpValue) override {
+  void reduceValue(AqlValue const& cmpValue) {
     if (!cmpValue.isArray()) {
       invalid = true;
       return;
@@ -645,10 +678,10 @@ struct AggregatorStddevBaseStep2 final : public AggregatorVarianceBaseStep2 {
 };
 
 /// @brief the single-server and DB server variant of UNIQUE
-struct AggregatorUnique : public Aggregator {
+struct AggregatorUnique : public SingleValueAggregator<AggregatorUnique> {
   explicit AggregatorUnique(velocypack::Options const* opts,
                             ResourceMonitor& resourceMonitor)
-      : Aggregator(opts, resourceMonitor),
+      : SingleValueAggregator(opts, resourceMonitor),
         allocator(1024),
         seen(512, basics::VelocyPackHelper::VPackHash(),
              basics::VelocyPackHelper::VPackEqual(_vpackOptions)),
@@ -666,7 +699,7 @@ struct AggregatorUnique : public Aggregator {
     allocator.clear();
   }
 
-  void reduce(AqlValue const& cmpValue) override {
+  void reduceValue(AqlValue const& cmpValue) {
     AqlValueMaterializer materializer(_vpackOptions);
 
     VPackSlice s = materializer.slice(cmpValue);
@@ -705,12 +738,13 @@ struct AggregatorUnique : public Aggregator {
 };
 
 /// @brief the coordinator variant of UNIQUE
-struct AggregatorUniqueStep2 final : public AggregatorUnique {
+struct AggregatorUniqueStep2 final
+    : public SingleValueAggregator<AggregatorUniqueStep2, AggregatorUnique> {
   explicit AggregatorUniqueStep2(velocypack::Options const* opts,
                                  ResourceMonitor& resourceMonitor)
-      : AggregatorUnique(opts, resourceMonitor) {}
+      : SingleValueAggregator(opts, resourceMonitor) {}
 
-  void reduce(AqlValue const& cmpValue) override final {
+  void reduceValue(AqlValue const& cmpValue) {
     AqlValueMaterializer materializer(_vpackOptions);
 
     VPackSlice s = materializer.slice(cmpValue);
@@ -739,10 +773,11 @@ struct AggregatorUniqueStep2 final : public AggregatorUnique {
 };
 
 /// @brief the single-server and DB server variant of SORTED_UNIQUE
-struct AggregatorSortedUnique : public Aggregator {
+struct AggregatorSortedUnique
+    : public SingleValueAggregator<AggregatorSortedUnique> {
   explicit AggregatorSortedUnique(velocypack::Options const* opts,
                                   ResourceMonitor& resourceMonitor)
-      : Aggregator(opts, resourceMonitor),
+      : SingleValueAggregator(opts, resourceMonitor),
         allocator(1024),
         seen(_vpackOptions),
         builder(
@@ -759,7 +794,7 @@ struct AggregatorSortedUnique : public Aggregator {
     builder.clear();
   }
 
-  void reduce(AqlValue const& cmpValue) override {
+  void reduceValue(AqlValue const& cmpValue) {
     AqlValueMaterializer materializer(_vpackOptions);
 
     VPackSlice s = materializer.slice(cmpValue);
@@ -788,12 +823,14 @@ struct AggregatorSortedUnique : public Aggregator {
 };
 
 /// @brief the coordinator variant of SORTED_UNIQUE
-struct AggregatorSortedUniqueStep2 final : public AggregatorSortedUnique {
+struct AggregatorSortedUniqueStep2 final
+    : public SingleValueAggregator<AggregatorSortedUniqueStep2,
+                                   AggregatorSortedUnique> {
   explicit AggregatorSortedUniqueStep2(velocypack::Options const* opts,
                                        ResourceMonitor& resourceMonitor)
-      : AggregatorSortedUnique(opts, resourceMonitor) {}
+      : SingleValueAggregator(opts, resourceMonitor) {}
 
-  void reduce(AqlValue const& cmpValue) override final {
+  void reduceValue(AqlValue const& cmpValue) {
     AqlValueMaterializer materializer(_vpackOptions);
 
     VPackSlice s = materializer.slice(cmpValue);
@@ -816,10 +853,11 @@ struct AggregatorSortedUniqueStep2 final : public AggregatorSortedUnique {
   }
 };
 
-struct AggregatorCountDistinct : public Aggregator {
+struct AggregatorCountDistinct
+    : public SingleValueAggregator<AggregatorCountDistinct> {
   explicit AggregatorCountDistinct(velocypack::Options const* opts,
                                    ResourceMonitor& resourceMonitor)
-      : Aggregator(opts, resourceMonitor),
+      : SingleValueAggregator(opts, resourceMonitor),
         allocator(1024),
         seen(512, basics::VelocyPackHelper::VPackHash(),
              basics::VelocyPackHelper::VPackEqual(_vpackOptions)) {}
@@ -833,7 +871,7 @@ struct AggregatorCountDistinct : public Aggregator {
     allocator.clear();
   }
 
-  void reduce(AqlValue const& cmpValue) override {
+  void reduceValue(AqlValue const& cmpValue) {
     AqlValueMaterializer materializer(_vpackOptions);
 
     VPackSlice s = materializer.slice(cmpValue);
@@ -892,12 +930,14 @@ struct GenericVarianceFactory : Aggregator::Factory {
 };
 
 /// @brief the coordinator variant of COUNT_DISTINCT
-struct AggregatorCountDistinctStep2 final : public AggregatorCountDistinct {
+struct AggregatorCountDistinctStep2 final
+    : public SingleValueAggregator<AggregatorCountDistinctStep2,
+                                   AggregatorCountDistinct> {
   explicit AggregatorCountDistinctStep2(velocypack::Options const* opts,
                                         ResourceMonitor& resourceMonitor)
-      : AggregatorCountDistinct(opts, resourceMonitor) {}
+      : SingleValueAggregator(opts, resourceMonitor) {}
 
-  void reduce(AqlValue const& cmpValue) override {
+  void reduceValue(AqlValue const& cmpValue) {
     AqlValueMaterializer materializer(_vpackOptions);
 
     VPackSlice s = materializer.slice(cmpValue);
@@ -938,10 +978,13 @@ struct BitFunctionXOr {
 };
 
 template<typename BitFunction>
-struct AggregatorBitFunction : public Aggregator, BitFunction {
+struct AggregatorBitFunction
+    : public SingleValueAggregator<AggregatorBitFunction<BitFunction>>,
+      BitFunction {
   explicit AggregatorBitFunction(velocypack::Options const* opts,
                                  ResourceMonitor& resourceMonitor)
-      : Aggregator(opts, resourceMonitor),
+      : SingleValueAggregator<AggregatorBitFunction<BitFunction>>(
+            opts, resourceMonitor),
         result(0),
         invalid(false),
         invoked(false) {}
@@ -952,7 +995,7 @@ struct AggregatorBitFunction : public Aggregator, BitFunction {
     invoked = false;
   }
 
-  void reduce(AqlValue const& cmpValue) override {
+  void reduceValue(AqlValue const& cmpValue) {
     if (!invalid) {
       if (cmpValue.isNull(true)) {
         // ignore `null` values here
@@ -996,25 +1039,26 @@ struct AggregatorBitFunction : public Aggregator, BitFunction {
 struct AggregatorBitAnd : public AggregatorBitFunction<BitFunctionAnd> {
   explicit AggregatorBitAnd(velocypack::Options const* opts,
                             ResourceMonitor& resourceMonitor)
-      : AggregatorBitFunction(opts, resourceMonitor) {}
+      : AggregatorBitFunction<BitFunctionAnd>(opts, resourceMonitor) {}
 };
 
 struct AggregatorBitOr : public AggregatorBitFunction<BitFunctionOr> {
   explicit AggregatorBitOr(velocypack::Options const* opts,
                            ResourceMonitor& resourceMonitor)
-      : AggregatorBitFunction(opts, resourceMonitor) {}
+      : AggregatorBitFunction<BitFunctionOr>(opts, resourceMonitor) {}
 };
 
 struct AggregatorBitXOr : public AggregatorBitFunction<BitFunctionXOr> {
   explicit AggregatorBitXOr(velocypack::Options const* opts,
                             ResourceMonitor& resourceMonitor)
-      : AggregatorBitFunction(opts, resourceMonitor) {}
+      : AggregatorBitFunction<BitFunctionXOr>(opts, resourceMonitor) {}
 };
 
-struct AggregatorMergeLists : public Aggregator {
+struct AggregatorMergeLists
+    : public SingleValueAggregator<AggregatorMergeLists> {
   explicit AggregatorMergeLists(velocypack::Options const* opts,
                                 ResourceMonitor& resourceMonitor)
-      : Aggregator(opts, resourceMonitor),
+      : SingleValueAggregator(opts, resourceMonitor),
         builder(
             std::make_shared<velocypack::SupervisedBuffer>(resourceMonitor)) {}
 
@@ -1023,7 +1067,7 @@ struct AggregatorMergeLists : public Aggregator {
   // cppcheck-suppress virtualCallInConstructor
   void reset() override final { builder.clear(); }
 
-  void reduce(AqlValue const& cmpValue) override {
+  void reduceValue(AqlValue const& cmpValue) {
     AqlValueMaterializer materializer(_vpackOptions);
     VPackSlice s = materializer.slice(cmpValue);
     if (!builder.isOpenArray()) {
@@ -1043,10 +1087,10 @@ struct AggregatorMergeLists : public Aggregator {
   mutable arangodb::velocypack::Builder builder;
 };
 
-struct AggregatorList : public Aggregator {
+struct AggregatorList : public SingleValueAggregator<AggregatorList> {
   explicit AggregatorList(velocypack::Options const* opts,
                           ResourceMonitor& resourceMonitor)
-      : Aggregator(opts, resourceMonitor),
+      : SingleValueAggregator(opts, resourceMonitor),
         builder(
             std::make_shared<velocypack::SupervisedBuffer>(resourceMonitor)) {}
 
@@ -1055,7 +1099,7 @@ struct AggregatorList : public Aggregator {
   // cppcheck-suppress virtualCallInConstructor
   void reset() override final { builder.clear(); }
 
-  void reduce(AqlValue const& cmpValue) override {
+  void reduceValue(AqlValue const& cmpValue) {
     AqlValueMaterializer materializer(_vpackOptions);
     VPackSlice s = materializer.slice(cmpValue);
     if (!builder.isOpenArray()) {
@@ -1254,6 +1298,15 @@ bool Aggregator::isValid(std::string_view type) {
   }
   // check if the aggregator is part of the public API or internal
   return (*it).second.isOfficialAggregator;
+}
+
+std::size_t Aggregator::numArguments(std::string_view type) {
+  auto it = ::aggregators.find(translateAlias(type));
+
+  if (it != ::aggregators.end()) {
+    return (*it).second.numArguments;
+  }
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid aggregator type");
 }
 
 bool Aggregator::requiresInput(std::string_view type) {
