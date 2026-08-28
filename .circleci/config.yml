@@ -277,9 +277,19 @@ jobs:
   # harness against the IVF index and publishes the site + CSV.
   ann-benchmark:
     docker:
+      # Primary: runs the ann-benchmarks harness.
       - image: cimg/python:3.11.1
+      # Service container: arangod, reachable from the primary at 127.0.0.1:8529
+      # (container runners have no docker daemon, so the harness cannot start it
+      # itself - the executor does, and the script waits via ARANGO_START=external).
+      - image: arangodb/enterprise-preview:devel-nightly
+        name: arangod
+        environment:
+          ARANGO_NO_AUTH: "1"
+        command: ["--vector-index=true"]
     resource_class: arangodb/large-amd64
     environment:
+      ARANGO_START: external
       ANN_OUTPUT_DIR: /tmp/ann-output
       # Self-hosted runner disk persists between jobs, so a fixed path caches
       # the (hundreds of MB) datasets across runs.
