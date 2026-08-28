@@ -342,6 +342,8 @@ AqlAnalyzer::AqlAnalyzer(Options const& options)
           .ok());
 }
 
+AqlAnalyzer::~AqlAnalyzer() { _valueBuffer.destroy(); }
+
 bool AqlAnalyzer::next() {
   do {
     if (_queryResults != nullptr) {

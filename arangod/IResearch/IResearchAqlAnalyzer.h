@@ -105,7 +105,7 @@ class AqlAnalyzer final : public irs::analysis::analyzer {
 
   explicit AqlAnalyzer(Options const& options);
 
-  ~AqlAnalyzer() final { _valueBuffer.destroy(); }
+  ~AqlAnalyzer() final;
 
   irs::type_info::type_id type() const noexcept final {
     return irs::type<AqlAnalyzer>::id();
