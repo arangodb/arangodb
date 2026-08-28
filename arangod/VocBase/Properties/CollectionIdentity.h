@@ -23,6 +23,7 @@
 #pragma once
 
 #include "Basics/StaticStrings.h"
+#include "Inspection/Types.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Properties/InspectContexts.h"
 
@@ -78,32 +79,40 @@ struct CollectionIdentity {
 
 template<class Inspector>
 auto inspect(Inspector& f, CollectionIdentity& props) {
-  if constexpr (isInternalContext<Inspector>) {
-    return f.object(props).fields(
-        // pre-3.1 collections store the id only under "cid"
-        f.field(StaticStrings::DataSourceCid, props.id)
-            .transformWith(CollectionIdentity::Transformers::IdIdentifier{
-                .acceptNumber = true})
-            .fallback(f.keep()),
-        f.field(StaticStrings::Id, props.id)
-            .transformWith(CollectionIdentity::Transformers::IdIdentifier{
-                .acceptNumber = true})
-            .fallback(f.keep()),
-        f.field(StaticStrings::DataSourceGuid, props.guid).fallback(f.keep()),
-        f.field(StaticStrings::DataSourcePlanId, props.planId)
-            .transformWith(CollectionIdentity::Transformers::IdIdentifier{
-                .acceptNumber = true})
-            .fallback(f.keep()));
-  } else {
-    // guid is documented as having no effect, so it stays accepted and is
-    // dropped. planId is not declared at all, which keeps the create API
-    // rejecting it as it always has.
-    return f.object(props).fields(
-        f.field(StaticStrings::Id, props.id)
-            .transformWith(CollectionIdentity::Transformers::IdIdentifier{})
-            .fallback(f.keep()),
-        f.ignoreField(StaticStrings::DataSourceGuid));
-  }
+  // cid and planId are server-owned and were never declared on the user path,
+  // so Reject reproduces the unexpected-attribute error the create API gave.
+  auto serverOwned = []() {
+    return isInternalContext<Inspector> ? inspection::FieldCondition::Process
+                                        : inspection::FieldCondition::Reject;
+  };
+
+  // Only markers and plan entries may spell an id as a number
+  constexpr auto idTransformer = CollectionIdentity::Transformers::IdIdentifier{
+      .acceptNumber = isInternalContext<Inspector>};
+
+  return f.object(props).fields(
+      // declared before "id" so that "id" wins when a pre-3.1 collection
+      // carries both
+      f.field(StaticStrings::DataSourceCid, props.id)
+          .transformWith(idTransformer)
+          .fallback(f.keep())
+          .when(serverOwned),
+      f.field(StaticStrings::Id, props.id)
+          .transformWith(idTransformer)
+          .fallback(f.keep()),
+      // guid is documented as having no effect, so on the user path it stays
+      // accepted and is dropped
+      f.field(StaticStrings::DataSourceGuid, props.guid)
+          .fallback(f.keep())
+          .when([]() {
+            return isInternalContext<Inspector>
+                       ? inspection::FieldCondition::Process
+                       : inspection::FieldCondition::Ignore;
+          }),
+      f.field(StaticStrings::DataSourcePlanId, props.planId)
+          .transformWith(idTransformer)
+          .fallback(f.keep())
+          .when(serverOwned));
 }
 
 }  // namespace arangodb

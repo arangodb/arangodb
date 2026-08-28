@@ -23,6 +23,7 @@
 #pragma once
 
 #include "Inspection/InspectorBase.h"
+#include "Inspection/Types.h"
 
 #include <string_view>
 #include <type_traits>
@@ -65,11 +66,10 @@ inline constexpr bool isAgencyContext =
 // on the user path the key stays accepted but its value is dropped
 template<class Inspector, class T>
 auto internalOnlyField(Inspector& f, std::string_view name, T& value) {
-  if constexpr (isInternalContext<Inspector>) {
-    return f.field(name, value).fallback(f.keep());
-  } else {
-    return f.ignoreField(name);
-  }
+  return f.field(name, value).fallback(f.keep()).when([]() {
+    return isInternalContext<Inspector> ? inspection::FieldCondition::Process
+                                        : inspection::FieldCondition::Ignore;
+  });
 }
 
 // Applies `invariant` to `field` only when the value come from user input

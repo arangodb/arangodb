@@ -61,24 +61,30 @@ struct CollectionDescriptor {
 [[nodiscard]] velocypack::Builder collectionCreateResponse(
     CollectionDescriptor const& d);
 
-// The fields every context shares, plus whatever the caller adds
-template<class Inspector, class... Extra>
-auto inspectSharedFields(Inspector& f, CollectionDescriptor& d,
-                         Extra&&... extra) {
-  return f.object(d).fields(
-      f.embedFields(d.constant), f.embedFields(d.identity),
-      f.embedFields(d.internal), f.embedFields(d.clusteringConstant),
-      f.embedFields(d.clusteringMutable), f.embedFields(d.mutableProps),
-      f.embedFields(d.storage), std::forward<Extra>(extra)...);
-}
 
 template<class Inspector>
 auto inspect(Inspector& f, CollectionDescriptor& d) {
+  auto result = f.object(d).fields(
+      f.embedFields(d.constant), f.embedFields(d.identity),
+      f.embedFields(d.internal), f.embedFields(d.clusteringConstant),
+      f.embedFields(d.clusteringMutable), f.embedFields(d.mutableProps),
+      f.embedFields(d.storage),
+      // Server-owned, and never declared on the user path, so Reject
+      // reproduces the unexpected-attribute error the create API gave.
+      f.field(StaticStrings::Indexes, d.indexes)
+          .fallback(f.keep())
+          .when([]() {
+            return isInternalContext<Inspector>
+                       ? inspection::FieldCondition::Process
+                       : inspection::FieldCondition::Reject;
+          }));
+
+  // The invariant constrains what a user may ask for. It is an object
+  // invariant, so it cannot be expressed as a field condition.
   if constexpr (isInternalContext<Inspector>) {
-    return inspection::Status{inspectSharedFields(
-        f, d, f.field(StaticStrings::Indexes, d.indexes).fallback(f.keep()))};
+    return inspection::Status{std::move(result)};
   } else {
-    return inspectSharedFields(f, d).invariant(
+    return result.invariant(
         CollectionDescriptor::Invariants::isSmartConfiguration);
   }
 }
