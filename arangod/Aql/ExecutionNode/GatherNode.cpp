@@ -278,8 +278,7 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
   }
 
   std::vector<SortRegister> sortRegister;
-  SortRegister::fill(*plan(), inputRegisterResolver(), _elements,
-                     sortRegister);
+  SortRegister::fill(*plan(), inputRegisterResolver(), _elements, sortRegister);
 
   auto executorInfos = SortingGatherExecutorInfos(
       std::move(sortRegister), _plan->getAst()->query(), sortMode(),

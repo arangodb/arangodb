@@ -604,7 +604,6 @@ class ExecutionNode {
   static void getSortElements(SortElementVector& elements, ExecutionPlan* plan,
                               velocypack::Slice slice, std::string_view which);
 
-
   RegisterInfos createRegisterInfos(RegIdSet readableInputRegisters,
                                     RegIdSet writableOutputRegisters) const;
 

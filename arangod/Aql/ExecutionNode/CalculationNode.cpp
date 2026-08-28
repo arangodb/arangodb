@@ -156,10 +156,9 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
 
   TRI_ASSERT(expression() != nullptr);
 
-  auto registerInfos = createRegisterInfos(std::move(inputRegisters),
-                                           outReg.isRegularRegister()
-                                               ? RegIdSet{outReg}
-                                               : RegIdSet{});
+  auto registerInfos = createRegisterInfos(
+      std::move(inputRegisters),
+      outReg.isRegularRegister() ? RegIdSet{outReg} : RegIdSet{});
 
   if (_outVariable->type() == Variable::Type::Const) {
     // we have a const variable, so we can simply use an IdExector to forward
@@ -171,8 +170,7 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
   }
 
   auto executorInfos = CalculationExecutorInfos(
-      outReg,
-      engine.getQuery() /* used for v8 contexts and in expression */,
+      outReg, engine.getQuery() /* used for v8 contexts and in expression */,
       *expression(),
       std::move(expInVarsToRegs)); /* required by expression.execute */
 

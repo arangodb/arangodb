@@ -135,9 +135,9 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
 
   auto registerInfos = createRegisterInfos({}, std::move(outputRegisters));
   auto executorInfos = EnumerateCollectionExecutorInfos(
-      outReg, engine.getQuery(), collection(), _outVariable,
-      isProduceResult(), filter(), projections(), std::move(filterVarsToRegs),
-      _random, doCount(), canReadOwnWrites());
+      outReg, engine.getQuery(), collection(), _outVariable, isProduceResult(),
+      filter(), projections(), std::move(filterVarsToRegs), _random, doCount(),
+      canReadOwnWrites());
   return std::make_unique<ExecutionBlockImpl<EnumerateCollectionExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }

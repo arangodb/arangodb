@@ -124,8 +124,7 @@ std::unique_ptr<ExecutionBlock> EnumerateListNode::createBlock(
     outRegisters[1] = outputRegister(_keyValuePairOutVars[1]);
     outRegisterSet = RegIdSet{outRegisters[0], outRegisters[1]};
   }
-  auto registerInfos =
-      createRegisterInfos(RegIdSet{inReg}, outRegisterSet);
+  auto registerInfos = createRegisterInfos(RegIdSet{inReg}, outRegisterSet);
 
   std::vector<std::pair<VariableId, RegisterId>> varsToRegs;
   if (hasFilter()) {

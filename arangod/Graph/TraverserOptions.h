@@ -202,7 +202,8 @@ struct TraverserOptions : public graph::BaseOptions {
 
   auto isSatelliteLeader() const -> bool;
 
-  void initializeIndexConditions(aql::Ast* ast, aql::RegisterResolver const& registers,
+  void initializeIndexConditions(aql::Ast* ast,
+                                 aql::RegisterResolver const& registers,
                                  aql::Variable const* indexVariable) override;
 
   void calculateIndexExpressions(aql::Ast* ast) override;

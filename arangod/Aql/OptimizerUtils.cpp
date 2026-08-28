@@ -721,14 +721,14 @@ AstNode* wrapInUniqueCall(Ast* ast, AstNode* node, bool sorted) {
 }
 
 void extractNonConstPartsOfJunctionCondition(
-    Ast* ast, RegisterResolver const& registers, bool evaluateFCalls, Index* index,
-    AstNode const* condition, Variable const* indexVariable,
+    Ast* ast, RegisterResolver const& registers, bool evaluateFCalls,
+    Index* index, AstNode const* condition, Variable const* indexVariable,
     std::vector<size_t> const& selectedMembersFromRoot,
     NonConstExpressionContainer& result);
 
 void extractNonConstPartsOfLeafNode(
-    Ast* ast, RegisterResolver const& registers, bool evaluateFCalls, Index* index,
-    AstNode* leaf, Variable const* indexVariable,
+    Ast* ast, RegisterResolver const& registers, bool evaluateFCalls,
+    Index* index, AstNode* leaf, Variable const* indexVariable,
     std::vector<size_t> const& selectedMembersFromRoot,
     NonConstExpressionContainer& result) {
   if (leaf->isConstant()) {
@@ -850,8 +850,8 @@ void extractNonConstPartsOfLeafNode(
 }
 
 void extractNonConstPartsOfAndPart(
-    Ast* ast, RegisterResolver const& registers, bool evaluateFCalls, Index* index,
-    AstNode const* andNode, Variable const* indexVariable,
+    Ast* ast, RegisterResolver const& registers, bool evaluateFCalls,
+    Index* index, AstNode const* andNode, Variable const* indexVariable,
     std::vector<size_t> const& selectedMembersFromRoot,
     NonConstExpressionContainer& result) {
   // in case of a geo spatial index a might take the form
@@ -862,15 +862,15 @@ void extractNonConstPartsOfAndPart(
     if (!leaf->isConstant()) {
       auto path = selectedMembersFromRoot;
       path.emplace_back(j);
-      extractNonConstPartsOfLeafNode(ast, registers, evaluateFCalls, index, leaf,
-                                     indexVariable, path, result);
+      extractNonConstPartsOfLeafNode(ast, registers, evaluateFCalls, index,
+                                     leaf, indexVariable, path, result);
     }
   }
 }
 
 void extractNonConstPartsOfJunctionCondition(
-    Ast* ast, RegisterResolver const& registers, bool evaluateFCalls, Index* index,
-    AstNode const* condition, Variable const* indexVariable,
+    Ast* ast, RegisterResolver const& registers, bool evaluateFCalls,
+    Index* index, AstNode const* condition, Variable const* indexVariable,
     std::vector<size_t> const& selectedMembersFromRoot,
     NonConstExpressionContainer& result) {
   // conditions can be of the form (a [<|<=|>|=>] b) && ...
@@ -1442,8 +1442,8 @@ bool getIndexForSortCondition(Collection const& coll,
 }
 
 NonConstExpressionContainer extractNonConstPartsOfIndexCondition(
-    Ast* ast, RegisterResolver const& registers, bool evaluateFCalls, Index* index,
-    AstNode const* condition, Variable const* indexVariable) {
+    Ast* ast, RegisterResolver const& registers, bool evaluateFCalls,
+    Index* index, AstNode const* condition, Variable const* indexVariable) {
   // conditions can be of the form (a [<|<=|>|=>] b) && ...
   TRI_ASSERT(condition != nullptr);
   TRI_ASSERT(condition->type == NODE_TYPE_OPERATOR_NARY_AND ||

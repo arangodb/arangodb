@@ -1331,11 +1331,13 @@ unsigned int ExecutionNode::inputDepth() const noexcept {
   return dependency == nullptr ? _depth : dependency->_depth;
 }
 
-RegisterId ExecutionNode::outputRegister(Variable const* variable) const noexcept {
+RegisterId ExecutionNode::outputRegister(
+    Variable const* variable) const noexcept {
   return getRegisterPlan()->variableToRegisterId(variable, _depth);
 }
 
-RegisterId ExecutionNode::inputRegister(Variable const* variable) const noexcept {
+RegisterId ExecutionNode::inputRegister(
+    Variable const* variable) const noexcept {
   return getRegisterPlan()->variableToRegisterId(variable, inputDepth());
 }
 

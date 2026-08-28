@@ -61,8 +61,8 @@ std::unique_ptr<ExecutionBlock> IndexCollectNode::createBlockDistinctScan(
 
   RegIdSet writableOutputRegisters;
   for (auto const& group : _groups) {
-    auto reg = infos.groupRegisters.emplace_back(
-        outputRegister(group.outVariable));
+    auto reg =
+        infos.groupRegisters.emplace_back(outputRegister(group.outVariable));
     infos.scanOptions.distinctFields.emplace_back(group.indexField);
     writableOutputRegisters.emplace(reg);
   }
@@ -104,8 +104,7 @@ std::unique_ptr<ExecutionBlock> IndexCollectNode::createBlockAggregationScan(
   RegIdSet writableOutputRegisters;
   for (auto const& group : _groups) {
     auto& g = infos.groups.emplace_back();
-    g.outputRegister =
-        outputRegister(group.outVariable);
+    g.outputRegister = outputRegister(group.outVariable);
     g.indexField = group.indexField;
     writableOutputRegisters.emplace(g.outputRegister);
   }

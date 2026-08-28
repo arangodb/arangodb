@@ -503,8 +503,8 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
                                          SingleServerBaseProviderOptions>(
               opts, std::move(forwardProviderOptions),
               std::move(backwardProviderOptions), enumeratorOptions,
-              validatorOptions, outReg, engine, sourceInput,
-              targetInput, registerInfos);
+              validatorOptions, outReg, engine, sourceInput, targetInput,
+              registerInfos);
         } else {
           // Weighted Variant
           double defaultWeight = opts->getDefaultWeight();
@@ -537,8 +537,8 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
               SingleServerBaseProviderOptions>(
               opts, std::move(forwardProviderOptions),
               std::move(backwardProviderOptions), enumeratorOptions,
-              validatorOptions, outReg, engine, sourceInput,
-              targetInput, registerInfos);
+              validatorOptions, outReg, engine, sourceInput, targetInput,
+              registerInfos);
         }
 
       default:
@@ -597,8 +597,8 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
               ClusterBaseProviderOptions>(
               opts, std::move(forwardProviderOptions),
               std::move(backwardProviderOptions), enumeratorOptions,
-              validatorOptions, outReg, engine, sourceInput,
-              targetInput, registerInfos);
+              validatorOptions, outReg, engine, sourceInput, targetInput,
+              registerInfos);
         } else {
           // Weighted Variant
           double defaultWeight = opts->getDefaultWeight();
@@ -631,8 +631,8 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
               ClusterProvider, ClusterBaseProviderOptions>(
               opts, std::move(forwardProviderOptions),
               std::move(backwardProviderOptions), enumeratorOptions,
-              validatorOptions, outReg, engine, sourceInput,
-              targetInput, registerInfos);
+              validatorOptions, outReg, engine, sourceInput, targetInput,
+              registerInfos);
         }
       default:
         ADB_PROD_ASSERT(false)

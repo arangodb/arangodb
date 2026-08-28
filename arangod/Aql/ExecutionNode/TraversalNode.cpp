@@ -1142,8 +1142,8 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     if (isSmart() && !isDisjoint()) {
       return createBlock(engine, std::move(filterConditionVariables),
                          checkPruneAvailability, checkPostFilterAvailability,
-                         outputRegisterMapping, inReg,
-                         std::move(registerInfos), engines(), true /*isSmart*/);
+                         outputRegisterMapping, inReg, std::move(registerInfos),
+                         engines(), true /*isSmart*/);
 
     } else {
 #endif
@@ -1152,8 +1152,8 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
        */
       return createBlock(engine, std::move(filterConditionVariables),
                          checkPruneAvailability, checkPostFilterAvailability,
-                         outputRegisterMapping, inReg,
-                         std::move(registerInfos), engines());
+                         outputRegisterMapping, inReg, std::move(registerInfos),
+                         engines());
 
 #ifdef USE_ENTERPRISE
     }
@@ -1173,8 +1173,8 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
 
   return createBlock(engine, std::move(filterConditionVariables),
                      checkPruneAvailability, checkPostFilterAvailability,
-                     outputRegisterMapping, inReg,
-                     std::move(registerInfos), nullptr);
+                     outputRegisterMapping, inReg, std::move(registerInfos),
+                     nullptr);
 }
 
 /// @brief clone ExecutionNode recursively

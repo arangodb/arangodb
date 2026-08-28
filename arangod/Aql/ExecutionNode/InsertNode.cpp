@@ -82,11 +82,10 @@ std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
                                            std::move(writableOutputRegisters));
 
   ModificationExecutorInfos infos(
-      &engine, inReg, RegisterPlan::MaxRegisterId,
-      RegisterPlan::MaxRegisterId, outputNew, outputOld,
-      RegisterPlan::MaxRegisterId /*output*/, _plan->getAst()->query(),
-      std::move(options), collection(), ExecutionBlock::DefaultBatchSize,
-      ProducesResults(producesResults()),
+      &engine, inReg, RegisterPlan::MaxRegisterId, RegisterPlan::MaxRegisterId,
+      outputNew, outputOld, RegisterPlan::MaxRegisterId /*output*/,
+      _plan->getAst()->query(), std::move(options), collection(),
+      ExecutionBlock::DefaultBatchSize, ProducesResults(producesResults()),
       ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
       IsReplace(false) /*(needed by upsert)*/,

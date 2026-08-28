@@ -2110,34 +2110,20 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         calcInputRegs(), std::move(writableOutputRegisters));
     TRI_ASSERT(_view || _meta);
     auto executorInfos = aql::IResearchViewExecutorInfos{
-        std::move(reader),
-        outRegister,
-        searchDocRegId,
-        std::move(scoreRegisters),
-        engine.getQuery(),
+        std::move(reader), outRegister, searchDocRegId,
+        std::move(scoreRegisters), engine.getQuery(),
 #ifdef USE_ENTERPRISE
         optimizeTopK(_meta, _view),
 #endif
-        scorers(),
-        sort(),
-        iresearch::getStoredValues(_meta, _view),
-        *plan(),
-        outVariable(),
-        filterCondition(),
-        volatility(),
-        _immutableParts,
+        scorers(), sort(), iresearch::getStoredValues(_meta, _view), *plan(),
+        outVariable(), filterCondition(), volatility(), _immutableParts,
         // TODO ViewExpressionContext resolves these against InputAqlItemRows,
         // so this arguably wants inputRegisterResolver(). Switching it changes
         // when "variable is used before being assigned" is reported, so it
         // needs its own change; kept at the node's own depth for now.
-        outputRegisterResolver(),
-        std::move(outNonMaterializedViewRegs),
-        _options.countApproximate,
-        filterOptimization(),
-        _heapSort,
-        _heapSortLimit,
-        _meta.get(),
-        _options.parallelism,
+        outputRegisterResolver(), std::move(outNonMaterializedViewRegs),
+        _options.countApproximate, filterOptimization(), _heapSort,
+        _heapSortLimit, _meta.get(), _options.parallelism,
         _vocbase.server().getFeature<IResearchFeature>().getSearchPool()};
     return std::make_tuple(materializeType, std::move(executorInfos),
                            std::move(registerInfos));
