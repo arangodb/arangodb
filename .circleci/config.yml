@@ -92,6 +92,13 @@ parameters:
     default: true
     description: Whether to use minimal debug info.
       This is enabled by default to reduce the size of artifacts, but can optionally be disabled for debugging test failures
+  run-ann-benchmark:
+    type: boolean
+    default: false
+    description: "Manual-only: run the ANN vector-index benchmark instead of the
+      normal test pipeline. Boots the newest arangod devel nightly, runs the
+      ann-benchmarks harness against the IVF index and publishes the HTML site
+      + results.csv as artifacts. See scripts/benchmark/ann/."
 
 
 # our defined job, and its steps
@@ -265,9 +272,34 @@ jobs:
           configuration_path: continuation_config.yml
           parameters: parameters.json
 
+  # Manual-only vector-index benchmark. Runs directly on the self-hosted
+  # runner (no continuation): pulls an arangod nightly, runs the ann-benchmarks
+  # harness against the IVF index and publishes the site + CSV.
+  ann-benchmark:
+    docker:
+      - image: cimg/python:3.11.1
+    resource_class: arangodb/large-amd64
+    environment:
+      ANN_OUTPUT_DIR: /tmp/ann-output
+      # Self-hosted runner disk persists between jobs, so a fixed path caches
+      # the (hundreds of MB) datasets across runs.
+      ANN_DATASET_CACHE: /tmp/ann-benchmarks-data
+      ANN_STAMP: "<< pipeline.number >> << pipeline.git.revision >>"
+    steps:
+      - checkout
+      - run:
+          name: Run ANN benchmark
+          no_output_timeout: 3h
+          command: ./scripts/benchmark/ann/run_ann_benchmark.sh
+      - store_artifacts:
+          path: /tmp/ann-output
+          destination: ann-benchmark
+
 # our single workflow, that triggers the setup job defined above
 workflows:
   setup:
+    # Skip the normal test pipeline when a manual ANN benchmark was requested.
+    unless: << pipeline.parameters.run-ann-benchmark >>
     jobs:
       # we always create a workflow and let the build fail in check-build-trigger unless it has been triggered manually
       # or runs on the devel branch (see condition in check-build-trigger)
@@ -281,3 +313,10 @@ workflows:
           config-definitions-branches: << pipeline.parameters.config-definitions-branches >>
           requires:
             - cancel-redundant-pipelines
+
+  # Manual-only: triggered by setting the run-ann-benchmark pipeline parameter.
+  ann-benchmark:
+    when: << pipeline.parameters.run-ann-benchmark >>
+    jobs:
+      - ann-benchmark
+
