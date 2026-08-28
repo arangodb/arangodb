@@ -177,6 +177,10 @@ export_results() {
     echo "runs:      ${ANN_RUNS}"
   } > "${ANN_OUTPUT_DIR}/site/METADATA.txt"
   cp "${ANN_OUTPUT_DIR}/results.csv" "${ANN_OUTPUT_DIR}/site/results.csv" 2>/dev/null || true
+
+  # Bundle the whole site into one archive - a single download from CI artifacts.
+  log "Archiving site"
+  tar -czf "${ANN_OUTPUT_DIR}/ann-benchmark-site.tar.gz" -C "${ANN_OUTPUT_DIR}" site
 }
 
 push_metrics() {
