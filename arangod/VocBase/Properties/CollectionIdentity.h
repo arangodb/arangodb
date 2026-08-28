@@ -37,13 +37,20 @@ namespace inspection {
 struct Status;
 }
 
+namespace velocypack {
+class Builder;
+}
+
 /// The identifiers a collection is known by. All of them are assigned by the
 /// server; a client never picks one.
 struct CollectionIdentity {
   struct Transformers {
+    /// Serialized form is a string. Markers and plan entries may store a
+    /// number instead, so loading accepts both, the way the slice path did
+    /// through VelocyPackHelper::extractIdValue.
     struct IdIdentifier {
       using MemoryType = DataSourceId;
-      using SerializedType = std::string;
+      using SerializedType = arangodb::velocypack::Builder;
 
       static arangodb::inspection::Status toSerialized(MemoryType v,
                                                        SerializedType& result);

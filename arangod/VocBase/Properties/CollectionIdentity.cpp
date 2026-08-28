@@ -27,20 +27,37 @@
 #include "Inspection/Status.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/Value.h>
+
 using namespace arangodb;
 
 inspection::Status CollectionIdentity::Transformers::IdIdentifier::toSerialized(
-    DataSourceId v, std::string& result) {
-  result = std::to_string(v.id());
+    DataSourceId v, velocypack::Builder& result) {
+  result.add(velocypack::Value(std::to_string(v.id())));
   return {};
 }
 
 inspection::Status
 CollectionIdentity::Transformers::IdIdentifier::fromSerialized(
-    std::string const& v, DataSourceId& result) {
-  char const* p = v.c_str();
-  result = DataSourceId{NumberUtils::atoi_zero<uint64_t>(p, p + v.length())};
-  return {};
+    velocypack::Builder const& b, DataSourceId& result) {
+  auto v = b.slice();
+  if (v.isString()) {
+    velocypack::ValueLength length;
+    char const* p = v.getStringUnchecked(length);
+    result = DataSourceId{NumberUtils::atoi_zero<uint64_t>(p, p + length)};
+    return {};
+  }
+  if (v.isNumber()) {
+    try {
+      result = DataSourceId{v.getNumber<uint64_t>()};
+      return {};
+    } catch (...) {
+      // disallowed number type, e.g. negative
+    }
+  }
+  return {"Only a string or an unsigned integer number is allowed"};
 }
 
 [[nodiscard]] arangodb::Result

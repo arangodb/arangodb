@@ -26,6 +26,7 @@
 #include "Inspection/Access.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Properties/KeyGeneratorProperties.h"
+#include "VocBase/Properties/InspectContexts.h"
 #include "VocBase/Properties/UtilityInvariants.h"
 #include "VocBase/voc-types.h"
 
@@ -68,6 +69,13 @@ auto inspect(Inspector& f, CollectionConstantProperties& props) {
     if constexpr (!Inspector::isLoading) {
       // Write out the shadowCollections
       return f.field(StaticStrings::ShadowCollections, props.shadowCollections);
+    } else if constexpr (isInternalContext<Inspector> ||
+                         isAgencyContext<Inspector>) {
+      // Written by the server. A coordinator loading a plan entry needs these
+      // to resolve the existing shadow collections instead of building new
+      // ones, which would come out with the parent's numberOfShards of 0.
+      return f.field(StaticStrings::ShadowCollections, props.shadowCollections)
+          .fallback(f.keep());
     } else {
       // Ignore the shadowCollections on input, this is not a user-modifyable
       // value
