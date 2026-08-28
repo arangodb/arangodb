@@ -45,18 +45,21 @@ class Builder;
 /// server; a client never picks one.
 struct CollectionIdentity {
   struct Transformers {
-    /// Serialized form is a string. Markers and plan entries may store a
-    /// number instead, so loading accepts both, the way the slice path did
-    /// through VelocyPackHelper::extractIdValue.
+    /// Serialized form is a string. Markers and plan entries may store the id
+    /// as a number instead, so the internal path accepts one, the way the
+    /// slice path did through VelocyPackHelper::extractIdValue. User input
+    /// must spell it as a string.
     struct IdIdentifier {
       using MemoryType = DataSourceId;
       using SerializedType = arangodb::velocypack::Builder;
 
-      static arangodb::inspection::Status toSerialized(MemoryType v,
-                                                       SerializedType& result);
+      bool acceptNumber{false};
 
-      static arangodb::inspection::Status fromSerialized(
-          SerializedType const& v, MemoryType& result);
+      arangodb::inspection::Status toSerialized(MemoryType v,
+                                               SerializedType& result) const;
+
+      arangodb::inspection::Status fromSerialized(SerializedType const& v,
+                                                  MemoryType& result) const;
     };
   };
 
@@ -79,14 +82,17 @@ auto inspect(Inspector& f, CollectionIdentity& props) {
     return f.object(props).fields(
         // pre-3.1 collections store the id only under "cid"
         f.field(StaticStrings::DataSourceCid, props.id)
-            .transformWith(CollectionIdentity::Transformers::IdIdentifier{})
+            .transformWith(CollectionIdentity::Transformers::IdIdentifier{
+                .acceptNumber = true})
             .fallback(f.keep()),
         f.field(StaticStrings::Id, props.id)
-            .transformWith(CollectionIdentity::Transformers::IdIdentifier{})
+            .transformWith(CollectionIdentity::Transformers::IdIdentifier{
+                .acceptNumber = true})
             .fallback(f.keep()),
         f.field(StaticStrings::DataSourceGuid, props.guid).fallback(f.keep()),
         f.field(StaticStrings::DataSourcePlanId, props.planId)
-            .transformWith(CollectionIdentity::Transformers::IdIdentifier{})
+            .transformWith(CollectionIdentity::Transformers::IdIdentifier{
+                .acceptNumber = true})
             .fallback(f.keep()));
   } else {
     // guid is documented as having no effect, so it stays accepted and is

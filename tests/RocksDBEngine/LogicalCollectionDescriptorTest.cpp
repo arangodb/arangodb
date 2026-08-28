@@ -418,6 +418,21 @@ TEST_F(LogicalCollectionDescriptorTest, LoadPath_legacyVersionUsesNameAsGuid) {
   EXPECT_TRUE(current->guid().starts_with("h")) << current->guid();
 }
 
+// The slice ctor parsed the "shards" object itself, building each key through
+// ShardID{string_view}. The descriptor ctor takes the map the inspector built,
+// so this pins that the two produce the same shard map.
+TEST_F(LogicalCollectionDescriptorTest, LoadPath_restoresTheShardMap) {
+  auto database = makeDatabase("shardMapDatabase", 44);
+  auto collection = database->createCollection(
+      CollectionDescriptor::fromVelocyPack(representativeLoadSlice().slice()));
+
+  auto shardIds = collection->shardIds();
+  ASSERT_NE(shardIds, nullptr);
+  ASSERT_EQ(shardIds->size(), 1U);
+  EXPECT_EQ(shardIds->at(ShardID{100001}),
+            (std::vector<std::string>{"PRMR-a", "PRMR-b"}));
+}
+
 //////////////////////////////////////////////////////////////////////////////////
 // Section 3: serializing a collection back to velocypack works correctly
 //////////////////////////////////////////////////////////////////////////////////
@@ -443,11 +458,18 @@ TEST_F(LogicalCollectionDescriptorTest,
   auto out = collection->toVelocyPackIgnore(
       volatileKeys(), LogicalDataSource::Serialization::Persistence);
 
+  // appendVPack skips the keys another object owns the live value for. A key
+  // that lands on that list without an emitter disappears from every
+  // serialization, so each one has to be pinned here.
   for (auto const& key :
        {StaticStrings::DataSourceName, StaticStrings::KeyOptions,
         StaticStrings::CacheEnabled, StaticStrings::NumberOfShards,
         StaticStrings::ShardKeys, StaticStrings::ReplicationFactor,
-        StaticStrings::WriteConcern}) {
+        StaticStrings::WriteConcern, StaticStrings::Version,
+        StaticStrings::DataSourceId, StaticStrings::DataSourceCid,
+        StaticStrings::DataSourceGuid, StaticStrings::DataSourcePlanId,
+        StaticStrings::ObjectId, StaticStrings::DataSourceDeleted,
+        StaticStrings::DataSourceSystem, StaticStrings::Indexes}) {
     EXPECT_TRUE(keys.contains(key)) << "missing key " << key;
   }
 

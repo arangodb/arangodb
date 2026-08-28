@@ -34,14 +34,14 @@
 using namespace arangodb;
 
 inspection::Status CollectionIdentity::Transformers::IdIdentifier::toSerialized(
-    DataSourceId v, velocypack::Builder& result) {
+    DataSourceId v, velocypack::Builder& result) const {
   result.add(velocypack::Value(std::to_string(v.id())));
   return {};
 }
 
 inspection::Status
 CollectionIdentity::Transformers::IdIdentifier::fromSerialized(
-    velocypack::Builder const& b, DataSourceId& result) {
+    velocypack::Builder const& b, DataSourceId& result) const {
   auto v = b.slice();
   if (v.isString()) {
     velocypack::ValueLength length;
@@ -49,15 +49,15 @@ CollectionIdentity::Transformers::IdIdentifier::fromSerialized(
     result = DataSourceId{NumberUtils::atoi_zero<uint64_t>(p, p + length)};
     return {};
   }
-  if (v.isNumber()) {
+  if (acceptNumber && v.isInteger()) {
     try {
       result = DataSourceId{v.getNumber<uint64_t>()};
       return {};
     } catch (...) {
-      // disallowed number type, e.g. negative
+      // out of range for an id, e.g. negative
     }
   }
-  return {"Only a string or an unsigned integer number is allowed"};
+  return {"Expecting type String"};
 }
 
 [[nodiscard]] arangodb::Result

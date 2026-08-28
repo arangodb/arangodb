@@ -435,7 +435,11 @@ CollectionDescriptor LogicalCollection::properties() const {
   // snapshot rather than a copy of the construction input.
   auto d = _properties;
 
+  // LogicalDataSource owns all three: it generates the id and the guid when
+  // they arrive empty, and resolves planId to id for a standalone collection.
   d.identity.id = id();
+  d.identity.guid = guid();
+  d.identity.planId = planId();
 
   d.internal.deleted = deleted();
   d.internal.usesRevisionsAsDocumentIds = _usesRevisionsAsDocumentIds;
@@ -890,9 +894,9 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
       "minReplicationFactor",
       // PhysicalCollection
       "objectId", "cacheEnabled", "indexes",
-      // LogicalCollection, below
+      // LogicalCollection and VirtualClusterSmartEdgeCollection, below
       "keyOptions", "schema", "computedValues", "smartGraphAttribute",
-      "smartJoinAttribute"};
+      "smartJoinAttribute", "shadowCollections"};
 
   auto props = properties();
   VPackBuilder tmp;
