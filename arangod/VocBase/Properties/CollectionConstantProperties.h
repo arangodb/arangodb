@@ -24,6 +24,7 @@
 
 #include "Basics/StaticStrings.h"
 #include "Inspection/Access.h"
+#include "Inspection/Types.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Properties/KeyGeneratorProperties.h"
 #include "VocBase/Properties/UtilityInvariants.h"
@@ -64,17 +65,6 @@ struct CollectionConstantProperties {
 
 template<class Inspector>
 auto inspect(Inspector& f, CollectionConstantProperties& props) {
-  auto shadowCollectionsField = std::invoke([&]() {
-    if constexpr (!Inspector::isLoading) {
-      // Write out the shadowCollections
-      return f.field(StaticStrings::ShadowCollections, props.shadowCollections);
-    } else {
-      // Ignore the shadowCollections on input, this is not a user-modifyable
-      // value
-      return f.ignoreField(StaticStrings::ShadowCollections);
-    }
-  });
-
   return f.object(props).fields(
       f.field(StaticStrings::DataSourceSystem, props.isSystem)
           .fallback(f.keep()),
@@ -92,7 +82,10 @@ auto inspect(Inspector& f, CollectionConstantProperties& props) {
       /* Backwards compatibility, fields are allowed (MMFILES) but have no
          relevance anymore */
       f.ignoreField("doCompact"), f.ignoreField("isVolatile"),
-      std::move(shadowCollectionsField));
+      // Written by the server. Not user-modifyable, so the attribute is
+      // accepted and dropped on input while still being written out.
+      f.field(StaticStrings::ShadowCollections, props.shadowCollections)
+          .whenLoading([]() { return inspection::FieldCondition::Ignore; }));
 }
 
 }  // namespace arangodb

@@ -24,6 +24,7 @@
 
 #include "Basics/StaticStrings.h"
 #include "Inspection/Access.h"
+#include "Inspection/Types.h"
 #include "Replication2/AgencyCollectionSpecification.h"
 #include "VocBase/Properties/InspectContexts.h"
 #include "VocBase/Properties/UtilityInvariants.h"
@@ -82,20 +83,22 @@ auto inspect(Inspector& f, ClusteringConstantProperties& props) {
       f, f.field(StaticStrings::ShardingStrategy, props.shardingStrategy),
       UtilityInvariants::isValidShardingStrategyIfPresent);
 
-  if constexpr (isAgencyContext<Inspector> || isInternalContext<Inspector>) {
-    return f.object(props).fields(
-        std::move(numberOfShardsField), std::move(distShardsLikeField),
-        std::move(shardingStrategyField),
-        f.field(StaticStrings::ShardKeys, props.shardKeys).fallback(f.keep()),
-        f.field("shardsR2", props.shardsR2).fallback(f.keep()),
-        f.field(StaticStrings::GroupId, props.groupId).fallback(f.keep()));
-  } else {
-    // If the user specifies the shards list and groupId, we reject it.
-    return f.object(props).fields(
-        std::move(numberOfShardsField), std::move(distShardsLikeField),
-        std::move(shardingStrategyField),
-        f.field(StaticStrings::ShardKeys, props.shardKeys).fallback(f.keep()));
-  }
+  // Written by the server only. Reject keeps the create API answering with an
+  // unexpected-attribute error, which is what leaving them undeclared did.
+  auto serverOwned = []() {
+    return isAgencyContext<Inspector> || isInternalContext<Inspector>
+               ? inspection::FieldCondition::Process
+               : inspection::FieldCondition::Reject;
+  };
+
+  return f.object(props).fields(
+      std::move(numberOfShardsField), std::move(distShardsLikeField),
+      std::move(shardingStrategyField),
+      f.field(StaticStrings::ShardKeys, props.shardKeys).fallback(f.keep()),
+      f.field("shardsR2", props.shardsR2).fallback(f.keep()).when(serverOwned),
+      f.field(StaticStrings::GroupId, props.groupId)
+          .fallback(f.keep())
+          .when(serverOwned));
 }
 
 }  // namespace arangodb
