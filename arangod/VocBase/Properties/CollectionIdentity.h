@@ -57,7 +57,7 @@ struct CollectionIdentity {
       bool acceptNumber{false};
 
       arangodb::inspection::Status toSerialized(MemoryType v,
-                                               SerializedType& result) const;
+                                                SerializedType& result) const;
 
       arangodb::inspection::Status fromSerialized(SerializedType const& v,
                                                   MemoryType& result) const;
