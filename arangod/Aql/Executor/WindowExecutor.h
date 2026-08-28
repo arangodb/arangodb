@@ -84,7 +84,6 @@ class WindowExecutorInfos {
   /// @brief aggregate types
   std::vector<std::string> _aggregateTypes;
 
-  /// @brief out register plus the in registers feeding each aggregate
   std::vector<AggregateRegisters> _aggregateRegisters;
 
   QueryWarnings& _warnings;

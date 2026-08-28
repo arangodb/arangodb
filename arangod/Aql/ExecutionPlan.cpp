@@ -3004,7 +3004,6 @@ std::vector<AggregateVarInfo> ExecutionPlan::prepareAggregateVars(
     auto func = funcCall.getFunction();
     TRI_ASSERT(func != nullptr);
 
-    // one input variable per argument of the aggregate call
     auto args = funcCall.getArguments().getElements();
     std::string_view functionName = Aggregator::translateAlias(func->name);
     std::vector<Variable const*> inVars;

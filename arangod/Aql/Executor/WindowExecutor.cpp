@@ -110,7 +110,6 @@ void BaseWindowExecutor::applyAggregators(InputAqlItemRow& input) {
   TRI_ASSERT(_aggregators.size() == _infos.getAggregatedRegisters().size());
   size_t j = 0;
   for (auto const& r : _infos.getAggregatedRegisters()) {
-    // stays empty for aggregators without input, e.g. LENGTH / COUNT
     _inputValues.clear();
     for (auto const& reg : r.inRegs) {
       _inputValues.emplace_back(input.getValue(reg));

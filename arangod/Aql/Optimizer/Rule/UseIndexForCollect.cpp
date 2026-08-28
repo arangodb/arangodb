@@ -323,7 +323,6 @@ getEligibleAggregates(ExecutionPlan const& plan, CollectNode const& cn,
   auto const& coveredFields = idx.getSingleIndex()->coveredFields();
 
   for (auto const& agg : cn.aggregateVariables()) {
-    // one expression per argument of the aggregate call
     std::vector<std::unique_ptr<Expression>> expressions;
     expressions.reserve(agg.inVars.size());
 

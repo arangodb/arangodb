@@ -103,10 +103,6 @@ struct AggregateVarInfo final {
   std::vector<Variable const*> inVars;
   std::string type;
 
-  /// @brief read the "aggregates" array of a serialized CollectNode or
-  /// WindowNode. Accepts both the current "inVariables" array and the single
-  /// "inVariable" that coordinators wrote before multi-argument aggregates
-  /// existed.
   static std::vector<AggregateVarInfo> fromVelocyPack(
       Ast* ast, velocypack::Slice aggregates);
 };
