@@ -16,6 +16,9 @@ namespace arangodb::graph {
 // Primary access to the topology is by requesting NeighbourCursors for given
 // vertices.
 struct IGraphView {
+  // should include which collections, which indexes with which
+  // index-expressions
+
   // Hausmeisterschrott
   auto stealStats() -> aql::TraversalStats;
 
