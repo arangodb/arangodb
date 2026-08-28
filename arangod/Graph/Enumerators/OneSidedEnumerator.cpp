@@ -135,8 +135,8 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
     TRI_ASSERT(value.vertexFetched());
   }
 
-  auto posPrevious = _interior.append(std::move(value));
-  auto& step = _interior.getStepReference(posPrevious);
+  auto position = _interior.append(std::move(value));
+  auto& step = _interior.getStepReference(position);
 
   if constexpr (std::is_same_v<ResultList, std::vector<Step>>) {
     // TODO check if any Step besides SmartGraphStep actually has the
@@ -183,7 +183,7 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
           _provider.fetchEdges(stepsToFetch);
           TRI_ASSERT(step.edgeFetched());
         }
-        _provider.expand(step, posPrevious,
+        _provider.expand(step, position,
                          [&](Step n) -> void { _queue.append(n); });
         LOG_TRAVERSAL << "Expanded " << inspection::json(step) << " | "
                       << inspection::json(_queue);
@@ -193,7 +193,7 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
                            ResultList,
                            enterprise::SmartGraphResponse<Provider>>) {
     TRI_ASSERT(ServerState::instance()->isDBServer());
-    smartExpand(step, posPrevious, res);
+    smartExpand(step, position, res);
   } else {
     static_assert(false);
   }

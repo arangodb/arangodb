@@ -61,14 +61,14 @@ TEST(OneSidedEnumeratorTest, querying_single_vertex_not_contained_in_graph) {
   // fine in arangodb, the query will register a warning about the non-existing
   // document and return null for the vertex document
   auto expected = SingleServerPathResult{{std::nullopt}, {}};
-  ASSERT_EQ((static_cast<const SingleServerPathResult&>(*nextPath)), expected);
-  // { // alternatively:
-  //   velocypack::Builder b;
-  //   nextPath->toVelocyPack(b);
-  //   auto result =
-  //       arangodb::velocypack::deserialize<SingleServerPathResult>(b.slice());
-  //   ASSERT_EQ(expected, result);
-  // }
+  {
+    velocypack::Builder b;
+    nextPath->toVelocyPack(b);
+    velocypack::Builder b_expected;
+    expected.toVelocyPack(b_expected);
+    ASSERT_TRUE(arangodb::basics::VelocyPackHelper::equal(
+        b.slice(), b_expected.slice(), true));
+  }
 }
 
 TEST(OneSidedEnumeratorTest, querying_path_of_length_one) {

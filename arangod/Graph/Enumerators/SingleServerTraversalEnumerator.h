@@ -37,6 +37,20 @@ struct SingleServerTraversalEnumerator : ITraversalEnumerator {
         std::vector<std::optional<VertexId>>{std::nullopt},
         std::vector<Edge>{});
   };
+
+  auto neighbourhood() {
+    auto [previous, next] = _queue.pop_front();
+    auto neighbours = graph.createNeighbourCursor(next);
+    for (auto const neighbour : neighbours) {
+      _queue.push_back({next, neighbour});
+    }
+    _paths.add(next);  // Need a data structure (similar to _interior)
+    // _results: vec<Step> end steps of paths; and _interior
+    _interior.append(previous, next);  // need actually to and edge
+    // auto append(Step, Step)
+    // auto reverseReconstruction
+  }
+
 #ifdef USE_ENTERPRISE
   auto smartSearch(size_t amountOfExpansions, velocypack::Builder& result)
       -> void override {
@@ -69,5 +83,6 @@ struct SingleServerTraversalEnumerator : ITraversalEnumerator {
  private:
   bool _isDone = true;
   std::optional<VertexRef> _startVertex;
+  std::deque<VertexRef> _queue;
 };
 }  // namespace arangodb::graph::experimental
