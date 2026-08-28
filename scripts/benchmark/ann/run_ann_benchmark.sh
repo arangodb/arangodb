@@ -3,31 +3,38 @@
 # Run the public ann-benchmarks harness against ArangoDB's faiss-based IVF
 # vector index and produce the standard ann-benchmarks HTML site + CSV.
 #
-# CI-agnostic: it downloads an arangod tarball, boots it locally with the
-# experimental vector index enabled, clones a pinned ann-benchmarks fork and
-# runs a fixed sweep (single nLists build, nProbe query sweep) over one L2 and
-# one cosine dataset. Runnable on a laptop too - every knob is an env var.
+# CI-agnostic: it boots arangod from the nightly enterprise docker image with
+# the vector index enabled, clones a pinned ann-benchmarks fork and runs a
+# fixed sweep (single nLists build, nProbe query sweep) over one L2 and one
+# cosine dataset. Runnable on a laptop too - every knob is an env var.
 #
 # Everything is written under $ANN_WORKDIR (default: a fresh temp dir). The
-# arangod instance and the extracted tarball are torn down on exit.
+# arangod container (when this script starts it) is torn down on exit.
 
 set -euo pipefail
 # TODOs
 # 1. Make the datasets caches since we alywas run it on same ones
 # 2. Setup run params properly
-# 3. We fetch the nightly we should be able to retrive is in a better way?
 
 # ---------------------------------------------------------------------------
 # Configuration (all overridable from the environment)
 # ---------------------------------------------------------------------------
 
-# Where the arangod tarball comes from. Leave ARANGODB_PACKAGE_URL empty to
-# auto-resolve the newest enterprise devel nightly for linux/x86_64 (there is
-# no community nightly tarball; enterprise carries the same in-tree vector
-# index and needs no license below its disk-usage limit - ~100 GiB, which
-# these datasets, ~0.5 GB each, never approach).
-ARANGODB_NIGHTLY_INDEX="${ARANGODB_NIGHTLY_INDEX:-https://download.arangodb.com/nightly/devel/Linux/x86_64/}"
-ARANGODB_PACKAGE_URL="${ARANGODB_PACKAGE_URL:-}"
+# arangod comes from the official nightly enterprise docker image. It runs
+# unlicensed - enterprise only restricts dataset disk usage (~100 GiB), which
+# these datasets (~0.5 GB each) never approach. devel-nightly is the rolling
+# latest-devel tag.
+ARANGODB_IMAGE="${ARANGODB_IMAGE:-arangodb/enterprise-preview:devel-nightly}"
+
+# How arangod is provided:
+#   docker    - this script runs the image itself (default; laptops / hosts
+#               with a docker daemon)
+#   external  - arangod is already listening at $ARANGO_URL and the script only
+#               waits for it. Used in CircleCI, where a service container in the
+#               job's docker: list starts arangod (container runners have no
+#               docker daemon to run it from inside the job).
+ARANGO_START="${ARANGO_START:-docker}"
+ARANGO_CONTAINER="${ARANGO_CONTAINER:-ann-bench-arangod}"
 
 # ann-benchmarks fork, pinned. The circle-ci branch carries the CI sweep:
 # arangodb-ivf = single nLists=16384 build + nProbe query sweep.
@@ -57,85 +64,57 @@ ANN_DATASET_CACHE="${ANN_DATASET_CACHE:-${ANN_WORKDIR}/data}"
 PUSHGATEWAY_URL="${PUSHGATEWAY_URL:-}"
 
 ARANGO_URL="http://${ARANGO_HOST}:${ARANGO_PORT}"
-ARANGOD_PID=""
+# Set once we start the container ourselves, so cleanup only removes our own.
+ARANGOD_STARTED_BY_US=""
 
 log() { printf '\n=== %s ===\n' "$*"; }
 die() { printf 'error: %s\n' "$*" >&2; exit 1; }
 
 cleanup() {
-  if [[ -n "${ARANGOD_PID}" ]] && kill -0 "${ARANGOD_PID}" 2>/dev/null; then
-    log "Stopping arangod (pid ${ARANGOD_PID})"
-    kill "${ARANGOD_PID}" 2>/dev/null || true
-    wait "${ARANGOD_PID}" 2>/dev/null || true
+  if [[ -n "${ARANGOD_STARTED_BY_US}" ]]; then
+    log "Removing arangod container (${ARANGO_CONTAINER})"
+    docker rm -f "${ARANGO_CONTAINER}" >/dev/null 2>&1 || true
   fi
 }
 trap cleanup EXIT
 
 # ---------------------------------------------------------------------------
-# arangod: fetch, start, wait
+# arangod: start, wait
 # ---------------------------------------------------------------------------
 
-resolve_package_url() {
-  if [[ -n "${ARANGODB_PACKAGE_URL}" ]]; then
-    echo "${ARANGODB_PACKAGE_URL}"
+start_arangod() {
+  if [[ "${ARANGO_START}" == "external" ]]; then
+    log "Using external arangod at ${ARANGO_URL}"
     return
   fi
-  # Pick the server tarball from the nightly index: arangodb3e-linux-...tar.gz,
-  # excluding the client-only and object-files (debug) variants.
-  local listing name
-  listing="$(curl -fsSL "${ARANGODB_NIGHTLY_INDEX}")" \
-    || die "cannot list nightly index ${ARANGODB_NIGHTLY_INDEX}"
-  name="$(grep -oE 'arangodb3e-linux-[0-9][^"'\'' ]*_x86_64\.tar\.gz' <<<"${listing}" \
-            | grep -vE 'client|object_files' | sort -u | tail -n1)"
-  [[ -n "${name}" ]] || die "no server tarball found in ${ARANGODB_NIGHTLY_INDEX}"
-  echo "${ARANGODB_NIGHTLY_INDEX%/}/${name}"
-}
-
-fetch_arangod() {
-  local url tarball
-  url="$(resolve_package_url)"
-  log "Downloading arangod: ${url}"
-  tarball="${ANN_WORKDIR}/arangod.tar.gz"
-  curl -fSL -o "${tarball}" "${url}" || die "download failed"
-  mkdir -p "${ANN_WORKDIR}/arangod"
-  tar -xzf "${tarball}" -C "${ANN_WORKDIR}/arangod"
-  rm -f "${tarball}"
-
-  ARANGOD_BIN="$(find "${ANN_WORKDIR}/arangod" -type f -path '*/usr/sbin/arangod' | head -n1)"
-  [[ -n "${ARANGOD_BIN}" ]] || die "arangod binary not found in tarball"
-  # The relocatable tarball ships a config with all paths relative to the
-  # binary - the supported way to run it in place.
-  ARANGOD_CONF="$(find "${ANN_WORKDIR}/arangod" -type f -path '*/etc/relative/arangod.conf' | head -n1)"
-  [[ -n "${ARANGOD_CONF}" ]] || die "relative arangod.conf not found in tarball"
-  log "arangod: ${ARANGOD_BIN}"
-  "${ARANGOD_BIN}" --version | head -n5 || true
-}
-
-start_arangod() {
-  local datadir="${ANN_WORKDIR}/db" logfile="${ANN_OUTPUT_DIR}/arangod.log"
-  mkdir -p "${datadir}" "${ANN_OUTPUT_DIR}"
-  log "Starting arangod on ${ARANGO_URL}"
-  "${ARANGOD_BIN}" \
-    --configuration "${ARANGOD_CONF}" \
-    --database.directory "${datadir}" \
-    --server.endpoint "tcp://${ARANGO_HOST}:${ARANGO_PORT}" \
-    --server.authentication false \
-    "${VECTOR_INDEX_FLAG}" \
-    >"${logfile}" 2>&1 &
-  ARANGOD_PID=$!
+  log "Starting arangod container from ${ARANGODB_IMAGE}"
+  docker rm -f "${ARANGO_CONTAINER}" >/dev/null 2>&1 || true
+  # The image entrypoint prepends `arangod` to leading-dash args, so the vector
+  # flag is passed straight through. No auth keeps the harness connection simple.
+  docker run -d --name "${ARANGO_CONTAINER}" \
+    -p "${ARANGO_PORT}:8529" \
+    -e ARANGO_NO_AUTH=1 \
+    "${ARANGODB_IMAGE}" "${VECTOR_INDEX_FLAG}" >/dev/null \
+    || die "failed to start arangod container"
+  ARANGOD_STARTED_BY_US=1
 }
 
 wait_for_arangod() {
-  log "Waiting for arangod to accept connections"
-  for _ in $(seq 1 120); do
+  log "Waiting for arangod at ${ARANGO_URL}"
+  for _ in $(seq 1 150); do
     if curl -fsS "${ARANGO_URL}/_api/version" >/dev/null 2>&1; then
       log "arangod is up"
       return
     fi
-    kill -0 "${ARANGOD_PID}" 2>/dev/null || die "arangod exited early; see ${ANN_OUTPUT_DIR}/arangod.log"
+    # If we own the container and it has died, fail fast with its logs.
+    if [[ -n "${ARANGOD_STARTED_BY_US}" ]] \
+       && [[ -z "$(docker ps -q -f "name=^${ARANGO_CONTAINER}$" 2>/dev/null)" ]]; then
+      docker logs "${ARANGO_CONTAINER}" 2>&1 | tail -n 30 || true
+      die "arangod container exited early"
+    fi
     sleep 2
   done
-  die "arangod did not come up within timeout; see ${ANN_OUTPUT_DIR}/arangod.log"
+  die "arangod did not come up within timeout"
 }
 
 # ---------------------------------------------------------------------------
@@ -182,10 +161,16 @@ export_results() {
   log "Generating website"
   python create_website.py --outputdir "${ANN_OUTPUT_DIR}/site" --scatter --latex
 
+  # Preserve the server log when we own the container.
+  if [[ -n "${ARANGOD_STARTED_BY_US}" ]]; then
+    docker logs "${ARANGO_CONTAINER}" > "${ANN_OUTPUT_DIR}/arangod.log" 2>&1 || true
+  fi
+
   # Self-describing artifact: what produced these numbers.
   {
     echo "generated: ${ANN_STAMP:-unknown}"
-    echo "arangod:   $(${ARANGOD_BIN} --version | head -n1)"
+    echo "arangod:   $(curl -fsS "${ARANGO_URL}/_api/version" 2>/dev/null || echo unknown)"
+    echo "image:     ${ARANGODB_IMAGE}"
     echo "fork:      ${ANN_FORK_URL} @ ${ANN_FORK_REF}"
     echo "algorithm: ${ANN_ALGORITHM}"
     echo "datasets:  ${ANN_DATASETS}"
@@ -209,7 +194,6 @@ push_metrics() {
 main() {
   log "Working directory: ${ANN_WORKDIR}"
   mkdir -p "${ANN_OUTPUT_DIR}"
-  fetch_arangod
   start_arangod
   wait_for_arangod
   setup_harness
