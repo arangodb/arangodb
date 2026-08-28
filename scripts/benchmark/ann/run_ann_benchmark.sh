@@ -30,7 +30,8 @@ ARANGODB_PACKAGE_URL="${ARANGODB_PACKAGE_URL:-}"
 ANN_FORK_URL="${ANN_FORK_URL:-https://github.com/jbajic/ann-benchmarks.git}"
 ANN_FORK_REF="${ANN_FORK_REF:-1967a1c9b6be75f7213c89d8be29d05715e2850c}"
 ANN_ALGORITHM="${ANN_ALGORITHM:-arangodb-ivf}"
-ANN_DATASETS="${ANN_DATASETS:-sift-128-euclidean glove-100-angular}"
+# ANN_DATASETS="${ANN_DATASETS:-sift-128-euclidean glove-100-angular}"
+ANN_DATASETS="${ANN_DATASETS:-glove-100-angular}"
 ANN_RUNS="${ANN_RUNS:-3}"
 
 # arangod runtime knobs.
