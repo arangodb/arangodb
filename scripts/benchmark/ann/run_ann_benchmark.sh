@@ -117,6 +117,30 @@ wait_for_arangod() {
   die "arangod did not come up within timeout"
 }
 
+collect_meta() {
+  log "Collecting server metadata (build-id, version)"
+  # build-id (ELF GNU sha1) + full version identify the exact binary benchmarked.
+  local ver_json image_id="" bid ver lic ver_full
+  ver_json="$(curl -fsS "${ARANGO_URL}/_api/version?details=true" 2>/dev/null || echo '{}')"
+  # docker image id is only reachable when we run the container ourselves.
+  if [[ -n "${ARANGOD_STARTED_BY_US}" ]] && command -v docker >/dev/null 2>&1; then
+    image_id="$(docker image inspect --format '{{.Id}}' "${ARANGODB_IMAGE}" 2>/dev/null || true)"
+  fi
+  bid="$(jq -r '.details["build-id"] // ""' <<<"${ver_json}")"
+  ver="$(jq -r '.version // ""' <<<"${ver_json}")"
+  lic="$(jq -r '.license // ""' <<<"${ver_json}")"
+  ver_full="${ver}"
+  [[ -n "${bid}" ]] && ver_full="${ver}, build-id: ${bid}"
+  jq -n \
+    --arg version "${ver}" --arg version_full "${ver_full}" \
+    --arg build_id "${bid}" --arg license "${lic}" \
+    --arg image "${ARANGODB_IMAGE}" --arg image_id "${image_id}" \
+    '{arangodb_version: $version, arangodb_version_full: $version_full,
+      build_id: $build_id, license: $license, image: $image, image_id: $image_id}' \
+    > "${ANN_OUTPUT_DIR}/run_meta.json"
+  printf '  build-id: %s\n  version:  %s\n' "${bid:-(none)}" "${ver_full}"
+}
+
 # ---------------------------------------------------------------------------
 # ann-benchmarks: env, run, export, site
 # ---------------------------------------------------------------------------
@@ -169,14 +193,15 @@ export_results() {
   # Self-describing artifact: what produced these numbers.
   {
     echo "generated: ${ANN_STAMP:-unknown}"
-    echo "arangod:   $(curl -fsS "${ARANGO_URL}/_api/version" 2>/dev/null || echo unknown)"
-    echo "image:     ${ARANGODB_IMAGE}"
     echo "fork:      ${ANN_FORK_URL} @ ${ANN_FORK_REF}"
     echo "algorithm: ${ANN_ALGORITHM}"
     echo "datasets:  ${ANN_DATASETS}"
     echo "runs:      ${ANN_RUNS}"
+    echo "server:"
+    sed 's/^/  /' "${ANN_OUTPUT_DIR}/run_meta.json" 2>/dev/null || echo "  (no metadata)"
   } > "${ANN_OUTPUT_DIR}/site/METADATA.txt"
   cp "${ANN_OUTPUT_DIR}/results.csv" "${ANN_OUTPUT_DIR}/site/results.csv" 2>/dev/null || true
+  cp "${ANN_OUTPUT_DIR}/run_meta.json" "${ANN_OUTPUT_DIR}/site/run_meta.json" 2>/dev/null || true
 
   # Bundle the whole site into one archive - a single download from CI artifacts.
   log "Archiving site"
@@ -200,6 +225,7 @@ main() {
   mkdir -p "${ANN_OUTPUT_DIR}"
   start_arangod
   wait_for_arangod
+  collect_meta
   setup_harness
   run_sweep
   export_results
