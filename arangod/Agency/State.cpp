@@ -869,7 +869,6 @@ bool State::ensureCollection(std::string const& name, bool drop) {
   descriptor.constant.type = TRI_COL_TYPE_DOCUMENT;
   descriptor.mutableProps.name = name;
   descriptor.constant.isSystem = NameValidator::isSystemName(name);
-  descriptor.clusteringConstant.shardingStrategy = "hash";
 
   if (drop && _vocbase->lookupCollection(name) != nullptr) {
     dropCollection(name);
