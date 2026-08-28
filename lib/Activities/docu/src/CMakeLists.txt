@@ -3,6 +3,7 @@ add_library(activity-finder STATIC
   matcher.cpp
   sources.cpp
   markdown.cpp
+  repository.cpp
   find_activity_subclasses.cpp)
 target_include_directories(activity-finder
   PUBLIC

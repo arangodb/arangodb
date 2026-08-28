@@ -24,20 +24,25 @@
 #include <gtest/gtest.h>
 
 TEST(ActivityDocumentationMarkdownTest, generates_markdown_correctly) {
-  EXPECT_EQ(activities_to_markdown(std::vector<ActivityDeclaration>{
-                ActivityDeclaration{
-                    .owner = "ns::Holder",
-                    .type = "ns::Foo",
-                    .data_type_definition =
-                        {Struct{.name = "ns::FooData",
-                                .fields = {Member{.name = "id", .type = "int"},
-                                           Member{.name = "label",
-                                                  .type = "std::string"}}},
-                         Struct{.name = "ns::Bar", .fields = {}}}},
-                ActivityDeclaration{.owner = "ns::run",
-                                    .type = "ns::Empty",
-                                    .data_type_definition = {}}}),
-            R""""(# Activities
+  EXPECT_EQ(
+      activities_to_markdown(
+          std::vector<ActivityDeclaration>{
+              ActivityDeclaration{
+                  .owner = "ns::Holder",
+                  .type = "ns::Foo",
+                  .data_type_definition =
+                      {Struct{.name = "ns::FooData",
+                              .fields = {Member{.name = "id", .type = "int"},
+                                         Member{.name = "label",
+                                                .type = "std::string"}}},
+                       Struct{.name = "ns::Bar", .fields = {}}}},
+              ActivityDeclaration{.owner = "ns::run",
+                                  .type = "ns::Empty",
+                                  .data_type_definition = {}}},
+          "abc1234"),
+      R""""(# Activities
+This document lists all existing activities in arangodb on commit abc1234
+You can produce the latest activities list yourself via the activities docu, see lib/Activities/docu/README.md in the arangodb repository for details.
 
 ## ns::Holder
 type: ns::Foo

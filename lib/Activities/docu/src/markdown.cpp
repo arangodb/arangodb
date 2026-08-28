@@ -46,9 +46,17 @@ auto field_table(Struct const& record) -> std::string {
 
 }  // namespace
 
-auto activities_to_markdown(std::vector<ActivityDeclaration> const& activities)
-    -> std::string {
+auto activities_to_markdown(std::vector<ActivityDeclaration> const& activities,
+                            std::string_view commit_id) -> std::string {
   auto markdown = std::string{"# Activities\n"};
+  markdown +=
+      "This document lists all existing activities in arangodb on commit ";
+  markdown += commit_id;
+  markdown += "\n";
+  markdown +=
+      "You can produce the latest activities list yourself via the activities "
+      "docu, see lib/Activities/docu/README.md in the arangodb repository for "
+      "details.\n";
   for (auto const& activity : activities) {
     markdown += "\n## " + activity.owner + "\n";
     markdown += "type: " + activity.type + "\n";
