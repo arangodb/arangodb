@@ -130,9 +130,9 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  RegisterId outputRegister = variableToRegisterId(_outVariable);
+  RegisterId outReg = outputRegister(_outVariable);
   TRI_ASSERT((_outVariable->type() == Variable::Type::Const) ==
-             outputRegister.isConstRegister());
+             outReg.isConstRegister());
 
   VarSet inVars;
   _expression->variables(inVars);
@@ -144,7 +144,7 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
 
   for (auto const& var : inVars) {
     TRI_ASSERT(var != nullptr);
-    auto regId = variableToRegisterId(var);
+    auto regId = inputRegister(var);
     expInVarsToRegs.emplace_back(var->id, regId);
     inputRegisters.emplace(regId);
   }
@@ -157,21 +157,21 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
   TRI_ASSERT(expression() != nullptr);
 
   auto registerInfos = createRegisterInfos(std::move(inputRegisters),
-                                           outputRegister.isRegularRegister()
-                                               ? RegIdSet{outputRegister}
+                                           outReg.isRegularRegister()
+                                               ? RegIdSet{outReg}
                                                : RegIdSet{});
 
   if (_outVariable->type() == Variable::Type::Const) {
     // we have a const variable, so we can simply use an IdExector to forward
     // the rows.
-    auto executorInfos = IdExecutorInfos(false, outputRegister);
+    auto executorInfos = IdExecutorInfos(false, outReg);
     return std::make_unique<ExecutionBlockImpl<
         IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));
   }
 
   auto executorInfos = CalculationExecutorInfos(
-      outputRegister,
+      outReg,
       engine.getQuery() /* used for v8 contexts and in expression */,
       *expression(),
       std::move(expInVarsToRegs)); /* required by expression.execute */

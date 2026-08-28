@@ -155,10 +155,8 @@ void CollectNode::calcExpressionRegister(
     arangodb::aql::RegisterId& expressionRegister,
     RegIdSet& readableInputRegisters) const {
   if (_expressionVariable != nullptr) {
-    auto it = getRegisterPlan()->varInfo.find(_expressionVariable->id);
-    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-    expressionRegister = (*it).second.registerId;
-    readableInputRegisters.insert((*it).second.registerId);
+    expressionRegister = inputRegister(_expressionVariable);
+    readableInputRegisters.insert(expressionRegister);
   }
 }
 
@@ -166,11 +164,9 @@ void CollectNode::calcCollectRegister(
     arangodb::aql::RegisterId& collectRegister,
     RegIdSet& writeableOutputRegisters) const {
   if (_outVariable != nullptr) {
-    auto it = getRegisterPlan()->varInfo.find(_outVariable->id);
-    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-    collectRegister = (*it).second.registerId;
+    collectRegister = outputRegister(_outVariable);
     TRI_ASSERT(collectRegister.isValid());
-    writeableOutputRegisters.insert((*it).second.registerId);
+    writeableOutputRegisters.insert(collectRegister);
   }
 }
 
@@ -182,14 +178,8 @@ void CollectNode::calcGroupRegisters(
   for (auto const& p : _groupVariables) {
     // We know that planRegisters() has been run, so
     // getPlanNode()->_registerPlan is set up
-    auto itOut = getRegisterPlan()->varInfo.find(p.outVar->id);
-    TRI_ASSERT(itOut != getRegisterPlan()->varInfo.end());
-
-    auto itIn = getRegisterPlan()->varInfo.find(p.inVar->id);
-    TRI_ASSERT(itIn != getRegisterPlan()->varInfo.end());
-
-    RegisterId inReg = itIn->second.registerId;
-    RegisterId outReg = itOut->second.registerId;
+    RegisterId inReg = inputRegister(p.inVar);
+    RegisterId outReg = outputRegister(p.outVar);
     TRI_ASSERT(inReg.isValid());
     TRI_ASSERT(outReg.isValid());
     groupRegisters.emplace_back(outReg, inReg);
@@ -205,16 +195,12 @@ void CollectNode::calcAggregateRegisters(
   for (auto const& p : _aggregateVariables) {
     // We know that planRegisters() has been run, so
     // getPlanNode()->_registerPlan is set up
-    auto itOut = getRegisterPlan()->varInfo.find(p.outVar->id);
-    TRI_ASSERT(itOut != getRegisterPlan()->varInfo.end());
-    RegisterId outReg = itOut->second.registerId;
+    RegisterId outReg = outputRegister(p.outVar);
     TRI_ASSERT(outReg.isValid());
 
-    RegisterId inReg{RegisterId::maxRegisterId};
+    RegisterId inReg = RegisterId::makeInvalid();
     if (Aggregator::requiresInput(p.type)) {
-      auto itIn = getRegisterPlan()->varInfo.find(p.inVar->id);
-      TRI_ASSERT(itIn != getRegisterPlan()->varInfo.end());
-      inReg = itIn->second.registerId;
+      inReg = inputRegister(p.inVar);
       TRI_ASSERT(inReg.isValid());
       readableInputRegisters.insert(inReg);
     }
@@ -240,16 +226,13 @@ CollectNode::calcInputVariableNames() const {
   std::vector<std::pair<std::string, RegisterId>> variableNames;
 
   if (_outVariable != nullptr) {
-    auto const& varInfo = getRegisterPlan()->varInfo;
-    TRI_ASSERT(varInfo.find(_outVariable->id) != varInfo.end());
+    TRI_ASSERT(outputRegister(_outVariable).isValid());
 
-    // iterate over all our variables
+    // the KEEP variables are carried over from the input rows
     for (auto const& x : _keepVariables) {
-      auto const it = varInfo.find(x.first->id);
-
-      if (it != varInfo.end()) {
-        variableNames.emplace_back(
-            std::make_pair(x.second, (*it).second.registerId));
+      auto const reg = inputRegisterOptional(x.first);
+      if (reg.isValid()) {
+        variableNames.emplace_back(std::make_pair(x.second, reg));
       }
     }
   }
@@ -369,10 +352,8 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       ExecutionNode const* previousNode = getFirstDependency();
       TRI_ASSERT(previousNode != nullptr);
 
-      auto it =
-          getRegisterPlan()->varInfo.find(aggregateVariables()[0].outVar->id);
-      TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-      RegisterId collectRegister = (*it).second.registerId;
+      RegisterId collectRegister =
+          outputRegister(aggregateVariables()[0].outVar);
 
       auto registerInfos = createRegisterInfos({}, RegIdSet{collectRegister});
 

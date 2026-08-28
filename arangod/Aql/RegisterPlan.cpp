@@ -24,6 +24,8 @@
 
 #include "RegisterPlan.tpp"
 
+#include "Aql/Variable.h"
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -36,6 +38,38 @@ VarInfo::VarInfo(unsigned int depth, RegisterId registerId)
         std::format("too many registers ({}) needed for AQL query",
                     registerId.value()));
   }
+}
+
+RegisterId RegisterResolver::registerFor(Variable const& variable) const {
+  auto [reg, status] = lookup(variable.id);
+  TRI_ASSERT(status == Status::Ok)
+      << "variable " << variable.name << " (" << variable.id << ") "
+      << (status == Status::UnknownVariable ? "has no register assigned"
+                                            : "is not available here")
+      << ", resolved for depth " << _depth;
+  TRI_ASSERT(reg.isValid());
+  return reg;
+}
+
+RegisterId RegisterResolver::registerFor(Variable const* variable) const {
+  TRI_ASSERT(variable != nullptr);
+  return registerFor(*variable);
+}
+
+RegisterId RegisterResolver::tryRegisterFor(VariableId id) const noexcept {
+  return lookup(id).first;
+}
+
+auto RegisterResolver::lookup(VariableId id) const noexcept
+    -> std::pair<RegisterId, Status> {
+  auto it = _varInfo->find(id);
+  if (it == _varInfo->end()) {
+    return {RegisterId::makeInvalid(), Status::UnknownVariable};
+  }
+  if (it->second.depth > _depth) {
+    return {RegisterId::makeInvalid(), Status::NotYetAssigned};
+  }
+  return {it->second.registerId, Status::Ok};
 }
 
 MissingVariablesException::MissingVariablesException(

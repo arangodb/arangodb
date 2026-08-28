@@ -579,7 +579,52 @@ auto RegisterPlanT<T>::variableToOptionalRegisterId(VariableId varId) const
   if (it != varInfo.end()) {
     return it->second.registerId;
   }
-  return RegisterId{RegisterId::maxRegisterId};
+  return RegisterId::makeInvalid();
+}
+
+template<typename T>
+auto RegisterPlanT<T>::variableToRegisterId(Variable const* variable,
+                                            unsigned int depth) const
+    -> RegisterId {
+  TRI_ASSERT(variable != nullptr);
+  auto it = varInfo.find(variable->id);
+  TRI_ASSERT(it != varInfo.end())
+      << "variable " << variable->name << " (" << variable->id << ")";
+  // a variable can only be read from a row at or below the depth at which it
+  // was assigned its register. Asking for a lower depth means the caller
+  // reached for the wrong row -- typically an output variable resolved against
+  // the input row of a depth-increasing node.
+  TRI_ASSERT(it->second.depth <= depth)
+      << "variable " << variable->name << " (" << variable->id
+      << ") is assigned at depth " << it->second.depth
+      << ", resolved for depth " << depth;
+  RegisterId rv = it->second.registerId;
+  TRI_ASSERT(rv.isValid());
+  return rv;
+}
+
+template<typename T>
+auto RegisterPlanT<T>::variableToOptionalRegisterId(VariableId varId,
+                                                    unsigned int depth) const
+    -> RegisterId {
+  return resolverForDepth(depth).tryRegisterFor(varId);
+}
+
+template<typename T>
+auto RegisterPlanT<T>::resolverForDepth(unsigned int depth) const
+    -> RegisterResolver {
+  return RegisterResolver{varInfo, depth};
+}
+
+template<typename T>
+auto RegisterPlanT<T>::constVariableToRegisterId(VariableId varId) const
+    -> RegisterId {
+  auto it = varInfo.find(varId);
+  if (it == varInfo.end()) {
+    return RegisterId::makeInvalid();
+  }
+  TRI_ASSERT(it->second.registerId.isConstRegister());
+  return it->second.registerId;
 }
 
 template<typename T>

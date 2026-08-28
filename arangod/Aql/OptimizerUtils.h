@@ -117,7 +117,7 @@ bool getIndexForSortCondition(aql::Collection const& coll,
                               size_t& coveredAttributes);
 
 NonConstExpressionContainer extractNonConstPartsOfIndexCondition(
-    Ast* ast, VarInfoMap const& varInfo, bool evaluateFCalls, Index* index,
+    Ast* ast, RegisterResolver const& registers, bool evaluateFCalls, Index* index,
     AstNode const* condition, Variable const* indexVariable);
 
 arangodb::aql::Collection const* getCollection(

@@ -343,7 +343,7 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
         continue;
       }
       TRI_ASSERT(var != nullptr);
-      auto regId = variableToRegisterId(var);
+      auto regId = outputRegister(var);
       varsToRegs.emplace(var->id, regId);
       if (idx.producesOutput) {
         writableOutputRegisters.emplace(regId);
@@ -353,7 +353,7 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
     RegisterId documentOutputRegister = RegisterId::maxRegisterId;
     if (!p.hasOutputRegisters()) {
       if (idx.producesOutput && !idx.isLateMaterialized) {
-        documentOutputRegister = variableToRegisterId(idx.outVariable);
+        documentOutputRegister = outputRegister(idx.outVariable);
         writableOutputRegisters.emplace(documentOutputRegister);
       }
     }
@@ -368,7 +368,7 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
     data.isLateMaterialized = idx.isLateMaterialized;
     data.isUniqueStream = idx.isUniqueStream;
     if (data.isLateMaterialized) {
-      data.docIdOutputRegister = variableToRegisterId(idx.outDocIdVariable);
+      data.docIdOutputRegister = outputRegister(idx.outDocIdVariable);
       writableOutputRegisters.emplace(data.docIdOutputRegister);
     }
 
@@ -386,7 +386,7 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
       }
 
       for (auto const& var : varsUsed) {
-        auto regId = variableToRegisterId(var);
+        auto regId = registerFor(var);
         data.expressionVarsToRegs.emplace_back(var->id, regId);
       }
     } else {
@@ -414,7 +414,7 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
           // an error during register planning.
           continue;
         }
-        auto regId = variableToRegisterId(var);
+        auto regId = registerFor(var);
         filter.filterVarsToRegs.emplace_back(var->id, regId);
       }
       if (filter.projections.usesCoveringIndex()) {

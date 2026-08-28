@@ -101,13 +101,13 @@ std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  RegisterId inDoc = variableToRegisterId(_inDocVariable);
-  RegisterId insert = variableToRegisterId(_insertVariable);
-  RegisterId update = variableToRegisterId(_updateVariable);
+  RegisterId inDoc = inputRegister(_inDocVariable);
+  RegisterId insert = inputRegister(_insertVariable);
+  RegisterId update = inputRegister(_updateVariable);
 
-  RegisterId outputNew = variableToRegisterOptionalId(_outVariableNew);
+  RegisterId outputNew = outputRegisterOptional(_outVariableNew);
 
-  RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
+  RegisterId outputOld = outputRegisterOptional(_outVariableOld);
 
   auto readableInputRegisters = RegIdSet{inDoc, insert, update};
   auto writableOutputRegisters = RegIdSet{};

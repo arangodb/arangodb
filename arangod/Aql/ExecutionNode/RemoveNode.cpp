@@ -58,9 +58,9 @@ std::unique_ptr<ExecutionBlock> RemoveNode::createBlock(
 
   TRI_ASSERT(previousNode != nullptr);
 
-  RegisterId inDocRegister = variableToRegisterId(_inVariable);
-  RegisterId outputNew = variableToRegisterOptionalId(_outVariableNew);
-  RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
+  RegisterId inDocRegister = inputRegister(_inVariable);
+  RegisterId outputNew = outputRegisterOptional(_outVariableNew);
+  RegisterId outputOld = outputRegisterOptional(_outVariableOld);
 
   OperationOptions options = ModificationExecutorHelpers::convertOptions(
       _options, _outVariableNew, _outVariableOld);

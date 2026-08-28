@@ -102,7 +102,7 @@ struct BaseOptions {
                arangodb::velocypack::Slice shards);
 
     void initializeNonConstExpressions(aql::Ast* ast,
-                                       aql::VarInfoMap const& varInfo,
+                                       aql::RegisterResolver const& registers,
                                        aql::Variable const* indexVariable);
 
     /// @brief Build a velocypack containing all relevant information
@@ -227,7 +227,7 @@ struct BaseOptions {
   arangodb::aql::FixedVarExpressionContext const& getExpressionCtx() const;
 
   virtual void initializeIndexConditions(aql::Ast* ast,
-                                         aql::VarInfoMap const& varInfo,
+                                         aql::RegisterResolver const& registers,
                                          aql::Variable const* indexVariable);
 
   virtual void calculateIndexExpressions(aql::Ast* ast);

@@ -110,22 +110,22 @@ std::unique_ptr<ExecutionBlock> EnumerateListNode::createBlock(
     ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
-  RegisterId inputRegister = variableToRegisterId(_inVariable);
+  RegisterId inReg = inputRegister(_inVariable);
   std::vector<RegisterId> outRegisters;
 
   RegIdSet outRegisterSet;
   if (_mode == kEnumerateArray) {
     outRegisters.resize(1);
-    outRegisters[0] = variableToRegisterId(_outVariable);
+    outRegisters[0] = outputRegister(_outVariable);
     outRegisterSet = RegIdSet{outRegisters[0]};
   } else {
     outRegisters.resize(2);
-    outRegisters[0] = variableToRegisterId(_keyValuePairOutVars[0]);
-    outRegisters[1] = variableToRegisterId(_keyValuePairOutVars[1]);
+    outRegisters[0] = outputRegister(_keyValuePairOutVars[0]);
+    outRegisters[1] = outputRegister(_keyValuePairOutVars[1]);
     outRegisterSet = RegIdSet{outRegisters[0], outRegisters[1]};
   }
   auto registerInfos =
-      createRegisterInfos(RegIdSet{inputRegister}, outRegisterSet);
+      createRegisterInfos(RegIdSet{inReg}, outRegisterSet);
 
   std::vector<std::pair<VariableId, RegisterId>> varsToRegs;
   if (hasFilter()) {
@@ -134,13 +134,13 @@ std::unique_ptr<ExecutionBlock> EnumerateListNode::createBlock(
 
     for (auto const& var : inVars) {
       if (var->id != _outVariable->id) {
-        auto regId = variableToRegisterId(var);
+        auto regId = registerFor(var);
         varsToRegs.emplace_back(var->id, regId);
       }
     }
   }
   auto executorInfos = EnumerateListExecutorInfos(
-      inputRegister, std::move(outRegisters), engine.getQuery(), filter(),
+      inReg, std::move(outRegisters), engine.getQuery(), filter(),
       this->getVariablesSetHere(), std::move(varsToRegs), _mode);
 
   if (_mode == EnumerateListNode::kEnumerateArray) {

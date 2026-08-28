@@ -53,11 +53,11 @@ std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  RegisterId inDocRegister = variableToRegisterId(_inDocVariable);
+  RegisterId inDocRegister = inputRegister(_inDocVariable);
 
-  RegisterId inKeyRegister = variableToRegisterOptionalId(_inKeyVariable);
-  RegisterId outputNew = variableToRegisterOptionalId(_outVariableNew);
-  RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
+  RegisterId inKeyRegister = inputRegisterOptional(_inKeyVariable);
+  RegisterId outputNew = outputRegisterOptional(_outVariableNew);
+  RegisterId outputOld = outputRegisterOptional(_outVariableOld);
 
   auto readableInputRegisters = RegIdSet{inDocRegister};
   if (inKeyRegister.isValid()) {

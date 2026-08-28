@@ -92,10 +92,10 @@ std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
 
   TRI_ASSERT(previousNode != nullptr);
 
-  RegisterId in = variableToRegisterOptionalId(_inVariable);
-  RegisterId out = variableToRegisterOptionalId(_outVariable);
-  RegisterId outputNew = variableToRegisterOptionalId(_outVariableNew);
-  RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
+  RegisterId in = inputRegisterOptional(_inVariable);
+  RegisterId out = outputRegisterOptional(_outVariable);
+  RegisterId outputNew = outputRegisterOptional(_outVariableNew);
+  RegisterId outputOld = outputRegisterOptional(_outVariableOld);
 
   OperationOptions options = ModificationExecutorHelpers::convertOptions(
       _options, _outVariableNew, _outVariableOld);

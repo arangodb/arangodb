@@ -1946,7 +1946,7 @@ aql::RegIdSet IResearchViewNode::calcInputRegs() const {
     }
 
     for (auto const& it : vars) {
-      aql::RegisterId reg = variableToRegisterId(it);
+      aql::RegisterId reg = registerFor(it);
       // The filter condition may refer to registers that are written here
       if (reg.isConstRegister() || reg < getNrInputRegisters()) {
         inputRegs.emplace(reg);
@@ -2066,20 +2066,20 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
     aql::RegisterId searchDocRegId{aql::RegisterId::makeInvalid()};
     if (_outSearchDocId != nullptr) {
-      searchDocRegId = variableToRegisterId(_outSearchDocId);
+      searchDocRegId = outputRegister(_outSearchDocId);
       writableOutputRegisters.emplace(searchDocRegId);
     }
 
     auto const outRegister = std::invoke([&]() -> aql::RegisterId {
       if (isLateMaterialized()) {
         aql::RegisterId documentRegId =
-            variableToRegisterId(_outNonMaterializedDocId);
+            outputRegister(_outNonMaterializedDocId);
         writableOutputRegisters.emplace(documentRegId);
         return documentRegId;
       } else if (isNoMaterialization()) {
         return aql::RegisterId::makeInvalid();
       } else {
-        auto outReg = variableToRegisterId(_outVariable);
+        auto outReg = outputRegister(_outVariable);
         writableOutputRegisters.emplace(outReg);
         return outReg;
       }
@@ -2088,23 +2088,17 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     std::vector<aql::RegisterId> scoreRegisters;
     scoreRegisters.reserve(numScoreRegisters);
     std::for_each(_scorers.begin(), _scorers.end(), [&](auto const& scorer) {
-      auto registerId = variableToRegisterId(scorer.var);
+      auto registerId = outputRegister(scorer.var);
       writableOutputRegisters.emplace(registerId);
       scoreRegisters.emplace_back(registerId);
     });
-
-    // TODO remove if not needed
-    auto const& varInfos = getRegisterPlan()->varInfo;
 
     ViewValuesRegisters outNonMaterializedViewRegs;
 
     for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
       for (auto const& fieldsVars : columnFieldsVars.second) {
         auto& fields = outNonMaterializedViewRegs[columnFieldsVars.first];
-        auto const it = varInfos.find(fieldsVars.var->id);
-
-        TRI_ASSERT(it != varInfos.cend());
-        auto const regId = it->second.registerId;
+        auto const regId = outputRegister(fieldsVars.var);
         writableOutputRegisters.emplace(regId);
         fields.emplace(fieldsVars.fieldNum, regId);
       }
@@ -2132,8 +2126,11 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         filterCondition(),
         volatility(),
         _immutableParts,
-        getRegisterPlan()->varInfo,  // ??? do we need this?
-        getDepth(),
+        // TODO ViewExpressionContext resolves these against InputAqlItemRows,
+        // so this arguably wants inputRegisterResolver(). Switching it changes
+        // when "variable is used before being assigned" is reported, so it
+        // needs its own change; kept at the node's own depth for now.
+        outputRegisterResolver(),
         std::move(outNonMaterializedViewRegs),
         _options.countApproximate,
         filterOptimization(),

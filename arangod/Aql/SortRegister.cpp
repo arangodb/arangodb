@@ -32,18 +32,13 @@ SortRegister::SortRegister(RegisterId reg, SortElement const& element) noexcept
     : attributePath(element.attributePath), reg(reg), asc(element.ascending) {}
 
 void SortRegister::fill(ExecutionPlan const& /*execPlan*/,
-                        RegisterPlan const& regPlan,
+                        RegisterResolver const& registers,
                         std::vector<SortElement> const& elements,
                         std::vector<SortRegister>& sortRegisters) {
   sortRegisters.reserve(elements.size());
-  auto const& vars = regPlan.varInfo;
 
   for (auto const& p : elements) {
-    auto const varId = p.var->id;
-    auto const it = vars.find(varId);
-    TRI_ASSERT(it != vars.end());
-    TRI_ASSERT(it->second.registerId.isValid());
-    sortRegisters.emplace_back(it->second.registerId, p);
+    sortRegisters.emplace_back(registers.registerFor(*p.var), p);
   }
 }
 

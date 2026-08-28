@@ -319,7 +319,7 @@ NonConstExpressionContainer IndexNode::buildNonConstExpressions() const {
     }
 
     return utils::extractNonConstPartsOfIndexCondition(
-        _plan->getAst(), getRegisterPlan()->varInfo, options().evaluateFCalls,
+        _plan->getAst(), inputRegisterResolver(), options().evaluateFCalls,
         idx.get(), _condition->root(), _outVariable);
   }
   return {};
@@ -445,7 +445,7 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
         // an error during register planning.
         continue;
       }
-      auto regId = variableToRegisterId(var);
+      auto regId = registerFor(var);
       filterVarsToRegs.emplace_back(var->id, regId);
     }
 
@@ -471,7 +471,7 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
 
   auto const outVariable =
       isLateMaterialized() ? _outNonMaterializedDocId : _outVariable;
-  auto const outRegister = variableToRegisterId(outVariable);
+  auto const outRegister = outputRegister(outVariable);
 
   // if late materialized
   // We have one additional output register for each index variable which is
@@ -491,7 +491,7 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
         continue;
       }
       TRI_ASSERT(var != nullptr);
-      auto regId = variableToRegisterId(var);
+      auto regId = outputRegister(var);
       filterVarsToRegs.emplace_back(var->id, regId);
       writableOutputRegisters.emplace(regId);
       if (hasFilter()) {
