@@ -61,7 +61,6 @@ struct CollectionDescriptor {
 [[nodiscard]] velocypack::Builder collectionCreateResponse(
     CollectionDescriptor const& d);
 
-
 template<class Inspector>
 auto inspect(Inspector& f, CollectionDescriptor& d) {
   auto result = f.object(d).fields(
@@ -71,13 +70,11 @@ auto inspect(Inspector& f, CollectionDescriptor& d) {
       f.embedFields(d.storage),
       // Server-owned, and never declared on the user path, so Reject
       // reproduces the unexpected-attribute error the create API gave.
-      f.field(StaticStrings::Indexes, d.indexes)
-          .fallback(f.keep())
-          .when([]() {
-            return isInternalContext<Inspector>
-                       ? inspection::FieldCondition::Process
-                       : inspection::FieldCondition::Reject;
-          }));
+      f.field(StaticStrings::Indexes, d.indexes).fallback(f.keep()).when([]() {
+        return isInternalContext<Inspector>
+                   ? inspection::FieldCondition::Process
+                   : inspection::FieldCondition::Reject;
+      }));
 
   // The invariant constrains what a user may ask for. It is an object
   // invariant, so it cannot be expressed as a field condition.

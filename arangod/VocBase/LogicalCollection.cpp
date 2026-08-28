@@ -1551,11 +1551,11 @@ auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
   auto stateMachine = getDocumentState();
 
   static constexpr auto throwUnavailable = []<typename... Args>(
-     basics::SourceLocation location, std::format_string<Args...> formatString,
-     Args&&... args) {
-   throw basics::Exception(
-       TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
-       std::format(formatString, std::forward<Args>(args)...), location);
+      basics::SourceLocation location, std::format_string<Args...> formatString,
+      Args&&... args) {
+    throw basics::Exception(
+        TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
+        std::format(formatString, std::forward<Args>(args)...), location);
   };
 
   auto leader = stateMachine->getLeader();
