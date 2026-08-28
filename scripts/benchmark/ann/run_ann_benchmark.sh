@@ -12,6 +12,10 @@
 # arangod instance and the extracted tarball are torn down on exit.
 
 set -euo pipefail
+# TODOs
+# 1. Make the datasets caches since we alywas run it on same ones
+# 2. Setup run params properly
+# 3. We fetch the nightly we should be able to retrive is in a better way?
 
 # ---------------------------------------------------------------------------
 # Configuration (all overridable from the environment)
@@ -30,16 +34,17 @@ ARANGODB_PACKAGE_URL="${ARANGODB_PACKAGE_URL:-}"
 ANN_FORK_URL="${ANN_FORK_URL:-https://github.com/jbajic/ann-benchmarks.git}"
 ANN_FORK_REF="${ANN_FORK_REF:-1967a1c9b6be75f7213c89d8be29d05715e2850c}"
 ANN_ALGORITHM="${ANN_ALGORITHM:-arangodb-ivf}"
-# ANN_DATASETS="${ANN_DATASETS:-sift-128-euclidean glove-100-angular}"
+# TODO ANN_DATASETS="${ANN_DATASETS:-sift-128-euclidean glove-100-angular}"
 ANN_DATASETS="${ANN_DATASETS:-glove-100-angular}"
-ANN_RUNS="${ANN_RUNS:-3}"
+# TODO  ANN_RUNS="${ANN_RUNS:-3}"
+ANN_RUNS="${ANN_RUNS:-1}"
 
-# arangod runtime knobs.
+# This runs only on single server
 ARANGO_HOST="${ARANGO_HOST:-127.0.0.1}"
 ARANGO_PORT="${ARANGO_PORT:-8529}"
 # The startup flag that unlocks the experimental vector index. Kept as a
 # variable because its exact spelling has changed across versions.
-VECTOR_INDEX_FLAG="${VECTOR_INDEX_FLAG:---experimental-vector-index=true}"
+VECTOR_INDEX_FLAG="${VECTOR_INDEX_FLAG:---vector-index=true}"
 
 # Working + output layout.
 ANN_WORKDIR="${ANN_WORKDIR:-$(mktemp -d "${TMPDIR:-/tmp}/ann-bench.XXXXXX")}"
