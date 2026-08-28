@@ -1361,7 +1361,7 @@ bool ExecutionNode::setsVariable(Variable const* variable) const {
   return std::find(setHere.begin(), setHere.end(), variable) != setHere.end();
 }
 
-RegisterId ExecutionNode::registerFor(Variable const* variable) const {
+RegisterId ExecutionNode::inputOrOutputRegister(Variable const* variable) const {
   return setsVariable(variable) ? outputRegister(variable)
                                 : inputRegister(variable);
 }

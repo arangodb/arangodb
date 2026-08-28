@@ -575,13 +575,15 @@ class ExecutionNode {
   /// writes `variable`, i.e. whether it appears in getVariablesSetHere().
   bool setsVariable(Variable const* variable) const;
 
-  /// @brief Register holding `variable` for this node: its output register if
-  /// this node writes the variable, its input register otherwise.
+  /// @brief Register holding `variable` for this node, on whichever of the two
+  /// rows it lives: the output register if this node writes the variable, the
+  /// input register otherwise.
   /// Only for collections of variables with mixed provenance -- most notably
   /// the variables of a filter pushed down into an enumeration, which may
   /// reference both this node's own outputs and variables read from the input
-  /// row. Prefer inputRegister()/outputRegister() when the provenance is known.
-  RegisterId registerFor(Variable const* variable) const;
+  /// row. Prefer inputRegister()/outputRegister() when the provenance is known,
+  /// which is nearly everywhere.
+  RegisterId inputOrOutputRegister(Variable const* variable) const;
 
   /// @brief Resolvers bound to the input/output row shape of this node, for
   /// code that resolves variables later than createBlock() -- e.g. during

@@ -102,7 +102,7 @@ EnumerateNearVectorNode::extractFilterVarsToRegs() const {
     if (var->id == _outVariable->id) {
       continue;
     }
-    filterVarsToRegs.emplace_back(var->id, registerFor(var));
+    filterVarsToRegs.emplace_back(var->id, inputOrOutputRegister(var));
   }
 
   return filterVarsToRegs;

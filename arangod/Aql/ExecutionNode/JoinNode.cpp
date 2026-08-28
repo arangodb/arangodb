@@ -386,7 +386,7 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
       }
 
       for (auto const& var : varsUsed) {
-        auto regId = registerFor(var);
+        auto regId = inputOrOutputRegister(var);
         data.expressionVarsToRegs.emplace_back(var->id, regId);
       }
     } else {
@@ -414,7 +414,7 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
           // an error during register planning.
           continue;
         }
-        auto regId = registerFor(var);
+        auto regId = inputOrOutputRegister(var);
         filter.filterVarsToRegs.emplace_back(var->id, regId);
       }
       if (filter.projections.usesCoveringIndex()) {

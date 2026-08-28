@@ -38,7 +38,7 @@ void SortRegister::fill(ExecutionPlan const& /*execPlan*/,
   sortRegisters.reserve(elements.size());
 
   for (auto const& p : elements) {
-    sortRegisters.emplace_back(registers.registerFor(*p.var), p);
+    sortRegisters.emplace_back(registers.resolve(*p.var), p);
   }
 }
 

@@ -607,7 +607,7 @@ template<typename T>
 auto RegisterPlanT<T>::variableToOptionalRegisterId(VariableId varId,
                                                     unsigned int depth) const
     -> RegisterId {
-  return resolverForDepth(depth).tryRegisterFor(varId);
+  return resolverForDepth(depth).tryResolve(varId);
 }
 
 template<typename T>

@@ -134,7 +134,7 @@ std::unique_ptr<ExecutionBlock> EnumerateListNode::createBlock(
 
     for (auto const& var : inVars) {
       if (var->id != _outVariable->id) {
-        auto regId = registerFor(var);
+        auto regId = inputOrOutputRegister(var);
         varsToRegs.emplace_back(var->id, regId);
       }
     }

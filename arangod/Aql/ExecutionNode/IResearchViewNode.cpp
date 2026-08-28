@@ -1946,7 +1946,7 @@ aql::RegIdSet IResearchViewNode::calcInputRegs() const {
     }
 
     for (auto const& it : vars) {
-      aql::RegisterId reg = registerFor(it);
+      aql::RegisterId reg = inputOrOutputRegister(it);
       // The filter condition may refer to registers that are written here
       if (reg.isConstRegister() || reg < getNrInputRegisters()) {
         inputRegs.emplace(reg);

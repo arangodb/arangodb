@@ -445,7 +445,7 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
         // an error during register planning.
         continue;
       }
-      auto regId = registerFor(var);
+      auto regId = inputOrOutputRegister(var);
       filterVarsToRegs.emplace_back(var->id, regId);
     }
 

@@ -574,7 +574,7 @@ void captureNonConstExpression(Ast* ast, RegisterResolver const& registers,
   for (auto const& v : innerVars) {
     // these expressions are evaluated against the input rows of the node that
     // owns the index condition, so `registers` must be bound to that depth
-    result._varToRegisterMapping.emplace_back(v->id, registers.registerFor(*v));
+    result._varToRegisterMapping.emplace_back(v->id, registers.resolve(*v));
   }
 
   TRI_IF_FAILURE("IndexBlock::initializeExpressions") {

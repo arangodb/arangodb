@@ -75,12 +75,12 @@ class RegisterResolver {
 
   /// @brief register holding `variable` in rows of this depth. The variable
   /// must have a register and must be available here.
-  RegisterId registerFor(Variable const& variable) const;
-  RegisterId registerFor(Variable const* variable) const;
+  RegisterId resolve(Variable const& variable) const;
+  RegisterId resolve(Variable const* variable) const;
 
   /// @brief register holding the variable, or an invalid RegisterId if it has
   /// no register or is not available at this depth.
-  RegisterId tryRegisterFor(VariableId id) const noexcept;
+  RegisterId tryResolve(VariableId id) const noexcept;
 
   /// @brief full lookup result, for callers that need to tell the two failure
   /// modes apart.
