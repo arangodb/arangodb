@@ -22,9 +22,11 @@
 
 #pragma once
 
+#include "Aql/MatchPatternTypes.h"
 #include "Aql/types.h"
 
 #include <cstddef>
+#include <optional>
 #include <string_view>
 #include <tuple>
 #include <unordered_map>
@@ -40,9 +42,9 @@ class ExecutionPlan;
 class FilterNode;
 struct Variable;
 
-/// @brief Lowers AQL MATCH pattern AST nodes into ExecutionPlan fragments.
-/// Extracted from ExecutionPlan::fromNodeMatch so capturing lambdas become
-/// named methods without changing lowering semantics or call order.
+/// @brief Lowers normalized MATCH patterns into ExecutionPlan fragments.
+/// Parser AST semantics are normalized by MatchPatternNormalizer before
+/// planning; this class owns only execution-plan construction.
 class MatchBuilder {
  public:
   MatchBuilder(ExecutionPlan& plan, Ast* ast);
@@ -54,36 +56,37 @@ class MatchBuilder {
   AstNode* createPropertyAccess(Variable const* variable,
                                 std::string_view property);
 
-  static size_t patternEdgeCollectionCount(AstNode const* edgeLabelMember);
-  static AstNode const* getPatternEdgeCollection(AstNode const* edgeLabelMember,
-                                                 size_t index);
-  AstNode* buildPatternEdgeCollectionList(AstNode const* edgeLabelMember);
+  AstNode* buildEdgeCollectionList(NormalizedEdge const& edge);
 
   std::tuple<CalculationNode*, FilterNode*> createPropertiesFilter(
-      Variable const* variable, AstNode* properties,
-      AstNode* additionalExpression);
+      Variable const* variable,
+      std::vector<MatchPropertyConstraint> const& properties,
+      std::optional<MatchExpressionRef> const& additionalFilter,
+      std::unordered_map<VariableId, Variable const*> const& subst);
 
   std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
   createCollectionAccess(
-      AstNode const* member, Variable const* fullDocumentVariable,
+      NormalizedVertex const& vertex, Variable const* fullDocumentVariable,
       std::unordered_map<VariableId, Variable const*> const& subst);
 
   ExecutionNode* createPatternProjection(
-      AstNode const* member, Variable const* fullDocumentVar,
+      Variable const* destinationVariable, Variable const* fullDocumentVar,
+      std::optional<MatchProjection> const& projection, bool isEdge,
       std::unordered_map<VariableId, Variable const*> const& subst);
 
   std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
   createPatternEdgeEnumerateAccess(
-      AstNode const* edge, Variable const* outputVariable,
+      NormalizedEdge const& edge, Variable const* outputVariable,
       std::unordered_map<VariableId, Variable const*> const& subst);
 
   std::tuple<CalculationNode*, FilterNode*> createVertexEdgeFilter(
       Variable const* leftVertex, Variable const* edge,
-      Variable const* rightVertex, int direction);
+      Variable const* rightVertex, MatchEdgeDirection direction);
 
   std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
-  createTraversalForPattern(Variable const* startNodeVar, AstNode const* edge,
-                            AstNode const* node);
+  createTraversalForPattern(Variable const* startNodeVar,
+                            NormalizedEdge const& edge,
+                            MatchPatternElement const& target);
 
   AstNode* constructArray(std::vector<AstNode const*> const& vars);
 
