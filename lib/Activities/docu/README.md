@@ -14,7 +14,10 @@ sudo apt install libclang-19-dev llvm-19-dev clang-19
 
 You also need a configured ArangoDB build directory whose
 `compile_commands.json` covers the sources you want to scan. Make sure that
-this file is located at the repository root. 
+this file is located at the repository root.
+
+`git` has to be on `PATH`: the generated document names the commit the scan was
+made from, which is looked up on every run.
 
 ## Build
 
@@ -29,12 +32,14 @@ cmake --build <build-dir> -DUSE_ACTIVITY_DOCS=On find-activity-subclasses
 ./find-activity-subclasses <path in which to search for activities (directory or file)>
 ```
 
-Output is written to stdout.
+Output is written to stdout. Its header names the commit the given path is
+checked out at, so the list can be reproduced later; the commit reads `unknown`
+when the path is not inside a git repository.
 
 ## Test
 
 Building is currently hidden behind the feature-flag `USE_ACTIVITY_DOCS`:
 ```sh
 cmake --build <build-dir> -DUSE_ACTIVITY_DOCS=On arangodbtests_activities_documentation
-./arangodbtests_activities_documentatio
+./arangodbtests_activities_documentation
 ```

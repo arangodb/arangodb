@@ -3,7 +3,8 @@ get_filename_component(PROJECT_ROOT
 
 add_executable(arangodbtests_activities_documentation EXCLUDE_FROM_ALL
   ActivitiesDocumentationTest.cpp
-  ActivitiesDocumentationMarkdownTest.cpp)
+  ActivitiesDocumentationMarkdownTest.cpp
+  ActivitiesDocumentationRepositoryTest.cpp)
 target_link_libraries(arangodbtests_activities_documentation
   PRIVATE
     gtest_main

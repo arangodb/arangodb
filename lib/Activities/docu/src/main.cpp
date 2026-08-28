@@ -1,5 +1,6 @@
 #include "find_activity_subclasses.h"
 #include "markdown.h"
+#include "repository.h"
 
 #include <iostream>
 
@@ -11,6 +12,8 @@ int main(int argc, char const** argv) {
     return 1;
   }
 
-  std::cout << activities_to_markdown(find_all_activities(argv[1]));
+  std::cout << activities_to_markdown(
+      find_all_activities(argv[1]),
+      current_commit_id(argv[1]).value_or("unknown"));
   return 0;
 }
