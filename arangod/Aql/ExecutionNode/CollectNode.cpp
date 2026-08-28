@@ -110,11 +110,6 @@ void CollectNode::doToVelocyPack(VPackBuilder& nodes,
           inVar->toVelocyPack(nodes);
         }
       }
-      if (aggregateVariable.inVars.size() == 1) {
-        // keep the shape that explain() had before multi-argument aggregates
-        nodes.add(VPackValue("inVariable"));
-        aggregateVariable.inVars[0]->toVelocyPack(nodes);
-      }
       nodes.add("type", VPackValue(aggregateVariable.type));
     }
   }
