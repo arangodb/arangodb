@@ -218,13 +218,16 @@ void CollectNode::calcAggregateRegisters(
     RegisterId outReg = itOut->second.registerId;
     TRI_ASSERT(outReg.isValid());
 
+    // The aggregator reads exactly numArguments values per row. A query may
+    // pass an argument to one that reads none, as in LENGTH(value): that
+    // argument is planned like any other, and simply not read here.
+    size_t const numArguments = Aggregator::numArguments(p.type);
+    TRI_ASSERT(p.inVars.size() >= numArguments);
+
     std::vector<RegisterId> inRegs;
-    // aggregators whose input is optimized away (COUNT/LENGTH) have no input
-    // variables, and therefore no input registers
-    TRI_ASSERT(Aggregator::requiresInput(p.type) || p.inVars.empty());
-    inRegs.reserve(p.inVars.size());
-    for (auto const* inVar : p.inVars) {
-      auto itIn = getRegisterPlan()->varInfo.find(inVar->id);
+    inRegs.reserve(numArguments);
+    for (size_t i = 0; i < numArguments; ++i) {
+      auto itIn = getRegisterPlan()->varInfo.find(p.inVars[i]->id);
       TRI_ASSERT(itIn != getRegisterPlan()->varInfo.end());
       RegisterId inReg = itIn->second.registerId;
       TRI_ASSERT(inReg.isValid());

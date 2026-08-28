@@ -62,10 +62,10 @@ struct Aggregator {
 
   virtual ~Aggregator() = default;
   virtual void reset() = 0;
-  /// @brief consume one input row. The span holds one value per argument of
-  /// the aggregate call, so a single-argument aggregator such as MIN(x) gets
-  /// one value. Aggregators that need no input at all (COUNT/LENGTH) get an
-  /// empty span. The values are only valid for the duration of the call.
+  /// @brief consume one input row. The span always holds exactly
+  /// numArguments() values, so a single-argument aggregator such as MIN(x)
+  /// gets one and COUNT/LENGTH get an empty span. The values are only valid
+  /// for the duration of the call.
   virtual void reduce(std::span<AqlValue const>) = 0;
   virtual AqlValue get() const = 0;
   AqlValue stealValue() {
@@ -108,13 +108,13 @@ struct Aggregator {
   /// public API. all internal-only aggregators count as not supported here
   static bool isValid(std::string_view type);
 
-  /// @brief whether or not the aggregator requires any input or if the input
-  /// can be optimized away (note current: COUNT/LENGTH don't, all others do)
+  /// @brief whether the aggregator reads any input at all. Derived from
+  /// numArguments(); currently only COUNT/LENGTH do not.
   static bool requiresInput(std::string_view type);
 
-  /// @brief number of arguments the aggregator expects when called from a user
-  /// query, e.g. 1 for MIN(x). only meaningful for aggregators that require
-  /// input.
+  /// @brief number of input values the aggregator consumes per row, which is
+  /// also the size of the span handed to reduce(). MIN(x) consumes one,
+  /// COUNT/LENGTH consume none.
   static std::size_t numArguments(std::string_view type);
 
   /// @brief called when we need to increase/decrease memory usage for

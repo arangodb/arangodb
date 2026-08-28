@@ -1899,15 +1899,16 @@ AstNode* Ast::createNodeAggregateFunctionCall(std::string_view functionName,
   TRI_ASSERT(arguments != nullptr);
   TRI_ASSERT(arguments->type == NODE_TYPE_ARRAY);
 
-  if (Aggregator::requiresInput(normalized)) {
-    size_t const numExpectedArguments = Aggregator::numArguments(normalized);
-    if (arguments->numMembers() != numExpectedArguments) {
-      std::string temp(functionName);
-      int const expected = static_cast<int>(numExpectedArguments);
-      THROW_ARANGO_EXCEPTION_PARAMS(
-          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, temp.c_str(),
-          expected, expected);
-    }
+  // COUNT/LENGTH consume no input and accept whatever the query passes them,
+  // so only the aggregators that read their input are checked.
+  if (size_t const numExpectedArguments = Aggregator::numArguments(normalized);
+      numExpectedArguments > 0 &&
+      arguments->numMembers() != numExpectedArguments) {
+    std::string temp(functionName);
+    int const expected = static_cast<int>(numExpectedArguments);
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, temp.c_str(),
+        expected, expected);
   }
 
   // TODO - we should consider to introduce a NODE_TYPE_AGGREATE_FCALL type
