@@ -40,7 +40,7 @@ VarInfo::VarInfo(unsigned int depth, RegisterId registerId)
   }
 }
 
-RegisterId RegisterResolver::resolve(Variable const& variable) const {
+RegisterId RegisterResolver::resolve(Variable const& variable) const noexcept {
   auto [reg, status] = lookup(variable.id);
   TRI_ASSERT(status == Status::Ok)
       << "variable " << variable.name << " (" << variable.id << ") "
@@ -51,7 +51,7 @@ RegisterId RegisterResolver::resolve(Variable const& variable) const {
   return reg;
 }
 
-RegisterId RegisterResolver::resolve(Variable const* variable) const {
+RegisterId RegisterResolver::resolve(Variable const* variable) const noexcept {
   TRI_ASSERT(variable != nullptr);
   return resolve(*variable);
 }

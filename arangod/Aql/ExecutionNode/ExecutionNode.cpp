@@ -1331,15 +1331,16 @@ unsigned int ExecutionNode::inputDepth() const noexcept {
   return dependency == nullptr ? _depth : dependency->_depth;
 }
 
-RegisterId ExecutionNode::outputRegister(Variable const* variable) const {
+RegisterId ExecutionNode::outputRegister(Variable const* variable) const noexcept {
   return getRegisterPlan()->variableToRegisterId(variable, _depth);
 }
 
-RegisterId ExecutionNode::inputRegister(Variable const* variable) const {
+RegisterId ExecutionNode::inputRegister(Variable const* variable) const noexcept {
   return getRegisterPlan()->variableToRegisterId(variable, inputDepth());
 }
 
-RegisterId ExecutionNode::inputRegisterOptional(Variable const* variable) const {
+RegisterId ExecutionNode::inputRegisterOptional(
+    Variable const* variable) const noexcept {
   if (variable == nullptr) {
     return RegisterId::makeInvalid();
   }
@@ -1348,7 +1349,7 @@ RegisterId ExecutionNode::inputRegisterOptional(Variable const* variable) const 
 }
 
 RegisterId ExecutionNode::outputRegisterOptional(
-    Variable const* variable) const {
+    Variable const* variable) const noexcept {
   if (variable == nullptr) {
     return RegisterId::makeInvalid();
   }
@@ -1361,16 +1362,17 @@ bool ExecutionNode::setsVariable(Variable const* variable) const {
   return std::find(setHere.begin(), setHere.end(), variable) != setHere.end();
 }
 
-RegisterId ExecutionNode::inputOrOutputRegister(Variable const* variable) const {
+RegisterId ExecutionNode::inputOrOutputRegister(
+    Variable const* variable) const {
   return setsVariable(variable) ? outputRegister(variable)
                                 : inputRegister(variable);
 }
 
-RegisterResolver ExecutionNode::inputRegisterResolver() const {
+RegisterResolver ExecutionNode::inputRegisterResolver() const noexcept {
   return getRegisterPlan()->resolverForDepth(inputDepth());
 }
 
-RegisterResolver ExecutionNode::outputRegisterResolver() const {
+RegisterResolver ExecutionNode::outputRegisterResolver() const noexcept {
   return getRegisterPlan()->resolverForDepth(_depth);
 }
 

@@ -557,19 +557,19 @@ class ExecutionNode {
   /// @brief Register holding `variable` in the rows this node WRITES.
   /// Use this for the variables in getVariablesSetHere(), i.e. for everything
   /// the executor writes to an OutputAqlItemRow.
-  RegisterId outputRegister(Variable const* variable) const;
+  RegisterId outputRegister(Variable const* variable) const noexcept;
 
   /// @brief Register holding `variable` in the rows this node READS.
   /// Use this for everything the executor reads off an InputAqlItemRow.
-  RegisterId inputRegister(Variable const* variable) const;
+  RegisterId inputRegister(Variable const* variable) const noexcept;
 
   /// @brief Like inputRegister(), but returns an invalid RegisterId instead of
   /// asserting when `variable` is a nullptr or has no register.
-  RegisterId inputRegisterOptional(Variable const* variable) const;
+  RegisterId inputRegisterOptional(Variable const* variable) const noexcept;
 
   /// @brief Like outputRegister(), but returns an invalid RegisterId instead
   /// of asserting when `variable` is a nullptr or has no register.
-  RegisterId outputRegisterOptional(Variable const* variable) const;
+  RegisterId outputRegisterOptional(Variable const* variable) const noexcept;
 
   /// @brief Single-variable overload of setsVariable(): whether this node
   /// writes `variable`, i.e. whether it appears in getVariablesSetHere().
@@ -578,18 +578,13 @@ class ExecutionNode {
   /// @brief Register holding `variable` for this node, on whichever of the two
   /// rows it lives: the output register if this node writes the variable, the
   /// input register otherwise.
-  /// Only for collections of variables with mixed provenance -- most notably
-  /// the variables of a filter pushed down into an enumeration, which may
-  /// reference both this node's own outputs and variables read from the input
-  /// row. Prefer inputRegister()/outputRegister() when the provenance is known,
-  /// which is nearly everywhere.
   RegisterId inputOrOutputRegister(Variable const* variable) const;
 
   /// @brief Resolvers bound to the input/output row shape of this node, for
-  /// code that resolves variables later than createBlock() -- e.g. during
+  /// code that resolves variables later than createBlock() e.g. during
   /// execution. Prefer resolving here and passing RegisterIds down.
-  RegisterResolver inputRegisterResolver() const;
-  RegisterResolver outputRegisterResolver() const;
+  RegisterResolver inputRegisterResolver() const noexcept;
+  RegisterResolver outputRegisterResolver() const noexcept;
 
  protected:
   /// @brief serialize this ExecutionNode to VelocyPack.
