@@ -25,6 +25,7 @@
 #include "Basics/StaticStrings.h"
 #include "Inspection/Access.h"
 #include "Inspection/Status.h"
+#include "Inspection/Types.h"
 #include "VocBase/Properties/CollectionVersion.h"
 #include "VocBase/Properties/InspectContexts.h"
 
@@ -71,21 +72,25 @@ struct CollectionStorageProperties {
 
 template<class Inspector>
 auto inspect(Inspector& f, CollectionStorageProperties& props) {
-  if constexpr (isInternalContext<Inspector>) {
-    return f.object(props).fields(
-        f.field(StaticStrings::ObjectId, props.objectId)
-            .transformWith(
-                CollectionStorageProperties::Transformers::ObjectIdAsString{})
-            .fallback(f.keep()),
-        f.field(StaticStrings::Version, props.version)
-            .transformWith(
-                CollectionStorageProperties::Transformers::VersionAsNumber{})
-            .fallback(f.keep()));
-  } else {
-    // Both are assigned by the server. On the user path they must stay unknown,
-    // so the create API rejects them as it always has.
-    return f.object(props).fields();
-  }
+  // Both are assigned by the server. Reject keeps the create API answering
+  // with an unexpected-attribute error, which is what leaving the fields
+  // undeclared did.
+  auto serverOwned = []() {
+    return isInternalContext<Inspector> ? inspection::FieldCondition::Process
+                                        : inspection::FieldCondition::Reject;
+  };
+
+  return f.object(props).fields(
+      f.field(StaticStrings::ObjectId, props.objectId)
+          .transformWith(
+              CollectionStorageProperties::Transformers::ObjectIdAsString{})
+          .fallback(f.keep())
+          .when(serverOwned),
+      f.field(StaticStrings::Version, props.version)
+          .transformWith(
+              CollectionStorageProperties::Transformers::VersionAsNumber{})
+          .fallback(f.keep())
+          .when(serverOwned));
 }
 
 }  // namespace arangodb

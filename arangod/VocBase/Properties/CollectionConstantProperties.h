@@ -24,6 +24,7 @@
 
 #include "Basics/StaticStrings.h"
 #include "Inspection/Access.h"
+#include "Inspection/Types.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Properties/KeyGeneratorProperties.h"
 #include "VocBase/Properties/InspectContexts.h"
@@ -65,24 +66,6 @@ struct CollectionConstantProperties {
 
 template<class Inspector>
 auto inspect(Inspector& f, CollectionConstantProperties& props) {
-  auto shadowCollectionsField = std::invoke([&]() {
-    if constexpr (!Inspector::isLoading) {
-      // Write out the shadowCollections
-      return f.field(StaticStrings::ShadowCollections, props.shadowCollections);
-    } else if constexpr (isInternalContext<Inspector> ||
-                         isAgencyContext<Inspector>) {
-      // Written by the server. A coordinator loading a plan entry needs these
-      // to resolve the existing shadow collections instead of building new
-      // ones, which would come out with the parent's numberOfShards of 0.
-      return f.field(StaticStrings::ShadowCollections, props.shadowCollections)
-          .fallback(f.keep());
-    } else {
-      // Ignore the shadowCollections on input, this is not a user-modifyable
-      // value
-      return f.ignoreField(StaticStrings::ShadowCollections);
-    }
-  });
-
   return f.object(props).fields(
       f.field(StaticStrings::DataSourceSystem, props.isSystem)
           .fallback(f.keep()),
@@ -100,7 +83,17 @@ auto inspect(Inspector& f, CollectionConstantProperties& props) {
       /* Backwards compatibility, fields are allowed (MMFILES) but have no
          relevance anymore */
       f.ignoreField("doCompact"), f.ignoreField("isVolatile"),
-      std::move(shadowCollectionsField));
+      // Written by the server, so always written out. A coordinator loading a
+      // plan entry needs these to resolve the existing shadow collections
+      // instead of building new ones, which would come out with the parent's
+      // numberOfShards of 0. User input is accepted and dropped.
+      f.field(StaticStrings::ShadowCollections, props.shadowCollections)
+          .fallback(f.keep())
+          .whenLoading([]() {
+            return isInternalContext<Inspector> || isAgencyContext<Inspector>
+                       ? inspection::FieldCondition::Process
+                       : inspection::FieldCondition::Ignore;
+          }));
 }
 
 }  // namespace arangodb
