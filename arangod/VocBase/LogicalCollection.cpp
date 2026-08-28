@@ -891,8 +891,8 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
       // PhysicalCollection
       "objectId", "cacheEnabled", "indexes",
       // LogicalCollection, below
-      "version", "keyOptions", "schema", "computedValues",
-      "smartGraphAttribute", "smartJoinAttribute"};
+      "keyOptions", "schema", "computedValues", "smartGraphAttribute",
+      "smartJoinAttribute"};
 
   auto props = properties();
   VPackBuilder tmp;
