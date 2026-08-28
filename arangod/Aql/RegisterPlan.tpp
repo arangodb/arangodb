@@ -594,7 +594,8 @@ auto RegisterPlanT<T>::variableToRegisterId(Variable const* variable,
   // was assigned its register. Asking for a lower depth means the caller
   // reached for the wrong row -- typically an output variable resolved against
   // the input row of a depth-increasing node.
-  TRI_ASSERT(it->second.depth <= depth)
+  TRI_ASSERT(it->second.registerId.isConstRegister() ||
+             it->second.depth <= depth)
       << "variable " << variable->name << " (" << variable->id
       << ") is assigned at depth " << it->second.depth
       << ", resolved for depth " << depth;

@@ -66,7 +66,9 @@ auto RegisterResolver::lookup(VariableId id) const noexcept
   if (it == _varInfo->end()) {
     return {RegisterId::makeInvalid(), Status::UnknownVariable};
   }
-  if (it->second.depth > _depth) {
+  // const registers live in one query-global block rather than in the
+  // per-depth item blocks, so they are available at every depth
+  if (!it->second.registerId.isConstRegister() && it->second.depth > _depth) {
     return {RegisterId::makeInvalid(), Status::NotYetAssigned};
   }
   return {it->second.registerId, Status::Ok};

@@ -1945,9 +1945,17 @@ aql::RegIdSet IResearchViewNode::calcInputRegs() const {
       vars.erase(_outVariable);
     }
 
+    // The filter condition may refer to variables that this node writes
+    // itself, and to variables that only become available further downstream:
+    // under late materialization the document variable is produced by the
+    // MaterializeNode, at a greater depth than this node's input rows. Neither
+    // is an input register, so probe instead of resolving.
+    auto const registers = inputRegisterResolver();
     for (auto const& it : vars) {
-      aql::RegisterId reg = inputOrOutputRegister(it);
-      // The filter condition may refer to registers that are written here
+      auto const [reg, status] = registers.lookup(it->id);
+      if (status != aql::RegisterResolver::Status::Ok) {
+        continue;
+      }
       if (reg.isConstRegister() || reg < getNrInputRegisters()) {
         inputRegs.emplace(reg);
       }
