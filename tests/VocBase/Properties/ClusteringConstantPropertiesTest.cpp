@@ -175,19 +175,21 @@ static VPackBuilder serverOwnedFieldsBody() {
   return body;
 }
 
-TEST_F(ClusteringConstantPropertiesTest, test_serverOwnedFieldsRejectUserInput) {
+TEST_F(ClusteringConstantPropertiesTest,
+       test_serverOwnedFieldsRejectUserInput) {
   auto body = serverOwnedFieldsBody();
   EXPECT_TRUE(parse(body.slice()).fail())
       << "server-owned attributes have to be rejected on user input: "
       << body.toJson();
 }
 
-TEST_F(ClusteringConstantPropertiesTest, test_serverOwnedFieldsAreReadInternal) {
+TEST_F(ClusteringConstantPropertiesTest,
+       test_serverOwnedFieldsAreReadInternal) {
   auto body = serverOwnedFieldsBody();
 
   ClusteringConstantProperties testee;
   auto status = velocypack::deserializeWithStatus(body.slice(), testee, {},
-                                                 InspectInternalContext{});
+                                                  InspectInternalContext{});
   ASSERT_TRUE(status.ok()) << status.error();
   ASSERT_TRUE(testee.groupId.has_value());
   EXPECT_EQ(testee.groupId->id(), 1234U);
