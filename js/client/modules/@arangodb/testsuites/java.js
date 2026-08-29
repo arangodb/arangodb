@@ -111,6 +111,7 @@ arangodb.acquireHostList=true
       args = args.concat(['-am',]);
     }
     args = args.concat([
+      '-am',
       '-pl',
       'test-functional',
       '-Dgpg.skip',
