@@ -138,11 +138,16 @@ ValidatorBase* ComputedValuesExpressionContext::buildValidator(
 
 aql::AqlValue ComputedValuesExpressionContext::getVariableValue(
     aql::Variable const* variable, bool doCopy, bool& mustDestroy) const {
+  mustDestroy = false;
   auto it = _variables.find(variable);
   if (it == _variables.end()) {
     return aql::AqlValue(aql::AqlValueHintNull());
   }
   if (doCopy) {
+    // AqlValueHintSliceCopy allocates only for slices that do not fit inline.
+    // Report ownership in both cases, because destroy() is a no-op on an
+    // inline value.
+    mustDestroy = true;
     return aql::AqlValue(aql::AqlValueHintSliceCopy(it->second));
   }
   return aql::AqlValue(aql::AqlValueHintSliceNoCopy(it->second));
