@@ -147,6 +147,15 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
 
   filter.includeSystem =
       _request->parsedValue("includeSystem", filter.includeSystem);
+  {
+    bool found = false;
+    std::ignore = _request->value("includeFoxxQueues", found);
+    if (found) {
+      LOG_TOPIC("f1c3e", WARN, Logger::REQUESTS)
+          << "ignoring 'includeFoxxQueues' query parameter: it no longer "
+             "exists in API version 1 and above";
+    }
+  }
 
   // grab list of transactions from the body value
   if (_request->requestType() == arangodb::rest::RequestType::PUT) {
@@ -200,7 +209,7 @@ RestStatus RestWalAccessHandler::execute() {
   std::vector<std::string> suffixes = _request->decodedSuffixes();
   if (suffixes.empty()) {
     generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expected GET /_api/wal/[tail|range|lastTick]>");
+                  "expected GET /_api/wal/[tail|range|lastTick]");
     return RestStatus::DONE;
   }
 
@@ -220,7 +229,7 @@ RestStatus RestWalAccessHandler::execute() {
     handleCommandTail(wal);
   } else {
     generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expected GET /_api/wal/[tail|range|lastTick]>");
+                  "expected GET /_api/wal/[tail|range|lastTick]");
   }
 
   return RestStatus::DONE;

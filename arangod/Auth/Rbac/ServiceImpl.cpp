@@ -151,8 +151,7 @@ ServiceImpl::ServiceImpl(std::unique_ptr<Backend> backend)
     : _backend(std::move(backend)) {}
 
 auto ServiceImpl::check(JwtToken const& token,
-                        std::span<ActionResource const> queries) noexcept
-    -> Result {
+                        std::span<ActionResource const> queries) -> Result {
   // An empty batch asks nothing, so it is trivially permitted; short-circuit to
   // avoid a needless network round-trip.
   if (queries.empty()) {
@@ -173,8 +172,9 @@ auto ServiceImpl::check(JwtToken const& token,
   auto result = _backend->evaluateTokenManySync(token, items);
 
   if (!result.ok()) {
-    // Transport or parsing error: propagate it verbatim.
-    return result.result();
+    // transport or parse errors must be exceptions, the Result
+    // return value must reflect allow or deny.
+    THROW_ARANGO_EXCEPTION(std::move(result).result());
   }
   auto const& response = result.get();
   if (response.effect == Backend::Effect::Allow) {

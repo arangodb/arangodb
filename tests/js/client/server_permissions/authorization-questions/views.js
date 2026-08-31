@@ -30,21 +30,16 @@
 //
 // Every request first asks `UseApiVersion version=0` and then
 // `UseDatabase name=d level=read`. The view handler then asks one dedicated
-// ExecContext question per operation (arangod/Utils/ExecContext.cpp):
-//   getViews (list)     -> canSeeView()   -> SeeView    (per visible view)
-//   getView             -> canUseView(RO) -> UseView ... level=read
-//   createView          -> canCreateView()-> CreateView ... linkedCollections=[..]
-//   modifyView (props)  -> canModifyView()-> ModifyView ... linkedCollections=[..]
-//   modifyView (rename) -> canRenameView()-> RenameView oldName=.. newName=..
-//   deleteView          -> canDropView()  -> DropView
-// The linkedCollections list is derived from the request body's `links` field.
+// ExecContext question per operation (arangod/Utils/ExecContext.cpp).
 
 if (getOptions === true) {
   return {
     'server.authentication': 'true',
     'log.force-direct': 'true',
     // keep background threads from asking questions of their own
-    'foxx.queues': 'false'
+    'foxx.queues': 'false',
+    // disable so it doesn't spoil the test output:
+    'server.statistics': 'false'
   };
 }
 
@@ -116,10 +111,7 @@ function viewApiAuthzSuite () {
         "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c level=read",
-        "SeeView db=d name=v_apitest",
-        ...singleOnly([
-          `UseCollection db=d name=${cId} level=read`
-        ])
+        "SeeView db=d name=v_apitest"
       ], endObserve());
     },
 
@@ -136,7 +128,6 @@ function viewApiAuthzSuite () {
         "CreateView db=d name=v_apitest linkedCollections=[c]",
         "UseCollection db=d name=c level=read",
         ...singleOnly([
-          `UseCollection db=d name=${cId} level=read`,
           "UseCollection db=d name=c level=writedata"
         ]),
         ...clusterOnly([
@@ -145,7 +136,7 @@ function viewApiAuthzSuite () {
       ], endObserve());
     },
 
-    // GET /_api/view/v_apitest - getView() -> canUseView(Read)
+    // GET /_api/view/v_apitest - getView() -> canReadView
     testGetView: function () {
       createView();
       beginObserve();
@@ -153,15 +144,12 @@ function viewApiAuthzSuite () {
       assertPermissions([
         "UseApiVersion version=0",
         "UseDatabase name=d level=read",
-        "UseView db=d name=v_apitest level=read",
-        "UseCollection db=d name=c level=read",
-        ...singleOnly([
-          `UseCollection db=d name=${cId} level=read`
-        ])
+        "ReadView db=d name=v_apitest",
+        "UseCollection db=d name=c level=read"
       ], endObserve());
     },
 
-    // GET /_api/view/v_apitest/properties - getView(detailed) -> canUseView(Read)
+    // GET /_api/view/v_apitest/properties - getView(detailed) -> canReadView
     testGetViewProperties: function () {
       createView();
       beginObserve();
@@ -169,11 +157,8 @@ function viewApiAuthzSuite () {
       assertPermissions([
         "UseApiVersion version=0",
         "UseDatabase name=d level=read",
-        "UseView db=d name=v_apitest level=read",
-        "UseCollection db=d name=c level=read",
-        ...singleOnly([
-          `UseCollection db=d name=${cId} level=read`
-        ])
+        "ReadView db=d name=v_apitest",
+        "UseCollection db=d name=c level=read"
       ], endObserve());
     },
 
@@ -192,10 +177,7 @@ function viewApiAuthzSuite () {
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "ModifyView db=d name=v_apitest linkedCollections=[]",
-        "UseCollection db=d name=c level=read",
-        ...singleOnly([
-          `UseCollection db=d name=${cId} level=read`
-        ])
+        "UseCollection db=d name=c level=read"
       ], endObserve());
     },
 
@@ -213,9 +195,6 @@ function viewApiAuthzSuite () {
         "IsReadOnly",
         "ModifyView db=d name=v_apitest linkedCollections=[]",
         "UseCollection db=d name=c level=read",
-        ...singleOnly([
-          `UseCollection db=d name=${cId} level=read`
-        ]),
         ...clusterOnly([
           "UseCollection db=d name=c level=writemeta",
           "UseDatabase name=d level=write"
@@ -235,10 +214,7 @@ function viewApiAuthzSuite () {
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "RenameView db=d oldName=v_apitest newName=v_apitest_new",
-        "UseCollection db=d name=c level=read",
-        ...singleOnly([
-          `UseCollection db=d name=${cId} level=read`
-        ])
+        "UseCollection db=d name=c level=read"
       ], endObserve());
     },
 
@@ -254,10 +230,7 @@ function viewApiAuthzSuite () {
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "RenameView db=d oldName=v_apitest newName=v_apitest_new",
-        "UseCollection db=d name=c level=read",
-        ...singleOnly([
-          `UseCollection db=d name=${cId} level=read`
-        ])
+        "UseCollection db=d name=c level=read"
       ], endObserve());
     },
 

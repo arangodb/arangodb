@@ -165,8 +165,8 @@ async<void> RestDocumentHandler::insertDocument() {
   if (suffixes.empty() || suffixes[0].empty()) {
     generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
-                  "'collection' is missing, expecting " + DOCUMENT_PATH +
-                      " POST /_api/document/<collection>");
+                  "the collection must be given in the URL path: POST " +
+                      DOCUMENT_PATH + "/<collection>");
     co_return;
   }
 
@@ -483,16 +483,17 @@ async<void> RestDocumentHandler::modifyDocument(bool isPatch) {
     co_return;
   }
 
-  bool isArrayCase = suffixes.size() == 1;
   std::string const& cname = suffixes[0];
-  std::string key;
-  if (!isArrayCase) {
-    key = suffixes[1];
-  }
   if (cname.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "collection name must be non-empty in URL path");
     co_return;
+  }
+
+  std::string key;
+  bool isArrayCase = suffixes.size() == 1;
+  if (!isArrayCase) {
+    key = suffixes[1];
   }
 
   bool parseSuccess = false;
@@ -815,6 +816,10 @@ async<void> RestDocumentHandler::readManyDocuments() {
 
   // split the document reference
   std::string const& cname = suffixes[0];
+
+  if (_request->requestedApiVersion() > 0 && rejectNumericCollectionId(cname)) {
+    co_return;
+  }
 
   OperationOptions opOptions;
   opOptions.ignoreRevs =

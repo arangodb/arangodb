@@ -107,7 +107,8 @@ ExecContext::ExecContext(ConstructorToken, AuthMode authMode,
     }
 
     if (auto* rbacService = rbacFeature.service(); rbacService != nullptr) {
-      return AuthMode::Rbac(*rbacService, req.user(), req.jwtToken());
+      return AuthMode::Rbac(*rbacService, req.user(), req.jwtToken(),
+                            req.requestedApiVersion());
     }
 
     ADB_PROD_ASSERT(userManager != nullptr);
@@ -132,8 +133,6 @@ ExecContext::ExecContext(ConstructorToken, AuthMode authMode,
       req.connectionInfo().fullClient(), req.fullUrl(), std::move(authMethod),
       /*hasRequestInfo*/ true);
 }
-
-void ExecContext::forceSuperuser() { _authMode.reset<AuthMode::Superuser>(); }
 
 std::optional<std::reference_wrapper<TRI_vocbase_t>> ExecContext::vocbase()
     const noexcept {
@@ -409,17 +408,11 @@ Result ExecContext::canDropView(
   return {};
 }
 
-Result ExecContext::canUseView(std::string_view db, std::string_view viewName,
-                               ViewAccessLevel requested) const {
+Result ExecContext::canReadView(std::string_view db,
+                                std::string_view viewName) const {
   using namespace auth::perms;
-  if (auto r = can(UseView{.db{db}, .name{viewName}, .level = requested});
-      r.fail()) {
+  if (auto r = can(ReadView{.db{db}, .name{viewName}}); r.fail()) {
     return r;
-  }
-  if (requested == ViewAccessLevel::Modify) {
-    if (auto r = checkNotReadOnly(); r.fail()) {
-      return r;
-    }
   }
   return {};
 }

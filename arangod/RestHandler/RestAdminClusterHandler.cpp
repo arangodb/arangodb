@@ -35,6 +35,7 @@
 #include "Agency/Supervision.h"
 #include "Agency/TransactionBuilder.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/Common.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/ResultT.h"
 #include "Basics/StaticStrings.h"
@@ -198,7 +199,7 @@ delayedCalculator(F) -> delayedCalculator<std::invoke_result_t<F>, F>;
 void buildHealthResult(
     VPackBuilder& builder,
     std::vector<futures::Try<agentConfigHealthResult>> const& config,
-    VPackSlice store) {
+    VPackSlice store, uint32_t apiVersion) {
   auto rootPath = arangodb::cluster::paths::root()->arango();
 
   using server_set = std::unordered_set<std::string>;
@@ -264,7 +265,7 @@ void buildHealthResult(
 
         for (auto const& agentIter : VPackObjectIterator(member.value)) {
           if (!agentIter.key.isEqualString("Timestamp")) {
-            builder.add(agentIter.key.copyString(), agentIter.value);
+            builder.add(agentIter.key.stringView(), agentIter.value);
           }
         }
 
@@ -798,6 +799,17 @@ async<void> RestAdminClusterHandler::handleMoveShard() {
       ctx->database = _vocbase.name();
     }
 
+    // In the future, only allow collection names here:
+    if (request()->requestedApiVersion() > 0) {
+      if (auto r = auth::isNameAndNoId(ctx->database); r.fail()) {
+        generateError(r);
+        co_return;
+      }
+      if (auto r = auth::isNameAndNoId(ctx->collection); r.fail()) {
+        generateError(r);
+        co_return;
+      }
+    }
     auto const& exec = ExecContext::current();
     bool canAccess =
         exec.canUseAdminAction(auth::perms::AdminMoveShards{}).ok() ||
@@ -2278,7 +2290,8 @@ async<void> RestAdminClusterHandler::handleHealth() {
       VPackBuilder builder;
       {
         VPackObjectBuilder ob(&builder);
-        ::buildHealthResult(builder, configResult, storeResult.slice().at(0));
+        ::buildHealthResult(builder, configResult, storeResult.slice().at(0),
+                            _request->requestedApiVersion());
       }
       generateOk(rest::ResponseCode::OK, builder);
     } else {

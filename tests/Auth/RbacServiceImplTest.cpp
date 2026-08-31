@@ -219,7 +219,7 @@ TEST(RbacServiceImplCheckTest, denyReturnsForbiddenWithMessage) {
   EXPECT_EQ(r.errorMessage(), "role lacks db:Read");
 }
 
-TEST(RbacServiceImplCheckTest, backendErrorIsPropagated) {
+TEST(RbacServiceImplCheckTest, backendErrorIsThrown) {
   struct ErrorBackend : rbac::Backend {
     auto evaluateTokenManyImpl(rbac::JwtToken const&, RequestItems const&,
                                transaction::MethodsApi)
@@ -230,8 +230,7 @@ TEST(RbacServiceImplCheckTest, backendErrorIsPropagated) {
   rbac::ServiceImpl svc{std::make_unique<ErrorBackend>()};
   std::array queries{rbac::ActionResource{
       rbac::Action::Read, rbac::resources::Database{.name = "mydb"}}};
-  auto r = svc.check({testToken}, queries);
-  EXPECT_EQ(r.errorNumber(), TRI_ERROR_INTERNAL);
+  EXPECT_THROW((svc.check({testToken}, queries)), basics::Exception);
 }
 
 TEST(RbacServiceImplCheckTest, emptyBatchIsOkWithoutBackendCall) {

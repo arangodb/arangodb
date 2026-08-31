@@ -434,10 +434,8 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
         });
     ASSERT_FALSE(!logicalView);
 
-    EXPECT_TRUE(execContext
-                    ->canUseView(vocbase->name(), "testDataSource",
-                                 arangodb::ViewAccessLevel::Read)
-                    .fail());
+    EXPECT_TRUE(
+        execContext->canReadView(vocbase->name(), "testDataSource").fail());
     giveUserAdmin();
     auto status = grantHandler.execute();
     takeUserAdmin();
@@ -460,10 +458,8 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
                      ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
                                    .getNumber<int>()}));
-    EXPECT_TRUE(execContext
-                    ->canUseView(vocbase->name(), "testDataSource",
-                                 arangodb::ViewAccessLevel::Read)
-                    .fail());
+    EXPECT_TRUE(
+        execContext->canReadView(vocbase->name(), "testDataSource").fail());
   }
 
   // test auth view (revoke)
@@ -493,10 +489,8 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
         });
     ASSERT_FALSE(!logicalView);
 
-    EXPECT_TRUE(execContext
-                    ->canUseView(vocbase->name(), "testDataSource",
-                                 arangodb::ViewAccessLevel::Read)
-                    .fail());
+    EXPECT_TRUE(
+        execContext->canReadView(vocbase->name(), "testDataSource").fail());
     giveUserAdmin();
     auto status = revokeHandler.execute();
     takeUserAdmin();
@@ -519,9 +513,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
                      ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
                                    .getNumber<int>()}));
-    EXPECT_TRUE(execContext
-                    ->canUseView(vocbase->name(), "testDataSource",
-                                 arangodb::ViewAccessLevel::Read)
+    EXPECT_TRUE(execContext->canReadView(vocbase->name(), "testDataSource")
                     .fail());  // not modified from above
   }
 

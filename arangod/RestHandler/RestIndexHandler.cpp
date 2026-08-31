@@ -24,6 +24,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Async/async.h"
+#include "Auth/Common.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
@@ -229,6 +230,9 @@ std::shared_ptr<LogicalCollection> RestIndexHandler::collection(
     if (ServerState::instance()->isCoordinator()) {
       // Restrict access properly from API version 1 on:
       if (_request->requestedApiVersion() > 0) {
+        if (auth::isNameAndNoId(cName).fail()) {
+          return nullptr;
+        }
         if (auto r = ExecContext::current().canUseCollection(
                 _vocbase.name(), cName, AccessLevel::Read);
             r.fail()) {
@@ -899,6 +903,29 @@ async<void> RestIndexHandler::createIndex() {
     copy.close();
     copy = VPackCollection::merge(body, copy.slice(), false);
     body = copy.slice();
+  }
+
+  auto type = body.get(StaticStrings::IndexType);
+  if (!type.isString()) {
+    events::CreateIndexEnd(_vocbase.name(), cName, body,
+                           TRI_ERROR_BAD_PARAMETER);
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "expecting attribute 'type' in request body");
+    co_return;
+  }
+
+  if (_request->requestedApiVersion() > 0) {
+    if (auto const typeStr = type.stringView();
+        typeStr == "geo1" || typeStr == "geo2" || typeStr == "hash" ||
+        typeStr == "skiplist" || typeStr == "fulltext") {
+      events::CreateIndexEnd(_vocbase.name(), cName, body,
+                             TRI_ERROR_BAD_PARAMETER);
+      generateError(
+          rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+          absl::StrCat("index type '", typeStr,
+                       "' is not supported in API version 1 or higher"));
+      co_return;
+    }
   }
 
   VPackBuilder indexInfo;

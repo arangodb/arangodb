@@ -74,7 +74,8 @@ static void addApiVersions(VPackBuilder& result) {
 }
 
 static void addVersionDetails(application_features::ApplicationServer& server,
-                              VPackBuilder& result) {
+                              VPackBuilder& result,
+                              uint32_t requestedApiVersion) {
   result.add("details", VPackValue(VPackValueType::Object));
   Version::getVPack(result);
 
@@ -137,12 +138,14 @@ void RestVersionHandler::getVersion(
   result.add("license", VPackValue("community"));
 #endif
 
-  if (allowInfo) {
+  // "version" can be added unconditionally in 4.0
+  if (allowInfo || !ExecContext::current().isClassic() ||
+      requestedApiVersion > 0) {
     result.add("version", VPackValue(ARANGODB_VERSION));
+  }
 
-    if (includeDetails) {
-      addVersionDetails(server, result);
-    }
+  if (allowInfo && includeDetails) {
+    addVersionDetails(server, result, requestedApiVersion);
   }
 
   // Add API version information (both in short and long form)

@@ -1449,7 +1449,7 @@ replication::Version Database::replicationVersion() const {
   return _info.replicationVersion();
 }
 
-void Database::toVelocyPack(VPackBuilder& result) const {
+void Database::toVelocyPack(VPackBuilder& result, uint32_t apiVersion) const {
   VPackObjectBuilder b(&result);
   _info.toVelocyPack(result);
 }

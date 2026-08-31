@@ -185,7 +185,6 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
       }
 
       auto manager = AsyncAgencyCommManager::INSTANCE.get();
-
       if (manager != nullptr) {
         result.add("agency", VPackValue(VPackValueType::Object));
 

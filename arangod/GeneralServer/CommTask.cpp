@@ -269,7 +269,7 @@ CommTask::Flow CommTask::prepareExecution(
   if (!::resolveRequestContext(_databaseFeature, *_auth, _rbacFeature,
                                _securityFeature,
                                req)) {  // false if db not found
-    if (_auth->isActive()) {
+    if (_auth->isActive() && !_auth->rbacEnabled()) {
       // prevent guessing database names (issue #5030)
       auth::Level lvl = auth::Level::NONE;
       if (req.authenticated()) {

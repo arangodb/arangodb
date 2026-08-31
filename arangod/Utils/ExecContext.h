@@ -110,9 +110,6 @@ class ExecContext {
   /// @brief cancel execution
   void cancel() noexcept { _canceled.store(true, std::memory_order_relaxed); }
 
-  /// @brief upgrade to internal superuser, preserving request/vocbase refs
-  void forceSuperuser();
-
   /// @brief returns the vocbase associated with this context, if any
   [[nodiscard]] std::optional<std::reference_wrapper<Database>> vocbase()
       const noexcept;
@@ -222,8 +219,7 @@ class ExecContext {
                        std::vector<std::string> const& linkedCollections) const;
   Result canDropView(std::string_view db, std::string_view view,
                      std::vector<std::string> const& linkedCollections) const;
-  Result canUseView(std::string_view db, std::string_view view,
-                    ViewAccessLevel level) const;
+  Result canReadView(std::string_view db, std::string_view view) const;
 
   Result canSeeGraph(std::string_view db, std::string_view graph) const;
   Result canCreateGraph(std::string_view db, std::string_view graph,

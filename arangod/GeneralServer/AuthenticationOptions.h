@@ -45,12 +45,6 @@ struct AuthenticationOptions {
   std::string jwtSecretProgramOption;
   std::string jwtSecretKeyfileProgramOption;
   std::string jwtSecretFolderProgramOption;
-  bool jwtSecretIsES256 = false;  // true if the active secret uses ES256
-
-#ifdef USE_ENTERPRISE
-  /// verification only secrets
-  std::vector<std::string> jwtPassiveSecrets;
-#endif
 };
 
 }  // namespace arangodb
