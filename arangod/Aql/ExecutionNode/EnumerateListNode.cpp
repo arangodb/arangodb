@@ -133,9 +133,13 @@ std::unique_ptr<ExecutionBlock> EnumerateListNode::createBlock(
     VarSet inVars;
     _filter->variables(inVars);
 
+    // getVariablesSetHere() omits _outVariable in kEnumerateObject mode, where
+    // the key/value pair is produced instead. Skip it unconditionally, as it
+    // has no register in that mode.
     auto const produced = getVariablesSetHere();
     for (auto const& var : inVars) {
-      if (std::find(produced.begin(), produced.end(), var) != produced.end()) {
+      if (var == _outVariable ||
+          std::find(produced.begin(), produced.end(), var) != produced.end()) {
         continue;
       }
       varsToRegs.emplace_back(var->id, inputRegister(var));

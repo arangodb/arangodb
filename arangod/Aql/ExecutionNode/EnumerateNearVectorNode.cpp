@@ -97,10 +97,14 @@ EnumerateNearVectorNode::extractFilterVarsToRegs() const {
   std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;
   filterVarsToRegs.reserve(inVars.size());
 
+  // getVariablesSetHere() omits _outVariable in kCovered mode, where the
+  // document is not produced, but the filter may still reference it and it has
+  // no register either way. Skip it unconditionally.
   auto const produced = getVariablesSetHere();
   for (auto const& var : inVars) {
     TRI_ASSERT(var != nullptr);
-    if (std::find(produced.begin(), produced.end(), var) != produced.end()) {
+    if (var == _outVariable ||
+        std::find(produced.begin(), produced.end(), var) != produced.end()) {
       continue;
     }
     filterVarsToRegs.emplace_back(var->id, inputRegister(var));
