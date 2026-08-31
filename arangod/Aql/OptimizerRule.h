@@ -516,10 +516,10 @@ struct OptimizerRule {
       "moveFiltersUpRule2 running afterwards to push them back down");
   static_assert(
       moveCalculationsUpRule2 < moveFiltersUpRule2,
-      "moveFiltersUpRule2 must run after moveCalculationsUpRule2 so that "
-      "calculations are repositioned before the filters chase them back "
-      "down -- otherwise optimizeJoinOrder's splice would strand filters "
-      "above the enumerations they restrict, losing early filtering");
+      "a filter cannot move earlier than the calculation producing the "
+      "variable it reads, so the calculations must be repositioned first -- "
+      "otherwise optimizeJoinOrder's splice leaves filters stranded after "
+      "the enumerations they restrict, losing early filtering");
 
   std::string_view name;
   RuleFunction func;
