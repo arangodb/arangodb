@@ -52,14 +52,21 @@ namespace arangodb::tests {
 // posting to one. Most tests use the committed-single-op helpers (insertR /
 // updateR / read): each write commits in its own transaction and is verified by
 // reading it back in a separate one, so the default pattern exercises persisted
-// visibility. Tests that need multi-op or read-own-writes behaviour instead
+// visibility. Tests that need multi-op or read-own-writes behavior instead
 // drive a SingleCollectionTransaction directly (see the transaction-lifecycle
 // group in DocumentTest.cpp).
-class StorageEngineDocumentTest : public StorageEngineDataTest {
+//
+// Parameterized on the base data-test fixture, which selects plain vs.
+// time-travel engine and carries the matching `timeTravelEnabled` flag, so the
+// same helpers serve both worlds and the collection can never disagree with the
+// engine it runs on.
+template<class BaseDataTest>
+class BasicStorageEngineDocumentTest : public BaseDataTest {
  protected:
   void SetUp() override {
-    _database = makeDatabase("testDatabase", 42);
-    _collection = makeCollection(*_database, "testCollection");
+    _database = this->makeDatabase("testDatabase", 42);
+    _collection = this->makeCollection(*_database, "testCollection",
+                                       BaseDataTest::timeTravelEnabled);
   }
 
   void TearDown() override {
@@ -220,5 +227,11 @@ class StorageEngineDocumentTest : public StorageEngineDataTest {
   std::unique_ptr<Database> _database;
   std::shared_ptr<LogicalCollection> _collection;
 };
+
+using StorageEngineDocumentTest =
+    BasicStorageEngineDocumentTest<StorageEngineDataTest>;
+
+using TimeTravelStorageEngineDocumentTest =
+    BasicStorageEngineDocumentTest<TimeTravelStorageEngineDataTest>;
 
 }  // namespace arangodb::tests

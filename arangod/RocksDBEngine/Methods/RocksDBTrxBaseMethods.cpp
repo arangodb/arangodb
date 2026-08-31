@@ -31,6 +31,8 @@
 
 #include <absl/cleanup/cleanup.h>
 #include <absl/strings/str_cat.h>
+#include <rocksdb/comparator.h>
+#include <rocksdb/db.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
 
 using namespace arangodb;
@@ -187,12 +189,26 @@ Result RocksDBTrxBaseMethods::addOperation(
   return {};
 }
 
+Result RocksDBTrxBaseMethods::setCommitTimestamp(uint64_t ts) {
+  // A rocksdb transaction stamps all its UDT column families with one commit
+  // timestamp, so every time-travel write in this transaction must agree on it.
+  // (Per-document timestamps would need the WriteBatch per-key timestamp API,
+  // which WBWI does not support - out of scope for the PoC.)
+  if (_commitTimestamp.has_value() && _commitTimestamp.value() != ts) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            "all documents written in a single time-travel transaction must "
+            "use the same _created timestamp"};
+  }
+  _commitTimestamp = ts;
+  return {};
+}
+
 rocksdb::Status RocksDBTrxBaseMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                            rocksdb::Slice const& key,
                                            rocksdb::PinnableSlice* val,
                                            ReadOwnWrites readOwnWrites) {
   TRI_ASSERT(cf != nullptr);
-  rocksdb::ReadOptions const& ro = _readOptions;
+  rocksdb::ReadOptions ro = withUdtReadTimestamp(_readOptions, cf);
   TRI_ASSERT(ro.snapshot != nullptr || _state->options().avoidSnapshot);
   if (readOwnWrites == ReadOwnWrites::yes) {
     return _rocksTransaction->Get(ro, cf, key, val);
@@ -205,9 +221,30 @@ rocksdb::Status RocksDBTrxBaseMethods::GetForUpdate(
     rocksdb::PinnableSlice* val) {
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
-  rocksdb::ReadOptions const& ro = _readOptions;
-  TRI_ASSERT(ro.snapshot != nullptr || _state->options().avoidSnapshot);
-  rocksdb::Status s = _rocksTransaction->GetForUpdate(ro, cf, key, val);
+  TRI_ASSERT(_readOptions.snapshot != nullptr ||
+             _state->options().avoidSnapshot);
+  // GetForUpdate locks the document key - which, on a UDT (time-travel) column
+  // family, covers every version of that key - and reads the latest version to
+  // check existence. It carries no read timestamp on purpose: the lock always
+  // targets the latest version, which is what serializes writes on a key.
+  //
+  // Under UDT, RocksDB validates write-write conflicts by timestamp rather than
+  // by snapshot, and a validated GetForUpdate would require a validation read
+  // timestamp strictly below the commit timestamp (coupling it to _created).
+  // We don't want that, so validation is disabled; RocksDB in turn forbids a
+  // snapshot on a non-validating GetForUpdate, so it is dropped here. The
+  // exclusive lock alone provides the write-write conflict protection we need.
+  // TODO(COR-951) - fix validation to ensure we have no lost updates
+  bool const udt = cf->GetComparator()->timestamp_size() > 0;
+  rocksdb::Status s;
+  if (udt) {
+    rocksdb::ReadOptions ro = _readOptions;
+    ro.snapshot = nullptr;
+    s = _rocksTransaction->GetForUpdate(ro, cf, key, val, /*exclusive*/ true,
+                                        /*do_validate*/ false);
+  } else {
+    s = _rocksTransaction->GetForUpdate(_readOptions, cf, key, val);
+  }
   if (s.ok()) {
     _memoryTracker.increaseMemoryUsage(
         lockOverhead(!_state->isOnlyExclusiveTransaction(), key.size()));
@@ -513,6 +550,16 @@ Result RocksDBTrxBaseMethods::doCommitImpl() {
                     _rocksTransaction->GetNumDeletes() +
                     _rocksTransaction->GetNumMerges();
 
+  // Time travel: stamp the commit timestamp onto every User-Defined Timestamp
+  // column family this transaction wrote to (the write timestamp = the
+  // document's _created). Non-UDT families are left untouched by RocksDB.
+  if (_commitTimestamp.has_value()) {
+    rocksdb::Status ts =
+        _rocksTransaction->SetCommitTimestamp(*_commitTimestamp);
+    if (!ts.ok()) {
+      return rocksutils::convertStatus(ts);
+    }
+  }
   rocksdb::Status s = _rocksTransaction->Commit();
   if (!s.ok()) {  // cleanup performed by scope-guard
     return rocksutils::convertStatus(s);
