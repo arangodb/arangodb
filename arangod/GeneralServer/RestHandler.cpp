@@ -789,6 +789,28 @@ async<void> RestHandler::handleAuthorizationChecks() {
     co_return;
   }
 
+  // Authentication succeeded (AuthenticationGrant::GRANTED), so the request
+  // must carry an ExecContext for the authorization checks below. Any route
+  // that continues execution should have resolved a request context by now
+  // (see CommTask::prepareExecution). The allow-listed early paths served
+  // during STARTUP/MAINTENANCE do not, but their handlers return GRANTED_EARLY
+  // above and never reach this point.
+  //
+  // However, there's a race:
+  // When the CommTask checks the mode during request processing while it's
+  // STARTUP or MAINTENANCE, there's no vocbase nor ExecContext.
+  // If the mode changes to DEFAULT before checkUserAuthentication() is called
+  // (take, for example, `RestStatusHandler::checkUserAuthentication()`),
+  // it can return GRANTED rather than GRANTED_EARLY.
+  // But the following calls to `checkApiVersionAccess()` and
+  // `checkDatabaseAccess()` require an ExecContext.
+  //
+  // This is a temporary band-aid so we answer with a 500 rather than crashing
+  // in that situation. A proper fix will be implemented soon.
+  if (request()->requestContext() == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Missing ExecContext");
+  }
+
   if (auto res = co_await checkApiVersionAccess(); res.fail()) {
     _state = HandlerState::FAILED;
     events::NotAuthorized(*_request);
