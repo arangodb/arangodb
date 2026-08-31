@@ -200,7 +200,7 @@ parameters:
     description: "Nightly date (YYYYMMDD), pinned once by the setup config so all jobs derive the same version even when the workflow runs across midnight. Cannot be set at trigger time (the setup config does not declare it)."
   build-docker-image:
     type: string
-    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-40:24.04-5bf44cd5"
+    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-40:24.04-dc3196a5"
     description: "Ubuntu build image (compiler toolchain + packaging/scan tools) the compile, packaging, scan, and sign jobs run in. The tag is bumped automatically by the infrastructure pipeline's build-image rebuild; override only to try a new build image."
   build-tarballs:
     type: boolean
