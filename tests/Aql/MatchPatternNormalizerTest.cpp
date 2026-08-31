@@ -109,7 +109,8 @@ class MatchPatternNormalizerTest : public ::testing::Test {
       builder->add(key, velocypack::Value(value));
     }
     builder->close();
-    return std::make_unique<BindParameters>(resourceMonitor, std::move(builder));
+    return std::make_unique<BindParameters>(resourceMonitor,
+                                            std::move(builder));
   }
 
   ParsedMatch parseMatch(
@@ -130,7 +131,8 @@ class MatchPatternNormalizerTest : public ::testing::Test {
     if (injectBindParameters) {
       parameters =
           makeBindParameters(queryContext->resourceMonitor(), bindParams);
-      ast->injectBindParametersFirstStage(*parameters, queryContext->resolver());
+      ast->injectBindParametersFirstStage(*parameters,
+                                          queryContext->resolver());
       ast->injectBindParametersSecondStage(*parameters);
     }
 
