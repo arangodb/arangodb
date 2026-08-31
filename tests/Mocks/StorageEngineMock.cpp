@@ -197,7 +197,7 @@ StorageEngineMock::StorageEngineMock(
     arangodb::application_features::ApplicationServer& server,
     bool injectClusterIndexes)
     : StorageEngine(server, "Mock", "Mock",
-                    std::type_index(typeid(StorageEngineMock)),
+                    std::type_index(typeid(StorageEngine)),
                     std::unique_ptr<arangodb::IndexFactory>(
                         new IndexFactoryMock(server, injectClusterIndexes)),
                     _dbProvider),

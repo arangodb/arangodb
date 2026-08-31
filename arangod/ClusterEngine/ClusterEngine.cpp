@@ -65,7 +65,7 @@ ClusterEngine::ClusterEngine(application_features::ApplicationServer& server,
                              DatabaseFeature& database,
                              metrics::IRegistry& metrics,
                              IVectorIndexProvider const& vectorIndexProvider)
-    : StorageEngine(server, EngineName, name(), typeid(ClusterEngine),
+    : StorageEngine(server, EngineName, name(), typeid(StorageEngine),
                     std::make_unique<ClusterIndexFactory>(server, *this),
                     database),
       _clusterFeature(clusterFeature),
