@@ -35,6 +35,7 @@
 #include "Agency/Supervision.h"
 #include "Agency/TransactionBuilder.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/Common.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/ResultT.h"
 #include "Basics/StaticStrings.h"
@@ -811,6 +812,17 @@ async<void> RestAdminClusterHandler::handleMoveShard() {
       ctx->database = _vocbase.name();
     }
 
+    // In the future, only allow collection names here:
+    if (request()->requestedApiVersion() > 0) {
+      if (auto r = auth::isNameAndNoId(ctx->database); r.fail()) {
+        generateError(r);
+        co_return;
+      }
+      if (auto r = auth::isNameAndNoId(ctx->collection); r.fail()) {
+        generateError(r);
+        co_return;
+      }
+    }
     auto const& exec = ExecContext::current();
     bool canAccess =
         exec.canUseAdminAction(auth::perms::AdminMoveShards{}).ok() ||
