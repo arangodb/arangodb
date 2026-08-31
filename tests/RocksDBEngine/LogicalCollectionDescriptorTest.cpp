@@ -49,8 +49,7 @@
 // Section 2: create path and load path both work correctly
 // Section 3: serializing a collection back to velocypack works correctly
 // Section 4: validation differs correctly between contexts
-//
-// Single-server fixture: cluster branches are covered by the JS suites.
+// Section 5: the shard path parses a maintenance docket
 
 using namespace arangodb;
 using namespace arangodb::tests;
@@ -150,6 +149,53 @@ VPackBuilder representativeLoadSlice() {
         builder.add("unique", VPackValue(false));
       }
     }
+  }
+  return builder;
+}
+
+// The properties a DBServer receives for a shard: the Plan entry for the
+// collection with its identity removed, plus planId pointing back at that
+// collection. Shaped after CreateCollection::first, including the
+// replication-2 additions from fillGroupProperties.
+VPackBuilder representativeShardDocket() {
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder obj(&builder);
+    // the docket carries the collection's properties but none of its identity,
+    // so the name is dropped here too and reaches createShard as an argument
+    for (auto it : VPackObjectIterator(representativeCreateSlice().slice())) {
+      if (it.key.stringView() != StaticStrings::DataSourceName) {
+        builder.add(it.key.stringView(), it.value);
+      }
+    }
+    builder.add(StaticStrings::DataSourcePlanId, VPackValue("9988489"));
+
+    // ClusteringConstantProperties as the coordinator wrote them into the Plan
+    builder.add(StaticStrings::NumberOfShards, VPackValue(3));
+    builder.add(StaticStrings::ShardingStrategy, VPackValue("hash"));
+    {
+      VPackArrayBuilder shardKeys(&builder, StaticStrings::ShardKeys);
+      builder.add(VPackValue("_key"));
+    }
+    {
+      VPackObjectBuilder shards(&builder, "shards");
+      builder.add(VPackValue("s100001"));
+      {
+        VPackArrayBuilder servers(&builder);
+        builder.add(VPackValue("PRMR-a"));
+      }
+    }
+
+    // replication 2: CreateCollection adds the log id, and the group's
+    // properties, which live on the group rather than on the collection
+    builder.add("replicatedStateId", VPackValue(5678));
+    builder.add(StaticStrings::GroupId, VPackValue(1234));
+    {
+      VPackArrayBuilder shardsR2(&builder, "shardsR2");
+      builder.add(VPackValue("s100001"));
+    }
+    builder.add(StaticStrings::ReplicationFactor, VPackValue(2));
+    builder.add(StaticStrings::WriteConcern, VPackValue(1));
   }
   return builder;
 }
@@ -604,4 +650,65 @@ TEST_F(LogicalCollectionDescriptorTest,
   auto collection =
       database->createCollection(representativeCreateSlice().slice());
   EXPECT_FALSE(collection->usesRevisionsAsDocumentIds());
+}
+
+//////////////////////////////////////////////////////////////////////////////////
+// Section 5: shard path parses a maintenance docket
+//////////////////////////////////////////////////////////////////////////////////
+
+TEST_F(LogicalCollectionDescriptorTest, ShardPath_parsesTheMaintenanceDocket) {
+  auto d =
+      CollectionDescriptor::fromVelocyPack(representativeShardDocket().slice());
+
+  // the collection's properties come through
+  EXPECT_EQ(d.constant.getType(), TRI_COL_TYPE_DOCUMENT);
+  EXPECT_TRUE(d.clusteringMutable.waitForSync);
+  EXPECT_EQ(d.clusteringConstant.numberOfShards, 3U);
+  ASSERT_TRUE(d.clusteringConstant.shardKeys.has_value());
+  EXPECT_EQ(*d.clusteringConstant.shardKeys,
+            (std::vector<std::string>{"_key"}));
+  EXPECT_EQ(d.clusteringConstant.shardingStrategy, "hash");
+
+  // replication-2 additions
+  ASSERT_TRUE(d.clusteringConstant.replicatedStateId.has_value());
+  EXPECT_EQ(d.clusteringConstant.replicatedStateId->id(), 5678U);
+  ASSERT_TRUE(d.clusteringConstant.groupId.has_value());
+  EXPECT_EQ(d.clusteringConstant.groupId->id(), 1234U);
+
+  // the link back to the collection
+  EXPECT_EQ(d.identity.planId, DataSourceId{9988489});
+
+  // but no identity of its own: all four have to be supplied by createShard
+  EXPECT_EQ(d.identity.id, DataSourceId::none());
+  EXPECT_TRUE(d.identity.guid.empty());
+  EXPECT_TRUE(d.mutableProps.name.empty());
+  EXPECT_EQ(d.storage.objectId, 0U);
+}
+
+TEST_F(LogicalCollectionDescriptorTest, ShardPath_docketRoundTripIsStable) {
+  ASSERT_NO_FATAL_FAILURE(
+      expectDescriptorRoundTripIsStable(representativeShardDocket().slice()));
+}
+
+// The docket must be parsed in the internal context, because that is the only
+// one that accepts shards, groupId and replicatedStateId. In that context the
+// identity fields are parsed too, so an id or guid left in the input is adopted
+// and the shard collides with its own collection. serverOnlyField does not help
+// here -- CreateCollection::first and MaintenanceActionExecutor strip the four
+// keys by hand, and createShard must not assume the context does it.
+TEST_F(LogicalCollectionDescriptorTest,
+       ShardPath_parsingAdoptsIdentityFromInput) {
+  VPackBuilder polluted;
+  {
+    VPackObjectBuilder obj(&polluted);
+    polluted.add(VPackObjectIterator(representativeShardDocket().slice()));
+    polluted.add(StaticStrings::Id, VPackValue("11"));
+    polluted.add(StaticStrings::DataSourceGuid, VPackValue("h1234/11"));
+    polluted.add(StaticStrings::ObjectId, VPackValue("777"));
+  }
+
+  auto d = CollectionDescriptor::fromVelocyPack(polluted.slice());
+  EXPECT_EQ(d.identity.id, DataSourceId{11});
+  EXPECT_EQ(d.identity.guid, "h1234/11");
+  EXPECT_EQ(d.storage.objectId, 777U);
 }
