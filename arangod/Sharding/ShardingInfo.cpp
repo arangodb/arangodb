@@ -198,13 +198,12 @@ ShardingInfo::ShardingInfo(CollectionDescriptor const& descriptor,
       _numberOfShards(descriptor.clusteringConstant.numberOfShards.value_or(1)),
       _replicationFactor(1),
       _writeConcern(1),
-      // in internal/agency context the "distributeShardsLike" key carries the
-      // cid, which is what the emission below expects on a coordinator
+      // internal and agency contexts parse the key as a collection id, the
+      // user path as a name, so pick by which one the parse can have filled
       _distributeShardsLike(
-          ServerState::instance()->isCoordinator()
-              ? descriptor.clusteringConstant.distributeShardsLikeCid.value_or(
-                    "")
-              : descriptor.clusteringConstant.distributeShardsLike.value_or(
+          ServerState::instance()->isSingleServer()
+              ? descriptor.clusteringConstant.distributeShardsLike.value_or("")
+              : descriptor.clusteringConstant.distributeShardsLikeCid.value_or(
                     "")),
       _shardIds(std::make_shared<ShardMap>()) {
   TRI_ASSERT(_collection != nullptr);

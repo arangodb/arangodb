@@ -408,20 +408,15 @@ struct Database {
   arangodb::Result renameView(arangodb::DataSourceId cid,
                               std::string_view oldName);
 
-  /// @brief creates an array of new collections from parameter set. the
-  /// input slice must be an array of collection description objects.
-  /// all collection descriptions are validated first. upon validation error,
-  /// an exception is thrown. if all collection descriptions have passed
-  /// validation, the collection objects will be created and registered,
-  /// so that the collections can be looked up and found by name, guid etc.
+  /// @brief creates an array of new collections from parameter set.
+  /// all descriptors are validated first. upon validation error, an exception
+  /// is thrown. if all descriptors have passed validation, the collection
+  /// objects will be created and registered, so that the collections can be
+  /// looked up and found by name, guid etc.
   /// if creating or registering any of the collections fails after the
   /// initial validation, any already created collections are not deleted
   /// (i.e. no rollback if only some of the collections can be created or
   /// registered after initial validation).
-  std::vector<std::shared_ptr<arangodb::LogicalCollection>> createCollections(
-      arangodb::velocypack::Slice infoSlice,
-      bool allowEnterpriseCollectionsOnSingleServer);
-
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> createCollections(
       std::vector<CollectionDescriptor> descriptors);
 

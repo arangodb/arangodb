@@ -43,7 +43,6 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/Methods/CollectionCreationInfo.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Indexes.h"
 #include "VocBase/Properties/InternalCollectionCreateOptions.h"
@@ -306,7 +305,6 @@ Result createSystemStatisticsCollections(
     TRI_vocbase_t& vocbase,
     std::vector<std::shared_ptr<LogicalCollection>>& createdCollections) {
   if (vocbase.isSystem()) {
-    std::vector<CollectionCreationInfo> systemCollectionsToCreate;
     // the order of systemCollections is important. If we're in _system db, the
     // UsersCollection needs to be first, otherwise, the GraphsCollection must
     // be first.
