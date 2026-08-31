@@ -147,6 +147,13 @@ function optimizeJoinOrderClusterTestSuite () {
 
     testIndependentComponentsResultsAreInvariant : function () {
     // Two components: a resequencing decision must not change the results.
+      //
+      // Deliberately no LIMIT. A LIMIT without a total order picks an
+      // arbitrary subset, and *which* rows survive depends on the enumeration
+      // order -- precisely what this rule changes -- so it would make the
+      // invariant false by construction. (It did: this test failed in CI
+      // with LIMIT 500 while passing locally, because the two shard layouts
+      // surfaced different 500 rows.)
       const query = `
         FOR a IN ${cnSmall}
           FOR b IN ${cnSmall}
@@ -154,12 +161,13 @@ function optimizeJoinOrderClusterTestSuite () {
             FOR c IN ${cnSmall}
               FOR d IN ${cnSmall}
                 FILTER c.joinKey == d.joinKey
-                LIMIT 500
                 RETURN { a: a.joinKey, c: c.joinKey }`;
 
       const off = run(query, withoutRule);
       const on  = run(query, withRule);
-      assertTrue(off.length > 0, "fixture produced no join rows");
+      // joinKey is unique in cnSmall, so each of the two joins yields
+      // kSmallSize rows and the independent components cross-multiply.
+      assertEqual(kSmallSize * kSmallSize, off.length, "unexpected fixture size");
       assertEqual(norm(off), norm(on), query);
     },
 
@@ -190,8 +198,11 @@ function optimizeJoinOrderClusterTestSuite () {
 
       const off = run(query, withoutRule);
       const on  = run(query, withRule);
-      // SORT + LIMIT makes this query's order deterministic, so unlike the
-      // cases above these can be compared directly.
+      // Comparable directly, but note SORT a.joinKey is *not* a total order
+      // (cnLarge holds kLargeSize/kSmallSize rows per key). It is safe only
+      // because the projection is a function of joinKey alone, so all tied
+      // rows are identical. Adding a field that varies within a key would
+      // make this non-deterministic -- add a tie-breaker to the SORT first.
       assertEqual(off, on, query);
       assertEqual(10, on.length, query);
     },
