@@ -274,8 +274,9 @@ Result CreateCollection::createCollectionReplication1(
 
   std::shared_ptr<LogicalCollection> col;
   OperationOptions options;
-  auto res = Collections::createShard(vocbase, options, shard, collectionType,
-                                      properties, col);
+  auto res = Collections::createShard(
+      vocbase, options, shard, collectionType,
+      CollectionDescriptor::fromVelocyPack(properties), col);
   if (col) {
     LOG_TOPIC("9db9a", DEBUG, Logger::MAINTENANCE)
         << "local collection " << vocbase.name() << "/" << shard
