@@ -341,7 +341,7 @@ It copies the needed files to a folder called `install`.
 It may fail if you only built a subset of the targets.
 The folder is organized following the Linux directory structure, with the
 server executable at `usr/sbin/arangod`, the tools in `usr/bin/`, the
-configuration files in `usr/etc/arangodb3/`, and so on.
+configuration files in `usr/etc/arangodb4/`, and so on.
 
 For building the ArangoDB Starter (`arangodb` executable), see the
 [ArangoDB Starter repository](https://github.com/arangodb-helper/arangodb).
@@ -665,19 +665,19 @@ Edit `/etc/security/limits.conf` to contain:
 arangodb        -       core            infinity
 ```
 
-Edit the systemd unit file `/lib/systemd/system/arangodb3.service` (USE infinity!!!):
+Edit the systemd unit file `/lib/systemd/system/arangodb4.service` (USE infinity!!!):
 
 ```
 ## setting for core files
 # Any dir that is writable by the user running arangod
-WorkingDirectory=/var/lib/arangodb3
+WorkingDirectory=/var/lib/arangodb4
 # core limit - set this to infinity to enable cores
 LimitCORE=0
 ```
 
 Enable new systemd settings:
 
-`systemctl daemon-reload && systemctl restart arangodb3.service`
+`systemctl daemon-reload && systemctl restart arangodb4.service`
 
 Enable suid process dumping:
 

@@ -115,7 +115,7 @@ function setupBinaries (options) {
     oneSet.ARANGOSH_BIN = fs.join(oneSet.BIN_DIR, 'arangosh' + executableExt);
     oneSet.ARANGO_SECURE_INSTALLATION_BIN = fs.join(oneSet.BIN_DIR, 'arango-secure-installation' + executableExt);
 
-    oneSet.CONFIG_ARANGODB_DIR = fs.join(options.build, 'etc', 'arangodb3');
+    oneSet.CONFIG_ARANGODB_DIR = fs.join(options.build, 'etc', 'arangodb4');
     if (!fs.exists(oneSet.CONFIG_ARANGODB_DIR)) {
       oneSet.CONFIG_ARANGODB_DIR = fs.join(directory, oneSet.CONFIG_ARANGODB_DIR);
     }

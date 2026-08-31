@@ -402,7 +402,7 @@ jobs:
   # Rebuilds the compiler image used by compile jobs.
   # Sources: scripts/docker/build/linux/Dockerfile.{x86-64,arm64}
   # Image:   public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-<MAJOR><MINOR>
-  #          e.g. ubuntubuildarangodb-312 for ArangoDB 3.12.x
+  #          e.g. ubuntubuildarangodb-40 for ArangoDB 4.0.x
   # Tag:     <ubuntu-version>-<git-short-sha>  (via determine-tag.sh)
   build-ubuntu-build-image:
     docker:

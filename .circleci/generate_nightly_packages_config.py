@@ -25,8 +25,8 @@ import yaml
 WORKFLOW_NAME = "nightly-packages"
 PR_WORKFLOW_NAME = "nightly-packages-pr"
 ARCHES = ("amd64", "arm64")
-PACKAGE_FORMATS = ("deb", "rpm", "tar")
-DOCKER_DISTROS = ("alpine", "deb")
+PACKAGE_FORMATS = ("tar",)
+DOCKER_IMAGES = ("core", "client-tools")
 
 JobEntry = Union[str, Dict[str, Any]]
 
@@ -38,42 +38,36 @@ def parse_bool(value: str) -> bool:
 
 
 def disabled_jobs(
-    deb: bool,
-    rpm: bool,
     tar: bool,
-    alpine_image: bool,
-    deb_image: bool,
+    alpine_images: bool,
     sign: bool,
     scan: bool,
     security: bool,
 ) -> Set[str]:
     """Workflow job names (workflow-level "name", not job type) to drop."""
-    formats = {"deb": deb, "rpm": rpm, "tar": tar}
     drop: Set[str] = set()
 
-    for fmt, enabled in formats.items():
-        if not enabled:
-            drop.update(f"{fmt}-enterprise-{arch}" for arch in ARCHES)
-        if not enabled or not security:
-            drop.update(f"security-check-{fmt}-{arch}" for arch in ARCHES)
+    if not tar:
+        drop.update(f"tar-enterprise-{arch}" for arch in ARCHES)
+    if not tar or not security:
+        drop.update(f"security-check-tar-{arch}" for arch in ARCHES)
 
-    # Each distro image has its own build-*-image flag, and every built
-    # image gets its own Trivy job.
-    distros = {"alpine": alpine_image, "deb": deb_image}
-    for distro, enabled in distros.items():
-        if not enabled:
-            drop.update(f"docker-enterprise-{distro}-{arch}" for arch in ARCHES)
-        if not enabled or not security:
+    # One docker job per architecture builds BOTH Ubuntu-based images
+    # (core-preview and client-tools-preview); each built image gets its
+    # own Trivy job.
+    if not alpine_images:
+        drop.update(f"docker-enterprise-{arch}" for arch in ARCHES)
+    for image in DOCKER_IMAGES:
+        if not alpine_images or not security:
             drop.update(
-                f"security-check-docker-{distro}-{arch}" for arch in ARCHES
+                f"security-check-docker-{image}-{arch}" for arch in ARCHES
             )
 
-    # scan/sign cover packages only; without any package format they would
-    # find nothing to work on.
-    any_packages = any(formats.values())
-    if not scan or not any_packages:
+    # scan/sign cover packages only; without the tarballs they would find
+    # nothing to work on.
+    if not scan or not tar:
         drop.add("scan-packages")
-    if not sign or not any_packages:
+    if not sign or not tar:
         drop.add("sign-packages")
 
     return drop
@@ -180,8 +174,6 @@ def check_workflow(config: Dict[str, Any], name: str = WORKFLOW_NAME) -> None:
     # scan/sign/security jobs, which can all be disabled. Without this,
     # a gates-all-off run would let publish race the packaging jobs.
     artifact_prefixes = (
-        "deb-enterprise",
-        "rpm-enterprise",
         "tar-enterprise",
         "docker-enterprise",
     )
@@ -268,28 +260,39 @@ def check_workflow(config: Dict[str, Any], name: str = WORKFLOW_NAME) -> None:
             f"{expected}"
         )
 
+    # ... and the verdict file each docker scan job writes must carry the
+    # SAME item name: it is derived from the gate-item-image parameter,
+    # not the job name, and the two drifting apart deadlocks the publish
+    # ("no gate verdict recorded" — the image parameter's -preview suffix
+    # once leaked into the verdict names exactly this way).
+    for entry in workflow["jobs"]:
+        if not isinstance(entry, dict):
+            continue
+        [(job_type, job_config)] = entry.items()
+        if job_type != "security-check-docker-image":
+            continue
+        composed = (
+            "security-check-docker-"
+            f"{(job_config or {}).get('gate-item-image')}-"
+            f"{(job_config or {}).get('arch')}"
+        )
+        if composed != entry_name(entry):
+            raise ValueError(
+                f"{entry_name(entry)}: gate-item-image/arch compose the "
+                f"verdict item {composed!r}, which must match the job "
+                "name (publish-nightly waits for that exact verdict)"
+            )
+
 
 def generate(base: Dict[str, Any], args: argparse.Namespace) -> Dict[str, Any]:
-    if not any(
-        (
-            args.build_debian_packages,
-            args.build_rpm_packages,
-            args.build_tarballs,
-            args.build_alpine_images,
-            args.build_deb_images,
-        )
-    ):
+    if not any((args.build_tarballs, args.build_alpine_images)):
         raise ValueError(
-            "nothing selected: enable at least one of build-debian-packages, "
-            "build-rpm-packages, build-tarballs, build-alpine-images, "
-            "build-deb-images"
+            "nothing selected: enable at least one of build-tarballs, "
+            "build-alpine-images"
         )
     drop = disabled_jobs(
-        deb=args.build_debian_packages,
-        rpm=args.build_rpm_packages,
         tar=args.build_tarballs,
-        alpine_image=args.build_alpine_images,
-        deb_image=args.build_deb_images,
+        alpine_images=args.build_alpine_images,
         sign=args.sign_packages,
         scan=args.scan_viruses,
         security=args.security_check,
@@ -307,11 +310,8 @@ def parse_args(argv: List[str]) -> Tuple[argparse.ArgumentParser, argparse.Names
     parser.add_argument("--base", required=True, help="path to base_nightly_packages.yml")
     parser.add_argument("-o", "--output", required=True, help="continuation config to write")
     for option in (
-        "build-debian-packages",
-        "build-rpm-packages",
         "build-tarballs",
         "build-alpine-images",
-        "build-deb-images",
         "sign-packages",
         "scan-viruses",
         "security-check",

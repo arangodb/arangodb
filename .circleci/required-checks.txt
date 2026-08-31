@@ -1,4 +1,4 @@
-# Required status checks for merging into devel, one context per line.
+# Required status checks for merging into 4.0, one context per line.
 # security-governance compares this list against live branch protection and
 # against the workflows a real pipeline emits; drift in either direction is
 # a broken merge gate. Read off the live configuration, never hand-derived;

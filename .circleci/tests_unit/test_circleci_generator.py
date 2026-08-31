@@ -212,12 +212,12 @@ class TestCreateBuildJob:
 class TestDockerImagesWorkflow:
     """Test the dedicated multi-arch docker-images workflow."""
 
-    def create_generator(self, env_vars=None, distro="alpine"):
+    def create_generator(self, env_vars=None):
         """Helper to create generator with test environment."""
         config = GeneratorConfig(
             filter_criteria=FilterCriteria(),
             circleci=CircleCIConfig(
-                create_test_docker_images=distro, test_image="default"
+                create_test_docker_images="alpine", test_image="default"
             ),
         )
         env_getter = lambda k, default: (
@@ -256,24 +256,21 @@ class TestDockerImagesWorkflow:
         assert params["create-install-package"] is True
 
     def test_docker_build_job(self):
-        """Per-arch image job saves locally and requires its compile job."""
+        """Per-arch image job saves both images locally and requires its
+        compile job."""
         gen = self.create_generator()
         build_config = BuildConfig(architecture=Architecture.X64)
 
         job = gen._create_docker_build_job(
             build_config,
-            "alpine",
             "amd64",
-            "docker-amd64.tar",
             ["build-x64-for-docker-image"],
         )
 
         params = job["build-docker-image"]
         assert params["name"] == "build-x64-docker-image"
-        assert params["distro"] == "alpine"
         assert params["arch"] == "amd64"
         assert params["build-arch"] == "x64"
-        assert params["output"] == "docker-amd64.tar"
         assert params["requires"] == ["build-x64-for-docker-image"]
 
     def test_docker_manifest_job_uses_given_tag_and_no_context(self):
@@ -321,33 +318,12 @@ class TestDockerImagesWorkflow:
 
         manifest_params = jobs[-1]["push-docker-manifest"]
         # <community sha7>_<enterprise sha7>, not a date/branch composite
-        # tag; Alpine is the suffix-less default.
+        # tag; both image names (core-test, client-tools-test) share it.
         assert manifest_params["tag"] == "deadbee_cafe42a"
         assert manifest_params["requires"] == [
             "build-x64-docker-image",
             "build-aarch64-docker-image",
         ]
-
-        for job in jobs:
-            if "build-docker-image" in job:
-                assert job["build-docker-image"]["distro"] == "alpine"
-
-    def test_add_docker_images_workflow_deb_suffix(self):
-        """Debian-based images follow the nightly tagging convention:
-        an extra -deb suffix between the SHA tag and the arch suffix."""
-        gen = self.create_generator(
-            {"CIRCLE_SHA1": "deadbee123456", "ENTERPRISE_COMMIT": "cafe42abcdef"},
-            distro="deb",
-        )
-
-        workflows = {}
-        gen._add_docker_images_workflow(workflows)
-
-        jobs = workflows["docker-images"]["jobs"]
-        assert jobs[-1]["push-docker-manifest"]["tag"] == "deadbee_cafe42a-deb"
-        for job in jobs:
-            if "build-docker-image" in job:
-                assert job["build-docker-image"]["distro"] == "deb"
 
     def test_generate_adds_docker_images_workflow_alongside_pr_workflows(self):
         """generate() adds docker-images without removing/altering the
@@ -1052,6 +1028,7 @@ class TestSanitizerSuffixInJobNames:
             result_alubsan["run-linux-tests"]["name"]
             == "test-cluster-resilience-x64-alubsan"
         )
+
 
 class TestJobLevelArchitectureFiltering:
     """Test job-level architecture filtering in _add_test_jobs."""
