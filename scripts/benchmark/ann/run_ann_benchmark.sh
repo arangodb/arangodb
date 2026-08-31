@@ -135,8 +135,10 @@ collect_meta() {
     --arg version "${ver}" --arg version_full "${ver_full}" \
     --arg build_id "${bid}" --arg license "${lic}" \
     --arg image "${ARANGODB_IMAGE}" --arg image_id "${image_id}" \
+    --arg started_at "${ANN_STARTED_AT:-}" \
     '{arangodb_version: $version, arangodb_version_full: $version_full,
-      build_id: $build_id, license: $license, image: $image, image_id: $image_id}' \
+      build_id: $build_id, license: $license, image: $image, image_id: $image_id,
+      started_at: $started_at, ended_at: ""}' \
     > "${ANN_OUTPUT_DIR}/run_meta.json"
   printf '  build-id: %s\n  version:  %s\n' "${bid:-(none)}" "${ver_full}"
 }
@@ -223,6 +225,7 @@ push_metrics() {
 main() {
   log "Working directory: ${ANN_WORKDIR}"
   mkdir -p "${ANN_OUTPUT_DIR}"
+  ANN_STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   start_arangod
   wait_for_arangod
   collect_meta
