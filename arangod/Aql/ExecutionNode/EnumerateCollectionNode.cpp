@@ -94,7 +94,10 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
 
     for (auto& var : inVars) {
       TRI_ASSERT(var != nullptr);
-      auto regId = inputOrOutputRegister(var);
+      if (var == _outVariable) {
+        continue;
+      }
+      auto regId = inputRegister(var);
       filterVarsToRegs.emplace_back(var->id, regId);
     }
   }

@@ -55,9 +55,9 @@ std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
 
   RegisterId inDocRegister = inputRegister(_inDocVariable);
 
-  RegisterId inKeyRegister = inputRegisterOptional(_inKeyVariable);
-  RegisterId outputNew = outputRegisterOptional(_outVariableNew);
-  RegisterId outputOld = outputRegisterOptional(_outVariableOld);
+  RegisterId inKeyRegister = inputRegisterOrInvalid(_inKeyVariable);
+  RegisterId outputNew = outputRegisterOrInvalid(_outVariableNew);
+  RegisterId outputOld = outputRegisterOrInvalid(_outVariableOld);
 
   auto readableInputRegisters = RegIdSet{inDocRegister};
   if (inKeyRegister.isValid()) {

@@ -56,8 +56,8 @@ class RegisterResolver {
 
   /// @brief register holding `variable` in rows of this depth. The variable
   /// must have a register and must be available here.
-  RegisterId resolve(Variable const& variable) const noexcept;
-  RegisterId resolve(Variable const* variable) const noexcept;
+  RegisterId resolve(Variable const& variable) const;
+  RegisterId resolve(Variable const* variable) const;
 
   /// @brief register holding the variable, or an invalid RegisterId if it has
   /// no register or is not available at this depth.

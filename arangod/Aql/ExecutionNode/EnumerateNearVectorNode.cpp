@@ -97,12 +97,13 @@ EnumerateNearVectorNode::extractFilterVarsToRegs() const {
   std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;
   filterVarsToRegs.reserve(inVars.size());
 
+  auto const produced = getVariablesSetHere();
   for (auto const& var : inVars) {
     TRI_ASSERT(var != nullptr);
-    if (var->id == _outVariable->id) {
+    if (std::find(produced.begin(), produced.end(), var) != produced.end()) {
       continue;
     }
-    filterVarsToRegs.emplace_back(var->id, inputOrOutputRegister(var));
+    filterVarsToRegs.emplace_back(var->id, inputRegister(var));
   }
 
   return filterVarsToRegs;

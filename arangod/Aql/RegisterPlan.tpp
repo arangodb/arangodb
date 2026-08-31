@@ -588,17 +588,28 @@ auto RegisterPlanT<T>::variableToRegisterId(Variable const* variable,
     -> RegisterId {
   TRI_ASSERT(variable != nullptr);
   auto it = varInfo.find(variable->id);
-  TRI_ASSERT(it != varInfo.end())
-      << "variable " << variable->name << " (" << variable->id << ")";
-  // a variable can only be read from a row at or below the depth at which it
+  if (it == varInfo.end()) {
+    // An inconsistent plan, not a broken invariant of this class: the node
+    // asked for a variable that register planning never assigned a register
+    // to. Fail the query rather than the process.
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL_AQL,
+        std::format("no register assigned for variable {} #{} while creating "
+                    "the execution block",
+                    variable->name, variable->id));
+  }
+  // A variable can only be read from a row at or below the depth at which it
   // was assigned its register. Asking for a lower depth means the caller
-  // reached for the wrong row -- typically an output variable resolved against
-  // the input row of a depth-increasing node.
-  TRI_ASSERT(it->second.registerId.isConstRegister() ||
-             it->second.depth <= depth)
-      << "variable " << variable->name << " (" << variable->id
-      << ") is assigned at depth " << it->second.depth
-      << ", resolved for depth " << depth;
+  // reached for the wrong row, typically an output variable resolved against
+  // the input row of a depth-increasing node. Const registers live in one
+  // query-global block and are available at every depth.
+  if (!it->second.registerId.isConstRegister() && it->second.depth > depth) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL_AQL,
+        std::format("variable {} #{} is assigned at depth {} but was resolved "
+                    "for depth {} while creating the execution block",
+                    variable->name, variable->id, it->second.depth, depth));
+  }
   RegisterId rv = it->second.registerId;
   TRI_ASSERT(rv.isValid());
   return rv;

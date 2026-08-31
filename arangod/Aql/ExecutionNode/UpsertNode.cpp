@@ -105,9 +105,9 @@ std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
   RegisterId insert = inputRegister(_insertVariable);
   RegisterId update = inputRegister(_updateVariable);
 
-  RegisterId outputNew = outputRegisterOptional(_outVariableNew);
+  RegisterId outputNew = outputRegisterOrInvalid(_outVariableNew);
 
-  RegisterId outputOld = outputRegisterOptional(_outVariableOld);
+  RegisterId outputOld = outputRegisterOrInvalid(_outVariableOld);
 
   auto readableInputRegisters = RegIdSet{inDoc, insert, update};
   auto writableOutputRegisters = RegIdSet{};

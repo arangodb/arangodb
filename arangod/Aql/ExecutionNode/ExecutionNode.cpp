@@ -1331,17 +1331,15 @@ unsigned int ExecutionNode::inputDepth() const noexcept {
   return dependency == nullptr ? _depth : dependency->_depth;
 }
 
-RegisterId ExecutionNode::outputRegister(
-    Variable const* variable) const noexcept {
+RegisterId ExecutionNode::outputRegister(Variable const* variable) const {
   return getRegisterPlan()->variableToRegisterId(variable, _depth);
 }
 
-RegisterId ExecutionNode::inputRegister(
-    Variable const* variable) const noexcept {
+RegisterId ExecutionNode::inputRegister(Variable const* variable) const {
   return getRegisterPlan()->variableToRegisterId(variable, inputDepth());
 }
 
-RegisterId ExecutionNode::inputRegisterOptional(
+RegisterId ExecutionNode::inputRegisterOrInvalid(
     Variable const* variable) const noexcept {
   if (variable == nullptr) {
     return RegisterId::makeInvalid();
@@ -1350,24 +1348,12 @@ RegisterId ExecutionNode::inputRegisterOptional(
                                                          inputDepth());
 }
 
-RegisterId ExecutionNode::outputRegisterOptional(
+RegisterId ExecutionNode::outputRegisterOrInvalid(
     Variable const* variable) const noexcept {
   if (variable == nullptr) {
     return RegisterId::makeInvalid();
   }
   return getRegisterPlan()->variableToOptionalRegisterId(variable->id, _depth);
-}
-
-bool ExecutionNode::setsVariable(Variable const* variable) const {
-  TRI_ASSERT(variable != nullptr);
-  auto const setHere = getVariablesSetHere();
-  return std::find(setHere.begin(), setHere.end(), variable) != setHere.end();
-}
-
-RegisterId ExecutionNode::inputOrOutputRegister(
-    Variable const* variable) const {
-  return setsVariable(variable) ? outputRegister(variable)
-                                : inputRegister(variable);
 }
 
 RegisterResolver ExecutionNode::inputRegisterResolver() const noexcept {

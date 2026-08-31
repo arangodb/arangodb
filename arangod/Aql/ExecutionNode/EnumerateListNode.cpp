@@ -29,6 +29,8 @@
 #include "Aql/Executor/EnumerateListExecutor.h"
 #include "Aql/Expression.h"
 #include "Aql/RegisterPlan.h"
+
+#include <algorithm>
 #include "Aql/Variable.h"
 #include "Basics/StaticStrings.h"
 
@@ -131,11 +133,12 @@ std::unique_ptr<ExecutionBlock> EnumerateListNode::createBlock(
     VarSet inVars;
     _filter->variables(inVars);
 
+    auto const produced = getVariablesSetHere();
     for (auto const& var : inVars) {
-      if (var->id != _outVariable->id) {
-        auto regId = inputOrOutputRegister(var);
-        varsToRegs.emplace_back(var->id, regId);
+      if (std::find(produced.begin(), produced.end(), var) != produced.end()) {
+        continue;
       }
+      varsToRegs.emplace_back(var->id, inputRegister(var));
     }
   }
   auto executorInfos = EnumerateListExecutorInfos(

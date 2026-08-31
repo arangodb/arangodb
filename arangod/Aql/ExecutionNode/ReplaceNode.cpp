@@ -53,11 +53,11 @@ std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
 
   RegisterId inDocRegister = inputRegister(_inDocVariable);
 
-  RegisterId inKeyRegister = inputRegisterOptional(_inKeyVariable);
+  RegisterId inKeyRegister = inputRegisterOrInvalid(_inKeyVariable);
 
-  RegisterId outputNew = outputRegisterOptional(_outVariableNew);
+  RegisterId outputNew = outputRegisterOrInvalid(_outVariableNew);
 
-  RegisterId outputOld = outputRegisterOptional(_outVariableOld);
+  RegisterId outputOld = outputRegisterOrInvalid(_outVariableOld);
 
   auto readableInputRegisters = RegIdSet{inDocRegister};
   if (inKeyRegister.isValid()) {

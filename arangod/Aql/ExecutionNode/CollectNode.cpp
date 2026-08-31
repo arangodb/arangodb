@@ -230,7 +230,7 @@ CollectNode::calcInputVariableNames() const {
 
     // the KEEP variables are carried over from the input rows
     for (auto const& x : _keepVariables) {
-      auto const reg = inputRegisterOptional(x.first);
+      auto const reg = inputRegisterOrInvalid(x.first);
       if (reg.isValid()) {
         variableNames.emplace_back(std::make_pair(x.second, reg));
       }

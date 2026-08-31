@@ -26,6 +26,8 @@
 
 #include "Aql/Variable.h"
 
+#include <format>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -40,18 +42,23 @@ VarInfo::VarInfo(unsigned int depth, RegisterId registerId)
   }
 }
 
-RegisterId RegisterResolver::resolve(Variable const& variable) const noexcept {
+RegisterId RegisterResolver::resolve(Variable const& variable) const {
   auto [reg, status] = lookup(variable.id);
-  TRI_ASSERT(status == Status::Ok)
-      << "variable " << variable.name << " (" << variable.id << ") "
-      << (status == Status::UnknownVariable ? "has no register assigned"
-                                            : "is not available here")
-      << ", resolved for depth " << _depth;
+  if (status != Status::Ok) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL_AQL,
+        std::format("variable {} #{} {}, resolved for depth {}", variable.name,
+                    variable.id,
+                    status == Status::UnknownVariable
+                        ? "has no register assigned"
+                        : "is not available at that depth",
+                    _depth));
+  }
   TRI_ASSERT(reg.isValid());
   return reg;
 }
 
-RegisterId RegisterResolver::resolve(Variable const* variable) const noexcept {
+RegisterId RegisterResolver::resolve(Variable const* variable) const {
   TRI_ASSERT(variable != nullptr);
   return resolve(*variable);
 }
