@@ -37,8 +37,8 @@ CollectionDescriptor CollectionDescriptor::fromVelocyPack(
   if (!status.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        absl::StrCat("failed to parse collection properties: ", status.error(),
-                     status.path().empty() ? "" : " on path ", status.path()));
+        absl::StrCat("failed to parse collection properties: ",
+                     status.error()));
   }
   return props;
 }

@@ -72,6 +72,17 @@ auto internalOnlyField(Inspector& f, std::string_view name, T& value) {
   });
 }
 
+// Assigned by the server, never chosen by the client. Parsed on the load path;
+// on the user path the key was never declared, so the create API answers with
+// an unexpected-attribute error
+template<class Inspector, class T>
+auto serverOnlyField(Inspector& f, std::string_view name, T& value) {
+  return f.field(name, value).fallback(f.keep()).when([]() {
+    return isInternalContext<Inspector> ? inspection::FieldCondition::Process
+                                        : inspection::FieldCondition::Reject;
+  });
+}
+
 // Applies `invariant` to `field` only when the value come from user input
 template<class Inspector, class Field, class Invariant>
 auto userInvariant(Inspector&, Field&& field, Invariant&& invariant) {

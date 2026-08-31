@@ -72,25 +72,13 @@ struct CollectionStorageProperties {
 
 template<class Inspector>
 auto inspect(Inspector& f, CollectionStorageProperties& props) {
-  // Both are assigned by the server. Reject keeps the create API answering
-  // with an unexpected-attribute error, which is what leaving the fields
-  // undeclared did.
-  auto serverOwned = []() {
-    return isInternalContext<Inspector> ? inspection::FieldCondition::Process
-                                        : inspection::FieldCondition::Reject;
-  };
-
   return f.object(props).fields(
-      f.field(StaticStrings::ObjectId, props.objectId)
+      serverOnlyField(f, StaticStrings::ObjectId, props.objectId)
           .transformWith(
-              CollectionStorageProperties::Transformers::ObjectIdAsString{})
-          .fallback(f.keep())
-          .when(serverOwned),
-      f.field(StaticStrings::Version, props.version)
+              CollectionStorageProperties::Transformers::ObjectIdAsString{}),
+      serverOnlyField(f, StaticStrings::Version, props.version)
           .transformWith(
-              CollectionStorageProperties::Transformers::VersionAsNumber{})
-          .fallback(f.keep())
-          .when(serverOwned));
+              CollectionStorageProperties::Transformers::VersionAsNumber{}));
 }
 
 }  // namespace arangodb
