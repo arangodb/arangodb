@@ -35,10 +35,6 @@
 
 namespace arangodb::aql {
 
-// -----------------------------------------------------------------------------
-// attribute-access extraction
-// -----------------------------------------------------------------------------
-
 namespace {
 
 auto extractAttributeAccess(AstNode const* n, AttributePath& path)
@@ -70,10 +66,6 @@ auto extractAttributeAccess(AstNode const* n)
   }
   return std::nullopt;
 }
-
-// -----------------------------------------------------------------------------
-// JoinGraph
-// -----------------------------------------------------------------------------
 
 auto JoinGraph::nodeForVariable(Variable const* variable) -> Node* {
   auto iter = nodes.find(variable);

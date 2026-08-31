@@ -55,7 +55,7 @@ struct JoinGraph {
 
     /// @brief residual predicates that reference this node's variable and no
     /// other graph variable. Priced with a default selectivity factor by the
-    /// cost estimator; see the design doc's residual-selectivity section.
+    /// cost estimator.
     std::vector<AstNode const*> residuals;
 
     explicit Node(EnumerateCollectionNode* executionNode)
@@ -72,37 +72,28 @@ struct JoinGraph {
     Edge(Node* from, Node* to) : from(from), to(to) {}
   };
 
-  /// @brief the vertex for a given out variable, or nullptr if the variable is
-  /// not part of this join graph.
   auto nodeForVariable(Variable const* variable) -> Node*;
 
   void addNode(EnumerateCollectionNode* en);
 
-  /// @brief record an equijoin condition `v.<vAttributes> == w.<wAttributes>`
-  /// as an edge between the vertices for `v` and `w`.
   auto addJoinCondition(Variable const* v, AttributePath vAttributes,
                         Variable const* w, AttributePath wAttributes) -> Edge&;
 
-  /// @brief record a predicate that could not be classified as an equijoin or a
-  /// constant restriction. It is left untouched in the plan and only kept here
-  /// for later optimizer stages.
+  /// @brief a predicate that is neither an equijoin nor a constant
+  /// restriction. Left in the plan; kept here only so the estimator can price
+  /// it.
   void addResidual(AstNode const* node);
 
-  /// @brief the edges incident to `node`. The returned reference is valid
-  /// until the next addJoinCondition() call. Backed by a lazily built
-  /// adjacency index: the order search asks this O(n^3) times per component,
-  /// and answering each one by scanning every edge in the graph dominated its
-  /// cost.
+  /// @brief the edges incident to `node`. The reference is valid until the
+  /// next addJoinCondition() call, which drops the adjacency index.
   auto getEdgesForNode(Node* node) -> std::vector<Edge*> const&;
 
-  /// @brief partition the vertices into connected components (the graph may be
-  /// disconnected). Each returned vector holds the out variables of one
-  /// component. Order within and across components is unspecified.
+  /// @brief partition the vertices into connected components. Order within
+  /// and across components follows `nodes`, i.e. pointer order -- callers
+  /// needing reproducibility must re-sort (see nodesInIdOrder).
   [[nodiscard]] auto connectedComponents() const
       -> std::vector<std::vector<Variable const*>>;
 
-  /// @brief true if this graph describes an actual join, i.e. it has at least
-  /// one equijoin edge.
   [[nodiscard]] auto hasJoin() const noexcept -> bool { return !edges.empty(); }
 
   std::map<Variable const*, Node> nodes;

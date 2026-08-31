@@ -481,19 +481,10 @@ TEST_F(OptimizeJoinOrderTest, keeps_components_contiguous) {
   // two independent joins: a-b and c-d. The chosen order must finish one
   // component before starting the other, never interleave them.
   //
-  // Restored to its original script (seed(c) cheap, everything else costed
-  // uniformly): neither component's own greedy order beats its own written
-  // order here (each ties with its written order and the per-component
-  // margin check declines, same reasoning as
-  // no_component_reordered_declines_the_whole_graph below), so
-  // anyComponentReordered is false. What still fires is the *resequencing*
-  // guard added on top of that: cd's standalone cost (2) against ab's (101)
-  // clears the margin against the written component sequence [a,b,c,d]
-  // (candidate cost 5 vs baseline cost 104, comfortably past 104/1.25=83.2),
-  // and neither replay is defaulted, so the candidate sequence [c,d,a,b] is
-  // accepted. This is a genuine reorder -- sequenceChanged is true -- even
-  // though no component's own internal order moved at all, and it is exactly
-  // the resequencing guard's accept path that this test now pins.
+  // Neither component beats its own written order (each ties, so the margin
+  // check declines). What fires is the resequencing guard: candidate cost 5
+  // vs baseline 104, past 104/1.25 = 83.2. So this is a reorder with no
+  // component's internal order moving -- the resequencing accept path.
   auto q = prepare(
       "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
       "FOR c IN c3 FOR d IN c1 FILTER c.x == d.y RETURN [a, b, c, d]");
@@ -523,9 +514,8 @@ TEST_F(OptimizeJoinOrderTest, keeps_components_contiguous) {
 
 TEST_F(OptimizeJoinOrderTest,
        defaulted_component_keeps_written_order_while_confident_reorders) {
-  // Two independent joins: a-b (confidently estimated) and c-d (statistics
-  // defaulted). The whole-graph guard this replaces would have declined
-  // everything because of c-d alone; per-component, only c-d must decline.
+  // Two independent joins: a-b confidently estimated, c-d defaulted. Only
+  // c-d must decline.
   auto q = prepare(
       "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
       "FOR c IN c3 FOR d IN c1 FILTER c.x == d.y RETURN [a, b, c, d]");
@@ -796,7 +786,7 @@ TEST_F(OptimizeJoinOrderTest, exactly_meeting_the_margin_does_not_rewrite) {
   // (seed(b)=40, step(a)=40) -- precisely current / (1 + kImprovementMargin)
   // = 100 / 1.25 = 80. The guard is `chosen >= current / (1 + margin)`, so
   // 80 >= 80 declines; a ">" comparison would rewrite here instead. This is
-  // the boundary the measured 7.84x-worse tie makes consequential.
+  // the boundary that makes an exact tie consequential.
   auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
   auto g = buildGraph(*q);
   auto current = collectEnumerationOrder(firstEnumeration(q->plan()), nullptr);
@@ -888,14 +878,9 @@ TEST_F(OptimizeJoinOrderTest, deterministic_run_is_not_flagged) {
 }
 
 TEST_F(OptimizeJoinOrderTest, decline_is_not_reported_as_applied) {
-  // The mock collections carry no indexes, so every statistic is defaulted and
-  // the rule declines. Declining must not be reported as applied, or every join
-  // query needlessly re-triggers the downstream rules. This assertion is about
-  // optimize-join-order's own applied-status only, which does not depend on
-  // interchange-adjacent-enumerations -- suppression of that rule is now
-  // conditional on optimize-join-order actually having rewritten a join, so
-  // interchange runs here regardless. -interchange-adjacent-enumerations is
-  // kept anyway, purely to isolate the subject from an unrelated rule.
+  // The mock collections carry no indexes, so every statistic is defaulted
+  // and the rule declines. A decline must not show up in explain's applied
+  // rules.
   EXPECT_FALSE(
       assertRules(server.getSystemDatabase(),
                   "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]",
@@ -935,22 +920,12 @@ TEST_F(OptimizeJoinOrderTest, rule_leaves_the_plan_alone_without_statistics) {
 }
 
 TEST_F(OptimizeJoinOrderTest, interchange_still_runs_when_join_order_declines) {
-  // This fixture's collections (see the constructor above) carry no indexes
-  // at all, so the real join cost estimator always reports defaulted
-  // statistics here and optimize-join-order always declines to reorder --
-  // it never sets `modified`, and so never suppresses
-  // interchange-adjacent-enumerations. That suppression only fires once
-  // optimize-join-order has actually rewritten a join (proved in the JS
-  // integration suite against real indexed collections, which this C++
-  // fixture cannot provide). What this test can honestly assert is the
-  // other half of the guarantee: when optimize-join-order declines,
-  // interchange-adjacent-enumerations must still run exactly as if
-  // optimize-join-order were not enabled at all -- opting in to cost-based
-  // reordering must never leave a query less optimized than the default.
+  // No indexes in this fixture, so the rule always declines and never
+  // suppresses interchange. The suppression itself is covered by the JS
+  // suites; what this pins is the other half: a decline must leave
+  // interchange running exactly as if the rule were not enabled.
   std::string const query = "FOR a IN c1 FOR b IN c2 FOR c IN c3 RETURN 1";
 
-  // assertRules returns true when every listed rule appears in the explain
-  // output's applied-rules list.
   EXPECT_TRUE(assertRules(
       server.getSystemDatabase(), query,
       {OptimizerRule::interchangeAdjacentEnumerationsRule}, nullptr,

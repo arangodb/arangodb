@@ -47,13 +47,10 @@ namespace {
 // exercises the adapter (real Ast/Query/transaction, real Collection) end to
 // end -- exactly what the IndexFacts-level tests below cannot do.
 //
-// Under MockAqlServer, a collection's physical index list is empty -- not
-// even the implicit primary index is registered -- so no test here can rely
-// on an actually-created index being *found*. Only the "no index is ever
-// found" paths (the default, and the not-RUNNING short-circuit, which takes
-// that path regardless of what indexes exist) can be exercised honestly
-// against this fixture. Everything about *which* index qualifies belongs to
-// the IndexFacts-level tests further down, which script the facts directly.
+// PhysicalCollectionMock::createIndex implements only edge, hash, inverted
+// and arangosearch types, so a "persistent" index is never created and never
+// found here. Only the "no index found" paths are exercisable against this
+// fixture; which index qualifies belongs to the IndexFacts-level tests below.
 // -----------------------------------------------------------------------------
 
 class IndexJoinStatisticsTest : public testing::Test {
@@ -207,10 +204,7 @@ TEST(IndexFactsRulesTest,
 
 TEST(IndexFactsRulesTest,
      sparse_index_is_rejected_even_with_a_qualifying_index) {
-  // a sparse index's estimate is relative to the indexed documents only. The
-  // qualifying non-sparse {x} index alone would report 10; if the sparse one
-  // were wrongly allowed too, its selectivity of 1.0 would push the answer
-  // to 100 instead.
+  // a sparse index's estimate is relative to the indexed documents only.
   auto sparse = qualifyingIndex("x", 1.0);
   sparse.sparse = true;
   std::array<IndexFacts, 2> candidates{qualifyingIndex("x", 0.1), sparse};
@@ -224,10 +218,7 @@ TEST(IndexFactsRulesTest,
 TEST(IndexFactsRulesTest,
      disallowed_type_is_rejected_even_with_a_qualifying_index) {
   // Inverted, geo, ttl, mdi and vector indexes report unrelated numbers, so
-  // only primary/edge/persistent indexes are trusted. The qualifying
-  // persistent {x} index alone would report 10; if the inverted one were
-  // wrongly allowed too, its selectivity of 1.0 would push the answer to 100
-  // instead.
+  // only primary/edge/persistent indexes are trusted.
   auto disallowed = qualifyingIndex("x", 1.0);
   disallowed.type = Index::TRI_IDX_TYPE_INVERTED_INDEX;
   std::array<IndexFacts, 2> candidates{qualifyingIndex("x", 0.1), disallowed};
@@ -240,10 +231,9 @@ TEST(IndexFactsRulesTest,
 
 TEST(IndexFactsRulesTest,
      hidden_index_is_rejected_even_with_a_qualifying_index) {
-  // A hidden index (e.g. internal bookkeeping) is never surfaced to this
-  // model. The qualifying {x} index alone would report 10; if the hidden
-  // one were wrongly allowed too, its selectivity of 1.0 would push the
-  // answer to 100 instead.
+  // Collection::indexes() already strips hidden indexes, so in production
+  // this guard is belt-and-braces; the rule is pure over IndexFacts and must
+  // not assume its caller filtered.
   auto hidden = qualifyingIndex("x", 1.0);
   hidden.hidden = true;
   std::array<IndexFacts, 2> candidates{qualifyingIndex("x", 0.1), hidden};
@@ -256,10 +246,7 @@ TEST(IndexFactsRulesTest,
 
 TEST(IndexFactsRulesTest,
      in_progress_index_is_rejected_even_with_a_qualifying_index) {
-  // An index still being built has no reliable estimate yet. The qualifying
-  // {x} index alone would report 10; if the in-progress one were wrongly
-  // allowed too, its selectivity of 1.0 would push the answer to 100
-  // instead.
+  // An index still being built has no reliable estimate yet.
   auto inProgress = qualifyingIndex("x", 1.0);
   inProgress.inProgress = true;
   std::array<IndexFacts, 2> candidates{qualifyingIndex("x", 0.1), inProgress};
@@ -272,10 +259,7 @@ TEST(IndexFactsRulesTest,
 
 TEST(IndexFactsRulesTest,
      expanded_field_is_rejected_even_with_a_qualifying_index) {
-  // An index on x[*] has different selectivity semantics than a plain field
-  // and is never trusted here. The qualifying plain {x} index alone would
-  // report 10; if the expanded one were wrongly allowed too, its selectivity
-  // of 1.0 would push the answer to 100 instead.
+  // An index on x[*] has different selectivity semantics than a plain field.
   auto expanded = qualifyingIndex("x", 1.0);
   expanded.fields = {singleField("x", /*expand*/ true)};
   std::array<IndexFacts, 2> candidates{qualifyingIndex("x", 0.1), expanded};
@@ -288,11 +272,8 @@ TEST(IndexFactsRulesTest,
 
 TEST(IndexFactsRulesTest,
      missing_selectivity_estimate_is_rejected_even_with_a_qualifying_index) {
-  // hasSelectivityEstimate() == false must be honoured even if some stale or
-  // garbage value sits in the estimate field regardless. The qualifying {x}
-  // index alone would report 10; if the no-estimate one were wrongly
-  // trusted too, its (unusable) stored value of 1.0 would push the answer to
-  // 100 instead.
+  // hasSelectivityEstimate() == false must be honoured even when a stale
+  // value sits in the estimate field.
   auto noEstimate = qualifyingIndex("x", 1.0);
   noEstimate.hasSelectivityEstimate = false;
   std::array<IndexFacts, 2> candidates{qualifyingIndex("x", 0.1), noEstimate};

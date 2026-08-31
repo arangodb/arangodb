@@ -51,8 +51,6 @@ inline auto clampEstimate(double value) noexcept -> double {
 /// shrink the index. Floored at 1.0 per row so a one-document collection does
 /// not make a join free.
 ///
-/// This and scanCost encode the execution engine, not the data distribution,
-/// so an alternative cardinality model reuses them unchanged.
 inline auto probeCost(double rows, double collectionSize) noexcept -> double {
   double const perRow = std::max(std::log2(std::max(collectionSize, 1.0)), 1.0);
   return clampEstimate(rows * perRow);
@@ -73,9 +71,7 @@ struct JoinEstimate {
   bool defaulted = false;
 };
 
-/// @brief costs the incremental growth of a join prefix. This is the seam the
-/// ordering algorithm codes against; a frequency-based cardinality model would
-/// be a second implementation, reusing probeCost/scanCost unchanged.
+/// @brief costs the incremental growth of a join prefix.
 class JoinCostEstimator {
  public:
   virtual ~JoinCostEstimator() = default;

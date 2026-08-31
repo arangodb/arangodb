@@ -308,9 +308,6 @@ number of subquery results is checked later. This saves copying the document
 data from the subquery to the outer scope and may enable follow-up
 optimizations.)");
 
-  // Cost-based reordering of adjacent collection enumerations. Disabled by
-  // default. Can be enabled via
-  // `{ optimizer: { rules: ["+optimize-join-order"] } }`
   registerRule(
       "optimize-join-order", optimizeJoinOrder,
       OptimizerRule::optimizeJoinOrder,

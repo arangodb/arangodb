@@ -58,10 +58,6 @@ void traceJoinGraph(JoinGraph const& graph) {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// the optimizer rule
-// -----------------------------------------------------------------------------
-
 void optimizeJoinOrder(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                        OptimizerRule const& rule) {
   auto estimator = makeDefaultJoinCostEstimator(*plan);
@@ -94,22 +90,16 @@ void optimizeJoinOrder(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
   }
 
   if (modified) {
-    // Cost-based reordering ran and actually rewrote a join here, so running
-    // interchange-adjacent-enumerations afterwards would fan out n! plans
-    // that just re-permute what this rule already chose, leaving the generic
-    // cost estimate to pick among near-duplicates -- the exact mechanism
-    // cost-based reordering exists to replace. Suppression is conditional on
-    // `modified`, not on this rule merely being enabled: when it declines
-    // (e.g. no usable statistics), interchange must still run, so opting
-    // into cost-based join ordering can never leave a query worse optimized
-    // than the default.
+    // Conditional on `modified`, not on this rule being enabled: when it
+    // declines, interchange must still run, or opting in could leave a query
+    // less optimized than the default.
     opt->disableRules(plan.get(), [](OptimizerRule const& r) {
       return r.level == OptimizerRule::interchangeAdjacentEnumerationsRule;
     });
   }
 
-  // Report the rule applied only when the order actually changed, so an
-  // unchanged plan does not needlessly re-trigger the downstream rules.
+  // `modified` decides whether the rule appears in explain's applied-rules
+  // list, which hasAppliedRule() also reads.
   opt->addPlan(std::move(plan), rule, modified);
 }
 

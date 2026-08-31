@@ -42,16 +42,14 @@ struct JoinOrder {
 };
 
 /// @brief cost a complete enumeration order by replaying it through the
-/// estimator: seed on the first vertex, then extend by each subsequent vertex
-/// using every edge that connects it to the prefix already placed.
+/// estimator.
 auto getEstimateForOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
                          std::vector<EnumerateCollectionNode*> const& order)
     -> JoinEstimate;
 
-/// @brief order one connected component by multi-start greedy: try every
-/// vertex as the start, grow by repeatedly absorbing the adjacent vertex that
-/// costs least, and keep the cheapest completed order. Ties break on
-/// ExecutionNode::id() so the result is reproducible.
+/// @brief the cheapest order for one connected component, by greedy search
+/// from every possible start vertex. Ties break on ExecutionNode::id() so the
+/// result is reproducible across processes.
 auto getBestOrderForComponent(JoinGraph& graph,
                               std::vector<Variable const*> const& component,
                               JoinCostEstimator const& estimator) -> JoinOrder;
@@ -60,32 +58,16 @@ auto getBestOrderForComponent(JoinGraph& graph,
 /// not worth the optimizer time, so the order is left untouched.
 constexpr size_t kMaxEnumerationsToReorder = 16;
 
-/// @brief the enumerations of one run, in spine order, from
-/// `firstEnumeration` up to but excluding `next` (pass nullptr for a run that
-/// reached the top of the plan). Calculations and filters are skipped.
+/// @brief the run's enumerations in spine order, from `firstEnumeration` up
+/// to but excluding `next` (nullptr for a run reaching the top of the plan).
 auto collectEnumerationOrder(ExecutionNode* firstEnumeration,
                              ExecutionNode* next)
     -> std::vector<EnumerateCollectionNode*>;
 
-/// @brief pick an order for the whole graph, or std::nullopt to leave the plan
-/// alone. Returns nullopt when the run is too large; otherwise two
-/// independent accept/decline decisions are made, each guarded the same way:
-///
-/// - Per component: a component's greedy order replaces its written order
-///   only when neither side of that component's own comparison rests on a
-///   fallback statistic and the greedy order clears kImprovementMargin
-///   against the component's own written cost.
-/// - Sequencing: components are then sequenced by the cheapest concatenation
-///   (ties broken by node id), using whichever order each component ended up
-///   with -- but that resequencing itself is only adopted when neither it nor
-///   the written component sequence (components in the order they first
-///   appear in writtenOrder) rests on a fallback statistic, and the
-///   resequenced concatenation clears kImprovementMargin against that
-///   written sequence. Otherwise components stay in their written relative
-///   order. With a single component this is a structural no-op.
-///
-/// Returns nullopt when neither decision actually changed anything, so a
-/// graph left untouched is still reported unapplied.
+/// @brief an order for the whole graph, or nullopt to leave the plan alone.
+/// Two decisions are taken independently -- each component's internal order,
+/// then the sequence of components -- and both are guarded the same way. See
+/// decideComponentOrders and acceptsResequencing.
 auto chooseJoinOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
                      std::vector<EnumerateCollectionNode*> const& writtenOrder)
     -> std::optional<std::vector<EnumerateCollectionNode*>>;

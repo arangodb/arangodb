@@ -43,7 +43,7 @@ namespace {
 /// arithmetic: the check is `chosen < current / (1 + kImprovementMargin)`, so
 /// 0.25 demands that the chosen order cost at most 0.8 of the current one --
 /// a 20% reduction, not 25%. Differences below the estimator's own error
-/// (measured 1.7-3.1x on non-unique index estimates) are not signal, so the
+/// on non-unique index estimates are not signal, so the
 /// exact figure matters far less than its direction: bias toward not rewriting.
 constexpr double kImprovementMargin = 0.25;
 
@@ -106,15 +106,10 @@ auto writtenComponentOrder(
     }
   }
 
-  // `writtenOrder` and the graph's vertices are produced by two separate
-  // walks over the same node range -- buildJoinGraph and
-  // collectEnumerationOrder -- with the same "is an ENUMERATE_COLLECTION"
-  // predicate, and connectedComponents() partitions exactly those vertices.
-  // Every component member therefore appears here exactly once, and this
-  // subsequence has the component's full size. Should the two walks ever
-  // drift apart, a component would silently lose a vertex here; that only
-  // surfaces much later, as the permutation assertion at the end of
-  // chooseJoinOrder. Fail at the cause instead.
+  // buildJoinGraph and collectEnumerationOrder walk the same node range with
+  // the same predicate, so every component member appears here exactly once.
+  // Assert at the cause: a drift between those two walks would otherwise only
+  // surface as the permutation assertion much later.
   ADB_PROD_ASSERT(order.size() == component.size())
       << "component of " << component.size() << " vertices matched only "
       << order.size() << " of the " << writtenOrder.size()
@@ -146,9 +141,6 @@ auto decideComponentOrders(
     JoinGraph& graph, JoinCostEstimator const& estimator,
     std::vector<EnumerateCollectionNode*> const& writtenOrder)
     -> std::vector<DecidedComponent> {
-  // Position of each enumeration in the written order, so each component's
-  // place in the written *sequence of components* can be recovered from
-  // where its first vertex sits here.
   std::unordered_map<EnumerateCollectionNode*, size_t> positionInWritten;
   positionInWritten.reserve(writtenOrder.size());
   for (size_t i = 0; i < writtenOrder.size(); ++i) {
@@ -166,9 +158,8 @@ auto decideComponentOrders(
     ADB_PROD_ASSERT(positionIt != positionInWritten.end());
     size_t const firstAppearance = positionIt->second;
 
-    // If either side of this component's comparison rests on a fallback
-    // statistic, the comparison is between two guesses -- decline, same
-    // reasoning as the old whole-graph guard, just scoped to this component.
+    // Either side resting on a fallback statistic makes this a comparison
+    // between two guesses -- decline.
     if (greedy.estimate.defaulted || writtenEstimate.defaulted) {
       LOG_TOPIC("a7f04", TRACE, Logger::AQL)
           << "optimize-join-order: keeping a component's written order, "
@@ -179,8 +170,7 @@ auto decideComponentOrders(
       continue;
     }
 
-    // Require a real margin against this component's own written cost:
-    // differences below the estimator's own error are not signal.
+    // Require a real margin against this component's own written cost.
     if (greedy.estimate.cost >=
         writtenEstimate.cost / (1.0 + kImprovementMargin)) {
       LOG_TOPIC("a7f05", TRACE, Logger::AQL)
@@ -225,8 +215,7 @@ auto concatenateInWrittenSequence(std::vector<DecidedComponent> const& decided,
 }
 
 /// @brief the cheapest concatenation of the components: they join by cross
-/// product, so they are sequenced greedily too, one winner at a time. Takes
-/// `decided` by value because it consumes it.
+/// product, so they are sequenced greedily too, one winner at a time.
 auto getCheapestConcatenation(JoinGraph& graph,
                               JoinCostEstimator const& estimator,
                               std::vector<DecidedComponent> decided,
@@ -311,10 +300,6 @@ auto acceptsResequencing(JoinGraph& graph, JoinCostEstimator const& estimator,
   return true;
 }
 }  // namespace
-
-// -----------------------------------------------------------------------------
-// ordering
-// -----------------------------------------------------------------------------
 
 auto getEstimateForOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
                          std::vector<EnumerateCollectionNode*> const& order)
@@ -440,8 +425,6 @@ auto chooseJoinOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
   std::vector<EnumerateCollectionNode*> chosen =
       acceptSequencing ? std::move(candidate) : std::move(baseline);
 
-  // Nothing to do: every component kept the order it was written in, and
-  // resequencing did not change which component runs first either.
   if (!anyComponentReordered && !sequenceChanged) {
     return std::nullopt;
   }
@@ -463,10 +446,6 @@ auto chooseJoinOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
 
   return chosen;
 }
-
-// -----------------------------------------------------------------------------
-// plan rewriting
-// -----------------------------------------------------------------------------
 
 void rewriteJoinGraph(ExecutionPlan& plan, ExecutionNode* firstEnumeration,
                       ExecutionNode* next,

@@ -40,12 +40,9 @@ struct DistinctEstimate {
   bool defaulted = true;
 };
 
-/// @brief statistics about the data a join graph reads. This is the seam that
-/// a frequency-aware backend replaces later; the cost recurrence above it does
-/// not change when that happens.
-///
-/// Implementations must depend only on the abstract Index and Collection
-/// interfaces, never on a concrete index class or a particular storage engine.
+/// @brief statistics about the data a join graph reads. Implementations must
+/// depend only on the abstract Index and Collection interfaces, never on a
+/// concrete index class or a particular storage engine.
 class JoinStatistics {
  public:
   virtual ~JoinStatistics() = default;

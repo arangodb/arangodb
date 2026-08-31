@@ -107,7 +107,7 @@ class SystemRCostEstimatorTest : public testing::Test {
   }
 };
 
-// The design note's worked example: with unique indexes on both sides the
+// With unique indexes on both sides the
 // current estimator says 1000, System-R says 100.
 TEST_F(SystemRCostEstimatorTest, worked_example_from_the_design_note) {
   auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");

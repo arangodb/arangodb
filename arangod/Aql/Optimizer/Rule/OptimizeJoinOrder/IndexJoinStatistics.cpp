@@ -107,11 +107,9 @@ auto cacheKey(JoinGraph::Node const& node,
     std::string joined;
     for (auto const& component : path) {
       if (!joined.empty()) {
-        // A plain '.' is not safe here: it can also appear literally inside
-        // an attribute name, so the path ["a","b"] and the single attribute
-        // ["a.b"] would join to the same string and collide in the cache.
-        // '\x1e' cannot appear in an attribute name, mirroring the '\x1f'
-        // path separator below.
+        // Not '.': it can appear inside an attribute name, so ["a","b"] and
+        // ["a.b"] would collide in the cache. '\x1e' joins path components,
+        // '\x1f' joins whole paths below.
         joined += '\x1e';
       }
       joined += component;
@@ -129,8 +127,6 @@ auto cacheKey(JoinGraph::Node const& node,
 }
 
 /// @brief lift the properties this model needs out of a real Index. The
-/// only engine-specific step in the whole file: everything downstream of
-/// this operates on IndexFacts, not on Index.
 auto toIndexFacts(Index const& index) -> IndexFacts {
   IndexFacts facts;
   facts.type = index.type();
@@ -146,9 +142,6 @@ auto toIndexFacts(Index const& index) -> IndexFacts {
   return facts;
 }
 
-/// @brief the collection's indexes, lifted to IndexFacts. Null entries (a
-/// possibility the Collection::indexes() contract does not rule out) are
-/// dropped rather than propagated.
 auto candidatesFor(JoinGraph::Node const& node) -> std::vector<IndexFacts> {
   std::vector<IndexFacts> candidates;
   for (auto const& index : node.executionNode->collection()->indexes()) {

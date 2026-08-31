@@ -28,24 +28,11 @@ const waitForEstimatorSync = require("@arangodb/test-helper").waitForEstimatorSy
 
 // Cluster counterpart to aql-optimizer-rule-optimize-join-order-noncluster.js.
 //
-// Two kinds of assertion here, and the distinction matters.
-//
-// The first kind is shape-independent and unconditional: enabling the rule must
-// never change a query's results, must never produce an invalid plan, and must
-// leave a query untouched when its statistics are not trustworthy. Those hold
-// whether the rule reorders, declines, or would choose differently than it does
-// on a single server, so they survive scatter/gather unchanged.
-//
-// The second kind pins the reordering itself. That is testable deterministically
-// on a coordinator for a specific reason: the rule runs before
-// distribute-in-cluster and scatter-in-cluster, so it decides on the pre-cluster
-// logical plan, and its cardinalities are cluster-wide totals -- the shard layout
-// never enters the decision. The flip side is that the rule is *not* shard- or
-// locality-aware: nothing prices scatter/gather, and an uneven shard
-// distribution could make a decision that is cheap on paper expensive in
-// practice. So those assertions describe today's shard-blind behaviour, not an
-// optimality promise, and a future shard-aware estimator is expected to change
-// them.
+// The rule runs before distribute-in-cluster and scatter-in-cluster and reads
+// cluster-wide cardinalities, so the shard layout never enters its decision.
+// That makes the order assertions below deterministic -- and also means the
+// rule is not shard- or locality-aware, so they pin today's behaviour rather
+// than an optimality promise.
 function optimizeJoinOrderClusterTestSuite () {
   const ruleName = "optimize-join-order";
 
@@ -131,13 +118,7 @@ function optimizeJoinOrderClusterTestSuite () {
       [cnSmall, cnLarge, cnPlain].forEach((c) => db._drop(c));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the central guarantee: on a coordinator, enabling the rule must not
-/// change what a join returns. This is the one property that holds whether the
-/// rule reorders, declines, or reorders differently than it would on a single
-/// server, so it is what a cluster test can honestly assert.
-////////////////////////////////////////////////////////////////////////////////
-
+    // Enabling the rule must not change what a join returns.
     testResultsAreInvariantUnderTheRule : function () {
       const off = run(joinQuery, withoutRule);
       const on  = run(joinQuery, withRule);
@@ -148,12 +129,7 @@ function optimizeJoinOrderClusterTestSuite () {
       assertEqual(norm(off), norm(on), joinQuery);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief a three-way join spans more shards and more scatter/gather
-/// boundaries than a two-way one, and gives the rule a component it could
-/// resequence. Results must still be identical.
-////////////////////////////////////////////////////////////////////////////////
-
+    // More shard boundaries than the two-way case.
     testThreeWayJoinResultsAreInvariant : function () {
       const query = `
         FOR a IN ${cnLarge}
@@ -169,14 +145,8 @@ function optimizeJoinOrderClusterTestSuite () {
       assertEqual(norm(off), norm(on), query);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief two independent joins: the rule may reorder each component and may
-/// resequence the components relative to each other. Cross products make the
-/// row count large, so this uses small collections -- the point is that a
-/// resequencing decision cannot change the result set.
-////////////////////////////////////////////////////////////////////////////////
-
     testIndependentComponentsResultsAreInvariant : function () {
+    // Two components: a resequencing decision must not change the results.
       const query = `
         FOR a IN ${cnSmall}
           FOR b IN ${cnSmall}
@@ -193,14 +163,8 @@ function optimizeJoinOrderClusterTestSuite () {
       assertEqual(norm(off), norm(on), query);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief without an index on the join attributes the rule has no trustworthy
-/// statistics, so it must decline -- on a coordinator as much as on a single
-/// server. This is the guard that keeps the rule safe in a cluster it cannot
-/// model, so it is worth pinning that it actually engages here.
-////////////////////////////////////////////////////////////////////////////////
-
     testUnindexedJoinIsLeftAlone : function () {
+    // No index means no trustworthy statistics, so the rule must decline.
       const query = `
         FOR a IN ${cnPlain}
           FOR b IN ${cnPlain}
@@ -211,15 +175,9 @@ function optimizeJoinOrderClusterTestSuite () {
       assertEqual(-1, explain(query, withRule).plan.rules.indexOf(ruleName), query);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whatever the rule does to the plan, the result must remain a plan
-/// the cluster can actually execute: the rewrite unlinks enumerations and
-/// splices them back above the run's first dependency, which is where an
-/// invalid plan would come from. Executing the query is the check -- an
-/// unregistered variable or a broken dependency chain fails at instantiation.
-////////////////////////////////////////////////////////////////////////////////
-
     testRewrittenPlanStaysExecutable : function () {
+    // The rewrite unlinks and re-splices enumerations; executing the query is
+    // what catches an unregistered variable or a broken dependency chain.
       const query = `
         FOR a IN ${cnLarge}
           FOR b IN ${cnSmall}
@@ -238,28 +196,12 @@ function optimizeJoinOrderClusterTestSuite () {
       assertEqual(10, on.length, query);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the reordering itself, attributed to this rule alone.
-///
-/// interchange-adjacent-enumerations is enabled by default and reaches the
-/// same order on this fixture by its own cost model, so comparing "rule on"
-/// against "rule off" proves nothing -- both flip the join. Isolating with
-/// "-all" removes it, leaving the written order as the baseline, so a change
-/// can only have come from this rule.
-///
-/// This is deterministic in a cluster for a specific reason: the rule runs
-/// before distribute-in-cluster and scatter-in-cluster, so it decides on the
-/// pre-cluster logical plan; its cardinalities are cluster-wide totals, so a
-/// 50-vs-5000 asymmetry reads the same whatever the shard layout; and ties
-/// break on ExecutionNode::id(), never on pointer or shard order.
-///
-/// Note what that means: these assertions pin a decision that is deliberately
-/// blind to shards. A future shard- and locality-aware estimator is *expected*
-/// to change them, and should -- they are not a promise about optimal cluster
-/// plans, only that today's rule behaves predictably here.
-////////////////////////////////////////////////////////////////////////////////
-
     testRuleAloneReordersTheJoin : function () {
+    // interchange reaches the same order on this fixture by its own cost model,
+    // so isolating with "-all" is what attributes the flip to this rule.
+    //
+    // These pin a shard-blind decision; a shard-aware estimator should change
+    // them.
       // Written large-first; the cheaper order scans the small side.
       const baseline = joinSequence(joinQuery, { optimizer: { rules: [ "-all" ] } });
       assertEqual([ "SCAN:" + cnLarge, "SCAN:" + cnSmall ], baseline,
@@ -275,14 +217,8 @@ function optimizeJoinOrderClusterTestSuite () {
           .plan.rules.indexOf(ruleName), joinQuery);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the payoff, not just the FOR order: with interchange out of the way
-/// and the rest of the pipeline intact, use-indexes turns the inner side of
-/// the reordered join into an IndexNode. Asserting which collection is probed
-/// is what distinguishes a useful reorder from a cosmetic one.
-////////////////////////////////////////////////////////////////////////////////
-
     testReorderedInnerSideUsesItsIndex : function () {
+    // The payoff: use-indexes turns the reordered inner side into an IndexNode.
       // Returns whole documents deliberately. joinQuery projects only
       // joinKey, which the persistent index covers, so use-indexes turns
       // *both* sides into IndexNodes there and scan-vs-probe becomes
@@ -302,12 +238,8 @@ function optimizeJoinOrderClusterTestSuite () {
                   "small side scanned, large side probed through its index");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the rule stays opt-in on a coordinator too. If it ever became
-/// default-on without the shard-awareness work, this is what would catch it.
-////////////////////////////////////////////////////////////////////////////////
-
     testDisabledByDefaultInCluster : function () {
+    // Still opt-in on a coordinator.
       assertEqual(-1, explain(joinQuery, {}).plan.rules.indexOf(ruleName), joinQuery);
     },
 
