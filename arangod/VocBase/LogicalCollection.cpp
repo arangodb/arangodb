@@ -879,7 +879,8 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
                                                 "smartGraphAttribute",
                                                 "smartJoinAttribute",
                                                 "schema",
-                                                "computedValues"};
+                                                "computedValues",
+                                                "groupId"};
 
   for (auto it : VPackObjectIterator(tmp.slice())) {
     auto key = it.key.stringView();
