@@ -172,11 +172,59 @@ run_sweep() {
   cd "${ANN_WORKDIR}/ann-benchmarks"
   export ANN_BENCHMARKS_ARANGO_HOST="${ARANGO_HOST}"
   export ANN_BENCHMARKS_ARANGO_PORT="${ARANGO_PORT}"
+  # Tee the run output; validate_results parses it for how many query-arg groups
+  # ann-benchmarks intended to run, to detect silently-dropped configs.
+  : > "${ANN_OUTPUT_DIR}/run.log"
   for ds in ${ANN_DATASETS}; do
     log "Benchmarking ${ANN_ALGORITHM} on ${ds}"
     python run.py --local --algorithm "${ANN_ALGORITHM}" \
-      --dataset "${ds}" --runs "${ANN_RUNS}" --force
+      --dataset "${ds}" --runs "${ANN_RUNS}" --force \
+      2>&1 | tee -a "${ANN_OUTPUT_DIR}/run.log"
   done
+}
+
+collect_arango_log() {
+  log "Fetching arangod log"
+  # Via the REST API so it works no matter who started arangod (in CI the
+  # service container has no docker daemon we can reach). Best-effort.
+  local raw="${ANN_OUTPUT_DIR}/arangod-log.json"
+  if curl -fsS "${ARANGO_URL}/_admin/log/entries?upto=info&size=5000" -o "${raw}" 2>/dev/null; then
+    jq -r '.messages[]? | "\(.date) [\(.level)] \(.topic): \(.message)"' "${raw}" \
+      > "${ANN_OUTPUT_DIR}/arangod.log" 2>/dev/null || cp "${raw}" "${ANN_OUTPUT_DIR}/arangod.log"
+  elif [[ -n "${ARANGOD_STARTED_BY_US}" ]] && command -v docker >/dev/null 2>&1; then
+    docker logs "${ARANGO_CONTAINER}" > "${ANN_OUTPUT_DIR}/arangod.log" 2>&1 || true
+  else
+    log "  (could not fetch server log)"
+  fi
+}
+
+# Fail the job if any dataset produced fewer result rows than the number of
+# query-argument groups ann-benchmarks reported - i.e. some config silently
+# produced no results (run.py exits 0 even then).
+validate_results() {
+  local runlog="${ANN_OUTPUT_DIR}/run.log" csv="${ANN_OUTPUT_DIR}/results.csv"
+  local expected
+  expected="$(grep -oE 'query argument group [0-9]+ of [0-9]+' "${runlog}" 2>/dev/null \
+                | grep -oE '[0-9]+$' | sort -rn | head -n1)"
+  if [[ -z "${expected}" ]]; then
+    log "WARNING: could not determine expected config count; skipping validation"
+    return 0
+  fi
+  local failed=0 ds actual
+  for ds in ${ANN_DATASETS}; do
+    # dataset is the last CSV column (no commas); strip the CRLF that Python's
+    # csv writer leaves before comparing.
+    actual="$(awk -F, -v d="${ds}" \
+      'NR>1 {last=$NF; sub(/\r$/,"",last); if (last==d) c++} END {print c+0}' \
+      "${csv}" 2>/dev/null)"
+    if (( actual < expected )); then
+      log "MISSING RESULTS: ${ds} produced ${actual}/${expected} configs"
+      failed=1
+    else
+      log "OK: ${ds} produced ${actual}/${expected} configs"
+    fi
+  done
+  (( failed == 0 )) || die "incomplete benchmark: some query configs produced no results (see run.log / arangod.log)"
 }
 
 export_results() {
@@ -187,10 +235,11 @@ export_results() {
   log "Generating website"
   python create_website.py --outputdir "${ANN_OUTPUT_DIR}/site" --scatter --latex
 
-  # Preserve the server log when we own the container.
-  if [[ -n "${ARANGOD_STARTED_BY_US}" ]]; then
-    docker logs "${ARANGO_CONTAINER}" > "${ANN_OUTPUT_DIR}/arangod.log" 2>&1 || true
-  fi
+  # Stamp the run's end time into the metadata.
+  local endtmp; endtmp="$(mktemp)"
+  jq --arg ended "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '.ended_at = $ended' \
+     "${ANN_OUTPUT_DIR}/run_meta.json" > "${endtmp}" \
+     && mv "${endtmp}" "${ANN_OUTPUT_DIR}/run_meta.json"
 
   # Self-describing artifact: what produced these numbers.
   {
@@ -202,8 +251,10 @@ export_results() {
     echo "server:"
     sed 's/^/  /' "${ANN_OUTPUT_DIR}/run_meta.json" 2>/dev/null || echo "  (no metadata)"
   } > "${ANN_OUTPUT_DIR}/site/METADATA.txt"
-  cp "${ANN_OUTPUT_DIR}/results.csv" "${ANN_OUTPUT_DIR}/site/results.csv" 2>/dev/null || true
-  cp "${ANN_OUTPUT_DIR}/run_meta.json" "${ANN_OUTPUT_DIR}/site/run_meta.json" 2>/dev/null || true
+  # Gather the artifacts (results + logs) into the site bundle.
+  for f in results.csv run_meta.json arangod.log arangod-log.json run.log; do
+    cp "${ANN_OUTPUT_DIR}/${f}" "${ANN_OUTPUT_DIR}/site/${f}" 2>/dev/null || true
+  done
 
   # Bundle the whole site into one archive - a single download from CI artifacts.
   log "Archiving site"
@@ -231,7 +282,9 @@ main() {
   collect_meta
   setup_harness
   run_sweep
-  export_results
+  collect_arango_log   # while arangod is still up
+  export_results       # writes artifacts (incl. logs) BEFORE validation can fail
+  validate_results     # fails the job if any config produced no results
   push_metrics
   log "Done. Artifacts in ${ANN_OUTPUT_DIR} (site/, results.csv, arangod.log)"
 }
