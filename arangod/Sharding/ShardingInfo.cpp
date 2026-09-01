@@ -265,12 +265,12 @@ void ShardingInfo::initializeShardingStrategy(
   }
 #endif
 
-  _shardingStrategy = _collection->vocbase()
-                          .server()
-                          .getFeature<ShardingFeature>()
-                          .createOrDefault(
-                              descriptor.clusteringConstant.shardingStrategy,
-                              this);
+  _shardingStrategy =
+      _collection->vocbase()
+          .server()
+          .getFeature<ShardingFeature>()
+          .createOrDefault(descriptor.clusteringConstant.shardingStrategy,
+                           this);
 
   TRI_ASSERT(_shardingStrategy != nullptr);
 }
