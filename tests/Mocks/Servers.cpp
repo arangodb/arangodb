@@ -941,8 +941,15 @@ void MockDBServer::createShard(std::string const& dbName,
     // We may allow this for tests that do not write documents into the
     // collection.
     TRI_ASSERT(clusterCollection.replicationFactor() < 2);
-    props->add(StaticStrings::ReplicationFactor,
-               VPackValue(clusterCollection.replicationFactor()));
+    if (clusterCollection.isSatellite()) {
+      // every writer the maintenance reads from spells a replicationFactor of
+      // 0 as "satellite", so the mock has to spell it the same way
+      props->add(StaticStrings::ReplicationFactor,
+                 VPackValue(StaticStrings::Satellite));
+    } else {
+      props->add(StaticStrings::ReplicationFactor,
+                 VPackValue(clusterCollection.replicationFactor()));
+    }
     props->add(StaticStrings::InternalValidatorTypes,
                VPackValue(clusterCollection.getInternalValidatorTypes()));
   }

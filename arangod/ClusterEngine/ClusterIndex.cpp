@@ -242,7 +242,7 @@ bool ClusterIndex::isSorted() const {
                                  "unsupported cluster storage engine");
 }
 
-void ClusterIndex::updateProperties(bool cacheEnabled) {
+void ClusterIndex::setCacheEnabled(bool cacheEnabled) {
   VPackBuilder merge;
   merge.openObject();
 
