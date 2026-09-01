@@ -3,8 +3,6 @@ v3.11.14.6 (XXXX-XX-XX)
 
 * Fix potential race then reloading token secret (secret rotation).
 
-* Updated arangosync to v2.19.19.
-
 * Rebuilt included rclone v1.75.0 with go1.25.13 and non-vulnerable
   dependencies.
 
