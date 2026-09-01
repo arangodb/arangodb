@@ -29,6 +29,7 @@
 #include "Basics/voc-errors.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Logger/LogMacros.h"
 #include "Rbac/Service.h"
 #include "Rest/ApiVersion.h"
 #include "Rest/GeneralRequest.h"
@@ -930,6 +931,9 @@ auto AuthMode::Rbac::username() const noexcept -> std::string_view {
 auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
   namespace p = auth::perms;
 
+  LOG_DEVEL << "[RBAC-TRACE] AuthMode::Rbac::check called, user=" << _username
+            << " tokenLen=" << _jwtToken.size();
+
   auto databaseAccessModeToAction =
       [](DatabaseAccessLevel level) -> rbac::Action {
     switch (level) {
@@ -1043,7 +1047,12 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
   // only the composite permissions (create/modify view, create/drop graph)
   // build a small vector.
   auto checkAll = [&](std::span<rbac::ActionResource const> queries) -> Result {
-    return _rbacService.check(rbac::JwtToken{_jwtToken}, queries);
+    LOG_DEVEL << "[RBAC-TRACE] checkAll: about to call _rbacService.check with "
+              << queries.size() << " queries";
+    auto res = _rbacService.check(rbac::JwtToken{_jwtToken}, queries);
+    LOG_DEVEL << "[RBAC-TRACE] checkAll: _rbacService.check returned ok="
+              << res.ok() << " msg=" << res.errorMessage();
+    return res;
   };
   auto checkOne = [&](rbac::Action action, rbac::Resource resource) -> Result {
     rbac::ActionResource query{action, std::move(resource)};
