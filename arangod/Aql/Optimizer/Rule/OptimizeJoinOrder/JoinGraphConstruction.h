@@ -29,11 +29,9 @@ class ExecutionNode;
 class ExecutionPlan;
 
 /// @brief build the join graph for the maximal run of adjacent collection
-/// enumerations that starts at `firstEnumeration`. Walks upwards (towards the
-/// root) collecting enumerations and classifying the filters between them.
-/// Returns the graph and, via `next`, the first node that terminated the run
-/// (or nullptr if the run reached the top of the plan). This is a read-only
-/// analysis: the plan is not modified.
+/// enumerations that starts at `firstEnumeration`, following parents towards
+/// the plan root. Returns the graph and, via `next`, the first node that
+/// terminated the run (nullptr if the run reached the root).
 auto buildJoinGraph(ExecutionPlan const* plan, ExecutionNode* firstEnumeration,
                     ExecutionNode*& next) -> JoinGraph;
 

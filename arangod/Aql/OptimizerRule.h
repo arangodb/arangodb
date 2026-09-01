@@ -511,9 +511,11 @@ struct OptimizerRule {
       "optimizeJoinOrder ever ran");
   static_assert(
       optimizeJoinOrder < moveCalculationsUpRule2,
-      "optimizeJoinOrder deliberately splices enumerations above the run's "
-      "calculations and filters and relies on moveCalculationsUpRule2 and "
-      "moveFiltersUpRule2 running afterwards to push them back down");
+      "optimizeJoinOrder reinserts every enumeration at the front of the run, "
+      "so the calculations and filters that were interleaved between them end "
+      "up executing after all of them; moveCalculationsUpRule2 and "
+      "moveFiltersUpRule2 must run afterwards to move those back to the "
+      "enumerations they belong to");
   static_assert(
       moveCalculationsUpRule2 < moveFiltersUpRule2,
       "a filter cannot move earlier than the calculation producing the "
