@@ -90,6 +90,7 @@ void TokenCache::setJwtSecrets(AuthInfo secrets) {
 }
 
 std::string TokenCache::jwtToken() const noexcept {
+  std::shared_lock guard{_jwtSuperTokenLock};
   TRI_ASSERT(!_jwtSuperToken.empty());
   return _jwtSuperToken;
 }
@@ -445,9 +446,10 @@ TokenCache::Entry TokenCache::validateJwtBody(std::string_view bodyWebBase64) {
 void TokenCache::generateSuperToken() {
   std::string sid = ServerState::instance()->getId();
 
-  auto guard = _jwtSecrets.getLockedGuard();
+  auto activeSecret = _jwtSecrets.getLockedGuard()->activeSecret;
 
-  if (std::holds_alternative<auth::ES256PrivateKey>(guard->activeSecret)) {
+  std::unique_lock guard{_jwtSuperTokenLock};
+  if (std::holds_alternative<ES256PrivateKey>(activeSecret)) {
     // Generate ES256 JWT token manually
     std::chrono::seconds iss = std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::system_clock::now().time_since_epoch());
@@ -488,8 +490,8 @@ void TokenCache::generateSuperToken() {
     std::string signature;
     std::string error;
     int result = rest::SslInterface::signES256(
-        std::get<ES256PrivateKey>(guard->activeSecret)._data, fullMessage,
-        signature, error);
+        std::get<ES256PrivateKey>(activeSecret)._data, fullMessage, signature,
+        error);
 
     if (result != 0) {
       LOG_TOPIC("71a77", ERR, Logger::AUTHENTICATION)
@@ -506,7 +508,7 @@ void TokenCache::generateSuperToken() {
   } else {
     // Use existing HS256 token generation
     _jwtSuperToken = rest::SslInterface::jwt::generateInternalToken(
-        std::get<HS256Key>(guard->activeSecret)._data, sid);
+        std::get<HS256Key>(activeSecret)._data, sid);
   }
 }
 
