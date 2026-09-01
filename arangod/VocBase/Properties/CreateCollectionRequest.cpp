@@ -749,7 +749,7 @@ ResultT<CreateCollectionRequest> CreateCollectionRequest::fromRestoreAPIBody(
       [&config](CollectionDescriptor& col) {
         // By all means, we cannot take an id from the outside. We need to
         // generate an ID here. So better waste one ID than having a collision.
-        col.internal.id = config.idGenerator();
+        col.identity.id = config.idGenerator();
 
         if (isKnownSystemCollection(col.mutableProps.name)) {
           if (config.isSystemDB) {
@@ -781,7 +781,7 @@ ResultT<CreateCollectionRequest> CreateCollectionRequest::fromRestoreAPIBody(
           // By all means, we cannot take an id from the outside. We need to
           // generate an ID here. So better waste one ID than having a
           // collision.
-          col.internal.id = config.idGenerator();
+          col.identity.id = config.idGenerator();
           if (!col.clusteringConstant.shardingStrategy.has_value() &&
               !col.clusteringConstant.distributeShardsLike.has_value() &&
               !config.oneShardDBConfiguration.has_value()) {

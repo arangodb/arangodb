@@ -342,13 +342,6 @@ void StorageEngineMock::getCollectionInfo(TRI_vocbase_t& vocbase,
   // nothing more required, assume info used for PhysicalCollectionMock
 }
 
-ErrorCode StorageEngineMock::getCollectionsAndIndexes(
-    TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result,
-    bool wasCleanShutdown, bool isUpgrade) {
-  TRI_ASSERT(false);
-  return TRI_ERROR_INTERNAL;
-}
-
 void StorageEngineMock::getDatabases(arangodb::velocypack::Builder& result) {
   before();
   arangodb::velocypack::Builder system;

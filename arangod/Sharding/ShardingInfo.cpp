@@ -164,8 +164,14 @@ ShardingInfo::ShardingInfo(CollectionDescriptor const& descriptor,
       _numberOfShards(descriptor.clusteringConstant.numberOfShards.value_or(1)),
       _replicationFactor(1),
       _writeConcern(1),
+      // in internal/agency context the "distributeShardsLike" key carries the
+      // cid, which is what the emission below expects on a coordinator
       _distributeShardsLike(
-          descriptor.clusteringConstant.distributeShardsLike.value_or("")),
+          ServerState::instance()->isCoordinator()
+              ? descriptor.clusteringConstant.distributeShardsLikeCid.value_or(
+                    "")
+              : descriptor.clusteringConstant.distributeShardsLike.value_or(
+                    "")),
       _shardIds(std::make_shared<ShardMap>()) {
   TRI_ASSERT(_collection != nullptr);
 
@@ -182,6 +188,12 @@ ShardingInfo::ShardingInfo(CollectionDescriptor const& descriptor,
                                   _replicationFactor, _shardKeys);
       res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
+  }
+
+  // "shards" is runtime state that only the load path carries
+  if (descriptor.clusteringConstant.shards.has_value()) {
+    _shardIds = std::make_shared<ShardMap>(
+        descriptor.clusteringConstant.shards.value());
   }
 
   initializeShardingStrategy(descriptor);
@@ -253,12 +265,12 @@ void ShardingInfo::initializeShardingStrategy(
   }
 #endif
 
-  auto const& name = descriptor.clusteringConstant.shardingStrategy;
-  TRI_ASSERT(name.has_value() && !name.value().empty())
-      << "sharding strategy must be resolved before the descriptor is used";
   _shardingStrategy =
-      _collection->vocbase().server().getFeature<ShardingFeature>().create(
-          name.value(), this);
+      _collection->vocbase()
+          .server()
+          .getFeature<ShardingFeature>()
+          .createOrDefault(descriptor.clusteringConstant.shardingStrategy,
+                           this);
 
   TRI_ASSERT(_shardingStrategy != nullptr);
 }

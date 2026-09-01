@@ -27,6 +27,7 @@
 #include "Inspection/Types.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Properties/KeyGeneratorProperties.h"
+#include "VocBase/Properties/InspectContexts.h"
 #include "VocBase/Properties/UtilityInvariants.h"
 #include "VocBase/voc-types.h"
 
@@ -82,10 +83,17 @@ auto inspect(Inspector& f, CollectionConstantProperties& props) {
       /* Backwards compatibility, fields are allowed (MMFILES) but have no
          relevance anymore */
       f.ignoreField("doCompact"), f.ignoreField("isVolatile"),
-      // Written by the server. Not user-modifyable, so the attribute is
-      // accepted and dropped on input while still being written out.
+      // Written by the server, so always written out. A coordinator loading a
+      // plan entry needs these to resolve the existing shadow collections
+      // instead of building new ones, which would come out with the parent's
+      // numberOfShards of 0. User input is accepted and dropped.
       f.field(StaticStrings::ShadowCollections, props.shadowCollections)
-          .whenLoading([]() { return inspection::FieldCondition::Ignore; }));
+          .fallback(f.keep())
+          .whenLoading([]() {
+            return isInternalContext<Inspector> || isAgencyContext<Inspector>
+                       ? inspection::FieldCondition::Process
+                       : inspection::FieldCondition::Ignore;
+          }));
 }
 
 }  // namespace arangodb

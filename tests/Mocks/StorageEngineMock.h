@@ -164,10 +164,6 @@ class StorageEngineMock : private StorageEngineMockBase,
   void getCollectionInfo(TRI_vocbase_t& vocbase, arangodb::DataSourceId cid,
                          arangodb::velocypack::Builder& result,
                          bool includeIndexes, TRI_voc_tick_t maxTick) override;
-  ErrorCode getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
-                                     arangodb::velocypack::Builder& result,
-                                     bool wasCleanShutdown,
-                                     bool isUpgrade) override;
   void getDatabases(arangodb::velocypack::Builder& result) override;
   void cleanupReplicationContexts() override;
   ErrorCode getViews(TRI_vocbase_t& vocbase,

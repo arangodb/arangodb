@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -20,4 +20,30 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "CollectionInternalProperties.h"
+#pragma once
+
+#include <cstdint>
+
+namespace arangodb {
+
+/// On-disk format version of a collection. Lives here rather than nested in
+/// LogicalCollection so that CollectionStorageProperties can name it without
+/// depending on the collection itself.
+enum class CollectionVersion : std::uint32_t {
+  v30 = 5,
+  v31 = 6,
+  v33 = 7,
+  v34 = 8,
+  v37 = 9
+};
+
+/// @brief hard-coded minimum version number for collections
+constexpr CollectionVersion minimumCollectionVersion() {
+  return CollectionVersion::v30;
+}
+/// @brief current version for collections
+constexpr CollectionVersion currentCollectionVersion() {
+  return CollectionVersion::v37;
+}
+
+}  // namespace arangodb

@@ -22,6 +22,7 @@
 
 #include "RocksDBEngine.h"
 
+#include <algorithm>
 #include <filesystem>
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -1191,15 +1192,13 @@ void RocksDBEngine::getCollectionInfo(TRI_vocbase_t& vocbase, DataSourceId cid,
   builder.close();
 }
 
-ErrorCode RocksDBEngine::getCollectionsAndIndexes(
-    TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result,
-    bool wasCleanShutdown, bool isUpgrade) {
+std::vector<CollectionDescriptor> RocksDBEngine::getCollectionsAndIndexes(
+    TRI_vocbase_t& vocbase) {
+  std::vector<CollectionDescriptor> collections;
   rocksdb::ReadOptions readOptions;
   std::unique_ptr<rocksdb::Iterator> iter(_db->NewIterator(
       readOptions, RocksDBColumnFamilyManager::get(
                        RocksDBColumnFamilyManager::Family::Definitions)));
-
-  result.openArray();
 
   auto rSlice = rocksDBSlice(RocksDBEntryType::Collection);
 
@@ -1209,20 +1208,15 @@ ErrorCode RocksDBEngine::getCollectionsAndIndexes(
       continue;
     }
 
-    auto slice =
-        VPackSlice(reinterpret_cast<uint8_t const*>(iter->value().data()));
-
-    if (arangodb::basics::VelocyPackHelper::getBooleanValue(
-            slice, StaticStrings::DataSourceDeleted, false)) {
+    auto descriptor = CollectionDescriptor::fromVelocyPack(
+        VPackSlice(reinterpret_cast<uint8_t const*>(iter->value().data())));
+    if (descriptor.internal.deleted) {
       continue;
     }
-
-    result.add(slice);
+    collections.emplace_back(std::move(descriptor));
   }
 
-  result.close();
-
-  return TRI_ERROR_NO_ERROR;
+  return collections;
 }
 
 ErrorCode RocksDBEngine::getViews(TRI_vocbase_t& vocbase,
@@ -2699,31 +2693,22 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 
   // scan the database path for collections
   try {
-    VPackBuilder builder;
-    auto res = getCollectionsAndIndexes(*vocbase, builder, wasCleanShutdown,
-                                        isUpgrade);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-
-    VPackSlice slice = builder.slice();
-    TRI_ASSERT(slice.isArray());
+    auto descriptors = getCollectionsAndIndexes(*vocbase);
 
     LOG_TOPIC("f1275", TRACE, arangodb::Logger::ENGINES)
-        << "processing collections metadata in database '" << vocbase->name()
-        << "': " << slice.toJson();
+        << "processing metadata of " << descriptors.size()
+        << " collections in database '" << vocbase->name() << "'";
 
-    for (VPackSlice it : VPackArrayIterator(slice)) {
+    for (auto& descriptor : descriptors) {
       // we found a collection that is still active
       LOG_TOPIC("b2ef2", TRACE, arangodb::Logger::ENGINES)
           << "processing collection metadata in database '" << vocbase->name()
-          << "': " << it.toJson();
+          << "': " << descriptor.mutableProps.name;
 
-      TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
-      TRI_ASSERT(!it.get("deleted").isTrue());
+      TRI_ASSERT(!descriptor.identity.id.empty());
 
-      auto collection = vocbase->createCollectionObject(it, /*isAStub*/ false);
+      auto collection = vocbase->createCollectionObject(std::move(descriptor),
+                                                        /*isAStub*/ false);
       TRI_ASSERT(collection != nullptr);
 
       auto phy = static_cast<RocksDBCollection*>(collection->getPhysical());

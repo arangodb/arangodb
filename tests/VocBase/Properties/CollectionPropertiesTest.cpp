@@ -120,7 +120,7 @@ class CollectionPropertiesTest : public ::testing::Test {
     res.clusteringConstant.numberOfShards = 12;
     res.clusteringMutable.replicationFactor = 3;
     res.clusteringMutable.writeConcern = 2;
-    res.internal.id = DataSourceId{42};
+    res.identity.id = DataSourceId{42};
     return res;
   }
 

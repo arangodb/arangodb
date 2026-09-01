@@ -22,9 +22,12 @@
 
 #pragma once
 
+#include "Basics/StaticStrings.h"
 #include "VocBase/Properties/ClusteringConstantProperties.h"
 #include "VocBase/Properties/ClusteringMutableProperties.h"
 #include "VocBase/Properties/CollectionConstantProperties.h"
+#include "VocBase/Properties/CollectionIdentity.h"
+#include "VocBase/Properties/CollectionIndexesProperties.h"
 #include "VocBase/Properties/CollectionMutableProperties.h"
 #include "VocBase/Properties/CollectionInternalProperties.h"
 #include "VocBase/Properties/CollectionStorageProperties.h"
@@ -37,11 +40,14 @@ struct DatabaseConfiguration;
 
 struct CollectionDescriptor {
   CollectionConstantProperties constant{};
+  CollectionIdentity identity{};
   CollectionInternalProperties internal{};
   ClusteringConstantProperties clusteringConstant{};
   ClusteringMutableProperties clusteringMutable{};
   CollectionMutableProperties mutableProps{};
   CollectionStorageProperties storage{};
+  // Serializes as a bare array, so this cannot be embedded like the others.
+  CollectionIndexesProperties indexes{};
   bool operator==(CollectionDescriptor const&) const = default;
 
   static CollectionDescriptor fromVelocyPack(velocypack::Slice info);
@@ -58,9 +64,11 @@ struct CollectionDescriptor {
 template<class Inspector>
 auto inspect(Inspector& f, CollectionDescriptor& d) {
   auto result = f.object(d).fields(
-      f.embedFields(d.constant), f.embedFields(d.internal),
-      f.embedFields(d.clusteringConstant), f.embedFields(d.clusteringMutable),
-      f.embedFields(d.mutableProps), f.embedFields(d.storage));
+      f.embedFields(d.constant), f.embedFields(d.identity),
+      f.embedFields(d.internal), f.embedFields(d.clusteringConstant),
+      f.embedFields(d.clusteringMutable), f.embedFields(d.mutableProps),
+      f.embedFields(d.storage),
+      serverOnlyField(f, StaticStrings::Indexes, d.indexes));
 
   if constexpr (isInternalContext<Inspector>) {
     return inspection::Status{std::move(result)};

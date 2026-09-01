@@ -63,14 +63,13 @@ struct MockVocbase : TRI_vocbase_t {
   virtual ~MockVocbase() = default;
 
   auto registerLogicalCollection(std::string name, LogId logId) {
-    VPackBuilder builder;
-    builder.openObject();
-    builder.add("name", std::move(name));
-    builder.add("groupId", 1234);
-    builder.add("replicatedStateId", logId);
-    builder.close();
-    auto col =
-        std::make_shared<LogicalCollection>(*this, builder.slice(), false);
+    CollectionDescriptor descriptor;
+    descriptor.mutableProps.name = std::move(name);
+    descriptor.clusteringConstant.groupId = agency::CollectionGroupId{1234};
+    descriptor.clusteringConstant.replicatedStateId = logId;
+
+    auto col = std::make_shared<LogicalCollection>(*this, std::move(descriptor),
+                                                   false);
     storageEngine.registerCollection(*this, col);
     return col;
   }

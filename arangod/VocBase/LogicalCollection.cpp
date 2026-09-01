@@ -65,6 +65,7 @@
 #include <velocypack/Utf8Helper.h>
 
 #include <format>
+#include <functional>
 
 using namespace arangodb;
 using Helper = basics::VelocyPackHelper;
@@ -114,6 +115,36 @@ std::string readGloballyUniqueId(velocypack::Slice info) {
         info, StaticStrings::DataSourceName, StaticStrings::Empty);
   }
 
+  return StaticStrings::Empty;
+}
+
+std::string readGloballyUniqueId(CollectionDescriptor const& d) {
+  auto const& guid = d.identity.guid;
+  if (!guid.empty()) {
+    // check if the globallyUniqueId is only numeric. This causes ambiguities
+    // later and can only happen (only) for collections created with v3.3.0 (the
+    // GUID generation process was changed in v3.3.1 already to fix this issue).
+    // remove the globallyUniqueId so a new one will be generated server.side
+    bool validNumber = false;
+    NumberUtils::atoi_positive<uint64_t>(guid.data(), guid.data() + guid.size(),
+                                         validNumber);
+    if (!validNumber) {
+      // GUID is not just numeric, this is fine
+      return guid;
+    }
+    // GUID is only numeric - we must not use it
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // this should never happen for any collections created during testing. the
+    // only way to make this happen is using a collection created with v3.3.0,
+    // which we will not have in our tests.
+    TRI_ASSERT(false);
+#endif
+  }
+
+  // predictable UUID for legacy collections
+  if (d.storage.version < CollectionVersion::v33) {
+    return d.mutableProps.name;
+  }
   return StaticStrings::Empty;
 }
 
@@ -177,15 +208,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   TRI_UpdateTickServer(id().id());
 
   if (replicationVersion() == replication::Version::TWO &&
-      info.hasKey("groupId")) {
-    _groupId = info.get("groupId").getNumericValue<uint64_t>();
-    if (auto stateId = info.get("replicatedStateId"); stateId.isNumber()) {
-      _replicatedStateId =
-          info.get("replicatedStateId").extract<replication2::LogId>();
-    }
-    // We are either a cluster collection, or we need to have a
-    // replicatedStateID.
-    TRI_ASSERT(planId() == id() || _replicatedStateId.has_value());
+      _properties.clusteringConstant.groupId.has_value()) {
+    TRI_ASSERT(planId() == id() || replicatedStateIdIfAny().has_value());
   }
   // TODO: THIS NEEDS CLEANUP (Naming & Structural issue)
   initializeSmartAttributesBefore(info);
@@ -229,24 +253,19 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase,
                                      CollectionDescriptor descriptor,
                                      bool isAStub)
     : LogicalDataSource(
-          *this, vocbase, descriptor.internal.id,
-          // COR-885: load path must pass the stored id
-          std::string{},
-          // COR-885: load path must pass the stored planId
-          DataSourceId::none(), std::string{descriptor.mutableProps.name},
+          *this, vocbase, descriptor.identity.id,
+          ::readGloballyUniqueId(descriptor), descriptor.identity.planId,
+          std::string{descriptor.mutableProps.name},
           NameValidator::isSystemName(descriptor.mutableProps.name) &&
               descriptor.constant.isSystem,
-          // COR-885: load path must pass the stored deleted flag
-          /*deleted*/ false),
+          descriptor.internal.deleted),
       _properties(std::move(descriptor)),
-      // COR-885: load path must pass the stored version
-      _version(currentVersion()),
+      _version(_properties.storage.version),
       _v8CacheVersion(0),
       _isAStub(isAStub),
       _allowUserKeys(
           std::visit([](auto const& opts) { return opts.allowUserKeys; },
                      _properties.constant.keyOptions)),
-      // COR-885: load path must default this to false
       _usesRevisionsAsDocumentIds(
           _properties.internal.usesRevisionsAsDocumentIds),
       _syncByRevision(determineSyncByRevision()),
@@ -282,9 +301,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase,
 
   if (replicationVersion() == replication::Version::TWO &&
       _properties.clusteringConstant.groupId.has_value()) {
-    _groupId = _properties.clusteringConstant.groupId.value().id();
-    // COR-885: load path must set the stored replicatedStateId
-    TRI_ASSERT(planId() == id() || _replicatedStateId.has_value());
+    TRI_ASSERT(planId() == id() || replicatedStateIdIfAny().has_value());
   }
 
   // TODO: THIS NEEDS CLEANUP (Naming & Structural issue)
@@ -306,8 +323,10 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase,
   // This has to be called AFTER _physical and _logical are properly linked
   // together.
 
-  // COR-885: the load path must pass the stored index definitions
-  prepareIndexes(VPackSlice::emptyArraySlice());
+  VPackBuilder indexesBuilder;
+  velocypack::serialize(indexesBuilder, _properties.indexes);
+  // TODO: Create a inspectable struct for index infos
+  prepareIndexes(indexesBuilder.slice());
   decorateWithInternalValidators();
 
   _keyGenerator = KeyGeneratorHelper::createKeyGenerator(
@@ -411,42 +430,53 @@ bool LogicalCollection::cacheEnabled() const noexcept {
 }
 
 CollectionDescriptor LogicalCollection::properties() const {
+  // _properties holds the values the collection was built with. Everything
+  // another object owns at runtime is refreshed here, so the result is a
+  // snapshot rather than a copy of the construction input.
   auto d = _properties;
 
-  // Only update the mutable fields with the current values
+  // LogicalDataSource owns all three: it generates the id and the guid when
+  // they arrive empty, and resolves planId to id for a standalone collection.
+  d.identity.id = id();
+  d.identity.guid = guid();
+  d.identity.planId = planId();
+
+  d.internal.deleted = deleted();
+  d.internal.usesRevisionsAsDocumentIds = _usesRevisionsAsDocumentIds;
+  d.internal.syncByRevision = _syncByRevision.load(std::memory_order_relaxed);
+  d.internal.internalValidatorType =
+      _internalValidatorTypes.load(std::memory_order_relaxed);
+
   d.mutableProps.name = name();
   d.mutableProps.cacheEnabled = cacheEnabled();
+
+  d.clusteringConstant.numberOfShards = numberOfShards();
+  d.clusteringConstant.shardKeys = shardKeys();
+  d.clusteringConstant.shardingStrategy =
+      shardingInfo()->shardingStrategyName();
+  d.clusteringConstant.shards = *shardIds();
+  if (auto distLike = distributeShardsLike(); !distLike.empty()) {
+    d.clusteringConstant.distributeShardsLikeCid = std::move(distLike);
+  }
 
   d.clusteringMutable.waitForSync =
       _waitForSync.load(std::memory_order_relaxed);
   d.clusteringMutable.replicationFactor = replicationFactor();
   d.clusteringMutable.writeConcern = writeConcern();
 
-  d.clusteringConstant.numberOfShards = numberOfShards();
-  d.clusteringConstant.shardKeys = shardKeys();
-  d.clusteringConstant.shardingStrategy =
-      shardingInfo()->shardingStrategyName();
-  if (auto distLike = distributeShardsLike(); !distLike.empty()) {
-    d.clusteringConstant.distributeShardsLikeCid = std::move(distLike);
-  }
-
-  d.internal.id = id();
-  d.internal.usesRevisionsAsDocumentIds = _usesRevisionsAsDocumentIds;
-  d.internal.syncByRevision = _syncByRevision.load(std::memory_order_relaxed);
-  d.internal.internalValidatorType =
-      _internalValidatorTypes.load(std::memory_order_relaxed);
+  d.storage.version = _version;
 
   return d;
 }
 
 bool LogicalCollection::waitForSync() const noexcept {
-  if (_groupId.has_value() && ServerState::instance()->isDBServer()) {
+  if (groupId().has_value() && ServerState::instance()->isDBServer()) {
     TRI_ASSERT(replicationVersion() == replication::Version::TWO)
         << "Set a groupId although we are not in Replication Two";
     auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
     auto const& group = ci.getCollectionGroupById(
-        replication2::agency::CollectionGroupId{_groupId.value()});
+        replication2::agency::CollectionGroupId{groupId().value()});
     if (group) {
       return group->attributes.mutableAttributes.waitForSync;
     }
@@ -468,13 +498,13 @@ size_t LogicalCollection::replicationFactor() const noexcept {
 }
 
 size_t LogicalCollection::writeConcern() const noexcept {
-  if (_groupId.has_value() && ServerState::instance()->isDBServer()) {
+  if (groupId().has_value() && ServerState::instance()->isDBServer()) {
     TRI_ASSERT(replicationVersion() == replication::Version::TWO)
         << "Set a groupId although we are not in Replication Two";
     auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
     auto const& group = ci.getCollectionGroupById(
-        replication2::agency::CollectionGroupId{_groupId.value()});
+        replication2::agency::CollectionGroupId{groupId().value()});
     if (group) {
       return group->attributes.mutableAttributes.writeConcern;
     }
@@ -853,35 +883,24 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
     build.add("status", VPackValue(/*TRI_VOC_COL_STATUS_LOADED*/ 3));
     build.add("statusString", VPackValue("loaded"));
   }
+  // Keys another object owns the live value for. It emits them below, so the
+  // descriptor's copy is skipped here to avoid a duplicate key.
+  static constexpr std::array kEmittedElsewhere{
+      // LogicalDataSource
+      "id", "cid", "name", "isSystem", "deleted", "globallyUniqueId", "planId",
+      // ShardingInfo
+      "numberOfShards", "shardKeys", "shards", "shardingStrategy",
+      "distributeShardsLike", "replicationFactor", "writeConcern",
+      "minReplicationFactor",
+      // PhysicalCollection
+      "objectId", "cacheEnabled", "indexes",
+      // LogicalCollection and VirtualClusterSmartEdgeCollection, below
+      "keyOptions", "schema", "computedValues", "smartGraphAttribute",
+      "smartJoinAttribute", "shadowCollections"};
 
-  build.add(StaticStrings::Version,
-            VPackValue(static_cast<uint32_t>(_version)));
-  // Collection Flags
   auto props = properties();
-
   VPackBuilder tmp;
   velocypack::serializeWithContext(tmp, props, InspectInternalContext{});
-  // For these, the descriptor's copy is not the value to publish -- another
-  // object owns the live one and emits it below. We want to skipping them to
-  // avoid adding duplicate key holding a stale value.
-  static constexpr std::array kEmittedElsewhere{"name",
-                                                "isSystem",
-                                                "keyOptions",
-                                                "numberOfShards",
-                                                "shardKeys",
-                                                "replicationFactor",
-                                                "writeConcern",
-                                                "minReplicationFactor",
-                                                "distributeShardsLike",
-                                                "shardingStrategy",
-                                                "objectId",
-                                                "cacheEnabled",
-                                                "smartGraphAttribute",
-                                                "smartJoinAttribute",
-                                                "schema",
-                                                "computedValues",
-                                                "groupId"};
-
   for (auto it : VPackObjectIterator(tmp.slice())) {
     auto key = it.key.stringView();
     if (std::ranges::find(kEmittedElsewhere, key) != kEmittedElsewhere.end()) {
@@ -914,26 +933,26 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
 
   // Physical Information
   getPhysical()->getPropertiesVPack(build);
-  // Indexes
-  build.add(VPackValue(StaticStrings::Indexes));
-  auto indexFlags = Index::makeFlags();
-  // hide hidden indexes. In effect hides unfinished indexes,
-  // and iResearch links (only on a single-server and coordinator)
-  if (forPersistence) {
-    indexFlags = Index::makeFlags(Index::Serialize::Internals);
-  }
-  if (forMaintance) {
-    indexFlags = Index::makeFlags(Index::Serialize::Internals,
-                                  Index::Serialize::Maintenance);
-  }
 
+  // Indexes. Hidden ones (unfinished indexes and iResearch links) are only
+  // shown when persisting; the vector index reports its trainingState to the
+  // agency even while in progress.
+  build.add(VPackValue(StaticStrings::Indexes));
+  auto const indexFlags = std::invoke([&] {
+    if (forMaintance) {
+      return Index::makeFlags(Index::Serialize::Internals,
+                              Index::Serialize::Maintenance);
+    }
+    if (forPersistence) {
+      return Index::makeFlags(Index::Serialize::Internals);
+    }
+    return Index::makeFlags();
+  });
   auto const filter = [indexFlags, forPersistence, forMaintance,
                        showInProgress](Index const* idx,
                                        decltype(Index::makeFlags())& flags) {
     if ((forPersistence || !idx->isHidden()) &&
         (showInProgress || !idx->inProgress() ||
-         // We do this since we need trainingState of the vector index in agency
-         // so we can report it to the end user
          (forMaintance && idx->type() == IndexType::Vector))) {
       flags = indexFlags;
       return true;
@@ -951,40 +970,30 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
 
   std::shared_ptr<replication2::agency::CollectionGroupPlanSpecification const>
       group;
-  if (_groupId.has_value()) {
+  if (auto gid = groupId(); gid.has_value()) {
     TRI_ASSERT(replicationVersion() == replication::Version::TWO)
         << "Set a groupId although we are not in Replication Two";
     auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
     group = ci.getCollectionGroupById(
-        replication2::agency::CollectionGroupId{_groupId.value()});
+        replication2::agency::CollectionGroupId{gid.value()});
   }
-  bool isReplicationTWO = group != nullptr;
+  bool const isReplicationTWO = group != nullptr;
+
+  bool includeShardsEntry = true;
 #ifdef USE_ENTERPRISE
   if (isSmart() && type() == TRI_COL_TYPE_EDGE &&
       ServerState::instance()->isRunningInCluster()) {
     TRI_ASSERT(!isSmartChild());
-    VirtualClusterSmartEdgeCollection const* edgeCollection =
-        static_cast<arangodb::VirtualClusterSmartEdgeCollection const*>(this);
-    if (edgeCollection == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "unable to cast smart edge collection");
-    }
-    edgeCollection->shardMapToVelocyPack(build);
-    bool includeShardsEntry = false;
-    _sharding->toVelocyPack(build, isReplicationTWO, ctx != Serialization::List,
-                            includeShardsEntry);
-  } else {
-    _sharding->toVelocyPack(build, isReplicationTWO,
-                            ctx != Serialization::List);
+    // A smart edge collection publishes the shard map of its children instead.
+    static_cast<VirtualClusterSmartEdgeCollection const*>(this)
+        ->shardMapToVelocyPack(build);
+    includeShardsEntry = false;
   }
-#else
-  _sharding->toVelocyPack(build, isReplicationTWO, ctx != Serialization::List);
 #endif
+  _sharding->toVelocyPack(build, isReplicationTWO, ctx != Serialization::List,
+                          includeShardsEntry);
+
   if (group) {
-    build.add("groupId", VPackValue(_groupId.value()));
-    if (_replicatedStateId) {
-      build.add("replicatedStateId", VPackValue(*_replicatedStateId));
-    }
     // For replication1 the _sharding is responsible.
     // For TWO the group contains those attributes
 
@@ -1463,6 +1472,15 @@ void LogicalCollection::decorateWithInternalValidators() {
   decorateWithInternalEEValidators();
 }
 
+std::optional<uint64_t> LogicalCollection::groupId() const noexcept {
+  if (replicationVersion() != replication::Version::TWO) {
+    return std::nullopt;
+  }
+  auto const& groupId = _properties.clusteringConstant.groupId;
+  return groupId.has_value() ? std::optional{groupId.value().id()}
+                             : std::nullopt;
+}
+
 replication2::LogId LogicalCollection::shardIdToStateId(
     ShardID const& shardId) {
   auto logId = tryShardIdToStateId(shardId);
@@ -1506,9 +1524,9 @@ auto LogicalCollection::getDocumentState() const
         replication2::replicated_state::document::DocumentState>> {
   using namespace replication2::replicated_state;
 
-  TRI_ASSERT(_replicatedStateId.has_value());
+  TRI_ASSERT(replicatedStateIdIfAny().has_value());
   auto maybeState =
-      vocbase().getReplicatedStateById(_replicatedStateId.value());
+      vocbase().getReplicatedStateById(replicatedStateIdIfAny().value());
   // Note that while we assert this for now, I am not sure that we can rely on
   // it. I don't know of any mechanism (I also haven't checked thoroughly) that
   // would prevent the state of a collection being deleted while this function
@@ -1522,7 +1540,7 @@ auto LogicalCollection::getDocumentState() const
   }
   ADB_PROD_ASSERT(maybeState.ok())
       << "Missing document state in shard " << name() << " and log "
-      << _replicatedStateId.value();
+      << replicatedStateIdIfAny().value();
   auto stateMachine =
       basics::downCast<ReplicatedState<document::DocumentState>>(
           std::move(maybeState).get());
@@ -1551,7 +1569,7 @@ auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
                      "Shard {}/{}/{} is not available as leader, associated "
                      "replicated log is {}",
                      vocbase().name(), planId().id(), name(),
-                     *_replicatedStateId);
+                     *replicatedStateIdIfAny());
   }
 
   return leader;
@@ -1576,14 +1594,14 @@ void LogicalCollection::decorateWithInternalEEValidators() {
 auto LogicalCollection::groupID() const noexcept
     -> arangodb::replication2::agency::CollectionGroupId {
   ADB_PROD_ASSERT(replicationVersion() == replication::Version::TWO &&
-                  _groupId.has_value());
-  return arangodb::replication2::agency::CollectionGroupId{_groupId.value()};
+                  groupId().has_value());
+  return arangodb::replication2::agency::CollectionGroupId{groupId().value()};
 }
 
 auto LogicalCollection::replicatedStateId() const noexcept
     -> arangodb::replication2::LogId {
   ADB_PROD_ASSERT(replicationVersion() == replication::Version::TWO &&
-                  _replicatedStateId.has_value())
+                  replicatedStateIdIfAny().has_value())
       << "collection " << name() << " has no replicated state";
-  return _replicatedStateId.value();
+  return replicatedStateIdIfAny().value();
 }
