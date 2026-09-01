@@ -56,9 +56,7 @@
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "RestServer/FrontendFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "RestServer/ScriptFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Utilities/NameValidator.h"
@@ -72,7 +70,6 @@
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-deadline.h"
-#include "V8Server/FoxxFeature.h"
 #include "V8Server/V8Executor.h"
 #include "V8Server/v8-actions.h"
 #include "V8Server/v8-dispatcher.h"
@@ -160,8 +157,12 @@ V8DealerFeature::V8DealerFeature(
   if (!_options.enableJS) {
     disable();
 
-    server.disableFeatures<V8PlatformFeature, ActionFeature, ScriptFeature,
-                           FoxxFeature, FrontendFeature>();
+    // V8PlatformFeature, ScriptFeature, FoxxFeature and FrontendFeature are
+    // never registered at all when JS is disabled (COR-861, see
+    // ArangodServer::addFeatures()). ActionFeature is still unconditionally
+    // registered -- see COR-861 for why it isn't included in that same
+    // conditional-registration pass -- so it still needs disabling here.
+    server.disableFeatures<ActionFeature>();
     return;
   }
 }

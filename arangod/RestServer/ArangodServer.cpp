@@ -238,8 +238,15 @@ void ArangodServer::addFeatures() {
       database, getOptions<upgrade::ClusterUpgradeOptionsProvider>());
   addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());
 #ifdef USE_V8
+  // read once here: V8PlatformFeature, ScriptFeature, FoxxFeature and
+  // FrontendFeature only exist to serve JavaScript, so when JS is disabled
+  // we skip registering them entirely (COR-861) instead of registering them
+  // and immediately disabling them from V8DealerFeature's constructor.
+  bool const enableJS = getOptions<V8DealerOptionsProvider>().enableJS;
   addFeature<ConsoleFeature>();
-  addFeature<V8PlatformFeature>(getOptions<V8PlatformOptionsProvider>());
+  if (enableJS) {
+    addFeature<V8PlatformFeature>(getOptions<V8PlatformOptionsProvider>());
+  }
   addFeature<V8SecurityFeature>(AllowListStrictness::STRICT,
                                 getOptions<V8SecurityOptionsProvider>());
 #endif
@@ -256,8 +263,10 @@ void ArangodServer::addFeatures() {
   auto& flush = addFeature<FlushFeature>(metrics);
   addFeature<FortuneFeature>(getOptions<fortune::FortuneOptionsProvider>());
 #ifdef USE_V8
-  addFeature<FoxxFeature>(getOptions<FoxxOptionsProvider>());
-  addFeature<FrontendFeature>(getOptions<FrontendOptionsProvider>());
+  if (enableJS) {
+    addFeature<FoxxFeature>(getOptions<FoxxOptionsProvider>());
+    addFeature<FrontendFeature>(getOptions<FrontendOptionsProvider>());
+  }
 #endif
   addFeature<GeneralServerFeature>(metrics,
                                    getOptions<GeneralServerOptionsProvider>(),
@@ -298,7 +307,9 @@ void ArangodServer::addFeatures() {
       getOptions<ProcessEnvironmentOptionsProvider>());
 #endif
 #ifdef USE_V8
-  addFeature<ScriptFeature>(_ret, getOptions<ScriptOptionsProvider>());
+  if (enableJS) {
+    addFeature<ScriptFeature>(_ret, getOptions<ScriptOptionsProvider>());
+  }
   auto& v8DealerFeature = addFeature<V8DealerFeature>(
       metrics, getOptions<V8DealerOptionsProvider>());
 #endif
