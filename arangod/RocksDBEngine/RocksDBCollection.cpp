@@ -302,6 +302,14 @@ size_t getParallelism(velocypack::Slice slice) {
       IndexFactory::kDefaultParallelism);
 }
 
+// A cache is meaningless without a manager, and is never built for system
+// collections, for coordinator stubs, or on a coordinator at all.
+bool canEnableCache(cache::Manager const* cacheManager,
+                    LogicalCollection const& collection) {
+  return cacheManager != nullptr && !collection.system() &&
+         !collection.isAStub() && !ServerState::instance()->isCoordinator();
+}
+
 }  // namespace
 
 namespace arangodb {
@@ -319,9 +327,7 @@ RocksDBCollection::RocksDBCollection(
       _maxCacheValueSize(
           _cacheManager == nullptr ? 0 : _cacheManager->maxCacheValueSize()),
       _readWriteMetrics(readWriteMetrics),
-      _cacheEnabled(_cacheManager != nullptr && !collection.system() &&
-                    !collection.isAStub() &&
-                    !ServerState::instance()->isCoordinator() &&
+      _cacheEnabled(canEnableCache(cacheManager, collection) &&
                     descriptor.mutableProps.cacheEnabled) {
   TRI_ASSERT(_logicalCollection.isAStub() || objectId() != 0);
   if (_cacheEnabled.load(std::memory_order_relaxed)) {
@@ -395,9 +401,8 @@ void RocksDBCollection::freeMemory() noexcept {
 }
 
 Result RocksDBCollection::setCacheEnabled(bool cacheEnabled) {
-  bool enable = _cacheManager != nullptr && !_logicalCollection.system() &&
-                !_logicalCollection.isAStub() &&
-                !ServerState::instance()->isCoordinator() && cacheEnabled;
+  bool enable =
+      canEnableCache(_cacheManager, _logicalCollection) && cacheEnabled;
   _cacheEnabled.store(enable, std::memory_order_relaxed);
   primaryIndex()->setCacheEnabled(enable);
 

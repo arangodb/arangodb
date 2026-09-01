@@ -60,7 +60,7 @@ struct CollectionConstantProperties {
     return TRI_col_type_e(type);
   }
 
-  bool operator==(CollectionConstantProperties const&) const;
+  bool operator==(CollectionConstantProperties const&) const = default;
 };
 
 template<class Inspector>
