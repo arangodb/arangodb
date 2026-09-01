@@ -1,5 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+
+* Upgraded OpenSSL to 3.5.8.
+
 * COR-741: AQL `MATCH` inline bare attribute keeps support unquoted nested
   paths. Dot notation preserves object hierarchy, e.g.
   `MATCH (v:users RETURN profile.name) RETURN v` binds `v` to
