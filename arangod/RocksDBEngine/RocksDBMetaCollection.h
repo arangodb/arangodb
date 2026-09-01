@@ -46,7 +46,7 @@ class RocksDBEngine;
 class RocksDBMetaCollection : public PhysicalCollection {
  public:
   explicit RocksDBMetaCollection(LogicalCollection& collection,
-                                 velocypack::Slice info);
+                                 CollectionDescriptor const& descriptor);
   virtual ~RocksDBMetaCollection();
 
   void deferDropCollection(

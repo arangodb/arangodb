@@ -29,6 +29,8 @@
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <atomic>
+
 namespace rocksdb {
 class Transaction;
 }
@@ -46,7 +48,7 @@ class ClusterCollection final : public PhysicalCollection {
  public:
   explicit ClusterCollection(LogicalCollection& collection,
                              ClusterEngineType engineType,
-                             velocypack::Slice info);
+                             CollectionDescriptor const& descriptor);
 
   ~ClusterCollection();
 
@@ -59,7 +61,7 @@ class ClusterCollection final : public PhysicalCollection {
   /// @brief flushes the current index selectivity estimates
   void flushClusterIndexEstimates() override;
 
-  Result updateProperties(velocypack::Slice slice) override;
+  Result setCacheEnabled(bool cacheEnabled) override;
 
   /// @brief export properties
   void getPropertiesVPack(velocypack::Builder&) const override;
@@ -157,7 +159,7 @@ class ClusterCollection final : public PhysicalCollection {
   // keep locks just to adhere to behavior in other collections
   mutable basics::ReadWriteLock _exclusiveLock;
   ClusterEngineType _engineType;
-  velocypack::Builder _info;
+  std::atomic<bool> _cacheEnabled;
   ClusterSelectivityEstimates _selectivityEstimates;
 };
 

@@ -33,6 +33,7 @@
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/LogicalDataSource.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 #include "VocBase/Validators.h"
 #include "VocBase/voc-types.h"
 
@@ -99,6 +100,9 @@ class LogicalCollection : public LogicalDataSource {
  public:
   LogicalCollection() = delete;
   LogicalCollection(Database& vocbase, velocypack::Slice info, bool isAStub);
+  // TODO (COR-885): This ctor only works for create path
+  LogicalCollection(Database& vocbase, CollectionDescriptor descriptor,
+                    bool isAStub);
   LogicalCollection(LogicalCollection const&) = delete;
   LogicalCollection& operator=(LogicalCollection const&) = delete;
   ~LogicalCollection() override;
@@ -144,7 +148,9 @@ class LogicalCollection : public LogicalDataSource {
 
   uint32_t v8CacheVersion() const noexcept { return _v8CacheVersion; }
 
-  TRI_col_type_e type() const noexcept { return _type; }
+  TRI_col_type_e type() const noexcept {
+    return _properties.constant.getType();
+  }
 
   // For normal collections the realNames is just a vector of length 1
   // with its name. For smart edge collections (Enterprise Edition only)
@@ -166,14 +172,17 @@ class LogicalCollection : public LogicalDataSource {
   bool waitForSync() const noexcept;
   bool cacheEnabled() const noexcept;
 #ifdef USE_ENTERPRISE
-  bool isDisjoint() const noexcept { return _isDisjoint; }
-  bool isSmart() const noexcept { return _isSmart; }
-  bool isSmartChild() const noexcept { return _isSmartChild; }
+  bool isDisjoint() const noexcept { return _properties.constant.isDisjoint; }
+  bool isSmart() const noexcept { return _properties.constant.isSmart; }
+  bool isSmartChild() const noexcept {
+    return _properties.internal.isSmartChild;
+  }
   bool hasSmartJoinAttribute() const noexcept {
-    return !_smartJoinAttribute.empty();
+    return _properties.constant.smartJoinAttribute.has_value();
   }
   bool hasSmartGraphAttribute() const noexcept {
-    return !_smartGraphAttribute.empty();
+    return std::atomic_load_explicit(&_smartGraphAttribute,
+                                     std::memory_order_acquire) != nullptr;
   }
 
   bool isLocalSmartEdgeCollection() const noexcept;
@@ -313,6 +322,8 @@ class LogicalCollection : public LogicalDataSource {
   using LogicalDataSource::properties;
 
   /// @brief updates properties of an existing DataSource
+  /// TODO: Investigate if this can take a data structure like
+  /// CollectionDescriptor instead of a VPackSlice
   virtual Result properties(velocypack::Slice definition);
 
   /// @brief return the figures for a collection
@@ -411,15 +422,24 @@ class LogicalCollection : public LogicalDataSource {
       -> arangodb::replication2::agency::CollectionGroupId;
   auto replicatedStateId() const noexcept -> arangodb::replication2::LogId;
 
+  CollectionDescriptor properties() const;
+
  private:
   void initializeSmartAttributesBefore(velocypack::Slice info);
   void initializeSmartAttributesAfter(velocypack::Slice info);
+  void initializeSmartAttributesBefore(CollectionDescriptor const& descriptor);
+  void initializeSmartAttributesAfter(CollectionDescriptor const& descriptor);
 
   void prepareIndexes(velocypack::Slice indexesSlice);
 
   bool determineSyncByRevision() const;
 
   void decorateWithInternalValidators();
+
+  // Parsed once at construction; only its immutable fields are authoritative;
+  // the mutable ones are seeded from here into the attributes below and are
+  // stale afterwards
+  CollectionDescriptor const _properties;
 
  protected:
   void addInternalValidator(std::unique_ptr<ValidatorBase>);
@@ -445,38 +465,26 @@ class LogicalCollection : public LogicalDataSource {
   // @brief Internal version used for caching
   uint32_t _v8CacheVersion;
 
-  // @brief Collection type
-  TRI_col_type_e const _type;
-
   /// @brief is this a global collection on a DBServer
   bool const _isAStub;
-
-#ifdef USE_ENTERPRISE
-  // @brief Flag if this collection is a disjoint smart one. (Enterprise Edition
-  // only) can only be true if _isSmart is also true
-  bool const _isDisjoint;
-  // @brief Flag if this collection is a smart one. (Enterprise Edition only)
-  bool const _isSmart;
-  // @brief Flag if this collection is a child of a smart collection (Enterprise
-  // Edition only)
-  bool const _isSmartChild;
-#endif
 
   bool const _allowUserKeys;
 
   bool _usesRevisionsAsDocumentIds;
 
-  // SECTION: Properties
-  std::atomic<bool> _waitForSync;
-
   std::atomic<bool> _syncByRevision;
 
-#ifdef USE_ENTERPRISE
-  mutable std::mutex
-      _smartGraphAttributeLock;  // lock protecting the smartGraphAttribute
-  std::string _smartGraphAttribute;
+  std::atomic<bool> _waitForSync;
 
-  std::string _smartJoinAttribute;
+  // Bitmap of InternalValidatorType. Changed by the maintenance during
+  // cluster upgrades only.
+  std::atomic<uint64_t> _internalValidatorTypes;
+
+#ifdef USE_ENTERPRISE
+  // Set once, either during construction or by the DBServer maintenance
+  // during an upgrade. `nullptr` means "not set". Must be used with atomic
+  // accessors only!! Acquire/release access (load/store).
+  std::shared_ptr<std::string const> _smartGraphAttribute;
 #endif
 
   transaction::CountCache _countCache;
@@ -503,9 +511,6 @@ class LogicalCollection : public LogicalDataSource {
   // `_schema` must be used with atomic accessors only!!
   // We use acquire/release access (load/store)
   std::shared_ptr<ValidatorBase> _schema;
-
-  // This is a bitmap entry of InternalValidatorType entries.
-  uint64_t _internalValidatorTypes;
 
   std::vector<std::unique_ptr<ValidatorBase>> _internalValidators;
 

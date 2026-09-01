@@ -75,28 +75,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info,
   bool const isSmart = basics::VelocyPackHelper::getBooleanValue(
       info, StaticStrings::IsSmart, false);
 
-  if (isSmart && _collection->type() == TRI_COL_TYPE_EDGE &&
-      ServerState::instance()->isRunningInCluster()) {
-    // A smart edge collection in a single server environment does get proper
-    // numberOfShards value. A smart edge collection in a cluster needs to set
-    // numberOfShards to zero by definition.
-    _numberOfShards = 0;
-  }
-
-  if (ServerState::instance()->isCoordinator()) {
-    if (_numberOfShards == 0 && !isSmart) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "invalid number of shards");
-    }
-    // intentionally no call to validateNumberOfShards here,
-    // because this constructor is called from the constructor of
-    // LogicalCollection, and we want LogicalCollection to be created
-    // with any configured number of shards in case the maximum allowed
-    // number of shards is set or decreased in a cluster with already
-    // existing collections that would violate the setting.
-    // so we validate the number of shards against the maximum only
-    // when a collection is created by a user, and on a restore
-  }
+  resolveNumberOfShards(isSmart);
 
   VPackSlice distributeShardsLike =
       info.get(StaticStrings::DistributeShardsLike);
@@ -118,39 +97,26 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info,
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  _replicationFactor = replicationFactor;
-  if (_replicationFactor == 0) {
-    // satellite collection
-    makeSatellite();
-  } else {
+
+  std::optional<size_t> writeConcern;
+  {
     auto writeConcernSlice = info.get(StaticStrings::WriteConcern);
     if (writeConcernSlice
             .isNone()) {  // minReplicationFactor is deprecated in 3.6
       writeConcernSlice = info.get(StaticStrings::MinReplicationFactor);
     }
     if (!writeConcernSlice.isNone()) {
-      if (writeConcernSlice.isNumber()) {
-        _writeConcern = writeConcernSlice.getNumber<size_t>();
-        if (!isSatellite() && _writeConcern > _replicationFactor &&
-            ServerState::instance()->isCoordinator()) {
-          res = writeConcernError(
-              _replicationFactor.load(std::memory_order_relaxed),
-              _writeConcern.load(std::memory_order_relaxed));
-          if (res.fail()) {
-            THROW_ARANGO_EXCEPTION(res);
-          }
-        }
-        if (!isSatellite() && _writeConcern == 0) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                         "writeConcern cannot be 0");
-        }
-      } else {
+      if (!writeConcernSlice.isNumber()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_BAD_PARAMETER,
             "writeConcern needs to be an integer number");
       }
+      writeConcern = writeConcernSlice.getNumber<size_t>();
     }
   }
+
+  applyReplicationFactorAndWriteConcern(isSmart, replicationFactor,
+                                        writeConcern);
 
   res = extractShardKeys(info, _replicationFactor, _shardKeys);
   if (res.fail()) {
@@ -189,6 +155,111 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info,
 
   _shardingStrategy =
       server.getFeature<ShardingFeature>().fromVelocyPack(info, this);
+  TRI_ASSERT(_shardingStrategy != nullptr);
+}
+
+ShardingInfo::ShardingInfo(CollectionDescriptor const& descriptor,
+                           LogicalCollection* collection)
+    : _collection(collection),
+      _numberOfShards(descriptor.clusteringConstant.numberOfShards.value_or(1)),
+      _replicationFactor(1),
+      _writeConcern(1),
+      _distributeShardsLike(
+          descriptor.clusteringConstant.distributeShardsLike.value_or("")),
+      _shardIds(std::make_shared<ShardMap>()) {
+  TRI_ASSERT(_collection != nullptr);
+
+  bool const isSmart = descriptor.constant.isSmart;
+
+  resolveNumberOfShards(isSmart);
+
+  // the inspector's transformer already turned "satellite" into 0
+  applyReplicationFactorAndWriteConcern(
+      isSmart, descriptor.clusteringMutable.replicationFactor.value_or(1),
+      descriptor.clusteringMutable.writeConcern);
+
+  if (auto res = extractShardKeys(descriptor.clusteringConstant.shardKeys,
+                                  _replicationFactor, _shardKeys);
+      res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  initializeShardingStrategy(descriptor);
+}
+
+void ShardingInfo::resolveNumberOfShards(bool isSmart) {
+  if (isSmart && _collection->type() == TRI_COL_TYPE_EDGE &&
+      ServerState::instance()->isRunningInCluster()) {
+    // A smart edge collection in a single server environment does get proper
+    // numberOfShards value. A smart edge collection in a cluster needs to set
+    // numberOfShards to zero by definition.
+    _numberOfShards = 0;
+  }
+
+  if (ServerState::instance()->isCoordinator() && _numberOfShards == 0 &&
+      !isSmart) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "invalid number of shards");
+  }
+  // intentionally no call to validateNumberOfShards here, because this runs
+  // from the constructor of LogicalCollection, and we want LogicalCollection
+  // to be created with any configured number of shards in case the maximum
+  // allowed number of shards is set or decreased in a cluster with already
+  // existing collections that would violate the setting. so we validate the
+  // number of shards against the maximum only when a collection is created by
+  // a user, and on a restore
+}
+
+void ShardingInfo::applyReplicationFactorAndWriteConcern(
+    bool isSmart, size_t replicationFactor,
+    std::optional<size_t> writeConcern) {
+  if (isSmart && replicationFactor == 0) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "'isSmart' and replicationFactor 'satellite' cannot be combined");
+  }
+  _replicationFactor = replicationFactor;
+
+  if (isSatellite()) {
+    // a SatelliteCollection has no write concern of its own
+    makeSatellite();
+    return;
+  }
+
+  if (!writeConcern.has_value()) {
+    return;
+  }
+  if (writeConcern.value() == 0) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "writeConcern cannot be 0");
+  }
+  if (writeConcern.value() > replicationFactor &&
+      ServerState::instance()->isCoordinator()) {
+    THROW_ARANGO_EXCEPTION(
+        writeConcernError(replicationFactor, writeConcern.value()));
+  }
+  _writeConcern = writeConcern.value();
+}
+
+void ShardingInfo::initializeShardingStrategy(
+    CollectionDescriptor const& descriptor) {
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  if (!ServerState::instance()->isRunningInCluster() &&
+      _collection->vocbase().engine().typeName() == "Mock") {
+    // shortcut, so we do not need to set up the whole application
+    // server for testing
+    _shardingStrategy = std::make_unique<ShardingStrategyNone>();
+    return;
+  }
+#endif
+
+  auto const& name = descriptor.clusteringConstant.shardingStrategy;
+  TRI_ASSERT(name.has_value() && !name.value().empty())
+      << "sharding strategy must be resolved before the descriptor is used";
+  _shardingStrategy =
+      _collection->vocbase().server().getFeature<ShardingFeature>().create(
+          name.value(), this);
+
   TRI_ASSERT(_shardingStrategy != nullptr);
 }
 
@@ -310,6 +381,46 @@ Result ShardingInfo::extractShardKeys(velocypack::Slice info,
   }
 
   TRI_ASSERT(!shardKeys.empty());
+  return {};
+}
+
+Result ShardingInfo::extractShardKeys(
+    std::optional<std::vector<std::string>> const& input,
+    size_t replicationFactor, std::vector<std::string>& shardKeys) {
+  TRI_ASSERT(shardKeys.empty());
+
+  // replicationFactor == 0 -> SatelliteCollection
+  if (!input.has_value() || replicationFactor == 0) {
+    shardKeys.emplace_back(StaticStrings::KeyString);
+  } else {
+    for (auto const& key : input.value()) {
+      // remove : char at the beginning or end (for enterprise)
+      std::string_view stripped = key;
+      if (key.starts_with(':')) {
+        stripped = stripped.substr(1);
+      } else if (key.ends_with(':')) {
+        stripped = stripped.substr(0, key.size() - 1);
+      }
+      // system attributes are not allowed (except _key, _from and _to)
+      if (stripped == StaticStrings::IdString ||
+          stripped == StaticStrings::RevString) {
+        return {TRI_ERROR_BAD_PARAMETER,
+                "_id or _rev cannot be used as shard keys"};
+      }
+      if (!stripped.empty()) {
+        shardKeys.emplace_back(key);
+      }
+    }
+    if (shardKeys.empty()) {
+      // Compatibility. Old configs might store empty shard-keys locally.
+      shardKeys.emplace_back(StaticStrings::KeyString);
+    }
+  }
+
+  if (shardKeys.empty() || shardKeys.size() > 8) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            "invalid number of shard keys for collection"};
+  }
   return {};
 }
 

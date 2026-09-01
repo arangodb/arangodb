@@ -24,6 +24,7 @@
 
 #include "Basics/StaticStrings.h"
 #include "Inspection/Access.h"
+#include "Inspection/Types.h"
 #include "Replication2/AgencyCollectionSpecification.h"
 #include "VocBase/Properties/InspectContexts.h"
 #include "VocBase/Properties/UtilityInvariants.h"
@@ -58,44 +59,46 @@ struct ClusteringConstantProperties {
 template<class Inspector>
 auto inspect(Inspector& f, ClusteringConstantProperties& props) {
   auto distShardsLikeField = std::invoke([&]() {
-    if constexpr (std::is_same_v<typename Inspector::Context,
-                                 InspectAgencyContext>) {
+    if constexpr (isAgencyContext<Inspector> || isInternalContext<Inspector>) {
       // The agency requires the CollectionID
-      auto field = f.field(StaticStrings::DistributeShardsLike,
-                           props.distributeShardsLikeCid)
-                       .invariant(UtilityInvariants::isNonEmptyIfPresent);
-      return field;
+      return userInvariant(f,
+                           f.field(StaticStrings::DistributeShardsLike,
+                                   props.distributeShardsLikeCid),
+                           UtilityInvariants::isNonEmptyIfPresent);
     } else {
       // The user gives the CollectionName
-      return f
-          .field(StaticStrings::DistributeShardsLike,
-                 props.distributeShardsLike)
-          .fallback(f.keep())
-          .invariant(UtilityInvariants::isNonEmptyIfPresent);
+      return userInvariant(f,
+                           f.field(StaticStrings::DistributeShardsLike,
+                                   props.distributeShardsLike)
+                               .fallback(f.keep()),
+                           UtilityInvariants::isNonEmptyIfPresent);
     }
   });
 
-  if constexpr (std::is_same_v<typename Inspector::Context,
-                               InspectAgencyContext>) {
-    return f.object(props).fields(
-        f.field(StaticStrings::NumberOfShards, props.numberOfShards)
-            .invariant(UtilityInvariants::isGreaterZeroIfPresent),
-        std::move(distShardsLikeField),
-        f.field(StaticStrings::ShardingStrategy, props.shardingStrategy)
-            .invariant(UtilityInvariants::isValidShardingStrategyIfPresent),
-        f.field(StaticStrings::ShardKeys, props.shardKeys).fallback(f.keep()),
-        f.field("shardsR2", props.shardsR2).fallback(f.keep()),
-        f.field(StaticStrings::GroupId, props.groupId).fallback(f.keep()));
-  } else {
-    // If the user specifies the shards list and groupId, we reject it.
-    return f.object(props).fields(
-        f.field(StaticStrings::NumberOfShards, props.numberOfShards)
-            .invariant(UtilityInvariants::isGreaterZeroIfPresent),
-        std::move(distShardsLikeField),
-        f.field(StaticStrings::ShardingStrategy, props.shardingStrategy)
-            .invariant(UtilityInvariants::isValidShardingStrategyIfPresent),
-        f.field(StaticStrings::ShardKeys, props.shardKeys).fallback(f.keep()));
-  }
+  auto numberOfShardsField = userInvariant(
+      f, f.field(StaticStrings::NumberOfShards, props.numberOfShards),
+      UtilityInvariants::isGreaterZeroIfPresent);
+
+  auto shardingStrategyField = userInvariant(
+      f, f.field(StaticStrings::ShardingStrategy, props.shardingStrategy),
+      UtilityInvariants::isValidShardingStrategyIfPresent);
+
+  // Written by the server only. Reject keeps the create API answering with an
+  // unexpected-attribute error, which is what leaving them undeclared did.
+  auto serverOwned = []() {
+    return isAgencyContext<Inspector> || isInternalContext<Inspector>
+               ? inspection::FieldCondition::Process
+               : inspection::FieldCondition::Reject;
+  };
+
+  return f.object(props).fields(
+      std::move(numberOfShardsField), std::move(distShardsLikeField),
+      std::move(shardingStrategyField),
+      f.field(StaticStrings::ShardKeys, props.shardKeys).fallback(f.keep()),
+      f.field("shardsR2", props.shardsR2).fallback(f.keep()).when(serverOwned),
+      f.field(StaticStrings::GroupId, props.groupId)
+          .fallback(f.keep())
+          .when(serverOwned));
 }
 
 }  // namespace arangodb

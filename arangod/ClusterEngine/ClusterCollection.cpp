@@ -47,16 +47,14 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
 
-#include <velocypack/Collection.h>
-
 namespace arangodb {
 
 ClusterCollection::ClusterCollection(LogicalCollection& collection,
                                      ClusterEngineType engineType,
-                                     velocypack::Slice info)
+                                     CollectionDescriptor const& descriptor)
     : PhysicalCollection(collection),
       _engineType(engineType),
-      _info(info),
+      _cacheEnabled(descriptor.mutableProps.cacheEnabled),
       _selectivityEstimates(collection) {
   TRI_ASSERT(_engineType == ClusterEngineType::RocksDBEngine ||
              _engineType == ClusterEngineType::MockEngine);
@@ -92,49 +90,9 @@ void ClusterCollection::flushClusterIndexEstimates() {
   _selectivityEstimates.flush();
 }
 
-Result ClusterCollection::updateProperties(velocypack::Slice slice) {
-  VPackBuilder merge;
-  merge.openObject();
+Result ClusterCollection::setCacheEnabled(bool cacheEnabled) {
+  _cacheEnabled.store(cacheEnabled, std::memory_order_relaxed);
 
-  if (_engineType == ClusterEngineType::RocksDBEngine) {
-    bool def = basics::VelocyPackHelper::getBooleanValue(
-        _info.slice(), StaticStrings::CacheEnabled, false);
-    merge.add(StaticStrings::CacheEnabled,
-              VPackValue(basics::VelocyPackHelper::getBooleanValue(
-                  slice, StaticStrings::CacheEnabled, def)));
-
-    if (VPackSlice schema = slice.get(StaticStrings::Schema);
-        !schema.isNone()) {
-      merge.add(StaticStrings::Schema, schema);
-    }
-
-    if (VPackSlice computedValues = slice.get(StaticStrings::ComputedValues);
-        !computedValues.isNone()) {
-      merge.add(StaticStrings::ComputedValues, computedValues);
-    }
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  } else if (_engineType == ClusterEngineType::MockEngine) {
-    // do nothing
-#endif
-  } else {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "invalid storage engine");
-  }
-  merge.close();
-  TRI_ASSERT(merge.slice().isObject());
-  TRI_ASSERT(merge.isClosed());
-
-  TRI_ASSERT(_info.slice().isObject());
-  TRI_ASSERT(_info.isClosed());
-
-  VPackBuilder tmp = VPackCollection::merge(_info.slice(), merge.slice(), true);
-  _info = std::move(tmp);
-
-  TRI_ASSERT(_info.slice().isObject());
-  TRI_ASSERT(_info.isClosed());
-
-  // notify all indexes about the properties change for the collection
   auto indexesSnapshot = getIndexesSnapshot();
   auto const& indexes = indexesSnapshot.getIndexes();
   for (auto& idx : indexes) {
@@ -144,8 +102,8 @@ Result ClusterCollection::updateProperties(velocypack::Slice slice) {
     if (idx->type() != IndexType::Inverted &&
         idx->type() != IndexType::IResearchLink) {
       TRI_ASSERT(dynamic_cast<ClusterIndex*>(idx.get()) != nullptr);
-      std::static_pointer_cast<ClusterIndex>(idx)->updateProperties(
-          _info.slice());
+      std::static_pointer_cast<ClusterIndex>(idx)->setCacheEnabled(
+          _cacheEnabled.load(std::memory_order_relaxed));
     }
   }
 
@@ -159,8 +117,7 @@ void ClusterCollection::getPropertiesVPack(velocypack::Builder& result) const {
 
   if (_engineType == ClusterEngineType::RocksDBEngine) {
     result.add(StaticStrings::CacheEnabled,
-               VPackValue(basics::VelocyPackHelper::getBooleanValue(
-                   _info.slice(), StaticStrings::CacheEnabled, false)));
+               VPackValue(_cacheEnabled.load(std::memory_order_relaxed)));
 
     // note: computed values do not need to be handled here, as they are added
     // by LogicalCollection::appendVPack()
@@ -199,8 +156,7 @@ uint64_t ClusterCollection::numberDocuments(transaction::Methods* trx) const {
 }
 
 bool ClusterCollection::cacheEnabled() const noexcept {
-  return basics::VelocyPackHelper::getBooleanValue(
-      _info.slice(), StaticStrings::CacheEnabled, false);
+  return _cacheEnabled.load(std::memory_order_relaxed);
 }
 
 futures::Future<std::shared_ptr<Index>> ClusterCollection::createIndex(

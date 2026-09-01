@@ -67,8 +67,7 @@ class PhysicalCollection {
 
   virtual ~PhysicalCollection() = default;
 
-  // creation happens atm in engine->createCollection
-  virtual Result updateProperties(velocypack::Slice slice) = 0;
+  virtual Result setCacheEnabled(bool cacheEnabled) = 0;
 
   virtual RevisionId revision(transaction::Methods* trx) const = 0;
 

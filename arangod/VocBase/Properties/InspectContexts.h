@@ -22,9 +22,53 @@
 
 #pragma once
 
+#include "Inspection/InspectorBase.h"
+
+#include <type_traits>
+#include <utility>
+
 namespace arangodb {
 
 struct InspectAgencyContext {};
 struct InspectUserContext {};
+
+// Loading data the database itself wrote: an on-disk marker or a plan entry.
+// That data is already committed, so it must never be rejected.
+struct InspectInternalContext {};
+
+namespace detail {
+// Inspector::Context does not exist when no context was passed, so it cannot
+// be named directly. Inspector::hasContext tells us whether it is there.
+template<class Inspector, bool = Inspector::hasContext>
+struct ContextOf {
+  using type = inspection::NoContext;
+};
+
+template<class Inspector>
+struct ContextOf<Inspector, true> {
+  using type = typename Inspector::Context;
+};
+}  // namespace detail
+
+template<class Inspector>
+inline constexpr bool isInternalContext =
+    std::is_same_v<typename detail::ContextOf<Inspector>::type,
+                   InspectInternalContext>;
+
+template<class Inspector>
+inline constexpr bool isAgencyContext =
+    std::is_same_v<typename detail::ContextOf<Inspector>::type,
+                   InspectAgencyContext>;
+
+// Applies `invariant` to `field` only when the value come from user input
+template<class Inspector, class Field, class Invariant>
+auto userInvariant(Inspector&, Field&& field, Invariant&& invariant) {
+  if constexpr (isInternalContext<Inspector>) {
+    return std::forward<Field>(field);
+  } else {
+    return std::forward<Field>(field).invariant(
+        std::forward<Invariant>(invariant));
+  }
+}
 
 }  // namespace arangodb

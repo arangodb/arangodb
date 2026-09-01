@@ -69,6 +69,7 @@ class TransactionCollection;
 class TransactionState;
 class WalAccess;
 struct IDatabaseProvider;
+struct CollectionDescriptor;
 
 namespace rest {
 class RestHandlerFactory;
@@ -132,10 +133,12 @@ class StorageEngine : public application_features::ApplicationFeature {
   // collection creation data with engine-specific information
   virtual void addParametersForNewCollection(velocypack::Builder&,
                                              velocypack::Slice /*info*/);
+  virtual void addParametersForNewCollection(CollectionDescriptor&);
 
   // create storage-engine specific collection
   virtual std::unique_ptr<PhysicalCollection> createPhysicalCollection(
-      LogicalCollection& collection, velocypack::Slice info) = 0;
+      LogicalCollection& collection,
+      CollectionDescriptor const& descriptor) = 0;
 
   // status functionality
   // --------------------

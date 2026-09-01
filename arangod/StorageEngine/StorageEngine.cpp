@@ -66,6 +66,7 @@ StorageEngine::StorageEngine(application_features::ApplicationServer& server,
 
 void StorageEngine::addParametersForNewCollection(velocypack::Builder&,
                                                   VPackSlice) {}
+void StorageEngine::addParametersForNewCollection(CollectionDescriptor&) {}
 
 std::unique_ptr<TRI_vocbase_t> StorageEngine::createDatabase(
     CreateDatabaseInfo&& info) {

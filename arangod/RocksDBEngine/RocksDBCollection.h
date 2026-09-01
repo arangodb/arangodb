@@ -51,7 +51,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
  public:
   explicit RocksDBCollection(
-      LogicalCollection& collection, velocypack::Slice info,
+      LogicalCollection& collection, CollectionDescriptor const& descriptor,
       cache::Manager* cacheManager,
       std::optional<RocksDBReadWriteMetrics>& readWriteMetrics);
   ~RocksDBCollection();
@@ -59,7 +59,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   void deferDropCollection(
       std::function<bool(LogicalCollection&)> const& cb) override final;
 
-  Result updateProperties(velocypack::Slice slice) override;
+  Result setCacheEnabled(bool cacheEnabled) override;
 
   /// @brief export properties
   void getPropertiesVPack(velocypack::Builder&) const override;

@@ -886,3 +886,15 @@ arangodb::velocypack::Builder CreateCollectionBody::toCollectionsCreate()
   }
   return builder;
 }
+
+CollectionDescriptor CreateCollectionBody::toDescriptor() const {
+  CollectionDescriptor d;
+  d.constant = static_cast<CollectionConstantProperties const&>(*this);
+  d.mutableProps = static_cast<CollectionMutableProperties const&>(*this);
+  d.internal = static_cast<CollectionInternalProperties const&>(*this);
+  d.clusteringConstant =
+      static_cast<ClusteringConstantProperties const&>(*this);
+  d.clusteringMutable = static_cast<ClusteringMutableProperties const&>(*this);
+  // storage.objectId is assigned by the storage engine, not by the user
+  return d;
+}
