@@ -586,6 +586,38 @@ void registerSingleFactory(IndexTypeFactory& factory,
   }
 }
 
+// ClusterEngine keeps its own, private RocksDBIndexFactory
+// (rocksDBIndexFactory()) to answer index-type-specific questions
+// (equal/normalize/enhanceIndexDefinition), separate from the
+// ClusterIndexFactory returned by indexFactory(). Those methods delegate to
+// rocksDBIndexFactory(), so it needs the same "arangosearch" entry that
+// registerSingleFactory<RocksDBEngine>() would give a real RocksDBEngine
+// feature -- which never exists on a coordinator, so it has to be fed here
+// instead.
+void registerClusterRocksDBFactory(
+    IndexTypeFactory& factory,
+    application_features::ApplicationServer& server) {
+  if (!server.hasFeature<StorageEngine>()) {
+    return;
+  }
+  auto* engine =
+      dynamic_cast<ClusterEngine*>(&server.getFeature<StorageEngine>());
+  if (engine == nullptr) {
+    return;
+  }
+  auto& engineFactory =
+      const_cast<IndexFactory&>(engine->rocksDBIndexFactory());
+  auto r = engineFactory.emplace(
+      std::string{StaticStrings::ViewArangoSearchType}, factory);
+  if (!r.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        r.errorNumber(),
+        absl::StrCat("failure registering IResearch link factory with index "
+                     "factory from feature '",
+                     engine->name(), "': ", r.errorMessage()));
+  }
+}
+
 void registerFunctions(aql::AqlFunctionFeature& functions) {
   arangodb::iresearch::addFunction(
       functions,
@@ -1051,6 +1083,7 @@ void IResearchFeature::registerIndexFactory() {
   registerSingleFactory<ClusterEngine>(*_clusterFactory, server());
   _rocksDBFactory = IResearchRocksDBLink::createFactory(server());
   registerSingleFactory<RocksDBEngine>(*_rocksDBFactory, server());
+  registerClusterRocksDBFactory(*_rocksDBFactory, server());
 }
 
 #ifdef USE_ENTERPRISE
