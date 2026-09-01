@@ -37,7 +37,6 @@
 
 namespace arangodb {
 
-
 namespace graph {
 
 class GraphManager {
