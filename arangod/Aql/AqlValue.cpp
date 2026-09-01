@@ -46,6 +46,9 @@
 namespace arangodb::aql {
 
 void AqlValue::setPointer(uint8_t const* pointer) noexcept {
+  // the pointer layouts leave bytes 1-7 unused, but isBorrowed() reads byte 1,
+  // so it must be defined rather than whatever was on the stack
+  _data.words[0] = 0;
   setType(AqlValueType::VPACK_SLICE_POINTER);
   _data.slicePointerMeta.pointer = pointer;
 }
@@ -1035,6 +1038,7 @@ AqlValue::AqlValue(DocumentData& data) noexcept {
   if (size < sizeof(AqlValue)) {
     initFromSlice(slice, size);
   } else {
+    _data.words[0] = 0;
     setType(AqlValueType::VPACK_MANAGED_STRING);
     _data.managedStringMeta.pointer = data.release();
   }
@@ -1049,6 +1053,7 @@ AqlValue::AqlValue(uint8_t const* pointer) noexcept {
 AqlValue::AqlValue(AqlValue const& other, void const* data) noexcept {
   TRI_ASSERT(data != nullptr);
   auto t = other.type();
+  _data.words[0] = 0;
   setType(t);
   switch (t) {
     case VPACK_MANAGED_SLICE:
@@ -1194,6 +1199,7 @@ AqlValue::AqlValue(VPackSlice slice, velocypack::ValueLength length) {
 }
 
 AqlValue::AqlValue(int64_t low, int64_t high) {
+  _data.words[0] = 0;
   _data.rangeMeta.range = new Range(low, high);
   setType(AqlValueType::RANGE);
 }
@@ -1218,16 +1224,45 @@ AqlValue AqlValue::fromOwnedMallocSlice(uint8_t* data, size_t length) {
 }
 
 bool AqlValue::requiresDestruction() const noexcept {
-  auto t = type();
-  switch (t) {
-    case VPACK_SLICE_POINTER:
-    case VPACK_INLINE:
-    case VPACK_INLINE_INT64:
-    case VPACK_INLINE_UINT64:
-    case VPACK_INLINE_DOUBLE:
-      return false;
-    default:
+  switch (type()) {
+    case VPACK_MANAGED_SLICE:
+    case VPACK_MANAGED_STRING:
+    case RANGE:
       return true;
+    default:
+      // inline values are self-contained and VPACK_SLICE_POINTER never owns
+      return false;
+  }
+}
+
+bool AqlValue::isStaticSlice() const noexcept {
+  return type() == VPACK_SLICE_POINTER &&
+         (_data.bytes[1] & kStaticSliceFlag) != 0;
+}
+
+bool AqlValue::isShortLivedSlice() const noexcept {
+  return type() == VPACK_SLICE_POINTER &&
+         (_data.bytes[1] & kStaticSliceFlag) == 0;
+}
+
+AqlValue AqlValue::staticSlice(uint8_t const* pointer) noexcept {
+  AqlValue result{pointer};
+  result._data.bytes[1] |= kStaticSliceFlag;
+  return result;
+}
+
+AqlValue AqlValue::borrow() const {
+  switch (type()) {
+    case VPACK_MANAGED_SLICE:
+      return AqlValue{_data.managedSliceMeta.pointer};
+    case VPACK_MANAGED_STRING:
+      return AqlValue{_data.managedStringMeta.toSlice().begin()};
+    case RANGE:
+      // a range has no pointer form, so it is treated as a value
+      return clone();
+    default:
+      // inline values and slice pointers already own nothing
+      return AqlValue{*this};
   }
 }
 
