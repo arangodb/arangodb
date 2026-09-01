@@ -26,6 +26,7 @@
 #include "Logger/LogMacros.h"
 #include "Aql/IndexStreamIterator.h"
 #include "Aql/IndexJoinStrategy.h"
+#include "Aql/IndexStreamKeyCache.h"
 
 namespace arangodb::aql {
 
@@ -86,6 +87,7 @@ struct TwoIndicesMergeJoin : IndexJoinStrategy<SliceType, DocIdType> {
   std::array<DocIdType, 2> documentIds;
   std::vector<SliceType> sliceBuffer;
   std::vector<SliceType> currentKeySet;
+  IndexStreamKeyCache<SliceType> currentKeyCache;
   std::span<SliceType> projectionsSpan;
 
   // This iterator holds the current maximum position
@@ -378,7 +380,7 @@ void TwoIndicesMergeJoin<SliceType, DocIdType, KeyCompare>::fillInitialMatch() {
     auto& index = indexes[i];
     documentIds[i] = index._iter->load(index._projections);
   }
-  indexes.rbegin()->_iter->cacheCurrentKey(currentKeySet);
+  currentKeyCache.update(indexes.rbegin()->_position, currentKeySet);
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
