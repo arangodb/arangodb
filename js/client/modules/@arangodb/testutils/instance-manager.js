@@ -34,6 +34,7 @@ const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
 const rp = require('@arangodb/testutils/result-processing');
 const inst = require('@arangodb/testutils/instance');
+const pm = require('@arangodb/testutils/portmanager');
 const { agencyMgr } = require('@arangodb/testutils/agency');
 const crashUtils = require('@arangodb/testutils/crash-utils');
 const {versionHas} = require("@arangodb/test-helper");
@@ -163,6 +164,9 @@ class instanceManager {
     this.handleJWT();
     this.expectAsserts = false;
     this.hasSetPassvoid = false;
+    this.pm = pm.getPortManager(options);
+    this.rbacPort = this.pm.findFreePort(this.options.minPort, this.options.maxPort);
+    this.rbacInstance = null;
   }
 
   handleJWT() {
@@ -247,6 +251,7 @@ class instanceManager {
       jwt_secret: this.jwt_secret,
       tcpdump: this.tcpdump,
       cleanup: this.cleanup,
+      rbacPort: this.rbacPort,
     };
   }
   setFromStructure(struct) {
@@ -269,6 +274,7 @@ class instanceManager {
     this.jwt_secret = struct['jwt_secret'];
     this.tcpdump = struct['tcpdump'];
     this.cleanup = struct['cleanup'];
+    this.rbacPort = struct['rbacPort'];
     struct['arangods'].forEach(arangodStruct => {
       let oneArangod = new inst.instance(this.options, '', {}, {}, '', '', '', this.agencyMgr, this.tmpDir);
       oneArangod.setFromStructure(arangodStruct);
@@ -586,6 +592,7 @@ class instanceManager {
           this.arangods.push(new inst.instance(this.options,
                                                instanceRole.agent,
                                                this.addArgs,
+                                               this.rbacPort,
                                                this.httpAuthOptions,
                                                this.jwt_secret,
                                                this.JWT,
@@ -607,6 +614,7 @@ class instanceManager {
           this.arangods.push(new inst.instance(this.options,
                                                instanceRole.dbServer,
                                                this.addArgs,
+                                               this.rbacPort,
                                                this.httpAuthOptions,
                                                this.jwt_secret,
                                                this.JWT,
@@ -626,6 +634,7 @@ class instanceManager {
           this.arangods.push(new inst.instance(this.options,
                                                instanceRole.coordinator,
                                                this.addArgs,
+                                               this.rbacPort,
                                                this.httpAuthOptions,
                                                this.jwt_secret,
                                                this.JWT,
@@ -647,6 +656,7 @@ class instanceManager {
           this.arangods.push(new inst.instance(this.options,
                                                instanceRole.single,
                                                this.addArgs,
+                                               this.rbacPort,
                                                this.httpAuthOptions,
                                                this.jwt_secret,
                                                this.JWT,
@@ -688,6 +698,16 @@ class instanceManager {
     if (this.options.hasOwnProperty('server')) {
       print("external server configured - not testing readyness! " + this.options.server);
       return;
+    }
+    if (this.options.rbac) {
+      print([
+        '--port', `${this.rbacPort}`,
+        '--jwtstr', this.JWT,
+      ])
+      this.rbacInstance = executeExternal('utils/rbac_dummy.py', [
+        '--port', `${this.rbacPort}`,
+        '--jwtstr', this.JWT,
+      ]);
     }
     const startTime = time();
     try {
@@ -890,6 +910,10 @@ class instanceManager {
   shutdownInstance (forceTerminate, moreReason="") {
     if (forceTerminate === undefined) {
       forceTerminate = false;
+    }
+    if (this.options.rbac) {
+      killExternal(this.rbacInstance.pid);
+      statusExternal(this.rbacInstance.pid, true);
     }
     let timeoutReached = SetGlobalExecutionDeadlineTo(0.0);
     if (timeoutReached) {
@@ -1989,6 +2013,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     'extraArgs': {},
     'cluster': false,
     'forceOneShard': false,
+    'rbac': false,
     'sniff': false,
     'sniffAgency': true,
     'sniffDBServers': true,
@@ -2012,6 +2037,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     '   - `dbServers`: number of DB-Servers to use',
     '   - `coordinators`: number coordinators to use',
     '   - `extraArgs`: list of extra commandline arguments to add to arangod',
+    '   - `rbac`: whether to launch the SUT with a dummy rbac server',
     '',
     ' SUT monitoring',
     '   - `sleepBeforeStart` : sleep at tcpdump info - use this to dump traffic or attach debugger',

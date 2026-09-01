@@ -126,7 +126,7 @@ class instance {
   #pid = null;
 
   // / protocol must be one of ["tcp", "ssl", "unix"]
-  constructor(options, myInstanceRole, addArgs,
+  constructor(options, myInstanceRole, addArgs, acPort
               authHeaders, jwt_secret, JWT, authHeadersJWT,
               protocol, rootDir, restKeyFile,
               agencyMgr, tmpDir, mem) {
@@ -137,6 +137,7 @@ class instance {
     this.instanceRole = myInstanceRole;
     this.rootDir = rootDir;
     this.protocol = protocol;
+    this.rbacPort = rbacPort;
 
     this.moreArgs = {};
     this.args = {};
@@ -230,6 +231,7 @@ class instance {
       agencyConfig: (this.agencyMgr !== undefined) ? this.agencyMgr.getStructure():{},
       upAndRunning: this.upAndRunning,
       suspended: this.suspended,
+      rbacPort: this.rbacPort,
       port: this.port,
       url: this.url,
       endpoint: this.endpoint,
@@ -261,6 +263,7 @@ class instance {
     this.upAndRunning = struct['upAndRunning'];
     this.suspended = struct['suspended'];
     this.port = struct['port'];
+    this.rbacPort = struct['rbacPort']
     this.url = struct['url'];
     this.endpoint = struct['endpoint'];
     this.dataDir = struct['dataDir'];
@@ -426,6 +429,9 @@ class instance {
       this.args['ssl.keyfile'] = fs.join('etc', 'testing', 'server.pem');
     }
 
+    if (this.options.rbac) {
+      this.args["server.external-rbac-service"] = `http://127.0.0.1:${this.rbacPort}`;
+    }
     if (this.options.hasOwnProperty("replicationVersion")) {
       this.args['database.default-replication-version'] = this.options.replicationVersion;
     }
