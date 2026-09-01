@@ -1028,7 +1028,8 @@ struct PatternNodePattern : TypedAstNode {
 ///   0 edge, 1 node (PATTERN_NODE_PATTERN or REFERENCE)
 struct PatternSegment : TypedAstNode {
   explicit PatternSegment(AstNode const* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_PATTERN_SEGMENT) << node->getTypeString();
+    TRI_ASSERT(node->type == NODE_TYPE_PATTERN_SEGMENT)
+        << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 2)
         << "expected 2 members in NODE_TYPE_PATTERN_SEGMENT, found "
         << node->numMembers();
