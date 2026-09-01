@@ -169,26 +169,7 @@ TEST(AqlValueBorrowTest, erase_clears_the_static_marker) {
   EXPECT_FALSE(v.isShortLivedSlice());
 }
 
-// clone() is not yet uniform: it deep-copies the managed types but bit-copies a
-// slice pointer, via the `default: break` in AqlValue::clone(). So cloning a
-// borrow currently hands back another pointer to the owner's payload rather
-// than an independent value. Pinned here so the gap is visible; making clone()
-// uniform is the next step, and needs a check that every query-static producer
-// is marked first, or constants start being copied per row.
-TEST(AqlValueBorrowTest, clone_of_a_borrow_does_not_yet_detach) {
-  auto builder = largeObject();
-  AqlValue owner{builder->slice()};
-  AqlValue borrowed = owner.borrow();
-
-  AqlValue copy = borrowed.clone();
-  EXPECT_FALSE(copy.requiresDestruction());
-  EXPECT_EQ(copy.slice().begin(), owner.slice().begin());
-
-  owner.destroy();
-}
-
-// the target behaviour, enable together with the clone() change
-TEST(AqlValueBorrowTest, DISABLED_clone_of_a_borrow_owns_its_copy) {
+TEST(AqlValueBorrowTest, clone_of_a_borrow_owns_its_copy) {
   auto builder = largeObject();
   AqlValue owner{builder->slice()};
   AqlValue borrowed = owner.borrow();
@@ -203,6 +184,17 @@ TEST(AqlValueBorrowTest, DISABLED_clone_of_a_borrow_owns_its_copy) {
   EXPECT_EQ(copy.slice().get("someLongAttributeName").stringView(),
             "someLongAttributeValue");
   copy.destroy();
+}
+
+TEST(AqlValueBorrowTest, clone_of_a_static_slice_shares_the_payload) {
+  auto builder = largeObject();
+  AqlValue v = AqlValue::staticSlice(builder->slice().begin());
+
+  AqlValue copy = v.clone();
+  // query-static memory outlives every block, so cloning must not allocate
+  EXPECT_FALSE(copy.requiresDestruction());
+  EXPECT_TRUE(copy.isStaticSlice());
+  EXPECT_EQ(copy.slice().begin(), v.slice().begin());
 }
 
 TEST(AqlValueBorrowTest, memory_origin_is_unaffected) {

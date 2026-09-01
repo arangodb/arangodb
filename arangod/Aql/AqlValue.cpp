@@ -843,9 +843,18 @@ AqlValue AqlValue::clone() const {
                       _data.managedStringMeta.getLength()};
     case RANGE:
       return AqlValue{range()->_low, range()->_high};
+    case VPACK_SLICE_POINTER:
+      if (isStaticSlice()) {
+        // the payload outlives every AqlItemBlock, so sharing it is safe and
+        // keeps plan constants from being copied per row
+        return AqlValue{*this};
+      }
+      // the payload belongs to something shorter-lived, so detach from it
+      return AqlValue{slice()};
     default:
       break;
   }
+  // inline values carry their payload in the 16 bytes themselves
   return AqlValue{*this};
 }
 
