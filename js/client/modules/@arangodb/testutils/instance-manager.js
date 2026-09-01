@@ -615,11 +615,13 @@ class instanceManager {
       print("external server configured - not testing readyness! " + this.options.server);
       return;
     }
-    if (this.options.rbac) {
-      print([
-        '--port', `${this.rbacPort}`,
-        '--jwtstr', this.JWT,
-      ])
+    if (this.options.rbac && typeof this.options.rbac !== "string") {
+      if (this.options.extremeVerbosity) {
+        print(`Launching RBAC dummy [
+          '--port', '${this.rbacPort}',
+          '--jwtstr', ${this.JWT},]`
+        );
+      }
       this.rbacInstance = executeExternal('utils/rbac_dummy.py', [
         '--port', `${this.rbacPort}`,
         '--jwtstr', this.JWT,
@@ -834,7 +836,7 @@ class instanceManager {
     if (forceTerminate === undefined) {
       forceTerminate = false;
     }
-    if (this.options.rbac) {
+    if (this.options.rbac && typeof this.options.rbac !== "string") {
       killExternal(this.rbacInstance.pid);
       statusExternal(this.rbacInstance.pid, true);
     }
@@ -1970,7 +1972,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     '   - `dbServers`: number of DB-Servers to use',
     '   - `coordinators`: number coordinators to use',
     '   - `extraArgs`: list of extra commandline arguments to add to arangod',
-    '   - `rbac`: whether to launch the SUT with a dummy rbac server',
+    '   - `rbac`: whether to launch the SUT with a dummy RBAC server, or the URL of the RBAC server to connect to',
     '',
     ' SUT monitoring',
     '   - `sleepBeforeStart` : sleep at tcpdump info - use this to dump traffic or attach debugger',
