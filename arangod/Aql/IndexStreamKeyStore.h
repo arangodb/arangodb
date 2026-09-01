@@ -30,14 +30,14 @@
 namespace arangodb::aql {
 
 template<typename SliceType>
-struct IndexStreamKeyCache {
+struct IndexStreamKeyStore {
   void update(std::span<SliceType const> src, std::span<SliceType> dst) {
     std::copy(src.begin(), src.end(), dst.begin());
   }
 };
 
 template<>
-struct IndexStreamKeyCache<velocypack::Slice> {
+struct IndexStreamKeyStore<velocypack::Slice> {
   void update(std::span<velocypack::Slice const> src,
               std::span<velocypack::Slice> dst) {
     _owned.resize(src.size());
