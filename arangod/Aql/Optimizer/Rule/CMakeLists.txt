@@ -40,6 +40,7 @@ target_sources(arango_aql PRIVATE
   RemoveRedundantCalculations.cpp
   RemoveRedundantOr.cpp
   RemoveRedundantSorts.cpp
+  RemoveSortRand.cpp
   RemoveTraversalPathVariable.cpp
   RemoveUnnecessaryCalculations.cpp
   RemoveUnnecessaryFilters.cpp

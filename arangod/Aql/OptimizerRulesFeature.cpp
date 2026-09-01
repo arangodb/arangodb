@@ -64,6 +64,7 @@
 #include "Aql/Optimizer/Rule/RemoveRedundantCalculations.h"
 #include "Aql/Optimizer/Rule/RemoveRedundantOr.h"
 #include "Aql/Optimizer/Rule/RemoveRedundantSorts.h"
+#include "Aql/Optimizer/Rule/RemoveSortRand.h"
 #include "Aql/Optimizer/Rule/RemoveTraversalPathVariable.h"
 #include "Aql/Optimizer/Rule/RemoveUnnecessaryCalculations.h"
 #include "Aql/Optimizer/Rule/RemoveUnnecessaryFilters.h"
@@ -1000,6 +1001,19 @@ the index.)");
                R"(Allow query execution nodes to asynchronously prefetch the
 next batch while processing the current batch, allowing parts of the query to
 run in parallel. This is only possible for certain operations in a query.)");
+
+  // remove SORT RAND() LIMIT 1 if appropriate
+  registerRule(
+      "remove-sort-rand-limit-1", removeSortRandRule,
+      OptimizerRule::removeSortRandRule,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+      R"(Remove `SORT RAND() LIMIT 1` constructs by moving the random iteration
+into `EnumerateCollectionNode`.
+
+The RocksDB storage engine doesn't allow to seek random documents efficiently.
+This optimization picks a pseudo-random document based on a limited number of
+seeks within the collection's key range, selecting a random start key in the
+key range, and then going a few steps before or after that.)");
 
   // finally sort all rules by their level
   std::sort(_rules.begin(), _rules.end(),

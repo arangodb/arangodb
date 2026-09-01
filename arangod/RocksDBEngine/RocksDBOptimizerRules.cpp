@@ -76,19 +76,6 @@ extracted entire documents to only return a projection of each document.
 Projections are limited to at most 5 different document attributes by default.
 The maximum number of projected attributes can optionally be adjusted by
 setting the `maxProjections` hint for an AQL `FOR` operation.)");
-
-  // remove SORT RAND() LIMIT 1 if appropriate
-  feature.registerRule(
-      "remove-sort-rand-limit-1", removeSortRandRule,
-      OptimizerRule::removeSortRandRule,
-      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
-      R"(Remove `SORT RAND() LIMIT 1` constructs by moving the random iteration
-into `EnumerateCollectionNode`.
-
-The RocksDB storage engine doesn't allow to seek random documents efficiently.
-This optimization picks a pseudo-random document based on a limited number of
-seeks within the collection's key range, selecting a random start key in the
-key range, and then going a few steps before or after that.)");
 }
 
 // simplify an EnumerationCollectionNode that fetches an entire document to a
@@ -213,6 +200,9 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
             // turn the EnumerateCollection node into an IndexNode now
             auto condition = std::make_unique<Condition>(plan->getAst());
             condition->normalize(plan.get());
+            velocypack::Builder b;
+            condition->toVelocyPack(b, true);
+            LOG_DEVEL << "FUCK THIS SHIT: " << b.toString();
             IndexIteratorOptions opts;
             opts.useCache = false;
             // we have already proven that we can use the covering index
@@ -341,139 +331,6 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           modified = true;
         }
       }  // index selection
-    }
-  }
-
-  opt->addPlan(std::move(plan), rule, modified);
-}
-
-/// @brief remove SORT RAND() if appropriate
-void RocksDBOptimizerRules::removeSortRandRule(
-    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-    OptimizerRule const& rule) {
-  containers::SmallVector<ExecutionNode*, 8> nodes;
-  plan->findNodesOfType(nodes, EN::SORT, true);
-
-  bool modified = false;
-
-  for (auto const& n : nodes) {
-    auto node = ExecutionNode::castTo<SortNode*>(n);
-    auto const& elements = node->elements();
-    if (elements.size() != 1) {
-      // we're looking for "SORT RAND()", which has just one sort criterion
-      continue;
-    }
-
-    auto const variable = elements[0].var;
-    TRI_ASSERT(variable != nullptr);
-
-    auto setter = plan->getVarSetBy(variable->id);
-
-    if (setter == nullptr || setter->getType() != EN::CALCULATION) {
-      continue;
-    }
-
-    auto cn = ExecutionNode::castTo<CalculationNode*>(setter);
-    auto const expression = cn->expression();
-
-    if (expression == nullptr || expression->node() == nullptr ||
-        expression->node()->type != NODE_TYPE_FCALL) {
-      // not the right type of node
-      continue;
-    }
-
-    auto funcNode = expression->node();
-    auto func = static_cast<Function const*>(funcNode->getData());
-
-    // we're looking for "RAND()", which is a function call
-    // with an empty parameters array
-    if (func->name != "RAND" || funcNode->numMembers() != 1 ||
-        funcNode->getMember(0)->numMembers() != 0) {
-      continue;
-    }
-
-    // now we're sure we got SORT RAND() !
-
-    // we found what we were looking for!
-    // now check if the dependencies qualify
-    if (!n->hasDependency()) {
-      break;
-    }
-
-    auto current = n->getFirstDependency();
-    ExecutionNode* collectionNode = nullptr;
-
-    while (current != nullptr) {
-      switch (current->getType()) {
-        case EN::SORT:
-        case EN::COLLECT:
-        case EN::FILTER:
-        case EN::SUBQUERY:
-        case EN::ENUMERATE_LIST:
-        case EN::TRAVERSAL:
-        case EN::SHORTEST_PATH:
-        case EN::INDEX:
-        case EN::ENUMERATE_IRESEARCH_VIEW: {
-          // if we found another SortNode, a CollectNode, FilterNode, a
-          // SubqueryNode, an EnumerateListNode, a TraversalNode or an IndexNode
-          // this means we cannot apply our optimization
-          collectionNode = nullptr;
-          current = nullptr;
-          continue;  // this will exit the while loop
-        }
-
-        case EN::ENUMERATE_COLLECTION: {
-          if (collectionNode == nullptr) {
-            // note this node
-            collectionNode = current;
-            break;
-          } else {
-            // we already found another collection node before. this means we
-            // should not apply our optimization
-            collectionNode = nullptr;
-            current = nullptr;
-            continue;  // this will exit the while loop
-          }
-          // cannot get here
-          TRI_ASSERT(false);
-        }
-
-        default: {
-          // ignore all other nodes
-        }
-      }
-
-      if (!current->hasDependency()) {
-        break;
-      }
-
-      current = current->getFirstDependency();
-    }
-
-    if (collectionNode == nullptr || !node->hasParent()) {
-      continue;  // skip
-    }
-
-    current = node->getFirstParent();
-    bool valid = false;
-    if (current->getType() == EN::LIMIT) {
-      LimitNode* ln = ExecutionNode::castTo<LimitNode*>(current);
-      if (ln->limit() == 1 && ln->offset() == 0) {
-        valid = true;
-      }
-    }
-
-    if (valid) {
-      // we found a node to modify!
-      TRI_ASSERT(collectionNode->getType() == EN::ENUMERATE_COLLECTION);
-      // set the random iteration flag for the EnumerateCollectionNode
-      ExecutionNode::castTo<EnumerateCollectionNode*>(collectionNode)
-          ->setRandom();
-
-      // remove the SortNode and the CalculationNode
-      plan->unlinkNode(n);
-      plan->unlinkNode(setter);
-      modified = true;
     }
   }
 
