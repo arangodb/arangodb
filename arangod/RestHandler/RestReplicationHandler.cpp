@@ -2767,6 +2767,12 @@ bool RestReplicationHandler::prepareCollectionForRevisionOperation(
                   "invalid collection parameter");
     return false;
   }
+  if (_request->requestedApiVersion() > 0) {
+    if (auto r = auth::isNameAndNoId(ctx.cname); r.fail()) {
+      generateError(r);
+      return false;
+    }
+  }
 
   // print request
   LOG_TOPIC("6e075", TRACE, arangodb::Logger::REPLICATION)
