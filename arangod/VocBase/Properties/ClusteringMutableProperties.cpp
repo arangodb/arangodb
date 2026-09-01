@@ -54,7 +54,7 @@ auto ClusteringMutableProperties::Transformers::ReplicationSatellite::
   if (v.isNumber()) {
     try {
       auto n = v.getNumber<MemoryType>();
-      if (n != 0 || acceptNumericZero) {
+      if (n != 0) {
         result = n;
         return {};
       }

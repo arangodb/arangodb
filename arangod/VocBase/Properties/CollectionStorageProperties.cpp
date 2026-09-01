@@ -36,7 +36,11 @@ inspection::Status
 CollectionStorageProperties::Transformers::ObjectIdAsString::fromSerialized(
     std::string const& v, uint64_t& result) {
   char const* p = v.c_str();
-  result = NumberUtils::atoi_zero<uint64_t>(p, p + v.length());
+  bool valid = false;
+  result = NumberUtils::atoi<uint64_t>(p, p + v.length(), valid);
+  if (!valid) {
+    return {"Expecting a number in a string"};
+  }
   return {};
 }
 

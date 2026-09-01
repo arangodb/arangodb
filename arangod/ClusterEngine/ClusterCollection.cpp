@@ -93,7 +93,6 @@ void ClusterCollection::flushClusterIndexEstimates() {
 Result ClusterCollection::setCacheEnabled(bool cacheEnabled) {
   _cacheEnabled.store(cacheEnabled, std::memory_order_relaxed);
 
-  // notify all indexes about the properties change for the collection
   auto indexesSnapshot = getIndexesSnapshot();
   auto const& indexes = indexesSnapshot.getIndexes();
   for (auto& idx : indexes) {
@@ -103,7 +102,7 @@ Result ClusterCollection::setCacheEnabled(bool cacheEnabled) {
     if (idx->type() != IndexType::Inverted &&
         idx->type() != IndexType::IResearchLink) {
       TRI_ASSERT(dynamic_cast<ClusterIndex*>(idx.get()) != nullptr);
-      std::static_pointer_cast<ClusterIndex>(idx)->updateProperties(
+      std::static_pointer_cast<ClusterIndex>(idx)->setCacheEnabled(
           _cacheEnabled.load(std::memory_order_relaxed));
     }
   }
