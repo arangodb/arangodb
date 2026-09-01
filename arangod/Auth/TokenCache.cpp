@@ -42,6 +42,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
+#include <mutex>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -402,5 +403,6 @@ bool auth::TokenCache::validateJwtHMAC256Signature(
 /// generate a JWT token for internal cluster communication
 void auth::TokenCache::generateSuperToken() {
   std::string sid = ServerState::instance()->getId();
+  std::unique_lock guard{_jwtSuperTokenLock};
   _jwtSuperToken = fuerte::jwt::generateInternalToken(jwtSecret(), sid);
 }
