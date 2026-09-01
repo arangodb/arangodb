@@ -67,11 +67,11 @@ parameters:
     description: "Additional arguments to pass to arangosh during tests (see arangosh --help)"
   test-docker-image:
     type: string
-    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-9fd180cf
+    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-f4491615
     description: "Docker image to use for testing ArangoDB - only relevant when trying new test images"
   build-docker-image:
     type: string
-    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-40:24.04-f0db4564"
+    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-40:24.04-f4491615"
     description: "Docker image to use for building ArangoDB - only relevant when trying new build images"
   # Rarely used options
   replication-two:
