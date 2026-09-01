@@ -31,6 +31,8 @@
 
 namespace arangodb::aql {
 class EnumerateCollectionNode;
+class ExecutionNode;
+class ExecutionPlan;
 struct AstNode;
 struct Variable;
 
@@ -117,5 +119,12 @@ struct JoinGraph {
   std::unordered_map<Node const*, std::vector<Edge*>> _adjacency;
   bool _adjacencyBuilt = false;
 };
+
+/// @brief build the join graph for the maximal run of adjacent collection
+/// enumerations that starts at `firstEnumeration`, following parents towards
+/// the plan root. Returns the graph and, via `next`, the first node that
+/// terminated the run (nullptr if the run reached the root).
+auto buildJoinGraph(ExecutionPlan const* plan, ExecutionNode* firstEnumeration,
+                    ExecutionNode*& next) -> JoinGraph;
 
 }  // namespace arangodb::aql
