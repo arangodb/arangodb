@@ -292,12 +292,13 @@ Result IResearchView::appendVPackImpl(velocypack::Builder& build,
       return {};
     }
     std::vector<std::string> collections;
-    // add CIDs of known collections to list
+    // add names of known collections to list
     for (auto& entry : _links) {
       // skip collections missing from vocbase or
       // UserTransaction constructor will throw an exception
-      if (vocbase().lookupCollection(entry.first)) {
-        collections.emplace_back(std::to_string(entry.first.id()));
+      auto coll = vocbase().lookupCollection(entry.first);
+      if (coll) {
+        collections.emplace_back(coll->name());
       }
     }
     if (!safe) {
