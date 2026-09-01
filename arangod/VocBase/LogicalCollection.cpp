@@ -1188,13 +1188,6 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
 
       writeConcern = writeConcernSlice.getNumber<size_t>();
 
-      // Invalidate the _canWrite flag in FollowerInfo since writeConcern
-      // has changed. This ensures the write condition
-      // will be re-evaluated on the next write attempt.
-      if (_followers != nullptr) {
-        _followers->invalidateCanWrite();
-      }
-
       if (ServerState::instance()->isCoordinator() &&
           writeConcern > replicationFactor) {
         return Result(TRI_ERROR_BAD_PARAMETER,
@@ -1232,14 +1225,24 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
   }
 
   TRI_ASSERT(!isSatellite() || replicationFactor == 0);
+
   auto waitForSync =
       Helper::getBooleanValue(slice, StaticStrings::WaitForSyncString,
                               _waitForSync.load(std::memory_order_relaxed));
 
   _waitForSync.store(waitForSync, std::memory_order_relaxed);
+  bool const writeConcernChanged = writeConcern != this->writeConcern();
 
   _sharding->setWriteConcernAndReplicationFactor(writeConcern,
                                                  replicationFactor);
+
+  // Invalidate the _canWrite flag in FollowerInfo so that the write condition
+  // is re-evaluated on the next write attempt. This has to happen after the new
+  // writeConcern is stored, otherwise FollowerInfo re-evaluates against the old
+  // one.
+  if (writeConcernChanged && _followers != nullptr) {
+    _followers->invalidateCanWrite();
+  }
 
   if (ServerState::instance()->isDBServer()) {
     // This code is only allowed to be executed by the maintenance

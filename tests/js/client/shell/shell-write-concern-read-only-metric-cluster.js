@@ -176,6 +176,45 @@ function WriteConcernReadOnlyMetricSuite() {
 
       eventuallyAssertMetric(leader, metricName, (v) => v === 0, `expected ${metricName} to be 0 after database drop`);
     },
+
+    testFollowerNotCountedAfterWriteConcernChange: function () {
+
+      const c = db._create("c", {numberOfShards: 1, replicationFactor: 3, writeConcern: 2});
+      const [shard, servers] = Object.entries(c.shards(true))[0];
+      const instances = servers.map((id) => IM.getInstanceByID(id));
+
+      c.insert({});
+      waitForShardsInSync(c.name());
+
+      const assertNoneCounted = function (context) {
+        instances.forEach((server, i) => {
+          eventuallyAssertMetric(server, metricName, (v) => v === 0,
+            `expected ${metricName} to be 0 on ${i === 0 ? "the leader" : "follower " + i} ${context}`);
+        });
+      };
+
+      assertNoneCounted("in a healthy state");
+
+      // Raising writeConcern makes the maintenance push the new properties to
+      // every replica. A follower does not maintain a follower list, so it must
+      // not be counted, and nothing on a follower would ever recompute it.
+      const setWriteConcern = function (value) {
+        c.properties({writeConcern: value});
+        let tries = 20;
+        while (c.properties().writeConcern !== value) {
+          if (--tries === 0) {
+            assertTrue(false, `writeConcern change to ${value} was not applied within 10 seconds`);
+          }
+          internal.wait(0.5);
+        }
+      };
+
+      setWriteConcern(3);
+      assertNoneCounted("after raising writeConcern to 3");
+
+      setWriteConcern(2);
+      assertNoneCounted("after lowering writeConcern to 2");
+    },
   };
 }
 
