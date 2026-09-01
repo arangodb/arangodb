@@ -256,10 +256,9 @@ void ShardingInfo::initializeShardingStrategy(
   auto const& name = descriptor.clusteringConstant.shardingStrategy;
   TRI_ASSERT(name.has_value() && !name.value().empty())
       << "sharding strategy must be resolved before the descriptor is used";
-  _shardingStrategy = _collection->vocbase()
-                          .server()
-                          .getFeature<ShardingFeature>()
-                          .create(name.value(), this);
+  _shardingStrategy =
+      _collection->vocbase().server().getFeature<ShardingFeature>().create(
+          name.value(), this);
 
   TRI_ASSERT(_shardingStrategy != nullptr);
 }

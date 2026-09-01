@@ -90,9 +90,8 @@ auto inspect(Inspector& f, ClusteringMutableProperties& props) {
       f.field(StaticStrings::WriteConcern, props.writeConcern)
           .fallback(f.keep()),
       f.field(StaticStrings::ReplicationFactor, props.replicationFactor)
-          .transformWith(
-              ClusteringMutableProperties::Transformers::
-                  ReplicationSatellite{}));
+          .transformWith(ClusteringMutableProperties::Transformers::
+                             ReplicationSatellite{}));
 
   if constexpr (isInternalContext<Inspector>) {
     // Not an invariant of the type: EE SmartGraph edge collections are
