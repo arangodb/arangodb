@@ -803,7 +803,7 @@ replication doing a resync, however.)");
               arangodb::options::Flags::OnSingle,
               arangodb::options::Flags::OnAgent,
               arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(31202);
+      .setIntroducedIn(31111);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   options

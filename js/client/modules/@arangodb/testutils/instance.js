@@ -1380,19 +1380,19 @@ class instance {
   }
 
   checkNetstat(data) {
-    let which = null;
-    if (data.local.port === this.port) {
-      which = this.netstat['in'];
-    } else if (data.remote.port === this.port) {
-      which = this.netstat['out'];
-    }
-    if (which !== null) {
-      if (!which.hasOwnProperty(data.state)) {
-        which[data.state] = 1;
-      } else {
-        which[data.state] += 1;
-      }
-    }
+    //let which = null;
+    //if (data.local.port === this.port) {
+    //  which = this.netstat['in'];
+    //} else if (data.remote.port === this.port) {
+    //  which = this.netstat['out'];
+    //}
+    //if (which !== null) {
+    //  if (!which.hasOwnProperty(data.state)) {
+    //    which[data.state] = 1;
+    //  } else {
+    //    which[data.state] += 1;
+    //  }
+    //}
   }
 
   getProcessInfo(ports) {

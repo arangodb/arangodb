@@ -1,21 +1,99 @@
-v3.11.14.2 (XXXX-XX-XX)
+v3.11.14.6 (XXXX-XX-XX)
 -----------------------
 
 * Fix potential race then reloading token secret (secret rotation).
 
 * Updated arangosync to v2.19.19.
 
-* Updated ArangoDB Starter to v0.18.18.
+* Rebuilt included rclone v1.75.0 with go1.25.13 and non-vulnerable
+  dependencies.
 
-* Rebuilt included rclone v1.62.2 with go1.24.9 and non-vulnerable
+* Upgraded OpenSSL to 3.5.8 and OpenLDAP to 2.6.14.
+
+* Updated ArangoDB Starter to v0.18.30.
+
+
+v3.11.14.5 (2026-08-11)
+-----------------------
+
+* Fix authorization for /_admin/aardvark routes.
+
+* Upgraded included rclone to v1.75.0 with go1.25.12 and non-vulnerable
+  dependencies.
+
+* Updated node modules:
+ - js-yaml to 3.15.1 to resolve GHSA-52cp-r559-cp3m, GHSA-h67p-54hq-rp68 and
+   GHSA-5p4m-2wfm-xmqj
+ - brace-expansion to 1.1.18 to resolve GHSA-rgw5-rvv9-x895,
+   GHSA-mh99-v99m-4gvg and GHSA-3jxr-9vmj-r5cp
+ - fast-uri to 3.1.5 to resolve GHSA-4c8g-83qw-93j6, GHSA-v2hh-gcrm-f6hx and
+   GHSA-7p8r-x3mc-p8w7
+ - qs to 6.15.3 to resolve GHSA-q8mj-m7cp-5q26
+
+* Updated ArangoDB Starter to v0.18.28.
+
+* Upgraded OpenSSL to 3.5.7.
+
+* Removed arangosync.
+
+
+v3.11.14.4 (2026-05-20)
+-----------------------
+
+* Updated arangosync to v2.19.28.
+
+* Updated ArangoDB Starter to v0.18.25.
+
+* Upgraded included rclone to v1.73.5 with go1.25.10 and non-vulnerable
+  dependencies.
+
+* Add --transaction.streaming-max-transaction-size option to make the maximum
+  transaction size for stream transactions configurable (in bytes).
+
+* Update node modules:
+ - lodash to 4.18.0
+ - minimatch to 3.1.4
+ - js-yaml to 3.14.2
+ - qs to 6.14.2
+ - brace-expansion to 1.1.13
+ - ajv to 8.18.0
+ - @xmldom/xmldom@0.8.13
+
+* Ensure the js/node/package.json and js/node/package-lock.json have correct
+  versions of the included node packages.
+
+* Upgraded OpenSSL to 3.5.6 and OpenLDAP to 2.6.13.
+
+
+v3.11.14.3 (2022-02-23)
+-----------------------
+
+* Rebuilt included rclone v1.62.2 with go1.24.13 and non-vulnerable
+  dependencies.
+
+* Added new public key for license signature verification.
+
+* Updated ArangoDB Starter to v0.18.20 and arangosync to v2.19.23.
+
+* Upgraded OpenSSL to 3.5.5 and OpenLDAP to 2.6.12.
+
+
+v3.11.14.2 (2025-12-05)
+-----------------------
+
+* Updated arangosync to v2.19.21.
+
+* Updated ArangoDB Starter to v0.18.19.
+
+* Rebuilt included rclone v1.62.2 with go1.24.11 and non-vulnerable
   dependencies.
 
 * Update tzdata as of 05.11.2025.
 
 * Upgraded OpenSSL to 3.5.4 and OpenLDAP to 2.6.10.
 
-* Fix BTS-2139: GeoJSON coordinate validation now properly accepts both 2D and 3D
-  coordinates for Point geometries.
+* Fix BTS-2139: GeoJSON coordinate validation now properly accepts both 2D and
+  3D coordinates for Point geometries.
 
 
 v3.11.14.1 (2025-07-13)

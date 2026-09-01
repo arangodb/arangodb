@@ -1123,7 +1123,7 @@ License Id: MIT
 #### brace-expansion
 
 Name: brace-expansion
-Version: 1.1.8
+Version: 1.1.18
 Project Home: http://juliangruber.com
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/minimatch/node_modules/brace-expansion/README.md
 License Name: MIT License
@@ -1453,6 +1453,15 @@ License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_
 License Name: MIT License
 License Id: MIT
 
+#### fast-uri
+
+Name: fast-uri
+Version: 3.1.5
+Project Home: https://github.com/fastify/fast-uri
+License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/fast-uri/LICENSE
+License Name: BSD-style 3-Clause License
+License Id: BSD-3-Clause
+
 #### figures
 
 Name: figures
@@ -1762,7 +1771,7 @@ License Id: MIT
 #### js-yaml
 
 Name: js-yaml
-Version: 3.13.1
+Version: 3.15.1
 Project Home: https://github.com/nodeca/js-yaml
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/js-yaml/LICENSE
 License Name: MIT License
@@ -2060,7 +2069,7 @@ License Id: MIT
 #### qs
 
 Name: qs
-Version: 6.7.0
+Version: 6.15.3
 Project Home: https://github.com/ljharb/qs
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/qs/LICENSE
 License Name: BSD 3-clause "New" or "Revised" License

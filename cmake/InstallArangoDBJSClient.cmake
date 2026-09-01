@@ -5,7 +5,7 @@
 install(
   DIRECTORY
     ${ARANGODB_SOURCE_DIR}/js/common
-    ${ARANGODB_SOURCE_DIR}/js/client 
+    ${ARANGODB_SOURCE_DIR}/js/client
   DESTINATION
     ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}
   FILES_MATCHING
@@ -25,7 +25,7 @@ if (USE_ENTERPRISE)
   install(
     DIRECTORY
       ${ARANGODB_SOURCE_DIR}/enterprise/js/common
-      ${ARANGODB_SOURCE_DIR}/enterprise/js/client 
+      ${ARANGODB_SOURCE_DIR}/enterprise/js/client
     DESTINATION    ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}
     FILES_MATCHING PATTERN "*.js"
   )
@@ -35,14 +35,19 @@ endif ()
 install(
   DIRECTORY ${ARANGODB_SOURCE_DIR}/js/node
   DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}
-  REGEX "^.*/ansi_up"                                      EXCLUDE
-  REGEX "^.*/eslint"                                       EXCLUDE
-  REGEX "^.*/node-netstat"                                 EXCLUDE
-  REGEX "^.*/parse-prometheus-text-format"                 EXCLUDE
-  REGEX "^.*/@xmldom"                                      EXCLUDE
   REGEX "^.*/.bin"                                         EXCLUDE
   REGEX "^.*/.npmignore"                                   EXCLUDE
+  REGEX "^.*/.package-lock.json"                           EXCLUDE
   REGEX "^.*/.*-no-eslint"                                 EXCLUDE
+  REGEX "^.*/@sinonjs"                                     EXCLUDE
+  REGEX "^.*/@xmldom"                                      EXCLUDE
+  REGEX "^.*/ansi_up"                                      EXCLUDE
+  REGEX "^.*/node-netstat"                                 EXCLUDE
+  REGEX "^.*/parse-prometheus-text-format"                 EXCLUDE
+  REGEX "^.*/sinon"                                        EXCLUDE
+  REGEX "^.*/node/node_modules/type-detect"                EXCLUDE
+  REGEX "^.*/node/node_modules/diff"                       EXCLUDE
+  REGEX "^.*/node/node_modules/eslint"                     EXCLUDE
   REGEX "^.*js/node/package.*.json"                        EXCLUDE
 )
 

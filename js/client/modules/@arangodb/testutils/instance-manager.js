@@ -39,7 +39,7 @@ const crashUtils = require('@arangodb/testutils/crash-utils');
 const {versionHas} = require("@arangodb/test-helper");
 const crypto = require('@arangodb/crypto');
 const ArangoError = require('@arangodb').ArangoError;;
-const netstat = require('node-netstat');
+//const netstat = require('node-netstat');
 /* Functions: */
 const {
   SetGlobalExecutionDeadlineTo,
@@ -1054,29 +1054,29 @@ class instanceManager {
   // on the coordinator. This is necessary if only the agency is running yet.
   checkInstanceAlive({skipHealthCheck = false} = {}) {
     this.arangods.forEach(arangod => { arangod.netstat = {'in':{}, 'out': {}};});
-    let obj = this;
-    try {
-      netstat({platform: process.platform}, function (data) {
-        // skip server ports, we know what we bound.
-        if (data.state !== 'LISTEN') {
-          obj.arangods.forEach(arangod => arangod.checkNetstat(data));
-        }
-      });
-      if (!this.options.noStartStopLogs) {
-        this.printNetstat();
-      }
-    } catch (ex) {
-      let timeout = SetGlobalExecutionDeadlineTo(0.0);
-      let moreReason = ": " + ex.message;
-      if (timeout) {
-        moreReason = "because of :" + ex.message;
-      }
-      print(RED + 'netstat gathering has thrown: ' + moreReason);
-      print(ex, ex.stack);
-      print(RESET);
-      this.cleanup = false;
-      return this._forceTerminate("Abort during Health Check SUT netstat gathering " + moreReason);
-    }
+    //let obj = this;
+    //try {
+    //  netstat({platform: process.platform}, function (data) {
+    //    // skip server ports, we know what we bound.
+    //    if (data.state !== 'LISTEN') {
+    //      obj.arangods.forEach(arangod => arangod.checkNetstat(data));
+    //    }
+    //  });
+    //  if (!this.options.noStartStopLogs) {
+    //    this.printNetstat();
+    //  }
+    //} catch (ex) {
+    //  let timeout = SetGlobalExecutionDeadlineTo(0.0);
+    //  let moreReason = ": " + ex.message;
+    //  if (timeout) {
+    //    moreReason = "because of :" + ex.message;
+    //  }
+    //  print(RED + 'netstat gathering has thrown: ' + moreReason);
+    //  print(ex, ex.stack);
+    //  print(RESET);
+    //  this.cleanup = false;
+    //  return this._forceTerminate("Abort during Health Check SUT netstat gathering " + moreReason);
+    //}
 
     let rc = this.arangods.reduce((previous, arangod) => {
       let ret = arangod.checkArangoAlive();

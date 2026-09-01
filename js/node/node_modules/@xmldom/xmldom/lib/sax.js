@@ -597,7 +597,7 @@ function parseDCC(source,start,domBuilder,errorHandler){//sure start with '<!'
 function parseInstruction(source,start,domBuilder){
 	var end = source.indexOf('?>',start);
 	if(end){
-		var match = source.substring(start,end).match(/^<\?(\S*)\s*([\s\S]*?)\s*$/);
+		var match = source.substring(start,end).match(/^<\?(\S*)\s*([\s\S]*?)$/);
 		if(match){
 			var len = match[0].length;
 			domBuilder.processingInstruction(match[1], match[2]) ;

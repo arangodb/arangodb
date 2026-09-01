@@ -1,0 +1,97 @@
+{
+  "name": "@sinonjs/samsam",
+  "version": "10.0.2",
+  "description": "Value identification and comparison functions",
+  "homepage": "http://sinonjs.github.io/samsam/",
+  "author": "Christian Johansen",
+  "license": "BSD-3-Clause",
+  "main": "./lib/samsam",
+  "types": "./types/samsam.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sinonjs/samsam.git"
+  },
+  "lint-staged": {
+    "*.{js,css,md}": "prettier --check",
+    "*.js": "eslint"
+  },
+  "mochify": {
+    "spec": "./lib/*.test.js",
+    "bundle": "esbuild --bundle --sourcemap=inline --define:process.env.NODE_DEBUG=\"\" --define:process.env.IS_BUNDLE=\"true\" --external:fs --external:path --external:module --external:assert --external:os --external:timers --external:timers/promises --platform=browser",
+    "bundle_stdin": "require"
+  },
+  "scripts": {
+    "benchmark": "node lib/deep-equal-benchmark.js",
+    "prebuild": "rm -rf types",
+    "build": "tsgo",
+    "jsdoc": "jsdoc -c jsdoc.conf.json",
+    "lint": "eslint .",
+    "prepublishOnly": "npm run build && npm run test-cloud && mkdocs gh-deploy -r upstream || mkdocs gh-deploy -r origin",
+    "test": "mocha ./lib/*.test.js",
+    "test-cloud": "./test-cloud.sh",
+    "test-check-coverage": "c8 --all --reporter text --reporter html --reporter lcovonly --check-coverage --branches 100 --functions 100 --lines 100 npm run test",
+    "test-coverage": "c8 --all --reporter text --reporter html --reporter lcovonly npm run test",
+    "test-headless": "mochify --driver puppeteer",
+    "prettier:check": "prettier --check '**/*.{js,css,md}'",
+    "prettier:write": "prettier --write '**/*.{js,css,md}'",
+    "preversion": "./check-external-dependencies.sh && npm run test-check-coverage",
+    "version": "changes --commits --footer",
+    "postversion": "git push --follow-tags && npm publish --access public",
+    "prepare": "husky"
+  },
+  "browser": {
+    "jsdom": false,
+    "jsdom-global": false
+  },
+  "files": [
+    "docs/",
+    "lib/",
+    "!lib/**/*.test.js",
+    "types/"
+  ],
+  "dependencies": {
+    "@sinonjs/commons": "^3.0.1",
+    "type-detect": "^4.1.0"
+  },
+  "devDependencies": {
+    "@mochify/cli": "^1.0.0",
+    "@mochify/driver-puppeteer": "^1.0.1",
+    "@mochify/driver-webdriver": "^1.0.0",
+    "@sinonjs/eslint-config": "^7.0.2",
+    "@sinonjs/eslint-plugin-no-prototype-methods": "^0.1.1",
+    "eslint": "^10.2.0",
+    "@sinonjs/referee": "^11.0.1",
+    "@studio/changes": "^3.0.0",
+    "@typescript/native-preview": "7.0.0-dev.20260401.1",
+    "benchmark": "^2.1.4",
+    "c8": "^11.0.0",
+    "esbuild": "^0.27.4",
+    "get-stdin": "^10.0.0",
+    "husky": "^9.1.7",
+    "jquery": "^4.0.0",
+    "jsdoc": "^4.0.5",
+    "jsdom": "^29.0.0",
+    "jsdom-global": "^3.0.2",
+    "lint-staged": "^16.4.0",
+    "microtime": "^3.1.1",
+    "mocha": "^11.7.5",
+    "prettier": "^3.8.1",
+    "proxyquire": "^2.1.3"
+  },
+  "c8": {
+    "exclude": [
+      "**/*.test.js",
+      "coverage/**",
+      "coverage.cjs",
+      "dist/**",
+      "eslint.config.js",
+      "eslint-local-rules.js",
+      "lib/deep-equal-benchmark.js",
+      "mochify.webdriver.cjs",
+      "out/**",
+      "rollup.config.js",
+      "site/**",
+      "types/**"
+    ]
+  }
+}
