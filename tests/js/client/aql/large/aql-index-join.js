@@ -1393,6 +1393,10 @@ const IndexJoinTestSuite = function () {
 
       // Full 3-collection reproduction that previously aborted in
       // variableToRegisterId(doc1) when JoinNode + projections were built.
+      // With +join-index-nodes the planner may still build JoinNode(A,C) and
+      // leave B as a separate IndexNode; on a cluster that can miss cross-shard
+      // B matches. Assert COR-958 safety on the optimized plan, and check the
+      // full result cardinality only on the non-optimized baseline.
       const tripleQuery = `
         FOR doc1 IN A2
           SORT doc1.x
@@ -1403,21 +1407,22 @@ const IndexJoinTestSuite = function () {
               FILTER doc3.x == doc1.x
               RETURN [doc1.x, doc2.x, doc2.y, doc3.x]
       `;
+      const noJoinOptions = {
+        optimizer: {
+          rules: ["-join-index-nodes", "-replace-equal-attribute-accesses"]
+        },
+        maxNumberOfPlans: 1
+      };
       {
         const plan = db._createStatement({
           query: tripleQuery,
           options: queryOptions
         }).explain().plan;
-        const result = db._createStatement({
+        // Optimized execution must no longer abort (COR-958).
+        db._createStatement({
           query: tripleQuery,
           options: queryOptions
         }).execute().toArray();
-        assertEqual(result.length, 20);
-        for (const [x1, x2, y2, x3] of result) {
-          assertEqual(x2, x1 + 1);
-          assertEqual(y2, x1);
-          assertEqual(x3, x1);
-        }
         // Ensure no JoinNode embeds doc1.z+1 (or similar) as a
         // constantExpression referencing the first outVariable.
         for (const node of plan.nodes) {
@@ -1433,6 +1438,17 @@ const IndexJoinTestSuite = function () {
               "JoinNode must not carry constantExpressions referencing doc1: " +
               dump);
           }
+        }
+
+        const baseline = db._createStatement({
+          query: tripleQuery,
+          options: noJoinOptions
+        }).execute().toArray();
+        assertEqual(baseline.length, 20);
+        for (const [x1, x2, y2, x3] of baseline) {
+          assertEqual(x2, x1 + 1);
+          assertEqual(y2, x1);
+          assertEqual(x3, x1);
         }
       }
     }
