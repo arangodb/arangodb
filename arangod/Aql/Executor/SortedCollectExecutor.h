@@ -23,6 +23,7 @@
 #pragma once
 
 #include "Aql/Aggregator.h"
+#include "Aql/CollectOptions.h"
 #include "Aql/AqlValueGroup.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionBlockImpl.h"
@@ -55,7 +56,7 @@ class SortedCollectExecutorInfos {
       Variable const* expressionVariable,
       std::vector<std::string> aggregateTypes,
       std::vector<std::pair<std::string, RegisterId>>&& inputVariables,
-      std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
+      std::vector<AggregateRegisters>&& aggregateRegisters,
       velocypack::Options const*, ResourceMonitor& resourceMonitor);
 
   SortedCollectExecutorInfos() = delete;
@@ -68,8 +69,7 @@ class SortedCollectExecutorInfos {
       const {
     return _groupRegisters;
   }
-  std::vector<std::pair<RegisterId, RegisterId>> const& getAggregatedRegisters()
-      const {
+  std::vector<AggregateRegisters> const& getAggregatedRegisters() const {
     return _aggregateRegisters;
   }
   std::vector<std::string> const& getAggregateTypes() const {
@@ -95,8 +95,7 @@ class SortedCollectExecutorInfos {
   /// @brief aggregate types
   std::vector<std::string> _aggregateTypes;
 
-  /// @brief pairs, consisting of out register and in register
-  std::vector<std::pair<RegisterId, RegisterId>> _aggregateRegisters;
+  std::vector<AggregateRegisters> _aggregateRegisters;
 
   /// @brief pairs, consisting of out register and in register
   std::vector<std::pair<RegisterId, RegisterId>> _groupRegisters;
@@ -147,6 +146,11 @@ class SortedCollectExecutor {
     InputAqlItemRow _lastInputRow;
     arangodb::velocypack::SupervisedBuffer _buffer;
     arangodb::velocypack::Builder _builder;  // Supervised builder
+
+    /// @brief scratch buffer holding one aggregate's input values for the
+    /// current row. Reused so that a multi-argument aggregate does not
+    /// allocate per row.
+    std::vector<AqlValue> _inputValues;
 
     CollectGroup() = delete;
     CollectGroup(CollectGroup&&) = default;

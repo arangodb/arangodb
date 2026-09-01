@@ -39,7 +39,6 @@
 #define INTERNAL_LOG_SC LOG_DEVEL_IF(false)
 
 namespace arangodb::aql {
-static const AqlValue EmptyValue;  // TODO
 
 SortedCollectExecutor::CollectGroup::CollectGroup(Infos& infos)
     : groupLength(0),
@@ -121,7 +120,7 @@ SortedCollectExecutorInfos::SortedCollectExecutorInfos(
     RegisterId collectRegister, RegisterId expressionRegister,
     Variable const* expressionVariable, std::vector<std::string> aggregateTypes,
     std::vector<std::pair<std::string, RegisterId>>&& inputVariables,
-    std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
+    std::vector<AggregateRegisters>&& aggregateRegisters,
     velocypack::Options const* opts, ResourceMonitor& resourceMonitor)
     : _aggregateTypes(std::move(aggregateTypes)),
       _aggregateRegisters(std::move(aggregateRegisters)),
@@ -154,12 +153,11 @@ void SortedCollectExecutor::CollectGroup::addLine(
   for (auto& it : this->aggregators) {
     TRI_ASSERT(!this->aggregators.empty());
     TRI_ASSERT(infos.getAggregatedRegisters().size() > j);
-    RegisterId const reg = infos.getAggregatedRegisters()[j].second;
-    if (reg.value() != RegisterId::maxRegisterId) {
-      it->reduce(input.getValue(reg));
-    } else {
-      it->reduce(EmptyValue);
+    _inputValues.clear();
+    for (auto const& reg : infos.getAggregatedRegisters()[j].inRegs) {
+      _inputValues.emplace_back(input.getValue(reg));
     }
+    it->reduce(_inputValues);
     ++j;
   }
   TRI_IF_FAILURE("SortedCollectBlock::getOrSkipSome") {
@@ -262,8 +260,8 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(
   for (auto& it : this->aggregators) {
     AqlValue val = it->stealValue();
     AqlValueGuard guard{val, true};
-    output.moveValueInto(infos.getAggregatedRegisters()[j].first, _lastInputRow,
-                         &guard);
+    output.moveValueInto(infos.getAggregatedRegisters()[j].outReg,
+                         _lastInputRow, &guard);
     ++j;
   }
 

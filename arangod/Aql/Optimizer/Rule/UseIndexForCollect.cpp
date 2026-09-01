@@ -66,7 +66,7 @@ bool isCollectNodeEligible(CollectNode const& cn) {
   for (auto const& agg : cn.aggregateVariables()) {
     // TODO this happens with COUNT INTO or AGGREGATE var = COUNT().
     //   Maybe support this later on.
-    if (agg.inVar == nullptr) {
+    if (agg.inVars.empty()) {
       LOG_RULE << "Collect " << cn.id()
                << " not eligible - aggregation of type " << agg.type
                << " into variable " << agg.outVar->name
@@ -323,48 +323,55 @@ getEligibleAggregates(ExecutionPlan const& plan, CollectNode const& cn,
   auto const& coveredFields = idx.getSingleIndex()->coveredFields();
 
   for (auto const& agg : cn.aggregateVariables()) {
-    // get the producing node for the in variable, it should be a calculation
-    auto producer = plan.getVarSetBy(agg.inVar->id);
-    if (producer != nullptr && producer->getType() != EN::CALCULATION) {
-      return std::nullopt;
-    }
-    auto calculation = EN::castTo<CalculationNode*>(producer);
+    std::vector<std::unique_ptr<Expression>> expressions;
+    expressions.reserve(agg.inVars.size());
 
-    // check if it is just an attribute access for the out variable of the
-    // index node.
-    VarSet variablesUsed;
-    calculation->expression()->variables(variablesUsed);
-    if (variablesUsed != VarSet{idx.outVariable()}) {
-      LOG_RULE << "Calculation " << calculation->id()
-               << " not eligible - expression uses other variables than index ("
-               << idx.id() << ") out variable " << idx.outVariable()->name;
-      return std::nullopt;
-    }
-
-    // check if all attributes in aggregate expression are covered fields
-    containers::FlatHashSet<aql::AttributeNamePath> attributes;
-    Ast::getReferencedAttributesRecursive(
-        calculation->expression()->node(), idx.outVariable(), "", attributes,
-        plan.getAst()->query().resourceMonitor());
-    for (auto const& attr : attributes) {
-      auto iter = std::find_if(
-          coveredFields.begin(), coveredFields.end(),
-          [&](auto const& field) { return attributeMatches(attr, field); });
-      if (iter == coveredFields.end()) {
-        LOG_RULE << "Calculation " << calculation->id()
-                 << " not eligible - accessed attribute " << attr
-                 << " which is not covered by the index";
+    for (auto const* inVar : agg.inVars) {
+      // get the producing node for the in variable, it should be a calculation
+      auto producer = plan.getVarSetBy(inVar->id);
+      if (producer != nullptr && producer->getType() != EN::CALCULATION) {
         return std::nullopt;
       }
-      std::size_t fieldIndex = std::distance(coveredFields.begin(), iter);
-      aggregationFields.emplace_back(fieldIndex);
+      auto calculation = EN::castTo<CalculationNode*>(producer);
+
+      // check if it is just an attribute access for the out variable of the
+      // index node.
+      VarSet variablesUsed;
+      calculation->expression()->variables(variablesUsed);
+      if (variablesUsed != VarSet{idx.outVariable()}) {
+        LOG_RULE << "Calculation " << calculation->id()
+                 << " not eligible - expression uses other variables than "
+                    "index ("
+                 << idx.id() << ") out variable " << idx.outVariable()->name;
+        return std::nullopt;
+      }
+
+      // check if all attributes in aggregate expression are covered fields
+      containers::FlatHashSet<aql::AttributeNamePath> attributes;
+      Ast::getReferencedAttributesRecursive(
+          calculation->expression()->node(), idx.outVariable(), "", attributes,
+          plan.getAst()->query().resourceMonitor());
+      for (auto const& attr : attributes) {
+        auto iter = std::find_if(
+            coveredFields.begin(), coveredFields.end(),
+            [&](auto const& field) { return attributeMatches(attr, field); });
+        if (iter == coveredFields.end()) {
+          LOG_RULE << "Calculation " << calculation->id()
+                   << " not eligible - accessed attribute " << attr
+                   << " which is not covered by the index";
+          return std::nullopt;
+        }
+        std::size_t fieldIndex = std::distance(coveredFields.begin(), iter);
+        aggregationFields.emplace_back(fieldIndex);
+      }
+
+      expressions.emplace_back(calculation->expression()->clone(plan.getAst()));
     }
 
-    // put the calculation expression inside the aggregation
-    aggregations.emplace_back(IndexCollectAggregation{
-        .type = agg.type,
-        .outVariable = agg.outVar,
-        .expression = calculation->expression()->clone(plan.getAst())});
+    aggregations.emplace_back(
+        IndexCollectAggregation{.type = agg.type,
+                                .outVariable = agg.outVar,
+                                .expressions = std::move(expressions)});
   }
 
   return std::make_tuple(std::move(aggregations), std::move(aggregationFields));

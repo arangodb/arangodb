@@ -50,7 +50,7 @@ struct IndexAggregateScanInfos {
   struct Aggregation {
     std::string type;
     RegisterId outputRegister;
-    std::unique_ptr<Expression> expression;
+    std::vector<std::unique_ptr<Expression>> expressions;
   };
   std::vector<Aggregation> aggregations;
 
