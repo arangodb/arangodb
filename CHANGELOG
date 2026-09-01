@@ -1,6 +1,8 @@
 v3.11.14.2 (XXXX-XX-XX)
 -----------------------
 
+* Fix potential race then reloading token secret (secret rotation).
+
 * Updated arangosync to v2.19.19.
 
 * Updated ArangoDB Starter to v0.18.18.
