@@ -263,7 +263,7 @@ class instance {
     this.upAndRunning = struct['upAndRunning'];
     this.suspended = struct['suspended'];
     this.port = struct['port'];
-    this.rbacPort = struct['rbacPort']
+    this.rbacPort = struct['rbacPort'];
     this.url = struct['url'];
     this.endpoint = struct['endpoint'];
     this.dataDir = struct['dataDir'];
@@ -430,7 +430,11 @@ class instance {
     }
 
     if (this.options.rbac) {
-      this.args["server.external-rbac-service"] = `http://127.0.0.1:${this.rbacPort}`;
+      if (typeof this.options.rbac !== "string") {
+        this.args["server.external-rbac-service"] = `http://127.0.0.1:${this.rbacPort}`;
+      } else {
+        this.args["server.external-rbac-service"] = this.options.rbac;
+      }
     }
     if (this.options.hasOwnProperty("replicationVersion")) {
       this.args['database.default-replication-version'] = this.options.replicationVersion;
