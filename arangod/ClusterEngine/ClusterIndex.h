@@ -101,7 +101,7 @@ class ClusterIndex : public Index {
       transaction::Methods& trx, aql::AstNode* node,
       aql::Variable const* reference) const override;
 
-  void updateProperties(bool cacheEnabled);
+  void setCacheEnabled(bool cacheEnabled);
 
   bool supportsDistinctScan(
       IndexDistinctScanOptions const& scanOptions) const noexcept override;

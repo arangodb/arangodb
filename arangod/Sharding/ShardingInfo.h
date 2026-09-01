@@ -31,6 +31,7 @@
 #include <velocypack/Slice.h>
 
 #include <atomic>
+#include <optional>
 #include <set>
 #include <string>
 #include <unordered_set>
@@ -128,6 +129,17 @@ class ShardingInfo {
 
  private:
   void makeSatellite();
+
+  // @brief zeroes the shard count for a smart edge parent, then rejects a
+  // count of zero everywhere it is not allowed
+  void resolveNumberOfShards(bool isSmart);
+
+  // @brief stores both values, rejecting invalid combinations of the two
+  void applyReplicationFactorAndWriteConcern(
+      bool isSmart, size_t replicationFactor,
+      std::optional<size_t> writeConcern);
+
+  void initializeShardingStrategy(CollectionDescriptor const& descriptor);
 
   // @brief the logical collection we are working for
   LogicalCollection* _collection;
