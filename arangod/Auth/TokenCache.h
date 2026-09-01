@@ -37,6 +37,7 @@
 
 #include <atomic>
 #include <mutex>
+#include <shared_mutex>
 #include <string>
 #include <unordered_map>
 
@@ -105,8 +106,9 @@ class TokenCache {
 #endif
 
   /// Get the jwt token, which should be used for communication
-  std::string const& jwtToken() const noexcept {
+  std::string jwtToken() const noexcept {
     TRI_ASSERT(!_jwtSuperToken.empty());
+    std::shared_lock guard{_jwtSuperTokenLock};
     return _jwtSuperToken;
   }
 
@@ -141,6 +143,8 @@ class TokenCache {
   std::vector<std::string> _jwtPassiveSecrets;
 #endif
   std::string _jwtActiveSecret;
+
+  mutable std::shared_mutex _jwtSuperTokenLock;
   std::string _jwtSuperToken;  /// token for internal use
 
   mutable std::mutex _jwtCacheMutex;
