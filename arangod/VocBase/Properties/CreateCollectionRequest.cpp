@@ -20,12 +20,12 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "CreateCollectionBody.h"
-
 #include "Cluster/ServerState.h"
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "Basics/VelocyPackHelper.h"
+#include "VocBase/Properties/CreateCollectionRequest.h"
+#include "VocBase/Properties/CollectionValidation.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 
 #include <velocypack/Collection.h>
@@ -620,13 +620,13 @@ auto transformFromBackwardsCompatibleRestoreBody(
 }
 
 #ifndef USE_ENTERPRISE
-Result validateEnterpriseFeaturesNotUsed(CreateCollectionBody const& body) {
-  if (body.isSatellite()) {
+Result validateEnterpriseFeaturesNotUsed(CollectionDescriptor const& d) {
+  if (d.clusteringMutable.isSatellite()) {
     return Result{
         TRI_ERROR_ONLY_ENTERPRISE,
         "satellite collections or only available in enterprise version"};
   }
-  if (body.isSmart || body.isSmartChild) {
+  if (d.constant.isSmart || d.internal.isSmartChild) {
     return Result{TRI_ERROR_ONLY_ENTERPRISE,
                   "SmartGraphs or only available in enterprise version"};
   }
@@ -634,25 +634,27 @@ Result validateEnterpriseFeaturesNotUsed(CreateCollectionBody const& body) {
 }
 #endif
 
-ResultT<CreateCollectionBody> parseAndValidate(
+ResultT<CreateCollectionRequest> parseAndValidate(
     DatabaseConfiguration const& config, VPackSlice input,
-    std::function<void(CreateCollectionBody&)> applyDefaults,
+    std::function<void(CollectionDescriptor&)> applyDefaults,
     std::function<Result(inspection::Status const&)> const& statusToResult,
-    std::function<void(CreateCollectionBody&)> applyCompatibilityHacks) {
+    std::function<void(CollectionDescriptor&)> applyCompatibilityHacks) {
   try {
-    CreateCollectionBody res;
-    applyDefaults(res);
+    CreateCollectionRequest res;
+    applyDefaults(res.descriptor);
+    // One pass over the body fills both the collection properties and the
+    // options that only apply to this request.
     auto status =
         velocypack::deserializeWithStatus(input, res, {}, InspectUserContext{});
     if (status.ok()) {
-      applyCompatibilityHacks(res);
+      applyCompatibilityHacks(res.descriptor);
       // Inject default values, and finally check if collection is allowed
-      auto result = res.applyDefaultsAndValidateDatabaseConfiguration(config);
+      auto result = applyDefaultsAndValidate(res.descriptor, config);
       if (result.fail()) {
         return result;
       }
 #ifndef USE_ENTERPRISE
-      result = validateEnterpriseFeaturesNotUsed(res);
+      result = validateEnterpriseFeaturesNotUsed(res.descriptor);
       if (result.fail()) {
         return result;
       }
@@ -669,9 +671,7 @@ ResultT<CreateCollectionBody> parseAndValidate(
 
 }  // namespace
 
-CreateCollectionBody::CreateCollectionBody() = default;
-
-ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIBody(
+ResultT<CreateCollectionRequest> CreateCollectionRequest::fromCreateAPIBody(
     VPackSlice input, DatabaseConfiguration const& config,
     bool activateBackwardsCompatibility) {
   if (!input.isObject()) {
@@ -680,8 +680,8 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIBody(
     return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
   }
   auto res = ::parseAndValidate(
-      config, input, [](CreateCollectionBody& col) {},
-      ::rewriteStatusErrorMessage, [](CreateCollectionBody& col) {});
+      config, input, [](CollectionDescriptor& col) {},
+      ::rewriteStatusErrorMessage, [](CollectionDescriptor& col) {});
   if (activateBackwardsCompatibility && res.fail()) {
     auto newBody =
         transformFromBackwardsCompatibleBody(input, config, res.result());
@@ -689,8 +689,8 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIBody(
       return newBody.result();
     }
     auto compatibleRes = ::parseAndValidate(
-        config, newBody->slice(), [](CreateCollectionBody& col) {},
-        ::rewriteStatusErrorMessage, [](CreateCollectionBody& col) {});
+        config, newBody->slice(), [](CollectionDescriptor& col) {},
+        ::rewriteStatusErrorMessage, [](CollectionDescriptor& col) {});
     if (compatibleRes.ok()) {
       logDeprecationMessage(res.result());
     }
@@ -699,7 +699,7 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIBody(
   return res;
 }
 
-ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIV8(
+ResultT<CreateCollectionRequest> CreateCollectionRequest::fromCreateAPIV8(
     VPackSlice properties, std::string const& name, TRI_col_type_e type,
     DatabaseConfiguration const& config) {
   if (name.empty()) {
@@ -707,48 +707,32 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIV8(
     // on "name"
     return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
   }
-  auto res = ::parseAndValidate(
-      config, properties,
-      [&name, &type](CreateCollectionBody& col) {
-        // Inject the default values given by V8 in a
-        // separate parameter
-        col.type = type;
-        col.name = name;
-      },
-      ::rewriteStatusErrorMessage,
-      [](CreateCollectionBody& col) {
+  auto applyDefaults = [&name, &type](CollectionDescriptor& col) {
+    // Inject the default values given by V8 in a separate parameter
+    col.constant.type = type;
+    col.mutableProps.name = name;
+  };
+  auto applyHacks = [](CollectionDescriptor& col) {
 #ifdef USE_ENTERPRISE
-        if (col.isDisjoint) {
-          // We don't support disjoint collection creation for enterprise
-          // over V8API
-          col.isDisjoint = false;
-        }
+    if (col.constant.isDisjoint) {
+      // We don't support disjoint collection creation for enterprise
+      // over V8API
+      col.constant.isDisjoint = false;
+    }
 #endif
-      });
+  };
+
+  auto res = ::parseAndValidate(config, properties, applyDefaults,
+                                ::rewriteStatusErrorMessage, applyHacks);
   if (res.fail()) {
     auto newBody =
         transformFromBackwardsCompatibleBody(properties, config, res.result());
     if (newBody.fail()) {
       return newBody.result();
     }
-    auto compatibleRes = ::parseAndValidate(
-        config, newBody->slice(),
-        [&name, &type](CreateCollectionBody& col) {
-          // Inject the default values given by V8 in a
-          // separate parameter
-          col.type = type;
-          col.name = name;
-        },
-        ::rewriteStatusErrorMessage,
-        [](CreateCollectionBody& col) {
-#ifdef USE_ENTERPRISE
-          if (col.isDisjoint) {
-            // We don't support disjoint collection creation for enterprise
-            // over V8API
-            col.isDisjoint = false;
-          }
-#endif
-        });
+    auto compatibleRes =
+        ::parseAndValidate(config, newBody->slice(), applyDefaults,
+                           ::rewriteStatusErrorMessage, applyHacks);
     if (compatibleRes.ok()) {
       logDeprecationMessage(res.result());
     }
@@ -757,28 +741,28 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIV8(
   return res;
 }
 
-ResultT<CreateCollectionBody> CreateCollectionBody::fromRestoreAPIBody(
+ResultT<CreateCollectionRequest> CreateCollectionRequest::fromRestoreAPIBody(
     VPackSlice input, DatabaseConfiguration const& config) {
   auto res = ::parseAndValidate(
-      config, input, [](CreateCollectionBody& col) {},
+      config, input, [](CollectionDescriptor& col) {},
       ::rewriteStatusErrorMessageForRestore,
-      [&config](CreateCollectionBody& col) {
+      [&config](CollectionDescriptor& col) {
         // By all means, we cannot take an id from the outside. We need to
         // generate an ID here. So better waste one ID than having a collision.
-        col.id = config.idGenerator();
+        col.internal.id = config.idGenerator();
 
-        if (isKnownSystemCollection(col.name)) {
+        if (isKnownSystemCollection(col.mutableProps.name)) {
           if (config.isSystemDB) {
-            col.distributeShardsLike = "_users";
+            col.clusteringConstant.distributeShardsLike = "_users";
           } else {
-            col.distributeShardsLike = "_graphs";
+            col.clusteringConstant.distributeShardsLike = "_graphs";
           }
         }
 
-        if (!col.shardingStrategy.has_value() &&
-            !col.distributeShardsLike.has_value() &&
+        if (!col.clusteringConstant.shardingStrategy.has_value() &&
+            !col.clusteringConstant.distributeShardsLike.has_value() &&
             !config.oneShardDBConfiguration.has_value()) {
-          col.shardingStrategy = "hash";
+          col.clusteringConstant.shardingStrategy = "hash";
         }
       });
   if (res.fail()) {
@@ -791,37 +775,39 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromRestoreAPIBody(
     // NOTE: We do not log a deprecation message here. The restore API is
     // forever backwards compatible.
     res = ::parseAndValidate(
-        config, newBody->slice(), [](CreateCollectionBody& col) {},
+        config, newBody->slice(), [](CollectionDescriptor& col) {},
         ::rewriteStatusErrorMessageForRestore,
-        [&config](CreateCollectionBody& col) {
+        [&config](CollectionDescriptor& col) {
           // By all means, we cannot take an id from the outside. We need to
           // generate an ID here. So better waste one ID than having a
           // collision.
-          col.id = config.idGenerator();
-          if (!col.shardingStrategy.has_value() &&
-              !col.distributeShardsLike.has_value() &&
+          col.internal.id = config.idGenerator();
+          if (!col.clusteringConstant.shardingStrategy.has_value() &&
+              !col.clusteringConstant.distributeShardsLike.has_value() &&
               !config.oneShardDBConfiguration.has_value()) {
             const bool isSmart =
 #if USE_ENTERPRISE
-                col.isSmart;
+                col.constant.isSmart;
 #else
                 false;
 #endif
             if (!isSmart) {
-              col.shardingStrategy = "hash";
+              col.clusteringConstant.shardingStrategy = "hash";
             } else {
-              if (col.getType() == TRI_COL_TYPE_DOCUMENT) {
-                if (col.smartGraphAttribute.has_value()) {
+              if (col.constant.getType() == TRI_COL_TYPE_DOCUMENT) {
+                if (col.internal.smartGraphAttribute.has_value()) {
                   // SmartGraphs need  to have shardingStrategy "hash"
-                  col.shardingStrategy = "hash";
+                  col.clusteringConstant.shardingStrategy = "hash";
                 } else {
                   // EnterpriseGraphs need  to have shardingStrategy
                   // "enterprise-hex-smart-vertex"
-                  col.shardingStrategy = "enterprise-hex-smart-vertex";
+                  col.clusteringConstant.shardingStrategy =
+                      "enterprise-hex-smart-vertex";
                 }
               } else {
                 // Smart Edge Collections always have hash-smart-edge sharding
-                col.shardingStrategy = "enterprise-hash-smart-edge";
+                col.clusteringConstant.shardingStrategy =
+                    "enterprise-hash-smart-edge";
               }
             }
           }
@@ -836,65 +822,9 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromRestoreAPIBody(
   return res;
 }
 
-arangodb::velocypack::Builder
-CreateCollectionBody::toCreateCollectionProperties(
-    std::vector<CreateCollectionBody> const& collections) {
-  arangodb::velocypack::Builder builder;
-  VPackArrayBuilder guard{&builder};
-  for (auto const& c : collections) {
-    // TODO: This is copying multiple times.
-    // Nevermind this is only temporary code.
-    builder.add(c.toCollectionsCreate().slice());
-  }
+velocypack::Builder arangodb::collectionCreateResponse(
+    CollectionDescriptor const& d) {
+  velocypack::Builder builder;
+  velocypack::serializeWithContext(builder, d, InspectUserContext{});
   return builder;
-}
-
-arangodb::velocypack::Builder CreateCollectionBody::toCollectionsCreate()
-    const {
-  arangodb::velocypack::Builder builder;
-  arangodb::velocypack::serializeWithContext(builder, *this,
-                                             InspectUserContext{});
-  // TODO: This is a hack to erase attributes that are not expected by follow up
-  // APIS, it should be obsolete after refactoring is completed
-  std::vector<std::string> attributesToErase{};
-  if (builder.slice().hasKey(StaticStrings::SmartJoinAttribute) &&
-      builder.slice()
-          .get(StaticStrings::SmartJoinAttribute)
-          .isEqualString("")) {
-    // TODO: This is a hack to erase the SmartJoin attribute if it was not set
-    // We need this to satisfy the API checks in LogicalCollection
-    // `initializeSmartAttributes`
-    attributesToErase.emplace_back(StaticStrings::SmartJoinAttribute);
-  }
-  if (builder.slice().hasKey(StaticStrings::ShardingStrategy) &&
-      builder.slice().get(StaticStrings::ShardingStrategy).isEqualString("")) {
-    // TODO: This is a hack to erase the ShardingStrategy attribute if it was
-    // not set
-    attributesToErase.emplace_back(StaticStrings::ShardingStrategy);
-  }
-
-  if (builder.slice().hasKey(StaticStrings::GraphSmartGraphAttribute) &&
-      builder.slice()
-          .get(StaticStrings::GraphSmartGraphAttribute)
-          .isEqualString("")) {
-    // TODO: This is a hack to erase the SmartGraphAttribute attribute if it was
-    // not set
-    attributesToErase.emplace_back(StaticStrings::GraphSmartGraphAttribute);
-  }
-  if (!attributesToErase.empty()) {
-    return VPackCollection::remove(builder.slice(), attributesToErase);
-  }
-  return builder;
-}
-
-CollectionDescriptor CreateCollectionBody::toDescriptor() const {
-  CollectionDescriptor d;
-  d.constant = static_cast<CollectionConstantProperties const&>(*this);
-  d.mutableProps = static_cast<CollectionMutableProperties const&>(*this);
-  d.internal = static_cast<CollectionInternalProperties const&>(*this);
-  d.clusteringConstant =
-      static_cast<ClusteringConstantProperties const&>(*this);
-  d.clusteringMutable = static_cast<ClusteringMutableProperties const&>(*this);
-  // storage.objectId is assigned by the storage engine, not by the user
-  return d;
 }

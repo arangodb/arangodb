@@ -47,7 +47,9 @@
 #include "Sharding/ShardingInfo.h"
 #include "VocBase/LogicalCollection.h"
 #include "StorageEngine/PhysicalCollection.h"
-#include "VocBase/Properties/CreateCollectionBody.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
+#include "VocBase/Properties/CollectionCreateOptions.h"
+#include "VocBase/Properties/InternalCollectionCreateOptions.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Collection.h>
@@ -218,9 +220,9 @@ Result impl(ClusterInfo& ci, application_features::ApplicationServer& server,
     std::unordered_set<std::string> distributeShardsLikeColls;
     auto const& colls = writer.collectionsToCreate();
     for (auto const& c : colls) {
-      if (c.properties().distributeShardsLike.has_value()) {
+      if (c.properties().clusteringConstant.distributeShardsLike.has_value()) {
         distributeShardsLikeColls.insert(
-            c.properties().distributeShardsLike.value());
+            c.properties().clusteringConstant.distributeShardsLike.value());
       }
     }
     // If we have some, let's see if they are about to be generated or not:
@@ -608,9 +610,9 @@ Result impl(ClusterInfo& ci, application_features::ApplicationServer& server,
 template<replication::Version ReplicationVersion>
 [[nodiscard]] arangodb::ResultT<std::vector<std::shared_ptr<LogicalCollection>>>
 createCollectionsOnCoordinatorImpl(
-    TRI_vocbase_t& vocbase, std::vector<CreateCollectionBody> collections,
-    bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
-    bool enforceReplicationFactor, bool isNewDatabase) {
+    TRI_vocbase_t& vocbase, std::vector<CollectionDescriptor> collections,
+    InternalCollectionCreateOptions const& internalOptions,
+    CollectionCreateOptions const& options) {
   using EntryType =
       typename std::conditional<ReplicationVersion == replication::Version::TWO,
                                 PlanCollectionEntryReplication2,
@@ -662,15 +664,15 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
   buildingFlags.rebootId = serverState->getRebootId();
   for (auto& c : collections) {
     auto shards = ClusterCollectionMethods::generateShardNames(
-        feature.clusterInfo(), c.numberOfShards.value());
+        feature.clusterInfo(), c.clusteringConstant.numberOfShards.value());
 
     // Temporarily add shardsR2 here. This is going to be done by the
     // supervision in the future.
-    c.shardsR2 = shards;
+    c.clusteringConstant.shardsR2 = shards;
 
     auto distributionType = ClusterCollectionMethods::selectDistributeType(
-        feature.clusterInfo(), vocbase.name(), c, enforceReplicationFactor,
-        shardDistributionList);
+        feature.clusterInfo(), vocbase.name(), c, shardDistributionList,
+        internalOptions, options);
     if constexpr (ReplicationVersion == replication::Version::TWO) {
       collectionPlanEntries.emplace_back(
           ClusterCollectionMethods::toPlanEntryReplication2(
@@ -694,9 +696,9 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
                         std::move(shardDistributionList)};
     }
   });
-  auto res =
-      ::impl(feature.clusterInfo(), vocbase.server(),
-             std::string_view{vocbase.name()}, writer, waitForSyncReplication);
+  auto res = ::impl(feature.clusterInfo(), vocbase.server(),
+                    std::string_view{vocbase.name()}, writer,
+                    internalOptions.waitForSyncReplication);
   if (res.fail()) {
     // Something went wrong, let's report
     return res;
@@ -709,7 +711,7 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
   results.reserve(collectionNamesToLoad.size());
 
   auto& ci = feature.clusterInfo();
-  if (isNewDatabase) {
+  if (internalOptions.isNewDatabase) {
     // Call dangerous method on ClusterInfo to generate only collection stubs to
     // use here.
     auto lookupList = ci.generateCollectionStubs(vocbase);
@@ -754,7 +756,7 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
 }  // namespace
 
 [[nodiscard]] auto ClusterCollectionMethods::toPlanEntry(
-    CreateCollectionBody col, std::vector<ShardID> shardNames,
+    CollectionDescriptor col, std::vector<ShardID> shardNames,
     std::shared_ptr<IShardDistributionFactory> distributeType,
     AgencyIsBuildingFlags buildingFlags) -> PlanCollectionEntry {
   return {std::move(col),
@@ -763,7 +765,7 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
 }
 
 [[nodiscard]] auto ClusterCollectionMethods::toPlanEntryReplication2(
-    CreateCollectionBody col, std::vector<ShardID> shardNames,
+    CollectionDescriptor col, std::vector<ShardID> shardNames,
     std::shared_ptr<IShardDistributionFactory> distributeType,
     AgencyIsBuildingFlags buildingFlags) -> PlanCollectionEntryReplication2 {
   return PlanCollectionEntryReplication2{std::move(col)};
@@ -788,18 +790,19 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
 
 [[nodiscard]] auto ClusterCollectionMethods::prepareCollectionGroups(
     ClusterInfo& ci, std::string_view databaseName,
-    std::vector<CreateCollectionBody>& collections)
+    std::vector<CollectionDescriptor>& collections)
     -> ResultT<replication2::CollectionGroupUpdates> {
   arangodb::replication2::CollectionGroupUpdates groups;
   std::unordered_map<std::string, replication2::agency::CollectionGroupId>
       selfCreatedGroups;
   for (auto& col : collections) {
-    if (col.distributeShardsLike.has_value()) {
-      auto const& leadingName = col.distributeShardsLike.value();
+    if (col.clusteringConstant.distributeShardsLike.has_value()) {
+      auto const& leadingName =
+          col.clusteringConstant.distributeShardsLike.value();
       if (selfCreatedGroups.contains(leadingName)) {
         auto groupId = selfCreatedGroups.at(leadingName);
-        groups.addToNewGroup(groupId, col.id);
-        col.groupId = groupId;
+        groups.addToNewGroup(groupId, col.internal.id);
+        col.clusteringConstant.groupId = groupId;
       } else {
         auto c = ci.getCollection(databaseName, leadingName);
         TRI_ASSERT(c.get() != nullptr);
@@ -807,15 +810,15 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
         // collection does not exist. Also, the createCollection should have
         // failed before.
         auto groupId = c->groupID();
-        groups.addToExistingGroup(groupId, col.id);
-        col.groupId = groupId;
+        groups.addToExistingGroup(groupId, col.internal.id);
+        col.clusteringConstant.groupId = groupId;
       }
     } else {
       // Create a new CollectionGroup
       auto groupId = groups.addNewGroup(col, [&ci]() { return ci.uniqid(); });
       // Remember it for reuse
-      selfCreatedGroups.emplace(col.name, groupId);
-      col.groupId = groupId;
+      selfCreatedGroups.emplace(col.mutableProps.name, groupId);
+      col.clusteringConstant.groupId = groupId;
     }
   }
   return groups;
@@ -823,11 +826,14 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
 
 [[nodiscard]] auto ClusterCollectionMethods::selectDistributeType(
     ClusterInfo& ci, std::string_view databaseName,
-    CreateCollectionBody const& col, bool enforceReplicationFactor,
+    CollectionDescriptor const& col,
     std::unordered_map<std::string, std::shared_ptr<IShardDistributionFactory>>&
-        allUsedDistributions) -> std::shared_ptr<IShardDistributionFactory> {
-  if (col.distributeShardsLike.has_value()) {
-    auto distLike = col.distributeShardsLike.value();
+        allUsedDistributions,
+    InternalCollectionCreateOptions const& internalOptions,
+    CollectionCreateOptions const& options)
+    -> std::shared_ptr<IShardDistributionFactory> {
+  if (col.clusteringConstant.distributeShardsLike.has_value()) {
+    auto distLike = col.clusteringConstant.distributeShardsLike.value();
     // Empty value has to be rejected by invariants beforehand, assert here just
     // in case.
     TRI_ASSERT(!distLike.empty());
@@ -865,28 +871,29 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
     // Add the Leader to the distribution List
     allUsedDistributions.emplace(distLike, distribution);
     return distribution;
-  } else if (col.isSatellite()) {
+  } else if (col.clusteringMutable.isSatellite()) {
     // We are a Satellite collection, use Satellite sharding
     auto distribution = std::make_shared<SatelliteDistribution>();
-    allUsedDistributions.emplace(col.name, distribution);
+    allUsedDistributions.emplace(col.mutableProps.name, distribution);
     return distribution;
   } else {
     // Just distribute evenly
     auto distribution = std::make_shared<EvenDistribution>(
-        col.numberOfShards.value(), col.replicationFactor.value(),
-        col.avoidServers, enforceReplicationFactor);
-    allUsedDistributions.emplace(col.name, distribution);
+        col.clusteringConstant.numberOfShards.value(),
+        col.clusteringMutable.replicationFactor.value(), options.avoidServers,
+        internalOptions.enforceReplicationFactor);
+    allUsedDistributions.emplace(col.mutableProps.name, distribution);
     return distribution;
   }
 }
 
 [[nodiscard]] arangodb::ResultT<std::vector<std::shared_ptr<LogicalCollection>>>
 ClusterCollectionMethods::createCollectionsOnCoordinator(
-    TRI_vocbase_t& vocbase, std::vector<CreateCollectionBody> collections,
-    bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
-    bool enforceReplicationFactor, bool isNewDatabase) {
+    TRI_vocbase_t& vocbase, std::vector<CollectionDescriptor> collections,
+    InternalCollectionCreateOptions const& internalOptions,
+    CollectionCreateOptions const& options) {
   TRI_IF_FAILURE("ClusterInfo::requiresWaitForReplication") {
-    if (waitForSyncReplication) {
+    if (internalOptions.waitForSyncReplication) {
       return {TRI_ERROR_DEBUG};
     } else {
       TRI_ASSERT(false) << "We required to have waitForReplication, but it "
@@ -901,14 +908,18 @@ ClusterCollectionMethods::createCollectionsOnCoordinator(
         "Trying to create an empty list of collections on coordinator."};
   }
 
+  for (auto const& col : collections) {
+    if (auto res = vocbase.validateCollectionDescriptor(col); res.fail()) {
+      return res;
+    }
+  }
+
   if (vocbase.replicationVersion() == replication::Version::TWO) {
     return createCollectionsOnCoordinatorImpl<replication::Version::TWO>(
-        vocbase, std::move(collections), ignoreDistributeShardsLikeErrors,
-        waitForSyncReplication, enforceReplicationFactor, isNewDatabase);
+        vocbase, std::move(collections), internalOptions, options);
   } else {
     return createCollectionsOnCoordinatorImpl<replication::Version::ONE>(
-        vocbase, std::move(collections), ignoreDistributeShardsLikeErrors,
-        waitForSyncReplication, enforceReplicationFactor, isNewDatabase);
+        vocbase, std::move(collections), internalOptions, options);
   }
 }
 ////////////////////////////////////////////////////////////////////////////////

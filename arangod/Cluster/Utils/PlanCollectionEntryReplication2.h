@@ -27,7 +27,7 @@
 #include "ShardDistribution.h"
 #include "Cluster/Utils/AgencyIsBuildingFlags.h"
 #include "VocBase/Properties/CollectionIndexesProperties.h"
-#include "VocBase/Properties/UserInputCollectionProperties.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 #include "Cluster/Utils/PlanShardToServerMappping.h"
 #include "Cluster/Utils/IShardDistributionFactory.h"
 #include "Replication2/AgencyCollectionSpecification.h"
@@ -43,8 +43,7 @@ struct LogTarget;
 }
 
 struct PlanCollectionEntryReplication2 {
-  explicit PlanCollectionEntryReplication2(
-      UserInputCollectionProperties collection);
+  explicit PlanCollectionEntryReplication2(CollectionDescriptor collection);
 
   [[nodiscard]] std::string getCID() const;
 

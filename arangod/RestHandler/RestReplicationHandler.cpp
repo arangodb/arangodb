@@ -67,7 +67,8 @@
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/Properties/CreateCollectionBody.h"
+#include "VocBase/Properties/CreateCollectionRequest.h"
+#include "VocBase/Properties/InternalCollectionCreateOptions.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 
@@ -1085,13 +1086,14 @@ futures::Future<Result> RestReplicationHandler::processRestoreCollection(
   auto config = _vocbase.getDatabaseConfiguration();
 
   // Original
-  auto input = CreateCollectionBody::fromRestoreAPIBody(parameters, config);
+  auto input = CreateCollectionRequest::fromRestoreAPIBody(parameters, config);
   if (input.fail()) {
     co_return input.result();
   }
   OperationOptions options;
 
-  if (ignoreHiddenEnterpriseCollection(input->name, force)) {
+  if (ignoreHiddenEnterpriseCollection(input->descriptor.mutableProps.name,
+                                       force)) {
     co_return {TRI_ERROR_NO_ERROR};
   }
 
@@ -1102,8 +1104,8 @@ futures::Future<Result> RestReplicationHandler::processRestoreCollection(
   }
 
   {
-    auto result = co_await handlingOfExistingCollection(_vocbase, input->name,
-                                                        dropExisting);
+    auto result = co_await handlingOfExistingCollection(
+        _vocbase, input->descriptor.mutableProps.name, dropExisting);
     if (result.fail()) {
       co_return result.result();
     }
@@ -1115,30 +1117,25 @@ futures::Future<Result> RestReplicationHandler::processRestoreCollection(
         // Consider this process successful.
         co_return {TRI_ERROR_NO_ERROR};
       } else {
-        co_return Result(
-            TRI_ERROR_ARANGO_DUPLICATE_NAME,
-            std::string("duplicate collection name '") + input->name + "'");
+        co_return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME,
+                         std::string("duplicate collection name '") +
+                             input->descriptor.mutableProps.name + "'");
       }
     }
   }
 
-  // We always wait for Collections to be synced on shards
-  bool waitForSyncReplication = true;
-  bool isNewDatabase = false;
-  bool isRestore = true;
+  // Defaults are what restore wants: waitForSyncReplication and
+  // enforceReplicationFactor true, isNewDatabase false.
+  InternalCollectionCreateOptions internalOptions;
+  internalOptions.isRestore = true;
+  internalOptions.allowEnterpriseCollectionsOnSingleServer =
+      input->descriptor.constant.isSmart ||
+      input->descriptor.clusteringMutable.isSatellite();
 
-  bool allowEnterpriseCollectionsOnSingleServer = false;
-  bool enforceReplicationFactor = true;
+  std::vector<CollectionDescriptor> collections{std::move(input->descriptor)};
 
-  if (input->isSmart || input->isSatellite()) {
-    allowEnterpriseCollectionsOnSingleServer = true;
-  }
-
-  std::vector<CreateCollectionBody> collections{std::move(input.get())};
-  auto result = methods::Collections::create(
-      _vocbase, options, collections, waitForSyncReplication,
-      enforceReplicationFactor, isNewDatabase,
-      allowEnterpriseCollectionsOnSingleServer, isRestore);
+  auto result = methods::Collections::create(_vocbase, options, collections,
+                                             internalOptions, input->options);
 
   co_return result.result();
 }

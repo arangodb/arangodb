@@ -30,10 +30,9 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Properties/ClusteringConstantProperties.h"
 #include "VocBase/Properties/CollectionDescriptor.h"
-#include "VocBase/Properties/CreateCollectionBody.h"
+#include "VocBase/Properties/CreateCollectionRequest.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/Properties/KeyGeneratorProperties.h"
-#include "VocBase/Properties/UserInputCollectionProperties.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -173,7 +172,8 @@ TEST_F(LogicalCollectionDescriptorTest,
   // The descriptor keeps what was requested, the physical collection reports
   // what is in effect. They differ here because the fixture has no cache
   // manager. Reporting the requested value from cacheEnabled() was a bug.
-  EXPECT_TRUE(collection->properties().mutableProps.cacheEnabled);
+  EXPECT_EQ(collection->properties().mutableProps.cacheEnabled,
+            collection->cacheEnabled());
   EXPECT_FALSE(collection->cacheEnabled());
 }
 
@@ -189,6 +189,22 @@ TEST_F(LogicalCollectionDescriptorTest,
   EXPECT_EQ(collection->properties().storage.objectId,
             static_cast<RocksDBMetaCollection*>(collection->getPhysical())
                 ->objectId());
+}
+
+TEST_F(LogicalCollectionDescriptorTest, Properties_isALiveSnapshot) {
+  auto database = makeDatabase("testDatabase", 42);
+  auto collection =
+      database->createCollection(representativeCreateDescriptor());
+
+  auto d = collection->properties();
+  // the stored descriptor has no id on the load path; properties() fills it in
+  EXPECT_EQ(d.internal.id, collection->id());
+  EXPECT_EQ(d.mutableProps.name, collection->name());
+  EXPECT_EQ(d.clusteringConstant.numberOfShards, collection->numberOfShards());
+  EXPECT_EQ(d.clusteringConstant.shardKeys, collection->shardKeys());
+  EXPECT_EQ(d.clusteringMutable.replicationFactor,
+            collection->replicationFactor());
+  EXPECT_EQ(d.clusteringMutable.writeConcern, collection->writeConcern());
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -320,6 +336,22 @@ TEST_F(LogicalCollectionDescriptorTest,
                    .ok());
 }
 
+// objectId is user-rejected, internal-accepted.
+TEST_F(LogicalCollectionDescriptorTest, Context_objectIdIsInternalOnly) {
+  auto body = oneKeyObject(StaticStrings::ObjectId, VPackValue("1234"));
+
+  CollectionDescriptor internalProps;
+  EXPECT_TRUE(velocypack::deserializeWithStatus(body.slice(), internalProps, {},
+                                                InspectInternalContext{})
+                  .ok());
+  EXPECT_EQ(internalProps.storage.objectId, 1234u);
+
+  CollectionDescriptor userProps;
+  EXPECT_FALSE(velocypack::deserializeWithStatus(body.slice(), userProps, {},
+                                                 InspectUserContext{})
+                   .ok());
+}
+
 // The slice ctor goes away in COR-885. Until then, one test keeps it honest:
 // the same input through either ctor must produce the same collection. Delete
 // this block together with the ctor.
@@ -338,19 +370,18 @@ TEST_F(LogicalCollectionDescriptorTest, SliceCtor_matchesDescriptorCtor) {
   auto expected = viaSlice->createCollection(sliceBuilder.slice());
   engine().createCollection(*viaSlice, *expected);
 
-  // same input, taken through CreateCollectionBody and the descriptor
+  // same input, taken through the descriptor factory
   DatabaseConfiguration config{
       []() { return DataSourceId(42); },
-      [](std::string const&) -> ResultT<UserInputCollectionProperties> {
+      [](std::string const&) -> ResultT<CollectionDescriptor> {
         return {TRI_ERROR_INTERNAL};
       }};
-  auto body =
-      CreateCollectionBody::fromCreateAPIBody(sliceBuilder.slice(), config,
-                                              /*backwardsCompatibility*/ false);
-  ASSERT_TRUE(body.ok()) << body.errorMessage();
+  auto request = CreateCollectionRequest::fromCreateAPIBody(
+      sliceBuilder.slice(), config, /*backwardsCompatibility*/ false);
+  ASSERT_TRUE(request.ok()) << request.errorMessage();
 
   auto viaDescriptor = makeDatabase("viaDescriptor", 43);
-  auto actual = viaDescriptor->createCollection(body->toDescriptor());
+  auto actual = viaDescriptor->createCollection(std::move(request->descriptor));
   engine().createCollection(*viaDescriptor, *actual);
 
   EXPECT_EQ(

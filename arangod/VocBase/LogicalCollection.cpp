@@ -52,7 +52,6 @@
 #include "Utilities/NameValidator.h"
 #include "VocBase/ComputedValues.h"
 #include "VocBase/KeyGenerator.h"
-#include "VocBase/Properties/UserInputCollectionProperties.h"
 #include "VocBase/Validators.h"
 #include "velocypack/Builder.h"
 
@@ -407,30 +406,6 @@ ShardingInfo* LogicalCollection::shardingInfo() const {
   return _sharding.get();
 }
 
-UserInputCollectionProperties LogicalCollection::getCollectionProperties()
-    const noexcept {
-  UserInputCollectionProperties props;
-  // NOTE: This implementation is NOT complete.
-  // It only contains what was absolute necessary to get distributeShardsLike
-  // to work.
-  // Longterm-Plan: A logical collection should have those properties as a
-  // member and just return a reference to them.
-  props.name = name();
-  props.id = id();
-  props.numberOfShards = numberOfShards();
-  props.writeConcern = writeConcern();
-  props.replicationFactor = replicationFactor();
-  auto distLike = distributeShardsLike();
-  if (!distLike.empty()) {
-    props.distributeShardsLikeCid = std::move(distLike);
-  }
-  props.shardKeys = shardKeys();
-  props.shardingStrategy = shardingInfo()->shardingStrategyName();
-  props.waitForSync = waitForSync();
-  props.cacheEnabled = cacheEnabled();
-  return props;
-}
-
 bool LogicalCollection::cacheEnabled() const noexcept {
   return _physical->cacheEnabled();
 }
@@ -440,11 +415,22 @@ CollectionDescriptor LogicalCollection::properties() const {
 
   // Only update the mutable fields with the current values
   d.mutableProps.name = name();
+  d.mutableProps.cacheEnabled = cacheEnabled();
+
   d.clusteringMutable.waitForSync =
       _waitForSync.load(std::memory_order_relaxed);
   d.clusteringMutable.replicationFactor = replicationFactor();
   d.clusteringMutable.writeConcern = writeConcern();
 
+  d.clusteringConstant.numberOfShards = numberOfShards();
+  d.clusteringConstant.shardKeys = shardKeys();
+  d.clusteringConstant.shardingStrategy =
+      shardingInfo()->shardingStrategyName();
+  if (auto distLike = distributeShardsLike(); !distLike.empty()) {
+    d.clusteringConstant.distributeShardsLikeCid = std::move(distLike);
+  }
+
+  d.internal.id = id();
   d.internal.usesRevisionsAsDocumentIds = _usesRevisionsAsDocumentIds;
   d.internal.syncByRevision = _syncByRevision.load(std::memory_order_relaxed);
   d.internal.internalValidatorType =

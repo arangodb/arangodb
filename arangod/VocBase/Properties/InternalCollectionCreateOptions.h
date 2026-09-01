@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -22,26 +22,20 @@
 
 #pragma once
 
-#include "VocBase/Properties/ClusteringMutableProperties.h"
-#include "VocBase/Properties/ClusteringConstantProperties.h"
-
 namespace arangodb {
-class Result;
 
-struct UserInputCollectionProperties;
+/// Create options chosen by the calling code, not by the client
+struct InternalCollectionCreateOptions {
+  bool waitForSyncReplication = true;
+  bool enforceReplicationFactor = true;
+  // TODO: Rename this flag; misleading. This doesn't mean "is this a new
+  // database", but how the created collections are loaded back at
+  // ClusterCollectionMethods
+  bool isNewDatabase = false;
+  bool allowEnterpriseCollectionsOnSingleServer = false;
+  bool isRestore = false;
 
-struct ClusteringProperties : public ClusteringMutableProperties,
-                              public ClusteringConstantProperties {
-  bool operator==(ClusteringProperties const& other) const = default;
-
-  [[nodiscard]] arangodb::Result applyDefaultsAndValidateDatabaseConfiguration(
-      DatabaseConfiguration const& config);
+  bool operator==(InternalCollectionCreateOptions const& other) const = default;
 };
 
-template<class Inspector>
-auto inspect(Inspector& f, ClusteringProperties& props) {
-  return f.object(props).fields(
-      f.template embedFields<ClusteringMutableProperties>(props),
-      f.template embedFields<ClusteringConstantProperties>(props));
-}
 }  // namespace arangodb

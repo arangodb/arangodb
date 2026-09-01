@@ -46,7 +46,8 @@
 #include "VocBase/Methods/CollectionCreationInfo.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Indexes.h"
-#include "VocBase/Properties/CreateCollectionBody.h"
+#include "VocBase/Properties/InternalCollectionCreateOptions.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/vocbase.h"
 
@@ -129,7 +130,7 @@ Result createSystemCollections(
     std::vector<std::shared_ptr<LogicalCollection>>& createdCollections) {
   OperationOptions options;
 
-  std::vector<CreateCollectionBody> systemCollectionsToCreate;
+  std::vector<CollectionDescriptor> systemCollectionsToCreate;
   // the order of systemCollections is important. If we're in _system db, the
   // UsersCollection needs to be first, otherwise, the GraphsCollection must be
   // first.
@@ -176,20 +177,20 @@ Result createSystemCollections(
   systemCollections.push_back(StaticStrings::FrontendCollection);
 
   TRI_IF_FAILURE("UpgradeTasks::CreateCollectionsExistsGraphAqlFunctions") {
-    std::vector<CreateCollectionBody> testSystemCollectionsToCreate;
+    std::vector<CollectionDescriptor> testSystemCollectionsToCreate;
     std::vector<std::string> testSystemCollections = {
         StaticStrings::GraphsCollection, StaticStrings::AqlFunctionsCollection};
 
     auto config = vocbase.getDatabaseConfiguration();
     // Override lookup for leading CollectionName
     config.getCollectionGroupSharding =
-        [&testSystemCollectionsToCreate, &createdCollections, &vocbase](
-            std::string const& name) -> ResultT<UserInputCollectionProperties> {
+        [&testSystemCollectionsToCreate, &createdCollections,
+         &vocbase](std::string const& name) -> ResultT<CollectionDescriptor> {
       // For the time being the leading collection is created as standalone
       // before adding the others. So it has to be part of createdCollections.
       // So let us scan there
       for (auto const& c : testSystemCollectionsToCreate) {
-        if (c.name == name) {
+        if (c.mutableProps.name == name) {
           // On new databases the leading collection is in the first position.
           // So we will quickly loop here.
           // During upgrades there may be some collections before, however
@@ -204,7 +205,7 @@ Result createSystemCollections(
           // So we will quickly loop here.
           // During upgrades there may be some collections before, however
           // it is not performance critical.
-          return c->getCollectionProperties();
+          return c->properties();
         }
       }
       return Result{
@@ -213,17 +214,18 @@ Result createSystemCollections(
     };
 
     for (auto const& cname : testSystemCollections) {
-      CreateCollectionBody newCollection;
-      newCollection.name = cname;
+      CollectionDescriptor newCollection;
+      newCollection.mutableProps.name = cname;
       methods::Collections::applySystemCollectionProperties(
           newCollection, vocbase, config, legacyMode);
       testSystemCollectionsToCreate.emplace_back(std::move(newCollection));
     }
 
+    // waitForSyncReplication and enforceReplicationFactor keep their defaults
+    InternalCollectionCreateOptions internalOptions;
+    internalOptions.isNewDatabase = true;
     auto cols = methods::Collections::create(
-        vocbase, options, testSystemCollectionsToCreate, true, true, true,
-
-        false /* allow system collection creation */);
+        vocbase, options, testSystemCollectionsToCreate, internalOptions);
     if (cols.fail()) {
       return cols.result();
     }
@@ -235,13 +237,13 @@ Result createSystemCollections(
   auto config = vocbase.getDatabaseConfiguration();
   // Override lookup for leading CollectionName
   config.getCollectionGroupSharding =
-      [&systemCollectionsToCreate, &createdCollections, &vocbase](
-          std::string const& name) -> ResultT<UserInputCollectionProperties> {
+      [&systemCollectionsToCreate, &createdCollections,
+       &vocbase](std::string const& name) -> ResultT<CollectionDescriptor> {
     // For the time being the leading collection is created as standalone
     // before adding the others. So it has to be part of createdCollections.
     // So let us scan there
     for (auto const& c : systemCollectionsToCreate) {
-      if (c.name == name) {
+      if (c.mutableProps.name == name) {
         // On new databases the leading collection is in the first position.
         // So we will quickly loop here.
         // During upgrades there may be some collections before, however
@@ -256,7 +258,7 @@ Result createSystemCollections(
         // So we will quickly loop here.
         // During upgrades there may be some collections before, however
         // it is not performance critical.
-        return c->getCollectionProperties();
+        return c->properties();
       }
     }
     return Result{
@@ -274,8 +276,8 @@ Result createSystemCollections(
     }
 
     if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
-      CreateCollectionBody newCollection;
-      newCollection.name = cname;
+      CollectionDescriptor newCollection;
+      newCollection.mutableProps.name = cname;
       methods::Collections::applySystemCollectionProperties(
           newCollection, vocbase, config, legacyMode);
       systemCollectionsToCreate.emplace_back(std::move(newCollection));
@@ -285,10 +287,11 @@ Result createSystemCollections(
   // We capture the vector of created LogicalCollections here
   // to use it to create indices later.
   if (!systemCollectionsToCreate.empty()) {
+    // waitForSyncReplication and enforceReplicationFactor keep their defaults
+    InternalCollectionCreateOptions internalOptions;
+    internalOptions.isNewDatabase = true;
     auto cols = methods::Collections::create(
-        vocbase, options, systemCollectionsToCreate, true, true, true,
-
-        false /* allow system collection creation */);
+        vocbase, options, systemCollectionsToCreate, internalOptions);
     if (cols.fail()) {
       return cols.result();
     }

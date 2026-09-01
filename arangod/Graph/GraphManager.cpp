@@ -53,7 +53,8 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
-#include "VocBase/Properties/CreateCollectionBody.h"
+#include "VocBase/Properties/InternalCollectionCreateOptions.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/vocbase.h"
 
@@ -622,7 +623,7 @@ Result GraphManager::ensureCollections(
     }
   }
 
-  std::vector<CreateCollectionBody> createRequests;
+  std::vector<CollectionDescriptor> createRequests;
 
   if (leadingCollection.has_value() && graph.requiresInitialUpdate()) {
     // We create the leader within this call, rewire distributeShardsLike
@@ -631,12 +632,12 @@ Result GraphManager::ensureCollections(
     config.getCollectionGroupSharding =
         [&leadingCollection, &createRequests,
          originalCallback = std::move(originalCallback)](
-            std::string const& name) -> ResultT<UserInputCollectionProperties> {
+            std::string const& name) -> ResultT<CollectionDescriptor> {
       // We can only search for the leading collection.
       TRI_ASSERT(name == leadingCollection.value())
           << name << " does not match " << leadingCollection.value();
       for (auto const& c : createRequests) {
-        if (c.name == name) {
+        if (c.mutableProps.name == name) {
           // On new graphs the leading collection is in the first position.
           // So we will quickly loop here, even if it is not this loop is safe
           return c;
@@ -685,21 +686,20 @@ Result GraphManager::ensureCollections(
     return {};
   }
 
-#ifdef USE_ENTERPRISE
-  bool const allowEnterpriseCollectionsOnSingleServer =
-      ServerState::instance()->isSingleServer() &&
-      (graph.isSmart() || graph.isSatellite());
-#else
-  bool const allowEnterpriseCollectionsOnSingleServer = false;
-#endif
   auto& cluster = _vocbase.server().getFeature<ClusterFeature>();
-  bool waitForSyncReplication = cluster.createWaitsForSyncReplication();
 
   OperationOptions opOptions;
+  // enforceReplicationFactor, isNewDatabase and isRestore keep their defaults
+  InternalCollectionCreateOptions internalOptions;
+  internalOptions.waitForSyncReplication =
+      cluster.createWaitsForSyncReplication();
+#ifdef USE_ENTERPRISE
+  internalOptions.allowEnterpriseCollectionsOnSingleServer =
+      ServerState::instance()->isSingleServer() &&
+      (graph.isSmart() || graph.isSatellite());
+#endif
   auto finalResult = methods::Collections::create(
-      ctx()->vocbase(), opOptions, std::move(createRequests),
-      waitForSyncReplication, true, false,
-      allowEnterpriseCollectionsOnSingleServer);
+      ctx()->vocbase(), opOptions, std::move(createRequests), internalOptions);
   // We do not care for the Collections here, just forward the result
   // API guarantees all or none.
   if (finalResult.ok() && leadingCollection.has_value() &&

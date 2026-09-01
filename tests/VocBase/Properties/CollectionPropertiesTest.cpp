@@ -26,7 +26,8 @@
 
 #include "Basics/debugging.h"
 #include "Basics/ResultT.h"
-#include "VocBase/Properties/UserInputCollectionProperties.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
+#include "VocBase/Properties/CollectionValidation.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 #include "Inspection/VPack.h"
 
@@ -65,8 +66,8 @@ class CollectionPropertiesTest : public ::testing::Test {
 
   // Tries to parse the given body and returns a ResulT of your Type under
   // test.
-  static ResultT<UserInputCollectionProperties> parse(VPackSlice body) {
-    UserInputCollectionProperties res;
+  static ResultT<CollectionDescriptor> parse(VPackSlice body) {
+    CollectionDescriptor res;
     try {
       auto status = velocypack::deserializeWithStatus(body, res, {},
                                                       InspectUserContext{});
@@ -84,9 +85,9 @@ class CollectionPropertiesTest : public ::testing::Test {
     }
   }
 
-  static ResultT<UserInputCollectionProperties> parseWithDefaultOptions(
+  static ResultT<CollectionDescriptor> parseWithDefaultOptions(
       VPackSlice body, DatabaseConfiguration const& config) {
-    UserInputCollectionProperties res;
+    CollectionDescriptor res;
     try {
       auto status = velocypack::deserializeWithStatus(body, res, {},
                                                       InspectUserContext{});
@@ -96,7 +97,7 @@ class CollectionPropertiesTest : public ::testing::Test {
             status.error() +
                 (status.path().empty() ? "" : " on path " + status.path())};
       }
-      auto result = res.applyDefaultsAndValidateDatabaseConfiguration(config);
+      auto result = applyDefaultsAndValidate(res, config);
       if (result.fail()) {
         return result;
       }
@@ -108,28 +109,27 @@ class CollectionPropertiesTest : public ::testing::Test {
     }
   }
 
-  static VPackBuilder serialize(UserInputCollectionProperties testee) {
+  static VPackBuilder serialize(CollectionDescriptor testee) {
     VPackBuilder result;
     velocypack::serializeWithContext(result, testee, InspectUserContext{});
     return result;
   }
 
-  static UserInputCollectionProperties defaultLeaderProps() {
-    UserInputCollectionProperties res;
-    res.numberOfShards = 12;
-    res.replicationFactor = 3;
-    res.writeConcern = 2;
-    res.id = DataSourceId{42};
+  static CollectionDescriptor defaultLeaderProps() {
+    CollectionDescriptor res;
+    res.clusteringConstant.numberOfShards = 12;
+    res.clusteringMutable.replicationFactor = 3;
+    res.clusteringMutable.writeConcern = 2;
+    res.internal.id = DataSourceId{42};
     return res;
   }
 
   static DatabaseConfiguration defaultDBConfig(
-      std::unordered_map<std::string, UserInputCollectionProperties> lookupMap =
-          {}) {
+      std::unordered_map<std::string, CollectionDescriptor> lookupMap = {}) {
     return DatabaseConfiguration{
         []() { return DataSourceId(42); },
         [lookupMap = std::move(lookupMap)](
-            std::string const& name) -> ResultT<UserInputCollectionProperties> {
+            std::string const& name) -> ResultT<CollectionDescriptor> {
           // Set a lookup method
           if (!lookupMap.contains(name)) {
             return {TRI_ERROR_INTERNAL};
@@ -189,7 +189,7 @@ TEST_F(CollectionPropertiesTest, test_atMost8ShardKeys) {
     auto testee = parseWithDefaultOptions(body.slice(), defaultDBConfig());
 
     ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
-    EXPECT_EQ(testee->shardKeys, shardKeysToTest)
+    EXPECT_EQ(testee->clusteringConstant.shardKeys, shardKeysToTest)
         << "Parsing error in " << body.toJson();
   }
 

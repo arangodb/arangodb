@@ -98,7 +98,6 @@ struct DatabaseJavaScriptCache;
 class LogicalCollection;
 class LogicalDataSource;
 class LogicalView;
-struct CreateCollectionBody;
 class ReplicationClientsProgressTracker;
 class StorageEngine;
 struct VocBaseLogManager;
@@ -428,7 +427,7 @@ struct Database {
 
   [[nodiscard]] arangodb::ResultT<
       std::vector<std::shared_ptr<arangodb::LogicalCollection>>>
-  createCollections(std::vector<arangodb::CreateCollectionBody> const&
+  createCollections(std::vector<arangodb::CollectionDescriptor> const&
                         parametersOfCollections,
                     bool allowEnterpriseCollectionsOnSingleServer);
 
@@ -450,6 +449,12 @@ struct Database {
   /// @brief validate parameters for collection creation.
   arangodb::Result validateCollectionParameters(
       arangodb::velocypack::Slice parameters);
+
+  /// @brief checks a descriptor on its own. Checks that need the
+  /// `DatabaseConfiguration` are in `applyDefaultsAndValidate()`,
+  /// at construction site of the descriptor.
+  arangodb::Result validateCollectionDescriptor(
+      CollectionDescriptor const& descriptor);
 
   /// @brief locks a collection for usage by id.
   /// note: when the collection is not used anymore, the caller *must*

@@ -28,8 +28,12 @@
 #include "VocBase/Properties/CollectionMutableProperties.h"
 #include "VocBase/Properties/CollectionInternalProperties.h"
 #include "VocBase/Properties/CollectionStorageProperties.h"
+#include "VocBase/voc-types.h"
 
 namespace arangodb {
+template<typename T>
+class ResultT;
+struct DatabaseConfiguration;
 
 struct CollectionDescriptor {
   CollectionConstantProperties constant{};
@@ -41,14 +45,29 @@ struct CollectionDescriptor {
   bool operator==(CollectionDescriptor const&) const = default;
 
   static CollectionDescriptor fromVelocyPack(velocypack::Slice info);
+
+  struct Invariants {
+    [[nodiscard]] static auto isSmartConfiguration(
+        CollectionDescriptor const& d) -> inspection::Status;
+  };
 };
+
+[[nodiscard]] velocypack::Builder collectionCreateResponse(
+    CollectionDescriptor const& d);
 
 template<class Inspector>
 auto inspect(Inspector& f, CollectionDescriptor& d) {
-  return f.object(d).fields(
+  auto result = f.object(d).fields(
       f.embedFields(d.constant), f.embedFields(d.internal),
       f.embedFields(d.clusteringConstant), f.embedFields(d.clusteringMutable),
       f.embedFields(d.mutableProps), f.embedFields(d.storage));
+
+  if constexpr (isInternalContext<Inspector>) {
+    return inspection::Status{std::move(result)};
+  } else {
+    return result.invariant(
+        CollectionDescriptor::Invariants::isSmartConfiguration);
+  }
 }
 
 }  // namespace arangodb
