@@ -115,7 +115,7 @@ endpoint. Requests with expiry times above this value will be rejected.)");
   opts->addOption(
           "--auth.maximal-access-token-expiry-time",
           "The maximal expiry time (in seconds) allowed for personal access "
-          "tokens requested via the `POST /_api/token` endpoint.",
+          "tokens requested via the `POST /_api/token/{user}` endpoint.",
           new DoubleParameter(&options.maximalAccessTokenExpiryTime,
                               /*base*/ 1.0,
                               /*minValue*/ 1.0,
@@ -128,9 +128,9 @@ endpoint. Requests with expiry times above this value will be rejected.)");
       .setIntroducedIn(31210)
       .setLongDescription(R"(This option sets the maximum lifetime that can be
 requested for a personal access token via the `valid_until` parameter in the
-`POST /_api/token` endpoint. If a request specifies a `valid_until` further in
-the future than this maximum allows, it is silently capped to `now` plus this
-option's value.)");
+`POST /_api/token/{user}` endpoint. If a request specifies a `valid_until`
+further in the future than this maximum allows, it is silently capped to the
+moment of the request plus this option's value.)");
 
   opts->addOption("--server.external-rbac-service",
                   "Enable role-based access control (RBAC) and set the "
