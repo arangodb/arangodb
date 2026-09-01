@@ -1,5 +1,12 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+* COR-958: JoinNode aborts the server when a later index condition uses an 
+  expression over an earlier index's document.
+  Fixed an issue where certain AQL queries using index joins across multiple 
+  collections could cause the server to abort when a join condition referenced 
+  a calculated expression based on a document from an earlier collection.
+  Such queries are now handled safely without triggering an assertion failure or server crash.
+  
 * COR-741: AQL `MATCH` inline bare attribute keeps support unquoted nested
   paths. Dot notation preserves object hierarchy, e.g.
   `MATCH (v:users RETURN profile.name) RETURN v` binds `v` to
