@@ -188,15 +188,7 @@ TEST_F(ClassicAuthModeTest, UseDatabaseWriteWithReadWriteAccess) {
                   .ok());
 }
 
-TEST_F(ClassicAuthModeTest, UseDatabaseWithoutAccessIsForbiddenUnderV0) {
-  beUserWith(NONE);
-  useApiVersion(0);
-  expectError(check(p::UseDatabase{.name = std::string{kDb},
-                                   .level = DatabaseAccessLevel::Read}),
-              TRI_ERROR_FORBIDDEN);
-}
-
-TEST_F(ClassicAuthModeTest, UseDatabaseWithoutAccessIsNotFoundUnderV1) {
+TEST_F(ClassicAuthModeTest, UseDatabaseWithoutAccessIsNotFound) {
   // With a versioned API the database's existence must not be revealed.
   beUserWith(NONE);
   expectError(check(p::UseDatabase{.name = std::string{kDb},
@@ -213,16 +205,7 @@ TEST_F(ClassicAuthModeTest, UseDatabaseWriteWithReadOnlyAccessStaysForbidden) {
               TRI_ERROR_FORBIDDEN);
 }
 
-TEST_F(ClassicAuthModeTest, SeeDatabaseNeedsReadAccessV0) {
-  beUserWith(RO);
-  EXPECT_TRUE(check(p::SeeDatabase{.name = std::string{kDb}}).ok());
-  beUserWith(NONE);
-  useApiVersion(0);
-  expectError(check(p::SeeDatabase{.name = std::string{kDb}}),
-              TRI_ERROR_FORBIDDEN);
-}
-
-TEST_F(ClassicAuthModeTest, SeeDatabaseNeedsReadAccessV1) {
+TEST_F(ClassicAuthModeTest, SeeDatabaseNeedsReadAccess) {
   beUserWith(RO);
   EXPECT_TRUE(check(p::SeeDatabase{.name = std::string{kDb}}).ok());
   beUserWith(NONE);
@@ -287,11 +270,6 @@ TEST_F(ClassicAuthModeTest, CollectionLevelIsInheritedFromTheDatabaseLevel) {
                                      .name = "c",
                                      .level = CollectionAccessLevel::Read}),
               TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-  useApiVersion(0);
-  expectError(check(p::UseCollection{.db = std::string{kDb},
-                                     .name = "c",
-                                     .level = CollectionAccessLevel::Read}),
-              TRI_ERROR_FORBIDDEN);
 
   // A wildcard collection grant raises every collection in that database above
   // the database's own level, again for arbitrary names.
@@ -321,10 +299,6 @@ TEST_F(ClassicAuthModeTest, CollectionGrantLeavesTheDatabaseLevelUndefined) {
   expectError(check(p::UseDatabase{.name = std::string{kDb},
                                    .level = DatabaseAccessLevel::Read}),
               TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  useApiVersion(0);
-  expectError(check(p::UseDatabase{.name = std::string{kDb},
-                                   .level = DatabaseAccessLevel::Read}),
-              TRI_ERROR_FORBIDDEN);
 }
 
 TEST_F(ClassicAuthModeTest, UseCollectionWriteDataOnReadOnlyIsReadOnlyError) {
@@ -344,21 +318,15 @@ TEST_F(ClassicAuthModeTest, UseCollectionWriteDataWithReadWriteAccess) {
                   .ok());
 }
 
-TEST_F(ClassicAuthModeTest, UseCollectionWithoutAccessIsForbiddenUnder) {
+TEST_F(ClassicAuthModeTest, UseCollectionWithoutAccessIsForbidden) {
   beUserWith(NONE);
   expectError(check(p::UseCollection{.db = std::string{kDb},
                                      .name = "c",
                                      .level = CollectionAccessLevel::Read}),
               TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-  useApiVersion(0);
-  expectError(check(p::UseCollection{.db = std::string{kDb},
-                                     .name = "c",
-                                     .level = CollectionAccessLevel::Read}),
-              TRI_ERROR_FORBIDDEN);
 }
 
-TEST_F(ClassicAuthModeTest,
-       UseCollectionWriteDataOnReadOnlyStaysReadOnlyUnderV1) {
+TEST_F(ClassicAuthModeTest, UseCollectionWriteDataOnReadOnlyStaysReadOnly) {
   // Partial access is not hidden: the collection is known to exist.
   beUserWith(RO);
   expectError(
@@ -426,11 +394,6 @@ TEST_F(ClassicAuthModeTest, OtherSystemCollectionsFollowTheDatabaseLevel) {
                                      .name = StaticStrings::GraphsCollection,
                                      .level = CollectionAccessLevel::Read}),
               TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-  useApiVersion(0);
-  expectError(check(p::UseCollection{.db = std::string{kDb},
-                                     .name = StaticStrings::GraphsCollection,
-                                     .level = CollectionAccessLevel::Read}),
-              TRI_ERROR_FORBIDDEN);
 }
 
 TEST_F(ClassicAuthModeTest, SeeCollectionNeedsReadAccess) {
@@ -440,9 +403,6 @@ TEST_F(ClassicAuthModeTest, SeeCollectionNeedsReadAccess) {
   beUserWith(NONE);
   expectError(check(p::SeeCollection{.db = std::string{kDb}, .name = "c"}),
               TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-  useApiVersion(0);
-  expectError(check(p::SeeCollection{.db = std::string{kDb}, .name = "c"}),
-              TRI_ERROR_FORBIDDEN);
 }
 
 TEST_F(ClassicAuthModeTest, SeeCollectionIsGrantedToAdmins) {
@@ -474,17 +434,13 @@ TEST_F(ClassicAuthModeTest, DropCollectionWithoutDatabaseWriteIsForbidden) {
               TRI_ERROR_FORBIDDEN);
 }
 
-TEST_F(ClassicAuthModeTest,
-       DropCollectionReadOnlyCollectionIsForbiddenUnderV0) {
+TEST_F(ClassicAuthModeTest, DropCollectionReadOnlyCollectionIsForbidden) {
   // The collection-level failure is TRI_ERROR_ARANGO_READ_ONLY, but V0 must
   // keep reporting FORBIDDEN for API compatibility.
   beUserWith(RW, {{std::string{kDb}, "c", RO}});
-  useApiVersion(0);
-  expectError(check(p::DropCollection{.db = std::string{kDb}, .name = "c"}),
-              TRI_ERROR_FORBIDDEN);
 }
 
-TEST_F(ClassicAuthModeTest, DropCollectionReadOnlyCollectionIsReadOnlyUnderV1) {
+TEST_F(ClassicAuthModeTest, DropCollectionReadOnlyCollectionIsReadOnly) {
   beUserWith(RW, {{std::string{kDb}, "c", RO}});
   expectError(check(p::DropCollection{.db = std::string{kDb}, .name = "c"}),
               TRI_ERROR_ARANGO_READ_ONLY);
@@ -501,14 +457,7 @@ TEST_F(ClassicAuthModeTest, ReadViewRequiresSystemReadAccess) {
   EXPECT_TRUE(check(p::ReadView{.db = std::string{kDb}, .name = "v"}).ok());
 }
 
-TEST_F(ClassicAuthModeTest, ReadViewWithoutAccessIsForbiddenUnderV0) {
-  beUserWith(NONE);
-  useApiVersion(0);
-  expectError(check(p::ReadView{.db = std::string{kDb}, .name = "v"}),
-              TRI_ERROR_FORBIDDEN);
-}
-
-TEST_F(ClassicAuthModeTest, ReadViewWithoutAccessIsNotFoundUnderV1) {
+TEST_F(ClassicAuthModeTest, ReadViewWithoutAccessIsNotFound) {
   beUserWith(NONE);
   expectError(check(p::ReadView{.db = std::string{kDb}, .name = "v"}),
               TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -563,7 +512,7 @@ TEST_F(ClassicAuthModeTest, CreateViewWithUnreadableLinkIsForbidden) {
       << r.errorMessage();
 }
 
-TEST_F(ClassicAuthModeTest, CreateViewWrapsLinkFailuresAsForbiddenUnderV1) {
+TEST_F(ClassicAuthModeTest, CreateViewWrapsLinkFailuresAsForbidden) {
   // Unlike ModifyView below, CreateView normalises every linked-collection
   // failure to FORBIDDEN -- the underlying NOT_FOUND is not passed through.
   beUserWith(RW, {{std::string{kDb}, "secret", NONE}});
@@ -601,12 +550,6 @@ TEST_F(ClassicAuthModeTest, ModifyViewPropagatesLinkFailuresUnverbatim) {
                                   .name = "v",
                                   .linkedCollections = {"secret"}}),
               TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-  // Under a versioned API the inner code reaches the caller unchanged.
-  useApiVersion(0);
-  expectError(check(p::ModifyView{.db = std::string{kDb},
-                                  .name = "v",
-                                  .linkedCollections = {"secret"}}),
-              TRI_ERROR_FORBIDDEN);
 }
 
 TEST_F(ClassicAuthModeTest, RenameViewToSameNameIsBadParameter) {
@@ -680,9 +623,6 @@ TEST_F(ClassicAuthModeTest, SeeAnalyzerNeedsDatabaseRead) {
   beUserWith(NONE);
   expectError(check(p::SeeAnalyzer{.db = std::string{kDb}, .name = "a"}),
               TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  useApiVersion(0);
-  expectError(check(p::SeeAnalyzer{.db = std::string{kDb}, .name = "a"}),
-              TRI_ERROR_FORBIDDEN);
 }
 
 TEST_F(ClassicAuthModeTest, SeeAnalyzerIsGrantedToAdmins) {
@@ -753,9 +693,6 @@ TEST_F(ClassicAuthModeTest, SeeGraphNeedsDatabaseRead) {
   beUserWith(NONE);
   expectError(check(p::SeeGraph{.db = std::string{kDb}, .name = "g"}),
               TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  useApiVersion(0);
-  expectError(check(p::SeeGraph{.db = std::string{kDb}, .name = "g"}),
-              TRI_ERROR_FORBIDDEN);
 }
 
 TEST_F(ClassicAuthModeTest, UseGraphFollowsTheDatabaseLevel) {
@@ -790,20 +727,7 @@ TEST_F(ClassicAuthModeTest, CreateGraphWithChildCollections) {
                   .ok());
 }
 
-TEST_F(ClassicAuthModeTest, CreateGraphWithoutDatabaseWriteIsReadOnlyUnderV0) {
-  // With no child collections the final database check is what fails, and its
-  // FORBIDDEN is reported as TRI_ERROR_ARANGO_READ_ONLY under V0.
-  beUserWith(RO);
-  std::vector<std::string> none;
-  useApiVersion(0);
-  expectError(check(p::CreateGraph{.db = std::string{kDb},
-                                   .name = "g",
-                                   .collectionNamesToCreate = none,
-                                   .collectionNamesToRead = none}),
-              TRI_ERROR_ARANGO_READ_ONLY);
-}
-
-TEST_F(ClassicAuthModeTest, CreateGraphWithoutDatabaseWriteIsForbiddenUnderV1) {
+TEST_F(ClassicAuthModeTest, CreateGraphWithoutDatabaseWriteIsForbidden) {
   beUserWith(RO);
   std::vector<std::string> none;
   expectError(check(p::CreateGraph{.db = std::string{kDb},
@@ -836,12 +760,6 @@ TEST_F(ClassicAuthModeTest, CreateGraphWithUnreadableChildCollection) {
                                    .collectionNamesToCreate = none,
                                    .collectionNamesToRead = toRead}),
               TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-  useApiVersion(0);
-  expectError(check(p::CreateGraph{.db = std::string{kDb},
-                                   .name = "g",
-                                   .collectionNamesToCreate = none,
-                                   .collectionNamesToRead = toRead}),
-              TRI_ERROR_FORBIDDEN);
 }
 
 TEST_F(ClassicAuthModeTest, DropGraphWithListedCollections) {
@@ -854,7 +772,7 @@ TEST_F(ClassicAuthModeTest, DropGraphWithListedCollections) {
 }
 
 TEST_F(ClassicAuthModeTest,
-       CreateGraphWithReadableChildrenButNoDatabaseWriteIsReadOnlyUnderV0) {
+       CreateGraphWithReadableChildrenButNoDatabaseWriteIsReadOnly) {
   // The child collections are checked first and pass here, so the failure comes
   // from the trailing database check -- which reports READ_ONLY under V0.
   // RW on the child collection does not substitute for the database grant.
@@ -866,12 +784,6 @@ TEST_F(ClassicAuthModeTest,
                                    .collectionNamesToCreate = none,
                                    .collectionNamesToRead = toRead}),
               TRI_ERROR_FORBIDDEN);
-  useApiVersion(0);
-  expectError(check(p::CreateGraph{.db = std::string{kDb},
-                                   .name = "g",
-                                   .collectionNamesToCreate = none,
-                                   .collectionNamesToRead = toRead}),
-              TRI_ERROR_ARANGO_READ_ONLY);
 }
 
 TEST_F(ClassicAuthModeTest, DropGraphWithoutDatabaseWriteIsForbidden) {
@@ -901,11 +813,6 @@ TEST_F(ClassicAuthModeTest, DropGraphWithUndroppableCollectionIsForbidden) {
       check(p::DropGraph{
           .db = std::string{kDb}, .name = "g", .collectionNames = colls}),
       TRI_ERROR_ARANGO_READ_ONLY);
-  useApiVersion(0);
-  expectError(
-      check(p::DropGraph{
-          .db = std::string{kDb}, .name = "g", .collectionNames = colls}),
-      TRI_ERROR_FORBIDDEN);
 }
 
 // ---------------------------------------------------------------------------
@@ -1016,15 +923,11 @@ TEST_F(ClassicAuthModeTest, AdminQueryCacheIsGrantedBySystemReadOnly) {
   // _system, not RW, but only in API V0.
   setGrants({{StaticStrings::SystemDatabase, RO}});
   EXPECT_FALSE(check(p::AdminQueryCache{}).ok());
-  useApiVersion(0);
-  EXPECT_TRUE(check(p::AdminQueryCache{}).ok());
 }
 
 TEST_F(ClassicAuthModeTest, AdminQueryCacheIsForbiddenWithoutSystemAccess) {
   setGrants({{StaticStrings::SystemDatabase, NONE}});
   expectError(check(p::AdminQueryCache{}), TRI_ERROR_HTTP_FORBIDDEN);
-  useApiVersion(0);
-  expectError(check(p::AdminQueryCache{}), TRI_ERROR_FORBIDDEN);
 }
 
 // ---------------------------------------------------------------------------
@@ -1041,9 +944,6 @@ TEST_F(ClassicAuthModeTest, DumpCollectionBehavesLikeReadAccess) {
   beUserWith(NONE);
   expectError(check(p::DumpCollection{.db = std::string{kDb}, .name = "c"}),
               TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-  useApiVersion(0);
-  expectError(check(p::DumpCollection{.db = std::string{kDb}, .name = "c"}),
-              TRI_ERROR_FORBIDDEN);
 }
 
 TEST_F(ClassicAuthModeTest, DumpCollectionIsGrantedToAdmins) {
@@ -1088,10 +988,6 @@ TEST_F(ClassicAuthModeTest, RestoreCollectionWithOverwriteNeedsToDropFirst) {
   expectError(check(p::RestoreCollection{
                   .db = std::string{kDb}, .name = "c", .overwrite = true}),
               TRI_ERROR_ARANGO_READ_ONLY);
-  useApiVersion(0);
-  expectError(check(p::RestoreCollection{
-                  .db = std::string{kDb}, .name = "c", .overwrite = true}),
-              TRI_ERROR_FORBIDDEN);
 }
 
 TEST_F(ClassicAuthModeTest, RestoreCreateIndexBehavesLikeWriteMeta) {
