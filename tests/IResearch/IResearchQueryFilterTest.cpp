@@ -20,6 +20,7 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Mocks/CollectionDescriptors.h"
 #include "IResearchQueryCommon.h"
 
 #include "Aql/OptimizerRule.h"
@@ -33,17 +34,15 @@ class QueryFilter : public QueryTest {
  protected:
   void createCollections() {
     {
-      auto collectionJson =
-          velocypack::Parser::fromJson("{ \"name\": \"testCollection0\" }");
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection0");
       auto logicalCollection1 =
-          _vocbase.createCollection(collectionJson->slice());
+          _vocbase.createCollection(colDescriptor);
       ASSERT_TRUE(logicalCollection1);
     }
     {
-      auto collectionJson =
-          velocypack::Parser::fromJson("{ \"name\": \"testCollection1\" }");
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection1");
       auto logicalCollection2 =
-          _vocbase.createCollection(collectionJson->slice());
+          _vocbase.createCollection(colDescriptor);
       ASSERT_TRUE(logicalCollection2);
     }
   }

@@ -24,6 +24,7 @@
 
 #include <regex>
 
+#include "Mocks/CollectionDescriptors.h"
 #include "Aql/OptimizerRule.h"
 #include "IResearchQueryCommon.h"
 #include "VocBase/LogicalCollection.h"
@@ -217,10 +218,10 @@ class QueryJoin : public QueryTest {
 
     // add logical collection with the same name as view
     {
-      auto collectionJson = VPackParser::fromJson("{ \"name\": \"testView\" }");
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor("testView");
       // TRI_vocbase_t::createCollection(...) throws exception instead of
       // returning a nullptr
-      EXPECT_ANY_THROW(_vocbase.createCollection(collectionJson->slice()));
+      EXPECT_ANY_THROW(_vocbase.createCollection(colDescriptor));
     }
 
     // populate view with the data

@@ -32,6 +32,7 @@
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
 
+#include "Mocks/CollectionDescriptors.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
@@ -241,15 +242,13 @@ class IResearchIndexTest
 // test indexing with multiple analyzers (on different collections) will return
 // results only for matching analyzer
 TEST_F(IResearchIndexTest, test_analyzer) {
-  auto createCollection0 = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection0\" }");
-  auto createCollection1 = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection1\" }");
+  auto colDescriptor0 = arangodb::tests::testCollectionDescriptor("testCollection0");
+  auto colDescriptor1 = arangodb::tests::testCollectionDescriptor("testCollection1");
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-  auto collection0 = vocbase().createCollection(createCollection0->slice());
+  auto collection0 = vocbase().createCollection(colDescriptor0);
   ASSERT_NE(nullptr, collection0);
-  auto collection1 = vocbase().createCollection(createCollection1->slice());
+  auto collection1 = vocbase().createCollection(colDescriptor1);
   ASSERT_NE(nullptr, collection1);
   auto viewImpl = vocbase().createView(createView->slice(), false);
   ASSERT_NE(nullptr, viewImpl);
@@ -521,16 +520,14 @@ TEST_F(IResearchIndexTest, test_analyzer) {
 
 // test concurrent indexing with analyzers into view
 TEST_F(IResearchIndexTest, test_async_index) {
-  auto createCollection0 = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection0\" }");
-  auto createCollection1 = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection1\" }");
+  auto colDescriptor0 = arangodb::tests::testCollectionDescriptor("testCollection0");
+  auto colDescriptor1 = arangodb::tests::testCollectionDescriptor("testCollection1");
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
-  auto collection0 = vocbase.createCollection(createCollection0->slice());
+  auto collection0 = vocbase.createCollection(colDescriptor0);
   ASSERT_NE(nullptr, collection0);
-  auto collection1 = vocbase.createCollection(createCollection1->slice());
+  auto collection1 = vocbase.createCollection(colDescriptor1);
   ASSERT_NE(nullptr, collection1);
   auto viewImpl = vocbase.createView(createView->slice(), false);
   ASSERT_NE(nullptr, viewImpl);
@@ -876,16 +873,14 @@ TEST_F(IResearchIndexTest, test_async_index) {
 
 // test indexing selected fields will omit non-indexed fields during query
 TEST_F(IResearchIndexTest, test_fields) {
-  auto createCollection0 = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection0\" }");
-  auto createCollection1 = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection1\" }");
+  auto colDescriptor0 = arangodb::tests::testCollectionDescriptor("testCollection0");
+  auto colDescriptor1 = arangodb::tests::testCollectionDescriptor("testCollection1");
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
-  auto collection0 = vocbase.createCollection(createCollection0->slice());
+  auto collection0 = vocbase.createCollection(colDescriptor0);
   ASSERT_NE(nullptr, collection0);
-  auto collection1 = vocbase.createCollection(createCollection1->slice());
+  auto collection1 = vocbase.createCollection(colDescriptor1);
   ASSERT_NE(nullptr, collection1);
   auto viewImpl = vocbase.createView(createView->slice(), false);
   ASSERT_NE(nullptr, viewImpl);
@@ -975,19 +970,17 @@ TEST_F(IResearchIndexTest, test_fields) {
 
 #ifdef USE_ENTERPRISE
 TEST_F(IResearchIndexTest, test_pkCached) {
-  auto createCollection0 = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection0\" }");
-  auto createCollection1 = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection1\" }");
+  auto colDescriptor0 = arangodb::tests::testCollectionDescriptor("testCollection0");
+  auto colDescriptor1 = arangodb::tests::testCollectionDescriptor("testCollection1");
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", "
       "\"primaryKeyCache\":true }");
   TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
   feature.setCacheUsageLimit(10000000);
-  auto collection0 = vocbase.createCollection(createCollection0->slice());
+  auto collection0 = vocbase.createCollection(colDescriptor0);
   ASSERT_NE(nullptr, collection0);
-  auto collection1 = vocbase.createCollection(createCollection1->slice());
+  auto collection1 = vocbase.createCollection(colDescriptor1);
   ASSERT_NE(nullptr, collection1);
   auto viewImpl = vocbase.createView(createView->slice(), false);
   ASSERT_NE(nullptr, viewImpl);
@@ -1043,12 +1036,11 @@ TEST_F(IResearchIndexTest, test_pkCached) {
 }
 
 TEST_F(IResearchIndexTest, test_pkCachedInverted) {
-  auto createCollection0 = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection0\" }");
+  auto colDescriptor0 = arangodb::tests::testCollectionDescriptor("testCollection0");
   TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
   feature.setCacheUsageLimit(10000000);
-  auto collection0 = vocbase.createCollection(createCollection0->slice());
+  auto collection0 = vocbase.createCollection(colDescriptor0);
   ASSERT_NE(nullptr, collection0);
 
   {
@@ -1099,19 +1091,17 @@ TEST_F(IResearchIndexTest, test_pkCachedInverted) {
 }
 
 TEST_F(IResearchIndexTest, test_pkCachedRestricted) {
-  auto createCollection0 = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection0\" }");
-  auto createCollection1 = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection1\" }");
+  auto colDescriptor0 = arangodb::tests::testCollectionDescriptor("testCollection0");
+  auto colDescriptor1 = arangodb::tests::testCollectionDescriptor("testCollection1");
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", "
       "\"primaryKeyCache\":true }");
   TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
   feature.setCacheUsageLimit(10);
-  auto collection0 = vocbase.createCollection(createCollection0->slice());
+  auto collection0 = vocbase.createCollection(colDescriptor0);
   ASSERT_NE(nullptr, collection0);
-  auto collection1 = vocbase.createCollection(createCollection1->slice());
+  auto collection1 = vocbase.createCollection(colDescriptor1);
   ASSERT_NE(nullptr, collection1);
   auto viewImpl = vocbase.createView(createView->slice(), false);
   ASSERT_NE(nullptr, viewImpl);
@@ -1168,10 +1158,8 @@ TEST_F(IResearchIndexTest, test_pkCachedRestricted) {
 }
 
 TEST_F(IResearchIndexTest, test_sortCached) {
-  auto createCollection0 = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection0\" }");
-  auto createCollection1 = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection1\" }");
+  auto colDescriptor0 = arangodb::tests::testCollectionDescriptor("testCollection0");
+  auto colDescriptor1 = arangodb::tests::testCollectionDescriptor("testCollection1");
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\",\
         \"primarySortCache\":true,\
@@ -1179,9 +1167,9 @@ TEST_F(IResearchIndexTest, test_sortCached) {
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
   feature.setCacheUsageLimit(10000000);
   TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
-  auto collection0 = vocbase.createCollection(createCollection0->slice());
+  auto collection0 = vocbase.createCollection(colDescriptor0);
   ASSERT_NE(nullptr, collection0);
-  auto collection1 = vocbase.createCollection(createCollection1->slice());
+  auto collection1 = vocbase.createCollection(colDescriptor1);
   ASSERT_NE(nullptr, collection1);
   auto viewImpl = vocbase.createView(createView->slice(), false);
   ASSERT_NE(nullptr, viewImpl);
@@ -1237,12 +1225,11 @@ TEST_F(IResearchIndexTest, test_sortCached) {
 }
 
 TEST_F(IResearchIndexTest, test_sortCachedInverted) {
-  auto createCollection0 = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection0\" }");
+  auto colDescriptor0 = arangodb::tests::testCollectionDescriptor("testCollection0");
   TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
   feature.setCacheUsageLimit(10000000);
-  auto collection0 = vocbase.createCollection(createCollection0->slice());
+  auto collection0 = vocbase.createCollection(colDescriptor0);
   ASSERT_NE(nullptr, collection0);
 
   {
@@ -1294,10 +1281,8 @@ TEST_F(IResearchIndexTest, test_sortCachedInverted) {
 }
 
 TEST_F(IResearchIndexTest, test_sortCachedRestricted) {
-  auto createCollection0 = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection0\" }");
-  auto createCollection1 = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection1\" }");
+  auto colDescriptor0 = arangodb::tests::testCollectionDescriptor("testCollection0");
+  auto colDescriptor1 = arangodb::tests::testCollectionDescriptor("testCollection1");
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\",\
         \"primarySortCache\":true,\
@@ -1305,9 +1290,9 @@ TEST_F(IResearchIndexTest, test_sortCachedRestricted) {
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
   feature.setCacheUsageLimit(10);
   TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
-  auto collection0 = vocbase.createCollection(createCollection0->slice());
+  auto collection0 = vocbase.createCollection(colDescriptor0);
   ASSERT_NE(nullptr, collection0);
-  auto collection1 = vocbase.createCollection(createCollection1->slice());
+  auto collection1 = vocbase.createCollection(colDescriptor1);
   ASSERT_NE(nullptr, collection1);
   auto viewImpl = vocbase.createView(createView->slice(), false);
   ASSERT_NE(nullptr, viewImpl);
@@ -1364,15 +1349,14 @@ TEST_F(IResearchIndexTest, test_sortCachedRestricted) {
 }
 
 TEST_F(IResearchIndexTest, test_geoCached) {
-  auto createCollection0 = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection0\" }");
+  auto colDescriptor0 = arangodb::tests::testCollectionDescriptor("testCollection0");
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", "
       "\"primaryKeyCache\":false }");
   TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
   feature.setCacheUsageLimit(10000000);
-  auto collection0 = vocbase.createCollection(createCollection0->slice());
+  auto collection0 = vocbase.createCollection(colDescriptor0);
   ASSERT_NE(nullptr, collection0);
   auto viewImpl = vocbase.createView(createView->slice(), true);
   ASSERT_NE(nullptr, viewImpl);
@@ -1428,15 +1412,14 @@ TEST_F(IResearchIndexTest, test_geoCached) {
 }
 
 TEST_F(IResearchIndexTest, test_geoCachedInverted) {
-  auto createCollection0 = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection0\" }");
+  auto colDescriptor0 = arangodb::tests::testCollectionDescriptor("testCollection0");
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", "
       "\"primaryKeyCache\":false }");
   TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
   feature.setCacheUsageLimit(10000000);
-  auto collection0 = vocbase.createCollection(createCollection0->slice());
+  auto collection0 = vocbase.createCollection(colDescriptor0);
   ASSERT_NE(nullptr, collection0);
   auto viewImpl = vocbase.createView(createView->slice(), true);
   ASSERT_NE(nullptr, viewImpl);
@@ -1504,11 +1487,11 @@ class IResearchCacheOnlyFollowersTest : public ::testing::Test {
 };
 
 TEST_F(IResearchCacheOnlyFollowersTest, test_PkInverted) {
-  auto createCollection0 = arangodb::velocypack::Parser::fromJson(
-      "{\"id\":1, \"name\": \"s1337\" }");
+  auto colDescriptor0 = arangodb::tests::testCollectionDescriptor(
+        "s1337", arangodb::DataSourceId{1});
   TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
-  auto collection0 = vocbase.createCollection(createCollection0->slice());
+  auto collection0 = vocbase.createCollection(colDescriptor0);
   ASSERT_NE(nullptr, collection0);
   std::vector<std::pair<std::string, std::string>> shards{
       {collection0->name(), "PRMR_0002"}};
@@ -1581,11 +1564,11 @@ TEST_F(IResearchCacheOnlyFollowersTest, test_PkInverted) {
 }
 
 TEST_F(IResearchCacheOnlyFollowersTest, test_PkInverted_InitialLeader) {
-  auto createCollection0 = arangodb::velocypack::Parser::fromJson(
-      "{\"id\":1, \"name\": \"s1337\" }");
+  auto colDescriptor0 = arangodb::tests::testCollectionDescriptor(
+        "s1337", arangodb::DataSourceId{1});
   TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
-  auto collection0 = vocbase.createCollection(createCollection0->slice());
+  auto collection0 = vocbase.createCollection(colDescriptor0);
   ASSERT_NE(nullptr, collection0);
   std::vector<std::pair<std::string, std::string>> shards{
       {collection0->name(), "PRMR_0001"}};
@@ -1685,10 +1668,10 @@ TEST_F(IResearchIndexTest, test_emptyPrimarySortFieldInView) {
 }
 
 TEST_F(IResearchIndexTest, test_emptyPrimarySortFieldInInvertedIndex) {
-  auto collectionJson =
-      arangodb::velocypack::Parser::fromJson(R"({"id":1, "name": "coll" })");
+  auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+        "coll", arangodb::DataSourceId{1});
   TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
-  auto collection = vocbase.createCollection(collectionJson->slice());
+  auto collection = vocbase.createCollection(colDescriptor);
 
   auto invIndexDef = R"({
     "type": "inverted",

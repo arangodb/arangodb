@@ -24,6 +24,7 @@
 
 #include <velocypack/Iterator.h>
 
+#include "Mocks/CollectionDescriptors.h"
 #include "Aql/OptimizerRule.h"
 #include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchLinkHelper.h"
@@ -57,17 +58,15 @@ class QueryLateMaterialization : public QueryTest {
     // add collection_1
     std::shared_ptr<LogicalCollection> logicalCollection1;
     {
-      auto collectionJson =
-          VPackParser::fromJson(R"({"name": "collection_1" })");
-      logicalCollection1 = vocbase().createCollection(collectionJson->slice());
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor("collection_1");
+      logicalCollection1 = vocbase().createCollection(colDescriptor);
       ASSERT_NE(nullptr, logicalCollection1);
     }
     // add collection_2
     std::shared_ptr<LogicalCollection> logicalCollection2;
     {
-      auto collectionJson =
-          VPackParser::fromJson(R"({"name": "collection_2" })");
-      logicalCollection2 = vocbase().createCollection(collectionJson->slice());
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor("collection_2");
+      logicalCollection2 = vocbase().createCollection(colDescriptor);
       ASSERT_NE(nullptr, logicalCollection2);
     }
     createView();

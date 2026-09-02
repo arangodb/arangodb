@@ -20,6 +20,7 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Mocks/CollectionDescriptors.h"
 #include "IResearchQueryCommon.h"
 
 #include "VocBase/LogicalCollection.h"
@@ -31,9 +32,8 @@ class QueryInRange : public QueryTest {
  protected:
   void createCollections() {
     {
-      auto createJson =
-          velocypack::Parser::fromJson(R"({ "name": "testCollection0" })");
-      auto collection = _vocbase.createCollection(createJson->slice());
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection0");
+      auto collection = _vocbase.createCollection(colDescriptor);
       ASSERT_TRUE(collection);
       std::vector<std::shared_ptr<velocypack::Builder>> docs{
           velocypack::Parser::fromJson(R"({ "seq": -6, "value": null })"),
@@ -64,9 +64,8 @@ class QueryInRange : public QueryTest {
       EXPECT_TRUE(trx.commit().ok());
     }
     {
-      auto createJson =
-          velocypack::Parser::fromJson(R"({ "name": "testCollection1" })");
-      auto collection = _vocbase.createCollection(createJson->slice());
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection1");
+      auto collection = _vocbase.createCollection(colDescriptor);
       ASSERT_TRUE(collection);
 
       std::filesystem::path resource;

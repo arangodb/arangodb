@@ -34,6 +34,7 @@
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/IResearchLinkHelper.h"
+#include "Mocks/CollectionDescriptors.h"
 #include "Mocks/StorageEngineMock.h"
 #include "Mocks/Servers.h"
 #include "RestServer/DatabaseFeature.h"
@@ -81,9 +82,9 @@ class IResearchLinkHelperTestSingle : public ::testing::Test {
       arangodb::methods::Collections::createSystem(
           *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
           unused);
-      auto collectionJson = arangodb::velocypack::Parser::fromJson(
-          "{ \"id\":102, \"name\": \"foo\" }");
-      EXPECT_NE(nullptr, vocbase->createCollection(collectionJson->slice()));
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+        "foo", arangodb::DataSourceId{102});
+      EXPECT_NE(nullptr, vocbase->createCollection(colDescriptor));
     }
   }
 
