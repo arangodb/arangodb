@@ -352,17 +352,23 @@ function aqlMatchStatementTestSuite() {
             // ec_loops stays inside vc, ec_cross leaves it for vc_other. Multiple
             // edge collections force the traversal lowering, where the target
             // label is the only thing keeping each half out of the other result.
-            const inside = edgeIds("MATCH (v :vc) -[ e :ec_loops|ec_cross ]-> (w :vc) RETURN [v, e, w]");
+            //
+            // The traversal can reach vc_other, so every query here must declare
+            // both vertex collections with WITH. A cluster rejects the query
+            // otherwise ("collection not known to traversal"); a single server
+            // does not, so omitting it fails only in CI.
+            const q = "WITH vc, vc_other MATCH (v :vc) -[ e :ec_loops|ec_cross ]-> ";
+
+            const inside = edgeIds(q + "(w :vc) RETURN [v, e, w]");
             assertEqual(inside.length, 20);
             assertTrue(inside.every((id) => id.startsWith("ec_loops/")), JSON.stringify(inside));
 
-            const crossing = edgeIds("MATCH (v :vc) -[ e :ec_loops|ec_cross ]-> (w :vc_other) RETURN [v, e, w]");
+            const crossing = edgeIds(q + "(w :vc_other) RETURN [v, e, w]");
             assertEqual(crossing.length, 10);
             assertTrue(crossing.every((id) => id.startsWith("ec_cross/")), JSON.stringify(crossing));
 
             // target label and property constraint compose
-            assertEqual(edgeIds("MATCH (v :vc) -[ e :ec_loops|ec_cross ]-> (w :vc_other {i: 3}) RETURN [v, e, w]"),
-                        ["ec_cross/x3"]);
+            assertEqual(edgeIds(q + "(w :vc_other {i: 3}) RETURN [v, e, w]"), ["ec_cross/x3"]);
         },
 
         testSelectEdgesWithCollectionBindParameterMultipleEdgeTypes: function () {
