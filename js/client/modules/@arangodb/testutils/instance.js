@@ -1709,7 +1709,9 @@ class instance {
       } catch(ex) {
         if (ex instanceof ArangoError && (
           (ex.errorNum === internal.errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) ||
-            (ex.errorNum === internal.errors.ERROR_BAD_PARAMETER.code))) {
+          (ex.errorNum === internal.errors.ERROR_BAD_PARAMETER.code) ||
+          (ex.errorNum === internal.errors.ERROR_HTTP_SERVICE_UNAVAILABLE.code)
+        )) {
           print(`Terminated instance ${this.name} - ${ex.message} ${signal_to_expect}`);
           return this.checkDebugTerminated(true, signal_to_expect);
         }
