@@ -28,7 +28,6 @@ defmodule Mix.Tasks.Toast.Analyze.Data do
     "crash" => :crash,
     "test_failure" => :test_failure,
     "sanitizer_report" => :sanitizer_report,
-    "timeout" => :timeout,
     "infrastructure" => :infrastructure
   }
 
@@ -101,7 +100,7 @@ defmodule Mix.Tasks.Toast.Analyze.Data do
   def format_server(%{type: :crash, detail: %{server: server}}), do: server
   def format_server(%{type: :sanitizer_report, detail: %{server: server}}), do: server
 
-  def format_server(%{type: :timeout, detail: %{servers: servers}}) when is_list(servers) do
+  def format_server(%{type: :infrastructure, detail: %{subtype: :timeout, servers: servers}}) do
     servers |> Enum.map_join(", ", & &1.server_id)
   end
 
@@ -150,7 +149,7 @@ defmodule Mix.Tasks.Toast.Analyze.Data do
          %{type: type, detail: %{timestamp: ts}} = issue,
          _modules
        )
-       when type in [:sanitizer_report, :timeout, :infrastructure] and is_integer(ts) do
+       when type in [:sanitizer_report, :infrastructure] and is_integer(ts) do
     Map.put(issue, :time_bounds, {ts, ts})
   end
 

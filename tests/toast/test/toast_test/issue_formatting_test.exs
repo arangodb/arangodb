@@ -100,7 +100,10 @@ defmodule ToastTest.Formatting.IssuesTest do
 
       issues = [
         %{type: :crash, detail: %{coredump_paths: ["/tmp/core.1"]}},
-        %{type: :timeout, detail: %{reason: "timed out"}}
+        %{
+          type: :infrastructure,
+          detail: %{subtype: :timeout, source: :suite, reason: "timed out"}
+        }
       ]
 
       [crash, timeout] = IssueFormatting.resolve_coredumps(issues, index)
@@ -264,7 +267,8 @@ defmodule ToastTest.Formatting.IssuesTest do
     test "formats timeout with server details" do
       issue = %{
         detail: %{
-          source: :test_timeout,
+          subtype: :timeout,
+          source: :suite,
           reason: "test exceeded 60s",
           servers: [
             %{server_id: "coordinator1", os_pid: 1234, log_file: "/tmp/c1.log", coredump: nil}
@@ -273,7 +277,7 @@ defmodule ToastTest.Formatting.IssuesTest do
       }
 
       result = IssueFormatting.format_timeout(issue)
-      assert result =~ "[Test Timeout] test exceeded 60s"
+      assert result =~ "[Suite Timeout] test exceeded 60s"
       assert result =~ "coordinator1 (PID 1234)"
       assert result =~ "Log: /tmp/c1.log"
     end
@@ -281,7 +285,8 @@ defmodule ToastTest.Formatting.IssuesTest do
     test "formats timeout with multiple servers" do
       issue = %{
         detail: %{
-          source: :startup_timeout,
+          subtype: :timeout,
+          source: :startup,
           reason: "cluster failed to start",
           servers: [
             %{server_id: "coordinator1", os_pid: 100, log_file: nil, coredump: nil},
@@ -299,7 +304,7 @@ defmodule ToastTest.Formatting.IssuesTest do
 
     test "formats timeout with no servers" do
       issue = %{
-        detail: %{source: :global_timeout, reason: "exceeded 10m"}
+        detail: %{subtype: :timeout, source: :global, reason: "exceeded 10m"}
       }
 
       result = IssueFormatting.format_timeout(issue)
@@ -309,7 +314,8 @@ defmodule ToastTest.Formatting.IssuesTest do
     test "server without os_pid omits PID part" do
       issue = %{
         detail: %{
-          source: :shutdown_timeout,
+          subtype: :timeout,
+          source: :shutdown,
           reason: "shutdown stuck",
           servers: [%{server_id: "coordinator1", os_pid: nil, log_file: nil, coredump: nil}]
         }
@@ -368,20 +374,20 @@ defmodule ToastTest.Formatting.IssuesTest do
   # --- timeout_source_label/1 ---
 
   describe "timeout_source_label/1" do
-    test "startup_timeout" do
-      assert IssueFormatting.timeout_source_label(:startup_timeout) == "Startup Timeout"
+    test "startup" do
+      assert IssueFormatting.timeout_source_label(:startup) == "Startup Timeout"
     end
 
-    test "shutdown_timeout" do
-      assert IssueFormatting.timeout_source_label(:shutdown_timeout) == "Shutdown Timeout"
+    test "shutdown" do
+      assert IssueFormatting.timeout_source_label(:shutdown) == "Shutdown Timeout"
     end
 
-    test "test_timeout" do
-      assert IssueFormatting.timeout_source_label(:test_timeout) == "Test Timeout"
+    test "suite" do
+      assert IssueFormatting.timeout_source_label(:suite) == "Suite Timeout"
     end
 
-    test "global_timeout" do
-      assert IssueFormatting.timeout_source_label(:global_timeout) == "Global Timeout"
+    test "global" do
+      assert IssueFormatting.timeout_source_label(:global) == "Global Timeout"
     end
 
     test "unknown source uses fallback" do

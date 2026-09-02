@@ -195,7 +195,6 @@ defmodule ToastTest.SuiteResult.JUnitXML do
     do: "sanitizer report: #{kind}"
 
   defp issue_type_label(%{type: :sanitizer_report}), do: "sanitizer report"
-  defp issue_type_label(%{type: :timeout}), do: "timeout"
 
   defp issue_type_label(%{type: :infrastructure, detail: %{subtype: subtype}}),
     do: "infrastructure: #{subtype}"
@@ -348,7 +347,7 @@ defmodule ToastTest.SuiteResult.JUnitXML do
   defp render_issue_detail(%{type: :crash} = issue),
     do: Issues.format_crash(issue)
 
-  defp render_issue_detail(%{type: :timeout} = issue),
+  defp render_issue_detail(%{type: :infrastructure, detail: %{subtype: :timeout}} = issue),
     do: Issues.format_timeout(issue)
 
   defp render_issue_detail(_), do: nil

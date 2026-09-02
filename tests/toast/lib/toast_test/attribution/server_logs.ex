@@ -32,7 +32,7 @@ defmodule ToastTest.Attribution.ServerLogs do
 
   @padding %{
     crash: {-20_000, 0},
-    timeout: {-10_000, 0},
+    infrastructure: {-10_000, 0},
     test_failure: {-1_000, 1_000},
     sanitizer_report: {-5_000, 1_000}
   }
@@ -138,12 +138,14 @@ defmodule ToastTest.Attribution.ServerLogs do
 
   defp issue_window(%{type: :crash}, _windows), do: []
 
-  defp issue_window(%{type: :timeout, detail: %{timestamp: ts}}, _windows)
+  defp issue_window(
+         %{type: :infrastructure, detail: %{subtype: :timeout, timestamp: ts}},
+         _windows
+       )
        when is_integer(ts) do
-    [pad(ts, ts, :timeout)]
+    [pad(ts, ts, :infrastructure)]
   end
 
-  defp issue_window(%{type: :timeout}, _windows), do: []
   defp issue_window(_issue, _windows), do: []
 
   defp pad(start_us, end_us, type), do: TimeWindows.pad(start_us, end_us, type, @padding)
