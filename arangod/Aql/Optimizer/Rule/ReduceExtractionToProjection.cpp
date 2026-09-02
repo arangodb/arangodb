@@ -165,9 +165,6 @@ void reduceExtractionToProjectionRule(Optimizer* opt,
             // turn the EnumerateCollection node into an IndexNode now
             auto condition = std::make_unique<Condition>(plan->getAst());
             condition->normalize(plan.get());
-            velocypack::Builder b;
-            condition->toVelocyPack(b, true);
-            LOG_DEVEL << "FUCK THIS SHIT: " << b.toString();
             IndexIteratorOptions opts;
             opts.useCache = false;
             // we have already proven that we can use the covering index
