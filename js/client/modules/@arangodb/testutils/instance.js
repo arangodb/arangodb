@@ -418,6 +418,9 @@ class instance {
       this.jwtFiles.forEach(file => {
         this.jwtSecrets.push(fs.read(file));
       });
+    } else if (this.options.cluster) {
+      this.JWT = "Open Sesame!Open Sesame!Open Ses";
+      this.args['server.jwt-secret'] = this.JWT;
     }
     if (this.jwtSecrets.length > 0) {
       this.JWT = this.jwtSecrets[0];
