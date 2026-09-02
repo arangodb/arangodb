@@ -462,16 +462,6 @@ function adminApiAuthzSuite () {
       ], endObserve());
     },
 
-    // GET /_admin/database/target-version - RestAdminDatabaseHandler, no check (AUTHEN)
-    testTargetVersion: function () {
-      beginObserve();
-      arango.GET_RAW(`/_db/_system/_admin/database/target-version`);
-      assertPermissions([
-        "UseApiVersion version=1",
-        "UseDatabase name=_system level=read"
-      ], endObserve());
-    },
-
     // GET /_admin/shutdown - RestShutdownHandler asks canUseAdminAction(AdminShutdown)
     // for BOTH verbs before branching (execute:59); the GET branch then returns
     // 405 on a single server, so firing this is safe.

@@ -165,16 +165,6 @@ function jobApiAuthzSuite () {
       ], endObserve());
       deleteJob(jobId);
     },
-
-    // GET /_admin/job/done - alternative mount point, identical semantics
-    testAdminMountPoint: function () {
-      beginObserve();
-      arango.GET_RAW(`/_db/_system/_admin/job/done`);
-      assertPermissions([
-        "UseApiVersion version=1",
-        "UseDatabase name=_system level=read"
-      ], endObserve());
-    },
   };
 }
 

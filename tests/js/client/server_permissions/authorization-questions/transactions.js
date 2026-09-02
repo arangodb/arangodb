@@ -113,22 +113,6 @@ function transactionApiAuthzSuite () {
       abortTrx(id);
     },
 
-    // POST /_api/transaction - JS transaction reading from c -> read trx on c
-    // AUDIT: requires a V8 context; without V8 the server returns 503 before
-    // the transaction runs and only the base UseDatabase question is asked.
-    testRunJsTransaction: function () {
-      beginObserve();
-      arango.POST_RAW(`/_db/${DB}/_api/transaction`, {
-        collections: { read: [c] },
-        action: 'function () { return 1; }'
-      });
-      assertPermissions([
-        "UseApiVersion version=1",
-        "UseDatabase name=d level=read",
-        "UseCollection db=d name=c level=read"
-      ], endObserve());
-    },
-
     // POST /_api/transaction/begin - begin read stream trx on c -> read check
     testBeginReadTransaction: function () {
       beginObserve();

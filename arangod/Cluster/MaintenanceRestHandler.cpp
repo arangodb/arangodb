@@ -44,7 +44,7 @@ MaintenanceRestHandler::MaintenanceRestHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
-// Mounted at /_admin/actions (exact)
+// Mounted at /_admin/actions (prefix)
 RestStatus MaintenanceRestHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();

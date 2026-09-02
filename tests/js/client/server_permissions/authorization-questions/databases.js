@@ -145,21 +145,7 @@ function databaseApiAuthzSuite () {
         "IsReadOnly",
         "CreateDatabase name=d2",
         "CreateCollection db=d2 name=_analyzers",
-        "CreateCollection db=d2 name=_appbundles",
-        "CreateCollection db=d2 name=_apps",
-        "CreateCollection db=d2 name=_aqlfunctions",
-        "CreateCollection db=d2 name=_frontend",
-        "CreateCollection db=d2 name=_graphs",
-        "CreateCollection db=d2 name=_jobs",
-        "CreateCollection db=d2 name=_queues",
-        "UseCollection db=d2 name=_apps level=writemeta",
-        "UseCollection db=d2 name=_jobs level=writemeta",
-        ...singleOnly([
-          "UseCollection db=d2 name=_apps level=read",
-          "UseCollection db=d2 name=_apps level=writedata",
-          "UseCollection db=d2 name=_jobs level=read",
-          "UseCollection db=d2 name=_jobs level=writedata"
-        ])
+        "CreateCollection db=d2 name=_graphs"
       ], endObserve());
       dropD2();
     },

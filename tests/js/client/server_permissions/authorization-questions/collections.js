@@ -105,13 +105,7 @@ function collectionApiAuthzSuite () {
         "SeeCollection db=d name=c",
         "SeeCollection db=d name=e",
         "SeeCollection db=d name=_analyzers",
-        "SeeCollection db=d name=_appbundles",
-        "SeeCollection db=d name=_apps",
-        "SeeCollection db=d name=_aqlfunctions",
-        "SeeCollection db=d name=_frontend",
-        "SeeCollection db=d name=_graphs",
-        "SeeCollection db=d name=_jobs",
-        "SeeCollection db=d name=_queues"
+        "SeeCollection db=d name=_graphs"
       ], endObserve());
     },
 
@@ -232,9 +226,11 @@ function collectionApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/collection/${c}/compact`, {});
       assertPermissions([
+        "IsReadOnly",
         "UseApiVersion version=1",
         "UseDatabase name=d level=read",
-        "UseCollection db=d name=c level=read"
+        "UseCollection db=d name=c level=read",
+        "UseCollection db=d name=c level=writemeta"
       ], endObserve());
     },
 

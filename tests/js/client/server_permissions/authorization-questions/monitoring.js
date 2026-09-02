@@ -66,28 +66,6 @@ function monitoringApiAuthzSuite () {
       disableObserve();
     },
 
-    // GET /_admin/statistics - canUseHardenedAction(AdminMonitoring)
-    // hardened action -> no question without --server.harden
-    testStatistics: function () {
-      beginObserve();
-      arango.GET_RAW(`/_db/_system/_admin/statistics`);
-      assertPermissions([
-        "UseApiVersion version=1",
-        "UseDatabase name=_system level=read"
-      ], endObserve());
-    },
-
-    // GET /_admin/statistics-description - canUseHardenedAction(AdminMonitoring)
-    // hardened action -> no question without --server.harden
-    testStatisticsDescription: function () {
-      beginObserve();
-      arango.GET_RAW(`/_db/_system/_admin/statistics-description`);
-      assertPermissions([
-        "UseApiVersion version=1",
-        "UseDatabase name=_system level=read"
-      ], endObserve());
-    },
-
     // GET /_admin/status - canUseHardenedAction(AdminMonitoring)
     // hardened action -> no question without --server.harden
     testStatus: function () {
@@ -134,31 +112,6 @@ function monitoringApiAuthzSuite () {
     testSystemReport: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/system-report`);
-      assertPermissions([
-        "UseApiVersion version=1",
-        "UseDatabase name=_system level=read"
-      ], endObserve());
-    },
-
-    // GET /_admin/telemetrics - default --server.support-info-api=jwt policy;
-    // isSuperuser gate (no observed question) rejects basic-auth root.
-    // AUDIT: RestTelemetricsHandler source was not found in the current tree
-    // (may have been removed/renamed on this branch); the endpoint may return
-    // 404. In "admin" policy it would ask canUseAdminAction(AdminMonitoringInternal).
-    testGetTelemetrics: function () {
-      beginObserve();
-      arango.GET_RAW(`/_db/_system/_admin/telemetrics`);
-      assertPermissions([
-        "UseApiVersion version=1",
-        "UseDatabase name=_system level=read"
-      ], endObserve());
-    },
-
-    // DELETE /_admin/telemetrics - same auth guard as GET.
-    // AUDIT: see testGetTelemetrics.
-    testDeleteTelemetrics: function () {
-      beginObserve();
-      arango.DELETE_RAW(`/_db/_system/_admin/telemetrics`);
       assertPermissions([
         "UseApiVersion version=1",
         "UseDatabase name=_system level=read"

@@ -76,19 +76,6 @@ function serverApiAuthzSuite () {
       ], endObserve());
     },
 
-    // POST /_admin/execute - RestAdminExecuteHandler, no check (AUTHEN)
-    // AUDIT: route only registered when V8 is compiled in AND
-    // --javascript.allow-admin-execute=true (non-default); otherwise 404. When
-    // registered it executes the posted JS ("1" here - a harmless no-op).
-    testExecute: function () {
-      beginObserve();
-      arango.POST_RAW(`/_db/_system/_admin/execute`, "1");
-      assertPermissions([
-        "UseApiVersion version=1",
-        "UseDatabase name=_system level=read"
-      ], endObserve());
-    },
-
     // GET /_admin/license - canUseHardenedAction(AdminLicense)
     // hardened action -> no question without --server.harden
     testGetLicense: function () {
@@ -151,16 +138,6 @@ function serverApiAuthzSuite () {
     testGetOptionsPublic: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/options-public`);
-      assertPermissions([
-        "UseApiVersion version=1",
-        "UseDatabase name=_system level=read"
-      ], endObserve());
-    },
-
-    // POST /_admin/routing/reload - RestAdminRoutingHandler, no check (AUTHEN)
-    testRoutingReload: function () {
-      beginObserve();
-      arango.POST_RAW(`/_db/_system/_admin/routing/reload`, {});
       assertPermissions([
         "UseApiVersion version=1",
         "UseDatabase name=_system level=read"

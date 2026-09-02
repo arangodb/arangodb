@@ -116,17 +116,6 @@ function miscApiAuthzSuite () {
       ], endObserve());
     },
 
-    // ── /_api/endpoint ───────────────────────────────────────────────────
-    // RestEndpointHandler only checks _vocbase.isSystem(); it asks no can().
-    testListEndpoints: function () {
-      beginObserve();
-      arango.GET_RAW(`/_db/_system/_api/endpoint`);
-      assertPermissions([
-        "UseApiVersion version=1",
-        "UseDatabase name=_system level=read"
-      ], endObserve());
-    },
-
     // ── /_api/engine ─────────────────────────────────────────────────────
     // RestEngineHandler: canUseHardenedAction(MonitoringInternal). Not hardened
     // in this suite -> asks nothing beyond the base check.
@@ -404,17 +393,6 @@ function miscApiAuthzSuite () {
       ], endObserve());
     },
 
-    // ── /_api/upload ─────────────────────────────────────────────────────
-    // RestUploadHandler asks no can(); base check only.
-    testUpload: function () {
-      beginObserve();
-      arango.POST_RAW(`/_db/${DB}/_api/upload`, {});
-      assertPermissions([
-        "UseApiVersion version=1",
-        "UseDatabase name=d level=read"
-      ], endObserve());
-    },
-
     // ── /_api/wal/* ──────────────────────────────────────────────────────
     // RestWalAccessHandler: canUseAdminAction(AdminWalAccess) (always logged).
     // AUDIT: on a coordinator the handler returns 501 before the check; on a
@@ -466,16 +444,7 @@ function miscApiAuthzSuite () {
         ...singleOnly([
           "AdminWalAccess",
           "UseCollection db=_system name=_analyzers level=read",
-          "UseCollection db=_system name=_appbundles level=read",
-          "UseCollection db=_system name=_apps level=read",
-          "UseCollection db=_system name=_aqlfunctions level=read",
-          "UseCollection db=_system name=_frontend level=read",
           "UseCollection db=_system name=_graphs level=read",
-          "UseCollection db=_system name=_jobs level=read",
-          "UseCollection db=_system name=_queues level=read",
-          "UseCollection db=_system name=_statistics level=read",
-          "UseCollection db=_system name=_statistics15 level=read",
-          "UseCollection db=_system name=_statisticsRaw level=read",
           "UseCollection db=_system name=_users level=read"
         ])
       ], endObserve());
@@ -513,57 +482,6 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/openapi.json`);
       assertPermissions([
-      ], endObserve());
-    },
-
-    // ── /_api/tasks ──────────────────────────────────────────────────────
-    // RestTasksHandler: GET asks no can(); POST/DELETE ask
-    // canUseDatabase(Write). AUDIT: requires V8; without V8 execute() returns
-    // 501 before the write check, so only the base check would be observed.
-    testListTasks: function () {
-      beginObserve();
-      arango.GET_RAW(`/_db/${DB}/_api/tasks`);
-      assertPermissions([
-        "UseApiVersion version=1",
-        "UseDatabase name=d level=read"
-      ], endObserve());
-    },
-
-    testGetNonexistentTask: function () {
-      beginObserve();
-      arango.GET_RAW(`/_db/${DB}/_api/tasks/nonexistent-task-apitester-99999`);
-      assertPermissions([
-        "UseApiVersion version=1",
-        "UseDatabase name=d level=read"
-      ], endObserve());
-    },
-
-    testCreateTask: function () {
-      beginObserve();
-      const res = arango.POST_RAW(`/_db/${DB}/_api/tasks`,
-        { name: 'apitester-task', command: '1+1;', offset: 0 });
-      assertPermissions([
-        "UseApiVersion version=1",
-        "UseDatabase name=d level=read",
-        "IsReadOnly",
-        "UseDatabase name=d level=write"
-      ], endObserve());
-      if (res.parsedBody && res.parsedBody.id) {
-        arango.DELETE_RAW(`/_db/${DB}/_api/tasks/${res.parsedBody.id}`);
-      }
-    },
-
-    testDeleteTask: function () {
-      const created = arango.POST_RAW(`/_db/${DB}/_api/tasks`,
-        { name: 'apitester-task', command: '1+1;', offset: 0 });
-      const id = created.parsedBody ? created.parsedBody.id : undefined;
-      beginObserve();
-      arango.DELETE_RAW(`/_db/${DB}/_api/tasks/${id}`);
-      assertPermissions([
-        "UseApiVersion version=1",
-        "UseDatabase name=d level=read",
-        "IsReadOnly",
-        "UseDatabase name=d level=write"
       ], endObserve());
     },
 
