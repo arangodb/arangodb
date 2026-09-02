@@ -39,27 +39,11 @@ namespace arangodb {
 using namespace arangodb::application_features;
 
 namespace {
+// the rest of what this used to list is now conditionally registered instead
 auto const kNonServerFeatures =
     std::array{std::type_index(typeid(ActionFeature)),
                std::type_index(typeid(AgencyFeature)),
-               std::type_index(typeid(ClusterFeature)),
-#ifdef ARANGODB_HAVE_FORK
-               std::type_index(typeid(SupervisorFeature)),
-               std::type_index(typeid(DaemonFeature)),
-#endif
-#ifdef USE_V8
-               std::type_index(typeid(FoxxFeature)),
-#endif
-               std::type_index(typeid(GeneralServerFeature)),
-               std::type_index(typeid(GreetingsFeature)),
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-               std::type_index(typeid(ProcessEnvironmentFeature)),
-#endif
-               std::type_index(typeid(HttpEndpointProvider)),
-               std::type_index(typeid(LogBufferFeature)),
-               std::type_index(typeid(ServerFeature)),
-               std::type_index(typeid(SslServerFeature)),
-               std::type_index(typeid(StatisticsFeature))};
+               std::type_index(typeid(ClusterFeature))};
 
 void applyAgencyRocksDBMemoryLimits(
     options::ProgramOptions::ProcessingResult const& result,
@@ -238,45 +222,74 @@ void ArangodServer::addFeatures() {
       database, getOptions<upgrade::ClusterUpgradeOptionsProvider>());
   addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());
 #ifdef USE_V8
-  // read once here: V8PlatformFeature, ScriptFeature, FoxxFeature and
-  // FrontendFeature only exist to serve JavaScript, so when JS is disabled
-  // we skip registering them entirely (COR-861) instead of registering them
-  // and immediately disabling them from V8DealerFeature's constructor.
+  // V8-only features are skipped entirely rather than registered-then-disabled
   bool const enableJS = getOptions<V8DealerOptionsProvider>().enableJS;
+  // an activated agency also skips Foxx/Frontend and (unless --console) V8
+  bool const agencyActivated = getOptions<AgencyOptionsProvider>().activated;
+  bool const enableFoxx = enableJS && !agencyActivated;
+  bool const enableV8Runtime =
+      enableJS && (!agencyActivated ||
+                   V8DealerFeature::javascriptRequestedViaOptions(options()));
   addFeature<ConsoleFeature>();
-  if (enableJS) {
+  if (enableV8Runtime) {
     addFeature<V8PlatformFeature>(getOptions<V8PlatformOptionsProvider>());
   }
   addFeature<V8SecurityFeature>(AllowListStrictness::STRICT,
                                 getOptions<V8SecurityOptionsProvider>());
 #endif
+  // init-db/restore-admin/check-version/upgrade don't need a real server
+  bool const initDatabase =
+      getOptions<InitDatabaseOptionsProvider>().initDatabase ||
+      getOptions<InitDatabaseOptionsProvider>().restoreAdmin;
+  bool const checkVersion =
+      getOptions<check_version::CheckVersionOptionsProvider>().checkVersion;
+  bool const upgrade = getOptions<UpgradeOptionsProvider>().upgrade;
+  bool const isCoordinator = ServerState::instance()->isCoordinator();
+  bool const auxMode = initDatabase || checkVersion || upgrade;
+  // coordinator upgrade only sheds Daemon/Supervisor/Greetings, not more
+  bool const skipNonServerFeatures =
+      initDatabase || checkVersion || (upgrade && !isCoordinator);
+  bool const restServer = getOptions<ServerOptionsProvider>().restServer;
+  OperationMode const operationMode =
+      getOptions<ServerOptionsProvider>().operationMode;
+  bool const enableDaemonSupervisor =
+      !auxMode && restServer && operationMode != OperationMode::MODE_CONSOLE;
   addFeature<CpuUsageFeature>();
   auto& databasePath = addFeature<DatabasePathFeature>(
       getOptions<DatabasePathOptionsProvider>());
   auto& dumpLimits =
       addFeature<DumpLimitsFeature>(getOptions<DumpLimitsOptionsProvider>());
-  addFeature<HttpEndpointProvider, EndpointFeature>(
-      getOptions<EndpointOptionsProvider>());
+  if (!skipNonServerFeatures && restServer) {
+    addFeature<HttpEndpointProvider, EndpointFeature>(
+        getOptions<EndpointOptionsProvider>());
+  }
   auto& systemDatabaseFeature = addFeature<SystemDatabaseFeature>();
   addFeature<EnvironmentFeature>();
   addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
   auto& flush = addFeature<FlushFeature>(metrics);
   addFeature<FortuneFeature>(getOptions<fortune::FortuneOptionsProvider>());
 #ifdef USE_V8
-  if (enableJS) {
+  if (enableFoxx && !skipNonServerFeatures) {
     addFeature<FoxxFeature>(getOptions<FoxxOptionsProvider>());
     addFeature<FrontendFeature>(getOptions<FrontendOptionsProvider>());
   }
 #endif
-  addFeature<GeneralServerFeature>(metrics,
-                                   getOptions<GeneralServerOptionsProvider>(),
-                                   getOptions<LogApiOptionsProvider>());
-  addFeature<GreetingsFeature>();
+  if (!skipNonServerFeatures && restServer) {
+    addFeature<GeneralServerFeature>(metrics,
+                                     getOptions<GeneralServerOptionsProvider>(),
+                                     getOptions<LogApiOptionsProvider>());
+  }
+  if (!auxMode) {
+    addFeature<GreetingsFeature>();
+  }
   addFeature<LanguageCheckFeature>();
   addFeature<LanguageFeature>(getOptions<LanguageOptionsProvider>());
   addFeature<TimeZoneFeature>();
   addFeature<LockfileFeature>();
-  addFeature<LogBufferFeature>(metrics, getOptions<LogBufferOptionsProvider>());
+  if (!skipNonServerFeatures) {
+    addFeature<LogBufferFeature>(metrics,
+                                 getOptions<LogBufferOptionsProvider>());
+  }
   addFeature<LoggerFeature>(true, getOptions<LoggerOptionsProvider>());
   addFeature<MaintenanceFeature>(&clusterFeature,
                                  getOptions<MaintenanceOptionsProvider>());
@@ -302,12 +315,14 @@ void ArangodServer::addFeatures() {
   auto& vectorIndex = addFeature<VectorIndexFeature>(
       database, getOptions<vector_index::OptionsProvider>());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  addFeature<ProcessEnvironmentFeature>(
-      std::string{_binaryName},
-      getOptions<ProcessEnvironmentOptionsProvider>());
+  if (!skipNonServerFeatures) {
+    addFeature<ProcessEnvironmentFeature>(
+        std::string{_binaryName},
+        getOptions<ProcessEnvironmentOptionsProvider>());
+  }
 #endif
 #ifdef USE_V8
-  if (enableJS) {
+  if (enableV8Runtime) {
     addFeature<ScriptFeature>(_ret, getOptions<ScriptOptionsProvider>());
   }
   auto& v8DealerFeature = addFeature<V8DealerFeature>(
@@ -321,7 +336,9 @@ void ArangodServer::addFeatures() {
 #endif
       ,
       getOptions<bootstrap::BootstrapOptionsProvider>());
-  addFeature<ServerFeature>(_ret, getOptions<ServerOptionsProvider>());
+  if (!skipNonServerFeatures) {
+    addFeature<ServerFeature>(_ret, getOptions<ServerOptionsProvider>());
+  }
   addFeature<ServerIdFeature>();
   addFeature<ServerSecurityFeature>(
       getOptions<security::ServerSecurityOptionsProvider>());
@@ -336,8 +353,10 @@ void ArangodServer::addFeatures() {
 #endif
   addFeature<SoftShutdownFeature>();
   addFeature<SslFeature>();
-  addFeature<StatisticsFeature>(
-      metrics, getOptions<statistics::StatisticsOptionsProvider>());
+  if (!skipNonServerFeatures && restServer) {
+    addFeature<StatisticsFeature>(
+        metrics, getOptions<statistics::StatisticsOptionsProvider>());
+  }
   addFeature<TempFeature>(std::string{_binaryName},
                           getOptions<TempOptionsProvider>());
   addFeature<TemporaryStorageFeature>(
@@ -361,8 +380,10 @@ void ArangodServer::addFeatures() {
       metrics, getOptions<file_descriptors::FileDescriptorsOptionsProvider>());
 #endif
 #ifdef ARANGODB_HAVE_FORK
-  addFeature<DaemonFeature>(getOptions<DaemonOptionsProvider>());
-  addFeature<SupervisorFeature>(getOptions<SupervisorOptionsProvider>());
+  if (enableDaemonSupervisor) {
+    addFeature<DaemonFeature>(getOptions<DaemonOptionsProvider>());
+    addFeature<SupervisorFeature>(getOptions<SupervisorOptionsProvider>());
+  }
 #endif
 #ifdef USE_ENTERPRISE
   addFeature<AuditFeature>(getOptions<AuditOptionsProvider>());
@@ -371,24 +392,31 @@ void ArangodServer::addFeatures() {
   addFeature<RCloneFeature>(getOptions<RCloneOptionsProvider>());
   addFeature<HotBackupFeature>(getOptions<HotBackupOptionsProvider>());
   addFeature<EncryptionFeature>(getOptions<EncryptionOptionsProvider>());
-  addFeature<SslServerFeature, SslServerFeatureEE>(
-      getOptions<SslServerOptionsProvider>(),
-      getOptions<SslServerEEOptionsProvider>());
+  if (!skipNonServerFeatures && restServer) {
+    addFeature<SslServerFeature, SslServerFeatureEE>(
+        getOptions<SslServerOptionsProvider>(),
+        getOptions<SslServerEEOptionsProvider>());
+  }
 #else
-  addFeature<SslServerFeature>(getOptions<SslServerOptionsProvider>());
+  if (!skipNonServerFeatures && restServer) {
+    addFeature<SslServerFeature>(getOptions<SslServerOptionsProvider>());
+  }
 #endif
   addFeature<RbacFeature>(authentication);
-  addFeature<iresearch::IResearchAnalyzerFeature>(
-      iresearch::IResearchAnalyzerFeature::Dependencies{
-          .databaseFeature = database,
-          .systemDatabase = systemDatabaseFeature,
-          .networkFeature = &networkFeature,
-          .clusterFeature = &clusterFeature,
-          .schedulerFeature = &scheduler,
-          .aqlFunctionFeature = &aqlFunctionFeature,
-      });
-  addFeature<iresearch::IResearchFeature>(
-      metrics, getOptions<iresearch::IResearchOptionsProvider>());
+  // an agency has no need for ArangoSearch or its analyzers
+  if (!agencyActivated) {
+    addFeature<iresearch::IResearchAnalyzerFeature>(
+        iresearch::IResearchAnalyzerFeature::Dependencies{
+            .databaseFeature = database,
+            .systemDatabase = systemDatabaseFeature,
+            .networkFeature = &networkFeature,
+            .clusterFeature = &clusterFeature,
+            .schedulerFeature = &scheduler,
+            .aqlFunctionFeature = &aqlFunctionFeature,
+        });
+    addFeature<iresearch::IResearchFeature>(
+        metrics, getOptions<iresearch::IResearchOptionsProvider>());
+  }
   auto& agency = addFeature<AgencyFeature>(getOptions<AgencyOptionsProvider>());
   addFeature<CheckVersionFeature>(
       _ret, kNonServerFeatures,

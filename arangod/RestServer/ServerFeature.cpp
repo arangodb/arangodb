@@ -23,13 +23,8 @@
 #include "ServerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
-#include "GeneralServer/GeneralServerFeature.h"
-#include "GeneralServer/SslServerFeature.h"
-#include "RestServer/DaemonFeature.h"
-#include "RestServer/SupervisorFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "Basics/application-exit.h"
 #include "Basics/VelocyPackHelper.h"
@@ -42,7 +37,6 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Statistics/StatisticsFeature.h"
 #ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
 #endif
@@ -97,23 +91,8 @@ void ServerFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
-  auto disableDeamonAndSupervisor = [&]() {
-#ifdef ARANGODB_HAVE_FORK
-    server().disableFeatures<DaemonFeature>();
-    server().disableFeatures<SupervisorFeature>();
-#endif
-  };
-
-  if (!_options.restServer) {
-    server()
-        .disableFeatures<HttpEndpointProvider, GeneralServerFeature,
-                         SslServerFeature, StatisticsFeature>();
-    disableDeamonAndSupervisor();
-  }
-
 #ifdef USE_V8
   if (operationMode() == OperationMode::MODE_CONSOLE) {
-    disableDeamonAndSupervisor();
     v8dealer.setMinimumExecutors(2);
   }
 #endif

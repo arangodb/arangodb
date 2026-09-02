@@ -156,12 +156,6 @@ V8DealerFeature::V8DealerFeature(
 
   if (!_options.enableJS) {
     disable();
-
-    // V8PlatformFeature, ScriptFeature, FoxxFeature and FrontendFeature are
-    // never registered at all when JS is disabled (COR-861, see
-    // ArangodServer::addFeatures()). ActionFeature is still unconditionally
-    // registered -- see COR-861 for why it isn't included in that same
-    // conditional-registration pass -- so it still needs disabling here.
     server.disableFeatures<ActionFeature>();
     return;
   }

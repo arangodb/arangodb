@@ -152,12 +152,6 @@ void ApplicationServer::disableFeatures(std::span<const std::type_index> types,
                                         bool force) {
   for (std::type_index type : types) {
     auto it = _features.find(type);
-    // COR-861 is migrating callers from "register then disable" to
-    // conditional registration one call site at a time, so a type not being
-    // present here is now an expected, not-yet-converted-elsewhere state
-    // rather than a bug -- callers no longer all agree that everything they
-    // might disable was necessarily registered.
-    // TODO (COR-861): remove this function by conditional registration logic
     if (it != _features.end()) {
       TRI_ASSERT(it->second != nullptr);
       if (force) {
