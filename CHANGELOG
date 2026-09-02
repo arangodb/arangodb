@@ -1,6 +1,15 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Fixed AQL `MATCH` silently dropping a target vertex's property constraints
+  and `WHERE` expression when a pattern segment was lowered to a traversal --
+  that is, when the segment named several edge collections
+  (`-[ e :ec1|ec2 ]->`) or used a variable-length range
+  (`-[ e :ec * 1..2 ]->`). Such queries returned rows the pattern excludes:
+  `MATCH (v :vc) -[ e :ec1|ec2 ]-> (w :vc {i: 3}) RETURN e` ignored `{i: 3}`
+  entirely. The single-edge-collection one-hop form was unaffected. The
+  `MATCH` statement remains experimental (`matchStatement: "experimental"`).
+
 * Upgraded OpenSSL to 3.5.8.
 
 * COR-741: AQL `MATCH` inline bare attribute keeps support unquoted nested
