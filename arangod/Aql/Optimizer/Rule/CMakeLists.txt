@@ -33,6 +33,7 @@ target_sources(arango_aql PRIVATE
   PushDownLateMaterialization.cpp
   PushFilterIntoEnumerateNear.cpp
   PushLimitIntoIndex.cpp
+  ReduceExtractionToProjection.cpp
   RemoveCollectVariables.cpp
   RemoveDataModificationOutVariables.cpp
   RemoveFiltersCoveredByIndex.cpp

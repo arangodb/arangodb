@@ -57,6 +57,7 @@
 #include "Aql/Optimizer/Rule/PushDownLateMaterialization.h"
 #include "Aql/Optimizer/Rule/PushFilterIntoEnumerateNear.h"
 #include "Aql/Optimizer/Rule/PushLimitIntoIndex.h"
+#include "Aql/Optimizer/Rule/ReduceExtractionToProjection.h"
 #include "Aql/Optimizer/Rule/RemoveCollectVariables.h"
 #include "Aql/Optimizer/Rule/RemoveDataModificationOutVariables.h"
 #include "Aql/Optimizer/Rule/RemoveFiltersCoveredByIndex.h"
@@ -1014,6 +1015,19 @@ The RocksDB storage engine doesn't allow to seek random documents efficiently.
 This optimization picks a pseudo-random document based on a limited number of
 seeks within the collection's key range, selecting a random start key in the
 key range, and then going a few steps before or after that.)");
+
+  // simplify an EnumerationCollectionNode that fetches an entire document to a
+  // projection of this document
+  registerRule(
+      "reduce-extraction-to-projection", reduceExtractionToProjectionRule,
+      OptimizerRule::reduceExtractionToProjectionRule,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+      R"(Modify `EnumerationCollectionNode` and `IndexNode` that would have
+extracted entire documents to only return a projection of each document.
+
+Projections are limited to at most 5 different document attributes by default.
+The maximum number of projected attributes can optionally be adjusted by
+setting the `maxProjections` hint for an AQL `FOR` operation.)");
 
   // finally sort all rules by their level
   std::sort(_rules.begin(), _rules.end(),
