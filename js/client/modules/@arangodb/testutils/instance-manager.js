@@ -123,6 +123,8 @@ class instanceManager {
       let files = fs.list(addArgs['server.jwt-secret-folder']);
       files = files.sort();
       this.JWT = fs.read(fs.join(addArgs['server.jwt-secret-folder'], files[0]));
+    } else if (this.options.cluster) {
+      this.JWT = "Open Sesame!Open Sesame!Open Ses";
     }
     if (this.options.encryptionAtRest) {
       if (this.options.hasOwnProperty('jwtFiles')) {
