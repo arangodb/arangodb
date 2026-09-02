@@ -31,6 +31,11 @@ const request = require('@arangodb/request');
 const IM = global.instanceManager;
 const crashesEndpoint = '/_admin/crashes';
 
+if (getOptions === true) {
+  return {
+    "server.authentication": false,
+  };
+}
 if (runSetup === true) {
   'use strict';
   
