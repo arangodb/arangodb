@@ -509,10 +509,8 @@ function miscApiAuthzSuite () {
       assertPermissions([
         "UseApiVersion version=1",
         "IsReadOnly",
-        ...singleOnly([
-          "UseCollection db=_system name=_users level=read",
-          "UseCollection db=_system name=_users level=writedata"
-        ])
+        "UseCollection db=_system name=_users level=read",
+        "UseCollection db=_system name=_users level=writedata"
       ], endObserve());
       if (res.parsedBody && res.parsedBody.id) {
         arango.DELETE_RAW(`/_db/_system/_api/token/root/${res.parsedBody.id}`);
@@ -528,10 +526,8 @@ function miscApiAuthzSuite () {
       assertPermissions([
         "UseApiVersion version=1",
         "IsReadOnly",
-        ...singleOnly([
-          "UseCollection db=_system name=_users level=read",
-          "UseCollection db=_system name=_users level=writedata"
-        ])
+        "UseCollection db=_system name=_users level=read",
+        "UseCollection db=_system name=_users level=writedata"
       ], endObserve());
     },
   };

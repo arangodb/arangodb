@@ -87,9 +87,7 @@ function adminApiAuthzSuite () {
         "UseApiVersion version=1",
         "UseDatabase name=_system level=read",
         "AdminAuthReload",
-        ...singleOnly([
-          "UseCollection db=_system name=_users level=read"
-        ])
+        "UseCollection db=_system name=_users level=read"
       ], endObserve());
     },
 
