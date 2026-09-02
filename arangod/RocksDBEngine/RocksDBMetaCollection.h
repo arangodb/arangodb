@@ -28,6 +28,7 @@
 #include "Containers/MerkleTree.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMetadata.h"
+#include "StorageEngine/LocalStorageProperties.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/LogicalCollection.h"
@@ -46,7 +47,7 @@ class RocksDBEngine;
 class RocksDBMetaCollection : public PhysicalCollection {
  public:
   explicit RocksDBMetaCollection(LogicalCollection& collection,
-                                 CollectionDescriptor const& descriptor);
+                                 LocalStorageProperties const& storage);
   virtual ~RocksDBMetaCollection();
 
   void deferDropCollection(

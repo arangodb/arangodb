@@ -44,6 +44,7 @@
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Sharding/ShardingInfo.h"
+#include "StorageEngine/LocalStorageProperties.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
@@ -130,6 +131,12 @@ std::shared_ptr<arangodb::CollectionInvariants const> makeInvariants(
           .smartJoinAttribute = descriptor.constant.smartJoinAttribute});
 }
 
+arangodb::LocalStorageProperties makeStorageProperties(
+    arangodb::CollectionDescriptor const& descriptor) {
+  return {.objectId = descriptor.storage.objectId,
+          .cacheEnabled = descriptor.mutableProps.cacheEnabled};
+}
+
 }  // namespace
 
 // The Slice contains the part of the plan that
@@ -166,7 +173,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase,
       _waitForSync(descriptor.clusteringMutable.waitForSync),
       _internalValidatorTypes(descriptor.internal.internalValidatorType),
       _countCache(defaultCountCacheTtl(system())),
-      _physical(vocbase.engine().createPhysicalCollection(*this, descriptor)) {
+      _physical(vocbase.engine().createPhysicalCollection(
+          *this, ::makeStorageProperties(descriptor))) {
   TRI_IF_FAILURE("disableRevisionsAsDocumentIds") {
     _usesRevisionsAsDocumentIds = false;
     _syncByRevision.store(false);
@@ -266,7 +274,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase,
       _waitForSync(descriptor.clusteringMutable.waitForSync),
       _internalValidatorTypes(descriptor.internal.internalValidatorType),
       _countCache(defaultCountCacheTtl(system())),
-      _physical(vocbase.engine().createPhysicalCollection(*this, descriptor)) {
+      _physical(vocbase.engine().createPhysicalCollection(
+          *this, ::makeStorageProperties(descriptor))) {
   TRI_IF_FAILURE("disableRevisionsAsDocumentIds") {
     _usesRevisionsAsDocumentIds = false;
     _syncByRevision.store(false);
@@ -473,7 +482,8 @@ CollectionDescriptor LogicalCollection::properties() const {
 
   d.clusteringConstant.numberOfShards = numberOfShards();
   d.clusteringConstant.shardKeys = shardKeys();
-  d.clusteringConstant.shardingStrategy = shardingInfo()->shardingStrategyName();
+  d.clusteringConstant.shardingStrategy =
+      shardingInfo()->shardingStrategyName();
   // COR-884 collapses the two distributeShardsLike fields into one cid field.
   if (auto distLike = distributeShardsLike(); !distLike.empty()) {
     d.clusteringConstant.distributeShardsLikeCid = std::move(distLike);
@@ -938,8 +948,9 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
   build.add(StaticStrings::SyncByRevision, VPackValue(syncByRevision()));
   build.add(StaticStrings::UsesRevisionsAsDocumentIds,
             VPackValue(usesRevisionsAsDocumentIds()));
-  build.add(StaticStrings::InternalValidatorTypes,
-            VPackValue(_internalValidatorTypes.load(std::memory_order_relaxed)));
+  build.add(
+      StaticStrings::InternalValidatorTypes,
+      VPackValue(_internalValidatorTypes.load(std::memory_order_relaxed)));
   build.add(StaticStrings::WaitForSyncString,
             VPackValue(_waitForSync.load(std::memory_order_relaxed)));
 

@@ -144,7 +144,7 @@ class StorageEngineMock : private StorageEngineMockBase,
   arangodb::Result createLoggerState(TRI_vocbase_t*, VPackBuilder&) override;
   std::unique_ptr<arangodb::PhysicalCollection> createPhysicalCollection(
       arangodb::LogicalCollection& collection,
-      arangodb::CollectionDescriptor const& /*descriptor*/) override;
+      arangodb::LocalStorageProperties const& /*storage*/) override;
   std::shared_ptr<arangodb::TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
       arangodb::transaction::Options const& options,

@@ -1077,8 +1077,8 @@ void RocksDBEngine::addParametersForNewCollection(
 
 // create storage-engine specific collection
 std::unique_ptr<PhysicalCollection> RocksDBEngine::createPhysicalCollection(
-    LogicalCollection& collection, CollectionDescriptor const& descriptor) {
-  return std::make_unique<RocksDBCollection>(collection, descriptor,
+    LogicalCollection& collection, LocalStorageProperties const& storage) {
+  return std::make_unique<RocksDBCollection>(collection, storage,
                                              _cacheManagerProvider.manager(),
                                              _readWriteMetrics);
 }

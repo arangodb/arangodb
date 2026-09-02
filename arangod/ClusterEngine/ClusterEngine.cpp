@@ -141,9 +141,9 @@ void ClusterEngine::addParametersForNewCollection(VPackBuilder& builder,
 
 // create storage-engine specific collection
 std::unique_ptr<PhysicalCollection> ClusterEngine::createPhysicalCollection(
-    LogicalCollection& collection, CollectionDescriptor const& descriptor) {
+    LogicalCollection& collection, LocalStorageProperties const& storage) {
   return std::make_unique<ClusterCollection>(collection, engineType(),
-                                             descriptor);
+                                             storage);
 }
 
 void ClusterEngine::getStatistics(velocypack::Builder& builder) const {

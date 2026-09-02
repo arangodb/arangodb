@@ -26,6 +26,7 @@
 #include "Basics/Result.h"
 #include "Indexes/IndexFactory.h"
 #include "StorageEngine/HealthData.h"
+#include "StorageEngine/LocalStorageProperties.h"
 #include "StorageEngine/TransactionStatistics.h"
 #include "Transaction/ManagerFeatureOptions.h"
 #include "Transaction/OperationOrigin.h"
@@ -138,7 +139,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // create storage-engine specific collection
   virtual std::unique_ptr<PhysicalCollection> createPhysicalCollection(
       LogicalCollection& collection,
-      CollectionDescriptor const& descriptor) = 0;
+      LocalStorageProperties const& storage) = 0;
 
   // status functionality
   // --------------------

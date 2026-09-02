@@ -23,6 +23,7 @@
 #pragma once
 
 #include "RocksDBEngine/RocksDBMetaCollection.h"
+#include "StorageEngine/LocalStorageProperties.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBReadWriteMetrics.h"
 #include "VocBase/Identifiers/IndexId.h"
@@ -51,7 +52,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
  public:
   explicit RocksDBCollection(
-      LogicalCollection& collection, CollectionDescriptor const& descriptor,
+      LogicalCollection& collection, LocalStorageProperties const& storage,
       cache::Manager* cacheManager,
       std::optional<RocksDBReadWriteMetrics>& readWriteMetrics);
   ~RocksDBCollection();

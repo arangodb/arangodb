@@ -259,7 +259,7 @@ arangodb::Result StorageEngineMock::createLoggerState(TRI_vocbase_t*,
 std::unique_ptr<arangodb::PhysicalCollection>
 StorageEngineMock::createPhysicalCollection(
     arangodb::LogicalCollection& collection,
-    arangodb::CollectionDescriptor const& /*descriptor*/) {
+    arangodb::LocalStorageProperties const& /*storage*/) {
   before();
   return std::make_unique<PhysicalCollectionMock>(collection);
 }
