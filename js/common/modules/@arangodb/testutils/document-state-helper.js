@@ -1,4 +1,6 @@
-/*jshint strict: true */
+/* jshint strict: false, sub: true */
+/* global arango */
+
 'use strict';
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -31,37 +33,37 @@ const {assertEqual, assertTrue, assertNotNull} = jsunity.jsUnity.assertions;
 /**
  * Returns the value of a key from a server.
  */
-const getLocalValue = function (endpoint, db, col, key) {
-  let res = request.get({
-    url: `${endpoint}/_db/${db}/_api/document/${col}/${key}`,
-    headers: {
+const getLocalValue = function (db, col, key) {
+  let res = arango.GET(
+    `/_db/${db}/_api/document/${col}/${key}`,
+    {
       "X-Arango-Allow-Dirty-Read": true
-    },
-  });
+    }
+  );
   lh.checkRequestResult(res, true);
-  return res.json;
+  return res;
 };
 
 /**
  * Lookup a particular index on a server.
  */
-const getLocalIndex = function (endpoint, db, indexId) {
-  let res = request.get({
-    url: `${endpoint}/_db/${db}/_api/index/${indexId}`,
-  });
+const getLocalIndex = function (db, indexId) {
+  let res = arango.GET(
+    `/_db/${db}/_api/index/${indexId}`,
+  );
   lh.checkRequestResult(res, true);
-  return res.json;
+  return res;
 };
 
 /**
  * Returns all indexes available locally on a server.
  */
-const getAllLocalIndexes = function (endpoint, db, shard) {
-  let res = request.get({
-    url: `${endpoint}/_db/${db}/_api/index?collection=${shard}`,
-  });
+const getAllLocalIndexes = function (db, shard) {
+  let res = arango.GET(
+    `/_db/${db}/_api/index?collection=${shard}`,
+  );
   lh.checkRequestResult(res, true);
-  return res.json;
+  return res;
 };
 
 
@@ -70,9 +72,9 @@ const getAllLocalIndexes = function (endpoint, db, shard) {
  * If available is set to false, the key must not exist.
  * Otherwise, the value at that key must be equal to the given value.
  */
-const localKeyStatus = function (endpoint, db, col, key, available, value) {
+const localKeyStatus = function (db, col, key, available, value) {
   return function() {
-    const data = getLocalValue(endpoint, db, col, key);
+    const data = getLocalValue(db, col, key);
     if (available === false && data.code === 404) {
       return true;
     }
@@ -85,7 +87,7 @@ const localKeyStatus = function (endpoint, db, col, key, available, value) {
         return true;
       }
     }
-    return Error(`Wrong value returned by ${endpoint}/${db}/${col}/${key}, got: ${JSON.stringify(data)}, ` +
+    return Error(`Wrong value returned by /${db}/${col}/${key}, got: ${JSON.stringify(data)}, ` +
       `expected: ${JSON.stringify(value)}`);
   };
 };
@@ -96,15 +98,15 @@ const localKeyStatus = function (endpoint, db, col, key, available, value) {
  */
 const checkFollowersValue = function (servers, db, shardId, logId, key, value, isReplication2) {
   let localValues = {};
-  for (const [serverId, endpoint] of Object.entries(servers)) {
+  for (const [serverId] of Object.entries(servers)) {
     if (value === null) {
       // Check for absence of key
-      lh.waitFor(localKeyStatus(endpoint, db, shardId, key, false));
+      lh.waitFor(localKeyStatus(db, shardId, key, false));
     } else {
       // Check for key and value
-      lh.waitFor(localKeyStatus(endpoint, db, shardId, key, true, value));
+      lh.waitFor(localKeyStatus(db, shardId, key, true, value));
     }
-    localValues[serverId] = getLocalValue(endpoint, db, shardId, key);
+    localValues[serverId] = getLocalValue(db, shardId, key);
   }
 
   let replication2Log = '';
@@ -143,22 +145,22 @@ const checkFollowersValue = function (servers, db, shardId, logId, key, value, i
 /**
  * Returns bulk documents from a server collection.
  */
-const getBulkDocuments = function (endpoint, db, col, keys) {
-  let res = request.put({
-    url: `${endpoint}/_db/${db}/_api/document/${col}?onlyget=true`,
-    headers: {
+const getBulkDocuments = function (db, col, keys) {
+  let res = arango.PUT_RAW(
+    `/_db/${db}/_api/document/${col}?onlyget=true`,
+    keys,
+    {
       "X-Arango-Allow-Dirty-Read": true
-    },
-    body: JSON.stringify(keys)
-  });
+    }
+  );
   lh.checkRequestResult(res, true);
   return res.json;
 };
 
-const getAssociatedShards = function (endpoint, db, stateId) {
-  let res = request.get({
-    url: `${endpoint}/_db/${db}/_api/document-state/${stateId}/shards`,
-  });
+const getAssociatedShards = function (db, stateId) {
+  let res = arango.GET_RAW(
+    `/_db/${db}/_api/document-state/${stateId}/shards`,
+  );
   lh.checkRequestResult(res, false);
   return res.json.result;
 };
@@ -256,25 +258,25 @@ const getArrayElements = function(logs, opType, name) {
   return entries.filter(entry => entry.name === name);
 };
 
-const startSnapshot = function(endpoint, db, logId, follower, rebootId) {
-  return request.post(`${endpoint}/_db/${db}/_api/document-state/${logId}/snapshot/start`,
-    {body: {serverId: follower, rebootId: rebootId}, json: true});
+const startSnapshot = function(db, logId, follower, rebootId) {
+  return arango.POST_RAW(`/_db/${db}/_api/document-state/${logId}/snapshot/start`,
+    {serverId: follower, rebootId: rebootId});
 };
 
-const getSnapshotStatus = function (endpoint, db, logId, snapshotId) {
-  return request.get(`${endpoint}/_db/${db}/_api/document-state/${logId}/snapshot/status/${snapshotId}`);
+const getSnapshotStatus = function (db, logId, snapshotId) {
+  return arango.GET(`/_db/${db}/_api/document-state/${logId}/snapshot/status/${snapshotId}`);
 };
 
-const allSnapshotsStatus = function (endpoint, db, logId) {
-  return request.get(`${endpoint}/_db/${db}/_api/document-state/${logId}/snapshot/status`);
+const allSnapshotsStatus = function (db, logId) {
+  return arango.GET(`/_db/${db}/_api/document-state/${logId}/snapshot/status`);
 };
 
-const getNextSnapshotBatch = function (endpoint, db, logId, snapshotId) {
-  return request.post(`${endpoint}/_db/${db}/_api/document-state/${logId}/snapshot/next/${snapshotId}`);
+const getNextSnapshotBatch = function (db, logId, snapshotId) {
+  return arango.GET(`/_db/${db}/_api/document-state/${logId}/snapshot/next/${snapshotId}`);
 };
 
-const finishSnapshot = function (endpoint, db, logId, snapshotId) {
-  return request.delete(`${endpoint}/_db/${db}/_api/document-state/${logId}/snapshot/finish/${snapshotId}`);
+const finishSnapshot = function (db, logId, snapshotId) {
+  return arango.DELETE(`/_db/${db}/_api/document-state/${logId}/snapshot/finish/${snapshotId}`);
 };
 
 /*
