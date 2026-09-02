@@ -20,6 +20,7 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/voc-errors.h"
 #include "gtest/gtest.h"
 
 #include "velocypack/Builder.h"
@@ -151,14 +152,14 @@ TEST_F(RestViewHandlerTest, test_auth) {
 
       auto status = handler.execute();
       EXPECT_EQ(arangodb::RestStatus::DONE, status);
-      EXPECT_EQ(arangodb::rest::ResponseCode::FORBIDDEN,
+      EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND,
                 responce.responseCode());
       auto slice = responce._payload.slice();
       EXPECT_TRUE(slice.isObject());
       EXPECT_TRUE(
           (slice.hasKey(arangodb::StaticStrings::Code) &&
            slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-           size_t(arangodb::rest::ResponseCode::FORBIDDEN) ==
+           size_t(arangodb::rest::ResponseCode::NOT_FOUND) ==
                slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
       EXPECT_TRUE(
           (slice.hasKey(arangodb::StaticStrings::Error) &&
@@ -167,7 +168,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
       EXPECT_TRUE(
           (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
            slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-           TRI_ERROR_FORBIDDEN ==
+           TRI_ERROR_ARANGO_DATABASE_NOT_FOUND ==
                ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
                              .getNumber<int>()}));
       EXPECT_TRUE(vocbase.views().empty());
@@ -262,14 +263,14 @@ TEST_F(RestViewHandlerTest, test_auth) {
 
       auto status = handler.execute();
       EXPECT_EQ(arangodb::RestStatus::DONE, status);
-      EXPECT_EQ(arangodb::rest::ResponseCode::FORBIDDEN,
+      EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND,
                 responce.responseCode());
       auto slice = responce._payload.slice();
       EXPECT_TRUE(slice.isObject());
       EXPECT_TRUE(
           (slice.hasKey(arangodb::StaticStrings::Code) &&
            slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-           size_t(arangodb::rest::ResponseCode::FORBIDDEN) ==
+           size_t(arangodb::rest::ResponseCode::NOT_FOUND) ==
                slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
       EXPECT_TRUE(
           (slice.hasKey(arangodb::StaticStrings::Error) &&
@@ -278,7 +279,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
       EXPECT_TRUE(
           (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
            slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-           TRI_ERROR_FORBIDDEN ==
+           TRI_ERROR_ARANGO_DATABASE_NOT_FOUND ==
                ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
                              .getNumber<int>()}));
       auto view = vocbase.lookupView("testView");
@@ -378,14 +379,14 @@ TEST_F(RestViewHandlerTest, test_auth) {
 
       auto status = handler.execute();
       EXPECT_EQ(arangodb::RestStatus::DONE, status);
-      EXPECT_EQ(arangodb::rest::ResponseCode::FORBIDDEN,
+      EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND,
                 responce.responseCode());
       auto slice = responce._payload.slice();
       EXPECT_TRUE(slice.isObject());
       EXPECT_TRUE(
           (slice.hasKey(arangodb::StaticStrings::Code) &&
            slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-           size_t(arangodb::rest::ResponseCode::FORBIDDEN) ==
+           size_t(arangodb::rest::ResponseCode::NOT_FOUND) ==
                slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
       EXPECT_TRUE(
           (slice.hasKey(arangodb::StaticStrings::Error) &&
@@ -394,7 +395,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
       EXPECT_TRUE(
           (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
            slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-           TRI_ERROR_FORBIDDEN ==
+           TRI_ERROR_ARANGO_DATABASE_NOT_FOUND ==
                ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
                              .getNumber<int>()}));
       auto view = vocbase.lookupView("testView");
@@ -549,14 +550,14 @@ TEST_F(RestViewHandlerTest, test_auth) {
 
       auto status = handler.execute();
       EXPECT_EQ(arangodb::RestStatus::DONE, status);
-      EXPECT_EQ(arangodb::rest::ResponseCode::FORBIDDEN,
+      EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND,
                 responce.responseCode());
       auto slice = responce._payload.slice();
       EXPECT_TRUE(slice.isObject());
       EXPECT_TRUE(
           (slice.hasKey(arangodb::StaticStrings::Code) &&
            slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-           size_t(arangodb::rest::ResponseCode::FORBIDDEN) ==
+           size_t(arangodb::rest::ResponseCode::NOT_FOUND) ==
                slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
       EXPECT_TRUE(
           (slice.hasKey(arangodb::StaticStrings::Error) &&
@@ -565,7 +566,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
       EXPECT_TRUE(
           (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
            slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-           TRI_ERROR_FORBIDDEN ==
+           TRI_ERROR_ARANGO_DATABASE_NOT_FOUND ==
                ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
                              .getNumber<int>()}));
       auto view = vocbase.lookupView("testView");
@@ -817,14 +818,14 @@ TEST_F(RestViewHandlerTest, test_auth) {
 
       auto status = handler.execute();
       EXPECT_EQ(arangodb::RestStatus::DONE, status);
-      EXPECT_EQ(arangodb::rest::ResponseCode::FORBIDDEN,
+      EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND,
                 responce.responseCode());
       auto slice = responce._payload.slice();
       EXPECT_TRUE(slice.isObject());
       EXPECT_TRUE(
           (slice.hasKey(arangodb::StaticStrings::Code) &&
            slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-           size_t(arangodb::rest::ResponseCode::FORBIDDEN) ==
+           size_t(arangodb::rest::ResponseCode::NOT_FOUND) ==
                slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
       EXPECT_TRUE(
           (slice.hasKey(arangodb::StaticStrings::Error) &&
@@ -833,7 +834,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
       EXPECT_TRUE(
           (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
            slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-           TRI_ERROR_FORBIDDEN ==
+           TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
                ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
                              .getNumber<int>()}));
     }
@@ -995,14 +996,14 @@ TEST_F(RestViewHandlerTest, test_auth) {
 
       auto status = handler.execute();
       EXPECT_EQ(arangodb::RestStatus::DONE, status);
-      EXPECT_EQ(arangodb::rest::ResponseCode::FORBIDDEN,
+      EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND,
                 responce.responseCode());
       auto slice = responce._payload.slice();
       EXPECT_TRUE(slice.isObject());
       EXPECT_TRUE(
           (slice.hasKey(arangodb::StaticStrings::Code) &&
            slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-           size_t(arangodb::rest::ResponseCode::FORBIDDEN) ==
+           size_t(arangodb::rest::ResponseCode::NOT_FOUND) ==
                slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
       EXPECT_TRUE(
           (slice.hasKey(arangodb::StaticStrings::Error) &&
@@ -1011,7 +1012,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
       EXPECT_TRUE(
           (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
            slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-           TRI_ERROR_FORBIDDEN ==
+           TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
                ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
                              .getNumber<int>()}));
     }
