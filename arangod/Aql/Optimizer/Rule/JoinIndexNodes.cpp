@@ -304,12 +304,9 @@ void optimizeJoinNode(ExecutionPlan& plan, JoinNode* jn) {
     return true;
   }
 
-  // Referenced variables must all be available on the JoinNode input row.
-  // Without a known-const set we cannot prove that.
-  if (knownConstVariables == nullptr) {
-    return false;
-  }
-
+  // knownConstVariables is the JoinNode input-row set
+  // (firstCandidate->getFirstDependency()->getVarsValid()).
+  TRI_ASSERT(knownConstVariables != nullptr);
   LOG_JOIN_OPTIMIZER_RULE << "Known constant variables:";
   for (auto const& var : *knownConstVariables) {
     LOG_JOIN_OPTIMIZER_RULE << "  - " << var->name;
@@ -650,29 +647,18 @@ std::tuple<bool, IndicesOffsets> checkCandidatesEligible(
     ExecutionPlan& plan, std::span<IndexNode*> candidates) {
   IndicesOffsets indicesOffsets = {};
   // Variables available on the JoinNode *input* row when JoinExecutor
-  // evaluates constantExpressions (once per upstream row, before iterating
-  // any index). Must not include variables produced by the first index
-  // itself: its outVariable and projection outputs are not present there.
-  // Join keys such as `doc2.x == doc1.x` are handled separately via
-  // isVarAccessToOthersSideOutVariable / processJoinKeyFinding and do not
-  // rely on this set.
-  VarSet knownConstVariablesStorage;
+  // evaluates constantExpressions. JoinNode replaces the first candidate, so
+  // its input corresponds to that candidate's dependency (vars valid *before*
+  // the first index runs). Join keys such as `doc2.x == doc1.x` are handled
+  // separately via isVarAccessToOthersSideOutVariable / processJoinKeyFinding.
   VarSet const* knownConstVariables = nullptr;
 
   for (auto* candidate : candidates) {
     LOG_JOIN_OPTIMIZER_RULE << "==> Checking candidate: (" << candidate->id()
                             << ")";
     if (candidate == candidates.front()) {
-      knownConstVariablesStorage = candidate->getVarsValid();
-      knownConstVariablesStorage.erase(candidate->outVariable());
-      for (size_t i = 0; i < candidate->projections().size(); ++i) {
-        if (candidate->projections()[i].variable != nullptr) {
-          knownConstVariablesStorage.erase(
-              candidate->projections()[i].variable);
-        }
-      }
-      knownConstVariables = &knownConstVariablesStorage;
-      TRI_ASSERT(knownConstVariables != nullptr);
+      TRI_ASSERT(candidate->hasDependency());
+      knownConstVariables = &candidate->getFirstDependency()->getVarsValid();
       LOG_JOIN_OPTIMIZER_RULE << "Variables which are known as constants: ";
       for (auto kVar : *knownConstVariables) {
         LOG_JOIN_OPTIMIZER_RULE << " -> " << kVar->name;

@@ -574,48 +574,25 @@ AsyncPrefetchEligibility JoinNode::canUseAsyncPrefetching() const noexcept {
 
 /// @brief getVariablesUsedHere, modifying the set in-place
 void JoinNode::getVariablesUsedHere(VarSet& vars) const {
-  // Per-index variables referenced by that index's constant expressions.
-  // These expressions are evaluated by JoinExecutor against the JoinNode
-  // input row, so referenced variables must remain as used-here inputs.
-  std::vector<VarSet> expressionVarsPerIndex;
-  expressionVarsPerIndex.resize(_indexInfos.size());
-
-  for (size_t i = 0; i < _indexInfos.size(); ++i) {
-    auto const& it = _indexInfos[i];
+  for (auto const& it : _indexInfos) {
     if (it.condition != nullptr && it.condition->root() != nullptr) {
       // lookup condition
       Ast::getReferencedVariables(it.condition->root(), vars);
     }
     if (it.filter != nullptr && it.filter->node() != nullptr) {
-      // post filter
+      // lookup condition
       Ast::getReferencedVariables(it.filter->node(), vars);
     }
-    for (auto const& expr : it.expressions) {
+    for (auto& expr : it.expressions) {
       expr->variables(vars);
-      expr->variables(expressionVarsPerIndex[i]);
     }
   }
-  for (size_t i = 0; i < _indexInfos.size(); ++i) {
-    auto const& it = _indexInfos[i];
-    // Do not erase an outVariable if another index's constant expressions
-    // reference it: register planning must keep an input register for it.
-    bool referencedByOtherExpressions = false;
-    for (size_t j = 0; j < _indexInfos.size(); ++j) {
-      if (i == j) {
-        continue;
-      }
-      if (expressionVarsPerIndex[j].contains(it.outVariable)) {
-        referencedByOtherExpressions = true;
-        break;
-      }
-    }
-    if (!referencedByOtherExpressions) {
-      vars.erase(it.outVariable);
-    }
+  for (auto const& it : _indexInfos) {
+    vars.erase(it.outVariable);
     // projection output variables.
-    for (size_t p = 0; p < it.projections.size(); ++p) {
-      if (it.projections[p].variable != nullptr) {
-        vars.erase(it.projections[p].variable);
+    for (size_t i = 0; i < it.projections.size(); ++i) {
+      if (it.projections[i].variable != nullptr) {
+        vars.erase(it.projections[i].variable);
       }
     }
   }
