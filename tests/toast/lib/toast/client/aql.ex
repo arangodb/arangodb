@@ -33,9 +33,9 @@ defmodule Toast.Client.AQL do
   alias Toast.Client
   require Client
 
-  @spec execute(Client.t(), String.t(), map()) :: {:ok, [term()]} | {:error, term()}
-  def execute(%Client{} = client, query, bind_vars \\ %{}) do
-    body = %{"query" => query, "bindVars" => bind_vars}
+  @spec execute(Client.t(), String.t(), map(), map()) :: {:ok, [term()]} | {:error, term()}
+  def execute(%Client{} = client, query, bind_vars \\ %{}, query_opts \\ %{}) do
+    body = build_body(query, bind_vars, query_opts)
 
     case client |> Client.post("/_api/cursor", body) |> Client.unwrap(201) do
       {:ok, body} -> collect_cursor_pages(client, body, [body["result"]])
@@ -43,9 +43,20 @@ defmodule Toast.Client.AQL do
     end
   end
 
-  @spec execute!(Client.t(), String.t(), map()) :: [term()]
-  def execute!(%Client{} = client, query, bind_vars \\ %{}) do
-    Client.bang!(execute(client, query, bind_vars))
+  @spec execute!(Client.t(), String.t(), map(), map()) :: [term()]
+  def execute!(%Client{} = client, query, bind_vars \\ %{}, query_opts \\ %{}) do
+    Client.bang!(execute(client, query, bind_vars, query_opts))
+  end
+
+  @spec explain(Client.t(), String.t(), map(), map()) :: {:ok, map()} | {:error, term()}
+  def explain(%Client{} = client, query, bind_vars \\ %{}, query_opts \\ %{}) do
+    body = build_body(query, bind_vars, query_opts)
+    client |> Client.post("/_api/explain", body) |> Client.unwrap()
+  end
+
+  @spec explain!(Client.t(), String.t(), map(), map()) :: map()
+  def explain!(%Client{} = client, query, bind_vars \\ %{}, query_opts \\ %{}) do
+    Client.bang!(explain(client, query, bind_vars, query_opts))
   end
 
   defp collect_cursor_pages(client, %{"hasMore" => true, "id" => cursor_id}, acc) do
@@ -60,6 +71,11 @@ defmodule Toast.Client.AQL do
   end
 
   defp collect_cursor_pages(_client, _body, acc) do
-    {:ok, acc |> Enum.reverse() |> List.flatten()}
+    {:ok, acc |> Enum.reverse() |> Enum.concat()}
+  end
+
+  defp build_body(query, bind_vars, query_opts) do
+    body = %{"query" => query, "bindVars" => bind_vars}
+    if query_opts == %{}, do: body, else: Map.put(body, "options", query_opts)
   end
 end
