@@ -34,6 +34,7 @@
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/Properties/CollectionDescriptor.h"
+#include "VocBase/Properties/CollectionInvariants.h"
 #include "VocBase/Validators.h"
 #include "VocBase/voc-types.h"
 
@@ -148,9 +149,7 @@ class LogicalCollection : public LogicalDataSource {
 
   uint32_t v8CacheVersion() const noexcept { return _v8CacheVersion; }
 
-  TRI_col_type_e type() const noexcept {
-    return _properties.constant.getType();
-  }
+  TRI_col_type_e type() const noexcept { return _invariants->type; }
 
   // For normal collections the realNames is just a vector of length 1
   // with its name. For smart edge collections (Enterprise Edition only)
@@ -172,13 +171,11 @@ class LogicalCollection : public LogicalDataSource {
   bool waitForSync() const noexcept;
   bool cacheEnabled() const noexcept;
 #ifdef USE_ENTERPRISE
-  bool isDisjoint() const noexcept { return _properties.constant.isDisjoint; }
-  bool isSmart() const noexcept { return _properties.constant.isSmart; }
-  bool isSmartChild() const noexcept {
-    return _properties.internal.isSmartChild;
-  }
+  bool isDisjoint() const noexcept { return _invariants->isDisjoint; }
+  bool isSmart() const noexcept { return _invariants->isSmart; }
+  bool isSmartChild() const noexcept { return _invariants->isSmartChild; }
   bool hasSmartJoinAttribute() const noexcept {
-    return _properties.constant.smartJoinAttribute.has_value();
+    return _invariants->smartJoinAttribute.has_value();
   }
   bool hasSmartGraphAttribute() const noexcept {
     return std::atomic_load_explicit(&_smartGraphAttribute,
@@ -425,6 +422,11 @@ class LogicalCollection : public LogicalDataSource {
   CollectionDescriptor properties() const;
 
  private:
+  /// @brief The slice ctor delegates here to keep the parsed descriptor alive
+  /// for the whole body. Collapses into the descriptor ctor in COR-885.
+  LogicalCollection(Database& vocbase, CollectionDescriptor const& descriptor,
+                    velocypack::Slice info, bool isAStub);
+
   void initializeSmartAttributesBefore(velocypack::Slice info);
   void initializeSmartAttributesAfter(velocypack::Slice info);
   void initializeSmartAttributesBefore(CollectionDescriptor const& descriptor);
@@ -436,10 +438,8 @@ class LogicalCollection : public LogicalDataSource {
 
   void decorateWithInternalValidators();
 
-  // Parsed once at construction; only its immutable fields are authoritative;
-  // the mutable ones are seeded from here into the attributes below and are
-  // stale afterwards
-  CollectionDescriptor const _properties;
+  // Only contains the immutable properties; single source of truth.
+  std::shared_ptr<CollectionInvariants const> const _invariants;
 
  protected:
   void addInternalValidator(std::unique_ptr<ValidatorBase>);
@@ -467,8 +467,6 @@ class LogicalCollection : public LogicalDataSource {
 
   /// @brief is this a global collection on a DBServer
   bool const _isAStub;
-
-  bool const _allowUserKeys;
 
   bool _usesRevisionsAsDocumentIds;
 
