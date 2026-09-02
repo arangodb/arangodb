@@ -61,10 +61,6 @@ struct IndexStreamIterator {
   virtual bool next(std::span<SliceType> keys, DocIdType&,
                     std::span<SliceType> projections) = 0;
 
-  // cache the current key. The span has to stay valid until this function
-  // is called again.
-  virtual void cacheCurrentKey(std::span<SliceType> keys) = 0;
-
   // called to reset the iterator to the initial position and loads that
   // positions keys into span. returns false if the iterator is exhausted.
   // Constants remain valid until the next reset call.
