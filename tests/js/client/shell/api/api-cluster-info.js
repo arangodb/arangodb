@@ -67,7 +67,6 @@ function verifyClusterInfoSuite() {
       assertEqual(ret.failoverCandidates.length, 2, ret);
     },
     testgetResponsibleServers: function () {
-      IM.arangods[0].dumpConnectionTable(true)
       let shardIDs = [];
       ["_users", "_graphs", "_apps"].forEach(col => {
         shardIDs.push(db[col].shards()[0]);
