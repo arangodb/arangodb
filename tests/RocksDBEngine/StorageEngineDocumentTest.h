@@ -24,6 +24,7 @@
 #include "RocksDBEngine/StorageEngineDataTest.h"
 
 #include "Basics/ResultAssertions.h"
+#include "Basics/ResultT.h"
 #include "Basics/StaticStrings.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/CountCache.h"
@@ -196,7 +197,8 @@ class StorageEngineDocumentTest : public StorageEngineDataTest {
   }
 
   // Physical storage identity, bypassing the document-body path.
-  std::pair<LocalDocumentId, RevisionId> lookupKey(std::string_view key) {
+  ResultT<std::pair<LocalDocumentId, RevisionId>> lookupKeyResult(
+      std::string_view key) {
     SingleCollectionTransaction trx{context(), *_collection,
                                     AccessMode::Type::READ};
     EXPECT_TRUE(IsOk(trx.begin()));
@@ -204,20 +206,16 @@ class StorageEngineDocumentTest : public StorageEngineDataTest {
     auto res = _collection->getPhysical()->lookupKey(&trx, key, result,
                                                      ReadOwnWrites::no);
     std::ignore = trx.finish(res);
-    EXPECT_TRUE(res.ok()) << res.errorMessage();
+    if (res.fail()) {
+      return res;
+    }
     return result;
   }
 
-  // Same as lookupKey(), but returns the raw Result instead of asserting ok().
-  Result lookupKeyResult(std::string_view key) {
-    SingleCollectionTransaction trx{context(), *_collection,
-                                    AccessMode::Type::READ};
-    EXPECT_TRUE(IsOk(trx.begin()));
-    std::pair<LocalDocumentId, RevisionId> result;
-    auto res = _collection->getPhysical()->lookupKey(&trx, key, result,
-                                                     ReadOwnWrites::no);
-    std::ignore = trx.finish(res);
-    return res;
+  std::pair<LocalDocumentId, RevisionId> lookupKey(std::string_view key) {
+    auto res = lookupKeyResult(key);
+    EXPECT_TRUE(IsOk(res));
+    return res.ok() ? *res : std::pair<LocalDocumentId, RevisionId>{};
   }
 
   // Direct-by-id lookup, bypassing the primary index (and thus the key).

@@ -26,8 +26,6 @@
 #include "Basics/ResultAssertions.h"
 #include "VelocypackUtils/VelocyPackStringLiteral.h"
 
-#include <algorithm>
-
 using namespace arangodb;
 using namespace arangodb::tests;
 using namespace arangodb::velocypack;

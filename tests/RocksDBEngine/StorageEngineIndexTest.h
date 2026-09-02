@@ -32,7 +32,6 @@
 #include <velocypack/Slice.h>
 
 #include <memory>
-#include <tuple>
 #include <vector>
 
 namespace arangodb::tests {
@@ -41,8 +40,6 @@ namespace arangodb::tests {
 // fixture
 class StorageEngineIndexTest : public StorageEngineDocumentTest {
  protected:
-  // waitAndGet() is the
-  // safe way to drive createIndex() to completion synchronously
   std::shared_ptr<Index> makeIndex(VPackSlice definition) {
     bool created = false;
     auto index = _collection->createIndex(definition, created).waitAndGet();
