@@ -318,7 +318,7 @@ TEST_F(ClassicAuthModeTest, UseCollectionWriteDataWithReadWriteAccess) {
                   .ok());
 }
 
-TEST_F(ClassicAuthModeTest, UseCollectionWithoutAccessIsForbidden) {
+TEST_F(ClassicAuthModeTest, UseCollectionWithoutAccessIsNotFound) {
   beUserWith(NONE);
   expectError(check(p::UseCollection{.db = std::string{kDb},
                                      .name = "c",
@@ -434,10 +434,12 @@ TEST_F(ClassicAuthModeTest, DropCollectionWithoutDatabaseWriteIsForbidden) {
               TRI_ERROR_FORBIDDEN);
 }
 
-TEST_F(ClassicAuthModeTest, DropCollectionReadOnlyCollectionIsForbidden) {
+TEST_F(ClassicAuthModeTest, DropCollectionReadOnlyCollectionIsReadOnly) {
   // The collection-level failure is TRI_ERROR_ARANGO_READ_ONLY, but V0 must
   // keep reporting FORBIDDEN for API compatibility.
   beUserWith(RW, {{std::string{kDb}, "c", RO}});
+  expectError(check(p::DropCollection{.db = std::string{kDb}, .name = "c"}),
+              TRI_ERROR_ARANGO_READ_ONLY);
 }
 
 TEST_F(ClassicAuthModeTest, DropCollectionReadOnlyCollectionIsReadOnly) {
@@ -919,8 +921,7 @@ TEST_F(ClassicAuthModeTest, AdminReadUsersIsNotSpecialInClassic) {
 }
 
 TEST_F(ClassicAuthModeTest, AdminQueryCacheIsGrantedBySystemReadOnly) {
-  // Unlike every other admin action, AdminQueryCache only needs RO on
-  // _system, not RW, but only in API V0.
+  // AdminQueryCache needs RW on _system.
   setGrants({{StaticStrings::SystemDatabase, RO}});
   EXPECT_FALSE(check(p::AdminQueryCache{}).ok());
 }
