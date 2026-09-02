@@ -23,15 +23,11 @@
 #include "TokenCache.h"
 
 #include "Agency/AgencyComm.h"
-#include "Auth/Handler.h"
 #include "Auth/UserManager.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/debugging.h"
 #include "Basics/system-functions.h"
-#include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
@@ -44,14 +40,14 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/Parser.h>
 
 #include <chrono>
+#include <mutex>
+#include <shared_mutex>
 #include <variant>
 
-using namespace arangodb;
-using namespace arangodb::basics;
-using namespace arangodb::velocypack;
-using namespace arangodb::rest;
+namespace arangodb::auth {
 
 namespace {
 constexpr std::string_view hs256String("HS256");
@@ -59,14 +55,14 @@ constexpr std::string_view es256String("ES256");
 constexpr std::string_view jwtString("JWT");
 }  // namespace
 
-bool auth::TokenCache::Entry::expired() const noexcept {
+bool TokenCache::Entry::expired() const noexcept {
   return _expiry != 0 && _expiry < TRI_microtime();
 }
 
-auth::TokenCache::TokenCache(auth::UserManager* um, double timeout)
+TokenCache::TokenCache(UserManager* um, double timeout)
     : _userManager(um), _jwtCache(16384), _authTimeout(timeout) {}
 
-auth::TokenCache::~TokenCache() {
+TokenCache::~TokenCache() {
   // properly clear structs while using the appropriate locks
   {
     WRITE_LOCKER(readLocker, _basicLock);
@@ -78,12 +74,12 @@ auth::TokenCache::~TokenCache() {
   }
 }
 
-void auth::TokenCache::setJwtSecrets(AuthInfo secrets) {
+void TokenCache::setJwtSecrets(AuthInfo secrets) {
   {
     LOG_TOPIC("71a76", DEBUG, Logger::AUTHENTICATION)
-        << "Setting active jwt secret "
-        << auth::authKeyInfo(secrets.activeSecret) << ", additionally setting ("
-        << secrets.passiveSecrets.size() << ") passive secret(s)";
+        << "Setting active jwt secret " << authKeyInfo(secrets.activeSecret)
+        << ", additionally setting (" << secrets.passiveSecrets.size()
+        << ") passive secret(s)";
     _jwtSecrets.assign(std::move(secrets));
   }
   {
@@ -93,51 +89,52 @@ void auth::TokenCache::setJwtSecrets(AuthInfo secrets) {
   generateSuperToken();
 }
 
-std::string const& auth::TokenCache::jwtToken() const noexcept {
+std::string TokenCache::jwtToken() const noexcept {
+  std::shared_lock guard{_jwtSuperTokenLock};
   TRI_ASSERT(!_jwtSuperToken.empty());
   return _jwtSuperToken;
 }
 
-auth::AuthKey auth::TokenCache::jwtSecret() const {
+AuthKey TokenCache::jwtSecret() const {
   return _jwtSecrets.getLockedGuard()->activeSecret;  // intentional copy
 }
 
 // public called from {H2,Http}CommTask.cpp
 // should only lock if required, otherwise we will serialize all
 // requests whether we need to or not
-auth::TokenCache::Entry auth::TokenCache::checkAuthentication(
-    AuthenticationMethod authType, ServerState::Mode mode,
+TokenCache::Entry TokenCache::checkAuthentication(
+    rest::AuthenticationMethod authType, ServerState::Mode mode,
     std::string const& secret) {
   switch (authType) {
-    case AuthenticationMethod::BASIC:
+    case rest::AuthenticationMethod::BASIC:
       if (mode == ServerState::Mode::STARTUP) {
         // during the startup phase, we have no access to the underlying
         // database data, so we cannot validate the credentials.
-        return auth::TokenCache::Entry::Unauthenticated();
+        return TokenCache::Entry::Unauthenticated();
       }
       return checkAuthenticationBasic(secret);
 
-    case AuthenticationMethod::JWT:
+    case rest::AuthenticationMethod::JWT:
       // JWTs work fine even during the startup phase
       return checkAuthenticationJWT(secret);
 
     default:
-      return auth::TokenCache::Entry::Unauthenticated();
+      return TokenCache::Entry::Unauthenticated();
   }
 }
 
-void auth::TokenCache::invalidateBasicCache() {
+void TokenCache::invalidateBasicCache() {
   WRITE_LOCKER(guard, _basicLock);
   _basicCache.clear();
 }
 
 // private
-auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(
+TokenCache::Entry TokenCache::checkAuthenticationBasic(
     std::string const& secret) {
   if (_userManager == nullptr) {  // server does not support users
     LOG_TOPIC("9900c", DEBUG, Logger::AUTHENTICATION)
         << "Basic auth not supported";
-    return auth::TokenCache::Entry::Unauthenticated();
+    return TokenCache::Entry::Unauthenticated();
   }
 
   uint64_t version = _userManager->globalVersion();
@@ -150,7 +147,7 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(
     auto const& it = _basicCache.find(secret);
     if (it != _basicCache.end() && !it->second.expired()) {
       // copy entry under the read-lock
-      auth::TokenCache::Entry res = it->second;
+      TokenCache::Entry res = it->second;
       // and now give up on the read-lock
       guard.unlock();
       return res;
@@ -163,10 +160,10 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(
   std::string::size_type n = up.find(':', 0);
   // if password is an access token then username might be empty
   if (n == std::string::npos || /* n == 0 || */ n + 1 > up.size()) {
-    LOG_TOPIC("2a529", TRACE, arangodb::Logger::AUTHENTICATION)
+    LOG_TOPIC("2a529", TRACE, Logger::AUTHENTICATION)
         << "invalid authentication data found, cannot extract "
            "username/password";
-    return auth::TokenCache::Entry::Unauthenticated();
+    return TokenCache::Entry::Unauthenticated();
   }
 
   std::string username = up.substr(0, n);
@@ -194,7 +191,7 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(
     }
   }
 
-  auth::TokenCache::Entry entry(std::move(username), authorized, expiry);
+  TokenCache::Entry entry(std::move(username), authorized, expiry);
   {
     WRITE_LOCKER(guard, _basicLock);
     if (authorized) {
@@ -207,8 +204,7 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(
   return entry;
 }
 
-auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(
-    std::string const& jwt) {
+TokenCache::Entry TokenCache::checkAuthenticationJWT(std::string const& jwt) {
   // note that we need the write lock here because it is an LRU
   // cache. reading from it will move the read entry to the start of
   // the cache's linked list. so acquiring just a read-lock is
@@ -216,23 +212,23 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(
   {
     std::lock_guard<std::mutex> guard(_jwtCacheMutex);
     // intentionally copy the entry from the cache
-    auth::TokenCache::Entry const* entry = _jwtCache.get(jwt);
+    TokenCache::Entry const* entry = _jwtCache.get(jwt);
     if (entry != nullptr) {
       // would have thrown if not found
       if (entry->expired()) {
         _jwtCache.remove(jwt);
         LOG_TOPIC("65e15", TRACE, Logger::AUTHENTICATION)
             << "JWT Token expired";
-        return auth::TokenCache::Entry::Unauthenticated();
+        return TokenCache::Entry::Unauthenticated();
       }
       return *entry;
     }
   }
-  std::vector<std::string> const parts = StringUtils::split(jwt, '.');
+  std::vector<std::string> const parts = basics::StringUtils::split(jwt, '.');
   if (parts.size() != 3) {
-    LOG_TOPIC("94a73", TRACE, arangodb::Logger::AUTHENTICATION)
+    LOG_TOPIC("94a73", TRACE, Logger::AUTHENTICATION)
         << "Secret contains " << parts.size() << " parts";
-    return auth::TokenCache::Entry::Unauthenticated();
+    return TokenCache::Entry::Unauthenticated();
   }
 
   std::string const& header = parts[0];
@@ -242,33 +238,32 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(
   // TODO(COR-922): return the JwtAlgorithm from Jwt header parse
   bool isES256 = false;
   if (!validateJwtHeader(header, isES256)) {
-    LOG_TOPIC("2eb8a", TRACE, arangodb::Logger::AUTHENTICATION)
+    LOG_TOPIC("2eb8a", TRACE, Logger::AUTHENTICATION)
         << "Couldn't validate jwt header: SENSITIVE_DETAILS_HIDDEN";
-    return auth::TokenCache::Entry::Unauthenticated();
+    return TokenCache::Entry::Unauthenticated();
   }
 
   std::string const message = header + "." + body;
 
   // TODO(COR-923): constructor maybe?
-  auto jwtSignature =
-      JwtSignature{.algorithm = isES256 ? auth::JwtAlgorithm::ES256
-                                        : auth::JwtAlgorithm::HS256};
+  auto jwtSignature = JwtSignature{.algorithm = isES256 ? JwtAlgorithm::ES256
+                                                        : JwtAlgorithm::HS256};
   absl::WebSafeBase64Unescape(signature, &jwtSignature.signature);
 
   auto signatureValid =
-      auth::validateJwtSignature(_jwtSecrets.copy(), message, jwtSignature);
+      validateJwtSignature(_jwtSecrets.copy(), message, jwtSignature);
 
   if (!signatureValid) {
-    LOG_TOPIC("176c4", TRACE, arangodb::Logger::AUTHENTICATION)
+    LOG_TOPIC("176c4", TRACE, Logger::AUTHENTICATION)
         << "Couldn't validate jwt signature against given secret";
-    return auth::TokenCache::Entry::Unauthenticated();
+    return TokenCache::Entry::Unauthenticated();
   }
 
-  auth::TokenCache::Entry newEntry = validateJwtBody(body);
+  TokenCache::Entry newEntry = validateJwtBody(body);
   if (!newEntry.authenticated()) {
-    LOG_TOPIC("5fcba", TRACE, arangodb::Logger::AUTHENTICATION)
+    LOG_TOPIC("5fcba", TRACE, Logger::AUTHENTICATION)
         << "Couldn't validate jwt body: SENSITIVE_DETAILS_HIDDEN";
-    return auth::TokenCache::Entry::Unauthenticated();
+    return TokenCache::Entry::Unauthenticated();
   }
 
   // Store the full JWT token in the entry
@@ -281,29 +276,29 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(
   return newEntry;
 }
 
-std::shared_ptr<VPackBuilder> auth::TokenCache::parseJson(std::string_view str,
-                                                          char const* hint) {
+std::shared_ptr<VPackBuilder> TokenCache::parseJson(std::string_view str,
+                                                    char const* hint) {
   std::shared_ptr<VPackBuilder> result;
   VPackParser parser;
   try {
     parser.parse(str);
     result = parser.steal();
   } catch (std::bad_alloc const&) {
-    LOG_TOPIC("125c4", ERR, arangodb::Logger::AUTHENTICATION)
+    LOG_TOPIC("125c4", ERR, Logger::AUTHENTICATION)
         << "Out of memory parsing " << hint << "!";
   } catch (VPackException const& ex) {
-    LOG_TOPIC("cc356", DEBUG, arangodb::Logger::AUTHENTICATION)
+    LOG_TOPIC("cc356", DEBUG, Logger::AUTHENTICATION)
         << "Couldn't parse " << hint << ": " << ex.what();
   } catch (...) {
-    LOG_TOPIC("12c5d", ERR, arangodb::Logger::AUTHENTICATION)
+    LOG_TOPIC("12c5d", ERR, Logger::AUTHENTICATION)
         << "Got unknown exception trying to parse " << hint;
   }
 
   return result;
 }
 
-bool auth::TokenCache::validateJwtHeader(std::string_view headerWebBase64,
-                                         bool& isES256) {
+bool TokenCache::validateJwtHeader(std::string_view headerWebBase64,
+                                   bool& isES256) {
   std::string header;
   absl::WebSafeBase64Unescape(headerWebBase64, &header);
   std::shared_ptr<VPackBuilder> headerBuilder = parseJson(header, "jwt header");
@@ -323,86 +318,83 @@ bool auth::TokenCache::validateJwtHeader(std::string_view headerWebBase64,
     return false;
   }
 
-  if (algSlice.isEqualString(::es256String)) {
+  if (algSlice.isEqualString(es256String)) {
     isES256 = true;
-  } else if (algSlice.isEqualString(::hs256String)) {
+  } else if (algSlice.isEqualString(hs256String)) {
     isES256 = false;
   } else {
     return false;
   }
 
-  if (!typSlice.isEqualString(::jwtString)) {
+  if (!typSlice.isEqualString(jwtString)) {
     return false;
   }
 
   return true;
 }
 
-auth::TokenCache::Entry auth::TokenCache::validateJwtBody(
-    std::string_view bodyWebBase64) {
+TokenCache::Entry TokenCache::validateJwtBody(std::string_view bodyWebBase64) {
   std::string body;
   absl::WebSafeBase64Unescape(bodyWebBase64, &body);
   std::shared_ptr<VPackBuilder> bodyBuilder = parseJson(body, "jwt body");
   if (bodyBuilder == nullptr) {
     LOG_TOPIC("99524", TRACE, Logger::AUTHENTICATION) << "invalid JWT body";
-    return auth::TokenCache::Entry::Unauthenticated();
+    return TokenCache::Entry::Unauthenticated();
   }
 
   VPackSlice const bodySlice = bodyBuilder->slice();
   if (!bodySlice.isObject()) {
     LOG_TOPIC("7dc0f", TRACE, Logger::AUTHENTICATION) << "invalid JWT value";
-    return auth::TokenCache::Entry::Unauthenticated();
+    return TokenCache::Entry::Unauthenticated();
   }
 
   VPackSlice const issSlice = bodySlice.get("iss");
   if (!issSlice.isString()) {
-    LOG_TOPIC("ce204", TRACE, arangodb::Logger::AUTHENTICATION)
-        << "missing iss value";
-    return auth::TokenCache::Entry::Unauthenticated();
+    LOG_TOPIC("ce204", TRACE, Logger::AUTHENTICATION) << "missing iss value";
+    return TokenCache::Entry::Unauthenticated();
   }
 
   if (!issSlice.isEqualString(std::string_view("arangodb"))) {
-    LOG_TOPIC("2547e", TRACE, arangodb::Logger::AUTHENTICATION)
-        << "invalid iss value";
-    return auth::TokenCache::Entry::Unauthenticated();
+    LOG_TOPIC("2547e", TRACE, Logger::AUTHENTICATION) << "invalid iss value";
+    return TokenCache::Entry::Unauthenticated();
   }
 
-  auth::TokenCache::Entry authResult("", false, 0);
+  TokenCache::Entry authResult("", false, 0);
   VPackSlice const usernameSlice = bodySlice.get("preferred_username");
   if (!usernameSlice.isNone()) {
     if (!usernameSlice.isString() || usernameSlice.getStringLength() == 0) {
-      return auth::TokenCache::Entry::Unauthenticated();
+      return TokenCache::Entry::Unauthenticated();
     }
     authResult._username = usernameSlice.copyString();
     if (_userManager == nullptr ||
         !_userManager->userExists(authResult._username)) {
-      return auth::TokenCache::Entry::Unauthenticated();
+      return TokenCache::Entry::Unauthenticated();
     }
   } else if (bodySlice.hasKey("server_id")) {
     // mop: hmm...nothing to do here :D
   } else {
-    LOG_TOPIC("84c61", TRACE, arangodb::Logger::AUTHENTICATION)
+    LOG_TOPIC("84c61", TRACE, Logger::AUTHENTICATION)
         << "Lacking preferred_username or server_id";
-    return auth::TokenCache::Entry::Unauthenticated();
+    return TokenCache::Entry::Unauthenticated();
   }
 
   VPackSlice const paths = bodySlice.get("allowed_paths");
   if (!paths.isNone()) {
     if (!paths.isArray()) {
-      LOG_TOPIC("89898", TRACE, arangodb::Logger::AUTHENTICATION)
+      LOG_TOPIC("89898", TRACE, Logger::AUTHENTICATION)
           << "allowed_paths must be an array";
-      return auth::TokenCache::Entry::Unauthenticated();
+      return TokenCache::Entry::Unauthenticated();
     }
     if (paths.length() == 0) {
-      LOG_TOPIC("89893", TRACE, arangodb::Logger::AUTHENTICATION)
+      LOG_TOPIC("89893", TRACE, Logger::AUTHENTICATION)
           << "allowed_paths may not be empty";
-      return auth::TokenCache::Entry::Unauthenticated();
+      return TokenCache::Entry::Unauthenticated();
     }
     for (auto const& path : VPackArrayIterator(paths)) {
       if (!path.isString()) {
-        LOG_TOPIC("89891", TRACE, arangodb::Logger::AUTHENTICATION)
+        LOG_TOPIC("89891", TRACE, Logger::AUTHENTICATION)
             << "allowed_paths may only contain strings";
-        return auth::TokenCache::Entry::Unauthenticated();
+        return TokenCache::Entry::Unauthenticated();
       }
       authResult._allowedPaths.push_back(path.copyString());
     }
@@ -412,15 +404,15 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(
   VPackSlice const rolesSlice = bodySlice.get("roles");
   if (!rolesSlice.isNone() && !rolesSlice.isNull()) {
     if (!rolesSlice.isArray()) {
-      LOG_TOPIC("89899", TRACE, arangodb::Logger::AUTHENTICATION)
+      LOG_TOPIC("89899", TRACE, Logger::AUTHENTICATION)
           << "roles must be an array";
-      return auth::TokenCache::Entry::Unauthenticated();
+      return TokenCache::Entry::Unauthenticated();
     }
     for (auto const& role : VPackArrayIterator(rolesSlice)) {
       if (!role.isString()) {
-        LOG_TOPIC("89892", TRACE, arangodb::Logger::AUTHENTICATION)
+        LOG_TOPIC("89892", TRACE, Logger::AUTHENTICATION)
             << "roles may only contain strings";
-        return auth::TokenCache::Entry::Unauthenticated();
+        return TokenCache::Entry::Unauthenticated();
       }
       authResult._roles.push_back(role.copyString());
     }
@@ -451,12 +443,13 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(
 }
 
 /// generate a JWT token for internal cluster communication
-void auth::TokenCache::generateSuperToken() {
+void TokenCache::generateSuperToken() {
   std::string sid = ServerState::instance()->getId();
 
-  auto guard = _jwtSecrets.getLockedGuard();
+  auto activeSecret = _jwtSecrets.getLockedGuard()->activeSecret;
 
-  if (std::holds_alternative<auth::ES256PrivateKey>(guard->activeSecret)) {
+  std::unique_lock guard{_jwtSuperTokenLock};
+  if (std::holds_alternative<ES256PrivateKey>(activeSecret)) {
     // Generate ES256 JWT token manually
     std::chrono::seconds iss = std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::system_clock::now().time_since_epoch());
@@ -496,9 +489,9 @@ void auth::TokenCache::generateSuperToken() {
 
     std::string signature;
     std::string error;
-    int result = SslInterface::signES256(
-        std::get<auth::ES256PrivateKey>(guard->activeSecret)._data, fullMessage,
-        signature, error);
+    int result = rest::SslInterface::signES256(
+        std::get<ES256PrivateKey>(activeSecret)._data, fullMessage, signature,
+        error);
 
     if (result != 0) {
       LOG_TOPIC("71a77", ERR, Logger::AUTHENTICATION)
@@ -514,7 +507,9 @@ void auth::TokenCache::generateSuperToken() {
     _jwtSuperToken = fullMessage + "." + signatureBase64;
   } else {
     // Use existing HS256 token generation
-    _jwtSuperToken = arangodb::rest::SslInterface::jwt::generateInternalToken(
-        std::get<auth::HS256Key>(guard->activeSecret)._data, sid);
+    _jwtSuperToken = rest::SslInterface::jwt::generateInternalToken(
+        std::get<HS256Key>(activeSecret)._data, sid);
   }
 }
+
+}  // namespace arangodb::auth
