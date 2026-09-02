@@ -259,6 +259,59 @@ function aqlMatchStatementTestSuite() {
             }
         },
 
+        // Several edge collections force the segment to be lowered to a
+        // traversal instead of a collection enumeration; the target vertex's
+        // constraints must survive that lowering. Each case is cross-checked
+        // against the single-collection spelling, which uses the other lowering.
+        testSelectEdgesWithMultipleEdgeTypesAndTargetVertexProperties: function () {
+            const ec = db._query("MATCH (v :vc) -[ e :ec ]-> (w :vc {i: 51}) RETURN e._id", {}, options).toArray();
+            const ec2 = db._query("MATCH (v :vc) -[ e :ec2 ]-> (w :vc {i: 51}) RETURN e._id", {}, options).toArray();
+            assertEqual(ec, ["ec/e25"]);
+            assertEqual(ec2, ["ec2/e250"]);
+
+            const multi = db._query("MATCH (v :vc) -[ e :ec|ec2 ]-> (w :vc {i: 51}) RETURN e._id", {}, options).toArray();
+            multi.sort();
+            assertEqual(multi, ["ec/e25", "ec2/e250"]);
+        },
+
+        testSelectEdgesWithMultipleEdgeTypesAndTargetVertexWhereClause: function () {
+            const multi = db._query("MATCH (v :vc) -[ e :ec|ec2 ]-> (w :vc WHERE w.i == 51) RETURN e._id", {}, options).toArray();
+            multi.sort();
+            assertEqual(multi, ["ec/e25", "ec2/e250"]);
+        },
+
+        testSelectEdgesWithMultipleEdgeTypesAndTargetVertexPropertiesAndWhereClause: function () {
+            const multi = db._query("MATCH (v :vc) -[ e :ec|ec2 ]-> (w :vc {i: 51} WHERE w.j == 1) RETURN e._id", {}, options).toArray();
+            multi.sort();
+            assertEqual(multi, ["ec/e25", "ec2/e250"]);
+
+            // same vertex, contradictory WHERE
+            assertEqual(db._query("MATCH (v :vc) -[ e :ec|ec2 ]-> (w :vc {i: 51} WHERE w.j == 2) RETURN e._id", {}, options).toArray(), []);
+        },
+
+        testSelectEdgesWithMultipleEdgeTypesAndUnsatisfiableTargetVertexFilter: function () {
+            // no vertex has i == 999, so neither spelling may return a row
+            assertEqual(db._query("MATCH (v :vc) -[ e :ec|ec2 ]-> (w :vc {i: 999}) RETURN e._id", {}, options).toArray(), []);
+            assertEqual(db._query("MATCH (v :vc) -[ e :ec|ec2 ]-> (w :vc WHERE w.i == 999) RETURN e._id", {}, options).toArray(), []);
+        },
+
+        testSelectEdgesWithMultipleEdgeTypesAndBothVertexFilters: function () {
+            // start-vertex constraints already worked; assert they compose with
+            // the target-vertex ones rather than replacing them. ec_loops holds
+            // both a self-loop v3->v3 and the step v3->v4, so only the target
+            // constraint can separate them -- a start-only filter would keep both.
+            const multi = db._query("MATCH (v :vc {i: 3}) -[ e :ec_loops|ec2 ]-> (w :vc {i: 4}) RETURN e._id", {}, options).toArray();
+            assertEqual(multi, ["ec_loops/e13"]);
+
+            const loop = db._query("MATCH (v :vc {i: 3}) -[ e :ec_loops|ec2 ]-> (w :vc {i: 3}) RETURN e._id", {}, options).toArray();
+            assertEqual(loop, ["ec_loops/e3"]);
+
+            // both endpoints unconstrained-by-collection: v3 has exactly these two
+            const both = db._query("MATCH (v :vc {i: 3}) -[ e :ec_loops|ec2 ]-> (w :vc) RETURN e._id", {}, options).toArray();
+            both.sort();
+            assertEqual(both, ["ec_loops/e13", "ec_loops/e3"]);
+        },
+
         testSelectEdgesWithCollectionBindParameterMultipleEdgeTypes: function () {
             const result = db._query("MATCH (v :vc) -[ e :@@ec1 | @@ec2 ]-> (w :vc) RETURN [v, e, w]",
                 { "@ec1": "ec", "@ec2": "ec2" }, options).toArray();

@@ -84,9 +84,10 @@ class MatchBuilder {
       Variable const* rightVertex, MatchEdgeDirection direction);
 
   std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
-  createTraversalForPattern(Variable const* startNodeVar,
-                            NormalizedEdge const& edge,
-                            MatchPatternElement const& target);
+  createTraversalForPattern(
+      Variable const* startNodeVar, NormalizedEdge const& edge,
+      MatchPatternElement const& target,
+      std::unordered_map<VariableId, Variable const*> const& subst);
 
   AstNode* constructArray(std::vector<AstNode const*> const& vars);
 

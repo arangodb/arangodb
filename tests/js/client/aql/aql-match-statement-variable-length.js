@@ -432,6 +432,93 @@ function aqlMatchStatementVariableLengthTestSuite() {
           assertEqual(result, expected);
         },
 
+        // A variable-length segment is always lowered to a traversal, so the
+        // target vertex's constraints have to be re-applied on the traversal's
+        // vertex output. Unlike the one-hop case there is no alternative
+        // lowering to cross-check against, so the expected paths are spelled
+        // out: mec1 is v0->v1->v2->v3 and mec2 is the single shortcut v0->v2.
+        testMatchVarLenTargetVertexProperties: function() {
+          const query = aql`MATCH (v :mvc) -[ e:mec1 * 1..2 ]-> (w :mvc {_key: "v2"})
+                              RETURN e`;
+          const expected = [
+            "(mvc/v0) -[]-> (mvc/v1) -[]-> (mvc/v2)",
+            "(mvc/v1) -[]-> (mvc/v2)"
+          ];
+          expected.sort();
+          const result = db._query(query, {}, options).toArray().map(pathToString);
+          result.sort();
+          assertEqual(result, expected);
+        },
+
+        testMatchVarLenTargetVertexWhereClause: function() {
+          const query = aql`MATCH (v :mvc) -[ e:mec1 * 1..2 ]-> (w :mvc WHERE w._key == "v2")
+                              RETURN e`;
+          const expected = [
+            "(mvc/v0) -[]-> (mvc/v1) -[]-> (mvc/v2)",
+            "(mvc/v1) -[]-> (mvc/v2)"
+          ];
+          expected.sort();
+          const result = db._query(query, {}, options).toArray().map(pathToString);
+          result.sort();
+          assertEqual(result, expected);
+        },
+
+        testMatchVarLenMultiTypeTargetVertexProperties: function() {
+          const query = aql`MATCH (v :mvc) -[ e:mec1|mec2 * 1..2 ]-> (w :mvc {_key: "v2"})
+                              RETURN e`;
+          const expected = [
+            "(mvc/v0) -[]-> (mvc/v1) -[]-> (mvc/v2)",
+            "(mvc/v0) -[]-> (mvc/v2)",
+            "(mvc/v1) -[]-> (mvc/v2)"
+          ];
+          expected.sort();
+          const result = db._query(query, {}, options).toArray().map(pathToString);
+          result.sort();
+          assertEqual(result, expected);
+        },
+
+        testMatchVarLenMultiTypeTargetVertexWhereClause: function() {
+          const query = aql`MATCH (v :mvc) -[ e:mec1|mec2 * 1..2 ]-> (w :mvc WHERE w._key == "v2")
+                              RETURN e`;
+          const expected = [
+            "(mvc/v0) -[]-> (mvc/v1) -[]-> (mvc/v2)",
+            "(mvc/v0) -[]-> (mvc/v2)",
+            "(mvc/v1) -[]-> (mvc/v2)"
+          ];
+          expected.sort();
+          const result = db._query(query, {}, options).toArray().map(pathToString);
+          result.sort();
+          assertEqual(result, expected);
+        },
+
+        testMatchVarLenUnsatisfiableTargetVertexFilter: function() {
+          // no vertex has _key == "nope", so none of these may return a row
+          const queries = [
+            "MATCH (v :mvc) -[ e:mec1 * 1..2 ]-> (w :mvc {_key: \"nope\"}) RETURN e",
+            "MATCH (v :mvc) -[ e:mec1 * 1..2 ]-> (w :mvc WHERE w._key == \"nope\") RETURN e",
+            "MATCH (v :mvc) -[ e:mec1|mec2 * 1..2 ]-> (w :mvc {_key: \"nope\"}) RETURN e",
+            "MATCH (v :mvc) -[ e:mec1|mec2 * 1..2 ]-> (w :mvc WHERE w._key == \"nope\") RETURN e"
+          ];
+          for (const query of queries) {
+            assertEqual(db._query(query, {}, options).toArray(), [], query);
+          }
+        },
+
+        testMatchVarLenBothVertexFilters: function() {
+          // start-vertex constraints already worked; assert they compose with
+          // the target-vertex ones rather than replacing them
+          const query = aql`MATCH (v :mvc {_key: "v0"}) -[ e:mec1|mec2 * 1..2 ]-> (w :mvc {_key: "v2"})
+                              RETURN e`;
+          const expected = [
+            "(mvc/v0) -[]-> (mvc/v1) -[]-> (mvc/v2)",
+            "(mvc/v0) -[]-> (mvc/v2)"
+          ];
+          expected.sort();
+          const result = db._query(query, {}, options).toArray().map(pathToString);
+          result.sort();
+          assertEqual(result, expected);
+        },
+
     };
 }
 
