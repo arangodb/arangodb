@@ -1682,7 +1682,7 @@ query_t State::allLogs() const {
 
   auto everything = std::make_shared<VPackBuilder>();
   {
-    VPackObjectBuilder(everything.get());
+    VPackObjectBuilder ob(everything.get());
     try {
       everything->add("compact", compqResult.data->slice());
     } catch (std::exception const&) {

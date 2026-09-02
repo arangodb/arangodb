@@ -67,6 +67,9 @@ Checks: |
   # Flags every function with two adjacent same-type params. Almost always
   # noise on an existing codebase; revisit once the baseline is clean.
   -bugprone-easily-swappable-parameters,
+  # We only have one hit in the current codebase, even that one is noise
+  # we won't plaster every new with a try/catch
+  -bugprone-unhandled-exception-at-new,
 
   # We use recursion deliberately in many places (AQL, graph traversal, ...).
   -misc-no-recursion,
@@ -101,6 +104,11 @@ Checks: |
   # switching wholesale now is a large, purely stylistic diff. Disabled for
   # now; re-enable when we tackle it as a dedicated effort.
   -misc-use-anonymous-namespace
+
+  # This one only had 2 real hits, reporting as 4 because it hit header and cpp
+  # separately, and all of them would have been NOLINT because its cases where
+  # we have a operator delete without a corresponding operator new.
+  -misc-new-delete-overloads
 
 # Only emit diagnostics for headers under our own source roots. Without this,
 # clang-tidy would either stay silent on headers or flood us with findings from

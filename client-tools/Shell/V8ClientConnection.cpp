@@ -687,8 +687,7 @@ void V8ClientConnection::reconnect() {
   try {
     createConnection();
   } catch (...) {
-    std::string errorMessage = "error in '" + _client.endpoint() + "'";
-    throw errorMessage;
+    throw std::runtime_error("error in '" + _client.endpoint() + "'");
   }
 
   if (isConnected() &&
@@ -705,13 +704,8 @@ void V8ClientConnection::reconnect() {
           << "' - Server message: " << _lastErrorMessage;
     }
 
-    std::string errorMsg = "could not connect";
-
-    if (!_lastErrorMessage.empty()) {
-      errorMsg = _lastErrorMessage;
-    }
-
-    throw errorMsg;
+    throw std::runtime_error(!_lastErrorMessage.empty() ? _lastErrorMessage
+                                                        : "could not connect");
   }
 }
 

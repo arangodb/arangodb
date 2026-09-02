@@ -335,6 +335,7 @@ struct DiscreteValuesParameter : public T {
       std::string msg("invalid default value for DiscreteValues parameter: '");
       msg.append(stringifyValue(*ptr));
       msg.append("'. ");
+      // NOLINTNEXTLINE(clang-analyzer-optin.cplusplus.VirtualCall)
       msg.append(description());
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
     }

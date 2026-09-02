@@ -917,13 +917,13 @@ Result IndexFactory::enhanceJsonIndexMdiPrefixed(VPackSlice definition,
 Result IndexFactory::enhanceJsonIndexVector(
     arangodb::velocypack::Slice definition,
     arangodb::velocypack::Builder& builder, bool create) {
-  Result const res =
+  Result processIndexFieldsResult =
       processIndexFields(definition, builder, 1, 1, create,
                          /*allowExpansion*/ false, /*allowSubAttributes*/ true,
                          /*allowIdAttribute*/ false);
 
   vector::UserDefinition vectorIndexDefinition;
-  if (res.ok()) {
+  if (processIndexFieldsResult.ok()) {
     auto const paramsSlice = definition.get("params");
     if (auto const res = velocypack::deserializeWithStatus(
             paramsSlice, vectorIndexDefinition);
@@ -953,7 +953,7 @@ Result IndexFactory::enhanceJsonIndexVector(
     processIndexParallelism(definition, builder);
   }
 
-  return res;
+  return processIndexFieldsResult;
 }
 
 }  // namespace arangodb
