@@ -69,10 +69,6 @@ struct MyVectorIterator : MyIndexStreamIterator {
     return *current;
   }
 
-  void cacheCurrentKey(std::span<MyKeyValue> cache) override {
-    cache[0] = *current;
-  }
-
   bool reset(std::span<MyKeyValue> span,
              std::span<MyKeyValue> constants) override {
     current = begin;

@@ -10,6 +10,9 @@
   entirely. The single-edge-collection one-hop form was unaffected. The
   `MATCH` statement remains experimental (`matchStatement: "experimental"`).
 
+* Upgraded included rclone to v1.75.0 with go1.25.13 and non-vulnerable
+  dependencies.
+
 * Upgraded OpenSSL to 3.5.8.
 
 * COR-741: AQL `MATCH` inline bare attribute keeps support unquoted nested
@@ -22,9 +25,6 @@
   (`matchStatement: "experimental"`).
 
 * Updated ArangoDB Starter to v0.20.0-preview-16.
-
-* Upgraded included rclone to v1.75.0 with go1.25.13 and non-vulnerable
-  dependencies.
 
 * Updated node module js-yaml to 4.3.1 to resolve GHSA-5p4m-2wfm-xmqj.
 
