@@ -7,6 +7,12 @@
   a calculated expression based on a document from an earlier collection.
   Such queries are now handled safely without triggering an assertion failure or server crash.
   
+
+* Upgraded included rclone to v1.75.0 with go1.25.13 and non-vulnerable
+  dependencies.
+
+* Upgraded OpenSSL to 3.5.8.
+
 * COR-741: AQL `MATCH` inline bare attribute keeps support unquoted nested
   paths. Dot notation preserves object hierarchy, e.g.
   `MATCH (v:users RETURN profile.name) RETURN v` binds `v` to
@@ -17,9 +23,6 @@
   (`matchStatement: "experimental"`).
 
 * Updated ArangoDB Starter to v0.20.0-preview-16.
-
-* Upgraded included rclone to v1.75.0 with go1.25.13 and non-vulnerable
-  dependencies.
 
 * Updated node module js-yaml to 4.3.1 to resolve GHSA-5p4m-2wfm-xmqj.
 
