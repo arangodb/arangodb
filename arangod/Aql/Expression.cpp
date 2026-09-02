@@ -122,7 +122,7 @@ AqlValue Expression::execute(ExpressionContext* ctx, bool& mustDestroy) {
     case ExpressionType::kJson: {
       mustDestroy = false;
       TRI_ASSERT(_data != nullptr);
-      return AqlValue(_data);
+      return AqlValue::staticSlice(_data);
     }
 
     case ExpressionType::kSimple: {
@@ -683,10 +683,10 @@ AqlValue Expression::executeSimpleExpressionArray(ExpressionContext& ctx,
     // this will not create a copy
     uint8_t const* cv = node->computedValue();
     if (cv != nullptr) {
-      return AqlValue(cv);
+      return AqlValue::staticSlice(cv);
     }
     auto builder = ThreadLocalBuilderLeaser::lease();
-    return AqlValue(node->computeValue(builder.get()).begin());
+    return AqlValue::staticSlice(node->computeValue(builder.get()).begin());
   }
 
   size_t const n = node->numMembers();
@@ -766,11 +766,11 @@ AqlValue Expression::executeSimpleExpressionObject(ExpressionContext& ctx,
     uint8_t const* cv = node->computedValue();
     if (cv != nullptr) {
       // no copy
-      return AqlValue(cv);
+      return AqlValue::staticSlice(cv);
     }
 
     auto builder = ThreadLocalBuilderLeaser::lease();
-    return AqlValue(node->computeValue(builder.get()).begin());
+    return AqlValue::staticSlice(node->computeValue(builder.get()).begin());
   }
 
   size_t const n = node->numMembers();
@@ -937,10 +937,10 @@ AqlValue Expression::executeSimpleExpressionValue(ExpressionContext& ctx,
   mustDestroy = false;
   uint8_t const* cv = node->computedValue();
   if (cv != nullptr) {
-    return AqlValue(cv);
+    return AqlValue::staticSlice(cv);
   }
   auto builder = ThreadLocalBuilderLeaser::lease();
-  return AqlValue(node->computeValue(builder.get()).begin());
+  return AqlValue::staticSlice(node->computeValue(builder.get()).begin());
 }
 
 // execute an expression of type ExpressionType::kSimple with REFERENCE

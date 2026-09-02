@@ -177,6 +177,7 @@ struct AqlValue final {
  private:
   union {
     uint8_t aqlValueType;
+    uint8_t bytes[16];  // byte-addressable view; bytes[0] is aqlValueType
     uint64_t words[2];  // keep this for fast zeroing AqlValue
 
     // RANGE
@@ -269,6 +270,17 @@ struct AqlValue final {
     Malloc = 1,  // memory allocated by malloc
   };
 
+  /// @brief marks a VPACK_SLICE_POINTER whose payload outlives every
+  /// AqlItemBlock: query plan memory, AST constants, the const value block.
+  /// stored in the high bit of byte 1, which that layout leaves unused. the
+  /// inline layouts keep payload bytes in byte 1, so the flag is only ever
+  /// read after the type byte has been checked.
+  ///
+  /// the default is the opposite, a short-lived pointer, so that forgetting to
+  /// mark a static producer costs a copy rather than leaving a dangling
+  /// pointer in a block cell.
+  static constexpr uint8_t kStaticSliceFlag = 0x80;
+
  public:
   // construct an empty AqlValue
   // note: this is the default constructor and should be as cheap as possible
@@ -339,6 +351,28 @@ struct AqlValue final {
 
   /// @brief whether or not the value must be destroyed
   bool requiresDestruction() const noexcept;
+
+  /// @brief whether this is a slice pointer into memory that outlives every
+  /// AqlItemBlock. only such a pointer may be stored in a block cell without
+  /// being copied first.
+  bool isStaticSlice() const noexcept;
+
+  /// @brief whether this is a slice pointer that is only valid while whatever
+  /// it points into stays alive.
+  bool isShortLivedSlice() const noexcept;
+
+  /// @brief a value that does not own its payload, for reading only.
+  /// managed slices and strings become a short-lived slice pointer in constant
+  /// time. inline values and slice pointers are returned unchanged. a RANGE is
+  /// copied, because it has no pointer form and is treated as a value.
+  /// the caller should destroy() the result either way; that is a no-op for
+  /// everything except the range copy.
+  AqlValue borrow() const;
+
+  /// @brief a slice pointer into memory that outlives every AqlItemBlock.
+  /// only for query plan memory: Expression::_data, AstNode::_computedValue,
+  /// and the const value block.
+  static AqlValue staticSlice(uint8_t const* pointer) noexcept;
 
   /// @brief whether or not the value is empty / none
   bool isEmpty() const noexcept;
