@@ -158,7 +158,6 @@ void moveFiltersIntoEnumerateRule(Optimizer* opt,
           break;
         }
 
-        TRI_ASSERT(!expr->willUseV8());
         found.clear();
         Ast::getReferencedVariables(expr->node(), found);
 
