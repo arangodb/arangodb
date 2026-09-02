@@ -31,3 +31,24 @@ target_link_libraries(arangodbtests_inspection
 
 add_test(NAME inspection
          COMMAND arangodbtests_inspection)
+
+# Standalone demos (EXCLUDE_FROM_ALL — build explicitly)
+add_executable(inspection_vector_json_demo EXCLUDE_FROM_ALL
+  InspectionVectorJsonDemo.cpp)
+
+target_link_libraries(inspection_vector_json_demo
+  PRIVATE
+    arango_inspection
+    arango_lightweight
+    arango_crashhandler_light
+    velocypack)
+
+add_executable(inspection_vpack_demo EXCLUDE_FROM_ALL
+  InspectionVPackDemo.cpp)
+
+target_link_libraries(inspection_vpack_demo
+  PRIVATE
+    arango_inspection
+    arango_lightweight
+    arango_crashhandler_light
+    velocypack)
