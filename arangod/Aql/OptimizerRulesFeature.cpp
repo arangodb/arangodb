@@ -951,9 +951,6 @@ to perform a real search repeatedly if the results can be cached in a bitset.)")
 referenced in the query. This can be a consequence of applying other
 optimizations)");
 
-  // add the storage-engine specific rules
-  addStorageEngineRules();
-
   // Splice subqueries
   //
   // ***CAUTION***
@@ -1039,11 +1036,6 @@ setting the `maxProjections` hint for an AQL `FOR` operation.)");
   // make the rules database read-only from now on
   _fixed = true;
 #endif
-}
-
-void OptimizerRulesFeature::addStorageEngineRules() {
-  StorageEngine& engine = server().getFeature<DatabaseFeature>().engine();
-  engine.addOptimizerRules(*this);
 }
 
 /// @brief translate a list of rule ids into rule names
