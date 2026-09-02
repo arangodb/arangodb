@@ -33,8 +33,6 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "Aql/Optimizer.h"
 
-#include <algorithm>
-
 namespace arangodb::aql {
 namespace {
 
