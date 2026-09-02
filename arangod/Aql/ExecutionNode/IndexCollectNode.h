@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
+#include "Aql/CollectOptions.h"
 #include "CollectionAccessingNode.h"
 #include "Aql/Expression.h"
 #include "ExecutionNode.h"
@@ -71,6 +72,11 @@ struct IndexCollectNode : ExecutionNode, CollectionAccessingNode {
 
   void getVariablesUsedHere(VarSet& vars) const override;
   std::vector<Variable const*> getVariablesSetHere() const override;
+
+  std::shared_ptr<arangodb::Index> const& index() const { return _index; }
+  IndexCollectGroups const& groups() const { return _groups; }
+  IndexCollectAggregations const& aggregations() const { return _aggregations; }
+  Variable const* oldIndexVariable() const { return _oldIndexVariable; }
 
   NodeType getType() const override { return INDEX_COLLECT; }
   size_t getMemoryUsedBytes() const override { return 0; }
