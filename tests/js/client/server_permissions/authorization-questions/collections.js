@@ -326,10 +326,8 @@ function collectionApiAuthzSuite () {
         "IsReadOnly",
         "CreateCollection db=d name=c_apitest",
         "UseCollection db=d name=c_apitest level=read",
-        ...singleOnly([
-          "UseCollection db=_system name=_users level=read",
-          "UseCollection db=_system name=_users level=writedata"
-        ])
+        "UseCollection db=_system name=_users level=read",
+        "UseCollection db=_system name=_users level=writedata"
       ], endObserve());
     },
 
@@ -348,10 +346,8 @@ function collectionApiAuthzSuite () {
         "DropCollection db=d name=c_apitest",
         "UseCollection db=d name=c_apitest level=read",
         "UseCollection db=d name=_graphs level=read",
-        ...singleOnly([
-          "UseCollection db=_system name=_users level=read",
-          "UseCollection db=_system name=_users level=writedata"
-        ])
+        "UseCollection db=_system name=_users level=read",
+        "UseCollection db=_system name=_users level=writedata"
       ], endObserve());
     },
   };

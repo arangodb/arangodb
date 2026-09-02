@@ -102,9 +102,7 @@ function indexApiAuthzSuite () {
       assertPermissions([
         "UseApiVersion version=1",
         "UseDatabase name=d level=read",
-        ...singleOnly([
-          "UseCollection db=d name=c level=read"
-        ])
+        "UseCollection db=d name=c level=read"
       ], endObserve());
     },
 
@@ -132,10 +130,7 @@ function indexApiAuthzSuite () {
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "UseCollection db=d name=c level=writemeta",
-        ...singleOnly([
-          "UseCollection db=d name=c level=read",
-          "UseCollection db=d name=c level=writedata"
-        ])
+        "UseCollection db=d name=c level=read"
       ], endObserve());
       if (res.parsedBody && res.parsedBody.id) {
         dropIndex(res.parsedBody.id);
@@ -166,10 +161,7 @@ function indexApiAuthzSuite () {
         "IsReadOnly",
         "UseDatabase name=d level=write",
         "UseCollection db=d name=c level=writemeta",
-        ...singleOnly([
-          "UseCollection db=d name=c level=read",
-          "UseCollection db=d name=c level=writedata"
-        ])
+        "UseCollection db=d name=c level=read"
       ], endObserve());
     },
   };
