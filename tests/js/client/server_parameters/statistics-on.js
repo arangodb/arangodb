@@ -25,7 +25,8 @@
 
 if (getOptions === true) {
   return {
-    'server.statistics': "true"
+    'server.statistics': "true",
+    "server.authentication": false
   };
 }
 const jsunity = require('jsunity');

@@ -31,7 +31,11 @@ const request = require('@arangodb/request');
 const IM = global.instanceManager;
 const crashesEndpoint = '/_admin/crashes/';
 
-if (runSetup === true) {
+if (getOptions === true) {
+  return {
+    "server.authentication": false
+  };
+} else if (runSetup === true) {
   'use strict';
   
   // Find the first agent
