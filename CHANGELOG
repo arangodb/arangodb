@@ -1,6 +1,10 @@
 3.12.12 (XXXX-XX-XX)
 --------------------
 
+* Rebuilt included rclone v1.75.0 with go1.25.13 and non-vulnerable
+  dependencies.
+
+* Upgraded OpenSSL to 3.5.8.
 
 
 3.12.11 (2026-08-27)

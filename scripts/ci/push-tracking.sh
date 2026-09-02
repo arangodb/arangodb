@@ -30,9 +30,11 @@ record_manifest() {
 }
 
 # Delete every image recorded under /tmp/workspace/pushed (this run's pushes).
+# An optional glob (or $PUSHED_CLEANUP_SCOPE) limits this to one image set's
+# record files.
 delete_pushed_images() {
-  local f r t
-  for f in /tmp/workspace/pushed/*.txt; do
+  local scope="${1:-${PUSHED_CLEANUP_SCOPE:-*}}" f r t
+  for f in /tmp/workspace/pushed/${scope}.txt; do
     [ -e "$f" ] || continue
     while read -r r t; do
       [ -n "${r:-}" ] || continue

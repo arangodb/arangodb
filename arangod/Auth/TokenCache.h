@@ -25,7 +25,6 @@
 #include "Ssl/AuthInfo.h"
 #include "Basics/LruCache.h"
 #include "Basics/ReadWriteLock.h"
-#include "Basics/Result.h"
 #include "Basics/Guarded.h"
 #include "Cluster/ServerState.h"
 #include "Rest/CommonDefines.h"
@@ -33,6 +32,7 @@
 #include <atomic>
 #include <memory>
 #include <mutex>
+#include <shared_mutex>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -103,7 +103,7 @@ class TokenCache {
   void setJwtSecrets(AuthInfo secrets);
 
   /// Get the jwt token, which should be used for communication
-  std::string const& jwtToken() const noexcept;
+  std::string jwtToken() const noexcept;
 
   auth::AuthKey jwtSecret() const;
 
@@ -133,6 +133,7 @@ class TokenCache {
   std::atomic<uint64_t> _basicCacheVersion{0};
 
   Guarded<AuthInfo> _jwtSecrets;
+  mutable std::shared_mutex _jwtSuperTokenLock;
   std::string _jwtSuperToken;  /// token for internal use
 
   mutable std::mutex _jwtCacheMutex;
