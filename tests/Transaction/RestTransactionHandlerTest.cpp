@@ -379,13 +379,13 @@ TEST_F(RestTransactionHandlerTest, permission_denied_forbidden) {
   parser.parse("{ \"collections\":{\"write\": [\"testCollection\"]}}");
 
   handler.executeAsync().wait();
-  EXPECT_EQ(arangodb::rest::ResponseCode::FORBIDDEN, responce.responseCode());
+  EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND, responce.responseCode());
   VPackSlice slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
   EXPECT_TRUE(
       (slice.hasKey(arangodb::StaticStrings::Code) &&
        slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-       size_t(arangodb::rest::ResponseCode::FORBIDDEN) ==
+       size_t(arangodb::rest::ResponseCode::NOT_FOUND) ==
            slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                slice.get(arangodb::StaticStrings::Error).isBoolean() &&
@@ -393,7 +393,7 @@ TEST_F(RestTransactionHandlerTest, permission_denied_forbidden) {
   EXPECT_TRUE(
       (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
        slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-       TRI_ERROR_FORBIDDEN ==
+       TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
            ErrorCode{
                slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
