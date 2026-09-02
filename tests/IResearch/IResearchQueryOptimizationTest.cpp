@@ -20,6 +20,7 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Mocks/CollectionDescriptors.h"
 #include "Metrics/MetricsFeature.h"
 #include <absl/strings/str_replace.h>
 
@@ -296,9 +297,8 @@ class QueryOptimization : public QueryTestMulti {
 
     // add collection_1
     {
-      auto collectionJson =
-          VPackParser::fromJson("{ \"name\": \"collection_1\" }");
-      logicalCollection1 = vocbase().createCollection(collectionJson->slice());
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor("collection_1");
+      logicalCollection1 = vocbase().createCollection(colDescriptor);
       ASSERT_NE(nullptr, logicalCollection1);
     }
 

@@ -24,6 +24,7 @@
 
 #include <velocypack/Iterator.h>
 
+#include "Mocks/CollectionDescriptors.h"
 #include "IResearch/IResearchVPackComparer.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewSort.h"
@@ -49,18 +50,16 @@ class QueryStartsWith : public QueryTest {
   void create() {
     // add collection_1
     {
-      auto collectionJson = arangodb::velocypack::Parser::fromJson(
-          "{ \"name\": \"collection_1\" }");
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor("collection_1");
       auto logicalCollection1 =
-          _vocbase.createCollection(collectionJson->slice());
+          _vocbase.createCollection(colDescriptor);
       ASSERT_NE(nullptr, logicalCollection1);
     }
     // add collection_2
     {
-      auto collectionJson = arangodb::velocypack::Parser::fromJson(
-          "{ \"name\": \"collection_2\" }");
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor("collection_2");
       auto logicalCollection2 =
-          _vocbase.createCollection(collectionJson->slice());
+          _vocbase.createCollection(colDescriptor);
       ASSERT_NE(nullptr, logicalCollection2);
     }
   }

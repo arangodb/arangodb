@@ -20,6 +20,7 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Mocks/CollectionDescriptors.h"
 #include "IResearchQueryCommon.h"
 
 #include "IResearch/VelocyPackHelper.h"
@@ -33,9 +34,8 @@ class QueryBooleanTerm : public QueryTest {
   void createCollections() {
     // testCollection0
     {
-      auto createJson =
-          VPackParser::fromJson("{ \"name\": \"testCollection0\" }");
-      auto collection = _vocbase.createCollection(createJson->slice());
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection0");
+      auto collection = _vocbase.createCollection(colDescriptor);
       ASSERT_TRUE(collection);
 
       std::vector<std::shared_ptr<VPackBuilder>> docs{
@@ -67,9 +67,8 @@ class QueryBooleanTerm : public QueryTest {
     }
     // testCollection1
     {
-      auto createJson =
-          VPackParser::fromJson("{ \"name\": \"testCollection1\" }");
-      auto collection = _vocbase.createCollection(createJson->slice());
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection1");
+      auto collection = _vocbase.createCollection(colDescriptor);
       ASSERT_TRUE(collection);
 
       std::vector<std::shared_ptr<VPackBuilder>> docs{

@@ -24,6 +24,7 @@
 
 #include <velocypack/Iterator.h>
 
+#include "Mocks/CollectionDescriptors.h"
 #include "Aql/OptimizerRule.h"
 #include "Aql/Query.h"
 #include "IResearch/IResearchLink.h"
@@ -53,28 +54,25 @@ class QueryOptions : public QueryTest {
   void create() {
     // add collection_1
     {
-      auto collectionJson = arangodb::velocypack::Parser::fromJson(
-          "{ \"name\": \"collection_1\" }");
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor("collection_1");
       auto logicalCollection1 =
-          _vocbase.createCollection(collectionJson->slice());
+          _vocbase.createCollection(colDescriptor);
       ASSERT_NE(nullptr, logicalCollection1);
     }
 
     // add collection_2
     {
-      auto collectionJson = arangodb::velocypack::Parser::fromJson(
-          "{ \"name\": \"collection_2\" }");
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor("collection_2");
       auto logicalCollection2 =
-          _vocbase.createCollection(collectionJson->slice());
+          _vocbase.createCollection(colDescriptor);
       ASSERT_NE(nullptr, logicalCollection2);
     }
 
     // add collection_3
     {
-      auto collectionJson = arangodb::velocypack::Parser::fromJson(
-          "{ \"name\": \"collection_3\" }");
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor("collection_3");
       auto logicalCollection3 =
-          _vocbase.createCollection(collectionJson->slice());
+          _vocbase.createCollection(colDescriptor);
       ASSERT_NE(nullptr, logicalCollection3);
     }
   }
