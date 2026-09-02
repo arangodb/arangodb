@@ -48,6 +48,46 @@ defmodule ToastTest.Suite do
       else: 1
   end
 
+  @doc false
+  def __base_using__(suite_module, test_opts) do
+    {weight, case_opts} = Keyword.pop(test_opts, :weight, 1)
+
+    quote do
+      use ToastTest.Case, unquote(case_opts)
+      @toast_suite unquote(suite_module)
+      def __toast_suite__, do: unquote(suite_module)
+      def __toast_weight__, do: unquote(weight)
+    end
+  end
+
+  @doc """
+  Defines extra code to inject into every test module that uses this suite.
+
+  Works like `ExUnit.CaseTemplate.using/2` — the block must return a quoted
+  expression (typically via `quote do ... end`).
+
+  ## Example
+
+      defmodule Recovery.Suite do
+        use ToastTest.Suite, mode: :manual
+
+        using do
+          quote do
+            import Recovery.Helpers
+          end
+        end
+      end
+  """
+  defmacro using(var \\ quote(do: _), do: block) do
+    quote do
+      defmacro __using__(unquote(var) = opts) do
+        base = ToastTest.Suite.__base_using__(__MODULE__, opts)
+        extra = unquote(block)
+        {:__block__, [], [base, extra]}
+      end
+    end
+  end
+
   defmacro __using__(opts \\ []) do
     defaults = Macro.escape(@default_opts)
 
@@ -55,6 +95,7 @@ defmodule ToastTest.Suite do
     # would override our __using__ macro definition.
     quote do
       @behaviour ToastTest.Suite
+      import ToastTest.Suite, only: [using: 1, using: 2]
 
       @impl ToastTest.Suite
       def deployment_config, do: Keyword.merge(unquote(defaults), unquote(opts))
@@ -62,16 +103,10 @@ defmodule ToastTest.Suite do
       defoverridable deployment_config: 0
 
       defmacro __using__(test_opts) do
-        suite_module = __MODULE__
-        {weight, case_opts} = Keyword.pop(test_opts, :weight, 1)
-
-        quote do
-          use ToastTest.Case, unquote(case_opts)
-          @toast_suite unquote(suite_module)
-          def __toast_suite__, do: unquote(suite_module)
-          def __toast_weight__, do: unquote(weight)
-        end
+        ToastTest.Suite.__base_using__(__MODULE__, test_opts)
       end
+
+      defoverridable __using__: 1
     end
   end
 end
