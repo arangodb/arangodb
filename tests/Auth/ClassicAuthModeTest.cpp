@@ -435,14 +435,6 @@ TEST_F(ClassicAuthModeTest, DropCollectionWithoutDatabaseWriteIsForbidden) {
 }
 
 TEST_F(ClassicAuthModeTest, DropCollectionReadOnlyCollectionIsReadOnly) {
-  // The collection-level failure is TRI_ERROR_ARANGO_READ_ONLY, but V0 must
-  // keep reporting FORBIDDEN for API compatibility.
-  beUserWith(RW, {{std::string{kDb}, "c", RO}});
-  expectError(check(p::DropCollection{.db = std::string{kDb}, .name = "c"}),
-              TRI_ERROR_ARANGO_READ_ONLY);
-}
-
-TEST_F(ClassicAuthModeTest, DropCollectionReadOnlyCollectionIsReadOnly) {
   beUserWith(RW, {{std::string{kDb}, "c", RO}});
   expectError(check(p::DropCollection{.db = std::string{kDb}, .name = "c"}),
               TRI_ERROR_ARANGO_READ_ONLY);
