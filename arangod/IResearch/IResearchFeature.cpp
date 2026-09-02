@@ -563,58 +563,34 @@ void registerFilters(aql::AqlFunctionFeature& functions) {
   addFunction(functions, {"ANALYZER", ".,.", flagsNoAnalyzer, &contextFunc});
 }
 
-template<typename T>
-void registerSingleFactory(IndexTypeFactory& factory,
-                           application_features::ApplicationServer& server) {
+// ClusterEngine's equal/normalize/enhanceIndexDefinition delegate to
+// rocksDBIndexFactory(), not indexFactory(), so both need arangosearch
+void registerIndexTypeFactories(application_features::ApplicationServer& server,
+                                IndexTypeFactory& clusterFactory,
+                                IndexTypeFactory& rocksDBFactory) {
   if (!server.hasFeature<StorageEngine>()) {
     return;
   }
-  auto* engine = dynamic_cast<T*>(&server.getFeature<StorageEngine>());
-  if (engine == nullptr) {
-    return;
-  }
-  auto& engineFactory = const_cast<IndexFactory&>(engine->indexFactory());
-  // TODO(MBkkt) remove std::string and update IndexFactory interface
-  auto r = engineFactory.emplace(
-      std::string{StaticStrings::ViewArangoSearchType}, factory);
-  if (!r.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        r.errorNumber(),
-        absl::StrCat("failure registering IResearch link factory with index "
-                     "factory from feature '",
-                     engine->name(), "': ", r.errorMessage()));
-  }
-}
+  auto& engine = server.getFeature<StorageEngine>();
 
-// ClusterEngine keeps its own, private RocksDBIndexFactory
-// (rocksDBIndexFactory()) to answer index-type-specific questions
-// (equal/normalize/enhanceIndexDefinition), separate from the
-// ClusterIndexFactory returned by indexFactory(). Those methods delegate to
-// rocksDBIndexFactory(), so it needs the same "arangosearch" entry that
-// registerSingleFactory<RocksDBEngine>() would give a real RocksDBEngine
-// feature -- which never exists on a coordinator, so it has to be fed here
-// instead.
-void registerClusterRocksDBFactory(
-    IndexTypeFactory& factory,
-    application_features::ApplicationServer& server) {
-  if (!server.hasFeature<StorageEngine>()) {
-    return;
-  }
-  auto* engine =
-      dynamic_cast<ClusterEngine*>(&server.getFeature<StorageEngine>());
-  if (engine == nullptr) {
-    return;
-  }
-  auto& engineFactory =
-      const_cast<IndexFactory&>(engine->rocksDBIndexFactory());
-  auto r = engineFactory.emplace(
-      std::string{StaticStrings::ViewArangoSearchType}, factory);
-  if (!r.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        r.errorNumber(),
-        absl::StrCat("failure registering IResearch link factory with index "
-                     "factory from feature '",
-                     engine->name(), "': ", r.errorMessage()));
+  auto emplace = [&engine](IndexFactory const& target,
+                           IndexTypeFactory& factory) {
+    auto r = const_cast<IndexFactory&>(target).emplace(
+        std::string{StaticStrings::ViewArangoSearchType}, factory);
+    if (!r.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          r.errorNumber(),
+          absl::StrCat("failure registering IResearch link factory with "
+                       "index factory from feature '",
+                       engine.name(), "': ", r.errorMessage()));
+    }
+  };
+
+  if (auto* clusterEngine = dynamic_cast<ClusterEngine*>(&engine)) {
+    emplace(clusterEngine->indexFactory(), clusterFactory);
+    emplace(clusterEngine->rocksDBIndexFactory(), rocksDBFactory);
+  } else {
+    emplace(engine.indexFactory(), rocksDBFactory);
   }
 }
 
@@ -1080,10 +1056,8 @@ void IResearchFeature::registerRecoveryHelper() {
 
 void IResearchFeature::registerIndexFactory() {
   _clusterFactory = IResearchLinkCoordinator::createFactory(server());
-  registerSingleFactory<ClusterEngine>(*_clusterFactory, server());
   _rocksDBFactory = IResearchRocksDBLink::createFactory(server());
-  registerSingleFactory<RocksDBEngine>(*_rocksDBFactory, server());
-  registerClusterRocksDBFactory(*_rocksDBFactory, server());
+  registerIndexTypeFactories(server(), *_clusterFactory, *_rocksDBFactory);
 }
 
 #ifdef USE_ENTERPRISE

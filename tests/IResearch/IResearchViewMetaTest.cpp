@@ -46,8 +46,6 @@ class IResearchViewMetaTest : public ::testing::Test {
             server.addFeature<arangodb::StorageEngine, StorageEngineMock>()) {
     server.addFeature<arangodb::DatabaseFeature>();
   }
-
-  ~IResearchViewMetaTest() = default;
 };
 
 TEST_F(IResearchViewMetaTest, test_defaults) {

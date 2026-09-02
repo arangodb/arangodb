@@ -106,7 +106,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   // create the storage engine
   StorageEngine(application_features::ApplicationServer& server,
                 std::string_view engineName, std::string_view featureName,
-                std::type_index registration,
                 std::unique_ptr<IndexFactory>&& indexFactory,
                 IDatabaseProvider& databaseProvider);
 

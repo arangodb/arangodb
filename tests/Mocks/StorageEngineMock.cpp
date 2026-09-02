@@ -22,8 +22,6 @@
 
 #include "StorageEngineMock.h"
 
-#include <typeindex>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
 #include "Basics/Result.h"
@@ -197,7 +195,6 @@ StorageEngineMock::StorageEngineMock(
     arangodb::application_features::ApplicationServer& server,
     bool injectClusterIndexes)
     : StorageEngine(server, "Mock", "Mock",
-                    std::type_index(typeid(StorageEngine)),
                     std::unique_ptr<arangodb::IndexFactory>(
                         new IndexFactoryMock(server, injectClusterIndexes)),
                     _dbProvider),

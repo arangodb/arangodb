@@ -40,6 +40,7 @@
 #include "Metrics/LogScale.h"
 #include "Rest/GeneralRequest.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/IDatabaseProvider.h"
 #include "RestServer/ServerFeature.h"
 #include "StorageEngine/HealthData.h"
 #include "StorageEngine/StorageEngine.h"
@@ -659,7 +660,7 @@ AgencyComm::AgencyComm(application_features::ApplicationServer& server)
 
 AgencyComm::AgencyComm(ApplicationServer& server,
                        ClusterFeature& clusterFeature,
-                       DatabaseFeature& databaseFeature)
+                       IDatabaseProvider& databaseFeature)
     : _server(server),
       _clusterFeature(clusterFeature),
       _databaseFeature(databaseFeature),
@@ -681,7 +682,7 @@ AgencyCommResult AgencyComm::sendServerState(double timeout) {
     if (ServerState::instance()->isDBServer()) {
       // use storage engine health self-assessment and send it to agency too
       arangodb::HealthData hd =
-          _databaseFeature.server().getFeature<StorageEngine>().healthCheck();
+          _server.getFeature<StorageEngine>().healthCheck();
       hd.toVelocyPack(builder, /*withDetails*/ false);
     }
 

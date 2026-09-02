@@ -175,7 +175,8 @@ static void SetupDatabaseFeaturePhase(MockServer& server) {
   server.addFeature<application_features::DatabaseFeaturePhase>(
       false);  // true ??
   server.addFeature<AuthenticationFeature>(true);
-  server.addFeature<transaction::ManagerFeature>(false, metrics);
+  server.addFeature<transaction::ManagerFeature>(false, metrics,
+                                                 server.engine());
   auto& databaseFeature = server.addFeature<DatabaseFeature>(false);
   server.addFeature<SystemDatabaseFeature>(true);
   server.addFeature<InitDatabaseFeature>(true,

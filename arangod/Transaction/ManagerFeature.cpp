@@ -47,13 +47,17 @@ DECLARE_COUNTER(arangodb_transactions_expired_total,
 std::shared_ptr<transaction::Manager> ManagerFeature::MANAGER;
 
 ManagerFeature::ManagerFeature(application_features::ApplicationServer& server,
-                               metrics::IRegistry& metricsRegistry)
-    : ManagerFeature(server, metricsRegistry, ManagerFeatureOptions{}) {}
+                               metrics::IRegistry& metricsRegistry,
+                               StorageEngine& engine)
+    : ManagerFeature(server, metricsRegistry, engine, ManagerFeatureOptions{}) {
+}
 
 ManagerFeature::ManagerFeature(application_features::ApplicationServer& server,
                                metrics::IRegistry& metricsRegistry,
+                               StorageEngine& engine,
                                ManagerFeatureOptions options)
     : application_features::ApplicationFeature{server, *this},
+      _engine(engine),
       _options(std::move(options)),
       _numExpiredTransactions(
           metricsRegistry.add(arangodb_transactions_expired_total{})) {
@@ -85,8 +89,7 @@ ManagerFeature::~ManagerFeature() {
 
 void ManagerFeature::prepare() {
   TRI_ASSERT(MANAGER.get() == nullptr);
-  auto& engine = server().getFeature<StorageEngine>();
-  MANAGER = engine.createTransactionManager(_options, _numExpiredTransactions);
+  MANAGER = _engine.createTransactionManager(_options, _numExpiredTransactions);
 }
 
 void ManagerFeature::start() {

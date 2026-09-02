@@ -68,7 +68,8 @@ GraphTestSetup::GraphTestSetup()
   features.emplace_back(server.addFeature<arangodb::DatabasePathFeature>(),
                         false);
   features.emplace_back(
-      server.addFeature<arangodb::transaction::ManagerFeature>(metrics), false);
+      server.addFeature<arangodb::transaction::ManagerFeature>(metrics, engine),
+      false);
   auto& databaseFeature = server.addFeature<arangodb::DatabaseFeature>();
   features.emplace_back(databaseFeature, false);
   features.emplace_back(
