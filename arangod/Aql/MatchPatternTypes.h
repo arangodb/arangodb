@@ -36,7 +36,7 @@ struct Variable;
 /// @brief references an expression subtree owned by the query Ast
 /// valid for the lifetime of the associated Ast object
 struct MatchExpressionRef {
-  AstNode const* node;
+  AstNode const* node{nullptr};
 };
 
 /// @brief a collection name or an unresolved collection bind parameter
@@ -99,20 +99,77 @@ struct MatchPropertyConstraint {
   MatchExpressionRef value;
 };
 
-struct MatchProjectionItem {
-  enum class Kind : uint8_t { kKeepAttribute, kAlias };
-
-  Kind kind;
-  /// @brief alias name for kAlias; for single-segment keeps equals path[0]
-  std::string name;
-  /// @brief keep attribute path segments (COR-741 nested keeps). Empty for
-  /// aliases. Quoted literal keeps are a single-element path whose value may
-  /// contain dots that are NOT hierarchy.
-  std::vector<std::string> path;
-  /// @brief only set for alias items
-  MatchExpressionRef expression;
+/// @brief MATCH projection reserved attributes that are auto-injected into
+/// projected objects and ignored when the user requests them.
+///
+/// This is intentionally narrower than document system attributes:
+/// `_key` and `_rev` remain user-requestable keeps in MATCH projections.
+enum class MatchProjectionReservedAttribute : uint8_t {
+  kNone,
+  kId,
+  kFrom,
+  kTo,
 };
 
+/// @brief Classify a top-level MATCH projection attribute name.
+/// @param isEdge true when projecting an edge pattern variable
+[[nodiscard]] MatchProjectionReservedAttribute
+classifyMatchProjectionReservedAttribute(std::string_view name,
+                                        bool isEdge) noexcept;
+
+/// @brief true when @p name is reserved for MATCH projection auto-injection
+[[nodiscard]] bool isMatchProjectionReservedAttribute(std::string_view name,
+                                                       bool isEdge) noexcept;
+
+/// @brief Attributes always present in a projected MATCH vertex/edge object.
+/// Vertex: `_id`. Edge: `_id`, `_from`, `_to`.
+[[nodiscard]] std::vector<std::string_view> mandatoryMatchProjectionAttributes(
+    bool isEdge);
+
+/// @brief One RETURN item from an in-pattern MATCH projection.
+///
+/// All strings are owned. Alias expression subtrees remain Ast-owned via
+/// MatchExpressionRef (same lifetime model as filters/properties).
+struct MatchProjectionItem {
+  enum class Kind : uint8_t {
+    /// Unquoted keep path. Nested dotted access is a multi-segment path:
+    /// `profile.name` → path {"profile","name"}.
+    kKeepAttribute,
+    /// Quoted literal keep. Dots inside the quotes are NOT hierarchy:
+    /// `"profile.name"` → path {"profile.name"}.
+    kKeepLiteral,
+    /// Alias / flatten: `name = <expression>` (expression is normal AQL scope).
+    kAlias,
+  };
+
+  Kind kind{Kind::kKeepAttribute};
+  /// @brief alias name for kAlias; for single-segment keeps equals path[0];
+  /// empty for multi-segment keep paths
+  std::string name;
+  /// @brief keep attribute path segments. Empty for aliases.
+  /// Quoted literal keeps are a single-element path whose value may contain
+  /// dots that are NOT hierarchy.
+  std::vector<std::string> path;
+  /// @brief only set for alias items; Ast-owned expression subtree
+  MatchExpressionRef expression;
+
+  [[nodiscard]] static MatchProjectionItem keepPath(
+      std::vector<std::string> path);
+  [[nodiscard]] static MatchProjectionItem keepLiteral(std::string key);
+  [[nodiscard]] static MatchProjectionItem alias(std::string name,
+                                                 MatchExpressionRef expression);
+
+  [[nodiscard]] bool isKeep() const noexcept {
+    return kind == Kind::kKeepAttribute || kind == Kind::kKeepLiteral;
+  }
+  [[nodiscard]] bool isAlias() const noexcept { return kind == Kind::kAlias; }
+
+  /// @brief Top-level output object key used for collision / reserved checks
+  [[nodiscard]] std::string_view topLevelKey() const noexcept;
+};
+
+/// @brief Stable semantic representation of an in-pattern MATCH projection.
+/// Independent of parser positional AST layout.
 struct MatchProjection {
   std::vector<MatchProjectionItem> items;
 };

@@ -541,6 +541,123 @@ TEST_F(MatchPatternNormalizerTest, projectionNestedKeepPath) {
   EXPECT_TRUE(projection->items.front().name.empty());
   ASSERT_EQ((std::vector<std::string>{"profile", "name"}),
             projection->items.front().path);
+  EXPECT_EQ("profile", projection->items.front().topLevelKey());
+}
+
+TEST_F(MatchPatternNormalizerTest, projectionQuotedLiteralKeep) {
+  // Quoted "profile.name" is one literal key, not nested hierarchy.
+  auto parsed = parseMatch(
+      "MATCH (v :vc RETURN \"profile.name\") -[ e :ec ]-> (w :vc) RETURN 1");
+  auto statement = normalize(parsed);
+
+  auto const& projection = statement.patterns.front().start.vertex->projection;
+  ASSERT_TRUE(projection.has_value());
+  ASSERT_EQ(1U, projection->items.size());
+  auto const& item = projection->items.front();
+  EXPECT_EQ(MatchProjectionItem::Kind::kKeepLiteral, item.kind);
+  EXPECT_TRUE(item.isKeep());
+  EXPECT_EQ("profile.name", item.name);
+  ASSERT_EQ((std::vector<std::string>{"profile.name"}), item.path);
+  EXPECT_EQ("profile.name", item.topLevelKey());
+}
+
+TEST_F(MatchPatternNormalizerTest, projectionNestedVsQuotedDottedName) {
+  auto nestedParsed = parseMatch(
+      "MATCH (v :vc RETURN Data.Weight) -[ e :ec ]-> (w :vc) RETURN 1");
+  auto quotedParsed = parseMatch(
+      "MATCH (v :vc RETURN \"Data.Weight\") -[ e :ec ]-> (w :vc) RETURN 1");
+
+  auto nested = normalize(nestedParsed);
+  auto quoted = normalize(quotedParsed);
+
+  auto const& nestedItem =
+      nested.patterns.front().start.vertex->projection->items.front();
+  auto const& quotedItem =
+      quoted.patterns.front().start.vertex->projection->items.front();
+
+  EXPECT_EQ(MatchProjectionItem::Kind::kKeepAttribute, nestedItem.kind);
+  ASSERT_EQ((std::vector<std::string>{"Data", "Weight"}), nestedItem.path);
+
+  EXPECT_EQ(MatchProjectionItem::Kind::kKeepLiteral, quotedItem.kind);
+  ASSERT_EQ((std::vector<std::string>{"Data.Weight"}), quotedItem.path);
+
+  EXPECT_NE(nestedItem.path, quotedItem.path);
+}
+
+TEST_F(MatchPatternNormalizerTest, projectionEdgeKeepAndAlias) {
+  auto parsed = parseMatch(
+      "MATCH (v :vc) -[ e :ec RETURN i, num = e.j ]-> (w :vc) RETURN 1");
+  auto statement = normalize(parsed);
+
+  auto const& projection =
+      statement.patterns.front().segments.front().edge.projection;
+  ASSERT_TRUE(projection.has_value());
+  ASSERT_EQ(2U, projection->items.size());
+
+  EXPECT_EQ(MatchProjectionItem::Kind::kKeepAttribute,
+            projection->items[0].kind);
+  EXPECT_EQ("i", projection->items[0].name);
+  ASSERT_EQ((std::vector<std::string>{"i"}), projection->items[0].path);
+
+  EXPECT_EQ(MatchProjectionItem::Kind::kAlias, projection->items[1].kind);
+  EXPECT_EQ("num", projection->items[1].name);
+  EXPECT_TRUE(projection->items[1].path.empty());
+  ASSERT_NE(nullptr, projection->items[1].expression.node);
+}
+
+TEST_F(MatchPatternNormalizerTest, projectionSystemAttributeKeeps) {
+  // Normalization preserves requested system attribute names as ordinary
+  // keeps; MatchBuilder applies reserved-attribute rules when lowering.
+  auto vertexParsed = parseMatch(
+      "MATCH (v :vc RETURN _id, _key, _rev) -[ e :ec ]-> (w :vc) RETURN 1");
+  auto edgeParsed = parseMatch(
+      "MATCH (v :vc) -[ e :ec RETURN _id, _key, _rev, _from, _to ]-> (w :vc) "
+      "RETURN 1");
+
+  auto vertexStatement = normalize(vertexParsed);
+  auto edgeStatement = normalize(edgeParsed);
+
+  auto const& vertexProj =
+      vertexStatement.patterns.front().start.vertex->projection;
+  ASSERT_TRUE(vertexProj.has_value());
+  ASSERT_EQ(3U, vertexProj->items.size());
+  EXPECT_EQ((std::vector<std::string>{"_id"}), vertexProj->items[0].path);
+  EXPECT_EQ((std::vector<std::string>{"_key"}), vertexProj->items[1].path);
+  EXPECT_EQ((std::vector<std::string>{"_rev"}), vertexProj->items[2].path);
+
+  auto const& edgeProj =
+      edgeStatement.patterns.front().segments.front().edge.projection;
+  ASSERT_TRUE(edgeProj.has_value());
+  ASSERT_EQ(5U, edgeProj->items.size());
+  EXPECT_EQ((std::vector<std::string>{"_id"}), edgeProj->items[0].path);
+  EXPECT_EQ((std::vector<std::string>{"_key"}), edgeProj->items[1].path);
+  EXPECT_EQ((std::vector<std::string>{"_rev"}), edgeProj->items[2].path);
+  EXPECT_EQ((std::vector<std::string>{"_from"}), edgeProj->items[3].path);
+  EXPECT_EQ((std::vector<std::string>{"_to"}), edgeProj->items[4].path);
+}
+
+TEST_F(MatchPatternNormalizerTest, projectionReservedAttributeClassification) {
+  EXPECT_EQ(MatchProjectionReservedAttribute::kId,
+            classifyMatchProjectionReservedAttribute("_id", false));
+  EXPECT_EQ(MatchProjectionReservedAttribute::kId,
+            classifyMatchProjectionReservedAttribute("_id", true));
+  EXPECT_EQ(MatchProjectionReservedAttribute::kNone,
+            classifyMatchProjectionReservedAttribute("_key", false));
+  EXPECT_EQ(MatchProjectionReservedAttribute::kNone,
+            classifyMatchProjectionReservedAttribute("_rev", false));
+  EXPECT_EQ(MatchProjectionReservedAttribute::kNone,
+            classifyMatchProjectionReservedAttribute("_from", false));
+  EXPECT_EQ(MatchProjectionReservedAttribute::kFrom,
+            classifyMatchProjectionReservedAttribute("_from", true));
+  EXPECT_EQ(MatchProjectionReservedAttribute::kTo,
+            classifyMatchProjectionReservedAttribute("_to", true));
+
+  auto vertexMandatory = mandatoryMatchProjectionAttributes(false);
+  ASSERT_EQ((std::vector<std::string_view>{"_id"}), vertexMandatory);
+
+  auto edgeMandatory = mandatoryMatchProjectionAttributes(true);
+  ASSERT_EQ((std::vector<std::string_view>{"_id", "_from", "_to"}),
+            edgeMandatory);
 }
 
 TEST_F(MatchPatternNormalizerTest, variableReferenceTarget) {
