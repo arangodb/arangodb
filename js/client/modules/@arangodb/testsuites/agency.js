@@ -50,7 +50,7 @@ function agency (options) {
   options.agency = true;
   options.cluster = false;
   let results = new trs.runInArangoshRunner(
-    options,  'agency', {},
+    options,  'agency', { "server.authentication": false },
     (tr.sutFilters.checkUsers.concat(tr.sutFilters.checkCollections)).concat(tr.sutFilters.checkDBs))
       .run(testCases);
 
