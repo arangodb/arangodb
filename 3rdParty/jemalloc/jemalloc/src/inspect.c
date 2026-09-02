@@ -3,8 +3,8 @@
 #include "jemalloc/internal/inspect.h"
 
 void
-inspect_extent_util_stats_get(tsdn_t *tsdn, const void *ptr, size_t *nfree,
-    size_t *nregs, size_t *size) {
+inspect_extent_util_stats_get(
+    tsdn_t *tsdn, const void *ptr, size_t *nfree, size_t *nregs, size_t *size) {
 	assert(ptr != NULL && nfree != NULL && nregs != NULL && size != NULL);
 
 	const edata_t *edata = emap_edata_lookup(tsdn, &arena_emap_global, ptr);
@@ -57,7 +57,7 @@ inspect_extent_util_stats_verbose_get(tsdn_t *tsdn, const void *ptr,
 	    &arenas[edata_arena_ind_get(edata)], ATOMIC_RELAXED);
 	assert(arena != NULL);
 	const unsigned binshard = edata_binshard_get(edata);
-	bin_t *bin = arena_get_bin(arena, szind, binshard);
+	bin_t         *bin = arena_get_bin(arena, szind, binshard);
 
 	malloc_mutex_lock(tsdn, &bin->lock);
 	if (config_stats) {

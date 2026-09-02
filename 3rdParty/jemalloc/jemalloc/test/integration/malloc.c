@@ -11,6 +11,5 @@ TEST_END
 
 int
 main(void) {
-	return test(
-	    test_zero_alloc);
+	return test(test_zero_alloc);
 }

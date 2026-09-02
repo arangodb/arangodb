@@ -14,77 +14,68 @@ TEST_BEGIN(test_malloc_strtoumax) {
 	struct test_s {
 		const char *input;
 		const char *expected_remainder;
-		int base;
-		int expected_errno;
+		int         base;
+		int         expected_errno;
 		const char *expected_errno_name;
-		uintmax_t expected_x;
+		uintmax_t   expected_x;
 	};
-#define ERR(e)		e, #e
-#define KUMAX(x)	((uintmax_t)x##ULL)
-#define KSMAX(x)	((uintmax_t)(intmax_t)x##LL)
-	struct test_s tests[] = {
-		{"0",		"0",	-1,	ERR(EINVAL),	UINTMAX_MAX},
-		{"0",		"0",	1,	ERR(EINVAL),	UINTMAX_MAX},
-		{"0",		"0",	37,	ERR(EINVAL),	UINTMAX_MAX},
+#define ERR(e) e, #e
+#define KUMAX(x) ((uintmax_t)x##ULL)
+#define KSMAX(x) ((uintmax_t)(intmax_t)x##LL)
+	struct test_s tests[] = {{"0", "0", -1, ERR(EINVAL), UINTMAX_MAX},
+	    {"0", "0", 1, ERR(EINVAL), UINTMAX_MAX},
+	    {"0", "0", 37, ERR(EINVAL), UINTMAX_MAX},
 
-		{"",		"",	0,	ERR(EINVAL),	UINTMAX_MAX},
-		{"+",		"+",	0,	ERR(EINVAL),	UINTMAX_MAX},
-		{"++3",		"++3",	0,	ERR(EINVAL),	UINTMAX_MAX},
-		{"-",		"-",	0,	ERR(EINVAL),	UINTMAX_MAX},
+	    {"", "", 0, ERR(EINVAL), UINTMAX_MAX},
+	    {"+", "+", 0, ERR(EINVAL), UINTMAX_MAX},
+	    {"++3", "++3", 0, ERR(EINVAL), UINTMAX_MAX},
+	    {"-", "-", 0, ERR(EINVAL), UINTMAX_MAX},
 
-		{"42",		"",	0,	ERR(0),		KUMAX(42)},
-		{"+42",		"",	0,	ERR(0),		KUMAX(42)},
-		{"-42",		"",	0,	ERR(0),		KSMAX(-42)},
-		{"042",		"",	0,	ERR(0),		KUMAX(042)},
-		{"+042",	"",	0,	ERR(0),		KUMAX(042)},
-		{"-042",	"",	0,	ERR(0),		KSMAX(-042)},
-		{"0x42",	"",	0,	ERR(0),		KUMAX(0x42)},
-		{"+0x42",	"",	0,	ERR(0),		KUMAX(0x42)},
-		{"-0x42",	"",	0,	ERR(0),		KSMAX(-0x42)},
+	    {"42", "", 0, ERR(0), KUMAX(42)}, {"+42", "", 0, ERR(0), KUMAX(42)},
+	    {"-42", "", 0, ERR(0), KSMAX(-42)},
+	    {"042", "", 0, ERR(0), KUMAX(042)},
+	    {"+042", "", 0, ERR(0), KUMAX(042)},
+	    {"-042", "", 0, ERR(0), KSMAX(-042)},
+	    {"0x42", "", 0, ERR(0), KUMAX(0x42)},
+	    {"+0x42", "", 0, ERR(0), KUMAX(0x42)},
+	    {"-0x42", "", 0, ERR(0), KSMAX(-0x42)},
 
-		{"0",		"",	0,	ERR(0),		KUMAX(0)},
-		{"1",		"",	0,	ERR(0),		KUMAX(1)},
+	    {"0", "", 0, ERR(0), KUMAX(0)}, {"1", "", 0, ERR(0), KUMAX(1)},
 
-		{"42",		"",	0,	ERR(0),		KUMAX(42)},
-		{" 42",		"",	0,	ERR(0),		KUMAX(42)},
-		{"42 ",		" ",	0,	ERR(0),		KUMAX(42)},
-		{"0x",		"x",	0,	ERR(0),		KUMAX(0)},
-		{"42x",		"x",	0,	ERR(0),		KUMAX(42)},
+	    {"42", "", 0, ERR(0), KUMAX(42)}, {" 42", "", 0, ERR(0), KUMAX(42)},
+	    {"42 ", " ", 0, ERR(0), KUMAX(42)},
+	    {"0x", "x", 0, ERR(0), KUMAX(0)},
+	    {"42x", "x", 0, ERR(0), KUMAX(42)},
 
-		{"07",		"",	0,	ERR(0),		KUMAX(7)},
-		{"010",		"",	0,	ERR(0),		KUMAX(8)},
-		{"08",		"8",	0,	ERR(0),		KUMAX(0)},
-		{"0_",		"_",	0,	ERR(0),		KUMAX(0)},
+	    {"07", "", 0, ERR(0), KUMAX(7)}, {"010", "", 0, ERR(0), KUMAX(8)},
+	    {"08", "8", 0, ERR(0), KUMAX(0)}, {"0_", "_", 0, ERR(0), KUMAX(0)},
 
-		{"0x",		"x",	0,	ERR(0),		KUMAX(0)},
-		{"0X",		"X",	0,	ERR(0),		KUMAX(0)},
-		{"0xg",		"xg",	0,	ERR(0),		KUMAX(0)},
-		{"0XA",		"",	0,	ERR(0),		KUMAX(10)},
+	    {"0x", "x", 0, ERR(0), KUMAX(0)}, {"0X", "X", 0, ERR(0), KUMAX(0)},
+	    {"0xg", "xg", 0, ERR(0), KUMAX(0)},
+	    {"0XA", "", 0, ERR(0), KUMAX(10)},
 
-		{"010",		"",	10,	ERR(0),		KUMAX(10)},
-		{"0x3",		"x3",	10,	ERR(0),		KUMAX(0)},
+	    {"010", "", 10, ERR(0), KUMAX(10)},
+	    {"0x3", "x3", 10, ERR(0), KUMAX(0)},
 
-		{"12",		"2",	2,	ERR(0),		KUMAX(1)},
-		{"78",		"8",	8,	ERR(0),		KUMAX(7)},
-		{"9a",		"a",	10,	ERR(0),		KUMAX(9)},
-		{"9A",		"A",	10,	ERR(0),		KUMAX(9)},
-		{"fg",		"g",	16,	ERR(0),		KUMAX(15)},
-		{"FG",		"G",	16,	ERR(0),		KUMAX(15)},
-		{"0xfg",	"g",	16,	ERR(0),		KUMAX(15)},
-		{"0XFG",	"G",	16,	ERR(0),		KUMAX(15)},
-		{"z_",		"_",	36,	ERR(0),		KUMAX(35)},
-		{"Z_",		"_",	36,	ERR(0),		KUMAX(35)}
-	};
+	    {"12", "2", 2, ERR(0), KUMAX(1)}, {"78", "8", 8, ERR(0), KUMAX(7)},
+	    {"9a", "a", 10, ERR(0), KUMAX(9)},
+	    {"9A", "A", 10, ERR(0), KUMAX(9)},
+	    {"fg", "g", 16, ERR(0), KUMAX(15)},
+	    {"FG", "G", 16, ERR(0), KUMAX(15)},
+	    {"0xfg", "g", 16, ERR(0), KUMAX(15)},
+	    {"0XFG", "G", 16, ERR(0), KUMAX(15)},
+	    {"z_", "_", 36, ERR(0), KUMAX(35)},
+	    {"Z_", "_", 36, ERR(0), KUMAX(35)}};
 #undef ERR
 #undef KUMAX
 #undef KSMAX
 	unsigned i;
 
-	for (i = 0; i < sizeof(tests)/sizeof(struct test_s); i++) {
+	for (i = 0; i < sizeof(tests) / sizeof(struct test_s); i++) {
 		struct test_s *test = &tests[i];
-		int err;
-		uintmax_t result;
-		char *remainder;
+		int            err;
+		uintmax_t      result;
+		char          *remainder;
 
 		set_errno(0);
 		result = malloc_strtoumax(test->input, &remainder, test->base);
@@ -93,8 +84,8 @@ TEST_BEGIN(test_malloc_strtoumax) {
 		    "Expected errno %s for \"%s\", base %d",
 		    test->expected_errno_name, test->input, test->base);
 		expect_str_eq(remainder, test->expected_remainder,
-		    "Unexpected remainder for \"%s\", base %d",
-		    test->input, test->base);
+		    "Unexpected remainder for \"%s\", base %d", test->input,
+		    test->base);
 		if (err == 0) {
 			expect_ju_eq(result, test->expected_x,
 			    "Unexpected result for \"%s\", base %d",
@@ -105,31 +96,32 @@ TEST_BEGIN(test_malloc_strtoumax) {
 TEST_END
 
 TEST_BEGIN(test_malloc_snprintf_truncated) {
-#define BUFLEN	15
-	char buf[BUFLEN];
+#define BUFLEN 15
+	char   buf[BUFLEN];
 	size_t result;
 	size_t len;
-#define TEST(expected_str_untruncated, ...) do {			\
-	result = malloc_snprintf(buf, len, __VA_ARGS__);		\
-	expect_d_eq(strncmp(buf, expected_str_untruncated, len-1), 0,	\
-	    "Unexpected string inequality (\"%s\" vs \"%s\")",		\
-	    buf, expected_str_untruncated);				\
-	expect_zu_eq(result, strlen(expected_str_untruncated),		\
-	    "Unexpected result");					\
-} while (0)
+#define TEST(expected_str_untruncated, ...)                                    \
+	do {                                                                   \
+		result = malloc_snprintf(buf, len, __VA_ARGS__);               \
+		expect_d_eq(strncmp(buf, expected_str_untruncated, len - 1),   \
+		    0, "Unexpected string inequality (\"%s\" vs \"%s\")", buf, \
+		    expected_str_untruncated);                                 \
+		expect_zu_eq(result, strlen(expected_str_untruncated),         \
+		    "Unexpected result");                                      \
+	} while (0)
 
 	for (len = 1; len < BUFLEN; len++) {
-		TEST("012346789",	"012346789");
-		TEST("a0123b",		"a%sb", "0123");
-		TEST("a01234567",	"a%s%s", "0123", "4567");
-		TEST("a0123  ",		"a%-6s", "0123");
-		TEST("a  0123",		"a%6s", "0123");
-		TEST("a   012",		"a%6.3s", "0123");
-		TEST("a   012",		"a%*.*s", 6, 3, "0123");
-		TEST("a 123b",		"a% db", 123);
-		TEST("a123b",		"a%-db", 123);
-		TEST("a-123b",		"a%-db", -123);
-		TEST("a+123b",		"a%+db", 123);
+		TEST("012346789", "012346789");
+		TEST("a0123b", "a%sb", "0123");
+		TEST("a01234567", "a%s%s", "0123", "4567");
+		TEST("a0123  ", "a%-6s", "0123");
+		TEST("a  0123", "a%6s", "0123");
+		TEST("a   012", "a%6.3s", "0123");
+		TEST("a   012", "a%*.*s", 6, 3, "0123");
+		TEST("a 123b", "a% db", 123);
+		TEST("a123b", "a%-db", 123);
+		TEST("a-123b", "a%-db", -123);
+		TEST("a+123b", "a%+db", 123);
 	}
 #undef BUFLEN
 #undef TEST
@@ -137,14 +129,16 @@ TEST_BEGIN(test_malloc_snprintf_truncated) {
 TEST_END
 
 TEST_BEGIN(test_malloc_snprintf) {
-#define BUFLEN	128
-	char buf[BUFLEN];
+#define BUFLEN 128
+	char   buf[BUFLEN];
 	size_t result;
-#define TEST(expected_str, ...) do {					\
-	result = malloc_snprintf(buf, sizeof(buf), __VA_ARGS__);	\
-	expect_str_eq(buf, expected_str, "Unexpected output");		\
-	expect_zu_eq(result, strlen(expected_str), "Unexpected result");\
-} while (0)
+#define TEST(expected_str, ...)                                                \
+	do {                                                                   \
+		result = malloc_snprintf(buf, sizeof(buf), __VA_ARGS__);       \
+		expect_str_eq(buf, expected_str, "Unexpected output");         \
+		expect_zu_eq(                                                  \
+		    result, strlen(expected_str), "Unexpected result");        \
+	} while (0)
 
 	TEST("hello", "hello");
 
@@ -258,11 +252,26 @@ TEST_BEGIN(test_malloc_snprintf) {
 }
 TEST_END
 
+TEST_BEGIN(test_malloc_snprintf_zero_size) {
+	char   buf[8];
+	size_t result;
+
+	/*
+	 * malloc_snprintf with size==0 should not write anything but should
+	 * return the length that would have been written.  A previous bug
+	 * caused an out-of-bounds write via str[size - 1] when size was 0.
+	 */
+	memset(buf, 'X', sizeof(buf));
+	result = malloc_snprintf(buf, 0, "%s", "hello");
+	expect_zu_eq(result, 5, "Expected length 5 for \"hello\"");
+	/* buf should be untouched. */
+	expect_c_eq(buf[0], 'X', "Buffer should not have been modified");
+}
+TEST_END
+
 int
 main(void) {
-	return test(
-	    test_malloc_strtoumax_no_endptr,
-	    test_malloc_strtoumax,
-	    test_malloc_snprintf_truncated,
-	    test_malloc_snprintf);
+	return test(test_malloc_strtoumax_no_endptr, test_malloc_strtoumax,
+	    test_malloc_snprintf_truncated, test_malloc_snprintf,
+	    test_malloc_snprintf_zero_size);
 }

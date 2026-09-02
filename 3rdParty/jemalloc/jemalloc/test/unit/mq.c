@@ -1,22 +1,22 @@
 #include "test/jemalloc_test.h"
 
-#define NSENDERS	3
-#define NMSGS		100000
+#define NSENDERS 3
+#define NMSGS 100000
 
 typedef struct mq_msg_s mq_msg_t;
 struct mq_msg_s {
-	mq_msg(mq_msg_t)	link;
+	mq_msg(mq_msg_t) link;
 };
 mq_gen(static, mq_, mq_t, mq_msg_t, link)
 
-TEST_BEGIN(test_mq_basic) {
-	mq_t mq;
+    TEST_BEGIN(test_mq_basic) {
+	mq_t     mq;
 	mq_msg_t msg;
 
 	expect_false(mq_init(&mq), "Unexpected mq_init() failure");
 	expect_u_eq(mq_count(&mq), 0, "mq should be empty");
-	expect_ptr_null(mq_tryget(&mq),
-	    "mq_tryget() should fail when the queue is empty");
+	expect_ptr_null(
+	    mq_tryget(&mq), "mq_tryget() should fail when the queue is empty");
 
 	mq_put(&mq, &msg);
 	expect_u_eq(mq_count(&mq), 1, "mq should contain one message");
@@ -31,7 +31,7 @@ TEST_END
 
 static void *
 thd_receiver_start(void *arg) {
-	mq_t *mq = (mq_t *)arg;
+	mq_t    *mq = (mq_t *)arg;
 	unsigned i;
 
 	for (i = 0; i < (NSENDERS * NMSGS); i++) {
@@ -44,12 +44,12 @@ thd_receiver_start(void *arg) {
 
 static void *
 thd_sender_start(void *arg) {
-	mq_t *mq = (mq_t *)arg;
+	mq_t    *mq = (mq_t *)arg;
 	unsigned i;
 
 	for (i = 0; i < NMSGS; i++) {
 		mq_msg_t *msg;
-		void *p;
+		void     *p;
 		p = mallocx(sizeof(mq_msg_t), 0);
 		expect_ptr_not_null(p, "Unexpected mallocx() failure");
 		msg = (mq_msg_t *)p;
@@ -59,9 +59,9 @@ thd_sender_start(void *arg) {
 }
 
 TEST_BEGIN(test_mq_threaded) {
-	mq_t mq;
-	thd_t receiver;
-	thd_t senders[NSENDERS];
+	mq_t     mq;
+	thd_t    receiver;
+	thd_t    senders[NSENDERS];
 	unsigned i;
 
 	expect_false(mq_init(&mq), "Unexpected mq_init() failure");
@@ -82,8 +82,5 @@ TEST_END
 
 int
 main(void) {
-	return test(
-	    test_mq_basic,
-	    test_mq_threaded);
+	return test(test_mq_basic, test_mq_threaded);
 }
-

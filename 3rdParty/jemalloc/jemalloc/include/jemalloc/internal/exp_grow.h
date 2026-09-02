@@ -27,8 +27,7 @@ exp_grow_size_prepare(exp_grow_t *exp_grow, size_t alloc_size_min,
 	*r_alloc_size = sz_pind2sz(exp_grow->next + *r_skip);
 	while (*r_alloc_size < alloc_size_min) {
 		(*r_skip)++;
-		if (exp_grow->next + *r_skip  >=
-		    sz_psz2ind(SC_LARGE_MAXCLASS)) {
+		if (exp_grow->next + *r_skip >= sz_psz2ind(SC_LARGE_MAXCLASS)) {
 			/* Outside legal range. */
 			return true;
 		}
@@ -44,7 +43,6 @@ exp_grow_size_commit(exp_grow_t *exp_grow, pszind_t skip) {
 	} else {
 		exp_grow->next = exp_grow->limit;
 	}
-
 }
 
 void exp_grow_init(exp_grow_t *exp_grow);

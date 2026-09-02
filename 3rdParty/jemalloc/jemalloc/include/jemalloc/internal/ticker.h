@@ -53,7 +53,7 @@ ticker_read(const ticker_t *ticker) {
  * worth the hassle, but this is on the fast path of both malloc and free (via
  * tcache_event).
  */
-#if defined(__GNUC__) && !defined(__clang__)				\
+#if defined(__GNUC__) && !defined(__clang__)                                   \
     && (defined(__x86_64__) || defined(__i386__))
 JEMALLOC_NOINLINE
 #endif
@@ -129,7 +129,8 @@ struct ticker_geom_s {
  * the behavior over long periods of time rather than the exact timing of the
  * initial ticks.
  */
-#define TICKER_GEOM_INIT(nticks) {nticks, nticks}
+#define TICKER_GEOM_INIT(nticks)                                               \
+	{ nticks, nticks }
 
 static inline void
 ticker_geom_init(ticker_geom_t *ticker, int32_t nticks) {
@@ -150,22 +151,21 @@ ticker_geom_read(const ticker_geom_t *ticker) {
 }
 
 /* Same deal as above. */
-#if defined(__GNUC__) && !defined(__clang__)				\
+#if defined(__GNUC__) && !defined(__clang__)                                   \
     && (defined(__x86_64__) || defined(__i386__))
 JEMALLOC_NOINLINE
 #endif
 static bool
-ticker_geom_fixup(ticker_geom_t *ticker, uint64_t *prng_state,
-    bool delay_trigger) {
+ticker_geom_fixup(
+    ticker_geom_t *ticker, uint64_t *prng_state, bool delay_trigger) {
 	if (delay_trigger) {
 		ticker->tick = 0;
 		return false;
 	}
 
 	uint64_t idx = prng_lg_range_u64(prng_state, TICKER_GEOM_NBITS);
-	ticker->tick = (uint32_t)(
-	    (uint64_t)ticker->nticks * (uint64_t)ticker_geom_table[idx]
-	    / (uint64_t)TICKER_GEOM_MUL);
+	ticker->tick = (uint32_t)((uint64_t)ticker->nticks
+	    * (uint64_t)ticker_geom_table[idx] / (uint64_t)TICKER_GEOM_MUL);
 
 	return true;
 }
@@ -181,8 +181,8 @@ ticker_geom_ticks(ticker_geom_t *ticker, uint64_t *prng_state, int32_t nticks,
 }
 
 static inline bool
-ticker_geom_tick(ticker_geom_t *ticker, uint64_t *prng_state,
-    bool delay_trigger) {
+ticker_geom_tick(
+    ticker_geom_t *ticker, uint64_t *prng_state, bool delay_trigger) {
 	return ticker_geom_ticks(ticker, prng_state, 1, delay_trigger);
 }
 

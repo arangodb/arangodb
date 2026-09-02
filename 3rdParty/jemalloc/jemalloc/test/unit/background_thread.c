@@ -4,14 +4,13 @@
 
 static void
 test_switch_background_thread_ctl(bool new_val) {
-	bool e0, e1;
+	bool   e0, e1;
 	size_t sz = sizeof(bool);
 
 	e1 = new_val;
-	expect_d_eq(mallctl("background_thread", (void *)&e0, &sz,
-	    &e1, sz), 0, "Unexpected mallctl() failure");
-	expect_b_eq(e0, !e1,
-	    "background_thread should be %d before.\n", !e1);
+	expect_d_eq(mallctl("background_thread", (void *)&e0, &sz, &e1, sz), 0,
+	    "Unexpected mallctl() failure");
+	expect_b_eq(e0, !e1, "background_thread should be %d before.\n", !e1);
 	if (e1) {
 		expect_zu_gt(n_background_threads, 0,
 		    "Number of background threads should be non zero.\n");
@@ -23,14 +22,13 @@ test_switch_background_thread_ctl(bool new_val) {
 
 static void
 test_repeat_background_thread_ctl(bool before) {
-	bool e0, e1;
+	bool   e0, e1;
 	size_t sz = sizeof(bool);
 
 	e1 = before;
-	expect_d_eq(mallctl("background_thread", (void *)&e0, &sz,
-	    &e1, sz), 0, "Unexpected mallctl() failure");
-	expect_b_eq(e0, before,
-	    "background_thread should be %d.\n", before);
+	expect_d_eq(mallctl("background_thread", (void *)&e0, &sz, &e1, sz), 0,
+	    "Unexpected mallctl() failure");
+	expect_b_eq(e0, before, "background_thread should be %d.\n", before);
 	if (e1) {
 		expect_zu_gt(n_background_threads, 0,
 		    "Number of background threads should be non zero.\n");
@@ -43,15 +41,15 @@ test_repeat_background_thread_ctl(bool before) {
 TEST_BEGIN(test_background_thread_ctl) {
 	test_skip_if(!have_background_thread);
 
-	bool e0, e1;
+	bool   e0, e1;
 	size_t sz = sizeof(bool);
 
-	expect_d_eq(mallctl("opt.background_thread", (void *)&e0, &sz,
-	    NULL, 0), 0, "Unexpected mallctl() failure");
-	expect_d_eq(mallctl("background_thread", (void *)&e1, &sz,
-	    NULL, 0), 0, "Unexpected mallctl() failure");
-	expect_b_eq(e0, e1,
-	    "Default and opt.background_thread does not match.\n");
+	expect_d_eq(mallctl("opt.background_thread", (void *)&e0, &sz, NULL, 0),
+	    0, "Unexpected mallctl() failure");
+	expect_d_eq(mallctl("background_thread", (void *)&e1, &sz, NULL, 0), 0,
+	    "Unexpected mallctl() failure");
+	expect_b_eq(
+	    e0, e1, "Default and opt.background_thread does not match.\n");
 	if (e0) {
 		test_switch_background_thread_ctl(false);
 	}
@@ -75,7 +73,7 @@ TEST_BEGIN(test_background_thread_running) {
 	test_skip_if(!config_stats);
 
 #if defined(JEMALLOC_BACKGROUND_THREAD)
-	tsd_t *tsd = tsd_fetch();
+	tsd_t                    *tsd = tsd_fetch();
 	background_thread_info_t *info = &background_thread_info[0];
 
 	test_repeat_background_thread_ctl(false);
@@ -113,6 +111,5 @@ int
 main(void) {
 	/* Background_thread creation tests reentrancy naturally. */
 	return test_no_reentrancy(
-	    test_background_thread_ctl,
-	    test_background_thread_running);
+	    test_background_thread_ctl, test_background_thread_running);
 }

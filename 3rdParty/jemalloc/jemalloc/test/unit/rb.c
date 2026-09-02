@@ -4,16 +4,17 @@
 
 #include "jemalloc/internal/rb.h"
 
-#define rbtn_black_height(a_type, a_field, a_rbt, r_height) do {	\
-	a_type *rbp_bh_t;						\
-	for (rbp_bh_t = (a_rbt)->rbt_root, (r_height) = 0; rbp_bh_t !=	\
-	    NULL; rbp_bh_t = rbtn_left_get(a_type, a_field,		\
-	    rbp_bh_t)) {						\
-		if (!rbtn_red_get(a_type, a_field, rbp_bh_t)) {		\
-		(r_height)++;						\
-		}							\
-	}								\
-} while (0)
+#define rbtn_black_height(a_type, a_field, a_rbt, r_height)                    \
+	do {                                                                   \
+		a_type *rbp_bh_t;                                              \
+		for (rbp_bh_t = (a_rbt)->rbt_root, (r_height) = 0;             \
+		     rbp_bh_t != NULL;                                         \
+		     rbp_bh_t = rbtn_left_get(a_type, a_field, rbp_bh_t)) {    \
+			if (!rbtn_red_get(a_type, a_field, rbp_bh_t)) {        \
+				(r_height)++;                                  \
+			}                                                      \
+		}                                                              \
+	} while (0)
 
 static bool summarize_always_returns_true = false;
 
@@ -55,7 +56,7 @@ struct node_s {
 	 */
 	const node_t *summary_lchild;
 	const node_t *summary_rchild;
-	uint64_t summary_max_specialness;
+	uint64_t      summary_max_specialness;
 };
 
 static int
@@ -80,8 +81,8 @@ node_cmp(const node_t *a, const node_t *b) {
 }
 
 static uint64_t
-node_subtree_specialness(node_t *n, const node_t *lchild,
-    const node_t *rchild) {
+node_subtree_specialness(
+    node_t *n, const node_t *lchild, const node_t *rchild) {
 	uint64_t subtree_specialness = n->specialness;
 	if (lchild != NULL
 	    && lchild->summary_max_specialness > subtree_specialness) {
@@ -109,8 +110,8 @@ node_summarize(node_t *a, const node_t *lchild, const node_t *rchild) {
 
 typedef rb_tree(node_t) tree_t;
 rb_summarized_proto(static, tree_, tree_t, node_t);
-rb_summarized_gen(static, tree_, tree_t, node_t, link, node_cmp,
-    node_summarize);
+rb_summarized_gen(
+    static, tree_, tree_t, node_t, link, node_cmp, node_summarize);
 
 static bool
 specialness_filter_node(void *ctx, node_t *node) {
@@ -127,24 +128,24 @@ specialness_filter_subtree(void *ctx, node_t *node) {
 static node_t *
 tree_iterate_cb(tree_t *tree, node_t *node, void *data) {
 	unsigned *i = (unsigned *)data;
-	node_t *search_node;
+	node_t   *search_node;
 
 	expect_u32_eq(node->magic, NODE_MAGIC, "Bad magic");
 
 	/* Test rb_search(). */
 	search_node = tree_search(tree, node);
-	expect_ptr_eq(search_node, node,
-	    "tree_search() returned unexpected node");
+	expect_ptr_eq(
+	    search_node, node, "tree_search() returned unexpected node");
 
 	/* Test rb_nsearch(). */
 	search_node = tree_nsearch(tree, node);
-	expect_ptr_eq(search_node, node,
-	    "tree_nsearch() returned unexpected node");
+	expect_ptr_eq(
+	    search_node, node, "tree_nsearch() returned unexpected node");
 
 	/* Test rb_psearch(). */
 	search_node = tree_psearch(tree, node);
-	expect_ptr_eq(search_node, node,
-	    "tree_psearch() returned unexpected node");
+	expect_ptr_eq(
+	    search_node, node, "tree_psearch() returned unexpected node");
 
 	(*i)++;
 
@@ -174,38 +175,44 @@ TEST_BEGIN(test_rb_empty) {
 	expect_ptr_null(tree_psearch(&tree, &key), "Unexpected node");
 
 	unsigned nodes = 0;
-	tree_iter_filtered(&tree, NULL, &tree_iterate_cb,
-	    &nodes, &specialness_filter_node, &specialness_filter_subtree,
-	    NULL);
+	tree_iter_filtered(&tree, NULL, &tree_iterate_cb, &nodes,
+	    &specialness_filter_node, &specialness_filter_subtree, NULL);
 	expect_u_eq(0, nodes, "");
 
 	nodes = 0;
-	tree_reverse_iter_filtered(&tree, NULL, &tree_iterate_cb,
-	    &nodes, &specialness_filter_node, &specialness_filter_subtree,
-	    NULL);
+	tree_reverse_iter_filtered(&tree, NULL, &tree_iterate_cb, &nodes,
+	    &specialness_filter_node, &specialness_filter_subtree, NULL);
 	expect_u_eq(0, nodes, "");
 
 	expect_ptr_null(tree_first_filtered(&tree, &specialness_filter_node,
-	    &specialness_filter_subtree, NULL), "");
+	                    &specialness_filter_subtree, NULL),
+	    "");
 	expect_ptr_null(tree_last_filtered(&tree, &specialness_filter_node,
-	    &specialness_filter_subtree, NULL), "");
+	                    &specialness_filter_subtree, NULL),
+	    "");
 
 	key.key = 0;
 	key.magic = NODE_MAGIC;
-	expect_ptr_null(tree_search_filtered(&tree, &key,
-	    &specialness_filter_node, &specialness_filter_subtree, NULL), "");
-	expect_ptr_null(tree_nsearch_filtered(&tree, &key,
-	    &specialness_filter_node, &specialness_filter_subtree, NULL), "");
-	expect_ptr_null(tree_psearch_filtered(&tree, &key,
-	    &specialness_filter_node, &specialness_filter_subtree, NULL), "");
+	expect_ptr_null(
+	    tree_search_filtered(&tree, &key, &specialness_filter_node,
+	        &specialness_filter_subtree, NULL),
+	    "");
+	expect_ptr_null(
+	    tree_nsearch_filtered(&tree, &key, &specialness_filter_node,
+	        &specialness_filter_subtree, NULL),
+	    "");
+	expect_ptr_null(
+	    tree_psearch_filtered(&tree, &key, &specialness_filter_node,
+	        &specialness_filter_subtree, NULL),
+	    "");
 }
 TEST_END
 
 static unsigned
 tree_recurse(node_t *node, unsigned black_height, unsigned black_depth) {
 	unsigned ret = 0;
-	node_t *left_node;
-	node_t *right_node;
+	node_t  *left_node;
+	node_t  *right_node;
 
 	if (node == NULL) {
 		return ret;
@@ -214,13 +221,13 @@ tree_recurse(node_t *node, unsigned black_height, unsigned black_depth) {
 	left_node = rbtn_left_get(node_t, link, node);
 	right_node = rbtn_right_get(node_t, link, node);
 
-	expect_ptr_eq(left_node, node->summary_lchild,
-	    "summary missed a tree update");
-	expect_ptr_eq(right_node, node->summary_rchild,
-	    "summary missed a tree update");
+	expect_ptr_eq(
+	    left_node, node->summary_lchild, "summary missed a tree update");
+	expect_ptr_eq(
+	    right_node, node->summary_rchild, "summary missed a tree update");
 
-	uint64_t expected_subtree_specialness = node_subtree_specialness(node,
-	    left_node, right_node);
+	uint64_t expected_subtree_specialness = node_subtree_specialness(
+	    node, left_node, right_node);
 	expect_u64_eq(expected_subtree_specialness,
 	    node->summary_max_specialness, "Incorrect summary");
 
@@ -232,7 +239,7 @@ tree_recurse(node_t *node, unsigned black_height, unsigned black_depth) {
 	if (rbtn_red_get(node_t, link, node)) {
 		if (left_node != NULL) {
 			expect_false(rbtn_red_get(node_t, link, left_node),
-				"Node should be black");
+			    "Node should be black");
 		}
 		if (right_node != NULL) {
 			expect_false(rbtn_red_get(node_t, link, right_node),
@@ -282,7 +289,7 @@ tree_iterate_reverse(tree_t *tree) {
 
 static void
 node_remove(tree_t *tree, node_t *node, unsigned nnodes) {
-	node_t *search_node;
+	node_t  *search_node;
 	unsigned black_height, imbalances;
 
 	tree_remove(tree, node);
@@ -290,15 +297,15 @@ node_remove(tree_t *tree, node_t *node, unsigned nnodes) {
 	/* Test rb_nsearch(). */
 	search_node = tree_nsearch(tree, node);
 	if (search_node != NULL) {
-		expect_u64_ge(search_node->key, node->key,
-		    "Key ordering error");
+		expect_u64_ge(
+		    search_node->key, node->key, "Key ordering error");
 	}
 
 	/* Test rb_psearch(). */
 	search_node = tree_psearch(tree, node);
 	if (search_node != NULL) {
-		expect_u64_le(search_node->key, node->key,
-		    "Key ordering error");
+		expect_u64_le(
+		    search_node->key, node->key, "Key ordering error");
 	}
 
 	node->magic = 0;
@@ -306,16 +313,16 @@ node_remove(tree_t *tree, node_t *node, unsigned nnodes) {
 	rbtn_black_height(node_t, link, tree, black_height);
 	imbalances = tree_recurse(tree->rbt_root, black_height, 0);
 	expect_u_eq(imbalances, 0, "Tree is unbalanced");
-	expect_u_eq(tree_iterate(tree), nnodes-1,
-	    "Unexpected node iteration count");
-	expect_u_eq(tree_iterate_reverse(tree), nnodes-1,
+	expect_u_eq(
+	    tree_iterate(tree), nnodes - 1, "Unexpected node iteration count");
+	expect_u_eq(tree_iterate_reverse(tree), nnodes - 1,
 	    "Unexpected node iteration count");
 }
 
 static node_t *
 remove_iterate_cb(tree_t *tree, node_t *node, void *data) {
 	unsigned *nnodes = (unsigned *)data;
-	node_t *ret = tree_next(tree, node);
+	node_t   *ret = tree_next(tree, node);
 
 	node_remove(tree, node, *nnodes);
 
@@ -325,7 +332,7 @@ remove_iterate_cb(tree_t *tree, node_t *node, void *data) {
 static node_t *
 remove_reverse_iterate_cb(tree_t *tree, node_t *node, void *data) {
 	unsigned *nnodes = (unsigned *)data;
-	node_t *ret = tree_prev(tree, node);
+	node_t   *ret = tree_prev(tree, node);
 
 	node_remove(tree, node, *nnodes);
 
@@ -341,15 +348,11 @@ destroy_cb(node_t *node, void *data) {
 }
 
 TEST_BEGIN(test_rb_random) {
-	enum {
-		NNODES = 25,
-		NBAGS = 500,
-		SEED = 42
-	};
-	sfmt_t *sfmt;
+	enum { NNODES = 25, NBAGS = 500, SEED = 42 };
+	sfmt_t  *sfmt;
 	uint64_t bag[NNODES];
-	tree_t tree;
-	node_t nodes[NNODES];
+	tree_t   tree;
+	node_t   nodes[NNODES];
 	unsigned i, j, k, black_height, imbalances;
 
 	sfmt = init_gen_rand(SEED);
@@ -386,8 +389,8 @@ TEST_BEGIN(test_rb_random) {
 			for (k = 0; k < j; k++) {
 				nodes[k].magic = NODE_MAGIC;
 				nodes[k].key = bag[k];
-				nodes[k].specialness = gen_rand64_range(sfmt,
-				    NNODES);
+				nodes[k].specialness = gen_rand64_range(
+				    sfmt, NNODES);
 				nodes[k].mid_remove = false;
 				nodes[k].allow_duplicates = false;
 				nodes[k].summary_lchild = NULL;
@@ -399,16 +402,16 @@ TEST_BEGIN(test_rb_random) {
 			for (k = 0; k < j; k++) {
 				tree_insert(&tree, &nodes[k]);
 
-				rbtn_black_height(node_t, link, &tree,
-				    black_height);
-				imbalances = tree_recurse(tree.rbt_root,
-				    black_height, 0);
-				expect_u_eq(imbalances, 0,
-				    "Tree is unbalanced");
+				rbtn_black_height(
+				    node_t, link, &tree, black_height);
+				imbalances = tree_recurse(
+				    tree.rbt_root, black_height, 0);
+				expect_u_eq(
+				    imbalances, 0, "Tree is unbalanced");
 
-				expect_u_eq(tree_iterate(&tree), k+1,
+				expect_u_eq(tree_iterate(&tree), k + 1,
 				    "Unexpected node iteration count");
-				expect_u_eq(tree_iterate_reverse(&tree), k+1,
+				expect_u_eq(tree_iterate_reverse(&tree), k + 1,
 				    "Unexpected node iteration count");
 
 				expect_false(tree_empty(&tree),
@@ -431,11 +434,11 @@ TEST_BEGIN(test_rb_random) {
 				break;
 			case 1:
 				for (k = j; k > 0; k--) {
-					node_remove(&tree, &nodes[k-1], k);
+					node_remove(&tree, &nodes[k - 1], k);
 				}
 				break;
 			case 2: {
-				node_t *start;
+				node_t  *start;
 				unsigned nnodes = j;
 
 				start = NULL;
@@ -444,11 +447,12 @@ TEST_BEGIN(test_rb_random) {
 					    remove_iterate_cb, (void *)&nnodes);
 					nnodes--;
 				} while (start != NULL);
-				expect_u_eq(nnodes, 0,
-				    "Removal terminated early");
+				expect_u_eq(
+				    nnodes, 0, "Removal terminated early");
 				break;
-			} case 3: {
-				node_t *start;
+			}
+			case 3: {
+				node_t  *start;
 				unsigned nnodes = j;
 
 				start = NULL;
@@ -458,16 +462,18 @@ TEST_BEGIN(test_rb_random) {
 					    (void *)&nnodes);
 					nnodes--;
 				} while (start != NULL);
-				expect_u_eq(nnodes, 0,
-				    "Removal terminated early");
+				expect_u_eq(
+				    nnodes, 0, "Removal terminated early");
 				break;
-			} case 4: {
+			}
+			case 4: {
 				unsigned nnodes = j;
 				tree_destroy(&tree, destroy_cb, &nnodes);
-				expect_u_eq(nnodes, 0,
-				    "Destruction terminated early");
+				expect_u_eq(
+				    nnodes, 0, "Destruction terminated early");
 				break;
-			} default:
+			}
+			default:
 				not_reached();
 			}
 		}
@@ -479,7 +485,7 @@ TEST_END
 static void
 expect_simple_consistency(tree_t *tree, uint64_t specialness,
     bool expected_empty, node_t *expected_first, node_t *expected_last) {
-	bool empty;
+	bool    empty;
 	node_t *first;
 	node_t *last;
 
@@ -487,19 +493,17 @@ expect_simple_consistency(tree_t *tree, uint64_t specialness,
 	    &specialness_filter_subtree, &specialness);
 	expect_b_eq(expected_empty, empty, "");
 
-	first = tree_first_filtered(tree,
-	    &specialness_filter_node, &specialness_filter_subtree,
-	    (void *)&specialness);
+	first = tree_first_filtered(tree, &specialness_filter_node,
+	    &specialness_filter_subtree, (void *)&specialness);
 	expect_ptr_eq(expected_first, first, "");
 
-	last = tree_last_filtered(tree,
-	    &specialness_filter_node, &specialness_filter_subtree,
-	    (void *)&specialness);
+	last = tree_last_filtered(tree, &specialness_filter_node,
+	    &specialness_filter_subtree, (void *)&specialness);
 	expect_ptr_eq(expected_last, last, "");
 }
 
 TEST_BEGIN(test_rb_filter_simple) {
-	enum {FILTER_NODES = 10};
+	enum { FILTER_NODES = 10 };
 	node_t nodes[FILTER_NODES];
 	for (unsigned i = 0; i < FILTER_NODES; i++) {
 		nodes[i].magic = NODE_MAGIC;
@@ -583,10 +587,10 @@ TEST_END
 
 typedef struct iter_ctx_s iter_ctx_t;
 struct iter_ctx_s {
-	int ncalls;
+	int     ncalls;
 	node_t *last_node;
 
-	int ncalls_max;
+	int  ncalls_max;
 	bool forward;
 };
 
@@ -624,8 +628,8 @@ static void
 check_consistency(tree_t *tree, node_t nodes[UPDATE_TEST_MAX], int nnodes) {
 	uint64_t specialness = 1;
 
-	bool empty;
-	bool real_empty = true;
+	bool    empty;
+	bool    real_empty = true;
 	node_t *first;
 	node_t *real_first = NULL;
 	node_t *last;
@@ -667,12 +671,14 @@ check_consistency(tree_t *tree, node_t nodes[UPDATE_TEST_MAX], int nnodes) {
 			}
 			if (node_cmp(&nodes[j], &nodes[i]) < 0
 			    && (real_prev_filtered == NULL
-			    || node_cmp(&nodes[j], real_prev_filtered) > 0)) {
+			        || node_cmp(&nodes[j], real_prev_filtered)
+			            > 0)) {
 				real_prev_filtered = &nodes[j];
 			}
 			if (node_cmp(&nodes[j], &nodes[i]) > 0
 			    && (real_next_filtered == NULL
-			    || node_cmp(&nodes[j], real_next_filtered) < 0)) {
+			        || node_cmp(&nodes[j], real_next_filtered)
+			            < 0)) {
 				real_next_filtered = &nodes[j];
 			}
 		}
@@ -707,8 +713,9 @@ check_consistency(tree_t *tree, node_t nodes[UPDATE_TEST_MAX], int nnodes) {
 		    &specialness);
 		expect_ptr_eq(real_search_filtered, search_filtered, "");
 
-		real_nsearch_filtered = (nodes[i].specialness >= specialness ?
-		    &nodes[i] : real_next_filtered);
+		real_nsearch_filtered = (nodes[i].specialness >= specialness
+		        ? &nodes[i]
+		        : real_next_filtered);
 		nsearch_filtered = tree_nsearch_filtered(tree, &before,
 		    &specialness_filter_node, &specialness_filter_subtree,
 		    &specialness);
@@ -721,22 +728,25 @@ check_consistency(tree_t *tree, node_t nodes[UPDATE_TEST_MAX], int nnodes) {
 		expect_ptr_eq(real_psearch_filtered, psearch_filtered, "");
 
 		/* search, nsearch, psearch from nodes[i] */
-		real_search_filtered = (nodes[i].specialness >= specialness ?
-		    &nodes[i] : NULL);
+		real_search_filtered = (nodes[i].specialness >= specialness
+		        ? &nodes[i]
+		        : NULL);
 		search_filtered = tree_search_filtered(tree, &nodes[i],
 		    &specialness_filter_node, &specialness_filter_subtree,
 		    &specialness);
 		expect_ptr_eq(real_search_filtered, search_filtered, "");
 
-		real_nsearch_filtered = (nodes[i].specialness >= specialness ?
-		    &nodes[i] : real_next_filtered);
+		real_nsearch_filtered = (nodes[i].specialness >= specialness
+		        ? &nodes[i]
+		        : real_next_filtered);
 		nsearch_filtered = tree_nsearch_filtered(tree, &nodes[i],
 		    &specialness_filter_node, &specialness_filter_subtree,
 		    &specialness);
 		expect_ptr_eq(real_nsearch_filtered, nsearch_filtered, "");
 
-		real_psearch_filtered = (nodes[i].specialness >= specialness ?
-		    &nodes[i] : real_prev_filtered);
+		real_psearch_filtered = (nodes[i].specialness >= specialness
+		        ? &nodes[i]
+		        : real_prev_filtered);
 		psearch_filtered = tree_psearch_filtered(tree, &nodes[i],
 		    &specialness_filter_node, &specialness_filter_subtree,
 		    &specialness);
@@ -750,22 +760,25 @@ check_consistency(tree_t *tree, node_t nodes[UPDATE_TEST_MAX], int nnodes) {
 		equiv.magic = NODE_MAGIC;
 		equiv.key = nodes[i].key;
 		equiv.allow_duplicates = true;
-		real_search_filtered = (nodes[i].specialness >= specialness ?
-		    &nodes[i] : NULL);
+		real_search_filtered = (nodes[i].specialness >= specialness
+		        ? &nodes[i]
+		        : NULL);
 		search_filtered = tree_search_filtered(tree, &equiv,
 		    &specialness_filter_node, &specialness_filter_subtree,
 		    &specialness);
 		expect_ptr_eq(real_search_filtered, search_filtered, "");
 
-		real_nsearch_filtered = (nodes[i].specialness >= specialness ?
-		    &nodes[i] : real_next_filtered);
+		real_nsearch_filtered = (nodes[i].specialness >= specialness
+		        ? &nodes[i]
+		        : real_next_filtered);
 		nsearch_filtered = tree_nsearch_filtered(tree, &equiv,
 		    &specialness_filter_node, &specialness_filter_subtree,
 		    &specialness);
 		expect_ptr_eq(real_nsearch_filtered, nsearch_filtered, "");
 
-		real_psearch_filtered = (nodes[i].specialness >= specialness ?
-		    &nodes[i] : real_prev_filtered);
+		real_psearch_filtered = (nodes[i].specialness >= specialness
+		        ? &nodes[i]
+		        : real_prev_filtered);
 		psearch_filtered = tree_psearch_filtered(tree, &equiv,
 		    &specialness_filter_node, &specialness_filter_subtree,
 		    &specialness);
@@ -791,8 +804,9 @@ check_consistency(tree_t *tree, node_t nodes[UPDATE_TEST_MAX], int nnodes) {
 		    &specialness);
 		expect_ptr_eq(real_nsearch_filtered, nsearch_filtered, "");
 
-		real_psearch_filtered = (nodes[i].specialness >= specialness ?
-		    &nodes[i] : real_prev_filtered);
+		real_psearch_filtered = (nodes[i].specialness >= specialness
+		        ? &nodes[i]
+		        : real_prev_filtered);
 		psearch_filtered = tree_psearch_filtered(tree, &after,
 		    &specialness_filter_node, &specialness_filter_subtree,
 		    &specialness);
@@ -800,7 +814,7 @@ check_consistency(tree_t *tree, node_t nodes[UPDATE_TEST_MAX], int nnodes) {
 	}
 
 	/* Filtered iteration test setup. */
-	int nspecial = 0;
+	int     nspecial = 0;
 	node_t *sorted_nodes[UPDATE_TEST_MAX];
 	node_t *sorted_filtered_nodes[UPDATE_TEST_MAX];
 	for (int i = 0; i < nnodes; i++) {
@@ -862,8 +876,9 @@ check_consistency(tree_t *tree, node_t nodes[UPDATE_TEST_MAX], int nnodes) {
 			    &specialness_filter_node,
 			    &specialness_filter_subtree, &specialness);
 			expect_d_eq(j + 1, ctx.ncalls, "");
-			expect_ptr_eq(sorted_filtered_nodes[
-			    nodes[i].filtered_rank + j], iter_result, "");
+			expect_ptr_eq(
+			    sorted_filtered_nodes[nodes[i].filtered_rank + j],
+			    iter_result, "");
 		}
 	}
 
@@ -888,8 +903,8 @@ check_consistency(tree_t *tree, node_t nodes[UPDATE_TEST_MAX], int nnodes) {
 		    &specialness_filter_subtree, &specialness);
 		expect_ptr_null(iter_result, "");
 		int surplus_rank = (nodes[i].specialness >= 1 ? 1 : 0);
-		expect_d_eq(nodes[i].filtered_rank + surplus_rank, ctx.ncalls,
-		    "");
+		expect_d_eq(
+		    nodes[i].filtered_rank + surplus_rank, ctx.ncalls, "");
 	}
 	/* Filtered backward iteration from the end, with stopping */
 	for (int i = 0; i < nspecial; i++) {
@@ -899,15 +914,15 @@ check_consistency(tree_t *tree, node_t nodes[UPDATE_TEST_MAX], int nnodes) {
 		iter_result = tree_reverse_iter_filtered(tree, NULL,
 		    &tree_iterate_filtered_cb, &ctx, &specialness_filter_node,
 		    &specialness_filter_subtree, &specialness);
-		expect_ptr_eq(sorted_filtered_nodes[nspecial - i - 1],
-		    iter_result, "");
+		expect_ptr_eq(
+		    sorted_filtered_nodes[nspecial - i - 1], iter_result, "");
 		expect_d_eq(ctx.ncalls, i + 1, "");
 	}
 	/* Filtered backward iteration from a starting point, with stopping. */
 	for (int i = 0; i < nnodes; i++) {
 		int surplus_rank = (nodes[i].specialness >= 1 ? 1 : 0);
 		for (int j = 0; j < nodes[i].filtered_rank + surplus_rank;
-		    j++) {
+		     j++) {
 			ctx.ncalls = 0;
 			ctx.last_node = NULL;
 			ctx.ncalls_max = j + 1;
@@ -916,16 +931,16 @@ check_consistency(tree_t *tree, node_t nodes[UPDATE_TEST_MAX], int nnodes) {
 			    &specialness_filter_node,
 			    &specialness_filter_subtree, &specialness);
 			expect_d_eq(j + 1, ctx.ncalls, "");
-			expect_ptr_eq(sorted_filtered_nodes[
-			    nodes[i].filtered_rank - j - 1 + surplus_rank],
+			expect_ptr_eq(
+			    sorted_filtered_nodes[nodes[i].filtered_rank - j - 1
+			        + surplus_rank],
 			    iter_result, "");
 		}
 	}
 }
 
 static void
-do_update_search_test(int nnodes, int ntrees, int nremovals,
-    int nupdates) {
+do_update_search_test(int nnodes, int ntrees, int nremovals, int nupdates) {
 	node_t nodes[UPDATE_TEST_MAX];
 	assert(nnodes <= UPDATE_TEST_MAX);
 
@@ -987,8 +1002,8 @@ rb_gen(static UNUSED, unsummarized_tree_, unsummarized_tree_t, node_t, link,
     node_cmp);
 
 static node_t *
-unsummarized_tree_iterate_cb(unsummarized_tree_t *tree, node_t *node,
-    void *data) {
+unsummarized_tree_iterate_cb(
+    unsummarized_tree_t *tree, node_t *node, void *data) {
 	unsigned *i = (unsigned *)data;
 	(*i)++;
 	return NULL;
@@ -1002,18 +1017,14 @@ TEST_BEGIN(test_rb_unsummarized) {
 	unsummarized_tree_t tree;
 	unsummarized_tree_new(&tree);
 	unsigned nnodes = 0;
-	unsummarized_tree_iter(&tree, NULL, &unsummarized_tree_iterate_cb,
-	    &nnodes);
+	unsummarized_tree_iter(
+	    &tree, NULL, &unsummarized_tree_iterate_cb, &nnodes);
 	expect_u_eq(0, nnodes, "");
 }
 TEST_END
 
 int
 main(void) {
-	return test_no_reentrancy(
-	    test_rb_empty,
-	    test_rb_random,
-	    test_rb_filter_simple,
-	    test_rb_update_search,
-	    test_rb_unsummarized);
+	return test_no_reentrancy(test_rb_empty, test_rb_random,
+	    test_rb_filter_simple, test_rb_update_search, test_rb_unsummarized);
 }

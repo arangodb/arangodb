@@ -4,22 +4,25 @@
 #define N_PARAM 100
 #define N_THREADS 10
 
-static void expect_rep(void) {
+static void
+expect_rep(void) {
 	expect_b_eq(prof_log_rep_check(), false, "Rep check failed");
 }
 
-static void expect_log_empty(void) {
-	expect_zu_eq(prof_log_bt_count(), 0,
-	    "The log has backtraces; it isn't empty");
-	expect_zu_eq(prof_log_thr_count(), 0,
-	    "The log has threads; it isn't empty");
+static void
+expect_log_empty(void) {
+	expect_zu_eq(
+	    prof_log_bt_count(), 0, "The log has backtraces; it isn't empty");
+	expect_zu_eq(
+	    prof_log_thr_count(), 0, "The log has threads; it isn't empty");
 	expect_zu_eq(prof_log_alloc_count(), 0,
 	    "The log has allocations; it isn't empty");
 }
 
 void *buf[N_PARAM];
 
-static void f(void) {
+static void
+f(void) {
 	int i;
 	for (i = 0; i < N_PARAM; i++) {
 		buf[i] = malloc(100);
@@ -46,8 +49,8 @@ TEST_BEGIN(test_prof_log_many_logs) {
 		f();
 		expect_zu_eq(prof_log_thr_count(), 1, "Wrong thread count");
 		expect_rep();
-		expect_b_eq(prof_log_is_logging(), true,
-		    "Logging should still be on");
+		expect_b_eq(
+		    prof_log_is_logging(), true, "Logging should still be on");
 		expect_d_eq(mallctl("prof.log_stop", NULL, NULL, NULL, 0), 0,
 		    "Unexpected mallctl failure when stopping logging");
 		expect_b_eq(prof_log_is_logging(), false,
@@ -58,7 +61,8 @@ TEST_END
 
 thd_t thr_buf[N_THREADS];
 
-static void *f_thread(void *unused) {
+static void *
+f_thread(void *unused) {
 	int i;
 	for (i = 0; i < N_PARAM; i++) {
 		void *p = malloc(100);
@@ -70,7 +74,6 @@ static void *f_thread(void *unused) {
 }
 
 TEST_BEGIN(test_prof_log_many_threads) {
-
 	test_skip_if(!config_prof);
 
 	int i;
@@ -83,32 +86,34 @@ TEST_BEGIN(test_prof_log_many_threads) {
 	for (i = 0; i < N_THREADS; i++) {
 		thd_join(thr_buf[i], NULL);
 	}
-	expect_zu_eq(prof_log_thr_count(), N_THREADS,
-	    "Wrong number of thread entries");
+	expect_zu_eq(
+	    prof_log_thr_count(), N_THREADS, "Wrong number of thread entries");
 	expect_rep();
 	expect_d_eq(mallctl("prof.log_stop", NULL, NULL, NULL, 0), 0,
 	    "Unexpected mallctl failure when stopping logging");
 }
 TEST_END
 
-static void f3(void) {
+static void
+f3(void) {
 	void *p = malloc(100);
 	free(p);
 }
 
-static void f1(void) {
+static void
+f1(void) {
 	void *p = malloc(100);
 	f3();
 	free(p);
 }
 
-static void f2(void) {
+static void
+f2(void) {
 	void *p = malloc(100);
 	free(p);
 }
 
 TEST_BEGIN(test_prof_log_many_traces) {
-
 	test_skip_if(!config_prof);
 
 	expect_d_eq(mallctl("prof.log_start", NULL, NULL, NULL, 0), 0,
@@ -144,8 +149,6 @@ main(void) {
 	if (config_prof) {
 		prof_log_dummy_set(true);
 	}
-	return test_no_reentrancy(
-	    test_prof_log_many_logs,
-	    test_prof_log_many_traces,
-	    test_prof_log_many_threads);
+	return test_no_reentrancy(test_prof_log_many_logs,
+	    test_prof_log_many_traces, test_prof_log_many_threads);
 }

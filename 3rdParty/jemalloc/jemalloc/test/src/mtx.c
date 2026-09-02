@@ -1,14 +1,14 @@
 #include "test/jemalloc_test.h"
 
 #if defined(_WIN32) && !defined(_CRT_SPINCOUNT)
-#define _CRT_SPINCOUNT 4000
+#	define _CRT_SPINCOUNT 4000
 #endif
 
 bool
 mtx_init(mtx_t *mtx) {
 #ifdef _WIN32
-	if (!InitializeCriticalSectionAndSpinCount(&mtx->lock,
-	    _CRT_SPINCOUNT)) {
+	if (!InitializeCriticalSectionAndSpinCount(
+	        &mtx->lock, _CRT_SPINCOUNT)) {
 		return true;
 	}
 #elif (defined(JEMALLOC_OS_UNFAIR_LOCK))

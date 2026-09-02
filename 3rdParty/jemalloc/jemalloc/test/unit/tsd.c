@@ -5,7 +5,7 @@
  * be asserting that we're on one.
  */
 static bool originally_fast;
-static int data_cleanup_count;
+static int  data_cleanup_count;
 
 void
 data_cleanup(int *data) {
@@ -45,7 +45,7 @@ data_cleanup(int *data) {
 
 static void *
 thd_start(void *arg) {
-	int d = (int)(uintptr_t)arg;
+	int   d = (int)(uintptr_t)arg;
 	void *p;
 
 	/*
@@ -105,11 +105,10 @@ thd_start_reincarnated(void *arg) {
 	expect_ptr_not_null(p, "Unexpected malloc() failure");
 
 	/* Manually trigger reincarnation. */
-	expect_ptr_not_null(tsd_arena_get(tsd),
-	    "Should have tsd arena set.");
+	expect_ptr_not_null(tsd_arena_get(tsd), "Should have tsd arena set.");
 	tsd_cleanup((void *)tsd);
-	expect_ptr_null(*tsd_arenap_get_unsafe(tsd),
-	    "TSD arena should have been cleared.");
+	expect_ptr_null(
+	    *tsd_arenap_get_unsafe(tsd), "TSD arena should have been cleared.");
 	expect_u_eq(tsd_state_get(tsd), tsd_state_purgatory,
 	    "TSD state should be purgatory\n");
 
@@ -193,7 +192,7 @@ TEST_END
 
 typedef struct {
 	atomic_u32_t phase;
-	atomic_b_t error;
+	atomic_b_t   error;
 } global_slow_data_t;
 
 static void *
@@ -207,8 +206,8 @@ thd_start_global_slow(void *arg) {
 	 * No global slowness has happened yet; there was an error if we were
 	 * originally fast but aren't now.
 	 */
-	atomic_store_b(&data->error, originally_fast && !tsd_fast(tsd),
-	    ATOMIC_SEQ_CST);
+	atomic_store_b(
+	    &data->error, originally_fast && !tsd_fast(tsd), ATOMIC_SEQ_CST);
 	atomic_store_u32(&data->phase, 1, ATOMIC_SEQ_CST);
 
 	/* PHASE 2 */
@@ -241,8 +240,8 @@ thd_start_global_slow(void *arg) {
 	 * Both decrements happened; we should be fast again (if we ever
 	 * were)
 	 */
-	atomic_store_b(&data->error, originally_fast && !tsd_fast(tsd),
-	    ATOMIC_SEQ_CST);
+	atomic_store_b(
+	    &data->error, originally_fast && !tsd_fast(tsd), ATOMIC_SEQ_CST);
 	atomic_store_u32(&data->phase, 9, ATOMIC_SEQ_CST);
 
 	return NULL;
@@ -321,10 +320,7 @@ main(void) {
 		return test_status_fail;
 	}
 
-	return test_no_reentrancy(
-	    test_tsd_main_thread,
-	    test_tsd_sub_thread,
-	    test_tsd_sub_thread_dalloc_only,
-	    test_tsd_reincarnation,
+	return test_no_reentrancy(test_tsd_main_thread, test_tsd_sub_thread,
+	    test_tsd_sub_thread_dalloc_only, test_tsd_reincarnation,
 	    test_tsd_global_slow);
 }

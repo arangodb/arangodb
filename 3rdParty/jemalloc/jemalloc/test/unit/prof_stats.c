@@ -3,8 +3,8 @@
 #define N_PTRS 3
 
 static void
-test_combinations(szind_t ind, size_t sizes_array[N_PTRS],
-    int flags_array[N_PTRS]) {
+test_combinations(
+    szind_t ind, size_t sizes_array[N_PTRS], int flags_array[N_PTRS]) {
 #define MALLCTL_STR_LEN 64
 	assert(opt_prof && opt_prof_stats);
 
@@ -25,11 +25,13 @@ test_combinations(szind_t ind, size_t sizes_array[N_PTRS],
 	size_t stats_len = 2 * sizeof(uint64_t);
 
 	uint64_t live_stats_orig[2];
-	assert_d_eq(mallctl(mallctl_live_str, &live_stats_orig, &stats_len,
-	    NULL, 0), 0, "");
+	assert_d_eq(
+	    mallctl(mallctl_live_str, &live_stats_orig, &stats_len, NULL, 0), 0,
+	    "");
 	uint64_t accum_stats_orig[2];
-	assert_d_eq(mallctl(mallctl_accum_str, &accum_stats_orig, &stats_len,
-	    NULL, 0), 0, "");
+	assert_d_eq(
+	    mallctl(mallctl_accum_str, &accum_stats_orig, &stats_len, NULL, 0),
+	    0, "");
 
 	void *ptrs[N_PTRS];
 
@@ -40,8 +42,8 @@ test_combinations(szind_t ind, size_t sizes_array[N_PTRS],
 
 	for (size_t i = 0; i < N_PTRS; ++i) {
 		size_t sz = sizes_array[i];
-		int flags = flags_array[i];
-		void *p = mallocx(sz, flags);
+		int    flags = flags_array[i];
+		void  *p = mallocx(sz, flags);
 		assert_ptr_not_null(p, "malloc() failed");
 		assert(TEST_MALLOC_SIZE(p) == sz_index2size(ind));
 		ptrs[i] = p;
@@ -50,41 +52,45 @@ test_combinations(szind_t ind, size_t sizes_array[N_PTRS],
 		accum_req_sum += sz;
 		accum_count++;
 		uint64_t live_stats[2];
-		assert_d_eq(mallctl(mallctl_live_str, &live_stats, &stats_len,
-		    NULL, 0), 0, "");
-		expect_u64_eq(live_stats[0] - live_stats_orig[0],
-		    live_req_sum, "");
-		expect_u64_eq(live_stats[1] - live_stats_orig[1],
-		    live_count, "");
+		assert_d_eq(
+		    mallctl(mallctl_live_str, &live_stats, &stats_len, NULL, 0),
+		    0, "");
+		expect_u64_eq(
+		    live_stats[0] - live_stats_orig[0], live_req_sum, "");
+		expect_u64_eq(
+		    live_stats[1] - live_stats_orig[1], live_count, "");
 		uint64_t accum_stats[2];
 		assert_d_eq(mallctl(mallctl_accum_str, &accum_stats, &stats_len,
-		    NULL, 0), 0, "");
-		expect_u64_eq(accum_stats[0] - accum_stats_orig[0],
-		    accum_req_sum, "");
-		expect_u64_eq(accum_stats[1] - accum_stats_orig[1],
-		    accum_count, "");
+		                NULL, 0),
+		    0, "");
+		expect_u64_eq(
+		    accum_stats[0] - accum_stats_orig[0], accum_req_sum, "");
+		expect_u64_eq(
+		    accum_stats[1] - accum_stats_orig[1], accum_count, "");
 	}
 
 	for (size_t i = 0; i < N_PTRS; ++i) {
 		size_t sz = sizes_array[i];
-		int flags = flags_array[i];
+		int    flags = flags_array[i];
 		sdallocx(ptrs[i], sz, flags);
 		live_req_sum -= sz;
 		live_count--;
 		uint64_t live_stats[2];
-		assert_d_eq(mallctl(mallctl_live_str, &live_stats, &stats_len,
-		    NULL, 0), 0, "");
-		expect_u64_eq(live_stats[0] - live_stats_orig[0],
-		    live_req_sum, "");
-		expect_u64_eq(live_stats[1] - live_stats_orig[1],
-		    live_count, "");
+		assert_d_eq(
+		    mallctl(mallctl_live_str, &live_stats, &stats_len, NULL, 0),
+		    0, "");
+		expect_u64_eq(
+		    live_stats[0] - live_stats_orig[0], live_req_sum, "");
+		expect_u64_eq(
+		    live_stats[1] - live_stats_orig[1], live_count, "");
 		uint64_t accum_stats[2];
 		assert_d_eq(mallctl(mallctl_accum_str, &accum_stats, &stats_len,
-		    NULL, 0), 0, "");
-		expect_u64_eq(accum_stats[0] - accum_stats_orig[0],
-		    accum_req_sum, "");
-		expect_u64_eq(accum_stats[1] - accum_stats_orig[1],
-		    accum_count, "");
+		                NULL, 0),
+		    0, "");
+		expect_u64_eq(
+		    accum_stats[0] - accum_stats_orig[0], accum_req_sum, "");
+		expect_u64_eq(
+		    accum_stats[1] - accum_stats_orig[1], accum_count, "");
 	}
 #undef MALLCTL_STR_LEN
 }
@@ -92,9 +98,9 @@ test_combinations(szind_t ind, size_t sizes_array[N_PTRS],
 static void
 test_szind_wrapper(szind_t ind) {
 	size_t sizes_array[N_PTRS];
-	int flags_array[N_PTRS];
+	int    flags_array[N_PTRS];
 	for (size_t i = 0, sz = sz_index2size(ind) - N_PTRS; i < N_PTRS;
-	    ++i, ++sz) {
+	     ++i, ++sz) {
 		sizes_array[i] = sz;
 		flags_array[i] = 0;
 	}
@@ -115,10 +121,10 @@ TEST_END
 static void
 test_szind_aligned_wrapper(szind_t ind, unsigned lg_align) {
 	size_t sizes_array[N_PTRS];
-	int flags_array[N_PTRS];
-	int flags = MALLOCX_LG_ALIGN(lg_align);
+	int    flags_array[N_PTRS];
+	int    flags = MALLOCX_LG_ALIGN(lg_align);
 	for (size_t i = 0, sz = sz_index2size(ind) - N_PTRS; i < N_PTRS;
-	    ++i, ++sz) {
+	     ++i, ++sz) {
 		sizes_array[i] = sz;
 		flags_array[i] = flags;
 	}
@@ -136,7 +142,7 @@ TEST_BEGIN(test_prof_stats_aligned) {
 	}
 	for (szind_t ind = SC_NBINS - 5; ind < SC_NBINS + 5; ++ind) {
 		for (unsigned lg_align = SC_LG_LARGE_MINCLASS - 5;
-		    lg_align < SC_LG_LARGE_MINCLASS + 5; ++lg_align) {
+		     lg_align < SC_LG_LARGE_MINCLASS + 5; ++lg_align) {
 			test_szind_aligned_wrapper(ind, lg_align);
 		}
 	}
@@ -145,7 +151,5 @@ TEST_END
 
 int
 main(void) {
-	return test(
-	    test_prof_stats,
-	    test_prof_stats_aligned);
+	return test(test_prof_stats, test_prof_stats_aligned);
 }

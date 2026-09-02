@@ -44,18 +44,18 @@ typedef struct emitter_col_s emitter_col_t;
 struct emitter_col_s {
 	/* Filled in by the user. */
 	emitter_justify_t justify;
-	int width;
-	emitter_type_t type;
+	int               width;
+	emitter_type_t    type;
 	union {
-		bool bool_val;
-		int int_val;
-		unsigned unsigned_val;
-		uint32_t uint32_val;
-		uint32_t uint32_t_val;
-		uint64_t uint64_val;
-		uint64_t uint64_t_val;
-		size_t size_val;
-		ssize_t ssize_val;
+		bool        bool_val;
+		int         int_val;
+		unsigned    unsigned_val;
+		uint32_t    uint32_val;
+		uint32_t    uint32_t_val;
+		uint64_t    uint64_val;
+		uint64_t    uint64_t_val;
+		size_t      size_val;
+		ssize_t     ssize_val;
 		const char *str_val;
 	};
 
@@ -73,8 +73,8 @@ struct emitter_s {
 	emitter_output_t output;
 	/* The output information. */
 	write_cb_t *write_cb;
-	void *cbopaque;
-	int nesting_depth;
+	void       *cbopaque;
+	int         nesting_depth;
 	/* True if we've already emitted a value at the given depth. */
 	bool item_at_depth;
 	/* True if we emitted a key and will emit corresponding value next. */
@@ -83,8 +83,8 @@ struct emitter_s {
 
 static inline bool
 emitter_outputs_json(emitter_t *emitter) {
-	return emitter->output == emitter_output_json ||
-	    emitter->output == emitter_output_json_compact;
+	return emitter->output == emitter_output_json
+	    || emitter->output == emitter_output_json_compact;
 }
 
 /* Internal convenience function.  Write to the emitter the given string. */
@@ -98,24 +98,55 @@ emitter_printf(emitter_t *emitter, const char *format, ...) {
 	va_end(ap);
 }
 
-static inline const char * JEMALLOC_FORMAT_ARG(3)
-emitter_gen_fmt(char *out_fmt, size_t out_size, const char *fmt_specifier,
-    emitter_justify_t justify, int width) {
+static inline const char *
+JEMALLOC_FORMAT_ARG(3) emitter_gen_fmt(char *out_fmt, size_t out_size,
+    const char *fmt_specifier, emitter_justify_t justify, int width) {
 	size_t written;
 	fmt_specifier++;
 	if (justify == emitter_justify_none) {
-		written = malloc_snprintf(out_fmt, out_size,
-		    "%%%s", fmt_specifier);
+		written = malloc_snprintf(
+		    out_fmt, out_size, "%%%s", fmt_specifier);
 	} else if (justify == emitter_justify_left) {
-		written = malloc_snprintf(out_fmt, out_size,
-		    "%%-%d%s", width, fmt_specifier);
+		written = malloc_snprintf(
+		    out_fmt, out_size, "%%-%d%s", width, fmt_specifier);
 	} else {
-		written = malloc_snprintf(out_fmt, out_size,
-		    "%%%d%s", width, fmt_specifier);
+		written = malloc_snprintf(
+		    out_fmt, out_size, "%%%d%s", width, fmt_specifier);
 	}
 	/* Only happens in case of bad format string, which *we* choose. */
-	assert(written <  out_size);
+	assert(written < out_size);
 	return out_fmt;
+}
+
+static inline void
+emitter_emit_str(emitter_t *emitter, emitter_justify_t justify, int width,
+    char *fmt, size_t fmt_size, const char *str) {
+#define BUF_SIZE 256
+	char   buf[BUF_SIZE];
+	size_t str_written = malloc_snprintf(buf, BUF_SIZE, "\"%s\"", str);
+	emitter_printf(
+	    emitter, emitter_gen_fmt(fmt, fmt_size, "%s", justify, width), buf);
+	if (str_written < BUF_SIZE) {
+		return;
+	}
+	/*
+	 * There is no support for long string justification at the moment as
+	 * we output them partially with multiple malloc_snprintf calls and
+	 * justufication will work correctly only withing one call.
+	 * Fortunately this is not a big concern as we don't use justufication
+	 * with long strings right now.
+	 *
+	 * We emitted leading quotation mark and trailing '\0', hence need to
+	 * exclude extra characters from str shift.
+	 */
+	str += BUF_SIZE - 2;
+	do {
+		str_written = malloc_snprintf(buf, BUF_SIZE, "%s\"", str);
+		str += str_written >= BUF_SIZE ? BUF_SIZE - 1 : str_written;
+		emitter_printf(emitter,
+		    emitter_gen_fmt(fmt, fmt_size, "%s", justify, width), buf);
+	} while (str_written >= BUF_SIZE);
+#undef BUF_SIZE
 }
 
 /*
@@ -128,8 +159,6 @@ emitter_gen_fmt(char *out_fmt, size_t out_size, const char *fmt_specifier,
 static inline void
 emitter_print_value(emitter_t *emitter, emitter_justify_t justify, int width,
     emitter_type_t value_type, const void *value) {
-	size_t str_written;
-#define BUF_SIZE 256
 #define FMT_SIZE 10
 	/*
 	 * We dynamically generate a format string to emit, to let us use the
@@ -138,18 +167,17 @@ emitter_print_value(emitter_t *emitter, emitter_justify_t justify, int width,
 	 * cases.
 	 */
 	char fmt[FMT_SIZE];
-	char buf[BUF_SIZE];
 
-#define EMIT_SIMPLE(type, format)					\
-	emitter_printf(emitter,						\
-	    emitter_gen_fmt(fmt, FMT_SIZE, format, justify, width),	\
+#define EMIT_SIMPLE(type, format)                                              \
+	emitter_printf(emitter,                                                \
+	    emitter_gen_fmt(fmt, FMT_SIZE, format, justify, width),            \
 	    *(const type *)value);
 
 	switch (value_type) {
 	case emitter_type_bool:
 		emitter_printf(emitter,
 		    emitter_gen_fmt(fmt, FMT_SIZE, "%s", justify, width),
-		    *(const bool *)value ?  "true" : "false");
+		    *(const bool *)value ? "true" : "false");
 		break;
 	case emitter_type_int:
 		EMIT_SIMPLE(int, "%d")
@@ -167,15 +195,8 @@ emitter_print_value(emitter_t *emitter, emitter_justify_t justify, int width,
 		EMIT_SIMPLE(size_t, "%zu")
 		break;
 	case emitter_type_string:
-		str_written = malloc_snprintf(buf, BUF_SIZE, "\"%s\"",
+		emitter_emit_str(emitter, justify, width, fmt, FMT_SIZE,
 		    *(const char *const *)value);
-		/*
-		 * We control the strings we output; we shouldn't get anything
-		 * anywhere near the fmt size.
-		 */
-		assert(str_written < BUF_SIZE);
-		emitter_printf(emitter,
-		    emitter_gen_fmt(fmt, FMT_SIZE, "%s", justify, width), buf);
 		break;
 	case emitter_type_uint32:
 		EMIT_SIMPLE(uint32_t, "%" FMTu32)
@@ -189,10 +210,8 @@ emitter_print_value(emitter_t *emitter, emitter_justify_t justify, int width,
 	default:
 		unreachable();
 	}
-#undef BUF_SIZE
 #undef FMT_SIZE
 }
-
 
 /* Internal functions.  In json mode, tracks nesting state. */
 static inline void
@@ -209,7 +228,7 @@ emitter_nest_dec(emitter_t *emitter) {
 
 static inline void
 emitter_indent(emitter_t *emitter) {
-	int amount = emitter->nesting_depth;
+	int         amount = emitter->nesting_depth;
 	const char *indent_str;
 	assert(emitter->output != emitter_output_json_compact);
 	if (emitter->output == emitter_output_json) {
@@ -271,12 +290,12 @@ emitter_json_key(emitter_t *emitter, const char *json_key) {
 }
 
 static inline void
-emitter_json_value(emitter_t *emitter, emitter_type_t value_type,
-    const void *value) {
+emitter_json_value(
+    emitter_t *emitter, emitter_type_t value_type, const void *value) {
 	if (emitter_outputs_json(emitter)) {
 		emitter_json_key_prefix(emitter);
-		emitter_print_value(emitter, emitter_justify_none, -1,
-		    value_type, value);
+		emitter_print_value(
+		    emitter, emitter_justify_none, -1, value_type, value);
 		emitter->item_at_depth = true;
 	}
 }
@@ -347,7 +366,6 @@ emitter_json_object_end(emitter_t *emitter) {
 	}
 }
 
-
 /******************************************************************************/
 /* Table public API. */
 
@@ -369,14 +387,13 @@ emitter_table_dict_end(emitter_t *emitter) {
 
 static inline void
 emitter_table_kv_note(emitter_t *emitter, const char *table_key,
-    emitter_type_t value_type, const void *value,
-    const char *table_note_key, emitter_type_t table_note_value_type,
-    const void *table_note_value) {
+    emitter_type_t value_type, const void *value, const char *table_note_key,
+    emitter_type_t table_note_value_type, const void *table_note_value) {
 	if (emitter->output == emitter_output_table) {
 		emitter_indent(emitter);
 		emitter_printf(emitter, "%s: ", table_key);
-		emitter_print_value(emitter, emitter_justify_none, -1,
-		    value_type, value);
+		emitter_print_value(
+		    emitter, emitter_justify_none, -1, value_type, value);
 		if (table_note_key != NULL) {
 			emitter_printf(emitter, " (%s: ", table_note_key);
 			emitter_print_value(emitter, emitter_justify_none, -1,
@@ -395,7 +412,6 @@ emitter_table_kv(emitter_t *emitter, const char *table_key,
 	    emitter_type_bool, NULL);
 }
 
-
 /* Write to the emitter the given string, but only in table mode. */
 JEMALLOC_FORMAT_PRINTF(2, 3)
 static inline void
@@ -403,7 +419,8 @@ emitter_table_printf(emitter_t *emitter, const char *format, ...) {
 	if (emitter->output == emitter_output_table) {
 		va_list ap;
 		va_start(ap, format);
-		malloc_vcprintf(emitter->write_cb, emitter->cbopaque, format, ap);
+		malloc_vcprintf(
+		    emitter->write_cb, emitter->cbopaque, format, ap);
 		va_end(ap);
 	}
 }
@@ -414,7 +431,7 @@ emitter_table_row(emitter_t *emitter, emitter_row_t *row) {
 		return;
 	}
 	emitter_col_t *col;
-	ql_foreach(col, &row->cols, link) {
+	ql_foreach (col, &row->cols, link) {
 		emitter_print_value(emitter, col->justify, col->width,
 		    col->type, (const void *)&col->bool_val);
 	}
@@ -432,7 +449,6 @@ emitter_col_init(emitter_col_t *col, emitter_row_t *row) {
 	ql_tail_insert(&row->cols, col, link);
 }
 
-
 /******************************************************************************/
 /*
  * Generalized public API. Emits using either JSON or table, according to
@@ -444,9 +460,8 @@ emitter_col_init(emitter_col_t *col, emitter_row_t *row) {
  */
 static inline void
 emitter_kv_note(emitter_t *emitter, const char *json_key, const char *table_key,
-    emitter_type_t value_type, const void *value,
-    const char *table_note_key, emitter_type_t table_note_value_type,
-    const void *table_note_value) {
+    emitter_type_t value_type, const void *value, const char *table_note_key,
+    emitter_type_t table_note_value_type, const void *table_note_value) {
 	if (emitter_outputs_json(emitter)) {
 		emitter_json_key(emitter, json_key);
 		emitter_json_value(emitter, value_type, value);
@@ -465,8 +480,8 @@ emitter_kv(emitter_t *emitter, const char *json_key, const char *table_key,
 }
 
 static inline void
-emitter_dict_begin(emitter_t *emitter, const char *json_key,
-    const char *table_header) {
+emitter_dict_begin(
+    emitter_t *emitter, const char *json_key, const char *table_header) {
 	if (emitter_outputs_json(emitter)) {
 		emitter_json_key(emitter, json_key);
 		emitter_json_object_begin(emitter);
@@ -506,8 +521,9 @@ emitter_end(emitter_t *emitter) {
 	if (emitter_outputs_json(emitter)) {
 		assert(emitter->nesting_depth == 1);
 		emitter_nest_dec(emitter);
-		emitter_printf(emitter, "%s", emitter->output ==
-		    emitter_output_json_compact ? "}" : "\n}\n");
+		emitter_printf(emitter, "%s",
+		    emitter->output == emitter_output_json_compact ? "}"
+		                                                   : "\n}\n");
 	}
 }
 

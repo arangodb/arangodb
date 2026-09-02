@@ -15,6 +15,7 @@
  * and val3 for desired.
  */
 
+/* clang-format off */
 #define DO_TESTS(t, ta, val1, val2, val3) do {				\
 	t val;								\
 	t expected;							\
@@ -174,6 +175,7 @@ typedef struct {							\
 		DO_INTEGER_TESTS(t, ta, test.val1, test.val2);		\
 	}								\
 } while (0)
+/* clang-format on */
 
 TEST_STRUCT(uint64_t, u64);
 TEST_BEGIN(test_atomic_u64) {
@@ -184,7 +186,6 @@ TEST_BEGIN(test_atomic_u64) {
 #endif
 }
 TEST_END
-
 
 TEST_STRUCT(uint32_t, u32);
 TEST_BEGIN(test_atomic_u32) {
@@ -210,7 +211,6 @@ TEST_BEGIN(test_atomic_zd) {
 }
 TEST_END
 
-
 TEST_STRUCT(unsigned, u);
 TEST_BEGIN(test_atomic_u) {
 	INTEGER_TEST_BODY(unsigned, u);
@@ -219,11 +219,6 @@ TEST_END
 
 int
 main(void) {
-	return test(
-	    test_atomic_u64,
-	    test_atomic_u32,
-	    test_atomic_p,
-	    test_atomic_zu,
-	    test_atomic_zd,
-	    test_atomic_u);
+	return test(test_atomic_u64, test_atomic_u32, test_atomic_p,
+	    test_atomic_zu, test_atomic_zd, test_atomic_u);
 }

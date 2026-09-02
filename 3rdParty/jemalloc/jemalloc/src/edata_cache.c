@@ -11,7 +11,7 @@ edata_cache_init(edata_cache_t *edata_cache, base_t *base) {
 	 */
 	atomic_store_zu(&edata_cache->count, 0, ATOMIC_RELAXED);
 	if (malloc_mutex_init(&edata_cache->mtx, "edata_cache",
-	    WITNESS_RANK_EDATA_CACHE, malloc_mutex_rank_exclusive)) {
+	        WITNESS_RANK_EDATA_CACHE, malloc_mutex_rank_exclusive)) {
 		return true;
 	}
 	edata_cache->base = base;
@@ -63,8 +63,7 @@ edata_cache_fast_init(edata_cache_fast_t *ecs, edata_cache_t *fallback) {
 }
 
 static void
-edata_cache_fast_try_fill_from_fallback(tsdn_t *tsdn,
-    edata_cache_fast_t *ecs) {
+edata_cache_fast_try_fill_from_fallback(tsdn_t *tsdn, edata_cache_fast_t *ecs) {
 	edata_t *edata;
 	malloc_mutex_lock(tsdn, &ecs->fallback->mtx);
 	for (int i = 0; i < EDATA_CACHE_FAST_FILL; i++) {
@@ -80,8 +79,8 @@ edata_cache_fast_try_fill_from_fallback(tsdn_t *tsdn,
 
 edata_t *
 edata_cache_fast_get(tsdn_t *tsdn, edata_cache_fast_t *ecs) {
-	witness_assert_depth_to_rank(tsdn_witness_tsdp_get(tsdn),
-	    WITNESS_RANK_EDATA_CACHE, 0);
+	witness_assert_depth_to_rank(
+	    tsdn_witness_tsdp_get(tsdn), WITNESS_RANK_EDATA_CACHE, 0);
 
 	if (ecs->disabled) {
 		assert(edata_list_inactive_first(&ecs->list) == NULL);
@@ -118,7 +117,7 @@ edata_cache_fast_flush_all(tsdn_t *tsdn, edata_cache_fast_t *ecs) {
 	 * flush and disable pathways.
 	 */
 	edata_t *edata;
-	size_t nflushed = 0;
+	size_t   nflushed = 0;
 	malloc_mutex_lock(tsdn, &ecs->fallback->mtx);
 	while ((edata = edata_list_inactive_first(&ecs->list)) != NULL) {
 		edata_list_inactive_remove(&ecs->list, edata);
@@ -131,8 +130,8 @@ edata_cache_fast_flush_all(tsdn_t *tsdn, edata_cache_fast_t *ecs) {
 
 void
 edata_cache_fast_put(tsdn_t *tsdn, edata_cache_fast_t *ecs, edata_t *edata) {
-	witness_assert_depth_to_rank(tsdn_witness_tsdp_get(tsdn),
-	    WITNESS_RANK_EDATA_CACHE, 0);
+	witness_assert_depth_to_rank(
+	    tsdn_witness_tsdp_get(tsdn), WITNESS_RANK_EDATA_CACHE, 0);
 
 	if (ecs->disabled) {
 		assert(edata_list_inactive_first(&ecs->list) == NULL);

@@ -4,10 +4,10 @@
 
 TEST_BEGIN(test_slab_sizes) {
 	unsigned nbins;
-	size_t page;
-	size_t sizemib[4];
-	size_t slabmib[4];
-	size_t len;
+	size_t   page;
+	size_t   sizemib[4];
+	size_t   slabmib[4];
+	size_t   len;
 
 	len = sizeof(nbins);
 	expect_d_eq(mallctl("arenas.nbins", &nbins, &len, NULL, 0), 0,
@@ -33,12 +33,14 @@ TEST_BEGIN(test_slab_sizes) {
 		len = sizeof(size_t);
 		sizemib[2] = i;
 		slabmib[2] = i;
-		expect_d_eq(mallctlbymib(sizemib, 4, (void *)&bin_size, &len,
-		    NULL, 0), 0, "bin size mallctlbymib failure");
+		expect_d_eq(
+		    mallctlbymib(sizemib, 4, (void *)&bin_size, &len, NULL, 0),
+		    0, "bin size mallctlbymib failure");
 
 		len = sizeof(size_t);
-		expect_d_eq(mallctlbymib(slabmib, 4, (void *)&slab_size, &len,
-		    NULL, 0), 0, "slab size mallctlbymib failure");
+		expect_d_eq(
+		    mallctlbymib(slabmib, 4, (void *)&slab_size, &len, NULL, 0),
+		    0, "slab size mallctlbymib failure");
 
 		if (bin_size < 100) {
 			/*
@@ -51,8 +53,7 @@ TEST_BEGIN(test_slab_sizes) {
 			expect_zu_ge(slab_size, biggest_slab_seen,
 			    "Slab sizes should go up");
 			biggest_slab_seen = slab_size;
-		} else if (
-		    (100 <= bin_size && bin_size < 128)
+		} else if ((100 <= bin_size && bin_size < 128)
 		    || (128 < bin_size && bin_size <= 200)) {
 			expect_zu_eq(slab_size, page,
 			    "Forced-small slabs should be small");
@@ -75,6 +76,5 @@ TEST_END
 
 int
 main(void) {
-	return test(
-	    test_slab_sizes);
+	return test(test_slab_sizes);
 }

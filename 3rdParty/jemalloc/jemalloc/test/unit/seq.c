@@ -24,7 +24,7 @@ expect_data(data_t *data) {
 
 seq_define(data_t, data)
 
-typedef struct thd_data_s thd_data_t;
+    typedef struct thd_data_s thd_data_t;
 struct thd_data_s {
 	seq_data_t data;
 };
@@ -32,8 +32,8 @@ struct thd_data_s {
 static void *
 seq_reader_thd(void *arg) {
 	thd_data_t *thd_data = (thd_data_t *)arg;
-	int iter = 0;
-	data_t local_data;
+	int         iter = 0;
+	data_t      local_data;
 	while (iter < 1000 * 1000 - 1) {
 		bool success = seq_try_load_data(&local_data, &thd_data->data);
 		if (success) {
@@ -49,7 +49,7 @@ seq_reader_thd(void *arg) {
 static void *
 seq_writer_thd(void *arg) {
 	thd_data_t *thd_data = (thd_data_t *)arg;
-	data_t local_data;
+	data_t      local_data;
 	memset(&local_data, 0, sizeof(local_data));
 	for (int i = 0; i < 1000 * 1000; i++) {
 		set_data(&local_data, i);
@@ -74,7 +74,7 @@ TEST_BEGIN(test_seq_threaded) {
 TEST_END
 
 TEST_BEGIN(test_seq_simple) {
-	data_t data;
+	data_t     data;
 	seq_data_t seq;
 	memset(&seq, 0, sizeof(seq));
 	for (int i = 0; i < 1000 * 1000; i++) {
@@ -88,8 +88,7 @@ TEST_BEGIN(test_seq_simple) {
 }
 TEST_END
 
-int main(void) {
-	return test_no_reentrancy(
-	    test_seq_simple,
-	    test_seq_threaded);
+int
+main(void) {
+	return test_no_reentrancy(test_seq_simple, test_seq_threaded);
 }

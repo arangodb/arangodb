@@ -22,8 +22,8 @@
 #define LG_CKH_BUCKET_CELLS (LG_CACHELINE - LG_SIZEOF_PTR - 1)
 
 /* Typedefs to allow easy function pointer passing. */
-typedef void ckh_hash_t (const void *, size_t[2]);
-typedef bool ckh_keycomp_t (const void *, const void *);
+typedef void ckh_hash_t(const void *, size_t[2]);
+typedef bool ckh_keycomp_t(const void *, const void *);
 
 /* Hash table cell. */
 typedef struct {
@@ -56,7 +56,7 @@ typedef struct {
 	unsigned lg_curbuckets;
 
 	/* Hash and comparison functions. */
-	ckh_hash_t *hash;
+	ckh_hash_t    *hash;
 	ckh_keycomp_t *keycomp;
 
 	/* Hash table with 2^lg_curbuckets buckets. */
@@ -89,8 +89,8 @@ bool ckh_iter(ckh_t *ckh, size_t *tabind, void **key, void **data);
  * the key and value, and doesn't do any lifetime management.
  */
 bool ckh_insert(tsd_t *tsd, ckh_t *ckh, const void *key, const void *data);
-bool ckh_remove(tsd_t *tsd, ckh_t *ckh, const void *searchkey, void **key,
-    void **data);
+bool ckh_remove(
+    tsd_t *tsd, ckh_t *ckh, const void *searchkey, void **key, void **data);
 bool ckh_search(ckh_t *ckh, const void *searchkey, void **key, void **data);
 
 /* Some useful hash and comparison functions for strings and pointers. */

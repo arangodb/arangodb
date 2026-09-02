@@ -14,7 +14,8 @@ struct peak_s {
 	uint64_t adjustment;
 };
 
-#define PEAK_INITIALIZER {0, 0}
+#define PEAK_INITIALIZER                                                       \
+	{ 0, 0 }
 
 static inline uint64_t
 peak_max(peak_t *peak) {

@@ -95,12 +95,12 @@ struct pac_s {
 	ecache_t ecache_muzzy;
 	ecache_t ecache_retained;
 
-	base_t *base;
-	emap_t *emap;
+	base_t        *base;
+	emap_t        *emap;
 	edata_cache_t *edata_cache;
 
 	/* The grow info for the retained ecache. */
-	exp_grow_t exp_grow;
+	exp_grow_t     exp_grow;
 	malloc_mutex_t grow_mtx;
 
 	/* Special allocator for guarded frequently reused extents. */
@@ -119,10 +119,35 @@ struct pac_s {
 	decay_t decay_muzzy; /* muzzy --> retained */
 
 	malloc_mutex_t *stats_mtx;
-	pac_stats_t *stats;
+	pac_stats_t    *stats;
 
 	/* Extent serial number generator state. */
 	atomic_zu_t extent_sn_next;
+};
+
+typedef struct pac_thp_s pac_thp_t;
+struct pac_thp_s {
+	/*
+	 * opt_thp controls THP for user requested allocations. Settings
+	 * "always", "never" and "default" are available if THP is supported
+	 * by the OS and the default extent hooks are used:
+	 * - "always" and "never" are covered by pages_set_thp_state() in
+	 *   ehooks_default_alloc_impl().
+	 * - "default" makes no change for all the other auto arenas except
+	 *   the huge arena. For the huge arena, we might also look at
+	 *   opt_metadata_thp to decide whether to use THP or not.
+	 *   This is a temporary remedy before HPA is fully supported.
+	 */
+	bool thp_madvise;
+	/* Below fields are protected by the lock. */
+	malloc_mutex_t lock;
+	bool           auto_thp_switched;
+	atomic_u_t     n_thp_lazy;
+	/*
+	 * List that tracks HUGEPAGE aligned regions that're lazily hugified
+	 * in auto thp mode.
+	 */
+	edata_list_active_t thp_lazy_list;
 };
 
 bool pac_init(tsdn_t *tsdn, pac_t *pac, base_t *base, emap_t *emap,
@@ -170,11 +195,11 @@ bool pac_maybe_decay_purge(tsdn_t *tsdn, pac_t *pac, decay_t *decay,
  *
  * Returns true on error (if the new limit is not valid).
  */
-bool pac_retain_grow_limit_get_set(tsdn_t *tsdn, pac_t *pac, size_t *old_limit,
-    size_t *new_limit);
+bool pac_retain_grow_limit_get_set(
+    tsdn_t *tsdn, pac_t *pac, size_t *old_limit, size_t *new_limit);
 
-bool pac_decay_ms_set(tsdn_t *tsdn, pac_t *pac, extent_state_t state,
-    ssize_t decay_ms, pac_purge_eagerness_t eagerness);
+bool    pac_decay_ms_set(tsdn_t *tsdn, pac_t *pac, extent_state_t state,
+       ssize_t decay_ms, pac_purge_eagerness_t eagerness);
 ssize_t pac_decay_ms_get(pac_t *pac, extent_state_t state);
 
 void pac_reset(tsdn_t *tsdn, pac_t *pac);

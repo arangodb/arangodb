@@ -22,14 +22,12 @@ small_mallocx_free(void) {
 }
 
 TEST_BEGIN(test_large_vs_small) {
-	compare_funcs(100*1000, 1*1000*1000, "large mallocx",
+	compare_funcs(100 * 1000, 1 * 1000 * 1000, "large mallocx",
 	    large_mallocx_free, "small mallocx", small_mallocx_free);
 }
 TEST_END
 
 int
 main(void) {
-	return test_no_reentrancy(
-	    test_large_vs_small);
+	return test_no_reentrancy(test_large_vs_small);
 }
-

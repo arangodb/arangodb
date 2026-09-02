@@ -25,7 +25,7 @@ hash_rotl_64(uint64_t x, int8_t r) {
 static inline uint32_t
 hash_get_block_32(const uint32_t *p, int i) {
 	/* Handle unaligned read. */
-	if (unlikely((uintptr_t)p & (sizeof(uint32_t)-1)) != 0) {
+	if (unlikely((uintptr_t)p & (sizeof(uint32_t) - 1)) != 0) {
 		uint32_t ret;
 
 		memcpy(&ret, (uint8_t *)(p + i), sizeof(uint32_t));
@@ -38,7 +38,7 @@ hash_get_block_32(const uint32_t *p, int i) {
 static inline uint64_t
 hash_get_block_64(const uint64_t *p, int i) {
 	/* Handle unaligned read. */
-	if (unlikely((uintptr_t)p & (sizeof(uint64_t)-1)) != 0) {
+	if (unlikely((uintptr_t)p & (sizeof(uint64_t) - 1)) != 0) {
 		uint64_t ret;
 
 		memcpy(&ret, (uint8_t *)(p + i), sizeof(uint64_t));
@@ -72,8 +72,8 @@ hash_fmix_64(uint64_t k) {
 
 static inline uint32_t
 hash_x86_32(const void *key, int len, uint32_t seed) {
-	const uint8_t *data = (const uint8_t *) key;
-	const int nblocks = len / 4;
+	const uint8_t *data = (const uint8_t *)key;
+	const int      nblocks = len / 4;
 
 	uint32_t h1 = seed;
 
@@ -82,8 +82,8 @@ hash_x86_32(const void *key, int len, uint32_t seed) {
 
 	/* body */
 	{
-		const uint32_t *blocks = (const uint32_t *) (data + nblocks*4);
-		int i;
+		const uint32_t *blocks = (const uint32_t *)(data + nblocks * 4);
+		int             i;
 
 		for (i = -nblocks; i; i++) {
 			uint32_t k1 = hash_get_block_32(blocks, i);
@@ -94,21 +94,29 @@ hash_x86_32(const void *key, int len, uint32_t seed) {
 
 			h1 ^= k1;
 			h1 = hash_rotl_32(h1, 13);
-			h1 = h1*5 + 0xe6546b64;
+			h1 = h1 * 5 + 0xe6546b64;
 		}
 	}
 
 	/* tail */
 	{
-		const uint8_t *tail = (const uint8_t *) (data + nblocks*4);
+		const uint8_t *tail = (const uint8_t *)(data + nblocks * 4);
 
 		uint32_t k1 = 0;
 
 		switch (len & 3) {
-		case 3: k1 ^= tail[2] << 16; JEMALLOC_FALLTHROUGH;
-		case 2: k1 ^= tail[1] << 8; JEMALLOC_FALLTHROUGH;
-		case 1: k1 ^= tail[0]; k1 *= c1; k1 = hash_rotl_32(k1, 15);
-			k1 *= c2; h1 ^= k1;
+		case 3:
+			k1 ^= tail[2] << 16;
+			JEMALLOC_FALLTHROUGH;
+		case 2:
+			k1 ^= tail[1] << 8;
+			JEMALLOC_FALLTHROUGH;
+		case 1:
+			k1 ^= tail[0];
+			k1 *= c1;
+			k1 = hash_rotl_32(k1, 15);
+			k1 *= c2;
+			h1 ^= k1;
 		}
 	}
 
@@ -121,10 +129,9 @@ hash_x86_32(const void *key, int len, uint32_t seed) {
 }
 
 static inline void
-hash_x86_128(const void *key, const int len, uint32_t seed,
-    uint64_t r_out[2]) {
-	const uint8_t * data = (const uint8_t *) key;
-	const int nblocks = len / 16;
+hash_x86_128(const void *key, const int len, uint32_t seed, uint64_t r_out[2]) {
+	const uint8_t *data = (const uint8_t *)key;
+	const int      nblocks = len / 16;
 
 	uint32_t h1 = seed;
 	uint32_t h2 = seed;
@@ -138,95 +145,161 @@ hash_x86_128(const void *key, const int len, uint32_t seed,
 
 	/* body */
 	{
-		const uint32_t *blocks = (const uint32_t *) (data + nblocks*16);
-		int i;
+		const uint32_t *blocks = (const uint32_t *)(data
+		    + nblocks * 16);
+		int             i;
 
 		for (i = -nblocks; i; i++) {
-			uint32_t k1 = hash_get_block_32(blocks, i*4 + 0);
-			uint32_t k2 = hash_get_block_32(blocks, i*4 + 1);
-			uint32_t k3 = hash_get_block_32(blocks, i*4 + 2);
-			uint32_t k4 = hash_get_block_32(blocks, i*4 + 3);
+			uint32_t k1 = hash_get_block_32(blocks, i * 4 + 0);
+			uint32_t k2 = hash_get_block_32(blocks, i * 4 + 1);
+			uint32_t k3 = hash_get_block_32(blocks, i * 4 + 2);
+			uint32_t k4 = hash_get_block_32(blocks, i * 4 + 3);
 
-			k1 *= c1; k1 = hash_rotl_32(k1, 15); k1 *= c2; h1 ^= k1;
+			k1 *= c1;
+			k1 = hash_rotl_32(k1, 15);
+			k1 *= c2;
+			h1 ^= k1;
 
-			h1 = hash_rotl_32(h1, 19); h1 += h2;
-			h1 = h1*5 + 0x561ccd1b;
+			h1 = hash_rotl_32(h1, 19);
+			h1 += h2;
+			h1 = h1 * 5 + 0x561ccd1b;
 
-			k2 *= c2; k2 = hash_rotl_32(k2, 16); k2 *= c3; h2 ^= k2;
+			k2 *= c2;
+			k2 = hash_rotl_32(k2, 16);
+			k2 *= c3;
+			h2 ^= k2;
 
-			h2 = hash_rotl_32(h2, 17); h2 += h3;
-			h2 = h2*5 + 0x0bcaa747;
+			h2 = hash_rotl_32(h2, 17);
+			h2 += h3;
+			h2 = h2 * 5 + 0x0bcaa747;
 
-			k3 *= c3; k3 = hash_rotl_32(k3, 17); k3 *= c4; h3 ^= k3;
+			k3 *= c3;
+			k3 = hash_rotl_32(k3, 17);
+			k3 *= c4;
+			h3 ^= k3;
 
-			h3 = hash_rotl_32(h3, 15); h3 += h4;
-			h3 = h3*5 + 0x96cd1c35;
+			h3 = hash_rotl_32(h3, 15);
+			h3 += h4;
+			h3 = h3 * 5 + 0x96cd1c35;
 
-			k4 *= c4; k4 = hash_rotl_32(k4, 18); k4 *= c1; h4 ^= k4;
+			k4 *= c4;
+			k4 = hash_rotl_32(k4, 18);
+			k4 *= c1;
+			h4 ^= k4;
 
-			h4 = hash_rotl_32(h4, 13); h4 += h1;
-			h4 = h4*5 + 0x32ac3b17;
+			h4 = hash_rotl_32(h4, 13);
+			h4 += h1;
+			h4 = h4 * 5 + 0x32ac3b17;
 		}
 	}
 
 	/* tail */
 	{
-		const uint8_t *tail = (const uint8_t *) (data + nblocks*16);
-		uint32_t k1 = 0;
-		uint32_t k2 = 0;
-		uint32_t k3 = 0;
-		uint32_t k4 = 0;
+		const uint8_t *tail = (const uint8_t *)(data + nblocks * 16);
+		uint32_t       k1 = 0;
+		uint32_t       k2 = 0;
+		uint32_t       k3 = 0;
+		uint32_t       k4 = 0;
 
 		switch (len & 15) {
-		case 15: k4 ^= tail[14] << 16; JEMALLOC_FALLTHROUGH;
-		case 14: k4 ^= tail[13] << 8; JEMALLOC_FALLTHROUGH;
-		case 13: k4 ^= tail[12] << 0;
-			k4 *= c4; k4 = hash_rotl_32(k4, 18); k4 *= c1; h4 ^= k4;
+		case 15:
+			k4 ^= tail[14] << 16;
 			JEMALLOC_FALLTHROUGH;
-		case 12: k3 ^= (uint32_t) tail[11] << 24; JEMALLOC_FALLTHROUGH;
-		case 11: k3 ^= tail[10] << 16; JEMALLOC_FALLTHROUGH;
-		case 10: k3 ^= tail[ 9] << 8; JEMALLOC_FALLTHROUGH;
-		case  9: k3 ^= tail[ 8] << 0;
-			k3 *= c3; k3 = hash_rotl_32(k3, 17); k3 *= c4; h3 ^= k3;
+		case 14:
+			k4 ^= tail[13] << 8;
 			JEMALLOC_FALLTHROUGH;
-		case  8: k2 ^= (uint32_t) tail[ 7] << 24; JEMALLOC_FALLTHROUGH;
-		case  7: k2 ^= tail[ 6] << 16; JEMALLOC_FALLTHROUGH;
-		case  6: k2 ^= tail[ 5] << 8; JEMALLOC_FALLTHROUGH;
-		case  5: k2 ^= tail[ 4] << 0;
-			k2 *= c2; k2 = hash_rotl_32(k2, 16); k2 *= c3; h2 ^= k2;
+		case 13:
+			k4 ^= tail[12] << 0;
+			k4 *= c4;
+			k4 = hash_rotl_32(k4, 18);
+			k4 *= c1;
+			h4 ^= k4;
 			JEMALLOC_FALLTHROUGH;
-		case  4: k1 ^= (uint32_t) tail[ 3] << 24; JEMALLOC_FALLTHROUGH;
-		case  3: k1 ^= tail[ 2] << 16; JEMALLOC_FALLTHROUGH;
-		case  2: k1 ^= tail[ 1] << 8; JEMALLOC_FALLTHROUGH;
-		case  1: k1 ^= tail[ 0] << 0;
-			k1 *= c1; k1 = hash_rotl_32(k1, 15); k1 *= c2; h1 ^= k1;
+		case 12:
+			k3 ^= (uint32_t)tail[11] << 24;
+			JEMALLOC_FALLTHROUGH;
+		case 11:
+			k3 ^= tail[10] << 16;
+			JEMALLOC_FALLTHROUGH;
+		case 10:
+			k3 ^= tail[9] << 8;
+			JEMALLOC_FALLTHROUGH;
+		case 9:
+			k3 ^= tail[8] << 0;
+			k3 *= c3;
+			k3 = hash_rotl_32(k3, 17);
+			k3 *= c4;
+			h3 ^= k3;
+			JEMALLOC_FALLTHROUGH;
+		case 8:
+			k2 ^= (uint32_t)tail[7] << 24;
+			JEMALLOC_FALLTHROUGH;
+		case 7:
+			k2 ^= tail[6] << 16;
+			JEMALLOC_FALLTHROUGH;
+		case 6:
+			k2 ^= tail[5] << 8;
+			JEMALLOC_FALLTHROUGH;
+		case 5:
+			k2 ^= tail[4] << 0;
+			k2 *= c2;
+			k2 = hash_rotl_32(k2, 16);
+			k2 *= c3;
+			h2 ^= k2;
+			JEMALLOC_FALLTHROUGH;
+		case 4:
+			k1 ^= (uint32_t)tail[3] << 24;
+			JEMALLOC_FALLTHROUGH;
+		case 3:
+			k1 ^= tail[2] << 16;
+			JEMALLOC_FALLTHROUGH;
+		case 2:
+			k1 ^= tail[1] << 8;
+			JEMALLOC_FALLTHROUGH;
+		case 1:
+			k1 ^= tail[0] << 0;
+			k1 *= c1;
+			k1 = hash_rotl_32(k1, 15);
+			k1 *= c2;
+			h1 ^= k1;
 			break;
 		}
 	}
 
 	/* finalization */
-	h1 ^= len; h2 ^= len; h3 ^= len; h4 ^= len;
+	h1 ^= len;
+	h2 ^= len;
+	h3 ^= len;
+	h4 ^= len;
 
-	h1 += h2; h1 += h3; h1 += h4;
-	h2 += h1; h3 += h1; h4 += h1;
+	h1 += h2;
+	h1 += h3;
+	h1 += h4;
+	h2 += h1;
+	h3 += h1;
+	h4 += h1;
 
 	h1 = hash_fmix_32(h1);
 	h2 = hash_fmix_32(h2);
 	h3 = hash_fmix_32(h3);
 	h4 = hash_fmix_32(h4);
 
-	h1 += h2; h1 += h3; h1 += h4;
-	h2 += h1; h3 += h1; h4 += h1;
+	h1 += h2;
+	h1 += h3;
+	h1 += h4;
+	h2 += h1;
+	h3 += h1;
+	h4 += h1;
 
-	r_out[0] = (((uint64_t) h2) << 32) | h1;
-	r_out[1] = (((uint64_t) h4) << 32) | h3;
+	r_out[0] = (((uint64_t)h2) << 32) | h1;
+	r_out[1] = (((uint64_t)h4) << 32) | h3;
 }
 
 static inline void
-hash_x64_128(const void *key, const int len, const uint32_t seed,
-    uint64_t r_out[2]) {
-	const uint8_t *data = (const uint8_t *) key;
-	const int nblocks = len / 16;
+hash_x64_128(
+    const void *key, const int len, const uint32_t seed, uint64_t r_out[2]) {
+	const uint8_t *data = (const uint8_t *)key;
+	const int      nblocks = len / 16;
 
 	uint64_t h1 = seed;
 	uint64_t h2 = seed;
@@ -236,56 +309,99 @@ hash_x64_128(const void *key, const int len, const uint32_t seed,
 
 	/* body */
 	{
-		const uint64_t *blocks = (const uint64_t *) (data);
-		int i;
+		const uint64_t *blocks = (const uint64_t *)(data);
+		int             i;
 
 		for (i = 0; i < nblocks; i++) {
-			uint64_t k1 = hash_get_block_64(blocks, i*2 + 0);
-			uint64_t k2 = hash_get_block_64(blocks, i*2 + 1);
+			uint64_t k1 = hash_get_block_64(blocks, i * 2 + 0);
+			uint64_t k2 = hash_get_block_64(blocks, i * 2 + 1);
 
-			k1 *= c1; k1 = hash_rotl_64(k1, 31); k1 *= c2; h1 ^= k1;
+			k1 *= c1;
+			k1 = hash_rotl_64(k1, 31);
+			k1 *= c2;
+			h1 ^= k1;
 
-			h1 = hash_rotl_64(h1, 27); h1 += h2;
-			h1 = h1*5 + 0x52dce729;
+			h1 = hash_rotl_64(h1, 27);
+			h1 += h2;
+			h1 = h1 * 5 + 0x52dce729;
 
-			k2 *= c2; k2 = hash_rotl_64(k2, 33); k2 *= c1; h2 ^= k2;
+			k2 *= c2;
+			k2 = hash_rotl_64(k2, 33);
+			k2 *= c1;
+			h2 ^= k2;
 
-			h2 = hash_rotl_64(h2, 31); h2 += h1;
-			h2 = h2*5 + 0x38495ab5;
+			h2 = hash_rotl_64(h2, 31);
+			h2 += h1;
+			h2 = h2 * 5 + 0x38495ab5;
 		}
 	}
 
 	/* tail */
 	{
-		const uint8_t *tail = (const uint8_t*)(data + nblocks*16);
-		uint64_t k1 = 0;
-		uint64_t k2 = 0;
+		const uint8_t *tail = (const uint8_t *)(data + nblocks * 16);
+		uint64_t       k1 = 0;
+		uint64_t       k2 = 0;
 
 		switch (len & 15) {
-		case 15: k2 ^= ((uint64_t)(tail[14])) << 48; JEMALLOC_FALLTHROUGH;
-		case 14: k2 ^= ((uint64_t)(tail[13])) << 40; JEMALLOC_FALLTHROUGH;
-		case 13: k2 ^= ((uint64_t)(tail[12])) << 32; JEMALLOC_FALLTHROUGH;
-		case 12: k2 ^= ((uint64_t)(tail[11])) << 24; JEMALLOC_FALLTHROUGH;
-		case 11: k2 ^= ((uint64_t)(tail[10])) << 16; JEMALLOC_FALLTHROUGH;
-		case 10: k2 ^= ((uint64_t)(tail[ 9])) << 8;  JEMALLOC_FALLTHROUGH;
-		case  9: k2 ^= ((uint64_t)(tail[ 8])) << 0;
-			k2 *= c2; k2 = hash_rotl_64(k2, 33); k2 *= c1; h2 ^= k2;
+		case 15:
+			k2 ^= ((uint64_t)(tail[14])) << 48;
 			JEMALLOC_FALLTHROUGH;
-		case  8: k1 ^= ((uint64_t)(tail[ 7])) << 56; JEMALLOC_FALLTHROUGH;
-		case  7: k1 ^= ((uint64_t)(tail[ 6])) << 48; JEMALLOC_FALLTHROUGH;
-		case  6: k1 ^= ((uint64_t)(tail[ 5])) << 40; JEMALLOC_FALLTHROUGH;
-		case  5: k1 ^= ((uint64_t)(tail[ 4])) << 32; JEMALLOC_FALLTHROUGH;
-		case  4: k1 ^= ((uint64_t)(tail[ 3])) << 24; JEMALLOC_FALLTHROUGH;
-		case  3: k1 ^= ((uint64_t)(tail[ 2])) << 16; JEMALLOC_FALLTHROUGH;
-		case  2: k1 ^= ((uint64_t)(tail[ 1])) << 8;  JEMALLOC_FALLTHROUGH;
-		case  1: k1 ^= ((uint64_t)(tail[ 0])) << 0;
-			k1 *= c1; k1 = hash_rotl_64(k1, 31); k1 *= c2; h1 ^= k1;
+		case 14:
+			k2 ^= ((uint64_t)(tail[13])) << 40;
+			JEMALLOC_FALLTHROUGH;
+		case 13:
+			k2 ^= ((uint64_t)(tail[12])) << 32;
+			JEMALLOC_FALLTHROUGH;
+		case 12:
+			k2 ^= ((uint64_t)(tail[11])) << 24;
+			JEMALLOC_FALLTHROUGH;
+		case 11:
+			k2 ^= ((uint64_t)(tail[10])) << 16;
+			JEMALLOC_FALLTHROUGH;
+		case 10:
+			k2 ^= ((uint64_t)(tail[9])) << 8;
+			JEMALLOC_FALLTHROUGH;
+		case 9:
+			k2 ^= ((uint64_t)(tail[8])) << 0;
+			k2 *= c2;
+			k2 = hash_rotl_64(k2, 33);
+			k2 *= c1;
+			h2 ^= k2;
+			JEMALLOC_FALLTHROUGH;
+		case 8:
+			k1 ^= ((uint64_t)(tail[7])) << 56;
+			JEMALLOC_FALLTHROUGH;
+		case 7:
+			k1 ^= ((uint64_t)(tail[6])) << 48;
+			JEMALLOC_FALLTHROUGH;
+		case 6:
+			k1 ^= ((uint64_t)(tail[5])) << 40;
+			JEMALLOC_FALLTHROUGH;
+		case 5:
+			k1 ^= ((uint64_t)(tail[4])) << 32;
+			JEMALLOC_FALLTHROUGH;
+		case 4:
+			k1 ^= ((uint64_t)(tail[3])) << 24;
+			JEMALLOC_FALLTHROUGH;
+		case 3:
+			k1 ^= ((uint64_t)(tail[2])) << 16;
+			JEMALLOC_FALLTHROUGH;
+		case 2:
+			k1 ^= ((uint64_t)(tail[1])) << 8;
+			JEMALLOC_FALLTHROUGH;
+		case 1:
+			k1 ^= ((uint64_t)(tail[0])) << 0;
+			k1 *= c1;
+			k1 = hash_rotl_64(k1, 31);
+			k1 *= c2;
+			h1 ^= k1;
 			break;
 		}
 	}
 
 	/* finalization */
-	h1 ^= len; h2 ^= len;
+	h1 ^= len;
+	h2 ^= len;
 
 	h1 += h2;
 	h2 += h1;

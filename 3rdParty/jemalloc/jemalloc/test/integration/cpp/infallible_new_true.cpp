@@ -8,7 +8,8 @@
  */
 typedef void (*abort_hook_t)(const char *message);
 bool fake_abort_called;
-void fake_abort(const char *message) {
+void
+fake_abort(const char *message) {
 	const char *expected_start = "<jemalloc>: Allocation of size";
 	if (strncmp(message, expected_start, strlen(expected_start)) != 0) {
 		abort();
@@ -19,7 +20,7 @@ void fake_abort(const char *message) {
 static bool
 own_operator_new(void) {
 	uint64_t before, after;
-	size_t sz = sizeof(before);
+	size_t   sz = sizeof(before);
 
 	/* thread.allocated is always available, even w/o config_stats. */
 	expect_d_eq(mallctl("thread.allocated", (void *)&before, &sz, NULL, 0),
@@ -35,8 +36,8 @@ own_operator_new(void) {
 TEST_BEGIN(test_failing_alloc) {
 	abort_hook_t abort_hook = &fake_abort;
 	expect_d_eq(mallctl("experimental.hooks.safety_check_abort", NULL, NULL,
-	    (void *)&abort_hook, sizeof(abort_hook)), 0,
-	    "Unexpected mallctl failure setting abort hook");
+	                (void *)&abort_hook, sizeof(abort_hook)),
+	    0, "Unexpected mallctl failure setting abort hook");
 
 	/*
 	 * Not owning operator new is only expected to happen on MinGW which
@@ -61,6 +62,5 @@ TEST_END
 
 int
 main(void) {
-	return test(
-	    test_failing_alloc);
+	return test(test_failing_alloc);
 }

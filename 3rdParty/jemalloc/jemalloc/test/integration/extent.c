@@ -6,26 +6,29 @@
 
 static void
 test_extent_body(unsigned arena_ind) {
-	void *p;
+	void  *p;
 	size_t large0, large1, large2, sz;
 	size_t purge_mib[3];
 	size_t purge_miblen;
-	int flags;
-	bool xallocx_success_a, xallocx_success_b, xallocx_success_c;
+	int    flags;
+	bool   xallocx_success_a, xallocx_success_b, xallocx_success_c;
 
 	flags = MALLOCX_ARENA(arena_ind) | MALLOCX_TCACHE_NONE;
 
 	/* Get large size classes. */
 	sz = sizeof(size_t);
-	expect_d_eq(mallctl("arenas.lextent.0.size", (void *)&large0, &sz, NULL,
-	    0), 0, "Unexpected arenas.lextent.0.size failure");
-	expect_d_eq(mallctl("arenas.lextent.1.size", (void *)&large1, &sz, NULL,
-	    0), 0, "Unexpected arenas.lextent.1.size failure");
-	expect_d_eq(mallctl("arenas.lextent.2.size", (void *)&large2, &sz, NULL,
-	    0), 0, "Unexpected arenas.lextent.2.size failure");
+	expect_d_eq(
+	    mallctl("arenas.lextent.0.size", (void *)&large0, &sz, NULL, 0), 0,
+	    "Unexpected arenas.lextent.0.size failure");
+	expect_d_eq(
+	    mallctl("arenas.lextent.1.size", (void *)&large1, &sz, NULL, 0), 0,
+	    "Unexpected arenas.lextent.1.size failure");
+	expect_d_eq(
+	    mallctl("arenas.lextent.2.size", (void *)&large2, &sz, NULL, 0), 0,
+	    "Unexpected arenas.lextent.2.size failure");
 
 	/* Test dalloc/decommit/purge cascade. */
-	purge_miblen = sizeof(purge_mib)/sizeof(size_t);
+	purge_miblen = sizeof(purge_mib) / sizeof(size_t);
 	expect_d_eq(mallctlnametomib("arena.0.purge", purge_mib, &purge_miblen),
 	    0, "Unexpected mallctlnametomib() failure");
 	purge_mib[1] = (size_t)arena_ind;
@@ -47,8 +50,8 @@ test_extent_body(unsigned arena_ind) {
 	if (xallocx_success_a) {
 		expect_true(called_dalloc, "Expected dalloc call");
 		expect_true(called_decommit, "Expected decommit call");
-		expect_true(did_purge_lazy || did_purge_forced,
-		    "Expected purge");
+		expect_true(
+		    did_purge_lazy || did_purge_forced, "Expected purge");
 		expect_true(called_split, "Expected split call");
 	}
 	dallocx(p, flags);
@@ -72,8 +75,8 @@ test_extent_body(unsigned arena_ind) {
 	}
 	xallocx_success_c = (xallocx(p, large0 * 2, 0, flags) == large0 * 2);
 	if (did_split) {
-		expect_b_eq(did_decommit, did_commit,
-		    "Expected decommit/commit match");
+		expect_b_eq(
+		    did_decommit, did_commit, "Expected decommit/commit match");
 	}
 	if (xallocx_success_b && xallocx_success_c) {
 		expect_true(did_merge, "Expected merge");
@@ -90,33 +93,34 @@ test_extent_body(unsigned arena_ind) {
 
 static void
 test_manual_hook_auto_arena(void) {
-	unsigned narenas;
-	size_t old_size, new_size, sz;
-	size_t hooks_mib[3];
-	size_t hooks_miblen;
+	unsigned        narenas;
+	size_t          old_size, new_size, sz;
+	size_t          hooks_mib[3];
+	size_t          hooks_miblen;
 	extent_hooks_t *new_hooks, *old_hooks;
 
 	extent_hooks_prep();
 
 	sz = sizeof(unsigned);
 	/* Get number of auto arenas. */
-	expect_d_eq(mallctl("opt.narenas", (void *)&narenas, &sz, NULL, 0),
-	    0, "Unexpected mallctl() failure");
+	expect_d_eq(mallctl("opt.narenas", (void *)&narenas, &sz, NULL, 0), 0,
+	    "Unexpected mallctl() failure");
 	if (narenas == 1) {
 		return;
 	}
 
 	/* Install custom extent hooks on arena 1 (might not be initialized). */
-	hooks_miblen = sizeof(hooks_mib)/sizeof(size_t);
-	expect_d_eq(mallctlnametomib("arena.0.extent_hooks", hooks_mib,
-	    &hooks_miblen), 0, "Unexpected mallctlnametomib() failure");
+	hooks_miblen = sizeof(hooks_mib) / sizeof(size_t);
+	expect_d_eq(
+	    mallctlnametomib("arena.0.extent_hooks", hooks_mib, &hooks_miblen),
+	    0, "Unexpected mallctlnametomib() failure");
 	hooks_mib[1] = 1;
 	old_size = sizeof(extent_hooks_t *);
 	new_hooks = &hooks;
 	new_size = sizeof(extent_hooks_t *);
 	expect_d_eq(mallctlbymib(hooks_mib, hooks_miblen, (void *)&old_hooks,
-	    &old_size, (void *)&new_hooks, new_size), 0,
-	    "Unexpected extent_hooks error");
+	                &old_size, (void *)&new_hooks, new_size),
+	    0, "Unexpected extent_hooks error");
 	static bool auto_arena_created = false;
 	if (old_hooks != &hooks) {
 		expect_b_eq(auto_arena_created, false,
@@ -127,10 +131,10 @@ test_manual_hook_auto_arena(void) {
 
 static void
 test_manual_hook_body(void) {
-	unsigned arena_ind;
-	size_t old_size, new_size, sz;
-	size_t hooks_mib[3];
-	size_t hooks_miblen;
+	unsigned        arena_ind;
+	size_t          old_size, new_size, sz;
+	size_t          hooks_mib[3];
+	size_t          hooks_miblen;
 	extent_hooks_t *new_hooks, *old_hooks;
 
 	extent_hooks_prep();
@@ -140,16 +144,17 @@ test_manual_hook_body(void) {
 	    0, "Unexpected mallctl() failure");
 
 	/* Install custom extent hooks. */
-	hooks_miblen = sizeof(hooks_mib)/sizeof(size_t);
-	expect_d_eq(mallctlnametomib("arena.0.extent_hooks", hooks_mib,
-	    &hooks_miblen), 0, "Unexpected mallctlnametomib() failure");
+	hooks_miblen = sizeof(hooks_mib) / sizeof(size_t);
+	expect_d_eq(
+	    mallctlnametomib("arena.0.extent_hooks", hooks_mib, &hooks_miblen),
+	    0, "Unexpected mallctlnametomib() failure");
 	hooks_mib[1] = (size_t)arena_ind;
 	old_size = sizeof(extent_hooks_t *);
 	new_hooks = &hooks;
 	new_size = sizeof(extent_hooks_t *);
 	expect_d_eq(mallctlbymib(hooks_mib, hooks_miblen, (void *)&old_hooks,
-	    &old_size, (void *)&new_hooks, new_size), 0,
-	    "Unexpected extent_hooks error");
+	                &old_size, (void *)&new_hooks, new_size),
+	    0, "Unexpected extent_hooks error");
 	expect_ptr_ne(old_hooks->alloc, extent_alloc_hook,
 	    "Unexpected extent_hooks error");
 	expect_ptr_ne(old_hooks->dalloc, extent_dalloc_hook,
@@ -173,10 +178,13 @@ test_manual_hook_body(void) {
 
 	/* Restore extent hooks. */
 	expect_d_eq(mallctlbymib(hooks_mib, hooks_miblen, NULL, NULL,
-	    (void *)&old_hooks, new_size), 0, "Unexpected extent_hooks error");
+	                (void *)&old_hooks, new_size),
+	    0, "Unexpected extent_hooks error");
 	expect_d_eq(mallctlbymib(hooks_mib, hooks_miblen, (void *)&old_hooks,
-	    &old_size, NULL, 0), 0, "Unexpected extent_hooks error");
-	expect_ptr_eq(old_hooks, default_hooks, "Unexpected extent_hooks error");
+	                &old_size, NULL, 0),
+	    0, "Unexpected extent_hooks error");
+	expect_ptr_eq(
+	    old_hooks, default_hooks, "Unexpected extent_hooks error");
 	expect_ptr_eq(old_hooks->alloc, default_hooks->alloc,
 	    "Unexpected extent_hooks error");
 	expect_ptr_eq(old_hooks->dalloc, default_hooks->dalloc,
@@ -213,8 +221,8 @@ TEST_BEGIN(test_extent_manual_hook) {
 TEST_END
 
 TEST_BEGIN(test_extent_auto_hook) {
-	unsigned arena_ind;
-	size_t new_size, sz;
+	unsigned        arena_ind;
+	size_t          new_size, sz;
 	extent_hooks_t *new_hooks;
 
 	extent_hooks_prep();
@@ -223,7 +231,8 @@ TEST_BEGIN(test_extent_auto_hook) {
 	new_hooks = &hooks;
 	new_size = sizeof(extent_hooks_t *);
 	expect_d_eq(mallctl("arenas.create", (void *)&arena_ind, &sz,
-	    (void *)&new_hooks, new_size), 0, "Unexpected mallctl() failure");
+	                (void *)&new_hooks, new_size),
+	    0, "Unexpected mallctl() failure");
 
 	test_skip_if(is_background_thread_enabled());
 	test_extent_body(arena_ind);
@@ -231,19 +240,18 @@ TEST_BEGIN(test_extent_auto_hook) {
 TEST_END
 
 static void
-test_arenas_create_ext_base(arena_config_t config,
-	bool expect_hook_data, bool expect_hook_metadata)
-{
+test_arenas_create_ext_base(
+    arena_config_t config, bool expect_hook_data, bool expect_hook_metadata) {
 	unsigned arena, arena1;
-	void *ptr;
-	size_t sz = sizeof(unsigned);
+	void    *ptr;
+	size_t   sz = sizeof(unsigned);
 
 	extent_hooks_prep();
 
 	called_alloc = false;
-	expect_d_eq(mallctl("experimental.arenas_create_ext",
-	    (void *)&arena, &sz, &config, sizeof(arena_config_t)), 0,
-	    "Unexpected mallctl() failure");
+	expect_d_eq(mallctl("experimental.arenas_create_ext", (void *)&arena,
+	                &sz, &config, sizeof(arena_config_t)),
+	    0, "Unexpected mallctl() failure");
 	expect_b_eq(called_alloc, expect_hook_metadata,
 	    "expected hook metadata alloc mismatch");
 
@@ -279,9 +287,7 @@ TEST_END
 
 int
 main(void) {
-	return test(
-	    test_extent_manual_hook,
-	    test_extent_auto_hook,
+	return test(test_extent_manual_hook, test_extent_auto_hook,
 	    test_arenas_create_ext_with_ehooks_no_metadata,
 	    test_arenas_create_ext_with_ehooks_with_metadata);
 }
