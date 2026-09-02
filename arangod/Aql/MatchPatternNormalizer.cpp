@@ -143,8 +143,8 @@ NormalizedMatchSegment MatchPatternNormalizer::normalizeSegment(
   ast::PatternSegment typed{&segment};
 
   NormalizedMatchSegment result;
-  result.edge = normalizeEdge(*typed.edge().get());
-  result.target = normalizeStartElement(*typed.node());
+  result.edge = normalizeEdge(*typed.getEdge().get());
+  result.target = normalizeStartElement(*typed.getNode());
   return result;
 }
 
@@ -153,17 +153,17 @@ NormalizedVertex MatchPatternNormalizer::normalizeVertex(
   ast::PatternNodePattern typed{&nodePattern};
 
   NormalizedVertex vertex;
-  vertex.variable = normalizeOutputVariable(typed.outVariable());
+  vertex.variable = normalizeOutputVariable(typed.getOutVariable());
 
-  AstNode const* label = typed.labels();
+  AstNode const* label = typed.getLabels();
   if (label == nullptr || label->type == NODE_TYPE_VALUE) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "match vertex without collection label");
   }
   vertex.collection = normalizeDataSource(*label);
-  vertex.properties = normalizeProperties(typed.properties());
-  vertex.filter = normalizeFilter(typed.filter());
-  vertex.projection = normalizeProjection(typed.projection());
+  vertex.properties = normalizeProperties(typed.getProperties());
+  vertex.filter = normalizeFilter(typed.getFilter());
+  vertex.projection = normalizeProjection(typed.getProjection());
   return vertex;
 }
 
@@ -172,8 +172,8 @@ NormalizedEdge MatchPatternNormalizer::normalizeEdge(
   ast::PatternEdge typed{&edge};
 
   NormalizedEdge result;
-  result.variable = normalizeOutputVariable(typed.outVariable());
-  AstNode const* collectionsNode = typed.label();
+  result.variable = normalizeOutputVariable(typed.getOutVariable());
+  AstNode const* collectionsNode = typed.getCollections();
   result.collections = normalizeDataSourceList(collectionsNode);
   if (collectionsNode != nullptr && collectionsNode->type == NODE_TYPE_ARRAY) {
     result.collectionAstNodes.reserve(collectionsNode->numMembers());
@@ -185,11 +185,11 @@ NormalizedEdge MatchPatternNormalizer::normalizeEdge(
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "match edge without collection label");
   }
-  result.properties = normalizeProperties(typed.properties());
-  result.filter = normalizeFilter(typed.filter());
-  result.direction = normalizeDirection(typed.direction());
-  result.range = normalizeRange(typed.range());
-  result.projection = normalizeProjection(typed.projection());
+  result.properties = normalizeProperties(typed.getProperties());
+  result.filter = normalizeFilter(typed.getFilter());
+  result.direction = normalizeDirection(typed.getDirection());
+  result.range = normalizeRange(typed.getRange());
+  result.projection = normalizeProjection(typed.getProjection());
   return result;
 }
 
