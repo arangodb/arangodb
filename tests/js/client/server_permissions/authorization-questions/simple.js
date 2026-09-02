@@ -81,7 +81,7 @@ function simpleApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/simple/all`, { collection: c, limit: 1 });
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c level=read"
       ], endObserve());
@@ -93,7 +93,7 @@ function simpleApiAuthzSuite () {
       arango.PUT_RAW(`/_db/${DB}/_api/simple/all-keys`,
                      { collection: c, limit: 1 });
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c level=read"
       ], endObserve());
@@ -106,7 +106,7 @@ function simpleApiAuthzSuite () {
       arango.PUT_RAW(`/_db/${DB}/_api/simple/by-example`,
                      { collection: c, example: { Hallo: 1 } });
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c level=read"
       ], endObserve());
@@ -119,7 +119,7 @@ function simpleApiAuthzSuite () {
       arango.PUT_RAW(`/_db/${DB}/_api/simple/lookup-by-keys`,
                      { collection: c, keys: ['nonexistent-key-apitester-99999'] });
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c level=read"
       ], endObserve());
@@ -133,7 +133,7 @@ function simpleApiAuthzSuite () {
       arango.PUT_RAW(`/_db/${DB}/_api/simple/remove-by-keys`,
                      { collection: c, keys: ['nonexistent-key-apitester-99999'] });
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "UseCollection db=d name=c level=writedata",

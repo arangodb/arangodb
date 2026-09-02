@@ -31,7 +31,7 @@
 //
 // Handler: arangod/RestHandler/RestCollectionHandler.cpp
 //
-// Every request first asks `UseApiVersion version=0` and then
+// Every request first asks `UseApiVersion version=1` and then
 // `UseDatabase name=d level=read`. Read metadata endpoints then look the
 // collection up via methods::Collections::lookup(), which asks
 // `UseCollection ... level=read`. Write/metadata endpoints additionally ask a
@@ -100,7 +100,7 @@ function collectionApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/collection`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=d level=read",
         "SeeCollection db=d name=c",
         "SeeCollection db=d name=e",
@@ -120,7 +120,7 @@ function collectionApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/collection/${c}`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c level=read"
       ], endObserve());
@@ -131,7 +131,7 @@ function collectionApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/collection/${c}/checksum`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c level=read"
       ], endObserve());
@@ -142,7 +142,7 @@ function collectionApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/collection/${c}/count`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c level=read"
       ], endObserve());
@@ -153,7 +153,7 @@ function collectionApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/collection/${c}/figures`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c level=read"
       ], endObserve());
@@ -164,7 +164,7 @@ function collectionApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/collection/${c}/properties`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c level=read"
       ], endObserve());
@@ -175,7 +175,7 @@ function collectionApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/collection/${c}/revision`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c level=read"
       ], endObserve());
@@ -186,7 +186,7 @@ function collectionApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/collection/${c}/shards`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c level=read"
       ], endObserve());
@@ -197,7 +197,7 @@ function collectionApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/collection/${c}/load`, {});
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c level=read"
       ], endObserve());
@@ -208,7 +208,7 @@ function collectionApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/collection/${c}/unload`, {});
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c level=read"
       ], endObserve());
@@ -220,7 +220,7 @@ function collectionApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/collection/${c}/loadIndexesIntoMemory`, {});
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c level=read"
       ], endObserve());
@@ -232,7 +232,7 @@ function collectionApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/collection/${c}/compact`, {});
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c level=read"
       ], endObserve());
@@ -246,7 +246,7 @@ function collectionApiAuthzSuite () {
       arango.PUT_RAW(`/_db/${DB}/_api/collection/${c}/properties`,
                      { waitForSync: false });
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c level=read",
         "IsReadOnly",
@@ -264,7 +264,7 @@ function collectionApiAuthzSuite () {
       arango.PUT_RAW(`/_db/${DB}/_api/collection/${c}/responsibleShard`,
                      { _key: 'k1' });
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c level=read"
       ], endObserve());
@@ -276,7 +276,7 @@ function collectionApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/collection/${c}/truncate`, {});
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c level=read",
         "IsReadOnly",
@@ -302,7 +302,7 @@ function collectionApiAuthzSuite () {
       // AUDIT: a coordinator only resolves the collection - neither the
       // writemeta question nor the graph cleanup is asked
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c_apitest level=read",
         ...singleOnly([
@@ -325,7 +325,7 @@ function collectionApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/${DB}/_api/collection`, { name: tmp });
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "CreateCollection db=d name=c_apitest",
@@ -346,7 +346,7 @@ function collectionApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/collection/${tmp}`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "DropCollection db=d name=c_apitest",

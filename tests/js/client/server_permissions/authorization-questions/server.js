@@ -32,7 +32,7 @@
 // RestOptionsDescriptionHandler, RestPublicOptionsHandler,
 // RestAdminRoutingHandler, RestAdminServerHandler.
 //
-// Every request first asks `UseApiVersion version=0` and then
+// Every request first asks `UseApiVersion version=1` and then
 // `UseDatabase name=_system level=read`. Beyond that:
 //   - Hardened actions (license, metrics) ask nothing without --server.harden.
 //   - isSuperuser / isSuperuserOrDisabled checks do not call can().
@@ -71,7 +71,7 @@ function serverApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/deployment/id`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -84,7 +84,7 @@ function serverApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/_system/_admin/execute`, "1");
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -95,7 +95,7 @@ function serverApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/license`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -106,7 +106,7 @@ function serverApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_admin/license`, {});
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -117,7 +117,7 @@ function serverApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/metrics`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -131,7 +131,7 @@ function serverApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/options`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -142,7 +142,7 @@ function serverApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/options-description`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -152,7 +152,7 @@ function serverApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/options-public`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -162,7 +162,7 @@ function serverApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/_system/_admin/routing/reload`, {});
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -175,7 +175,7 @@ function serverApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/server/api-calls`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read",
         "AdminApiCalls"
       ], endObserve());
@@ -188,7 +188,7 @@ function serverApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/server/aql-queries`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read",
         "AdminAqlQueries"
       ], endObserve());
@@ -207,7 +207,7 @@ function serverApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/server/databaseDefaults`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -217,7 +217,7 @@ function serverApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/server/id`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -227,7 +227,7 @@ function serverApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/server/mode`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -239,7 +239,7 @@ function serverApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_admin/server/mode`, { mode: "default" });
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read",
         "AdminMaintenance"
       ], endObserve());
@@ -250,7 +250,7 @@ function serverApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/server/role`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -260,7 +260,7 @@ function serverApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/server/tls`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -270,7 +270,7 @@ function serverApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/_system/_admin/server/tls`, {});
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -281,7 +281,7 @@ function serverApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/server/jwt`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -292,7 +292,7 @@ function serverApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/_system/_admin/server/jwt`, {});
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -303,7 +303,7 @@ function serverApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/server/encryption`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -314,7 +314,7 @@ function serverApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/_system/_admin/server/encryption`, {});
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },

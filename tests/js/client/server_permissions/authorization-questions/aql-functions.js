@@ -38,7 +38,7 @@
 // A WRITE transaction on a collection asks both the read and the writedata
 // question for that collection (cf. documents.js / authorization-questions.js
 // testInsertDocument). Every request additionally asks
-// `UseApiVersion version=0` and `UseDatabase name=<db> level=read` first.
+// `UseApiVersion version=1` and `UseDatabase name=<db> level=read` first.
 
 if (getOptions === true) {
   return {
@@ -103,7 +103,7 @@ function aqlFunctionApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/aqlfunction`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=_aqlfunctions level=read"
       ], endObserve());
@@ -114,7 +114,7 @@ function aqlFunctionApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/aqlfunction/APITESTNS`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=_aqlfunctions level=read"
       ], endObserve());
@@ -128,7 +128,7 @@ function aqlFunctionApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/${DB}/_api/aqlfunction`, fnBody);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "UseCollection db=d name=_aqlfunctions level=writedata",
@@ -145,7 +145,7 @@ function aqlFunctionApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/aqlfunction/${fnName}`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "UseCollection db=d name=_aqlfunctions level=writedata",
@@ -160,7 +160,7 @@ function aqlFunctionApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/aqlfunction`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read",
         "UseCollection db=_system name=_aqlfunctions level=read"
       ], endObserve());
@@ -171,7 +171,7 @@ function aqlFunctionApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/aqlfunction/APITESTNS`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read",
         "UseCollection db=_system name=_aqlfunctions level=read"
       ], endObserve());
@@ -185,7 +185,7 @@ function aqlFunctionApiAuthzSuite () {
       arango.POST_RAW(`/_db/_system/_api/aqlfunction`, fnBody);
       // creating a function in _system asks the read in both deployment modes
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read",
         "UseCollection db=_system name=_aqlfunctions level=read",
         "IsReadOnly",
@@ -200,7 +200,7 @@ function aqlFunctionApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_api/aqlfunction/${fnName}`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read",
         "IsReadOnly",
         "UseCollection db=_system name=_aqlfunctions level=writedata",

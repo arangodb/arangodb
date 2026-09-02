@@ -65,7 +65,7 @@
 //
 // Baseline for every request that goes through the normal checks:
 //
-//   UseApiVersion version=0
+//   UseApiVersion version=1
 //   UseDatabase name=<db> level=read
 //
 // The database is the one from the /_db/<name> path prefix; we spell it out
@@ -120,7 +120,7 @@ function catchallAuthzSuite () {
 
   // the base questions of a request that goes through the normal checks
   const base = (db) => [
-    "UseApiVersion version=0",
+    "UseApiVersion version=1",
     `UseDatabase name=${db} level=read`
   ];
 
