@@ -362,8 +362,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
 
             if (requestedLevel <= effectiveLevel) {
               return {};
-            } else if (_requestedApiVersion > 0 &&
-                       effectiveLevel == auth::Level::NONE) {
+            } else if (effectiveLevel == auth::Level::NONE) {
               // User has no access to the database at all: report as not found
               // to avoid revealing its existence.
               return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND};
@@ -406,17 +405,15 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             if (requestedLevel > effectiveLevel) {
               // If we are using API version > 0, then we return NOT_FOUND to
               // hide the fact that the collection exists:
-              if (_requestedApiVersion > 0) {
-                if (effectiveLevel == auth::Level::NONE) {
-                  // User has no access to this collection: report as not found
-                  // to avoid revealing its existence.
+              if (effectiveLevel == auth::Level::NONE) {
+                // User has no access to this collection: report as not found
+                // to avoid revealing its existence.
 
-                  if (ServerState::instance()->isSingleServer()) {
-                    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
-                  } else {
-                    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                            "collection not found"};
-                  }
+                if (ServerState::instance()->isSingleServer()) {
+                  return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
+                } else {
+                  return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                          "collection not found"};
                 }
               }
               if (requestedLevel == arangodb::auth::Level::RW &&
@@ -535,8 +532,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
 
             if (auth::Level::RO <= effectiveLevel) {
               return {};
-            } else if (_requestedApiVersion > 0 &&
-                       effectiveLevel == auth::Level::NONE) {
+            } else if (effectiveLevel == auth::Level::NONE) {
               return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
             } else {
               return {
@@ -563,14 +559,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
           },
           // AdminQueryCache only requires RO access to _system, unlike every
           // other admin action, which requires RW (see below).
-          [&](p::AdminQueryCache const&) -> Result {
-            if (_requestedApiVersion == 0) {
-              return check(p::UseDatabase{.name = StaticStrings::SystemDatabase,
-                                          .level = DatabaseAccessLevel::Read});
-            } else {
-              return isAdmin();
-            }
-          },
+          [&](p::AdminQueryCache const&) -> Result { return isAdmin(); },
           // Every other admin action requires RW access to the _system
           // database.
           [&](p::AnyAdmin auto const&) -> Result { return isAdmin(); },
@@ -617,11 +606,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
               // `TRI_ERROR_ARANGO_READ_ONLY`, but we **must** hand on
               // `TRI_ERROR_FORBIDDEN` here for API compatibility for the
               // API version 0!
-              if (_requestedApiVersion == 0) {
-                return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
-              } else {
-                return r;
-              }
+              return r;
             }
             r = check(p::UseCollection{collection.db, collection.name,
                                        CollectionAccessLevel::WriteMeta});
@@ -630,13 +615,10 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
               // `TRI_ERROR_ARANGO_READ_ONLY`, but we **must** hand on
               // `TRI_ERROR_FORBIDDEN` here for API compatibility for
               // the API Version 0!
-              if (_requestedApiVersion == 0) {
-                return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
-              } else {
-                return r;
-              }
+              return r;
             }
-            return {};
+            return check(p::UseCollection{collection.db, collection.name,
+                                          CollectionAccessLevel::WriteMeta});
           },
           [&](p::SeeView const& view) -> Result {
             // Database RO access is the only prerequisite and has already been
@@ -781,13 +763,8 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                 r.ok()) {
               return {};
             }
-            if (_requestedApiVersion > 0) {
-              return {TRI_ERROR_FORBIDDEN,
-                      failureMessage(graph, "Cannot write to database.")};
-            } else {
-              return {TRI_ERROR_ARANGO_READ_ONLY,
-                      failureMessage(graph, "Cannot write to database.")};
-            }
+            return {TRI_ERROR_FORBIDDEN,
+                    failureMessage(graph, "Cannot write to database.")};
           },
           [&](p::DropGraph const& graph) -> Result {
             // Dropping a graph requires RW access to the database (to write
@@ -1034,15 +1011,7 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
       overload{
           // -- Admin actions ---------------------------------------------
           [&](p::AnyAdmin auto const& admin) -> Result {
-            if (auto r =
-                    checkOne(adminAction(admin), rbac::resources::NoResource{});
-                r.fail()) {
-              // This is for backwards compatibility with the classic case
-              return _requestedApiVersion == 0
-                         ? Result{TRI_ERROR_HTTP_FORBIDDEN, r.errorMessage()}
-                         : r;
-            }
-            return {};
+            return checkOne(adminAction(admin), rbac::resources::NoResource{});
           },
           // -- Databases -------------------------------------------------
           [&](p::UseDatabase const& database) -> Result {
@@ -1344,14 +1313,8 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
           // Each user operation maps to the identically-scoped action on the
           // db:user:<name> resource.
           [&](p::ReadUser const& user) -> Result {
-            if (auto r = checkOne(rbac::Action::Read,
-                                  rbac::resources::User{user.name});
-                r.fail()) {
-              return _requestedApiVersion == 0
-                         ? Result{TRI_ERROR_HTTP_FORBIDDEN, r.errorMessage()}
-                         : r;
-            }
-            return {};
+            return checkOne(rbac::Action::Read,
+                            rbac::resources::User{user.name});
           },
           [&](p::CreateUser const& user) -> Result {
             return checkOne(rbac::Action::Create,
