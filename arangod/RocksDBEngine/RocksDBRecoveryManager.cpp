@@ -84,7 +84,9 @@ RocksDBRecoveryManager::RocksDBRecoveryManager(
   startsAfter<StorageEngine>();
   // implies DatabaseFeature + SystemDatabaseFeature ordering
   startsAfter<ServerIdFeature>();
+}
 
+void RocksDBRecoveryManager::prepare() {
   if (ServerState::instance()->isCoordinator()) {
     setEnabled(false);
   }

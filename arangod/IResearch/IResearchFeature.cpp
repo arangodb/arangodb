@@ -589,7 +589,7 @@ void registerIndexTypeFactories(application_features::ApplicationServer& server,
   if (auto* clusterEngine = dynamic_cast<ClusterEngine*>(&engine)) {
     emplace(clusterEngine->indexFactory(), clusterFactory);
     emplace(clusterEngine->rocksDBIndexFactory(), rocksDBFactory);
-  } else {
+  } else if (dynamic_cast<RocksDBEngine*>(&engine) != nullptr) {
     emplace(engine.indexFactory(), rocksDBFactory);
   }
 }
