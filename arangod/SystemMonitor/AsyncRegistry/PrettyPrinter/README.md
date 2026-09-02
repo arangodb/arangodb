@@ -19,16 +19,18 @@ This ensures that the pretty-printer is loaded to gdb. You can check if it is lo
 #### Unit tests
 
 ```
-ctest --build -R async_registry_python_pretty_printer_test
+ctest --test-dir <build-dir> -R async_registry_python_pretty_printer_test
 ```
 
 #### Integration tests using gdb
 
 ```
-cmake --build --target async_registry_gdb_pretty_printer
-ctest --build -R async_registry_gdb_pretty_printer_test
+cmake --build <build-dir> --target async_registry_gdb_pretty_printer
+ctest --test-dir <build-dir> -R async_registry_gdb_pretty_printer_test
 ```
 use `-V` option on `ctest` to see gdb debug output
+
+This test will start `gdb` and execute tests inside it. It can be that your local `.gdbinit` files tempers with this test execution, for this make sure that gdb does load these files (e.g. if you have `.gdbinit` in your HOME directory, set HOME to somewhere else for the test execution). 
 
 ## Pretty printing the REST call
 

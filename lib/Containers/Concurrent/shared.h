@@ -22,14 +22,33 @@
 #pragma once
 
 #include <atomic>
+#include <concepts>
 #include <cstdint>
 #include <optional>
+#include <type_traits>
 #include <variant>
 #include <iostream>
 
 #include "Inspection/Access.h"
 
 namespace arangodb::containers {
+
+/**
+ * Whether Input... is safe to forward to a constructor template of Self
+ * without competing with Self's copy/move constructors.
+ *
+ * False exactly when called with a single argument whose cv/reference-
+ * stripped type is Self itself - in that case a variadic forwarding-
+ * reference constructor would otherwise outcompete the hand-written
+ * copy/move constructors the value categories
+ * - non-const lvalue (beats copy constructor dues to const adjustment)
+ * - const rvalue (beats copy constructor - move constructor can't bind to const
+ *                 object at all)
+ */
+template<typename Self, typename... Input>
+concept ForwardingConstructorArgs =
+    !(sizeof...(Input) == 1 &&
+      (std::same_as<std::remove_cvref_t<Input>, Self> && ...));
 
 /**
    Reference counting wrapper for a resource
@@ -50,6 +69,7 @@ struct SharedResource {
   }
 
   template<class... Input>
+  requires ForwardingConstructorArgs<SharedResource, Input...>
   explicit SharedResource(Input&&... args)
       : _data{std::forward<Input>(args)...} {}
 
@@ -97,6 +117,7 @@ struct SharedPtr {
   }
 
   template<class... Input>
+  requires ForwardingConstructorArgs<SharedPtr, Input...>
   explicit SharedPtr(Input&&... args)
       : _resource{new SharedResource<T>(std::forward<Input>(args)...)} {}
 
