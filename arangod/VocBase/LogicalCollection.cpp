@@ -337,6 +337,14 @@ bool LogicalCollection::cacheEnabled() const noexcept {
   return _physical->cacheEnabled();
 }
 
+bool LogicalCollection::timeTravelEnabled() const noexcept {
+  return _physical->timeTravelEnabled();
+}
+
+bool LogicalCollection::supportsRBAC() const noexcept {
+  return _supportsRBAC.load();
+}
+
 bool LogicalCollection::waitForSync() const noexcept {
   if (_groupId.has_value() && ServerState::instance()->isDBServer()) {
     TRI_ASSERT(replicationVersion() == replication::Version::TWO)
