@@ -108,12 +108,28 @@ class RocksDBTransactionMethods : public RocksDBMethods {
   virtual rocksdb::Status RollbackToWriteBatchSavePoint() = 0;
   virtual void PopSavePoint() = 0;
 
+  /// @brief record the commit timestamp applied to User-Defined Timestamp
+  /// column families (time travel) when this transaction commits. A rocksdb
+  /// transaction commits its UDT families with a single timestamp, so every
+  /// time-travel write in the same transaction must agree on it; a conflicting
+  /// timestamp is rejected. No-op for methods that do not commit a rocksdb
+  /// transaction. See RocksDBTrxBaseMethods.
+  virtual Result setCommitTimestamp(uint64_t /*ts*/) { return {}; }
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   std::size_t countInBounds(RocksDBKeyBounds const& bounds,
                             bool isElementInRange = false);
 #endif
 
  protected:
+  /// @brief User-Defined Timestamp column families (time travel) require a read
+  /// timestamp on every read, while non-UDT families reject one, so it must be
+  /// applied per column family. For a UDT `cf` this returns a copy of `base`
+  /// reading the current state (kMax timestamp); for any other `cf` it returns
+  /// `base` unchanged.
+  static rocksdb::ReadOptions withUdtReadTimestamp(
+      rocksdb::ReadOptions const& base, rocksdb::ColumnFamilyHandle* cf);
+
   RocksDBTransactionState* _state;
 };
 

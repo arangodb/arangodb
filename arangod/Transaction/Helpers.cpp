@@ -720,17 +720,38 @@ Result newObjectForInsert(Methods& trx, LogicalCollection& collection,
     b->add(StaticStrings::RevString, revisionId.toValuePair(ridBuffer));
   }
 
+  // _created / _expired: time-travel collections stamp every version with the
+  // user-supplied creation timestamp and a null expiry. The user must provide
+  // _created explicitly (the PoC does not auto-generate it); a missing or
+  // non-numeric value is rejected. Any user-supplied _expired on insert is
+  // ignored - a freshly inserted version is always live.
+  bool const timeTravel = collection.timeTravelEnabled();
+  if (timeTravel) {
+    VPackSlice created = value.get(StaticStrings::Created);
+    if (!created.isNumber()) {
+      return Result(TRI_ERROR_BAD_PARAMETER,
+                    "time-travel collections require a numeric '_created' "
+                    "timestamp on insert");
+    }
+    b->add(StaticStrings::Created, created);
+    b->add(StaticStrings::Expired, VPackSlice::nullSlice());
+  }
+
   containers::FlatHashSet<std::string_view> keysWritten;
 
   // add other attributes after the system attributes
   VPackObjectIterator it(value, true);
   while (it.valid()) {
     auto key = it.key().stringView();
-    // _id, _key, _rev, _from, _to. minimum size here is 3
+    // _id, _key, _rev, _from, _to. minimum size here is 3. for time-travel
+    // collections _created/_expired are system attributes too (added above),
+    // so they must not be copied again from the user input.
     if (key.size() < 3 || key[0] != '_' ||
         (key != StaticStrings::KeyString && key != StaticStrings::IdString &&
          key != StaticStrings::RevString && key != StaticStrings::FromString &&
-         key != StaticStrings::ToString)) {
+         key != StaticStrings::ToString &&
+         !(timeTravel &&
+           (key == StaticStrings::Created || key == StaticStrings::Expired)))) {
       b->add(key, it.value());
       if (batchOptions.computedValues != nullptr) {
         // track which attributes we have produced so that they are not
