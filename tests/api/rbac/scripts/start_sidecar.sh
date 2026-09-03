@@ -29,6 +29,22 @@ if [ -f "$PIDFILE" ]; then
 fi
 for i in $(seq 1 20); do ss -ltn 2>/dev/null | grep -qE "$SIDECAR_GRPC" || break; sleep 0.5; done
 
+# The pidfile only covers sidecars *this* $RBAC_WORK started. A sidecar left
+# running from a different work directory - or anything else on these ports -
+# would otherwise sail past the readiness check below, because that check only
+# asks whether the port is bound, not by whom. The failure then reads
+# "authorization.v1 never became healthy", which points at the wrong cause and
+# costs real time. Fail fast with the truth instead.
+for endpoint in "$SIDECAR_GRPC" "$SIDECAR_MGMT" "$SIDECAR_HEALTH"; do
+  if ss -ltn 2>/dev/null | grep -qE "[[:space:]]${endpoint}[[:space:]]"; then
+    echo "sidecar ($MODE) cannot start: ${endpoint} is already in use by a" >&2
+    echo "process this script did not start (pidfile: $PIDFILE)." >&2
+    ss -ltnp 2>/dev/null | grep -E "[[:space:]]${endpoint}[[:space:]]" >&2
+    echo "Stop it first, or point RBAC_WORK at the work directory that owns it." >&2
+    exit 2
+  fi
+done
+
 # 1. The sidecar opens a unix socket under /var/run/sidecar (hardcoded in
 #    pkg/util/constants/sidecar.go) for internal service-to-service calls, and
 #    exits if it cannot create it. /var/run is not writable outside a Pod, so

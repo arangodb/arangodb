@@ -235,6 +235,7 @@ class Config:
         self.dry_run = args.dry_run
         self.verbose = args.verbose
         self.requested_mode = args.auth_mode
+        self.external_sidecar = args.external_sidecar
 
     def script_env(self):
         """Environment for the vendored ../scripts, which honour these names."""
@@ -447,6 +448,27 @@ def ensure_user(config, tokens, user):
               f"{json.dumps(body)[:200]}")
 
 
+def remove_user(config, tokens, user):
+    """Delete the arangod user again.
+
+    The unittest harness runs a SUT cleanliness check after every suite and
+    fails the run when a test leaves accounts behind, so the users created by
+    ensure_user() have to go away with the rest of the scenario."""
+    if config.dry_run:
+        print(f"    [dry-run] delete arangod user {user}")
+        return
+    status, body = http(
+        f"{config.arangod_url}/_api/user/{urllib.parse.quote(user)}",
+        "DELETE",
+        None,
+        tokens.superuser(),
+    )
+    # 404 = already gone, which is fine.
+    if status not in (200, 202, 404):
+        print(f"    warning: deleting user {user} returned HTTP {status} "
+              f"{json.dumps(body)[:200]}")
+
+
 def create_database(config, tokens, database):
     """Create the target database as superuser. Idempotent."""
     if config.dry_run:
@@ -493,6 +515,45 @@ def drop_database(config, tokens, database):
 
 PREFLIGHT_NAME = "rta_rbac_preflight"
 ALLOW_EVERYTHING = [{"effect": "Allow", "actions": ["*"], "resources": ["*"]}]
+
+
+BOOTSTRAP_NAME = "rta_rbac_bootstrap"
+
+
+def bootstrap_user(config, sidecar, tokens, user, remove=False):
+    """Give `user` an allow-all binding, or take it away again.
+
+    Deny-by-default means the identity the harness drives arangod with cannot do
+    anything until it is bound - not even connect. The scenarios each manage
+    their own users; this is only about the account the surrounding workload
+    uses, and it is the same thing the operator does for `root` in a real
+    deployment.
+    """
+    name = f"{BOOTSTRAP_NAME}_{user}"
+    if remove:
+        sidecar.unbind(user, name)
+        sidecar.call("DELETE", f"/role/{urllib.parse.quote(name)}")
+        sidecar.call("DELETE", f"/policy/{urllib.parse.quote(name)}")
+        sidecar.refresh()
+        print(f"removed the allow-all binding for '{user}'")
+        return 0
+
+    sidecar.put_policy(name, ALLOW_EVERYTHING)
+    sidecar.put_role(name, [name])
+    sidecar.put_binding(user, name, ALLOW_EVERYTHING)
+    sidecar.refresh()
+
+    deadline = time.time() + config.propagation_timeout
+    effect = None
+    while time.time() < deadline:
+        effect = sidecar.evaluate(user, "db:Read", "db:database:_system")
+        if effect == "Allow":
+            print(f"'{user}' now has an allow-all binding")
+            return 0
+        time.sleep(2)
+    print(f"the allow-all binding for '{user}' never became visible "
+          f"(last effect: {effect})", file=sys.stderr)
+    return 3
 
 
 def detect_auth_mode(config, sidecar, tokens):
@@ -655,6 +716,15 @@ def phase_argv(config, phase, token, suite_filter=None):
         "--progress", "true",
     ]
     if suite_filter:
+        # makedata.js parses its own argv with internal.parseArgv, which turns a
+        # purely numeric value into a Number, and then calls
+        # options.test.split(',') on it: `--test 050` crashes with
+        # "options.test.split is not a function". Repeating the value keeps it a
+        # string without changing which suites match, since each entry is used as
+        # an independent substring filter. rta-makedata stays unmodified, so the
+        # workaround lives here.
+        if "," not in suite_filter:
+            suite_filter = f"{suite_filter},{suite_filter}"
         argv += ["--test", suite_filter]
     return argv
 
@@ -808,16 +878,19 @@ def run_scenario(config, sidecar, tokens, scenario, grants=None, mode="rbac"):
                       f"      wanted substring: {scenario.expect_setup_error}\n"
                       f"      got: {error}")
                 sidecar.drop(scenario)
+                remove_user(config, tokens, scenario.user)
                 return [SetupResult(scenario, ok, str(error))]
             if scenario.expect_setup_error is not None:
                 if config.dry_run:
                     # Nothing was really sent, so there is nothing to reject.
                     sidecar.drop(scenario)
+                    remove_user(config, tokens, scenario.user)
                     return [SetupResult(scenario, True, "dry run")]
                 message = (f"the API accepted a binding it was expected to reject "
                            f"({scenario.expect_setup_error})")
                 print(f"    MISMATCH {message}")
                 sidecar.drop(scenario)
+                remove_user(config, tokens, scenario.user)
                 return [SetupResult(scenario, False, message)]
         sidecar.refresh()
         wait_until_visible(config, sidecar, scenario)
@@ -847,6 +920,7 @@ def run_scenario(config, sidecar, tokens, scenario, grants=None, mode="rbac"):
     sidecar.drop(scenario)
     if scenario.grants and grants is not None:
         grants.revoke(scenario.user, scenario.grants)
+    remove_user(config, tokens, scenario.user)
     drop_database(config, tokens, config.database)
     return results
 
@@ -862,6 +936,21 @@ def denied_collection_for(suite_filter):
     if "400" in suite_filter:
         return "old_cview1_0"  # 400_views.js: old_cview1_${dbCount}
     return None
+
+
+# Suites verified to attempt a write even when the objects they touch already
+# exist, so a second makedata pass really does ask for a write permission.
+# Established by measurement, not by reading: with `--test 050` the reader and
+# developer scenarios both reported `pass`, because 050 creates databases, finds
+# them present on the re-run and does nothing. Adding 400 made both deny.
+WRITE_ON_RERUN_SUITES = ("100", "400")
+
+
+def writes_on_rerun(suite_filter):
+    """Whether the selected suites write on a re-run over existing data."""
+    if not suite_filter:
+        return True  # no filter means every suite, which includes writers
+    return any(suite in suite_filter for suite in WRITE_ON_RERUN_SUITES)
 
 
 def main():
@@ -919,6 +1008,23 @@ def main():
     parser.add_argument("--propagation-timeout", type=int, default=90,
                         help="seconds to wait for a permission change to reach the PDP. "
                              "The documented worst case is ~30s. (default: %(default)s)")
+    parser.add_argument("--bootstrap-user", default=None,
+                        help="seed an allow-all policy/role/binding for this user and "
+                             "exit. A real sidecar denies by default, so the account the "
+                             "test harness itself drives arangod with has no access at "
+                             "all until it is bound. This mirrors production, where the "
+                             "operator binds `root` to managed:predefined:super-admin "
+                             "when the deployment bootstraps.")
+    parser.add_argument("--remove-bootstrap-user", default=None,
+                        help="remove what --bootstrap-user created, and exit.")
+    parser.add_argument("--external-sidecar", action="store_true",
+                        help="the authorization sidecar is managed by someone else, so "
+                             "do not start, stop or restart it. Required whenever the "
+                             "sidecar was not brought up by --setup - restarting it "
+                             "would replace a correctly configured service with one "
+                             "built from this script's own defaults. Scenarios that need "
+                             "a different sidecar authorization mode are skipped, since "
+                             "changing it requires a restart.")
     parser.add_argument("--auth-mode", choices=["auto", "rbac", "classic"], default="auto",
                         help="which authorization model the target arangod uses. "
                              "`classic` is what you get without "
@@ -952,6 +1058,12 @@ def main():
     denied = denied_collection_for(config.suite_filter)
 
     tokens = Tokens(config)
+    if args.bootstrap_user or args.remove_bootstrap_user:
+        return bootstrap_user(config, Sidecar(config, Tokens(config)),
+                              Tokens(config),
+                              args.bootstrap_user or args.remove_bootstrap_user,
+                              remove=bool(args.remove_bootstrap_user))
+
     sidecar = Sidecar(config, tokens)
     grants = ClassicGrants(config, tokens)
 
@@ -966,8 +1078,9 @@ def main():
         # management API, so there is no separate integration service here.
         run_script(config, "start_arangod.sh", config.integration_url)
         wait_for_arangod(config)
-        run_script(config, "start_sidecar.sh", "central")
-        started_mode = "central"
+        if not config.external_sidecar:
+            run_script(config, "start_sidecar.sh", "central")
+            started_mode = "central"
 
     # Which authorization model is in force decides which catalog is meaningful.
     # `--list` must not need a server, so defer the probe until it is needed.
@@ -1001,6 +1114,16 @@ def main():
                   f"'{config.suite_filter}' creates no collection this script knows "
                   "how to target.")
 
+    if not writes_on_rerun(config.suite_filter):
+        vacuous = [s for s in all_scenarios if s.needs_write_on_rerun]
+        all_scenarios = [s for s in all_scenarios if not s.needs_write_on_rerun]
+        for scenario in vacuous:
+            print(f"note: skipping '{scenario.name}' - its denial is only "
+                  f"meaningful if the workload attempts a write on the second "
+                  f"makedata pass, and the filter '{config.suite_filter}' "
+                  f"contains none of {', '.join(WRITE_ON_RERUN_SUITES)}. It "
+                  f"would report 'pass' and mean nothing by it.")
+
     selected = all_scenarios
     if args.scenario:
         selected = [s for s in selected if s.name in args.scenario]
@@ -1017,6 +1140,16 @@ def main():
         for scenario in excluded:
             print(f"note: skipping '{scenario.name}' "
                   f"(opt in with --group {scenario.group})")
+    if config.external_sidecar:
+        # Their expectation depends on the sidecar running in a particular
+        # authorization mode, and that is fixed at its startup.
+        needs_restart = [s for s in selected if s.mode != "central"]
+        selected = [s for s in selected if s.mode == "central"]
+        for scenario in needs_restart:
+            print(f"note: skipping '{scenario.name}' - it needs the sidecar in "
+                  f"{scenario.mode} mode, which cannot be arranged for an "
+                  f"externally managed sidecar")
+
     if not selected:
         print("no scenarios selected", file=sys.stderr)
         return 2
@@ -1042,7 +1175,8 @@ def main():
     results = []
     try:
         for scenario in selected:
-            if mode == "rbac" and scenario.mode != current_mode:
+            if (mode == "rbac" and not config.external_sidecar
+                    and scenario.mode != current_mode):
                 # The mode is fixed at sidecar startup (--sidecar.auth.mode) and
                 # cannot be changed at runtime, so switching means a restart.
                 print(f"\n=== sidecar -> {scenario.mode} ===")
