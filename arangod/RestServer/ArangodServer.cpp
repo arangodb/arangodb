@@ -257,9 +257,10 @@ void ArangodServer::addFeatures() {
       getOptions<DatabasePathOptionsProvider>());
   auto& dumpLimits =
       addFeature<DumpLimitsFeature>(getOptions<DumpLimitsOptionsProvider>());
-  if (!skipNonServerFeatures && restServer) {
-    addFeature<HttpEndpointProvider, EndpointFeature>(
-        getOptions<EndpointOptionsProvider>());
+  auto& httpEndpoint = addFeature<HttpEndpointProvider, EndpointFeature>(
+      getOptions<EndpointOptionsProvider>());
+  if (skipNonServerFeatures || !restServer) {
+    httpEndpoint.disable();
   }
   auto& systemDatabaseFeature = addFeature<SystemDatabaseFeature>();
   addFeature<EnvironmentFeature>();
@@ -267,15 +268,19 @@ void ArangodServer::addFeatures() {
   auto& flush = addFeature<FlushFeature>(metrics);
   addFeature<FortuneFeature>(getOptions<fortune::FortuneOptionsProvider>());
 #ifdef USE_V8
+  auto& foxx = addFeature<FoxxFeature>(getOptions<FoxxOptionsProvider>());
+  if (!enableFoxx || skipNonServerFeatures) {
+    foxx.disable();
+  }
   if (enableFoxx && !skipNonServerFeatures) {
-    addFeature<FoxxFeature>(getOptions<FoxxOptionsProvider>());
     addFeature<FrontendFeature>(getOptions<FrontendOptionsProvider>());
   }
 #endif
-  if (!skipNonServerFeatures && restServer) {
-    addFeature<GeneralServerFeature>(metrics,
-                                     getOptions<GeneralServerOptionsProvider>(),
-                                     getOptions<LogApiOptionsProvider>());
+  auto& generalServer = addFeature<GeneralServerFeature>(
+      metrics, getOptions<GeneralServerOptionsProvider>(),
+      getOptions<LogApiOptionsProvider>());
+  if (skipNonServerFeatures || !restServer) {
+    generalServer.disable();
   }
   if (!auxMode) {
     addFeature<GreetingsFeature>();
@@ -325,6 +330,9 @@ void ArangodServer::addFeatures() {
   }
   auto& v8DealerFeature = addFeature<V8DealerFeature>(
       metrics, getOptions<V8DealerOptionsProvider>());
+  if (!enableV8Runtime) {
+    v8DealerFeature.disable();
+  }
 #endif
   addFeature<BootstrapFeature>(
       clusterFeature, database, &systemDatabaseFeature, &clusterUpgradeFeature
@@ -351,9 +359,10 @@ void ArangodServer::addFeatures() {
 #endif
   addFeature<SoftShutdownFeature>();
   addFeature<SslFeature>();
-  if (!skipNonServerFeatures && restServer) {
-    addFeature<StatisticsFeature>(
-        metrics, getOptions<statistics::StatisticsOptionsProvider>());
+  auto& statistics = addFeature<StatisticsFeature>(
+      metrics, getOptions<statistics::StatisticsOptionsProvider>());
+  if (skipNonServerFeatures || !restServer) {
+    statistics.disable();
   }
   addFeature<TempFeature>(std::string{_binaryName},
                           getOptions<TempOptionsProvider>());
@@ -390,28 +399,31 @@ void ArangodServer::addFeatures() {
   addFeature<RCloneFeature>(getOptions<RCloneOptionsProvider>());
   addFeature<HotBackupFeature>(getOptions<HotBackupOptionsProvider>());
   addFeature<EncryptionFeature>(getOptions<EncryptionOptionsProvider>());
-  if (!skipNonServerFeatures && restServer) {
-    addFeature<SslServerFeature, SslServerFeatureEE>(
-        getOptions<SslServerOptionsProvider>(),
-        getOptions<SslServerEEOptionsProvider>());
-  }
+  auto& sslServer = addFeature<SslServerFeature, SslServerFeatureEE>(
+      getOptions<SslServerOptionsProvider>(),
+      getOptions<SslServerEEOptionsProvider>());
 #else
-  if (!skipNonServerFeatures && restServer) {
-    addFeature<SslServerFeature>(getOptions<SslServerOptionsProvider>());
-  }
+  auto& sslServer =
+      addFeature<SslServerFeature>(getOptions<SslServerOptionsProvider>());
 #endif
+  if (skipNonServerFeatures || !restServer) {
+    sslServer.disable();
+  }
   addFeature<RbacFeature>(authentication);
-  // an agency has no need for ArangoSearch or its analyzers
+  auto& analyzers = addFeature<iresearch::IResearchAnalyzerFeature>(
+      iresearch::IResearchAnalyzerFeature::Dependencies{
+          .databaseFeature = database,
+          .systemDatabase = systemDatabaseFeature,
+          .networkFeature = &networkFeature,
+          .clusterFeature = &clusterFeature,
+          .schedulerFeature = &scheduler,
+          .aqlFunctionFeature = &aqlFunctionFeature,
+      });
+  if (agencyActivated) {
+    analyzers.disable();
+  }
+  // an agency has no need for ArangoSearch
   if (!agencyActivated) {
-    addFeature<iresearch::IResearchAnalyzerFeature>(
-        iresearch::IResearchAnalyzerFeature::Dependencies{
-            .databaseFeature = database,
-            .systemDatabase = systemDatabaseFeature,
-            .networkFeature = &networkFeature,
-            .clusterFeature = &clusterFeature,
-            .schedulerFeature = &scheduler,
-            .aqlFunctionFeature = &aqlFunctionFeature,
-        });
     addFeature<iresearch::IResearchFeature>(
         metrics, getOptions<iresearch::IResearchOptionsProvider>());
   }
