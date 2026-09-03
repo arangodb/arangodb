@@ -186,8 +186,15 @@ void EnumerateNearVectorsExecutor::convertQueryVector(std::size_t dimension) {
 }
 
 void EnumerateNearVectorsExecutor::searchGraphIndex() {
+  vector::VectorSearchContext ctx{
+      .inputs = &_inputRowConverted,
+      .inputRow = &_inputRow,
+      .trx = &_trx,
+      .queryContext = &_infos.queryContext,
+  };
   auto hits = _graphIndex->search(_inputRowConverted, _infos.searchConfig.topK,
-                                  _infos.searchParametersGraphVector, _trx);
+                                  _infos.searchParametersGraphVector,
+                                  _infos.searchConfig, ctx, _trx);
 
   _labels.clear();
   _distances.clear();

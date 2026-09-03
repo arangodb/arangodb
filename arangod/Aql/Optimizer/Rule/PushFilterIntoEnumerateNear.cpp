@@ -215,12 +215,16 @@ void pushFilterIntoEnumerateNear(Optimizer* opt,
           "filter node could not be moved into EnumerateNearVector node!");
     }
 
-    // Try finding better index with coveredFields covering filtering
-    // TODO(jbajic COR-541) we should optiomize the we find best index covering
-    // both projection and filtering
-    if (auto bestIndex = findBestVectorIndex(plan, filterExpression,
-                                             enumerateNearVectorNode);
-        bestIndex != nullptr) {
+    // TODO(jbajic) this is all hacked
+    if (enumerateNearVectorNode->index()->type() ==
+        Index::TRI_IDX_TYPE_VECTOR_GRAPH_INDEX) {
+      enumerateNearVectorNode->setFilterMode(vector::FilterMode::kStoredValues);
+    } else if (auto bestIndex = findBestVectorIndex(plan, filterExpression,
+                                                    enumerateNearVectorNode);
+               bestIndex != nullptr) {
+      // Try finding better index with coveredFields covering filtering
+      // TODO(jbajic COR-541) we should optiomize the we find best index
+      // covering both projection and filtering
       if (bestIndex != enumerateNearVectorNode->index()) {
         enumerateNearVectorNode->setIndex(std::move(bestIndex));
       }
