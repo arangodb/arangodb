@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -22,28 +22,14 @@
 
 #pragma once
 
-#include <memory>
+#include "Aql/ExecutionPlan.h"
+#include "Aql/OptimizerRule.h"
 
-namespace arangodb {
-namespace aql {
-class ExecutionPlan;
+namespace arangodb::aql {
 class Optimizer;
-struct OptimizerRule;
-class OptimizerRulesFeature;
-}  // namespace aql
 
-struct RocksDBOptimizerRules {
-  static void registerResources(aql::OptimizerRulesFeature& feature);
+// remove SORT RAND() LIMIT 1 if appropriate
+void removeSortRandRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+                        OptimizerRule const& rule);
 
-  // simplify an EnumerationCollectionNode that fetches an entire document to a
-  // projection of this document
-  static void reduceExtractionToProjectionRule(
-      aql::Optimizer* opt, std::unique_ptr<aql::ExecutionPlan> plan,
-      aql::OptimizerRule const& rule);
-  // remove SORT RAND() LIMIT 1 if appropriate
-  static void removeSortRandRule(aql::Optimizer* opt,
-                                 std::unique_ptr<aql::ExecutionPlan> plan,
-                                 aql::OptimizerRule const& rule);
-};
-
-}  // namespace arangodb
+}  // namespace arangodb::aql
