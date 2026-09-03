@@ -219,7 +219,7 @@ commands:
             cd << parameters.destination >>
             echo << pipeline.git.revision >>
             git init
-            git remote add origin "https://${USERNAME}:${PASSWORD}@github.com:arangodb/arangodb.git"
+            git remote add origin "https://${USERNAME}:${PASSWORD}@github.com/arangodb/arangodb.git"
             echo "Fetching stuff"
             git fetch --depth 1 origin << pipeline.git.revision >>
             git checkout << pipeline.git.revision >>
