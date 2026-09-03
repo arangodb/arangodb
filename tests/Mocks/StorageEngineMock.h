@@ -42,9 +42,6 @@ class PhysicalCollection;
 class TransactionCollection;
 class TransactionManager;
 class WalAccess;
-namespace aql {
-class OptimizerRulesFeature;
-}
 namespace iresearch {
 class IResearchLinkMock;
 class IResearchInvertedIndexMock;
