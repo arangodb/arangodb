@@ -3,6 +3,7 @@ target_sources(arango_aql PRIVATE
   EnumeratePathsFilterMatcher.cpp
   ExtractNonConstPartsOfIndexCondition.cpp
   FindProjections.cpp
+  GetBestIndexHandleForFilterCondition.cpp
   GetIndexForSortCondition.cpp
   LateMaterializedCommon.cpp
   OptimizeTraversalPathVariable.cpp
