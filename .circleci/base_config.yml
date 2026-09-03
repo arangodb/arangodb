@@ -22,11 +22,11 @@ parameters:
     default: ""
   build-docker-image:
     type: string
-    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-40:24.04-dc3196a5"
+    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-40:24.04-f4491615"
     description: "Docker image to use for building ArangoDB - only relevant when trying new build images"
   test-docker-image:
     type: string
-    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-d6a8996c8
+    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-f4491615
   # Unused here, but it will be forwarded from config and will cause errors if not defined
   enterprise-branch:
     type: string
@@ -354,7 +354,7 @@ commands:
               export SAN_MODE=alubsan
             elif [ "<< parameters.sanitizer >>" = "tsan" ]; then
               # Needed to ignore TSAN errors from OpenMP
-              export OMP_TOOL_LIBRARIES=/usr/lib/llvm-19/lib/libarcher.so
+              export OMP_TOOL_LIBRARIES=/usr/lib/llvm-22/lib/libarcher.so
               export ARCHER_OPTIONS="verbose=1"
               if ! [ -f ${OMP_TOOL_LIBRARIES} ]; then
                 echo "File ${OMP_TOOL_LIBRARIES} does not exist."

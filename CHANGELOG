@@ -1,6 +1,9 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Updated compiler to clang-22.1.8 and use the C++23 standard (previously
+  clang-19.1.7 and C++20).
+
 * Upgraded included rclone to v1.75.0 with go1.25.13 and non-vulnerable
   dependencies.
 
