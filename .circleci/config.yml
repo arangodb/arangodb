@@ -14,7 +14,7 @@ parameters:
     type: string
     # we use an empty string as default. In this case we check if the enterprise repo
     # contains a branch with the same name as the arangodb repo. If this is the case
-    # we use it, otherwise we fall back to "devel".
+    # we use it, otherwise we fall back to "4.0".
     default: ""
     description: "The branch to use for the enterprise repository."
   without-instrumentation:
@@ -48,15 +48,15 @@ parameters:
     description: "filter to be executed testuite names for containing this string"
   create-test-docker-images:
     type: enum
-    enum: [none, alpine, deb]
+    enum: [none, alpine]
     default: none
-    description: "Build and publish a multi-arch (amd64 + arm64) test Docker image
-      of the Enterprise Edition from this commit's build results. Selects the image
-      base: 'alpine' or 'deb' (Debian-based); 'none' disables. The image is pushed
-      to public ECR as public.ecr.aws/b0b8h2r4/arangodb/enterprise-test, tagged with
-      the community commit short SHA; Debian-based images get an extra -deb suffix
-      (<sha>[-deb] multi-arch manifest, <sha>[-deb]-amd64 / <sha>[-deb]-arm64v8
-      per-arch tags)."
+    description: "Build and publish multi-arch (amd64 + arm64) test Docker images
+      of the Enterprise Edition from this commit's build results; 'alpine' builds
+      TWO Alpine-3.24-based images: arangodb/core-test (server only, no client
+      tools) and arangodb/client-tools-test (client tools only); 'none'
+      disables. Both are pushed to public ECR under public.ecr.aws/b0b8h2r4/,
+      tagged <community sha7>_<enterprise sha7> (multi-arch manifest) with
+      -amd64 / -arm64v8 per-arch tags."
   extra_args:
     type: string
     default: ""
@@ -71,7 +71,7 @@ parameters:
     description: "Docker image to use for testing ArangoDB - only relevant when trying new test images"
   build-docker-image:
     type: string
-    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-312:24.04-f7032bef0"
+    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-40:24.04-dc3196a5"
     description: "Docker image to use for building ArangoDB - only relevant when trying new build images"
   # Rarely used options
   replication-two:
@@ -122,7 +122,7 @@ jobs:
           command: |
             if [ "<< pipeline.parameters.dont-cancel-pipelines >>" == "true" ]; then
               echo "Cancelling of redundant pipelines is disabled, not cancelling any pipelines"
-            elif [[ "$CIRCLE_BRANCH" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)$ ]] || [ "$CIRCLE_BRANCH" == "devel" ]; then
+            elif [[ "$CIRCLE_BRANCH" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]] || [ "$CIRCLE_BRANCH" == "devel" ]; then
               echo "Branch is a release branch or devel, not cancelling any pipelines"
             else
               ## Get the name of the workflow and the related pipeline number
@@ -163,11 +163,11 @@ jobs:
         type: string
       default-enterprise-branch:
         type: string
-        default: "devel"
+        default: "4.0"
       config-definitions-branches:
         type: string
         default: ""
-
+      
     steps:
       - run:
           name: Print pipeline parameters
@@ -274,6 +274,5 @@ workflows:
       - generate-config:
           definitions: << pipeline.parameters.config-definitions >>
           config-definitions-branches: << pipeline.parameters.config-definitions-branches >>
-          default-enterprise-branch: "4.0"
           requires:
             - cancel-redundant-pipelines

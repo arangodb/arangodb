@@ -1,4 +1,3 @@
----
 version: 2.1
 
 orbs:
@@ -23,7 +22,7 @@ parameters:
     default: ""
   build-docker-image:
     type: string
-    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-312:24.04-f7032bef0"
+    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-40:24.04-dc3196a5"
     description: "Docker image to use for building ArangoDB - only relevant when trying new build images"
   test-docker-image:
     type: string
@@ -37,7 +36,7 @@ parameters:
     default: false
   create-test-docker-images:
     type: enum
-    enum: [none, alpine, deb]
+    enum: [none, alpine]
     default: none
   rebuild-test-docker-images:
     type: boolean
@@ -77,9 +76,8 @@ parameters:
   build-targets:
     type: string
     default: "arangodb"
-    # The arangodb target consists of arangod and the list of client-tools which already
-    # conditionally contains arangobackup and arangosh, depending on whether we build in
-    # enterprise mode
+    # The arangodb target consists of arangod and the client tools
+    # (arangobackup is enterprise-only).
     # This should also improve build times because this way the individual targets can be
     # built in parallel (a list of individual targets is built serially).
   test-build-targets:
@@ -280,10 +278,7 @@ commands:
             curl -s -L -o <<parameters.repo-path>>/build/bin/arangodb "https://github.com/arangodb-helper/arangodb/releases/download/$STARTER_REV/arangodb-linux-$arch"
             chmod a+x <<parameters.repo-path>>/build/bin/arangodb
 
-            # Temporary hack to use the 3.12 version of rclone until we
-            # have a 4.0 version:
-            #curl -s -L -o <<parameters.repo-path>>/build/bin/rclone-arangodb "https://github.com/arangodb/rclone-arangodb/releases/download/golang-${RCLONE_GO}/golang-${RCLONE_GO}_${ARANGO_MAJOR_MINOR_VERSION}_v${RCLONE_VERSION}_rclone-arangodb-linux-$arch"
-            curl -s -L -o <<parameters.repo-path>>/build/bin/rclone-arangodb "https://github.com/arangodb/rclone-arangodb/releases/download/golang-${RCLONE_GO}/golang-${RCLONE_GO}_3.12_v${RCLONE_VERSION}_rclone-arangodb-linux-$arch"
+            curl -s -L -o <<parameters.repo-path>>/build/bin/rclone-arangodb "https://github.com/arangodb/rclone-arangodb/releases/download/golang-${RCLONE_GO}/golang-${RCLONE_GO}_${ARANGO_MAJOR_MINOR_VERSION}_v${RCLONE_VERSION}_rclone-arangodb-linux-$arch"
             chmod a+x <<parameters.repo-path>>/build/bin/rclone-arangodb
   run-test:
     parameters:
@@ -563,7 +558,7 @@ jobs:
             LIST=.circleci/required-checks.txt
             # PR pipelines run on the head branch, so the protected branch
             # cannot be derived from CIRCLE_BRANCH.
-            PROTECTED=devel
+            PROTECTED=4.0
             DRIFT=0
             if [ ! -s "${LIST}" ]; then
               echo "ERROR: ${LIST} is missing or empty. Commit the required-check inventory." >&2
@@ -747,7 +742,6 @@ jobs:
             if [ << pipeline.parameters.use-minimal-debug-info >> = true ]; then
               MINIMAL_DEBUGINFO="ON"
             fi
-
             cmake --preset << parameters.preset >> \
               -G Ninja \
               -DCMAKE_C_COMPILER=<< pipeline.parameters.c-compiler >> \
@@ -780,10 +774,15 @@ jobs:
                   DESTDIR=`pwd`/install cmake --build --preset << parameters.preset >> --parallel 16 --target install
                   cp build/bin/arangodb ./install/usr/bin/
                   if [ << parameters.enterprise >> = true ]; then
-                  cp build/bin/rclone-arangodb ./install/usr/bin/
+                    # Same location as the nightly images (fetch-aux-binaries.sh):
+                    # usr/sbin, so the client prune drops it and consumers find
+                    # it where the published images have it.
+                    cp build/bin/rclone-arangodb ./install/usr/sbin/
                   fi
-                  strip ./install/usr/bin/arango*
-                  strip ./install/usr/sbin/arangod
+                  # Strip per the packaging policy (client tools only; the
+                  # starter and arangod keep their symbols).
+                  if [ << parameters.enterprise >> = true ]; then EDITION=enterprise; else EDITION=community; fi
+                  EDITION="${EDITION}" scripts/packaging/strip-install-tree.sh ./install
                   tar -czf install-<< parameters.arch >>.tar.gz -C install ./
                   cp -a scripts/docker/deploy docker-context-<< parameters.arch >>
             # Everything persisted here must be arch-specific: the x64 and
@@ -835,7 +834,6 @@ jobs:
                   - enterprise/js
                   - etc/
                   - tests/js
-                  - tests/fixtures
                   - enterprise/tests/js
                   - utils
                   - lib/iresearch/tests/resources
@@ -880,10 +878,6 @@ jobs:
     parameters:
       resource-class:
         type: string
-      # Image base: selects deploy-<distro>.dockerfile (alpine | deb)
-      distro:
-        type: enum
-        enum: [alpine, deb]
       # Docker platform architecture (amd64 | arm64), used for --platform
       # and the image's arch build-arg
       arch:
@@ -892,8 +886,6 @@ jobs:
       # install tarball and docker build context persisted by the matching
       # compile-linux job
       build-arch:
-        type: string
-      output:
         type: string
     docker:
       - image: cimg/base:current
@@ -904,21 +896,52 @@ jobs:
       - attach_workspace:
           at: .
       - run:
-          name: Build Docker Image
+          name: Build Docker Images
           command: |
+            # Two Alpine-based (3.24) test images per architecture:
+            # core-test (server only, no client tools) and
+            # client-tools-test (client tools only, pruned from the same
+            # install tree the way build-targz.sh builds the client bundle).
+            set -eu
             cd docker-context-<< parameters.build-arch >>
             mkdir install
             tar -xzf ../install-<< parameters.build-arch >>.tar.gz -C install
-            docker build --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t arangodb/enterprise-test:local-<< parameters.arch >> --file deploy-<< parameters.distro >>.dockerfile .
-            docker save -o /tmp/<< parameters.output >> arangodb/enterprise-test:local-<< parameters.arch >>
+            cp -a install install-client
+            rm -rf install-client/usr/sbin \
+                   install-client/usr/bin/arangodb \
+                   install-client/usr/share/arangodb4/js/server \
+                   install-client/usr/share/arangodb4/arangodb-update-db \
+                   install-client/var
+            # Keep the client-tool configs in /etc/arangodb4; drop only the
+            # server-side ones.
+            rm -f install-client/etc/arangodb4/arangod.conf \
+                  install-client/etc/arangodb4/arango-init-database.conf \
+                  install-client/etc/arangodb4/arango-secure-installation.conf
+            # Server image ships no client tools (mirrors the TAR.GZ
+            # server bundle): drop the binaries, their configs, man pages
+            # and the client-only JS tree.
+            for tool in arangobackup arangodump arangoexport arangoimport \
+                        arangoinspect arangorestore arangosh arangovpack; do
+              rm -f install/usr/bin/"${tool}" \
+                    install/etc/arangodb4/"${tool}".conf
+            done
+            rm -rf install/usr/share/man/man1 \
+                   install/usr/share/arangodb4/js
+
+            docker build --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t arangodb/core-test:local-<< parameters.arch >> --file deploy-alpine.dockerfile .
+            docker save -o /tmp/docker-core-<< parameters.build-arch >>.tar arangodb/core-test:local-<< parameters.arch >>
+            docker build --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t arangodb/client-tools-test:local-<< parameters.arch >> --file deploy-alpine-client.dockerfile .
+            docker save -o /tmp/docker-client-tools-<< parameters.build-arch >>.tar arangodb/client-tools-test:local-<< parameters.arch >>
       - persist_to_workspace:
           root: /tmp
           paths:
-            - << parameters.output >>
+            - docker-core-<< parameters.build-arch >>.tar
+            - docker-client-tools-<< parameters.build-arch >>.tar
 
-  # Loads both architectures' locally-built images, pushes each as an
-  # arch-suffixed tag, then creates and pushes a multi-arch manifest under
-  # the bare tag (the community commit short SHA). ECR only, using the
+  # Loads both architectures' locally-built images (two image names each:
+  # core-test and client-tools-test), pushes each as an arch-suffixed tag,
+  # then creates and pushes one multi-arch manifest per image name under
+  # the bare tag (<community sha7>_<enterprise sha7>). ECR only, using the
   # same OIDC role assumption as before - no stored credentials/context.
   push-docker-manifest:
     parameters:
@@ -938,29 +961,35 @@ jobs:
           docker_layer_caching: true
       - attach_workspace:
           at: /tmp/workspace
+    # build-arch tarball names (x64/aarch64) come from the compile-side
+    # architecture; the docker-side arch pair is amd64/arm64.
       - run:
-          name: Push multi-arch Docker manifest
+          name: Push multi-arch Docker manifests
           command: |
-            docker load -i /tmp/workspace/docker-amd64.tar
-            docker load -i /tmp/workspace/docker-arm64.tar
+            declare -A BUILD_ARCH=( [amd64]="x64" [arm64]="aarch64" )
+            declare -A TAG_ARCH=( [amd64]="amd64" [arm64]="arm64v8" )
 
-            IMAGE="public.ecr.aws/b0b8h2r4/arangodb/enterprise-test"
+            for NAME in core client-tools; do
+              for ARCH in amd64 arm64; do
+                docker load -i /tmp/workspace/docker-${NAME}-${BUILD_ARCH[$ARCH]}.tar
+              done
+            done
 
             set -x
             retry() { "$@" || { sleep 5; "$@"; } || { sleep 15; "$@"; } || { sleep 30; "$@"; }; }
 
-            declare -A LOCAL_TAG=( [amd64]="arangodb/enterprise-test:local-amd64" [arm64]="arangodb/enterprise-test:local-arm64" )
-            declare -A TAG_ARCH=( [amd64]="amd64" [arm64]="arm64v8" )
-
-            for ARCH in amd64 arm64; do
-              docker tag "${LOCAL_TAG[$ARCH]}" "${IMAGE}:<< parameters.tag >>-${TAG_ARCH[$ARCH]}"
-              retry docker push "${IMAGE}:<< parameters.tag >>-${TAG_ARCH[$ARCH]}"
+            for NAME in core client-tools; do
+              IMAGE="public.ecr.aws/b0b8h2r4/arangodb/${NAME}-test"
+              for ARCH in amd64 arm64; do
+                docker tag "arangodb/${NAME}-test:local-${ARCH}" "${IMAGE}:<< parameters.tag >>-${TAG_ARCH[$ARCH]}"
+                retry docker push "${IMAGE}:<< parameters.tag >>-${TAG_ARCH[$ARCH]}"
+              done
+              docker manifest rm "${IMAGE}:<< parameters.tag >>" 2>/dev/null || true
+              retry docker manifest create "${IMAGE}:<< parameters.tag >>" \
+                --amend "${IMAGE}:<< parameters.tag >>-amd64" \
+                --amend "${IMAGE}:<< parameters.tag >>-arm64v8"
+              retry docker manifest push --purge "${IMAGE}:<< parameters.tag >>"
             done
-            docker manifest rm "${IMAGE}:<< parameters.tag >>" 2>/dev/null || true
-            retry docker manifest create "${IMAGE}:<< parameters.tag >>" \
-              --amend "${IMAGE}:<< parameters.tag >>-amd64" \
-              --amend "${IMAGE}:<< parameters.tag >>-arm64v8"
-            retry docker manifest push --purge "${IMAGE}:<< parameters.tag >>"
 
   run-linux-tests:
     parameters:

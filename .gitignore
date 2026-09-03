@@ -83,7 +83,6 @@ out/
 
 etc/arangodb/*.conf
 
-Installation/MacOSX/Bundle/Info.plist
 
 nbproject/
 .idea

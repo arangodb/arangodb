@@ -1,23 +1,27 @@
 # -*- mode: CMAKE; -*-
 # these are the install targets for the client package.
 # we can't use RUNTIME DESTINATION here.
+#
+# Binaries are installed UNSTRIPPED: stripping happens at packaging time
+# (scripts/packaging/strip-install-tree.sh), which first extracts the debug
+# information into the debug-symbols bundle.
 
-set(STRIP_DIR "${CMAKE_RUNTIME_OUTPUT_DIRECTORY_X}/cstrip")
-add_custom_target(strip_install_client ALL)
 if (${USE_ENTERPRISE})
-strip_install_bin_and_config(arangobackup  ${STRIP_DIR} ${CMAKE_INSTALL_BINDIR} strip_install_client)
+install_bin_and_config(arangobackup  ${CMAKE_INSTALL_BINDIR})
 endif ()
-strip_install_bin_and_config(arangodump    ${STRIP_DIR} ${CMAKE_INSTALL_BINDIR} strip_install_client)
-strip_install_bin_and_config(arangoimport  ${STRIP_DIR} ${CMAKE_INSTALL_BINDIR} strip_install_client)
-strip_install_bin_and_config(arangorestore ${STRIP_DIR} ${CMAKE_INSTALL_BINDIR} strip_install_client)
-strip_install_bin_and_config(arangoexport  ${STRIP_DIR} ${CMAKE_INSTALL_BINDIR} strip_install_client)
-strip_install_bin_and_config(arangovpack   ${STRIP_DIR} ${CMAKE_INSTALL_BINDIR} strip_install_client)
+install_bin_and_config(arangodump    ${CMAKE_INSTALL_BINDIR})
+install_bin_and_config(arangoimport  ${CMAKE_INSTALL_BINDIR})
+install_bin_and_config(arangorestore ${CMAKE_INSTALL_BINDIR})
+install_bin_and_config(arangoexport  ${CMAKE_INSTALL_BINDIR})
+install_bin_and_config(arangovpack   ${CMAKE_INSTALL_BINDIR})
 
-if (USE_V8)
-  strip_install_bin_and_config(arangosh ${STRIP_DIR} ${CMAKE_INSTALL_BINDIR} strip_install_client)
+# arangosh keeps its client-side V8 shell in 4.0 (only the server dropped
+# V8) and is built unconditionally, so it is installed unconditionally too:
+# the old USE_V8 guard referenced a cache variable that no longer exists,
+# which silently dropped arangosh from every install tree.
+install_bin_and_config(arangosh ${CMAKE_INSTALL_BINDIR})
 
-  install_command_alias(${BIN_ARANGOSH}
-    ${CMAKE_INSTALL_BINDIR}
-    arangoinspect)
-  install_config(arangoinspect)
-endif ()
+install_command_alias(${BIN_ARANGOSH}
+  ${CMAKE_INSTALL_BINDIR}
+  arangoinspect)
+install_config(arangoinspect)

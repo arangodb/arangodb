@@ -70,7 +70,7 @@ include(InstallArangoDBJSClient)
 
 install(
   DIRECTORY
-    ${PROJECT_BINARY_DIR}/var/log/arangodb3
+    ${PROJECT_BINARY_DIR}/var/log/arangodb4
   DESTINATION
     ${CMAKE_INSTALL_LOCALSTATEDIR}/log
 )
@@ -95,9 +95,9 @@ set(IS_SYSTEMD_INSTALL 0)
 
 if (UNIX)
   if (${USE_ENTERPRISE})
-    set(SERVICE_NAME "arangodb3e")
+    set(SERVICE_NAME "arangodb4e")
   else ()
-    set(SERVICE_NAME "arangodb3")
+    set(SERVICE_NAME "arangodb4")
   endif ()
 
   # use pkgconfig for systemd detection
@@ -128,12 +128,12 @@ if (UNIX)
 
       # configure and install systemd service
       configure_file (
-        ${ARANGODB_SOURCE_DIR}/Installation/systemd/arangodb3.service.in
-        ${PROJECT_BINARY_DIR}/arangodb3.service
+        ${ARANGODB_SOURCE_DIR}/Installation/systemd/arangodb4.service.in
+        ${PROJECT_BINARY_DIR}/arangodb4.service
         NEWLINE_STYLE UNIX
       )
       install(
-        FILES ${PROJECT_BINARY_DIR}/arangodb3.service
+        FILES ${PROJECT_BINARY_DIR}/arangodb4.service
         DESTINATION ${SYSTEMD_UNIT_DIR}/
         RENAME ${SERVICE_NAME}.service
       )
