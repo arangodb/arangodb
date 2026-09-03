@@ -111,7 +111,7 @@ int main() {
   breakpoint();
 
   // add a promise that depends on parent promise
-  auto* child = thread_registry->add([&]() {
+  auto child = thread_registry->add([&]() {
     return Promise{{parent->data.id()}, std::source_location::current()};
   });
   expected = std::format(
@@ -127,7 +127,7 @@ int main() {
   breakpoint();
 
   // add another promise that depends on parent promise
-  auto* second_child = thread_registry->add([&]() {
+  auto second_child = thread_registry->add([&]() {
     return Promise{{parent->data.id()}, std::source_location::current()};
   });
   expected = std::format(
@@ -144,7 +144,7 @@ int main() {
   breakpoint();
 
   // add a child to a child promise
-  auto* child_of_child = thread_registry->add([&]() {
+  auto child_of_child = thread_registry->add([&]() {
     return Promise{{child->data.id()}, std::source_location::current()};
   });
   expected = std::format(
@@ -163,7 +163,7 @@ int main() {
   breakpoint();
 
   // add a child to the second child promise
-  auto* child_of_second_child = thread_registry->add([&]() {
+  auto child_of_second_child = thread_registry->add([&]() {
     return Promise{{second_child->data.id()}, std::source_location::current()};
   });
   expected = std::format(
@@ -184,7 +184,7 @@ int main() {
   breakpoint();
 
   // add a completely unrelated promise
-  auto* second_parent = thread_registry->add([&]() {
+  auto second_parent = thread_registry->add([&]() {
     return Promise{{arangodb::basics::ThreadInfo::current()},
                    std::source_location::current()};
   });
@@ -217,7 +217,7 @@ int main() {
   test_registry.add(second_thread_registry);
 
   // add a new promise on another thread
-  auto* parent_on_other_thread = second_thread_registry->add([&]() {
+  auto parent_on_other_thread = second_thread_registry->add([&]() {
     return Promise{{other_thread}, std::source_location::current()};
   });
   expected = std::format(

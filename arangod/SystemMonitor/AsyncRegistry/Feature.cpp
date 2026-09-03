@@ -73,22 +73,20 @@ auto inspect(Inspector& f, Entry& x) {
    An edge between two promises means that the lower hierarchy promise waits for
  the larger hierarchy promise.
  **/
-auto all_undeleted_promises() -> ForestWithRoots<PromiseSnapshot> {
+auto all_promises() -> ForestWithRoots<PromiseSnapshot> {
   Forest<PromiseSnapshot> forest;
   std::vector<Id> roots;
   registry.for_node([&](PromiseSnapshot promise) {
-    if (promise.state != State::Deleted) {
-      std::visit(overloaded{
-                     [&](PromiseId const& async_waiter) {
-                       forest.insert(promise.id.id, async_waiter.id, promise);
-                     },
-                     [&](basics::ThreadInfo const& sync_waiter_thread) {
-                       forest.insert(promise.id.id, nullptr, promise);
-                       roots.emplace_back(promise.id.id);
-                     },
-                 },
-                 promise.requester);
-    }
+    std::visit(overloaded{
+                   [&](PromiseId const& async_waiter) {
+                     forest.insert(promise.id.id, async_waiter.id, promise);
+                   },
+                   [&](basics::ThreadInfo const& sync_waiter_thread) {
+                     forest.insert(promise.id.id, nullptr, promise);
+                     roots.emplace_back(promise.id.id);
+                   },
+               },
+               promise.requester);
   });
   return ForestWithRoots{forest, roots};
 }
@@ -188,7 +186,7 @@ void Feature::start() {
 void Feature::stop() { _cleanupThread.reset(); }
 
 velocypack::Builder Feature::getData() const {
-  auto promises = all_undeleted_promises().index_by_parent();
+  auto promises = all_promises().index_by_parent();
   return serialize(promises);
 }
 
