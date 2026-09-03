@@ -24,6 +24,7 @@
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
+#include "Aql/TypedAstNodes.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 
@@ -139,43 +140,40 @@ MatchPatternElement MatchPatternNormalizer::normalizeStartElement(
 
 NormalizedMatchSegment MatchPatternNormalizer::normalizeSegment(
     AstNode const& segment) const {
-  TRI_ASSERT(segment.type == NODE_TYPE_PATTERN_SEGMENT);
-  TRI_ASSERT(segment.numMembers() == 2);
+  ast::PatternSegment typed{&segment};
 
   NormalizedMatchSegment result;
-  result.edge = normalizeEdge(*segment.getMember(0));
-  result.target = normalizeStartElement(*segment.getMember(1));
+  result.edge = normalizeEdge(*typed.getEdge().get());
+  result.target = normalizeStartElement(*typed.getNode());
   return result;
 }
 
 NormalizedVertex MatchPatternNormalizer::normalizeVertex(
     AstNode const& nodePattern) const {
-  TRI_ASSERT(nodePattern.type == NODE_TYPE_PATTERN_NODE_PATTERN);
-  TRI_ASSERT(nodePattern.numMembers() >= 5);
+  ast::PatternNodePattern typed{&nodePattern};
 
   NormalizedVertex vertex;
-  vertex.variable = normalizeOutputVariable(nodePattern.getMember(0));
+  vertex.variable = typed.getOutVariable();
 
-  AstNode const* label = nodePattern.getMember(1);
+  AstNode const* label = typed.getLabels();
   if (label == nullptr || label->type == NODE_TYPE_VALUE) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "match vertex without collection label");
   }
   vertex.collection = normalizeDataSource(*label);
-  vertex.properties = normalizeProperties(nodePattern.getMember(2));
-  vertex.filter = normalizeFilter(nodePattern.getMember(3));
-  vertex.projection = normalizeProjection(nodePattern.getMember(4));
+  vertex.properties = normalizeProperties(typed.getProperties());
+  vertex.filter = normalizeFilter(typed.getFilter());
+  vertex.projection = normalizeProjection(typed.getProjection());
   return vertex;
 }
 
 NormalizedEdge MatchPatternNormalizer::normalizeEdge(
     AstNode const& edge) const {
-  TRI_ASSERT(edge.type == NODE_TYPE_PATTERN_EDGE);
-  TRI_ASSERT(edge.numMembers() >= 7);
+  ast::PatternEdge typed{&edge};
 
   NormalizedEdge result;
-  result.variable = normalizeOutputVariable(edge.getMember(0));
-  AstNode const* collectionsNode = edge.getMember(1);
+  result.variable = typed.getOutVariable();
+  AstNode const* collectionsNode = typed.getCollections();
   result.collections = normalizeDataSourceList(collectionsNode);
   if (collectionsNode != nullptr && collectionsNode->type == NODE_TYPE_ARRAY) {
     result.collectionAstNodes.reserve(collectionsNode->numMembers());
@@ -187,11 +185,11 @@ NormalizedEdge MatchPatternNormalizer::normalizeEdge(
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "match edge without collection label");
   }
-  result.properties = normalizeProperties(edge.getMember(2));
-  result.filter = normalizeFilter(edge.getMember(3));
-  result.direction = normalizeDirection(edge.getMember(4));
-  result.range = normalizeRange(edge.getMember(5));
-  result.projection = normalizeProjection(edge.getMember(6));
+  result.properties = normalizeProperties(typed.getProperties());
+  result.filter = normalizeFilter(typed.getFilter());
+  result.direction = normalizeDirection(typed.getDirection());
+  result.range = normalizeRange(typed.getRange());
+  result.projection = normalizeProjection(typed.getProjection());
   return result;
 }
 
@@ -336,22 +334,6 @@ MatchPathRange MatchPatternNormalizer::normalizeRange(
                                    "invalid traversal depth");
   }
   return MatchPathRange::bounded(minDepth, maxDepth);
-}
-
-Variable const* MatchPatternNormalizer::normalizeOutputVariable(
-    AstNode const* node) const {
-  if (node == nullptr || node->type == NODE_TYPE_VALUE) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "match pattern without output variable");
-  }
-
-  if (node->type == NODE_TYPE_REFERENCE || node->type == NODE_TYPE_VARIABLE) {
-    return static_cast<Variable const*>(node->getData());
-  }
-
-  THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL,
-      "unexpected output variable node in match pattern normalization");
 }
 
 }  // namespace arangodb::aql

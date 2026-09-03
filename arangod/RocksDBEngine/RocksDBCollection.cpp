@@ -418,6 +418,8 @@ Result RocksDBCollection::updateProperties(velocypack::Slice slice) {
   }
 
   // nothing else to do
+  // Changes to immutable properties are simply ignored here. This could be
+  // unexpected - we should consider returning an error instead.
   return {};
 }
 
@@ -1495,7 +1497,21 @@ Result RocksDBCollection::insertDocument(transaction::Methods* trx,
   Result res;
 
   RocksDBTransactionState* state = RocksDBTransactionState::toState(trx);
-  RocksDBMethods* mthds = state->rocksdbMethods(_logicalCollection.id());
+  auto* mthds = state->rocksdbMethods(_logicalCollection.id());
+
+  // Time travel: the write timestamp is the document's _created attribute
+  // (materialized into the body by newObjectForInsert, so it is present here).
+  // It becomes the commit timestamp for the UDT primary-index write. All
+  // documents in one transaction must share it (single commit timestamp per
+  // rocksdb transaction), which setCommitTimestamp enforces.
+  if (timeTravelEnabled()) {
+    VPackSlice created = doc.get(StaticStrings::Created);
+    TRI_ASSERT(created.isNumber());
+    res = mthds->setCommitTimestamp(created.getNumber<uint64_t>());
+    if (res.fail()) {
+      return res;
+    }
+  }
 
   auto const& indexes = indexesSnapshot.getIndexes();
 

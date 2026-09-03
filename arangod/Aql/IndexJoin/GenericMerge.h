@@ -26,6 +26,7 @@
 #include "Logger/LogMacros.h"
 #include "Aql/IndexStreamIterator.h"
 #include "Aql/IndexJoinStrategy.h"
+#include "Aql/IndexStreamKeyStore.h"
 
 namespace arangodb::aql {
 
@@ -90,6 +91,7 @@ struct GenericMergeJoin : IndexJoinStrategy<SliceType, DocIdType> {
   std::vector<DocIdType> documentIds;
   std::vector<SliceType> sliceBuffer;
   std::vector<SliceType> currentKeySet;
+  IndexStreamKeyStore<SliceType> currentKeyStore;
   std::span<SliceType> projectionsSpan;
 
   IndexMinHeap minHeap;
@@ -375,7 +377,7 @@ void GenericMergeJoin<SliceType, DocIdType, KeyCompare>::fillInitialMatch() {
     auto& index = indexes[i];
     documentIds[i] = index._iter->load(index._projections);
   }
-  indexes.rbegin()->_iter->cacheCurrentKey(currentKeySet);
+  currentKeyStore.update(indexes.rbegin()->_position, currentKeySet);
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>

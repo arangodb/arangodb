@@ -982,4 +982,72 @@ struct PassthruNode : TypedAstNode {
   AstNode* getWrappedNode() const { return _node->getMember(0); }
 };
 
+/// @brief NODE_TYPE_PATTERN_EDGE layout (from Ast::createPatternEdge):
+///   0 outVariable, 1 collections (edge labels), 2 properties, 3 filter,
+///   4 direction, 5 range, 6 projection
+struct PatternEdge : TypedAstNode {
+  explicit PatternEdge(AstNode const* node) : TypedAstNode(node) {
+    TRI_ASSERT(node->type == NODE_TYPE_PATTERN_EDGE) << node->getTypeString();
+    TRI_ASSERT(node->numMembers() == 7)
+        << "expected 7 members in NODE_TYPE_PATTERN_EDGE, found "
+        << node->numMembers();
+  }
+
+  Variable const* getOutVariable() const {
+    auto n = _node->getMember(0);
+    TRI_ASSERT(n != nullptr);
+    TRI_ASSERT(n->type == NODE_TYPE_REFERENCE || n->type == NODE_TYPE_VARIABLE)
+        << n->getTypeString();
+    return static_cast<Variable const*>(n->getData());
+  }
+  AstNode const* getCollections() const { return _node->getMember(1); }
+  AstNode const* getProperties() const { return _node->getMember(2); }
+  AstNode const* getFilter() const { return _node->getMember(3); }
+  AstNode const* getDirection() const { return _node->getMember(4); }
+  AstNode const* getRange() const { return _node->getMember(5); }
+  AstNode const* getProjection() const { return _node->getMember(6); }
+
+  AstNode const* get() const noexcept { return _node; }
+};
+
+/// @brief NODE_TYPE_PATTERN_NODE_PATTERN layout
+/// (from Ast::createPatternNodePattern):
+///   0 outVariable, 1 labels, 2 properties, 3 filter, 4 projection
+struct PatternNodePattern : TypedAstNode {
+  explicit PatternNodePattern(AstNode const* node) : TypedAstNode(node) {
+    TRI_ASSERT(node->type == NODE_TYPE_PATTERN_NODE_PATTERN)
+        << node->getTypeString();
+    TRI_ASSERT(node->numMembers() == 5)
+        << "expected 5 members in NODE_TYPE_PATTERN_NODE_PATTERN, found "
+        << node->numMembers();
+  }
+
+  Variable const* getOutVariable() const {
+    auto n = _node->getMember(0);
+    TRI_ASSERT(n != nullptr);
+    TRI_ASSERT(n->type == NODE_TYPE_REFERENCE || n->type == NODE_TYPE_VARIABLE)
+        << n->getTypeString();
+    return static_cast<Variable const*>(n->getData());
+  }
+  AstNode const* getLabels() const { return _node->getMember(1); }
+  AstNode const* getProperties() const { return _node->getMember(2); }
+  AstNode const* getFilter() const { return _node->getMember(3); }
+  AstNode const* getProjection() const { return _node->getMember(4); }
+};
+
+/// @brief NODE_TYPE_PATTERN_SEGMENT layout (from Ast::createPatternSegment):
+///   0 edge, 1 node (PATTERN_NODE_PATTERN or REFERENCE)
+struct PatternSegment : TypedAstNode {
+  explicit PatternSegment(AstNode const* node) : TypedAstNode(node) {
+    TRI_ASSERT(node->type == NODE_TYPE_PATTERN_SEGMENT)
+        << node->getTypeString();
+    TRI_ASSERT(node->numMembers() == 2)
+        << "expected 2 members in NODE_TYPE_PATTERN_SEGMENT, found "
+        << node->numMembers();
+  }
+
+  PatternEdge getEdge() const { return PatternEdge(_node->getMember(0)); }
+  AstNode const* getNode() const { return _node->getMember(1); }
+};
+
 }  // namespace arangodb::aql::ast

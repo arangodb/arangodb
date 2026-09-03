@@ -91,10 +91,16 @@ class MatchPatternNormalizerTest : public ::testing::Test {
   struct ParsedMatch {
     std::unique_ptr<QueryContext> queryContext;
     std::unique_ptr<Ast> ast;
+    /// @brief must outlive Ast collection nodes created from @@ bind params.
+    /// Ast::injectBindParametersFirstStage stores collection-name string_views
+    /// that point into BindParameters' VPack Builder (same ownership model as
+    /// Query::_bindParameters in production). Destroying bind parameters
+    /// before reading those AST strings is a use-after-free.
+    std::unique_ptr<BindParameters> bindParameters;
     AstNode const* matchNode;
   };
 
-  static BindParameters makeBindParameters(
+  static std::unique_ptr<BindParameters> makeBindParameters(
       ResourceMonitor& resourceMonitor,
       std::initializer_list<std::pair<char const*, char const*>> params) {
     auto builder = std::make_shared<velocypack::Builder>();
@@ -103,7 +109,8 @@ class MatchPatternNormalizerTest : public ::testing::Test {
       builder->add(key, velocypack::Value(value));
     }
     builder->close();
-    return BindParameters(resourceMonitor, builder);
+    return std::make_unique<BindParameters>(resourceMonitor,
+                                            std::move(builder));
   }
 
   ParsedMatch parseMatch(
@@ -120,11 +127,13 @@ class MatchPatternNormalizerTest : public ::testing::Test {
     Parser parser(*queryContext, &queryContext->warnings(), *ast, queryString);
     parser.parse();
 
+    std::unique_ptr<BindParameters> parameters;
     if (injectBindParameters) {
-      auto parameters =
+      parameters =
           makeBindParameters(queryContext->resourceMonitor(), bindParams);
-      ast->injectBindParametersFirstStage(parameters, queryContext->resolver());
-      ast->injectBindParametersSecondStage(parameters);
+      ast->injectBindParametersFirstStage(*parameters,
+                                          queryContext->resolver());
+      ast->injectBindParametersSecondStage(*parameters);
     }
 
     AstNode const* matchNode = nullptr;
@@ -137,7 +146,33 @@ class MatchPatternNormalizerTest : public ::testing::Test {
     }
     EXPECT_NE(nullptr, matchNode);
 
-    return ParsedMatch{std::move(queryContext), std::move(ast), matchNode};
+    return ParsedMatch{std::move(queryContext), std::move(ast),
+                       std::move(parameters), matchNode};
+  }
+
+  /// @brief start vertex pattern's collection/datasource label AST node
+  static AstNode const* startVertexCollectionNode(ParsedMatch const& parsed) {
+    EXPECT_NE(nullptr, parsed.matchNode);
+    if (parsed.matchNode == nullptr || parsed.matchNode->numMembers() == 0) {
+      return nullptr;
+    }
+    AstNode const* pattern = parsed.matchNode->getMember(0);
+    EXPECT_EQ(NODE_TYPE_PATTERN_MATCH_EXPRESSION, pattern->type);
+    if (pattern->type != NODE_TYPE_PATTERN_MATCH_EXPRESSION ||
+        pattern->numMembers() == 0) {
+      return nullptr;
+    }
+    AstNode const* start = pattern->getMember(0);
+    // path variable may come first
+    if (start->type == NODE_TYPE_PATTERN_PATH_VARIABLE &&
+        pattern->numMembers() > 1) {
+      start = pattern->getMember(1);
+    }
+    EXPECT_EQ(NODE_TYPE_PATTERN_NODE_PATTERN, start->type);
+    if (start->type != NODE_TYPE_PATTERN_NODE_PATTERN) {
+      return nullptr;
+    }
+    return start->getMember(1);
   }
 
   static NormalizedMatchStatement normalize(ParsedMatch const& parsed) {
@@ -312,6 +347,14 @@ TEST_F(MatchPatternNormalizerTest, multipleEdgeCollections) {
 
 TEST_F(MatchPatternNormalizerTest, literalCollectionVertexAndEdge) {
   auto parsed = parseMatch("MATCH (v :vc1) -[ e :ec1 ]-> (w :vc2) RETURN 1");
+
+  // Literal collection labels are NODE_TYPE_COLLECTION with Ast-owned
+  // strings (lexer registers via Ast::resources().registerString).
+  AstNode const* vertexLabel = startVertexCollectionNode(parsed);
+  ASSERT_NE(nullptr, vertexLabel);
+  ASSERT_EQ(NODE_TYPE_COLLECTION, vertexLabel->type);
+  EXPECT_EQ("vc1", vertexLabel->getStringView());
+
   auto statement = normalize(parsed);
 
   EXPECT_EQ("vc1", statement.patterns.front().start.vertex->collection.name());
@@ -326,6 +369,12 @@ TEST_F(MatchPatternNormalizerTest, literalCollectionVertexAndEdge) {
 
 TEST_F(MatchPatternNormalizerTest, collectionBindParameter) {
   auto parsed = parseMatch("MATCH (v :@@vc) -[ e :@@ec ]-> (w :@@vc) RETURN 1");
+
+  AstNode const* vertexLabel = startVertexCollectionNode(parsed);
+  ASSERT_NE(nullptr, vertexLabel);
+  ASSERT_EQ(NODE_TYPE_PARAMETER_DATASOURCE, vertexLabel->type);
+  EXPECT_EQ("@vc", vertexLabel->getStringView());
+
   auto statement = normalize(parsed);
 
   EXPECT_EQ(MatchDataSource::Kind::kBindParameter,
@@ -342,6 +391,27 @@ TEST_F(MatchPatternNormalizerTest, resolvedCollectionBindParameter) {
   auto parsed =
       parseMatch("MATCH (v :@@vc) -[ e :@@ec ]-> (w :@@vc) RETURN 1", true,
                  {{"@vc", "resolved_vc"}, {"@ec", "resolved_ec"}});
+
+  // After bind-parameter injection, @@ labels become NODE_TYPE_COLLECTION.
+  // Collection-name string_views point into BindParameters' VPack Builder,
+  // which ParsedMatch keeps alive (mirrors Query::_bindParameters).
+  ASSERT_NE(nullptr, parsed.bindParameters);
+  AstNode const* vertexLabel = startVertexCollectionNode(parsed);
+  ASSERT_NE(nullptr, vertexLabel);
+  ASSERT_EQ(NODE_TYPE_COLLECTION, vertexLabel->type)
+      << vertexLabel->getTypeString();
+  EXPECT_EQ("resolved_vc", vertexLabel->getStringView());
+
+  AstNode const* edge =
+      parsed.matchNode->getMember(0)->getMember(1)->getMember(0);
+  ASSERT_EQ(NODE_TYPE_PATTERN_EDGE, edge->type);
+  AstNode const* edgeCollections = edge->getMember(1);
+  ASSERT_EQ(NODE_TYPE_ARRAY, edgeCollections->type);
+  ASSERT_EQ(1U, edgeCollections->numMembers());
+  AstNode const* edgeLabel = edgeCollections->getMember(0);
+  ASSERT_EQ(NODE_TYPE_COLLECTION, edgeLabel->type);
+  EXPECT_EQ("resolved_ec", edgeLabel->getStringView());
+
   auto statement = normalize(parsed);
 
   EXPECT_EQ(MatchDataSource::Kind::kCollection,
@@ -352,6 +422,13 @@ TEST_F(MatchPatternNormalizerTest, resolvedCollectionBindParameter) {
                                .segments.front()
                                .edge.collections.front()
                                .name());
+  EXPECT_EQ(MatchDataSource::Kind::kCollection,
+            statement.patterns.front()
+                .segments.front()
+                .target.vertex->collection.kind());
+  EXPECT_EQ("resolved_vc", statement.patterns.front()
+                               .segments.front()
+                               .target.vertex->collection.name());
 }
 
 TEST_F(MatchPatternNormalizerTest, fixedRange) {
