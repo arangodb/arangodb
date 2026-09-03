@@ -302,6 +302,9 @@ jobs:
           no_output_timeout: 3h
           command: ./scripts/benchmark/ann/run_ann_benchmark.sh
       - store_artifacts:
+          # Upload even when the benchmark step fails (e.g. incomplete results),
+          # so a failed run is still debuggable via site/, run.log, arangod.log.
+          when: always
           path: /tmp/ann-output
           destination: ann-benchmark
 
