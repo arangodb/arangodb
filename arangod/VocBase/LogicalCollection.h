@@ -166,7 +166,6 @@ class LogicalCollection : public LogicalDataSource {
   bool waitForSync() const noexcept;
   bool cacheEnabled() const noexcept;
   bool timeTravelEnabled() const noexcept;
-  bool supportsRBAC() const noexcept;
 #ifdef USE_ENTERPRISE
   bool isDisjoint() const noexcept { return _isDisjoint; }
   bool isSmart() const noexcept { return _isSmart; }
