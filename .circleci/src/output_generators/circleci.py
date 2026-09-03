@@ -280,8 +280,7 @@ class CircleCIGenerator(OutputGenerator):
             )
         # clang-tidy for x64 nightly (non-instrumented builds only)
         if (
-            build_config.nightly
-            and build_config.architecture == Architecture.X64
+            build_config.architecture == Architecture.X64
             and not build_config.build_variant.is_instrumented
         ):
             workflow["jobs"].append(
