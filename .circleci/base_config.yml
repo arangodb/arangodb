@@ -219,7 +219,7 @@ commands:
             cd << parameters.destination >>
             echo << pipeline.git.revision >>
             git init
-            git remote add origin git@github.com:arangodb/arangodb.git"
+            git remote add origin "git@github.com:arangodb/arangodb.git"
             echo "Fetching stuff"
             git fetch --depth 1 origin << pipeline.git.revision >>
             git checkout << pipeline.git.revision >>
@@ -1217,6 +1217,9 @@ jobs:
       - run:
           name: Clone RTA
           command: |
+            git config --global --replace-all url."https://${USERNAME}:${PASSWORD}@github.com/".insteadOf "https://github.com/"
+            git config --global --add         url."https://${USERNAME}:${PASSWORD}@github.com/".insteadOf "git@github.com:"
+            git config --global --add         url."https://${USERNAME}:${PASSWORD}@github.com/".insteadOf "ssh://git@github.com/"
             set + x
             mkdir work/release-test-automation
             cd work/release-test-automation
