@@ -115,11 +115,11 @@ enum class MatchProjectionReservedAttribute : uint8_t {
 /// @param isEdge true when projecting an edge pattern variable
 [[nodiscard]] MatchProjectionReservedAttribute
 classifyMatchProjectionReservedAttribute(std::string_view name,
-                                        bool isEdge) noexcept;
+                                         bool isEdge) noexcept;
 
 /// @brief true when @p name is reserved for MATCH projection auto-injection
 [[nodiscard]] bool isMatchProjectionReservedAttribute(std::string_view name,
-                                                       bool isEdge) noexcept;
+                                                      bool isEdge) noexcept;
 
 /// @brief Attributes always present in a projected MATCH vertex/edge object.
 /// Vertex: `_id`. Edge: `_id`, `_from`, `_to`.

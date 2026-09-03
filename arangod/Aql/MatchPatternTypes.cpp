@@ -80,7 +80,7 @@ MatchProjectionReservedAttribute classifyMatchProjectionReservedAttribute(
 }
 
 bool isMatchProjectionReservedAttribute(std::string_view name,
-                                         bool isEdge) noexcept {
+                                        bool isEdge) noexcept {
   return classifyMatchProjectionReservedAttribute(name, isEdge) !=
          MatchProjectionReservedAttribute::kNone;
 }
