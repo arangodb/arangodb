@@ -37,12 +37,13 @@ struct DatabaseConfiguration;
 class Result;
 
 struct ClusteringConstantProperties {
-  inspection::NonNullOptional<uint64_t> numberOfShards{std::nullopt};
+  // null must load as unset (legacy markers), and unset must omit the key --
+  // std::optional without a fallback does both
+  std::optional<uint64_t> numberOfShards{std::nullopt};
   inspection::NonNullOptional<std::string> distributeShardsLike{std::nullopt};
-  inspection::NonNullOptional<std::string> distributeShardsLikeCid{
-      std::nullopt};
-  std::optional<std::string> shardingStrategy =
-      std::nullopt;  // defaultShardingStrategy
+  // internal/agency parse "distributeShardsLike" into this one
+  std::optional<std::string> distributeShardsLikeCid{std::nullopt};
+  std::optional<std::string> shardingStrategy = std::nullopt;
   inspection::NonNullOptional<std::vector<std::string>> shardKeys{std::nullopt};
   inspection::NonNullOptional<std::vector<ShardID>> shardsR2{std::nullopt};
   inspection::NonNullOptional<replication2::agency::CollectionGroupId> groupId{

@@ -459,8 +459,8 @@ bool LogicalCollection::cacheEnabled() const noexcept {
 CollectionDescriptor LogicalCollection::properties() const {
   CollectionDescriptor d;
 
-  d.constant.type = static_cast<std::underlying_type_t<TRI_col_type_e>>(
-      _invariants->type);
+  d.constant.type =
+      static_cast<std::underlying_type_t<TRI_col_type_e>>(_invariants->type);
   d.constant.isSystem = system();
   d.constant.isSmart = _invariants->isSmart;
   d.constant.isDisjoint = _invariants->isDisjoint;
@@ -924,6 +924,8 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
   // Collection Meta Information
   build.add(StaticStrings::DataSourceCid,
             VPackValue(std::to_string(id().id())));
+  build.add(StaticStrings::DataSourceType,
+            VPackValue(static_cast<int>(type())));
 
   // there are no collection statuses anymore, but we need to keep
   // API-compatibility. so the following attributes' values are hard-coded.
@@ -937,20 +939,7 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
 
   build.add(StaticStrings::Version,
             VPackValue(static_cast<uint32_t>(_version)));
-  // Collection Flags. Only the keys no other writer in this function owns --
-  // everything else is added below by LogicalDataSource, ShardingInfo,
-  // _physical, the key generator or the Enterprise subclass.
-  build.add(StaticStrings::DataSourceType,
-            VPackValue(static_cast<int>(type())));
-  build.add(StaticStrings::IsSmart, VPackValue(isSmart()));
-  build.add(StaticStrings::IsDisjoint, VPackValue(isDisjoint()));
-  build.add(StaticStrings::IsSmartChild, VPackValue(isSmartChild()));
-  build.add(StaticStrings::SyncByRevision, VPackValue(syncByRevision()));
-  build.add(StaticStrings::UsesRevisionsAsDocumentIds,
-            VPackValue(usesRevisionsAsDocumentIds()));
-  build.add(
-      StaticStrings::InternalValidatorTypes,
-      VPackValue(_internalValidatorTypes.load(std::memory_order_relaxed)));
+  // Collection Flags
   build.add(StaticStrings::WaitForSyncString,
             VPackValue(_waitForSync.load(std::memory_order_relaxed)));
 
@@ -967,14 +956,6 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
   build.add(StaticStrings::KeyOptions, VPackValue(VPackValueType::Object));
   keyGenerator().toVelocyPack(build);
   build.close();
-
-  // Schema
-  build.add(VPackValue(StaticStrings::Schema));
-  schemaToVelocyPack(build);
-
-  // Computed Values
-  build.add(VPackValue(StaticStrings::ComputedValues));
-  computedValuesToVelocyPack(build);
 
   // Physical Information
   getPhysical()->getPropertiesVPack(build);
@@ -1005,6 +986,26 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
     return false;
   };
   getPhysical()->getIndexesVPack(build, filter);
+
+  // Schema
+  build.add(VPackValue(StaticStrings::Schema));
+  schemaToVelocyPack(build);
+
+  // Computed Values
+  build.add(VPackValue(StaticStrings::ComputedValues));
+  computedValuesToVelocyPack(build);
+
+  // Internal CollectionType
+  build.add(
+      StaticStrings::InternalValidatorTypes,
+      VPackValue(_internalValidatorTypes.load(std::memory_order_relaxed)));
+  // Cluster Specific
+  build.add(StaticStrings::IsDisjoint, VPackValue(isDisjoint()));
+  build.add(StaticStrings::IsSmart, VPackValue(isSmart()));
+  build.add(StaticStrings::IsSmartChild, VPackValue(isSmartChild()));
+  build.add(StaticStrings::UsesRevisionsAsDocumentIds,
+            VPackValue(usesRevisionsAsDocumentIds()));
+  build.add(StaticStrings::SyncByRevision, VPackValue(syncByRevision()));
 
   if (!forPersistence) {
     // with 'forPersistence' added by LogicalDataSource::toVelocyPack

@@ -23,9 +23,11 @@
 #include "CollectionDescriptor.h"
 
 #include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
 #include "Inspection/VPack.h"
 
 #include <absl/strings/str_cat.h>
+#include <velocypack/Collection.h>
 
 namespace arangodb {
 
