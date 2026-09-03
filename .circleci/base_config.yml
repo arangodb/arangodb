@@ -247,6 +247,9 @@ commands:
           environment:
             GIT_SSH_COMMAND: "ssh -o StrictHostKeyChecking=no"
           command: |
+            git config --global --replace-all url."https://${USERNAME}:${PASSWORD}@github.com/".insteadOf "https://github.com/"
+            git config --global --add         url."https://${USERNAME}:${PASSWORD}@github.com/".insteadOf "git@github.com:"
+            git config --global --add         url."https://${USERNAME}:${PASSWORD}@github.com/".insteadOf "ssh://git@github.com/"
             mkdir -p << parameters.destination >>
             cd << parameters.destination >>
             git clone "git@github.com:arangodb/enterprise.git" .
@@ -527,7 +530,6 @@ jobs:
       - run:
           name: Run eslint
           command: |
-            cat /root/project/tests/js/client/recovery/cluster/crash/dump-api-dbserver.js
             utils/eslint.sh
       - run:
           name: "Cancel other workflows"
