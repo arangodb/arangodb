@@ -25,6 +25,7 @@
 #include <fcntl.h>
 #include <cstring>
 #include <filesystem>
+#include <unistd.h>
 
 #include "Basics/Exceptions.h"
 #include "Basics/files.h"

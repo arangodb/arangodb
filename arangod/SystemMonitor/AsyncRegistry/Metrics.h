@@ -21,6 +21,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include <cstdint>
+
 #include "Containers/Concurrent/metrics.h"
 #include "Metrics/Fwd.h"
 

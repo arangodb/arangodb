@@ -24,6 +24,7 @@
 
 #include "Basics/Result.h"
 
+#include <cstdint>
 #include <memory>
 #include <unordered_map>
 #include <vector>
