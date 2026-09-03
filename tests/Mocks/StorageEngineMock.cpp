@@ -223,12 +223,6 @@ bool StorageEngineMock::autoRefillIndexCachesOnFollowers() const {
   return false;
 }
 
-void StorageEngineMock::addOptimizerRules(
-    arangodb::aql::OptimizerRulesFeature& /*feature*/) {
-  before();
-  // NOOP
-}
-
 void StorageEngineMock::changeCollection(
     TRI_vocbase_t& vocbase, arangodb::LogicalCollection const& collection) {
   // NOOP, assume physical collection changed OK

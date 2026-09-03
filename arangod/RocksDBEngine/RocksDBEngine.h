@@ -347,9 +347,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   Result compactAll(bool changeLevel, bool compactBottomMostLevel) override;
 
-  /// @brief Add engine-specific optimizer rules
-  void addOptimizerRules(aql::OptimizerRulesFeature& feature) override;
-
   void addParametersForNewCollection(velocypack::Builder& builder,
                                      velocypack::Slice info) override;
 

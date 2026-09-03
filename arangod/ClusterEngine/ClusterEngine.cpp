@@ -246,20 +246,6 @@ Result ClusterEngine::compactAll(bool changeLevel,
                                compactBottomMostLevel);
 }
 
-/// @brief Add engine-specific optimizer rules
-void ClusterEngine::addOptimizerRules(aql::OptimizerRulesFeature& feature) {
-  if (engineType() == ClusterEngineType::RocksDBEngine) {
-    RocksDBOptimizerRules::registerResources(feature);
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  } else if (engineType() == ClusterEngineType::MockEngine) {
-    // do nothing
-#endif
-  } else {
-    // invalid engine type...
-    TRI_ASSERT(false);
-  }
-}
-
 void ClusterEngine::waitForEstimatorSync() {
   // fixes tests by allowing us to reload the cluster selectivity estimates
   // If test `shell-cluster-collection-selectivity.js` fails consider increasing

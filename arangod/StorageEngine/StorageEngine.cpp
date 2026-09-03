@@ -155,8 +155,6 @@ void StorageEngine::registerReplicatedState(
 
 std::string_view StorageEngine::typeName() const { return _typeName; }
 
-void StorageEngine::addOptimizerRules(aql::OptimizerRulesFeature&) {}
-
 TransactionStatistics& StorageEngine::transactionStatistics() noexcept {
   ADB_PROD_ASSERT(_transactionStatistics != nullptr)
       << "transactionStatistics() called before start()";
