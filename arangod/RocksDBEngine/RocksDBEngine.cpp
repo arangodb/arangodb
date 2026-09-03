@@ -1858,11 +1858,6 @@ Result RocksDBEngine::compactAll(bool changeLevel,
                                 compactBottomMostLevel, &::cancelCompactions);
 }
 
-/// @brief Add engine-specific optimizer rules
-void RocksDBEngine::addOptimizerRules(aql::OptimizerRulesFeature& feature) {
-  RocksDBOptimizerRules::registerResources(feature);
-}
-
 void RocksDBEngine::addCollectionMapping(uint64_t objectId, TRI_voc_tick_t did,
                                          DataSourceId cid) {
   if (objectId != 0) {

@@ -174,9 +174,6 @@ class ClusterEngine final : public StorageEngine {
       -> ResultT<std::unique_ptr<
           replication2::storage::IStorageEngineMethods>> override;
 
-  /// @brief Add engine-specific optimizer rules
-  void addOptimizerRules(aql::OptimizerRulesFeature& feature) override;
-
   void addParametersForNewCollection(arangodb::velocypack::Builder& builder,
                                      arangodb::velocypack::Slice info) override;
 
