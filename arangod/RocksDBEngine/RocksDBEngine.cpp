@@ -92,7 +92,6 @@
 #include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
-#include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "RocksDBEngine/RocksDBOptionFeature.h"
 #include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
@@ -1865,11 +1864,6 @@ Result RocksDBEngine::compactAll(bool changeLevel,
                                  bool compactBottomMostLevel) {
   return rocksutils::compactAll(_db->GetRootDB(), changeLevel,
                                 compactBottomMostLevel, &::cancelCompactions);
-}
-
-/// @brief Add engine-specific optimizer rules
-void RocksDBEngine::addOptimizerRules(aql::OptimizerRulesFeature& feature) {
-  RocksDBOptimizerRules::registerResources(feature);
 }
 
 #ifdef USE_V8
