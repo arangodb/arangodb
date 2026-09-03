@@ -19,21 +19,13 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
-#include "Aql/AttributeNamePath.h"
-#include "Aql/ExecutionNode/IndexNode.h"
-#include "Aql/VarInfoMap.h"
-#include "Aql/types.h"
-#include "Containers/FlatHashSet.h"
+#include "Aql/SortCondition.h"
 #include "Utils/OperationOptions.h"
 
-#include <cstdint>
 #include <memory>
-#include <string_view>
 #include <vector>
-
 namespace arangodb {
 class Index;
 
@@ -43,25 +35,32 @@ class Methods;
 
 namespace aql {
 
-class Ast;
-struct AstNode;
-class AttributeNamePath;
 struct Collection;
-class ExecutionNode;
-class ExecutionPlan;
-class Projections;
+struct AstNode;
+struct Variable;
 class IndexHint;
 class SortCondition;
-struct Variable;
-struct VarInfo;
-struct NonConstExpressionContainer;
-struct RegisterId;
 
-namespace utils {
+namespace optimizer {
+/// @brief Gets the best fitting index for an AQL condition.
+/// note: the contents of  root  may be modified by this function if
+/// an index is picked!!
+std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
+    transaction::Methods& trx, Collection const& coll, Ast* ast, AstNode* root,
+    Variable const* reference, SortCondition const* sortCondition,
+    size_t itemsInCollection, IndexHint const& hint,
+    std::vector<std::shared_ptr<Index>>& usedIndexes, bool& isSorted,
+    bool& isAllCoveredByIndex, ReadOwnWrites readOwnWrites);
 
-arangodb::aql::Collection const* getCollection(
-    arangodb::aql::ExecutionNode const* node);
+/// @brief Gets the best fitting index for an AQL condition.
+/// note: the contents of  node  may be modified by this function if
+/// an index is picked!!
+bool getBestIndexHandleForFilterCondition(
+    transaction::Methods& trx, Collection const& collection, AstNode* node,
+    Variable const* reference, size_t itemsInCollection, IndexHint const& hint,
+    std::shared_ptr<Index>& usedIndex, ReadOwnWrites readOwnWrites,
+    bool onlyEdgeIndexes);
 
-}  // namespace utils
+}  // namespace optimizer
 }  // namespace aql
 }  // namespace arangodb
