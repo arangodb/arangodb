@@ -126,8 +126,6 @@ class StorageEngineMock : private StorageEngineMockBase,
       arangodb::application_features::ApplicationServer& server,
       bool injectClusterIndexes = false);
   arangodb::HealthData healthCheck() override;
-  void addOptimizerRules(
-      arangodb::aql::OptimizerRulesFeature& feature) override;
 
   void changeCollection(TRI_vocbase_t& vocbase,
                         arangodb::LogicalCollection const& collection) override;
