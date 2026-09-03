@@ -1,6 +1,8 @@
 3.12.12 (XXXX-XX-XX)
 --------------------
 
+* Fix compilation issues with missing headers for unit... and isatty.
+
 * Rebuilt included rclone v1.75.0 with go1.25.13 and non-vulnerable
   dependencies.
 
