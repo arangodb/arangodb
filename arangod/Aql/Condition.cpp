@@ -28,6 +28,7 @@
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils/GetIndexForSortCondition.h"
 #include "Aql/Quantifier.h"
 #include "Aql/Query.h"
 #include "Aql/QueryOptions.h"
@@ -327,7 +328,7 @@ std::pair<bool, bool> Condition::findIndexes(
   if (_root == nullptr) {
     size_t dummy;
     return std::make_pair<bool, bool>(
-        false, aql::utils::getIndexForSortCondition(
+        false, aql::optimizer::getIndexForSortCondition(
                    coll, sortCondition, reference, itemsInIndex, node->hint(),
                    usedIndexes, dummy));
   }
