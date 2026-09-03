@@ -58,7 +58,7 @@ struct SharedCounter {
 
   explicit SharedCounter(SharedCounter<stripes> const& other) { copy(other); }
 
-  SharedCounter<stripes>& operator=(SharedCounter<stripes> const& other) {
+  SharedCounter& operator=(SharedCounter<stripes> const& other) {
     copy(other);
     return *this;
   }

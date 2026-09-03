@@ -143,7 +143,7 @@ start_color_print('arangodb', true);
     sigemptyset(&set);
     sigaddset(&set, SIGINT);
 
-    if (pthread_sigmask(SIG_UNBLOCK, &set, nullptr) < 0) {
+    if (pthread_sigmask(SIG_UNBLOCK, &set, nullptr) > 0) {
       LOG_TOPIC("62022", ERR, arangodb::Logger::FIXME)
           << "unable to install signal handler";
     }
