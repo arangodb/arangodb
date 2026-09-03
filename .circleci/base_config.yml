@@ -212,6 +212,9 @@ commands:
           environment:
             GIT_SSH_COMMAND: "ssh -o StrictHostKeyChecking=no"
           command: |
+            git config --global --replace-all url."https://${USERNAME}:${PASSWORD}@github.com/".insteadOf "https://github.com/"
+            git config --global --add         url."https://${USERNAME}:${PASSWORD}@github.com/".insteadOf "git@github.com:"
+            git config --global --add         url."https://${USERNAME}:${PASSWORD}@github.com/".insteadOf "ssh://git@github.com/"
             mkdir -p << parameters.destination >>
             cd << parameters.destination >>
             echo << pipeline.git.revision >>

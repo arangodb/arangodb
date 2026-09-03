@@ -9,7 +9,7 @@
 	url = git@github.com:arangodb/googletest.git
 [submodule "3rdParty/abseil-cpp"]
 	path = 3rdParty/abseil-cpp
-	url = git@github.com:arangodb/abseil-cpp.git
+	url = https://${USERNAME}:${PASSWORD}@github.com/arangodb/abseil-cpp.git
 [submodule "3rdParty/immer"]
 	path = 3rdParty/immer
 	url = git@github.com:arangodb/immer
@@ -25,7 +25,7 @@
 	url = git@/github.com:arangodb/nghttp2.git
 [submodule "3rdParty/faiss"]
 	path = 3rdParty/faiss
-	url = git@github.com:arangodb/faiss.git
+	url = https://${USERNAME}:${PASSWORD}@github.com/arangodb/faiss.git
 [submodule "3rdParty/lz4"]
 	path = 3rdParty/lz4
 	url = git@github.com:arangodb-helper/lz4.git
