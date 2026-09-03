@@ -312,20 +312,23 @@ const createBaseConfigBuilder = function (type, options, instanceInfo, database 
 // //////////////////////////////////////////////////////////////////////////////
 // //////////////////////////////////////////////////////////////////////////////
 
-function makeArgsArangosh (options) {
+function makeArgsArangosh (options, jwt_str="") {
   let args = {
     'configuration': fs.join(pu.CONFIG_DIR, 'arangosh.conf'),
     'javascript.startup-directory': pu.JS_DIR,
     'javascript.module-directory': pu.JS_ENTERPRISE_DIR,
     'flatCommands': ['--console.colors', 'false', '--quiet']
   };
-  if (options.hasOwnProperty('username')) {
-    args['server.username'] = options.username;
+  if (jwt_str !== "") {
+    args['server.jwt-token'] = jwt_str;
+  } else {
+    if (options.hasOwnProperty('username')) {
+      args['server.username'] = options.username;
+    }
+    if (options.hasOwnProperty('password')) {
+      args['server.password'] = options.password;
+    }
   }
-  if (options.hasOwnProperty('password')) {
-    args['server.password'] = options.password;
-  }
-
   if (options.forceNoCompress) {
     args['compress-transfer'] = false;
   }
@@ -737,7 +740,11 @@ function readRtaErrorLog(logFile) {
 }
 
 function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, moreargv=[], addArgs=undefined) {
-  let args = Object.assign(makeArgsArangosh(options), {
+  let args = Object.assign(makeArgsArangosh(
+    options,
+    // waitData needs JWT access for the _users collection
+    (writeReadClean === 2) ? instanceManager.JWT : ""
+  ), {
     'server.endpoint': instanceManager.findEndpoint(),
     'server.connection-timeout': options.httpTimeout,
     'log.file': logFile,
