@@ -111,7 +111,7 @@ function QueryPermissionsSuite() {
           "/_api/cursor",
           {query:"FOR doc IN _queries RETURN doc", batchSize, options: {batchSize}}
         );
-        assertEqual(404, result.code);
+        assertEqual(403, result.code);
         assertTrue(result.parsedBody.error, result.parsedBody);
       } finally {
         IM.reconnectMe();
@@ -158,7 +158,7 @@ function QueryPermissionsSuite() {
         let result = arango.POST_RAW(
           "/_api/cursor",
           {query:"FOR doc IN _queries RETURN doc", batchSize, options: {batchSize}});
-        assertEqual(404, result.code);
+        assertEqual(403, result.code);
         assertTrue(result.parsedBody.error, result.parsedBody);
       } finally {
         IM.reconnectMe();
