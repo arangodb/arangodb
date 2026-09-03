@@ -23,6 +23,7 @@
 #include "MatchPatternTypes.h"
 
 #include "Aql/Variable.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/debugging.h"
 
 namespace arangodb::aql {
@@ -60,6 +61,71 @@ bool MatchPathRange::isFixedOne() const noexcept {
 
 bool MatchPathRange::isFixed() const noexcept {
   return _maxDepth.has_value() && _minDepth == *_maxDepth;
+}
+
+MatchProjectionReservedAttribute classifyMatchProjectionReservedAttribute(
+    std::string_view name, bool isEdge) noexcept {
+  if (name == StaticStrings::IdString) {
+    return MatchProjectionReservedAttribute::kId;
+  }
+  if (isEdge) {
+    if (name == StaticStrings::FromString) {
+      return MatchProjectionReservedAttribute::kFrom;
+    }
+    if (name == StaticStrings::ToString) {
+      return MatchProjectionReservedAttribute::kTo;
+    }
+  }
+  return MatchProjectionReservedAttribute::kNone;
+}
+
+bool isMatchProjectionReservedAttribute(std::string_view name,
+                                        bool isEdge) noexcept {
+  return classifyMatchProjectionReservedAttribute(name, isEdge) !=
+         MatchProjectionReservedAttribute::kNone;
+}
+
+std::vector<std::string_view> mandatoryMatchProjectionAttributes(bool isEdge) {
+  if (isEdge) {
+    return {StaticStrings::IdString, StaticStrings::FromString,
+            StaticStrings::ToString};
+  }
+  return {StaticStrings::IdString};
+}
+
+MatchProjectionItem MatchProjectionItem::keepPath(
+    std::vector<std::string> path) {
+  TRI_ASSERT(!path.empty());
+  MatchProjectionItem item;
+  item.kind = Kind::kKeepAttribute;
+  item.name = path.size() == 1 ? path.front() : std::string{};
+  item.path = std::move(path);
+  return item;
+}
+
+MatchProjectionItem MatchProjectionItem::keepLiteral(std::string key) {
+  MatchProjectionItem item;
+  item.kind = Kind::kKeepLiteral;
+  item.path = {key};
+  item.name = std::move(key);
+  return item;
+}
+
+MatchProjectionItem MatchProjectionItem::alias(std::string name,
+                                               MatchExpressionRef expression) {
+  MatchProjectionItem item;
+  item.kind = Kind::kAlias;
+  item.name = std::move(name);
+  item.expression = expression;
+  return item;
+}
+
+std::string_view MatchProjectionItem::topLevelKey() const noexcept {
+  if (isAlias()) {
+    return name;
+  }
+  TRI_ASSERT(!path.empty());
+  return path.front();
 }
 
 Variable const* MatchPatternElement::outputVariable() const noexcept {

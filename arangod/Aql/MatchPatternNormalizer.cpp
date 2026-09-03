@@ -263,13 +263,12 @@ std::optional<MatchProjection> MatchPatternNormalizer::normalizeProjection(
   for (size_t i = 0; i < node->numMembers(); ++i) {
     AstNode const* item = node->getMemberUnchecked(i);
     if (item->type == NODE_TYPE_OBJECT_ELEMENT) {
-      projection.items.push_back(
-          MatchProjectionItem{MatchProjectionItem::Kind::kAlias,
-                              std::string(item->getStringView()),
-                              {},
-                              {item->getMember(0)}});
+      // Alias: name = <expression>. Expression remains Ast-owned.
+      projection.items.push_back(MatchProjectionItem::alias(
+          std::string(item->getStringView()), {item->getMember(0)}));
     } else if (item->type == NODE_TYPE_ARRAY) {
       // Unquoted keep path: ARRAY of path segments (nested when size > 1).
+      // e.g. profile.name → {"profile","name"}
       std::vector<std::string> path;
       path.reserve(item->numMembers());
       for (size_t j = 0; j < item->numMembers(); ++j) {
@@ -277,22 +276,13 @@ std::optional<MatchProjection> MatchPatternNormalizer::normalizeProjection(
         TRI_ASSERT(part->isStringValue());
         path.emplace_back(part->getString());
       }
-      TRI_ASSERT(!path.empty());
-      std::string name = path.size() == 1 ? path.front() : std::string{};
       projection.items.push_back(
-          MatchProjectionItem{MatchProjectionItem::Kind::kKeepAttribute,
-                              std::move(name),
-                              std::move(path),
-                              {}});
+          MatchProjectionItem::keepPath(std::move(path)));
     } else if (item->type == NODE_TYPE_VALUE && item->isStringValue()) {
       // Quoted literal keep: single top-level key (dots are not hierarchy).
-      std::string name{item->getStringView()};
-      std::vector<std::string> path{name};
+      // e.g. "profile.name" → {"profile.name"}
       projection.items.push_back(
-          MatchProjectionItem{MatchProjectionItem::Kind::kKeepAttribute,
-                              std::move(name),
-                              std::move(path),
-                              {}});
+          MatchProjectionItem::keepLiteral(std::string(item->getStringView())));
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "unexpected match projection item");
