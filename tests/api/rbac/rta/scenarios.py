@@ -238,6 +238,7 @@ class Scenario:
         grants=None,
         precreate_database=False,
         precreate_collections=(),
+        needs_write_on_rerun=False,
     ):
         self.name = name
         self.summary = summary
@@ -261,6 +262,13 @@ class Scenario:
         # Overrides the run-wide --test filter. Used by scenarios that need a
         # particular suite to be present to demonstrate anything.
         self.test_filter = test_filter
+        # A scenario whose denial only shows up on a *second* makedata pass over
+        # data a superuser already created needs the selected suites to attempt
+        # a write even when their objects exist. Suite 050 does not: it creates
+        # databases, finds them present on the re-run and does nothing, so such a
+        # scenario would report `pass` and mean nothing by it. The runner skips
+        # these, with a note, when the filter cannot make them meaningful.
+        self.needs_write_on_rerun = needs_write_on_rerun
         # Classic-authentication scenarios carry `_users` grants instead of an
         # RBAC policy: a list of (path, level) where path is "<db>" or
         # "<db>/<collection>" and level is rw / ro / none. Mutually exclusive
@@ -365,6 +373,7 @@ def build(database, other_database, denied_collection, api_version_gate=True):
                 "The discriminating scenario for the reader role: the same user "
                 "passes the read-only phase and is refused the writing phase."
             ),
+            needs_write_on_rerun=True,
         ),
         # -- write but no lifecycle ---------------------------------------
         Scenario(
@@ -385,6 +394,7 @@ def build(database, other_database, denied_collection, api_version_gate=True):
                 "developer action set alone is insufficient for the workload, "
                 "i.e. that db:Create is genuinely required and enforced."
             ),
+            needs_write_on_rerun=True,
         ),
         # -- scope is the boundary ----------------------------------------
         # Identical policy to coredb-admin-in-scope, which passes everything.
@@ -604,6 +614,7 @@ def build_classic(database, other_database, denied_collection):
                 Step("cleardata", SUPERUSER, PASS, note="teardown"),
             ],
             expect_note="The classic equivalent of coredb-reader-in-scope.",
+            needs_write_on_rerun=True,
         ),
         Scenario(
             name="classic-none",

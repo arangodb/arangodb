@@ -42,6 +42,7 @@ const testRunnerBase = require('@arangodb/testutils/testrunner').testRunner;
 const yaml = require('js-yaml');
 const platform = require('internal').platform;
 const time = require('internal').time;
+const executeExternalAndWait = require('internal').executeExternalAndWait;
 const isEnterprise = require("@arangodb/test-helper").isEnterprise;
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
@@ -55,6 +56,17 @@ const testPaths = {
   'rta_makedata': []
 };
 
+function normalizeSuiteFilter (value) {
+  const one = (item) => (typeof item === 'number')
+    ? String(item).padStart(3, '0')
+    : String(item);
+  let filter = Array.isArray(value) ? value.map(one).join(',') : one(value);
+  if (!filter.includes(',')) {
+    filter = `${filter},${filter}`;
+  }
+  return filter;
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: shell_http
 // //////////////////////////////////////////////////////////////////////////////
@@ -62,12 +74,10 @@ const testPaths = {
 function makeDataWrapper (options) {
   let stoppedDbServerInstance = {};
   if (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined')) {
-    if (!options.hasOwnProperty('makedataArgs')) {
+    if (!options['makedataArgs']) {
       options['makedataArgs'] = {};
     }
-    options['makedataArgs']['test'] = Array.isArray(options.test)
-      ? options.test.join(',')
-      : options.test;
+    options['makedataArgs']['test'] = normalizeSuiteFilter(options.test);
   }
 
   let messages = [
@@ -93,6 +103,10 @@ function makeDataWrapper (options) {
       this.continueTesting = true;
       if (this.options.isCov) {
         this.options.oneTestTimeout = this.options.oneTestTimeout * 4;
+      }
+      if (this.options.rbac) {
+        Object.assign(this.serverOptions, tu.testServerAuthInfo);
+        this.serverOptions['network.compression-method'] = 'none';
       }
     }
     filter(te, filtered) {
@@ -138,6 +152,88 @@ function makeDataWrapper (options) {
       return ct.run.arangoDumpRestoreWithConfig(this.restoreConfig, this.options, this.instanceManager.rootDir, this.options.coreCheck);
     }
 
+    // //////////////////////////////////////////////////////////////////////
+    // / Drive the RBAC scenario matrix (tests/api/rbac/rta) against the SUT.
+    // / Runs only when --rbac was given a URL.
+    // //////////////////////////////////////////////////////////////////////
+    rbacRunnerArgs() {
+      const secretFile = fs.join(this.instanceManager.rootDir, 'rta_rbac_jwt_secret');
+      fs.write(secretFile, this.instanceManager.JWT);
+      return [
+        fs.join(this.options.rtaRbacDir, 'run_scenarios.py'),
+        '--management', this.options.rbac,
+        '--integration', this.options.rbac,
+        '--jwt-secret-file', secretFile,
+        '--external-sidecar',
+      ];
+    }
+
+    bootstrapRbacUser(remove) {
+      if (typeof this.options.rbac !== 'string') {
+        return true;
+      }
+      const flag = remove ? '--remove-bootstrap-user' : '--bootstrap-user';
+      const argv = this.rbacRunnerArgs().concat([flag, this.options.username]);
+      const rc = executeExternalAndWait('python3', argv);
+      if (rc.exit !== 0 && !remove) {
+        print(`${RED}${(new Date()).toISOString()} could not give ` +
+              `'${this.options.username}' an RBAC binding; the workload cannot ` +
+              `run against a deny-by-default sidecar without one${RESET}`);
+        return false;
+      }
+      return true;
+    }
+
+    runRbacScenarios(res) {
+      const whichRTA = 'rta_RbacScenarios';
+      res[whichRTA] = {'status': true, 'message': '', 'duration': 0.0};
+      if (typeof this.options.rbac !== 'string') {
+        res[whichRTA].message =
+          'skipped: --rbac was not given a sidecar URL, so there is no ' +
+          'management API to seed scenarios through';
+        print(`${CYAN}${(new Date()).toISOString()} RBAC scenarios skipped: ` +
+              `--rbac needs a real sidecar URL${RESET}`);
+        return;
+      }
+
+      const runner = fs.join(this.options.rtaRbacDir, 'run_scenarios.py');
+      if (!fs.exists(runner)) {
+        res[whichRTA].status = false;
+        res[whichRTA].message = `RBAC scenario runner not found: ${runner}`;
+        res.status = false;
+        res.failed += 1;
+        return;
+      }
+
+      const argv = this.rbacRunnerArgs().concat([
+        '--endpoint', this.instanceManager.findEndpoint(),
+        '--arangosh', pu.ARANGOSH_BIN,
+        '--rta', this.options.rtasource,
+      ]);
+      if (this.options.hasOwnProperty('test') && (typeof (this.options.test) !== 'undefined')) {
+        // Same filter the workload phases ran, normalised the same way.
+        argv.push('--test', normalizeSuiteFilter(this.options.test));
+      }
+
+      print(`\n${(new Date()).toISOString()}${GREEN}[============] RBAC scenarios: ` +
+            `${argv.join(' ')}${RESET}`);
+      const start = time();
+      const rc = executeExternalAndWait('python3', argv);
+      res[whichRTA].duration = time() - start;
+      res.total += 1;
+      res.duration += res[whichRTA].duration;
+
+      if (rc.exit !== 0) {
+        res[whichRTA].status = false;
+        res[whichRTA].failed = 1;
+        res[whichRTA].message =
+          `RBAC scenario matrix reported failures (exit ${rc.exit}); ` +
+          `see the output above for the per-step table`;
+        res.status = false;
+        res.failed += 1;
+      }
+    }
+
     runMakeData(moreargv, file, whichRTA, count, testCount, launch, res) {
       let logFile = fs.join(fs.getTempPath(), `rta_out_${count}_${launch}.log`);
       require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
@@ -176,6 +272,12 @@ function makeDataWrapper (options) {
         };
       }
       let res = {'total':0, 'duration':0.0, 'status':true, message: '', 'failed': 0};
+      if (!this.bootstrapRbacUser(false)) {
+        return {
+          'message': 'could not bootstrap the RBAC binding for the workload user',
+          'failed': 1, 'status': false, 'duration': 0.0
+        };
+      }
       let count = 0;
       let counters = { nonAgenciesCount: 1};
       [
@@ -355,8 +457,17 @@ function makeDataWrapper (options) {
           }
         }
       });
+      // The scenario matrix runs last: it needs a live SUT, and it seeds and
+      // tears down its own databases, so it must not disturb the phases above.
+      if (this.options.rbac && this.continueTesting) {
+        this.runRbacScenarios(res);
+      }
+      this.bootstrapRbacUser(true);
       return res;
     }
+  }
+  if (!options.rtaRbacDir) {
+    options.rtaRbacDir = fs.join(fs.makeAbsolute('.'), 'tests', 'api', 'rbac', 'rta');
   }
   let localOptions = Object.assign({}, options, tu.testServerAuthInfo);
   if (localOptions.oldSource !== undefined) {

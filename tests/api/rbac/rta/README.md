@@ -122,6 +122,80 @@ tests/api/rbac/rta/run_all.sh --help
 
 Most of the wall time is denials: a step that is *meant* to be refused still costs about two minutes, because rta-makedata's `createSafe()` retries a failing create 50 times before giving up.
 
+## Running through the standard test harness
+
+```bash
+# 1. plain workload under RBAC. Starts utils/rbac_dummy.py, an allow-everything
+#    stub. Proves the RBAC code path does not break the workload - and nothing
+#    more (see the warning below).
+./scripts/unittest rta_makedata --rbac true
+
+# 2. the same, plus the scenario matrix, against a real authorization sidecar.
+#    The sidecar must validate tokens with the harness JWT secret ('haxxmann').
+#    env.sh generates a *random* secret when the key file is absent, so write it
+#    yourself before bringing the stack up:
+export RBAC_WORK=/tmp/rbac-ut
+mkdir -p $RBAC_WORK/jwt && printf haxxmann > $RBAC_WORK/jwt/-
+tests/api/rbac/scripts/start_arangod.sh http://127.0.0.1:8108
+OPERATOR=/path/to/kube-arangodb/bin/linux/amd64/arangodb_operator \
+  tests/api/rbac/scripts/start_sidecar.sh central
+
+./scripts/unittest rta_makedata --rbac http://127.0.0.1:8108
+```
+
+A stack whose key file holds a random secret works fine for `run_all.sh` — the
+runner mints its own tokens with that same secret — but the harness signs with
+`haxxmann` and cannot be told otherwise, so its tokens are rejected. The
+symptom is every phase failing to authenticate, not a policy denial.
+
+With a URL, `rta_makedata` runs the scenario matrix as a final phase, reported as
+`rta_RbacScenarios`. It is skipped, with a reason, when `--rbac` is just `true`:
+the dummy serves no management API, so there is nothing to seed scenarios
+through. `--rtaRbacDir` overrides where the runner is looked for.
+
+> **`--rbac true` on its own is not a test of authorization.** The dummy answers
+> `Allow` to everything, so the plain workload only proves the RBAC code path
+> does not break it. Use the sidecar URL form for anything that has to be
+> sensitive to policy.
+
+### What the harness has to do for RBAC to be real
+
+Three things, all of them load-bearing and all of them verified by removing them
+again and watching the run fail:
+
+1. **Authentication must be on.** `ExecContext::create` returns
+   `AuthMode::Disabled` when the authentication feature is off, and then no
+   policy is ever evaluated, whatever `--server.external-rbac-service` says.
+   `rta_makedata` merges `tu.testServerAuthInfo` into `options` only, which
+   tells the *client* to authenticate but never reaches arangod's own arguments,
+   so before this was fixed the server ran unauthenticated and `--rbac` was
+   silently a no-op. Measured with the fix reverted: every scenario reports
+   `MISMATCH`, including the deny ones.
+2. **The workload's own account needs a binding.** A real sidecar denies by
+   default, so `root` cannot even complete arangosh's connect handshake until it
+   is bound. The suite calls `run_scenarios.py --bootstrap-user <username>`
+   before the workload phases and `--remove-bootstrap-user` after. Production
+   does the same thing: the operator binds `root` to
+   `managed:predefined:super-admin` on bootstrap.
+3. **Request compression must be off.** See the defect below.
+
+Measured falsifications of the integrated path:
+
+| Experiment | Result |
+|---|---|
+| `--rbac http://127.0.0.1:1` (dead PDP) | `Fail` - bootstrap cannot reach the sidecar |
+| authentication fix reverted | `Fail` - 7 scenario `MISMATCH`es |
+| both fixes in place | `Success` |
+
+## Port ownership
+
+`start_sidecar.sh` kills only the sidecar recorded in `$RBAC_WORK/sidecar.pid`.
+A sidecar started from a different `RBAC_WORK` - for instance the long-lived one
+you point `--rbac <url>` at - still holds `:8107`, `:8108` and `:8109`, and
+`run_all.sh` cannot then bring up its own. The script now says so explicitly and
+names the holding process; stop it first, or set `RBAC_WORK` to the directory
+that owns it.
+
 ## Running individual pieces
 
 ```bash
@@ -191,6 +265,22 @@ When the predefined roles gain real bundled policies, the natural follow-up is a
 Suite `100` gates itself on `semver.coerce(db._version())`, which needs `db:AdminMonitoringInternal` under RBAC; the scenarios grant it, so it is included. This requirement will change some time soon.
 
 Pass `--test ''` for everything, bearing the Foxx blocker in mind.
+
+A single-suite filter such as `--test 050` is passed on doubled (`050,050`).
+makedata parses its own argv with `internal.parseArgv`, which turns a purely
+numeric value into a Number and then calls `.split(',')` on it; repeating the
+value keeps it a string without changing which suites match, since each entry
+is an independent substring filter. rta-makedata stays unmodified, so the
+workaround lives in `phase_argv()` and in the `rta_makedata` suite.
+
+**Narrow filters disable some scenarios.** Two of them - and `classic-ro` -
+work by letting a superuser populate the data and then re-running `makedata` as
+the restricted user, so they only mean something if the selected suites attempt
+a write even when their objects already exist. Suite `050` does not: it creates
+databases, finds them present and does nothing. Those scenarios carry
+`needs_write_on_rerun`, and the runner skips them, naming the filter, unless it
+contains `100` or `400`. Measured: `--test 050` made both report `pass`;
+`--test 050,400` made both deny.
 
 **Deny scenarios are slow.** rta-makedata's `createSafe()` retries a failing create 50 times with a growing sleep before giving up, so a step that is *meant* to be denied still takes roughly two minutes. `--phase-timeout` defaults to 1800s to accommodate it.
 
@@ -300,29 +390,91 @@ Everything under `rta/` is new and branch-independent — it detects the arangod
 
 Note also that this branch leaves `LOG_DEVEL` tracing in `Auth/Rbac/ServiceImpl.cpp` (`[RBAC-TRACE] ...` on every check). Useful while debugging a run, but it is debug output, not something to build on.
 
+## Known product defects
+
+### arangod compresses its authorization requests with an encoding the sidecar cannot read
+
+arangod reaches the external RBAC service through `network::sendRequest`
+(`arangod/Auth/Rbac/BackendImpl.cpp`), which applies arangod's **internal**
+request compression to a third-party HTTP endpoint that never negotiated it.
+When `--network.compression-method` is not `none`, and the authorization request
+body compresses well enough to be worth sending compressed, arangod sends it as
+
+```
+content-encoding: x-arango-lz4
+```
+
+The sidecar cannot decode that proprietary encoding and answers
+
+```
+400 {"code":3, "message":"invalid character '\x01' looking for beginning of value"}
+```
+
+which arangod maps to `TRI_ERROR_BAD_PARAMETER`, surfacing to the client as
+HTTP 500 / `errorNum` 400 `bad parameter`.
+
+* arangod's own default is `network.compression-method = none`, so this is
+  **latent in production** and only bites deployments that turn the documented
+  option on.
+* `etc/testing/arangod-common.conf` sets `compression-method = auto`, so every
+  `scripts/unittest` run does turn it on.
+* It is intermittent by nature: it needs a body that compresses. Single-resource
+  authorization requests (~320 bytes, mostly an incompressible JWT) went through
+  uncompressed; the multi-resource request that arangosearch link validation
+  emits did not. That is why it showed up as suite `400_views` failing at
+  `view.properties({links: ...})` while everything else passed.
+* Reproduced end to end by putting a logging HTTP proxy between arangod and the
+  sidecar; the request/response pair above is the proxy's transcript.
+
+Because the testing config, not the product default, is what triggers it, the
+suite pins `network.compression-method = none` in `serverOptions` under `--rbac`
+so the run tests RBAC rather than this defect. Remove that line to reproduce.
+
 ## Status
 
-Both configurations executed against live servers, arangod from this checkout plus the sidecar from `kube-arangodb/bin/linux/amd64/`:
+Last full run 2026-09-02, arangod from this checkout plus the sidecar from
+`kube-arangodb/bin/linux/amd64/`. Suite filter
+`050,100,400,500,580,607,612` throughout — databases; collections, indexes and
+documents; views; graphs; analyzers.
 
-| configuration | filter | result |
+| layer | how | result |
 |---|---|---|
-| RBAC (`:8529`, with the service) | `050,100,400` | **21 steps, 0 mismatches** |
-| classic (`:8530`, without it) | `050,100,400` | **14 steps, 0 mismatches** |
-| `role-modelling` (opt-in) | `050,100,400` | reproduces reliably |
+| offline: self-check, listings, dry runs | `run_all.sh` | **PASS** |
+| RBAC (`:8529`, with the service) | `run_all.sh` | **21 steps, 0 mismatches** |
+| `role-modelling` (opt-in) | `run_all.sh` | **1 step, 0 mismatches** |
+| classic (`:8530`, without the service) | `run_all.sh` | **14 steps, 0 mismatches** |
+| RBAC, inside the test harness | `unittest rta_makedata --rbac <url>` | **Success; 19 steps, 0 mismatches** |
 
-Both configurations now run the same suites, including `100` (collections, indexes, documents) — that needs the server version, which the scenarios unlock by granting `db:AdminMonitoringInternal` under RBAC. See "Reading the server version needs an admin action" below.
+The harness path runs 19 of the 21 steps: `reader-permissive-mode` needs the
+sidecar started in a different authorization mode, and there the sidecar is
+externally managed and must not be restarted.
 
-Denials in the classic run were proved by `authentication level` (3) and `arangoerror 11:` (2) — two distinct code paths, neither of which says "forbidden".
+Denials were proved by four distinct signatures, none of which is the word
+"forbidden": `has been denied` (5), `authentication level` (3),
+`arangoerror 11:` (2), and one `no-binding` case where the user cannot connect
+at all and the verdict comes from the superuser liveness probe described above.
+Classic and RBAC word their refusals completely differently, which is why the
+runner matches a vocabulary rather than a status code.
 
-All ten default scenarios behave as the role definitions say they should. Notably:
+All eleven RBAC scenarios and all seven classic scenarios behave as the role
+definitions say they should. Notably:
 
-- The documented **coredb-admin** action set is sufficient for the suites in the default filter — `makedata`, `checkdata` and `cleardata` all pass over databases and views. It is *not* yet established for the full resource set: suite `100` is blocked by the `/_api/version` defect above, and Foxx, users, analyzers and graphs have not been run.
-- **coredb-reader** passes `checkdata` and is refused `makedata` — the discriminating result.
-- **Scope is genuinely the boundary**: `coredb-admin-out-of-scope` uses the identical policy to the passing admin scenario and is denied.
-- **Permissive mode** was verified to be doing real work, not accidentally permitting: the sidecar logged 317 `Permissive.Evaluate` overrides during that scenario.
+- The documented **coredb-admin** action set, plus
+  `db:AdminMonitoringInternal`, is sufficient for every suite in the filter —
+  `makedata`, `checkdata` and `cleardata` all pass over databases,
+  collections, documents, indexes, views, graphs and analyzers. It is *not* yet
+  established for the full resource set: Foxx (`070`/`071`) and users (`700`)
+  have not been run.
+- **coredb-reader** passes `checkdata` and is refused `makedata` — the
+  discriminating result.
+- **Scope is genuinely the boundary**: `coredb-admin-out-of-scope` uses the
+  identical policy to the passing admin scenario and is denied.
+- **Permissive mode** was verified to be doing real work rather than
+  accidentally permitting: the sidecar logged 317 `Permissive.Evaluate`
+  overrides during that scenario.
+- Reading the server version needs an admin action under both models —
+  `db:AdminMonitoringInternal` under RBAC, `rw` on `_system` under classic.
+  This is intended behaviour, not a defect; see "Reading the server version
+  needs an admin action" above.
 
-Of the six denials, five carried `has been denied` in the output and one (`no-binding`) was resolved by the superuser liveness probe described above.
-
-The offline paths — `--self-check`, `--list`, `--dry-run` — pass on both arangod flavours.
-
-Caveat: only single-server has been exercised, and only with the default suite filter. Cluster and the wider suite set remain untested.
+Caveat: single-server only. Cluster remains untested, and so do Foxx and users.

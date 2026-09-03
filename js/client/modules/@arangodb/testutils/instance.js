@@ -431,6 +431,7 @@ class instance {
       } else {
         this.args["server.external-rbac-service"] = this.options.rbac;
       }
+      this.args["server.harden"] = true;
     }
     if (this.options.hasOwnProperty("replicationVersion")) {
       this.args['database.default-replication-version'] = this.options.replicationVersion;

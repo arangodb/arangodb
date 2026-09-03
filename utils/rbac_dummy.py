@@ -8,7 +8,15 @@ from urllib.parse import parse_qsl, urlparse
 from threading import Thread, Lock
 from multiprocessing import Process
 import json
-import jwt
+
+# PyJWT is optional. The token is decoded only to prove it parses; the result is
+# discarded and this stub answers Allow either way, so a missing PyJWT must not
+# stop the dummy from starting - if it dies, arangod gets connection-refused on
+# every authorization check and the whole run fails for an unrelated reason.
+try:
+    import jwt
+except ImportError:
+    jwt = None
 
 T_SECRET = "Open Sesame!Open Sesame!Open Ses"
 
@@ -71,9 +79,10 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             return
         postbody = self.rfile.read(int(self.headers["Content-Length"]))
         jbody = json.loads(postbody)
-        #print('-----')
-        parsed_token = jwt.decode(jbody['token'], T_SECRET, algorithms=["HS256"])
-        #print(parsed_token)
+        if jwt is not None:
+            # Purely a sanity check that arangod sent a well-formed, correctly
+            # signed token; the claims are not used for the verdict.
+            jwt.decode(jbody['token'], T_SECRET, algorithms=["HS256"])
         del(jbody['token'])
         print(jbody)
 
