@@ -1,6 +1,13 @@
 3.12.12 (XXXX-XX-XX)
 --------------------
 
+* COR-958: JoinNode aborts the server when a later index condition uses an 
+  expression over an earlier index's document.
+  Fixed an issue where certain AQL queries using index joins across multiple 
+  collections could cause the server to abort when a join condition referenced 
+  a calculated expression based on a document from an earlier collection.
+  Such queries are now handled safely without triggering an assertion failure or server crash.
+  
 * Rebuilt included rclone v1.75.0 with go1.25.13 and non-vulnerable
   dependencies.
 
