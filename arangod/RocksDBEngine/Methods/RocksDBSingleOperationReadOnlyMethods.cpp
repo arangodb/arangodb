@@ -46,7 +46,7 @@ rocksdb::Status RocksDBSingleOperationReadOnlyMethods::Get(
     rocksdb::ColumnFamilyHandle* cf, rocksdb::Slice const& key,
     rocksdb::PinnableSlice* val, ReadOwnWrites) {
   TRI_ASSERT(cf != nullptr);
-  return _db->Get(_readOptions, cf, key, val);
+  return _db->Get(withUdtReadTimestamp(_readOptions, cf), cf, key, val);
 }
 
 std::unique_ptr<rocksdb::Iterator>
