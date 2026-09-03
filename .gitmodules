@@ -28,4 +28,4 @@
 	url = git@github.com:arangodb/faiss.git
 [submodule "3rdParty/lz4"]
 	path = 3rdParty/lz4
-	url = git@github.com:lz4/lz4.git
+	url = git@github.com:arangodb-helper/lz4.git
