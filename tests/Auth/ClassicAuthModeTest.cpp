@@ -195,13 +195,13 @@ TEST_F(ClassicAuthModeTest, UseDatabaseWithoutAccessIsForbiddenUnderV0) {
               TRI_ERROR_FORBIDDEN);
 }
 
-TEST_F(ClassicAuthModeTest, UseDatabaseWithoutAccessIsNotFoundUnderV1) {
+TEST_F(ClassicAuthModeTest, UseDatabaseWithoutAccessIsForbiddenUnderV1) {
   // With a versioned API the database's existence must not be revealed.
   beUserWith(NONE);
   useApiVersion(1);
   expectError(check(p::UseDatabase{.name = std::string{kDb},
                                    .level = DatabaseAccessLevel::Read}),
-              TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+              TRI_ERROR_FORBIDDEN);
 }
 
 TEST_F(ClassicAuthModeTest, UseDatabaseWriteWithReadOnlyAccessStaysForbidden) {
@@ -335,13 +335,13 @@ TEST_F(ClassicAuthModeTest, UseCollectionWithoutAccessIsForbiddenUnderV0) {
               TRI_ERROR_FORBIDDEN);
 }
 
-TEST_F(ClassicAuthModeTest, UseCollectionWithoutAccessIsNotFoundUnderV1) {
+TEST_F(ClassicAuthModeTest, UseCollectionWithoutAccessIsnderV1) {
   beUserWith(NONE);
   useApiVersion(1);
   expectError(check(p::UseCollection{.db = std::string{kDb},
                                      .name = "c",
                                      .level = CollectionAccessLevel::Read}),
-              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+              TRI_ERROR_FORBIDDEN);
 }
 
 TEST_F(ClassicAuthModeTest,
@@ -487,11 +487,11 @@ TEST_F(ClassicAuthModeTest, ReadViewWithoutAccessIsForbiddenUnderV0) {
               TRI_ERROR_FORBIDDEN);
 }
 
-TEST_F(ClassicAuthModeTest, ReadViewWithoutAccessIsNotFoundUnderV1) {
+TEST_F(ClassicAuthModeTest, ReadViewWithoutAccessIsForbiddenUnderV1) {
   beUserWith(NONE);
   useApiVersion(1);
   expectError(check(p::ReadView{.db = std::string{kDb}, .name = "v"}),
-              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+              TRI_ERROR_FORBIDDEN);
 }
 
 TEST_F(ClassicAuthModeTest, SeeViewIsAlwaysGranted) {
@@ -587,7 +587,7 @@ TEST_F(ClassicAuthModeTest, ModifyViewPropagatesLinkFailuresUnverbatim) {
   expectError(check(p::ModifyView{.db = std::string{kDb},
                                   .name = "v",
                                   .linkedCollections = {"secret"}}),
-              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+              TRI_ERROR_FORBIDDEN);
 }
 
 TEST_F(ClassicAuthModeTest, RenameViewToSameNameIsBadParameter) {
