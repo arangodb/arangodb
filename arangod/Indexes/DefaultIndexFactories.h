@@ -25,6 +25,8 @@
 #include "Basics/Exceptions.h"
 #include "Indexes/IndexFactory.h"
 
+#include <velocypack/Slice.h>
+
 namespace arangodb {
 
 struct IVectorIndexProvider;

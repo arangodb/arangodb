@@ -168,8 +168,7 @@ Result MdiIndexDefinition::normalize(velocypack::Builder& normalized,
   // a mdi never uses index estimates
   normalized.add(StaticStrings::IndexEstimates, velocypack::Value(false));
 
-  return IndexFactory::enhanceJsonIndexMdi(definition, normalized,
-                                           isCreation);
+  return IndexFactory::enhanceJsonIndexMdi(definition, normalized, isCreation);
 }
 
 Result MdiPrefixedIndexDefinition::normalize(
@@ -241,8 +240,7 @@ Result TtlIndexDefinition::normalize(velocypack::Builder& normalized,
   // a TTL index never uses index estimates
   normalized.add(StaticStrings::IndexEstimates, velocypack::Value(false));
 
-  return IndexFactory::enhanceJsonIndexTtl(definition, normalized,
-                                           isCreation);
+  return IndexFactory::enhanceJsonIndexTtl(definition, normalized, isCreation);
 }
 
 Result PrimaryIndexDefinition::normalize(velocypack::Builder& normalized,
