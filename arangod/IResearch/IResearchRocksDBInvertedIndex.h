@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include "Basics/Exceptions.h"
 #include "IResearch/IResearchInvertedIndex.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 
@@ -31,18 +32,14 @@ struct ResourceMonitor;
 
 namespace iresearch {
 
-class IResearchRocksDBInvertedIndexFactory : public IndexTypeFactory {
+// equal()/normalize() need no storage engine, unlike instantiate()
+class IResearchInvertedIndexDefinition : public IndexTypeFactory {
  public:
-  explicit IResearchRocksDBInvertedIndexFactory(
+  explicit IResearchInvertedIndexDefinition(
       application_features::ApplicationServer& server);
 
   bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
              std::string const& dbname) const final;
-
-  /// @brief instantiate an Index definition
-  std::shared_ptr<Index> instantiate(LogicalCollection& collection,
-                                     velocypack::Slice definition, IndexId id,
-                                     bool isClusterConstructor) const final;
 
   /// @brief normalize an Index definition prior to instantiation/persistence
   Result normalize(velocypack::Builder& normalized,
@@ -50,6 +47,24 @@ class IResearchRocksDBInvertedIndexFactory : public IndexTypeFactory {
                    TRI_vocbase_t const& vocbase) const final;
 
   bool attributeOrderMatters() const final { return false; }
+
+  // overridden by the RocksDB-specific subclass; never called on this one
+  std::shared_ptr<Index> instantiate(LogicalCollection&, velocypack::Slice,
+                                     IndexId, bool) const override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+};
+
+class IResearchRocksDBInvertedIndexFactory
+    : public IResearchInvertedIndexDefinition {
+ public:
+  explicit IResearchRocksDBInvertedIndexFactory(
+      application_features::ApplicationServer& server);
+
+  /// @brief instantiate an Index definition
+  std::shared_ptr<Index> instantiate(LogicalCollection& collection,
+                                     velocypack::Slice definition, IndexId id,
+                                     bool isClusterConstructor) const final;
 };
 
 class IResearchRocksDBInvertedIndex final : public RocksDBIndex,

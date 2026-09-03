@@ -57,7 +57,7 @@ struct DefaultIndexFactory : public IndexTypeFactory {
 
   bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
              std::string const& dbname) const override {
-    return _engine.rocksDBIndexFactory().factory(_type).equal(lhs, rhs, dbname);
+    return _engine.indexDefinitions().factory(_type).equal(lhs, rhs, dbname);
   }
 
   std::shared_ptr<Index> instantiate(
@@ -71,7 +71,7 @@ struct DefaultIndexFactory : public IndexTypeFactory {
   virtual Result normalize(velocypack::Builder& normalized,
                            velocypack::Slice definition, bool isCreation,
                            TRI_vocbase_t const& vocbase) const override {
-    return _engine.rocksDBIndexFactory().factory(_type).normalize(
+    return _engine.indexDefinitions().factory(_type).normalize(
         normalized, definition, isCreation, vocbase);
   }
 
@@ -210,7 +210,7 @@ ClusterIndexFactory::ClusterIndexFactory(
 /// "hash") used to display storage engine capabilities
 std::vector<std::pair<std::string_view, std::string_view>>
 ClusterIndexFactory::indexAliases(uint32_t apiVersion) const {
-  return _engine.rocksDBIndexFactory().indexAliases(apiVersion);
+  return _engine.indexDefinitions().indexAliases(apiVersion);
 }
 
 Result ClusterIndexFactory::enhanceIndexDefinition(  // normalize definition
@@ -219,7 +219,7 @@ Result ClusterIndexFactory::enhanceIndexDefinition(  // normalize definition
     bool isCreation,                  // definition for index creation
     TRI_vocbase_t const& vocbase      // index vocbase
 ) const {
-  return _engine.rocksDBIndexFactory().enhanceIndexDefinition(
+  return _engine.indexDefinitions().enhanceIndexDefinition(
       definition, normalized, isCreation, vocbase);
 }
 

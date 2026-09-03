@@ -564,7 +564,7 @@ void registerFilters(aql::AqlFunctionFeature& functions) {
 }
 
 // ClusterEngine's equal/normalize/enhanceIndexDefinition delegate to
-// rocksDBIndexFactory(), not indexFactory(), so both need arangosearch
+// indexDefinitions(), not indexFactory(), so both need arangosearch
 void registerIndexTypeFactories(application_features::ApplicationServer& server,
                                 IndexTypeFactory& clusterFactory,
                                 IndexTypeFactory& rocksDBFactory) {
@@ -588,7 +588,7 @@ void registerIndexTypeFactories(application_features::ApplicationServer& server,
 
   if (auto* clusterEngine = dynamic_cast<ClusterEngine*>(&engine)) {
     emplace(clusterEngine->indexFactory(), clusterFactory);
-    emplace(clusterEngine->rocksDBIndexFactory(), rocksDBFactory);
+    emplace(clusterEngine->indexDefinitions(), rocksDBFactory);
   } else if (dynamic_cast<RocksDBEngine*>(&engine) != nullptr) {
     emplace(engine.indexFactory(), rocksDBFactory);
   }

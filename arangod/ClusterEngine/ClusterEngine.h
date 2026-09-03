@@ -48,10 +48,8 @@ class ClusterEngine final : public StorageEngine {
 
   ClusterEngineType engineType() const;
 
-  // cluster engine has no index-type logic of its own
-  IndexFactory const& rocksDBIndexFactory() const {
-    return *_rocksDBIndexFactory;
-  }
+  // equal()/normalize() only, no RocksDB dependency
+  IndexFactory const& indexDefinitions() const { return *_indexDefinitions; }
 
   // storage engine overrides
   // ------------------------
@@ -214,7 +212,7 @@ class ClusterEngine final : public StorageEngine {
   metrics::IRegistry& _metrics;
   /// path to arangodb data dir
   std::string _basePath;
-  std::unique_ptr<IndexFactory> _rocksDBIndexFactory;
+  std::unique_ptr<IndexFactory> _indexDefinitions;
 };
 
 }  // namespace arangodb

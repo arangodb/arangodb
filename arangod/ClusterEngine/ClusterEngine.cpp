@@ -35,12 +35,13 @@
 #ifdef USE_V8
 #include "ClusterEngine/ClusterV8Functions.h"
 #endif
+#include "Indexes/DefaultIndexFactories.h"
+#include "IResearch/IResearchRocksDBInvertedIndex.h"
 #include "Logger/Logger.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "Transaction/Context.h"
 #include "Transaction/Manager.h"
@@ -51,6 +52,78 @@
 
 using namespace arangodb;
 using namespace arangodb::application_features;
+
+namespace {
+
+class ClusterIndexDefinitions final : public IndexFactory {
+ public:
+  ClusterIndexDefinitions(application_features::ApplicationServer& server,
+                          IVectorIndexProvider const& vectorIndexProvider)
+      : IndexFactory(server) {
+    static const EdgeIndexDefinition edgeIndexDefinition(server);
+    static const FulltextIndexDefinition fulltextIndexDefinition(server);
+    static const GeoIndexDefinition geoIndexDefinition(server);
+    static const Geo1IndexDefinition geo1IndexDefinition(server);
+    static const Geo2IndexDefinition geo2IndexDefinition(server);
+    static const SecondaryIndexDefinition hashIndexDefinition(server,
+                                                              IndexType::Hash);
+    static const SecondaryIndexDefinition persistentIndexDefinition(
+        server, IndexType::Persistent);
+    static const SecondaryIndexDefinition skiplistIndexDefinition(
+        server, IndexType::Skiplist);
+    static const TtlIndexDefinition ttlIndexDefinition(server, IndexType::TTL);
+    static const PrimaryIndexDefinition primaryIndexDefinition(server);
+    static const MdiIndexDefinition zkdIndexDefinition(server, IndexType::Zkd);
+    static const MdiIndexDefinition mdiIndexDefinition(server, IndexType::MDI);
+    static const MdiPrefixedIndexDefinition mdiPrefixedIndexDefinition(server);
+    static const VectorIndexDefinition vectorIndexDefinition(
+        server, IndexType::Vector, vectorIndexProvider);
+    static const iresearch::IResearchInvertedIndexDefinition
+        invertedIndexDefinition(server);
+
+    emplace("edge", edgeIndexDefinition);
+    emplace("fulltext", fulltextIndexDefinition);
+    emplace("geo", geoIndexDefinition);
+    emplace("geo1", geo1IndexDefinition);
+    emplace("geo2", geo2IndexDefinition);
+    emplace("hash", hashIndexDefinition);
+    emplace("persistent", persistentIndexDefinition);
+    emplace("primary", primaryIndexDefinition);
+    emplace("rocksdb", persistentIndexDefinition);
+    emplace("skiplist", skiplistIndexDefinition);
+    emplace("ttl", ttlIndexDefinition);
+    emplace("zkd", zkdIndexDefinition);
+    emplace("mdi", mdiIndexDefinition);
+    emplace("mdi-prefixed", mdiPrefixedIndexDefinition);
+    emplace("vector", vectorIndexDefinition);
+    emplace(arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE.data(),
+            invertedIndexDefinition);
+  }
+
+  std::vector<std::pair<std::string_view, std::string_view>> indexAliases(
+      uint32_t apiVersion) const override {
+    if (apiVersion == 0) {
+      return {
+          {"hash", "persistent"},
+          {"skiplist", "persistent"},
+          {"zkd", "mdi"},
+      };
+    }
+    return {{"zkd", "mdi"}};
+  }
+
+  // ClusterIndexFactory implements these itself, never delegated here
+  void fillSystemIndexes(LogicalCollection&,
+                         std::vector<std::shared_ptr<Index>>&) const override {
+    TRI_ASSERT(false);
+  }
+  void prepareIndexes(LogicalCollection&, velocypack::Slice,
+                      std::vector<std::shared_ptr<Index>>&) const override {
+    TRI_ASSERT(false);
+  }
+};
+
+}  // namespace
 
 std::string const ClusterEngine::EngineName("Cluster");
 
@@ -70,8 +143,8 @@ ClusterEngine::ClusterEngine(application_features::ApplicationServer& server,
                     database),
       _clusterFeature(clusterFeature),
       _metrics(metrics),
-      _rocksDBIndexFactory(
-          std::make_unique<RocksDBIndexFactory>(server, vectorIndexProvider)) {
+      _indexDefinitions(std::make_unique<ClusterIndexDefinitions>(
+          server, vectorIndexProvider)) {
   setOptional(true);
 }
 
