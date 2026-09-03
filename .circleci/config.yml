@@ -287,7 +287,9 @@ jobs:
         environment:
           ARANGO_NO_AUTH: "1"
         command: ["--vector-index=true"]
-    resource_class: arangodb/large-amd64
+    # xlarge (largest tier) so the arangod service container isn't squeezed in
+    # the pod - testing whether the CI-only duplicate is resource pressure.
+    resource_class: arangodb/xlarge-amd64
     environment:
       ARANGO_START: external
       ANN_OUTPUT_DIR: /tmp/ann-output
