@@ -95,14 +95,6 @@ bool getBestIndexHandleForFilterCondition(
     std::shared_ptr<Index>& usedIndex, ReadOwnWrites readOwnWrites,
     bool onlyEdgeIndexes);
 
-/// @brief Gets the best fitting index for an AQL sort condition
-bool getIndexForSortCondition(aql::Collection const& coll,
-                              arangodb::aql::SortCondition const* sortCondition,
-                              arangodb::aql::Variable const* reference,
-                              size_t itemsInIndex, aql::IndexHint const& hint,
-                              std::vector<std::shared_ptr<Index>>& usedIndexes,
-                              size_t& coveredAttributes);
-
 arangodb::aql::Collection const* getCollection(
     arangodb::aql::ExecutionNode const* node);
 
