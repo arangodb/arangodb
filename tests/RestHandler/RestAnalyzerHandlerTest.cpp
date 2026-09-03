@@ -741,13 +741,13 @@ TEST_F(RestAnalyzerHandlerTest, test_get_known_not_authorized) {
 
   auto status = handler.execute();
   EXPECT_EQ(arangodb::RestStatus::DONE, status);
-  EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND, responce.responseCode());
+  EXPECT_EQ(arangodb::rest::ResponseCode::FORBIDDEN, responce.responseCode());
   auto slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
   EXPECT_TRUE(
       (slice.hasKey(arangodb::StaticStrings::Code) &&
        slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-       size_t(arangodb::rest::ResponseCode::NOT_FOUND) ==
+       size_t(arangodb::rest::ResponseCode::FORBIDDEN) ==
            slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                slice.get(arangodb::StaticStrings::Error).isBoolean() &&
@@ -755,7 +755,7 @@ TEST_F(RestAnalyzerHandlerTest, test_get_known_not_authorized) {
   EXPECT_TRUE(
       (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
        slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-       TRI_ERROR_ARANGO_DATABASE_NOT_FOUND ==
+       TRI_ERROR_FORBIDDEN ==
            ErrorCode{
                slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
@@ -807,13 +807,13 @@ TEST_F(RestAnalyzerHandlerTest, test_get_unknown_not_authorized) {
 
   auto status = handler.execute();
   EXPECT_EQ(arangodb::RestStatus::DONE, status);
-  EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND, responce.responseCode());
+  EXPECT_EQ(arangodb::rest::ResponseCode::FORBIDDEN, responce.responseCode());
   auto slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
   EXPECT_TRUE(
       (slice.hasKey(arangodb::StaticStrings::Code) &&
        slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-       size_t(arangodb::rest::ResponseCode::NOT_FOUND) ==
+       size_t(arangodb::rest::ResponseCode::FORBIDDEN) ==
            slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                slice.get(arangodb::StaticStrings::Error).isBoolean() &&
@@ -821,7 +821,7 @@ TEST_F(RestAnalyzerHandlerTest, test_get_unknown_not_authorized) {
   EXPECT_TRUE(
       (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
        slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-       TRI_ERROR_ARANGO_DATABASE_NOT_FOUND ==
+       TRI_ERROR_FORBIDDEN ==
            ErrorCode{
                slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
@@ -880,13 +880,13 @@ TEST_F(RestAnalyzerHandlerTest,
 
   auto status = handler.execute();
   EXPECT_EQ(arangodb::RestStatus::DONE, status);
-  EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND, responce.responseCode());
+  EXPECT_EQ(arangodb::rest::ResponseCode::FORBIDDEN, responce.responseCode());
   auto slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
   EXPECT_TRUE(
       (slice.hasKey(arangodb::StaticStrings::Code) &&
        slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-       size_t(arangodb::rest::ResponseCode::NOT_FOUND) ==
+       size_t(arangodb::rest::ResponseCode::FORBIDDEN) ==
            slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                slice.get(arangodb::StaticStrings::Error).isBoolean() &&
@@ -894,7 +894,7 @@ TEST_F(RestAnalyzerHandlerTest,
   EXPECT_TRUE(
       (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
        slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-       TRI_ERROR_ARANGO_DATABASE_NOT_FOUND ==
+       TRI_ERROR_FORBIDDEN ==
            ErrorCode{
                slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
