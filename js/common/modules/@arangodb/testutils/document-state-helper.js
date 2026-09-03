@@ -146,7 +146,7 @@ const checkFollowersValue = function (servers, db, shardId, logId, key, value, i
  * Returns bulk documents from a server collection.
  */
 const getBulkDocuments = function (db, col, keys) {
-  let res = arango.PUT_RAW(
+  let res = arango.PUT(
     `/_db/${db}/_api/document/${col}?onlyget=true`,
     keys,
     {
@@ -154,15 +154,15 @@ const getBulkDocuments = function (db, col, keys) {
     }
   );
   lh.checkRequestResult(res, true);
-  return res.json;
+  return res;
 };
 
 const getAssociatedShards = function (db, stateId) {
-  let res = arango.GET_RAW(
+  let res = arango.GET(
     `/_db/${db}/_api/document-state/${stateId}/shards`,
   );
   lh.checkRequestResult(res, false);
-  return res.json.result;
+  return res;
 };
 
 /**
@@ -272,7 +272,7 @@ const allSnapshotsStatus = function (db, logId) {
 };
 
 const getNextSnapshotBatch = function (db, logId, snapshotId) {
-  return arango.GET(`/_db/${db}/_api/document-state/${logId}/snapshot/next/${snapshotId}`);
+  return arango.POST(`/_db/${db}/_api/document-state/${logId}/snapshot/next/${snapshotId}`);
 };
 
 const finishSnapshot = function (db, logId, snapshotId) {
