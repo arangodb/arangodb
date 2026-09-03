@@ -154,8 +154,6 @@ void StorageEngine::registerReplicatedState(
 
 std::string_view StorageEngine::typeName() const { return _typeName; }
 
-void StorageEngine::addOptimizerRules(aql::OptimizerRulesFeature&) {}
-
 #ifdef USE_V8
 void StorageEngine::addV8Functions() {}
 #endif

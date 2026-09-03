@@ -217,12 +217,6 @@ bool StorageEngineMock::autoRefillIndexCachesOnFollowers() const {
   return false;
 }
 
-void StorageEngineMock::addOptimizerRules(
-    arangodb::aql::OptimizerRulesFeature& /*feature*/) {
-  before();
-  // NOOP
-}
-
 #ifdef USE_V8
 void StorageEngineMock::addV8Functions() { TRI_ASSERT(false); }
 #endif
