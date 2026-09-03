@@ -459,14 +459,8 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
   // apply all "startsBefore" values
   for (auto& [_id, feature] : _features) {
     for (auto const& other : feature->startsBefore()) {
+      // the target may simply not be registered in this configuration
       if (!hasFeature(other)) {
-        if (failOnMissing) {
-          _fail(std::string{"feature '"}
-                    .append(feature->name())
-                    .append("' depends on unknown feature '")
-                    .append(other.name())
-                    .append("'"));
-        }
         continue;
       }
       getFeature(other).startsAfter(feature->registration());
