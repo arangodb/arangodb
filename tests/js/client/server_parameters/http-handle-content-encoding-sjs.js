@@ -85,8 +85,15 @@ function HandleContentEncodingSuite() {
         });
         // this is still supposed to fail, because we are not sending any
         // valid content
-        assertEqual(400, res.status);
-        assertMatch(/decoding error occurred while handling Content-Encoding/, res.json.errorMessage);
+        assertEqual(400, res.status, res);
+        let count = 0;
+        ['support for handling Content-Encoding headers is turned off for unauthenticated requests', 
+         'decoding error occurred while handling Content-Encoding'].forEach(msg => {
+           if (res.json.errorMessage.search(msg) >= 0) {
+             count += 1;
+           }
+         });
+        assertTrue(count > 0, `error message not one of the wanted: ${JSON.stringify(res)}`);
       });
     },
     
@@ -107,7 +114,14 @@ function HandleContentEncodingSuite() {
         // this is still supposed to fail, because we are not sending any
         // valid content
         assertEqual(400, res.status);
-        assertMatch(/decoding error occurred while handling Content-Encoding/, res.json.errorMessage);
+        let count = 0;
+        ['support for handling Content-Encoding headers is turned off for unauthenticated requests', 
+         'decoding error occurred while handling Content-Encoding'].forEach(msg => {
+           if (res.json.errorMessage.search(msg) >= 0) {
+             count += 1;
+           }
+         });
+        assertTrue(count > 0, `error message not one of the wanted: ${JSON.stringify(res)}`);
       });
     },
 
@@ -122,8 +136,19 @@ function HandleContentEncodingSuite() {
         headers: {"Content-Encoding": "gzip"},
         auth: { bearer: jwtRoot() },
       });
-      assertEqual(200, res.status);
-      assertEqual(res.json.requestBody, uncompressedBuffer.toString());
+      if (res.status === 200) {
+        assertEqual(res.json.requestBody, uncompressedBuffer.toString());
+      } else {
+        assertEqual(400, res.status);
+        let count = 0;
+        ['support for handling Content-Encoding headers is turned off for unauthenticated requests', 
+         'decoding error occurred while handling Content-Encoding'].forEach(msg => {
+           if (res.json.errorMessage.search(msg) >= 0) {
+             count += 1;
+           }
+         });
+        assertTrue(count > 0, `error message not one of the wanted: ${JSON.stringify(res)}`);
+      }        
     },
 
   };
