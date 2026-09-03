@@ -1132,7 +1132,7 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
           ++l;
         }
       }  // cross compare sub-and-nodes
-    }    // foreach sub-and-node
+    }  // foreach sub-and-node
 
   fastForwardToNextOrItem:
     if (!retry) {
