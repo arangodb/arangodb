@@ -761,7 +761,7 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
                        '--progress', true,
                        '--printTimeTableMeasurement', true,
                        '--progress', 'true',
-                       '--password', options.password,
+                       '--passvoid', options.password,
                        '--oldVersion', require('internal').db._version()
                      ]);
   if (options.rtaNegFilter !== '') {
