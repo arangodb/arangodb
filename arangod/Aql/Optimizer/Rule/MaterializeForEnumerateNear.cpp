@@ -29,6 +29,7 @@
 #include "Aql/ExecutionNode/MaterializeRocksDBNode.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils/FindProjections.h"
 #include "Aql/Projections.h"
 #include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
@@ -47,7 +48,7 @@ namespace {
 // is consumed).
 Projections collectProjections(EnumerateNearVectorNode& vectorNode) {
   containers::FlatHashSet<AttributeNamePath> attributes;
-  bool const projectable = utils::findProjections(
+  bool const projectable = optimizer::findProjections(
       &vectorNode, vectorNode.outVariable(), /*expectedAttribute*/ "",
       /*excludeStartNodeFilterCondition*/ false, attributes);
   if (!projectable || attributes.empty() ||
