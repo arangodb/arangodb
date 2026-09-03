@@ -130,7 +130,10 @@ function indexApiAuthzSuite () {
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "UseCollection db=d name=c level=writemeta",
-        "UseCollection db=d name=c level=read"
+        "UseCollection db=d name=c level=read",
+        ...singleOnly([
+          "UseCollection db=d name=c level=writedata"
+        ])
       ], endObserve());
       if (res.parsedBody && res.parsedBody.id) {
         dropIndex(res.parsedBody.id);
@@ -161,7 +164,10 @@ function indexApiAuthzSuite () {
         "IsReadOnly",
         "UseDatabase name=d level=write",
         "UseCollection db=d name=c level=writemeta",
-        "UseCollection db=d name=c level=read"
+        "UseCollection db=d name=c level=read",
+        ...singleOnly([
+          "UseCollection db=d name=c level=writedata"
+        ])
       ], endObserve());
     },
   };
