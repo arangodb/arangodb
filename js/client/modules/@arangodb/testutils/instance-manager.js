@@ -592,7 +592,8 @@ class instanceManager {
         this.endpoint = null;
         this.endpointPort = -1;
       };
-      if (this.arangods[0].args.hasOwnProperty('database.password')) {
+      if (this.arangods[0].args.hasOwnProperty('database.password') &&
+          (this.arangods[0].args['database.password'] !== undefined)) {
         this.hasSetPassvoid = true;
         this.options.password = this.arangods[0].args['database.password'];
       }
