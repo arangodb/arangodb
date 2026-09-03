@@ -204,14 +204,19 @@ commands:
       with-submodules:
         type: boolean
     steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
       - run:
           name: Checkout ArangoDB
+          environment:
+            GIT_SSH_COMMAND: "ssh -o StrictHostKeyChecking=no"
           command: |
             mkdir -p << parameters.destination >>
             cd << parameters.destination >>
             echo << pipeline.git.revision >>
             git init
-            git remote add origin https://github.com/arangodb/arangodb.git
+            git remote add origin git@github.com:arangodb/arangodb.git
             echo "Fetching stuff"
             git fetch --depth 1 origin << pipeline.git.revision >>
             git checkout << pipeline.git.revision >>
