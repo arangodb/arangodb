@@ -806,7 +806,7 @@ TEST_F(ClassicAuthModeTest, DropGraphWithUndroppableCollectionIsForbidden) {
   expectError(
       check(p::DropGraph{
           .db = std::string{kDb}, .name = "g", .collectionNames = colls}),
-      TRI_ERROR_FORBIDDEN);
+      TRI_ERROR_ARANGO_READ_ONLY);
 }
 
 // ---------------------------------------------------------------------------
@@ -980,7 +980,7 @@ TEST_F(ClassicAuthModeTest, RestoreCollectionWithOverwriteNeedsToDropFirst) {
   beUserWith(RW, {{std::string{kDb}, "c", RO}});
   expectError(check(p::RestoreCollection{
                   .db = std::string{kDb}, .name = "c", .overwrite = true}),
-              TRI_ERROR_FORBIDDEN);
+              TRI_ERROR_ARANGO_READ_ONLY);
 }
 
 TEST_F(ClassicAuthModeTest, RestoreCreateIndexBehavesLikeWriteMeta) {
