@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -22,46 +22,12 @@
 
 #pragma once
 
-#include "Aql/AttributeNamePath.h"
-#include "Aql/ExecutionNode/IndexNode.h"
-#include "Aql/VarInfoMap.h"
-#include "Aql/types.h"
-#include "Containers/FlatHashSet.h"
-#include "Utils/OperationOptions.h"
+namespace arangodb::aql {
 
-#include <cstdint>
-#include <memory>
-#include <string_view>
-#include <vector>
-
-namespace arangodb {
-class Index;
-
-namespace transaction {
-class Methods;
-}
-
-namespace aql {
-
-class Ast;
-struct AstNode;
-class AttributeNamePath;
 struct Collection;
 class ExecutionNode;
-class ExecutionPlan;
-class Projections;
-class IndexHint;
-class SortCondition;
-struct Variable;
-struct VarInfo;
-struct NonConstExpressionContainer;
-struct RegisterId;
 
-namespace utils {
-
-arangodb::aql::Collection const* getCollection(
-    arangodb::aql::ExecutionNode const* node);
-
-}  // namespace utils
-}  // namespace aql
-}  // namespace arangodb
+namespace optimizer {
+Collection const* getCollection(ExecutionNode const* node);
+}
+}  // namespace arangodb::aql
