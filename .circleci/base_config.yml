@@ -884,7 +884,7 @@ jobs:
                   - lsan_arangodb_suppressions.txt
             - persist_workspace_to_s3:
                 root: .
-                archive: cppcheck.tar.gz
+                archive: compile_commands.tar.gz
                 paths: |
                   build/compile_commands.json
             - persist_workspace_to_s3:
@@ -1276,7 +1276,7 @@ jobs:
             mkdir -p /root/project/
       - attach_workspace_from_s3:
           at: /root/workspace/
-          archive: cppcheck.tar.gz
+          archive: compile_commands.tar.gz
       - run:
           name: Print workspace size
           command: |
@@ -1306,6 +1306,48 @@ jobs:
           path: /root/project/cppcheck.xml
       - store_test_results:
           path: /root/project/cppcheck-junit.xml
+
+  run-clang-tidy:
+    docker:
+      - image: << pipeline.parameters.build-docker-image >>
+    resource_class: arangodb/medium-amd64
+    steps:
+      - run:
+          name: Prepare container
+          command: |
+            mkdir -p /root/workspace/
+            mkdir -p /root/project/
+      - attach_workspace_from_s3:
+          at: /root/workspace/
+          archive: compile_commands.tar.gz
+      - run:
+          name: Print workspace size
+          command: |
+            du -sh /root/workspace/*
+            echo "==================="
+            du -sh /root/workspace/build/*
+      - checkout-arangodb:
+          with-submodules: true
+          destination: "/root/project"
+      - checkout-enterprise:
+          destination: "/root/project/enterprise"
+      - run:
+          name: Run clang-tidy
+          command: |
+            ln -s /root/workspace/build/ /root/project/
+            cd /root/project/
+            utils/clang-tidy.sh arangod lib client-tools enterprise -B /root/workspace/build/ > clang-tidy-results.txt
+      - run:
+          name: Format result
+          when: always
+          command: |
+            cd /root/project/
+            echo "TODO implement parsing, probably strip path first"
+      - store_artifacts:
+          path: /root/project/clang-tidy-results.txt
+      - store_test_results:
+          #TODO: parse them first to whatever cirlce-ci accepts
+          path: /root/project/clang-tidy-results.txt
 
 workflows:
   lint:
