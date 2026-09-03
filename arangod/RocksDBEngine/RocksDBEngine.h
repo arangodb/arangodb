@@ -352,9 +352,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   Result compactAll(bool changeLevel, bool compactBottomMostLevel) override;
 
-  /// @brief Add engine-specific optimizer rules
-  void addOptimizerRules(aql::OptimizerRulesFeature& feature) override;
-
 #ifdef USE_V8
   /// @brief Add engine-specific V8 functions
   void addV8Functions() override;

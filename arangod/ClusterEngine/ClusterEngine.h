@@ -176,9 +176,6 @@ class ClusterEngine final : public StorageEngine {
       -> ResultT<std::unique_ptr<
           replication2::storage::IStorageEngineMethods>> override;
 
-  /// @brief Add engine-specific optimizer rules
-  void addOptimizerRules(aql::OptimizerRulesFeature& feature) override;
-
 #ifdef USE_V8
   /// @brief Add engine-specific V8 functions
   void addV8Functions() override;
