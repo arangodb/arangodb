@@ -6,4 +6,5 @@ target_sources(arango_aql PRIVATE
   GetIndexForSortCondition.cpp
   LateMaterializedCommon.cpp
   OptimizeTraversalPathVariable.cpp
+  RewriteProjectionAttributeAccesses.cpp
 )
