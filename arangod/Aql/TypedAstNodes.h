@@ -993,7 +993,13 @@ struct PatternEdge : TypedAstNode {
         << node->numMembers();
   }
 
-  AstNode const* getOutVariable() const { return _node->getMember(0); }
+  Variable const* getOutVariable() const {
+    auto n = _node->getMember(0);
+    TRI_ASSERT(n != nullptr);
+    TRI_ASSERT(n->type == NODE_TYPE_REFERENCE || n->type == NODE_TYPE_VARIABLE)
+        << n->getTypeString();
+    return static_cast<Variable const*>(n->getData());
+  }
   AstNode const* getCollections() const { return _node->getMember(1); }
   AstNode const* getProperties() const { return _node->getMember(2); }
   AstNode const* getFilter() const { return _node->getMember(3); }
@@ -1016,7 +1022,13 @@ struct PatternNodePattern : TypedAstNode {
         << node->numMembers();
   }
 
-  AstNode const* getOutVariable() const { return _node->getMember(0); }
+  Variable const* getOutVariable() const {
+    auto n = _node->getMember(0);
+    TRI_ASSERT(n != nullptr);
+    TRI_ASSERT(n->type == NODE_TYPE_REFERENCE || n->type == NODE_TYPE_VARIABLE)
+        << n->getTypeString();
+    return static_cast<Variable const*>(n->getData());
+  }
   AstNode const* getLabels() const { return _node->getMember(1); }
   AstNode const* getProperties() const { return _node->getMember(2); }
   AstNode const* getFilter() const { return _node->getMember(3); }

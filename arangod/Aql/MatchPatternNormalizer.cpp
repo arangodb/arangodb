@@ -153,7 +153,7 @@ NormalizedVertex MatchPatternNormalizer::normalizeVertex(
   ast::PatternNodePattern typed{&nodePattern};
 
   NormalizedVertex vertex;
-  vertex.variable = normalizeOutputVariable(typed.getOutVariable());
+  vertex.variable = typed.getOutVariable();
 
   AstNode const* label = typed.getLabels();
   if (label == nullptr || label->type == NODE_TYPE_VALUE) {
@@ -172,7 +172,7 @@ NormalizedEdge MatchPatternNormalizer::normalizeEdge(
   ast::PatternEdge typed{&edge};
 
   NormalizedEdge result;
-  result.variable = normalizeOutputVariable(typed.getOutVariable());
+  result.variable = typed.getOutVariable();
   AstNode const* collectionsNode = typed.getCollections();
   result.collections = normalizeDataSourceList(collectionsNode);
   if (collectionsNode != nullptr && collectionsNode->type == NODE_TYPE_ARRAY) {
@@ -334,22 +334,6 @@ MatchPathRange MatchPatternNormalizer::normalizeRange(
                                    "invalid traversal depth");
   }
   return MatchPathRange::bounded(minDepth, maxDepth);
-}
-
-Variable const* MatchPatternNormalizer::normalizeOutputVariable(
-    AstNode const* node) const {
-  if (node == nullptr || node->type == NODE_TYPE_VALUE) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "match pattern without output variable");
-  }
-
-  if (node->type == NODE_TYPE_REFERENCE || node->type == NODE_TYPE_VARIABLE) {
-    return static_cast<Variable const*>(node->getData());
-  }
-
-  THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL,
-      "unexpected output variable node in match pattern normalization");
 }
 
 }  // namespace arangodb::aql
