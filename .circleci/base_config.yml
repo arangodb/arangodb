@@ -262,6 +262,9 @@ commands:
       - run:
           name: Clone driver repository
           command: |
+            git config --global --replace-all url."https://${USERNAME}:${PASSWORD}@github.com/".insteadOf "https://github.com/"
+            git config --global --add         url."https://${USERNAME}:${PASSWORD}@github.com/".insteadOf "git@github.com:"
+            git config --global --add         url."https://${USERNAME}:${PASSWORD}@github.com/".insteadOf "ssh://git@github.com/"
             cd ..
             export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no"
             git clone --single-branch --branch << parameters.driver-git-branch >> << parameters.driver-git-repo >>
@@ -524,6 +527,7 @@ jobs:
       - run:
           name: Run eslint
           command: |
+            cat /root/project/tests/js/client/recovery/cluster/crash/dump-api-dbserver.js
             utils/eslint.sh
       - run:
           name: "Cancel other workflows"
