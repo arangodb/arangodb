@@ -198,6 +198,36 @@ collect_arango_log() {
   fi
 }
 
+# Direct, in-CI diagnosis of the duplicate-candidates bug: probe a sample of
+# docs with their OWN vector; if a doc is stored in two inverted lists, its own
+# _key comes back twice. Runs against the live SUT, writes findings to the
+# artifact, and never fails the run (best-effort).
+diagnose_duplicates() {
+  log "Probing for duplicate candidates (self-query)"
+  local sample="${ANN_DIAG_SAMPLE:-2000}" np="${ANN_DIAG_NPROBE:-256}" k="${ANN_DIAG_K:-5}"
+  local out="${ANN_OUTPUT_DIR}/diagnose.json"
+  local aql='FOR d IN items LIMIT @sample
+      LET hits = (FOR x IN items
+                  SORT APPROX_NEAR_COSINE(x.vector, d.vector, {nProbe: @np}) DESC
+                  LIMIT @k RETURN x._key)
+      FILTER LENGTH(hits) != LENGTH(UNIQUE(hits))
+      RETURN {key: d._key, hits: hits}'
+  local body
+  body="$(jq -n --arg q "${aql}" --argjson sample "${sample}" \
+             --argjson np "${np}" --argjson k "${k}" \
+             '{query: $q, bindVars: {sample: $sample, np: $np, k: $k}}')"
+  if curl -fsS -X POST "${ARANGO_URL}/_db/_system/_api/cursor" -d "${body}" -o "${out}" 2>/dev/null; then
+    local ndup; ndup="$(jq '.result | length' "${out}" 2>/dev/null || echo '?')"
+    {
+      echo "duplicate self-probe: ${sample} docs, nProbe=${np}, topK=${k}"
+      echo "docs whose own top-${k} contained a duplicate (=> stored in >1 list): ${ndup}"
+      jq -r '.result[0:10][]? | "  key=\(.key) hits=\(.hits)"' "${out}" 2>/dev/null
+    } | tee "${ANN_OUTPUT_DIR}/diagnose.txt"
+  else
+    log "  (self-probe query failed - collection/index may be gone)"
+  fi
+}
+
 # Fail the job if any dataset produced fewer result rows than the number of
 # query-argument groups ann-benchmarks reported - i.e. some config silently
 # produced no results (run.py exits 0 even then).
@@ -252,7 +282,7 @@ export_results() {
     sed 's/^/  /' "${ANN_OUTPUT_DIR}/run_meta.json" 2>/dev/null || echo "  (no metadata)"
   } > "${ANN_OUTPUT_DIR}/site/METADATA.txt"
   # Gather the artifacts (results + logs) into the site bundle.
-  for f in results.csv run_meta.json arangod.log arangod-log.json run.log; do
+  for f in results.csv run_meta.json arangod.log arangod-log.json run.log diagnose.txt diagnose.json; do
     cp "${ANN_OUTPUT_DIR}/${f}" "${ANN_OUTPUT_DIR}/site/${f}" 2>/dev/null || true
   done
 
@@ -283,6 +313,7 @@ main() {
   setup_harness
   run_sweep
   collect_arango_log   # while arangod is still up
+  diagnose_duplicates  # self-probe the live index for two-list docs
   export_results       # writes artifacts (incl. logs) BEFORE validation can fail
   validate_results     # fails the job if any config produced no results
   push_metrics
