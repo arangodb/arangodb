@@ -39,7 +39,6 @@
 #include "Aql/ExecutionNode/SortNode.h"
 #include "Aql/Optimizer.h"
 #include "Aql/Optimizer/Utils/VectorIndexHelpers.h"
-#include "Aql/OptimizerUtils.h"
 #include "Aql/QueryContext.h"
 #include "Assertions/Assert.h"
 #include "Basics/Exceptions.h"
