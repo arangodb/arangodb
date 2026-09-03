@@ -55,6 +55,9 @@ ConsoleFeature::ConsoleFeature(ApplicationServer& server)
 }
 
 void ConsoleFeature::start() {
+  if (!server().hasFeature<ServerFeature>()) {
+    return;
+  }
   auto& serverFeature = server().getFeature<ServerFeature>();
 
   _operationMode = serverFeature.operationMode();

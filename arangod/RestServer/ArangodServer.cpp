@@ -222,9 +222,7 @@ void ArangodServer::addFeatures() {
       database, getOptions<upgrade::ClusterUpgradeOptionsProvider>());
   addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());
 #ifdef USE_V8
-  // V8-only features are skipped entirely rather than registered-then-disabled
   bool const enableJS = getOptions<V8DealerOptionsProvider>().enableJS;
-  // an activated agency also skips Foxx/Frontend and (unless --console) V8
   bool const agencyActivated = getOptions<AgencyOptionsProvider>().activated;
   bool const enableFoxx = enableJS && !agencyActivated;
   bool const enableV8Runtime =

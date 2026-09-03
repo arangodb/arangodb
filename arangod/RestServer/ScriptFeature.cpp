@@ -60,6 +60,9 @@ ScriptFeature::ScriptFeature(ApplicationServer& server, int* result,
 }
 
 void ScriptFeature::start() {
+  if (!server().hasFeature<ServerFeature>()) {
+    return;
+  }
   auto& serverFeature = server().getFeature<ServerFeature>();
   auto operationMode = serverFeature.operationMode();
 
