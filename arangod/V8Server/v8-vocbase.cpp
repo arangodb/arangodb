@@ -2403,13 +2403,14 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
           v8::Number::New(isolate, (double)threadNumber), v8::ReadOnly)
       .FromMaybe(false);  // ignore result
 
-  // whether or not statistics are enabled
+  bool const statisticsEnabled =
+      server.hasFeature<StatisticsFeature>() &&
+      server.getFeature<StatisticsFeature>().isEnabled();
   context->Global()
-      ->DefineOwnProperty(
-          TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "ENABLE_STATISTICS"),
-          v8::Boolean::New(isolate,
-                           server.getFeature<StatisticsFeature>().isEnabled()),
-          v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
+      ->DefineOwnProperty(TRI_IGETC,
+                          TRI_V8_ASCII_STRING(isolate, "ENABLE_STATISTICS"),
+                          v8::Boolean::New(isolate, statisticsEnabled),
+                          v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
 
   // replication factors
