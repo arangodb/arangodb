@@ -3,28 +3,38 @@
 #include "clang/Tooling/CompilationDatabase.h"
 
 #include <memory>
-#include <optional>
 #include <string>
+#include <variant>
 #include <vector>
 
 namespace sources {
 
-/**
- * The compile database plus the list of source files to feed to ClangTool.
- */
-struct Sources {
-  std::unique_ptr<clang::tooling::CompilationDatabase> db;
-  std::vector<std::string> files;
+using Database = std::unique_ptr<clang::tooling::CompilationDatabase>;
+struct Error {
+  std::string message;
+
+  auto operator==(Error const&) const -> bool = default;
 };
+using DatabaseOrError = std::variant<Database, Error>;
 
 /**
- * Resolve `path_name` (a file or a directory) into a Sources payload.
- *
- * Returns:
- *   - nullopt when `path_name` is neither a regular file nor a directory.
- *   - Sources with `db == nullptr` when no compile_commands.json was found.
- *   - Sources with `files` empty when no project sources matched.
+ * Compilation database of the arangodb build in `build_path`.
  */
-auto get_sources(std::string const& path_name) -> std::optional<Sources>;
+auto get_database(std::string const& build_path) -> DatabaseOrError;
+
+/**
+ * The translation units of `database` to scan for the user's `source_paths`.
+ *
+ * Each source path is a file or a directory (searched recursively). Headers are
+ * routed to their sibling .cpp. A source path is skipped when it has no source
+ * file, lies in an ignored directory or is not part of `database`. The result
+ * are the matching database files, each once.
+ *
+ * Example:
+ *   sources::get_sources(database, {"arangod/Cluster"});
+ */
+auto get_sources(clang::tooling::CompilationDatabase const& database,
+                 std::vector<std::string> const& source_paths)
+    -> std::vector<std::string>;
 
 }  // namespace sources

@@ -13,8 +13,8 @@ sudo apt install libclang-19-dev llvm-19-dev clang-19
 ```
 
 You also need a configured ArangoDB build directory whose
-`compile_commands.json` covers the sources you want to scan. Make sure that
-this file is located at the repository root.
+`compile_commands.json` covers the sources you want to scan (arangodb configures
+this automatically). You pass that directory with `--build-path`.
 
 `git` has to be on `PATH`: the generated document names the commit the scan was
 made from, which is looked up on every run.
@@ -29,12 +29,25 @@ cmake --build <build-dir> -DUSE_ACTIVITY_DOCS=On find-activity-subclasses
 ## Run
 
 ```sh
-./find-activity-subclasses <path in which to search for activities (directory or file)>
+./find-activity-subclasses --build-path <build-path> <source-path> [<source-path> ...]
 ```
 
-Output is written to stdout. Its header names the commit the given path is
-checked out at, so the list can be reproduced later; the commit reads `unknown`
-when the path is not inside a git repository.
+- `--build-path` (or `-p`, required) is the arangodb build directory that holds
+  `compile_commands.json`.
+- Every following positional argument is a source path to search for activities.
+  At least one is required; directories are searched recursively.
+
+Each source path must be part of the compilation database, otherwise it is
+skipped with a warning on stderr. The two directories `<root>/Documentation` and
+`<root>/3rdParty` are always ignored; naming one explicitly is skipped with a
+warning as well (`<root>` is the arangodb repository, found via git from the
+build path). When nothing is left to scan the program exits with a non-zero
+status. `--help` (`-h`) prints usage.
+
+Output is the markdown document on stdout. Its header names the commit the
+arangodb repository is checked out at, so the list can be reproduced later; the
+commit reads `unknown` when it cannot be determined. When a source path lies in
+the `enterprise` submodule, that submodule's own commit is listed as well.
 
 ## Test
 

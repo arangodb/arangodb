@@ -1,30 +1,33 @@
 #pragma once
 
 #include "activity_declaration.h"
+
+#include <clang/Tooling/CompilationDatabase.h>
 #include <string>
 #include <vector>
 
 /**
- * Find every Activity-subclass declaration owned somewhere under `path`.
+ * Find every Activity-subclass declaration owned somewhere in `sources`.
  *
- * `path` is a single source file or a directory; compile_commands.json is
- * auto-detected. Headers are routed to their sibling .cpp so ClangTool has
- * a translation unit to parse.
+ * `sources` are translation units of `database` (see sources.h for how they are
+ * selected from the user's paths). For each one, ClangTool is run to collect
+ * every concrete Activity subclass declared as a member field or a local
+ * variable.
  *
  * Example:
- *   auto activities = find_all_activities(
- *       "arangod/StorageEngine/TransactionState.cpp");
- *   for (auto const& activity : activities) {
- *     std::cout << activity.data_type << " @ " << activity.owner_file << "\n";
+ *   auto const database = sources::get_database("build");
+ *   for (auto const& activity : find_all_activities(*database,
+ * {"arangod/Cluster"})) { std::cout << activity.type << " @ " << activity.owner
+ * << "\n";
  *   }
  *
- * This functions works the following:
- * - runs over all the sources (module sources) we specify
- * - user-defined matchers define which code we are interested in (module
- * matcher)
+ * This function works the following:
+ * - user-defined matchers define which code we are interested in (defined in
+ * matcher.h)
  * - for each match, it executes a user-defined callback that converts the match
- * into an ActivityDeclaration and adds it to the output vector (module
- * conversion)
+ * into an ActivityDeclaration and adds it to the output vector (defined in
+ * conversion.h)
  */
-auto find_all_activities(std::string const& path)
+auto find_all_activities(clang::tooling::CompilationDatabase const& database,
+                         std::vector<std::string> const& sources)
     -> std::vector<ActivityDeclaration>;

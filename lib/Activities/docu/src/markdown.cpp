@@ -44,15 +44,29 @@ auto field_table(Struct const& record) -> std::string {
   return table;
 }
 
+/**
+ * The commits joined as "<repository> on commit <id>", comma-separated.
+ */
+auto commit_clause(std::vector<repository::Commit> const& commits)
+    -> std::string {
+  auto clause = std::string{};
+  for (auto const& commit : commits) {
+    if (not clause.empty()) {
+      clause += ", ";
+    }
+    clause += commit.repository + " on commit " + commit.id;
+  }
+  return clause;
+}
+
 }  // namespace
 
 auto activities_to_markdown(std::vector<ActivityDeclaration> const& activities,
-                            std::string_view commit_id) -> std::string {
+                            std::vector<repository::Commit> const& commits)
+    -> std::string {
   auto markdown = std::string{"# Activities\n"};
-  markdown +=
-      "This document lists all existing activities in arangodb on commit ";
-  markdown += commit_id;
-  markdown += "\n";
+  markdown += "This document lists all existing activities in " +
+              commit_clause(commits) + "\n";
   markdown +=
       "You can produce the latest activities list yourself via the activities "
       "docu, see lib/Activities/docu/README.md in the arangodb repository for "

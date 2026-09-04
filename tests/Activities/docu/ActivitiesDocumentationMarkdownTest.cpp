@@ -21,6 +21,7 @@
 
 #include "activity_declaration.h"
 #include "markdown.h"
+#include "repository.h"
 #include <gtest/gtest.h>
 
 TEST(ActivityDocumentationMarkdownTest, generates_markdown_correctly) {
@@ -39,7 +40,8 @@ TEST(ActivityDocumentationMarkdownTest, generates_markdown_correctly) {
               ActivityDeclaration{.owner = "ns::run",
                                   .type = "ns::Empty",
                                   .data_type_definition = {}}},
-          "abc1234"),
+          std::vector<repository::Commit>{
+              repository::Commit{"arangodb", "abc1234"}}),
       R""""(# Activities
 This document lists all existing activities in arangodb on commit abc1234
 You can produce the latest activities list yourself via the activities docu, see lib/Activities/docu/README.md in the arangodb repository for details.
@@ -57,5 +59,17 @@ type: ns::Foo
 
 ## ns::run
 type: ns::Empty
+)"""");
+}
+
+TEST(ActivityDocumentationMarkdownTest, lists_an_enterprise_commit_too) {
+  EXPECT_EQ(
+      activities_to_markdown(std::vector<ActivityDeclaration>{},
+                             std::vector<repository::Commit>{
+                                 repository::Commit{"arangodb", "abc1234"},
+                                 repository::Commit{"enterprise", "def5678"}}),
+      R""""(# Activities
+This document lists all existing activities in arangodb on commit abc1234, enterprise on commit def5678
+You can produce the latest activities list yourself via the activities docu, see lib/Activities/docu/README.md in the arangodb repository for details.
 )"""");
 }
