@@ -283,10 +283,12 @@ commands:
             INST=""
             TOKEN=""
             if [ -n "$JWT" ]; then
-              INST=$(curl -sSf -H "Authorization: Bearer $JWT" -H "Accept: application/vnd.github+json"                        https://api.github.com/orgs/arangodb/installation | jq -r '.id // empty') || INST=""
+              INST=$(curl -sSf -H "Authorization: Bearer $JWT" -H "Accept: application/vnd.github+json" \
+                       https://api.github.com/orgs/arangodb/installation | jq -r '.id // empty') || INST=""
             fi
             if [ -n "$INST" ]; then
-              TOKEN=$(curl -sSf -X POST -H "Authorization: Bearer $JWT" -H "Accept: application/vnd.github+json"                         "https://api.github.com/app/installations/$INST/access_tokens" | jq -r '.token // empty') || TOKEN=""
+              TOKEN=$(curl -sSf -X POST -H "Authorization: Bearer $JWT" -H "Accept: application/vnd.github+json" \
+                        "https://api.github.com/app/installations/$INST/access_tokens" | jq -r '.token // empty') || TOKEN=""
             fi
             if [ -z "$TOKEN" ]; then
               echo "WARNING: no GitHub App token obtained, cloning anonymously" >&2
