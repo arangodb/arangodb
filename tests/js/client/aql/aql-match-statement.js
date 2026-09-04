@@ -434,6 +434,82 @@ function aqlMatchStatementTestSuite() {
             }
         },
 
+        // COR-960: multi-collection one-hop and variable-length segments must
+        // apply edge/target projections the same way as the single-collection
+        // join lowering.
+        testSelectEdgesWithProjectionMultipleEdgeTypes: function () {
+            const single = db._query(
+                "MATCH (u :vc)-[e :ec WHERE e.j == 0 RETURN i]->(v :vc) RETURN e",
+                {},
+                options
+            ).toArray();
+            // ec2 edges have no `j`, so WHERE e.j == 0 keeps the result set
+            // identical to the single-collection query.
+            const multi = db._query(
+                "MATCH (u :vc)-[e :ec|ec2 WHERE e.j == 0 RETURN i]->(v :vc) RETURN e",
+                {},
+                options
+            ).toArray();
+            assertEqual(multi.length, single.length);
+            assertEqual(multi.length, 5);
+
+            for (const e of multi) {
+                assertTrue(e.hasOwnProperty("_id"));
+                assertTrue(e.hasOwnProperty("_from"));
+                assertTrue(e.hasOwnProperty("_to"));
+                assertTrue(e.hasOwnProperty("i"));
+                assertFalse(e.hasOwnProperty("j"));
+                assertFalse(e.hasOwnProperty("_key"));
+                assertFalse(e.hasOwnProperty("_rev"));
+            }
+        },
+
+        testSelectTargetVertexWithProjectionMultipleEdgeTypes: function () {
+            const single = db._query(
+                "MATCH (u :vc)-[e :ec WHERE e.j == 0]->(v :vc RETURN i) RETURN v",
+                {},
+                options
+            ).toArray();
+            const multi = db._query(
+                "MATCH (u :vc)-[e :ec|ec2 WHERE e.j == 0]->(v :vc RETURN i) RETURN v",
+                {},
+                options
+            ).toArray();
+            assertEqual(multi.length, single.length);
+            assertEqual(multi.length, 5);
+
+            for (const v of multi) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertTrue(v.hasOwnProperty("i"));
+                assertFalse(v.hasOwnProperty("j"));
+                assertFalse(v.hasOwnProperty("_key"));
+                assertFalse(v.hasOwnProperty("_rev"));
+            }
+        },
+
+        testSelectTargetVertexWithProjectionVariableLength: function () {
+            const fixed = db._query(
+                "MATCH (u :vc)-[e :ec]->(v :vc RETURN i) RETURN v",
+                {},
+                options
+            ).toArray();
+            const ranged = db._query(
+                "MATCH (u :vc)-[e :ec * 1..1 ]->(v :vc RETURN i) RETURN v",
+                {},
+                options
+            ).toArray();
+            assertEqual(ranged.length, fixed.length);
+            assertEqual(ranged.length, 50);
+
+            for (const v of ranged) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertTrue(v.hasOwnProperty("i"));
+                assertFalse(v.hasOwnProperty("j"));
+                assertFalse(v.hasOwnProperty("_key"));
+                assertFalse(v.hasOwnProperty("_rev"));
+            }
+        },
+
         testMatchPathVariableWithEdgeProjection: function () {
             const result = db._query(
                 "MATCH p = (v :vc) -[ e :ec RETURN i ]-> (w :vc) RETURN p",

@@ -83,10 +83,18 @@ class MatchBuilder {
       Variable const* leftVertex, Variable const* edge,
       Variable const* rightVertex, MatchEdgeDirection direction);
 
+  /// @param edgeDocumentOutputVariable Edge document output for fixed-depth
+  /// traversals. Ignored when the edge variable receives a path object.
+  /// @param vertexDocumentOutputVariable Vertex output when @p target is a
+  /// vertex pattern. Ignored for variable reference targets. Callers that
+  /// apply MATCH projections must pass temporaries and register substitutions
+  /// before later alias rewrites (same ordering as the join lowering path).
   std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
   createTraversalForPattern(Variable const* startNodeVar,
                             NormalizedEdge const& edge,
-                            MatchPatternElement const& target);
+                            MatchPatternElement const& target,
+                            Variable const* edgeDocumentOutputVariable,
+                            Variable const* vertexDocumentOutputVariable);
 
   AstNode* constructArray(std::vector<AstNode const*> const& vars);
 
