@@ -53,7 +53,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   void deferDropCollection(
       std::function<bool(LogicalCollection&)> const&) override;
 
-  uint64_t objectId() const noexcept { return _objectId; }
+  uint64_t objectId() const noexcept override { return _objectId; }
 
   RocksDBMetadata& meta() { return _meta; }
   RocksDBMetadata const& meta() const noexcept { return _meta; }

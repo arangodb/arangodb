@@ -69,14 +69,14 @@
 
 // For attributes where an explicit null has to load as "unset", because
 // stored data written before the typed parse contains it.
-#define GenerateAcceptsNullAsUnset(attributeName)                      \
-  {                                                                    \
-    auto body = createMinimumBodyWithOneValue(#attributeName,          \
+#define GenerateAcceptsNullAsUnset(attributeName)                       \
+  {                                                                     \
+    auto body = createMinimumBodyWithOneValue(#attributeName,           \
                                               VPackSlice::nullSlice()); \
-    auto testee = parse(body.slice());                                 \
-    ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();          \
-    EXPECT_FALSE(testee->attributeName.has_value())                    \
-        << " On body " << body.toJson();                               \
+    auto testee = parse(body.slice());                                  \
+    ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();           \
+    EXPECT_FALSE(testee->attributeName.has_value())                     \
+        << " On body " << body.toJson();                                \
   }
 
 #define GenerateFailsOnBool(attributeName)           \
@@ -182,51 +182,48 @@
 // NOTE: we also test 4.5 (double) right now this passes the validator, need to
 // discuss if this is correct
 
-#define GeneratePositiveIntegerAttributeTestInternal(TestClass, attributeName, \
-                                                     valueName, allowZero,     \
-                                                     nullCheck)                \
-  TEST_F(TestClass, test_##attributeName) {                                    \
-    auto shouldBeEvaluatedTo = [&](VPackBuilder const& body,                   \
-                                   uint64_t expected) {                        \
-      auto testee = parse(body.slice());                                       \
-      EXPECT_EQ(testee->valueName, expected)                                   \
-          << "Parsing error in " << body.toJson();                             \
-      __HELPER_equalsAfterSerializeParseCircle(testee.get())                   \
-    };                                                                         \
-    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 2), 2);  \
-    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 42),     \
-                        42);                                                   \
-    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 4.5),    \
-                        4);                                                    \
-    if (allowZero) {                                                           \
-      shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 0),    \
-                          0);                                                  \
-    } else {                                                                   \
-      __HELPER_assertParsingThrows(attributeName, 0);                          \
-    }                                                                          \
-    __HELPER_assertParsingThrows(attributeName, -1);                           \
-    __HELPER_assertParsingThrows(attributeName, -4.5);                         \
-    GenerateFailsOnBool(attributeName);                                        \
-    GenerateFailsOnString(attributeName);                                      \
-    GenerateFailsOnArray(attributeName);                                       \
-    GenerateFailsOnObject(attributeName);                                      \
-    nullCheck(attributeName)                                                   \
+#define GeneratePositiveIntegerAttributeTestInternal(                         \
+    TestClass, attributeName, valueName, allowZero, nullCheck)                \
+  TEST_F(TestClass, test_##attributeName) {                                   \
+    auto shouldBeEvaluatedTo = [&](VPackBuilder const& body,                  \
+                                   uint64_t expected) {                       \
+      auto testee = parse(body.slice());                                      \
+      EXPECT_EQ(testee->valueName, expected)                                  \
+          << "Parsing error in " << body.toJson();                            \
+      __HELPER_equalsAfterSerializeParseCircle(testee.get())                  \
+    };                                                                        \
+    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 2), 2); \
+    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 42),    \
+                        42);                                                  \
+    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 4.5),   \
+                        4);                                                   \
+    if (allowZero) {                                                          \
+      shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 0),   \
+                          0);                                                 \
+    } else {                                                                  \
+      __HELPER_assertParsingThrows(attributeName, 0);                         \
+    }                                                                         \
+    __HELPER_assertParsingThrows(attributeName, -1);                          \
+    __HELPER_assertParsingThrows(attributeName, -4.5);                        \
+    GenerateFailsOnBool(attributeName);                                       \
+    GenerateFailsOnString(attributeName);                                     \
+    GenerateFailsOnArray(attributeName);                                      \
+    GenerateFailsOnObject(attributeName);                                     \
+    nullCheck(attributeName)                                                  \
   }
 
-#define GeneratePositiveIntegerAttributeTest(TestClass, attributeName)   \
-  GeneratePositiveIntegerAttributeTestInternal(TestClass, attributeName, \
-                                               attributeName, false,     \
-                                               GenerateFailsOnNull)
+#define GeneratePositiveIntegerAttributeTest(TestClass, attributeName) \
+  GeneratePositiveIntegerAttributeTestInternal(                        \
+      TestClass, attributeName, attributeName, false, GenerateFailsOnNull)
 
 #define GeneratePositiveIntegerNullableAttributeTest(TestClass, attributeName) \
   GeneratePositiveIntegerAttributeTestInternal(TestClass, attributeName,       \
                                                attributeName, false,           \
                                                GenerateAcceptsNullAsUnset)
 
-#define GenerateIntegerAttributeTest(TestClass, attributeName)           \
-  GeneratePositiveIntegerAttributeTestInternal(TestClass, attributeName, \
-                                               attributeName, true,      \
-                                               GenerateFailsOnNull)
+#define GenerateIntegerAttributeTest(TestClass, attributeName) \
+  GeneratePositiveIntegerAttributeTestInternal(                \
+      TestClass, attributeName, attributeName, true, GenerateFailsOnNull)
 
 #define GenerateIgnoredAttributeTest(TestClass, attributeName)                 \
   TEST_F(TestClass, test_##attributeName) {                                    \

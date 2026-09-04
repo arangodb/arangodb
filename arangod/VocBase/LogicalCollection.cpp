@@ -515,7 +515,7 @@ CollectionDescriptor LogicalCollection::properties() const {
     d.mutableProps.computedValues = std::move(computedValues);
   }
 
-  // objectId: owned by _physical, not exposed on the base class.
+  d.storage.objectId = _physical->objectId();
 
   return d;
 }
