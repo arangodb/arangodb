@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include "Graph/Types/VertexRef.h"
 
 // Collect the functions called on providers by enumerators (pathresult,
 // validator?)
@@ -18,16 +19,21 @@ struct IGraphView {
   // should include which collections, which indexes with which
   // index-expressions
 
-  // Hausmeisterschrott
-  auto stealStats() -> aql::TraversalStats;
+  // Q: return Edge or Step?
+  auto getNeighbours(VertexRef vertex) -> std::vector<Edge>;
 
-  // Creates a cursor that returns out edges
-  auto createNeighbourCursor(VertexRef v, uint64_t depth) -> NeighbourCursor;
+  // -----------------------------
+  // // Hausmeisterschrott
+  // auto stealStats() -> aql::TraversalStats;
 
-  auto prepareIndexExpressions(aql::Ast* ast) -> void;
+  // // Creates a cursor that returns out edges
+  // auto createNeighbourCursor(VertexRef v, uint64_t depth) -> NeighbourCursor;
 
-  auto prepareContext(aql::InputAqlItemRow input) -> void;
-  auto unPrepareContext() -> void;
+  // auto prepareIndexExpressions(aql::Ast* ast) -> void;
+
+  // auto prepareContext(aql::InputAqlItemRow input) -> void;
+  // auto unPrepareContext() -> void;
+  // -------------------------------
 
   // Instead of using addVertexToBuilder, addEdgeToBuilder we intent the
   // *Enumerator* to return a struct like this:

@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <velocypack/HashedStringRef.h>
+#include "Graph/SimplifiedTraversal/InMemoryGraph.h"
 #include "Graph/SimplifiedTraversal/SingleServerTraversalEnumerator.h"
 #include "Graph/SimplifiedTraversal/SingleServerPathResult.h"
 #include "Graph/Types/VertexRef.h"
@@ -73,6 +74,25 @@ TEST(SingleServerTraversalEnumeratorTest,
   // document and return null for the vertex document
   auto expected = SingleServerPathResult{{std::nullopt}, {}};
   assertEqual(*nextPath, expected);
+}
+
+TEST(SingleServerTraversalEnumeratorTest,
+     querying_single_vertex_contained_in_graph) {
+  auto v0 = std::string{"v/0"};
+  auto graph = experimental::InMemoryGraph(
+      {VertexRef{velocypack::HashedStringRef{
+          v0.c_str(), static_cast<uint32_t>(v0.length())}}},
+      {});
+  auto enumerator = SingleServerTraversalEnumerator(graph);
+  // auto start = std::string{"v/0"};
+  // enumerator.reset(VertexRef{velocypack::HashedStringRef{
+  //     start.c_str(), static_cast<uint32_t>(start.length())}});
+
+  // auto nextPath = enumerator.getNextPath();
+
+  // EXPECT_NE(nextPath, nullptr);
+  // auto expected = SingleServerPathResult{{"v/0"}, {}};
+  // assertEqual(*nextPath, expected);
 }
 
 TEST(SingleServerTraversalEnumeratorTest, querying_path_of_length_one) {

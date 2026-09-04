@@ -1,5 +1,6 @@
 #include "Graph/Enumerators/ITraversalEnumerator.h"
 #include "Graph/PathManagement/IPathResult.h"
+#include "Graph/SimplifiedTraversal/IGraphView.h"
 #include "Graph/SimplifiedTraversal/SingleServerPathResult.h"
 
 #include <optional>
@@ -36,7 +37,7 @@ struct SingleServerTraversalEnumerator : ITraversalEnumerator {
     _isDone = true;
     return std::make_unique<SingleServerPathResult>(
         std::vector<std::optional<VertexId>>{std::nullopt},
-        std::vector<Edge>{});
+        std::vector<graph::Edge>{});
   };
 
     // batched:
@@ -85,6 +86,7 @@ struct SingleServerTraversalEnumerator : ITraversalEnumerator {
   auto unprepareValidatorContext() -> void override { TRI_ASSERT(false); }
 
  private:
+  IGraphView& graph;
   bool _isDone = true;
   std::optional<VertexRef> _startVertex;
   std::deque<VertexRef> _queue;
