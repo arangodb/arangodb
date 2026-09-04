@@ -59,6 +59,14 @@ class VertexRef {
 
   operator velocypack::HashedStringRef() { return _vertex; }
 
+  template<typename Inspector>
+  friend auto inspect(Inspector& f, VertexRef& x) {
+    if constexpr (not Inspector::isLoading) {
+      return f.object(x).fields(
+          f.field("vertex", std::string{x._vertex.data()}));
+    }
+  }
+
   [[nodiscard]] auto collectionName() const -> ResultT<std::string_view>;
 
  private:
