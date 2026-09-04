@@ -57,7 +57,7 @@ struct DefaultIndexFactory : public IndexTypeFactory {
 
   bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
              std::string const& dbname) const override {
-    return _engine.indexDefinitions().factory(_type).equal(lhs, rhs, dbname);
+    return _engine.indexDefinitions().definition(_type).equal(lhs, rhs, dbname);
   }
 
   std::shared_ptr<Index> instantiate(
@@ -71,7 +71,7 @@ struct DefaultIndexFactory : public IndexTypeFactory {
   virtual Result normalize(velocypack::Builder& normalized,
                            velocypack::Slice definition, bool isCreation,
                            TRI_vocbase_t const& vocbase) const override {
-    return _engine.indexDefinitions().factory(_type).normalize(
+    return _engine.indexDefinitions().definition(_type).normalize(
         normalized, definition, isCreation, vocbase);
   }
 

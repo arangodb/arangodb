@@ -24,7 +24,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
-#include "Basics/FloatingPoint.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -125,119 +124,7 @@ IndexTypeFactory::IndexTypeFactory(
 bool IndexTypeFactory::equal(IndexType type, velocypack::Slice lhs,
                              velocypack::Slice rhs,
                              bool attributeOrderMatters) const {
-  // unique must be identical if present
-  bool lhsUnique = basics::VelocyPackHelper::getBooleanValue(
-      lhs, StaticStrings::IndexUnique, false);
-  bool rhsUnique = basics::VelocyPackHelper::getBooleanValue(
-      rhs, StaticStrings::IndexUnique, false);
-  if (lhsUnique != rhsUnique) {
-    return false;
-  }
-
-  // sparse must be identical if present
-  if (IndexType::Geo2 != type && IndexType::Geo1 != type &&
-      IndexType::Geo != type && IndexType::Fulltext != type) {
-    bool lhsSparse = basics::VelocyPackHelper::getBooleanValue(
-        lhs, StaticStrings::IndexSparse, false);
-    bool rhsSparse = basics::VelocyPackHelper::getBooleanValue(
-        rhs, StaticStrings::IndexSparse, false);
-    if (lhsSparse != rhsSparse) {
-      return false;
-    }
-  }
-
-  VPackSlice value;
-
-  if (IndexType::Geo1 == type || IndexType::Geo == type) {
-    // geoJson must be identical if present
-    value = lhs.get("geoJson");
-
-    if (value.isBoolean() &&
-        !basics::VelocyPackHelper::equal(value, rhs.get("geoJson"), false)) {
-      return false;
-    }
-  } else if (IndexType::Fulltext == type) {
-    // minLength
-    value = lhs.get("minLength");
-
-    if (value.isNumber() &&
-        !basics::VelocyPackHelper::equal(value, rhs.get("minLength"), false)) {
-      return false;
-    }
-  } else if (IndexType::TTL == type) {
-    value = lhs.get(StaticStrings::IndexExpireAfter);
-
-    if (value.isNumber() &&
-        rhs.get(StaticStrings::IndexExpireAfter).isNumber()) {
-      double const expireAfter = value.getNumber<double>();
-      value = rhs.get(StaticStrings::IndexExpireAfter);
-
-      if (!FloatingPoint<double>{expireAfter}.AlmostEquals(
-              FloatingPoint<double>{value.getNumber<double>()})) {
-        return false;
-      }
-    }
-  } else if (IndexType::MDIPrefixed == type) {
-    value = lhs.get(StaticStrings::IndexPrefixFields);
-
-    if (value.isArray() &&
-        !basics::VelocyPackHelper::equal(
-            value, rhs.get(StaticStrings::IndexPrefixFields), false)) {
-      return false;
-    }
-  } else if (IndexType::Vector == type) {
-    // check if the parameters are the same
-    vector::UserDefinition leftDefinition;
-    vector::UserDefinition rightDefinition;
-    velocypack::deserialize(lhs.get("params"), leftDefinition);
-    velocypack::deserialize(rhs.get("params"), rightDefinition);
-
-    if (leftDefinition != rightDefinition) {
-      return false;
-    }
-  }
-
-  // other index types: fields must be identical if present
-  value = lhs.get(StaticStrings::IndexFields);
-
-  if (value.isArray()) {
-    if (!attributeOrderMatters) {
-      // attributes can be specified in any order
-      velocypack::ValueLength const nv = value.length();
-
-      // compare fields in arbitrary order
-      auto r = rhs.get(StaticStrings::IndexFields);
-
-      if (!r.isArray() || nv != r.length()) {
-        return false;
-      }
-
-      for (size_t i = 0; i < nv; ++i) {
-        velocypack::Slice const v = value.at(i);
-
-        bool found = false;
-
-        for (VPackSlice vr : VPackArrayIterator(r)) {
-          if (basics::VelocyPackHelper::equal(v, vr, false)) {
-            found = true;
-            break;
-          }
-        }
-
-        if (!found) {
-          return false;
-        }
-      }
-    } else {
-      // attribute order matters
-      if (!basics::VelocyPackHelper::equal(
-              value, rhs.get(StaticStrings::IndexFields), false)) {
-        return false;
-      }
-    }
-  }
-
-  return true;
+  return indexDefinitionsEqual(type, lhs, rhs, attributeOrderMatters);
 }
 
 IndexFactory::IndexFactory(application_features::ApplicationServer& server)
