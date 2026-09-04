@@ -48,10 +48,6 @@
 //     isAdmin() short-circuits apart from ordinary access.
 //   * Classic asks the UserManager with `configured = true`, so the
 //     read-only-server downgrade never applies here.
-//
-// Unless stated otherwise, tests run with requestedApiVersion() == 0 (V0).
-// Several rules deliberately return a different error code under V0 than under
-// later versions -- both are asserted where that is the case.
 
 #include "ExecContextFactory.h"
 
@@ -767,8 +763,6 @@ TEST_F(ClassicAuthModeTest, DropGraphWithListedCollections) {
 
 TEST_F(ClassicAuthModeTest,
        CreateGraphWithReadableChildrenButNoDatabaseWriteIsReadOnly) {
-  // The child collections are checked first and pass here, so the failure comes
-  // from the trailing database check -- which reports READ_ONLY under V0.
   // RW on the child collection does not substitute for the database grant.
   beUserWith(RO, {{std::string{kDb}, "cr", RW}});
   std::vector<std::string> none;
@@ -975,8 +969,6 @@ TEST_F(ClassicAuthModeTest, RestoreCollectionWithOverwriteDropsThenCreates) {
 }
 
 TEST_F(ClassicAuthModeTest, RestoreCollectionWithOverwriteNeedsToDropFirst) {
-  // The drop step fails, and DropCollection maps its READ_ONLY to FORBIDDEN
-  // under V0.
   beUserWith(RW, {{std::string{kDb}, "c", RO}});
   expectError(check(p::RestoreCollection{
                   .db = std::string{kDb}, .name = "c", .overwrite = true}),
