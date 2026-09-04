@@ -303,14 +303,12 @@ commands:
       driver-git-branch:
         type: string
     steps:
-      - github-auth
       - run:
           name: Clone driver repository
           command: |
             cd ..
             export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no"
             git clone --single-branch --branch << parameters.driver-git-branch >> << parameters.driver-git-repo >>
-      - github-auth-clear
 
   fetch-aux-binaries:
     parameters:
