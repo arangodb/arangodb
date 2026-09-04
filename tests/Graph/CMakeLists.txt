@@ -17,7 +17,7 @@ add_library(arango_tests_graph OBJECT
         WeightedShortestPathTest.cpp
         SingleServerProviderTest.cpp
         SingleServerNeighbourCacheTest.cpp
-        OneSidedEnumeratorTest.cpp)
+        SingleServerTraversalEnumeratorTest.cpp)
 
 target_link_libraries(arango_tests_graph
         PRIVATE
