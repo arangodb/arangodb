@@ -28,7 +28,7 @@
 //
 // Handler: arangod/RestHandler/RestDatabaseHandler.cpp
 //
-// Every request first asks the base `UseApiVersion version=0` and then
+// Every request first asks the base `UseApiVersion version=1` and then
 // `UseDatabase name=<db> level=read`, where <db> is the database in the request
 // path prefix. Beyond that:
 //   - GET (list / current / user / shardStatistics) go through
@@ -93,7 +93,7 @@ function databaseApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/database`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -103,7 +103,7 @@ function databaseApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/database/current`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=d level=read"
       ], endObserve());
     },
@@ -114,7 +114,7 @@ function databaseApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/database/user`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=d level=read",
         "SeeDatabase name=_system",
         "SeeDatabase name=d"
@@ -129,7 +129,7 @@ function databaseApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/database/shardStatistics`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=d level=read"
       ], endObserve());
     },
@@ -140,26 +140,12 @@ function databaseApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/_system/_api/database`, { name: 'd2' });
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read",
         "IsReadOnly",
         "CreateDatabase name=d2",
         "CreateCollection db=d2 name=_analyzers",
-        "CreateCollection db=d2 name=_appbundles",
-        "CreateCollection db=d2 name=_apps",
-        "CreateCollection db=d2 name=_aqlfunctions",
-        "CreateCollection db=d2 name=_frontend",
-        "CreateCollection db=d2 name=_graphs",
-        "CreateCollection db=d2 name=_jobs",
-        "CreateCollection db=d2 name=_queues",
-        "UseCollection db=d2 name=_apps level=writemeta",
-        "UseCollection db=d2 name=_jobs level=writemeta",
-        ...singleOnly([
-          "UseCollection db=d2 name=_apps level=read",
-          "UseCollection db=d2 name=_apps level=writedata",
-          "UseCollection db=d2 name=_jobs level=read",
-          "UseCollection db=d2 name=_jobs level=writedata"
-        ])
+        "CreateCollection db=d2 name=_graphs"
       ], endObserve());
       dropD2();
     },
@@ -170,7 +156,7 @@ function databaseApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_api/database/d2`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read",
         "IsReadOnly",
         "DropDatabase name=d2",

@@ -33,7 +33,7 @@
 //     canUseAdminAction(AdminBackup)   ->  logs `AdminBackup`
 // In jwt mode (--backup.api-enabled=jwt) it instead does an isSuperuserOrDisabled()
 // check which asks NOTHING. Our suites run in the default mode, so `AdminBackup`
-// is asked. Every request additionally asks `UseApiVersion version=0` and
+// is asked. Every request additionally asks `UseApiVersion version=1` and
 // `UseDatabase name=_system level=read` first (the routes have no /_db/ prefix, so
 // the database is the connected _system).
 //
@@ -96,7 +96,7 @@ function backupApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/_system/_admin/backup/list`, {});
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read",
         "AdminBackup"
       ], endObserve());
@@ -108,7 +108,7 @@ function backupApiAuthzSuite () {
       const res = arango.POST_RAW(`/_db/_system/_admin/backup/create`,
                                   { label: 'apitestcreate' });
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read",
         "AdminBackup"
       ], endObserve());
@@ -125,7 +125,7 @@ function backupApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/_system/_admin/backup/delete`, { id: id });
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read",
         "AdminBackup"
       ], endObserve());

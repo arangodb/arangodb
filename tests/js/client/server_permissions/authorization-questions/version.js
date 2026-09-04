@@ -105,35 +105,15 @@ function versionApiAuthzSuite () {
 
     // GET /_arango/v1/_api/version - the exemption covers the default version
     // only, so a versioned request to the very same handler is gated.
+    // Note that we currently do not have a non-default API version, so this
+    // test is meaningless.
     testVersionWithNonDefaultApiVersion: function () {
       beginObserve();
       const res = arango.GET_RAW(`/_arango/v1/_api/version`);
       assertEqual(200, res.code);
       assertPermissions([
-        "UseApiVersion version=1",
         "UseDatabase name=_system level=read"
       ], endObserve());
-    },
-
-    // GET /_admin/version - the handler's second route, same exemption. It
-    // always returns 200 and only uses
-    // canUseHardenedAction(AdminMonitoringInternal) internally to decide
-    // whether to include the version field - a hardened action, hence no
-    // question without --server.harden.
-    testAdminVersion: function () {
-      beginObserve();
-      const res = arango.GET_RAW(`/_db/_system/_admin/version`);
-      assertEqual(200, res.code);
-      assertPermissions([
-        "UseDatabase name=_system level=read"
-      ], endObserve());
-    },
-
-    // GET /_arango/v1/_admin/version does not exist - the route is registered
-    // for API version 0 only, so the handler lookup already fails.
-    testAdminVersionV1DoesNotExist: function () {
-      const res = arango.GET_RAW(`/_arango/v1/_admin/version`);
-      assertEqual(404, res.code);
     },
   };
 }

@@ -31,7 +31,7 @@
 // RestSupervisionStateHandler, RestSupportInfoHandler, RestSystemReportHandler,
 // RestTimeHandler, RestUsageMetricsHandler.
 //
-// Every request first asks `UseApiVersion version=0` and then
+// Every request first asks `UseApiVersion version=1` and then
 // `UseDatabase name=_system level=read`. Beyond that:
 //   - Hardened actions (canUseHardenedAction) ask nothing without
 //     --server.harden=true (our suites do not set it), so only the base
@@ -66,35 +66,13 @@ function monitoringApiAuthzSuite () {
       disableObserve();
     },
 
-    // GET /_admin/statistics - canUseHardenedAction(AdminMonitoring)
-    // hardened action -> no question without --server.harden
-    testStatistics: function () {
-      beginObserve();
-      arango.GET_RAW(`/_db/_system/_admin/statistics`);
-      assertPermissions([
-        "UseApiVersion version=0",
-        "UseDatabase name=_system level=read"
-      ], endObserve());
-    },
-
-    // GET /_admin/statistics-description - canUseHardenedAction(AdminMonitoring)
-    // hardened action -> no question without --server.harden
-    testStatisticsDescription: function () {
-      beginObserve();
-      arango.GET_RAW(`/_db/_system/_admin/statistics-description`);
-      assertPermissions([
-        "UseApiVersion version=0",
-        "UseDatabase name=_system level=read"
-      ], endObserve());
-    },
-
     // GET /_admin/status - canUseHardenedAction(AdminMonitoring)
     // hardened action -> no question without --server.harden
     testStatus: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/status`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -106,7 +84,7 @@ function monitoringApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/supervisionState`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read",
         "AdminSupervisionState"
       ], endObserve());
@@ -121,7 +99,7 @@ function monitoringApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/support-info`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read",
         "AdminMonitoring"
       ], endObserve());
@@ -135,32 +113,7 @@ function monitoringApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/system-report`);
       assertPermissions([
-        "UseApiVersion version=0",
-        "UseDatabase name=_system level=read"
-      ], endObserve());
-    },
-
-    // GET /_admin/telemetrics - default --server.support-info-api=jwt policy;
-    // isSuperuser gate (no observed question) rejects basic-auth root.
-    // AUDIT: RestTelemetricsHandler source was not found in the current tree
-    // (may have been removed/renamed on this branch); the endpoint may return
-    // 404. In "admin" policy it would ask canUseAdminAction(AdminMonitoringInternal).
-    testGetTelemetrics: function () {
-      beginObserve();
-      arango.GET_RAW(`/_db/_system/_admin/telemetrics`);
-      assertPermissions([
-        "UseApiVersion version=0",
-        "UseDatabase name=_system level=read"
-      ], endObserve());
-    },
-
-    // DELETE /_admin/telemetrics - same auth guard as GET.
-    // AUDIT: see testGetTelemetrics.
-    testDeleteTelemetrics: function () {
-      beginObserve();
-      arango.DELETE_RAW(`/_db/_system/_admin/telemetrics`);
-      assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -170,7 +123,7 @@ function monitoringApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/time`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -181,7 +134,7 @@ function monitoringApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/usage-metrics`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },

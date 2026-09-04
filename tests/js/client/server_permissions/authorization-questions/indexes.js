@@ -42,7 +42,7 @@
 //   `UseDatabase ... level=write` and canUseCollection(WriteMeta) ->
 //   `UseCollection ... level=writemeta`, then begins an EXCLUSIVE transaction
 //   whose permission check maps to `UseCollection ... level=writedata`.
-// Every request additionally asks `UseApiVersion version=0` and
+// Every request additionally asks `UseApiVersion version=1` and
 // `UseDatabase name=d level=read` first.
 
 if (getOptions === true) {
@@ -100,11 +100,9 @@ function indexApiAuthzSuite () {
       arango.GET_RAW(`/_db/${DB}/_api/index?collection=${c}`);
       // only a single server resolves the collection under the ExecContext
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=d level=read",
-        ...singleOnly([
-          "UseCollection db=d name=c level=read"
-        ])
+        "UseCollection db=d name=c level=read"
       ], endObserve());
     },
 
@@ -113,7 +111,7 @@ function indexApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/index/selectivity?collection=${c}`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c level=read"
       ], endObserve());
@@ -128,12 +126,12 @@ function indexApiAuthzSuite () {
       const res = arango.POST_RAW(`/_db/${DB}/_api/index?collection=${c}`,
                                   { type: 'persistent', fields: ['value'] });
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "UseCollection db=d name=c level=writemeta",
+        "UseCollection db=d name=c level=read",
         ...singleOnly([
-          "UseCollection db=d name=c level=read",
           "UseCollection db=d name=c level=writedata"
         ])
       ], endObserve());
@@ -147,7 +145,7 @@ function indexApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/${DB}/_api/index/sync-caches`, {});
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=d level=read"
       ], endObserve());
     },
@@ -161,13 +159,13 @@ function indexApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/index/${handle}`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "UseDatabase name=d level=write",
         "UseCollection db=d name=c level=writemeta",
+        "UseCollection db=d name=c level=read",
         ...singleOnly([
-          "UseCollection db=d name=c level=read",
           "UseCollection db=d name=c level=writedata"
         ])
       ], endObserve());
