@@ -474,6 +474,17 @@ auto logDeprecationMessage(Result const& res) -> void {
       << res;
 }
 
+/// @brief Attributes that parse as "unset" when null, because stored data
+/// predates the typed parse. A user sending null still gets the deprecation
+/// warning, since the parse no longer fails and triggers it on its own.
+auto hasDeprecatedNullAttribute(VPackSlice body) -> bool {
+  if (!body.isObject()) {
+    return false;
+  }
+  return body.get(StaticStrings::NumberOfShards).isNull() ||
+         body.get(StaticStrings::DistributeShardsLike).isNull();
+}
+
 auto makeRestoreAllowList() -> std::unordered_map<
     std::string_view,
     std::function<void(std::string_view key, VPackSlice value,
@@ -696,6 +707,10 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIBody(
     }
     return compatibleRes;
   }
+  if (res.ok() && ::hasDeprecatedNullAttribute(input)) {
+    logDeprecationMessage(
+        Result{TRI_ERROR_BAD_PARAMETER, "null is not a valid attribute value"});
+  }
   return res;
 }
 
@@ -753,6 +768,10 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIV8(
       logDeprecationMessage(res.result());
     }
     return compatibleRes;
+  }
+  if (res.ok() && ::hasDeprecatedNullAttribute(properties)) {
+    logDeprecationMessage(
+        Result{TRI_ERROR_BAD_PARAMETER, "null is not a valid attribute value"});
   }
   return res;
 }

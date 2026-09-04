@@ -138,8 +138,7 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   // create storage-engine specific collection
   virtual std::unique_ptr<PhysicalCollection> createPhysicalCollection(
-      LogicalCollection& collection,
-      LocalStorageProperties const& storage) = 0;
+      LogicalCollection& collection, LocalStorageProperties const& storage) = 0;
 
   // status functionality
   // --------------------

@@ -67,6 +67,18 @@
 #define GenerateFailsOnNull(attributeName) \
   __HELPER_assertParsingThrows(attributeName, VPackSlice::nullSlice());
 
+// For attributes where an explicit null has to load as "unset", because
+// stored data written before the typed parse contains it.
+#define GenerateAcceptsNullAsUnset(attributeName)                      \
+  {                                                                    \
+    auto body = createMinimumBodyWithOneValue(#attributeName,          \
+                                              VPackSlice::nullSlice()); \
+    auto testee = parse(body.slice());                                 \
+    ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();          \
+    EXPECT_FALSE(testee->attributeName.has_value())                    \
+        << " On body " << body.toJson();                               \
+  }
+
 #define GenerateFailsOnBool(attributeName)           \
   __HELPER_assertParsingThrows(attributeName, true); \
   __HELPER_assertParsingThrows(attributeName, false);
@@ -171,7 +183,8 @@
 // discuss if this is correct
 
 #define GeneratePositiveIntegerAttributeTestInternal(TestClass, attributeName, \
-                                                     valueName, allowZero)     \
+                                                     valueName, allowZero,     \
+                                                     nullCheck)                \
   TEST_F(TestClass, test_##attributeName) {                                    \
     auto shouldBeEvaluatedTo = [&](VPackBuilder const& body,                   \
                                    uint64_t expected) {                        \
@@ -197,16 +210,23 @@
     GenerateFailsOnString(attributeName);                                      \
     GenerateFailsOnArray(attributeName);                                       \
     GenerateFailsOnObject(attributeName);                                      \
-    GenerateFailsOnNull(attributeName)                                         \
+    nullCheck(attributeName)                                                   \
   }
 
 #define GeneratePositiveIntegerAttributeTest(TestClass, attributeName)   \
   GeneratePositiveIntegerAttributeTestInternal(TestClass, attributeName, \
-                                               attributeName, false)
+                                               attributeName, false,     \
+                                               GenerateFailsOnNull)
+
+#define GeneratePositiveIntegerNullableAttributeTest(TestClass, attributeName) \
+  GeneratePositiveIntegerAttributeTestInternal(TestClass, attributeName,       \
+                                               attributeName, false,           \
+                                               GenerateAcceptsNullAsUnset)
 
 #define GenerateIntegerAttributeTest(TestClass, attributeName)           \
   GeneratePositiveIntegerAttributeTestInternal(TestClass, attributeName, \
-                                               attributeName, true)
+                                               attributeName, true,      \
+                                               GenerateFailsOnNull)
 
 #define GenerateIgnoredAttributeTest(TestClass, attributeName)                 \
   TEST_F(TestClass, test_##attributeName) {                                    \

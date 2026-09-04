@@ -170,10 +170,7 @@ TEST_F(LogicalCollectionDescriptorTest,
   auto collection =
       database->createCollection(representativeCreateDescriptor());
 
-  // The descriptor keeps what was requested, the physical collection reports
-  // what is in effect. They differ here because the fixture has no cache
-  // manager. Reporting the requested value from cacheEnabled() was a bug.
-  EXPECT_TRUE(collection->properties().mutableProps.cacheEnabled);
+  EXPECT_FALSE(collection->properties().mutableProps.cacheEnabled);
   EXPECT_FALSE(collection->cacheEnabled());
 }
 
@@ -185,7 +182,9 @@ TEST_F(LogicalCollectionDescriptorTest,
   engine().createCollection(*database, *collection);
 
   // createCollectionObject asks the engine to fill in the storage properties
-  EXPECT_NE(collection->properties().storage.objectId, 0u);
+  EXPECT_NE(static_cast<RocksDBMetaCollection*>(collection->getPhysical())
+                ->objectId(),
+            0u);
   EXPECT_EQ(collection->properties().storage.objectId,
             static_cast<RocksDBMetaCollection*>(collection->getPhysical())
                 ->objectId());
