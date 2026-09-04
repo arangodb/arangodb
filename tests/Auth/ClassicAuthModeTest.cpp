@@ -774,7 +774,7 @@ TEST_F(ClassicAuthModeTest,
               TRI_ERROR_FORBIDDEN);
 }
 
-TEST_F(ClassicAuthModeTest, DropGraphWithoutDatabaseWriteIsForbidden) {
+TEST_F(ClassicAuthModeTest, DropGraphWithoutDatabaseWriteIsReadOnly) {
   beUserWith(RO);
   std::vector<std::string> none;
   expectError(
@@ -794,7 +794,7 @@ TEST_F(ClassicAuthModeTest,
       TRI_ERROR_FORBIDDEN);
 }
 
-TEST_F(ClassicAuthModeTest, DropGraphWithUndroppableCollectionIsForbidden) {
+TEST_F(ClassicAuthModeTest, DropGraphWithUndroppableCollectionIsReadOnly) {
   beUserWith(RW, {{std::string{kDb}, "c1", RO}});
   std::vector<std::string> colls{"c1"};
   expectError(
