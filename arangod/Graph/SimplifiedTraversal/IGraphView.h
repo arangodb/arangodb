@@ -1,4 +1,3 @@
-
 #pragma once
 
 #include <vector>
@@ -6,7 +5,7 @@
 // Collect the functions called on providers by enumerators (pathresult,
 // validator?)
 
-namespace arangodb::graph {
+namespace arangodb::graph::experimental {
 
 // An IGraphView provides access to the topology of a graph stored in the
 // database.
@@ -40,4 +39,4 @@ struct IGraphView {
   //
   // which can then be used to retrieve a velocypack representation of the path
 };
-}  // namespace arangodb::graph
+}  // namespace arangodb::graph::experimental
