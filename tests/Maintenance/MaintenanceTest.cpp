@@ -57,7 +57,6 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
 #include "RocksDBEngine/RocksDBOptionFeature.h"
-#include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "VocBase/LogicalCollection.h"
@@ -516,13 +515,11 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
   std::shared_ptr<options::ProgramOptions> po;
   basics::SharedPRNG sharedPRNG;
   application_features::ApplicationServer as;
+  std::unique_ptr<RocksDBEngine> engine;
   containers::FlatHashSet<DatabaseID> makeDirty;
   MaintenanceFeature::errors_t errors;
 
   std::map<std::string, NodePtr> localNodes;
-
-  std::unique_ptr<RocksDBEngine>
-      engine;  // arbitrary implementation that has index types registered
 
   MaintenanceTestActionPhaseOne()
       : SharedMaintenanceTest(),
@@ -551,8 +548,6 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
     auto& dumpLimits = as.addFeature<DumpLimitsFeature>();
     auto& scheduler = as.addFeature<SchedulerFeature>(metrics, sharedPRNG);
 
-    auto& rocksDbRecoveryManager =
-        as.addFeature<RocksDBRecoveryManager>(dbFeature, dbFeature);
     auto& vectorIndex = as.addFeature<VectorIndexFeature>(dbFeature);
     auto& rocksDbIndexCacheRefillFeature =
         as.addFeature<RocksDBIndexCacheRefillFeature>(dbFeature, nullptr,
@@ -564,11 +559,9 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
     auto* replicatedLogFeature = replication2::EnableReplication2
                                      ? &as.addFeature<ReplicatedLogFeature>()
                                      : nullptr;
-    // need to construct this after adding the MetricsFeature to the application
-    // server
     engine = std::make_unique<RocksDBEngine>(
         as, roOptions, metrics, dbpath, vectorIndex, flush, dumpLimits,
-        replicatedLogFeature, scheduler, rocksDbRecoveryManager, dbFeature,
+        replicatedLogFeature, scheduler, dbFeature, dbFeature,
         rocksDbIndexCacheRefillFeature, cacheManagerFeature, agencyFeature);
     dbFeature.setEngineTesting(engine.get());
   }

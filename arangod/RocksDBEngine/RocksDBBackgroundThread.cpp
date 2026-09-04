@@ -32,7 +32,6 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
-#include "Utils/CursorRepository.h"
 
 #include <atomic>
 
@@ -76,7 +75,7 @@ void RocksDBBackgroundThread::run() {
                                  static_cast<uint64_t>(_interval * 1000000.0)});
     }
 
-    if (_engine.inRecovery()) {
+    if (!_engine.isReady()) {
       continue;
     }
 

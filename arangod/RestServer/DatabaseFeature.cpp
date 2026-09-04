@@ -278,8 +278,6 @@ DatabaseFeature::DatabaseFeature(
 
   startsAfter<AuthenticationFeature>();
   startsAfter<CacheManagerFeature>();
-  startsAfter<ClusterEngine>();
-  startsAfter<RocksDBEngine>();
   startsAfter<InitDatabaseFeature>();
   startsAfter<metrics::MetricsFeature>();
 }
@@ -299,29 +297,6 @@ void DatabaseFeature::start() {
     dealer.verifyAppPaths();
   }
 #endif
-
-  // scan all databases
-  VPackBuilder builder;
-  _engine->getDatabases(builder);
-
-  TRI_ASSERT(builder.slice().isArray());
-
-  auto res = iterateDatabases(builder.slice());
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC("0c49d", FATAL, Logger::FIXME)
-        << "could not iterate over all databases: " << TRI_errno_string(res);
-    FATAL_ERROR_EXIT();
-  }
-
-  // Update metadata metrics after databases are loaded
-  updateMetadataMetrics();
-
-  if (!lookupDatabase(StaticStrings::SystemDatabase)) {
-    LOG_TOPIC("97e7c", FATAL, Logger::FIXME)
-        << "No _system database found in database directory. Cannot start!";
-    FATAL_ERROR_EXIT();
-  }
 
   // start database manager thread
   _databaseManager =
@@ -377,6 +352,24 @@ void DatabaseFeature::stop() {
   // i am here for debugging only.
   static TRI_vocbase_t* currentVocbase = nullptr;
 #endif
+
+  // delete the IO checker thread
+  if (_ioHeartbeatThread != nullptr) {
+    _ioHeartbeatThread->beginShutdown();
+
+    while (_ioHeartbeatThread->isRunning()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+  }
+
+  // delete the database manager thread
+  if (_databaseManager != nullptr) {
+    _databaseManager->beginShutdown();
+
+    while (_databaseManager->isRunning()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+  }
 
   // turn off query cache and flush it
   aql::QueryCacheProperties p{
@@ -462,24 +455,6 @@ void DatabaseFeature::stop() {
 }
 
 void DatabaseFeature::unprepare() {
-  // delete the IO checker thread
-  if (_ioHeartbeatThread != nullptr) {
-    _ioHeartbeatThread->beginShutdown();
-
-    while (_ioHeartbeatThread->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    }
-  }
-
-  // delete the database manager thread
-  if (_databaseManager != nullptr) {
-    _databaseManager->beginShutdown();
-
-    while (_databaseManager->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    }
-  }
-
   try {
     closeDroppedDatabases();
   } catch (...) {
@@ -529,11 +504,36 @@ void DatabaseFeature::prepare() {
   }
 }
 
+void DatabaseFeature::bootstrapDatabases(velocypack::Slice databases) {
+  openDatabases(databases);
+}
+
+void DatabaseFeature::openDatabases(velocypack::Slice databases) {
+  TRI_ASSERT(databases.isArray());
+
+  auto res = iterateDatabases(databases);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_TOPIC("0c49d", FATAL, Logger::FIXME)
+        << "could not iterate over all databases: " << TRI_errno_string(res);
+    FATAL_ERROR_EXIT();
+  }
+
+  // Update metadata metrics after databases are loaded
+  updateMetadataMetrics();
+
+  if (!lookupDatabase(StaticStrings::SystemDatabase)) {
+    LOG_TOPIC("97e7c", FATAL, Logger::FIXME)
+        << "No _system database found in database directory. Cannot start!";
+    FATAL_ERROR_EXIT();
+  }
+}
+
 void DatabaseFeature::recoveryDone() {
-  TRI_ASSERT(!_engine->inRecovery());
+  TRI_ASSERT(_engine->isReady());
 
   // '_pendingRecoveryCallbacks' will not change because
-  // !StorageEngine.inRecovery()
+  // StorageEngine.isReady()
   // It's single active thread before recovery done,
   // so we could use general purpose thread pool for this
   std::vector<futures::Future<Result>> futures;
@@ -560,8 +560,8 @@ void DatabaseFeature::recoveryDone() {
 
 Result DatabaseFeature::registerPostRecoveryCallback(
     std::function<Result()>&& callback) {
-  if (!_engine->inRecovery()) {
-    return callback();  // if no engine then can't be in recovery
+  if (_engine->isReady()) {
+    return callback();  // engine ready, execute immediately
   }
 
   // do not need a lock since single-thread access during recovery
@@ -640,7 +640,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
 #endif
     }
 
-    if (!_engine->inRecovery()) {
+    if (_engine->isReady()) {
       // increase reference counter
       bool result = vocbase->use();
       TRI_ASSERT(result);
@@ -659,7 +659,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
   // write marker into log
   Result res;
 
-  if (!_engine->inRecovery()) {
+  if (_engine->isReady()) {
     res = _engine->writeCreateDatabaseMarker(dbId, markerBuilder.slice());
   }
 
@@ -1030,7 +1030,9 @@ void DatabaseFeature::closeOpenDatabases() {
 
 ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
 #ifdef USE_V8
-  auto& dealer = server().getFeature<V8DealerFeature>();
+  auto* dealer = server().hasFeature<V8DealerFeature>()
+                     ? &server().getFeature<V8DealerFeature>()
+                     : nullptr;
 #endif
 
   auto r = TRI_ERROR_NO_ERROR;
@@ -1061,9 +1063,9 @@ ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
 
     auto name = it.get("name").stringView();
 #ifdef USE_V8
-    if (dealer.isEnabled()) {
+    if (dealer != nullptr && dealer->isEnabled()) {
       auto id = basics::VelocyPackHelper::getStringView(it.get("id"), {});
-      r = dealer.createDatabase(name, id, false);
+      r = dealer->createDatabase(name, id, false);
       if (r != TRI_ERROR_NO_ERROR) {
         break;
       }

@@ -30,11 +30,9 @@
 #include "Mocks/FakeScheduler.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Version.h"
-#include "RestServer/IRecoveryCallback.h"
 #include "RocksDBEngine/Mocks.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBOptionsProvider.h"
-#include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "RocksDBEngine/TempDatabasePathProvider.h"
 #include "Scheduler/ISchedulerProvider.h"
 
@@ -61,10 +59,6 @@ struct TestRocksDBOptionsProvider final : RocksDBOptionsProvider {
   rocksdb::BlockBasedTableOptions doGetTableOptions() const override {
     return {};
   }
-};
-
-struct NullRecoveryCallback final : IRecoveryCallback {
-  void recoveryDone() override {}
 };
 
 struct TestSchedulerProvider final : ISchedulerProvider {
@@ -95,17 +89,14 @@ struct StorageEngineFixtureSuite {
   ::testing::NiceMock<MockIndexCacheRefill> indexCacheRefill;
   ::testing::NiceMock<MockReplicatedLogProvider> logProvider;
 
-  NullRecoveryCallback nullCallback;
-  RocksDBRecoveryManager recoveryManager{server, dbProvider, nullCallback};
-
   FakeScheduler scheduler{server};
   TestSchedulerProvider schedulerProvider{scheduler};
 
-  RocksDBEngine engine{server,          optionsProvider, metricsRegistry,
-                       dbPath,          vectorIdx,       flush,
-                       dumpLimits,      &logProvider,    schedulerProvider,
-                       recoveryManager, dbProvider,      indexCacheRefill,
-                       cacheManager,    sortingPolicy};
+  RocksDBEngine engine{server,       optionsProvider, metricsRegistry,
+                       dbPath,       vectorIdx,       flush,
+                       dumpLimits,   &logProvider,    schedulerProvider,
+                       dbProvider,   dbProvider,      indexCacheRefill,
+                       cacheManager, sortingPolicy};
 };
 
 // Fixture providing a preconfigured RocksDBEngine backed by a temporary
@@ -129,6 +120,9 @@ class StorageEngineFixture : public ::testing::Test {
     ON_CALL(_suite->dbProvider, defaultReplicationVersion())
         .WillByDefault(Return(replication::Version::ONE));
 
+    RocksDBEngine::cleanupStaleRecoveryHelpers();
+
+    _suite->engine.prepare();
     _suite->engine.start();
   }
 

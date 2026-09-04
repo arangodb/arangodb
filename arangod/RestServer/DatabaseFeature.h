@@ -30,13 +30,15 @@
 #include "Replication2/Version.h"
 #include "RestServer/DatabaseFeatureOptions.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/IDatabaseBootstrap.h"
 #include "RestServer/IDatabaseProvider.h"
-#include "RestServer/IRecoveryCallback.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/Thread.h"
 #include "Utils/VersionTracker.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/Methods/Databases.h"
+
+#include <velocypack/Slice.h>
 
 #include <cstddef>
 #include <mutex>
@@ -103,7 +105,7 @@ class DatabaseManagerThread final : public ServerThread {
 
 class DatabaseFeature final : public application_features::ApplicationFeature,
                               public IDatabaseProvider,
-                              public IRecoveryCallback {
+                              public IDatabaseBootstrap {
   friend class DatabaseManagerThread;
 
  public:
@@ -128,10 +130,6 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
   }
 #endif
 
-  /// @brief will be called when the recovery phase has run
-  /// this will call the engine-specific recoveryDone() procedures
-  /// and will execute engine-unspecific operations (such as starting
-  /// the replication appliers) for all databases
   void recoveryDone() override;
 
   /// @brief whether or not the DatabaseFeature has started (and thus has
@@ -144,7 +142,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief register a callback
-  ///   if StorageEngine.inRecovery() ->
+  ///   if !StorageEngine.isReady() ->
   ///     call at start of recoveryDone() in parallel with other callbacks
   ///     and fail recovery if callback !ok()
   ///   else ->
@@ -235,8 +233,14 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
  private:
   void initCalculationVocbase();
 
+  // called by the engine once it's open, not by anything else.
+  void bootstrapDatabases(velocypack::Slice databases) override;
+
   /// @brief iterate over all databases in the databases directory and open them
   ErrorCode iterateDatabases(velocypack::Slice databases);
+
+  /// @brief open all databases described by the given inventory
+  void openDatabases(velocypack::Slice databases);
 
   /// @brief close all opened databases
   void closeOpenDatabases();

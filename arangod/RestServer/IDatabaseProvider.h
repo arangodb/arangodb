@@ -33,7 +33,7 @@ class LogicalCollection;
 
 namespace velocypack {
 class Builder;
-}
+}  // namespace velocypack
 
 struct IDatabaseProvider {
   virtual ~IDatabaseProvider() = default;
