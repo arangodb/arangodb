@@ -54,11 +54,11 @@ using namespace arangodb::application_features;
 
 namespace {
 
-class ClusterIndexDefinitions final : public IndexFactory {
+class ClusterIndexDefinitions final : public IndexDefinitionRegistry {
  public:
   ClusterIndexDefinitions(application_features::ApplicationServer& server,
                           IVectorIndexProvider const& vectorIndexProvider)
-      : IndexFactory(server) {
+      : IndexDefinitionRegistry(server) {
     static const EdgeIndexDefinition edgeIndexDefinition(server);
     static const FulltextIndexDefinition fulltextIndexDefinition(server);
     static const GeoIndexDefinition geoIndexDefinition(server);
@@ -109,16 +109,6 @@ class ClusterIndexDefinitions final : public IndexFactory {
       };
     }
     return {{"zkd", "mdi"}};
-  }
-
-  // ClusterIndexFactory implements these itself, never delegated here
-  void fillSystemIndexes(LogicalCollection&,
-                         std::vector<std::shared_ptr<Index>>&) const override {
-    TRI_ASSERT(false);
-  }
-  void prepareIndexes(LogicalCollection&, velocypack::Slice,
-                      std::vector<std::shared_ptr<Index>>&) const override {
-    TRI_ASSERT(false);
   }
 };
 
