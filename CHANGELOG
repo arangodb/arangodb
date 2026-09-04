@@ -1,6 +1,11 @@
 3.12.12 (XXXX-XX-XX)
 --------------------
 
+* Vector index `factory` strings are now validated on index creation instead
+  of during training. Unparseable or non-IVF strings, an `nLists` mismatch, or
+  a fixed factory string combined with a scaling `nLists` are rejected with
+  `TRI_ERROR_BAD_PARAMETER` instead of leaving an unusable index behind.
+
 * COR-958: JoinNode aborts the server when a later index condition uses an 
   expression over an earlier index's document.
   Fixed an issue where certain AQL queries using index joins across multiple 
