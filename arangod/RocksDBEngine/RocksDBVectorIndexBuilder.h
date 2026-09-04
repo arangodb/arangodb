@@ -93,7 +93,7 @@ class VectorIndexTrainer {
   static std::shared_ptr<faiss::IndexIVF> restoreFromTrainedData(
       TrainedData const& data);
 
-  std::shared_ptr<faiss::IndexIVF> createFaissIndex(
+  ResultT<std::shared_ptr<faiss::IndexIVF>> createFaissIndex(
       std::size_t resolvedNLists) const;
 
   /// Run the full training pipeline:

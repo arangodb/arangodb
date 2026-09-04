@@ -60,6 +60,7 @@
 #include "Transaction/Helpers.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/DatabaseGuard.h"
+#include "VectorIndex/FaissFactory.h"
 #include "VectorIndex/TrainingSampler.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -73,7 +74,6 @@
 #include "faiss/IndexFlat.h"
 #include "faiss/IndexIVFFlat.h"
 #include "faiss/impl/io.h"
-#include "faiss/index_factory.h"
 #include "faiss/index_io.h"
 #include "faiss/utils/distances.h"
 
@@ -182,55 +182,30 @@ VectorIndexTrainer::VectorIndexTrainer(RocksDBVectorIndex const& index,
       _resourceMonitor(resourceMonitor),
       _docIt(std::move(bounds), db) {}
 
-std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::createFaissIndex(
+ResultT<std::shared_ptr<faiss::IndexIVF>> VectorIndexTrainer::createFaissIndex(
     std::size_t resolvedNLists) const {
   auto const& def = _index.getDefinition();
   if (def.factory) {
-    auto const factoryString = std::invoke([&]() -> std::string {
-      if (isFactoryAStringScaling(*def.factory)) {
-        return resolveFactoryString(*def.factory, resolvedNLists);
-      }
-      return *def.factory;
-    });
-    std::shared_ptr<faiss::Index> index(faiss::index_factory(
-        def.dimension, factoryString.c_str(), metricToFaissMetric(def.metric)));
-
-    auto ivfIndex = std::dynamic_pointer_cast<faiss::IndexIVF>(index);
-    if (ivfIndex == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_BAD_PARAMETER,
-          "Index definition not supported. Expected IVF index.");
-    }
-
-    if (resolvedNLists != ivfIndex->nlist) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_BAD_PARAMETER,
-          std::format(
-              "The nLists parameter ({}) has to agree with the actual nlists "
-              "implied by the factory string '{}' (which is {})",
-              resolvedNLists, factoryString, ivfIndex->nlist));
-    }
-
-    return ivfIndex;
-  } else {
-    auto quantizer = std::invoke([&]() -> std::unique_ptr<faiss::Index> {
-      switch (def.metric) {
-        case SimilarityMetric::kL2:
-          return std::make_unique<faiss::IndexFlatL2>(def.dimension);
-        case SimilarityMetric::kCosine:
-          return std::make_unique<faiss::IndexFlatIP>(def.dimension);
-        case SimilarityMetric::kInnerProduct:
-          return std::make_unique<faiss::IndexFlatIP>(def.dimension);
-      }
-    });
-
-    std::shared_ptr<faiss::IndexIVF> ivfIndex =
-        std::make_unique<faiss::IndexIVFFlat>(quantizer.get(), def.dimension,
-                                              resolvedNLists,
-                                              metricToFaissMetric(def.metric));
-    ivfIndex->own_fields = nullptr != quantizer.release();
-    return ivfIndex;
+    return createIvfIndexFromFactory(def, resolvedNLists);
   }
+
+  auto quantizer = std::invoke([&]() -> std::unique_ptr<faiss::Index> {
+    switch (def.metric) {
+      case SimilarityMetric::kL2:
+        return std::make_unique<faiss::IndexFlatL2>(def.dimension);
+      case SimilarityMetric::kCosine:
+        return std::make_unique<faiss::IndexFlatIP>(def.dimension);
+      case SimilarityMetric::kInnerProduct:
+        return std::make_unique<faiss::IndexFlatIP>(def.dimension);
+    }
+  });
+
+  std::shared_ptr<faiss::IndexIVF> ivfIndex =
+      std::make_unique<faiss::IndexIVFFlat>(quantizer.get(), def.dimension,
+                                            resolvedNLists,
+                                            metricToFaissMetric(def.metric));
+  ivfIndex->own_fields = nullptr != quantizer.release();
+  return ivfIndex;
 }
 
 ResultT<VectorIndexTrainer::TrainingDataset>
@@ -419,7 +394,11 @@ ResultT<std::shared_ptr<faiss::IndexIVF>> VectorIndexTrainer::train(
   }
 
   auto const& def = _index.getDefinition();
-  auto faissIndex = createFaissIndex(resolvedNLists.get());
+  auto faissIndexResult = createFaissIndex(resolvedNLists.get());
+  if (faissIndexResult.fail()) {
+    return std::move(faissIndexResult).result();
+  }
+  auto faissIndex = std::move(faissIndexResult).get();
   faissIndex->nprobe = def.defaultNProbe;
   auto const numOfTrainingVectors = trainingData.data.size() / def.dimension;
 
