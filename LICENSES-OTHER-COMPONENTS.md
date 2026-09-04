@@ -1456,7 +1456,7 @@ License Id: MIT
 #### fast-uri
 
 Name: fast-uri
-Version: 3.1.5
+Version: 3.1.7
 Project Home: https://github.com/fastify/fast-uri
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/fast-uri/LICENSE
 License Name: BSD-style 3-Clause License
@@ -2069,7 +2069,7 @@ License Id: MIT
 #### qs
 
 Name: qs
-Version: 6.15.3
+Version: 6.16.0
 Project Home: https://github.com/ljharb/qs
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/qs/LICENSE
 License Name: BSD 3-clause "New" or "Revised" License

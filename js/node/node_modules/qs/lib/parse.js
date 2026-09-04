@@ -36,9 +36,9 @@ var interpretNumericEntities = function (str) {
     });
 };
 
-var parseArrayValue = function (val, options, currentArrayLength, isFlatArrayValue) {
+var parseArrayValue = function (val, options, currentArrayLength) {
     if (val && typeof val === 'string' && options.comma && val.indexOf(',') > -1) {
-        if (isFlatArrayValue && options.throwOnLimitExceeded) {
+        if (options.throwOnLimitExceeded) {
             var commaCount = 0;
             var commaIndex = val.indexOf(',');
             while (commaIndex > -1) {
@@ -125,8 +125,7 @@ var parseValues = function parseQueryStringValues(str, options) {
                     parseArrayValue(
                         part.slice(pos + 1),
                         options,
-                        isArray(obj[key]) ? obj[key].length : 0,
-                        part.indexOf('[]=') === -1
+                        isArray(obj[key]) ? obj[key].length : 0
                     ),
                     function (encodedVal) {
                         return options.decoder(encodedVal, defaults.decoder, charset, 'value');
