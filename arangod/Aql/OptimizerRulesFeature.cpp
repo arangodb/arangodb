@@ -308,6 +308,19 @@ number of subquery results is checked later. This saves copying the document
 data from the subquery to the outer scope and may enable follow-up
 optimizations.)");
 
+  registerRule(
+      "optimize-join-order", optimizeJoinOrder,
+      OptimizerRule::optimizeJoinOrder,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::DisabledByDefault,
+                               OptimizerRule::Flags::CanBeDisabled),
+      R"(Reorder adjacent `FOR` loops that are joined by equijoin conditions,
+using estimated join cardinalities to pick an order, and keeping the order as
+written unless the estimate shows a clear improvement. When it actually
+reorders a join, it also disables `interchange-adjacent-enumerations` for the
+resulting plan so the two rules do not compete over the same decision; if it
+declines to reorder (for example because statistics are unavailable),
+`interchange-adjacent-enumerations` still runs as usual.)");
+
   /// "Pass 3": interchange EnumerateCollection nodes in all possible ways
   ///           this is level 500, please never let new plans from higher
   ///           levels go back to this or lower levels!
@@ -318,17 +331,6 @@ optimizations.)");
                                OptimizerRule::Flags::CanBeDisabled),
       R"(Try out permutations of `FOR` statements in queries that contain
 multiple loops, which may enable further optimizations by other rules.)");
-
-  // Constructs the join graph only for now. Does not reorder joins yet.
-  // Disabled by default. Can be enabled via
-  // `{ optimizer: { rules: ["+optimize-join-order"] } }`
-  registerRule(
-      "optimize-join-order", optimizeJoinOrder,
-      OptimizerRule::optimizeJoinOrder,
-      OptimizerRule::makeFlags(OptimizerRule::Flags::DisabledByDefault,
-                               OptimizerRule::Flags::CanBeDisabled),
-      R"(Detect adjacent `FOR` loops that are joined by equijoin conditions and
-build the corresponding join graph, as a basis for (in-future) cost-based join reordering.)");
 
   // replace attribute accesses that are equal due to a filter statement
   // with the same value. This might enable other optimizations later on.
