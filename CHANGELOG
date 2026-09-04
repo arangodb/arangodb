@@ -1,6 +1,11 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Updated node modules:
+ - fast-uri to 3.1.7 to resolve CVE-2026-75899, CVE-2026-75931,
+   CVE-2026-75975 and CVE-2026-76172
+ - qs to 6.16.0 to resolve CVE-2026-82417 and CVE-2026-82562
+
 * COR-959: Fixed AQL `MATCH` silently dropping a target vertex's property
   constraints and `WHERE` expression when a pattern segment was lowered to a
   traversal.

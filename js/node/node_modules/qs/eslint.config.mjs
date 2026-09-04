@@ -27,7 +27,7 @@ export default [
                 'error',
                 { max: 150 },
             ],
-            'max-params': ['error', 18],
+            'max-params': ['error', 20],
             'max-statements': ['error', 100],
             'multiline-comment-style': 'off',
             'no-continue': 'warn',
