@@ -103,11 +103,30 @@ const instanceRole = {
   coordinator: 'coordinator',
 };
 
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief converts endpoints to URL
+// //////////////////////////////////////////////////////////////////////////////
+
+function endpointToURL (endpoint) {
+  if (endpoint.substr(0, 6) === 'ssl://') {
+    return 'https://' + endpoint.substr(6);
+  }
+
+  const pos = endpoint.indexOf('://');
+
+  if (pos === -1) {
+    return 'http://' + endpoint;
+  }
+
+  return 'http' + endpoint.substr(pos);
+}
+
 class instance {
   #pid = null;
 
   // / protocol must be one of ["tcp", "ssl", "unix"]
-  constructor(options, myInstanceRole, addArgs, authHeaders, authHeadersJWT, protocol, rootDir, restKeyFile, agencyMgr, tmpDir, mem) {
+  constructor(options, myInstanceRole, addArgs, authHeaders, jwt_secret, JWT, authHeadersJWT, protocol, rootDir, restKeyFile, agencyMgr, tmpDir, mem) {
     this.id = null;
     this.shortName = null;
     this.pm = pm.getPortManager(options);
@@ -163,7 +182,8 @@ class instance {
     if (process.env.hasOwnProperty('COREDIR')) {
       this.coreDirectory = process.env['COREDIR'];
     }
-    this.JWT = null;
+    this.JWT = JWT;
+    this.jwt_secret = jwt_secret;
     this.jwtFiles = null;
     this.jwtSecrets = [];
     this.sanHandler = new sanHandler('arangod', this.options);
@@ -351,7 +371,7 @@ class instance {
       bindEndpoint = this.endpoint;
       this.port = this.endpoint.split(':').pop();
     }
-    this.url = pu.endpointToURL(this.endpoint);
+    this.url = endpointToURL(this.endpoint);
 
     if (this.appDir === undefined) {
       this.appDir = fs.getTempPath();
@@ -400,33 +420,6 @@ class instance {
     if (this.protocol === 'ssl' && !this.args.hasOwnProperty('ssl.keyfile')) {
       this.args['ssl.keyfile'] = fs.join('etc', 'testing', 'server.pem');
     }
-    if (this.options.encryptionAtRest &&
-        !this.args.hasOwnProperty('rocksdb.encryption-keyfile') &&
-        !this.args.hasOwnProperty('rocksdb.encryption-keyfolder')) {
-      this.args['rocksdb.encryption-keyfile'] = this.restKeyFile;
-    }
-
-    if (this.restKeyFile &&
-        !this.args.hasOwnProperty('server.jwt-secret') &&
-        !this.args.hasOwnProperty('server.jwt-secret-folder')) {
-      this.args['server.jwt-secret-keyfile'] = this.restKeyFile;
-      this.JWT = fs.read(this.restKeyFile);
-    }
-    else if (this.options.hasOwnProperty('jwtFiles')) {
-      this.jwtFiles = this.options['jwtFiles'];
-      // instanceInfo.authOpts['server.jwt-secret-folder'] = addArgs['server.jwt-secret-folder'];
-      this.jwtFiles.forEach(file => {
-        this.jwtSecrets.push(fs.read(file));
-      });
-    } else if (this.options.cluster &&
-               (this.JWT === null) &&
-               !this.args.hasOwnProperty('server.jwt-secret')) {
-      this.JWT = "Open Sesame!Open Sesame!Open Ses";
-      this.args['server.jwt-secret'] = this.JWT;
-    }
-    if (this.jwtSecrets.length > 0) {
-      this.JWT = this.jwtSecrets[0];
-    }
 
     if (this.options.hasOwnProperty("replicationVersion")) {
       this.args['database.default-replication-version'] = this.options.replicationVersion;
@@ -448,7 +441,7 @@ class instance {
     }
 
     if (this.options.verbose) {
-      this.args['log.level'] = 'debug';
+      this.args['log.level'] = 'debug http=trace';
       output.push('-'); // make sure we always have a stdout appender
     } else if (this.options.noStartStopLogs) {
       // set the stdout appender to error only
@@ -513,6 +506,11 @@ class instance {
         this.args['cluster.default-replication-factor'] = '2';
       }
     }
+    if (this.options.encryptionAtRest &&
+        !this.args.hasOwnProperty('rocksdb.encryption-keyfile') &&
+        !this.args.hasOwnProperty('rocksdb.encryption-keyfolder')) {
+      this.args['rocksdb.encryption-keyfile'] = this.restKeyFile;
+    }
     if (this.options.isInstrumented && this.instanceRole in [
       instanceRole.dbServer,
       instanceRole.coordinator,
@@ -525,13 +523,6 @@ class instance {
       this.args = Object.assign(this.args, {
         'http.compress-response-threshold':  99999999999,
       });
-    }
-    if (this.args.hasOwnProperty('server.jwt-secret')) {
-      this.JWT = this.args['server.jwt-secret'];
-    } else if (this.args.hasOwnProperty('server.jwt-secret-folder')) {
-      let files = fs.list(this.args['server.jwt-secret-folder']);
-      files = files.sort();
-      this.JWT = fs.read(fs.join(this.args['server.jwt-secret-folder'], files[0]));
     }
     this.sanHandler.detectLogfiles(this.rootDir, this.topLevelTmpDir);
   }
@@ -659,7 +650,7 @@ class instance {
       throw x;
     }
     this.endpoint = this.args['server.endpoint'];
-    this.url = pu.endpointToURL(this.endpoint);
+    this.url = endpointToURL(this.endpoint);
   };
   restartOneInstance(moreArgs, instanceJson) {
     this.moreArgs = moreArgs;
@@ -811,13 +802,13 @@ class instance {
       try {
         if (true) {//if (this.options.useReconnect && this.isFrontend()) {
           if (this.JWT) {
-            print(`${Date()} reconnecting with JWT ${this.JWT} to ${this.url}`);
+            print(`${Date()} reconnecting ${this.name} with JWT ${this.JWT} to ${this.url}`);
             if (arango.reconnect(this.endpoint,
                                  '_system',
-                                 `${this.options.username}`,
-                                 this.options.password,
+                                 this.isFrontend() ? `${this.options.username}` : undefined,
+                                 this.isFrontend() ? this.options.password : undefined,
                                  true,
-                                 this.JWT)) {
+                                 this.jwt_secret)) {
               this.connectionHandle = arango.getConnectionHandle();
               this.dumpConnectionTable();
             }
@@ -882,9 +873,13 @@ class instance {
         }
       }
     }
+    
     if (this.JWT) {
-      print(`${Date()} ${this.name}: re/connecting with JWT ${this.url}`);
-      const ret = arango.reconnect(this.endpoint, '_system', 'root', '', true, this.JWT);
+      print(`${Date()} ${this.name}: re/connecting with JWT ${this.url}, ${this.JWT}`);
+      const ret = arango.reconnect(this.endpoint, '_system',
+                                   this.isFrontend() ? `${this.options.username}` : undefined,
+                                   this.isFrontend() ? this.options.password : undefined,
+                                   true, this.jwt_secret);
       this.connectionHandle = arango.getConnectionHandle();
       this.dumpConnectionTable();
       return ret;
@@ -1064,31 +1059,33 @@ class instance {
           print(Date() + ' Shutdown response: ' + JSON.stringify(reply));
         }
       } else {
-        const requestOptions = pu.makeAuthorizationHeaders(this.options, this.args, this.JWT);
-        requestOptions.method = 'DELETE';
-        requestOptions.timeout = 60; // 60 seconds hopefully are enough for getting a response
+        let sockStat = this.getSockStat("Sock stat for: ");
         if (!this.options.noStartStopLogs) {
           print(Date() + ' ' + this.url + '/_admin/shutdown');
         }
-        let sockStat = this.getSockStat("Sock stat for: ");
-        const reply = download(this.url + '/_admin/shutdown', '', requestOptions);
-        if ((reply.code !== 200) && // if the server should reply, we expect 200 - if not:
-            !((reply.code === 500) &&
-              (
-                (reply.message === "Connection closed by remote") || // http connection
-                  reply.message.includes('failed with #111')           // https connection
-              ))) {
-          this.serverCrashedLocal = true;
-          print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' " + sockStat + " continuing with hard kill!");
-          this.shutdownArangod(true);
+        if (!this.toThisInstance(() => {
+          let reply = arango.DELETE_RAW('/_admin/shutdown', '');
+          if ((reply.code !== 200) && // if the server should reply, we expect 200 - if not:
+              !((reply.code === 500) &&
+                (
+                  (reply.message === "Connection closed by remote") || // http connection
+                    reply.message.includes('failed with #111')           // https connection
+                ))) {
+            this.serverCrashedLocal = true;
+            print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' " + sockStat + " continuing with hard kill!");
+            this.shutdownArangod(true);
+            return false;
+          }
+          else if (this.options.extremeVerbosity) {
+            print(Date() + ' Shutdown response: ' + JSON.stringify(reply));
+          }
+          return true;
+        })) {
+          if (!this.options.noStartStopLogs) {
+            print(sockStat);
+          }
         }
-        else if (!this.options.noStartStopLogs) {
-          print(sockStat);
-        }
-        if (this.options.extremeVerbosity) {
-          print(Date() + ' Shutdown response: ' + JSON.stringify(reply));
-        }
-      }
+      }  
     } else {
       print(Date() + ' Server already dead, doing nothing.');
     }
@@ -1408,29 +1405,31 @@ class instance {
     return "";
   }
 
-  getMemProfSnapshot(opts) {
-    let fn = fs.join(this.rootDir, `${this.role}_${this.pid}_${this.memProfCounter}_.heap`);
-    let heapdumpReply = download(this.url + '/_admin/status?memory=true', opts);
-    if (heapdumpReply.code === 200) {
-      fs.write(fn, heapdumpReply.body);
-      print(CYAN + Date() + ` Saved ${fn}` + RESET);
-    } else {
-      print(RED + Date() + ` Acquiring Heapdump for ${fn} failed!` + RESET);
-      print(heapdumpReply);
-    }
+  getMemProfSnapshot() {
+    this.toThisInstance(() => {
+      let fn = fs.join(this.rootDir, `${this.role}_${this.pid}_${this.memProfCounter}_.heap`);
+      let heapdumpReply = arango.GET_RAW('/_admin/status?memory=true');
+      if (heapdumpReply.code === 200) {
+        fs.write(fn, heapdumpReply.body);
+        print(CYAN + Date() + ` Saved ${fn}` + RESET);
+      } else {
+        print(RED + Date() + ` Acquiring Heapdump for ${fn} failed!` + RESET);
+        print(heapdumpReply);
+      }
 
-    let fnMetrics = fs.join(this.rootDir, `${this.role}_${this.pid}_${this.memProfCounter}_.metrics`);
-    let metricsReply = download(this.url + '/_admin/metrics/v2', opts);
-    if (metricsReply.code === 200) {
-      fs.write(fnMetrics, metricsReply.body);
-      print(CYAN + Date() + ` Saved ${fnMetrics}` + RESET);
-    } else if (metricsReply.code === 503) {
-      print(RED + Date() + ` Acquiring metrics for ${fnMetrics} not possible!` + RESET);
-    } else {
-      print(RED + Date() + ` Acquiring metrics for ${fnMetrics} failed!` + RESET);
-      print(metricsReply);
-    }
-    this.memProfCounter ++;
+      let fnMetrics = fs.join(this.rootDir, `${this.role}_${this.pid}_${this.memProfCounter}_.metrics`);
+      let metricsReply = arango.GET_RAW('/_admin/metrics/v2');
+      if (metricsReply.code === 200) {
+        fs.write(fnMetrics, metricsReply.body);
+        print(CYAN + Date() + ` Saved ${fnMetrics}` + RESET);
+      } else if (metricsReply.code === 503) {
+        print(RED + Date() + ` Acquiring metrics for ${fnMetrics} not possible!` + RESET);
+      } else {
+        print(RED + Date() + ` Acquiring metrics for ${fnMetrics} failed!` + RESET);
+        print(metricsReply);
+      }
+      this.memProfCounter ++;
+    });
   }
 
   processSanitizerReports() {

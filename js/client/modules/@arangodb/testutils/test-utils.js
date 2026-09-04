@@ -51,6 +51,10 @@ const testClientJwtAuthInfo = {
   jwtSecret: testsecret
 };
 
+
+
+
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief get the items uniq to arr1 or arr2
 // //////////////////////////////////////////////////////////////////////////////
@@ -359,7 +363,6 @@ function scanTestPaths (paths, options, fun) {
 
 exports.testServerAuthInfo = testServerAuthInfo;
 exports.testClientJwtAuthInfo = testClientJwtAuthInfo;
-
 
 exports.makePathUnix = makePathUnix;
 exports.makePathGeneric = makePathGeneric;

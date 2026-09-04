@@ -218,80 +218,7 @@ function killRemainingProcesses(results) {
 // //////////////////////////////////////////////////////////////////////////////
 
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief loads the JWT secret from the various ways possible
-// //////////////////////////////////////////////////////////////////////////////
 
-function getJwtSecret(args) {
-  let jwtSecret;
-  if (args.hasOwnProperty('server.jwt-secret-folder')) {
-    let files = fs.list(args['server.jwt-secret-folder']);
-    files.sort();
-    if (files.length > 0) {
-      jwtSecret = fs.read(fs.join(args['server.jwt-secret-folder'], files[0]));
-    }
-  } else {
-    jwtSecret = args['server.jwt-secret'];
-  }
-  return jwtSecret;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief adds authorization headers
-// //////////////////////////////////////////////////////////////////////////////
-
-function makeAuthorizationHeaders (options, args, JWT) {
-  let jwtSecret = getJwtSecret(args);
-  if (JWT) {
-    jwtSecret = JWT;
-  }
-
-  if (jwtSecret) {
-    let jwt;
-    if (jwtSecret.startsWith("-----BEGIN PRIVATE KEY-----")) {
-      jwt = crypto.jwtEncode(jwtSecret,
-                             {'server_id': 'none',
-                              'iss': 'arangodb'}, 'ES256');
-    } else {
-      jwt = crypto.jwtEncode(jwtSecret,
-                             {'server_id': 'none',
-                              'iss': 'arangodb'}, 'HS256');
-    }
-    if (options.extremeVerbosity) {
-      print(Date() + ' Using jw token:     ' + jwt);
-    }
-    return {
-      'headers': {
-        'Authorization': 'bearer ' + jwt
-      }
-    };
-  } else {
-    return {
-      'headers': {
-        'Authorization': 'Basic ' + base64Encode(options.username + ':' +
-            options.password)
-      }
-    };
-  }
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief converts endpoints to URL
-// //////////////////////////////////////////////////////////////////////////////
-
-function endpointToURL (endpoint) {
-  if (endpoint.substr(0, 6) === 'ssl://') {
-    return 'https://' + endpoint.substr(6);
-  }
-
-  const pos = endpoint.indexOf('://');
-
-  if (pos === -1) {
-    return 'http://' + endpoint;
-  }
-
-  return 'http' + endpoint.substr(pos);
-}
 
 
 
@@ -463,7 +390,6 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
 }
 
 exports.setupBinaries = setupBinaries;
-exports.endpointToURL = endpointToURL;
 
 exports.executeAndWait = executeAndWait;
 exports.killRemainingProcesses = killRemainingProcesses;
@@ -471,7 +397,6 @@ exports.killRemainingProcesses = killRemainingProcesses;
 exports.executableExt = executableExt;
 
 exports.switchBinarySet = switchBinarySet;
-exports.makeAuthorizationHeaders = makeAuthorizationHeaders;
 Object.defineProperty(exports, 'JS_DIR', {get: () => binaries[currentBinarySet].JS_DIR});
 Object.defineProperty(exports, 'JS_ENTERPRISE_DIR', {get: () => binaries[currentBinarySet].JS_ENTERPRISE_DIR});
 Object.defineProperty(exports, 'ARANGOBACKUP_BIN', {get: () => binaries[currentBinarySet].ARANGOBACKUP_BIN});
