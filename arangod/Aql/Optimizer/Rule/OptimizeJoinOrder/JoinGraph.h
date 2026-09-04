@@ -23,9 +23,9 @@
 
 #include <map>
 #include <optional>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
-#include <string_view>
 #include <vector>
 
 namespace arangodb::aql {
