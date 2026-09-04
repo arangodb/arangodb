@@ -260,6 +260,7 @@ commands:
     # unauthenticated downloads (CI outage 2026-09-02/03). The arango-ci-checkout
     # GitHub App (contents:read, public repos only) supplies a 1h token; without
     # credentials or on any failure the job clones anonymously, as before.
+    # Always paired with github-auth-clear after the clone.
     steps:
       - run:
           name: Authenticate git against GitHub
@@ -294,6 +295,15 @@ commands:
             git config --global http.https://github.com/.extraheader \
               "AUTHORIZATION: basic $(printf 'x-access-token:%s' "$TOKEN" | base64 | tr -d '\n')"
             echo "git authenticated against github.com as GitHub App installation $INST (token valid 1h)"
+
+  github-auth-clear:
+    # Drop the token header again once the clones it was set for are done, so a
+    # job running past the token's hour never fails on an expired header where
+    # an anonymous request would have worked.
+    steps:
+      - run:
+          name: Forget GitHub token
+          command: git config --global --unset-all http.https://github.com/.extraheader || true
 
   checkout-arangodb:
     # Only compile-nightly needs the real source tree (sparse: false). All
@@ -336,6 +346,7 @@ commands:
                   cd << parameters.destination >>
                   git submodule init
                   git submodule update --recursive --depth 1 --jobs 8
+      - github-auth-clear
 
   checkout-enterprise:
     # The exact commit was resolved ONCE by the setup job and is passed in
