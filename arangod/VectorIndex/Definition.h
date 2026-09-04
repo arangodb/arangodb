@@ -249,16 +249,15 @@ inline bool isFactoryAStringScaling(std::string_view factoryString) {
   return factoryString.find("{}") != std::string_view::npos;
 }
 
-/// @brief Resolve an factory string to a concrete value.
-/// In fixed mode, returne the string
-/// In scaling mode, the factory string can be defined as temaplte
-/// e.g. "IVF{}_HNSW32,SQ8" and the {} will be replaced by the resolved
-/// nLists value
+/// @brief Resolve a factory string to a concrete value.
+/// A template such as "IVF{}_HNSW32,SQ8" gets the {} replaced by nlists;
+/// a fixed string is returned unchanged.
 inline std::string resolveFactoryString(std::string factoryString,
                                         std::size_t nlists) {
-  TRI_ASSERT(factoryString.find("{}") != std::string_view::npos);
-  return factoryString.replace(factoryString.find("{}"), 2,
-                               std::to_string(nlists));
+  if (auto const pos = factoryString.find("{}"); pos != std::string::npos) {
+    factoryString.replace(pos, 2, std::to_string(nlists));
+  }
+  return factoryString;
 }
 
 struct UserDefinition {
