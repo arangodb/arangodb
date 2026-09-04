@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <velocypack/HashedStringRef.h>
-#include "Graph/Enumerators/SingleServerTraversalEnumerator.h"
-#include "Graph/PathManagement/SingleServerPathResult.h"
+#include "Graph/SimplifiedTraversal/SingleServerTraversalEnumerator.h"
+#include "Graph/SimplifiedTraversal/SingleServerPathResult.h"
 #include "Graph/Types/VertexRef.h"
 
 using namespace arangodb;
@@ -14,12 +14,21 @@ using namespace arangodb::graph::experimental;
 // vertexUniqueness, edgeUniqueness, minDepth, maxDepth, globalVertexFilter,
 // perDepthVertexFilter, edgeFilter, prune);
 
-TEST(OneSidedEnumeratorTest, is_done_before_setting_start_vertex) {
+auto assertEqual(IPathResult& a, IPathResult& b) {
+  velocypack::Builder builder_a;
+  a.toVelocyPack(builder_a);
+  velocypack::Builder builder_b;
+  b.toVelocyPack(builder_b);
+  ASSERT_TRUE(arangodb::basics::VelocyPackHelper::equal(
+      builder_a.slice(), builder_b.slice(), true));
+}
+
+TEST(SingleServerTraversalEnumeratorTest, is_done_before_setting_start_vertex) {
   auto enumerator = SingleServerTraversalEnumerator();
   EXPECT_TRUE(enumerator.isDone());
 }
 
-TEST(OneSidedEnumeratorTest, is_not_done_before_querying) {
+TEST(SingleServerTraversalEnumeratorTest, is_not_done_before_querying) {
   auto enumerator = SingleServerTraversalEnumerator();
   auto start = std::string{"v/0"};
   enumerator.reset(graph::VertexRef{velocypack::HashedStringRef{
@@ -27,7 +36,8 @@ TEST(OneSidedEnumeratorTest, is_not_done_before_querying) {
   EXPECT_FALSE(enumerator.isDone());
 }
 
-TEST(OneSidedEnumeratorTest, fails_when_not_reset_after_construction) {
+TEST(SingleServerTraversalEnumeratorTest,
+     fails_when_not_reset_after_construction) {
   auto enumerator = SingleServerTraversalEnumerator();
 
   // at the moment it cannot be communicated (other than by an exception) that
@@ -37,7 +47,7 @@ TEST(OneSidedEnumeratorTest, fails_when_not_reset_after_construction) {
   EXPECT_TRUE(enumerator.isDone());
 }
 
-TEST(OneSidedEnumeratorTest, is_done_after_querying_sole_vertex) {
+TEST(SingleServerTraversalEnumeratorTest, is_done_after_querying_sole_vertex) {
   auto enumerator = SingleServerTraversalEnumerator();
   auto start = std::string{"v/0"};
   enumerator.reset(VertexRef{velocypack::HashedStringRef{
@@ -48,7 +58,8 @@ TEST(OneSidedEnumeratorTest, is_done_after_querying_sole_vertex) {
   EXPECT_TRUE(enumerator.isDone());
 }
 
-TEST(OneSidedEnumeratorTest, querying_single_vertex_not_contained_in_graph) {
+TEST(SingleServerTraversalEnumeratorTest,
+     querying_single_vertex_not_contained_in_graph) {
   auto enumerator = SingleServerTraversalEnumerator();
   auto start = std::string{"v/0"};
   enumerator.reset(VertexRef{velocypack::HashedStringRef{
@@ -61,17 +72,10 @@ TEST(OneSidedEnumeratorTest, querying_single_vertex_not_contained_in_graph) {
   // fine in arangodb, the query will register a warning about the non-existing
   // document and return null for the vertex document
   auto expected = SingleServerPathResult{{std::nullopt}, {}};
-  {
-    velocypack::Builder b;
-    nextPath->toVelocyPack(b);
-    velocypack::Builder b_expected;
-    expected.toVelocyPack(b_expected);
-    ASSERT_TRUE(arangodb::basics::VelocyPackHelper::equal(
-        b.slice(), b_expected.slice(), true));
-  }
+  assertEqual(*nextPath, expected);
 }
 
-TEST(OneSidedEnumeratorTest, querying_path_of_length_one) {
+TEST(SingleServerTraversalEnumeratorTest, querying_path_of_length_one) {
   // TODO create graph
   // auto graph = Graph({"v/0", "v/1"}, {{"v/0", "v/1"}});
   // TODO give graph to enumerator
