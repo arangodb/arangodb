@@ -20,10 +20,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "find_activity_subclasses.h"
+#include "sources.h"
 #include <gtest/gtest.h>
+
+#include <variant>
+
+#include <string>
+#include <vector>
 
 #ifndef PROJECT_ROOT
 #error "PROJECT_ROOT must be defined at compile time (absolute path to repo)"
+#endif
+#ifndef BUILD_PATH
+#error "BUILD_PATH must be defined at compile time (arangodb build directory)"
 #endif
 
 namespace {
@@ -75,14 +84,27 @@ auto includes(std::vector<ActivityDeclaration> const& activities,
   return false;
 }
 
+/**
+ * Activities declared in `source_paths`, read from this build's compilation
+ * database.
+ */
+auto activities_in(std::vector<std::string> const& source_paths)
+    -> std::vector<ActivityDeclaration> {
+  auto const database = sources::get_database(BUILD_PATH);
+  auto const& compilation_database = *std::get<sources::Database>(database);
+  return find_all_activities(
+      compilation_database,
+      sources::get_sources(compilation_database, source_paths));
+}
+
 }  // namespace
 
 std::string const project_root = PROJECT_ROOT;
 
 TEST(ActivityDocumentationTest, finds_transaction_activity) {
   EXPECT_TRUE(includes(
-      find_all_activities(project_root +
-                          "/arangod/StorageEngine/TransactionState.cpp"),
+      activities_in({project_root +
+                     "/arangod/StorageEngine/TransactionState.cpp"}),
       ActivityDeclaration{
           .owner = "arangodb::TransactionState",
           .type = "arangodb::transaction::activity::TransactionActivity",
@@ -124,7 +146,7 @@ TEST(ActivityDocumentationTest, finds_transaction_activity) {
 
 TEST(ActivityDocumentationTest, finds_maintenance_activity) {
   EXPECT_TRUE(includes(
-      find_all_activities(project_root + "/arangod/Cluster/ActionBase.h"),
+      activities_in({project_root + "/arangod/Cluster/ActionBase.h"}),
       ActivityDeclaration{
           .owner = "arangodb::maintenance::ActionBase",
           .type = "arangodb::maintenance::activity::ActionActivity",
@@ -136,8 +158,8 @@ TEST(ActivityDocumentationTest, finds_maintenance_activity) {
 
 TEST(ActivityDocumentationTest, finds_collection_creation_activity) {
   EXPECT_TRUE(includes(
-      find_all_activities(project_root +
-                          "/arangod/VocBase/Methods/Collections.cpp"),
+      activities_in({project_root +
+                     "/arangod/VocBase/Methods/Collections.cpp"}),
       ActivityDeclaration{
           .owner = "arangodb::methods::Collections::create",
           .type = "arangodb::activities::GenericActivity",

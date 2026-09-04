@@ -24,6 +24,8 @@ Intermediate representation of an activity (`ActivityDeclaration`):
 - header input files are routed to their sibling .cpp files
 - one activity class (e.g. `GenericActivity`) can be used for more than one activity at different source locations
 - skips activity declarations done inside the activity library (only internal plumbing)
+- skips source paths in `<root>/Documentation` and `<root>/3rdParty` (with a warning); `<root>` is found via git from the `--build-path` build directory, not from a source path (a path inside a submodule like `enterprise` or `3rdParty/*` would resolve to the submodule root instead)
+- a source path inside the `enterprise` submodule adds that submodule's own commit id to the markdown output next to arangodb's
 
 ## State
 - [x] first implementation with local tests

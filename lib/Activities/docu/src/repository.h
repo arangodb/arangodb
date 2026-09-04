@@ -1,16 +1,38 @@
 #pragma once
 
-#include <optional>
+#include <clang/Tooling/CompilationDatabase.h>
 #include <string>
+#include <vector>
+
+namespace repository {
 
 /**
- * Short commit id of the git repository that contains `path`.
- *
- * Describes the checkout at the moment of the call. Accepts a directory or a
- * file path. Returns nullopt when git is unavailable or `path` is not inside a
- * repository.
+ * A repository and the commit it was scanned at.
  *
  * Example:
- *   std::cout << current_commit_id("lib/Activities").value_or("unknown");
+ *   Commit{.repository = "arangodb", .id = "abc1234"};
  */
-auto current_commit_id(std::string const& path) -> std::optional<std::string>;
+struct Commit {
+  std::string repository;
+  std::string id;
+
+  auto operator==(Commit const&) const -> bool = default;
+};
+
+/**
+ * Commit ids to record for a scan over `source_paths`.
+ *
+ * The first entry is always arangodb's commit, taken from `build_path`. When
+ * any of `source_paths` lies inside `<root>/enterprise`, the enterprise
+ * submodule has its own commit, which is appended as a second entry.
+ *
+ * Example:
+ *   for (auto const& commit : commit_ids(database, {"enterprise/Foo.cpp"})) {
+ *     std::cout << commit.repository << ": " << commit.id << "\n";
+ *   }
+ */
+auto commit_ids(clang::tooling::CompilationDatabase const& database,
+                std::vector<std::string> const& source_paths)
+    -> std::vector<Commit>;
+
+}  // namespace repository

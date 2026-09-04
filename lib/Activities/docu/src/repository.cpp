@@ -1,85 +1,52 @@
 #include "repository.h"
 
-#include <array>
-#include <cstdio>
+#include "git.h"
+#include "paths.h"
+#include <string>
 #include <filesystem>
-#include <string_view>
+#include <vector>
 
 namespace {
 
-/**
- * Quote `text` so the shell sees it as a single word.
- */
-auto shell_quoted(std::string_view text) -> std::string {
-  auto quoted = std::string{"'"};
-  for (auto const character : text) {
-    if (character == '\'') {
-      quoted += "'\\''";
-    } else {
-      quoted += character;
+auto enterprise_source(std::string const root,
+                       std::vector<std::string> const& source_paths)
+    -> std::optional<std::string> {
+  auto const enterprise = std::filesystem::path{root} / "enterprise";
+
+  for (auto const& source_path : source_paths) {
+    auto const absolute = paths::absolute_path(source_path);
+    if (not absolute.has_value()) {
+      continue;
     }
+    if (not paths::is_inside(absolute.value().string(), enterprise)) {
+      continue;
+    }
+    return source_path;
   }
-  return quoted + "'";
-}
-
-/**
- * Directory in which git should be asked about `path`.
- *
- * git needs a directory to work in, so a regular file is answered by its
- * parent.
- */
-auto repository_directory(std::filesystem::path const& path)
-    -> std::optional<std::filesystem::path> {
-  auto error = std::error_code{};
-  if (std::filesystem::is_directory(path, error) && not error) {
-    return path;
-  }
-  error.clear();
-  if (std::filesystem::is_regular_file(path, error) && not error) {
-    auto const parent = path.parent_path();
-    return parent.empty() ? std::filesystem::path{"."} : parent;
-  }
-  return {};
-}
-
-/**
- * Standard output of `command`, or nullopt when it could not run or failed.
- */
-auto command_output(std::string const& command) -> std::optional<std::string> {
-  auto* pipe = popen(command.c_str(), "r");
-  if (pipe == nullptr) {
-    return {};
-  }
-  auto output = std::string{};
-  auto chunk = std::array<char, 128>{};
-  while (std::fgets(chunk.data(), chunk.size(), pipe) != nullptr) {
-    output += chunk.data();
-  }
-  if (pclose(pipe) != 0) {
-    return {};
-  }
-  return output;
+  return std::nullopt;
 }
 
 }  // namespace
 
-auto current_commit_id(std::string const& path) -> std::optional<std::string> {
-  auto const directory = repository_directory(path);
-  if (not directory.has_value()) {
+auto repository::commit_ids(clang::tooling::CompilationDatabase const& database,
+                            std::vector<std::string> const& source_paths)
+    -> std::vector<Commit> {
+  auto const root = paths::repository_root(database.getAllFiles());
+  if (not root.has_value()) {
     return {};
   }
+  auto commits = std::vector<Commit>{
+      Commit{.repository = "arangodb",
+             .id = git::current_commit_id(root.value()).value_or("unknown")}};
 
-  auto const output =
-      command_output("git -C " + shell_quoted(directory->string()) +
-                     " rev-parse --short HEAD 2>/dev/null");
-  if (not output.has_value()) {
-    return {};
+  auto enterprise_source_path = enterprise_source(root.value(), source_paths);
+  if (not enterprise_source_path.has_value()) {
+    return commits;
   }
 
-  // right-trims the output
-  auto const last = output->find_last_not_of(" \t\r\n");
-  if (last == std::string::npos) {
-    return {};  // output was empty
-  }
-  return output->substr(0, last + 1);
+  commits.push_back(
+      Commit{.repository = "enterprise",
+             .id = git::current_commit_id(enterprise_source_path.value())
+                       .value_or("unknown")});
+  return commits;
 }
