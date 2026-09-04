@@ -28,6 +28,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "RestServer/DatabaseFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Utils/Events.h"
 #include "VocBase/Methods/Databases.h"
 #include "VocBase/vocbase.h"
@@ -153,7 +154,7 @@ RestStatus RestDatabaseHandler::createDatabase() {
   VPackSlice options = body.get("options");
   VPackSlice users = body.get("users");
 
-  auto& engine = server().getFeature<DatabaseFeature>().engine();
+  auto& engine = server().getFeature<StorageEngine>();
   Result res = methods::Databases::create(server(), engine, _context, dbName,
                                           users, options);
   if (res.ok()) {

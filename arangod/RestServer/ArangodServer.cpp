@@ -203,7 +203,6 @@ void ArangodServer::addFeatures() {
   auto& metrics = addFeature<metrics::MetricsFeature>(
       LazyApplicationFeatureReference<QueryRegistryFeature>(*this),
       LazyApplicationFeatureReference<StatisticsFeature>(*this),
-      LazyApplicationFeatureReference<DatabaseFeature>(*this),
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(*this),
       LazyApplicationFeatureReference<ClusterFeature>(*this),
       getOptions<metrics::MetricsOptionsProvider>());
@@ -332,8 +331,6 @@ void ArangodServer::addFeatures() {
   addFeature<TemporaryStorageFeature>(
       databasePath, getOptions<TemporaryStorageOptionsProvider>());
   addFeature<TtlFeature>(getOptions<TtlOptionsProvider>());
-  addFeature<transaction::ManagerFeature>(
-      metrics, getOptions<transaction::ManagerOptionsProvider>());
   addFeature<ViewTypesFeature>();
   auto& aqlFunctionFeature = addFeature<aql::AqlFunctionFeature>();
   addFeature<aql::OptimizerRulesFeature>(
@@ -388,12 +385,19 @@ void ArangodServer::addFeatures() {
                              getOptions<UpgradeOptionsProvider>());
   auto& rocksdbOption = addFeature<RocksDBOptionFeature>(
       getOptions<RocksDBOptionFeatureOptionsProvider>());
-  addFeature<ClusterEngine>(clusterFeature, database, metrics);
-  addFeature<RocksDBEngine>(
-      rocksdbOption, metrics, databasePath, vectorIndex, flush, dumpLimits,
-      replication2::EnableReplication2 ? &replicatedLogFeature : nullptr,
-      scheduler, rocksdbRecovery, database, rocksdbCacheRefill, cacheManager,
-      agency, getOptions<RocksDBEngineOptionsProvider>());
+  StorageEngine* enginePtr;
+  if (ServerState::instance()->isCoordinator()) {
+    enginePtr = &addFeature<StorageEngine, ClusterEngine>(
+        clusterFeature, database, metrics, vectorIndex);
+  } else {
+    enginePtr = &addFeature<StorageEngine, RocksDBEngine>(
+        rocksdbOption, metrics, databasePath, vectorIndex, flush, dumpLimits,
+        replication2::EnableReplication2 ? &replicatedLogFeature : nullptr,
+        scheduler, rocksdbRecovery, database, rocksdbCacheRefill, cacheManager,
+        agency, getOptions<RocksDBEngineOptionsProvider>());
+  }
+  addFeature<transaction::ManagerFeature>(
+      metrics, *enginePtr, getOptions<transaction::ManagerOptionsProvider>());
   addFeature<replication2::replicated_state::ReplicatedStateAppFeature>();
   addFeature<replication2::replicated_state::black_hole::
                  BlackHoleStateMachineFeature>();

@@ -45,10 +45,9 @@ using namespace arangodb;
 StorageEngine::StorageEngine(application_features::ApplicationServer& server,
                              std::string_view engineName,
                              std::string_view featureName,
-                             std::type_index registration,
                              std::unique_ptr<IndexFactory>&& indexFactory,
                              IDatabaseProvider& databaseProvider)
-    : ApplicationFeature{server, registration, featureName},
+    : ApplicationFeature{server, typeid(StorageEngine), featureName},
       _databaseProvider(databaseProvider),
       _indexFactory(std::move(indexFactory)),
       _typeName(engineName) {

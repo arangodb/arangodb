@@ -278,7 +278,7 @@ RocksDBEngine::RocksDBEngine(
     ICacheManagerProvider& cacheManagerProvider,
     ISortingPolicy const& sortingPolicy, RocksDBEngineOptions options)
     : StorageEngine(
-          server, kEngineName, name(), typeid(RocksDBEngine),
+          server, kEngineName, name(),
           std::make_unique<RocksDBIndexFactory>(server, vectorIndexProvider),
           databaseProvider),
       _databasePathProvider(databasePathProvider),

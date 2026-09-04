@@ -56,6 +56,7 @@
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardDistributionReporter.h"

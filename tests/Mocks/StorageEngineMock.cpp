@@ -22,8 +22,6 @@
 
 #include "StorageEngineMock.h"
 
-#include <typeindex>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
 #include "Basics/Result.h"
@@ -33,8 +31,6 @@
 #include "Basics/asio_ns.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
-#include "ClusterEngine/ClusterEngine.h"
-#include "ClusterEngine/ClusterIndexFactory.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchInvertedIndex.h"
@@ -73,10 +69,9 @@ struct IndexFactoryMock : arangodb::IndexFactory {
   IndexFactoryMock(arangodb::application_features::ApplicationServer& server,
                    bool injectClusterIndexes)
       : IndexFactory(server) {
-    if (injectClusterIndexes) {
-      arangodb::ClusterIndexFactory::linkIndexFactories(
-          server, *this, server.getFeature<arangodb::ClusterEngine>());
-    }
+    // there is only a single StorageEngine slot now, and StorageEngineMock
+    // always occupies it, so a real ClusterEngine can never be fetched here.
+    TRI_ASSERT(!injectClusterIndexes);
   }
 
   virtual void fillSystemIndexes(arangodb::LogicalCollection& col,
@@ -200,7 +195,6 @@ StorageEngineMock::StorageEngineMock(
     arangodb::application_features::ApplicationServer& server,
     bool injectClusterIndexes)
     : StorageEngine(server, "Mock", "Mock",
-                    std::type_index(typeid(StorageEngineMock)),
                     std::unique_ptr<arangodb::IndexFactory>(
                         new IndexFactoryMock(server, injectClusterIndexes)),
                     _dbProvider),

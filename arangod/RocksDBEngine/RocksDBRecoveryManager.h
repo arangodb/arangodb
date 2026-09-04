@@ -49,6 +49,7 @@ class RocksDBRecoveryManager final
       application_features::ApplicationServer& server,
       IDatabaseProvider& dbProvider, IRecoveryCallback& recoveryCallback);
 
+  void prepare() override;
   void start() override;
 
   void runRecovery();

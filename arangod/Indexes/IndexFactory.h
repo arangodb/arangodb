@@ -24,7 +24,10 @@
 
 #include "Basics/Result.h"
 #include "Indexes/Index.h"
+#include "Indexes/IndexDefinition.h"
 #include "VocBase/Identifiers/IndexId.h"
+
+#include <utility>
 
 namespace arangodb {
 
@@ -82,6 +85,61 @@ struct IndexTypeFactory {
 
  protected:
   application_features::ApplicationServer& _server;
+};
+
+// turns an IndexDefinition into a full IndexTypeFactory by composing it
+// rather than inheriting it; the subclass only has to implement instantiate()
+template<typename Definition>
+class DelegatingIndexFactory : public IndexTypeFactory {
+ public:
+  template<typename... Args>
+  explicit DelegatingIndexFactory(
+      application_features::ApplicationServer& server, Args&&... args)
+      : IndexTypeFactory(server),
+        _definition(server, std::forward<Args>(args)...) {}
+
+  bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
+             std::string const& dbname) const override {
+    return _definition.equal(lhs, rhs, dbname);
+  }
+
+  Result normalize(velocypack::Builder& normalized,
+                   velocypack::Slice definition, bool isCreation,
+                   Database const& vocbase) const override {
+    return _definition.normalize(normalized, definition, isCreation, vocbase);
+  }
+
+  bool attributeOrderMatters() const override {
+    return _definition.attributeOrderMatters();
+  }
+
+ protected:
+  Definition _definition;
+};
+
+// reverse adapter: exposes an existing IndexTypeFactory as an IndexDefinition
+struct DelegatingIndexDefinition : public IndexDefinition {
+  DelegatingIndexDefinition(application_features::ApplicationServer& server,
+                            IndexTypeFactory const& factory)
+      : IndexDefinition(server), _factory(factory) {}
+
+  bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
+             std::string const& dbname) const override {
+    return _factory.equal(lhs, rhs, dbname);
+  }
+
+  Result normalize(velocypack::Builder& normalized,
+                   velocypack::Slice definition, bool isCreation,
+                   Database const& vocbase) const override {
+    return _factory.normalize(normalized, definition, isCreation, vocbase);
+  }
+
+  bool attributeOrderMatters() const override {
+    return _factory.attributeOrderMatters();
+  }
+
+ protected:
+  IndexTypeFactory const& _factory;
 };
 
 class IndexFactory {

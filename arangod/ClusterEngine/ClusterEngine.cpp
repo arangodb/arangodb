@@ -35,6 +35,8 @@
 #ifdef USE_V8
 #include "ClusterEngine/ClusterV8Functions.h"
 #endif
+#include "Indexes/DefaultIndexFactories.h"
+#include "IResearch/IResearchRocksDBInvertedIndex.h"
 #include "Logger/Logger.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
@@ -50,6 +52,68 @@
 using namespace arangodb;
 using namespace arangodb::application_features;
 
+namespace {
+
+class ClusterIndexDefinitions final : public IndexDefinitionRegistry {
+ public:
+  ClusterIndexDefinitions(application_features::ApplicationServer& server,
+                          IVectorIndexProvider const& vectorIndexProvider)
+      : IndexDefinitionRegistry(server) {
+    static const EdgeIndexDefinition edgeIndexDefinition(server);
+    static const FulltextIndexDefinition fulltextIndexDefinition(server);
+    static const GeoIndexDefinition geoIndexDefinition(server);
+    static const Geo1IndexDefinition geo1IndexDefinition(server);
+    static const Geo2IndexDefinition geo2IndexDefinition(server);
+    static const SecondaryIndexDefinition hashIndexDefinition(server,
+                                                              IndexType::Hash);
+    static const SecondaryIndexDefinition persistentIndexDefinition(
+        server, IndexType::Persistent);
+    static const SecondaryIndexDefinition skiplistIndexDefinition(
+        server, IndexType::Skiplist);
+    static const TtlIndexDefinition ttlIndexDefinition(server, IndexType::TTL);
+    static const PrimaryIndexDefinition primaryIndexDefinition(server);
+    static const MdiIndexDefinition zkdIndexDefinition(server, IndexType::Zkd);
+    static const MdiIndexDefinition mdiIndexDefinition(server, IndexType::MDI);
+    static const MdiPrefixedIndexDefinition mdiPrefixedIndexDefinition(server);
+    static const VectorIndexDefinition vectorIndexDefinition(
+        server, IndexType::Vector, vectorIndexProvider);
+    static const iresearch::IResearchInvertedIndexDefinition
+        invertedIndexDefinition(server);
+
+    emplace("edge", edgeIndexDefinition);
+    emplace("fulltext", fulltextIndexDefinition);
+    emplace("geo", geoIndexDefinition);
+    emplace("geo1", geo1IndexDefinition);
+    emplace("geo2", geo2IndexDefinition);
+    emplace("hash", hashIndexDefinition);
+    emplace("persistent", persistentIndexDefinition);
+    emplace("primary", primaryIndexDefinition);
+    emplace("rocksdb", persistentIndexDefinition);
+    emplace("skiplist", skiplistIndexDefinition);
+    emplace("ttl", ttlIndexDefinition);
+    emplace("zkd", zkdIndexDefinition);
+    emplace("mdi", mdiIndexDefinition);
+    emplace("mdi-prefixed", mdiPrefixedIndexDefinition);
+    emplace("vector", vectorIndexDefinition);
+    emplace(arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE.data(),
+            invertedIndexDefinition);
+  }
+
+  std::vector<std::pair<std::string_view, std::string_view>> indexAliases(
+      uint32_t apiVersion) const override {
+    if (apiVersion == 0) {
+      return {
+          {"hash", "persistent"},
+          {"skiplist", "persistent"},
+          {"zkd", "mdi"},
+      };
+    }
+    return {{"zkd", "mdi"}};
+  }
+};
+
+}  // namespace
+
 std::string const ClusterEngine::EngineName("Cluster");
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -61,45 +125,32 @@ bool ClusterEngine::Mocking = false;
 ClusterEngine::ClusterEngine(application_features::ApplicationServer& server,
                              ClusterFeature& clusterFeature,
                              DatabaseFeature& database,
-                             metrics::IRegistry& metrics)
-    : StorageEngine(server, EngineName, name(), typeid(ClusterEngine),
+                             metrics::IRegistry& metrics,
+                             IVectorIndexProvider const& vectorIndexProvider)
+    : StorageEngine(server, EngineName, name(),
                     std::make_unique<ClusterIndexFactory>(server, *this),
                     database),
       _clusterFeature(clusterFeature),
       _metrics(metrics),
-      _actualEngine(nullptr) {
+      _indexDefinitions(std::make_unique<ClusterIndexDefinitions>(
+          server, vectorIndexProvider)) {
   setOptional(true);
 }
 
 ClusterEngine::~ClusterEngine() = default;
 
-void ClusterEngine::setActualEngine(StorageEngine* e) { _actualEngine = e; }
-
-bool ClusterEngine::isRocksDB() const {
-  return !ClusterEngine::Mocking && _actualEngine &&
-         _actualEngine->name() == RocksDBEngine::name();
-}
-
-bool ClusterEngine::isMock() const {
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  return ClusterEngine::Mocking ||
-         (_actualEngine && _actualEngine->name() == "Mock");
-#else
-  return false;
-#endif
+std::string_view ClusterEngine::typeName() const {
+  return RocksDBEngine::kEngineName;
 }
 
 HealthData ClusterEngine::healthCheck() { return {}; }
 
 ClusterEngineType ClusterEngine::engineType() const {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  if (isMock()) {
+  if (ClusterEngine::Mocking) {
     return ClusterEngineType::MockEngine;
   }
 #endif
-  TRI_ASSERT(_actualEngine != nullptr);
-
-  TRI_ASSERT(isRocksDB());
   return ClusterEngineType::RocksDBEngine;
 }
 
@@ -129,7 +180,7 @@ std::shared_ptr<TransactionState> ClusterEngine::createTransactionState(
 
 void ClusterEngine::addParametersForNewCollection(VPackBuilder& builder,
                                                   VPackSlice info) {
-  if (isRocksDB()) {
+  if (engineType() == ClusterEngineType::RocksDBEngine) {
     // deliberately not add objectId
     if (!info.get(StaticStrings::CacheEnabled).isBool()) {
       builder.add(StaticStrings::CacheEnabled, VPackValue(false));

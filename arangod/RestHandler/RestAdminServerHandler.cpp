@@ -47,7 +47,7 @@ RestAdminServerHandler::RestAdminServerHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
     : RestBaseHandler(server, request, response),
-      _engine(server.getFeature<DatabaseFeature>().engine()),
+      _engine(server.getFeature<StorageEngine>()),
       _apiRecordingFeature(server.getFeature<ApiRecordingFeature>()) {}
 
 // Mounted at /_admin/server (prefix)
