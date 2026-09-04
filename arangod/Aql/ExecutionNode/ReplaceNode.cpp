@@ -51,13 +51,13 @@ std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  RegisterId inDocRegister = variableToRegisterId(_inDocVariable);
+  RegisterId inDocRegister = inputRegister(_inDocVariable);
 
-  RegisterId inKeyRegister = variableToRegisterOptionalId(_inKeyVariable);
+  RegisterId inKeyRegister = inputRegisterOrInvalid(_inKeyVariable);
 
-  RegisterId outputNew = variableToRegisterOptionalId(_outVariableNew);
+  RegisterId outputNew = outputRegisterOrInvalid(_outVariableNew);
 
-  RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
+  RegisterId outputOld = outputRegisterOrInvalid(_outVariableOld);
 
   auto readableInputRegisters = RegIdSet{inDocRegister};
   if (inKeyRegister.isValid()) {

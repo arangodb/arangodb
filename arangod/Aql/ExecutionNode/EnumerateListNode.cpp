@@ -29,6 +29,8 @@
 #include "Aql/Executor/EnumerateListExecutor.h"
 #include "Aql/Expression.h"
 #include "Aql/RegisterPlan.h"
+
+#include <algorithm>
 #include "Aql/Variable.h"
 #include "Basics/StaticStrings.h"
 
@@ -110,37 +112,41 @@ std::unique_ptr<ExecutionBlock> EnumerateListNode::createBlock(
     ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
-  RegisterId inputRegister = variableToRegisterId(_inVariable);
+  RegisterId inReg = inputRegister(_inVariable);
   std::vector<RegisterId> outRegisters;
 
   RegIdSet outRegisterSet;
   if (_mode == kEnumerateArray) {
     outRegisters.resize(1);
-    outRegisters[0] = variableToRegisterId(_outVariable);
+    outRegisters[0] = outputRegister(_outVariable);
     outRegisterSet = RegIdSet{outRegisters[0]};
   } else {
     outRegisters.resize(2);
-    outRegisters[0] = variableToRegisterId(_keyValuePairOutVars[0]);
-    outRegisters[1] = variableToRegisterId(_keyValuePairOutVars[1]);
+    outRegisters[0] = outputRegister(_keyValuePairOutVars[0]);
+    outRegisters[1] = outputRegister(_keyValuePairOutVars[1]);
     outRegisterSet = RegIdSet{outRegisters[0], outRegisters[1]};
   }
-  auto registerInfos =
-      createRegisterInfos(RegIdSet{inputRegister}, outRegisterSet);
+  auto registerInfos = createRegisterInfos(RegIdSet{inReg}, outRegisterSet);
 
   std::vector<std::pair<VariableId, RegisterId>> varsToRegs;
   if (hasFilter()) {
     VarSet inVars;
     _filter->variables(inVars);
 
+    // getVariablesSetHere() omits _outVariable in kEnumerateObject mode, where
+    // the key/value pair is produced instead. Skip it unconditionally, as it
+    // has no register in that mode.
+    auto const produced = getVariablesSetHere();
     for (auto const& var : inVars) {
-      if (var->id != _outVariable->id) {
-        auto regId = variableToRegisterId(var);
-        varsToRegs.emplace_back(var->id, regId);
+      if (var == _outVariable ||
+          std::find(produced.begin(), produced.end(), var) != produced.end()) {
+        continue;
       }
+      varsToRegs.emplace_back(var->id, inputRegister(var));
     }
   }
   auto executorInfos = EnumerateListExecutorInfos(
-      inputRegister, std::move(outRegisters), engine.getQuery(), filter(),
+      inReg, std::move(outRegisters), engine.getQuery(), filter(),
       this->getVariablesSetHere(), std::move(varsToRegs), _mode);
 
   if (_mode == EnumerateListNode::kEnumerateArray) {

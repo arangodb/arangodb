@@ -94,12 +94,15 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
 
     for (auto& var : inVars) {
       TRI_ASSERT(var != nullptr);
-      auto regId = variableToRegisterId(var);
+      if (var == _outVariable) {
+        continue;
+      }
+      auto regId = inputRegister(var);
       filterVarsToRegs.emplace_back(var->id, regId);
     }
   }
 
-  RegisterId outputRegister = variableToRegisterId(_outVariable);
+  RegisterId outReg = outputRegister(_outVariable);
 
   auto outputRegisters = RegIdSet{};
 
@@ -115,7 +118,7 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
         continue;
       }
       TRI_ASSERT(var != nullptr);
-      auto regId = variableToRegisterId(var);
+      auto regId = outputRegister(var);
       filterVarsToRegs.emplace_back(var->id, regId);
       outputRegisters.emplace(regId);
     }
@@ -129,15 +132,15 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
     // this will be handled below by adding the main output register.
   }
   if (outputRegisters.empty() && isProduceResult()) {
-    outputRegisters.emplace(outputRegister);
+    outputRegisters.emplace(outReg);
   }
   TRI_ASSERT(!outputRegisters.empty() || !isProduceResult());
 
   auto registerInfos = createRegisterInfos({}, std::move(outputRegisters));
   auto executorInfos = EnumerateCollectionExecutorInfos(
-      outputRegister, engine.getQuery(), collection(), _outVariable,
-      isProduceResult(), filter(), projections(), std::move(filterVarsToRegs),
-      _random, doCount(), canReadOwnWrites());
+      outReg, engine.getQuery(), collection(), _outVariable, isProduceResult(),
+      filter(), projections(), std::move(filterVarsToRegs), _random, doCount(),
+      canReadOwnWrites());
   return std::make_unique<ExecutionBlockImpl<EnumerateCollectionExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }

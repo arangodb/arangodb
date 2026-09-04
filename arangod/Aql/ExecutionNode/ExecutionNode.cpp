@@ -1180,13 +1180,11 @@ struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode, Walke
     VarSet variablesUsedHere;
     ep->getVariablesUsedHere(variablesUsedHere);
     for (auto const& v : variablesUsedHere) {
-      std::cout << ep->getRegisterPlan()->varInfo.find(v->id)->second.registerId
-                << " ";
+      std::cout << ep->inputRegister(v) << " ";
     }
     std::cout << "regsSetHere: ";
     for (auto const& v : ep->getVariablesSetHere()) {
-      std::cout << ep->getRegisterPlan()->varInfo.find(v->id)->second.registerId
-                << " ";
+      std::cout << ep->outputRegister(v) << " ";
     }
     std::cout << "regsToClear: ";
     for (auto const& r : ep->getRegsToClear()) {
@@ -1325,8 +1323,45 @@ void ExecutionNode::removeDependencies() {
   _dependencies.clear();
 }
 
-RegisterId ExecutionNode::variableToRegisterId(Variable const* variable) const {
-  return getRegisterPlan()->variableToRegisterId(variable);
+unsigned int ExecutionNode::inputDepth() const noexcept {
+  auto const* dependency = getFirstDependency();
+  // the SingletonNode has no input rows at all; report our own depth so that
+  // callers do not have to special-case it
+  TRI_ASSERT(dependency != nullptr || getType() == ExecutionNode::SINGLETON);
+  return dependency == nullptr ? _depth : dependency->_depth;
+}
+
+RegisterId ExecutionNode::outputRegister(Variable const* variable) const {
+  return getRegisterPlan()->variableToRegisterId(variable, _depth);
+}
+
+RegisterId ExecutionNode::inputRegister(Variable const* variable) const {
+  return getRegisterPlan()->variableToRegisterId(variable, inputDepth());
+}
+
+RegisterId ExecutionNode::inputRegisterOrInvalid(
+    Variable const* variable) const noexcept {
+  if (variable == nullptr) {
+    return RegisterId::makeInvalid();
+  }
+  return getRegisterPlan()->variableToOptionalRegisterId(variable->id,
+                                                         inputDepth());
+}
+
+RegisterId ExecutionNode::outputRegisterOrInvalid(
+    Variable const* variable) const noexcept {
+  if (variable == nullptr) {
+    return RegisterId::makeInvalid();
+  }
+  return getRegisterPlan()->variableToOptionalRegisterId(variable->id, _depth);
+}
+
+RegisterResolver ExecutionNode::inputRegisterResolver() const noexcept {
+  return getRegisterPlan()->resolverForDepth(inputDepth());
+}
+
+RegisterResolver ExecutionNode::outputRegisterResolver() const noexcept {
+  return getRegisterPlan()->resolverForDepth(_depth);
 }
 
 // This is the general case and will not work if e.g. there is no predecessor.
@@ -1647,14 +1682,6 @@ void ExecutionNode::setRegsToClear(RegIdSet toClear) {
 
 void ExecutionNode::setRegsToKeep(RegIdSetStack toKeep) {
   _regsToKeepStack = std::move(toKeep);
-}
-
-RegisterId ExecutionNode::variableToRegisterOptionalId(
-    Variable const* var) const {
-  if (var) {
-    return variableToRegisterId(var);
-  }
-  return RegisterId{RegisterId::maxRegisterId};
 }
 
 bool ExecutionNode::isIncreaseDepth() const {

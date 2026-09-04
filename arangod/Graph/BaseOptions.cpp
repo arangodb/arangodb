@@ -211,10 +211,10 @@ double BaseOptions::LookupInfo::estimateCost(size_t& nrItems) const {
 }
 
 void BaseOptions::LookupInfo::initializeNonConstExpressions(
-    aql::Ast* ast, aql::VarInfoMap const& varInfo,
+    aql::Ast* ast, aql::RegisterResolver const& registers,
     aql::Variable const* indexVariable) {
   _nonConstContainer = aql::utils::extractNonConstPartsOfIndexCondition(
-      ast, varInfo, false, nullptr, indexCondition, indexVariable);
+      ast, registers, false, nullptr, indexCondition, indexVariable);
   // We cannot optimize V8 expressions
   TRI_ASSERT(!_nonConstContainer._hasV8Expression);
 }
@@ -563,10 +563,10 @@ bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression,
 }
 
 void BaseOptions::initializeIndexConditions(
-    aql::Ast* ast, aql::VarInfoMap const& varInfo,
+    aql::Ast* ast, aql::RegisterResolver const& registers,
     aql::Variable const* indexVariable) {
   for (auto& it : _baseLookupInfos) {
-    it.initializeNonConstExpressions(ast, varInfo, indexVariable);
+    it.initializeNonConstExpressions(ast, registers, indexVariable);
   }
 }
 

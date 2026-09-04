@@ -78,19 +78,13 @@ static GraphNode::InputVertex prepareVertexInput(ShortestPathNode const* node,
   using InputVertex = GraphNode::InputVertex;
   if (isTarget) {
     if (node->usesTargetInVariable()) {
-      auto it =
-          node->getRegisterPlan()->varInfo.find(node->targetInVariable()->id);
-      TRI_ASSERT(it != node->getRegisterPlan()->varInfo.end());
-      return InputVertex{it->second.registerId};
+      return InputVertex{node->inputRegister(node->targetInVariable())};
     } else {
       return InputVertex{node->getTargetVertex()};
     }
   } else {
     if (node->usesStartInVariable()) {
-      auto it =
-          node->getRegisterPlan()->varInfo.find(node->startInVariable()->id);
-      TRI_ASSERT(it != node->getRegisterPlan()->varInfo.end());
-      return InputVertex{it->second.registerId};
+      return InputVertex{node->inputRegister(node->startInVariable())};
     } else {
       return InputVertex{node->getStartVertex()};
     }
@@ -286,42 +280,34 @@ std::pair<RegIdSet, typename ShortestPathExecutorInfos<
                         ShortestPathEnumeratorType>::RegisterMapping>
 ShortestPathNode::_buildOutputRegisters() const {
   auto outputRegisters = RegIdSet{};
-  auto& varInfo = getRegisterPlan()->varInfo;
 
   typename ShortestPathExecutorInfos<
       ShortestPathEnumeratorType>::RegisterMapping outputRegisterMapping;
   if (isVertexOutVariableUsedLater()) {
-    auto it = varInfo.find(vertexOutVariable()->id);
-    TRI_ASSERT(it != varInfo.end());
+    auto const reg = outputRegister(vertexOutVariable());
     outputRegisterMapping.try_emplace(
         ShortestPathExecutorInfos<
             ShortestPathEnumeratorType>::OutputName::VERTEX,
-        it->second.registerId);
-    outputRegisters.emplace(it->second.registerId);
+        reg);
+    outputRegisters.emplace(reg);
   }
   if (isEdgeOutVariableUsedLater()) {
-    auto it = varInfo.find(edgeOutVariable()->id);
-    TRI_ASSERT(it != varInfo.end());
+    auto const reg = outputRegister(edgeOutVariable());
     outputRegisterMapping.try_emplace(
         ShortestPathExecutorInfos<ShortestPathEnumeratorType>::OutputName::EDGE,
-        it->second.registerId);
-    outputRegisters.emplace(it->second.registerId);
+        reg);
+    outputRegisters.emplace(reg);
   }
   return std::make_pair(outputRegisters, outputRegisterMapping);
 };
 
 RegIdSet ShortestPathNode::buildVariableInformation() const {
   auto inputRegisters = RegIdSet();
-  auto& varInfo = getRegisterPlan()->varInfo;
   if (usesStartInVariable()) {
-    auto it = varInfo.find(startInVariable()->id);
-    TRI_ASSERT(it != varInfo.end());
-    inputRegisters.emplace(it->second.registerId);
+    inputRegisters.emplace(inputRegister(startInVariable()));
   }
   if (usesTargetInVariable()) {
-    auto it = varInfo.find(targetInVariable()->id);
-    TRI_ASSERT(it != varInfo.end());
-    inputRegisters.emplace(it->second.registerId);
+    inputRegisters.emplace(inputRegister(targetInVariable()));
   }
   return inputRegisters;
 }
