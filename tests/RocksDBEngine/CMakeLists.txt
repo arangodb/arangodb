@@ -8,7 +8,8 @@ add_library(arango_tests_rocksdb_engine OBJECT
   DatabaseTest.cpp
   CollectionTest.cpp
   DocumentTest.cpp
-  TimeTravelTest.cpp)
+  TimeTravelTest.cpp
+  IndexTest.cpp)
 
 target_include_directories(arango_tests_rocksdb_engine PRIVATE
   ${PROJECT_SOURCE_DIR}/arangod
