@@ -19,23 +19,12 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"
+#include "JoinGraphTestHelper.h"
 
-#include "Aql/ExecutionNode/ExecutionNode.h"
-#include "Aql/ExecutionPlan.h"
-#include "Aql/Optimizer/Rule/OptimizeJoinOrder/JoinGraph.h"
-#include "Aql/Query.h"
-#include "Aql/QueryString.h"
-#include "Aql/Variable.h"
-#include "Transaction/StandaloneContext.h"
-
-#include "velocypack/Parser.h"
-
-#include "../IResearch/common.h"
-#include "../Mocks/Servers.h"
-#include "Async/async.h"
+#include "Aql/OptimizerRule.h"
 
 #include <algorithm>
+#include <cstdlib>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -58,65 +47,8 @@ class JoinGraphTest : public testing::Test {
     }
   }
 
-  // Prepares a plan for `query` without any optional optimizer rules, so that
-  // the plain EnumerateCollection / Filter nodes survive (this mirrors what the
-  // optimize-join-order rule sees at its position in the pipeline).
-  std::shared_ptr<Query> prepare(std::string const& query) const {
-    auto ctx = std::make_shared<transaction::StandaloneContext>(
-        server.getSystemDatabase(), transaction::OperationOriginTestCase{});
-    auto options =
-        velocypack::Parser::fromJson(R"({"optimizer":{"rules":["-all"]}})");
-    auto q = Query::create(std::move(ctx), QueryString(query), nullptr,
-                           QueryOptions(options->slice()));
-    waitForAsync(q->prepareQuery());
-    return q;
-  }
-
-  // Walks from the singleton towards the root and returns the first
-  // EnumerateCollection node (i.e. the bottom-most enumeration).
-  static ExecutionNode* firstEnumeration(const ExecutionPlan* plan) {
-    for (ExecutionNode* n = plan->root()->getSingleton(); n != nullptr;
-         n = n->getFirstParent()) {
-      if (n->getType() == ExecutionNode::ENUMERATE_COLLECTION) {
-        return n;
-      }
-    }
-    return nullptr;
-  }
-
-  static JoinGraph build(const Query& q) {
-    auto* plan = q.plan();
-    auto* first = firstEnumeration(plan);
-    EXPECT_NE(first, nullptr);
-    ExecutionNode* next = nullptr;
-    return buildJoinGraph(plan, first, next);
-  }
-
-  // Builds one JoinGraph per maximal run of adjacent enumerations, mirroring
-  // the spine walk of the optimizeJoinOrder rule itself.
-  static std::vector<JoinGraph> buildAll(const Query& q) {
-    auto* plan = q.plan();
-    std::vector<JoinGraph> graphs;
-    for (ExecutionNode* n = plan->root()->getSingleton(); n != nullptr;) {
-      if (n->getType() == ExecutionNode::ENUMERATE_COLLECTION) {
-        ExecutionNode* next = nullptr;
-        graphs.emplace_back(buildJoinGraph(plan, n, next));
-        n = next;
-      } else {
-        n = n->getFirstParent();
-      }
-    }
-    return graphs;
-  }
-
-  static JoinGraph::Node const* nodeByName(JoinGraph const& g,
-                                           std::string_view name) {
-    for (auto const& [var, node] : g.nodes) {
-      if (var->name == name) {
-        return &node;
-      }
-    }
-    return nullptr;
+  std::shared_ptr<Query> prepare(std::string const& query) {
+    return prepareJoinPlan(server, query);
   }
 };
 }  // namespace
@@ -125,7 +57,7 @@ TEST_F(JoinGraphTest, linear_three_way_chain) {
   auto q = prepare(
       "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
       "FOR c IN c3 FILTER b.z == c.w RETURN [a, b, c]");
-  auto g = build(*q);
+  auto g = buildGraph(*q);
 
   EXPECT_EQ(g.nodes.size(), 3u);
   EXPECT_EQ(g.edges.size(), 2u);
@@ -136,7 +68,7 @@ TEST_F(JoinGraphTest, linear_three_way_chain) {
 
 TEST_F(JoinGraphTest, equijoin_edge_records_attribute_paths) {
   auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
-  auto g = build(*q);
+  auto g = buildGraph(*q);
 
   ASSERT_EQ(g.edges.size(), 1u);
   auto const& e = g.edges.front();
@@ -156,7 +88,7 @@ TEST_F(JoinGraphTest, constant_restriction_becomes_node_condition) {
   auto q = prepare(
       "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
       "FILTER a.k == 'v' RETURN [a, b]");
-  auto g = build(*q);
+  auto g = buildGraph(*q);
 
   EXPECT_EQ(g.nodes.size(), 2u);
   EXPECT_EQ(g.edges.size(), 1u);
@@ -173,7 +105,7 @@ TEST_F(JoinGraphTest, non_equijoin_predicate_becomes_residual) {
   auto q = prepare(
       "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
       "FILTER a.p < b.q RETURN [a, b]");
-  auto g = build(*q);
+  auto g = buildGraph(*q);
 
   EXPECT_EQ(g.edges.size(), 1u);
   EXPECT_FALSE(g.residuals.empty());
@@ -182,7 +114,7 @@ TEST_F(JoinGraphTest, non_equijoin_predicate_becomes_residual) {
 TEST_F(JoinGraphTest, id_is_remapped_to_key) {
   auto q =
       prepare("FOR a IN c1 FOR b IN c2 FILTER a._id == b._id RETURN [a, b]");
-  auto g = build(*q);
+  auto g = buildGraph(*q);
 
   ASSERT_EQ(g.edges.size(), 1u);
   auto const& e = g.edges.front();
@@ -197,7 +129,7 @@ TEST_F(JoinGraphTest, disconnected_graph_has_two_components) {
   auto q = prepare(
       "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
       "FOR c IN c3 FOR d IN c1 FILTER c.x == d.y RETURN [a, b, c, d]");
-  auto g = build(*q);
+  auto g = buildGraph(*q);
 
   EXPECT_EQ(g.nodes.size(), 4u);
   EXPECT_EQ(g.edges.size(), 2u);
@@ -206,7 +138,7 @@ TEST_F(JoinGraphTest, disconnected_graph_has_two_components) {
 
 TEST_F(JoinGraphTest, single_enumeration_has_no_join) {
   auto q = prepare("FOR a IN c1 FILTER a.x == 1 RETURN a");
-  auto g = build(*q);
+  auto g = buildGraph(*q);
 
   EXPECT_EQ(g.nodes.size(), 1u);
   EXPECT_TRUE(g.edges.empty());
@@ -221,7 +153,7 @@ TEST_F(JoinGraphTest, separate_runs_produce_separate_graphs) {
       "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
       "SORT a.x "
       "FOR c IN c3 FOR d IN c1 FILTER c.x == d.y RETURN [a, b, c, d]");
-  auto graphs = buildAll(*q);
+  auto graphs = buildAllGraphs(*q);
 
   ASSERT_EQ(graphs.size(), 2u);
   for (auto const& g : graphs) {
@@ -230,6 +162,48 @@ TEST_F(JoinGraphTest, separate_runs_produce_separate_graphs) {
     EXPECT_TRUE(g.hasJoin());
     EXPECT_EQ(g.connectedComponents().size(), 1u);
   }
+}
+
+TEST_F(JoinGraphTest, single_variable_residual_attaches_to_node) {
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FILTER a.p < 5 RETURN [a, b]");
+  auto g = buildGraph(*q);
+
+  EXPECT_TRUE(g.residuals.empty()) << "should have been attached to node a";
+  auto* a = nodeByName(g, "a");
+  ASSERT_NE(a, nullptr);
+  EXPECT_EQ(a->residuals.size(), 1u);
+  auto* b = nodeByName(g, "b");
+  ASSERT_NE(b, nullptr);
+  EXPECT_TRUE(b->residuals.empty());
+}
+
+TEST_F(JoinGraphTest, two_variable_residual_stays_graph_level) {
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FILTER a.p < b.q RETURN [a, b]");
+  auto g = buildGraph(*q);
+
+  EXPECT_EQ(g.residuals.size(), 1u);
+  EXPECT_TRUE(nodeByName(g, "a")->residuals.empty());
+  EXPECT_TRUE(nodeByName(g, "b")->residuals.empty());
+}
+
+TEST_F(JoinGraphTest, residual_without_graph_variable_stays_graph_level) {
+  // NOOPT() is load-bearing: Ast::optimizeBinaryOperatorRelational
+  // constant-folds a comparison whose both sides are constant, so a literal `1
+  // < 2` collapses to `true` during AST optimization and never reaches
+  // addResidual at all. NOOPT keeps the left side non-constant so the predicate
+  // survives as a real residual that happens to reference no graph variable. Do
+  // not "simplify" this back to `1 < 2`.
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FILTER NOOPT(1) < 2 RETURN [a, b]");
+  auto g = buildGraph(*q);
+
+  EXPECT_EQ(g.residuals.size(), 1u);
+  EXPECT_TRUE(nodeByName(g, "a")->residuals.empty());
 }
 
 }  // namespace arangodb::tests::aql
