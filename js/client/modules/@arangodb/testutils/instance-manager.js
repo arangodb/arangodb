@@ -76,6 +76,49 @@ const instanceRole = inst.instanceRole;
 
 let instanceCount = 1;
 const seconds = x => x * 1000;
+
+
+function encodeJWTSecret(jwtSecret) {
+    if (jwtSecret.startsWith("-----BEGIN PRIVATE KEY-----")) {
+      return crypto.jwtEncode(jwtSecret,
+                              {'server_id': 'none',
+                               'iss': 'arangodb'}, 'ES256');
+    } else {
+      return crypto.jwtEncode(jwtSecret,
+                              {'server_id': 'none',
+                               'iss': 'arangodb'}, 'HS256');
+    }
+}
+  
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief adds authorization headers
+// //////////////////////////////////////////////////////////////////////////////
+
+function makeAuthorizationHeaders (options, args, jwtSecret=false) {
+  if (jwtSecret) {
+    let jwt = encodeJWTSecret(jwtSecret);
+    if (options.extremeVerbosity) {
+      print(Date() + ' Using jw token:     ' + jwt);
+    }
+    return {
+      'headers': {
+        'Authorization': 'bearer ' + jwt
+      }
+    };
+  } else {
+    return {
+      'headers': {
+        'Authorization': 'Basic ' + base64Encode(options.username + ':' +
+            options.password)
+      }
+    };
+  }
+}
+
+
+
+
 class instanceManager {
   constructor(protocol, options, addArgs, testname, tmpDir) {
     this.instanceCount = instanceCount++;
@@ -113,34 +156,46 @@ class instanceManager {
     } else {
       this.startupMaxCount = options.startupMaxCount;
     }
-    if (addArgs.hasOwnProperty('server.jwt-secret')) {
-      this.JWT = addArgs['server.jwt-secret'];
-    } else if (options.hasOwnProperty('jwtSecret')) {
-      this.JWT = options.jwtSecret;
-      addArgs['server.jwt-secret'] = this.JWT;
-    }
-    if (addArgs.hasOwnProperty('server.jwt-secret-folder')) {
-      let files = fs.list(addArgs['server.jwt-secret-folder']);
-      files = files.sort();
-      this.JWT = fs.read(fs.join(addArgs['server.jwt-secret-folder'], files[0]));
-    }
-    if (this.options.encryptionAtRest) {
-      if (this.options.hasOwnProperty('jwtFiles')) {
-        this.JWT = fs.read(this.options.jwtFiles[0]);
-      } else if (!addArgs.hasOwnProperty('server.jwt-secret')) {
-        this.restKeyFile = fs.join(this.rootDir, 'openSesame.txt');
-        fs.makeDirectoryRecursive(this.rootDir);
-        fs.write(this.restKeyFile, "Open Sesame!Open Sesame!Open Ses");
-        this.JWT = fs.read(this.restKeyFile);
-      }
-    }
-    this.httpAuthOptions = pu.makeAuthorizationHeaders(this.options, addArgs);
-    this.httpJWTAuthOptions = pu.makeAuthorizationHeaders(this.options, addArgs, this.JWT);
+    this.forceJWT = false;
+    this.jwt_secret = "";
+    this.JWT = "";
+    this.handleJWT();
     this.expectAsserts = false;
-    this.forceJWT = addArgs.hasOwnProperty('server.jwt-secret') && addArgs.hasOwnProperty('server.authentication');
     this.hasSetPassvoid = false;
   }
 
+  handleJWT() {
+    this.forceJWT = this.addArgs.hasOwnProperty('server.jwt-secret') && this.addArgs.hasOwnProperty('server.authentication');
+    if (this.addArgs.hasOwnProperty('server.jwt-secret')) {
+      this.jwt_secret = this.addArgs['server.jwt-secret'];
+    } else if (this.options.hasOwnProperty('jwtSecret')) {
+      this.jwt_secret = this.options.jwtSecret;
+      this.addArgs['server.jwt-secret'] = this.jwt_secret;
+    }
+    if (this.addArgs.hasOwnProperty('server.jwt-secret-folder')) {
+      this.options.jwtFiles = fs.list(this.addArgs['server.jwt-secret-folder']);
+      this.options.jwtFiles = this.options.jwtFiles.sort();
+      this.jwt_secret = fs.read(fs.join(this.addArgs['server.jwt-secret-folder'], this.options.jwtFiles[0]));
+    } else if (this.options.cluster && (this.JWT === "")) {
+      this.jwt_secret = "Open Sesame!Open Sesame!Open Ses";
+      this.addArgs['server.jwt-secret'] = this.jwt_secret;
+      //this.addArgs['server.jwt-key'] = encodeJWTSecret(this.jwt_secret);
+    } else if (this.options.encryptionAtRest && !this.addArgs.hasOwnProperty('server.jwt-secret')) {
+      this.restKeyFile = fs.join(this.rootDir, 'openSesame.txt');
+      fs.makeDirectoryRecursive(this.rootDir);
+      fs.write(this.restKeyFile, "Open Sesame!Open Sesame!Open Ses");
+      this.jwt_secret = fs.read(this.restKeyFile);
+      this.addArgs['server.jwt-secret-keyfile'] = this.restKeyFile;
+    }
+    if (this.jwt_secret !== "") {
+      this.JWT = encodeJWTSecret(this.jwt_secret);
+    }
+    this.agencyMgr.JWT = this.JWT;
+    this.agencyMgr.jwt_secret = this.jwt_secret;
+    this.httpAuthOptions = makeAuthorizationHeaders(this.options, this.addArgs);
+    this.httpJWTAuthOptions = makeAuthorizationHeaders(this.options, this.addArgs, this.jwt_secret);
+  }
+  
   destructor(cleanup) {
     arango.disconnectHandle(this.connectionHandle);
     this.arangods.forEach(arangod => {
@@ -512,6 +567,8 @@ class instanceManager {
                                                instanceRole.agent,
                                                this.addArgs,
                                                this.httpAuthOptions,
+                                               this.jwt_secret,
+                                               this.JWT,
                                                this.httpJWTAuthOptions,
                                                this.protocol,
                                                fs.join(this.rootDir, instanceRole.agent + "_" + count),
@@ -531,6 +588,8 @@ class instanceManager {
                                                instanceRole.dbServer,
                                                this.addArgs,
                                                this.httpAuthOptions,
+                                               this.jwt_secret,
+                                               this.JWT,
                                                this.httpJWTAuthOptions,
                                                this.protocol,
                                                fs.join(this.rootDir, instanceRole.dbServer + "_" + count),
@@ -548,6 +607,8 @@ class instanceManager {
                                                instanceRole.coordinator,
                                                this.addArgs,
                                                this.httpAuthOptions,
+                                               this.jwt_secret,
+                                               this.JWT,
                                                this.httpJWTAuthOptions,
                                                this.protocol,
                                                fs.join(this.rootDir, instanceRole.coordinator + "_" + count),
@@ -567,6 +628,8 @@ class instanceManager {
                                                instanceRole.single,
                                                this.addArgs,
                                                this.httpAuthOptions,
+                                               this.jwt_secret,
+                                               this.JWT,
                                                this.httpJWTAuthOptions,
                                                this.protocol,
                                                fs.join(this.rootDir, instanceRole.single + "_" + count),
@@ -590,7 +653,8 @@ class instanceManager {
         this.endpoint = null;
         this.endpointPort = -1;
       };
-      if (this.arangods[0].args.hasOwnProperty('database.password')) {
+      if (this.arangods[0].args.hasOwnProperty('database.password') &&
+          (this.arangods[0].args['database.password'] !== undefined)) {
         this.hasSetPassvoid = true;
         this.options.password = this.arangods[0].args['database.password'];
       }
@@ -689,17 +753,10 @@ class instanceManager {
     }
     try {
       print(Date() + ' waiting ' + waitTime + ' for server GC');
-      const remoteCommand = 'require("internal").wait(' + waitTime + ', true);';
-      const requestOptions = pu.makeAuthorizationHeaders(this.options, this.addArgs);
-      requestOptions.method = 'POST';
-      requestOptions.timeout = waitTime * 10;
-      requestOptions.returnBodyOnError = true;
+      // TODO requestOptions.timeout = waitTime * 10;
 
-      const reply = download(
-        baseUrl + '/_admin/execute?returnAsJSON=true',
-        remoteCommand,
-        requestOptions);
-
+      let reply = arango.POST_RAW('/_admin/execute?returnAsJSON=true',
+                                  'require("internal").wait(' + waitTime + ', true);');
       print(Date() + ' waiting ' + waitTime + ' for server GC - done.');
 
       if (!reply.error && reply.code === 200) {
@@ -873,13 +930,13 @@ class instanceManager {
         arangod.isRole(instanceRole.coordinator) &&
           (arangod.exitStatus !== null));
       if (coords.length > 0) {
-        let requestOptions = pu.makeAuthorizationHeaders(this.options, this.addArgs);
-        requestOptions.method = 'PUT';
         let postBody = onOff ? "on" : "off";
         if (!this.options.noStartStopLogs) {
           print(`${coords[0].url}/_admin/cluster/maintenance => ${postBody}`);
         }
-        download(coords[0].url + "/_admin/cluster/maintenance", JSON.stringify(postBody), requestOptions);
+        coords[0].toThisInstance(() => {
+          arango.PUT("/_admin/cluster/maintenance", JSON.stringify(postBody));
+        });
       }
     } catch (err) {
       print(`${Date()} error while setting cluster maintenance mode:${err}\n${err.stack}`);
@@ -1058,8 +1115,8 @@ class instanceManager {
     }
     const startTime = time();
     this.addArgs = _.defaults(this.addArgs, moreArgs);
-    this.httpAuthOptions = pu.makeAuthorizationHeaders(this.options, this.addArgs);
-    this.httpJWTAuthOptions = pu.makeAuthorizationHeaders(this.options, this.addArgs, this.JWT);
+    this.httpAuthOptions = makeAuthorizationHeaders(this.options, this.addArgs,this.jwt_secret);
+    this.httpJWTAuthOptions = makeAuthorizationHeaders(this.options, this.addArgs, this.jwt_secret);
     if (moreArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = moreArgs['server.jwt-secret'];
       this.arangods.forEach(arangod => {
@@ -1150,17 +1207,15 @@ class instanceManager {
 
   checkUptime () {
     let ret = {};
-    let opts = Object.assign(pu.makeAuthorizationHeaders(this.options, this.addArgs),
-                             { method: 'GET' });
     this.arangods.forEach(arangod => {
-      let reply = download(arangod.url + '/_admin/statistics', '', opts);
-      if (reply.hasOwnProperty('error') || reply.code !== 200) {
+      let reply = arangod.toThisInstance(() => {
+        return arango.GET_RAW('/_admin/statistics');
+      });
+      if (reply.code !== 200 && reply.parsedBody.hasOwnProperty('error')) {
         throw new Error("unable to get statistics reply: " + JSON.stringify(reply));
       }
 
-      let statisticsReply = JSON.parse(reply.body);
-
-      ret [ arangod.name ] = statisticsReply.server.uptime;
+      ret [ arangod.name ] = reply.parsedBody.server.uptime;
     });
     return ret;
   }
@@ -1828,10 +1883,9 @@ class instanceManager {
 
   getMemProfSnapshot(instanceInfo, options, counter) {
     if (this.options.memprof) {
-      let opts = Object.assign(pu.makeAuthorizationHeaders(this.options, this.addArgs),
-                               { method: 'GET' });
-
-      this.arangods.forEach(arangod => arangod.getMemprofSnapshot(opts));
+      this.arangods.forEach(arangod => {
+        arangod.getMemprofSnapshot();
+      });
     }
   }
 

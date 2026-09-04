@@ -56,8 +56,11 @@ function shellReplication (options) {
     'jwtSecret': 'helloreplication'
   };
   _.defaults(opts, options);
+  let moreOptions = {
+    "server.authentication": false
+  };
 
-  return new trs.runLocalInArangoshRunner(opts, 'shell_replication').run(testCases);
+  return new trs.runLocalInArangoshRunner(opts, 'shell_replication', moreOptions).run(testCases);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -74,8 +77,11 @@ function shellClientReplicationApi (options) {
   arango.forceJson(true);
   _.defaults(opts, options);
   opts.forceJson = true;
+  let moreOptions = {
+    "server.authentication": false
+  };
 
-  let ret = new trs.runLocalInArangoshRunner(opts, 'shell_replication_api').run(testCases);
+  let ret = new trs.runLocalInArangoshRunner(opts, 'shell_replication_api', moreOptions).run(testCases);
   if (!options.forceJson) {
     arango.forceJson(false);
   }
