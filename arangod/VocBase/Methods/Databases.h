@@ -42,11 +42,10 @@ namespace methods {
 
 struct Databases {
   static std::vector<std::string> list(
-      application_features::ApplicationServer& server,
-      std::string const& user = "");
+      application_features::ApplicationServer& server, bool onlyCurrentUser);
   static std::vector<std::string> list(DatabaseFeature& databaseFeature,
                                        ClusterFeature* clusterFeature,
-                                       std::string const& user = "");
+                                       bool onlyCurrentUser);
   static Result create(application_features::ApplicationServer& server,
                        StorageEngine& engine, ExecContext const& context,
                        std::string const& dbName, velocypack::Slice users,
@@ -55,9 +54,6 @@ struct Databases {
                      std::string const& dbName);
 
  private:
-  /// @brief will retry for at most <timeout> seconds
-  static Result grantCurrentUser(CreateDatabaseInfo const& info);
-
   static Result createCoordinator(CreateDatabaseInfo const& info);
   static Result createOther(CreateDatabaseInfo const& info);
 };

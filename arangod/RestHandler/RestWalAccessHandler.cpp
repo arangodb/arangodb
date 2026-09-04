@@ -36,7 +36,6 @@
 #include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication/Syncer.h"
-#include "Replication/common-defines.h"
 #include "Replication/utilities.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/Version.h"
@@ -148,6 +147,15 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
 
   filter.includeSystem =
       _request->parsedValue("includeSystem", filter.includeSystem);
+  {
+    bool found = false;
+    std::ignore = _request->value("includeFoxxQueues", found);
+    if (found) {
+      LOG_TOPIC("f1c3e", WARN, Logger::REQUESTS)
+          << "ignoring 'includeFoxxQueues' query parameter: it no longer "
+             "exists in API version 1 and above";
+    }
+  }
 
   // grab list of transactions from the body value
   if (_request->requestType() == arangodb::rest::RequestType::PUT) {
@@ -181,6 +189,7 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
   return true;
 }
 
+// Mounted at /_api/wal (prefix)
 RestStatus RestWalAccessHandler::execute() {
   if (ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,
@@ -189,15 +198,18 @@ RestStatus RestWalAccessHandler::execute() {
     return RestStatus::DONE;
   }
 
-  if (!_context.isAdminUser()) {
-    generateError(ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseAdminAction(
+          auth::perms::AdminWalAccess{});
+      r.fail()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  r.errorMessage());
     return RestStatus::DONE;
   }
 
   std::vector<std::string> suffixes = _request->decodedSuffixes();
   if (suffixes.empty()) {
     generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expected GET /_api/wal/[tail|range|lastTick]>");
+                  "expected GET /_api/wal/[tail|range|lastTick]");
     return RestStatus::DONE;
   }
 
@@ -217,7 +229,7 @@ RestStatus RestWalAccessHandler::execute() {
     handleCommandTail(wal);
   } else {
     generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expected GET /_api/wal/[tail|range|lastTick]>");
+                  "expected GET /_api/wal/[tail|range|lastTick]");
   }
 
   return RestStatus::DONE;
@@ -303,7 +315,14 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     return;
   }
 
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
+  // If we got here, we are either on a DBServer (and thus anyway
+  // superuser), or we are on a single server and have passed the
+  // authorization. This means we are Admin in Classic or have
+  // AdminWalAccess in RBAC. But deep inside the WAL-tailing code, we
+  // sometimes do `loadCollection` and thus `useCollection` and then
+  // another check happens if we can read the collection. Therefore, we
+  // must escalate to superuser here:
+  ExecContextSuperuserScope escope;
 
   bool found = false;
   size_t chunkSize = 1024 * 1024;

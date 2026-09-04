@@ -24,6 +24,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Async/async.h"
+#include "Auth/Common.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
@@ -36,7 +37,6 @@
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
-#include "RestServer/VocbaseContext.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -46,7 +46,7 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/Events.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "VectorIndex/VectorIndexFeature.h"
+#include "VectorIndex/Feature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Indexes.h"
 
@@ -191,6 +191,7 @@ RestIndexHandler::RestIndexHandler(
     : RestVocbaseBaseHandler(server, request, response),
       _clusterFeature(server.getFeature<ClusterFeature>()) {}
 
+// Mounted at /_api/index (prefix)
 futures::Future<futures::Unit> RestIndexHandler::executeAsync() {
   // extract the request type
   rest::RequestType const type = _request->requestType();
@@ -227,6 +228,17 @@ std::shared_ptr<LogicalCollection> RestIndexHandler::collection(
     std::string const& cName) {
   if (!cName.empty()) {
     if (ServerState::instance()->isCoordinator()) {
+      // Restrict access properly from API version 1 on:
+      if (_request->requestedApiVersion() > 0) {
+        if (auth::isNameAndNoId(cName).fail()) {
+          return nullptr;
+        }
+        if (auto r = ExecContext::current().canUseCollection(
+                _vocbase.name(), cName, AccessLevel::Read);
+            r.fail()) {
+          return nullptr;
+        }
+      }
       return _clusterFeature.clusterInfo().getCollectionNT(_vocbase.name(),
                                                            cName);
     }
@@ -308,8 +320,7 @@ async<void> RestIndexHandler::getIndexes() {
               std::unordered_map<std::string, VectorIndexShardState> states;
               auto idx = coll->lookupIndex(
                   IndexId{basics::StringUtils::uint64(bareId)});
-              if (idx != nullptr &&
-                  idx->type() == Index::TRI_IDX_TYPE_VECTOR_INDEX) {
+              if (idx != nullptr && idx->type() == IndexType::Vector) {
                 // During ingestion the real index is swapped for a
                 // RocksDBBuilderIndex; unwrap to reach vector-specific state.
                 Index const* raw = idx.get();
@@ -733,7 +744,7 @@ futures::Future<ResultT<std::string>> RestIndexHandler::waitForVectorIndexReady(
     // state directly.
     auto idx = coll->lookupIndex(indexId);
     if (idx != nullptr) {
-      TRI_ASSERT(idx->type() == Index::TRI_IDX_TYPE_VECTOR_INDEX);
+      TRI_ASSERT(idx->type() == IndexType::Vector);
       auto* vecIdx = static_cast<RocksDBVectorIndex*>(idx.get());
       if (vecIdx->trainingState() == VectorIndexTrainingState::kUnusable) {
         auto msg = vecIdx->trainingError();
@@ -894,6 +905,29 @@ async<void> RestIndexHandler::createIndex() {
     body = copy.slice();
   }
 
+  auto type = body.get(StaticStrings::IndexType);
+  if (!type.isString()) {
+    events::CreateIndexEnd(_vocbase.name(), cName, body,
+                           TRI_ERROR_BAD_PARAMETER);
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "expecting attribute 'type' in request body");
+    co_return;
+  }
+
+  if (_request->requestedApiVersion() > 0) {
+    if (auto const typeStr = type.stringView();
+        typeStr == "geo1" || typeStr == "geo2" || typeStr == "hash" ||
+        typeStr == "skiplist" || typeStr == "fulltext") {
+      events::CreateIndexEnd(_vocbase.name(), cName, body,
+                             TRI_ERROR_BAD_PARAMETER);
+      generateError(
+          rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+          absl::StrCat("index type '", typeStr,
+                       "' is not supported in API version 1 or higher"));
+      co_return;
+    }
+  }
+
   VPackBuilder indexInfo;
   indexInfo.add(body);
 
@@ -1000,6 +1034,13 @@ async<void> RestIndexHandler::dropIndex() {
 }
 
 void RestIndexHandler::syncCaches() {
+  if (_request->requestedApiVersion() > 0 &&
+      ServerState::instance()->isCoordinator()) {
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                  TRI_ERROR_NOT_IMPLEMENTED,
+                  "Not implemented on coordinators!");
+    return;
+  }
   StorageEngine& engine = _vocbase.engine();
   engine.syncIndexCaches();
 

@@ -9,7 +9,13 @@ target_link_libraries(arango_sharding
   PUBLIC
     arango_basic_utils velocypack
     arango::validation rocksdb_interface immer arango_actor
-    arango_iresearch arango_v8)
+    arango_iresearch)
+
+if(USE_ENTERPRISE)
+  target_link_libraries(arango_sharding
+    PUBLIC
+      arango_enterprise_sharding)
+endif()
 
 target_include_directories(arango_sharding PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"

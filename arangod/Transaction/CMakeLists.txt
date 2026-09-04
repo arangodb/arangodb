@@ -20,9 +20,16 @@ add_library(arango_transaction STATIC
 
 target_link_libraries(arango_transaction
   PUBLIC
+    arango_auth
     arango_basic_utils velocypack
     arango::validation rocksdb_interface immer arango_actor
-    arango_iresearch arango_v8)
+    arango_iresearch)
+
+if(USE_ENTERPRISE)
+  target_link_libraries(arango_transaction
+    PUBLIC
+      arango_enterprise_audit)
+endif()
 
 target_include_directories(arango_transaction PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"

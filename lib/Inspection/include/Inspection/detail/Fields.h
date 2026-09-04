@@ -22,12 +22,14 @@
 
 #pragma once
 
+#include <functional>
 #include <string_view>
 #include <type_traits>
 #include <utility>
 #include <variant>
 
 #include "Inspection/Status.h"
+#include "Inspection/Types.h"
 
 namespace arangodb::inspection::detail {
 
@@ -49,6 +51,45 @@ struct FallbackFactoryField;
 
 template<class Inspector, class InnerField, class Invariant>
 struct InvariantField;
+
+/// Determines for which inspection direction a field condition is evaluated.
+/// In the direction it does not apply to, the field is always processed.
+enum class ConditionScope { Always, Loading, Saving };
+
+template<class Inspector, class InnerField, class Predicate,
+         ConditionScope Scope>
+struct ConditionalField;
+
+template<class T>
+struct IsConditionalField : std::false_type {};
+template<class Inspector, class T, class P, ConditionScope S>
+struct IsConditionalField<ConditionalField<Inspector, T, P, S>>
+    : std::true_type {};
+
+/// Evaluates `predicate` if `Scope` applies to the direction `Inspector` runs
+/// in; otherwise the field takes part as usual.
+template<class Inspector, ConditionScope Scope, class Predicate>
+FieldCondition evaluateScopedCondition(Predicate const& predicate) {
+  constexpr bool applies =
+      Scope == ConditionScope::Always ||
+      (Inspector::isLoading ? Scope == ConditionScope::Loading
+                            : Scope == ConditionScope::Saving);
+  if constexpr (applies) {
+    return std::invoke(predicate);
+  } else {
+    return FieldCondition::Process;
+  }
+}
+
+/// True if `Field` or any of the fields it wraps carries a condition.
+template<class Field, class = void>
+struct ContainsCondition : std::false_type {};
+
+template<class Field>
+struct ContainsCondition<Field, std::void_t<decltype(Field::inner)>>
+    : std::disjunction<
+          IsConditionalField<Field>,
+          ContainsCondition<std::remove_cvref_t<decltype(Field::inner)>>> {};
 
 template<class Inspector, class Field>
 struct InvariantMixin {
@@ -86,6 +127,46 @@ struct TransformMixin {
   [[nodiscard]] auto transformWith(T transformer) && {
     return TransformField<Inspector, Field, T>(
         std::move(static_cast<Field&>(*this)), std::move(transformer));
+  }
+};
+
+/// Attaches a condition to a field. A field carries at most one condition, so
+/// `ConditionalField` deliberately does not inherit this mixin - chaining two
+/// conditions is a compile error instead of one of them being dropped.
+template<class Inspector, class Field>
+struct ConditionMixin {
+  /// Evaluates `predicate` both when loading and when saving.
+  template<class Predicate>
+  [[nodiscard]] auto when(Predicate predicate) && {
+    return makeConditional<ConditionScope::Always>(std::move(predicate));
+  }
+
+  /// Evaluates `predicate` when loading; the field is always saved.
+  template<class Predicate>
+  [[nodiscard]] auto whenLoading(Predicate predicate) && {
+    return makeConditional<ConditionScope::Loading>(std::move(predicate));
+  }
+
+  /// Evaluates `predicate` when saving; the field is always loaded.
+  template<class Predicate>
+  [[nodiscard]] auto whenSaving(Predicate predicate) && {
+    return makeConditional<ConditionScope::Saving>(std::move(predicate));
+  }
+
+ private:
+  template<ConditionScope Scope, class Predicate>
+  auto makeConditional(Predicate&& predicate) {
+    static_assert(
+        std::is_invocable_r_v<FieldCondition, Predicate> &&
+            std::is_same_v<std::invoke_result_t<Predicate>, FieldCondition>,
+        "Field conditions must be invocable without arguments and return "
+        "inspection::FieldCondition");
+    static_assert(!ContainsCondition<Field>::value,
+                  "A field must not carry more than one condition");
+
+    return ConditionalField<Inspector, Field, Predicate, Scope>(
+        std::move(static_cast<Field&>(*this)),
+        std::forward<Predicate>(predicate));
   }
 };
 
@@ -139,7 +220,8 @@ using WithTransform =
 template<class Inspector, typename DerivedField>
 struct BasicField : InvariantMixin<Inspector, DerivedField>,
                     FallbackMixin<Inspector, DerivedField>,
-                    TransformMixin<Inspector, DerivedField> {
+                    TransformMixin<Inspector, DerivedField>,
+                    ConditionMixin<Inspector, DerivedField> {
   explicit BasicField(std::string_view name) : name(name) {}
   std::string_view name;
 };
@@ -164,7 +246,9 @@ struct FallbackField
       WithInvariant<Inspector,
                     FallbackField<Inspector, InnerField, FallbackValue>>,
       WithTransform<Inspector,
-                    FallbackField<Inspector, InnerField, FallbackValue>> {
+                    FallbackField<Inspector, InnerField, FallbackValue>>,
+      ConditionMixin<Inspector,
+                     FallbackField<Inspector, InnerField, FallbackValue>> {
   FallbackField(InnerField inner, FallbackValue&& val)
       : Inspector::template FallbackContainer<FallbackValue>(std::move(val)),
         inner(std::move(inner)) {}
@@ -178,7 +262,9 @@ struct FallbackFactoryField
       WithInvariant<Inspector, FallbackFactoryField<Inspector, InnerField,
                                                     FallbackFactory>>,
       WithTransform<Inspector, FallbackFactoryField<Inspector, InnerField,
-                                                    FallbackFactory>> {
+                                                    FallbackFactory>>,
+      ConditionMixin<Inspector, FallbackFactoryField<Inspector, InnerField,
+                                                     FallbackFactory>> {
   FallbackFactoryField(InnerField inner, FallbackFactory&& fn)
       : Inspector::template FallbackFactoryContainer<FallbackFactory>(
             std::move(fn)),
@@ -192,7 +278,9 @@ struct InvariantField
     : Inspector::template InvariantContainer<Invariant>,
       WithFallback<Inspector, InvariantField<Inspector, InnerField, Invariant>>,
       WithTransform<Inspector,
-                    InvariantField<Inspector, InnerField, Invariant>> {
+                    InvariantField<Inspector, InnerField, Invariant>>,
+      ConditionMixin<Inspector,
+                     InvariantField<Inspector, InnerField, Invariant>> {
   InvariantField(InnerField inner, Invariant&& invariant)
       : Inspector::template InvariantContainer<Invariant>(std::move(invariant)),
         inner(std::move(inner)) {}
@@ -205,12 +293,31 @@ struct TransformField
     : WithInvariant<Inspector,
                     TransformField<Inspector, InnerField, Transformer>>,
       WithFallback<Inspector,
-                   TransformField<Inspector, InnerField, Transformer>> {
+                   TransformField<Inspector, InnerField, Transformer>>,
+      ConditionMixin<Inspector,
+                     TransformField<Inspector, InnerField, Transformer>> {
   TransformField(InnerField inner, Transformer&& transformer)
       : inner(std::move(inner)), transformer(std::move(transformer)) {}
   using value_type = typename InnerField::value_type;
   InnerField inner;
   Transformer transformer;
+};
+
+template<class Inspector, class InnerField, class Predicate,
+         ConditionScope Scope>
+struct ConditionalField
+    : WithInvariant<Inspector,
+                    ConditionalField<Inspector, InnerField, Predicate, Scope>>,
+      WithFallback<Inspector,
+                   ConditionalField<Inspector, InnerField, Predicate, Scope>>,
+      WithTransform<Inspector,
+                    ConditionalField<Inspector, InnerField, Predicate, Scope>> {
+  ConditionalField(InnerField inner, Predicate&& predicate)
+      : inner(std::move(inner)), predicate(std::move(predicate)) {}
+  using value_type = typename InnerField::value_type;
+  static constexpr ConditionScope scope = Scope;
+  InnerField inner;
+  Predicate predicate;
 };
 
 template<class T>
@@ -237,58 +344,66 @@ static constexpr const char FieldInvariantFailedError[] =
 static constexpr const char ObjectInvariantFailedError[] =
     "Object invariant failed";
 
-template<class Inspector>
-struct EmbeddedFields {
-  virtual ~EmbeddedFields() = default;
-  virtual Status apply(Inspector&, typename Inspector::EmbeddedParam&) = 0;
-  virtual Status checkInvariant() { return {}; };
-};
+/// Absence of a condition on an embedded group.
+struct NoCondition {};
 
-template<class Inspector, class... Ts>
-struct EmbeddedFieldsImpl : EmbeddedFields<Inspector> {
-  template<class... Args>
-  explicit EmbeddedFieldsImpl(Args&&... args)
-      : fields(std::forward<Args>(args)...) {}
+/// `embedFields` returns simply a reference to the object whose fields are to
+/// be spliced into the enclosing one. The nested `inspect` runs later, when the
+/// enclosing inspector actually processes this entry.
+/// A condition may be attached, which then governs the group as a whole.
+template<class T, class Predicate = NoCondition,
+         ConditionScope Scope = ConditionScope::Always>
+struct EmbeddedFieldsRef {
+  static constexpr bool hasCondition = !std::is_same_v<Predicate, NoCondition>;
+  static constexpr ConditionScope scope = Scope;
 
-  Status apply(Inspector& inspector,
-               typename Inspector::EmbeddedParam& param) override {
-    return std::invoke(
-        [&]<std::size_t... I>(std::index_sequence<I...>) {
-          return inspector.processEmbeddedFields(
-              param, std::get<I>(std::move(fields))...);
-        },
-        std::make_index_sequence<sizeof...(Ts)>{});
+  T& value;
+  [[no_unique_address]] Predicate predicate{};
+
+  template<class P>
+      [[nodiscard]] auto when(P predicate) && requires(!hasCondition) {
+    return makeConditional<ConditionScope::Always>(std::move(predicate));
   }
 
- private:
-  std::tuple<Ts...> fields;
-};
-
-template<class Inspector, class Object, class Invariant>
-struct EmbeddedFieldsWithObjectInvariant : EmbeddedFields<Inspector> {
-  template<class Fn>
-  explicit EmbeddedFieldsWithObjectInvariant(
-      Object& object, Fn&& invariant,
-      std::unique_ptr<EmbeddedFields<Inspector>> fields)
-      : fields(std::move(fields)),
-        invariant(std::forward<Fn>(invariant)),
-        object(object) {}
-
-  Status apply(Inspector& inspector,
-               typename Inspector::EmbeddedParam& param) override {
-    return fields->apply(inspector, param);
+  template<class P>
+      [[nodiscard]] auto whenLoading(P predicate) && requires(!hasCondition) {
+    return makeConditional<ConditionScope::Loading>(std::move(predicate));
   }
 
-  Status checkInvariant() override {
-    return Inspector::Base::template doCheckInvariant<
-        detail::ObjectInvariantFailedError>(std::forward<Invariant>(invariant),
-                                            object);
+  template<class P>
+      [[nodiscard]] auto whenSaving(P predicate) && requires(!hasCondition) {
+    return makeConditional<ConditionScope::Saving>(std::move(predicate));
   }
 
- private:
-  std::unique_ptr<EmbeddedFields<Inspector>> fields;
-  Invariant invariant;
-  Object& object;
+ private :
+     // need a comment here to work around stupid clang-format behavior
+     template<ConditionScope S, class P>
+     auto
+     makeConditional(P&& predicate) {
+    static_assert(
+        std::is_invocable_r_v<FieldCondition, P> &&
+            std::is_same_v<std::invoke_result_t<P>, FieldCondition>,
+        "Field conditions must be invocable without arguments and return "
+        "inspection::FieldCondition");
+
+    return EmbeddedFieldsRef<T, P, S>{value, std::forward<P>(predicate)};
+  }
 };
+
+template<class T>
+struct IsEmbeddedFieldsRef : std::false_type {};
+template<class T, class P, ConditionScope S>
+struct IsEmbeddedFieldsRef<EmbeddedFieldsRef<T, P, S>> : std::true_type {};
+
+/// The group takes part unless a condition applying to this direction says
+/// otherwise.
+template<class Inspector, class T, class P, ConditionScope S>
+FieldCondition embeddedFieldsCondition(EmbeddedFieldsRef<T, P, S> const& ref) {
+  if constexpr (std::is_same_v<P, NoCondition>) {
+    return FieldCondition::Process;
+  } else {
+    return evaluateScopedCondition<Inspector, S>(ref.predicate);
+  }
+}
 
 }  // namespace arangodb::inspection::detail

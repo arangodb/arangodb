@@ -23,43 +23,45 @@
 #include "RestHandler.h"
 
 #include "Activities/GenericActivity.h"
+#include "Activities/RegistryGlobalVariable.h"
+#include "Agency/RestAgencyHandler.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Assertions/ProdAssert.h"
 #include "Auth/TokenCache.h"
-#include "Basics/DownCast.h"
 #include "Basics/dtrace-wrapper.h"
 #include "Basics/error.h"
+#include "Basics/voc-errors.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Futures/coro-helper.h"
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/CommTask.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandlerActivity.h"
 #include "Logger/LogMacros.h"
-#include "Logger/LogStructuredParamsAllowList.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Rest/GeneralRequest.h"
 #include "Rest/HttpResponse.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/ticks.h"
-#include "Activities/RegistryGlobalVariable.h"
 
-#include <Agency/RestAgencyHandler.h>
 #include <Async/async.h>
+#include <Ssl/jwt.h>
 #include <absl/strings/str_cat.h>
-#include "Ssl/jwt.h"
 #include <velocypack/Exception.h>
-#include <cstdint>
-#include <unordered_map>
 
-using namespace arangodb;
+#include <algorithm>
+#include <initializer_list>
+
+namespace arangodb::rest {
 using namespace arangodb::basics;
-using namespace arangodb::rest;
 
 RestHandler::RestHandler(application_features::ApplicationServer& server,
                          GeneralRequest* request, GeneralResponse* response)
@@ -244,8 +246,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   // we must use the request's permissions here and set them in the
   // thread-local variable when calling forwardingTarget().
   // this is because forwardingTarget() may run permission checks.
-  ExecContextScope scope(
-      basics::downCast<ExecContext>(_request->requestContext()));
+  ExecContextScope scope(_request->requestContext());
 
   ResultT forwardResult = forwardingTarget();
   if (forwardResult.fail()) {
@@ -270,9 +271,8 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   network::ConnectionPool* pool = nf.pool();
   if (pool == nullptr) {
     // nullptr happens only during controlled shutdown
-    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
-                  TRI_ERROR_SHUTTING_DOWN, "shutting down server");
-    return futures::makeFuture(Result(TRI_ERROR_SHUTTING_DOWN));
+    return futures::makeFuture(
+        Result(TRI_ERROR_SHUTTING_DOWN, "shutting down server"));
   }
   LOG_TOPIC("38d99", DEBUG, Logger::REQUESTS)
       << "forwarding request " << _request->messageId() << " to " << serverId;
@@ -299,8 +299,8 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
       if (!username.empty()) {
         headers.emplace(
             StaticStrings::Authorization,
-            "bearer " + arangodb::rest::SslInterface::jwt::generateUserToken(
-                            auth->tokenCache().jwtSecret(), username));
+            "bearer " + auth::generateUserToken(auth->tokenCache().jwtSecret(),
+                                                username));
       }
     }
   }
@@ -440,6 +440,49 @@ auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
     shutdownExecute(false);
   };
 
+  try {
+    co_await handleAuthorizationChecks();
+  } catch (std::exception const& exc) {
+    generateError(
+        ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+        absl::StrCat("Caught exception in `handleAuthorizationChecks`: ",
+                     exc.what()));
+    _sendResponseCallback(this);
+    co_return;
+  }
+
+  if (_state == HandlerState::FAILED) {
+    co_return fail();
+  }
+
+  // forward to correct server if necessary
+  bool forwarded;
+  try {
+    auto res = forwardRequest(forwarded);
+    if (forwarded) {
+      _timingData.superuser = true;
+      std::ignore = co_await std::move(res);
+      // Request response already set by the forwarding logic!
+      _sendResponseCallback(this);
+      co_return;
+    }
+
+    if (res.hasValue()) {
+      Result r = co_await std::move(res);
+      if (r.fail()) {
+        generateError(r);
+        _sendResponseCallback(this);
+        co_return;
+      }
+    }
+
+  } catch (std::exception const& exc) {
+    generateError(
+        ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+        absl::StrCat("Caught exception in `forwardRequest`: ", exc.what()));
+    _sendResponseCallback(this);
+    co_return;
+  }
   auto const logScopeGuard =
       LogContext::Accessor::ScopedValue(makeSharedLogContextValue());
 
@@ -502,8 +545,7 @@ bool RestHandler::wakeupHandler() { return !_suspensionCounter.notify(); }
 
 auto RestHandler::executeEngine() -> async<void> {
   DTRACE_PROBE1(arangod, RestHandlerExecuteEngine, this);
-  ExecContextScope scope(
-      basics::downCast<ExecContext>(_request->requestContext()));
+  TRI_ASSERT(ExecContext::currentAsShared() == _request->requestContext());
 
   try {
     co_await executeAsync();
@@ -674,6 +716,129 @@ void RestHandler::compressResponse() {
   }
 }
 
+async<RestHandler::AuthenticationGrant> RestHandler::checkUserAuthentication()
+    const {
+  auto const* const auth = AuthenticationFeature::instance();
+  ADB_PROD_ASSERT(auth != nullptr);
+  if (!auth->isActive()) {
+    co_return AuthenticationGrant::GRANTED_EARLY;
+  }
+
+#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
+  auto const& ci = request()->connectionInfo();
+  if (ci.endpointType == Endpoint::DomainType::UNIX &&
+      !auth->authenticationUnixSockets()) {
+    // no authentication required for unix domain socket connections
+    co_return AuthenticationGrant::GRANTED_EARLY;
+  }
+#endif
+
+  if (request()->authenticated()) {
+    if (auth->rbacEnabled() && request()->authenticationMethod() ==
+                                   rest::AuthenticationMethod::BASIC) {
+      // When RBAC is enabled, HTTP basic authentication is no longer
+      // accepted for regular endpoints, because the external RBAC service
+      // can only authorize requests that carry a JWT. Handlers that must
+      // remain reachable via basic auth regardless (e.g. RestAuthHandler,
+      // mounted at /_open/auth, which issues the JWT in the first place)
+      // override checkUserAuthentication() and never reach this check.
+      co_return AuthenticationGrant::DENIED;
+    }
+    co_return AuthenticationGrant::GRANTED;
+  }
+
+  co_return AuthenticationGrant::DENIED;
+}
+
+async<Result> RestHandler::checkApiVersionAccess() const {
+  auto ec = request()->requestContext();
+  TRI_ASSERT(ec != nullptr) << "no exec context in request: " << this->name();
+  auto res = ec->canUseApiVersion(request()->requestedApiVersion());
+  if (res.fail()) {
+    LOG_TOPIC("3b1a7", TRACE, Logger::AUTHORIZATION)
+        << "API version forbidden for " << request()->requestPath();
+  }
+  co_return res;
+}
+
+async<Result> RestHandler::checkDatabaseAccess() const {
+  auto ec = request()->requestContext();
+  TRI_ASSERT(ec != nullptr) << "no exec context in request: " << this->name();
+  auto canUseDB =
+      ec->canUseDatabase(request()->databaseName(), DatabaseAccessLevel::Read);
+  if (canUseDB.ok()) {
+    co_return Result{};
+  }
+
+  LOG_TOPIC("0898a", TRACE, Logger::AUTHORIZATION)
+      << "Access forbidden to " << request()->requestPath();
+  if (_request->requestedApiVersion() == 0 && ec->isClassic()) {
+    co_return Result(TRI_ERROR_HTTP_UNAUTHORIZED,
+                     "No read access to database.");
+  } else {
+    co_return canUseDB;
+  }
+}
+
+async<void> RestHandler::handleAuthorizationChecks() {
+  auto auth = co_await checkUserAuthentication();
+  if (auth == AuthenticationGrant::GRANTED_EARLY) {
+    co_return;
+  }
+
+  if (auth == AuthenticationGrant::DENIED) {
+    _state = HandlerState::FAILED;
+    events::NotAuthorized(*_request);
+    generateError(rest::ResponseCode::UNAUTHORIZED, TRI_ERROR_FORBIDDEN,
+                  "User not authenticated");
+    co_return;
+  }
+
+  // Authentication succeeded (AuthenticationGrant::GRANTED), so the request
+  // must carry an ExecContext for the authorization checks below. Any route
+  // that continues execution should have resolved a request context by now
+  // (see CommTask::prepareExecution). The allow-listed early paths served
+  // during STARTUP/MAINTENANCE do not, but their handlers return GRANTED_EARLY
+  // above and never reach this point.
+  //
+  // However, there's a race:
+  // When the CommTask checks the mode during request processing while it's
+  // STARTUP or MAINTENANCE, there's no vocbase nor ExecContext.
+  // If the mode changes to DEFAULT before checkUserAuthentication() is called
+  // (take, for example, `RestStatusHandler::checkUserAuthentication()`),
+  // it can return GRANTED rather than GRANTED_EARLY.
+  // But the following calls to `checkApiVersionAccess()` and
+  // `checkDatabaseAccess()` require an ExecContext.
+  //
+  // This is a temporary band-aid so we answer with a 500 rather than crashing
+  // in that situation. A proper fix will be implemented soon.
+  if (request()->requestContext() == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Missing ExecContext");
+  }
+
+  if (auto res = co_await checkApiVersionAccess(); res.fail()) {
+    _state = HandlerState::FAILED;
+    events::NotAuthorized(*_request);
+    generateError(res);
+    co_return;
+  }
+
+  if (auto res = co_await checkDatabaseAccess(); res.fail()) {
+    _state = HandlerState::FAILED;
+    events::NotAuthorized(*_request);
+    if (_request->requestedApiVersion() == 0) {
+      // This one here is very special. Due to backwards compatibility
+      // requirements, we have to produce exactly the following combination
+      // here, which cannot be achieved with the `generateError` method
+      // which takes only a `Result`. Funny.
+      generateError(rest::ResponseCode::UNAUTHORIZED, TRI_ERROR_FORBIDDEN,
+                    res.errorMessage());
+      co_return;
+    }
+    generateError(res);
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates an error
 ////////////////////////////////////////////////////////////////////////////////
@@ -695,7 +860,6 @@ void RestHandler::generateError(arangodb::Result const& r) {
   generateError(code, r.errorNumber(), r.errorMessage());
 }
 
-// checks if the HTTP method is allowed and generates an error if not
 bool RestHandler::isAllowedHttpMethod(
     std::initializer_list<rest::RequestType> allowed) {
   auto method = _request->requestType();
@@ -707,12 +871,8 @@ bool RestHandler::isAllowedHttpMethod(
   return false;
 }
 
-// checks if collection name is a numeric collection id (= all chars are digits)
-// and generates an error if so
 bool RestHandler::rejectNumericCollectionId(std::string_view cname) {
-  if (cname.empty() || cname.front() < '0' || cname.front() > '9') {
-    return false;  // early exit
-  }
+  TRI_ASSERT(!cname.empty());
   if (std::all_of(cname.begin(), cname.end(),
                   [](unsigned char c) { return c >= '0' && c <= '9'; })) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -724,7 +884,8 @@ bool RestHandler::rejectNumericCollectionId(std::string_view cname) {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
+// --SECTION--                                                 protected
+// methods
 // -----------------------------------------------------------------------------
 
 void RestHandler::resetResponse(rest::ResponseCode code) {
@@ -732,8 +893,8 @@ void RestHandler::resetResponse(rest::ResponseCode code) {
   _response->reset(code);
 }
 
-// Fallback implementation for old RestHandlers that implement execute() instead
-// of executeAsync().
+// Fallback implementation for old RestHandlers that implement execute()
+// instead of executeAsync().
 futures::Future<futures::Unit> RestHandler::executeAsync() {
   auto state = execute();
   TRI_ASSERT(state != RestStatus::WAITING);
@@ -746,8 +907,13 @@ RestStatus RestHandler::execute() {
 }
 
 void RestHandler::runHandler(
-    std::function<void(rest::RestHandler*)> responseCallback) {
+    std::function<void(RestHandler*)> responseCallback) {
   _sendResponseCallback = std::move(responseCallback);
+
+  // set the scope for the state machine. note that the following
+  // .thenFinal does not automatically inherit the scope; but it does
+  // not need it, either.
+  auto scope = ExecContextScope(_request->requestContext());
 
   runHandlerStateMachine().
       // Swallow all exceptions. It would be desirable to guarantee no
@@ -756,7 +922,7 @@ void RestHandler::runHandler(
       thenFinal([self = shared_from_this()](auto&& tryResult) noexcept {
         try {
           std::move(tryResult).throwIfFailed();
-        } catch (basics::Exception const& exception) {
+        } catch (Exception const& exception) {
           LOG_TOPIC("e0b25", ERR, Logger::FIXME)
               << "Uncaught exception in RestHandler " << self->name() << ": "
               << "[" << exception.code() << "] " << exception.message()
@@ -779,3 +945,5 @@ void RestHandler::runHandler(
         }
       });
 }
+
+}  // namespace arangodb::rest

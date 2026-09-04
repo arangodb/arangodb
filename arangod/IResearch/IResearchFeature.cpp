@@ -322,7 +322,7 @@ Result upgradeArangoSearchLinkCollectionName(
 #endif
       for (auto& index : indexes) {
         TRI_ASSERT(index != nullptr);
-        if (index->type() == Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
+        if (index->type() == IndexType::IResearchLink) {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
           auto* indexPtr = dynamic_cast<IResearchLink*>(index.get());
           TRI_ASSERT(indexPtr != nullptr);

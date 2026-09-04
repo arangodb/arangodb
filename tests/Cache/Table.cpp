@@ -25,7 +25,7 @@
 #include <cstdint>
 #include <memory>
 
-#include "Cache/CacheOptionsProvider.h"
+#include "Cache/CacheOptions.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/PlainBucket.h"
@@ -50,8 +50,7 @@ TEST(CacheTableTest, test_basic_constructor_behavior) {
     return true;
   };
   basics::SharedPRNG prng;
-  CacheOptions co;
-  co.cacheSize = 16ULL * 1024ULL * 1024ULL;
+  CacheOptions co(16ULL * 1024ULL * 1024ULL);
   Manager manager(prng, postFn, co);
 
   for (std::uint32_t i = Table::kMinLogSize; i <= 20; i++) {
@@ -71,8 +70,7 @@ TEST(CacheTableTest, test_basic_bucket_fetching_behavior) {
     return true;
   };
   basics::SharedPRNG prng;
-  CacheOptions co;
-  co.cacheSize = 16ULL * 1024ULL * 1024ULL;
+  CacheOptions co(16ULL * 1024ULL * 1024ULL);
   Manager manager(prng, postFn, co);
 
   auto table = std::make_shared<Table>(Table::kMinLogSize, &manager);
@@ -109,7 +107,7 @@ class CacheTableMigrationTest : public ::testing::Test {
 
   CacheTableMigrationTest()
       : scheduler(4),
-        co{.cacheSize = 16ULL * 1024ULL * 1024ULL},
+        co(16ULL * 1024ULL * 1024ULL),
         manager(
             prng,
             [this](std::function<void()> fn) -> bool {

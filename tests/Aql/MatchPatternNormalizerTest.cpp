@@ -124,7 +124,7 @@ class MatchPatternNormalizerTest : public ::testing::Test {
 
     auto ast = std::make_unique<Ast>(*queryContext);
     auto queryString = QueryString(query);
-    Parser parser(*queryContext, *ast, queryString);
+    Parser parser(*queryContext, &queryContext->warnings(), *ast, queryString);
     parser.parse();
 
     std::unique_ptr<BindParameters> parameters;

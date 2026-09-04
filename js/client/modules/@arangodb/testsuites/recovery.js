@@ -102,7 +102,6 @@ function runArangodRecovery (params, useEncryption, isKillAfterSetup = true) {
     instanceArgs = Object.assign(instanceArgs, params.options.extraArgs);
     instanceArgs = Object.assign(instanceArgs, {
       'rocksdb.wal-file-timeout-initial': 10,
-      'replication.auto-start': 'true',
     });
     if (!params.options.cluster) {
       instanceArgs = Object.assign(instanceArgs, {

@@ -2113,7 +2113,7 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx,
                                  velocypack::Slice doc,
                                  OperationOptions const& options) {
   TRI_IF_FAILURE("BreakHashIndexRemove") {
-    if (type() == Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX) {
+    if (type() == IndexType::Persistent) {
       // intentionally  break index removal
       return Result(TRI_ERROR_INTERNAL,
                     "BreakHashIndexRemove failure point triggered");

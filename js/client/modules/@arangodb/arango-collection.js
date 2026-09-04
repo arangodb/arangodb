@@ -308,8 +308,7 @@ ArangoCollection.prototype.properties = function (properties) {
     'syncByRevision': false,
     'schema' : true,
     'isDisjoint': false,
-    'groupId': false,
-    'supportsRBAC': true,
+    'groupId': false
   };
 
   let requestResult;

@@ -227,7 +227,8 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(
       LogicalCollection& collection, velocypack::Slice info) override;
 
-  void getCapabilities(velocypack::Builder& builder) const override;
+  void getCapabilities(velocypack::Builder& builder,
+                       uint32_t apiVersion) const override;
   void getStatistics(velocypack::Builder& builder) const override;
   void toPrometheus(std::string& result, std::string_view globals,
                     bool ensureWhitespace) const override;
@@ -256,18 +257,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   void cleanupReplicationContexts() override;
 
-  velocypack::Builder getReplicationApplierConfiguration(
-      TRI_vocbase_t& vocbase, ErrorCode& status) override;
-  velocypack::Builder getReplicationApplierConfiguration(
-      ErrorCode& status) override;
-  ErrorCode removeReplicationApplierConfiguration(
-      TRI_vocbase_t& vocbase) override;
-  ErrorCode removeReplicationApplierConfiguration() override;
-  ErrorCode saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                                velocypack::Slice slice,
-                                                bool doSync) override;
-  ErrorCode saveReplicationApplierConfiguration(velocypack::Slice slice,
-                                                bool doSync) override;
   // TODO worker-safety
   Result handleSyncKeys(DatabaseInitialSyncer& syncer, LogicalCollection& col,
                         std::string const& keysId) override;
@@ -357,12 +346,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
                   LogicalView const& view) override;
 
   Result compactAll(bool changeLevel, bool compactBottomMostLevel) override;
-
-  /// @brief Add engine-specific optimizer rules
-  void addOptimizerRules(aql::OptimizerRulesFeature& feature) override;
-
-  /// @brief Add engine-specific REST handlers
-  void addRestHandlers(rest::RestHandlerFactory& handlerFactory) override;
 
   void addParametersForNewCollection(velocypack::Builder& builder,
                                      velocypack::Slice info) override;
@@ -560,12 +543,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   [[nodiscard]] Result dropReplicatedStates(TRI_voc_tick_t databaseId);
   void shutdownRocksDBInstance() noexcept;
   void waitForCompactionJobsToFinish();
-  velocypack::Builder getReplicationApplierConfiguration(RocksDBKey const& key,
-                                                         ErrorCode& status);
-  ErrorCode removeReplicationApplierConfiguration(RocksDBKey const& key);
-  ErrorCode saveReplicationApplierConfiguration(RocksDBKey const& key,
-                                                velocypack::Slice slice,
-                                                bool doSync);
   Result dropDatabase(TRI_voc_tick_t);
   bool systemDatabaseExists();
   void addSystemDatabase();

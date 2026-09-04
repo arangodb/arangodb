@@ -157,11 +157,9 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
   for (std::shared_ptr<Index> idx : indexes) {
     // check if current index is a geo-index
     std::size_t fieldNum = idx->fields().size();
-    bool isGeo1 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX &&
-                  supportLegacy;
-    bool isGeo2 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX &&
-                  supportLegacy;
-    bool isGeo = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO_INDEX;
+    bool isGeo1 = idx->type() == IndexType::Geo1 && supportLegacy;
+    bool isGeo2 = idx->type() == IndexType::Geo2 && supportLegacy;
+    bool isGeo = idx->type() == IndexType::Geo;
 
     if ((isGeo2 || isGeo) && fieldNum == 2) {  // individual fields
       // check access paths of attributes in ast and those in index match
@@ -241,8 +239,7 @@ static bool geoFuncArgCheck(ExecutionPlan* plan, AstNode const* args,
   // check for suitiable indexes
   for (std::shared_ptr<arangodb::Index> idx : indexes) {
     // check if current index is a geo-index
-    bool isGeo =
-        idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_GEO_INDEX;
+    bool isGeo = idx->type() == IndexType::Geo;
     if (isGeo && idx->fields().size() == 1) {  // individual fields
       // check access paths of attributes in ast and those in index match
       if (idx->fields()[0] == attributeAccess.second) {
@@ -769,9 +766,8 @@ void geoIndexRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
         for (std::shared_ptr<Index> const& idx : indexes) {
           if (idx->name() == idxName) {
             auto idxType = idx->type();
-            if ((idxType != Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX) &&
-                (idxType != Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX) &&
-                (idxType != Index::IndexType::TRI_IDX_TYPE_GEO_INDEX)) {
+            if ((idxType != IndexType::Geo1) && (idxType != IndexType::Geo2) &&
+                (idxType != IndexType::Geo)) {
               mustRespectIdxHint = true;
             } else {
               info.index = idx;

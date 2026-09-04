@@ -34,7 +34,7 @@
 #include "Basics/Result.h"
 #include "Basics/RocksDBLogger.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
@@ -45,7 +45,6 @@
 #include "Cache/Manager.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
-#include "GeneralServer/RestHandlerFactory.h"
 #include "IResearch/IResearchCommon.h"
 #include "Inspection/VPack.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
@@ -92,11 +91,9 @@
 #include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
-#include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "RocksDBEngine/RocksDBOptionFeature.h"
 #include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
-#include "RocksDBEngine/RocksDBRestHandlers.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBTypes.h"
@@ -200,8 +197,6 @@ DECLARE_COUNTER(
 
 // global flag to cancel all compactions. will be flipped to true on shutdown
 static std::atomic<bool> cancelCompactions{false};
-
-static constexpr uint64_t databaseIdForGlobalApplier = 0;
 
 // handles for recovery helpers
 std::vector<std::shared_ptr<RocksDBRecoveryHelper>>
@@ -1249,103 +1244,6 @@ void RocksDBEngine::cleanupReplicationContexts() {
   }
 }
 
-VPackBuilder RocksDBEngine::getReplicationApplierConfiguration(
-    TRI_vocbase_t& vocbase, ErrorCode& status) {
-  RocksDBKey key;
-
-  key.constructReplicationApplierConfig(vocbase.id());
-
-  return getReplicationApplierConfiguration(key, status);
-}
-
-VPackBuilder RocksDBEngine::getReplicationApplierConfiguration(
-    ErrorCode& status) {
-  RocksDBKey key;
-  key.constructReplicationApplierConfig(databaseIdForGlobalApplier);
-  return getReplicationApplierConfiguration(key, status);
-}
-
-VPackBuilder RocksDBEngine::getReplicationApplierConfiguration(
-    RocksDBKey const& key, ErrorCode& status) {
-  rocksdb::PinnableSlice value;
-
-  auto opts = rocksdb::ReadOptions();
-  auto s = _db->Get(opts,
-                    RocksDBColumnFamilyManager::get(
-                        RocksDBColumnFamilyManager::Family::Definitions),
-                    key.string(), &value);
-  if (!s.ok()) {
-    status = TRI_ERROR_FILE_NOT_FOUND;
-    return arangodb::velocypack::Builder();
-  }
-
-  status = TRI_ERROR_NO_ERROR;
-  VPackBuilder builder;
-  builder.add(RocksDBValue::data(value));
-  return builder;
-}
-
-ErrorCode RocksDBEngine::removeReplicationApplierConfiguration(
-    TRI_vocbase_t& vocbase) {
-  RocksDBKey key;
-
-  key.constructReplicationApplierConfig(vocbase.id());
-
-  return removeReplicationApplierConfiguration(key);
-}
-
-ErrorCode RocksDBEngine::removeReplicationApplierConfiguration() {
-  RocksDBKey key;
-  key.constructReplicationApplierConfig(databaseIdForGlobalApplier);
-  return removeReplicationApplierConfiguration(key);
-}
-
-ErrorCode RocksDBEngine::removeReplicationApplierConfiguration(
-    RocksDBKey const& key) {
-  auto status = rocksutils::convertStatus(
-      _db->Delete(rocksdb::WriteOptions(),
-                  RocksDBColumnFamilyManager::get(
-                      RocksDBColumnFamilyManager::Family::Definitions),
-                  key.string()));
-  if (!status.ok()) {
-    return status.errorNumber();
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-ErrorCode RocksDBEngine::saveReplicationApplierConfiguration(
-    TRI_vocbase_t& vocbase, velocypack::Slice slice, bool doSync) {
-  RocksDBKey key;
-
-  key.constructReplicationApplierConfig(vocbase.id());
-
-  return saveReplicationApplierConfiguration(key, slice, doSync);
-}
-
-ErrorCode RocksDBEngine::saveReplicationApplierConfiguration(
-    velocypack::Slice slice, bool doSync) {
-  RocksDBKey key;
-  key.constructReplicationApplierConfig(databaseIdForGlobalApplier);
-  return saveReplicationApplierConfiguration(key, slice, doSync);
-}
-
-ErrorCode RocksDBEngine::saveReplicationApplierConfiguration(
-    RocksDBKey const& key, velocypack::Slice slice, bool doSync) {
-  auto value = RocksDBValue::ReplicationApplierConfig(slice);
-
-  auto status = rocksutils::convertStatus(
-      _db->Put(rocksdb::WriteOptions(),
-               RocksDBColumnFamilyManager::get(
-                   RocksDBColumnFamilyManager::Family::Definitions),
-               key.string(), value.string()));
-  if (!status.ok()) {
-    return status.errorNumber();
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
 // database, collection and index management
 // -----------------------------------------
 
@@ -1960,16 +1858,6 @@ Result RocksDBEngine::compactAll(bool changeLevel,
                                 compactBottomMostLevel, &::cancelCompactions);
 }
 
-/// @brief Add engine-specific optimizer rules
-void RocksDBEngine::addOptimizerRules(aql::OptimizerRulesFeature& feature) {
-  RocksDBOptimizerRules::registerResources(feature);
-}
-
-/// @brief Add engine-specific REST handlers
-void RocksDBEngine::addRestHandlers(rest::RestHandlerFactory& handlerFactory) {
-  RocksDBRestHandlers::registerResources(&handlerFactory, *this);
-}
-
 void RocksDBEngine::addCollectionMapping(uint64_t objectId, TRI_voc_tick_t did,
                                          DataSourceId cid) {
   if (objectId != 0) {
@@ -2535,7 +2423,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
         RocksDBKeyBounds bounds =
             RocksDBIndex::getBounds(type, objectId, unique);
         // edge index drop fails otherwise
-        bool const prefixSameAsStart = type != Index::TRI_IDX_TYPE_EDGE_INDEX;
+        bool const prefixSameAsStart = type != IndexType::Edge;
         res = rocksutils::removeLargeRange(db, bounds, prefixSameAsStart,
                                            useRangeDelete);
         if (res.fail()) {
@@ -3025,10 +2913,11 @@ DECLARE_GAUGE(rocksdb_live_blob_file_garbage_size, uint64_t,
               "rocksdb_live_blob_file_garbage_size");
 DECLARE_GAUGE(rocksdb_num_blob_files, uint64_t, "rocksdb_num_blob_files");
 
-void RocksDBEngine::getCapabilities(velocypack::Builder& builder) const {
+void RocksDBEngine::getCapabilities(velocypack::Builder& builder,
+                                    uint32_t apiVersion) const {
   // get generic capabilities
   VPackBuilder main;
-  StorageEngine::getCapabilities(main);
+  StorageEngine::getCapabilities(main, apiVersion);
 
   VPackBuilder own;
   own.openObject();

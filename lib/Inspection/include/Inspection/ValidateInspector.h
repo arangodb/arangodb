@@ -123,13 +123,7 @@ struct ValidateInspector : InspectorBase<ValidateInspector<Context>, Context> {
   }
 
  private:
-  template<class>
-  friend struct detail::EmbeddedFields;
-  template<class, class...>
-  friend struct detail::EmbeddedFieldsImpl;
-  template<class, class, class>
-  friend struct detail::EmbeddedFieldsWithObjectInvariant;
-  template<class, class>
+  template<class, class, FieldCondition>
   friend struct detail::EmbeddedFieldInspector;
 
   using EmbeddedParam = std::monostate;
@@ -152,19 +146,24 @@ struct ValidateInspector : InspectorBase<ValidateInspector<Context>, Context> {
            [&]() { return validateFields(std::forward<Args>(args)...); };
   }
 
+  template<class T, class P, detail::ConditionScope S>
   [[nodiscard]] Status validateField(
-      std::unique_ptr<detail::EmbeddedFields<ValidateInspector>>&&
-          embeddedFields) {
+      detail::EmbeddedFieldsRef<T, P, S>&& embedded) {
     EmbeddedParam params;
-    return embeddedFields->apply(*this, params)  //
-           | [&]() { return embeddedFields->checkInvariant(); };
+    return this->applyEmbeddedFields(params, embedded.value);
   }
+
+  template<class... Args>
+  void markEmbeddedFieldsProcessed(EmbeddedParam&, Args&...) {}
 
   template<class T>
   [[nodiscard]] Status validateField(T&& field) {
     auto name = Base::getFieldName(field);
     auto& value = Base::getFieldValue(field);
 
+    // Conditions govern whether an *attribute* is read or written. This
+    // inspector reads nothing, so they do not apply here: every field is
+    // validated, including the inner invariants of complex types.
     auto res = loadField(*this, name, true, value)         //
                | [&]() { return checkInvariant(field); };  //
 

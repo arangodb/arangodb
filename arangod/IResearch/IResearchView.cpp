@@ -292,12 +292,13 @@ Result IResearchView::appendVPackImpl(velocypack::Builder& build,
       return {};
     }
     std::vector<std::string> collections;
-    // add CIDs of known collections to list
+    // add names of known collections to list
     for (auto& entry : _links) {
       // skip collections missing from vocbase or
       // UserTransaction constructor will throw an exception
-      if (vocbase().lookupCollection(entry.first)) {
-        collections.emplace_back(std::to_string(entry.first.id()));
+      auto coll = vocbase().lookupCollection(entry.first);
+      if (coll) {
+        collections.emplace_back(coll->name());
       }
     }
     if (!safe) {
@@ -414,17 +415,6 @@ Result IResearchView::dropImpl() {
     }
   }
   if (!stale.empty()) {
-    // check link auth as per https://github.com/arangodb/backlog/issues/459
-    if (!ExecContext::current().isSuperuser()) {
-      for (auto& entry : stale) {
-        auto collection = vocbase().lookupCollection(entry);
-        if (collection &&
-            !ExecContext::current().canUseCollection(
-                vocbase().name(), collection->name(), auth::Level::RO)) {
-          return {TRI_ERROR_FORBIDDEN};
-        }
-      }
-    }
     // TODO Why try lock?
     std::unique_lock lock{_updateLinksLock, std::try_to_lock};
     if (!lock.owns_lock()) {
@@ -597,17 +587,15 @@ Result IResearchView::updateProperties(velocypack::Slice slice,
     }
     boost::unique_lock uniqueLock{_mutex};
     // check link auth as per https://github.com/arangodb/backlog/issues/459
-    if (!ExecContext::current().isSuperuser()) {
-      for (auto& entry : _links) {
-        auto collection = vocbase().lookupCollection(entry.first);
-        if (collection &&
-            !ExecContext::current().canUseCollection(
-                vocbase().name(), collection->name(), auth::Level::RO)) {
-          return {
-              TRI_ERROR_FORBIDDEN,
-              absl::StrCat(
-                  "while updating arangosearch definition, error: collection '",
-                  collection->name(), "' not authorized for read access")};
+    for (auto& entry : _links) {
+      auto collection = vocbase().lookupCollection(entry.first);
+      if (collection) {
+        if (auto r = ExecContext::current().canUseCollection(
+                vocbase().name(), collection->name(), AccessLevel::Read);
+            !r.ok()) {
+          return {TRI_ERROR_FORBIDDEN,
+                  absl::StrCat("while updating view definition: ",
+                               r.errorMessage())};
         }
       }
     }

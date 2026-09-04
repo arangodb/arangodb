@@ -39,6 +39,7 @@ RestEngineHandler::RestEngineHandler(
     : RestBaseHandler(server, request, response),
       _engine(server.getFeature<DatabaseFeature>().engine()) {}
 
+// Mounted at /_api/engine (prefix)
 RestStatus RestEngineHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
@@ -67,12 +68,11 @@ void RestEngineHandler::handleGet() {
     return;
   }
 
-  ServerSecurityFeature& security =
-      server().getFeature<ServerSecurityFeature>();
-
-  if (!security.canAccessHardenedApi()) {
+  if (auto r = ExecContext::current().canUseHardenedAction(
+          auth::perms::AdminMonitoringInternal{});
+      r.fail()) {
     // dont leak information about server internals here
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+    generateError(r);
     return;
   }
 
@@ -82,7 +82,7 @@ void RestEngineHandler::handleGet() {
 
 void RestEngineHandler::getCapabilities() {
   VPackBuilder result;
-  _engine.getCapabilities(result);
+  _engine.getCapabilities(result, _request->requestedApiVersion());
 
   generateResult(rest::ResponseCode::OK, result.slice());
 }
