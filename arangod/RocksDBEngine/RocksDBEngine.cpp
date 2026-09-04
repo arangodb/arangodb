@@ -1067,11 +1067,13 @@ void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder,
   }
 }
 
-void RocksDBEngine::addParametersForNewCollection(
-    CollectionDescriptor& descriptor) {
-  if (descriptor.storage.objectId == 0) {
-    descriptor.storage.objectId = TRI_NewTickServer();
+LocalStorageProperties RocksDBEngine::createPropertiesForNewCollection(
+    CollectionDescriptor const& descriptor) const {
+  auto props = StorageEngine::createPropertiesForNewCollection(descriptor);
+  if (props.objectId == 0) {
+    props.objectId = TRI_NewTickServer();
   }
+  return props;
 }
 
 // create storage-engine specific collection

@@ -66,7 +66,11 @@ StorageEngine::StorageEngine(application_features::ApplicationServer& server,
 
 void StorageEngine::addParametersForNewCollection(velocypack::Builder&,
                                                   VPackSlice) {}
-void StorageEngine::addParametersForNewCollection(CollectionDescriptor&) {}
+LocalStorageProperties StorageEngine::createPropertiesForNewCollection(
+    CollectionDescriptor const& descriptor) const {
+  return {.objectId = descriptor.storage.objectId,
+          .cacheEnabled = descriptor.mutableProps.cacheEnabled};
+}
 
 std::unique_ptr<TRI_vocbase_t> StorageEngine::createDatabase(
     CreateDatabaseInfo&& info) {

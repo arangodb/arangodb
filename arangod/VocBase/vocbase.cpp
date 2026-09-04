@@ -360,7 +360,9 @@ std::shared_ptr<LogicalCollection> Database::createCollectionObject(
   if (!isAStub) {
     // stubs are not persisted, so they get no storage-engine properties —
     // same split as createCollectionObject / createCollectionObjectForStorage
-    _engine.addParametersForNewCollection(descriptor);
+    // TODO (COR-981): fix this ugly line by CollectionDefinition
+    descriptor.storage.objectId =
+    _engine.createPropertiesForNewCollection(descriptor).objectId;
   }
 
   return std::make_shared<LogicalCollection>(*this, std::move(descriptor),

@@ -319,8 +319,7 @@ class LogicalCollection : public LogicalDataSource {
   using LogicalDataSource::properties;
 
   /// @brief updates properties of an existing DataSource
-  /// TODO: Investigate if this can take a data structure like
-  /// CollectionDescriptor instead of a VPackSlice
+  /// TODO (COR-980): Investigate if this can take a typed parse
   virtual Result properties(velocypack::Slice definition);
 
   /// @brief return the figures for a collection
