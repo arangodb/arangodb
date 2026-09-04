@@ -1,6 +1,6 @@
 #include "Graph/Enumerators/ITraversalEnumerator.h"
 #include "Graph/PathManagement/IPathResult.h"
-#include "Graph/PathManagement/SingleServerPathResult.h"
+#include "Graph/SimplifiedTraversal/SingleServerPathResult.h"
 
 #include <optional>
 #include <string>
@@ -32,24 +32,28 @@ struct SingleServerTraversalEnumerator : ITraversalEnumerator {
     if (not _startVertex.has_value()) {
       return nullptr;
     }
+    // for an empty graph:
     _isDone = true;
     return std::make_unique<SingleServerPathResult>(
         std::vector<std::optional<VertexId>>{std::nullopt},
         std::vector<Edge>{});
   };
 
-  auto neighbourhood() {
-    auto [previous, next] = _queue.pop_front();
-    auto neighbours = graph.createNeighbourCursor(next);
-    for (auto const neighbour : neighbours) {
-      _queue.push_back({next, neighbour});
-    }
-    _paths.add(next);  // Need a data structure (similar to _interior)
-    // _results: vec<Step> end steps of paths; and _interior
-    _interior.append(previous, next);  // need actually to and edge
-    // auto append(Step, Step)
-    // auto reverseReconstruction
-  }
+    // batched:
+    // auto [previous, next] = _queue.pop_front();
+    // _queue.push_back(graph.createNeighbourCursor(next));
+
+    // auto neighbourhood() {
+    //   auto [previous, next] = _queue.pop_front();
+    //   for (auto const neighbour : graph.getNeighbours(next)) {
+    //     _queue.push_back({next, neighbour});
+    //   }
+    //   _paths.add(next);  // Need a data structure (similar to _interior)
+    //   // _results: vec<Step> end steps of paths; and _interior
+    //   _interior.append(previous, next);  // need actually to and edge
+    //   // auto append(Step, Step)
+    //   // auto reverseReconstruction
+    // }
 
 #ifdef USE_ENTERPRISE
   auto smartSearch(size_t amountOfExpansions, velocypack::Builder& result)
