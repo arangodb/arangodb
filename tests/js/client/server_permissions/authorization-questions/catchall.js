@@ -101,7 +101,8 @@ if (getOptions === true) {
 
 const jsunity = require('jsunity');
 const request = require('@arangodb/request');
-const { endpointToURL } = require('@arangodb/test-helper-common');
+let IM = global.instanceManager;
+
 const {
   beginObserve,
   endObserve,
@@ -145,7 +146,7 @@ function catchallAuthzSuite () {
   // //////////////////////////////////////////////////////////////////////////
 
   const anonymousGet = (path) =>
-    request.get({ url: endpointToURL(arango.getEndpoint()) + path });
+    request.get({ url: `${IM.url}/${path}` });
 
   // //////////////////////////////////////////////////////////////////////////
   // / @brief the Foxx service registry reads, which are not per-request
