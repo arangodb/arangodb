@@ -27,6 +27,7 @@
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Optimizer/Rule/OptimizeJoinOrder/JoinCostEstimator.h"
 #include "Aql/Optimizer/Rule/OptimizeJoinOrder/JoinGraph.h"
 #include "Aql/Optimizer/Rule/OptimizeJoinOrder/JoinStatistics.h"
 #include "Aql/Query.h"
@@ -217,6 +218,54 @@ class FakeJoinStatistics final : public arangodb::aql::JoinStatistics {
       }
     }
     return false;
+  }
+};
+
+class FakeCostEstimator final : public arangodb::aql::JoinCostEstimator {
+ public:
+  std::map<std::string, double, std::less<>> seedCost;
+  std::map<std::string, double, std::less<>> stepCost;
+  // set to true to make every estimate report a defaulted statistic
+  bool defaulted = false;
+  // out-variable names of vertices whose statistic reports as defaulted
+  // independently of the blanket `defaulted` flag above -- lets a test mark
+  // just one vertex (or component) as unindexed while the rest of the graph
+  // stays confident.
+  std::set<std::string> defaultedVertices;
+  // records how many connecting edges `extend` was offered for each vertex it
+  // added, keyed by that vertex's out-variable name, so tests can assert on
+  // it directly instead of only reasoning about it from cost behaviour.
+  mutable std::map<std::string, size_t> edgesSeen;
+
+  static std::string nameOf(arangodb::aql::JoinGraph::Node const& node) {
+    return node.executionNode->outVariable()->name;
+  }
+
+  auto seed(arangodb::aql::JoinGraph::Node const& start) const
+      -> arangodb::aql::JoinEstimate override {
+    auto it = seedCost.find(nameOf(start));
+    return {
+        .cardinality = 1.0,
+        .cost = it == seedCost.end() ? 1.0 : it->second,
+        .defaulted = defaulted || defaultedVertices.contains(nameOf(start))};
+  }
+
+  auto extend(arangodb::aql::JoinEstimate const& prefix,
+              arangodb::aql::JoinGraph::Node const& next,
+              std::span<arangodb::aql::JoinGraph::Edge const* const> connecting)
+      const -> arangodb::aql::JoinEstimate override {
+    edgesSeen[nameOf(next)] = connecting.size();
+    auto it = stepCost.find(nameOf(next));
+    double step = it == stepCost.end() ? 1.0 : it->second;
+    // a cross product is charged double, so tests can see components being
+    // kept together
+    if (connecting.empty()) {
+      step *= 2.0;
+    }
+    return {.cardinality = prefix.cardinality,
+            .cost = prefix.cost + step,
+            .defaulted = prefix.defaulted || defaulted ||
+                         defaultedVertices.contains(nameOf(next))};
   }
 };
 

@@ -22,23 +22,24 @@
 #include "OptimizeJoinOrder.h"
 
 #include "Aql/Optimizer/Rule/OptimizeJoinOrder/JoinGraph.h"
+#include "Aql/Optimizer/Rule/OptimizeJoinOrder/JoinOrderSearch.h"
 
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Optimizer.h"
+#include "Aql/OptimizerRule.h"
 #include "Aql/Variable.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 
-#include <memory>
 #include <utility>
 
 namespace arangodb::aql {
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 namespace {
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void traceJoinGraph(JoinGraph const& graph) {
   auto components = graph.connectedComponents();
   LOG_TOPIC("a7f01", TRACE, Logger::AQL)
@@ -53,40 +54,53 @@ void traceJoinGraph(JoinGraph const& graph) {
         << e.to->executionNode->outVariable()->name;
   }
 }
-#endif
-
 }  // namespace
+
+#endif
 
 void optimizeJoinOrder(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                        OptimizerRule const& rule) {
-  // Scaffolding: construct the join graph(s) for the plan. This does
-  // NOT reorder joins and does NOT modify the plan yet; the reordering
-  // algorithm is a follow-up task. We report the rule as "applied" only when we
-  // actually discovered a join so that it is observable via `explain`.
-  bool foundJoin = false;
+  auto estimator = makeDefaultJoinCostEstimator(*plan);
+  bool modified = false;
 
   ExecutionNode* n = plan->root()->getSingleton();
   while (n != nullptr) {
-    if (n->getType() == ExecutionNode::ENUMERATE_COLLECTION) {
-      ExecutionNode* next = nullptr;
-
-      // This graph is discarded now, but will be retained and used for join
-      // reordering later.
-      JoinGraph graph = buildJoinGraph(plan.get(), n, next);
-      if (graph.hasJoin()) {
-        foundJoin = true;
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        traceJoinGraph(graph);
-#endif
-      }
-      // continue scanning after the run that we just consumed
-      n = next;
-    } else {
+    if (n->getType() != ExecutionNode::ENUMERATE_COLLECTION) {
       n = n->getFirstParent();
+      continue;
     }
+
+    ExecutionNode* firstEnumeration = n;
+    ExecutionNode* next = nullptr;
+    JoinGraph graph = buildJoinGraph(plan.get(), firstEnumeration, next);
+
+    if (graph.hasJoin() && !graph.hasNonDeterministicCalculation) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      traceJoinGraph(graph);
+#endif
+      auto const writtenOrder = collectEnumerationOrder(firstEnumeration, next);
+      if (auto chosen = chooseJoinOrder(graph, *estimator, writtenOrder);
+          chosen.has_value()) {
+        rewriteJoinGraph(*plan, firstEnumeration, next, *chosen);
+        modified = true;
+      }
+    }
+
+    n = next;
   }
 
-  opt->addPlan(std::move(plan), rule, foundJoin);
+  if (modified) {
+    // Conditional on `modified`, not on this rule being enabled: when it
+    // declines, interchange must still run, or opting in could leave a query
+    // less optimized than the default.
+    opt->disableRules(plan.get(), [](OptimizerRule const& r) {
+      return r.level == OptimizerRule::interchangeAdjacentEnumerationsRule;
+    });
+  }
+
+  // `modified` decides whether the rule appears in explain's applied-rules
+  // list, which hasAppliedRule() also reads.
+  opt->addPlan(std::move(plan), rule, modified);
 }
 
 }  // namespace arangodb::aql

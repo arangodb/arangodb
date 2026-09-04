@@ -1,6 +1,28 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* AQL optimizer rule `optimize-join-order` now reorders adjacent `FOR` loops
+  joined by equijoin conditions, choosing an order from estimated join
+  cardinalities, instead of only building the join graph. The rule stays
+  disabled by default and must be requested per query with
+  `{ optimizer: { rules: ["+optimize-join-order"] } }`.
+
+  Join sizes are estimated symmetrically, as
+  `|a join b| = |a| * |b| / max(distinct(a.x), distinct(b.y))`, with the
+  distinct value counts read from index selectivity estimates. The rule is
+  deliberately conservative: it keeps the order as written unless the estimate
+  shows a clear improvement, and declines to reorder at all when any of the
+  statistics it needs is not backed by an index. Queries over collections
+  without a suitable index on the join attributes are therefore left untouched.
+
+  `optimize-join-order` now runs before `interchange-adjacent-enumerations`,
+  which is enabled by default, and switches it off for a query only once it
+  has actually reordered a join. If it declines instead -- for instance
+  because the join attributes carry no index to estimate from --
+  `interchange-adjacent-enumerations` still runs as usual, so enabling
+  `optimize-join-order` can never leave a query less optimized than the
+  default.
+
 * COR-959: Fixed AQL `MATCH` silently dropping a target vertex's property
   constraints and `WHERE` expression when a pattern segment was lowered to a
   traversal.
