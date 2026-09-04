@@ -184,7 +184,7 @@ TEST_F(ClassicAuthModeTest, UseDatabaseWriteWithReadWriteAccess) {
                   .ok());
 }
 
-TEST_F(ClassicAuthModeTest, UseDatabaseWithoutAccessIsForbiddenUnderV1) {
+TEST_F(ClassicAuthModeTest, UseDatabaseWithoutAccessIsForbidden) {
   // With a versioned API the database's existence must not be revealed.
   beUserWith(NONE);
   expectError(check(p::UseDatabase{.name = std::string{kDb},
@@ -314,7 +314,7 @@ TEST_F(ClassicAuthModeTest, UseCollectionWriteDataWithReadWriteAccess) {
                   .ok());
 }
 
-TEST_F(ClassicAuthModeTest, UseCollectionWithoutAccessIsForbiddenUnderV1) {
+TEST_F(ClassicAuthModeTest, UseCollectionWithoutAccessIsForbidden) {
   beUserWith(NONE);
   expectError(check(p::UseCollection{.db = std::string{kDb},
                                      .name = "c",
@@ -447,7 +447,7 @@ TEST_F(ClassicAuthModeTest, ReadViewRequiresSystemReadAccess) {
   EXPECT_TRUE(check(p::ReadView{.db = std::string{kDb}, .name = "v"}).ok());
 }
 
-TEST_F(ClassicAuthModeTest, ReadViewWithoutAccessIsForbiddenUnderV1) {
+TEST_F(ClassicAuthModeTest, ReadViewWithoutAccessIsForbidden) {
   beUserWith(NONE);
   expectError(check(p::ReadView{.db = std::string{kDb}, .name = "v"}),
               TRI_ERROR_FORBIDDEN);
