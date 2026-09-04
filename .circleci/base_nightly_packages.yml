@@ -134,6 +134,12 @@ version: 2.1
 #   rolling per-arch tags are pushed.
 #
 # Required environment (contexts / project settings):
+#   project env settings:           GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY_B64
+#                                   (arango-ci-checkout GitHub App, contents:read
+#                                   on public repos only; github-auth turns them
+#                                   into a 1h token so clones are not subject to
+#                                   GitHub's unauthenticated download limits;
+#                                   absent = anonymous clones as before)
 #   clamav-aws-bucket context:      AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
 #                                   (same values as the sccache bucket's) and
 #                                   CLAMAV_BUCKET (S3 bucket caching the
@@ -237,6 +243,58 @@ parameters:
     description: "TEST run for a GitHub PR — NOT a real nightly. The generator renames the workflow to nightly-packages-pr; every selected job runs, but publish-nightly degrades to a dry run: packages are staged to GCS and the staging tree is verified, then discarded instead of promoted; Docker images are loaded and tagged but never pushed; no manifests, no live Docker/ reports, no index upload. The reports are still produced and stored as job artifacts."
 
 commands:
+  github-auth:
+    # Anonymous clones from the runners' shared egress IP trip GitHub's limit on
+    # unauthenticated downloads (CI outage 2026-09-02/03). The arango-ci-checkout
+    # GitHub App (contents:read, public repos only) supplies a 1h token; without
+    # credentials or on any failure the job clones anonymously, as before.
+    # Always paired with github-auth-clear after the clone.
+    steps:
+      - run:
+          name: Authenticate git against GitHub
+          command: |
+            set +x
+            if git config --global --get http.https://github.com/.extraheader >/dev/null 2>&1; then
+              exit 0
+            fi
+            if [ -z "${GITHUB_APP_ID:-}" ] || [ -z "${GITHUB_APP_PRIVATE_KEY_B64:-}" ]; then
+              echo "WARNING: GITHUB_APP_ID / GITHUB_APP_PRIVATE_KEY_B64 not set, cloning anonymously" >&2
+              exit 0
+            fi
+            KEY="$(mktemp)"
+            trap 'rm -f "$KEY"' EXIT
+            printf '%s' "$GITHUB_APP_PRIVATE_KEY_B64" | base64 -d > "$KEY"
+            b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
+            NOW=$(date +%s)
+            JWT="$(printf '{"alg":"RS256","typ":"JWT"}' | b64url).$(printf '{"iat":%d,"exp":%d,"iss":"%s"}' "$((NOW-60))" "$((NOW+540))" "$GITHUB_APP_ID" | b64url)"
+            JWT="$JWT.$(printf '%s' "$JWT" | openssl dgst -sha256 -sign "$KEY" -binary | b64url)" || JWT=""
+            INST=""
+            TOKEN=""
+            if [ -n "$JWT" ]; then
+              INST=$(curl -sSf -H "Authorization: Bearer $JWT" -H "Accept: application/vnd.github+json" \
+                       https://api.github.com/orgs/arangodb/installation | jq -r '.id // empty') || INST=""
+            fi
+            if [ -n "$INST" ]; then
+              TOKEN=$(curl -sSf -X POST -H "Authorization: Bearer $JWT" -H "Accept: application/vnd.github+json" \
+                        "https://api.github.com/app/installations/$INST/access_tokens" | jq -r '.token // empty') || TOKEN=""
+            fi
+            if [ -z "$TOKEN" ]; then
+              echo "WARNING: no GitHub App token obtained, cloning anonymously" >&2
+              exit 0
+            fi
+            git config --global http.https://github.com/.extraheader \
+              "AUTHORIZATION: basic $(printf 'x-access-token:%s' "$TOKEN" | base64 | tr -d '\n')"
+            echo "git authenticated against github.com as GitHub App installation $INST (token valid 1h)"
+
+  github-auth-clear:
+    # Drop the token header again once the clones it was set for are done, so a
+    # job running past the token's hour never fails on an expired header where
+    # an anonymous request would have worked.
+    steps:
+      - run:
+          name: Forget GitHub token
+          command: git config --global --unset-all http.https://github.com/.extraheader || true
+
   checkout-arangodb:
     # Only compile-nightly needs the real source tree (sparse: false). All
     # other jobs work on the install tree / workspace and need just the
@@ -255,6 +313,7 @@ commands:
         type: boolean
         default: false
     steps:
+      - github-auth
       - run:
           name: Checkout ArangoDB
           command: |
@@ -278,6 +337,7 @@ commands:
                   cd << parameters.destination >>
                   git submodule init
                   git submodule update --recursive --depth 1 --jobs 8
+      - github-auth-clear
 
   checkout-enterprise:
     # The exact commit was resolved ONCE by the setup job and is passed in
