@@ -22,32 +22,22 @@
 
 #pragma once
 
-#include "Basics/Exceptions.h"
-#include "Indexes/IndexFactory.h"
-
-#include <velocypack/Slice.h>
+#include "Indexes/IndexDefinition.h"
 
 namespace arangodb {
 
 struct IVectorIndexProvider;
 
-// equal()/normalize() need no storage engine, unlike instantiate()
-struct DefaultIndexTypeDefinition : public IndexTypeFactory {
+struct DefaultIndexTypeDefinition : public IndexDefinition {
   IndexType const _type;
 
   DefaultIndexTypeDefinition(application_features::ApplicationServer& server,
                              IndexType type)
-      : IndexTypeFactory(server), _type(type) {}
+      : IndexDefinition(server), _type(type) {}
 
   bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
              std::string const&) const override {
-    return IndexTypeFactory::equal(_type, lhs, rhs, true);
-  }
-
-  // overridden by the RocksDB-specific subclass; never called on this one
-  std::shared_ptr<Index> instantiate(LogicalCollection&, velocypack::Slice,
-                                     IndexId, bool) const override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    return indexDefinitionsEqual(_type, lhs, rhs, true);
   }
 };
 
