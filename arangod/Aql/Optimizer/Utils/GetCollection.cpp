@@ -20,27 +20,13 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "OptimizerUtils.h"
+#include "Aql/Optimizer/Utils/GetCollection.h"
 
-#include "Aql/Ast.h"
-#include "Aql/AttributeNamePath.h"
-#include "Aql/Collection.h"
-#include "Aql/Condition.h"
-#include "Aql/ExecutionNode/CalculationNode.h"
-#include "Aql/ExecutionNode/EnumerateCollectionNode.h"
-#include "Aql/ExecutionNode/ExecutionNode.h"
-#include "Aql/ExecutionNode/GatherNode.h"
-#include "Aql/ExecutionNode/IResearchViewNode.h"
 #include "Aql/ExecutionNode/IndexNode.h"
-#include "Aql/ExecutionNode/RemoveNode.h"
-#include "Aql/ExecutionNode/SubqueryNode.h"
-#include "Aql/ExecutionNode/TraversalNode.h"
-#include "Aql/ExecutionNode/UpdateReplaceNode.h"
-#include "Aql/ExecutionPlan.h"
-#include <absl/strings/str_cat.h>
+#include "Aql/ExecutionNode/EnumerateCollectionNode.h"
+#include "Aql/ExecutionNode/GraphNode.h"
 
-namespace arangodb::aql {
-namespace utils {
+namespace arangodb::aql::optimizer {
 
 Collection const* getCollection(ExecutionNode const* node) {
   using EN = ExecutionNode;
@@ -63,5 +49,4 @@ Collection const* getCollection(ExecutionNode const* node) {
   }
 }
 
-}  // namespace utils
-}  // namespace arangodb::aql
+}  // namespace arangodb::aql::optimizer

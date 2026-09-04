@@ -24,10 +24,10 @@
 
 #include "Aql/Ast.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
+#include "Aql/ExecutionNode/IndexNode.h"
 #include "Aql/Optimizer.h"
 #include "Aql/QueryContext.h"
 #include "Aql/Condition.h"
-#include "Aql/OptimizerUtils.h"
 #include "Aql/Optimizer/Utils/FindProjections.h"
 #include "Indexes/Index.h"
 #include "Containers/FlatHashSet.h"

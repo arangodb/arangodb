@@ -4,6 +4,7 @@ target_sources(arango_aql PRIVATE
   ExtractNonConstPartsOfIndexCondition.cpp
   FindProjections.cpp
   GetBestIndexHandleForFilterCondition.cpp
+  GetCollection.cpp
   GetIndexForSortCondition.cpp
   LateMaterializedCommon.cpp
   OptimizeTraversalPathVariable.cpp
