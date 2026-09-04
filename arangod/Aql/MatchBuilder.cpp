@@ -532,6 +532,30 @@ CalculationNode* MatchBuilder::constructPathObject(
       outVariable);
 }
 
+void MatchBuilder::addPathVertex(std::vector<AstNode const*>& pathVertices,
+                                 Variable const* variable) {
+  pathVertices.push_back(_ast->createNodeReference(variable));
+}
+
+void MatchBuilder::addPathEdge(std::vector<AstNode const*>& pathEdges,
+                               Variable const* variable) {
+  pathEdges.push_back(_ast->createNodeReference(variable));
+}
+
+void MatchBuilder::appendTraversalPath(
+    std::vector<AstNode const*>& pathVertices,
+    std::vector<AstNode const*>& pathEdges,
+    Variable const* traversalPathVariable) {
+  pathEdges.push_back(
+      _ast->createNodeArraySplice(_ast->createNodeAttributeAccess(
+          _ast->createNodeReference(traversalPathVariable), "edges")));
+
+  pathVertices.pop_back();
+  pathVertices.push_back(
+      _ast->createNodeArraySplice(_ast->createNodeAttributeAccess(
+          _ast->createNodeReference(traversalPathVariable), "vertices")));
+}
+
 ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
                                    AstNode const* matchNode) {
   MatchPatternNormalizer normalizer(*_ast);
@@ -565,7 +589,7 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
       en->addDependency(previous);
       previous = en = lastNode;
 
-      pathVertices.push_back(_ast->createNodeReference(destinationVariable));
+      addPathVertex(pathVertices, destinationVariable);
 
       if (hasProjection) {
         projections.push_back(createPatternProjection(
@@ -585,7 +609,7 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
           it != std::end(variableSubstitutions)) {
         prevVar = it->second;
       }
-      pathVertices.push_back(_ast->createNodeReference(prevVar));
+      addPathVertex(pathVertices, prevVar);
     }
 
     for (auto const& segment : pattern.segments) {
@@ -609,8 +633,8 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
         }
 
         prevVar = rightVertexVar;
-        pathEdges.push_back(_ast->createNodeReference(edgeVar));
-        pathVertices.push_back(_ast->createNodeReference(prevVar));
+        addPathEdge(pathEdges, edgeVar);
+        addPathVertex(pathVertices, prevVar);
       } else if (edge.range.isDefaultFixedOne()) {
         ExecutionNode* lastNodeFilter;
         Variable const* edgeVar;
@@ -677,9 +701,8 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
         previous = en = lastNode;
         prevVar = rightVertexVar;
 
-        pathEdges.push_back(_ast->createNodeReference(edgeDestinationVariable));
-        pathVertices.push_back(
-            _ast->createNodeReference(vertexDestinationVariable));
+        addPathEdge(pathEdges, edgeDestinationVariable);
+        addPathVertex(pathVertices, vertexDestinationVariable);
       } else {
         auto [firstNode, lastNode, rightVertexVar] = createTraversalForPattern(
             prevVar, edge, target, variableSubstitutions);
@@ -688,14 +711,7 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
         previous = en = lastNode;
         prevVar = rightVertexVar;
 
-        pathEdges.push_back(
-            _ast->createNodeArraySplice(_ast->createNodeAttributeAccess(
-                _ast->createNodeReference(edge.variable), "edges")));
-
-        pathVertices.pop_back();
-        pathVertices.push_back(
-            _ast->createNodeArraySplice(_ast->createNodeAttributeAccess(
-                _ast->createNodeReference(edge.variable), "vertices")));
+        appendTraversalPath(pathVertices, pathEdges, edge.variable);
       }
     }
 
