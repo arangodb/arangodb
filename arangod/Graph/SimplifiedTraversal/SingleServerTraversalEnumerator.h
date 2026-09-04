@@ -1,5 +1,6 @@
 #include "Graph/Enumerators/ITraversalEnumerator.h"
 #include "Graph/PathManagement/IPathResult.h"
+#include "Graph/SimplifiedTraversal/IGraphView.h"
 #include "Graph/SimplifiedTraversal/SingleServerPathResult.h"
 
 #include <optional>
@@ -9,7 +10,7 @@
 
 namespace arangodb::graph::experimental {
 struct SingleServerTraversalEnumerator : ITraversalEnumerator {
-  SingleServerTraversalEnumerator() {}
+  SingleServerTraversalEnumerator(IGraphView& graph) : _graph{graph} {}
   ~SingleServerTraversalEnumerator() {}
   void clear(bool keepPathStore) override { TRI_ASSERT(false); }
   [[nodiscard]] bool isDone() const override { return _isDone; }
@@ -32,10 +33,13 @@ struct SingleServerTraversalEnumerator : ITraversalEnumerator {
     if (not _startVertex.has_value()) {
       return nullptr;
     }
+    _graph.outEdges(_startVertex.value());
+
     // for an empty graph:
     _isDone = true;
     return std::make_unique<SingleServerPathResult>(
-        std::vector<std::optional<VertexId>>{std::nullopt},
+        std::vector<std::optional<VertexRef>>{
+            _graph.vertex(_startVertex.value())},
         std::vector<Edge>{});
   };
 
@@ -85,8 +89,9 @@ struct SingleServerTraversalEnumerator : ITraversalEnumerator {
   auto unprepareValidatorContext() -> void override { TRI_ASSERT(false); }
 
  private:
+  IGraphView& _graph;
   bool _isDone = true;
   std::optional<VertexRef> _startVertex;
-  std::deque<VertexRef> _queue;
+  std::deque<VertexRef> _queue;  // BFS
 };
 }  // namespace arangodb::graph::experimental
