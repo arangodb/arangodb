@@ -1115,8 +1115,8 @@ class instanceManager {
     }
     const startTime = time();
     this.addArgs = _.defaults(this.addArgs, moreArgs);
-    this.httpAuthOptions = tu.makeAuthorizationHeaders(this.options, this.addArgs,this.jwt_secret);
-    this.httpJWTAuthOptions = tu.makeAuthorizationHeaders(this.options, this.addArgs, this.jwt_secret);
+    this.httpAuthOptions = makeAuthorizationHeaders(this.options, this.addArgs,this.jwt_secret);
+    this.httpJWTAuthOptions = makeAuthorizationHeaders(this.options, this.addArgs, this.jwt_secret);
     if (moreArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = moreArgs['server.jwt-secret'];
       this.arangods.forEach(arangod => {
