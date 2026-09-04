@@ -1,6 +1,10 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-959: Fixed AQL `MATCH` silently dropping a target vertex's property
+  constraints and `WHERE` expression when a pattern segment was lowered to a
+  traversal.
+
 * Upgraded included rclone to v1.75.0 with go1.25.13 and non-vulnerable
   dependencies.
 

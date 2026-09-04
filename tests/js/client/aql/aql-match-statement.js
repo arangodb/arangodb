@@ -33,6 +33,20 @@ function aqlMatchStatementTestSuite() {
     const database = "UnitTestsAqlMatchStatement";
     const options = { matchStatement: "experimental" };
 
+    // Run a one-hop `RETURN [v, e, w]` MATCH, assert every row's endpoints are
+    // the edge's own _from/_to, and return the matched edge ids sorted. Checking
+    // the bindings matters as much as the edge set: a lowering that filtered
+    // correctly but bound `w` to the wrong document would pass an edges-only
+    // assertion.
+    const edgeIds = function (query) {
+        const rows = db._query(query, {}, options).toArray();
+        for (const [v, e, w] of rows) {
+            assertEqual(v._id, e._from, e._id);
+            assertEqual(w._id, e._to, e._id);
+        }
+        return rows.map((x) => x[1]._id).sort();
+    };
+
     return {
 
         setUpAll: function () {
@@ -79,6 +93,18 @@ function aqlMatchStatementTestSuite() {
                 for (let j = 0; j < 4; j++) {
                     db.ec_paths.save({_key: `e${i}_${j}`, i, j, _from: `vc/v${5*i + j}`, _to: `vc/v${5*i + j + 1}`});
                 }
+            }
+
+            // A second vertex collection reachable from vc, so a target label can
+            // be shown to *exclude* a vertex: ec_cross leaves vc, ec_loops stays
+            // inside it.
+            db._create("vc_other");
+            for (let i = 0; i < 10; i++) {
+                db.vc_other.save({_key: `o${i}`, i});
+            }
+            db._createEdgeCollection("ec_cross");
+            for (let i = 0; i < 10; i++) {
+                db.ec_cross.save({_key: `x${i}`, _from: `vc/v${i}`, _to: `vc_other/o${i}`});
             }
         },
 
@@ -257,6 +283,92 @@ function aqlMatchStatementTestSuite() {
                 assertEqual(w._id, e._to);
                 assertTrue(e._id.startsWith("ec/") || e._id.startsWith("ec2/"));
             }
+        },
+
+        // Several edge collections force the segment to be lowered to a
+        // traversal instead of a collection enumeration; the target vertex's
+        // constraints must survive that lowering. Each case is cross-checked
+        // against the single-collection spelling, which uses the other lowering.
+        testSelectEdgesWithMultipleEdgeTypesAndTargetVertexProperties: function () {
+            // single edge collection => join lowering, used here as the oracle
+            assertEqual(edgeIds("MATCH (v :vc) -[ e :ec ]-> (w :vc {i: 51}) RETURN [v, e, w]"), ["ec/e25"]);
+            assertEqual(edgeIds("MATCH (v :vc) -[ e :ec2 ]-> (w :vc {i: 51}) RETURN [v, e, w]"), ["ec2/e250"]);
+
+            // several edge collections => traversal lowering
+            assertEqual(edgeIds("MATCH (v :vc) -[ e :ec|ec2 ]-> (w :vc {i: 51}) RETURN [v, e, w]"),
+                        ["ec/e25", "ec2/e250"]);
+
+            // the target binding is the constrained vertex itself, not merely
+            // the right edge set
+            const rows = db._query("MATCH (v :vc) -[ e :ec|ec2 ]-> (w :vc {i: 51}) RETURN [v, e, w]", {}, options).toArray();
+            assertEqual(rows.length, 2);
+            for (const [v, e, w] of rows) {
+                assertEqual(w._id, "vc/v51");
+                assertEqual(w.i, 51);
+            }
+        },
+
+        testSelectEdgesWithMultipleEdgeTypesAndTargetVertexWhereClause: function () {
+            assertEqual(edgeIds("MATCH (v :vc) -[ e :ec|ec2 ]-> (w :vc WHERE w.i == 51) RETURN [v, e, w]"),
+                        ["ec/e25", "ec2/e250"]);
+
+            const rows = db._query("MATCH (v :vc) -[ e :ec|ec2 ]-> (w :vc WHERE w.i == 51) RETURN [v, e, w]", {}, options).toArray();
+            assertEqual(rows.length, 2);
+            for (const [v, e, w] of rows) {
+                assertEqual(w._id, "vc/v51");
+            }
+        },
+
+        testSelectEdgesWithMultipleEdgeTypesAndTargetVertexPropertiesAndWhereClause: function () {
+            assertEqual(edgeIds("MATCH (v :vc) -[ e :ec|ec2 ]-> (w :vc {i: 51} WHERE w.j == 1) RETURN [v, e, w]"),
+                        ["ec/e25", "ec2/e250"]);
+
+            // same vertex, contradictory WHERE
+            assertEqual(edgeIds("MATCH (v :vc) -[ e :ec|ec2 ]-> (w :vc {i: 51} WHERE w.j == 2) RETURN [v, e, w]"), []);
+        },
+
+        testSelectEdgesWithMultipleEdgeTypesAndUnsatisfiableTargetVertexFilter: function () {
+            // no vertex has i == 999, so neither spelling may return a row
+            assertEqual(edgeIds("MATCH (v :vc) -[ e :ec|ec2 ]-> (w :vc {i: 999}) RETURN [v, e, w]"), []);
+            assertEqual(edgeIds("MATCH (v :vc) -[ e :ec|ec2 ]-> (w :vc WHERE w.i == 999) RETURN [v, e, w]"), []);
+        },
+
+        testSelectEdgesWithMultipleEdgeTypesAndBothVertexFilters: function () {
+            // start-vertex constraints already worked; assert they compose with
+            // the target-vertex ones rather than replacing them. ec_loops holds
+            // both a self-loop v3->v3 and the step v3->v4, so only the target
+            // constraint can separate them -- a start-only filter would keep both.
+            assertEqual(edgeIds("MATCH (v :vc {i: 3}) -[ e :ec_loops|ec2 ]-> (w :vc {i: 4}) RETURN [v, e, w]"),
+                        ["ec_loops/e13"]);
+            assertEqual(edgeIds("MATCH (v :vc {i: 3}) -[ e :ec_loops|ec2 ]-> (w :vc {i: 3}) RETURN [v, e, w]"),
+                        ["ec_loops/e3"]);
+
+            // target unconstrained beyond its collection: v3 has exactly these two
+            assertEqual(edgeIds("MATCH (v :vc {i: 3}) -[ e :ec_loops|ec2 ]-> (w :vc) RETURN [v, e, w]"),
+                        ["ec_loops/e13", "ec_loops/e3"]);
+        },
+
+        testSelectEdgesWithMultipleEdgeTypesAndTargetVertexCollection: function () {
+            // ec_loops stays inside vc, ec_cross leaves it for vc_other. Multiple
+            // edge collections force the traversal lowering, where the target
+            // label is the only thing keeping each half out of the other result.
+            //
+            // The traversal can reach vc_other, so every query here must declare
+            // both vertex collections with WITH. A cluster rejects the query
+            // otherwise ("collection not known to traversal"); a single server
+            // does not, so omitting it fails only in CI.
+            const q = "WITH vc, vc_other MATCH (v :vc) -[ e :ec_loops|ec_cross ]-> ";
+
+            const inside = edgeIds(q + "(w :vc) RETURN [v, e, w]");
+            assertEqual(inside.length, 20);
+            assertTrue(inside.every((id) => id.startsWith("ec_loops/")), JSON.stringify(inside));
+
+            const crossing = edgeIds(q + "(w :vc_other) RETURN [v, e, w]");
+            assertEqual(crossing.length, 10);
+            assertTrue(crossing.every((id) => id.startsWith("ec_cross/")), JSON.stringify(crossing));
+
+            // target label and property constraint compose
+            assertEqual(edgeIds(q + "(w :vc_other {i: 3}) RETURN [v, e, w]"), ["ec_cross/x3"]);
         },
 
         testSelectEdgesWithCollectionBindParameterMultipleEdgeTypes: function () {
