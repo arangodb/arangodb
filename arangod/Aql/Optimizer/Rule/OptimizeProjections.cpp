@@ -31,6 +31,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils/FindProjections.h"
 #include "Aql/Projections.h"
 #include "Aql/Variable.h"
 #include "Containers/FlatHashSet.h"
@@ -76,10 +77,10 @@ void optimizeProjections(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
       }
 
       containers::FlatHashSet<AttributeNamePath> attributes;
-      if (utils::findProjections(matNode, &matNode->outVariable(),
-                                 /*expectedAttribute*/ "",
-                                 /*excludeStartNodeFilterCondition*/ true,
-                                 attributes)) {
+      if (optimizer::findProjections(matNode, &matNode->outVariable(),
+                                     /*expectedAttribute*/ "",
+                                     /*excludeStartNodeFilterCondition*/ true,
+                                     attributes)) {
         if (attributes.size() <= matNode->maxProjections()) {
           matNode->projections() = Projections(std::move(attributes));
         }
