@@ -1,6 +1,14 @@
 3.12.12 (XXXX-XX-XX)
 --------------------
 
+* Rebuilt included rclone v1.75.0 with go1.26.8 and non-vulnerable
+  dependencies.
+
+* Updated node modules:
+ - fast-uri to 3.1.7 to resolve CVE-2026-75899, CVE-2026-75931,
+   CVE-2026-75975 and CVE-2026-76172
+ - qs to 6.16.0 to resolve CVE-2026-82417 and CVE-2026-82562
+
 * COR-958: JoinNode aborts the server when a later index condition uses an 
   expression over an earlier index's document.
   Fixed an issue where certain AQL queries using index joins across multiple 
@@ -8,9 +16,6 @@
   a calculated expression based on a document from an earlier collection.
   Such queries are now handled safely without triggering an assertion failure or server crash.
   
-* Rebuilt included rclone v1.75.0 with go1.25.13 and non-vulnerable
-  dependencies.
-
 * Upgraded OpenSSL to 3.5.8.
 
 

@@ -1263,7 +1263,7 @@ License Id: -
 #### fast-uri
 
 * Name: fast-uri
-* Version: 3.1.5
+* Version: 3.1.7
 * Project Home: <https://github.com/fastify/fast-uri>
 * License: <https://raw.githubusercontent.com/fastify/fast-uri/main/LICENSE>
 * License Name: BSD-style 3-Clause License
@@ -1587,7 +1587,7 @@ License Id: -
 #### qs
 
 * Name: qs
-* Version: 6.15.2
+* Version: 6.16.0
 * Project Home: <https://github.com/ljharb/qs>
 * License: <https://raw.githubusercontent.com/ljharb/qs/main/LICENSE.md>
 * License Name: BSD-style 3-Clause License
