@@ -24,6 +24,7 @@
 #include "Graph/PathManagement/IPathResult.h"
 #include "Basics/StaticStrings.h"
 #include "Inspection/VPack.h"
+#include "Graph/SimplifiedTraversal/IGraphView.h"
 
 #include <vector>
 
@@ -33,31 +34,17 @@ class HashedStringRef;
 class Builder;
 }  // namespace velocypack
 
-namespace graph {
-using VertexId = std::string;
-
-struct Edge {
-  VertexId _from;
-  VertexId _to;
-  double _weight;
-  bool operator==(Edge const&) const = default;
-};
-template<typename Inspector>
-auto inspect(Inspector& f, Edge& x) {
-  return f.object(x).fields(f.field("from", x._from), f.field("to", x._to),
-                            f.field("weight", x._weight));
-}
+namespace graph::experimental {
 
 class SingleServerPathResult : public IPathResult {
  public:
   SingleServerPathResult() {}
-  SingleServerPathResult(std::vector<std::optional<VertexId>> vertices,
+  SingleServerPathResult(std::vector<std::optional<VertexRef>> vertices,
                          std::vector<Edge> edges)
       : _vertices{std::move(vertices)}, _edges{std::move(edges)} {}
   ~SingleServerPathResult() = default;
   bool operator==(SingleServerPathResult const& other) const {
-    if (other._vertices == _vertices && other._edges == _edges &&
-        other._weights == _weights) {
+    if (other._vertices == _vertices && other._edges == _edges) {
       return true;
     }
     return false;
@@ -69,17 +56,15 @@ class SingleServerPathResult : public IPathResult {
   auto lastVertexToVelocyPack(velocypack::Builder& builder) -> void override{};
   auto lastEdgeToVelocyPack(velocypack::Builder& builder) -> void override{};
 
-  std::vector<std::optional<VertexId>> _vertices;
+  std::vector<std::optional<VertexRef>> _vertices;
   std::vector<Edge> _edges;
-  std::vector<double> _weights;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, SingleServerPathResult& x) {
   return f.object(x).fields(
       f.field(StaticStrings::GraphQueryVertices, x._vertices),
-      f.field(StaticStrings::GraphQueryEdges, x._edges),
-      f.field(StaticStrings::GraphQueryWeights, x._weights));
+      f.field(StaticStrings::GraphQueryEdges, x._edges));
 }
 
-}  // namespace graph
+}  // namespace graph::experimental
 }  // namespace arangodb
