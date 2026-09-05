@@ -44,6 +44,7 @@
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Sharding/ShardingInfo.h"
+#include "StorageEngine/LocalStorageProperties.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
@@ -118,12 +119,36 @@ std::string readGloballyUniqueId(velocypack::Slice info) {
   return StaticStrings::Empty;
 }
 
+/// @brief Pick out the properties nothing else owns.
+std::shared_ptr<arangodb::CollectionInvariants const> makeInvariants(
+    arangodb::CollectionDescriptor const& descriptor) {
+  return std::make_shared<arangodb::CollectionInvariants const>(
+      arangodb::CollectionInvariants{
+          .type = descriptor.constant.getType(),
+          .isSmart = descriptor.constant.isSmart,
+          .isDisjoint = descriptor.constant.isDisjoint,
+          .isSmartChild = descriptor.internal.isSmartChild,
+          .smartJoinAttribute = descriptor.constant.smartJoinAttribute});
+}
+
+arangodb::LocalStorageProperties makeStorageProperties(
+    arangodb::CollectionDescriptor const& descriptor) {
+  return {.objectId = descriptor.storage.objectId,
+          .cacheEnabled = descriptor.mutableProps.cacheEnabled};
+}
+
 }  // namespace
 
 // The Slice contains the part of the plan that
 // is relevant for this collection.
 LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
                                      bool isAStub)
+    : LogicalCollection(vocbase, CollectionDescriptor::fromVelocyPack(info),
+                        info, isAStub) {}
+
+LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase,
+                                     CollectionDescriptor const& descriptor,
+                                     VPackSlice info, bool isAStub)
     : LogicalDataSource(
           *this, vocbase, DataSourceId{Helper::extractIdValue(info)},
           ::readGloballyUniqueId(info),
@@ -136,30 +161,20 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
                                       false),
           Helper::getBooleanValue(info, StaticStrings::DataSourceDeleted,
                                   false)),
+      _invariants(::makeInvariants(descriptor)),
       _version(static_cast<Version>(Helper::getNumericValue<uint32_t>(
           info, StaticStrings::Version,
           static_cast<uint32_t>(currentVersion())))),
       _v8CacheVersion(0),
-      _type(Helper::getNumericValue<TRI_col_type_e, int>(
-          info, StaticStrings::DataSourceType, TRI_COL_TYPE_DOCUMENT)),
       _isAStub(isAStub),
-#ifdef USE_ENTERPRISE
-      _isDisjoint(
-          Helper::getBooleanValue(info, StaticStrings::IsDisjoint, false)),
-      _isSmart(Helper::getBooleanValue(info, StaticStrings::IsSmart, false)),
-      _isSmartChild(
-          Helper::getBooleanValue(info, StaticStrings::IsSmartChild, false)),
-#endif
-      _allowUserKeys(
-          Helper::getBooleanValue(info, StaticStrings::AllowUserKeys, true)),
       _usesRevisionsAsDocumentIds(Helper::getBooleanValue(
           info, StaticStrings::UsesRevisionsAsDocumentIds, false)),
-      _waitForSync(Helper::getBooleanValue(
-          info, StaticStrings::WaitForSyncString, false)),
       _syncByRevision(determineSyncByRevision()),
+      _waitForSync(descriptor.clusteringMutable.waitForSync),
+      _internalValidatorTypes(descriptor.internal.internalValidatorType),
       _countCache(defaultCountCacheTtl(system())),
-      _physical(vocbase.engine().createPhysicalCollection(*this, info)) {
-
+      _physical(vocbase.engine().createPhysicalCollection(
+          *this, ::makeStorageProperties(descriptor))) {
   TRI_IF_FAILURE("disableRevisionsAsDocumentIds") {
     _usesRevisionsAsDocumentIds = false;
     _syncByRevision.store(false);
@@ -179,9 +194,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   if (auto res = updateSchema(info.get(StaticStrings::Schema)); res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
-
-  _internalValidatorTypes = Helper::getNumericValue<uint64_t>(
-      info, StaticStrings::InternalValidatorTypes, 0);
 
   TRI_ASSERT(!guid().empty());
 
@@ -223,7 +235,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
 
   // create key generator based on keyOptions from slice
   _keyGenerator = KeyGeneratorHelper::createKeyGenerator(
-      *this, info.get(StaticStrings::KeyOptions));
+      *this, descriptor.constant.keyOptions);
 
   // computed values
   if (auto res = updateComputedValues(info.get(StaticStrings::ComputedValues));
@@ -237,6 +249,104 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   }
 }
 
+LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase,
+                                     CollectionDescriptor descriptor,
+                                     bool isAStub)
+    : LogicalDataSource(
+          *this, vocbase, descriptor.internal.id,
+          // COR-885: load path must pass the stored id
+          std::string{},
+          // COR-885: load path must pass the stored planId
+          DataSourceId::none(), std::string{descriptor.mutableProps.name},
+          NameValidator::isSystemName(descriptor.mutableProps.name) &&
+              descriptor.constant.isSystem,
+          // COR-885: load path must pass the stored deleted flag
+          /*deleted*/ false),
+      _invariants(::makeInvariants(descriptor)),
+      // COR-885: load path must pass the stored version
+      _version(currentVersion()),
+      _v8CacheVersion(0),
+      _isAStub(isAStub),
+      // COR-885: load path must default this to false
+      _usesRevisionsAsDocumentIds(
+          descriptor.internal.usesRevisionsAsDocumentIds),
+      _syncByRevision(determineSyncByRevision()),
+      _waitForSync(descriptor.clusteringMutable.waitForSync),
+      _internalValidatorTypes(descriptor.internal.internalValidatorType),
+      _countCache(defaultCountCacheTtl(system())),
+      _physical(vocbase.engine().createPhysicalCollection(
+          *this, ::makeStorageProperties(descriptor))) {
+  TRI_IF_FAILURE("disableRevisionsAsDocumentIds") {
+    _usesRevisionsAsDocumentIds = false;
+    _syncByRevision.store(false);
+  }
+
+  if (_version < minimumVersion()) {
+    // collection is too "old"
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FAILED,
+        absl::StrCat("collection '", name(),
+                     "' has a too old version. Please start the server "
+                     "with the --database.auto-upgrade option."));
+  }
+
+  if (auto res = updateSchema(descriptor.mutableProps.schema.has_value()
+                                  ? descriptor.mutableProps.schema->slice()
+                                  : VPackSlice::emptyObjectSlice());
+      res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  TRI_ASSERT(!guid().empty());
+
+  // update server's tick value
+  TRI_UpdateTickServer(id().id());
+
+  if (replicationVersion() == replication::Version::TWO &&
+      descriptor.clusteringConstant.groupId.has_value()) {
+    _groupId = descriptor.clusteringConstant.groupId.value().id();
+    // COR-885: load path must set the stored replicatedStateId
+    TRI_ASSERT(planId() == id() || _replicatedStateId.has_value());
+  }
+
+  // TODO: THIS NEEDS CLEANUP (Naming & Structural issue)
+  initializeSmartAttributesBefore(descriptor);
+
+  _sharding = std::make_unique<ShardingInfo>(descriptor, this);
+
+  // TODO: THIS NEEDS CLEANUP (Naming & Structural issue)
+  initializeSmartAttributesAfter(descriptor);
+
+  if (ServerState::instance()->isDBServer() ||
+      !ServerState::instance()->isRunningInCluster()) {
+    if (!isAStub) {
+      _followers = std::make_unique<FollowerInfo>(this);
+    }
+  }
+
+  TRI_ASSERT(_physical != nullptr);
+  // This has to be called AFTER _physical and _logical are properly linked
+  // together.
+
+  // COR-885: the load path must pass the stored index definitions
+  prepareIndexes(VPackSlice::emptyArraySlice());
+  decorateWithInternalValidators();
+
+  _keyGenerator = KeyGeneratorHelper::createKeyGenerator(
+      *this, descriptor.constant.keyOptions);
+
+  if (auto res =
+          updateComputedValues(descriptor.mutableProps.computedValues.slice());
+      res.fail()) {
+    LOG_TOPIC("4c740", ERR, Logger::FIXME)
+        << "collection '" << this->vocbase().name() << "/" << name() << ": "
+        << res.errorMessage()
+        << " - disabling computed values for this collection. original value: "
+        << descriptor.mutableProps.computedValues.toJson();
+    TRI_ASSERT(_computedValues == nullptr);
+  }
+}
+
 LogicalCollection::~LogicalCollection() = default;
 
 #ifndef USE_ENTERPRISE
@@ -245,6 +355,14 @@ void LogicalCollection::initializeSmartAttributesBefore(
   // nothing to do in community edition
 }
 void LogicalCollection::initializeSmartAttributesAfter(velocypack::Slice info) {
+  // nothing to do in community edition
+}
+void LogicalCollection::initializeSmartAttributesBefore(
+    CollectionDescriptor const& descriptor) {
+  // nothing to do in community edition
+}
+void LogicalCollection::initializeSmartAttributesAfter(
+    CollectionDescriptor const& descriptor) {
   // nothing to do in community edition
 }
 #endif
@@ -304,6 +422,7 @@ RevisionId LogicalCollection::newRevisionId() const {
 }
 
 // SECTION: sharding
+// TODO: Make result type const
 ShardingInfo* LogicalCollection::shardingInfo() const {
   TRI_ASSERT(_sharding != nullptr);
   return _sharding.get();
@@ -337,6 +456,70 @@ bool LogicalCollection::cacheEnabled() const noexcept {
   return _physical->cacheEnabled();
 }
 
+CollectionDescriptor LogicalCollection::properties() const {
+  CollectionDescriptor d;
+
+  d.constant.type =
+      static_cast<std::underlying_type_t<TRI_col_type_e>>(_invariants->type);
+  d.constant.isSystem = system();
+  d.constant.isSmart = _invariants->isSmart;
+  d.constant.isDisjoint = _invariants->isDisjoint;
+  if (auto const& sja = _invariants->smartJoinAttribute; sja.has_value()) {
+    d.constant.smartJoinAttribute = *sja;
+  }
+  // keyOptions: _keyGenerator only exposes itself as VelocyPack, and nothing
+  // reads this field. shadowCollections: owned by the EE subclass.
+
+  d.internal.id = id();
+  d.internal.syncByRevision = _syncByRevision.load(std::memory_order_relaxed);
+  d.internal.usesRevisionsAsDocumentIds = _usesRevisionsAsDocumentIds;
+  d.internal.isSmartChild = _invariants->isSmartChild;
+  d.internal.internalValidatorType =
+      _internalValidatorTypes.load(std::memory_order_relaxed);
+  if (auto sga = smartGraphAttribute(); !sga.empty()) {
+    d.internal.smartGraphAttribute = std::move(sga);
+  }
+
+  d.clusteringConstant.numberOfShards = numberOfShards();
+  d.clusteringConstant.shardKeys = shardKeys();
+  d.clusteringConstant.shardingStrategy =
+      shardingInfo()->shardingStrategyName();
+  // COR-884 collapses the two distributeShardsLike fields into one cid field.
+  if (auto distLike = distributeShardsLike(); !distLike.empty()) {
+    d.clusteringConstant.distributeShardsLikeCid = std::move(distLike);
+  }
+  if (_groupId.has_value()) {
+    d.clusteringConstant.groupId =
+        replication2::agency::CollectionGroupId{*_groupId};
+  }
+  // shardsR2 is agency plan content with no owner here.
+
+  d.clusteringMutable.waitForSync =
+      _waitForSync.load(std::memory_order_relaxed);
+  d.clusteringMutable.replicationFactor = replicationFactor();
+  d.clusteringMutable.writeConcern = writeConcern();
+
+  d.mutableProps.name = name();
+  d.mutableProps.cacheEnabled = cacheEnabled();
+  {
+    VPackBuilder schema;
+    schemaToVelocyPack(schema);
+    if (!schema.slice().isNull()) {
+      d.mutableProps.schema = std::move(schema);
+    }
+  }
+  {
+    // the field already holds a null slice, so do not append to it
+    VPackBuilder computedValues;
+    computedValuesToVelocyPack(computedValues);
+    d.mutableProps.computedValues = std::move(computedValues);
+  }
+
+  d.storage.objectId = _physical->objectId();
+
+  return d;
+}
+
 bool LogicalCollection::waitForSync() const noexcept {
   if (_groupId.has_value() && ServerState::instance()->isDBServer()) {
     TRI_ASSERT(replicationVersion() == replication::Version::TWO)
@@ -352,7 +535,7 @@ bool LogicalCollection::waitForSync() const noexcept {
     // while we are still in this method. Let's just take the
     // value at creation then.
   }
-  return _waitForSync;
+  return _waitForSync.load(std::memory_order_relaxed);
 }
 
 size_t LogicalCollection::numberOfShards() const noexcept {
@@ -566,7 +749,7 @@ bool LogicalCollection::determineSyncByRevision() const {
 }
 
 bool LogicalCollection::allowUserKeys() const noexcept {
-  return _allowUserKeys;
+  return keyGenerator().allowUserKeys();
 }
 
 // SECTION: Modification Functions
@@ -608,12 +791,10 @@ Result LogicalCollection::rename(std::string&& newName) {
   } catch (basics::Exception const& ex) {
     // Engine Rename somehow failed. Reset to old name
     name(std::move(oldName));
-
     return ex.code();
   } catch (...) {
     // Engine Rename somehow failed. Reset to old name
     name(std::move(oldName));
-
     return {TRI_ERROR_INTERNAL};
   }
 
@@ -743,7 +924,8 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
   // Collection Meta Information
   build.add(StaticStrings::DataSourceCid,
             VPackValue(std::to_string(id().id())));
-  build.add(StaticStrings::DataSourceType, VPackValue(static_cast<int>(_type)));
+  build.add(StaticStrings::DataSourceType,
+            VPackValue(static_cast<int>(type())));
 
   // there are no collection statuses anymore, but we need to keep
   // API-compatibility. so the following attributes' values are hard-coded.
@@ -758,7 +940,9 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
   build.add(StaticStrings::Version,
             VPackValue(static_cast<uint32_t>(_version)));
   // Collection Flags
-  build.add(StaticStrings::WaitForSyncString, VPackValue(_waitForSync));
+  build.add(StaticStrings::WaitForSyncString,
+            VPackValue(_waitForSync.load(std::memory_order_relaxed)));
+
   if (!forPersistence) {
     // with 'forPersistence' added by LogicalDataSource::toVelocyPack
     // FIXME TODO is this needed in !forPersistence???
@@ -766,7 +950,7 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
     build.add(StaticStrings::DataSourceSystem, VPackValue(system()));
   }
   // TODO is this still releveant or redundant in keyGenerator?
-  build.add(StaticStrings::AllowUserKeys, VPackValue(_allowUserKeys));
+  build.add(StaticStrings::AllowUserKeys, VPackValue(allowUserKeys()));
 
   // keyOptions
   build.add(StaticStrings::KeyOptions, VPackValue(VPackValueType::Object));
@@ -812,8 +996,9 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
   computedValuesToVelocyPack(build);
 
   // Internal CollectionType
-  build.add(StaticStrings::InternalValidatorTypes,
-            VPackValue(_internalValidatorTypes));
+  build.add(
+      StaticStrings::InternalValidatorTypes,
+      VPackValue(_internalValidatorTypes.load(std::memory_order_relaxed)));
   // Cluster Specific
   build.add(StaticStrings::IsDisjoint, VPackValue(isDisjoint()));
   build.add(StaticStrings::IsSmart, VPackValue(isSmart()));
@@ -821,6 +1006,7 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
   build.add(StaticStrings::UsesRevisionsAsDocumentIds,
             VPackValue(usesRevisionsAsDocumentIds()));
   build.add(StaticStrings::SyncByRevision, VPackValue(syncByRevision()));
+
   if (!forPersistence) {
     // with 'forPersistence' added by LogicalDataSource::toVelocyPack
     // TODO is this needed in !forPersistence???
@@ -1006,7 +1192,7 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
           return Result(TRI_ERROR_FORBIDDEN,
                         "cannot change replicationFactor for a collection "
                         "using 'distributeShardsLike'");
-        } else if (_type == TRI_COL_TYPE_EDGE && isSmart()) {
+        } else if (type() == TRI_COL_TYPE_EDGE && isSmart()) {
           return Result(TRI_ERROR_NOT_IMPLEMENTED,
                         "changing replicationFactor is "
                         "not supported for SmartGraph edge collections");
@@ -1064,7 +1250,7 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
            (ServerState::instance()->isSingleServer() &&
             (isSatellite() || isSmart()))) &&
           writeConcern != this->writeConcern()) {  // check if changed
-        if (_type == TRI_COL_TYPE_EDGE && isSmart()) {
+        if (type() == TRI_COL_TYPE_EDGE && isSmart()) {
           return Result(TRI_ERROR_NOT_IMPLEMENTED,
                         "Changing writeConcern "
                         "not supported for SmartGraph edge collections");
@@ -1083,15 +1269,21 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
 
   // The physical may first reject illegal properties.
   // After this call it either has thrown or the properties are stored
-  res = getPhysical()->updateProperties(slice);
+  res = getPhysical()->setCacheEnabled(Helper::getBooleanValue(
+      slice, StaticStrings::CacheEnabled, cacheEnabled()));
   if (!res.ok()) {
     return res;
   }
 
   TRI_ASSERT(!isSatellite() || replicationFactor == 0);
-  _waitForSync = Helper::getBooleanValue(
-      slice, StaticStrings::WaitForSyncString, _waitForSync);
+
+  auto waitForSync =
+      Helper::getBooleanValue(slice, StaticStrings::WaitForSyncString,
+                              _waitForSync.load(std::memory_order_relaxed));
+
+  _waitForSync.store(waitForSync, std::memory_order_relaxed);
   bool const writeConcernChanged = writeConcern != this->writeConcern();
+
   _sharding->setWriteConcernAndReplicationFactor(writeConcern,
                                                  replicationFactor);
 
@@ -1108,8 +1300,9 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
     // and should only be triggered during cluster upgrades.
     // The user is NOT allowed to modify this value in any way.
     auto nextType = Helper::getNumericValue<uint64_t>(
-        slice, StaticStrings::InternalValidatorTypes, _internalValidatorTypes);
-    if (nextType != _internalValidatorTypes) {
+        slice, StaticStrings::InternalValidatorTypes,
+        getInternalValidatorTypes());
+    if (nextType != getInternalValidatorTypes()) {
       // This is a bit dangerous operation, if the internalValidators are NOT
       // empty a concurrent writer could have one in its hand while this thread
       // deletes it. For now the situation cannot happen, but may happen in the
@@ -1118,7 +1311,7 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
       // local locking for validators only, that would be fine too)
 
       TRI_ASSERT(_internalValidators.empty());
-      _internalValidatorTypes = nextType;
+      setInternalValidatorTypes(nextType);
       _internalValidators.clear();
       decorateWithInternalValidators();
     }
@@ -1311,12 +1504,12 @@ Result LogicalCollection::validate(std::shared_ptr<ValidatorBase> const& schema,
   return {};
 }
 
-void LogicalCollection::setInternalValidatorTypes(uint64_t type) {
-  _internalValidatorTypes = type;
+uint64_t LogicalCollection::getInternalValidatorTypes() const noexcept {
+  return _internalValidatorTypes.load(std::memory_order_relaxed);
 }
 
-uint64_t LogicalCollection::getInternalValidatorTypes() const noexcept {
-  return _internalValidatorTypes;
+void LogicalCollection::setInternalValidatorTypes(uint64_t type) {
+  _internalValidatorTypes.store(type, std::memory_order_relaxed);
 }
 
 void LogicalCollection::addInternalValidator(

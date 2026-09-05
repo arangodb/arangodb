@@ -23,8 +23,12 @@
 #pragma once
 
 #include "Basics/StaticStrings.h"
+#include "Inspection/Access.h"
+#include "Inspection/Types.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/Properties/InspectContexts.h"
+#include "VocBase/Properties/UtilityInvariants.h"
 
 #include <string>
 
@@ -57,6 +61,11 @@ struct CollectionInternalProperties {
   bool isSmartChild = false;
   uint64_t internalValidatorType = 0;
 
+  // The user supplies this when creating a SmartGraph, but the DBServer
+  // maintenance task also fills it in during an upgrade, so it changes at
+  // runtime and cannot live with the immutable properties.
+  inspection::NonNullOptional<std::string> smartGraphAttribute = std::nullopt;
+
   [[nodiscard]] arangodb::Result applyDefaultsAndValidateDatabaseConfiguration(
       DatabaseConfiguration const& config);
 
@@ -69,7 +78,15 @@ auto inspect(Inspector& f, CollectionInternalProperties& props) {
       f.field(StaticStrings::Id, props.id)
           .transformWith(
               CollectionInternalProperties::Transformers::IdIdentifier{})
-          .fallback(f.keep()),
+          .fallback(f.keep())
+          .when([]() {
+            // Markers and plan entries store the id as a number or under
+            // "cid". LogicalDataSource owns the id on that path, so accept
+            // the attribute there and drop it.
+            return isInternalContext<Inspector>
+                       ? inspection::FieldCondition::Ignore
+                       : inspection::FieldCondition::Process;
+          }),
       f.field(StaticStrings::SyncByRevision, props.syncByRevision)
           .fallback(f.keep()),
       f.field(StaticStrings::UsesRevisionsAsDocumentIds,
@@ -80,6 +97,10 @@ auto inspect(Inspector& f, CollectionInternalProperties& props) {
       f.field(StaticStrings::InternalValidatorTypes,
               props.internalValidatorType)
           .fallback(f.keep()),
+      userInvariant(f,
+                    f.field(StaticStrings::GraphSmartGraphAttribute,
+                            props.smartGraphAttribute),
+                    UtilityInvariants::isNonEmptyIfPresent),
       /* Backwards compatibility, field is documented but does not have an
        * effect
        */

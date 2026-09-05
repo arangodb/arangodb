@@ -40,6 +40,7 @@
 #include "RestServer/IDatabaseProvider.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/Identifiers/DataSourceId.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/voc-types.h"
 
@@ -422,6 +423,9 @@ struct Database {
       arangodb::velocypack::Slice infoSlice,
       bool allowEnterpriseCollectionsOnSingleServer);
 
+  std::vector<std::shared_ptr<arangodb::LogicalCollection>> createCollections(
+      std::vector<CollectionDescriptor> descriptors);
+
   [[nodiscard]] arangodb::ResultT<
       std::vector<std::shared_ptr<arangodb::LogicalCollection>>>
   createCollections(std::vector<arangodb::CreateCollectionBody> const&
@@ -435,6 +439,9 @@ struct Database {
   /// but the functionality is not advertised
   std::shared_ptr<arangodb::LogicalCollection> createCollection(
       arangodb::velocypack::Slice parameters);
+
+  std::shared_ptr<arangodb::LogicalCollection> createCollection(
+      CollectionDescriptor descriptor);
 
   /// @brief drops a collection.
   arangodb::Result dropCollection(arangodb::DataSourceId cid,
@@ -471,6 +478,9 @@ struct Database {
   std::shared_ptr<arangodb::LogicalCollection> createCollectionObject(
       arangodb::velocypack::Slice data, bool isAStub);
 
+  std::shared_ptr<arangodb::LogicalCollection> createCollectionObject(
+      CollectionDescriptor descriptor, bool isAStub);
+
   /// @brief creates a collection object (of type LogicalCollection or one of
   /// the SmartGraph-specific subtypes) for storage. The object is augmented
   /// with storage engine-specific data (e.g. objectId). the object only exists
@@ -497,6 +507,11 @@ struct Database {
   /// in community edition or if the collection is not a SmartGraph collection.
   arangodb::Result validateExtendedCollectionParameters(
       arangodb::velocypack::Slice parameters);
+
+  /// @brief checks the licence for SmartGraph collections. does nothing in
+  /// community edition or if the collection is not a SmartGraph collection.
+  arangodb::Result validateEnterpriseLicense(
+      CollectionDescriptor const& descriptor);
 
   /// @brief stores the collection object in the list of available collections,
   /// so it can later be looked up and found by name, guid etc.

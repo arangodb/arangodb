@@ -104,6 +104,6 @@ GeneratePositiveIntegerAttributeTest(ClusteringMutablePropertiesTest,
                                      writeConcern);
 GeneratePositiveIntegerAttributeTestInternal(ClusteringMutablePropertiesTest,
                                              minReplicationFactor, writeConcern,
-                                             false);
+                                             false, GenerateFailsOnNull);
 
 }  // namespace arangodb::tests

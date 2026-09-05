@@ -127,8 +127,8 @@ TEST_F(ClusteringConstantPropertiesTest, test_shardingStrategy) {
   GenerateFailsOnObject(shardingStrategy);
 }
 
-GeneratePositiveIntegerAttributeTest(ClusteringConstantPropertiesTest,
-                                     numberOfShards);
+GeneratePositiveIntegerNullableAttributeTest(ClusteringConstantPropertiesTest,
+                                             numberOfShards);
 
 GenerateOptionalStringAttributeTest(ClusteringConstantPropertiesTest,
                                     distributeShardsLike);
@@ -156,5 +156,44 @@ TEST_F(ClusteringConstantPropertiesTest,
   ASSERT_TRUE(serial.slice().get("distributeShardsLike").isString());
   EXPECT_EQ(serial.slice().get("distributeShardsLike").copyString(),
             props.distributeShardsLikeCid);
+}
+
+// shardsR2 and groupId are written by the server. The create API has to answer
+// with an unexpected-attribute error, while the internal and agency paths read
+// them back. Both values below are well-formed, so a type error cannot be what
+// makes these fail.
+static VPackBuilder serverOwnedFieldsBody() {
+  VPackBuilder body;
+  {
+    VPackObjectBuilder guard(&body);
+    body.add(StaticStrings::GroupId, VPackValue(1234));
+    {
+      VPackArrayBuilder shards(&body, "shardsR2");
+      body.add(VPackValue("s100001"));
+    }
+  }
+  return body;
+}
+
+TEST_F(ClusteringConstantPropertiesTest,
+       test_serverOwnedFieldsRejectUserInput) {
+  auto body = serverOwnedFieldsBody();
+  EXPECT_TRUE(parse(body.slice()).fail())
+      << "server-owned attributes have to be rejected on user input: "
+      << body.toJson();
+}
+
+TEST_F(ClusteringConstantPropertiesTest,
+       test_serverOwnedFieldsAreReadInternal) {
+  auto body = serverOwnedFieldsBody();
+
+  ClusteringConstantProperties testee;
+  auto status = velocypack::deserializeWithStatus(body.slice(), testee, {},
+                                                  InspectInternalContext{});
+  ASSERT_TRUE(status.ok()) << status.error();
+  ASSERT_TRUE(testee.groupId.has_value());
+  EXPECT_EQ(testee.groupId->id(), 1234U);
+  ASSERT_TRUE(testee.shardsR2.has_value());
+  EXPECT_EQ(testee.shardsR2->size(), 1U);
 }
 }  // namespace arangodb::tests

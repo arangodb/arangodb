@@ -110,6 +110,7 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/ticks.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 
 #include <rocksdb/convenience.h>
 #include <rocksdb/db.h>
@@ -1066,11 +1067,20 @@ void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder,
   }
 }
 
+LocalStorageProperties RocksDBEngine::createPropertiesForNewCollection(
+    CollectionDescriptor const& descriptor) const {
+  auto props = StorageEngine::createPropertiesForNewCollection(descriptor);
+  if (props.objectId == 0) {
+    props.objectId = TRI_NewTickServer();
+  }
+  return props;
+}
+
 // create storage-engine specific collection
 std::unique_ptr<PhysicalCollection> RocksDBEngine::createPhysicalCollection(
-    LogicalCollection& collection, velocypack::Slice info) {
+    LogicalCollection& collection, LocalStorageProperties const& storage) {
   return std::make_unique<RocksDBCollection>(
-      collection, info, _cacheManagerProvider.manager(), _readWriteMetrics);
+      collection, storage, _cacheManagerProvider.manager(), _readWriteMetrics);
 }
 
 // inventory functionality

@@ -44,6 +44,7 @@
 #include "Transaction/Manager.h"
 #include "Transaction/Options.h"
 #include "VocBase/ticks.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 
 #include <velocypack/Iterator.h>
 
@@ -139,8 +140,8 @@ void ClusterEngine::addParametersForNewCollection(VPackBuilder& builder,
 
 // create storage-engine specific collection
 std::unique_ptr<PhysicalCollection> ClusterEngine::createPhysicalCollection(
-    LogicalCollection& collection, velocypack::Slice info) {
-  return std::make_unique<ClusterCollection>(collection, engineType(), info);
+    LogicalCollection& collection, LocalStorageProperties const& storage) {
+  return std::make_unique<ClusterCollection>(collection, engineType(), storage);
 }
 
 void ClusterEngine::getStatistics(velocypack::Builder& builder) const {
