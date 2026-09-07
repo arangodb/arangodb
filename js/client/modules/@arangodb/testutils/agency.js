@@ -162,7 +162,7 @@ class agencyMgr {
     assertTrue(res.hasOwnProperty('code'), JSON.stringify(res));
     assertEqual(res.code, 200, JSON.stringify(res));
     assertTrue(res.hasOwnProperty('parsedBody'));
-    return arangosh.checkRequestResult(res.parsedody);
+    return arangosh.checkRequestResult(res.parsedBody);
   }
   call(operation, body) {
     return this.postAgency(operation, body);
@@ -914,8 +914,8 @@ class agencyMgr {
             return;
           }
         } catch (ex) {
-          count -= 1;
           if (ex.errorNum === 10) {
+            count -= 1;
             sleep(1);
             continue;
           }
