@@ -31,7 +31,7 @@
 #include "Aql/Expression.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/NonConstExpression.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils/GetBestIndexHandleForFilterCondition.h"
 #include "Aql/Optimizer/Utils/ExtractNonConstPartsOfIndexCondition.h"
 #include "Aql/Projections.h"
 #include "Aql/Query.h"
@@ -424,7 +424,7 @@ BaseOptions::LookupInfo BaseOptions::createLookupInfo(
                            coll->name(), depth.value_or(IndexHint::BaseDepth));
 
   auto& trx = plan->getAst()->query().trxForOptimization();
-  bool res = aql::utils::getBestIndexHandleForFilterCondition(
+  bool res = aql::optimizer::getBestIndexHandleForFilterCondition(
       trx, *coll, info.indexCondition, _tmpVar, itemsInCollection, indexHint,
       info.idxHandles[0], ReadOwnWrites::no, onlyEdgeIndexes);
   // Right now we have an enforced edge index which should always fit.

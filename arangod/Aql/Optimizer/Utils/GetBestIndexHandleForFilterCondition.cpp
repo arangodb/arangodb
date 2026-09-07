@@ -20,39 +20,25 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "OptimizerUtils.h"
+#include "Aql/Optimizer/Utils/GetBestIndexHandleForFilterCondition.h"
 
 #include "Aql/Ast.h"
-#include "Aql/AttributeNamePath.h"
+#include "Aql/AstNode.h"
 #include "Aql/Collection.h"
-#include "Aql/Condition.h"
-#include "Aql/ExecutionNode/CalculationNode.h"
-#include "Aql/ExecutionNode/EnumerateCollectionNode.h"
-#include "Aql/ExecutionNode/ExecutionNode.h"
-#include "Aql/ExecutionNode/GatherNode.h"
-#include "Aql/ExecutionNode/IResearchViewNode.h"
-#include "Aql/ExecutionNode/IndexNode.h"
-#include "Aql/ExecutionNode/RemoveNode.h"
-#include "Aql/ExecutionNode/SubqueryNode.h"
-#include "Aql/ExecutionNode/TraversalNode.h"
-#include "Aql/ExecutionNode/UpdateReplaceNode.h"
-#include "Aql/ExecutionPlan.h"
-#include "Aql/Expression.h"
-#include "Aql/NonConstExpressionContainer.h"
-#include "Aql/Projections.h"
-#include "Aql/QueryContext.h"
+#include "Aql/ConditionPart.h"
+#include "Aql/IndexHint.h"
 #include "Aql/SortCondition.h"
-#include "Aql/Variable.h"
-#include "Aql/WalkerWorker.h"
-#include "Basics/StaticStrings.h"
-#include "IResearch/IResearchFeature.h"
+#include "Containers/SmallVector.h"
 #include "Indexes/Index.h"
+#include "Indexes/IndexType.h"
+#include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
-#include "Containers/SmallUnorderedMap.h"
+#include "Transaction/Methods.h"
 
+#include <algorithm>
 #include <absl/strings/str_cat.h>
 
-namespace arangodb::aql {
+namespace arangodb::aql::optimizer {
 
 namespace {
 /// @brief sort ORs for the same attribute so they are in ascending value
@@ -509,64 +495,7 @@ std::pair<bool, bool> findIndexHandleForAndNode(
   return std::make_pair(bestSupportsFilter, bestSupportsSort);
 }
 
-// Walks the plan and rewrites attribute accesses on `searchVariable` into
-// direct register reads on `replaceVariable`. Used by both
-// optimizeProjections and materializeForEnumerateNear.
-class AttributeAccessReplacer final
-    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
- public:
-  AttributeAccessReplacer(ExecutionNode const* self,
-                          Variable const* searchVariable,
-                          std::span<std::string_view> attribute,
-                          Variable const* replaceVariable, size_t index)
-      : _self(self),
-        _searchVariable(searchVariable),
-        _attribute(attribute),
-        _replaceVariable(replaceVariable),
-        _index(index) {
-    TRI_ASSERT(_searchVariable != nullptr);
-    TRI_ASSERT(!_attribute.empty());
-    TRI_ASSERT(_replaceVariable != nullptr);
-  }
-
-  bool before(ExecutionNode* en) override final {
-    en->replaceAttributeAccess(_self, _searchVariable, _attribute,
-                               _replaceVariable, _index);
-    return false;
-  }
-
- private:
-  ExecutionNode const* _self;
-  Variable const* _searchVariable;
-  std::span<std::string_view> _attribute;
-  Variable const* _replaceVariable;
-  size_t _index;
-};
-
 }  // namespace
-
-namespace utils {
-
-void rewriteProjectionAttributeAccesses(ExecutionPlan& plan,
-                                        ExecutionNode* self,
-                                        Variable const* searchVariable,
-                                        Projections& projections,
-                                        size_t index) {
-  std::vector<std::string_view> path;
-  for (size_t i = 0; i < projections.size(); ++i) {
-    TRI_ASSERT(projections[i].variable == nullptr);
-    projections[i].variable =
-        plan.getAst()->variables()->createTemporaryVariable();
-
-    path.clear();
-    for (auto const& it : projections[i].path.get()) {
-      path.emplace_back(it);
-    }
-    AttributeAccessReplacer replacer(self, searchVariable, std::span(path),
-                                     projections[i].variable, index);
-    plan.root()->walk(replacer);
-  }
-}
 
 /// @brief Gets the best fitting index for one specific condition.
 ///        Difference to IndexHandles: Condition is only one NARY_AND
@@ -718,112 +647,4 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
   return std::make_pair(canUseForFilter, canUseForSort);
 }
 
-/// @brief Gets the best fitting index for an AQL sort condition
-/// note: the caller must have read-locked the underlying collection when
-/// calling this method
-bool getIndexForSortCondition(Collection const& coll,
-                              SortCondition const* sortCondition,
-                              Variable const* reference, size_t itemsInIndex,
-                              IndexHint const& hint,
-                              std::vector<std::shared_ptr<Index>>& usedIndexes,
-                              size_t& coveredAttributes) {
-  if (!hint.isDisabled()) {
-    // We do not have a condition. But we have a sort!
-    if (!sortCondition->isEmpty() && sortCondition->isOnlyAttributeAccess()) {
-      double bestCost = 0.0;
-      std::shared_ptr<Index> bestIndex;
-
-      auto considerIndex =
-          [reference, sortCondition, itemsInIndex, &bestCost, &bestIndex,
-           &coveredAttributes](std::shared_ptr<Index> const& idx) -> void {
-        TRI_ASSERT(!idx->inProgress());
-
-        Index::SortCosts costs =
-            idx->supportsSortCondition(sortCondition, reference, itemsInIndex);
-        if (costs.supportsCondition &&
-            (bestIndex == nullptr || costs.estimatedCosts < bestCost)) {
-          bestCost = costs.estimatedCosts;
-          bestIndex = idx;
-          coveredAttributes = costs.coveredAttributes;
-        }
-      };
-
-      auto indexes = coll.indexes();
-
-      if (hint.isSimple()) {
-        std::vector<std::string> const& hintedIndices = hint.candidateIndexes();
-        for (std::string const& hinted : hintedIndices) {
-          std::shared_ptr<Index> matched;
-          for (std::shared_ptr<Index> const& idx : indexes) {
-            if (idx->inProgress()) {
-              continue;
-            }
-            if (idx->name() == hinted) {
-              matched = idx;
-              break;
-            }
-          }
-
-          if (matched != nullptr) {
-            considerIndex(matched);
-            if (bestIndex != nullptr) {
-              break;
-            }
-          }
-        }
-
-        if (hint.isForced() && bestIndex == nullptr) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
-              "could not use index hint to serve query; " + hint.toString());
-        }
-      }
-
-      if (bestIndex == nullptr) {
-        for (auto const& idx : indexes) {
-          if (idx->inProgress()) {
-            continue;
-          }
-          if (!Index::onlyHintForced(idx->type())) {
-            considerIndex(idx);
-          }
-        }
-      }
-
-      if (bestIndex != nullptr) {
-        usedIndexes.emplace_back(bestIndex);
-      }
-
-      return bestIndex != nullptr;
-    }
-  }  // disableIndex
-
-  // No Index and no sort condition that
-  // can be supported by an index.
-  // Nothing to do here.
-  return false;
-}
-
-Collection const* getCollection(ExecutionNode const* node) {
-  using EN = ExecutionNode;
-
-  switch (node->getType()) {
-    case EN::ENUMERATE_COLLECTION:
-      return ExecutionNode::castTo<EnumerateCollectionNode const*>(node)
-          ->collection();
-    case EN::INDEX:
-      return ExecutionNode::castTo<IndexNode const*>(node)->collection();
-    case EN::TRAVERSAL:
-    case EN::ENUMERATE_PATHS:
-    case EN::SHORTEST_PATH:
-      return ExecutionNode::castTo<GraphNode const*>(node)->collection();
-
-    default:
-      // note: modification nodes are not covered here yet
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "node type does not have a collection");
-  }
-}
-
-}  // namespace utils
-}  // namespace arangodb::aql
+}  // namespace arangodb::aql::optimizer
