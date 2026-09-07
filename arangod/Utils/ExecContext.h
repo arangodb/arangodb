@@ -119,6 +119,13 @@ class ExecContext {
     return _authMode.getIAuth().username();
   }
 
+  /// @brief the API version requested by the current request (0 = v0 / no
+  /// versioned prefix). Used to enable version-gated permission checks; an
+  /// internal/superuser context without request info reports 0.
+  [[nodiscard]] uint32_t requestedApiVersion() const {
+    return _authMode.getIAuth().requestedApiVersion();
+  }
+
   // Unified permission-check entry point. Prefer this over the canXxx()
   // methods below for new code; eventually they are going to be removed.
   //

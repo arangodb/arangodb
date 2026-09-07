@@ -657,14 +657,35 @@ void Database::inventory(
   result.close();  // </views>
 }
 
+namespace {
+/// @brief whether the current execution context may at least see the given
+/// collection.
+///
+/// Requesting a collection resource (looking it up) is gated by a permission
+/// check: if the current identity may not see the collection, the lookup
+/// behaves as if it did not exist (returns nullptr), so that its existence is
+/// not leaked.
+///
+/// The check is only enforced from API version 1 onwards; API version 0 - and
+/// internal/superuser contexts without request info, which report version 0 -
+/// keep the legacy behaviour of unchecked lookups.
+bool currentContextCanSeeCollection(std::string_view db,
+                                    std::string_view collection) {
+  auto const& exec = ExecContext::current();
+  if (exec.requestedApiVersion() < 1) {
+    return true;
+  }
+  return exec.canSeeCollection(db, collection).ok();
+}
+}  // namespace
+
 std::shared_ptr<LogicalCollection> Database::lookupCollection(
     DataSourceId id) const {
   auto ptr = lookupDataSource(id);
   if (!ptr || ptr->category() != LogicalDataSource::Category::kCollection) {
     return nullptr;
   }
-  if (auto res = ExecContext::current().canSeeCollection(db, collection);
-      res.fail()) {
+  if (!currentContextCanSeeCollection(name(), ptr->name())) {
     return nullptr;
   }
   return basics::downCast<LogicalCollection>(std::move(ptr));
@@ -676,8 +697,7 @@ std::shared_ptr<LogicalCollection> Database::lookupCollection(
   if (!ptr || ptr->category() != LogicalDataSource::Category::kCollection) {
     return nullptr;
   }
-  if (auto res = ExecContext::current().canSeeCollection(db, collection);
-      res.fail()) {
+  if (!currentContextCanSeeCollection(name(), ptr->name())) {
     return nullptr;
   }
   return basics::downCast<LogicalCollection>(std::move(ptr));
@@ -695,8 +715,7 @@ std::shared_ptr<LogicalCollection> Database::lookupCollectionByUuid(
   if (it->second->category() != LogicalDataSource::Category::kCollection) {
     return nullptr;
   }
-  if (auto res = ExecContext::current().canSeeCollection(db, collection);
-      res.fail()) {
+  if (!currentContextCanSeeCollection(name(), it->second->name())) {
     return nullptr;
   }
   return basics::downCast<LogicalCollection>(it->second);

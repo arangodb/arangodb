@@ -96,9 +96,14 @@ struct ClassicExecContext {
 /// @param dbLevel      Access level returned for dbname (and its collections).
 /// @param isRestApiHardened  Passed to Classic ctor; set true to require admin
 ///                           for hardened actions. Defaults to false.
+/// @param apiVersion  The requested API version recalled by the Classic auth
+///                    context (0 = v0, the default). Set to 1 to exercise
+///                    version-gated checks (e.g. the collection-visibility
+///                    check in lookupCollection).
 inline ClassicExecContext makeClassicExecContext(
     std::string username, std::string dbname, auth::Level systemLevel,
-    auth::Level dbLevel, bool isRestApiHardened = false) {
+    auth::Level dbLevel, bool isRestApiHardened = false,
+    uint32_t apiVersion = 0) {
   auto um = std::make_shared<auth::UserManagerTester>();
 
   // Build a UserMap containing one entry for 'username' with the requested
@@ -120,6 +125,8 @@ inline ClassicExecContext makeClassicExecContext(
   um->setAuthInfo(userMap);
 
   auto req = std::make_shared<FakeGeneralRequest>();
+  // Set before constructing the Classic auth mode, which recalls the version.
+  req->setRequestedApiVersion(apiVersion);
 
   auto authMode = AuthMode{AuthMode::Classic{*um, std::move(username), *req}};
   auto ctx = createSharedExecContext(std::move(authMode), isRestApiHardened,

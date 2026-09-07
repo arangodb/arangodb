@@ -241,12 +241,13 @@ TEST_F(VocbaseTest, test_lookupCollection_requiresSeePermission) {
   ASSERT_NE(collection, nullptr);
   auto const cid = collection->id();
 
-  // A user who may not see the collection must not be able to
-  // look it up by id, name or UUID
+  // API version 1: a user who may not see the collection must not be able to
+  // look it up by id, name or UUID.
   {
     auto ctx = arangodb::tests::mocks::makeClassicExecContext(
         "restricted", "testVocbase", arangodb::auth::Level::NONE,
-        arangodb::auth::Level::NONE);
+        arangodb::auth::Level::NONE, /*isRestApiHardened*/ false,
+        /*apiVersion*/ 1);
     arangodb::ExecContextScope scope(ctx.execContext);
 
     EXPECT_EQ(vocbase.lookupCollection(cid), nullptr);
@@ -261,18 +262,33 @@ TEST_F(VocbaseTest, test_lookupCollection_requiresSeePermission) {
     EXPECT_NE(vocbase.lookupDataSource("testCollection"), nullptr);
   }
 
-  // A user with read access to the database (and thus its collections) may see
-  // the collection
+  // API version 1: a user with read access to the database (and thus its
+  // collections) may see the collection.
   {
     auto ctx = arangodb::tests::mocks::makeClassicExecContext(
         "reader", "testVocbase", arangodb::auth::Level::RO,
-        arangodb::auth::Level::RO);
+        arangodb::auth::Level::RO, /*isRestApiHardened*/ false,
+        /*apiVersion*/ 1);
     arangodb::ExecContextScope scope(ctx.execContext);
 
     EXPECT_NE(vocbase.lookupCollection(cid), nullptr);
     EXPECT_NE(vocbase.lookupCollection("100"), nullptr);
     EXPECT_NE(vocbase.lookupCollection("testCollection"), nullptr);
     EXPECT_NE(vocbase.lookupCollection("testCollectionGUID"), nullptr);
+    EXPECT_NE(vocbase.lookupCollectionByUuid("testCollectionGUID"), nullptr);
+  }
+
+  // API version 0 keeps the legacy behaviour: the visibility check is not
+  // enforced, so even a user without access resolves the collection.
+  {
+    auto ctx = arangodb::tests::mocks::makeClassicExecContext(
+        "restricted", "testVocbase", arangodb::auth::Level::NONE,
+        arangodb::auth::Level::NONE, /*isRestApiHardened*/ false,
+        /*apiVersion*/ 0);
+    arangodb::ExecContextScope scope(ctx.execContext);
+
+    EXPECT_NE(vocbase.lookupCollection(cid), nullptr);
+    EXPECT_NE(vocbase.lookupCollection("testCollection"), nullptr);
     EXPECT_NE(vocbase.lookupCollectionByUuid("testCollectionGUID"), nullptr);
   }
 
@@ -300,12 +316,13 @@ TEST_F(VocbaseTest, test_lookupCollection_systemCollection) {
     EXPECT_NE(vocbase.lookupCollectionByUuid("testSystemGUID"), nullptr);
   }
 
-  // Regular user without any access: the system collection must not be
-  // leaked either, so every lookup returns nullptr.
+  // API version 1: a regular user without any access must not have the system
+  // collection leaked either, so every lookup returns nullptr.
   {
     auto ctx = arangodb::tests::mocks::makeClassicExecContext(
         "restricted", "testVocbase", arangodb::auth::Level::NONE,
-        arangodb::auth::Level::NONE);
+        arangodb::auth::Level::NONE, /*isRestApiHardened*/ false,
+        /*apiVersion*/ 1);
     arangodb::ExecContextScope scope(ctx.execContext);
 
     EXPECT_EQ(vocbase.lookupCollection(cid), nullptr);
