@@ -24,14 +24,15 @@
 
 #include "Aql/Ast.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer.h"
 #include "Aql/QueryContext.h"
 #include "Aql/Condition.h"
+#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils/FindProjections.h"
 #include "Indexes/Index.h"
 #include "Containers/FlatHashSet.h"
 #include "VocBase/LogicalCollection.h"
 #include "StorageEngine/PhysicalCollection.h"
-#include "Aql/Optimizer.h"
 
 namespace arangodb::aql {
 namespace {
@@ -71,7 +72,7 @@ void reduceExtractionToProjectionRule(Optimizer* opt,
     }
 
     attributes.clear();
-    bool foundProjections = aql::utils::findProjections(
+    bool foundProjections = optimizer::findProjections(
         n, e->outVariable(), /*expectedAttribute*/ "",
         /*excludeStartNodeFilterCondition*/ false, attributes);
 

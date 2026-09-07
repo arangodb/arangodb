@@ -32,6 +32,7 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/NonConstExpression.h"
 #include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils/ExtractNonConstPartsOfIndexCondition.h"
 #include "Aql/Projections.h"
 #include "Aql/Query.h"
 #include "Aql/TraversalStats.h"
@@ -213,7 +214,7 @@ double BaseOptions::LookupInfo::estimateCost(size_t& nrItems) const {
 void BaseOptions::LookupInfo::initializeNonConstExpressions(
     aql::Ast* ast, aql::VarInfoMap const& varInfo,
     aql::Variable const* indexVariable) {
-  _nonConstContainer = aql::utils::extractNonConstPartsOfIndexCondition(
+  _nonConstContainer = aql::optimizer::extractNonConstPartsOfIndexCondition(
       ast, varInfo, false, nullptr, indexCondition, indexVariable);
   // We cannot optimize V8 expressions
   TRI_ASSERT(!_nonConstContainer._hasV8Expression);
