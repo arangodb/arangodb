@@ -1,0 +1,322 @@
+{
+  "uid": "ann-benchmark",
+  "title": "ANN benchmark \u2014 ArangoDB vector index",
+  "tags": [
+    "ann",
+    "vector-index",
+    "benchmark"
+  ],
+  "schemaVersion": 39,
+  "version": 2,
+  "time": {
+    "from": "now-1y",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "dataset",
+        "type": "custom",
+        "label": "Dataset",
+        "query": "glove-100-angular, sift-128-euclidean",
+        "current": {
+          "text": "glove-100-angular",
+          "value": "glove-100-angular"
+        },
+        "options": [
+          {
+            "text": "glove-100-angular",
+            "value": "glove-100-angular",
+            "selected": true
+          },
+          {
+            "text": "sift-128-euclidean",
+            "value": "sift-128-euclidean",
+            "selected": false
+          }
+        ],
+        "includeAll": false,
+        "multi": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Runs (build-id \u00b7 image \u00b7 version)",
+      "type": "table",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "arango-infinity"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "arango-infinity"
+          },
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "url": "/_db/bench/_api/cursor",
+          "url_options": {
+            "method": "POST",
+            "body_type": "raw",
+            "body_content_type": "application/json",
+            "data": "{\"query\": \"FOR r IN runs SORT r.started_at DESC RETURN { started: r.started_at, arangodb_version: r.arangodb_version, build_id: r.build_id, docker_image: r.docker_image, docker_image_id: r.docker_image_id, run_id: r.run_id }\"}"
+          },
+          "root_selector": "result",
+          "columns": [
+            {
+              "selector": "started",
+              "text": "started",
+              "type": "string"
+            },
+            {
+              "selector": "arangodb_version",
+              "text": "arangodb_version",
+              "type": "string"
+            },
+            {
+              "selector": "build_id",
+              "text": "build_id",
+              "type": "string"
+            },
+            {
+              "selector": "docker_image",
+              "text": "docker_image",
+              "type": "string"
+            },
+            {
+              "selector": "docker_image_id",
+              "text": "docker_image_id",
+              "type": "string"
+            },
+            {
+              "selector": "run_id",
+              "text": "run_id",
+              "type": "string"
+            }
+          ]
+        }
+      ],
+      "options": {}
+    },
+    {
+      "id": 2,
+      "title": "Recall vs QPS by run ($dataset)",
+      "type": "xychart",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "arango-infinity"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "arango-infinity"
+          },
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "url": "/_db/bench/_api/cursor",
+          "url_options": {
+            "method": "POST",
+            "body_type": "raw",
+            "body_content_type": "application/json",
+            "data": "{\"query\": \"FOR d IN recall_qps FILTER d.dataset == @dataset AND d.epsilon == 0 SORT d.recall RETURN { recall: d.recall, qps: d.qps, run: (d.build_id != \\\"\\\" ? SUBSTRING(d.build_id, 0, 12) : SUBSTRING(d.run_id, 0, 8)) }\", \"bindVars\": {\"dataset\": \"${dataset}\"}}"
+          },
+          "root_selector": "result",
+          "columns": [
+            {
+              "selector": "recall",
+              "text": "recall",
+              "type": "number"
+            },
+            {
+              "selector": "qps",
+              "text": "qps",
+              "type": "number"
+            },
+            {
+              "selector": "run",
+              "text": "run",
+              "type": "string"
+            }
+          ]
+        }
+      ],
+      "options": {
+        "seriesMapping": "auto",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "run"
+            ],
+            "keepFields": true,
+            "naming": {
+              "asLabels": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Recall vs p95 latency by run ($dataset)",
+      "type": "xychart",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "arango-infinity"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "arango-infinity"
+          },
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "url": "/_db/bench/_api/cursor",
+          "url_options": {
+            "method": "POST",
+            "body_type": "raw",
+            "body_content_type": "application/json",
+            "data": "{\"query\": \"FOR d IN recall_lat FILTER d.dataset == @dataset AND d.percentile == 95 SORT d.recall RETURN { recall: d.recall, latency_ms: d.latency, run: (d.build_id != \\\"\\\" ? SUBSTRING(d.build_id, 0, 12) : SUBSTRING(d.run_id, 0, 8)) }\", \"bindVars\": {\"dataset\": \"${dataset}\"}}"
+          },
+          "root_selector": "result",
+          "columns": [
+            {
+              "selector": "recall",
+              "text": "recall",
+              "type": "number"
+            },
+            {
+              "selector": "latency_ms",
+              "text": "latency_ms",
+              "type": "number"
+            },
+            {
+              "selector": "run",
+              "text": "run",
+              "type": "string"
+            }
+          ]
+        }
+      ],
+      "options": {
+        "seriesMapping": "auto",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "run"
+            ],
+            "keepFields": true,
+            "naming": {
+              "asLabels": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Build time by run ($dataset)",
+      "type": "barchart",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "arango-infinity"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 17
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "arango-infinity"
+          },
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "url": "/_db/bench/_api/cursor",
+          "url_options": {
+            "method": "POST",
+            "body_type": "raw",
+            "body_content_type": "application/json",
+            "data": "{\"query\": \"FOR d IN build_time FILTER d.dataset == @dataset SORT d.started_at RETURN { run: (d.build_id != \\\"\\\" ? SUBSTRING(d.build_id, 0, 12) : SUBSTRING(d.run_id, 0, 8)), build_s: d.build_time }\", \"bindVars\": {\"dataset\": \"${dataset}\"}}"
+          },
+          "root_selector": "result",
+          "columns": [
+            {
+              "selector": "run",
+              "text": "run",
+              "type": "string"
+            },
+            {
+              "selector": "build_s",
+              "text": "build_s",
+              "type": "number"
+            }
+          ]
+        }
+      ],
+      "options": {
+        "xField": "run",
+        "orientation": "auto",
+        "xTickLabelRotation": -45,
+        "showValue": "auto",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      }
+    }
+  ]
+}
