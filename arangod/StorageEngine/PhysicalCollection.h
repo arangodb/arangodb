@@ -268,6 +268,10 @@ class PhysicalCollection {
 
   virtual bool cacheEnabled() const noexcept = 0;
 
+  // Whether this collection stores time-travel history. Only the RocksDB
+  // engine supports it; the default is "off" for every other implementation.
+  virtual bool timeTravelEnabled() const noexcept { return false; }
+
  protected:
   explicit PhysicalCollection(LogicalCollection& collection);
 

@@ -397,9 +397,10 @@ std::tuple<CalculationNode*, FilterNode*> MatchBuilder::createVertexEdgeFilter(
 }
 
 std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
-MatchBuilder::createTraversalForPattern(Variable const* startNodeVar,
-                                        NormalizedEdge const& edge,
-                                        MatchPatternElement const& target) {
+MatchBuilder::createTraversalForPattern(
+    Variable const* startNodeVar, NormalizedEdge const& edge,
+    MatchPatternElement const& target,
+    std::unordered_map<VariableId, Variable const*> const& subst) {
   auto const* patternEdgeOutputVariable = edge.variable;
 
   aql::QueryContext& query = _ast->query();
@@ -491,7 +492,15 @@ MatchBuilder::createTraversalForPattern(Variable const* startNodeVar,
           _plan.createNode<FilterNode>(&_plan, _plan.nextId(), filterVar);
       filter->addDependency(calc);
 
-      return std::make_tuple(traversal, filter, traversalVertexOutputVar);
+      ExecutionNode* lastNode = filter;
+      if (!vertex.properties.empty() || vertex.filter.has_value()) {
+        auto [propCalc, propFilter] = createPropertiesFilter(
+            traversalVertexOutputVar, vertex.properties, vertex.filter, subst);
+        propCalc->addDependency(lastNode);
+        lastNode = propFilter;
+      }
+
+      return std::make_tuple(traversal, lastNode, traversalVertexOutputVar);
     }
   }
 
@@ -585,8 +594,8 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
       ADB_PROD_ASSERT(prevVar != nullptr);
 
       if (edge.range.isDefaultFixedOne() && edge.collections.size() > 1) {
-        auto [firstNode, lastNode, rightVertexVar] =
-            createTraversalForPattern(prevVar, edge, target);
+        auto [firstNode, lastNode, rightVertexVar] = createTraversalForPattern(
+            prevVar, edge, target, variableSubstitutions);
 
         firstNode->addDependency(previous);
         previous = en = lastNode;
@@ -672,8 +681,8 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
         pathVertices.push_back(
             _ast->createNodeReference(vertexDestinationVariable));
       } else {
-        auto [firstNode, lastNode, rightVertexVar] =
-            createTraversalForPattern(prevVar, edge, target);
+        auto [firstNode, lastNode, rightVertexVar] = createTraversalForPattern(
+            prevVar, edge, target, variableSubstitutions);
 
         firstNode->addDependency(previous);
         previous = en = lastNode;

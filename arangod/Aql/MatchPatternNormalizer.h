@@ -60,8 +60,6 @@ class MatchPatternNormalizer {
   [[nodiscard]] MatchEdgeDirection normalizeDirection(
       AstNode const* node) const;
   [[nodiscard]] MatchPathRange normalizeRange(AstNode const* node) const;
-  [[nodiscard]] Variable const* normalizeOutputVariable(
-      AstNode const* node) const;
 
   Ast& _ast;
 };
