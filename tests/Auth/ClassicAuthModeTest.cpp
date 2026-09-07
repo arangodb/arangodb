@@ -915,7 +915,7 @@ TEST_F(ClassicAuthModeTest, UserOperationsNeedSystemReadWrite) {
 
 TEST_F(ClassicAuthModeTest, UserOperationsAreForbiddenWithoutSystemReadWrite) {
   setGrants({{StaticStrings::SystemDatabase, RO}});
-  expectError(check(p::ReadUser{.name = "alice"}), TRI_ERROR_HTTP_FORBIDDEN);
+  expectError(check(p::ReadUser{.name = "alice"}), TRI_ERROR_FORBIDDEN);
   expectError(check(p::CreateUser{.name = "alice"}), TRI_ERROR_FORBIDDEN);
   expectError(check(p::DropUser{.name = "alice"}), TRI_ERROR_FORBIDDEN);
   expectError(check(p::ModifyUserProfile{.name = "alice"}),
@@ -983,7 +983,7 @@ TEST_F(ClassicAuthModeTest, EveryAdminActionIsForbiddenWithoutSystemReadWrite) {
         auto expectDenied = [&](auto const& admin) {
           auto permission = auth::Permission{admin};
           auto r = check(permission);
-          EXPECT_EQ(r.errorNumber(), TRI_ERROR_HTTP_FORBIDDEN) << permission;
+          EXPECT_EQ(r.errorNumber(), TRI_ERROR_FORBIDDEN) << permission;
           EXPECT_NE(r.errorMessage().find("Failed admin-permission check"),
                     std::string::npos)
               << r.errorMessage();
