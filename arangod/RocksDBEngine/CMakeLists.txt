@@ -34,7 +34,6 @@ add_library(arango_rocksdb STATIC
   RocksDBMethods.cpp
   RocksDBMethodsMemoryTracker.cpp
   RocksDBMultiDimIndex.cpp
-  RocksDBOptimizerRules.cpp
   RocksDBOptionFeature.cpp
   RocksDBOptionFeatureOptions.cpp
   RocksDBOptionFeatureOptionsProvider.cpp

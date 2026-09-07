@@ -47,8 +47,8 @@ struct BackendImpl : Backend {
   BackendImpl(network::Sender sendRequest, std::string authorizationEndpoint,
               RequestDurationMetric* requestDuration = nullptr);
 
-  auto evaluateManyImpl(Subject const& subject, RequestItems const& items,
-                        transaction::MethodsApi api)
+  auto evaluateTokenManyImpl(JwtToken const& token, RequestItems const& items,
+                             transaction::MethodsApi api)
       -> futures::Future<ResultT<EvaluateResponseMany>> override;
 
  protected:
@@ -156,7 +156,6 @@ auto inspect(Inspector& f, Backend::EvaluateResponseMany& v) {
 }
 
 // Request body for POST /_integration/authorization/v1/evaluate-token-many
-// (AuthorizationV1PermissionTokenManyRequest).
 struct EvaluateTokenManyRequest {
   std::string token;
   std::vector<Backend::RequestItem> items;
@@ -166,18 +165,6 @@ template<class Inspector>
 auto inspect(Inspector& f, EvaluateTokenManyRequest& v) {
   return f.object(v).fields(f.field("token", v.token),
                             f.field("items", v.items));
-}
-
-// Request body for POST /_integration/authorization/v1/evaluate-many
-// (AuthorizationV1PermissionManyRequest)
-struct EvaluateManyRequest {
-  std::string user;
-  std::vector<Backend::RequestItem> items;
-};
-
-template<class Inspector>
-auto inspect(Inspector& f, EvaluateManyRequest& v) {
-  return f.object(v).fields(f.field("user", v.user), f.field("items", v.items));
 }
 
 }  // namespace arangodb::rbac

@@ -230,7 +230,8 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(
       LogicalCollection& collection, velocypack::Slice info) override;
 
-  void getCapabilities(velocypack::Builder& builder) const override;
+  void getCapabilities(velocypack::Builder& builder,
+                       uint32_t apiVersion) const override;
   void getStatistics(velocypack::Builder& builder) const override;
   void toPrometheus(std::string& result, std::string_view globals,
                     bool ensureWhitespace) const override;
@@ -349,9 +350,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
                   LogicalView const& view) override;
 
   Result compactAll(bool changeLevel, bool compactBottomMostLevel) override;
-
-  /// @brief Add engine-specific optimizer rules
-  void addOptimizerRules(aql::OptimizerRulesFeature& feature) override;
 
 #ifdef USE_V8
   /// @brief Add engine-specific V8 functions

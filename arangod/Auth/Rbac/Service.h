@@ -32,17 +32,16 @@ namespace arangodb::rbac {
 struct Service {
   virtual ~Service() = default;
 
-  // Ask a batch of authorization questions for a single subject at once. A
-  // real implementation performs a single network round-trip, so callers that
-  // need several (action, resource) pairs for one logical permission should
-  // pass them together rather than calling check() repeatedly. Returns ok iff
-  // every pair is permitted; otherwise the first/aggregated denial.
+  // Ask a batch of authorization questions for a single token at once. A real
+  // implementation performs a single network round-trip, so callers that need
+  // several (action, resource) pairs for one logical permission should pass
+  // them together rather than calling check() repeatedly. Returns ok iff every
+  // pair is permitted; otherwise the first/aggregated denial.
   //
   // Virtual so that tests (in particular the RBAC auth-mode tests) can inject a
   // mock Service. The base implementation fails closed; see Service.cpp.
-  virtual auto check(Subject const& subject,
-                     std::span<ActionResource const> queries) noexcept
-      -> Result;
+  virtual auto check(JwtToken const& token,
+                     std::span<ActionResource const> queries) -> Result;
 };
 
 }  // namespace arangodb::rbac

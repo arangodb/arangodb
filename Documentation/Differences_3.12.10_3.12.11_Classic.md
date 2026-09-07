@@ -48,4 +48,6 @@ The two APIs:
 - `PUT /_db/mydb/_api/query-cache/properties`
 - `DELETE /_db/mydb/_api/query-cache`
 up to 3.12.10 did not execute any permission check at all. Now they both 
-requires read access to the `_system` database.
+requires write access to the `_system` database **and** read access to
+`mydb` (which might be a consequence of the write access to `_system`,
+if this is not explicitly overridden for `mydb`).

@@ -96,14 +96,6 @@ TEST(RbacSerializationTest, EvaluateTokenManyRequest) {
   })");
 }
 
-TEST(RbacSerializationTest, EvaluateManyRequest) {
-  auto req = rbac::EvaluateManyRequest{.user = "alice", .items = {}};
-  expectEqualsJson(req, R"({
-    "user": "alice",
-    "items": []
-  })");
-}
-
 TEST(RbacSerializationTest, ResponseItem) {
   auto item = rbac::Backend::ResponseItem{.effect = rbac::Backend::Effect::Deny,
                                           .message = "not authorized"};

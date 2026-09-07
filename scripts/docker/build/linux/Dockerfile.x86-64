@@ -150,12 +150,12 @@ RUN curl -L https://github.com/mozilla/sccache/releases/download/v${SCCACHE_VERS
 # Fetch libomp
 COPY --from=openmp /opt/omp /opt/omp 
 
-# Build openssl and openldap libraries in specific versions and with static
+# Build the openssl library in a specific version and with static
 # libraries, install with prefix /opt:
 
 COPY ./tools/* /tools/
 
-RUN [ "/tools/install.sh", "3.5", "7" ]
+RUN [ "/tools/install.sh", "3.5", "8" ]
 
 COPY ./scripts /scripts
 

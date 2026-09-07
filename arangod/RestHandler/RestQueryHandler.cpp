@@ -141,7 +141,7 @@ void RestQueryHandler::dumpQueryRegistry() {
         if (!username.empty()) {
           headers.try_emplace(
               StaticStrings::Authorization,
-              "bearer " + arangodb::rest::SslInterface::jwt::generateUserToken(
+              "bearer " + auth::generateUserToken(
                               auth->tokenCache().jwtSecret(), username));
         } else {
           headers.try_emplace(StaticStrings::Authorization,

@@ -70,8 +70,6 @@ auto getSmockerConfig() -> SmockerConfig {
 
 constexpr auto kEvaluateTokenManyPath =
     "/_integration/authorization/v1/evaluate-token-many";
-constexpr auto kEvaluateManyPath =
-    "/_integration/authorization/v1/evaluate-many";
 
 auto buildAllowResponse(std::size_t numItems) -> std::string {
   std::string items;
@@ -176,7 +174,7 @@ TEST_F(RbacIntegrationTest, ServiceCheck_Allow) {
 
   std::vector<rbac::ActionResource> queries{
       {rbac::Action::Read, rbac::resources::Database{.name = "mydb"}}};
-  auto result = service->check(rbac::JwtToken{"test.jwt.token"}, queries);
+  auto result = service->check({"test.jwt.token"}, queries);
 
   ASSERT_TRUE(result.ok()) << result.errorMessage();
 
@@ -200,45 +198,7 @@ TEST_F(RbacIntegrationTest, ServiceCheck_Deny) {
 
   std::vector<rbac::ActionResource> queries{
       {rbac::Action::Read, rbac::resources::Database{.name = "mydb"}}};
-  auto result = service->check(rbac::JwtToken{"test.jwt.token"}, queries);
-
-  EXPECT_EQ(result.errorNumber(), TRI_ERROR_FORBIDDEN);
-}
-
-// A Basic-authenticated caller has no JWT, so it is identified by name and the
-// request goes to the other batch endpoint. The items are unchanged; only the
-// envelope's subject field differs (COR-907).
-TEST_F(RbacIntegrationTest, ServiceCheck_UsernameSubjectUsesEvaluateMany) {
-  _smocker->addMock(kEvaluateManyPath, 200, buildAllowResponse(1));
-  auto service = makeService();
-
-  std::vector<rbac::ActionResource> queries{
-      {rbac::Action::Read, rbac::resources::Database{.name = "mydb"}}};
-  auto result = service->check(rbac::Username{"alice"}, queries);
-
-  ASSERT_TRUE(result.ok()) << result.errorMessage();
-
-  auto history = _smocker->getHistory();
-  ASSERT_EQ(history.size(), 1u);
-  EXPECT_EQ(history[0].method, "POST");
-  EXPECT_EQ(history[0].path, kEvaluateManyPath);
-  EXPECT_EQ(normalizeJson(history[0].body), normalizeJson(R"({
-    "user": "alice",
-    "items": [{
-      "action": "db:Read",
-      "resource": "db:database:mydb",
-      "context": {"parameters": {"attribute": {"values": []}}}
-    }]
-  })"));
-}
-
-TEST_F(RbacIntegrationTest, ServiceCheck_UsernameSubjectDeny) {
-  _smocker->addMock(kEvaluateManyPath, 200, buildDenyResponse(1));
-  auto service = makeService();
-
-  std::vector<rbac::ActionResource> queries{
-      {rbac::Action::Read, rbac::resources::Database{.name = "mydb"}}};
-  auto result = service->check(rbac::Username{"alice"}, queries);
+  auto result = service->check({"test.jwt.token"}, queries);
 
   EXPECT_EQ(result.errorNumber(), TRI_ERROR_FORBIDDEN);
 }
@@ -256,7 +216,7 @@ TEST_F(RbacIntegrationTest, ServiceCheck_BatchUsesNewVocabulary) {
        rbac::resources::Collection{.db = "mydb", .name = "c1"}},
       {rbac::Action::Read,
        rbac::resources::Collection{.db = "mydb", .name = "c2"}}};
-  auto result = service->check(rbac::JwtToken{"test.jwt.token"}, queries);
+  auto result = service->check({"test.jwt.token"}, queries);
 
   ASSERT_TRUE(result.ok()) << result.errorMessage();
 

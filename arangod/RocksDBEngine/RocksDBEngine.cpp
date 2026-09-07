@@ -91,7 +91,6 @@
 #include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
-#include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "RocksDBEngine/RocksDBOptionFeature.h"
 #include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
@@ -1881,11 +1880,6 @@ Result RocksDBEngine::compactAll(bool changeLevel,
                                 compactBottomMostLevel, &::cancelCompactions);
 }
 
-/// @brief Add engine-specific optimizer rules
-void RocksDBEngine::addOptimizerRules(aql::OptimizerRulesFeature& feature) {
-  RocksDBOptimizerRules::registerResources(feature);
-}
-
 #ifdef USE_V8
 /// @brief Add engine-specific V8 functions
 void RocksDBEngine::addV8Functions() {
@@ -2953,10 +2947,11 @@ DECLARE_GAUGE(rocksdb_live_blob_file_garbage_size, uint64_t,
               "rocksdb_live_blob_file_garbage_size");
 DECLARE_GAUGE(rocksdb_num_blob_files, uint64_t, "rocksdb_num_blob_files");
 
-void RocksDBEngine::getCapabilities(velocypack::Builder& builder) const {
+void RocksDBEngine::getCapabilities(velocypack::Builder& builder,
+                                    uint32_t apiVersion) const {
   // get generic capabilities
   VPackBuilder main;
-  StorageEngine::getCapabilities(main);
+  StorageEngine::getCapabilities(main, apiVersion);
 
   VPackBuilder own;
   own.openObject();

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -22,28 +22,18 @@
 
 #pragma once
 
-#include <memory>
+#include <string>
 
-namespace arangodb {
-namespace aql {
-class ExecutionPlan;
-class Optimizer;
-struct OptimizerRule;
-class OptimizerRulesFeature;
-}  // namespace aql
+#include "Ssl/AuthInfo.h"
 
-struct RocksDBOptimizerRules {
-  static void registerResources(aql::OptimizerRulesFeature& feature);
+namespace arangodb::auth {
 
-  // simplify an EnumerationCollectionNode that fetches an entire document to a
-  // projection of this document
-  static void reduceExtractionToProjectionRule(
-      aql::Optimizer* opt, std::unique_ptr<aql::ExecutionPlan> plan,
-      aql::OptimizerRule const& rule);
-  // remove SORT RAND() LIMIT 1 if appropriate
-  static void removeSortRandRule(aql::Optimizer* opt,
-                                 std::unique_ptr<aql::ExecutionPlan> plan,
-                                 aql::OptimizerRule const& rule);
+enum class JwtAlgorithm { ES256, HS256 };
+struct JwtSignature {
+  JwtAlgorithm algorithm;
+  std::string signature;
 };
 
-}  // namespace arangodb
+auto validateJwtSignature(AuthInfo const& authInfo, std::string_view message,
+                          JwtSignature const& sig) -> bool;
+}  // namespace arangodb::auth
