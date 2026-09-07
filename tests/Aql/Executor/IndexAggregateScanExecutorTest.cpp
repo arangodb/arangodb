@@ -134,14 +134,6 @@ struct MyVectorIterator : public AqlIndexStreamIterator {
     return LocalDocumentId{};
   }
 
-  void cacheCurrentKey(std::span<velocypack::Slice> keys) override {
-    size_t count = 0;
-    for (auto const& keyField : _keyFields) {
-      keys[count] = (*_current)[keyField];
-      count++;
-    }
-  }
-
   bool reset(std::span<velocypack::Slice> keys,
              std::span<velocypack::Slice> constants) override {
     _current = _values.begin();

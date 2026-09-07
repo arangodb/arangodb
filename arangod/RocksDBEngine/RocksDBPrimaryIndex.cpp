@@ -1280,7 +1280,6 @@ struct RocksDBPrimaryIndexStreamIterator final : AqlIndexStreamIterator {
   std::unique_ptr<rocksdb::Iterator> _iterator;
 
   VPackBuilder _builder;
-  VPackString _cache;
   RocksDBKeyBounds _bounds;
   rocksdb::Slice _end;
   RocksDBKey _rocksdbKey;
@@ -1358,11 +1357,6 @@ struct RocksDBPrimaryIndexStreamIterator final : AqlIndexStreamIterator {
     docId = load(projections);
 
     return true;
-  }
-
-  void cacheCurrentKey(std::span<VPackSlice> cache) override {
-    _cache = VPackString{_builder.slice()};
-    cache[0] = _cache;
   }
 
   bool reset(std::span<VPackSlice> span,

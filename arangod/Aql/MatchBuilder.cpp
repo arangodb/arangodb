@@ -401,7 +401,8 @@ MatchBuilder::createTraversalForPattern(
     Variable const* startNodeVar, NormalizedEdge const& edge,
     MatchPatternElement const& target,
     Variable const* edgeDocumentOutputVariable,
-    Variable const* vertexDocumentOutputVariable) {
+    Variable const* vertexDocumentOutputVariable,
+    std::unordered_map<VariableId, Variable const*> const& subst) {
   aql::QueryContext& query = _ast->query();
   auto options = std::make_unique<traverser::TraverserOptions>(query);
   applyPathRange(edge.range, *options);
@@ -435,7 +436,7 @@ MatchBuilder::createTraversalForPattern(
     ADB_PROD_ASSERT(edgeDocumentOutputVariable != nullptr);
     traversal->setEdgeOutput(edgeDocumentOutputVariable);
   } else {
-    // Variable-length: edge.variable receives the path object; individual
+    // Variable length: edge.variable receives the path object; individual
     // edge documents go to an unused temporary.
     traversal->setPathOutput(edge.variable);
     auto traversalEdgeOutputVar = _ast->variables()->createTemporaryVariable();
@@ -495,7 +496,17 @@ MatchBuilder::createTraversalForPattern(
           _plan.createNode<FilterNode>(&_plan, _plan.nextId(), filterVar);
       filter->addDependency(calc);
 
-      return std::make_tuple(traversal, filter, traversalVertexOutputVar);
+      // COR-959: apply target vertex {props}/WHERE on the full document
+      // (pre-projection) while still inside the traversal fragment.
+      ExecutionNode* lastNode = filter;
+      if (!vertex.properties.empty() || vertex.filter.has_value()) {
+        auto [propCalc, propFilter] = createPropertiesFilter(
+            traversalVertexOutputVar, vertex.properties, vertex.filter, subst);
+        propCalc->addDependency(lastNode);
+        lastNode = propFilter;
+      }
+
+      return std::make_tuple(traversal, lastNode, traversalVertexOutputVar);
     }
   }
 
@@ -625,7 +636,7 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
 
         auto [firstNode, lastNode, rightVertexVar] = createTraversalForPattern(
             prevVar, edge, target, edgeTraversalOutputVariable,
-            vertexTraversalOutputVariable);
+            vertexTraversalOutputVariable, variableSubstitutions);
 
         firstNode->addDependency(previous);
         previous = en = lastNode;
@@ -749,7 +760,7 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
 
         auto [firstNode, lastNode, rightVertexVar] = createTraversalForPattern(
             prevVar, edge, target, /*edgeDocumentOutputVariable*/ nullptr,
-            vertexTraversalOutputVariable);
+            vertexTraversalOutputVariable, variableSubstitutions);
 
         firstNode->addDependency(previous);
         previous = en = lastNode;

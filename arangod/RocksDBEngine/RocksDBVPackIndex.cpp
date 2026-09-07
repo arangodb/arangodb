@@ -3016,7 +3016,6 @@ struct RocksDBVPackStreamIterator final : AqlIndexStreamIterator {
 
   RocksDBVPackStreamOptions _options;
   VPackBuilder _builder;
-  VPackString _cache;
   RocksDBKeyBounds _bounds;
   rocksdb::Slice _end;
   RocksDBKey _rocksdbKey;
@@ -3118,11 +3117,6 @@ struct RocksDBVPackStreamIterator final : AqlIndexStreamIterator {
     storeKey(key, RocksDBKey::indexedVPack(_iterator->key()));
     docId = load(projections);
     return true;
-  }
-
-  void cacheCurrentKey(std::span<VPackSlice> cache) override {
-    _cache = VPackString{RocksDBKey::indexedVPack(_iterator->key())};
-    storeKey(cache, _cache);
   }
 
   static void constructKey(VPackBuilder& builder,

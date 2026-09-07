@@ -340,6 +340,10 @@ bool LogicalCollection::cacheEnabled() const noexcept {
   return _physical->cacheEnabled();
 }
 
+bool LogicalCollection::timeTravelEnabled() const noexcept {
+  return _physical->timeTravelEnabled();
+}
+
 bool LogicalCollection::supportsRBAC() const noexcept {
   return _supportsRBAC.load();
 }

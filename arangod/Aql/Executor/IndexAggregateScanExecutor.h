@@ -23,6 +23,7 @@
 
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/IndexStreamIterator.h"
+#include "Aql/IndexStreamKeyStore.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "Aql/QueryContext.h"
@@ -110,6 +111,7 @@ struct IndexAggregateScanExecutor {
 
   // needed as output of the iterator
   std::vector<VPackSlice> _currentGroupKeySlices;
+  IndexStreamKeyStore<VPackSlice> _currentGroupKeyCache;
   std::vector<VPackSlice> _keySlices;
   std::vector<VPackSlice> _projectionSlices;
 
