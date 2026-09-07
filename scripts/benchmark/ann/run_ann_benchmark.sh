@@ -198,31 +198,58 @@ collect_arango_log() {
   fi
 }
 
-# Direct, in-CI diagnosis of the duplicate-candidates bug: probe a sample of
-# docs with their OWN vector; if a doc is stored in two inverted lists, its own
-# _key comes back twice. Runs against the live SUT, writes findings to the
-# artifact, and never fails the run (best-effort).
+# Direct, in-CI diagnosis of the duplicate-candidates bug. Runs against the live
+# SUT, writes findings to the artifact, and never fails the run (best-effort).
+#  1. Compare the number of vector index entries with the document count: more
+#     entries than documents means some doc is stored in more than one list.
+#  2. Probe a random sample of docs with their OWN vector; if a doc is stored in
+#     two inverted lists, its own _key comes back twice.
 diagnose_duplicates() {
-  log "Probing for duplicate candidates (self-query)"
-  local sample="${ANN_DIAG_SAMPLE:-2000}" np="${ANN_DIAG_NPROBE:-256}" k="${ANN_DIAG_K:-5}"
+  log "Comparing vector index entry count with document count"
+  local figures="${ANN_OUTPUT_DIR}/figures.json" ndocs="" nentries=""
+  if curl -fsS "${ARANGO_URL}/_api/collection/items/figures?details=true" -o "${figures}" 2>/dev/null; then
+    ndocs="$(jq -r '.figures.engine.documents // .count // ""' "${figures}")"
+    nentries="$(jq -r '[.figures.engine.indexes[]? | select(.type == "vector") | .count] | first // ""' "${figures}")"
+  fi
+  {
+    echo "documents in collection: ${ndocs:-?}"
+    echo "entries in vector index: ${nentries:-?}"
+    if [[ "${ndocs}" =~ ^[0-9]+$ && "${nentries}" =~ ^[0-9]+$ ]]; then
+      if (( nentries > ndocs )); then
+        echo "=> $((nentries - ndocs)) index entries more than documents: some docs are stored in >1 list"
+      elif (( nentries < ndocs )); then
+        echo "=> $((ndocs - nentries)) documents are missing from the index"
+      else
+        echo "=> counts match: no document is stored in more than one list"
+      fi
+    fi
+  } | tee "${ANN_OUTPUT_DIR}/diagnose.txt"
+
+  log "Probing a random sample for duplicate candidates (self-query)"
+  local sample="${ANN_DIAG_SAMPLE:-2000}" np="${ANN_DIAG_NPROBE:-256}" k="${ANN_DIAG_K:-10}"
   local out="${ANN_OUTPUT_DIR}/diagnose.json"
-  local aql='FOR d IN items LIMIT @sample
+  # RAND() spreads the sample over the whole collection; a plain LIMIT would only
+  # ever probe the first documents in insertion order. The LIMIT is a safety net
+  # for when the document count is unknown and the fraction falls back to 1.
+  local fraction
+  fraction="$(LC_ALL=C awk -v s="${sample}" -v n="${ndocs:-0}" \
+    'BEGIN { if (n > 0) printf "%.10f", s / n; else print 1 }')"
+  local aql='FOR d IN items FILTER RAND() < @p LIMIT @lim
       LET hits = (FOR x IN items
                   SORT APPROX_NEAR_COSINE(x.vector, d.vector, {nProbe: @np}) DESC
                   LIMIT @k RETURN x._key)
-      FILTER LENGTH(hits) != LENGTH(UNIQUE(hits))
-      RETURN {key: d._key, hits: hits}'
+      RETURN {key: d._key, dup: LENGTH(hits) != LENGTH(UNIQUE(hits)), hits: hits}'
   local body
-  body="$(jq -n --arg q "${aql}" --argjson sample "${sample}" \
+  body="$(jq -n --arg q "${aql}" --argjson p "${fraction}" --argjson lim "$((sample * 2))" \
              --argjson np "${np}" --argjson k "${k}" \
-             '{query: $q, bindVars: {sample: $sample, np: $np, k: $k}}')"
+             '{query: $q, batchSize: 100000, bindVars: {p: $p, lim: $lim, np: $np, k: $k}}')"
   if curl -fsS -X POST "${ARANGO_URL}/_db/_system/_api/cursor" -d "${body}" -o "${out}" 2>/dev/null; then
-    local ndup; ndup="$(jq '.result | length' "${out}" 2>/dev/null || echo '?')"
     {
-      echo "duplicate self-probe: ${sample} docs, nProbe=${np}, topK=${k}"
-      echo "docs whose own top-${k} contained a duplicate (=> stored in >1 list): ${ndup}"
-      jq -r '.result[0:10][]? | "  key=\(.key) hits=\(.hits)"' "${out}" 2>/dev/null
-    } | tee "${ANN_OUTPUT_DIR}/diagnose.txt"
+      echo "duplicate self-probe: ~${sample} random docs (fraction ${fraction}), nProbe=${np}, topK=${k}"
+      echo "docs probed: $(jq '.result | length' "${out}" 2>/dev/null || echo '?')"
+      echo "docs whose own top-${k} contained a duplicate (=> stored in >1 list): $(jq '[.result[] | select(.dup)] | length' "${out}" 2>/dev/null || echo '?')"
+      jq -r '[.result[] | select(.dup)][0:10][] | "  key=\(.key) hits=\(.hits)"' "${out}" 2>/dev/null
+    } | tee -a "${ANN_OUTPUT_DIR}/diagnose.txt"
   else
     log "  (self-probe query failed - collection/index may be gone)"
   fi
@@ -282,7 +309,7 @@ export_results() {
     sed 's/^/  /' "${ANN_OUTPUT_DIR}/run_meta.json" 2>/dev/null || echo "  (no metadata)"
   } > "${ANN_OUTPUT_DIR}/site/METADATA.txt"
   # Gather the artifacts (results + logs) into the site bundle.
-  for f in results.csv run_meta.json arangod.log arangod-log.json run.log diagnose.txt diagnose.json; do
+  for f in results.csv run_meta.json arangod.log arangod-log.json run.log diagnose.txt diagnose.json figures.json; do
     cp "${ANN_OUTPUT_DIR}/${f}" "${ANN_OUTPUT_DIR}/site/${f}" 2>/dev/null || true
   done
 
