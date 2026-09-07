@@ -137,9 +137,9 @@ class agencyMgr {
     while(true) {
       let opts = {};
       if (body === null) {
-        body = (method === 'POST') ? '[["/"]]' : '';
+        body = (method === 'POST' || method === 'POST_RAW') ? '[["/"]]' : '';
       }
-      return agent.toThisInstance(() => {
+      let ret = agent.toThisInstance(() => {
         let ret = arango[method](path, body);
         if (ret.code !== 307 && ret.code !== 303) {
           return ret;
@@ -152,6 +152,9 @@ class agencyMgr {
         }
         print(`following redirect to ${agent.name}`);
       });
+      if (ret !== undefined) {
+        return ret;
+      } // else: follow redirect
     }
   }
   postAgency(operation, body = null) {
@@ -697,7 +700,7 @@ class agencyMgr {
       print('--------------------------------- '+ fn + ' -----------------------------------------------');
     }
     let agencyReply = this.getAnyAgent(agent, path, method);
-    if (agencyReply.code === 200) {
+    if (agencyReply !== undefined && agencyReply.code === 200) {
       if (fn === "agencyState") {
         fs.write(fs.join(dumpdir, `${fn}_${agent.pid}.json`), agencyReply.parsedBody);
       } else {
@@ -705,6 +708,7 @@ class agencyMgr {
         fs.write(fs.join(dumpdir, `${fn}_${agent.pid}.json`), JSON.stringify(agencyValue, null, 2));
       }
     } else {
+      print(`${RED}${Date()} agency ${agent.name} did not return the proper HTTP Status code to ${path} ${method}. Whole reply:${RESET}`);
       print(agencyReply);
     }
   }
@@ -741,11 +745,11 @@ class agencyMgr {
           print(Date() + " Attempting to dump Agent: " + JSON.stringify(arangod.getStructure()));
         }
         try {
-          this.dumpAgent(arangod,  '/_api/agency/config', 'GET', 'agencyConfig', dumpdir);
+          this.dumpAgent(arangod,  '/_api/agency/config', 'GET_RAW', 'agencyConfig', dumpdir);
 
-          this.dumpAgent(arangod, '/_api/agency/state', 'GET', 'agencyState', dumpdir);
+          this.dumpAgent(arangod, '/_api/agency/state', 'GET_RAW', 'agencyState', dumpdir);
 
-          this.dumpAgent(arangod, '/_api/agency/read', 'POST', 'agencyPlan', dumpdir);
+          this.dumpAgent(arangod, '/_api/agency/read', 'POST_RAW', 'agencyPlan', dumpdir);
         } catch (ex) {
           print(`${RED}${Date()} ignoring that we failed to dump the agent ${arangod.name}: ${ex}\n${ex.stack}${RESET}`);
         }

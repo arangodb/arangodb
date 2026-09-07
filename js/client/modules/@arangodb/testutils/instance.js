@@ -1475,7 +1475,9 @@ class instance {
 
   toThisInstance(callback) {
     let handle = arango.getConnectionHandle();
+    let dbName = arango.getDatabaseName();
     this.connect();
+    db._useDatabase("_system");
     let reconnected = false;
     let ret;
     try {
@@ -1485,6 +1487,7 @@ class instance {
       throw err;
     } finally {
       reconnected = arango.connectHandle(handle);
+      db._useDatabase(dbName);
     }
     if (!reconnected) {
       throw new Error(`failed to restore connection to ${handle}`);

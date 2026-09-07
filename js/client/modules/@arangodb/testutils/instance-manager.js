@@ -138,6 +138,7 @@ class instanceManager {
     this.endpointPort = -1;
     this.connectedEndpoint = undefined;
     this.connectionHandle = undefined;
+    this.privConnectionHandle = undefined;
     this.arangods = [];
     this.restKeyFile = '';
     this.tcpdump = null;
@@ -198,6 +199,7 @@ class instanceManager {
   
   destructor(cleanup) {
     arango.disconnectHandle(this.connectionHandle);
+    arango.disconnectHandle(this.privConnectionHandle);
     this.arangods.forEach(arangod => {
       arangod.pm.deregister(arangod.port);
       arangod._disconnect();
@@ -374,7 +376,11 @@ class instanceManager {
     });
     return ret;
   }
-  rememberConnection() {
+  rememberConnection(privileged) {
+    if (privileged) {
+      this.privConnectionHandle = arango.getConnectionHandle();
+      return;
+    }
     this.connectionHandle = arango.getConnectionHandle();
     this.dbName = '_system';
     try {
@@ -384,19 +390,32 @@ class instanceManager {
     this.connectedEndpoint = arango.getEndpoint();
     db._useDatabase('_system');
   }
-  reconnectMe() {
-    if (this.connectionHandle !== undefined) {
-      try {
-        let ret = arango.connectHandle(this.connectionHandle);
-        db._useDatabase(this.dbName);
-        return ret;
-      } catch (ex) {
-        print(`${RED}${Date()} failed to reconnect handle ${this.connectionHandle} ${ex} - trying conventional reconnect.${RESET}`);
+  reconnectMe(privileged) {
+    if (privileged) {
+      if (this.privConnectionHandle !== undefined) {
+        try {
+          let ret = arango.connectHandle(this.privConnectionHandle);
+          db._useDatabase(this.dbName);
+          return ret;
+        } catch (ex) {
+          print(`${RED}${Date()} failed to reconnect handle ${this.privConnectionHandle} ${ex} - trying conventional reconnect.${RESET}`);
+        }
       }
+      return this.reconnect(true);
+    } else {
+      if (this.connectionHandle !== undefined) {
+        try {
+          let ret = arango.connectHandle(this.connectionHandle);
+          db._useDatabase(this.dbName);
+          return ret;
+        } catch (ex) {
+          print(`${RED}${Date()} failed to reconnect handle ${this.connectionHandle} ${ex} - trying conventional reconnect.${RESET}`);
+        }
+      }
+      let ret =  arango.reconnect(this.connectedEndpoint, this.dbName, this.userName, '');
+      this.connectionHandle = arango.getConnectionHandle();
+      return ret;
     }
-    let ret =  arango.reconnect(this.connectedEndpoint, this.dbName, this.userName, '');
-    this.connectionHandle = arango.getConnectionHandle();
-    return ret;
   }
   debugCanUseFailAt() {
     const res = arango.GET_RAW("_admin/debug/failat");
@@ -410,10 +429,13 @@ class instanceManager {
   }
   debugSetFailAtNonAgency(failurePoint) {
     let count = 0;
-    this.rememberConnection();
     this.arangods.forEach(arangod => {
-      if (!arangod.isAgent() && arangod.debugSetFailAt(failurePoint)) {
-        count += 1;
+      if (!arangod.isAgent()) {
+        arangod.toThisInstance(() => {
+          if (arangod.debugSetFailAt(failurePoint)) {
+            count += 1;
+          }
+        });
       }
     });
     if (count === 0) {
@@ -421,74 +443,73 @@ class instanceManager {
       this.arangods.forEach(arangod => {msg += `\n Name => ${arangod.name}  ShortName => ${arangod.shortName} Role=> ${arangod.instanceRole} URL => ${arangod.url} Endpoint: => ${arangod.endpoint}`;});
       throw new Error(`no server matched your conditions to set failurepoint ${failurePoint},${msg}`);
     }
-    this.reconnectMe();
   }
   
   debugSetFailAt(failurePoint, role, urlIDOrShortName) {
     let count = 0;
-    this.rememberConnection();
     this.arangods.forEach(arangod => {
       if (!arangod.matches(role, urlIDOrShortName)) {
         return;
       }
-      if (arangod.debugSetFailAt(failurePoint)) {
-        count += 1;
-      }
+      arango.toThisInstance(() => {
+        if (arangod.debugSetFailAt(failurePoint)) {
+          count += 1;
+        }
+      });
     });
     if (count === 0) {
       let msg = "";
       this.arangods.forEach(arangod => {msg += `\n Name => ${arangod.name}  ShortName => ${arangod.shortName} Role=> ${arangod.instanceRole} URL => ${arangod.url} Endpoint: => ${arangod.endpoint}`;});
       throw new Error(`no server matched your conditions to set failurepoint ${failurePoint}, ${urlIDOrShortName}, ${role},${msg}`);
     }
-    this.reconnectMe();
   }
   debugShouldFailAt(failurePoint, role, urlIDOrShortName) {
     let count = 0;
-    this.rememberConnection();
     this.arangods.forEach(arangod => {
       if (!arangod.matches(role, urlIDOrShortName)) {
         return;
       }
-      if (arangod.debugShouldFailAt(failurePoint)) {
-        count += 1;
-      }
+      arango.toThisInstance(() => {
+        if (arangod.debugShouldFailAt(failurePoint)) {
+          count += 1;
+        }
+      });
     });
     if (count === 0) {
       let msg = "";
       this.arangods.forEach(arangod => {msg += `\n Name => ${arangod.name}  ShortName => ${arangod.shortName} Role=> ${arangod.instanceRole} URL => ${arangod.url} Endpoint: => ${arangod.endpoint}`;});
       throw new Error(`no server matched your conditions to set failurepoint ${failurePoint}, ${urlIDOrShortName}, ${role},${msg}`);
     }
-    this.reconnectMe();
   }
   debugResetRaceControl(role, urlIDOrShortName) {
-    this.rememberConnection();
     this.arangods.forEach(arangod => {
       if (!arangod.matches(role, urlIDOrShortName)) {
         return;
       }
-      arangod.debugResetRaceControl();
+      arango.toThisInstance(() => {
+        arangod.debugResetRaceControl();
+      });
     });
-    this.reconnectMe();
   }
   debugRemoveFailAt(failurePoint, role, urlIDOrShortName) {
-    this.rememberConnection();
     this.arangods.forEach(arangod => {
       if (!arangod.matches(role, urlIDOrShortName)) {
         return;
       }
-      arangod.debugClearFailAt(failurePoint);
+      arango.toThisInstance(() => {
+        arangod.debugClearFailAt(failurePoint);
+      });
     });
-    this.reconnectMe();
   }
   debugClearFailAt(failurePoint, role, urlIDOrShortName) {
-    this.rememberConnection();
     this.arangods.forEach(arangod => {
       if (!arangod.matches(role, urlIDOrShortName)) {
         return;
       }
-      arangod.debugClearFailAt(failurePoint);
+      arango.toThisInstance(() => {
+        arangod.debugClearFailAt(failurePoint);
+      });
     });
-    this.reconnectMe();
   }
   debugTerminate(msg, signal_to_expect) {
     try {
@@ -1562,13 +1583,9 @@ class instanceManager {
   // //////////////////////////////////////////////////////////////////////////////
 
   checkServerFailurePoints() {
-    this.rememberConnection();
     let failurePoints = [];
     this.arangods.forEach(arangod => {
-      // we don't have JWT success atm, so if, skip:
-      if ((!arangod.isAgent()) &&
-          !arangod.args.hasOwnProperty('server.jwt-secret-folder') &&
-          !arangod.args.hasOwnProperty('server.jwt-secret')) {
+      arangod.toThisInstance(() => {
         let fp = arangod.debugGetFailurePoints();
         if (fp.length > 0) {
           failurePoints.push({
@@ -1578,9 +1595,8 @@ class instanceManager {
             "failurePoints": fp
           });
         }
-      }
+      });
     });
-    this.reconnectMe();
     return failurePoints;
   }
 
@@ -1591,11 +1607,11 @@ class instanceManager {
       let deadline = time() + seconds(60);
       arango.reconnect(this.endpoint,
                        '_system',
-                       `${this.options.username}`,
-                       `${this.options.password}`,
+                       undefined,
+                       undefined,
                        time() < deadline,
-                       this.JWT);
-      this.connectionHandle = arango.getConnectionHandle();
+                       this.jwt_secret);
+      this.privConnectionHandle = arango.getConnectionHandle();
       return true;
     }
     if (this.options.hasOwnProperty('server')) {
