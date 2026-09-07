@@ -63,34 +63,30 @@ bool MatchPathRange::isFixed() const noexcept {
   return _maxDepth.has_value() && _minDepth == *_maxDepth;
 }
 
-MatchProjectionReservedAttribute classifyMatchProjectionReservedAttribute(
-    std::string_view name, bool isEdge) noexcept {
+MatchProjectionReservedAttribute
+classifyDocumentMatchProjectionReservedAttribute(
+    std::string_view name) noexcept {
   if (name == StaticStrings::IdString) {
     return MatchProjectionReservedAttribute::kId;
-  }
-  if (isEdge) {
-    if (name == StaticStrings::FromString) {
-      return MatchProjectionReservedAttribute::kFrom;
-    }
-    if (name == StaticStrings::ToString) {
-      return MatchProjectionReservedAttribute::kTo;
-    }
   }
   return MatchProjectionReservedAttribute::kNone;
 }
 
-bool isMatchProjectionReservedAttribute(std::string_view name,
-                                        bool isEdge) noexcept {
-  return classifyMatchProjectionReservedAttribute(name, isEdge) !=
-         MatchProjectionReservedAttribute::kNone;
-}
-
-std::vector<std::string_view> mandatoryMatchProjectionAttributes(bool isEdge) {
-  if (isEdge) {
-    return {StaticStrings::IdString, StaticStrings::FromString,
-            StaticStrings::ToString};
+MatchProjectionReservedAttribute
+classifyEdgeDocumentMatchProjectionReservedAttribute(
+    std::string_view name) noexcept {
+  auto const documentClass =
+      classifyDocumentMatchProjectionReservedAttribute(name);
+  if (documentClass != MatchProjectionReservedAttribute::kNone) {
+    return documentClass;
   }
-  return {StaticStrings::IdString};
+  if (name == StaticStrings::FromString) {
+    return MatchProjectionReservedAttribute::kFrom;
+  }
+  if (name == StaticStrings::ToString) {
+    return MatchProjectionReservedAttribute::kTo;
+  }
+  return MatchProjectionReservedAttribute::kNone;
 }
 
 MatchProjectionItem MatchProjectionItem::keepPath(
@@ -126,14 +122,6 @@ std::string_view MatchProjectionItem::topLevelKey() const noexcept {
   }
   TRI_ASSERT(!path.empty());
   return path.front();
-}
-
-Variable const* MatchPatternElement::outputVariable() const noexcept {
-  if (kind == Kind::kVariableReference) {
-    return variableReference;
-  }
-  TRI_ASSERT(vertex.has_value());
-  return vertex->variable;
 }
 
 }  // namespace arangodb::aql

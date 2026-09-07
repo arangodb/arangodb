@@ -182,9 +182,28 @@ MatchBuilder::createCollectionAccess(
   return std::make_tuple(enumCollection, lastNode, fullDocumentVariable);
 }
 
+ExecutionNode* MatchBuilder::createDocumentPatternProjection(
+    Variable const* destinationVariable, Variable const* fullDocumentVar,
+    std::optional<MatchProjection> const& projection,
+    std::unordered_map<VariableId, Variable const*> const& subst) {
+  return createPatternProjection(
+      destinationVariable, fullDocumentVar, projection,
+      kMandatoryDocumentMatchProjectionAttributes, subst);
+}
+
+ExecutionNode* MatchBuilder::createEdgeDocumentPatternProjection(
+    Variable const* destinationVariable, Variable const* fullDocumentVar,
+    std::optional<MatchProjection> const& projection,
+    std::unordered_map<VariableId, Variable const*> const& subst) {
+  return createPatternProjection(
+      destinationVariable, fullDocumentVar, projection,
+      kMandatoryEdgeDocumentMatchProjectionAttributes, subst);
+}
+
 ExecutionNode* MatchBuilder::createPatternProjection(
     Variable const* destinationVariable, Variable const* fullDocumentVar,
-    std::optional<MatchProjection> const& projectionOpt, bool isEdge,
+    std::optional<MatchProjection> const& projectionOpt,
+    std::span<std::string_view const> mandatoryAttributes,
     std::unordered_map<VariableId, Variable const*> const& subst) {
   if (!projectionOpt.has_value()) {
     auto* root = _ast->createNodeReference(fullDocumentVar);
@@ -239,8 +258,12 @@ ExecutionNode* MatchBuilder::createPatternProjection(
     insertNestedPath(root, path, attrAccess);
   };
 
-  auto const mandatory = mandatoryMatchProjectionAttributes(isEdge);
-  for (auto attr : mandatory) {
+  auto const isReservedAttribute = [&](std::string_view name) noexcept {
+    return std::find(mandatoryAttributes.begin(), mandatoryAttributes.end(),
+                     name) != mandatoryAttributes.end();
+  };
+
+  for (auto attr : mandatoryAttributes) {
     addProjectedAttribute({std::string(attr)});
   }
 
@@ -259,9 +282,10 @@ ExecutionNode* MatchBuilder::createPatternProjection(
     }
     TRI_ASSERT(item.isKeep());
     TRI_ASSERT(!item.path.empty());
-    // Reserved attributes are already mandatory; ignore user keeps that would
-    // overwrite scalar _id / _from / _to (including nested paths under them).
-    if (isMatchProjectionReservedAttribute(item.topLevelKey(), isEdge)) {
+    // Reserved attributes are already mandatory. Ignore user projection paths
+    // rooted at _id, _from, or _to to avoid overwriting these scalar
+    // attributes.
+    if (isReservedAttribute(item.topLevelKey())) {
       continue;
     }
     keepPaths.push_back(item.path);
@@ -291,7 +315,7 @@ ExecutionNode* MatchBuilder::createPatternProjection(
   }
 
   std::unordered_set<std::string_view> usedTopLevelKeys;
-  for (auto attr : mandatory) {
+  for (auto attr : mandatoryAttributes) {
     usedTopLevelKeys.emplace(attr);
   }
   for (auto const& path : keepPaths) {
@@ -304,7 +328,7 @@ ExecutionNode* MatchBuilder::createPatternProjection(
   }
 
   for (auto const& alias : aliases) {
-    if (isMatchProjectionReservedAttribute(alias.name, isEdge)) {
+    if (isReservedAttribute(alias.name)) {
       continue;
     }
     if (!usedTopLevelKeys.emplace(alias.name).second) {
@@ -598,8 +622,8 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
       addPathVertex(pathVertices, destinationVariable);
 
       if (hasProjection) {
-        projections.push_back(createPatternProjection(
-            destinationVariable, prevVar, vertex.projection, false,
+        projections.push_back(createDocumentPatternProjection(
+            destinationVariable, prevVar, vertex.projection,
             variableSubstitutions));
       }
     };
@@ -675,14 +699,14 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
         }
 
         if (edgeHasProjection) {
-          projections.push_back(createPatternProjection(
+          projections.push_back(createEdgeDocumentPatternProjection(
               edgeDestinationVariable, edgeTraversalOutputVariable,
-              edge.projection, true, variableSubstitutions));
+              edge.projection, variableSubstitutions));
         }
         if (vertexHasProjection) {
-          projections.push_back(createPatternProjection(
+          projections.push_back(createDocumentPatternProjection(
               vertexDestinationVariable, rightVertexVar,
-              target.vertex->projection, false, variableSubstitutions));
+              target.vertex->projection, variableSubstitutions));
         }
 
         prevVar = rightVertexVar;
@@ -709,9 +733,9 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
         previous = en = lastNodeFilter;
 
         if (edgeHasProjection) {
-          projections.push_back(createPatternProjection(
+          projections.push_back(createEdgeDocumentPatternProjection(
               edgeDestinationVariable, edgeEnumOutputVariable, edge.projection,
-              true, variableSubstitutions));
+              variableSubstitutions));
         }
 
         Variable const* rightVertexVar;
@@ -740,9 +764,9 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
           en->addDependency(previous);
 
           if (vertexHasProjection) {
-            projections.push_back(createPatternProjection(
+            projections.push_back(createDocumentPatternProjection(
                 vertexDestinationVariable, rightVertexVar,
-                target.vertex->projection, false, variableSubstitutions));
+                target.vertex->projection, variableSubstitutions));
           }
 
           previous = en = lastNodeFilter;
@@ -788,9 +812,9 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
         previous = en = lastNode;
 
         if (vertexHasProjection) {
-          projections.push_back(createPatternProjection(
+          projections.push_back(createDocumentPatternProjection(
               vertexDestinationVariable, rightVertexVar,
-              target.vertex->projection, false, variableSubstitutions));
+              target.vertex->projection, variableSubstitutions));
         }
 
         prevVar = rightVertexVar;

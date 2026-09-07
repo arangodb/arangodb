@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -111,20 +112,24 @@ enum class MatchProjectionReservedAttribute : uint8_t {
   kTo,
 };
 
-/// @brief Classify a top-level MATCH projection attribute name.
-/// @param isEdge true when projecting an edge pattern variable
+/// @brief Attributes always present in a projected MATCH vertex document.
+inline constexpr std::array<std::string_view, 1>
+    kMandatoryDocumentMatchProjectionAttributes{"_id"};
+
+/// @brief Attributes always present in a projected MATCH edge document.
+inline constexpr std::array<std::string_view, 3>
+    kMandatoryEdgeDocumentMatchProjectionAttributes{"_id", "_from", "_to"};
+
+/// @brief Classify a top-level MATCH projection attribute for a vertex
+/// document.
 [[nodiscard]] MatchProjectionReservedAttribute
-classifyMatchProjectionReservedAttribute(std::string_view name,
-                                         bool isEdge) noexcept;
+classifyDocumentMatchProjectionReservedAttribute(
+    std::string_view name) noexcept;
 
-/// @brief true when @p name is reserved for MATCH projection auto-injection
-[[nodiscard]] bool isMatchProjectionReservedAttribute(std::string_view name,
-                                                      bool isEdge) noexcept;
-
-/// @brief Attributes always present in a projected MATCH vertex/edge object.
-/// Vertex: `_id`. Edge: `_id`, `_from`, `_to`.
-[[nodiscard]] std::vector<std::string_view> mandatoryMatchProjectionAttributes(
-    bool isEdge);
+/// @brief Classify a top-level MATCH projection attribute for an edge document.
+[[nodiscard]] MatchProjectionReservedAttribute
+classifyEdgeDocumentMatchProjectionReservedAttribute(
+    std::string_view name) noexcept;
 
 /// @brief One RETURN item from an in-pattern MATCH projection.
 ///
@@ -202,8 +207,6 @@ struct MatchPatternElement {
   Kind kind{Kind::kVariableReference};
   std::optional<NormalizedVertex> vertex;
   Variable const* variableReference{nullptr};
-
-  Variable const* outputVariable() const noexcept;
 };
 
 struct NormalizedMatchSegment {

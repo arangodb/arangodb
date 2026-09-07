@@ -638,26 +638,29 @@ TEST_F(MatchPatternNormalizerTest, projectionSystemAttributeKeeps) {
 
 TEST_F(MatchPatternNormalizerTest, projectionReservedAttributeClassification) {
   EXPECT_EQ(MatchProjectionReservedAttribute::kId,
-            classifyMatchProjectionReservedAttribute("_id", false));
+            classifyDocumentMatchProjectionReservedAttribute("_id"));
   EXPECT_EQ(MatchProjectionReservedAttribute::kId,
-            classifyMatchProjectionReservedAttribute("_id", true));
+            classifyEdgeDocumentMatchProjectionReservedAttribute("_id"));
   EXPECT_EQ(MatchProjectionReservedAttribute::kNone,
-            classifyMatchProjectionReservedAttribute("_key", false));
+            classifyDocumentMatchProjectionReservedAttribute("_key"));
   EXPECT_EQ(MatchProjectionReservedAttribute::kNone,
-            classifyMatchProjectionReservedAttribute("_rev", false));
+            classifyDocumentMatchProjectionReservedAttribute("_rev"));
   EXPECT_EQ(MatchProjectionReservedAttribute::kNone,
-            classifyMatchProjectionReservedAttribute("_from", false));
+            classifyDocumentMatchProjectionReservedAttribute("_from"));
   EXPECT_EQ(MatchProjectionReservedAttribute::kFrom,
-            classifyMatchProjectionReservedAttribute("_from", true));
+            classifyEdgeDocumentMatchProjectionReservedAttribute("_from"));
   EXPECT_EQ(MatchProjectionReservedAttribute::kTo,
-            classifyMatchProjectionReservedAttribute("_to", true));
+            classifyEdgeDocumentMatchProjectionReservedAttribute("_to"));
 
-  auto vertexMandatory = mandatoryMatchProjectionAttributes(false);
-  ASSERT_EQ((std::vector<std::string_view>{"_id"}), vertexMandatory);
+  EXPECT_EQ((std::vector<std::string_view>{"_id"}),
+            std::vector<std::string_view>(
+                kMandatoryDocumentMatchProjectionAttributes.begin(),
+                kMandatoryDocumentMatchProjectionAttributes.end()));
 
-  auto edgeMandatory = mandatoryMatchProjectionAttributes(true);
-  ASSERT_EQ((std::vector<std::string_view>{"_id", "_from", "_to"}),
-            edgeMandatory);
+  EXPECT_EQ((std::vector<std::string_view>{"_id", "_from", "_to"}),
+            std::vector<std::string_view>(
+                kMandatoryEdgeDocumentMatchProjectionAttributes.begin(),
+                kMandatoryEdgeDocumentMatchProjectionAttributes.end()));
 }
 
 TEST_F(MatchPatternNormalizerTest, variableReferenceTarget) {
