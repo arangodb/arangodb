@@ -209,7 +209,7 @@ diagnose_duplicates() {
   local figures="${ANN_OUTPUT_DIR}/figures.json" ndocs="" nentries=""
   if curl -fsS "${ARANGO_URL}/_api/collection/items/figures?details=true" -o "${figures}" 2>/dev/null; then
     ndocs="$(jq -r '.figures.engine.documents // .count // ""' "${figures}")"
-    nentries="$(jq -r '[.figures.engine.indexes[]? | select(.type == "vector") | .count] | first // ""' "${figures}")"
+    nentries="$(jq -r '[.figures.engine.indexes[]? | select(.type | test("vector")) | .count] | first // ""' "${figures}")"
   fi
   {
     echo "documents in collection: ${ndocs:-?}"

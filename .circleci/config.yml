@@ -286,6 +286,12 @@ jobs:
         name: arangod
         environment:
           ARANGO_NO_AUTH: "1"
+          # faiss is compiled with clang -fopenmp=libgomp, which drops OpenMP
+          # code generation while omp_get_max_threads() still reports all cores.
+          # faiss' database-parallel coarse search (PR #5000) then searches only
+          # 1/N of the centroids and pads results with centroid 0. Pinning the
+          # thread count to 1 keeps faiss' view consistent with reality.
+          OMP_NUM_THREADS: "1"
         command: ["--vector-index=true"]
     # xlarge (largest tier) so the arangod service container isn't squeezed in
     # the pod - testing whether the CI-only duplicate is resource pressure.
