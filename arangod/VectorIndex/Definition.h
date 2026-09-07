@@ -32,6 +32,7 @@
 #include <vector>
 
 #include "Assertions/Assert.h"
+#include "Basics/Exceptions.h"
 #include "Basics/overload.h"
 #include "Inspection/Status.h"
 #include "Inspection/Types.h"
@@ -187,6 +188,9 @@ struct NListsScalingSpec {
         return std::max(minNLists, static_cast<std::size_t>(
                                        multiplier * std::sqrt(docCount)));
       }
+      default:
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "Unknown scaling strategy!");
     }
   }
 
