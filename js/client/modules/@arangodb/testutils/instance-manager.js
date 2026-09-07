@@ -437,11 +437,9 @@ class instanceManager {
     let count = 0;
     this.arangods.forEach(arangod => {
       if (!arangod.isAgent()) {
-        arangod.toThisInstance(() => {
-          if (arangod.debugSetFailAt(failurePoint)) {
-            count += 1;
-          }
-        });
+        if (arangod.debugSetFailAt(failurePoint)) {
+          count += 1;
+        }
       }
     });
     if (count === 0) {
@@ -457,11 +455,9 @@ class instanceManager {
       if (!arangod.matches(role, urlIDOrShortName)) {
         return;
       }
-      arangod.toThisInstance(() => {
-        if (arangod.debugSetFailAt(failurePoint)) {
-          count += 1;
-        }
-      });
+      if (arangod.debugSetFailAt(failurePoint)) {
+        count += 1;
+      }
     });
     if (count === 0) {
       let msg = "";
@@ -475,11 +471,9 @@ class instanceManager {
       if (!arangod.matches(role, urlIDOrShortName)) {
         return;
       }
-      arangod.toThisInstance(() => {
-        if (arangod.debugShouldFailAt(failurePoint)) {
-          count += 1;
-        }
-      });
+      if (arangod.debugShouldFailAt(failurePoint)) {
+        count += 1;
+      }
     });
     if (count === 0) {
       let msg = "";
@@ -492,9 +486,7 @@ class instanceManager {
       if (!arangod.matches(role, urlIDOrShortName)) {
         return;
       }
-      arangod.toThisInstance(() => {
-        arangod.debugResetRaceControl();
-      });
+      arangod.debugResetRaceControl();
     });
   }
   debugRemoveFailAt(failurePoint, role, urlIDOrShortName) {
@@ -502,9 +494,7 @@ class instanceManager {
       if (!arangod.matches(role, urlIDOrShortName)) {
         return;
       }
-      arangod.toThisInstance(() => {
-        arangod.debugClearFailAt(failurePoint);
-      });
+      arangod.debugClearFailAt(failurePoint);
     });
   }
   debugClearFailAt(failurePoint, role, urlIDOrShortName) {
@@ -512,9 +502,7 @@ class instanceManager {
       if (!arangod.matches(role, urlIDOrShortName)) {
         return;
       }
-      arangod.toThisInstance(() => {
-        arangod.debugClearFailAt(failurePoint);
-      });
+      arangod.debugClearFailAt(failurePoint);
     });
   }
   debugTerminate(msg, signal_to_expect) {
@@ -1591,17 +1579,15 @@ class instanceManager {
   checkServerFailurePoints() {
     let failurePoints = [];
     this.arangods.forEach(arangod => {
-      arangod.toThisInstance(() => {
-        let fp = arangod.debugGetFailurePoints();
-        if (fp.length > 0) {
-          failurePoints.push({
-            "role": arangod.instanceRole,
-            "pid":  arangod.pid,
-            "database.directory": arangod['database.directory'],
-            "failurePoints": fp
-          });
-        }
-      });
+      let fp = arangod.debugGetFailurePoints();
+      if (fp.length > 0) {
+        failurePoints.push({
+          "role": arangod.instanceRole,
+          "pid":  arangod.pid,
+          "database.directory": arangod['database.directory'],
+          "failurePoints": fp
+        });
+      }
     });
     return failurePoints;
   }
