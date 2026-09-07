@@ -1,0 +1,17 @@
+apiVersion: 1
+
+# Infinity datasource -> ArangoDB HTTP API. Panels POST AQL to
+# /_db/bench/_api/cursor and read the `result` array.
+datasources:
+  - name: arango
+    type: yesoreyeram-infinity-datasource
+    uid: arango-infinity
+    access: proxy
+    isDefault: true
+    jsonData:
+      # Base URL; panels append /_db/bench/_api/cursor. Reached over the compose
+      # network, so no auth (ARANGO_NO_AUTH) and the internal service name.
+      global_queries: []
+      allowedHosts:
+        - http://arangodb:8529
+    url: http://arangodb:8529
