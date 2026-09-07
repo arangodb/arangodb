@@ -59,19 +59,6 @@ struct RegisterId;
 
 namespace utils {
 
-// find projection attributes for variable v, starting from node n
-// down to the root node of the plan/subquery.
-// returns true if it is safe to reduce the full document data from
-// "v" to only the projections stored in "attributes". returns false
-// otherwise. if false is returned, the contents of "attributes" must
-// be ignored by the caller.
-// note: this function will not wipe "attributes" if there is already
-// some data in it.
-bool findProjections(ExecutionNode* n, Variable const* v,
-                     std::string_view expectedAttribute,
-                     bool excludeStartNodeFilterCondition,
-                     containers::FlatHashSet<AttributeNamePath>& attributes);
-
 // Allocate a fresh temporary variable for each projection that doesn't have
 // one yet, and rewrite every reference to `searchVariable.attr` in the plan
 // into a direct read of that variable. After this returns, the producer node
