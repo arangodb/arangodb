@@ -177,11 +177,13 @@ class instanceManager {
       this.options.jwtFiles = fs.list(this.addArgs['server.jwt-secret-folder']);
       this.options.jwtFiles = this.options.jwtFiles.sort();
       this.jwt_secret = fs.read(fs.join(this.addArgs['server.jwt-secret-folder'], this.options.jwtFiles[0]));
-    } else if (this.options.cluster && (this.JWT === "")) {
+    } else if (this.options.cluster && (this.JWT === "") &&
+               !this.addArgs.hasOwnProperty('server.jwt-secret')) {
       this.jwt_secret = "Open Sesame!Open Sesame!Open Ses";
       this.addArgs['server.jwt-secret'] = this.jwt_secret;
       //this.addArgs['server.jwt-key'] = encodeJWTSecret(this.jwt_secret);
-    } else if (this.options.encryptionAtRest && !this.addArgs.hasOwnProperty('server.jwt-secret')) {
+    } else if (this.options.encryptionAtRest &&
+               !this.addArgs.hasOwnProperty('server.jwt-secret')) {
       this.restKeyFile = fs.join(this.rootDir, 'openSesame.txt');
       fs.makeDirectoryRecursive(this.rootDir);
       fs.write(this.restKeyFile, "Open Sesame!Open Sesame!Open Ses");
@@ -198,8 +200,12 @@ class instanceManager {
   }
   
   destructor(cleanup) {
-    arango.disconnectHandle(this.connectionHandle);
-    arango.disconnectHandle(this.privConnectionHandle);
+    if (this.connectionHandle) {
+      arango.disconnectHandle(this.connectionHandle);
+    }
+    if (this.privConnectionHandle) {
+      arango.disconnectHandle(this.privConnectionHandle);
+    }
     this.arangods.forEach(arangod => {
       arangod.pm.deregister(arangod.port);
       arangod._disconnect();
