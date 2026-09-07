@@ -22,6 +22,7 @@
 
 #include "ExecContext.h"
 
+#include "Basics/voc-errors.h"
 #include "Assertions/ProdAssert.h"
 #include "Auth/Rbac/RbacFeature.h"
 #include "Basics/Result.h"
@@ -67,12 +68,14 @@ std::shared_ptr<ExecContext const> ExecContext::superuserAsShared() {
 ExecContext::ExecContext(ConstructorToken, AuthMode authMode,
                          bool isRestApiHardened, VocbasePtr vocbase,
                          std::string clientAddress, std::string requestUrl,
-                         std::string authMethod, bool hasRequestInfo)
+                         uint32_t requestedApiVersion, std::string authMethod,
+                         bool hasRequestInfo)
     : _authMode(std::move(authMode)),
       _isRestApiHardened(isRestApiHardened),
       _vocbase(std::move(vocbase)),
       _clientAddress(std::move(clientAddress)),
       _requestUrl(std::move(requestUrl)),
+      _requestedApiVersion(requestedApiVersion),
       _authMethod(std::move(authMethod)),
       _hasRequestInfo(hasRequestInfo) {}
 
@@ -130,7 +133,8 @@ ExecContext::ExecContext(ConstructorToken, AuthMode authMode,
   return std::make_shared<ExecContext>(
       ConstructorToken{}, std::move(authMode),
       securityFeature.isRestApiHardened(), std::move(vocbase),
-      req.connectionInfo().fullClient(), req.fullUrl(), std::move(authMethod),
+      req.connectionInfo().fullClient(), req.fullUrl(),
+      req.requestedApiVersion(), std::move(authMethod),
       /*hasRequestInfo*/ true);
 }
 
@@ -155,7 +159,11 @@ Result ExecContext::can(auth::Permission permission) const {
   // consumes `permission`.
   LOG_TOPIC("7e3f1", TRACE, Logger::AUTHORIZATION)
       << "AUTHZ-CHECK " << permission;
-  return _authMode.getIAuth().check(std::move(permission));
+  auto result = _authMode.getIAuth().check(std::move(permission));
+  if (_requestedApiVersion > 0 && result.is(TRI_ERROR_HTTP_FORBIDDEN)) {
+    return Result{TRI_ERROR_FORBIDDEN, result.errorMessage()};
+  }
+  return result;
 }
 
 Result ExecContext::checkNotReadOnly() const {
@@ -657,7 +665,7 @@ auto ExecContextSuperuserScope::getSuperuserContextFrom(
     return std::make_shared<ExecContext>(
         ExecContext::ConstructorToken{}, AuthMode{AuthMode::Superuser{}},
         old->_isRestApiHardened, nullptr, old->_clientAddress, old->_requestUrl,
-        old->_authMethod, true);
+        old->_requestedApiVersion, old->_authMethod, true);
   } else {
     return ExecContext::Superuser;
   }

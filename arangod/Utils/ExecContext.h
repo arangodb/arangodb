@@ -61,8 +61,8 @@ class ExecContext {
  public:
   ExecContext(ConstructorToken, AuthMode authMode, bool isRestApiHardened,
               VocbasePtr vocbase, std::string clientAddress = {},
-              std::string requestUrl = {}, std::string authMethod = "n/a",
-              bool hasRequestInfo = false);
+              std::string requestUrl = {}, uint32_t requestedApiVersion = 0,
+              std::string authMethod = "n/a", bool hasRequestInfo = false);
   ExecContext(ExecContext const&) = delete;
   ExecContext(ExecContext&&) = delete;
 
@@ -292,6 +292,7 @@ class ExecContext {
   // auditing keeps working after a privilege upgrade.
   std::string _clientAddress;
   std::string _requestUrl;
+  uint32_t _requestedApiVersion;
   std::string _authMethod{"n/a"};
   bool _hasRequestInfo{false};
 
