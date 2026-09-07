@@ -658,25 +658,33 @@ void Database::inventory(
 }
 
 std::shared_ptr<LogicalCollection> Database::lookupCollection(
-    DataSourceId id) const noexcept {
+    DataSourceId id) const {
   auto ptr = lookupDataSource(id);
   if (!ptr || ptr->category() != LogicalDataSource::Category::kCollection) {
+    return nullptr;
+  }
+  if (auto res = ExecContext::current().canSeeCollection(db, collection);
+      res.fail()) {
     return nullptr;
   }
   return basics::downCast<LogicalCollection>(std::move(ptr));
 }
 
 std::shared_ptr<LogicalCollection> Database::lookupCollection(
-    std::string_view nameOrId) const noexcept {
+    std::string_view nameOrId) const {
   auto ptr = lookupDataSource(nameOrId);
   if (!ptr || ptr->category() != LogicalDataSource::Category::kCollection) {
+    return nullptr;
+  }
+  if (auto res = ExecContext::current().canSeeCollection(db, collection);
+      res.fail()) {
     return nullptr;
   }
   return basics::downCast<LogicalCollection>(std::move(ptr));
 }
 
 std::shared_ptr<LogicalCollection> Database::lookupCollectionByUuid(
-    std::string_view uuid) const noexcept {
+    std::string_view uuid) const {
   // otherwise we'll look up the collection by name
   RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
   auto it = _dataSourceByUuid.find(uuid);
@@ -685,6 +693,10 @@ std::shared_ptr<LogicalCollection> Database::lookupCollectionByUuid(
   }
   TRI_ASSERT(it->second);
   if (it->second->category() != LogicalDataSource::Category::kCollection) {
+    return nullptr;
+  }
+  if (auto res = ExecContext::current().canSeeCollection(db, collection);
+      res.fail()) {
     return nullptr;
   }
   return basics::downCast<LogicalCollection>(it->second);

@@ -23,12 +23,15 @@
 #include "gtest/gtest.h"
 
 #include "../IResearch/common.h"
+#include "Mocks/ExecContextFactory.h"
 #include "Mocks/Servers.h"
 
+#include "Auth/Common.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Sharding/ShardingFeature.h"
+#include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "velocypack/Parser.h"
@@ -225,4 +228,91 @@ TEST_F(VocbaseTest, test_lookupDataSource) {
     EXPECT_TRUE(
         (true == !vocbase.lookupCollectionByUuid("testCollectionGUID")));
   }
+}
+
+TEST_F(VocbaseTest, test_lookupCollection_requiresSeePermission) {
+  auto collectionJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"globallyUniqueId\": \"testCollectionGUID\", \"id\": 100, \"name\": "
+      "\"testCollection\" }");
+  Vocbase vocbase(testDBInfo(server.server()), server.engine());
+
+  // The collection itself is created as the (default) superuser context.
+  auto collection = vocbase.createCollection(collectionJson->slice());
+  ASSERT_NE(collection, nullptr);
+  auto const cid = collection->id();
+
+  // A user who may not see the collection must not be able to
+  // look it up by id, name or UUID
+  {
+    auto ctx = arangodb::tests::mocks::makeClassicExecContext(
+        "restricted", "testVocbase", arangodb::auth::Level::NONE,
+        arangodb::auth::Level::NONE);
+    arangodb::ExecContextScope scope(ctx.execContext);
+
+    EXPECT_EQ(vocbase.lookupCollection(cid), nullptr);
+    EXPECT_EQ(vocbase.lookupCollection("100"), nullptr);
+    EXPECT_EQ(vocbase.lookupCollection("testCollection"), nullptr);
+    EXPECT_EQ(vocbase.lookupCollection("testCollectionGUID"), nullptr);
+    EXPECT_EQ(vocbase.lookupCollectionByUuid("testCollectionGUID"), nullptr);
+
+    // The check belongs in lookupCollection, not in the shared lookupDataSource
+    // (which also backs views/analyzers and is out of scope for the
+    // collection-only change): the raw data-source lookup still resolves.
+    EXPECT_NE(vocbase.lookupDataSource("testCollection"), nullptr);
+  }
+
+  // A user with read access to the database (and thus its collections) may see
+  // the collection
+  {
+    auto ctx = arangodb::tests::mocks::makeClassicExecContext(
+        "reader", "testVocbase", arangodb::auth::Level::RO,
+        arangodb::auth::Level::RO);
+    arangodb::ExecContextScope scope(ctx.execContext);
+
+    EXPECT_NE(vocbase.lookupCollection(cid), nullptr);
+    EXPECT_NE(vocbase.lookupCollection("100"), nullptr);
+    EXPECT_NE(vocbase.lookupCollection("testCollection"), nullptr);
+    EXPECT_NE(vocbase.lookupCollection("testCollectionGUID"), nullptr);
+    EXPECT_NE(vocbase.lookupCollectionByUuid("testCollectionGUID"), nullptr);
+  }
+
+  EXPECT_TRUE(vocbase.dropCollection(cid, true).ok());
+}
+
+TEST_F(VocbaseTest, test_lookupCollection_systemCollection) {
+  auto systemCollectionJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"globallyUniqueId\": \"testSystemGUID\", \"id\": 101, \"name\": "
+      "\"_testSystem\", \"isSystem\": true }");
+  Vocbase vocbase(testDBInfo(server.server()), server.engine());
+
+  auto collection = vocbase.createCollection(systemCollectionJson->slice());
+  ASSERT_NE(collection, nullptr);
+  auto const cid = collection->id();
+
+  // Internal / superuser context: the system collection must always resolve,
+  // otherwise internal operations that touch it would break.
+  {
+    arangodb::ExecContextSuperuserScope superuserScope;
+
+    EXPECT_NE(vocbase.lookupCollection(cid), nullptr);
+    EXPECT_NE(vocbase.lookupCollection("_testSystem"), nullptr);
+    EXPECT_NE(vocbase.lookupCollection("testSystemGUID"), nullptr);
+    EXPECT_NE(vocbase.lookupCollectionByUuid("testSystemGUID"), nullptr);
+  }
+
+  // Regular user without any access: the system collection must not be
+  // leaked either, so every lookup returns nullptr.
+  {
+    auto ctx = arangodb::tests::mocks::makeClassicExecContext(
+        "restricted", "testVocbase", arangodb::auth::Level::NONE,
+        arangodb::auth::Level::NONE);
+    arangodb::ExecContextScope scope(ctx.execContext);
+
+    EXPECT_EQ(vocbase.lookupCollection(cid), nullptr);
+    EXPECT_EQ(vocbase.lookupCollection("_testSystem"), nullptr);
+    EXPECT_EQ(vocbase.lookupCollection("testSystemGUID"), nullptr);
+    EXPECT_EQ(vocbase.lookupCollectionByUuid("testSystemGUID"), nullptr);
+  }
+
+  EXPECT_TRUE(vocbase.dropCollection(cid, true).ok());
 }

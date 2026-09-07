@@ -369,16 +369,26 @@ struct Database {
                      nameFilter);
 
   /// @brief looks up a collection by identifier
+  ///
+  /// Returns nullptr if the collection does not exist, or if the current
+  /// execution context may not even see it (canSeeCollection) - so that its
+  /// existence is not leaked.
   std::shared_ptr<arangodb::LogicalCollection> lookupCollection(
-      arangodb::DataSourceId id) const noexcept;
+      arangodb::DataSourceId id) const;
 
   /// @brief looks up a collection by name or stringified cid or uuid
+  ///
+  /// Returns nullptr if the collection does not exist, or if the current
+  /// execution context may not even see it (canSeeCollection).
   std::shared_ptr<arangodb::LogicalCollection> lookupCollection(
-      std::string_view nameOrId) const noexcept;
+      std::string_view nameOrId) const;
 
   /// @brief looks up a collection by uuid
+  ///
+  /// Returns nullptr if the collection does not exist, or if the current
+  /// execution context may not even see it (canSeeCollection).
   std::shared_ptr<arangodb::LogicalCollection> lookupCollectionByUuid(
-      std::string_view uuid) const noexcept;
+      std::string_view uuid) const;
 
   /// @brief looks up a data-source by identifier
   std::shared_ptr<arangodb::LogicalDataSource> lookupDataSource(
