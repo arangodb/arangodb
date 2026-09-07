@@ -30,7 +30,7 @@ ctest --test-dir <build-dir> -R async_registry_gdb_pretty_printer_test
 ```
 use `-V` option on `ctest` to see gdb debug output
 
-This test will start `gdb` and execute tests inside it. It can be that your local `.gdbinit` files tempers with this test execution, for this make sure that gdb does load these files (e.g. if you have `.gdbinit` in your HOME directory, set HOME to somewhere else for the test execution). 
+This test will start `gdb` and execute tests inside it. It can be that your local `.gdbinit` files tempers with this test execution, for this make sure that gdb does NOT load these files (e.g. if you have `.gdbinit` in your HOME directory, set HOME to somewhere else for the test execution). 
 
 ## Pretty printing the REST call
 
