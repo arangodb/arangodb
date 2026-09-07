@@ -400,9 +400,9 @@ std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
 MatchBuilder::createTraversalForPattern(
     Variable const* startNodeVar, NormalizedEdge const& edge,
     MatchPatternElement const& target,
+    Variable const* edgeDocumentOutputVariable,
+    Variable const* vertexDocumentOutputVariable,
     std::unordered_map<VariableId, Variable const*> const& subst) {
-  auto const* patternEdgeOutputVariable = edge.variable;
-
   aql::QueryContext& query = _ast->query();
   auto options = std::make_unique<traverser::TraverserOptions>(query);
   applyPathRange(edge.range, *options);
@@ -433,9 +433,12 @@ MatchBuilder::createTraversalForPattern(
 
   bool const fixedDepth = edge.range.isDefaultFixedOne();
   if (fixedDepth) {
-    traversal->setEdgeOutput(patternEdgeOutputVariable);
+    ADB_PROD_ASSERT(edgeDocumentOutputVariable != nullptr);
+    traversal->setEdgeOutput(edgeDocumentOutputVariable);
   } else {
-    traversal->setPathOutput(patternEdgeOutputVariable);
+    // Variable length: edge.variable receives the path object; individual
+    // edge documents go to an unused temporary.
+    traversal->setPathOutput(edge.variable);
     auto traversalEdgeOutputVar = _ast->variables()->createTemporaryVariable();
     traversal->setEdgeOutput(traversalEdgeOutputVar);
   }
@@ -465,9 +468,10 @@ MatchBuilder::createTraversalForPattern(
     }
     case MatchPatternElement::Kind::kVertex: {
       ADB_PROD_ASSERT(target.vertex.has_value());
+      ADB_PROD_ASSERT(vertexDocumentOutputVariable != nullptr);
       auto const& vertex = *target.vertex;
 
-      auto traversalVertexOutputVar = vertex.variable;
+      auto traversalVertexOutputVar = vertexDocumentOutputVariable;
       traversal->setVertexOutput(traversalVertexOutputVar);
 
       auto traversalVertexOutputId =
@@ -492,6 +496,8 @@ MatchBuilder::createTraversalForPattern(
           _plan.createNode<FilterNode>(&_plan, _plan.nextId(), filterVar);
       filter->addDependency(calc);
 
+      // COR-959: apply target vertex {props}/WHERE on the full document
+      // (pre-projection) while still inside the traversal fragment.
       ExecutionNode* lastNode = filter;
       if (!vertex.properties.empty() || vertex.filter.has_value()) {
         auto [propCalc, propFilter] = createPropertiesFilter(
@@ -618,23 +624,70 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
       ADB_PROD_ASSERT(prevVar != nullptr);
 
       if (edge.range.isDefaultFixedOne() && edge.collections.size() > 1) {
+        // Multi-collection one-hop: same projection temp/subst pattern as the
+        // single-collection join path. Substitutions must be registered before
+        // later elements rewrite aliases that may reference these variables.
+        auto edgeDestinationVariable = edge.variable;
+        bool const edgeHasProjection = edge.projection.has_value();
+        Variable const* edgeTraversalOutputVariable =
+            edgeHasProjection ? _ast->variables()->createTemporaryVariable()
+                              : edgeDestinationVariable;
+        if (edgeHasProjection) {
+          variableSubstitutions.emplace(edgeDestinationVariable->id,
+                                        edgeTraversalOutputVariable);
+        }
+
+        Variable const* vertexDestinationVariable = nullptr;
+        Variable const* vertexTraversalOutputVariable = nullptr;
+        bool vertexHasProjection = false;
+
+        if (target.kind == MatchPatternElement::Kind::kVariableReference) {
+          vertexDestinationVariable = target.variableReference;
+          vertexTraversalOutputVariable = nullptr;
+        } else {
+          ADB_PROD_ASSERT(target.kind == MatchPatternElement::Kind::kVertex);
+          ADB_PROD_ASSERT(target.vertex.has_value());
+          vertexDestinationVariable = target.vertex->variable;
+          vertexHasProjection = target.vertex->projection.has_value();
+          vertexTraversalOutputVariable =
+              vertexHasProjection ? _ast->variables()->createTemporaryVariable()
+                                  : vertexDestinationVariable;
+          if (vertexHasProjection) {
+            variableSubstitutions.emplace(vertexDestinationVariable->id,
+                                          vertexTraversalOutputVariable);
+          }
+        }
+
         auto [firstNode, lastNode, rightVertexVar] = createTraversalForPattern(
-            prevVar, edge, target, variableSubstitutions);
+            prevVar, edge, target, edgeTraversalOutputVariable,
+            vertexTraversalOutputVariable, variableSubstitutions);
 
         firstNode->addDependency(previous);
         previous = en = lastNode;
 
-        auto const* edgeVar = edge.variable;
+        // Filters must see the full edge document (pre-projection).
         if (!edge.properties.empty() || edge.filter.has_value()) {
           auto [propCalc, propFilter] = createPropertiesFilter(
-              edgeVar, edge.properties, edge.filter, variableSubstitutions);
+              edgeTraversalOutputVariable, edge.properties, edge.filter,
+              variableSubstitutions);
           propCalc->addDependency(previous);
           previous = en = propFilter;
         }
 
+        if (edgeHasProjection) {
+          projections.push_back(createPatternProjection(
+              edgeDestinationVariable, edgeTraversalOutputVariable,
+              edge.projection, true, variableSubstitutions));
+        }
+        if (vertexHasProjection) {
+          projections.push_back(createPatternProjection(
+              vertexDestinationVariable, rightVertexVar,
+              target.vertex->projection, false, variableSubstitutions));
+        }
+
         prevVar = rightVertexVar;
-        addPathEdge(pathEdges, edgeVar);
-        addPathVertex(pathVertices, prevVar);
+        addPathEdge(pathEdges, edgeDestinationVariable);
+        addPathVertex(pathVertices, vertexDestinationVariable);
       } else if (edge.range.isDefaultFixedOne()) {
         ExecutionNode* lastNodeFilter;
         Variable const* edgeVar;
@@ -704,11 +757,42 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
         addPathEdge(pathEdges, edgeDestinationVariable);
         addPathVertex(pathVertices, vertexDestinationVariable);
       } else {
+        // Variable-length: edge.variable is a path object, so edge-document
+        // RETURN projections do not apply here. Target vertex projections do.
+        Variable const* vertexDestinationVariable = nullptr;
+        Variable const* vertexTraversalOutputVariable = nullptr;
+        bool vertexHasProjection = false;
+
+        if (target.kind == MatchPatternElement::Kind::kVariableReference) {
+          vertexDestinationVariable = target.variableReference;
+          vertexTraversalOutputVariable = nullptr;
+        } else {
+          ADB_PROD_ASSERT(target.kind == MatchPatternElement::Kind::kVertex);
+          ADB_PROD_ASSERT(target.vertex.has_value());
+          vertexDestinationVariable = target.vertex->variable;
+          vertexHasProjection = target.vertex->projection.has_value();
+          vertexTraversalOutputVariable =
+              vertexHasProjection ? _ast->variables()->createTemporaryVariable()
+                                  : vertexDestinationVariable;
+          if (vertexHasProjection) {
+            variableSubstitutions.emplace(vertexDestinationVariable->id,
+                                          vertexTraversalOutputVariable);
+          }
+        }
+
         auto [firstNode, lastNode, rightVertexVar] = createTraversalForPattern(
-            prevVar, edge, target, variableSubstitutions);
+            prevVar, edge, target, /*edgeDocumentOutputVariable*/ nullptr,
+            vertexTraversalOutputVariable, variableSubstitutions);
 
         firstNode->addDependency(previous);
         previous = en = lastNode;
+
+        if (vertexHasProjection) {
+          projections.push_back(createPatternProjection(
+              vertexDestinationVariable, rightVertexVar,
+              target.vertex->projection, false, variableSubstitutions));
+        }
+
         prevVar = rightVertexVar;
 
         appendTraversalPath(pathVertices, pathEdges, edge.variable);
