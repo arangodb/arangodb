@@ -451,7 +451,7 @@ class instanceManager {
       if (!arangod.matches(role, urlIDOrShortName)) {
         return;
       }
-      arango.toThisInstance(() => {
+      arangod.toThisInstance(() => {
         if (arangod.debugSetFailAt(failurePoint)) {
           count += 1;
         }
@@ -469,7 +469,7 @@ class instanceManager {
       if (!arangod.matches(role, urlIDOrShortName)) {
         return;
       }
-      arango.toThisInstance(() => {
+      arangod.toThisInstance(() => {
         if (arangod.debugShouldFailAt(failurePoint)) {
           count += 1;
         }
@@ -486,7 +486,7 @@ class instanceManager {
       if (!arangod.matches(role, urlIDOrShortName)) {
         return;
       }
-      arango.toThisInstance(() => {
+      arangod.toThisInstance(() => {
         arangod.debugResetRaceControl();
       });
     });
@@ -496,7 +496,7 @@ class instanceManager {
       if (!arangod.matches(role, urlIDOrShortName)) {
         return;
       }
-      arango.toThisInstance(() => {
+      arangod.toThisInstance(() => {
         arangod.debugClearFailAt(failurePoint);
       });
     });
@@ -506,7 +506,7 @@ class instanceManager {
       if (!arangod.matches(role, urlIDOrShortName)) {
         return;
       }
-      arango.toThisInstance(() => {
+      arangod.toThisInstance(() => {
         arangod.debugClearFailAt(failurePoint);
       });
     });
