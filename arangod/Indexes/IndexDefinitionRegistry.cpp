@@ -43,11 +43,10 @@ namespace {
 using namespace arangodb;
 
 struct InvalidIndexDefinition : public IndexDefinition {
-  explicit InvalidIndexDefinition(application_features::ApplicationServer& server)
-      : IndexDefinition(server) {}
+  InvalidIndexDefinition() : IndexDefinition(IndexType::Unknown) {}
 
   bool equal(velocypack::Slice, velocypack::Slice,
-            std::string const&) const override {
+             std::string const&) const override {
     return false;  // invalid definitions are never equal
   }
 
@@ -67,7 +66,7 @@ IndexDefinitionRegistry::IndexDefinitionRegistry(
     application_features::ApplicationServer& server)
     : _server(server),
       _definitions(),
-      _invalid(std::make_unique<InvalidIndexDefinition>(server)) {}
+      _invalid(std::make_unique<InvalidIndexDefinition>()) {}
 
 Result IndexDefinitionRegistry::emplace(std::string const& type,
                                         IndexDefinition const& definition) {
@@ -97,7 +96,7 @@ IndexDefinition const& IndexDefinitionRegistry::definition(
     std::string const& type) const noexcept {
   auto itr = _definitions.find(type);
   TRI_ASSERT(itr == _definitions.end() ||
-            false == !(itr->second));  // emplace(...) inserts non-nullptr
+             false == !(itr->second));  // emplace(...) inserts non-nullptr
 
   return itr == _definitions.end() ? *_invalid : *(itr->second);
 }

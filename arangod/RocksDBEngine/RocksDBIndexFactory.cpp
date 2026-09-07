@@ -25,7 +25,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/voc-errors.h"
 #include "Cluster/ServerState.h"
-#include "Indexes/DefaultIndexFactories.h"
+#include "Indexes/IndexDefinitions.h"
 #include "Indexes/Index.h"
 #include "IResearch/IResearchRocksDBInvertedIndex.h"
 #include "Logger/LogMacros.h"

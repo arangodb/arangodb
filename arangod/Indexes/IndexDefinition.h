@@ -31,11 +31,6 @@ namespace arangodb {
 
 struct Database;
 
-namespace application_features {
-
-class ApplicationServer;
-
-}  // namespace application_features
 namespace velocypack {
 
 class Builder;
@@ -49,14 +44,15 @@ bool indexDefinitionsEqual(IndexType type, velocypack::Slice lhs,
 // deliberately not related to IndexTypeFactory (IndexFactory.h) by
 // inheritance: a definition can never instantiate an index
 struct IndexDefinition {
-  explicit IndexDefinition(application_features::ApplicationServer& server)
-      : _server(server) {}
+  explicit IndexDefinition(IndexType type) : _type(type) {}
   virtual ~IndexDefinition() = default;
 
   /// @brief determine if the two Index definitions will result in the same
   ///        index once instantiated
   virtual bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
-                     std::string const& dbname) const = 0;
+                     std::string const&) const {
+    return indexDefinitionsEqual(_type, lhs, rhs, true);
+  }
 
   /// @brief normalize an Index definition prior to instantiation/persistence
   virtual Result normalize(velocypack::Builder& normalized,
@@ -69,8 +65,7 @@ struct IndexDefinition {
     return true;
   }
 
- protected:
-  application_features::ApplicationServer& _server;
+  IndexType const _type;
 };
 
 }  // namespace arangodb

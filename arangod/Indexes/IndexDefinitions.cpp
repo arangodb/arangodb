@@ -20,7 +20,7 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "DefaultIndexFactories.h"
+#include "IndexDefinitions.h"
 
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"

@@ -47,6 +47,10 @@ class IResearchInvertedIndexDefinition : public IndexDefinition {
                    TRI_vocbase_t const& vocbase) const final;
 
   bool attributeOrderMatters() const final { return false; }
+
+ private:
+  // needed by IResearchInvertedIndexMeta
+  application_features::ApplicationServer& _server;
 };
 
 class IResearchRocksDBInvertedIndexFactory

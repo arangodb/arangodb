@@ -591,7 +591,7 @@ void registerIndexTypeFactories(application_features::ApplicationServer& server,
     emplace(clusterEngine->indexFactory(), clusterFactory);
 
     // indexDefinitions() only takes IndexDefinition, so adapt rocksDBFactory
-    static DelegatingIndexDefinition rocksDBDefinition(server, rocksDBFactory);
+    static DelegatingIndexDefinition rocksDBDefinition(rocksDBFactory);
     emplace(clusterEngine->indexDefinitions(), rocksDBDefinition);
   } else if (dynamic_cast<RocksDBEngine*>(&engine) != nullptr) {
     emplace(engine.indexFactory(), rocksDBFactory);
