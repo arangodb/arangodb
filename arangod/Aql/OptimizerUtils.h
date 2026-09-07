@@ -103,16 +103,8 @@ bool getIndexForSortCondition(aql::Collection const& coll,
                               std::vector<std::shared_ptr<Index>>& usedIndexes,
                               size_t& coveredAttributes);
 
-NonConstExpressionContainer extractNonConstPartsOfIndexCondition(
-    Ast* ast, VarInfoMap const& varInfo, bool evaluateFCalls, Index* index,
-    AstNode const* condition, Variable const* indexVariable);
-
 arangodb::aql::Collection const* getCollection(
     arangodb::aql::ExecutionNode const* node);
-
-Projections translateLMIndexVarsToProjections(
-    ExecutionPlan* plan, IndexNode::IndexValuesVars const& indexVars,
-    transaction::Methods::IndexHandle index);
 
 }  // namespace utils
 }  // namespace aql
