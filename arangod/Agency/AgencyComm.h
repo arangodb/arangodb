@@ -663,7 +663,7 @@ class AgencyComm {
 
   application_features::ApplicationServer& _server;
   ClusterFeature& _clusterFeature;
-  IDatabaseProvider& _databaseFeature;
+  IDatabaseProvider& _databaseProvider;
   metrics::Histogram<metrics::LogScale<uint64_t>>& _agency_comm_request_time_ms;
 };
 

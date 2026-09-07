@@ -28,101 +28,74 @@ namespace arangodb {
 
 struct IVectorIndexProvider;
 
-struct DefaultIndexTypeDefinition : public IndexDefinition {
-  IndexType const _type;
-
-  DefaultIndexTypeDefinition(application_features::ApplicationServer& server,
-                             IndexType type)
-      : IndexDefinition(server), _type(type) {}
-
-  bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
-             std::string const&) const override {
-    return indexDefinitionsEqual(_type, lhs, rhs, true);
-  }
-};
-
-struct EdgeIndexDefinition : public DefaultIndexTypeDefinition {
-  explicit EdgeIndexDefinition(application_features::ApplicationServer& server)
-      : DefaultIndexTypeDefinition(server, IndexType::Edge) {}
+struct EdgeIndexDefinition : public IndexDefinition {
+  EdgeIndexDefinition() : IndexDefinition(IndexType::Edge) {}
 
   Result normalize(velocypack::Builder& normalized,
                    velocypack::Slice definition, bool isCreation,
                    Database const& vocbase) const override;
 };
 
-struct FulltextIndexDefinition : public DefaultIndexTypeDefinition {
-  explicit FulltextIndexDefinition(
-      application_features::ApplicationServer& server)
-      : DefaultIndexTypeDefinition(server, IndexType::Fulltext) {}
+struct FulltextIndexDefinition : public IndexDefinition {
+  FulltextIndexDefinition() : IndexDefinition(IndexType::Fulltext) {}
 
   Result normalize(velocypack::Builder& normalized,
                    velocypack::Slice definition, bool isCreation,
                    Database const& vocbase) const override;
 };
 
-struct GeoIndexDefinition : public DefaultIndexTypeDefinition {
-  explicit GeoIndexDefinition(application_features::ApplicationServer& server)
-      : DefaultIndexTypeDefinition(server, IndexType::Geo) {}
+struct GeoIndexDefinition : public IndexDefinition {
+  GeoIndexDefinition() : IndexDefinition(IndexType::Geo) {}
 
   Result normalize(velocypack::Builder& normalized,
                    velocypack::Slice definition, bool isCreation,
                    Database const& vocbase) const override;
 };
 
-struct Geo1IndexDefinition : public DefaultIndexTypeDefinition {
-  explicit Geo1IndexDefinition(application_features::ApplicationServer& server)
-      : DefaultIndexTypeDefinition(server, IndexType::Geo) {}
+struct Geo1IndexDefinition : public IndexDefinition {
+  Geo1IndexDefinition() : IndexDefinition(IndexType::Geo) {}
 
   Result normalize(velocypack::Builder& normalized,
                    velocypack::Slice definition, bool isCreation,
                    Database const& vocbase) const override;
 };
 
-struct Geo2IndexDefinition : public DefaultIndexTypeDefinition {
-  explicit Geo2IndexDefinition(application_features::ApplicationServer& server)
-      : DefaultIndexTypeDefinition(server, IndexType::Geo) {}
+struct Geo2IndexDefinition : public IndexDefinition {
+  Geo2IndexDefinition() : IndexDefinition(IndexType::Geo) {}
 
   Result normalize(velocypack::Builder& normalized,
                    velocypack::Slice definition, bool isCreation,
                    Database const& vocbase) const override;
 };
 
-struct SecondaryIndexDefinition : public DefaultIndexTypeDefinition {
-  SecondaryIndexDefinition(application_features::ApplicationServer& server,
-                           IndexType type)
-      : DefaultIndexTypeDefinition(server, type) {}
+struct SecondaryIndexDefinition : public IndexDefinition {
+  explicit SecondaryIndexDefinition(IndexType type) : IndexDefinition(type) {}
 
   Result normalize(velocypack::Builder& normalized,
                    velocypack::Slice definition, bool isCreation,
                    Database const& vocbase) const override;
 };
 
-struct MdiIndexDefinition : public DefaultIndexTypeDefinition {
-  MdiIndexDefinition(application_features::ApplicationServer& server,
-                     IndexType type)
-      : DefaultIndexTypeDefinition(server, type) {}
+struct MdiIndexDefinition : public IndexDefinition {
+  explicit MdiIndexDefinition(IndexType type) : IndexDefinition(type) {}
 
   Result normalize(velocypack::Builder& normalized,
                    velocypack::Slice definition, bool isCreation,
                    Database const& vocbase) const override;
 };
 
-struct MdiPrefixedIndexDefinition : public DefaultIndexTypeDefinition {
-  explicit MdiPrefixedIndexDefinition(
-      application_features::ApplicationServer& server)
-      : DefaultIndexTypeDefinition(server, IndexType::MDIPrefixed) {}
+struct MdiPrefixedIndexDefinition : public IndexDefinition {
+  MdiPrefixedIndexDefinition() : IndexDefinition(IndexType::MDIPrefixed) {}
 
   Result normalize(velocypack::Builder& normalized,
                    velocypack::Slice definition, bool isCreation,
                    Database const& vocbase) const override;
 };
 
-struct VectorIndexDefinition : public DefaultIndexTypeDefinition {
-  VectorIndexDefinition(application_features::ApplicationServer& server,
-                        IndexType type,
+struct VectorIndexDefinition : public IndexDefinition {
+  VectorIndexDefinition(IndexType type,
                         IVectorIndexProvider const& vectorIndexProvider)
-      : DefaultIndexTypeDefinition(server, type),
-        _vectorIndexProvider(vectorIndexProvider) {}
+      : IndexDefinition(type), _vectorIndexProvider(vectorIndexProvider) {}
 
   Result normalize(velocypack::Builder& normalized,
                    velocypack::Slice definition, bool isCreation,
@@ -132,20 +105,16 @@ struct VectorIndexDefinition : public DefaultIndexTypeDefinition {
   IVectorIndexProvider const& _vectorIndexProvider;
 };
 
-struct TtlIndexDefinition : public DefaultIndexTypeDefinition {
-  TtlIndexDefinition(application_features::ApplicationServer& server,
-                     IndexType type)
-      : DefaultIndexTypeDefinition(server, type) {}
+struct TtlIndexDefinition : public IndexDefinition {
+  explicit TtlIndexDefinition(IndexType type) : IndexDefinition(type) {}
 
   Result normalize(velocypack::Builder& normalized,
                    velocypack::Slice definition, bool isCreation,
                    Database const& vocbase) const override;
 };
 
-struct PrimaryIndexDefinition : public DefaultIndexTypeDefinition {
-  explicit PrimaryIndexDefinition(
-      application_features::ApplicationServer& server)
-      : DefaultIndexTypeDefinition(server, IndexType::Primary) {}
+struct PrimaryIndexDefinition : public IndexDefinition {
+  PrimaryIndexDefinition() : IndexDefinition(IndexType::Primary) {}
 
   Result normalize(velocypack::Builder& normalized,
                    velocypack::Slice definition, bool isCreation,

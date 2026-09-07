@@ -1,8 +1,8 @@
 add_library(arango_indexes STATIC
-  DefaultIndexFactories.cpp
   Index.cpp
   IndexDefinition.cpp
   IndexDefinitionRegistry.cpp
+  IndexDefinitions.cpp
   IndexFactory.cpp
   IndexIterator.cpp
   SimpleAttributeEqualityMatcher.cpp

@@ -95,8 +95,7 @@ class DelegatingIndexFactory : public IndexTypeFactory {
   template<typename... Args>
   explicit DelegatingIndexFactory(
       application_features::ApplicationServer& server, Args&&... args)
-      : IndexTypeFactory(server),
-        _definition(server, std::forward<Args>(args)...) {}
+      : IndexTypeFactory(server), _definition(std::forward<Args>(args)...) {}
 
   bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
              std::string const& dbname) const override {
@@ -119,9 +118,10 @@ class DelegatingIndexFactory : public IndexTypeFactory {
 
 // reverse adapter: exposes an existing IndexTypeFactory as an IndexDefinition
 struct DelegatingIndexDefinition : public IndexDefinition {
-  DelegatingIndexDefinition(application_features::ApplicationServer& server,
-                            IndexTypeFactory const& factory)
-      : IndexDefinition(server), _factory(factory) {}
+  explicit DelegatingIndexDefinition(IndexTypeFactory const& factory)
+      // _type is never consulted: equal()/normalize() below are both
+      // overridden to delegate to _factory instead
+      : IndexDefinition(IndexType::Unknown), _factory(factory) {}
 
   bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
              std::string const& dbname) const override {
