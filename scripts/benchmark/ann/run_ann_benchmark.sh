@@ -24,7 +24,7 @@ set -euo pipefail
 # unlicensed - enterprise only restricts dataset disk usage (~100 GiB), which
 # these datasets (~0.5 GB each) never approach. devel-nightly is the rolling
 # latest-devel tag.
-ARANGODB_IMAGE="${ARANGODB_IMAGE:-arangodb/enterprise-preview:devel-nightly}"
+ARANGODB_IMAGE="${ARANGODB_IMAGE:-public.ecr.aws/b0b8h2r4/arangodb/enterprise-test:02ffb1d_7b52a55-deb}"
 
 # How arangod is provided:
 #   docker    - this script runs the image itself (default; laptops / hosts
