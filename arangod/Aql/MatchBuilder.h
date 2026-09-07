@@ -95,6 +95,16 @@ class MatchBuilder {
       Variable const* outVariable, std::vector<AstNode const*> const& vertices,
       std::vector<AstNode const*> const& edges);
 
+  void addPathVertex(std::vector<AstNode const*>& pathVertices,
+                     Variable const* variable);
+
+  void addPathEdge(std::vector<AstNode const*>& pathEdges,
+                   Variable const* variable);
+
+  void appendTraversalPath(std::vector<AstNode const*>& pathVertices,
+                           std::vector<AstNode const*>& pathEdges,
+                           Variable const* traversalPathVariable);
+
   ExecutionPlan& _plan;
   Ast* _ast;
 };
