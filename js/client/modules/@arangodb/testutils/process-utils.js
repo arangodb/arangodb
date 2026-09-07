@@ -177,9 +177,12 @@ function setupBinaries (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function killRemainingProcesses(results) {
-  print(`${RED} ${Date()} killRemainingProcesses ${JSON.stringify(new Error().stack)} ${JSON.stringify(results)}`);
   let timeoutReached = false;
   let running = internal.getExternalSpawned();
+  if (running.length === 0) {
+    return;
+  }
+  print(`${RED} ${Date()} killRemainingProcesses ${JSON.stringify(new Error().stack)}`);
   results.status = results.status && (running.length === 0);
   for (let i = 0; i < running.length; i++) {
     timeoutReached = internal.SetGlobalExecutionDeadlineTo(0.0);

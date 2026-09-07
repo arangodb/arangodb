@@ -143,8 +143,14 @@ bool RestActionHandler::hasAllowedUnauthenticatedPath() const {
   auto const* const auth = AuthenticationFeature::instance();
   ADB_PROD_ASSERT(auth->isActive());
   auto const& path = request()->requestPath();
+
+  // requestPath contains raw path, but this check relies on decoded paths
+  auto isUnauthenticatedFoxxPath = [](std::string_view path) {
+    return !path.empty() && !StringUtils::urlDecodePath(path).starts_with("/_");
+  };
+
   return auth->authenticationSystemOnly() &&  // TODO remove in 4.0
-         !path.empty() && !path.starts_with("/_");
+         isUnauthenticatedFoxxPath(path);
 }
 
 async<RestHandler::AuthenticationGrant>

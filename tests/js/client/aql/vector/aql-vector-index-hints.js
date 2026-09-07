@@ -216,6 +216,27 @@ function VectorIndexHintsSuite() {
         assertEqual("vector_l2_secondary", indexName);
     },
 
+    testVectorL2HintDuplicateIndexes: function () {
+        // Use one more matching hint than available vector indexes.
+        // Triggers bound checks and duplicate index handling in the optimizer.
+        const hintedIndex = "vector_l2_secondary";
+        const vectorIndexCount = collection.indexes().filter(
+          index => index.type === "vector"
+        ).length;
+        const duplicateHints = Array(vectorIndexCount + 1).fill(hintedIndex);
+
+        const query = `
+          FOR doc IN ${collName} OPTIONS { indexHint: ${JSON.stringify(duplicateHints)} }
+            SORT APPROX_NEAR_L2(doc.vector, @qp)
+            LIMIT 5
+            RETURN doc
+        `;
+        const bindVars = { qp: randomPoint };
+        const indexName = getVectorIndexName(query, bindVars);
+
+        assertEqual(hintedIndex, indexName);
+    },
+
     testVectorL2HintWithFilterNotForced: function () {
         const query = `
           FOR doc IN ${collName} OPTIONS { indexHint: "vector_l2_with_filter" }

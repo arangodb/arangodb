@@ -42,9 +42,6 @@ class PhysicalCollection;
 class TransactionCollection;
 class TransactionManager;
 class WalAccess;
-namespace aql {
-class OptimizerRulesFeature;
-}
 namespace iresearch {
 class IResearchLinkMock;
 class IResearchInvertedIndexMock;
@@ -129,8 +126,6 @@ class StorageEngineMock : private StorageEngineMockBase,
       arangodb::application_features::ApplicationServer& server,
       bool injectClusterIndexes = false);
   arangodb::HealthData healthCheck() override;
-  void addOptimizerRules(
-      arangodb::aql::OptimizerRulesFeature& feature) override;
 #ifdef USE_V8
   void addV8Functions() override;
 #endif

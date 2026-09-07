@@ -251,7 +251,7 @@ return a `Result`, so that a decline can return the actual reason
  - `canSeeView(std::string_view db, std::string_view view) -> Result`
  - `canCreateView(std::string_view db, std::string_view view) -> Result`
  - `canDropView(std::string_view db, std::string_view view) -> Result`
- - `canUseView(std::string_view db, std::string_view view) -> Result`
+ - `canReadView(std::string_view db, std::string_view view) -> Result`
  - `canRenameView(std::string_view db, std::string_view oldViewName,
                   std::string_view newViewName, std::vector<std::string> collections) -> Result`
 
@@ -414,19 +414,10 @@ central implementation of these methods.
 
    check RW access for database
 
- - `canUseView(std::string_view db, std::string_view view) -> Result`
+ - `canReadView(std::string_view db, std::string_view view) -> Result`
 
-   Just delegate to the access level of the database (as before) and use::
-  
-      - AccessLevel::Read: needs auth::Level::RO or more
-      - AccessLevel::WriteData: needs auth::Level::RW
-      - AccessLevel::WriteMeta: needs auth::Level::RW and auth::Level::RW on database!
+   check R access for database
 
-   Note that we leave the code as it is to additionally check if the user
-   has `canUseCollection(RO)` for all linked collections.
-  
-   If the user is not allowed to see the view, this must return NOT_FOUND!
-  
  - `canRenameView(std::string_view db, std::string_view oldViewName,
                   std::string_view newViewName, std::vector<std::string> collections) -> Result`
 
@@ -625,8 +616,8 @@ central implementation of these methods.
  - `canRenameView(std::string_view db, std::string_view oldViewName,
                   std::string_view newViewName, std::vector<std::string> collections) -> Result`
 
-   This should check that the new name is actually different from the old name.
-   Then it should do the same check as `canUseView` above with `AccessLevel::WriteMeta`.
+   This should check that the new name is actually different from the old name 
+	 and RW access for database.
   
  - `canSeeAnalyzer(std::string_view db, std::string_view analyzer) -> Result`
 
@@ -1025,7 +1016,7 @@ SA/SW/LEG    - API is switchable between SA (superuser needed for everything), S
 | X  |    | X  | POST   | `/_api/replication/batch`                                    | RestReplicationHandler     | -                                        | SUPER                               | only actually DBServer (Coordinator forw)|                        |
 | X  |    | X  | PUT    | `/_api/replication/batch`                                    | RestReplicationHandler     | -                                        | SUPER                               | only actually DBServer (Coordinator forw)|                        |
 | X  |    | X  | DELETE | `/_api/replication/batch`                                    | RestReplicationHandler     | -                                        | SUPER                               | only actually DBServer (Coordinator forw)|                        |
-| X  |    | X  | GET    | `/_api/replication/clusterInventory`                         | RestReplicationHandler     | AdminClusterInfo or canUseColl(Read)     | AdminClusterInfo or COLL RO         | only Coordinator, lists only those       |                        |
+| X  |    | X  | GET    | `/_api/replication/clusterInventory`                         | RestReplicationHandler     | AdminClusterInfo or canUseColl(Read)     | AdminDump or COLL RO                | only Coordinator, lists only those       |                        |
 | X  |    | -  | GET    | `/_api/replication/dump`                                     | RestReplicationHandler     | canUseAdmin(Dump) or canUseColl(Read)    | AdminDump or COLL RO                | only actually DBServer (Coordinator forw)|                        |
 | X  |    | -  | POST   | `/_api/replication/holdReadLockCollection`                   | RestReplicationHandler     | -                                        | SUPER                               | only DBServer (Coordinator forbidden)    |                        |
 | X  |    | -  | DELETE | `/_api/replication/holdReadLockCollection`                   | RestReplicationHandler     | -                                        | SUPER                               | only DBServer (Coordinator forbidden)    |                        |
@@ -1094,11 +1085,11 @@ SA/SW/LEG    - API is switchable between SA (superuser needed for everything), S
 | X  |    | X  | GET    | `/_api/view`                                                 | RestViewHandler            | only see those with canSeeView           | canSeeView                          |                                          |                        |
 | X  |    | X  | POST   | `/_api/view`                                                 | RestViewHandler            | canCreateView                            | canCreateView                       |                                          |                        |
 | X  |    | X  | DELETE | `/_api/view/{name}`                                          | RestViewHandler            | canDropView                              | canDropView                         |                                          |                        |
-| X  |    | X  | GET    | `/_api/view/{name}`                                          | RestViewHandler            | canUseView(RO)                           | canUseView(RO)                      |                                          |                        |
-| X  |    | X  | GET    | `/_api/view/{name}/properties`                               | RestViewHandler            | canUseView(RO)                           | canUseView(RO)                      |                                          |                        |
-| X  |    | X  | PATCH  | `/_api/view/{name}/properties`                               | RestViewHandler            | canUseView(modify)                       | canUseView(modify)                  |                                          |                        |
+| X  |    | X  | GET    | `/_api/view/{name}`                                          | RestViewHandler            | canReadView                              | canReadView                         |                                          |                        |
+| X  |    | X  | GET    | `/_api/view/{name}/properties`                               | RestViewHandler            | canReadView                              | canReadView                         |                                          |                        |
+| X  |    | X  | PATCH  | `/_api/view/{name}/properties`                               | RestViewHandler            | canModifyView                            | canModifyView                       |                                          |                        |
 | X  |    | X  | PATCH  | `/_api/view/{name}/rename`                                   | RestViewHandler            | canRenameView                            | canRenameView                       |                                          |                        |
-| X  |    | X  | PUT    | `/_api/view/{name}/properties`                               | RestViewHandler            | canUseView(modify)                       | canUseView(modify)                  |                                          |                        |
+| X  |    | X  | PUT    | `/_api/view/{name}/properties`                               | RestViewHandler            | canModifyView                            | canModifyView                       |                                          |                        |
 | X  |    | X  | PUT    | `/_api/view/{name}/rename`                                   | RestViewHandler            | canRenameView                            | canRenameView                       |                                          |                        |
 | X  |    | X  | GET    | `/_api/wal/lastTick`                                         | RestWalAccessHandler       | -                                        | SUPER                               | only DBServer/Single, not on coord       |                        |
 | X  |    | X  | GET    | `/_api/wal/open-transactions`                                | RestWalAccessHandler       | -                                        | SUPER                               | only DBServer/Single, not on coord       |                        |

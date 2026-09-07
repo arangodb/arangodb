@@ -43,7 +43,7 @@ using namespace arangodb::rest;
 RestAccessTokenHandler::RestAccessTokenHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
-    : RestVocbaseBaseHandler(server, request, response) {}
+    : RestBaseHandler(server, request, response) {}
 
 // Mounted at /_api/token (prefix)
 RestStatus RestAccessTokenHandler::execute() {

@@ -1458,13 +1458,15 @@ replication::Version Database::replicationVersion() const {
   return _info.replicationVersion();
 }
 
-void Database::toVelocyPack(VPackBuilder& result) const {
+void Database::toVelocyPack(VPackBuilder& result, uint32_t apiVersion) const {
   VPackObjectBuilder b(&result);
   _info.toVelocyPack(result);
-  if (ServerState::instance()->isCoordinator()) {
-    result.add("path", VPackValue(path()));
-  } else {
-    result.add("path", VPackValue("none"));
+  if (apiVersion == 0) {
+    if (ServerState::instance()->isCoordinator()) {
+      result.add("path", VPackValue("none"));
+    } else {
+      result.add("path", VPackValue(path()));
+    }
   }
 }
 

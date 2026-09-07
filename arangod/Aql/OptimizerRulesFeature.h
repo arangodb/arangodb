@@ -80,7 +80,6 @@ class OptimizerRulesFeature final
 
  private:
   void addRules();
-  void addStorageEngineRules();
   void enableOrDisableRules();
 
   OptimizerRulesOptions _options;

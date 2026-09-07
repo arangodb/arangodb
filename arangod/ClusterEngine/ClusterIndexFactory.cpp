@@ -223,13 +223,13 @@ ClusterIndexFactory::ClusterIndexFactory(
 /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
 /// "hash") used to display storage engine capabilities
 std::vector<std::pair<std::string_view, std::string_view>>
-ClusterIndexFactory::indexAliases() const {
+ClusterIndexFactory::indexAliases(uint32_t apiVersion) const {
   auto* ae = _engine.actualEngine();
   if (!ae) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "no actual storage engine for ClusterIndexFactory");
   }
-  return ae->indexFactory().indexAliases();
+  return ae->indexFactory().indexAliases(apiVersion);
 }
 
 Result ClusterIndexFactory::enhanceIndexDefinition(  // normalize definition

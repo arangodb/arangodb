@@ -28,7 +28,7 @@ namespace auth {
 class UserManager;
 }
 
-class RestAccessTokenHandler : public RestVocbaseBaseHandler {
+class RestAccessTokenHandler : public RestBaseHandler {
  public:
   RestAccessTokenHandler(application_features::ApplicationServer&,
                          GeneralRequest*, GeneralResponse*);

@@ -40,9 +40,9 @@
 //                            unrestricted (see isDBserverForwardingAllowed()). So
 //                            only the base UseDatabase question is observed.
 //   clusterInventory (GET)   handleCommandClusterInventory() asks, per collection,
-//                            canUseAdminAction(AdminClusterInfo) (and only if that
+//                            canUseAdminAction(AdminDump) (and only if that
 //                            fails, canUseCollection(read)). As root this asks
-//                            `AdminClusterInfo`. But the command is coordinator-only:
+//                            `AdminDump`. But the command is coordinator-only:
 //                            execute() rejects with CLUSTER_ONLY_ON_COORDINATOR on a
 //                            single server BEFORE handleCommandClusterInventory runs.
 //
@@ -55,7 +55,9 @@ if (getOptions === true) {
     'server.authentication': 'true',
     'log.force-direct': 'true',
     // keep background threads from asking questions of their own
-    'foxx.queues': 'false'
+    'foxx.queues': 'false',
+    // disable so it doesn't spoil the test output:
+    'server.statistics': 'false'
   };
 }
 
@@ -128,7 +130,7 @@ function replicationApiAuthzSuite () {
     // AUDIT: cluster-only - on a single server execute() returns
     // CLUSTER_ONLY_ON_COORDINATOR before handleCommandClusterInventory(), so only
     // the base UseDatabase question fires. On a coordinator each collection asks
-    // `AdminClusterInfo` (and, only if that fails, `UseCollection ... level=read`).
+    // `AdminDump` (and, only if that fails, `UseCollection ... level=read`).
     testClusterInventory: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/replication/clusterInventory`);
@@ -137,7 +139,7 @@ function replicationApiAuthzSuite () {
         "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         ...clusterOnly([
-          "AdminClusterInfo"
+          "AdminDump"
         ])
       ], endObserve());
     },
