@@ -224,7 +224,7 @@ class instance {
       authHeaders: this.authHeaders,
       authHeadersJWT: this.authHeadersJWT,
       restKeyFile: this.restKeyFile,
-      agencyConfig: this.agencyMgr.getStructure(),
+      agencyConfig: (this.agencyMgr !== undefined) ? this.agencyMgr.getStructure():{},
       upAndRunning: this.upAndRunning,
       suspended: this.suspended,
       port: this.port,
