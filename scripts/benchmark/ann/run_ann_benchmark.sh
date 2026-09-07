@@ -214,13 +214,16 @@ diagnose_duplicates() {
   {
     echo "documents in collection: ${ndocs:-?}"
     echo "entries in vector index: ${nentries:-?}"
+    # The count includes the index's single trained-data metadata record, which
+    # shares the key prefix of the list entries.
     if [[ "${ndocs}" =~ ^[0-9]+$ && "${nentries}" =~ ^[0-9]+$ ]]; then
-      if (( nentries > ndocs )); then
-        echo "=> $((nentries - ndocs)) index entries more than documents: some docs are stored in >1 list"
-      elif (( nentries < ndocs )); then
-        echo "=> $((ndocs - nentries)) documents are missing from the index"
+      local vectors=$((nentries - 1))
+      if (( vectors > ndocs )); then
+        echo "=> $((vectors - ndocs)) vector entries more than documents: some docs are stored in >1 list"
+      elif (( vectors < ndocs )); then
+        echo "=> $((ndocs - vectors)) documents are missing from the index"
       else
-        echo "=> counts match: no document is stored in more than one list"
+        echo "=> counts match: one vector entry per document"
       fi
     fi
   } | tee "${ANN_OUTPUT_DIR}/diagnose.txt"
