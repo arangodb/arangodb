@@ -32,6 +32,8 @@ TEST_F(StorageEngineFixture, CanConstruct) {
 
 // Own suite, not the shared one - it's already started by TEST_F time.
 TEST(RocksDBEngineRecoveryTest, StateSequenceAndRecoveryDoneOnce) {
+  using ::testing::_;
+  using ::testing::InSequence;
   using ::testing::Return;
   using ::testing::ReturnRef;
 
@@ -50,7 +52,12 @@ TEST(RocksDBEngineRecoveryTest, StateSequenceAndRecoveryDoneOnce) {
 
   EXPECT_EQ(suite.engine.engineState(), EngineState::kPreRecovery);
 
-  EXPECT_CALL(suite.dbProvider, recoveryDone()).Times(1);
+  // bootstrapDatabases() must run, and recoveryDone() must only run after it
+  {
+    InSequence seq;
+    EXPECT_CALL(suite.dbProvider, bootstrapDatabases(_)).Times(1);
+    EXPECT_CALL(suite.dbProvider, recoveryDone()).Times(1);
+  }
 
   suite.engine.prepare();
   suite.engine.start();
