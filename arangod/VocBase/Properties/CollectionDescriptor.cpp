@@ -37,13 +37,19 @@ CollectionDescriptor CollectionDescriptor::fromVelocyPack(
   auto status = velocypack::deserializeWithStatus(
       info, props, {.ignoreUnknownFields = true}, InspectInternalContext{});
   if (!status.ok()) {
+    // Special handling to be backwards compatible error reporting
+    auto code = TRI_ERROR_BAD_PARAMETER;
+    if (status.path().rfind(StaticStrings::KeyOptions, 0) == 0) {
+      code = TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR;
+    } else if (status.path() == StaticStrings::SmartJoinAttribute) {
+      code = TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE;
+    }
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        absl::StrCat(
-            "failed to parse collection properties: ", status.error(),
-            status.path().empty()
-                ? ""
-                : absl::StrCat(" (on attribute \"", status.path(), "\")")));
+        code, absl::StrCat(
+                  "failed to parse collection properties: ", status.error(),
+                  status.path().empty() ? ""
+                                        : absl::StrCat(" (on attribute \"",
+                                                       status.path(), "\")")));
   }
   return props;
 }

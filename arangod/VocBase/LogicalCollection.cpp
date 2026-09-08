@@ -453,6 +453,8 @@ bool LogicalCollection::cacheEnabled() const noexcept {
   return _physical->cacheEnabled();
 }
 
+/// TODO (COR-885): does not round-trip -- keyOptions is left at its default,
+/// so do not build a persisted marker from this.
 CollectionDescriptor LogicalCollection::properties() const {
   CollectionDescriptor d;
 

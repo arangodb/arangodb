@@ -255,12 +255,12 @@ void ShardingInfo::initializeShardingStrategy(
 
   // the create path resolves the strategy, but collections created before 3.4
   // have none in their meta data, so fall back to the default strategy
-  _shardingStrategy = _collection->vocbase()
-                          .server()
-                          .getFeature<ShardingFeature>()
-                          .createOrDefault(
-                              descriptor.clusteringConstant.shardingStrategy,
-                              this);
+  _shardingStrategy =
+      _collection->vocbase()
+          .server()
+          .getFeature<ShardingFeature>()
+          .createOrDefault(descriptor.clusteringConstant.shardingStrategy,
+                           this);
 
   TRI_ASSERT(_shardingStrategy != nullptr);
 }
