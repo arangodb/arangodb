@@ -57,7 +57,9 @@ race:std::__exception_ptr
 # of the same character race on that byte but write the identical value, so
 # the race is benign (GCC bug 77704). Triggered e.g. by std::regex compilation
 # in faiss::index_factory running on several maintenance threads at once.
-race:std::ctype<char>::narrow
+# The CI symbolizer reports the inlined narrow() frame unqualified, so match
+# the regex scanner frame that calls it instead.
+race:std::__detail::_Scanner<char>::_M_scan_normal
 
 # TODO - this should be removed once BTS-685 is fixed
 race:AllowImplicitCollectionsSwitcher
