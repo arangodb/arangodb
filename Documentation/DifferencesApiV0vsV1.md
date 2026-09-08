@@ -168,11 +168,11 @@ information-disclosure hardening introduced with V1):
 ## `RestIndexHandler` (`arangod/RestHandler/RestIndexHandler.cpp`)
 
 * **Collection lookup access restriction** (`RestIndexHandler::collection`,
-  line ~231): when running on a coordinator, starting with **V1**, looking
+  line ~231): starting with **V1**, looking
   up a collection by name additionally enforces a `Read` access check via
-  `ExecContext::current().canUseCollection(...)`; if this fails every 
-	request returns a `403`/`TRI_ERROR_FORBIDDEN`.
-	Under **V0**, this extra access restriction is skipped
+  `ExecContext::current().canUseCollection(...)`; if this fails every
+  request returns a `403`/`TRI_ERROR_FORBIDDEN`.
+  Under **V0**, this extra access restriction is skipped
   entirely — any authenticated user reaching this code path can look up the
   collection regardless of their per-collection read access, relying only
   on the database-level check performed earlier.

@@ -230,24 +230,20 @@ ResultT<std::shared_ptr<LogicalCollection>> RestIndexHandler::collection(
     return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
 
+  if (auth::isNameAndNoId(cName).fail()) {
+    return Result{TRI_ERROR_FORBIDDEN};
+  }
+  if (auto r = ExecContext::current().canUseCollection(_vocbase.name(), cName,
+                                                       AccessLevel::Read);
+      r.fail()) {
+    return Result{TRI_ERROR_FORBIDDEN};
+  }
   if (not ServerState::instance()->isCoordinator()) {
     auto coll = _vocbase.lookupCollection(cName);
     if (coll == nullptr) {
       return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
     }
     return coll;
-  }
-
-  // Restrict access properly from API version 1 on:
-  if (_request->requestedApiVersion() > 0) {
-    if (auth::isNameAndNoId(cName).fail()) {
-      return Result{TRI_ERROR_FORBIDDEN};
-    }
-    if (auto r = ExecContext::current().canUseCollection(_vocbase.name(), cName,
-                                                         AccessLevel::Read);
-        r.fail()) {
-      return Result{TRI_ERROR_FORBIDDEN};
-    }
   }
   auto coll =
       _clusterFeature.clusterInfo().getCollectionNT(_vocbase.name(), cName);
