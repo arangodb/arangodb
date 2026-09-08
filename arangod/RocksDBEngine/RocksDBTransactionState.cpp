@@ -84,6 +84,15 @@ futures::Future<Result> RocksDBTransactionState::beginTransaction(
 
   _hints = hints;  // set hints before useCollections
 
+  if (_options.readTimestamp.has_value() && !isReadOnlyTransaction()) {
+    // A point-in-time read observes a past state, while writes commit at a
+    // later timestamp - the two cannot be combined in one transaction.
+    updateStatus(transaction::Status::ABORTED);
+    co_return Result{TRI_ERROR_BAD_PARAMETER,
+                     "a read timestamp can only be set on a read-only "
+                     "transaction"};
+  }
+
   auto& stats = statistics();
 
   Result res;
