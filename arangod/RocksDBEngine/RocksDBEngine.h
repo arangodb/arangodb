@@ -229,7 +229,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   // create storage-engine specific collection
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(
       LogicalCollection& collection,
-      CollectionDescriptor const& descriptor) override;
+      LocalStorageProperties const& storage) override;
 
   void getCapabilities(velocypack::Builder& builder,
                        uint32_t apiVersion) const override;
@@ -352,9 +352,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   Result compactAll(bool changeLevel, bool compactBottomMostLevel) override;
 
-  /// @brief Add engine-specific optimizer rules
-  void addOptimizerRules(aql::OptimizerRulesFeature& feature) override;
-
 #ifdef USE_V8
   /// @brief Add engine-specific V8 functions
   void addV8Functions() override;
@@ -362,7 +359,8 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   void addParametersForNewCollection(velocypack::Builder& builder,
                                      velocypack::Slice info) override;
-  void addParametersForNewCollection(CollectionDescriptor& descriptor) override;
+  LocalStorageProperties createPropertiesForNewCollection(
+      CollectionDescriptor const& descriptor) const override;
 
   rocksdb::TransactionDB* db() const { return _db; }
 

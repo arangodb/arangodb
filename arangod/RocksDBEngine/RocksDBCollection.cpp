@@ -318,17 +318,17 @@ namespace arangodb {
 void syncIndexOnCreate(Index&);
 
 RocksDBCollection::RocksDBCollection(
-    LogicalCollection& collection, CollectionDescriptor const& descriptor,
+    LogicalCollection& collection, LocalStorageProperties const& storage,
     cache::Manager* cacheManager,
     std::optional<RocksDBReadWriteMetrics>& readWriteMetrics)
-    : RocksDBMetaCollection(collection, descriptor),
+    : RocksDBMetaCollection(collection, storage),
       _primaryIndex(nullptr),
       _cacheManager(cacheManager),
       _maxCacheValueSize(
           _cacheManager == nullptr ? 0 : _cacheManager->maxCacheValueSize()),
       _readWriteMetrics(readWriteMetrics),
       _cacheEnabled(canEnableCache(cacheManager, collection) &&
-                    descriptor.mutableProps.cacheEnabled) {
+                    storage.cacheEnabled) {
   TRI_ASSERT(_logicalCollection.isAStub() || objectId() != 0);
   if (_cacheEnabled.load(std::memory_order_relaxed)) {
     setupCache();

@@ -91,7 +91,6 @@
 #include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
-#include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "RocksDBEngine/RocksDBOptionFeature.h"
 #include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
@@ -1068,19 +1067,20 @@ void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder,
   }
 }
 
-void RocksDBEngine::addParametersForNewCollection(
-    CollectionDescriptor& descriptor) {
-  if (descriptor.storage.objectId == 0) {
-    descriptor.storage.objectId = TRI_NewTickServer();
+LocalStorageProperties RocksDBEngine::createPropertiesForNewCollection(
+    CollectionDescriptor const& descriptor) const {
+  auto props = StorageEngine::createPropertiesForNewCollection(descriptor);
+  if (props.objectId == 0) {
+    props.objectId = TRI_NewTickServer();
   }
+  return props;
 }
 
 // create storage-engine specific collection
 std::unique_ptr<PhysicalCollection> RocksDBEngine::createPhysicalCollection(
-    LogicalCollection& collection, CollectionDescriptor const& descriptor) {
-  return std::make_unique<RocksDBCollection>(collection, descriptor,
-                                             _cacheManagerProvider.manager(),
-                                             _readWriteMetrics);
+    LogicalCollection& collection, LocalStorageProperties const& storage) {
+  return std::make_unique<RocksDBCollection>(
+      collection, storage, _cacheManagerProvider.manager(), _readWriteMetrics);
 }
 
 // inventory functionality
@@ -1888,11 +1888,6 @@ Result RocksDBEngine::compactAll(bool changeLevel,
                                  bool compactBottomMostLevel) {
   return rocksutils::compactAll(_db->GetRootDB(), changeLevel,
                                 compactBottomMostLevel, &::cancelCompactions);
-}
-
-/// @brief Add engine-specific optimizer rules
-void RocksDBEngine::addOptimizerRules(aql::OptimizerRulesFeature& feature) {
-  RocksDBOptimizerRules::registerResources(feature);
 }
 
 #ifdef USE_V8

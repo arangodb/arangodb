@@ -26,6 +26,7 @@
 #include "Basics/Result.h"
 #include "Indexes/IndexFactory.h"
 #include "StorageEngine/HealthData.h"
+#include "StorageEngine/LocalStorageProperties.h"
 #include "StorageEngine/TransactionStatistics.h"
 #include "Transaction/ManagerFeatureOptions.h"
 #include "Transaction/OperationOrigin.h"
@@ -133,12 +134,12 @@ class StorageEngine : public application_features::ApplicationFeature {
   // collection creation data with engine-specific information
   virtual void addParametersForNewCollection(velocypack::Builder&,
                                              velocypack::Slice /*info*/);
-  virtual void addParametersForNewCollection(CollectionDescriptor&);
+  virtual LocalStorageProperties createPropertiesForNewCollection(
+      CollectionDescriptor const& descriptor) const;
 
   // create storage-engine specific collection
   virtual std::unique_ptr<PhysicalCollection> createPhysicalCollection(
-      LogicalCollection& collection,
-      CollectionDescriptor const& descriptor) = 0;
+      LogicalCollection& collection, LocalStorageProperties const& storage) = 0;
 
   // status functionality
   // --------------------
@@ -330,9 +331,6 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   // AQL functions
   // -------------
-
-  /// @brief Add engine-specific optimizer rules
-  virtual void addOptimizerRules(aql::OptimizerRulesFeature&);
 
 #ifdef USE_V8
   /// @brief Add engine-specific V8 functions

@@ -66,7 +66,11 @@ StorageEngine::StorageEngine(application_features::ApplicationServer& server,
 
 void StorageEngine::addParametersForNewCollection(velocypack::Builder&,
                                                   VPackSlice) {}
-void StorageEngine::addParametersForNewCollection(CollectionDescriptor&) {}
+LocalStorageProperties StorageEngine::createPropertiesForNewCollection(
+    CollectionDescriptor const& descriptor) const {
+  return {.objectId = descriptor.storage.objectId,
+          .cacheEnabled = descriptor.mutableProps.cacheEnabled};
+}
 
 std::unique_ptr<TRI_vocbase_t> StorageEngine::createDatabase(
     CreateDatabaseInfo&& info) {
@@ -155,8 +159,6 @@ void StorageEngine::registerReplicatedState(
 }
 
 std::string_view StorageEngine::typeName() const { return _typeName; }
-
-void StorageEngine::addOptimizerRules(aql::OptimizerRulesFeature&) {}
 
 #ifdef USE_V8
 void StorageEngine::addV8Functions() {}

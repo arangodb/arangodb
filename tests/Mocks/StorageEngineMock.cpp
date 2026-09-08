@@ -223,12 +223,6 @@ bool StorageEngineMock::autoRefillIndexCachesOnFollowers() const {
   return false;
 }
 
-void StorageEngineMock::addOptimizerRules(
-    arangodb::aql::OptimizerRulesFeature& /*feature*/) {
-  before();
-  // NOOP
-}
-
 #ifdef USE_V8
 void StorageEngineMock::addV8Functions() { TRI_ASSERT(false); }
 #endif
@@ -259,7 +253,7 @@ arangodb::Result StorageEngineMock::createLoggerState(TRI_vocbase_t*,
 std::unique_ptr<arangodb::PhysicalCollection>
 StorageEngineMock::createPhysicalCollection(
     arangodb::LogicalCollection& collection,
-    arangodb::CollectionDescriptor const& /*descriptor*/) {
+    arangodb::LocalStorageProperties const& /*storage*/) {
   before();
   return std::make_unique<PhysicalCollectionMock>(collection);
 }

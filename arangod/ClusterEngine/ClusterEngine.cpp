@@ -40,7 +40,6 @@
 #include "Replication2/Storage/IStorageEngineMethods.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "Transaction/Context.h"
 #include "Transaction/Manager.h"
 #include "Transaction/Options.h"
@@ -141,9 +140,8 @@ void ClusterEngine::addParametersForNewCollection(VPackBuilder& builder,
 
 // create storage-engine specific collection
 std::unique_ptr<PhysicalCollection> ClusterEngine::createPhysicalCollection(
-    LogicalCollection& collection, CollectionDescriptor const& descriptor) {
-  return std::make_unique<ClusterCollection>(collection, engineType(),
-                                             descriptor);
+    LogicalCollection& collection, LocalStorageProperties const& storage) {
+  return std::make_unique<ClusterCollection>(collection, engineType(), storage);
 }
 
 void ClusterEngine::getStatistics(velocypack::Builder& builder) const {
@@ -250,20 +248,6 @@ Result ClusterEngine::compactAll(bool changeLevel,
                                  bool compactBottomMostLevel) {
   return compactOnAllDBServers(_clusterFeature, changeLevel,
                                compactBottomMostLevel);
-}
-
-/// @brief Add engine-specific optimizer rules
-void ClusterEngine::addOptimizerRules(aql::OptimizerRulesFeature& feature) {
-  if (engineType() == ClusterEngineType::RocksDBEngine) {
-    RocksDBOptimizerRules::registerResources(feature);
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  } else if (engineType() == ClusterEngineType::MockEngine) {
-    // do nothing
-#endif
-  } else {
-    // invalid engine type...
-    TRI_ASSERT(false);
-  }
 }
 
 #ifdef USE_V8

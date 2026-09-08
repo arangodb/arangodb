@@ -127,8 +127,8 @@ TEST_F(ClusteringConstantPropertiesTest, test_shardingStrategy) {
   GenerateFailsOnObject(shardingStrategy);
 }
 
-GeneratePositiveIntegerAttributeTest(ClusteringConstantPropertiesTest,
-                                     numberOfShards);
+GeneratePositiveIntegerNullableAttributeTest(ClusteringConstantPropertiesTest,
+                                             numberOfShards);
 
 GenerateOptionalStringAttributeTest(ClusteringConstantPropertiesTest,
                                     distributeShardsLike);
