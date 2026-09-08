@@ -24,6 +24,7 @@
 
 #include "RocksDBEngine/StorageEngineDataTest.h"
 #include "RocksDBEngine/RocksDBMetaCollection.h"
+#include "Sharding/ShardingInfo.h"
 #include "Basics/StaticStrings.h"
 #include "Inspection/VPack.h"
 #include "VocBase/KeyGenerator.h"
@@ -352,6 +353,24 @@ TEST_F(LogicalCollectionDescriptorTest,
                    .ok());
 }
 
+// Every writer stores a satellite's replicationFactor as "satellite", but a
+// database carrying a numeric 0 (this is unlikely to happen) must still load.
+TEST_F(LogicalCollectionDescriptorTest,
+       Context_replicationFactorZeroIsInternalOnly) {
+  auto body = oneKeyObject(StaticStrings::ReplicationFactor, VPackValue(0));
+
+  ClusteringMutableProperties internalProps;
+  EXPECT_TRUE(velocypack::deserializeWithStatus(body.slice(), internalProps, {},
+                                                InspectInternalContext{})
+                  .ok());
+  EXPECT_EQ(internalProps.replicationFactor, 0u);
+
+  ClusteringMutableProperties userProps;
+  EXPECT_FALSE(velocypack::deserializeWithStatus(body.slice(), userProps, {},
+                                                 InspectUserContext{})
+                   .ok());
+}
+
 TEST_F(LogicalCollectionDescriptorTest,
        Context_upgradeKeyGeneratorIsInternalOnly) {
   auto body = oneKeyObject("type", VPackValue("upgrade"));
@@ -367,6 +386,56 @@ TEST_F(LogicalCollectionDescriptorTest,
   EXPECT_FALSE(velocypack::deserializeWithStatus(body.slice(), userProps, {},
                                                  InspectUserContext{})
                    .ok());
+}
+
+TEST_F(LogicalCollectionDescriptorTest,
+       Validation_rejectsSmartGraphAttributeWithoutIsSmart) {
+  auto descriptor = representativeCreateDescriptor();
+  descriptor.internal.smartGraphAttribute = "region";
+  descriptor.constant.isSmart = false;
+
+  auto database = makeDatabase("testDatabase", 42);
+  EXPECT_THROW(
+      {
+        try {
+          database->createCollection(std::move(descriptor));
+        } catch (basics::Exception const& ex) {
+          EXPECT_EQ(ex.code(), TRI_ERROR_BAD_PARAMETER);
+          throw;
+        }
+      },
+      basics::Exception);
+}
+
+TEST_F(LogicalCollectionDescriptorTest,
+       Validation_rejectsSmartCollectionWithWrongShardKeys) {
+  auto descriptor = representativeCreateDescriptor();
+  descriptor.constant.isSmart = true;
+  descriptor.clusteringConstant.shardKeys = std::vector<std::string>{"region"};
+
+  auto database = makeDatabase("testDatabase", 42);
+  EXPECT_THROW(
+      {
+        try {
+          database->createCollection(std::move(descriptor));
+        } catch (basics::Exception const& ex) {
+          EXPECT_EQ(ex.code(), TRI_ERROR_BAD_PARAMETER);
+          throw;
+        }
+      },
+      basics::Exception);
+}
+
+// Collections created before 3.4 have no sharding strategy in their meta data.
+TEST_F(LogicalCollectionDescriptorTest,
+       DescriptorCtor_defaultsMissingShardingStrategy) {
+  auto descriptor = representativeCreateDescriptor();
+  descriptor.clusteringConstant.shardingStrategy = std::nullopt;
+
+  auto database = makeDatabase("testDatabase", 42);
+  auto collection = database->createCollection(std::move(descriptor));
+
+  EXPECT_FALSE(collection->shardingInfo()->shardingStrategyName().empty());
 }
 
 // The slice ctor goes away in COR-885. Until then, one test keeps it honest:
