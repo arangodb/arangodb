@@ -999,14 +999,14 @@ class instance {
   // //////////////////////////////////////////////////////////////////////////////
 
   shutdownArangod (forceTerminate) {
-    if (this.pid == null) {
+    if (forceTerminate === undefined) {
+      forceTerminate = false;
+    }
+    if (this.pid === null) {
       print(CYAN + Date() + this.name + ', url: ' + this.url + ' already dead, doing nothing' + RESET);
       return;
     }
     print(CYAN + Date() +' stopping ' + this.name + ', pid ' + this.pid + ', url: ' + this.url + ', force terminate: ' + forceTerminate + ' ' + this.protocol + RESET);
-    if (forceTerminate === undefined) {
-      forceTerminate = false;
-    }
     if (this.options.hasOwnProperty('server')) {
       print(`${Date()} ${this.name}: running with external server`);
       return;
@@ -1040,6 +1040,7 @@ class instance {
         let reply = {code: 555};
         try {
           print(this.connect());
+          arango.timeout(1);
           reply = arango.DELETE_RAW('/_admin/shutdown');
         } catch(ex) {
           print(RED + 'while invoking shutdown via unix domain socket: ' + ex + RESET);
@@ -1069,6 +1070,7 @@ class instance {
           print(Date() + ' ' + this.url + '/_admin/shutdown');
         }
         if (!this.toThisInstance(() => {
+          arango.timeout(1);
           let reply = arango.DELETE_RAW('/_admin/shutdown', '');
           if ((reply.code !== 200) && // if the server should reply, we expect 200 - if not:
               !((reply.code === 500) &&
