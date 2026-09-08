@@ -270,12 +270,12 @@ async<void> RestIndexHandler::getIndexes() {
 
     bool found = false;
     std::string cName = _request->value("collection", found);
-    auto coll = collection(cName);
-    if (coll == nullptr) {
-      generateError(rest::ResponseCode::NOT_FOUND,
-                    TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    auto collRes = collection(cName);
+    if (collRes.fail()) {
+      generateError(collRes.result());
       co_return;
     }
+    auto coll = collRes.get();
 
     auto flags = Index::makeFlags(Index::Serialize::Estimates);
     if (_request->parsedValue("withStats", false)) {
@@ -632,12 +632,12 @@ async<void> RestIndexHandler::getIndexes() {
     // .............................................................................
 
     std::string const& cName = suffixes[0];
-    auto coll = collection(cName);
-    if (coll == nullptr) {
-      generateError(rest::ResponseCode::NOT_FOUND,
-                    TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    auto collRes = collection(cName);
+    if (collRes.fail()) {
+      generateError(collRes.result());
       co_return;
     }
+    auto coll = collRes.get();
 
     std::string const& iid = suffixes[1];
     VPackBuilder tmp;
@@ -904,7 +904,7 @@ async<void> RestIndexHandler::createIndex() {
     generateError(collRes.result());
     co_return;
   }
-  auto coll = coll.get();
+  auto coll = collRes.get();
 
   VPackBuilder copy;
   if (body.get("collection").isNone()) {
@@ -1012,14 +1012,14 @@ async<void> RestIndexHandler::dropIndex() {
   }
 
   std::string const& cName = suffixes[0];
-  auto coll = collection(cName);
-  if (coll == nullptr) {
+  auto collRes = collection(cName);
+  if (collRes.fail()) {
     events::DropIndex(_vocbase.name(), cName, "(unknown)",
-                      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+                      collRes.errorNumber());
+    generateError(collRes.result());
     co_return;
   }
+  auto coll = collRes.get();
 
   std::string const& iid = suffixes[1];
   VPackBuilder idBuilder;
