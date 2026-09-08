@@ -659,10 +659,12 @@ class instance {
     this.moreArgs = moreArgs;
     if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = moreArgs['server.jwt-secret'];
+      this.jwt_secret = moreArgs['server.jwt-secret'];
     } else if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret-folder')) {
       let files = fs.list(moreArgs['server.jwt-secret-folder']);
       files = files.sort();
       this.JWT = fs.read(fs.join(moreArgs['server.jwt-secret-folder'], files[0]));
+      this.jwt_secret = this.JWT;
     }
     const startTime = time();
     this.exitStatus = null;
@@ -805,7 +807,7 @@ class instance {
       try {
         if (true) {//if (this.options.useReconnect && this.isFrontend()) {
           if (this.JWT) {
-            print(`${Date()} reconnecting ${this.name} with JWT ${this.JWT} to ${this.url}`);
+            print(`${Date()} reconnecting ${this.name} with JWT '${this.jwt_secret}' to ${this.url}`);
             if (arango.reconnect(this.endpoint,
                                  '_system',
                                  this.isFrontend() ? `${this.options.username}` : undefined,
