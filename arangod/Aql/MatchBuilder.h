@@ -53,15 +53,47 @@ class MatchBuilder {
   ExecutionNode* build(ExecutionNode* previous, AstNode const* matchNode);
 
  private:
+  /// @brief User-facing pattern variable plus the variable that holds the full
+  /// document during enumeration/traversal (a temporary when projecting).
+  struct ProjectionBinding {
+    Variable const* destination{nullptr};
+    Variable const* fullDocument{nullptr};
+    bool hasProjection{false};
+  };
+
   AstNode* createPropertyAccess(Variable const* variable,
                                 std::string_view property);
 
   AstNode* buildEdgeCollectionList(NormalizedEdge const& edge);
 
+  /// @brief When @p projection is set, create a temporary full-document
+  /// variable and register destination→temp in @p subst; otherwise enumerate
+  /// directly into @p destination.
+  ProjectionBinding bindProjectedVariable(
+      Variable const* destination,
+      std::optional<MatchProjection> const& projection,
+      std::unordered_map<VariableId, Variable const*>& subst);
+
+  /// @brief Queue a delayed projection CalculationNode when @p binding has a
+  /// projection. Preserves existing ordering (applied after segment lowering).
+  void maybeQueueProjection(
+      std::vector<ExecutionNode*>& projections, ProjectionBinding const& binding,
+      std::optional<MatchProjection> const& projection, bool isEdge,
+      std::unordered_map<VariableId, Variable const*> const& subst);
+
   std::tuple<CalculationNode*, FilterNode*> createPropertiesFilter(
       Variable const* variable,
       std::vector<MatchPropertyConstraint> const& properties,
       std::optional<MatchExpressionRef> const& additionalFilter,
+      std::unordered_map<VariableId, Variable const*> const& subst);
+
+  /// @brief Shared EnumerateCollection + property/WHERE filter fragment used
+  /// by both vertex and edge collection scans.
+  std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
+  enumerateCollection(
+      MatchDataSource const& dataSource, Variable const* outputVariable,
+      std::vector<MatchPropertyConstraint> const& properties,
+      std::optional<MatchExpressionRef> const& filter,
       std::unordered_map<VariableId, Variable const*> const& subst);
 
   std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>

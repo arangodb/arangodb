@@ -95,6 +95,33 @@ void applyPathRange(MatchPathRange const& range,
 MatchBuilder::MatchBuilder(ExecutionPlan& plan, Ast* ast)
     : _plan(plan), _ast(ast) {}
 
+MatchBuilder::ProjectionBinding MatchBuilder::bindProjectedVariable(
+    Variable const* destination,
+    std::optional<MatchProjection> const& projection,
+    std::unordered_map<VariableId, Variable const*>& subst) {
+  ProjectionBinding binding;
+  binding.destination = destination;
+  binding.hasProjection = projection.has_value();
+  if (binding.hasProjection) {
+    binding.fullDocument = _ast->variables()->createTemporaryVariable();
+    subst.emplace(destination->id, binding.fullDocument);
+  } else {
+    binding.fullDocument = destination;
+  }
+  return binding;
+}
+
+void MatchBuilder::maybeQueueProjection(
+    std::vector<ExecutionNode*>& projections, ProjectionBinding const& binding,
+    std::optional<MatchProjection> const& projection, bool isEdge,
+    std::unordered_map<VariableId, Variable const*> const& subst) {
+  if (!binding.hasProjection) {
+    return;
+  }
+  projections.push_back(createPatternProjection(
+      binding.destination, binding.fullDocument, projection, isEdge, subst));
+}
+
 AstNode* MatchBuilder::createPropertyAccess(Variable const* variable,
                                             std::string_view property) {
   char const* registered = _ast->resources().registerString(property);
@@ -160,10 +187,12 @@ std::tuple<CalculationNode*, FilterNode*> MatchBuilder::createPropertiesFilter(
 }
 
 std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
-MatchBuilder::createCollectionAccess(
-    NormalizedVertex const& vertex, Variable const* fullDocumentVariable,
+MatchBuilder::enumerateCollection(
+    MatchDataSource const& dataSource, Variable const* outputVariable,
+    std::vector<MatchPropertyConstraint> const& properties,
+    std::optional<MatchExpressionRef> const& filter,
     std::unordered_map<VariableId, Variable const*> const& subst) {
-  auto collectionName = requireCollectionName(vertex.collection);
+  auto collectionName = requireCollectionName(dataSource);
   auto& collections = _ast->query().collections();
   auto collection = collections.get(collectionName);
   if (collection == nullptr) {
@@ -173,13 +202,21 @@ MatchBuilder::createCollectionAccess(
   IndexHint hint(_ast->query(), _ast->createNodeNop(),
                  IndexHint::FromCollectionOperation{});
   auto enumCollection = _plan.createNode<EnumerateCollectionNode>(
-      &_plan, _plan.nextId(), collection, fullDocumentVariable, false,
+      &_plan, _plan.nextId(), collection, outputVariable, false,
       std::move(hint));
 
-  auto [firstNode, lastNode] = createPropertiesFilter(
-      fullDocumentVariable, vertex.properties, vertex.filter, subst);
+  auto [firstNode, lastNode] =
+      createPropertiesFilter(outputVariable, properties, filter, subst);
   firstNode->addDependency(enumCollection);
-  return std::make_tuple(enumCollection, lastNode, fullDocumentVariable);
+  return std::make_tuple(enumCollection, lastNode, outputVariable);
+}
+
+std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
+MatchBuilder::createCollectionAccess(
+    NormalizedVertex const& vertex, Variable const* fullDocumentVariable,
+    std::unordered_map<VariableId, Variable const*> const& subst) {
+  return enumerateCollection(vertex.collection, fullDocumentVariable,
+                             vertex.properties, vertex.filter, subst);
 }
 
 ExecutionNode* MatchBuilder::createPatternProjection(
@@ -331,22 +368,8 @@ MatchBuilder::createPatternEdgeEnumerateAccess(
     NormalizedEdge const& edge, Variable const* outputVariable,
     std::unordered_map<VariableId, Variable const*> const& subst) {
   ADB_PROD_ASSERT(!edge.collections.empty());
-  auto collectionName = requireCollectionName(edge.collections.front());
-  auto& collections = _ast->query().collections();
-  auto collection = collections.get(collectionName);
-  if (collection == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "no collection for EnumerateCollection");
-  }
-  IndexHint hint(_ast->query(), _ast->createNodeNop(),
-                 IndexHint::FromCollectionOperation{});
-  auto enumCollection = _plan.createNode<EnumerateCollectionNode>(
-      &_plan, _plan.nextId(), collection, outputVariable, false,
-      std::move(hint));
-  auto [firstNode, lastNode] = createPropertiesFilter(
-      outputVariable, edge.properties, edge.filter, subst);
-  firstNode->addDependency(enumCollection);
-  return std::make_tuple(enumCollection, lastNode, outputVariable);
+  return enumerateCollection(edge.collections.front(), outputVariable,
+                             edge.properties, edge.filter, subst);
 }
 
 std::tuple<CalculationNode*, FilterNode*> MatchBuilder::createVertexEdgeFilter(
@@ -579,29 +602,19 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
     std::unordered_map<VariableId, Variable const*> variableSubstitutions;
 
     auto const handleStartVertex = [&](NormalizedVertex const& vertex) {
-      auto destinationVariable = vertex.variable;
-      bool const hasProjection = vertex.projection.has_value();
-      Variable const* enumOutputVariable =
-          hasProjection ? _ast->variables()->createTemporaryVariable()
-                        : destinationVariable;
-      if (hasProjection) {
-        variableSubstitutions.emplace(destinationVariable->id,
-                                      enumOutputVariable);
-      }
+      auto binding = bindProjectedVariable(vertex.variable, vertex.projection,
+                                           variableSubstitutions);
 
       ExecutionNode* lastNode;
       std::tie(en, lastNode, prevVar) = createCollectionAccess(
-          vertex, enumOutputVariable, variableSubstitutions);
+          vertex, binding.fullDocument, variableSubstitutions);
       en->addDependency(previous);
       previous = en = lastNode;
 
-      addPathVertex(pathVertices, destinationVariable);
+      addPathVertex(pathVertices, binding.destination);
 
-      if (hasProjection) {
-        projections.push_back(createPatternProjection(
-            destinationVariable, prevVar, vertex.projection, false,
-            variableSubstitutions));
-      }
+      maybeQueueProjection(projections, binding, vertex.projection,
+                           /*isEdge*/ false, variableSubstitutions);
     };
 
     if (pattern.start.kind == MatchPatternElement::Kind::kVertex) {
@@ -627,19 +640,12 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
         // Multi-collection one-hop: same projection temp/subst pattern as the
         // single-collection join path. Substitutions must be registered before
         // later elements rewrite aliases that may reference these variables.
-        auto edgeDestinationVariable = edge.variable;
-        bool const edgeHasProjection = edge.projection.has_value();
-        Variable const* edgeTraversalOutputVariable =
-            edgeHasProjection ? _ast->variables()->createTemporaryVariable()
-                              : edgeDestinationVariable;
-        if (edgeHasProjection) {
-          variableSubstitutions.emplace(edgeDestinationVariable->id,
-                                        edgeTraversalOutputVariable);
-        }
+        auto edgeBinding = bindProjectedVariable(
+            edge.variable, edge.projection, variableSubstitutions);
 
         Variable const* vertexDestinationVariable = nullptr;
         Variable const* vertexTraversalOutputVariable = nullptr;
-        bool vertexHasProjection = false;
+        ProjectionBinding vertexBinding{};
 
         if (target.kind == MatchPatternElement::Kind::kVariableReference) {
           vertexDestinationVariable = target.variableReference;
@@ -647,19 +653,15 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
         } else {
           ADB_PROD_ASSERT(target.kind == MatchPatternElement::Kind::kVertex);
           ADB_PROD_ASSERT(target.vertex.has_value());
-          vertexDestinationVariable = target.vertex->variable;
-          vertexHasProjection = target.vertex->projection.has_value();
-          vertexTraversalOutputVariable =
-              vertexHasProjection ? _ast->variables()->createTemporaryVariable()
-                                  : vertexDestinationVariable;
-          if (vertexHasProjection) {
-            variableSubstitutions.emplace(vertexDestinationVariable->id,
-                                          vertexTraversalOutputVariable);
-          }
+          vertexBinding = bindProjectedVariable(target.vertex->variable,
+                                                target.vertex->projection,
+                                                variableSubstitutions);
+          vertexDestinationVariable = vertexBinding.destination;
+          vertexTraversalOutputVariable = vertexBinding.fullDocument;
         }
 
         auto [firstNode, lastNode, rightVertexVar] = createTraversalForPattern(
-            prevVar, edge, target, edgeTraversalOutputVariable,
+            prevVar, edge, target, edgeBinding.fullDocument,
             vertexTraversalOutputVariable, variableSubstitutions);
 
         firstNode->addDependency(previous);
@@ -668,51 +670,41 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
         // Filters must see the full edge document (pre-projection).
         if (!edge.properties.empty() || edge.filter.has_value()) {
           auto [propCalc, propFilter] = createPropertiesFilter(
-              edgeTraversalOutputVariable, edge.properties, edge.filter,
+              edgeBinding.fullDocument, edge.properties, edge.filter,
               variableSubstitutions);
           propCalc->addDependency(previous);
           previous = en = propFilter;
         }
 
-        if (edgeHasProjection) {
-          projections.push_back(createPatternProjection(
-              edgeDestinationVariable, edgeTraversalOutputVariable,
-              edge.projection, true, variableSubstitutions));
-        }
-        if (vertexHasProjection) {
-          projections.push_back(createPatternProjection(
-              vertexDestinationVariable, rightVertexVar,
-              target.vertex->projection, false, variableSubstitutions));
+        maybeQueueProjection(projections, edgeBinding, edge.projection,
+                             /*isEdge*/ true, variableSubstitutions);
+        if (vertexBinding.hasProjection) {
+          // Traversal returns the full-document output in rightVertexVar;
+          // keep that binding for the delayed projection node.
+          vertexBinding.fullDocument = rightVertexVar;
+          maybeQueueProjection(projections, vertexBinding,
+                               target.vertex->projection, /*isEdge*/ false,
+                               variableSubstitutions);
         }
 
         prevVar = rightVertexVar;
-        addPathEdge(pathEdges, edgeDestinationVariable);
+        addPathEdge(pathEdges, edgeBinding.destination);
         addPathVertex(pathVertices, vertexDestinationVariable);
       } else if (edge.range.isDefaultFixedOne()) {
         ExecutionNode* lastNodeFilter;
         Variable const* edgeVar;
 
-        auto edgeDestinationVariable = edge.variable;
-        bool const edgeHasProjection = edge.projection.has_value();
-        Variable const* edgeEnumOutputVariable =
-            edgeHasProjection ? _ast->variables()->createTemporaryVariable()
-                              : edgeDestinationVariable;
-        if (edgeHasProjection) {
-          variableSubstitutions.emplace(edgeDestinationVariable->id,
-                                        edgeEnumOutputVariable);
-        }
+        auto edgeBinding = bindProjectedVariable(
+            edge.variable, edge.projection, variableSubstitutions);
 
         std::tie(en, lastNodeFilter, edgeVar) =
-            createPatternEdgeEnumerateAccess(edge, edgeEnumOutputVariable,
+            createPatternEdgeEnumerateAccess(edge, edgeBinding.fullDocument,
                                              variableSubstitutions);
         en->addDependency(previous);
         previous = en = lastNodeFilter;
 
-        if (edgeHasProjection) {
-          projections.push_back(createPatternProjection(
-              edgeDestinationVariable, edgeEnumOutputVariable, edge.projection,
-              true, variableSubstitutions));
-        }
+        maybeQueueProjection(projections, edgeBinding, edge.projection,
+                             /*isEdge*/ true, variableSubstitutions);
 
         Variable const* rightVertexVar;
         Variable const* vertexDestinationVariable = nullptr;
@@ -724,26 +716,19 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
           ADB_PROD_ASSERT(target.kind == MatchPatternElement::Kind::kVertex);
           ADB_PROD_ASSERT(target.vertex.has_value());
 
-          vertexDestinationVariable = target.vertex->variable;
-          bool const vertexHasProjection =
-              target.vertex->projection.has_value();
-          Variable const* vertexEnumOutputVariable =
-              vertexHasProjection ? _ast->variables()->createTemporaryVariable()
-                                  : vertexDestinationVariable;
-          if (vertexHasProjection) {
-            variableSubstitutions.emplace(vertexDestinationVariable->id,
-                                          vertexEnumOutputVariable);
-          }
+          auto vertexBinding = bindProjectedVariable(
+              target.vertex->variable, target.vertex->projection,
+              variableSubstitutions);
+          vertexDestinationVariable = vertexBinding.destination;
 
           std::tie(en, lastNodeFilter, rightVertexVar) = createCollectionAccess(
-              *target.vertex, vertexEnumOutputVariable, variableSubstitutions);
+              *target.vertex, vertexBinding.fullDocument,
+              variableSubstitutions);
           en->addDependency(previous);
 
-          if (vertexHasProjection) {
-            projections.push_back(createPatternProjection(
-                vertexDestinationVariable, rightVertexVar,
-                target.vertex->projection, false, variableSubstitutions));
-          }
+          maybeQueueProjection(projections, vertexBinding,
+                               target.vertex->projection, /*isEdge*/ false,
+                               variableSubstitutions);
 
           previous = en = lastNodeFilter;
         }
@@ -754,30 +739,23 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
         previous = en = lastNode;
         prevVar = rightVertexVar;
 
-        addPathEdge(pathEdges, edgeDestinationVariable);
+        addPathEdge(pathEdges, edgeBinding.destination);
         addPathVertex(pathVertices, vertexDestinationVariable);
       } else {
         // Variable-length: edge.variable is a path object, so edge-document
         // RETURN projections do not apply here. Target vertex projections do.
-        Variable const* vertexDestinationVariable = nullptr;
         Variable const* vertexTraversalOutputVariable = nullptr;
-        bool vertexHasProjection = false;
+        ProjectionBinding vertexBinding{};
 
         if (target.kind == MatchPatternElement::Kind::kVariableReference) {
-          vertexDestinationVariable = target.variableReference;
           vertexTraversalOutputVariable = nullptr;
         } else {
           ADB_PROD_ASSERT(target.kind == MatchPatternElement::Kind::kVertex);
           ADB_PROD_ASSERT(target.vertex.has_value());
-          vertexDestinationVariable = target.vertex->variable;
-          vertexHasProjection = target.vertex->projection.has_value();
-          vertexTraversalOutputVariable =
-              vertexHasProjection ? _ast->variables()->createTemporaryVariable()
-                                  : vertexDestinationVariable;
-          if (vertexHasProjection) {
-            variableSubstitutions.emplace(vertexDestinationVariable->id,
-                                          vertexTraversalOutputVariable);
-          }
+          vertexBinding = bindProjectedVariable(target.vertex->variable,
+                                                target.vertex->projection,
+                                                variableSubstitutions);
+          vertexTraversalOutputVariable = vertexBinding.fullDocument;
         }
 
         auto [firstNode, lastNode, rightVertexVar] = createTraversalForPattern(
@@ -787,10 +765,11 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
         firstNode->addDependency(previous);
         previous = en = lastNode;
 
-        if (vertexHasProjection) {
-          projections.push_back(createPatternProjection(
-              vertexDestinationVariable, rightVertexVar,
-              target.vertex->projection, false, variableSubstitutions));
+        if (vertexBinding.hasProjection) {
+          vertexBinding.fullDocument = rightVertexVar;
+          maybeQueueProjection(projections, vertexBinding,
+                               target.vertex->projection, /*isEdge*/ false,
+                               variableSubstitutions);
         }
 
         prevVar = rightVertexVar;
