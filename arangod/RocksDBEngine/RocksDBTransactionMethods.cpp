@@ -26,21 +26,35 @@
 #include <rocksdb/comparator.h>
 #include <rocksdb/db.h>
 
+#include <limits>
+
 using namespace arangodb;
 
+namespace {
+// The timestamp that selects the latest version of every key, i.e. the state a
+// transaction without an explicit read timestamp observes.
+constexpr uint64_t kCurrentStateTimestamp =
+    std::numeric_limits<uint64_t>::max();
+}  // namespace
+
+RocksDBTransactionMethods::RocksDBTransactionMethods(
+    RocksDBTransactionState* state)
+    : _state(state) {
+  _udtReadTimestamp = rocksdb::EncodeU64Ts(
+      state->options().readTimestamp.value_or(kCurrentStateTimestamp),
+      &_udtReadTimestampStorage);
+}
+
 rocksdb::ReadOptions RocksDBTransactionMethods::withUdtReadTimestamp(
-    rocksdb::ReadOptions const& base, rocksdb::ColumnFamilyHandle* cf) {
+    rocksdb::ReadOptions const& base, rocksdb::ColumnFamilyHandle* cf) const {
   TRI_ASSERT(cf != nullptr);
   if (cf->GetComparator()->timestamp_size() == 0) {
     // Not a User-Defined Timestamp column family: a timestamp would be
     // rejected, so read as-is.
     return base;
   }
-  // Read the current state. MaxU64Ts() is a Slice over static storage, so it is
-  // safe to keep the Slice object in a static as well.
-  static const rocksdb::Slice kCurrentStateTimestamp = rocksdb::MaxU64Ts();
   rocksdb::ReadOptions ro = base;
-  ro.timestamp = &kCurrentStateTimestamp;
+  ro.timestamp = &_udtReadTimestamp;
   return ro;
 }
 
