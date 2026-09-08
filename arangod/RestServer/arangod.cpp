@@ -139,7 +139,7 @@ int main(int argc, char* argv[]) {
   // under cgroup v2 (llvm/llvm-project#137136). The flat method derives the
   // topology from the affinity mask itself, so the two cannot disagree. Must be
   // set before the first OpenMP call; an explicit user setting wins.
-  setenv("KMP_TOPOLOGY_METHOD", "flat", /*overwrite*/ 0);
+  // setenv("KMP_TOPOLOGY_METHOD", "flat", [>overwrite<] 0);
 
   ArangoGlobalContext context(argc, argv, SBIN_DIRECTORY);
 
