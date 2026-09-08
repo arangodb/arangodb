@@ -836,7 +836,10 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                     .name = StaticStrings::SystemDatabase,
                     .level = DatabaseAccessLevel::Write});
                 r.fail()) {
-              return {TRI_ERROR_HTTP_FORBIDDEN, r.errorMessage()};
+              if (_requestedApiVersion == 0) {
+                return {TRI_ERROR_HTTP_FORBIDDEN, r.errorMessage()};
+              }
+              return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
             }
             return {};
           },
@@ -896,10 +899,16 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
 Result AuthMode::Classic::isAdmin() const {
   auto r = check(auth::perms::UseDatabase{.name = StaticStrings::SystemDatabase,
                                           .level = DatabaseAccessLevel::Write});
-  return r.ok() ? Result{}
-                : Result{TRI_ERROR_HTTP_FORBIDDEN,
-                         std::format("Failed admin-permission check: {}",
-                                     r.errorMessage())};
+  if (r.ok()) {
+    return Result{};
+  }
+
+  auto message =
+      std::format("Failed admin-permission check: {}", r.errorMessage());
+  if (_requestedApiVersion == 0) {
+    return Result{TRI_ERROR_HTTP_FORBIDDEN, message};
+  }
+  return Result{TRI_ERROR_FORBIDDEN, message};
 }
 
 auto AuthMode::Rbac::username() const noexcept -> std::string_view {
