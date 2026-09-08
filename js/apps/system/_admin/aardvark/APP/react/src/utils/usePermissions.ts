@@ -1,8 +1,8 @@
 import useSWR from "swr";
-import { getCurrentDB } from "./arangoClient";
+import { getCurrentDB, isRbacRejection } from "./arangoClient";
 
 const usePermissions = () => {
-  const { data } = useSWR(
+  const { data, error } = useSWR(
     `/user/${window.arangoHelper.getCurrentJwtUsername()}/database/${
       window.frontendConfig.db
     }`,
@@ -12,6 +12,9 @@ const usePermissions = () => {
         { database: window.frontendConfig.db }
       )
   );
+  if (isRbacRejection(error)) {
+    return "rw";
+  }
   return data || "none";
 };
 

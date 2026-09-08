@@ -28,3 +28,10 @@ export const getApiRouteForCurrentDB = () =>
   getRouteForDB(window.frontendConfig.db, "_api");
 export const getAdminRouteForCurrentDB = () =>
   getRouteForDB(window.frontendConfig.db, "_admin");
+
+// The classic user-permission API answers this in RBAC mode, where grants
+// live in roles instead. Callers treat it as "unknown, show everything".
+export const isRbacRejection = (error: unknown) => {
+  const e = error as { code?: number; message?: string } | undefined;
+  return e?.code === 403 && e?.message === "Not allowed in RBAC mode.";
+};

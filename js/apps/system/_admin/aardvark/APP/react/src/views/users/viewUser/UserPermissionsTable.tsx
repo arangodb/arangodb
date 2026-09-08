@@ -6,7 +6,11 @@ import {
   DatabaseTableType
 } from "./CollectionsPermissionsTable";
 import { SystemDatabaseWarningModal } from "./SystemDatabaseWarningModal";
-import { useUsername } from "./useFetchDatabasePermissions";
+import {
+  useFetchDatabasePermissions,
+  useUsername
+} from "./useFetchDatabasePermissions";
+import { isRbacRejection } from "../../../utils/arangoClient";
 import {
   UserPermissionsContextProvider,
   useUserPermissionsContext
@@ -28,6 +32,21 @@ const UserPermissionsTableInner = () => {
   }, [username]);
 
   const { isManagedUser, isRootUser } = tableInstance.options.meta as any;
+  const { error } = useFetchDatabasePermissions();
+
+  if (isRbacRejection(error)) {
+    return (
+      <Stack padding="4">
+        <Alert status="info">
+          <AlertIcon />
+          <AlertDescription>
+            Classic database permissions are not available in RBAC mode. Access
+            is granted through roles instead.
+          </AlertDescription>
+        </Alert>
+      </Stack>
+    );
+  }
 
   return (
     <Stack padding="4">

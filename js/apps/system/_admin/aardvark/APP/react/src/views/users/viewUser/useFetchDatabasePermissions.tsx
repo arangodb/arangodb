@@ -17,14 +17,19 @@ type FullDatabasePermissionsType = {
 
 export const useFetchDatabasePermissions = () => {
   const { username } = useUsername();
-  const { data, refetch } = useQuery({
+  const { data, refetch, error } = useQuery({
     queryKey: [username, "permissions"],
     queryFn: async () => {
       const url = `/_api/user/${username}/database`;
       const route = getRouteForCurrentDB(url);
       const data = await route.get({ full: "true" });
       return data.parsedBody.result as FullDatabasePermissionsType;
-    }
+    },
+    retry: false
   });
-  return { databasePermissions: data, refetchDatabasePermissions: refetch };
+  return {
+    databasePermissions: data,
+    refetchDatabasePermissions: refetch,
+    error
+  };
 };

@@ -1160,6 +1160,24 @@
       });
     },
 
+    // RBAC mode rejects the classic access-level probes. Grants there are per
+    // action and resource name, so nothing is disabled upfront; the server
+    // answers each write.
+    isRbacRejection: function (xhr) {
+      if (xhr.status !== 403) {
+        return false;
+      }
+      var body = xhr.responseJSON;
+      if (!body) {
+        try {
+          body = JSON.parse(xhr.responseText);
+        } catch (e) {
+          body = {};
+        }
+      }
+      return body.errorMessage === 'Not allowed in RBAC mode.';
+    },
+
     checkCollectionPermissions: function (collectionID, roCallback) {
       var url = arangoHelper.databaseUrl('/_api/user/' +
         encodeURIComponent(window.App.userCollection.activeUser || "root") +
@@ -1177,6 +1195,9 @@
           }
         },
         error: function (data) {
+          if (arangoHelper.isRbacRejection(data)) {
+            return;
+          }
           arangoHelper.arangoError('User', 'Could not fetch collection permissions.');
         }
       });
@@ -1215,7 +1236,13 @@
           }
         },
         error: function (data) {
-          arangoHelper.arangoError('User', 'Could not fetch collection permissions.');
+          if (arangoHelper.isRbacRejection(data)) {
+            if (rwCallback) {
+              rwCallback(false);
+            }
+            return;
+          }
+          arangoHelper.arangoError('User', 'Could not fetch database permissions.');
           if (errorCallback) {
             errorCallback(data);
           }
