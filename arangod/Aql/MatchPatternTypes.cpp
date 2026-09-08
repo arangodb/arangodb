@@ -23,7 +23,6 @@
 #include "MatchPatternTypes.h"
 
 #include "Aql/Variable.h"
-#include "Basics/StaticStrings.h"
 #include "Basics/debugging.h"
 
 namespace arangodb::aql {
@@ -61,32 +60,6 @@ bool MatchPathRange::isFixedOne() const noexcept {
 
 bool MatchPathRange::isFixed() const noexcept {
   return _maxDepth.has_value() && _minDepth == *_maxDepth;
-}
-
-MatchProjectionReservedAttribute
-classifyDocumentMatchProjectionReservedAttribute(
-    std::string_view name) noexcept {
-  if (name == StaticStrings::IdString) {
-    return MatchProjectionReservedAttribute::kId;
-  }
-  return MatchProjectionReservedAttribute::kNone;
-}
-
-MatchProjectionReservedAttribute
-classifyEdgeDocumentMatchProjectionReservedAttribute(
-    std::string_view name) noexcept {
-  auto const documentClass =
-      classifyDocumentMatchProjectionReservedAttribute(name);
-  if (documentClass != MatchProjectionReservedAttribute::kNone) {
-    return documentClass;
-  }
-  if (name == StaticStrings::FromString) {
-    return MatchProjectionReservedAttribute::kFrom;
-  }
-  if (name == StaticStrings::ToString) {
-    return MatchProjectionReservedAttribute::kTo;
-  }
-  return MatchProjectionReservedAttribute::kNone;
 }
 
 MatchProjectionItem MatchProjectionItem::keepPath(

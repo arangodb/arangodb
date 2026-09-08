@@ -35,6 +35,7 @@
 #include "Aql/TypedAstNodes.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
 #include "Transaction/OperationOrigin.h"
 #include "VocBase/voc-types.h"
 
@@ -42,6 +43,7 @@
 #include <velocypack/Parser.h>
 
 #include <algorithm>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -52,6 +54,41 @@ using namespace arangodb::aql;
 using namespace arangodb::tests;
 
 namespace {
+
+/// @brief Test-only mirror of MATCH projection reserved-attribute classification.
+/// Production code uses kMandatory*MatchProjectionAttributes membership instead.
+enum class MatchProjectionReservedAttribute : uint8_t {
+  kNone,
+  kId,
+  kFrom,
+  kTo,
+};
+
+[[nodiscard]] MatchProjectionReservedAttribute
+classifyDocumentMatchProjectionReservedAttribute(
+    std::string_view name) noexcept {
+  if (name == StaticStrings::IdString) {
+    return MatchProjectionReservedAttribute::kId;
+  }
+  return MatchProjectionReservedAttribute::kNone;
+}
+
+[[nodiscard]] MatchProjectionReservedAttribute
+classifyEdgeDocumentMatchProjectionReservedAttribute(
+    std::string_view name) noexcept {
+  auto const documentClass =
+      classifyDocumentMatchProjectionReservedAttribute(name);
+  if (documentClass != MatchProjectionReservedAttribute::kNone) {
+    return documentClass;
+  }
+  if (name == StaticStrings::FromString) {
+    return MatchProjectionReservedAttribute::kFrom;
+  }
+  if (name == StaticStrings::ToString) {
+    return MatchProjectionReservedAttribute::kTo;
+  }
+  return MatchProjectionReservedAttribute::kNone;
+}
 
 class MatchPatternNormalizerTest : public ::testing::Test {
  protected:

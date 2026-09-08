@@ -100,18 +100,6 @@ struct MatchPropertyConstraint {
   MatchExpressionRef value;
 };
 
-/// @brief MATCH projection reserved attributes that are auto-injected into
-/// projected objects and ignored when the user requests them.
-///
-/// This is intentionally narrower than document system attributes:
-/// `_key` and `_rev` remain user-requestable keeps in MATCH projections.
-enum class MatchProjectionReservedAttribute : uint8_t {
-  kNone,
-  kId,
-  kFrom,
-  kTo,
-};
-
 /// @brief Attributes always present in a projected MATCH vertex document.
 inline constexpr std::array<std::string_view, 1>
     kMandatoryDocumentMatchProjectionAttributes{"_id"};
@@ -119,17 +107,6 @@ inline constexpr std::array<std::string_view, 1>
 /// @brief Attributes always present in a projected MATCH edge document.
 inline constexpr std::array<std::string_view, 3>
     kMandatoryEdgeDocumentMatchProjectionAttributes{"_id", "_from", "_to"};
-
-/// @brief Classify a top-level MATCH projection attribute for a vertex
-/// document.
-[[nodiscard]] MatchProjectionReservedAttribute
-classifyDocumentMatchProjectionReservedAttribute(
-    std::string_view name) noexcept;
-
-/// @brief Classify a top-level MATCH projection attribute for an edge document.
-[[nodiscard]] MatchProjectionReservedAttribute
-classifyEdgeDocumentMatchProjectionReservedAttribute(
-    std::string_view name) noexcept;
 
 /// @brief One RETURN item from an in-pattern MATCH projection.
 ///
