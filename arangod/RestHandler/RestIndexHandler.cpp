@@ -224,27 +224,37 @@ futures::Future<futures::Unit> RestIndexHandler::executeAsync() {
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 }
 
-std::shared_ptr<LogicalCollection> RestIndexHandler::collection(
+ResultT<std::shared_ptr<LogicalCollection>> RestIndexHandler::collection(
     std::string const& cName) {
-  if (!cName.empty()) {
-    if (ServerState::instance()->isCoordinator()) {
-      // Restrict access properly from API version 1 on:
-      if (_request->requestedApiVersion() > 0) {
-        if (auth::isNameAndNoId(cName).fail()) {
-          return nullptr;
-        }
-        if (auto r = ExecContext::current().canUseCollection(
-                _vocbase.name(), cName, AccessLevel::Read);
-            r.fail()) {
-          return nullptr;
-        }
-      }
-      return _clusterFeature.clusterInfo().getCollectionNT(_vocbase.name(),
-                                                           cName);
-    }
-    return _vocbase.lookupCollection(cName);
+  if (cName.empty()) {
+    return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
-  return nullptr;
+
+  if (not ServerState::instance()->isCoordinator()) {
+    auto coll = _vocbase.lookupCollection(cName);
+    if (coll == nullptr) {
+      return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
+    }
+    return coll;
+  }
+
+  // Restrict access properly from API version 1 on:
+  if (_request->requestedApiVersion() > 0) {
+    if (auth::isNameAndNoId(cName).fail()) {
+      return Result{TRI_ERROR_FORBIDDEN};
+    }
+    if (auto r = ExecContext::current().canUseCollection(_vocbase.name(), cName,
+                                                         AccessLevel::Read);
+        r.fail()) {
+      return Result{TRI_ERROR_FORBIDDEN};
+    }
+  }
+  auto coll =
+      _clusterFeature.clusterInfo().getCollectionNT(_vocbase.name(), cName);
+  if (coll == nullptr) {
+    return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
+  }
+  return coll;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -887,14 +897,14 @@ async<void> RestIndexHandler::createIndex() {
     co_return;
   }
 
-  auto coll = collection(cName);
-  if (coll == nullptr) {
+  auto collRes = collection(cName);
+  if (collRes.fail()) {
     events::CreateIndexEnd(_vocbase.name(), cName, body,
                            TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    generateError(collRes.result());
     co_return;
   }
+  auto coll = coll.get();
 
   VPackBuilder copy;
   if (body.get("collection").isNone()) {
@@ -931,9 +941,10 @@ async<void> RestIndexHandler::createIndex() {
   VPackBuilder indexInfo;
   indexInfo.add(body);
 
-  // In version 4.*, we only want to reject creation of geo1/geo2 when requested
-  // from a client. On the other hand, DBServers want to stay compatible with
-  // legacy geo1/geo2 indexes because of potential Plan vs Current mismatch.
+  // In version 4.*, we only want to reject creation of geo1/geo2 when
+  // requested from a client. On the other hand, DBServers want to stay
+  // compatible with legacy geo1/geo2 indexes because of potential Plan vs
+  // Current mismatch.
   if (ServerState::instance()->isSingleServer() ||
       ServerState::instance()->isCoordinator()) {
     VPackSlice typeSlice = indexInfo.slice().get(StaticStrings::IndexType);
