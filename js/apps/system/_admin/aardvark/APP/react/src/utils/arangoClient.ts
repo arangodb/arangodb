@@ -29,9 +29,13 @@ export const getApiRouteForCurrentDB = () =>
 export const getAdminRouteForCurrentDB = () =>
   getRouteForDB(window.frontendConfig.db, "_admin");
 
-// The classic user-permission API answers this in RBAC mode, where grants
-// live in roles instead. Callers treat it as "unknown, show everything".
-export const isRbacRejection = (error: unknown) => {
-  const e = error as { code?: number; message?: string } | undefined;
-  return e?.code === 403 && e?.message === "Not allowed in RBAC mode.";
+// arangod's generic forbidden error number.
+const ERROR_FORBIDDEN = 11;
+
+// Classic mode always lets a user read their own access level, so a forbidden
+// answer to that probe only happens in RBAC mode, where grants live in roles.
+// Callers treat it as "unknown, show everything".
+export const isOwnAccessLevelForbidden = (error: unknown) => {
+  const e = error as { code?: number; errorNum?: number } | undefined;
+  return e?.code === 403 && e?.errorNum === ERROR_FORBIDDEN;
 };

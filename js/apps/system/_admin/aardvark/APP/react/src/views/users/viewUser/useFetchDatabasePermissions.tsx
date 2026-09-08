@@ -1,8 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import {
-  getRouteForCurrentDB,
-  isRbacRejection
-} from "../../../utils/arangoClient";
+import { getRouteForCurrentDB } from "../../../utils/arangoClient";
+import { useInferredRbacMode } from "../../../utils/usePermissions";
 
 export type PermissionType = "rw" | "ro" | "none" | "undefined";
 export const useUsername = () => {
@@ -20,20 +18,17 @@ type FullDatabasePermissionsType = {
 
 export const useFetchDatabasePermissions = () => {
   const { username } = useUsername();
-  const { data, refetch, error } = useQuery({
+  const inferredRbacMode = useInferredRbacMode();
+  const { data, refetch } = useQuery({
     queryKey: [username, "permissions"],
+    // Classic grants have no data source in RBAC mode.
+    enabled: !inferredRbacMode,
     queryFn: async () => {
       const url = `/_api/user/${username}/database`;
       const route = getRouteForCurrentDB(url);
       const data = await route.get({ full: "true" });
       return data.parsedBody.result as FullDatabasePermissionsType;
-    },
-    // The RBAC rejection is final; retrying only delays the notice.
-    retry: (_count, error) => !isRbacRejection(error)
+    }
   });
-  return {
-    databasePermissions: data,
-    refetchDatabasePermissions: refetch,
-    error
-  };
+  return { databasePermissions: data, refetchDatabasePermissions: refetch };
 };

@@ -1160,10 +1160,14 @@
       });
     },
 
-    // RBAC mode rejects the classic access-level probes. Grants there are per
-    // action and resource name, so nothing is disabled upfront; the server
-    // answers each write.
-    isRbacRejection: function (xhr) {
+    // arangod's generic forbidden error number.
+    ERROR_FORBIDDEN: 11,
+
+    // The access-level probes ask about the current user, which classic mode
+    // always allows. A forbidden answer therefore only happens in RBAC mode,
+    // where grants are per action and resource name and cannot be known
+    // upfront; callers show everything and let the server answer each write.
+    isOwnAccessLevelForbidden: function (xhr) {
       if (xhr.status !== 403) {
         return false;
       }
@@ -1175,7 +1179,7 @@
           body = {};
         }
       }
-      return body.errorMessage === 'Not allowed in RBAC mode.';
+      return body.errorNum === arangoHelper.ERROR_FORBIDDEN;
     },
 
     checkCollectionPermissions: function (collectionID, roCallback) {
@@ -1195,7 +1199,7 @@
           }
         },
         error: function (data) {
-          if (arangoHelper.isRbacRejection(data)) {
+          if (arangoHelper.isOwnAccessLevelForbidden(data)) {
             return;
           }
           arangoHelper.arangoError('User', 'Could not fetch collection permissions.');
@@ -1236,7 +1240,7 @@
           }
         },
         error: function (data) {
-          if (arangoHelper.isRbacRejection(data)) {
+          if (arangoHelper.isOwnAccessLevelForbidden(data)) {
             if (rwCallback) {
               rwCallback(false);
             }

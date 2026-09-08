@@ -6,11 +6,8 @@ import {
   DatabaseTableType
 } from "./CollectionsPermissionsTable";
 import { SystemDatabaseWarningModal } from "./SystemDatabaseWarningModal";
-import {
-  useFetchDatabasePermissions,
-  useUsername
-} from "./useFetchDatabasePermissions";
-import { isRbacRejection } from "../../../utils/arangoClient";
+import { useUsername } from "./useFetchDatabasePermissions";
+import { useInferredRbacMode } from "../../../utils/usePermissions";
 import {
   UserPermissionsContextProvider,
   useUserPermissionsContext
@@ -32,9 +29,9 @@ const UserPermissionsTableInner = () => {
   }, [username]);
 
   const { isManagedUser, isRootUser } = tableInstance.options.meta as any;
-  const { error } = useFetchDatabasePermissions();
+  const inferredRbacMode = useInferredRbacMode();
 
-  if (isRbacRejection(error)) {
+  if (inferredRbacMode) {
     return (
       <Stack padding="4">
         <Alert status="info">

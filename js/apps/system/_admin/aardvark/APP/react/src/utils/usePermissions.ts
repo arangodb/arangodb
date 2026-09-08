@@ -1,8 +1,8 @@
 import useSWR from "swr";
-import { getCurrentDB, isRbacRejection } from "./arangoClient";
+import { getCurrentDB, isOwnAccessLevelForbidden } from "./arangoClient";
 
-const usePermissions = () => {
-  const { data, error } = useSWR(
+const useOwnAccessLevel = () =>
+  useSWR(
     `/user/${window.arangoHelper.getCurrentJwtUsername()}/database/${
       window.frontendConfig.db
     }`,
@@ -12,7 +12,14 @@ const usePermissions = () => {
         { database: window.frontendConfig.db }
       )
   );
-  if (isRbacRejection(error)) {
+
+// Inferred from the probe above; the server exposes no RBAC flag.
+export const useInferredRbacMode = () =>
+  isOwnAccessLevelForbidden(useOwnAccessLevel().error);
+
+const usePermissions = () => {
+  const { data, error } = useOwnAccessLevel();
+  if (isOwnAccessLevelForbidden(error)) {
     return "rw";
   }
   return data || "none";
