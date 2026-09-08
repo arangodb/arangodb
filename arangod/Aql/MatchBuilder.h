@@ -77,7 +77,8 @@ class MatchBuilder {
   /// @brief Queue a delayed projection CalculationNode when @p binding has a
   /// projection. Preserves existing ordering (applied after segment lowering).
   void maybeQueueProjection(
-      std::vector<ExecutionNode*>& projections, ProjectionBinding const& binding,
+      std::vector<ExecutionNode*>& projections,
+      ProjectionBinding const& binding,
       std::optional<MatchProjection> const& projection, bool isEdge,
       std::unordered_map<VariableId, Variable const*> const& subst);
 

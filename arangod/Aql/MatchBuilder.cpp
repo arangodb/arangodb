@@ -640,8 +640,8 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
         // Multi-collection one-hop: same projection temp/subst pattern as the
         // single-collection join path. Substitutions must be registered before
         // later elements rewrite aliases that may reference these variables.
-        auto edgeBinding = bindProjectedVariable(
-            edge.variable, edge.projection, variableSubstitutions);
+        auto edgeBinding = bindProjectedVariable(edge.variable, edge.projection,
+                                                 variableSubstitutions);
 
         Variable const* vertexDestinationVariable = nullptr;
         Variable const* vertexTraversalOutputVariable = nullptr;
@@ -669,9 +669,9 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
 
         // Filters must see the full edge document (pre-projection).
         if (!edge.properties.empty() || edge.filter.has_value()) {
-          auto [propCalc, propFilter] = createPropertiesFilter(
-              edgeBinding.fullDocument, edge.properties, edge.filter,
-              variableSubstitutions);
+          auto [propCalc, propFilter] =
+              createPropertiesFilter(edgeBinding.fullDocument, edge.properties,
+                                     edge.filter, variableSubstitutions);
           propCalc->addDependency(previous);
           previous = en = propFilter;
         }
@@ -694,8 +694,8 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
         ExecutionNode* lastNodeFilter;
         Variable const* edgeVar;
 
-        auto edgeBinding = bindProjectedVariable(
-            edge.variable, edge.projection, variableSubstitutions);
+        auto edgeBinding = bindProjectedVariable(edge.variable, edge.projection,
+                                                 variableSubstitutions);
 
         std::tie(en, lastNodeFilter, edgeVar) =
             createPatternEdgeEnumerateAccess(edge, edgeBinding.fullDocument,
@@ -716,14 +716,14 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
           ADB_PROD_ASSERT(target.kind == MatchPatternElement::Kind::kVertex);
           ADB_PROD_ASSERT(target.vertex.has_value());
 
-          auto vertexBinding = bindProjectedVariable(
-              target.vertex->variable, target.vertex->projection,
-              variableSubstitutions);
+          auto vertexBinding = bindProjectedVariable(target.vertex->variable,
+                                                     target.vertex->projection,
+                                                     variableSubstitutions);
           vertexDestinationVariable = vertexBinding.destination;
 
-          std::tie(en, lastNodeFilter, rightVertexVar) = createCollectionAccess(
-              *target.vertex, vertexBinding.fullDocument,
-              variableSubstitutions);
+          std::tie(en, lastNodeFilter, rightVertexVar) =
+              createCollectionAccess(*target.vertex, vertexBinding.fullDocument,
+                                     variableSubstitutions);
           en->addDependency(previous);
 
           maybeQueueProjection(projections, vertexBinding,
