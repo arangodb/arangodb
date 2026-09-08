@@ -1040,8 +1040,10 @@ class instance {
         let reply = {code: 555};
         try {
           print(this.connect());
-          arango.timeout(1);
+          let oldTimeout = arango.timeout();
+          arango.timeout(5);
           reply = arango.DELETE_RAW('/_admin/shutdown');
+          arango.timeout(oldTimeout);
         } catch(ex) {
           print(RED + 'while invoking shutdown via unix domain socket: ' + ex + RESET);
         };
@@ -1070,8 +1072,10 @@ class instance {
           print(Date() + ' ' + this.url + '/_admin/shutdown');
         }
         if (!this.toThisInstance(() => {
-          arango.timeout(1);
+          let oldTimeout = arango.timeout();
+          arango.timeout(5);
           let reply = arango.DELETE_RAW('/_admin/shutdown', '');
+          arango.timeout(oldTimeout);
           if ((reply.code !== 200) && // if the server should reply, we expect 200 - if not:
               !((reply.code === 500) &&
                 (
