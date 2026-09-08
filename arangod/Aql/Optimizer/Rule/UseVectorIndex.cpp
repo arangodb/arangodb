@@ -36,7 +36,6 @@
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRule.h"
 #include "Aql/Optimizer/Utils/VectorIndexHelpers.h"
-#include "Aql/OptimizerUtils.h"
 #include "Aql/TypedAstNodes.h"
 #include "Aql/Query.h"
 #include "Aql/types.h"
@@ -215,22 +214,23 @@ std::vector<std::shared_ptr<Index>> getVectorIndexes(
 
   std::vector<std::shared_ptr<Index>> vectorIndexes;
   std::ranges::copy_if(
-      indexes, std::back_inserter(vectorIndexes), [](auto const& elem) {
-        return elem->type() == Index::IndexType::TRI_IDX_TYPE_VECTOR_INDEX;
-      });
+      indexes, std::back_inserter(vectorIndexes),
+      [](auto const& elem) { return elem->type() == IndexType::Vector; });
 
   // Reorder indexes
   if (indexHint.isSimple()) {
     auto& idxNames = indexHint.candidateIndexes();
     auto currentIt = vectorIndexes.begin();
     for (auto const& idxName : idxNames) {
+      if (currentIt == vectorIndexes.end()) {
+        break;
+      }
       if (auto foundHintedIndexIt = std::ranges::find_if(
-              vectorIndexes,
+              currentIt, vectorIndexes.end(),
               [&idxName](const auto& elem) { return elem->name() == idxName; });
           foundHintedIndexIt != vectorIndexes.end()) {
-        auto oldIt = currentIt;
-        std::iter_swap(oldIt, foundHintedIndexIt);
-        currentIt++;
+        std::iter_swap(currentIt, foundHintedIndexIt);
+        ++currentIt;
       }
     }
   }

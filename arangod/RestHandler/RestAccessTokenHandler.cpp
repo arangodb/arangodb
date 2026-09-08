@@ -26,6 +26,7 @@
 #include "Auth/UserManager.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
+#include "Basics/system-functions.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -42,7 +43,7 @@ using namespace arangodb::rest;
 RestAccessTokenHandler::RestAccessTokenHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
-    : RestVocbaseBaseHandler(server, request, response) {}
+    : RestBaseHandler(server, request, response) {}
 
 // Mounted at /_api/token (prefix)
 RestStatus RestAccessTokenHandler::execute() {
@@ -79,15 +80,25 @@ RestStatus RestAccessTokenHandler::execute() {
       return showAccessTokens(um, user);
     case RequestType::POST:
       if (auto r = exec.canModifyUserProfile(user); !r.ok()) {
-        generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                      r.errorMessage());
+        if (r.errorNumber() == TRI_ERROR_ARANGO_READ_ONLY) {
+          generateError(rest::ResponseCode::FORBIDDEN,
+                        TRI_ERROR_ARANGO_READ_ONLY, r.errorMessage());
+        } else {
+          generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                        r.errorMessage());
+        }
         return RestStatus::DONE;
       }
       return createAccessToken(um, user);
     case RequestType::DELETE_REQ:
       if (auto r = exec.canModifyUserProfile(user); !r.ok()) {
-        generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                      r.errorMessage());
+        if (r.errorNumber() == TRI_ERROR_ARANGO_READ_ONLY) {
+          generateError(rest::ResponseCode::FORBIDDEN,
+                        TRI_ERROR_ARANGO_READ_ONLY, r.errorMessage());
+        } else {
+          generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                        r.errorMessage());
+        }
         return RestStatus::DONE;
       }
       return deleteAccessToken(um, user);
@@ -96,15 +107,6 @@ RestStatus RestAccessTokenHandler::execute() {
       generateError(ResponseCode::BAD, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
       return RestStatus::DONE;
   }
-}
-
-async<Result> RestAccessTokenHandler::checkUserCanAccess() const {
-  // This API only requires the user to be authenticated
-  if (request()->authenticated()) {
-    co_return Result{};
-  }
-
-  co_return Result{TRI_ERROR_HTTP_UNAUTHORIZED, "Not authenticated."};
 }
 
 RestStatus RestAccessTokenHandler::showAccessTokens(auth::UserManager* um,
@@ -135,6 +137,14 @@ RestStatus RestAccessTokenHandler::createAccessToken(auth::UserManager* um,
 
   VPackSlice v = body.get("valid_until");
   double validUntil = basics::VelocyPackHelper::getNumericValue<double>(v, 0);
+
+  // cap the requested expiry date at the configured maximum TTL, measured
+  // from now, for personal access tokens.
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  double maxValidUntil = TRI_microtime() + af->maximalAccessTokenExpiryTime();
+  if (validUntil > maxValidUntil) {
+    validUntil = maxValidUntil;
+  }
 
   VPackBuilder token;
   Result result = um->createAccessToken(user, name, validUntil, token);

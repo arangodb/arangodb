@@ -72,7 +72,6 @@ add_library(arango_aql STATIC
   Optimizer.cpp
   OptimizerRulesFeature.cpp
   OptimizerRulesOptionsProvider.cpp
-  OptimizerUtils.cpp
   OutputAqlItemRow.cpp
   Projections.cpp
   PruneExpressionEvaluator.cpp
@@ -158,6 +157,7 @@ target_link_libraries(arango_aql
   arango_indexes
   arango_iresearch
   arango_network
+  arango_v8server
   immer)
 
 target_include_directories(arango_aql PRIVATE

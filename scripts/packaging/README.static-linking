@@ -10,7 +10,7 @@ has an example script for linking.
 This has been tested on Ubuntu 24.04, since you need glibc in version 
 at least 2.39. Install the following packages as tools:
 
-    apt install build-essential clang-16 lld-16 liburing-dev
+    apt install build-essential clang-19 lld-19 liburing-dev libblas-dev liblapack-dev gfortran
 
 Then run the script `scripts/link_executables.sh` and you will find
 the following executables in the `build/bin` directory:

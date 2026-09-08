@@ -22,7 +22,9 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ServerState.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
+#include "Logger/LogMacros.h"
 #include "Rest/ApiVersion.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerFeature.h"
@@ -72,12 +74,15 @@ static void addApiVersions(VPackBuilder& result) {
 }
 
 static void addVersionDetails(application_features::ApplicationServer& server,
-                              VPackBuilder& result) {
+                              VPackBuilder& result,
+                              uint32_t requestedApiVersion) {
   result.add("details", VPackValue(VPackValueType::Object));
   Version::getVPack(result);
 
   auto& serverFeature = server.getFeature<ServerFeature>();
-  result.add("mode", VPackValue(serverFeature.operationModeString()));
+  if (requestedApiVersion == 0) {
+    result.add("mode", VPackValue(serverFeature.operationModeString()));
+  }
   auto serverState = ServerState::instance();
   if (serverState != nullptr) {
     result.add("role",
@@ -100,19 +105,30 @@ RestVersionHandler::RestVersionHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
-async<Result> RestVersionHandler::checkUserCanAccess() const {
+async<RestHandler::AuthenticationGrant>
+RestVersionHandler::checkUserAuthentication() const {
   // Note that this particular RestHandler might be called during startup (or
   // in maintenance mode). The AuthenticationFeature might not yet be available
   // for authorization, and must not be consulted.
   if (auto const mode = ServerState::mode();
       mode == ServerState::Mode::STARTUP ||
       mode == ServerState::Mode::MAINTENANCE) {
-    co_return request()->authenticated()
-        ? Result{}
-        : Result{TRI_ERROR_HTTP_UNAUTHORIZED, "Not authenticated."};
+    co_return request()->authenticated()  // with JWT can also be authenticated
+        ? AuthenticationGrant::GRANTED_EARLY
+        : AuthenticationGrant::DENIED;
   }
 
-  co_return co_await RestBaseHandler::checkUserCanAccess();
+  co_return co_await RestBaseHandler::checkUserAuthentication();
+}
+
+async<Result> RestVersionHandler::checkApiVersionAccess() const {
+  auto version = request()->requestedApiVersion();
+  if (version == api_version::defaultApiVersion) {
+    // default api-version is always allowed
+    co_return Result{};
+  }
+
+  co_return co_await RestBaseHandler::checkApiVersionAccess();
 }
 
 void RestVersionHandler::getVersion(
@@ -126,12 +142,14 @@ void RestVersionHandler::getVersion(
   result.add("license", VPackValue("community"));
 #endif
 
-  if (allowInfo) {
+  // "version" can be added unconditionally in 4.0
+  if (allowInfo || !ExecContext::current().isClassic() ||
+      requestedApiVersion > 0) {
     result.add("version", VPackValue(ARANGODB_VERSION));
+  }
 
-    if (includeDetails) {
-      addVersionDetails(server, result);
-    }
+  if (allowInfo && includeDetails) {
+    addVersionDetails(server, result, requestedApiVersion);
   }
 
   // Add API version information (both in short and long form)
@@ -146,6 +164,11 @@ void RestVersionHandler::getVersion(
 
 // Mounted at /_api/version (exact) and /_admin/version (exact)
 RestStatus RestVersionHandler::execute() {
+  if (_request->requestedApiVersion() > 0 &&
+      !isAllowedHttpMethod({RequestType::GET})) {
+    return RestStatus::DONE;
+  }
+
   VPackBuilder result;
 
   bool const allowInfo =

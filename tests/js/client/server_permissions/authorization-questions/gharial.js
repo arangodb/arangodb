@@ -30,8 +30,8 @@
 //           arangod/Graph/GraphManager.cpp
 //           arangod/Graph/GraphOperations.cpp
 //
-// Every request first asks `UseDatabase name=d level=read`
-// (RestHandler::checkUserCanAccess).
+// Every request first asks `UseApiVersion version=0` and then
+// `UseDatabase name=d level=read`.
 //
 // Any request that names a graph in the path first runs RestGraphHandler::
 // getGraph() -> GraphManager::lookupGraphByName(), which asks:
@@ -70,7 +70,9 @@ if (getOptions === true) {
     'server.authentication': 'true',
     'log.force-direct': 'true',
     // keep background threads from asking questions of their own
-    'foxx.queues': 'false'
+    'foxx.queues': 'false',
+    // disable so it doesn't spoil the test output:
+    'server.statistics': 'false'
   };
 }
 
@@ -176,6 +178,7 @@ function gharialApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/gharial`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=_graphs level=read",
         "SeeGraph db=d name=g"
@@ -201,6 +204,7 @@ function gharialApiAuthzSuite () {
         edgeDefinitions: [{ collection: E_APITEST, from: [c], to: [c] }]
       });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=_graphs level=read",
         "IsReadOnly",
@@ -218,6 +222,7 @@ function gharialApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/gharial/${g}`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseGraph db=d name=g level=read",
         "UseCollection db=d name=_graphs level=read"
@@ -233,6 +238,7 @@ function gharialApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/gharial/${G_APITEST}?dropCollections=false`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseGraph db=d name=g_apitest level=read",
         "UseCollection db=d name=_graphs level=read",
@@ -247,6 +253,7 @@ function gharialApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/gharial/${g}/edge`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseGraph db=d name=g level=read",
         "UseCollection db=d name=_graphs level=read"
@@ -266,6 +273,7 @@ function gharialApiAuthzSuite () {
       arango.POST_RAW(`/_db/${DB}/_api/gharial/${G_APITEST}/edge`,
                       { collection: E2_APITEST, from: [c], to: [c] });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseGraph db=d name=g_apitest level=read",
         "UseCollection db=d name=_graphs level=read",
@@ -284,6 +292,7 @@ function gharialApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/gharial/${g}/edge/${e}/${EDGE_KEY}`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseGraph db=d name=g level=read",
         "UseCollection db=d name=_graphs level=read",
@@ -300,6 +309,7 @@ function gharialApiAuthzSuite () {
       arango.POST_RAW(`/_db/${DB}/_api/gharial/${g}/edge/${e}`,
                       { _key: EDGE_KEY, _from: `${c}/k1`, _to: `${c}/k2` });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseGraph db=d name=g level=read",
         "UseCollection db=d name=_graphs level=read",
@@ -323,6 +333,7 @@ function gharialApiAuthzSuite () {
       arango.PUT_RAW(`/_db/${DB}/_api/gharial/${G_APITEST}/edge/${E_APITEST}`,
                      { collection: E_APITEST, from: [c], to: [c] });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "UseDatabase name=d level=write",
@@ -345,6 +356,7 @@ function gharialApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/gharial/${G_APITEST}/edge/${E_APITEST}?dropCollection=false`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseGraph db=d name=g_apitest level=read",
         "UseCollection db=d name=_graphs level=read",
@@ -362,6 +374,7 @@ function gharialApiAuthzSuite () {
       arango.PUT_RAW(`/_db/${DB}/_api/gharial/${g}/edge/${e}/${EDGE_KEY}`,
                      { _from: `${c}/k2`, _to: `${c}/k3` });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseGraph db=d name=g level=read",
         "UseCollection db=d name=_graphs level=read",
@@ -384,6 +397,7 @@ function gharialApiAuthzSuite () {
       arango.PATCH_RAW(`/_db/${DB}/_api/gharial/${g}/edge/${e}/${EDGE_KEY}`,
                        { extra: 1 });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseGraph db=d name=g level=read",
         "UseCollection db=d name=_graphs level=read",
@@ -405,6 +419,7 @@ function gharialApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/gharial/${g}/edge/${e}/${EDGE_KEY}`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseGraph db=d name=g level=read",
         "UseCollection db=d name=_graphs level=read",
@@ -421,6 +436,7 @@ function gharialApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/gharial/${g}/vertex`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseGraph db=d name=g level=read",
         "UseCollection db=d name=_graphs level=read"
@@ -437,6 +453,7 @@ function gharialApiAuthzSuite () {
       arango.POST_RAW(`/_db/${DB}/_api/gharial/${G_APITEST}/vertex`,
                       { collection: C_ORPHAN });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseGraph db=d name=g_apitest level=read",
         "UseCollection db=d name=_graphs level=read",
@@ -454,6 +471,7 @@ function gharialApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/gharial/${g}/vertex/${c}/k1`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseGraph db=d name=g level=read",
         "UseCollection db=d name=_graphs level=read",
@@ -468,6 +486,7 @@ function gharialApiAuthzSuite () {
       arango.POST_RAW(`/_db/${DB}/_api/gharial/${g}/vertex/${c}`,
                       { _key: VERTEX_KEY, value: 9999 });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseGraph db=d name=g level=read",
         "UseCollection db=d name=_graphs level=read",
@@ -486,6 +505,7 @@ function gharialApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/gharial/${G_APITEST}/vertex/${C_ORPHAN}?dropCollection=false`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseGraph db=d name=g_apitest level=read",
         "UseCollection db=d name=_graphs level=read",
@@ -503,6 +523,7 @@ function gharialApiAuthzSuite () {
       arango.PUT_RAW(`/_db/${DB}/_api/gharial/${g}/vertex/${c}/${VERTEX_KEY}`,
                      { value: 10000 });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseGraph db=d name=g level=read",
         "UseCollection db=d name=_graphs level=read",
@@ -521,6 +542,7 @@ function gharialApiAuthzSuite () {
       arango.PATCH_RAW(`/_db/${DB}/_api/gharial/${g}/vertex/${c}/${VERTEX_KEY}`,
                        { extra: 42 });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseGraph db=d name=g level=read",
         "UseCollection db=d name=_graphs level=read",
@@ -542,6 +564,7 @@ function gharialApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/gharial/${g}/vertex/${c}/${VERTEX_KEY}`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseGraph db=d name=g level=read",
         "UseCollection db=d name=_graphs level=read",

@@ -24,6 +24,7 @@
 
 #include "Basics/Meta/TypeList.h"
 
+#include <cstdint>
 #include <iosfwd>
 #include <span>
 #include <string>
@@ -45,7 +46,6 @@ enum class CollectionAccessLevel { Read, WriteData, WriteMeta };
 // TODO We call ::Write for DB, but ::Modify for View and Analyzer.
 //      Should we keep it consistent?
 enum class DatabaseAccessLevel { Read, Write };
-enum class ViewAccessLevel { Read, Modify };
 enum class AnalyzerAccessLevel { Read, Modify };
 enum class GraphAccessLevel { Read, Modify };
 
@@ -53,7 +53,6 @@ using AccessLevel = CollectionAccessLevel;
 
 auto to_string(CollectionAccessLevel level) -> std::string_view;
 auto to_string(DatabaseAccessLevel level) -> std::string_view;
-auto to_string(ViewAccessLevel level) -> std::string_view;
 auto to_string(AnalyzerAccessLevel level) -> std::string_view;
 auto to_string(GraphAccessLevel level) -> std::string_view;
 
@@ -250,6 +249,7 @@ struct RenameView {
   std::string db;
   std::string oldName;
   std::string newName;
+  std::vector<std::string> linkedCollections;
 };
 
 struct DropView {
@@ -258,10 +258,9 @@ struct DropView {
   std::vector<std::string> linkedCollections;
 };
 
-struct UseView {
+struct ReadView {
   std::string db;
   std::string name;
-  ViewAccessLevel level;
 };
 
 // ---------------------------------------------------------------------------
@@ -346,6 +345,15 @@ struct GrantUserPermissions {
   std::string name;
 };
 
+// ---------------------------------------------------------------------------
+// API versions
+// ---------------------------------------------------------------------------
+
+// Grant permission to a specific api version
+struct UseApiVersion {
+  uint32_t version;
+};
+
 namespace detail {
 // Currently there's no need to subdivide this list, but feel free to
 // do that when it becomes useful.
@@ -357,13 +365,15 @@ using NonAdminList = meta::TypeList<
     DumpCollection, RestoreCollection, RestoreCreateIndex, RestoreCreateView,
     RestoreDropView, RestoreWriteData,
     // view permissions
-    SeeView, CreateView, ModifyView, RenameView, DropView, UseView,
+    SeeView, CreateView, ModifyView, RenameView, DropView, ReadView,
     // analyzer permissions
     SeeAnalyzer, CreateAnalyzer, DropAnalyzer, UseAnalyzer,
     // graph permissions
     SeeGraph, CreateGraph, DropGraph, UseGraph,
     // user permissions
-    ReadUser, CreateUser, DropUser, ModifyUserProfile, GrantUserPermissions>;
+    ReadUser, CreateUser, DropUser, ModifyUserProfile, GrantUserPermissions,
+    // api version permissions
+    UseApiVersion>;
 
 using CompleteList = meta::detail::Union<AdminList, NonAdminList>::type;
 }  // namespace detail

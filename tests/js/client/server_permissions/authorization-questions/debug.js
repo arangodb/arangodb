@@ -29,9 +29,8 @@
 // Handler: arangod/RestHandler/RestDebugHandler.cpp
 //
 // RestDebugHandler contains NO ExecContext permission check at all (auth level
-// is AUTHEN: any authenticated user), so the only observed question is the
-// base `UseDatabase name=_system level=read` from
-// RestHandler::checkUserCanAccess().
+// is AUTHEN: any authenticated user), so the only observed questions are
+// the base `UseApiVersion version=0` and `UseDatabase name=_system level=read`.
 //
 // AUDIT: RestDebugHandler is only compiled in when ARANGODB_ENABLE_FAILURE_TESTS
 // is defined at build time. On a release build every /_admin/debug route is
@@ -48,7 +47,9 @@ if (getOptions === true) {
     'server.authentication': 'true',
     'log.force-direct': 'true',
     // keep background threads from asking questions of their own
-    'foxx.queues': 'false'
+    'foxx.queues': 'false',
+    // disable so it doesn't spoil the test output:
+    'server.statistics': 'false'
   };
 }
 
@@ -75,6 +76,7 @@ function debugApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/debug/failat`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -84,6 +86,7 @@ function debugApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/debug/failat/all`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -95,6 +98,7 @@ function debugApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_admin/debug/failat/${failPoint}`, {});
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
       arango.DELETE_RAW(`/_db/_system/_admin/debug/failat/${failPoint}`);
@@ -107,6 +111,7 @@ function debugApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_admin/debug/failat/${failPoint}`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -116,6 +121,7 @@ function debugApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_admin/debug/failat`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -125,6 +131,7 @@ function debugApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_admin/debug/raceControl`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },

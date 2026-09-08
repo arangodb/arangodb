@@ -38,7 +38,10 @@ class RestAuthHandler : public RestVocbaseBaseHandler {
   RestStatus execute() override;
 
  protected:
-  async<Result> checkUserCanAccess() const override;
+  async<RestHandler::AuthenticationGrant> checkUserAuthentication()
+      const override;
+  async<Result> checkApiVersionAccess() const override { co_return Result{}; }
+  async<Result> checkDatabaseAccess() const override { co_return Result{}; }
 
  private:
   std::string generateJwt(std::string const& username,

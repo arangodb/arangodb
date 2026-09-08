@@ -28,8 +28,8 @@
 //
 // Handler: arangod/RestHandler/RestDatabaseHandler.cpp
 //
-// Every request first asks the base `UseDatabase name=<db> level=read` in
-// RestHandler::checkUserCanAccess(), where <db> is the database in the request
+// Every request first asks the base `UseApiVersion version=0` and then
+// `UseDatabase name=<db> level=read`, where <db> is the database in the request
 // path prefix. Beyond that:
 //   - GET (list / current / user / shardStatistics) go through
 //     methods::Databases::list()/toVelocyPack(), which do NOT call the
@@ -48,7 +48,9 @@ if (getOptions === true) {
     'server.authentication': 'true',
     'log.force-direct': 'true',
     // keep background threads from asking questions of their own
-    'foxx.queues': 'false'
+    'foxx.queues': 'false',
+    // disable so it doesn't spoil the test output:
+    'server.statistics': 'false'
   };
 }
 
@@ -91,6 +93,7 @@ function databaseApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/database`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -100,6 +103,7 @@ function databaseApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/database/current`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
     },
@@ -110,6 +114,7 @@ function databaseApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/database/user`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "SeeDatabase name=_system",
         "SeeDatabase name=d"
@@ -124,6 +129,7 @@ function databaseApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/database/shardStatistics`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
     },
@@ -134,6 +140,7 @@ function databaseApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/_system/_api/database`, { name: 'd2' });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "IsReadOnly",
         "CreateDatabase name=d2",
@@ -148,8 +155,6 @@ function databaseApiAuthzSuite () {
         "UseCollection db=d2 name=_apps level=writemeta",
         "UseCollection db=d2 name=_jobs level=writemeta",
         ...singleOnly([
-          "UseCollection db=_system name=_users level=read",
-          "UseCollection db=_system name=_users level=writedata",
           "UseCollection db=d2 name=_apps level=read",
           "UseCollection db=d2 name=_apps level=writedata",
           "UseCollection db=d2 name=_jobs level=read",
@@ -165,13 +170,10 @@ function databaseApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_api/database/d2`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "IsReadOnly",
         "DropDatabase name=d2",
-        ...singleOnly([
-          "UseCollection db=_system name=_users level=read",
-          "UseCollection db=_system name=_users level=writedata"
-        ])
       ], endObserve());
     },
   };

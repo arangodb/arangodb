@@ -23,13 +23,9 @@
 #include "CacheOptionsFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/PhysicalMemory.h"
-#include "Cache/CacheFeatureOptionsProvider.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
-#include "ProgramOptions/ProgramOptions.h"
 
 using namespace arangodb::application_features;
-using namespace arangodb::options;
 
 namespace arangodb {
 
@@ -42,27 +38,6 @@ CacheOptionsFeature::CacheOptionsFeature(ApplicationServer& server,
       _options(std::move(options)) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
-
-  _options.cacheSize =
-      (PhysicalMemory::getValue() >= (static_cast<std::uint64_t>(4) << 30))
-          ? static_cast<std::uint64_t>((PhysicalMemory::getValue() -
-                                        (static_cast<std::uint64_t>(2) << 30)) *
-                                       0.25)
-          : (256 << 20);
-  // currently there is no way to turn stats off
-  _options.enableWindowedStats = true;
-}
-
-void CacheOptionsFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  CacheFeatureOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void CacheOptionsFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  CacheFeatureOptionsProvider provider;
-  provider.validateOptions(options, _options);
 }
 
 CacheOptions CacheOptionsFeature::getOptions() const { return _options; }

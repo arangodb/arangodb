@@ -62,15 +62,15 @@ void IResearchInvertedIndexMock::toVelocyPack(
   }
 }
 
-Index::IndexType IResearchInvertedIndexMock::type() const {
-  return Index::TRI_IDX_TYPE_INVERTED_INDEX;
+IndexType IResearchInvertedIndexMock::type() const {
+  return IndexType::Inverted;
 }
 
 bool IResearchInvertedIndexMock::needsReversal() const { return true; }
 
 size_t IResearchInvertedIndexMock::memory() const {
   // FIXME return in memory size
-  return stats().indexSize;
+  return getStats().indexSize;
 }
 
 bool IResearchInvertedIndexMock::isHidden() const { return false; }

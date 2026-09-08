@@ -11,6 +11,11 @@ target_link_libraries(arango_cluster_methods
   arango_network
   zlib_interface)
 
+if(USE_ENTERPRISE)
+  target_link_libraries(arango_cluster_methods
+    arango_enterprise_audit)
+endif()
+
 target_include_directories(arango_cluster_methods PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
@@ -67,6 +72,7 @@ add_library(arango_cluster STATIC
 
 target_link_libraries(arango_cluster
   PUBLIC
+    arango_auth
     arango_basic_utils velocypack
     arango::validation rocksdb_interface immer arango_actor
     arango_iresearch arango_v8)

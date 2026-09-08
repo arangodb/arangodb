@@ -46,7 +46,8 @@ struct Activity : std::enable_shared_from_this<Activity> {
       : _id(std::move(id)),
         _parent(std::move(parent)),
         _type(std::move(type)),
-        _created(std::chrono::system_clock::now()) {}
+        _created(std::chrono::system_clock::now()),
+        _threads{} {}
   virtual ~Activity() = default;
 
   auto id() const noexcept -> ActivityId { return _id; };

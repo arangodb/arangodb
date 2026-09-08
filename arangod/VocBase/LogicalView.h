@@ -128,7 +128,7 @@ class LogicalView : public LogicalDataSource {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief names of all collections currently linked to this view
   //////////////////////////////////////////////////////////////////////////////
-  std::vector<std::string> linkedCollectionNames() const;
+  virtual std::vector<std::string> linkedCollectionNames() const;
 
   [[nodiscard]] virtual bool isBuilding() const { return false; }
 

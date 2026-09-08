@@ -29,6 +29,7 @@ if (USE_V8)
     ${PROJECT_SOURCE_DIR}/arangod/Transaction/V8Context.cpp)
   
   target_link_libraries(arango_v8server
+    arango_actions
     arango_agency
     arango_iresearch
     arango_replication

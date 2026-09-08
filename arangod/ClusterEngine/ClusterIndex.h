@@ -37,7 +37,7 @@ class LogicalCollection;
 class ClusterIndex : public Index {
  public:
   ClusterIndex(IndexId id, LogicalCollection& collection,
-               ClusterEngineType engineType, Index::IndexType type,
+               ClusterEngineType engineType, IndexType type,
                velocypack::Slice info);
 
   ClusterIndex(ClusterIndex const&) = delete;
@@ -64,8 +64,7 @@ class ClusterIndex : public Index {
   }
 
   bool canBeDropped() const override {
-    return _indexType != Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
-           _indexType != Index::TRI_IDX_TYPE_EDGE_INDEX;
+    return _indexType != IndexType::Primary && _indexType != IndexType::Edge;
   }
 
   bool isSorted() const override;
@@ -118,8 +117,7 @@ class ClusterIndex : public Index {
     return _prefixFields;
   }
 
-  vector::UserVectorIndexDefinition const& getVectorIndexDefinition()
-      const override;
+  vector::UserDefinition const& getVectorIndexDefinition() const override;
 
   bool isVectorIndexReady() const noexcept override;
 
@@ -127,16 +125,16 @@ class ClusterIndex : public Index {
 
  protected:
   ClusterEngineType _engineType;
-  Index::IndexType _indexType;
+  IndexType _indexType;
   velocypack::Builder _info;
   bool _estimates;
   std::atomic<double> _clusterSelectivity;
 
-  std::unique_ptr<vector::UserVectorIndexDefinition> _vectorIndexDefinition;
+  std::unique_ptr<vector::UserDefinition> _vectorIndexDefinition;
 
   // Only used in RocksDB edge index and vector index.
   std::vector<std::vector<basics::AttributeName>> _coveredFields;
-  // Only used in TRI_IDX_TYPE_MDI_PREFIXED_INDEX
+  // Only used in IndexType::MDIPrefixed
   std::vector<std::vector<basics::AttributeName>> _prefixFields;
 };
 }  // namespace arangodb

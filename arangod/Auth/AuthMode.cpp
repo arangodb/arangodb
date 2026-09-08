@@ -59,9 +59,8 @@ auto describe(auth::perms::UseCollection const& perm) -> std::string {
       "use collection '{}' in database '{}' with access level '{}'", perm.name,
       perm.db, to_string(perm.level));
 }
-auto describe(auth::perms::UseView const& perm) -> std::string {
-  return std::format("use view '{}' in database '{}' with access level '{}'",
-                     perm.name, perm.db, to_string(perm.level));
+auto describe(auth::perms::ReadView const& perm) -> std::string {
+  return std::format("read view '{}' in database '{}'", perm.name, perm.db);
 }
 auto describe(auth::perms::SeeView const& perm) -> std::string {
   return std::format("see view '{}' in database '{}'", perm.name, perm.db);
@@ -241,6 +240,9 @@ auto describe(auth::perms::ModifyUserProfile const& perm) -> std::string {
 auto describe(auth::perms::GrantUserPermissions const& perm) -> std::string {
   return std::format("grant permissions to user '{}'", perm.name);
 }
+auto describe(auth::perms::UseApiVersion const& perm) -> std::string {
+  return std::format("use API version '{}'", perm.version);
+}
 auto failureMessage(auto const& request, std::string_view reason)
     -> std::string {
   return std::format("Failed to {}. {}", describe(request), reason);
@@ -294,27 +296,14 @@ auto AuthMode::Superuser::check(auth::Permission permission) const -> Result {
   return {};
 }
 
-auto AuthMode::Superuser::request() const noexcept
-    -> std::optional<std::reference_wrapper<GeneralRequest>> {
-  if (_request != nullptr) {
-    return *_request;
-  }
-  return std::nullopt;
-}
-
 AuthMode::Classic::Classic(auth::UserManager& userManager, std::string username,
                            GeneralRequest& req)
     : _userManager(userManager),
       _username(std::move(username)),
-      _request(req) {}
+      _requestedApiVersion(req.requestedApiVersion()) {}
 
 auto AuthMode::Classic::username() const noexcept -> std::string_view {
   return _username;
-}
-
-auto AuthMode::Classic::request() const noexcept
-    -> std::optional<std::reference_wrapper<GeneralRequest>> {
-  return _request;
 }
 
 auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
@@ -340,15 +329,6 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             return auth::Level::RO;
           case CollectionAccessLevel::WriteData:
           case CollectionAccessLevel::WriteMeta:
-            return auth::Level::RW;
-        }
-        ADB_PROD_CRASH();
-      },
-      [](ViewAccessLevel level) {
-        switch (level) {
-          case ViewAccessLevel::Read:
-            return auth::Level::RO;
-          case ViewAccessLevel::Modify:
             return auth::Level::RW;
         }
         ADB_PROD_CRASH();
@@ -382,11 +362,6 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
 
             if (requestedLevel <= effectiveLevel) {
               return {};
-            } else if (_request.requestedApiVersion() > 0 &&
-                       effectiveLevel == auth::Level::NONE) {
-              // User has no access to the database at all: report as not found
-              // to avoid revealing its existence.
-              return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND};
             } else {
               return {TRI_ERROR_FORBIDDEN,
                       failureMessage(database,
@@ -446,19 +421,6 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             if (requestedLevel > effectiveLevel) {
               // If we are using API version > 0, then we return NOT_FOUND to
               // hide the fact that the collection exists:
-              if (_request.requestedApiVersion() > 0) {
-                if (effectiveLevel == auth::Level::NONE) {
-                  // User has no access to this collection: report as not found
-                  // to avoid revealing its existence.
-
-                  if (ServerState::instance()->isSingleServer()) {
-                    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
-                  } else {
-                    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                            "collection not found"};
-                  }
-                }
-              }
               if (requestedLevel == arangodb::auth::Level::RW &&
                   effectiveLevel == arangodb::auth::Level::RO) {
                 return {TRI_ERROR_ARANGO_READ_ONLY,
@@ -568,22 +530,18 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             return check(p::UseCollection{data.db, data.collName,
                                           CollectionAccessLevel::WriteData});
           },
-          [&](p::UseView const& view) -> Result {
+          [&](p::ReadView const& view) -> Result {
             // In the classic system views delegate to database-level access
             // (per-view collection-level auth is not used for views).
             auto const effectiveLevel = effectiveDatabaseAuthLevel(view.db);
-            auto const requestedLevel = accessLevelToAuthLevel(view.level);
 
-            if (requestedLevel <= effectiveLevel) {
+            if (auth::Level::RO <= effectiveLevel) {
               return {};
-            } else if (_request.requestedApiVersion() > 0 &&
-                       effectiveLevel == auth::Level::NONE) {
-              return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
             } else {
               return {
                   TRI_ERROR_FORBIDDEN,
                   failureMessage(view, accessLevelMismatchReason(
-                                           "Request", "view", requestedLevel,
+                                           "Request", "view", auth::Level::RO,
                                            effectiveLevel))};
             }
           },
@@ -602,7 +560,18 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                                      : DatabaseAccessLevel::Read;
             return check(p::UseDatabase{analyzer.db, dbLevel});
           },
-          // Classic admin action requires RW access to the _system database.
+          // AdminQueryCache only requires RO access to _system, unlike every
+          // other admin action, which requires RW (see below).
+          [&](p::AdminQueryCache const&) -> Result {
+            if (_requestedApiVersion == 0) {
+              return check(p::UseDatabase{.name = StaticStrings::SystemDatabase,
+                                          .level = DatabaseAccessLevel::Read});
+            } else {
+              return isAdmin();
+            }
+          },
+          // Every other admin action requires RW access to the _system
+          // database.
           [&](p::AnyAdmin auto const&) -> Result { return isAdmin(); },
           [&](p::SeeDatabase const& database) -> Result {
             return check(
@@ -647,7 +616,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
               // `TRI_ERROR_ARANGO_READ_ONLY`, but we **must** hand on
               // `TRI_ERROR_FORBIDDEN` here for API compatibility for the
               // API version 0!
-              if (_request.requestedApiVersion() == 0) {
+              if (_requestedApiVersion == 0) {
                 return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
               } else {
                 return r;
@@ -660,7 +629,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
               // `TRI_ERROR_ARANGO_READ_ONLY`, but we **must** hand on
               // `TRI_ERROR_FORBIDDEN` here for API compatibility for
               // the API Version 0!
-              if (_request.requestedApiVersion() == 0) {
+              if (_requestedApiVersion == 0) {
                 return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
               } else {
                 return r;
@@ -811,7 +780,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                 r.ok()) {
               return {};
             }
-            if (_request.requestedApiVersion() > 0) {
+            if (_requestedApiVersion > 0) {
               return {TRI_ERROR_FORBIDDEN,
                       failureMessage(graph, "Cannot write to database.")};
             } else {
@@ -916,6 +885,10 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                 auth::perms::UseDatabase{.name = StaticStrings::SystemDatabase,
                                          .level = DatabaseAccessLevel::Write});
           },
+          [&](p::UseApiVersion const& /*apiVersion*/) -> Result {
+            // The classic system does not restrict API versions
+            return {};
+          },
       },
       permission);
 }
@@ -955,16 +928,6 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
       case CollectionAccessLevel::WriteData:
         return rbac::Action::WriteData;
       case CollectionAccessLevel::WriteMeta:
-        return rbac::Action::WriteMeta;
-    }
-    ADB_PROD_CRASH();
-  };
-
-  auto viewAccessModeToAction = [](ViewAccessLevel level) -> rbac::Action {
-    switch (level) {
-      case ViewAccessLevel::Read:
-        return rbac::Action::Read;
-      case ViewAccessLevel::Modify:
         return rbac::Action::WriteMeta;
     }
     ADB_PROD_CRASH();
@@ -1070,14 +1033,28 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
       overload{
           // -- Admin actions ---------------------------------------------
           [&](p::AnyAdmin auto const& admin) -> Result {
-            return checkOne(adminAction(admin), rbac::resources::NoResource{});
+            if (auto r =
+                    checkOne(adminAction(admin), rbac::resources::NoResource{});
+                r.fail()) {
+              // This is for backwards compatibility with the classic case
+              return _requestedApiVersion == 0
+                         ? Result{TRI_ERROR_HTTP_FORBIDDEN, r.errorMessage()}
+                         : r;
+            }
+            return {};
           },
           // -- Databases -------------------------------------------------
           [&](p::UseDatabase const& database) -> Result {
+            if (auto r = auth::isNameAndNoId(database.name); r.fail()) {
+              return r;
+            }
             return checkOne(databaseAccessModeToAction(database.level),
                             rbac::resources::Database{database.name});
           },
           [&](p::SeeDatabase const& database) -> Result {
+            if (auto r = auth::isNameAndNoId(database.name); r.fail()) {
+              return r;
+            }
             return checkOne(rbac::Action::Read,
                             rbac::resources::Database{database.name});
           },
@@ -1086,36 +1063,102 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
                             rbac::resources::Database{database.name});
           },
           [&](p::DropDatabase const& database) -> Result {
+            if (auto r = auth::isNameAndNoId(database.name); r.fail()) {
+              return r;
+            }
             return checkOne(rbac::Action::Drop,
                             rbac::resources::Database{database.name});
           },
           // -- Collections -----------------------------------------------
           [&](p::UseCollection const& collection) -> Result {
+            // _system._users: always NONE access (no user may touch it
+            // through normal APIs).
+            if (collection.db == StaticStrings::SystemDatabase &&
+                collection.name == StaticStrings::UsersCollection) {
+              return {
+                  TRI_ERROR_FORBIDDEN,
+                  failureMessage(collection,
+                                 std::format("Access to {} collection in {} "
+                                             "database is forbidden",
+                                             StaticStrings::UsersCollection,
+                                             StaticStrings::SystemDatabase))};
+            }
+            if (auto r = auth::isNameAndNoId(collection.name); r.fail()) {
+              return r;
+            }
             return checkOne(
                 collectionAccessModeToAction(collection.level),
                 rbac::resources::Collection{collection.db, collection.name});
           },
           [&](p::SeeCollection const& collection) -> Result {
+            // _system._users: always NONE access (no user may touch it
+            // through normal APIs).
+            if (collection.db == StaticStrings::SystemDatabase &&
+                collection.name == StaticStrings::UsersCollection) {
+              return {
+                  TRI_ERROR_FORBIDDEN,
+                  failureMessage(collection,
+                                 std::format("Access to {} collection in {} "
+                                             "database is forbidden",
+                                             StaticStrings::UsersCollection,
+                                             StaticStrings::SystemDatabase))};
+            }
+            if (auto r = auth::isNameAndNoId(collection.name); r.fail()) {
+              return r;
+            }
             return checkOne(
                 rbac::Action::Read,
                 rbac::resources::Collection{collection.db, collection.name});
           },
           [&](p::CreateCollection const& collection) -> Result {
+            // _system._users: always NONE access (no user may touch it
+            // through normal APIs).
+            if (collection.db == StaticStrings::SystemDatabase &&
+                collection.name == StaticStrings::UsersCollection) {
+              return {
+                  TRI_ERROR_FORBIDDEN,
+                  failureMessage(collection,
+                                 std::format("Access to {} collection in {} "
+                                             "database is forbidden",
+                                             StaticStrings::UsersCollection,
+                                             StaticStrings::SystemDatabase))};
+            }
             return checkOne(
                 rbac::Action::Create,
                 rbac::resources::Collection{collection.db, collection.name});
           },
           [&](p::DropCollection const& collection) -> Result {
+            // _system._users: always NONE access (no user may touch it
+            // through normal APIs).
+            if (collection.db == StaticStrings::SystemDatabase &&
+                collection.name == StaticStrings::UsersCollection) {
+              return {
+                  TRI_ERROR_FORBIDDEN,
+                  failureMessage(collection,
+                                 std::format("Access to {} collection in {} "
+                                             "database is forbidden",
+                                             StaticStrings::UsersCollection,
+                                             StaticStrings::SystemDatabase))};
+            }
+            if (auto r = auth::isNameAndNoId(collection.name); r.fail()) {
+              return r;
+            }
             return checkOne(
                 rbac::Action::Drop,
                 rbac::resources::Collection{collection.db, collection.name});
           },
           // -- Views -----------------------------------------------------
-          [&](p::UseView const& view) -> Result {
-            return checkOne(viewAccessModeToAction(view.level),
+          [&](p::ReadView const& view) -> Result {
+            if (auto r = auth::isNameAndNoId(view.name); r.fail()) {
+              return r;
+            }
+            return checkOne(rbac::Action::Read,
                             rbac::resources::View{view.db, view.name});
           },
           [&](p::SeeView const& view) -> Result {
+            if (auto r = auth::isNameAndNoId(view.name); r.fail()) {
+              return r;
+            }
             return checkOne(rbac::Action::Read,
                             rbac::resources::View{view.db, view.name});
           },
@@ -1133,6 +1176,9 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
             return checkAll(queries);
           },
           [&](p::ModifyView const& view) -> Result {
+            if (auto r = auth::isNameAndNoId(view.name); r.fail()) {
+              return r;
+            }
             // Modifying a view additionally requires read access to every
             // newly linked collection.
             std::vector<rbac::ActionResource> queries;
@@ -1146,15 +1192,32 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
             return checkAll(queries);
           },
           [&](p::RenameView const& view) -> Result {
+            if (auto r = auth::isNameAndNoId(view.oldName); r.fail()) {
+              return r;
+            }
             if (view.oldName == view.newName) {
               return {TRI_ERROR_BAD_PARAMETER,
                       "new view name must be different from old view name"};
             }
-            // Renaming modifies the existing (old) view.
-            return checkOne(rbac::Action::WriteMeta,
-                            rbac::resources::View{view.db, view.oldName});
+            // Renaming drops the existing (old) view and creates new one (check
+            // here same permissions as in CreateView)
+            std::vector<rbac::ActionResource> queries;
+            queries.reserve(2 + view.linkedCollections.size());
+            queries.push_back({rbac::Action::Drop,
+                               rbac::resources::View{view.db, view.oldName}});
+            queries.push_back({rbac::Action::Create,
+                               rbac::resources::View{view.db, view.newName}});
+
+            for (auto const& coll : view.linkedCollections) {
+              queries.push_back({rbac::Action::Read,
+                                 rbac::resources::Collection{view.db, coll}});
+            }
+            return checkAll(queries);
           },
           [&](p::DropView const& view) -> Result {
+            if (auto r = auth::isNameAndNoId(view.name); r.fail()) {
+              return r;
+            }
             // Dropping a view additionally requires read access to every
             // linked collection (mirrors the classic behaviour).
             std::vector<rbac::ActionResource> queries;
@@ -1169,11 +1232,17 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
           },
           // -- Analyzers -------------------------------------------------
           [&](p::UseAnalyzer const& analyzer) -> Result {
+            if (auto r = auth::isNameAndNoId(analyzer.name); r.fail()) {
+              return r;
+            }
             return checkOne(
                 analyzerAccessModeToAction(analyzer.level),
                 rbac::resources::Analyzer{analyzer.db, analyzer.name});
           },
           [&](p::SeeAnalyzer const& analyzer) -> Result {
+            if (auto r = auth::isNameAndNoId(analyzer.name); r.fail()) {
+              return r;
+            }
             return checkOne(
                 rbac::Action::Read,
                 rbac::resources::Analyzer{analyzer.db, analyzer.name});
@@ -1184,6 +1253,9 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
                 rbac::resources::Analyzer{analyzer.db, analyzer.name});
           },
           [&](p::DropAnalyzer const& analyzer) -> Result {
+            if (auto r = auth::isNameAndNoId(analyzer.name); r.fail()) {
+              return r;
+            }
             return checkOne(
                 rbac::Action::Drop,
                 rbac::resources::Analyzer{analyzer.db, analyzer.name});
@@ -1271,8 +1343,14 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
           // Each user operation maps to the identically-scoped action on the
           // db:user:<name> resource.
           [&](p::ReadUser const& user) -> Result {
-            return checkOne(rbac::Action::Read,
-                            rbac::resources::User{user.name});
+            if (auto r = checkOne(rbac::Action::Read,
+                                  rbac::resources::User{user.name});
+                r.fail()) {
+              return _requestedApiVersion == 0
+                         ? Result{TRI_ERROR_HTTP_FORBIDDEN, r.errorMessage()}
+                         : r;
+            }
+            return {};
           },
           [&](p::CreateUser const& user) -> Result {
             return checkOne(rbac::Action::Create,
@@ -1287,29 +1365,23 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
                             rbac::resources::User{user.name});
           },
           [&](p::GrantUserPermissions const& user) -> Result {
-            return checkOne(rbac::Action::WriteMeta,
-                            rbac::resources::User{user.name});
+            return {TRI_ERROR_FORBIDDEN,
+                    "Cannot modify classic user permissions in RBAC mode!"};
+          },
+          // -- API versions ----------------------------------------------
+          [&](p::UseApiVersion const& apiVersion) -> Result {
+            return checkOne(rbac::Action::UseApiVersion,
+                            rbac::resources::ApiVersion{apiVersion.version});
           },
       },
       permission);
 }
 
-auto AuthMode::Rbac::request() const noexcept
-    -> std::optional<std::reference_wrapper<GeneralRequest>> {
-  return _request;
-}
-
-AuthMode::Unauthenticated::Unauthenticated(std::string username,
-                                           GeneralRequest& req)
-    : _username(std::move(username)), _request(req) {}
+AuthMode::Unauthenticated::Unauthenticated(std::string username)
+    : _username(std::move(username)) {}
 
 auto AuthMode::Unauthenticated::username() const noexcept -> std::string_view {
   return _username;
-}
-
-auto AuthMode::Unauthenticated::request() const noexcept
-    -> std::optional<std::reference_wrapper<GeneralRequest>> {
-  return _request;
 }
 
 auto AuthMode::Unauthenticated::check(auth::Permission permission) const
@@ -1327,16 +1399,11 @@ auto AuthMode::Unauthenticated::check(auth::Permission permission) const
       permission);
 }
 
-AuthMode::Disabled::Disabled(std::string username, GeneralRequest& req)
-    : _username(std::move(username)), _request(req) {}
+AuthMode::Disabled::Disabled(std::string username)
+    : _username(std::move(username)) {}
 
 auto AuthMode::Disabled::username() const noexcept -> std::string_view {
   return _username;
-}
-
-auto AuthMode::Disabled::request() const noexcept
-    -> std::optional<std::reference_wrapper<GeneralRequest>> {
-  return _request;
 }
 
 auto AuthMode::Disabled::check(auth::Permission permission) const -> Result {
@@ -1352,12 +1419,6 @@ auto AuthMode::Mockable::username() const noexcept -> std::string_view {
 auto AuthMode::Mockable::check(auth::Permission permission) const -> Result {
   ADB_PROD_ASSERT(mock != nullptr);
   return mock->check(permission);
-}
-
-auto AuthMode::Mockable::request() const noexcept
-    -> std::optional<std::reference_wrapper<GeneralRequest>> {
-  ADB_PROD_ASSERT(mock != nullptr);
-  return mock->request();
 }
 #endif
 

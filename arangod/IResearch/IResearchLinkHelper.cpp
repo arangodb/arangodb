@@ -138,7 +138,7 @@ Result createLink(LogicalCollection& collection, LogicalView const& view,
       auto& db = server.getFeature<DatabaseFeature>();
 
       if ((db.checkVersion() || db.upgrade()) &&
-          link->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
+          link->type() == IndexType::IResearchLink) {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
         auto* impl = dynamic_cast<IResearchLink*>(link.get());
 #else
@@ -659,7 +659,7 @@ std::shared_ptr<IResearchLink> IResearchLinkHelper::find(
   auto index = collection.lookupIndex(id);
 
   if (!index || index->id() != id ||
-      index->type() != Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
+      index->type() != IndexType::IResearchLink) {
     return nullptr;
   }
 
@@ -671,7 +671,7 @@ std::shared_ptr<IResearchLink> IResearchLinkHelper::find(
 std::shared_ptr<IResearchLink> IResearchLinkHelper::find(
     LogicalCollection const& collection, LogicalView const& view) {
   for (auto& index : collection.getPhysical()->getAllIndexes()) {
-    if (!index || Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type()) {
+    if (!index || IndexType::IResearchLink != index->type()) {
       continue;  // not an IResearchLink
     }
 
@@ -900,7 +900,7 @@ bool IResearchLinkHelper::visit(
     LogicalCollection const& collection,
     std::function<bool(IResearchLink& link)> const& visitor) {
   for (auto& index : collection.getPhysical()->getAllIndexes()) {
-    if (!index || Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type()) {
+    if (!index || IndexType::IResearchLink != index->type()) {
       continue;  // not an IResearchLink
     }
 

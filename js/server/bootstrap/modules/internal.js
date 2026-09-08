@@ -288,36 +288,6 @@
     delete global.REPLICATION_LOGGER_STATE;
   }
 
-  if (global.REPLICATION_APPLIER_CONFIGURE) {
-    // TODO: remove this export from the internal module
-    exports.configureReplicationApplier = global.REPLICATION_APPLIER_CONFIGURE;
-  }
-
-  if (global.REPLICATION_APPLIER_START) {
-    // TODO: remove this export from the internal module
-    exports.startReplicationApplier = global.REPLICATION_APPLIER_START;
-  }
-
-  if (global.REPLICATION_APPLIER_STOP) {
-    // TODO: remove this export from the internal module
-    exports.stopReplicationApplier = global.REPLICATION_APPLIER_STOP;
-  }
-
-  if (global.REPLICATION_APPLIER_STATE) {
-    // TODO: remove this export from the internal module
-    exports.getStateReplicationApplier = global.REPLICATION_APPLIER_STATE;
-  }
-
-  if (global.REPLICATION_APPLIER_STATE_ALL) {
-    // TODO: remove this export from the internal module
-    exports.getStateReplicationApplierAll = global.REPLICATION_APPLIER_STATE_ALL;
-  }
-
-  if (global.REPLICATION_APPLIER_FORGET) {
-    // TODO: remove this export from the internal module
-    exports.forgetStateReplicationApplier = global.REPLICATION_APPLIER_FORGET;
-  }
-
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief wait for index selectivity estimate sync
   // //////////////////////////////////////////////////////////////////////////////

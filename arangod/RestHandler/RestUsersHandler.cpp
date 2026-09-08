@@ -110,16 +110,18 @@ RestStatus RestUsersHandler::execute() {
   }
 }
 
-async<Result> RestUsersHandler::checkUserCanAccess() const {
+async<Result> RestUsersHandler::checkDatabaseAccess() const {
   constexpr std::string_view pathPrefixApiUser("/_api/user/");
 
   auto const& path = _request->requestPath();
 
   if (_request->authenticated() && path.starts_with(pathPrefixApiUser)) {
+    // No database access is required here (everybody may e.g. change their own
+    // password)
     co_return Result{};
   }
 
-  co_return co_await RestBaseHandler::checkUserCanAccess();
+  co_return co_await RestBaseHandler::checkDatabaseAccess();
 }
 
 /// helper to generate a compliant response for individual user requests
@@ -181,6 +183,10 @@ RestStatus RestUsersHandler::getRequest(auth::UserManager* um) {
     }
 
     if (suffixes[1] == "database") {
+      if (!(exec.isClassic() || exec.isSuperuserOrDisabled())) {
+        generateError(Result{TRI_ERROR_FORBIDDEN, "Not allowed in RBAC mode."});
+        return RestStatus::DONE;
+      }
       if (suffixes.size() == 2) {
         //_api/user/<user>/database?full=<true/false>
         bool full = false;

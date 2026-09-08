@@ -36,7 +36,7 @@ class RestClusterHandler : public arangodb::RestBaseHandler {
   RestStatus execute() override;
 
  protected:
-  async<Result> checkUserCanAccess() const override;
+  async<Result> checkDatabaseAccess() const override;
 
  private:
   /// _api/cluster/endpoints

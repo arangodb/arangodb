@@ -673,7 +673,9 @@ function resolveDeep(value, ctx) {
 
 /**
  * Run a collection-level test.
- * Matrix: rows = COLL × wildcard (16 rows), columns = DB level (4 cols).
+ * Matrix: rows = COLL × wildcard (16 rows), columns = DB level (4 cols) plus
+ * a trailing "no auth" column that sends the request with no Authorization
+ * header at all.
  * User name = <DB><WC><COLL>  (e.g. "UNR"), password == username.
  */
 async function runCollectionTest(endpoint, superuserToken, test) {
@@ -684,7 +686,7 @@ async function runCollectionTest(endpoint, superuserToken, test) {
   console.log(`${method} ${path}`);
   if (Object.keys(headers).length > 0) console.log(JSON.stringify(headers));
 
-  const headerLabels = ['DB undef', 'DB none', 'DB ro', 'DB rw'];
+  const headerLabels = ['DB undef', 'DB none', 'DB ro', 'DB rw', 'no auth'];
   const rows = [];
 
   for (const coll of LEVELS) {
@@ -724,6 +726,30 @@ async function runCollectionTest(endpoint, superuserToken, test) {
         cells.push(formatStatusCell(resp));
       }
 
+      // Unauthenticated request (no Authorization header at all).
+      if (setup) {
+        ctx.data = await runPhase(setup, ctx, 'setup', name);
+      }
+
+      if (ctx.data && ctx.data.skipTest === true) {
+        ctx.data = undefined;
+        cells.push('SKIP');
+      } else {
+        const resolvedPath    = resolveString(path, ctx);
+        const resolvedBody    = resolveDeep(body, ctx);
+        const resolvedHeaders = resolveDeep(headers, ctx);
+        const noAuthResp = await httpRequest(endpoint, method, resolvedPath, resolvedBody, resolvedHeaders);
+
+        ctx.response = noAuthResp;
+        if (teardown) {
+          await runPhase(teardown, ctx, 'teardown', name);
+        }
+        ctx.data = undefined;
+        ctx.response = undefined;
+
+        cells.push(formatStatusCell(noAuthResp));
+      }
+
       rows.push({ label, cells });
     }
   }
@@ -733,7 +759,9 @@ async function runCollectionTest(endpoint, superuserToken, test) {
 
 /**
  * Run a database-level test.
- * Single row with 4 columns (DB level); uses users XUU (wildcard/coll = undef).
+ * Single row with 4 columns (DB level) plus a trailing "no auth" column that
+ * sends the request with no Authorization header at all; uses users XUU
+ * (wildcard/coll = undef).
  */
 async function runDatabaseTest(endpoint, superuserToken, test) {
   const { name, method, path, body = null, headers = {}, setup, teardown } = test;
@@ -743,7 +771,7 @@ async function runDatabaseTest(endpoint, superuserToken, test) {
   console.log(`${method} ${path}`);
   if (Object.keys(headers).length > 0) console.log(JSON.stringify(headers));
 
-  const headerLabels = ['DB undef', 'DB none', 'DB ro', 'DB rw'];
+  const headerLabels = ['DB undef', 'DB none', 'DB ro', 'DB rw', 'no auth'];
   const cells = [];
 
   for (const db of LEVELS) {
@@ -778,13 +806,38 @@ async function runDatabaseTest(endpoint, superuserToken, test) {
     cells.push(formatStatusCell(resp));
   }
 
+  // Unauthenticated request (no Authorization header at all).
+  if (setup) {
+    ctx.data = await runPhase(setup, ctx, 'setup', name);
+  }
+
+  if (ctx.data && ctx.data.skipTest === true) {
+    ctx.data = undefined;
+    cells.push('SKIP');
+  } else {
+    const resolvedPath    = resolveString(path, ctx);
+    const resolvedBody    = resolveDeep(body, ctx);
+    const resolvedHeaders = resolveDeep(headers, ctx);
+    const noAuthResp = await httpRequest(endpoint, method, resolvedPath, resolvedBody, resolvedHeaders);
+
+    ctx.response = noAuthResp;
+    if (teardown) {
+      await runPhase(teardown, ctx, 'teardown', name);
+    }
+    ctx.data = undefined;
+    ctx.response = undefined;
+
+    cells.push(formatStatusCell(noAuthResp));
+  }
+
   printTable({ headerLabels, minWidth: REGULAR_MIN_WIDTH, rows: [{ cells }] });
 }
 
 /**
  * Run an admin test.
- * Columns: AU / AN / AR / AW (users with _system db access undef/none/ro/rw)
- * plus a final superuser column (JWT, no user restrictions).
+ * Columns: AU / AN / AR / AW (users with _system db access undef/none/ro/rw),
+ * a superuser column (JWT, no user restrictions), and a final "no auth"
+ * column that sends the request with no Authorization header at all.
  */
 async function runAdminTest(endpoint, superuserToken, test) {
   const { name, method, path, body = null, headers = {}, setup, teardown } = test;
@@ -794,7 +847,7 @@ async function runAdminTest(endpoint, superuserToken, test) {
   console.log(`${method} ${path}`);
   if (Object.keys(headers).length > 0) console.log(JSON.stringify(headers));
 
-  const headerLabels = ['_sys undef', '_sys none', '_sys ro', '_sys rw', 'superuser'];
+  const headerLabels = ['_sys undef', '_sys none', '_sys ro', '_sys rw', 'superuser', 'no auth'];
   const cells = [];
 
   // Four named admin users
@@ -854,6 +907,30 @@ async function runAdminTest(endpoint, superuserToken, test) {
     ctx.response = undefined;
 
     cells.push(formatStatusCell(suResp));
+  }
+
+  // Unauthenticated request (no Authorization header at all).
+  if (setup) {
+    ctx.data = await runPhase(setup, ctx, 'setup', name);
+  }
+
+  if (ctx.data && ctx.data.skipTest === true) {
+    ctx.data = undefined;
+    cells.push('SKIP');
+  } else {
+    const resolvedPath    = resolveString(path, ctx);
+    const resolvedBody    = resolveDeep(body, ctx);
+    const resolvedHeaders = resolveDeep(headers, ctx);
+    const noAuthResp = await httpRequest(endpoint, method, resolvedPath, resolvedBody, resolvedHeaders);
+
+    ctx.response = noAuthResp;
+    if (teardown) {
+      await runPhase(teardown, ctx, 'teardown', name);
+    }
+    ctx.data = undefined;
+    ctx.response = undefined;
+
+    cells.push(formatStatusCell(noAuthResp));
   }
 
   printTable({ headerLabels, minWidth: ADMIN_MIN_WIDTH, rows: [{ cells }] });

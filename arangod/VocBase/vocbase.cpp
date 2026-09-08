@@ -48,7 +48,6 @@
 #include "Metrics/Gauge.h"
 #include "Metrics/MetricsFeature.h"
 #include "Network/ConnectionPool.h"
-#include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
@@ -504,11 +503,6 @@ void Database::stop() {
 
   try {
     shutdownReplicatedLogs();
-
-    // stop replication
-    if (_replicationApplier != nullptr) {
-      _replicationApplier->stopAndJoin();
-    }
 
     // mark all cursors as deleted so underlying collections can be freed soon
     _cursorRepository->garbageCollect(true);
@@ -1464,19 +1458,15 @@ replication::Version Database::replicationVersion() const {
   return _info.replicationVersion();
 }
 
-void Database::addReplicationApplier() {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  auto* applier = DatabaseReplicationApplier::create(*this);
-  _replicationApplier.reset(applier);
-}
-
-void Database::toVelocyPack(VPackBuilder& result) const {
+void Database::toVelocyPack(VPackBuilder& result, uint32_t apiVersion) const {
   VPackObjectBuilder b(&result);
   _info.toVelocyPack(result);
-  if (ServerState::instance()->isCoordinator()) {
-    result.add("path", VPackValue(path()));
-  } else {
-    result.add("path", VPackValue("none"));
+  if (apiVersion == 0) {
+    if (ServerState::instance()->isCoordinator()) {
+      result.add("path", VPackValue("none"));
+    } else {
+      result.add("path", VPackValue(path()));
+    }
   }
 }
 

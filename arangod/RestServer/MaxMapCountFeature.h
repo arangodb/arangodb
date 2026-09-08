@@ -32,17 +32,12 @@ class MaxMapCountFeature final
  public:
   static constexpr std::string_view name() noexcept { return "MaxMapCount"; }
 
-  explicit MaxMapCountFeature(application_features::ApplicationServer& server,
-                              MaxMapCountFeatureOptions options);
   explicit MaxMapCountFeature(application_features::ApplicationServer& server);
 
   static bool needsChecking() { return true; }
 
   static uint64_t actualMaxMappings();
   static uint64_t minimumExpectedMaxMappings();
-
- private:
-  MaxMapCountFeatureOptions _options;
 };
 
 }  // namespace arangodb

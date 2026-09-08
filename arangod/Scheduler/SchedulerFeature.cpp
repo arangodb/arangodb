@@ -36,9 +36,6 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "ProgramOptions/Parameters.h"
-#include "ProgramOptions/ProgramOptions.h"
-#include "Scheduler/SchedulerOptionsProvider.h"
 #include "RestServer/FileDescriptorsFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SupervisedScheduler.h"
@@ -99,18 +96,6 @@ SchedulerFeature::SchedulerFeature(
 }
 
 SchedulerFeature::~SchedulerFeature() = default;
-
-void SchedulerFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  SchedulerOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void SchedulerFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  SchedulerOptionsProvider provider;
-  provider.validateOptions(options, _options);
-}
 
 void SchedulerFeature::prepare() {
   TRI_ASSERT(4 <= _options.nrMinimalThreads);

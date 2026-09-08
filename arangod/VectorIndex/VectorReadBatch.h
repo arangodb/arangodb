@@ -52,8 +52,8 @@ namespace vector {
 // FAISS uses int64_t labels; the static_assert in RocksDBVectorIndex.cpp
 // guards this assumption against future faiss changes.
 using Vector = std::vector<float>;
-using VectorIndexLabelId = std::int64_t;
-using Labels = std::vector<VectorIndexLabelId>;
+using LabelId = std::int64_t;
+using Labels = std::vector<LabelId>;
 using Distance = float;
 using Distances = std::vector<Distance>;
 
@@ -84,7 +84,7 @@ struct VectorSearchContext {
 };
 
 struct SearchResult {
-  std::vector<VectorIndexLabelId> labels;
+  std::vector<LabelId> labels;
   std::vector<float> distances;
   // Per-survivor VPack: a storedValues array (when strategy.projection ==
   // kCovered) or a full document Object (kDocument). Empty unless

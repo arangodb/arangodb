@@ -40,7 +40,7 @@ namespace arangodb {
 struct Database;
 class LogicalCollection;
 class DatabaseInitialSyncer;
-class ReplicationApplierConfiguration;
+class ReplicationSyncConfiguration;
 
 class DatabaseInitialSyncer : public InitialSyncer {
   friend ::arangodb::Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
@@ -56,11 +56,11 @@ class DatabaseInitialSyncer : public InitialSyncer {
   // constructor is private, as DatabaseInitialSyncer uses shared_from_this()
   // and we must ensure that it is only created via make_shared.
   DatabaseInitialSyncer(Database& vocbase,
-                        ReplicationApplierConfiguration const& configuration);
+                        ReplicationSyncConfiguration const& configuration);
 
  public:
   static std::shared_ptr<DatabaseInitialSyncer> create(
-      Database& vocbase, ReplicationApplierConfiguration const& configuration);
+      Database& vocbase, ReplicationSyncConfiguration const& configuration);
 
   /// @brief apply phases
   typedef enum {
@@ -72,8 +72,8 @@ class DatabaseInitialSyncer : public InitialSyncer {
   } SyncPhase;
 
   struct Configuration {
-    /// @brief replication applier config (from the base Syncer)
-    ReplicationApplierConfiguration const& applier;
+    /// @brief replication sync config (from the base Syncer)
+    ReplicationSyncConfiguration const& syncConfig;
     /// @brief the dump batch state (from the base InitialSyncer)
     replutils::BatchInfo& batch;
     /// @brief the client connection (from the base Syncer)
@@ -87,12 +87,10 @@ class DatabaseInitialSyncer : public InitialSyncer {
     /// @brief the database to dump
     Database& vocbase;
 
-    explicit Configuration(ReplicationApplierConfiguration const&,
-                           replutils::BatchInfo&, replutils::Connection&, bool,
+    explicit Configuration(ReplicationSyncConfiguration const&,
+                           replutils::BatchInfo&, replutils::Connection&,
                            replutils::LeaderInfo&, replutils::ProgressInfo&,
                            SyncerState& state, Database&);
-
-    bool isChild() const noexcept;  // TODO worker safety
   };
 
   /// @brief run method, performs a full synchronization
@@ -136,18 +134,6 @@ class DatabaseInitialSyncer : public InitialSyncer {
   /// @brief check whether the initial synchronization should be aborted
   // TODO worker-safety
   bool isAborted() const override;
-
-  /// @brief insert the batch ID for use in globalinitialsyncer
-  // TODO worker safety
-  void useAsChildSyncer(replutils::LeaderInfo const& info,
-                        SyncerId const syncerId, uint64_t batchId,
-                        double batchUpdateTime) {
-    _state.syncerId = syncerId;
-    _state.isChildSyncer = true;
-    _state.leader = info;
-    _config.batch.id = batchId;
-    _config.batch.updateTime = batchUpdateTime;
-  }
 
   /// @brief last time the batch was extended or created
   /// The batch prevents compaction in mmfiles and keeps a snapshot
@@ -281,8 +267,6 @@ class DatabaseInitialSyncer : public InitialSyncer {
   // point in time when we last executed the _checkCancellation callback
   mutable std::chrono::steady_clock::time_point _lastCancellationCheck;
 
-  /// @brief whether or not we are a coordinator/dbserver
-  bool const _isClusterRole;
   uint64_t _quickKeysNumDocsLimit;
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS

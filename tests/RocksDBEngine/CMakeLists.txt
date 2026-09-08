@@ -7,7 +7,8 @@ add_library(arango_tests_rocksdb_engine OBJECT
   RocksDBEngineTest.cpp
   DatabaseTest.cpp
   CollectionTest.cpp
-  DocumentTest.cpp)
+  DocumentTest.cpp
+  IndexTest.cpp)
 
 target_include_directories(arango_tests_rocksdb_engine PRIVATE
   ${PROJECT_SOURCE_DIR}/arangod
@@ -28,6 +29,7 @@ target_link_libraries(arango_tests_rocksdb_engine
 # registries).
 add_executable(arangodbtests_rocksdb
   main.cpp
+  RestHandlersStub.cpp
   ${PROJECT_SOURCE_DIR}/tests/Mocks/FakeScheduler.cpp)
 
 target_include_directories(arangodbtests_rocksdb PRIVATE
@@ -41,6 +43,12 @@ target_link_libraries(arangodbtests_rocksdb
   arango_rocksdb
   arango_metrics_base
   arango_vocbase
+  arango_scheduler  # FakeScheduler
+  arango_rest_server  # ServerIdFeature
+  arango_sharding # ShardingFeature
+  arango_system_monitor_activities  # main.cpp sets up registries
+  arango_system_monitor_async_registry  # main.cpp sets up registries
+  arango_vector_index # mock provider
   velocypack_utils
   gtest
   gmock)

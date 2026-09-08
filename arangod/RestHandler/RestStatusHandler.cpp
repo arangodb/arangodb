@@ -86,19 +86,20 @@ RestStatus RestStatusHandler::execute() {
   }
 }
 
-async<Result> RestStatusHandler::checkUserCanAccess() const {
+async<RestHandler::AuthenticationGrant>
+RestStatusHandler::checkUserAuthentication() const {
   // Note that this particular RestHandler might be called during startup (or
   // in maintenance mode). The AuthenticationFeature might not yet be available
   // for authorization, and must not be consulted.
-  if (auto const mode = ServerState::instance()->mode();
+  if (auto const mode = ServerState::mode();
       mode == ServerState::Mode::STARTUP ||
       mode == ServerState::Mode::MAINTENANCE) {
-    co_return request()->authenticated()
-        ? Result{}
-        : Result{TRI_ERROR_HTTP_UNAUTHORIZED, "Not authenticated."};
+    co_return request()->authenticated()  // with JWT can also be authenticated
+        ? AuthenticationGrant::GRANTED_EARLY
+        : AuthenticationGrant::DENIED;
   }
 
-  co_return co_await RestBaseHandler::checkUserCanAccess();
+  co_return co_await RestBaseHandler::checkUserAuthentication();
 }
 
 RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
@@ -118,12 +119,15 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
 #endif
 
   auto& serverFeature = server().getFeature<ServerFeature>();
-  result.add(
-      "mode",
-      VPackValue(serverFeature
-                     .operationModeString()));  // to be deprecated - 3.3 compat
-  result.add("operationMode", VPackValue(serverFeature.operationModeString()));
-  result.add("foxxApi", VPackValue(!security.isFoxxApiDisabled()));
+  if (_request->requestedApiVersion() == 0) {
+    result.add(
+        "mode",
+        VPackValue(serverFeature.operationModeString()));  // to be deprecated
+                                                           // - 3.3 compat
+    result.add("operationMode",
+               VPackValue(serverFeature.operationModeString()));
+    result.add("foxxApi", VPackValue(!security.isFoxxApiDisabled()));
+  }
 
   std::string host = ServerState::instance()->getHost();
 
@@ -155,9 +159,12 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
                VPackValue(serverState->isStartupOrMaintenance()));
     result.add("role",
                VPackValue(ServerState::roleToString(serverState->getRole())));
-    result.add(
-        "writeOpsEnabled",
-        VPackValue(!serverState->readOnly()));  // to be deprecated - 3.3 compat
+    if (_request->requestedApiVersion() == 0) {
+      result.add(
+          "writeOpsEnabled",
+          VPackValue(
+              !serverState->readOnly()));  // to be deprecated - 3.3 compat
+    }
     result.add("readOnly", VPackValue(serverState->readOnly()));
 
     if (!isStartup && !serverState->isSingleServer()) {
@@ -194,7 +201,8 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
         result.close();
       }
 
-      if (serverState->isCoordinator()) {
+      if (serverState->isCoordinator() &&
+          _request->requestedApiVersion() == 0) {
         result.add("coordinator", VPackValue(VPackValueType::Object));
 
         result.add("foxxmaster", VPackValue(serverState->getFoxxmaster()));

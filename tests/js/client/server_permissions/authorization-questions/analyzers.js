@@ -29,8 +29,8 @@
 // Handler: arangod/RestHandler/RestAnalyzerHandler.cpp
 //          arangod/IResearch/IResearchAnalyzerFeature.cpp
 //
-// Every request first asks `UseDatabase name=<db> level=read` in
-// RestHandler::checkUserCanAccess(), where <db> is the database in the path
+// Every request first asks `UseApiVersion version=0` and then
+// `UseDatabase name=<db> level=read`, where <db> is the database in the path
 // (d for /_db/d/..., _system for the plain /_api/... routes).
 //
 // getAnalyzers (list): visits static analyzers (no question - null vocbase),
@@ -53,7 +53,9 @@ if (getOptions === true) {
     'server.authentication': 'true',
     'log.force-direct': 'true',
     // keep background threads from asking questions of their own
-    'foxx.queues': 'false'
+    'foxx.queues': 'false',
+    // disable so it doesn't spoil the test output:
+    'server.statistics': 'false'
   };
 }
 
@@ -100,6 +102,7 @@ function analyzerApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/analyzer`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseDatabase name=_system level=read",
         "UseCollection db=d name=_analyzers level=read",
@@ -113,6 +116,7 @@ function analyzerApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/analyzer/identity`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
     },
@@ -127,6 +131,7 @@ function analyzerApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/${DB}/_api/analyzer`, { name: NAME, type: 'identity' });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "UseAnalyzer db=d name=apitest_analyzer level=modify",
@@ -145,6 +150,7 @@ function analyzerApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/analyzer/${NAME}`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "UseAnalyzer db=d name=apitest_analyzer level=modify",
@@ -162,6 +168,7 @@ function analyzerApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_api/analyzer`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -171,6 +178,7 @@ function analyzerApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_api/analyzer/identity`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -182,6 +190,7 @@ function analyzerApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_api/analyzer`, { name: NAME, type: 'identity' });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "IsReadOnly",
         "UseAnalyzer db=_system name=apitest_analyzer level=modify",
@@ -200,6 +209,7 @@ function analyzerApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_api/analyzer/${NAME}`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "IsReadOnly",
         "UseAnalyzer db=_system name=apitest_analyzer level=modify",

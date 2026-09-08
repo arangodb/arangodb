@@ -61,6 +61,21 @@ def requires_of(config, name):
     raise AssertionError(f"job {name} not in workflow")
 
 
+def required_names(config, name):
+    """requires entries reduced to job names: status-qualified entries
+    ({"job": [statuses]}) and plain strings compare alike."""
+    return {gen.dep_name(dep) for dep in requires_of(config, name)}
+
+
+def publish_job_config(config):
+    _, workflow = only_workflow(config)
+    for entry in workflow["jobs"]:
+        if gen.entry_name(entry) == "publish-nightly":
+            [(_, job_config)] = entry.items()
+            return job_config or {}
+    raise AssertionError("publish-nightly not in workflow")
+
+
 def test_all_enabled_keeps_every_job(base_config):
     config = run_generate(base_config)
     assert workflow_names(config) == workflow_names(base_config)
@@ -71,7 +86,8 @@ def test_no_security_check_drops_all_trivy_jobs(base_config):
     names = workflow_names(config)
     assert not any(name.startswith("security-check-") for name in names)
     assert not any(
-        dep.startswith("security-check-") for dep in requires_of(config, "publish-nightly")
+        dep.startswith("security-check-")
+        for dep in required_names(config, "publish-nightly")
     )
 
 
@@ -121,7 +137,7 @@ def test_docker_only_drops_package_pipeline(base_config):
     assert "sign-packages" not in names
     # docker builds, their security checks, and both compiles remain
     assert "compile-enterprise-amd64" in names
-    assert set(requires_of(config, "publish-nightly")) == {
+    assert required_names(config, "publish-nightly") == {
         f"{kind}-{distro}-{arch}"
         for kind in ("docker-enterprise", "security-check-docker")
         for distro in ("alpine", "deb")
@@ -193,7 +209,24 @@ def test_every_generated_graph_is_consistent(base_config):
         except ValueError as err:
             assert "nothing selected" in str(err)
             continue
-        assert "publish-nightly" in workflow_names(config)
+        names = workflow_names(config)
+        assert "publish-nightly" in names
+        # The tolerated-failure exemption must hold whatever is pruned:
+        # exactly the security-check jobs when the scans run, nothing
+        # otherwise — and the verdicts publish-nightly verifies must
+        # track the same set.
+        checks = {n for n in names if n.startswith("security-check-")}
+        assert bool(checks) == (values["security-check"] == "true")
+        tolerated = {
+            gen.dep_name(dep)
+            for dep in requires_of(config, "publish-nightly")
+            if not gen.blocks_on(dep)
+        }
+        assert tolerated == checks
+        items = publish_job_config(config)["expected-gate-items"].split()
+        assert sorted(items) == sorted(
+            n[len("security-check-"):] for n in checks
+        )
 
 
 def test_check_workflow_rejects_dangling_requires():
@@ -222,7 +255,7 @@ def test_publish_requires_packaging_jobs_when_all_gates_disabled(base_config):
             "security-check": "false",
         },
     )
-    requires = set(requires_of(config, "publish-nightly"))
+    requires = required_names(config, "publish-nightly")
     for job in (
         "deb-enterprise-amd64",
         "rpm-enterprise-amd64",
@@ -241,6 +274,162 @@ def test_publish_requires_packaging_jobs_when_all_gates_disabled(base_config):
         if name.startswith("security-check-") or name in ("scan-packages", "sign-packages")
     }
     assert not gate_leftovers
+
+
+def test_publish_tolerates_exactly_the_security_checks(base_config):
+    """A finding must red the workflow without blocking the publish, so
+    publish-nightly tolerates every security-check job failing — and
+    NOTHING else: packaging, ClamAV and signing decide whether the
+    artifacts are publishable at all. "canceled" is not tolerated either,
+    since it means the workflow is being torn down."""
+    config = run_generate(base_config)
+    deps = requires_of(config, "publish-nightly")
+    checks = [d for d in deps if gen.dep_name(d).startswith("security-check-")]
+    assert len(checks) == 10
+    for dep in checks:
+        assert gen.dep_statuses(dep) == ["success", "failed"]
+    for dep in deps:
+        if not gen.dep_name(dep).startswith("security-check-"):
+            assert dep == gen.dep_name(dep), f"{dep} must be a success-only requires"
+
+
+def test_expected_gate_items_track_the_scan_jobs(base_config):
+    """publish-nightly verifies one recorded verdict per security-check
+    job; the generator prunes the item list together with the jobs (and
+    the deb PACKAGE items must go while the docker-deb ones stay)."""
+    config = run_generate(base_config, **{"build-debian-packages": "false"})
+    items = publish_job_config(config)["expected-gate-items"].split()
+    assert sorted(items) == sorted(
+        name[len("security-check-"):]
+        for name in workflow_names(config)
+        if name.startswith("security-check-")
+    )
+    assert "deb-amd64" not in items
+    assert "deb-arm64" not in items
+    assert "docker-deb-amd64" in items
+
+
+def test_no_security_check_empties_the_gate_items(base_config):
+    config = run_generate(base_config, **{"security-check": "false"})
+    assert publish_job_config(config)["expected-gate-items"] == ""
+
+
+def _tolerance_config(publish_requires, expected_items="deb-amd64", jobs=None):
+    """Minimal graph exercising check_workflow's tolerated-requires rules."""
+    return {
+        "workflows": {
+            gen.WORKFLOW_NAME: {
+                "jobs": (jobs or [])
+                + [
+                    {"deb-enterprise-amd64": {}},
+                    {"security-check-deb-amd64": {}},
+                    {
+                        "publish-nightly": {
+                            "requires": publish_requires,
+                            "expected-gate-items": expected_items,
+                        }
+                    },
+                ]
+            }
+        }
+    }
+
+
+INTENDED = [
+    "deb-enterprise-amd64",
+    {"security-check-deb-amd64": ["success", "failed"]},
+]
+
+
+def test_check_workflow_rejects_tolerating_anything_but_a_scan():
+    """Only the scans may fail. A tolerated packaging job would let
+    publish run on missing artifacts."""
+    config = _tolerance_config(
+        [
+            {"deb-enterprise-amd64": ["success", "failed"]},
+            {"security-check-deb-amd64": ["success", "failed"]},
+        ]
+    )
+    with pytest.raises(ValueError, match="only publish-nightly may tolerate"):
+        gen.check_workflow(config)
+
+
+def test_check_workflow_rejects_tolerance_on_another_job():
+    """Only publish-nightly re-checks the verdicts, so only it may
+    tolerate a red scan."""
+    config = _tolerance_config(
+        INTENDED,
+        jobs=[
+            {
+                "scan-packages": {
+                    "requires": [
+                        {"security-check-deb-amd64": ["success", "failed"]}
+                    ]
+                }
+            }
+        ],
+    )
+    with pytest.raises(ValueError, match="only publish-nightly may tolerate"):
+        gen.check_workflow(config)
+
+
+@pytest.mark.parametrize(
+    "statuses",
+    [
+        ["failed"],  # success dropped: publish would run ONLY on red scans
+        "failed",
+        ["success", "failed", "canceled"],  # torn-down workflow must not publish
+        ["success", "canceled"],
+        [],
+    ],
+)
+def test_check_workflow_pins_the_tolerated_status_set(statuses):
+    """CircleCI accepts every one of these, and the wrong one inverts the
+    publish instead of just relaxing it."""
+    config = _tolerance_config(
+        ["deb-enterprise-amd64", {"security-check-deb-amd64": statuses}]
+    )
+    with pytest.raises(ValueError, match="exactly"):
+        gen.check_workflow(config)
+
+
+def test_check_workflow_rejects_a_success_only_scan_require():
+    """Regression guard for the original bug: a plain requires entry on a
+    security-check job would turn its findings back into a publish
+    blocker."""
+    config = _tolerance_config(
+        ["deb-enterprise-amd64", "security-check-deb-amd64"]
+    )
+    with pytest.raises(ValueError, match="exactly"):
+        gen.check_workflow(config)
+
+
+def test_check_workflow_rejects_an_unrequired_scan():
+    config = _tolerance_config(["deb-enterprise-amd64"])
+    with pytest.raises(ValueError, match="must directly require"):
+        gen.check_workflow(config)
+
+
+@pytest.mark.parametrize(
+    "expected_items",
+    [
+        "",  # a dead scan could publish unreported artifacts
+        "deb-amd64 rpm-amd64",  # a pruned leftover deadlocks the publish
+    ],
+)
+def test_check_workflow_rejects_gate_item_drift(expected_items):
+    config = _tolerance_config(INTENDED, expected_items=expected_items)
+    with pytest.raises(ValueError, match="expected-gate-items"):
+        gen.check_workflow(config)
+
+
+def test_check_workflow_accepts_the_intended_tolerance():
+    gen.check_workflow(_tolerance_config(INTENDED))
+
+
+def test_dep_statuses_rejects_a_malformed_entry():
+    with pytest.raises(ValueError, match="malformed status list"):
+        gen.dep_statuses({"security-check-deb-amd64": None})
 
 
 def test_pr_run_renames_workflow_and_keeps_job_graph(base_config):

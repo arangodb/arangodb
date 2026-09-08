@@ -24,8 +24,7 @@
 //   canSeeView       → DB RO (no-op beyond the DB access check; all visible)
 //   canCreateView    → DB RW
 //   canDropView      → DB RW
-//   canUseView(RO)   → DB RO
-//   canUseView(modify)→ DB RW
+//   canReadView      → DB RO
 //   canRenameView    → DB RW
 //
 // Note: view operations additionally verify that the user has RO access to
@@ -124,7 +123,7 @@ export default [
   // ── GET /_db/d/_api/view/{name} ───────────────────────────────────────────
   {
     // GET /_api/view/{name}
-    // Auth: canUseView(RO) → DB RO.
+    // Auth: canReadView → DB RO.
     // Returns the identity and type of the view.
     // setup:    create v_apitest.
     // teardown: delete v_apitest.
@@ -144,7 +143,7 @@ export default [
   // ── GET /_db/d/_api/view/{name}/properties ────────────────────────────────
   {
     // GET /_api/view/{name}/properties
-    // Auth: canUseView(RO) → DB RO.
+    // Auth: canReadView → DB RO.
     // Returns the full properties (links, consolidation policy, etc.)
     // of the view.
     // setup:    create v_apitest.
@@ -165,7 +164,7 @@ export default [
   // ── PATCH /_db/d/_api/view/{name}/properties ──────────────────────────────
   {
     // PATCH /_api/view/{name}/properties
-    // Auth: canUseView(modify) → DB RW.
+    // Auth: canModifyView → DB RW and Coll R
     // Partially updates view properties; sending an empty object {} is a
     // valid no-op (leaves all properties unchanged).
     // setup:    create v_apitest.
@@ -187,7 +186,7 @@ export default [
   // ── PUT /_db/d/_api/view/{name}/properties ────────────────────────────────
   {
     // PUT /_api/view/{name}/properties
-    // Auth: canUseView(modify) → DB RW.
+    // Auth: canModifyView → DB RW and Coll R
     // Replaces all view properties with the supplied object; {} resets to
     // defaults (empty links map, default consolidation policy, etc.).
     // setup:    create v_apitest.

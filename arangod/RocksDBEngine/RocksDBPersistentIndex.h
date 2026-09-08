@@ -35,9 +35,7 @@ class RocksDBPersistentIndex final : public RocksDBVPackIndex {
                          arangodb::velocypack::Slice const& info)
       : RocksDBVPackIndex(iid, coll, info) {}
 
-  IndexType type() const override {
-    return Index::TRI_IDX_TYPE_PERSISTENT_INDEX;
-  }
+  IndexType type() const override { return IndexType::Persistent; }
 
   char const* typeName() const override { return "rocksdb-persistent"; }
 

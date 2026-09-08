@@ -27,13 +27,13 @@
 //
 // Observation-based counterpart of tests/api/apitests/misc.mjs.
 //
-// Every request first asks `UseDatabase name=<db> level=read` in
-// RestHandler::checkUserCanAccess() (the base check fires for any authenticated
+// Every request first asks `UseApiVersion version=0` and then
+// `UseDatabase name=<db> level=read` (the base check fires for any authenticated
 // request while authentication is on), where <db> is derived from the
 // /_db/<name>/ path prefix. Individual handlers then ask further questions:
 //   - canUseAdminAction(X)   -> logs X (always, RBAC not required)
 //   - canUseHardenedAction(X) -> logs X ONLY with --server.harden=true; we do
-//     not set harden, so those handlers (engine, version) ask nothing extra.
+//     not set harden, so those handlers (engine) ask nothing extra.
 //   - canUseDatabase(db, Write) -> `UseDatabase name=<db> level=write`
 //   - a read/write transaction over a collection -> UseCollection questions in
 //     StorageEngine/TransactionState.cpp checkCollectionPermission.
@@ -47,7 +47,9 @@ if (getOptions === true) {
     'server.authentication': 'true',
     'log.force-direct': 'true',
     // keep background threads from asking questions of their own
-    'foxx.queues': 'false'
+    'foxx.queues': 'false',
+    // disable so it doesn't spoil the test output:
+    'server.statistics': 'false'
   };
 }
 
@@ -87,6 +89,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/document-state/99999/shards`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "AdminReadReplicatedLog"
       ], endObserve());
@@ -96,6 +99,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/${DB}/_api/document-state/99999/snapshot/start`, {});
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "AdminWriteReplicatedLog"
       ], endObserve());
@@ -106,6 +110,7 @@ function miscApiAuthzSuite () {
       arango.DELETE_RAW(
         `/_db/${DB}/_api/document-state/99999/snapshot/finish/99999`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "AdminWriteReplicatedLog"
       ], endObserve());
@@ -117,6 +122,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/endpoint`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -128,6 +134,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/engine`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
     },
@@ -136,6 +143,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/engine/stats`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
     },
@@ -149,6 +157,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/${DB}/_api/explain`, { query: `FOR d IN ${c} RETURN d` });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c level=read"
       ], endObserve());
@@ -160,6 +169,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/key-generators`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
     },
@@ -173,6 +183,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/log`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "AdminReadReplicatedLog"
       ], endObserve());
@@ -182,6 +193,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/${DB}/_api/log`, {});
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "AdminWriteReplicatedLog"
       ], endObserve());
@@ -191,6 +203,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/log`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "AdminWriteReplicatedLog"
       ], endObserve());
@@ -205,6 +218,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/log-internal`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
     },
@@ -216,6 +230,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/query/slow`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
     },
@@ -224,6 +239,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/query/current`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
     },
@@ -232,6 +248,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/query/properties`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
     },
@@ -242,6 +259,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/query/registry`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
     },
@@ -250,6 +268,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/query/rules`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
     },
@@ -259,6 +278,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/${DB}/_api/query`, { query: `FOR d IN ${c} RETURN d` });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
     },
@@ -268,6 +288,7 @@ function miscApiAuthzSuite () {
       arango.DELETE_RAW(
         `/_db/${DB}/_api/query/nonexistent-query-apitester-99999`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
     },
@@ -276,6 +297,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/query/slow`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
     },
@@ -286,6 +308,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/query-cache/entries`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
     },
@@ -294,6 +317,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/query-cache/properties`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
     },
@@ -308,6 +332,8 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_api/query-cache/properties`, { mode: 'off' });
       assertPermissions([
+        "AdminQueryCache",
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -316,6 +342,8 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_api/query-cache`);
       assertPermissions([
+        "AdminQueryCache",
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -329,6 +357,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/query-plan-cache`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
     },
@@ -338,6 +367,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/query-plan-cache`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "UseDatabase name=d level=write"
@@ -350,6 +380,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/ttl/properties`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -358,6 +389,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/ttl/statistics`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -367,6 +399,7 @@ function miscApiAuthzSuite () {
       arango.PUT_RAW(`/_db/_system/_api/ttl/properties`,
                      { enable: true, frequency: 30000 });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -377,18 +410,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/${DB}/_api/upload`, {});
       assertPermissions([
-        "UseDatabase name=d level=read"
-      ], endObserve());
-    },
-
-    // ── /_api/version ────────────────────────────────────────────────────
-    // RestVersionHandler falls through to the base check, then
-    // canUseHardenedAction(MonitoringInternal) for full details. Not hardened
-    // here -> asks nothing beyond the base check.
-    testVersion: function () {
-      beginObserve();
-      arango.GET_RAW(`/_db/${DB}/_api/version`);
-      assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
     },
@@ -401,6 +423,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/wal/lastTick`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         ...singleOnly([
           "AdminWalAccess"
@@ -412,6 +435,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/wal/open-transactions`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         ...singleOnly([
           "AdminWalAccess"
@@ -423,6 +447,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/wal/range`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         ...singleOnly([
           "AdminWalAccess"
@@ -436,6 +461,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/wal/tail`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         ...singleOnly([
           "AdminWalAccess",
@@ -459,6 +485,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_api/wal/tail`, {});
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         ...singleOnly([
           "AdminWalAccess"
@@ -470,6 +497,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_api/wal/tail`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         ...singleOnly([
           "AdminWalAccess"
@@ -478,12 +506,9 @@ function miscApiAuthzSuite () {
     },
 
     // ── /openapi.json ────────────────────────────────────────────────────
-    // RestOpenApiHandler (extends RestBaseHandler) does not override
-    // checkUserCanAccess, so the base UseDatabase check fires; the request has
-    // no /_db/ prefix, so it addresses the _system database. execute() itself
-    // asks no can().
-    // AUDIT: documented as OPEN (unauthenticated -> 200), but an authenticated
-    // root request still triggers the base UseDatabase(_system, read) check.
+    // RestOpenApiHandler::checkUserCanAccess does not check database
+    // for exactly this path - the spec must be readable before
+    // logging in.
     testOpenApiSpec: function () {
       beginObserve();
       arango.GET_RAW(`/openapi.json`);
@@ -499,6 +524,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/tasks`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
     },
@@ -507,6 +533,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/tasks/nonexistent-task-apitester-99999`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
     },
@@ -516,6 +543,7 @@ function miscApiAuthzSuite () {
       const res = arango.POST_RAW(`/_db/${DB}/_api/tasks`,
         { name: 'apitester-task', command: '1+1;', offset: 0 });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "UseDatabase name=d level=write"
@@ -532,6 +560,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/tasks/${id}`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "IsReadOnly",
         "UseDatabase name=d level=write"
@@ -552,7 +581,7 @@ function miscApiAuthzSuite () {
     testListAccessTokens: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/token/root`);
-      assertPermissions([], endObserve());
+      assertPermissions(["UseApiVersion version=0"], endObserve());
     },
 
     testCreateAccessToken: function () {
@@ -560,6 +589,7 @@ function miscApiAuthzSuite () {
       const res = arango.POST_RAW(`/_db/_system/_api/token/root`,
                                   { name: 'apitester-token' });
       assertPermissions([
+        "UseApiVersion version=0",
         "IsReadOnly",
         ...singleOnly([
           "UseCollection db=_system name=_users level=read",
@@ -578,6 +608,7 @@ function miscApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_api/token/root/${id}`);
       assertPermissions([
+        "UseApiVersion version=0",
         "IsReadOnly",
         ...singleOnly([
           "UseCollection db=_system name=_users level=read",

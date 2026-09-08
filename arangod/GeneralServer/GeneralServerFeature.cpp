@@ -41,6 +41,8 @@
 #include "Cluster/MaintenanceRestHandler.h"
 #include "Cluster/RestAgencyCallbacksHandler.h"
 #include "Cluster/RestClusterHandler.h"
+#include "ClusterEngine/ClusterEngine.h"
+#include "ClusterEngine/ClusterRestHandlers.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServer.h"
@@ -118,8 +120,11 @@
 #include "RestHandler/RestVersionHandler.h"
 #include "RestHandler/RestOpenApiHandler.h"
 #include "RestHandler/RestViewHandler.h"
+#include "RestHandler/RestIResearchHandler.h"
 #include "RestHandler/RestWalAccessHandler.h"
 #include "RestServer/EndpointFeature.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBRestHandlers.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
@@ -545,7 +550,7 @@ void GeneralServerFeature::defineInitialHandlers(rest::RestHandlerFactory& f) {
   f.addHandler("/_api/version",
                RestHandlerCreator<RestVersionHandler>::createNoData, {0, 1});
   f.addHandler("/_admin/version",
-               RestHandlerCreator<RestVersionHandler>::createNoData, {0, 1});
+               RestHandlerCreator<RestVersionHandler>::createNoData, {0});
   f.addHandler("/openapi.json",
                RestHandlerCreator<RestOpenApiHandler>::createNoData, {0, 1, 2});
   f.addHandler("/_admin/status",
@@ -599,7 +604,7 @@ void GeneralServerFeature::defineRemainingHandlers(
 
   f.addPrefixHandler(RestVocbaseBaseHandler::ENDPOINT_PATH,
                      RestHandlerCreator<RestEndpointHandler>::createNoData,
-                     {0, 1});
+                     {0});
 
   f.addPrefixHandler(RestVocbaseBaseHandler::IMPORT_PATH,
                      RestHandlerCreator<RestImportHandler>::createNoData,
@@ -643,8 +648,7 @@ void GeneralServerFeature::defineRemainingHandlers(
 #endif
 
   f.addPrefixHandler(RestVocbaseBaseHandler::UPLOAD_PATH,
-                     RestHandlerCreator<RestUploadHandler>::createNoData,
-                     {0, 1});
+                     RestHandlerCreator<RestUploadHandler>::createNoData, {0});
 
   f.addPrefixHandler(RestVocbaseBaseHandler::USERS_PATH,
                      RestHandlerCreator<RestUsersHandler>::createNoData,
@@ -656,6 +660,10 @@ void GeneralServerFeature::defineRemainingHandlers(
 
   f.addPrefixHandler(RestVocbaseBaseHandler::VIEW_PATH,
                      RestHandlerCreator<RestViewHandler>::createNoData, {0, 1});
+
+  f.addPrefixHandler(RestVocbaseBaseHandler::STATS_ARANGOSEARCH_PATH,
+                     RestHandlerCreator<RestIResearchHandler>::createNoData,
+                     {api_version::experimentalApiVersion});
 
   if (::arangodb::replication2::EnableReplication2 && cluster.isEnabled()) {
     f.addPrefixHandler(std::string{StaticStrings::ApiLogExternal},
@@ -849,7 +857,7 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addPrefixHandler("/_admin/job",
                      RestHandlerCreator<arangodb::RestJobHandler>::createData<
                          AsyncJobManager*>,
-                     {0, 1}, _jobManager.get());
+                     {0}, _jobManager.get());
 
   // further admin handlers
   f.addPrefixHandler(
@@ -944,7 +952,11 @@ void GeneralServerFeature::defineRemainingHandlers(
 
   // engine specific handlers
   StorageEngine& engine = server().getFeature<DatabaseFeature>().engine();
-  engine.addRestHandlers(f);
+  if (ServerState::instance()->isCoordinator()) {
+    ClusterRestHandlers::registerResources(&f);
+  } else {
+    RocksDBRestHandlers::registerResources(&f, engine);
+  }
 }
 
 }  // namespace arangodb
