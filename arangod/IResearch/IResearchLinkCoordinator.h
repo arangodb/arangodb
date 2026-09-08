@@ -55,7 +55,7 @@ class IResearchLinkCoordinator final : public Index, public IResearchLink {
     unload();
   }
 
-  IndexType type() const final { return Index::TRI_IDX_TYPE_IRESEARCH_LINK; }
+  IndexType type() const final { return IndexType::IResearchLink; }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief initialize from the specified definition used in make(...)
@@ -86,9 +86,9 @@ class IResearchLinkCoordinator final : public Index, public IResearchLink {
     return IResearchLink::matchesDefinition(slice);
   }
 
-  Stats stats() const final;
+  Stats getStats() const final;
 
-  size_t memory() const final { return stats().indexSize; }
+  size_t memory() const final { return getStats().indexSize; }
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchLink object
   /// @param withFigures output 'figures' section with e.g. memory size

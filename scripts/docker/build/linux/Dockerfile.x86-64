@@ -65,11 +65,15 @@ RUN apt-get update --fix-missing && \
   apt-get build-dep -y llvm-${CLANG_VERSION}-dev && \
   apt-get update --fix-missing && \
   apt-get install -y clang-${CLANG_VERSION} clang++-${CLANG_VERSION} && \
+  apt-get install -y clang-tidy-${CLANG_VERSION} && \
   rm -rf /var/cache/apt/archives /var/lib/apt/lists
 
 COPY patches/diff_llvm.patch .
 
 RUN ln -s $(echo llvm-toolchain-${CLANG_VERSION}-*) /llvm-toolchain-${CLANG_VERSION}
+
+RUN ln -s $(which clang-tidy-${CLANG_VERSION}) /usr/local/bin/clang-tidy
+RUN ln -s $(which run-clang-tidy-${CLANG_VERSION}.py) /usr/local/bin/run-clang-tidy.py
 
 WORKDIR /llvm-toolchain-${CLANG_VERSION}
 
@@ -150,12 +154,12 @@ RUN curl -L https://github.com/mozilla/sccache/releases/download/v${SCCACHE_VERS
 # Fetch libomp
 COPY --from=openmp /opt/omp /opt/omp 
 
-# Build openssl and openldap libraries in specific versions and with static
+# Build the openssl library in a specific version and with static
 # libraries, install with prefix /opt:
 
 COPY ./tools/* /tools/
 
-RUN [ "/tools/install.sh", "3.5", "7" ]
+RUN [ "/tools/install.sh", "3.5", "8" ]
 
 COPY ./scripts /scripts
 

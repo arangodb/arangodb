@@ -26,7 +26,7 @@
 #include "Aql/Expression.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Containers/NodeHashMap.h"
-#include "VectorIndex/VectorIndexDefinition.h"
+#include "VectorIndex/Definition.h"
 #include "RocksDBIndex.h"
 #include "RocksDBValue.h"
 #include "RocksDBEngine/RocksDBIndex.h"
@@ -47,17 +47,6 @@ class LogicalCollection;
 
 namespace vector {
 
-inline faiss::MetricType metricToFaissMetric(
-    SimilarityMetric const metric) noexcept {
-  switch (metric) {
-    case SimilarityMetric::kL2:
-      return faiss::MetricType::METRIC_L2;
-    case SimilarityMetric::kCosine:
-      return faiss::MetricType::METRIC_INNER_PRODUCT;
-    case SimilarityMetric::kInnerProduct:
-      return faiss::METRIC_INNER_PRODUCT;
-  }
-}
 velocypack::SharedSlice toOwnedSharedSlice(velocypack::Slice slice);
 
 // =====================================================================

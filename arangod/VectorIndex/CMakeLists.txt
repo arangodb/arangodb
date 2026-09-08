@@ -1,8 +1,8 @@
 add_library(arango_vector_index STATIC
-  VectorIndexBuildManager.cpp
-  VectorIndexFeature.cpp
-  VectorIndexOptionsProvider.cpp
-  VectorIndexTrainingSampler.cpp)
+  BuildManager.cpp
+  Feature.cpp
+  OptionsProvider.cpp
+  TrainingSampler.cpp)
 
 target_link_libraries(arango_vector_index
   PUBLIC

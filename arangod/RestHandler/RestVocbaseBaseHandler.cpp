@@ -130,6 +130,10 @@ std::string const RestVocbaseBaseHandler::USERS_PATH = "/_api/user";
 // view path
 std::string const RestVocbaseBaseHandler::VIEW_PATH = "/_api/view";
 
+// stats arangosearch path
+std::string const RestVocbaseBaseHandler::STATS_ARANGOSEARCH_PATH =
+    "/_admin/arangosearch/stats";
+
 // Internal Traverser path
 
 std::string const RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH =

@@ -51,7 +51,6 @@ int main(int argc, char* argv[]) {
     );
 
     ArangoshServer server(options, BIN_DIRECTORY, context.binaryName(), &ret);
-    server.addFeatures();
 
     try {
       server.run(argc, argv);

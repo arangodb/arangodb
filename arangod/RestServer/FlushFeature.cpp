@@ -44,13 +44,7 @@ namespace arangodb {
 
 FlushFeature::FlushFeature(ApplicationServer& server,
                            metrics::IRegistry& metricsRegistry)
-    : FlushFeature(server, metricsRegistry, FlushFeatureOptions{}) {}
-
-FlushFeature::FlushFeature(ApplicationServer& server,
-                           metrics::IRegistry& metricsRegistry,
-                           FlushFeatureOptions options)
     : ApplicationFeature{server, *this},
-      _options(std::move(options)),
       _stopped(false),
       _metricsFlushSubscriptions(
           metricsRegistry.add(arangodb_flush_subscriptions{})) {

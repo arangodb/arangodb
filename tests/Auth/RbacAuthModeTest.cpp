@@ -25,8 +25,6 @@
 // is mocked: it records every question it is asked and returns a programmed
 // answer, so these tests never talk to a real authorization backend.
 
-#include "ExecContextFactory.h"
-
 #include "gtest/gtest.h"
 
 #include <span>
@@ -38,8 +36,6 @@
 #include "Auth/Rbac/Service.h"
 #include "Basics/overload.h"
 #include "Basics/voc-errors.h"
-#include "Endpoint/ConnectionInfo.h"
-#include "Rest/GeneralRequest.h"
 
 using namespace arangodb;
 namespace p = arangodb::auth::perms;
@@ -77,6 +73,10 @@ std::string resourceStr(rbac::Resource const& resource) {
                         [](rbac::resources::User const& r) {
                           return std::string{"user:"} + std::string{r.name};
                         },
+                        [](rbac::resources::ApiVersion const& r) {
+                          return std::string{"apiversion:"} +
+                                 std::to_string(r.version);
+                        },
                     },
                     resource);
 }
@@ -105,12 +105,10 @@ struct MockService : rbac::Service {
   }
 };
 
-// Fixture bundling a mock service, a stub request and the Rbac auth mode under
-// test.
+// Fixture bundling a mock service and the Rbac auth mode under test.
 struct RbacAuthModeTest : ::testing::Test {
   MockService svc;
-  tests::mocks::FakeGeneralRequest req;
-  AuthMode::Rbac rbac{svc, "myuser", "mytoken", req};
+  AuthMode::Rbac rbac{svc, "myuser", "mytoken", 0};
 
   // Discarding wrapper around rbac.check(). IAuth::check is [[nodiscard]], so
   // tests that only inspect the recorded queries would otherwise not compile
@@ -220,15 +218,9 @@ TEST_F(RbacAuthModeTest, DropViewChecksViewThenLinkedCollections) {
   EXPECT_EQ(svc.queries[2].resource, "collection:mydb:c2");
 }
 
-TEST_F(RbacAuthModeTest, UseViewRead) {
-  check(p::UseView{.db = "mydb", .name = "v", .level = ViewAccessLevel::Read});
+TEST_F(RbacAuthModeTest, ReadView) {
+  check(p::ReadView{.db = "mydb", .name = "v"});
   expectSingle(rbac::Action::Read, "view:mydb:v");
-}
-
-TEST_F(RbacAuthModeTest, UseViewModify) {
-  check(
-      p::UseView{.db = "mydb", .name = "v", .level = ViewAccessLevel::Modify});
-  expectSingle(rbac::Action::WriteMeta, "view:mydb:v");
 }
 
 TEST_F(RbacAuthModeTest, CreateViewChecksViewThenLinkedCollections) {
@@ -257,9 +249,33 @@ TEST_F(RbacAuthModeTest, ModifyViewChecksViewThenLinkedCollections) {
   EXPECT_EQ(svc.queries[1].resource, "collection:mydb:c1");
 }
 
-TEST_F(RbacAuthModeTest, RenameViewChecksOldName) {
+TEST_F(RbacAuthModeTest, RenameViewChecksOldAndNewName) {
   check(p::RenameView{.db = "mydb", .oldName = "old", .newName = "new"});
-  expectSingle(rbac::Action::WriteMeta, "view:mydb:old");
+  EXPECT_EQ(svc.checkCalls, 1);
+  ASSERT_EQ(svc.queries.size(), 2u);
+  EXPECT_EQ(svc.queries[0].action, rbac::Action::Drop);
+  EXPECT_EQ(svc.queries[0].resource, "view:mydb:old");
+  EXPECT_EQ(svc.queries[1].action, rbac::Action::Create);
+  EXPECT_EQ(svc.queries[1].resource, "view:mydb:new");
+}
+
+TEST_F(RbacAuthModeTest, RenameViewChecksOldAndNewNameThenLinkedCollections) {
+  std::vector<std::string> links{"c1", "c2"};
+  EXPECT_TRUE(check(p::RenameView{.db = "mydb",
+                                  .oldName = "old",
+                                  .newName = "new",
+                                  .linkedCollections = links})
+                  .ok());
+  EXPECT_EQ(svc.checkCalls, 1);  // old + new + linked collections in one batch
+  ASSERT_EQ(svc.queries.size(), 4u);
+  EXPECT_EQ(svc.queries[0].action, rbac::Action::Drop);
+  EXPECT_EQ(svc.queries[0].resource, "view:mydb:old");
+  EXPECT_EQ(svc.queries[1].action, rbac::Action::Create);
+  EXPECT_EQ(svc.queries[1].resource, "view:mydb:new");
+  EXPECT_EQ(svc.queries[2].action, rbac::Action::Read);
+  EXPECT_EQ(svc.queries[2].resource, "collection:mydb:c1");
+  EXPECT_EQ(svc.queries[3].action, rbac::Action::Read);
+  EXPECT_EQ(svc.queries[3].resource, "collection:mydb:c2");
 }
 
 TEST_F(RbacAuthModeTest, RenameViewToSameNameIsBadParameterAndAsksNothing) {
@@ -375,8 +391,9 @@ TEST_F(RbacAuthModeTest, ModifyUserProfile) {
 }
 
 TEST_F(RbacAuthModeTest, GrantUserPermissions) {
-  check(p::GrantUserPermissions{.name = "alice"});
-  expectSingle(rbac::Action::WriteMeta, "user:alice");
+  auto r = check(p::GrantUserPermissions{.name = "alice"});
+  ASSERT_EQ(r.errorNumber(), ErrorCode{11});
+  ASSERT_TRUE(svc.queries.empty());
 }
 
 // ---------------------------------------------------------------------------
@@ -454,6 +471,26 @@ TEST_F(RbacAuthModeTest, AdminBackup) {
 TEST_F(RbacAuthModeTest, AdminQueryCache) {
   check(p::AdminQueryCache{});
   expectSingle(rbac::Action::AdminQueryCache, "<none>");
+}
+
+// ---------------------------------------------------------------------------
+// API versions
+// ---------------------------------------------------------------------------
+
+TEST_F(RbacAuthModeTest, UseApiVersionAsksForTheVersionAsResource) {
+  EXPECT_TRUE(check(p::UseApiVersion{.version = 1}).ok());
+  expectSingle(rbac::Action::UseApiVersion, "apiversion:1");
+}
+
+TEST_F(RbacAuthModeTest, UseApiVersionDistinguishesVersions) {
+  check(p::UseApiVersion{.version = 0});
+  expectSingle(rbac::Action::UseApiVersion, "apiversion:0");
+}
+
+TEST_F(RbacAuthModeTest, UseApiVersionDenialIsPropagated) {
+  svc.answer = {TRI_ERROR_FORBIDDEN, "nope"};
+  EXPECT_EQ(check(p::UseApiVersion{.version = 1}).errorNumber(),
+            TRI_ERROR_FORBIDDEN);
 }
 
 // ---------------------------------------------------------------------------

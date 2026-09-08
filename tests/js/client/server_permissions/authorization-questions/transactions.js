@@ -39,7 +39,8 @@
 //   via the manager, so they ask no collection question.
 // - The JS transaction (POST /_api/transaction) runs its action inside a
 //   transaction over the declared read collections.
-// Every request additionally asks `UseDatabase name=d level=read` first.
+// Every request additionally asks `UseApiVersion version=0` and
+// `UseDatabase name=d level=read` first.
 // Transactions used as preconditions are created as root BEFORE beginObserve().
 
 if (getOptions === true) {
@@ -47,7 +48,9 @@ if (getOptions === true) {
     'server.authentication': 'true',
     'log.force-direct': 'true',
     // keep background threads from asking questions of their own
-    'foxx.queues': 'false'
+    'foxx.queues': 'false',
+    // disable so it doesn't spoil the test output:
+    'server.statistics': 'false'
   };
 }
 
@@ -93,6 +96,7 @@ function transactionApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/transaction`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
     },
@@ -103,6 +107,7 @@ function transactionApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/transaction/${id}`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
       abortTrx(id);
@@ -118,6 +123,7 @@ function transactionApiAuthzSuite () {
         action: 'function () { return 1; }'
       });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c level=read"
       ], endObserve());
@@ -129,6 +135,7 @@ function transactionApiAuthzSuite () {
       const res = arango.POST_RAW(`/_db/${DB}/_api/transaction/begin`,
                                   { collections: { read: [c] } });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c level=read"
       ], endObserve());
@@ -146,6 +153,7 @@ function transactionApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/transaction/${id}`, {});
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
       // committed -> the document now exists; remove it again
@@ -158,6 +166,7 @@ function transactionApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/transaction/${id}`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
     },
@@ -167,6 +176,7 @@ function transactionApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/transaction/write`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
     },

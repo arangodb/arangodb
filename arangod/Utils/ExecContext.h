@@ -60,7 +60,9 @@ class ExecContext {
 
  public:
   ExecContext(ConstructorToken, AuthMode authMode, bool isRestApiHardened,
-              VocbasePtr vocbase);
+              VocbasePtr vocbase, std::string clientAddress = {},
+              std::string requestUrl = {}, std::string authMethod = "n/a",
+              bool hasRequestInfo = false);
   ExecContext(ExecContext const&) = delete;
   ExecContext(ExecContext&&) = delete;
 
@@ -108,18 +110,9 @@ class ExecContext {
   /// @brief cancel execution
   void cancel() noexcept { _canceled.store(true, std::memory_order_relaxed); }
 
-  /// @brief upgrade to internal superuser, preserving request/vocbase refs
-  void forceSuperuser();
-
   /// @brief returns the vocbase associated with this context, if any
   [[nodiscard]] std::optional<std::reference_wrapper<Database>> vocbase()
       const noexcept;
-
-  /// @brief returns the request associated with this context, if any
-  [[nodiscard]] std::optional<std::reference_wrapper<GeneralRequest>> request()
-      const noexcept {
-    return _authMode.getIAuth().request();
-  }
 
   /// @brief current user, may be empty for internal users
   [[nodiscard]] std::string_view user() const {
@@ -172,7 +165,12 @@ class ExecContext {
     if (!_isRestApiHardened) {
       return {};
     }
-    return can(std::move(action));
+    Result r = can(std::move(action));
+    if (r.ok()) {
+      return r;
+    }
+    // Compatibility with 3.12.10:
+    return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
   }
 
   Result canSeeDatabase(std::string_view db) const;
@@ -221,8 +219,7 @@ class ExecContext {
                        std::vector<std::string> const& linkedCollections) const;
   Result canDropView(std::string_view db, std::string_view view,
                      std::vector<std::string> const& linkedCollections) const;
-  Result canUseView(std::string_view db, std::string_view view,
-                    ViewAccessLevel level) const;
+  Result canReadView(std::string_view db, std::string_view view) const;
 
   Result canSeeGraph(std::string_view db, std::string_view graph) const;
   Result canCreateGraph(std::string_view db, std::string_view graph,
@@ -233,7 +230,8 @@ class ExecContext {
   Result canUseGraph(std::string_view db, std::string_view graph,
                      GraphAccessLevel const level) const;
   Result canRenameView(std::string_view db, std::string_view oldViewName,
-                       std::string_view newViewName) const;
+                       std::string_view newViewName,
+                       std::vector<std::string> const& linkedCollections) const;
 
   Result canSeeAnalyzer(std::string_view db, std::string_view analyzer) const;
   Result canCreateAnalyzer(std::string_view db,
@@ -266,6 +264,11 @@ class ExecContext {
   /// collections may be granted/revoked.
   Result canGrantUserPermissions(std::string_view userName) const;
 
+  /// @brief returns whether the given REST API version may be used, e.g. 1 for
+  /// `/_arango/v1`. Note that this does not ask whether the version exists -
+  /// that is decided by the handler factory.
+  Result canUseApiVersion(uint32_t version) const;
+
   static std::shared_ptr<ExecContext const> set(
       std::shared_ptr<ExecContext const> ctx) {
     std::swap(CURRENT, ctx);
@@ -282,6 +285,15 @@ class ExecContext {
   AuthMode _authMode;
   bool const _isRestApiHardened;
   VocbasePtr _vocbase;
+
+  // Client address, request URL and authentication method of the request
+  // this context was created from, if any (see ExecContext::create()).
+  // Preserved across forceSuperuser()/ExecContextSuperuserScope so that
+  // auditing keeps working after a privilege upgrade.
+  std::string _clientAddress;
+  std::string _requestUrl;
+  std::string _authMethod{"n/a"};
+  bool _hasRequestInfo{false};
 
   // TODO (Tobias) this feels out of place. Look into it.
   /// should be used to indicate a canceled request / thread

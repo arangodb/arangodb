@@ -35,7 +35,6 @@
 #include "Metrics/MetricKey.h"
 #include "Metrics/MetricsOptions.h"
 #include "Metrics/MetricsParts.h"
-#include "ProgramOptions/ProgramOptions.h"
 
 #include <map>
 #include <shared_mutex>
@@ -58,17 +57,6 @@ class MetricsFeature final : public application_features::ApplicationFeature,
 
   static constexpr std::string_view name() noexcept { return "Metrics"; }
 
-  MetricsFeature(
-      application_features::ApplicationServer& server,
-      LazyApplicationFeatureReference<QueryRegistryFeature>
-          lazyQueryRegistryFeatureRef,
-      LazyApplicationFeatureReference<StatisticsFeature>
-          lazyStatisticsFeatureRef,
-      LazyApplicationFeatureReference<DatabaseFeature> lazyDatabaseFeatureRef,
-      LazyApplicationFeatureReference<ClusterMetricsFeature>
-          lazyClusterMetricsFeatureRef,
-      LazyApplicationFeatureReference<ClusterFeature> lazyClusterFeatureRef,
-      MetricsOptions options);
   explicit MetricsFeature(
       application_features::ApplicationServer& server,
       LazyApplicationFeatureReference<QueryRegistryFeature>
@@ -80,12 +68,21 @@ class MetricsFeature final : public application_features::ApplicationFeature,
           lazyClusterMetricsFeatureRef,
       LazyApplicationFeatureReference<ClusterFeature> lazyClusterFeatureRef);
 
+  MetricsFeature(
+      application_features::ApplicationServer& server,
+      LazyApplicationFeatureReference<QueryRegistryFeature>
+          lazyQueryRegistryFeatureRef,
+      LazyApplicationFeatureReference<StatisticsFeature>
+          lazyStatisticsFeatureRef,
+      LazyApplicationFeatureReference<DatabaseFeature> lazyDatabaseFeatureRef,
+      LazyApplicationFeatureReference<ClusterMetricsFeature>
+          lazyClusterMetricsFeatureRef,
+      LazyApplicationFeatureReference<ClusterFeature> lazyClusterFeatureRef,
+      MetricsOptions options);
+
   bool exportAPI() const noexcept;
   bool ensureWhitespace() const noexcept;
   UsageTrackingMode usageTrackingMode() const noexcept;
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) final;
 
   // tries to add the metric. If the metric already exists, it is returned
   // instead.

@@ -132,7 +132,7 @@ RestStatus RestClusterHandler::execute() {
   return RestStatus::DONE;
 }
 
-async<Result> RestClusterHandler::checkUserCanAccess() const {
+async<Result> RestClusterHandler::checkDatabaseAccess() const {
   auto const& suffixes = _request->suffixes();
   if (_request->authenticated() && suffixes.size() == 1 &&
       suffixes[0] == "endpoints") {
@@ -140,7 +140,7 @@ async<Result> RestClusterHandler::checkUserCanAccess() const {
     co_return Result{};
   }
 
-  co_return co_await RestBaseHandler::checkUserCanAccess();
+  co_return co_await RestHandler::checkDatabaseAccess();
 }
 
 void RestClusterHandler::handleAgencyDump() {

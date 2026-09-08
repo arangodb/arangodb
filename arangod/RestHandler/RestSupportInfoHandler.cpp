@@ -41,6 +41,11 @@ RestSupportInfoHandler::RestSupportInfoHandler(
 
 // Mounted at /_admin/support-info (exact)
 RestStatus RestSupportInfoHandler::execute() {
+  if (_request->requestedApiVersion() > 0 &&
+      !isAllowedHttpMethod({RequestType::GET})) {
+    return RestStatus::DONE;
+  }
+
   GeneralServerFeature& gs = server().getFeature<GeneralServerFeature>();
   auto const& apiPolicy = gs.supportInfoApiPolicy();
   TRI_ASSERT(apiPolicy != "disabled");

@@ -28,7 +28,7 @@ namespace auth {
 class UserManager;
 }
 
-class RestAccessTokenHandler : public RestVocbaseBaseHandler {
+class RestAccessTokenHandler : public RestBaseHandler {
  public:
   RestAccessTokenHandler(application_features::ApplicationServer&,
                          GeneralRequest*, GeneralResponse*);
@@ -39,7 +39,7 @@ class RestAccessTokenHandler : public RestVocbaseBaseHandler {
   RestStatus execute() override;
 
  protected:
-  async<Result> checkUserCanAccess() const override;
+  async<Result> checkDatabaseAccess() const override { co_return Result{}; }
 
  private:
   RestStatus createAccessToken(auth::UserManager*, std::string const& user);

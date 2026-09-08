@@ -1,5 +1,5 @@
 FROM public.ecr.aws/b0b8h2r4/test-ubuntu:latest
-MAINTAINER hackers@arangodb.com
+LABEL org.opencontainers.image.authors="hackers@arangodb.com"
  
 ARG arch
 

@@ -29,8 +29,8 @@
 // Handler: arangod/RocksDBEngine/RocksDBRestWalHandler.cpp (single-server/DBServer)
 //          arangod/ClusterEngine/ClusterRestWalHandler.cpp   (coordinator)
 //
-// Every request first asks `UseDatabase name=_system level=read` in
-// RestHandler::checkUserCanAccess() (the routes have no /_db/ prefix, so the
+// Every request first asks `UseApiVersion version=0` and then
+// `UseDatabase name=_system level=read` (the routes have no /_db/ prefix, so the
 // database is the connected _system).
 //
 //   GET  /properties               no in-handler auth check (returns 501)
@@ -50,7 +50,9 @@ if (getOptions === true) {
     'server.authentication': 'true',
     'log.force-direct': 'true',
     // keep background threads from asking questions of their own
-    'foxx.queues': 'false'
+    'foxx.queues': 'false',
+    // disable so it doesn't spoil the test output:
+    'server.statistics': 'false'
   };
 }
 
@@ -74,6 +76,7 @@ function walApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/wal/properties`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -83,6 +86,7 @@ function walApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_admin/wal/properties`, {});
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -92,6 +96,7 @@ function walApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/wal/transactions`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -101,6 +106,7 @@ function walApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_admin/wal/flush`, {});
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -115,6 +121,7 @@ function walApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_admin/wal/wait_for_estimator_sync`, {});
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "AdminWalAccess"
       ], endObserve());

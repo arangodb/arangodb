@@ -31,7 +31,8 @@ class RestDebugHandler : public arangodb::RestBaseHandler {
                    GeneralResponse*);
 
  protected:
-  async<Result> checkUserCanAccess() const override;
+  async<RestHandler::AuthenticationGrant> checkUserAuthentication()
+      const override;
 
  public:
   char const* name() const override final { return "RestDebugHandler"; }

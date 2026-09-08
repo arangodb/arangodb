@@ -648,10 +648,10 @@ void LogicalCollection::toVelocyPackForInventory(VPackBuilder& result) const {
       [](arangodb::Index const* idx, decltype(Index::makeFlags())& flags) {
         // we have to exclude the primary and edge index for dump / restore
         switch (idx->type()) {
-          case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
-          case Index::TRI_IDX_TYPE_EDGE_INDEX:
+          case IndexType::Primary:
+          case IndexType::Edge:
             return false;
-          case Index::TRI_IDX_TYPE_VECTOR_INDEX:
+          case IndexType::Vector:
             // Always include the vector index
             flags = Index::makeFlags(Index::Serialize::Inventory);
             return true;
@@ -714,8 +714,8 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
     // at least the MMFiles engine will try to create it
     // AND exclude hidden indexes
     switch (idx->type()) {
-      case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
-      case Index::TRI_IDX_TYPE_EDGE_INDEX:
+      case IndexType::Primary:
+      case IndexType::Edge:
         return false;
       default:
         flags = Index::makeFlags(Index::Serialize::Inventory);
@@ -795,7 +795,7 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
         (showInProgress || !idx->inProgress() ||
          // We do this since we need trainingState of the vector index in agency
          // so we can report it to the end user
-         (forMaintance && idx->type() == Index::TRI_IDX_TYPE_VECTOR_INDEX))) {
+         (forMaintance && idx->type() == IndexType::Vector))) {
       flags = indexFlags;
       return true;
     }
@@ -1053,13 +1053,6 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
 
       writeConcern = writeConcernSlice.getNumber<size_t>();
 
-      // Invalidate the _canWrite flag in FollowerInfo since writeConcern
-      // has changed. This ensures the write condition
-      // will be re-evaluated on the next write attempt.
-      if (_followers != nullptr) {
-        _followers->invalidateCanWrite();
-      }
-
       if (ServerState::instance()->isCoordinator() &&
           writeConcern > replicationFactor) {
         return Result(TRI_ERROR_BAD_PARAMETER,
@@ -1098,8 +1091,17 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
   TRI_ASSERT(!isSatellite() || replicationFactor == 0);
   _waitForSync = Helper::getBooleanValue(
       slice, StaticStrings::WaitForSyncString, _waitForSync);
+  bool const writeConcernChanged = writeConcern != this->writeConcern();
   _sharding->setWriteConcernAndReplicationFactor(writeConcern,
                                                  replicationFactor);
+
+  // Invalidate the _canWrite flag in FollowerInfo so that the write condition
+  // is re-evaluated on the next write attempt. This has to happen after the new
+  // writeConcern is stored, otherwise FollowerInfo re-evaluates against the old
+  // one.
+  if (writeConcernChanged && _followers != nullptr) {
+    _followers->invalidateCanWrite();
+  }
 
   if (ServerState::instance()->isDBServer()) {
     // This code is only allowed to be executed by the maintenance

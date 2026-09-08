@@ -26,6 +26,7 @@
 #include "Activities/RegistryGlobalVariable.h"
 #include "Agency/RestAgencyHandler.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Assertions/ProdAssert.h"
 #include "Auth/TokenCache.h"
 #include "Basics/dtrace-wrapper.h"
 #include "Basics/error.h"
@@ -54,12 +55,13 @@
 #include <Async/async.h>
 #include <Ssl/jwt.h>
 #include <absl/strings/str_cat.h>
-#include <unordered_map>
 #include <velocypack/Exception.h>
 
-using namespace arangodb;
+#include <algorithm>
+#include <initializer_list>
+
+namespace arangodb::rest {
 using namespace arangodb::basics;
-using namespace arangodb::rest;
 
 RestHandler::RestHandler(application_features::ApplicationServer& server,
                          GeneralRequest* request, GeneralResponse* response)
@@ -293,8 +295,8 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
       if (!username.empty()) {
         headers.emplace(
             StaticStrings::Authorization,
-            "bearer " + arangodb::rest::SslInterface::jwt::generateUserToken(
-                            auth->tokenCache().jwtSecret(), username));
+            "bearer " + auth::generateUserToken(auth->tokenCache().jwtSecret(),
+                                                username));
       }
     }
   }
@@ -434,7 +436,17 @@ auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
     shutdownExecute(false);
   };
 
-  co_await handleAuthorizationChecks();
+  try {
+    co_await handleAuthorizationChecks();
+  } catch (std::exception const& exc) {
+    generateError(
+        ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+        absl::StrCat("Caught exception in `handleAuthorizationChecks`: ",
+                     exc.what()));
+    _sendResponseCallback(this);
+    co_return;
+  }
+
   if (_state == HandlerState::FAILED) {
     co_return fail();
   }
@@ -699,10 +711,12 @@ void RestHandler::compressResponse() {
   }
 }
 
-async<Result> RestHandler::checkUserCanAccess() const {
+async<RestHandler::AuthenticationGrant> RestHandler::checkUserAuthentication()
+    const {
   auto const* const auth = AuthenticationFeature::instance();
+  ADB_PROD_ASSERT(auth != nullptr);
   if (!auth->isActive()) {
-    co_return Result();
+    co_return AuthenticationGrant::GRANTED_EARLY;
   }
 
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
@@ -710,14 +724,39 @@ async<Result> RestHandler::checkUserCanAccess() const {
   if (ci.endpointType == Endpoint::DomainType::UNIX &&
       !auth->authenticationUnixSockets()) {
     // no authentication required for unix domain socket connections
-    co_return Result{};
+    co_return AuthenticationGrant::GRANTED_EARLY;
   }
 #endif
 
-  if (not request()->authenticated()) {
-    co_return Result(TRI_ERROR_HTTP_UNAUTHORIZED, "User not authenticated.");
+  if (request()->authenticated()) {
+    if (auth->rbacEnabled() && request()->authenticationMethod() ==
+                                   rest::AuthenticationMethod::BASIC) {
+      // When RBAC is enabled, HTTP basic authentication is no longer
+      // accepted for regular endpoints, because the external RBAC service
+      // can only authorize requests that carry a JWT. Handlers that must
+      // remain reachable via basic auth regardless (e.g. RestAuthHandler,
+      // mounted at /_open/auth, which issues the JWT in the first place)
+      // override checkUserAuthentication() and never reach this check.
+      co_return AuthenticationGrant::DENIED;
+    }
+    co_return AuthenticationGrant::GRANTED;
   }
 
+  co_return AuthenticationGrant::DENIED;
+}
+
+async<Result> RestHandler::checkApiVersionAccess() const {
+  auto ec = request()->requestContext();
+  TRI_ASSERT(ec != nullptr) << "no exec context in request: " << this->name();
+  auto res = ec->canUseApiVersion(request()->requestedApiVersion());
+  if (res.fail()) {
+    LOG_TOPIC("3b1a7", TRACE, Logger::AUTHORIZATION)
+        << "API version forbidden for " << request()->requestPath();
+  }
+  co_return res;
+}
+
+async<Result> RestHandler::checkDatabaseAccess() const {
   auto ec = request()->requestContext();
   TRI_ASSERT(ec != nullptr) << "no exec context in request: " << this->name();
   auto canUseDB =
@@ -737,7 +776,49 @@ async<Result> RestHandler::checkUserCanAccess() const {
 }
 
 async<void> RestHandler::handleAuthorizationChecks() {
-  if (auto res = co_await checkUserCanAccess(); res.fail()) {
+  auto auth = co_await checkUserAuthentication();
+  if (auth == AuthenticationGrant::GRANTED_EARLY) {
+    co_return;
+  }
+
+  if (auth == AuthenticationGrant::DENIED) {
+    _state = HandlerState::FAILED;
+    events::NotAuthorized(*_request);
+    generateError(rest::ResponseCode::UNAUTHORIZED, TRI_ERROR_FORBIDDEN,
+                  "User not authenticated");
+    co_return;
+  }
+
+  // Authentication succeeded (AuthenticationGrant::GRANTED), so the request
+  // must carry an ExecContext for the authorization checks below. Any route
+  // that continues execution should have resolved a request context by now
+  // (see CommTask::prepareExecution). The allow-listed early paths served
+  // during STARTUP/MAINTENANCE do not, but their handlers return GRANTED_EARLY
+  // above and never reach this point.
+  //
+  // However, there's a race:
+  // When the CommTask checks the mode during request processing while it's
+  // STARTUP or MAINTENANCE, there's no vocbase nor ExecContext.
+  // If the mode changes to DEFAULT before checkUserAuthentication() is called
+  // (take, for example, `RestStatusHandler::checkUserAuthentication()`),
+  // it can return GRANTED rather than GRANTED_EARLY.
+  // But the following calls to `checkApiVersionAccess()` and
+  // `checkDatabaseAccess()` require an ExecContext.
+  //
+  // This is a temporary band-aid so we answer with a 500 rather than crashing
+  // in that situation. A proper fix will be implemented soon.
+  if (request()->requestContext() == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Missing ExecContext");
+  }
+
+  if (auto res = co_await checkApiVersionAccess(); res.fail()) {
+    _state = HandlerState::FAILED;
+    events::NotAuthorized(*_request);
+    generateError(res);
+    co_return;
+  }
+
+  if (auto res = co_await checkDatabaseAccess(); res.fail()) {
     _state = HandlerState::FAILED;
     events::NotAuthorized(*_request);
     if (_request->requestedApiVersion() == 0) {
@@ -772,6 +853,29 @@ void RestHandler::generateError(rest::ResponseCode code,
 void RestHandler::generateError(arangodb::Result const& r) {
   ResponseCode code = GeneralResponse::responseCode(r.errorNumber());
   generateError(code, r.errorNumber(), r.errorMessage());
+}
+
+bool RestHandler::isAllowedHttpMethod(
+    std::initializer_list<rest::RequestType> allowed) {
+  auto method = _request->requestType();
+  if (std::find(allowed.begin(), allowed.end(), method) != allowed.end()) {
+    return true;
+  }
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  return false;
+}
+
+bool RestHandler::rejectNumericCollectionId(std::string_view cname) {
+  TRI_ASSERT(!cname.empty());
+  if (std::all_of(cname.begin(), cname.end(),
+                  [](unsigned char c) { return c >= '0' && c <= '9'; })) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "Numeric collection IDs are not allowed; please use the "
+                  "collection name instead");
+    return true;
+  }
+  return false;
 }
 
 // -----------------------------------------------------------------------------
@@ -836,3 +940,5 @@ void RestHandler::runHandler(
         }
       });
 }
+
+}  // namespace arangodb::rest

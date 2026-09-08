@@ -24,9 +24,25 @@ add_library(arango_general_server STATIC
 
 target_link_libraries(arango_general_server
   PUBLIC
-    arango_basic_utils velocypack
-    arango::validation rocksdb_interface immer arango_actor
-    arango_iresearch arango_v8)
+    arango_auth
+    arango_actions
+    arango_statistics
+    arango_actor
+    arango_basic_utils
+    arango_iresearch arango_v8
+    arango::validation
+    arango_v8server
+    rocksdb_interface
+    velocypack
+    immer)
+
+if(USE_ENTERPRISE)
+  target_link_libraries(arango_general_server
+    PUBLIC
+      arango_enterprise_audit
+      arango_enterprise_storage_engine
+      arango_enterprise_rest_handler)
+endif()
 
 target_include_directories(arango_general_server PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"

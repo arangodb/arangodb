@@ -434,6 +434,17 @@ class Methods {
   futures::Future<Result> performIntermediateCommitIfRequired(
       DataSourceId collectionId);
 
+  // Check that the current user may access the given collection in the
+  // requested mode. This closes the gap for operations that run within an
+  // already existing transaction and target a collection that was not declared
+  // when the transaction was started: on a coordinator such a collection is
+  // never added at runtime, and on a DB server it is only added lazily in
+  // superuser context, where the permission check is a no-op. It is a no-op for
+  // collections that are already declared members of the transaction (they were
+  // permission-checked when they were added).
+  Result checkCollectionPermission(std::string const& collectionName,
+                                   AccessMode::Type accessType);
+
   futures::Future<OperationResult> documentCoordinator(
       std::string const& collectionName, VPackSlice value,
       OperationOptions options, MethodsApi api);

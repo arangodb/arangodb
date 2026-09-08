@@ -32,6 +32,7 @@
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
 #include "Aql/Quantifier.h"
+#include "Aql/TypedAstNodes.h"
 #include "Aql/Query.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
@@ -114,30 +115,58 @@ AstNodeType buildSingleComparatorType(AstNode const* condition) {
   return type;
 }
 
+/// @brief replace all references to the expansion's CURRENT variable with the
+/// traversal's temporary variable, so that the expression can be evaluated for
+/// a single edge/vertex instead of the whole path
+AstNode* replaceIteratorReference(AstNode* node, Variable const* iteratorVar,
+                                  AstNode* tmpVar) {
+  auto func = [&](AstNode* n) -> AstNode* {
+    if (n->type == NODE_TYPE_REFERENCE || n->type == NODE_TYPE_VARIABLE) {
+      if (static_cast<Variable const*>(n->getData()) == iteratorVar) {
+        return tmpVar;
+      }
+    }
+    return n;
+  };
+  return Ast::traverseAndModify(node, func);
+}
+
 AstNode* buildExpansionReplacement(Ast* ast, AstNode const* condition,
                                    AstNode* tmpVar) {
   AstNodeType type = buildSingleComparatorType(condition);
 
-  auto replaceReference = [&tmpVar](AstNode* node) -> AstNode* {
-    if (node->type == NODE_TYPE_REFERENCE) {
-      return tmpVar;
-    }
-    return node;
-  };
-
-  // Now we need to traverse down and replace the reference
-  auto lhs = condition->getMemberUnchecked(0);
-  auto rhs = condition->getMemberUnchecked(1);
   // We can only optimize if path.edges[*] is on the left hand side
-  TRI_ASSERT(lhs->type == NODE_TYPE_EXPANSION);
-  TRI_ASSERT(lhs->numMembers() >= 2);
-  // This is the part appended to each element in the expansion.
-  lhs = lhs->getMemberUnchecked(1);
+  ast::ExpansionNode expansion{condition->getMemberUnchecked(0)};
+  auto rhs = condition->getMemberUnchecked(1);
 
-  // We have to take the return-value if LHS already is the refence.
-  // otherwise the point will not be relocated.
-  lhs = Ast::traverseAndModify(lhs, replaceReference);
-  return ast->createNodeBinaryOperator(type, lhs, rhs);
+  Variable const* iteratorVar = expansion.getIterator().getVariable();
+
+  // This is the part appended to each element in the expansion. We work on a
+  // copy, the expansion itself is left alone.
+  AstNode* lhs = replaceIteratorReference(expansion.getExpression()->clone(ast),
+                                          iteratorVar, tmpVar);
+  AstNode* result = ast->createNodeBinaryOperator(type, lhs, rhs);
+
+  AstNode const* filter = expansion.getFilter();
+  if (filter->type != NODE_TYPE_NOP) {
+    // An inline FILTER restricts the quantifier to those elements that
+    // satisfy it:
+    //   p.edges[* FILTER B(CURRENT)].attr ALL op y
+    // means "for every edge with B(edge): edge.attr op y", which per edge is
+    //   !B(edge) || edge.attr op y
+    // For NONE the comparator has already been negated above, so the same
+    // implication holds.
+    AstNode* filterExpression = replaceIteratorReference(
+        ast::ArrayFilterNode{filter}.getFilter()->clone(ast), iteratorVar,
+        tmpVar);
+    result = ast->createNodeBinaryOperator(
+        NODE_TYPE_OPERATOR_BINARY_OR,
+        ast->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT,
+                                     filterExpression),
+        result);
+  }
+
+  return result;
 }
 
 bool isSupportedNode(Ast const* ast, Variable const* pathVar,
@@ -266,6 +295,40 @@ bool isSupportedNode(Ast const* ast, Variable const* pathVar,
   }
 }
 
+/// @brief check whether the inline FILTER of an expansion (an ARRAY_FILTER
+/// node) can be pulled into the traversal
+bool isSupportedInlineFilter(Ast const* ast, Variable const* pathVar,
+                             AstNode const* filter) {
+  ast::ArrayFilterNode arrayFilter{filter};
+  // an ARRAY_FILTER carries (quantifier, filter expression). we only support
+  // the plain `[* FILTER ...]` form, i.e. without an own quantifier
+  if (arrayFilter.getQuantifier()->type != NODE_TYPE_NOP) {
+    return false;
+  }
+  bool supported = true;
+  Ast::traverseReadOnly(
+      arrayFilter.getFilter(),
+      [&](AstNode const* n) -> bool {
+        if (!supported) {
+          return false;
+        }
+        if (!isSupportedNode(ast, pathVar, n)) {
+          supported = false;
+          return false;
+        }
+        // the filter is evaluated per edge/vertex, so it must not look at the
+        // path itself
+        if ((n->type == NODE_TYPE_REFERENCE || n->type == NODE_TYPE_VARIABLE) &&
+            static_cast<Variable const*>(n->getData()) == pathVar) {
+          supported = false;
+          return false;
+        }
+        return true;
+      },
+      [](AstNode const*) {});
+  return supported;
+}
+
 bool checkPathVariableAccessFeasible(Ast* ast, ExecutionPlan* plan,
                                      AstNode* parent, size_t testIndex,
                                      TraversalNode* tn, Variable const* pathVar,
@@ -304,6 +367,15 @@ bool checkPathVariableAccessFeasible(Ast* ast, ExecutionPlan* plan,
     }
     if (!isSupportedNode(ast, pathVar, n)) {
       notSupported = true;
+      return false;
+    }
+    if (n->type == NODE_TYPE_ARRAY_FILTER) {
+      // the inline FILTER of an expansion is validated as a whole here, and
+      // then skipped, so that the pattern matcher below cannot mistake an
+      // expansion nested inside it for the path access itself
+      if (!isSupportedInlineFilter(ast, pathVar, n)) {
+        notSupported = true;
+      }
       return false;
     }
     return true;
@@ -390,13 +462,15 @@ bool checkPathVariableAccessFeasible(Ast* ast, ExecutionPlan* plan,
           return node;
         }
         if (node->type == NODE_TYPE_EXPANSION) {
-          // Check that the expansion [*] contains no inline expression;
+          // Check that the expansion [*] contains no inline LIMIT or RETURN;
           // members 2, 3 and 4 correspond to FILTER, LIMIT and RETURN,
-          // respectively.
-          TRI_ASSERT(node->numMembers() == 5);
-          if (node->getMemberUnchecked(2)->type != NODE_TYPE_NOP ||
-              node->getMemberUnchecked(3)->type != NODE_TYPE_NOP ||
-              node->getMemberUnchecked(4)->type != NODE_TYPE_NOP) {
+          // respectively. An inline FILTER (member 2) is supported and turned
+          // into an implication per edge/vertex, see
+          // buildExpansionReplacement(). It has already been validated (and
+          // skipped) by the supportedGuard.
+          ast::ExpansionNode expansion{node};
+          if (expansion.getLimit()->type != NODE_TYPE_NOP ||
+              expansion.getProjection()->type != NODE_TYPE_NOP) {
             notSupported = true;
             return node;
           }
@@ -413,8 +487,11 @@ bool checkPathVariableAccessFeasible(Ast* ast, ExecutionPlan* plan,
         if (node->type == NODE_TYPE_QUANTIFIER) {
           // We are in array case. We need to wait for a quantifier
           // This means we have path.edges[*] on the right hand side
-          if (Quantifier::isAny(node)) {
-            // Nono optimize for ANY
+          ast::QuantifierNode quantifier{node};
+          if (quantifier.isAny() || quantifier.isAtLeast()) {
+            // No optimization for ANY and AT LEAST: both would need to count
+            // matches over the whole path, which a per-edge condition cannot
+            // express.
             notSupported = true;
             return node;
           }

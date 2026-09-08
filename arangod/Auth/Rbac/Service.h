@@ -41,8 +41,7 @@ struct Service {
   // Virtual so that tests (in particular the RBAC auth-mode tests) can inject a
   // mock Service. The base implementation fails closed; see Service.cpp.
   virtual auto check(JwtToken const& token,
-                     std::span<ActionResource const> queries) noexcept
-      -> Result;
+                     std::span<ActionResource const> queries) -> Result;
 };
 
 }  // namespace arangodb::rbac

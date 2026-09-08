@@ -69,6 +69,7 @@ function authorizationQuestionsSuite () {
       beginObserve();
       arango.GET_RAW(`/_api/collection/${cn}/count`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "UseCollection db=_system name=UnitTestsAuthzQuestions level=read"
       ], endObserve());
@@ -78,6 +79,7 @@ function authorizationQuestionsSuite () {
       beginObserve();
       arango.POST_RAW(`/_api/document/${cn}`, { value: 1 });
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "IsReadOnly",
         "UseCollection db=_system name=UnitTestsAuthzQuestions level=writedata",
@@ -94,6 +96,7 @@ function authorizationQuestionsSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_api/collection/${cn}`);
       assertPermissions([
+        "UseApiVersion version=0",
         "UseDatabase name=_system level=read",
         "IsReadOnly",
         "DropCollection db=_system name=UnitTestsAuthzQuestions",
@@ -109,7 +112,9 @@ function authorizationQuestionsSuite () {
     },
 
     // a handler that asks nothing beyond the database access every request
-    // checks - proves the observer does not pick up ambient traffic
+    // checks - proves the observer does not pick up ambient traffic.
+    // RestVersionHandler exempts the default API version from the api-version
+    // question, so not even that one shows up here (see api-version.js).
     testVersion: function () {
       beginObserve();
       arango.GET_RAW('/_api/version');

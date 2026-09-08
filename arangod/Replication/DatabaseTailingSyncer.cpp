@@ -31,7 +31,6 @@
 #include "Basics/system-functions.h"
 #include "Logger/Logger.h"
 #include "Replication/DatabaseInitialSyncer.h"
-#include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/ReplicationMetricsFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
@@ -58,11 +57,8 @@ constexpr std::string_view cuidRef("cuid");
 }
 
 DatabaseTailingSyncer::DatabaseTailingSyncer(
-    TRI_vocbase_t& vocbase,
-    ReplicationApplierConfiguration const& configuration,
-    TRI_voc_tick_t initialTick, bool useTick)
-    : TailingSyncer(vocbase.replicationApplier(), configuration, initialTick,
-                    useTick),
+    TRI_vocbase_t& vocbase, ReplicationSyncConfiguration const& configuration)
+    : TailingSyncer(configuration),
       _vocbase(&vocbase),
       _toTick(0),
       _lastCancellationCheck(std::chrono::steady_clock::now()),
@@ -76,28 +72,15 @@ DatabaseTailingSyncer::DatabaseTailingSyncer(
 }
 
 std::shared_ptr<DatabaseTailingSyncer> DatabaseTailingSyncer::create(
-    TRI_vocbase_t& vocbase,
-    ReplicationApplierConfiguration const& configuration,
-    TRI_voc_tick_t initialTick, bool useTick) {
+    TRI_vocbase_t& vocbase, ReplicationSyncConfiguration const& configuration) {
   // enable make_shared on a class with a private constructor
   struct Enabler final : public DatabaseTailingSyncer {
     Enabler(TRI_vocbase_t& vocbase,
-            ReplicationApplierConfiguration const& configuration,
-            TRI_voc_tick_t initialTick, bool useTick)
-        : DatabaseTailingSyncer(vocbase, configuration, initialTick, useTick) {}
+            ReplicationSyncConfiguration const& configuration)
+        : DatabaseTailingSyncer(vocbase, configuration) {}
   };
 
-  return std::make_shared<Enabler>(vocbase, configuration, initialTick,
-                                   useTick);
-}
-
-/// @brief save the current applier state
-Result DatabaseTailingSyncer::saveApplierState() {
-  auto rv = _applier->persistStateResult(false);
-  if (rv.fail()) {
-    THROW_ARANGO_EXCEPTION(rv);
-  }
-  return rv;
+  return std::make_shared<Enabler>(vocbase, configuration);
 }
 
 Result DatabaseTailingSyncer::syncCollectionCatchup(
@@ -301,7 +284,6 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
 
   setAborted(false);
 
-  TRI_ASSERT(!_state.isChildSyncer);
   TRI_ASSERT(!_state.leader.endpoint.empty());
 
   Result r;
@@ -311,8 +293,7 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
     // normally
     TRI_ASSERT(false);
 
-    r = _state.leader.getState(_state.connection,
-                               /*_state.isChildSyncer*/ false, context.c_str());
+    r = _state.leader.getState(_state.connection, context.c_str());
     if (r.fail()) {
       return r;
     }
@@ -328,7 +309,7 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
   TRI_ASSERT(_state.leader.version() > 0);
 
   // print extra info for debugging
-  _state.applier._verbose = true;
+  _state.config._verbose = true;
   // we do not want to apply rename, create and drop collection operations
   _ignoreRenameCreateDrop = true;
 
@@ -356,7 +337,7 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
   std::string baseUrl =
       absl::StrCat(tailingBaseUrl("tail"),
                    "collection=", StringUtils::urlEncode(collectionName),
-                   "&chunkSize=", _state.applier._chunkSize,
+                   "&chunkSize=", _state.config._chunkSize,
                    "&serverId=", _state.localServerIdString);
 
   if (syncerId().value > 0) {
@@ -575,7 +556,7 @@ bool DatabaseTailingSyncer::skipMarker(VPackSlice slice) {
     try {
       VPackBuilder inventoryResponse;
 
-      auto syncer = DatabaseInitialSyncer::create(*_vocbase, _state.applier);
+      auto syncer = DatabaseInitialSyncer::create(*_vocbase, _state.config);
       Result res = syncer->getInventory(inventoryResponse);
       _queriedTranslations = true;
       if (res.fail()) {

@@ -22,15 +22,17 @@
 
 #pragma once
 
+#include "Ssl/AuthInfo.h"
 #include "Basics/LruCache.h"
 #include "Basics/ReadWriteLock.h"
-#include "Basics/Result.h"
+#include "Basics/Guarded.h"
 #include "Cluster/ServerState.h"
 #include "Rest/CommonDefines.h"
 
 #include <atomic>
 #include <memory>
 #include <mutex>
+#include <shared_mutex>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -98,29 +100,21 @@ class TokenCache {
   void invalidateBasicCache();
 
   /// set new jwt secret(s), regenerate _jwtToken
-  void setJwtSecrets(std::string active, std::vector<std::string> passive,
-                     bool isES256);
+  void setJwtSecrets(AuthInfo secrets);
 
   /// Get the jwt token, which should be used for communication
-  std::string const& jwtToken() const noexcept;
+  std::string jwtToken() const noexcept;
 
-  std::string jwtSecret() const;
+  auth::AuthKey jwtSecret() const;
 
  private:
   /// Check basic HTTP Authentication header
   TokenCache::Entry checkAuthenticationBasic(std::string const& secret);
   /// Check JWT token contents
   TokenCache::Entry checkAuthenticationJWT(std::string const& secret);
-  /// Check JWT token contents and return full token string
-  TokenCache::Entry checkAuthenticationJWT(std::string const& secret,
-                                           std::string const& fullToken);
 
   bool validateJwtHeader(std::string_view headerWebBase64, bool& isES256);
   TokenCache::Entry validateJwtBody(std::string_view bodyWebBase64);
-  bool validateJwtHMAC256Signature(std::string_view message,
-                                   std::string_view signatureWebBase64);
-  bool validateJwtES256Signature(std::string_view message,
-                                 std::string_view signatureWebBase64);
 
   std::shared_ptr<velocypack::Builder> parseJson(std::string_view str,
                                                  char const* hint);
@@ -135,15 +129,13 @@ class TokenCache {
   std::unordered_map<std::string, TokenCache::Entry> _basicCache;
   std::atomic<uint64_t> _basicCacheVersion{0};
 
-  mutable arangodb::basics::ReadWriteLock _jwtSecretLock;
-
-  std::vector<std::string> _jwtPassiveSecrets;
-  std::string _jwtActiveSecret;
-  bool _jwtActiveSecretIsES256{false};  /// true if active secret is ES256 key
-  std::string _jwtSuperToken;           /// token for internal use
+  Guarded<AuthInfo> _jwtSecrets;
+  mutable std::shared_mutex _jwtSuperTokenLock;
+  std::string _jwtSuperToken;  /// token for internal use
 
   mutable std::mutex _jwtCacheMutex;
   arangodb::basics::LruCache<std::string, TokenCache::Entry> _jwtCache;
+  std::atomic<uint64_t> _jwtCacheVersion{0};
 
   /// Timeout in seconds
   double const _authTimeout;
