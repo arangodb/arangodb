@@ -795,7 +795,7 @@ void V8ClientConnection::connectHandle(
   // check if we have a connection for that endpoint in our cache
   auto it = _connectionCache.find(handle);
   auto iit = _connectionBuilderCache.find(handle);
-  if (it != _connectionCache.end()) {
+  if (it != _connectionCache.end() && iit != _connectionBuilderCache.end()) {
     // cache hit. remove the connection from the cache and return it!
     std::shared_ptr<fu::Connection> oldConnection;
     std::string oldConnectionId = _currentConnectionId;
