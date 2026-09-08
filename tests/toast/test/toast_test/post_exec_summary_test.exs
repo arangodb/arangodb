@@ -239,11 +239,12 @@ defmodule ToastTest.Formatting.PostExecSummaryTest do
 
   test "prints startup timeout with aborted servers, log paths, and coredump paths" do
     issue = %{
-      type: :timeout,
+      type: :infrastructure,
       scope: :suite,
       confidence: :high,
       detail: %{
-        source: :startup_timeout,
+        subtype: :timeout,
+        source: :startup,
         reason: "Startup timeout — deployment did not become ready in time",
         timestamp: ~U[2026-03-09 10:05:00Z],
         servers: [
@@ -271,7 +272,7 @@ defmodule ToastTest.Formatting.PostExecSummaryTest do
 
     output = capture_io(fn -> PostExecSummary.print(suite_result([issue])) end)
 
-    assert output =~ "TIMEOUTS (1)"
+    assert output =~ "INFRASTRUCTURE ISSUES (1)"
     assert output =~ "[Startup Timeout]"
     assert output =~ "Startup timeout"
     assert output =~ "Aborted 3 servers:"
@@ -290,11 +291,12 @@ defmodule ToastTest.Formatting.PostExecSummaryTest do
 
   test "prints test timeout without server list" do
     issue = %{
-      type: :timeout,
+      type: :infrastructure,
       scope: :suite,
       confidence: :high,
       detail: %{
-        source: :test_timeout,
+        subtype: :timeout,
+        source: :suite,
         reason: "Suite timeout exceeded",
         timestamp: ~U[2026-03-09 10:05:00Z],
         servers: []
@@ -303,18 +305,19 @@ defmodule ToastTest.Formatting.PostExecSummaryTest do
 
     output = capture_io(fn -> PostExecSummary.print(suite_result([issue])) end)
 
-    assert output =~ "[Test Timeout]"
+    assert output =~ "[Suite Timeout]"
     assert output =~ "Suite timeout exceeded"
     refute output =~ "Aborted"
   end
 
   test "prints shutdown timeout with escalated server" do
     issue = %{
-      type: :timeout,
+      type: :infrastructure,
       scope: :suite,
       confidence: :high,
       detail: %{
-        source: :shutdown_timeout,
+        subtype: :timeout,
+        source: :shutdown,
         reason: "Shutdown timeout — server(s) did not respond to SIGTERM",
         timestamp: ~U[2026-03-09 10:05:00Z],
         servers: [
@@ -330,17 +333,18 @@ defmodule ToastTest.Formatting.PostExecSummaryTest do
     assert output =~ "single (PID 12345)"
   end
 
-  test "orders sections by severity with timeouts last" do
+  test "orders sections by severity with infrastructure last" do
     issues = [
       crash_issue_with_coredump(),
       test_failure_issue(),
       sanitizer_issue(),
       %{
-        type: :timeout,
+        type: :infrastructure,
         scope: :suite,
         confidence: :high,
         detail: %{
-          source: :test_timeout,
+          subtype: :timeout,
+          source: :suite,
           reason: "Suite timeout exceeded",
           timestamp: ~U[2026-03-09 10:05:00Z],
           servers: []
@@ -356,11 +360,11 @@ defmodule ToastTest.Formatting.PostExecSummaryTest do
     failure_pos = :binary.match(output, "TEST FAILURES") |> elem(0)
     sanitizer_pos = :binary.match(output, "SANITIZER REPORTS") |> elem(0)
     crash_pos = :binary.match(output, "CRASHES") |> elem(0)
-    timeout_pos = :binary.match(output, "TIMEOUTS") |> elem(0)
+    infra_pos = :binary.match(output, "INFRASTRUCTURE ISSUES") |> elem(0)
 
     assert failure_pos < sanitizer_pos
     assert sanitizer_pos < crash_pos
-    assert crash_pos < timeout_pos
+    assert crash_pos < infra_pos
   end
 
   test "formats scope attribution" do

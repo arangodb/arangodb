@@ -30,7 +30,9 @@ defmodule Mix.Tasks.Toast.Analyze.DataTest do
     test "returns bare type string" do
       assert Data.format_type(%{type: :crash, detail: %{server: "dbserver1"}}) == "crash"
       assert Data.format_type(%{type: :test_failure, detail: %{}}) == "test_failure"
-      assert Data.format_type(%{type: :timeout, detail: %{}}) == "timeout"
+
+      assert Data.format_type(%{type: :infrastructure, detail: %{subtype: :timeout}}) ==
+               "infrastructure (timeout)"
     end
 
     test "infrastructure includes subtype" do
@@ -52,19 +54,21 @@ defmodule Mix.Tasks.Toast.Analyze.DataTest do
       assert Data.format_server(issue) == "coordinator1"
     end
 
-    test "timeout issue with single server returns server_id" do
+    test "infrastructure timeout issue with single server returns server_id" do
       issue = %{
-        type: :timeout,
-        detail: %{servers: [%{server_id: "dbserver1"}]}
+        type: :infrastructure,
+        detail: %{subtype: :timeout, source: :startup, servers: [%{server_id: "dbserver1"}]}
       }
 
       assert Data.format_server(issue) == "dbserver1"
     end
 
-    test "timeout issue with multiple servers joins server_ids with comma" do
+    test "infrastructure timeout issue with multiple servers joins server_ids with comma" do
       issue = %{
-        type: :timeout,
+        type: :infrastructure,
         detail: %{
+          subtype: :timeout,
+          source: :startup,
           servers: [
             %{server_id: "coordinator1"},
             %{server_id: "dbserver1"},
@@ -76,10 +80,14 @@ defmodule Mix.Tasks.Toast.Analyze.DataTest do
       assert Data.format_server(issue) == "coordinator1, dbserver1, dbserver2"
     end
 
-    test "timeout issue with empty servers list returns empty string" do
-      # The timeout clause matches on `is_list(servers)` regardless of length,
+    test "infrastructure timeout issue with empty servers list returns empty string" do
+      # The infrastructure clause matches on `is_list(servers)` regardless of length,
       # so Enum.map_join/3 of [] returns "". The em-dash fallback is not reached.
-      issue = %{type: :timeout, detail: %{servers: []}}
+      issue = %{
+        type: :infrastructure,
+        detail: %{subtype: :timeout, source: :startup, servers: []}
+      }
+
       assert Data.format_server(issue) == ""
     end
 
@@ -228,23 +236,29 @@ defmodule Mix.Tasks.Toast.Analyze.DataTest do
     end
   end
 
-  describe "attach_time_bounds via collect_issues/2 — timeout clause" do
-    test "timeout with integer timestamp sets time_bounds to point interval {ts, ts}" do
+  describe "attach_time_bounds via collect_issues/2 — infrastructure timeout clause" do
+    test "infrastructure timeout with integer timestamp sets time_bounds to point interval {ts, ts}" do
       ts = 1_700_000_000_000_000
 
       issue = %{
-        type: :timeout,
-        detail: %{timestamp: ts, source: :test_timeout, reason: "timed out", servers: []}
+        type: :infrastructure,
+        detail: %{
+          timestamp: ts,
+          subtype: :timeout,
+          source: :suite,
+          reason: "timed out",
+          servers: []
+        }
       }
 
       [result] = Data.collect_issues([minimal_result([issue])], [])
       assert result.time_bounds == {ts, ts}
     end
 
-    test "timeout without timestamp falls through to nil clause" do
+    test "infrastructure timeout without timestamp falls through to nil clause" do
       issue = %{
-        type: :timeout,
-        detail: %{source: :test_timeout, reason: "timed out", servers: []}
+        type: :infrastructure,
+        detail: %{subtype: :timeout, source: :suite, reason: "timed out", servers: []}
       }
 
       [result] = Data.collect_issues([minimal_result([issue])], [])

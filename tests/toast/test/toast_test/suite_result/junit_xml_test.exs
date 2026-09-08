@@ -216,11 +216,12 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
   test "suite-scoped timeout appears as synthetic testcase in _infrastructure_ testsuite" do
     issues = [
       %{
-        type: :timeout,
+        type: :infrastructure,
         scope: :suite,
         confidence: :high,
         detail: %{
-          source: "overall",
+          subtype: :timeout,
+          source: :startup,
           reason: "suite exceeded 30 minute limit",
           timestamp: ~U[2026-03-09 10:30:00Z],
           servers: [
@@ -237,7 +238,7 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
 
       xml = read_xml!(dir, "smoke.xml")
       assert xml =~ ~r/<testsuite[^>]*name="_infrastructure_"/
-      assert xml =~ ~r/<testcase[^>]*name="timeout"/
+      assert xml =~ ~r/<testcase[^>]*name="infrastructure: timeout"/
       assert xml =~ "suite exceeded 30 minute limit"
       assert xml =~ "srv-1"
       assert xml =~ "core.9999"
@@ -473,11 +474,12 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
   test "module-scoped timeout appears as synthetic testcase in module testsuite" do
     issues = [
       %{
-        type: :timeout,
+        type: :infrastructure,
         scope: {:module, FakeModule},
         confidence: :high,
         detail: %{
-          source: "module_setup",
+          subtype: :timeout,
+          source: :startup,
           reason: "setup exceeded limit",
           timestamp: ~U[2026-03-09 10:01:00Z],
           servers: [%{server_id: "srv-1", coredump: "/tmp/core.mod"}]
@@ -492,7 +494,7 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
       xml = read_xml!(dir, "smoke.xml")
 
       assert xml =~
-               ~r/<testsuite[^>]*name="FakeModule"[^>]*>.*<testcase[^>]*name="timeout"[^>]*>.*<error message="timeout">.*setup exceeded limit.*<\/error>.*<\/testcase>.*<\/testsuite>/s
+               ~r/<testsuite[^>]*name="FakeModule"[^>]*>.*<testcase[^>]*name="infrastructure: timeout"[^>]*>.*<error message="infrastructure: timeout">.*setup exceeded limit.*<\/error>.*<\/testcase>.*<\/testsuite>/s
 
       assert xml =~ "core.mod"
     end)
@@ -501,11 +503,12 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
   test "test-scoped timeout appears in testcase error element" do
     issues = [
       %{
-        type: :timeout,
+        type: :infrastructure,
         scope: {:test, FakeModule, :"test passes"},
         confidence: :high,
         detail: %{
-          source: "test_execution",
+          subtype: :timeout,
+          source: :suite,
           reason: "test exceeded 5 minute limit",
           timestamp: ~U[2026-03-09 10:05:00Z],
           servers: []
@@ -520,7 +523,7 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
       xml = read_xml!(dir, "smoke.xml")
 
       assert xml =~
-               ~r/<testcase[^>]*name="test passes"[^>]*>\s*<error message="timeout">.*test exceeded 5 minute/s
+               ~r/<testcase[^>]*name="test passes"[^>]*>\s*<error message="infrastructure: timeout">.*test exceeded 5 minute/s
     end)
   end
 
@@ -595,14 +598,15 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
     end)
   end
 
-  test "timeout with empty servers list renders source and reason only" do
+  test "timeout with empty servers list renders subtype and reason only" do
     issues = [
       %{
-        type: :timeout,
+        type: :infrastructure,
         scope: :suite,
         confidence: :high,
         detail: %{
-          source: "overall",
+          subtype: :timeout,
+          source: :global,
           reason: "timed out",
           timestamp: ~U[2026-03-09 10:30:00Z],
           servers: []
@@ -615,17 +619,17 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
       SuiteResult.write_junit_xml(result, dir)
 
       xml = read_xml!(dir, "smoke.xml")
-      assert xml =~ "[Timeout: overall] timed out"
+      assert xml =~ "[Global Timeout] timed out"
     end)
   end
 
-  test "timeout with nil detail fields renders available fields only" do
+  test "infrastructure timeout with nil subtype renders as generic infrastructure issue" do
     issues = [
       %{
-        type: :timeout,
+        type: :infrastructure,
         scope: :suite,
         confidence: :high,
-        detail: %{source: nil, reason: "unknown", servers: nil}
+        detail: %{subtype: :timeout, source: :startup, reason: "unknown", servers: nil}
       }
     ]
 
@@ -634,7 +638,7 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
       SuiteResult.write_junit_xml(result, dir)
 
       xml = read_xml!(dir, "smoke.xml")
-      assert xml =~ "[Timeout: ] unknown"
+      assert xml =~ "[Startup Timeout] unknown"
     end)
   end
 
@@ -726,10 +730,10 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
         detail: %{server: "srv-1", report: "module-level sanitizer"}
       },
       %{
-        type: :timeout,
+        type: :infrastructure,
         scope: :suite,
         confidence: :high,
-        detail: %{source: "overall", reason: "suite-level timeout", servers: []}
+        detail: %{subtype: :timeout, source: :global, reason: "suite-level timeout", servers: []}
       }
     ]
 
@@ -749,7 +753,7 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
 
       # Suite-level: synthetic <testcase> in _infrastructure_ testsuite
       assert xml =~
-               ~r/<testsuite[^>]*name="_infrastructure_"[^>]*>.*<testcase[^>]*name="timeout"[^>]*>.*suite-level timeout.*<\/testsuite>/s
+               ~r/<testsuite[^>]*name="_infrastructure_"[^>]*>.*<testcase[^>]*name="infrastructure: timeout"[^>]*>.*suite-level timeout.*<\/testsuite>/s
     end)
   end
 
