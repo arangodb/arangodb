@@ -96,6 +96,9 @@ class RocksDBTransactionState : public TransactionState {
   [[nodiscard]] virtual RocksDBTransactionMethods* rocksdbMethods(
       DataSourceId collectionId) const = 0;
 
+  Result setTimeTravelWriteTimestamp(DataSourceId collectionId,
+                                     std::uint64_t timestamp) final override;
+
   [[nodiscard]] static RocksDBTransactionState* toState(
       transaction::Methods* trx);
 

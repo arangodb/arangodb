@@ -290,6 +290,18 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 
   virtual bool hasFailedOperations() const noexcept = 0;
 
+  /// @brief record the timestamp at which this transaction's time-travel
+  /// writes into `collectionId` happen. Must be called before the operation
+  /// locks its document key: the engine validates write-write conflicts
+  /// against this timestamp while taking the lock. Only ever called for
+  /// collections with time travel enabled.
+  virtual Result setTimeTravelWriteTimestamp(DataSourceId /*collectionId*/,
+                                             std::uint64_t /*timestamp*/) {
+    TRI_ASSERT(false);
+    return {TRI_ERROR_NOT_IMPLEMENTED,
+            "time travel is not supported by this storage engine"};
+  }
+
   virtual void beginQuery(std::shared_ptr<ResourceMonitor> resourceMonitor,
                           bool /*isModificationQuery*/) {}
   virtual void endQuery(bool /*isModificationQuery*/) noexcept {}

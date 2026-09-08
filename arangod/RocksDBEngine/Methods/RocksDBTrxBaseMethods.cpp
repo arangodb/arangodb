@@ -189,18 +189,32 @@ Result RocksDBTrxBaseMethods::addOperation(
   return {};
 }
 
-Result RocksDBTrxBaseMethods::setCommitTimestamp(uint64_t ts) {
+Result RocksDBTrxBaseMethods::setWriteTimestamp(uint64_t ts) {
   // A rocksdb transaction stamps all its UDT column families with one commit
   // timestamp, so every time-travel write in this transaction must agree on it.
   // (Per-document timestamps would need the WriteBatch per-key timestamp API,
   // which WBWI does not support - out of scope for the PoC.)
-  if (_commitTimestamp.has_value() && _commitTimestamp.value() != ts) {
-    return {TRI_ERROR_BAD_PARAMETER,
-            "all documents written in a single time-travel transaction must "
-            "use the same _created timestamp"};
+  if (_writeTimestamp.has_value()) {
+    if (_writeTimestamp.value() != ts) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              "all documents written in a single time-travel transaction must "
+              "use the same _created timestamp"};
+    }
+    return {};
   }
-  _commitTimestamp = ts;
-  return {};
+  TRI_ASSERT(ts > 0);
+  _writeTimestamp = ts;
+  return rocksutils::convertStatus(applyValidationReadTimestamp());
+}
+
+rocksdb::Status RocksDBTrxBaseMethods::applyValidationReadTimestamp() {
+  TRI_ASSERT(_writeTimestamp.has_value() && _writeTimestamp.value() > 0);
+  TRI_ASSERT(_rocksTransaction != nullptr);
+  // Validation compares against the state as of this timestamp, and rocksdb
+  // requires the commit timestamp to be strictly greater - so the latest
+  // instant we may validate at is the one just before the write.
+  return _rocksTransaction->SetReadTimestampForValidation(
+      _writeTimestamp.value() - 1);
 }
 
 rocksdb::Status RocksDBTrxBaseMethods::Get(rocksdb::ColumnFamilyHandle* cf,
@@ -223,28 +237,15 @@ rocksdb::Status RocksDBTrxBaseMethods::GetForUpdate(
   TRI_ASSERT(_rocksTransaction);
   TRI_ASSERT(_readOptions.snapshot != nullptr ||
              _state->options().avoidSnapshot);
-  // GetForUpdate locks the document key - which, on a UDT (time-travel) column
-  // family, covers every version of that key - and reads the latest version to
-  // check existence. It carries no read timestamp on purpose: the lock always
-  // targets the latest version, which is what serializes writes on a key.
+  // Locks the document key and validates that nothing has modified it since
+  // this transaction's snapshot, which is what stops two concurrent modifiers
+  // from losing each other's update.
   //
-  // Under UDT, RocksDB validates write-write conflicts by timestamp rather than
-  // by snapshot, and a validated GetForUpdate would require a validation read
-  // timestamp strictly below the commit timestamp (coupling it to _created).
-  // We don't want that, so validation is disabled; RocksDB in turn forbids a
-  // snapshot on a non-validating GetForUpdate, so it is dropped here. The
-  // exclusive lock alone provides the write-write conflict protection we need.
-  // TODO(COR-951) - fix validation to ensure we have no lost updates
-  bool const udt = cf->GetComparator()->timestamp_size() > 0;
-  rocksdb::Status s;
-  if (udt) {
-    rocksdb::ReadOptions ro = _readOptions;
-    ro.snapshot = nullptr;
-    s = _rocksTransaction->GetForUpdate(ro, cf, key, val, /*exclusive*/ true,
-                                        /*do_validate*/ false);
-  } else {
-    s = _rocksTransaction->GetForUpdate(_readOptions, cf, key, val);
-  }
+  // On a UDT (time-travel) family the lock covers every version of the key, and
+  // rocksdb additionally refuses to validate without a read timestamp - which
+  // setWriteTimestamp() must therefore have supplied before we get here.
+  rocksdb::Status s =
+      _rocksTransaction->GetForUpdate(_readOptions, cf, key, val);
   if (s.ok()) {
     _memoryTracker.increaseMemoryUsage(
         lockOverhead(!_state->isOnlyExclusiveTransaction(), key.size()));
@@ -451,6 +452,15 @@ void RocksDBTrxBaseMethods::createTransaction() {
               _rocksTransaction->GetNumKeys() == 0));
   rocksdb::WriteOptions wo;
   _rocksTransaction = _db->BeginTransaction(wo, trxOpts, _rocksTransaction);
+
+  if (_writeTimestamp.has_value()) {
+    // an intermediate commit replaced the transaction object the setting lives
+    // on, so the remaining time-travel writes need it applied again
+    auto s = applyValidationReadTimestamp();
+    ADB_PROD_ASSERT(s.ok()) << "failed to restore the time-travel validation "
+                               "read timestamp: "
+                            << s.ToString();
+  }
 }
 
 Result RocksDBTrxBaseMethods::doCommit() {
@@ -553,9 +563,9 @@ Result RocksDBTrxBaseMethods::doCommitImpl() {
   // Time travel: stamp the commit timestamp onto every User-Defined Timestamp
   // column family this transaction wrote to (the write timestamp = the
   // document's _created). Non-UDT families are left untouched by RocksDB.
-  if (_commitTimestamp.has_value()) {
+  if (_writeTimestamp.has_value()) {
     rocksdb::Status ts =
-        _rocksTransaction->SetCommitTimestamp(*_commitTimestamp);
+        _rocksTransaction->SetCommitTimestamp(*_writeTimestamp);
     if (!ts.ok()) {
       return rocksutils::convertStatus(ts);
     }

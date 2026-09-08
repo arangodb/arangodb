@@ -25,17 +25,12 @@
 #include <rocksdb/db.h>
 
 #include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
-#include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
-#include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/StorageEngineDataTest.h"
 #include "RocksDBEngine/StorageEngineDocumentTest.h"
 #include "RocksDBEngine/StorageEngineFixture.h"
@@ -224,36 +219,6 @@ TEST_F(StorageEngineDocumentTest,
   EXPECT_EQ(slice.get(StaticStrings::Created).getNumber<uint64_t>(), 1000u);
 }
 
-// Proves the primary-index entry was actually written at the UDT timestamp T1
-// (not merely "some timestamp"): a raw Get on the PrimaryIndex_TT family finds
-// the entry at and after T1 but not strictly before it. Point-in-time reads
-// through the engine arrive with COR-652.
-TEST_F(TimeTravelStorageEngineDocumentTest,
-       PrimaryIndexEntryLivesAtCreatedTimestamp) {
-  constexpr uint64_t T1 = 1000;
-  ASSERT_TRUE(insertR(createdDoc("k1", 42, T1).slice()).ok());
-
-  auto* index = toRocksDBCollection(_collection->getPhysical())->primaryIndex();
-  RocksDBKey key;
-  key.constructPrimaryIndexValue(index->objectId(), "k1");
-
-  rocksdb::ColumnFamilyHandle* cf = RocksDBColumnFamilyManager::get(
-      RocksDBColumnFamilyManager::Family::PrimaryIndex_TT);
-
-  auto getAt = [&](uint64_t ts) {
-    std::string tsBuf;
-    rocksdb::Slice tsSlice = rocksdb::EncodeU64Ts(ts, &tsBuf);
-    rocksdb::ReadOptions ro;
-    ro.timestamp = &tsSlice;
-    rocksdb::PinnableSlice val;
-    return engine().db()->Get(ro, cf, key.string(), &val);
-  };
-
-  EXPECT_TRUE(getAt(T1).ok());
-  EXPECT_TRUE(getAt(T1 + 1000).ok());
-  EXPECT_TRUE(getAt(T1 - 1).IsNotFound());
-}
-
 // A rocksdb transaction commits its UDT families with a single timestamp, so
 // two documents written in one transaction with different _created values
 // cannot both be honored - the second write is rejected.
@@ -300,100 +265,7 @@ TEST_F(TimeTravelStorageEngineDocumentTest,
   EXPECT_EQ(b.slice().get(StaticStrings::Created).getNumber<uint64_t>(), 1000u);
 }
 
-namespace {
-
-// Writes an additional version of an existing document straight through
-// rocksdb: a new Documents entry under a fresh LocalDocumentId, plus a primary
-// index entry for the same _key committed at `created`. This is what an update
-// on a time-travel collection will do once COR-651 lands; until then it is the
-// only way to get several versions of one key, which is exactly what
-// point-in-time reads exist to tell apart.
-void writeRawVersion(RocksDBEngine& engine, LogicalCollection& collection,
-                     std::string_view key, int value, uint64_t created) {
-  auto* physical = toRocksDBCollection(collection.getPhysical());
-  auto* index = physical->primaryIndex();
-  auto* documentsCf = RocksDBColumnFamilyManager::get(
-      RocksDBColumnFamilyManager::Family::Documents);
-  auto* indexCf = RocksDBColumnFamilyManager::get(
-      RocksDBColumnFamilyManager::Family::PrimaryIndex_TT);
-
-  // Resolve the newest version so the new one can inherit the immutable system
-  // attributes (_key, _id) byte for byte - _id is a Custom slice that cannot be
-  // rebuilt from a document read back through the engine.
-  RocksDBKey indexKey;
-  indexKey.constructPrimaryIndexValue(index->objectId(), key);
-  rocksdb::Slice latest = rocksdb::MaxU64Ts();
-  rocksdb::ReadOptions indexReadOptions;
-  indexReadOptions.timestamp = &latest;
-  rocksdb::PinnableSlice indexValue;
-  ASSERT_TRUE(
-      engine.db()
-          ->Get(indexReadOptions, indexCf, indexKey.string(), &indexValue)
-          .ok());
-
-  RocksDBKey previousDocumentKey;
-  previousDocumentKey.constructDocument(physical->objectId(),
-                                        RocksDBValue::documentId(indexValue));
-  rocksdb::PinnableSlice previousBody;
-  ASSERT_TRUE(engine.db()
-                  ->Get(rocksdb::ReadOptions{}, documentsCf,
-                        previousDocumentKey.string(), &previousBody)
-                  .ok());
-
-  RevisionId revision = collection.newRevisionId();
-  LocalDocumentId documentId = LocalDocumentId::create(revision);
-
-  char ridBuffer[basics::maxUInt64StringSize];
-  VPackBuilder body;
-  body.openObject();
-  VPackSlice previous{reinterpret_cast<uint8_t const*>(previousBody.data())};
-  for (auto it : VPackObjectIterator(previous, true)) {
-    auto name = it.key.stringView();
-    if (name == StaticStrings::RevString) {
-      body.add(name, revision.toValuePair(ridBuffer));
-    } else if (name == StaticStrings::Created) {
-      body.add(name, VPackValue(created));
-    } else if (name == "value") {
-      body.add(name, VPackValue(value));
-    } else {
-      body.add(name, it.value);
-    }
-  }
-  body.close();
-
-  RocksDBKey documentKey;
-  documentKey.constructDocument(physical->objectId(), documentId);
-  auto entry = RocksDBValue::PrimaryIndexValue(documentId, revision);
-
-  std::unique_ptr<rocksdb::Transaction> trx{
-      engine.db()->BeginTransaction(rocksdb::WriteOptions{})};
-  ASSERT_TRUE(trx->Put(documentsCf, documentKey.string(),
-                       rocksdb::Slice(body.slice().startAs<char>(),
-                                      body.slice().byteSize()))
-                  .ok());
-  ASSERT_TRUE(trx->Put(indexCf, indexKey.string(), entry.string()).ok());
-  ASSERT_TRUE(trx->SetCommitTimestamp(created).ok());
-  ASSERT_TRUE(trx->Commit().ok());
-}
-
-}  // namespace
-
 // ================ point-in-time reads ================
-
-TEST_F(TimeTravelStorageEngineDocumentTest,
-       ReadBeforeCreatedTimestampFindsNothing) {
-  constexpr uint64_t T1 = 1000;
-  ASSERT_TRUE(insertR(createdDoc("k1", 1, T1).slice()).ok());
-
-  auto before = readAt("k1", T1 - 1);
-  ASSERT_TRUE(before.fail());
-  EXPECT_EQ(before.errorNumber(), TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)
-      << before.errorMessage();
-
-  auto at = readAt("k1", T1);
-  ASSERT_TRUE(at.ok()) << at.errorMessage();
-  EXPECT_EQ(at.slice().get("value").getNumber<int>(), 1);
-}
 
 // Keys have independent timelines: a read at T1 sees the key created then and
 // not the one created later, even though both live in the same collection.
@@ -417,16 +289,14 @@ TEST_F(TimeTravelStorageEngineDocumentTest,
        ReadWithoutTimestampSeesNewestVersion) {
   constexpr uint64_t T1 = 1000;
   constexpr uint64_t T2 = 2000;
-  constexpr uint64_t T3 = 3000;
 
   ASSERT_TRUE(insertR(createdDoc("k1", 1, T1).slice()).ok());
-  writeRawVersion(engine(), *_collection, "k1", 2, T2);
-  writeRawVersion(engine(), *_collection, "k1", 3, T3);
+  ASSERT_TRUE(updateR(createdDoc("k1", 2, T2).slice()).ok());
 
   auto res = read("k1");
   ASSERT_TRUE(res.ok()) << res.errorMessage();
-  EXPECT_EQ(res.slice().get("value").getNumber<int>(), 3);
-  EXPECT_EQ(res.slice().get(StaticStrings::Created).getNumber<uint64_t>(), T3);
+  EXPECT_EQ(res.slice().get("value").getNumber<int>(), 2);
+  EXPECT_EQ(res.slice().get(StaticStrings::Created).getNumber<uint64_t>(), T2);
   EXPECT_TRUE(res.slice().get(StaticStrings::Expired).isNull());
 }
 
@@ -478,7 +348,8 @@ TEST_F(StorageEngineDocumentTest, ReadTimestampIsInertOnPlainCollection) {
 
 // The core of point-in-time reading: one _key with three versions, each read
 // back at its own timestamp. Every read must resolve the primary index to a
-// *different* LocalDocumentId and materialize the matching document body.
+// *different* LocalDocumentId and materialize the matching document body,
+// validity interval included.
 TEST_F(TimeTravelStorageEngineDocumentTest,
        ReadResolvesTheVersionLiveAtEachTimestamp) {
   constexpr uint64_t T1 = 1000;
@@ -486,8 +357,8 @@ TEST_F(TimeTravelStorageEngineDocumentTest,
   constexpr uint64_t T3 = 3000;
 
   ASSERT_TRUE(insertR(createdDoc("k1", 1, T1).slice()).ok());
-  writeRawVersion(engine(), *_collection, "k1", 2, T2);
-  writeRawVersion(engine(), *_collection, "k1", 3, T3);
+  ASSERT_TRUE(updateR(createdDoc("k1", 2, T2).slice()).ok());
+  ASSERT_TRUE(updateR(createdDoc("k1", 3, T3).slice()).ok());
 
   auto versionAt = [&](uint64_t ts) {
     auto res = readAt("k1", ts);
@@ -495,18 +366,22 @@ TEST_F(TimeTravelStorageEngineDocumentTest,
     return res;
   };
 
-  // each timestamp sees the version created then, with its own _created stamp
+  // each timestamp sees the version live then, carrying the validity interval
+  // it was written with: created at its own timestamp, expired by its successor
   auto v1 = versionAt(T1);
   EXPECT_EQ(v1.slice().get("value").getNumber<int>(), 1);
   EXPECT_EQ(v1.slice().get(StaticStrings::Created).getNumber<uint64_t>(), T1);
+  EXPECT_EQ(v1.slice().get(StaticStrings::Expired).getNumber<uint64_t>(), T2);
 
   auto v2 = versionAt(T2);
   EXPECT_EQ(v2.slice().get("value").getNumber<int>(), 2);
   EXPECT_EQ(v2.slice().get(StaticStrings::Created).getNumber<uint64_t>(), T2);
+  EXPECT_EQ(v2.slice().get(StaticStrings::Expired).getNumber<uint64_t>(), T3);
 
   auto v3 = versionAt(T3);
   EXPECT_EQ(v3.slice().get("value").getNumber<int>(), 3);
   EXPECT_EQ(v3.slice().get(StaticStrings::Created).getNumber<uint64_t>(), T3);
+  EXPECT_TRUE(v3.slice().get(StaticStrings::Expired).isNull());
 
   // a version stays live until the next one supersedes it
   EXPECT_EQ(versionAt(T2 - 1).slice().get("value").getNumber<int>(), 1);
@@ -514,11 +389,252 @@ TEST_F(TimeTravelStorageEngineDocumentTest,
   EXPECT_EQ(versionAt(T3 + 1000).slice().get("value").getNumber<int>(), 3);
 
   // nothing at all exists before the first version
-  EXPECT_TRUE(readAt("k1", T1 - 1).fail());
+  auto before = readAt("k1", T1 - 1);
+  ASSERT_TRUE(before.fail());
+  EXPECT_EQ(before.errorNumber(), TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)
+      << before.errorMessage();
 
   // every version resolved to its own document, none of them shared
   EXPECT_NE(v1.slice().get(StaticStrings::RevString).stringView(),
             v2.slice().get(StaticStrings::RevString).stringView());
   EXPECT_NE(v2.slice().get(StaticStrings::RevString).stringView(),
             v3.slice().get(StaticStrings::RevString).stringView());
+}
+
+// ================ update / replace with custom _created ================
+
+// Replace versions exactly like update (see
+// ReadResolvesTheVersionLiveAtEachTimestamp); only the merge semantics for the
+// body differ, so it needs its own proof that the previous version survives.
+TEST_F(TimeTravelStorageEngineDocumentTest,
+       ReplaceRetainsPreviousVersionAndStampsExpired) {
+  constexpr uint64_t T1 = 1000;
+  constexpr uint64_t T2 = 2000;
+
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, T1).slice()).ok());
+  auto rep = replaceR(createdDoc("k1", 2, T2).slice());
+  ASSERT_TRUE(rep.ok()) << rep.errorMessage();
+
+  auto before = readAt("k1", T1);
+  ASSERT_TRUE(before.ok()) << before.errorMessage();
+  EXPECT_EQ(before.slice().get("value").getNumber<int>(), 1);
+  EXPECT_EQ(before.slice().get(StaticStrings::Expired).getNumber<uint64_t>(),
+            T2);
+
+  auto after = readAt("k1", T2);
+  ASSERT_TRUE(after.ok()) << after.errorMessage();
+  EXPECT_EQ(after.slice().get("value").getNumber<int>(), 2);
+  EXPECT_TRUE(after.slice().get(StaticStrings::Expired).isNull());
+}
+
+// The new version must not inherit the previous version's _created, which the
+// merge would otherwise carry over as an ordinary attribute.
+TEST_F(TimeTravelStorageEngineDocumentTest, UpdateWithoutCreatedIsRejected) {
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, 1000).slice()).ok());
+
+  auto upd = updateR(keyed("k1", 2).slice());
+  ASSERT_TRUE(upd.fail());
+  EXPECT_EQ(upd.errorNumber(), TRI_ERROR_BAD_PARAMETER) << upd.errorMessage();
+  // rejected while building the new version, not by rocksdb at commit time
+  EXPECT_NE(upd.errorMessage().find(StaticStrings::Created), std::string::npos)
+      << upd.errorMessage();
+
+  // the failed update left the existing version untouched
+  auto current = read("k1");
+  ASSERT_TRUE(current.ok()) << current.errorMessage();
+  EXPECT_EQ(current.slice().get("value").getNumber<int>(), 1);
+  EXPECT_TRUE(current.slice().get(StaticStrings::Expired).isNull());
+}
+
+TEST_F(TimeTravelStorageEngineDocumentTest, ReplaceWithoutCreatedIsRejected) {
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, 1000).slice()).ok());
+
+  auto rep = replaceR(keyed("k1", 2).slice());
+  ASSERT_TRUE(rep.fail());
+  EXPECT_EQ(rep.errorNumber(), TRI_ERROR_BAD_PARAMETER) << rep.errorMessage();
+  EXPECT_NE(rep.errorMessage().find(StaticStrings::Created), std::string::npos)
+      << rep.errorMessage();
+}
+
+// A user-supplied _expired on an update is ignored: the version being written
+// is by definition still live.
+TEST_F(TimeTravelStorageEngineDocumentTest, UpdateIgnoresUserSuppliedExpired) {
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, 1000).slice()).ok());
+
+  VPackBuilder b;
+  b.openObject();
+  b.add(StaticStrings::KeyString, VPackValue("k1"));
+  b.add("value", VPackValue(2));
+  b.add(StaticStrings::Created, VPackValue(2000));
+  b.add(StaticStrings::Expired, VPackValue(9999));
+  b.close();
+  ASSERT_TRUE(updateR(b.slice()).ok());
+
+  auto current = read("k1");
+  ASSERT_TRUE(current.ok()) << current.errorMessage();
+  EXPECT_TRUE(current.slice().get(StaticStrings::Expired).isNull())
+      << current.slice().toJson();
+}
+
+// An update replaces the current version rather than adding a document, so the
+// current-state count is unchanged.
+TEST_F(TimeTravelStorageEngineDocumentTest,
+       UpdateLeavesDocumentCountUnchanged) {
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, 1000).slice()).ok());
+  ASSERT_EQ(count(), 1u);
+
+  ASSERT_TRUE(updateR(createdDoc("k1", 2, 2000).slice()).ok());
+  EXPECT_EQ(count(), 1u);
+}
+
+// A non-time-travel update must keep physically deleting the old version.
+TEST_F(StorageEngineDocumentTest, NonTimeTravelUpdateDropsPreviousVersion) {
+  ASSERT_TRUE(insertR(keyed("k1", 1).slice()).ok());
+  ASSERT_TRUE(updateR(keyed("k1", 2).slice()).ok());
+
+  auto current = read("k1");
+  ASSERT_TRUE(current.ok()) << current.errorMessage();
+  EXPECT_EQ(current.slice().get("value").getNumber<int>(), 2);
+  EXPECT_TRUE(current.slice().get(StaticStrings::Expired).isNone())
+      << current.slice().toJson();
+  EXPECT_EQ(count(), 1u);
+}
+
+// ================ write-write conflict detection ================
+
+// A transaction that pinned its snapshot before another transaction modified a
+// key must not be allowed to update that key afterwards: it would compute the
+// new version from the version it saw at its snapshot and silently drop the
+// other transaction's write. Single-operation transactions are safe by
+// construction (they lock before taking a snapshot), so the race needs a
+// multi-operation transaction whose snapshot is already pinned.
+TEST_F(TimeTravelStorageEngineDocumentTest,
+       UpdateFromAStaleSnapshotIsRejected) {
+  constexpr uint64_t T1 = 1000;
+  constexpr uint64_t T2 = 2000;
+  constexpr uint64_t T3 = 3000;
+
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, T1).slice()).ok());
+  ASSERT_TRUE(insertR(createdDoc("k2", 1, T1).slice()).ok());
+
+  SingleCollectionTransaction slow{context(), *_collection,
+                                   AccessMode::Type::WRITE};
+  slow.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+  ASSERT_TRUE(slow.begin().ok());
+  OperationOptions options;
+
+  // touching an unrelated key pins `slow`'s snapshot before the racing write
+  ASSERT_TRUE(
+      slow.update(_collection->name(), createdDoc("k2", 2, T3).slice(), options)
+          .ok());
+
+  // a second transaction updates k1 at an *earlier* timestamp and commits, so
+  // what follows can only be a concurrency conflict and never a rejected
+  // backdated timestamp
+  ASSERT_TRUE(updateR(createdDoc("k1", 2, T2).slice()).ok());
+
+  // `slow` would now build its new version of k1 from the version it saw at
+  // its snapshot, losing the update above
+  auto res = slow.update(_collection->name(), createdDoc("k1", 3, T3).slice(),
+                         options);
+  EXPECT_TRUE(res.fail());
+  EXPECT_EQ(res.errorNumber(), TRI_ERROR_ARANGO_CONFLICT) << res.errorMessage();
+
+  std::ignore = slow.finish(res.result);
+
+  // the committed update survived
+  auto current = read("k1");
+  ASSERT_TRUE(current.ok()) << current.errorMessage();
+  EXPECT_EQ(current.slice().get("value").getNumber<int>(), 2);
+}
+
+// Write-write validation reads at `_created - 1`, so a zero timestamp has no
+// instant to validate against and is rejected along with negative values.
+TEST_F(TimeTravelStorageEngineDocumentTest, InsertWithZeroCreatedIsRejected) {
+  auto ins = insertR(createdDoc("k1", 1, 0).slice());
+  ASSERT_TRUE(ins.fail());
+  EXPECT_EQ(ins.errorNumber(), TRI_ERROR_BAD_PARAMETER) << ins.errorMessage();
+  EXPECT_TRUE(read("k1").fail());
+}
+
+TEST_F(TimeTravelStorageEngineDocumentTest,
+       InsertWithNegativeCreatedIsRejected) {
+  VPackBuilder b;
+  b.openObject();
+  b.add(StaticStrings::KeyString, VPackValue("k1"));
+  b.add(StaticStrings::Created, VPackValue(-1));
+  b.close();
+
+  auto ins = insertR(b.slice());
+  ASSERT_TRUE(ins.fail());
+  EXPECT_EQ(ins.errorNumber(), TRI_ERROR_BAD_PARAMETER) << ins.errorMessage();
+  EXPECT_TRUE(read("k1").fail());
+}
+
+// A fractional _created cannot be a UDT timestamp; truncating it silently would
+// put the version at a different instant than the document claims.
+TEST_F(TimeTravelStorageEngineDocumentTest,
+       InsertWithFractionalCreatedIsRejected) {
+  VPackBuilder b;
+  b.openObject();
+  b.add(StaticStrings::KeyString, VPackValue("k1"));
+  b.add(StaticStrings::Created, VPackValue(1000.5));
+  b.close();
+
+  auto ins = insertR(b.slice());
+  ASSERT_TRUE(ins.fail());
+  EXPECT_EQ(ins.errorNumber(), TRI_ERROR_BAD_PARAMETER) << ins.errorMessage();
+}
+
+// Remove is not supported on time-travel collections yet (COR-653): it has no
+// way to say which timestamp it removes at. It must fail rather than silently
+// destroy history.
+TEST_F(TimeTravelStorageEngineDocumentTest, RemoveIsNotSupportedYet) {
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, 1000).slice()).ok());
+
+  auto rem = removeR(keyOnly("k1").slice());
+  EXPECT_TRUE(rem.fail()) << "remove must not silently drop history";
+
+  // the document is still there, unexpired
+  auto current = read("k1");
+  ASSERT_TRUE(current.ok()) << current.errorMessage();
+  EXPECT_TRUE(current.slice().get(StaticStrings::Expired).isNull());
+}
+
+// A version chain must move forward in time: a new version created at or before
+// the current one would give the superseded version an _expired that precedes
+// its own _created. The user supplies these timestamps, so this is bad input
+// and must be reported as such.
+TEST_F(TimeTravelStorageEngineDocumentTest, UpdateWithOlderCreatedIsRejected) {
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, 1000).slice()).ok());
+  ASSERT_TRUE(updateR(createdDoc("k1", 2, 3000).slice()).ok());
+
+  auto upd = updateR(createdDoc("k1", 3, 2000).slice());
+  ASSERT_TRUE(upd.fail());
+  EXPECT_EQ(upd.errorNumber(), TRI_ERROR_BAD_PARAMETER) << upd.errorMessage();
+  // the message names both timestamps, which also proves the current version's
+  // was read back out of the primary index entry
+  EXPECT_NE(upd.errorMessage().find(StaticStrings::Created), std::string::npos)
+      << upd.errorMessage();
+  EXPECT_NE(upd.errorMessage().find("3000"), std::string::npos)
+      << upd.errorMessage();
+  EXPECT_NE(upd.errorMessage().find("2000"), std::string::npos)
+      << upd.errorMessage();
+}
+
+TEST_F(TimeTravelStorageEngineDocumentTest, UpdateWithEqualCreatedIsRejected) {
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, 1000).slice()).ok());
+
+  auto upd = updateR(createdDoc("k1", 2, 1000).slice());
+  ASSERT_TRUE(upd.fail());
+  EXPECT_EQ(upd.errorNumber(), TRI_ERROR_BAD_PARAMETER) << upd.errorMessage();
+}
+
+TEST_F(TimeTravelStorageEngineDocumentTest,
+       UpdateWithCreatedBeforeFirstVersionIsRejected) {
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, 2000).slice()).ok());
+
+  auto upd = updateR(createdDoc("k1", 2, 1000).slice());
+  ASSERT_TRUE(upd.fail());
+  EXPECT_EQ(upd.errorNumber(), TRI_ERROR_BAD_PARAMETER) << upd.errorMessage();
 }
