@@ -239,9 +239,6 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
   /// @brief iterate over all databases in the databases directory and open them
   ErrorCode iterateDatabases(velocypack::Slice databases);
 
-  /// @brief open all databases described by the given inventory
-  void openDatabases(velocypack::Slice databases);
-
   /// @brief close all opened databases
   void closeOpenDatabases();
 

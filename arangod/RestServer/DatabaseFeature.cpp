@@ -505,10 +505,6 @@ void DatabaseFeature::prepare() {
 }
 
 void DatabaseFeature::bootstrapDatabases(velocypack::Slice databases) {
-  openDatabases(databases);
-}
-
-void DatabaseFeature::openDatabases(velocypack::Slice databases) {
   TRI_ASSERT(databases.isArray());
 
   auto res = iterateDatabases(databases);

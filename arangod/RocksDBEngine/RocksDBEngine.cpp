@@ -891,15 +891,6 @@ void RocksDBEngine::start() {
 
   _settingsManager->retrieveInitialValues();
 
-  double const counterSyncSeconds = 2.5;
-  _backgroundThread = std::make_unique<RocksDBBackgroundThread>(
-      *this, counterSyncSeconds, _metrics);
-  if (!_backgroundThread->start()) {
-    LOG_TOPIC("a5e96", FATAL, Logger::ENGINES)
-        << "could not start rocksdb counter manager thread";
-    FATAL_ERROR_EXIT();
-  }
-
   if (!systemDatabaseExists()) {
     addSystemDatabase();
   }
@@ -921,6 +912,19 @@ void RocksDBEngine::start() {
   _databaseBootstrap.bootstrapDatabases(databases.slice());
 
   runRecovery();
+
+  // the background thread can't do anything meaningful before recovery has
+  // finished, so it's only started here
+  TRI_ASSERT(isReady());
+  double const counterSyncSeconds = 2.5;
+  _backgroundThread = std::make_unique<RocksDBBackgroundThread>(
+      *this, counterSyncSeconds, _metrics);
+  if (!_backgroundThread->start()) {
+    LOG_TOPIC("a5e96", FATAL, Logger::ENGINES)
+        << "could not start rocksdb counter manager thread";
+    FATAL_ERROR_EXIT();
+  }
+
   _databaseBootstrap.recoveryDone();
 }
 
@@ -928,6 +932,7 @@ void RocksDBEngine::runRecovery() {
   _engineState.store(EngineState::kRecovering, std::memory_order_release);
   RocksDBRecoveryManager manager(*this, _recoveryTick);
   manager.runRecovery();
+  // synchronizes with engineState()'s acquire-load; publishes _recoveryTick too
   _engineState.store(EngineState::kRunning, std::memory_order_release);
 }
 

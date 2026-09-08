@@ -65,9 +65,9 @@ struct IResearchView::ViewFactory final : public arangodb::ViewFactory {
     if (links.isNone()) {
       links = velocypack::Slice::emptyObjectSlice();
     }
-    auto r = !engine.isReady()
-                 ? Result{}  // do not validate if not yet ready
-                 : IResearchLinkHelper::validateLinks(vocbase, links);
+    auto r = engine.isReady()
+                 ? IResearchLinkHelper::validateLinks(vocbase, links)
+                 : Result{};  // do not validate if not yet ready
 
     if (!r.ok()) {
       std::string name;
@@ -580,8 +580,8 @@ Result IResearchView::updateProperties(velocypack::Slice slice,
     if (links.isNone()) {
       links = velocypack::Slice::emptyObjectSlice();
     }
-    auto r = !_isReady ? Result{}  // do not validate if engine not yet ready
-                       : IResearchLinkHelper::validateLinks(vocbase(), links);
+    auto r = _isReady ? IResearchLinkHelper::validateLinks(vocbase(), links)
+                      : Result{};  // do not validate if engine not yet ready
     if (!r.ok()) {
       return r;
     }
