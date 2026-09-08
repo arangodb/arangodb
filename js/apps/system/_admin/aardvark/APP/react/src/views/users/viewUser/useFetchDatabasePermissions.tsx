@@ -1,5 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { getRouteForCurrentDB } from "../../../utils/arangoClient";
+import {
+  getRouteForCurrentDB,
+  isRbacRejection
+} from "../../../utils/arangoClient";
 
 export type PermissionType = "rw" | "ro" | "none" | "undefined";
 export const useUsername = () => {
@@ -25,7 +28,8 @@ export const useFetchDatabasePermissions = () => {
       const data = await route.get({ full: "true" });
       return data.parsedBody.result as FullDatabasePermissionsType;
     },
-    retry: false
+    // The RBAC rejection is final; retrying only delays the notice.
+    retry: (_count, error) => !isRbacRejection(error)
   });
   return {
     databasePermissions: data,
