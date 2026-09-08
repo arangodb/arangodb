@@ -52,6 +52,13 @@ deadlock:replication2::replicated_state::ReplicatedStateManager
 # drop to zero.
 race:std::__exception_ptr
 
+# std::ctype<char>::narrow lazily fills a per-facet cache (_M_narrow[]) on the
+# global classic locale without synchronization. Concurrent first-time lookups
+# of the same character race on that byte but write the identical value, so
+# the race is benign (GCC bug 77704). Triggered e.g. by std::regex compilation
+# in faiss::index_factory running on several maintenance threads at once.
+race:std::ctype<char>::narrow
+
 # TODO - this should be removed once BTS-685 is fixed
 race:AllowImplicitCollectionsSwitcher
 race:graph::RefactoredTraverserCache::appendVertex
