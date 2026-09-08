@@ -55,8 +55,9 @@ using namespace arangodb::tests;
 
 namespace {
 
-/// @brief Test-only mirror of MATCH projection reserved-attribute classification.
-/// Production code uses kMandatory*MatchProjectionAttributes membership instead.
+/// @brief Test-only mirror of MATCH projection reserved-attribute
+/// classification. Production code uses kMandatory*MatchProjectionAttributes
+/// membership instead.
 enum class MatchProjectionReservedAttribute : uint8_t {
   kNone,
   kId,
