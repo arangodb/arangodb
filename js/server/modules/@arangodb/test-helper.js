@@ -89,7 +89,7 @@ exports.pimpInstanceManager = function() {
     if (!arangod.isRole('agent') &&
         !arangod.isRole('single')) {
       let reply;
-      let httpOptions = makeAuthorizationHeaders(global.instanceManager.options, arangod.JWT);
+      let httpOptions = makeAuthorizationHeaders(global.instanceManager.options, arangod.jwt_secret);
       try {
         httpOptions.returnBodyOnError = true;
         httpOptions.method = 'GET';
