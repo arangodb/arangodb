@@ -119,16 +119,13 @@ std::string readGloballyUniqueId(velocypack::Slice info) {
   return StaticStrings::Empty;
 }
 
-/// @brief Pick out the properties nothing else owns.
-std::shared_ptr<arangodb::CollectionInvariants const> makeInvariants(
+arangodb::CollectionInvariants makeInvariants(
     arangodb::CollectionDescriptor const& descriptor) {
-  return std::make_shared<arangodb::CollectionInvariants const>(
-      arangodb::CollectionInvariants{
-          .type = descriptor.constant.getType(),
+  return {.type = descriptor.constant.getType(),
           .isSmart = descriptor.constant.isSmart,
           .isDisjoint = descriptor.constant.isDisjoint,
           .isSmartChild = descriptor.internal.isSmartChild,
-          .smartJoinAttribute = descriptor.constant.smartJoinAttribute});
+          .smartJoinAttribute = descriptor.constant.smartJoinAttribute};
 }
 
 arangodb::LocalStorageProperties makeStorageProperties(
@@ -460,11 +457,11 @@ CollectionDescriptor LogicalCollection::properties() const {
   CollectionDescriptor d;
 
   d.constant.type =
-      static_cast<std::underlying_type_t<TRI_col_type_e>>(_invariants->type);
+      static_cast<std::underlying_type_t<TRI_col_type_e>>(_invariants.type);
   d.constant.isSystem = system();
-  d.constant.isSmart = _invariants->isSmart;
-  d.constant.isDisjoint = _invariants->isDisjoint;
-  if (auto const& sja = _invariants->smartJoinAttribute; sja.has_value()) {
+  d.constant.isSmart = _invariants.isSmart;
+  d.constant.isDisjoint = _invariants.isDisjoint;
+  if (auto const& sja = _invariants.smartJoinAttribute; sja.has_value()) {
     d.constant.smartJoinAttribute = *sja;
   }
   // keyOptions: _keyGenerator only exposes itself as VelocyPack, and nothing
@@ -473,7 +470,7 @@ CollectionDescriptor LogicalCollection::properties() const {
   d.internal.id = id();
   d.internal.syncByRevision = _syncByRevision.load(std::memory_order_relaxed);
   d.internal.usesRevisionsAsDocumentIds = _usesRevisionsAsDocumentIds;
-  d.internal.isSmartChild = _invariants->isSmartChild;
+  d.internal.isSmartChild = _invariants.isSmartChild;
   d.internal.internalValidatorType =
       _internalValidatorTypes.load(std::memory_order_relaxed);
   if (auto sga = smartGraphAttribute(); !sga.empty()) {

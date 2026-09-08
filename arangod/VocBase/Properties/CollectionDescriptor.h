@@ -41,6 +41,11 @@ struct CollectionDescriptor {
   bool operator==(CollectionDescriptor const&) const = default;
 
   static CollectionDescriptor fromVelocyPack(velocypack::Slice info);
+
+  struct Invariants {
+    [[nodiscard]] static auto isSmartConfiguration(
+        CollectionDescriptor const& d) -> inspection::Status;
+  };
 };
 
 template<class Inspector>

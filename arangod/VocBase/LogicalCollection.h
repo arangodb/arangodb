@@ -23,6 +23,7 @@
 #pragma once
 
 #include "Basics/ReadWriteLock.h"
+#include "Basics/debugging.h"
 #include "Containers/FlatHashMap.h"
 #include "Cluster/Utils/ShardID.h"
 #include "Futures/Future.h"
@@ -149,7 +150,7 @@ class LogicalCollection : public LogicalDataSource {
 
   uint32_t v8CacheVersion() const noexcept { return _v8CacheVersion; }
 
-  TRI_col_type_e type() const noexcept { return _invariants->type; }
+  TRI_col_type_e type() const noexcept { return _invariants.type; }
 
   // For normal collections the realNames is just a vector of length 1
   // with its name. For smart edge collections (Enterprise Edition only)
@@ -171,11 +172,11 @@ class LogicalCollection : public LogicalDataSource {
   bool waitForSync() const noexcept;
   bool cacheEnabled() const noexcept;
 #ifdef USE_ENTERPRISE
-  bool isDisjoint() const noexcept { return _invariants->isDisjoint; }
-  bool isSmart() const noexcept { return _invariants->isSmart; }
-  bool isSmartChild() const noexcept { return _invariants->isSmartChild; }
+  bool isDisjoint() const noexcept { return _invariants.isDisjoint; }
+  bool isSmart() const noexcept { return _invariants.isSmart; }
+  bool isSmartChild() const noexcept { return _invariants.isSmartChild; }
   bool hasSmartJoinAttribute() const noexcept {
-    return _invariants->smartJoinAttribute.has_value();
+    return _invariants.smartJoinAttribute.has_value();
   }
   bool hasSmartGraphAttribute() const noexcept {
     return std::atomic_load_explicit(&_smartGraphAttribute,
@@ -392,7 +393,10 @@ class LogicalCollection : public LogicalDataSource {
                   VPackOptions const*) const;
 
   // Get a reference to this KeyGenerator.
-  KeyGenerator& keyGenerator() const noexcept { return *_keyGenerator; }
+  KeyGenerator& keyGenerator() const noexcept {
+    TRI_ASSERT(_keyGenerator != nullptr);
+    return *_keyGenerator;
+  }
 
   transaction::CountCache& countCache() { return _countCache; }
 
@@ -438,7 +442,7 @@ class LogicalCollection : public LogicalDataSource {
   void decorateWithInternalValidators();
 
   // Only contains the immutable properties; single source of truth.
-  std::shared_ptr<CollectionInvariants const> const _invariants;
+  CollectionInvariants const _invariants;
 
  protected:
   void addInternalValidator(std::unique_ptr<ValidatorBase>);

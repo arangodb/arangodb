@@ -362,7 +362,7 @@ std::shared_ptr<LogicalCollection> Database::createCollectionObject(
     // same split as createCollectionObject / createCollectionObjectForStorage
     // TODO (COR-981): fix this ugly line by CollectionDefinition
     descriptor.storage.objectId =
-    _engine.createPropertiesForNewCollection(descriptor).objectId;
+        _engine.createPropertiesForNewCollection(descriptor).objectId;
   }
 
   return std::make_shared<LogicalCollection>(*this, std::move(descriptor),
@@ -832,6 +832,11 @@ std::shared_ptr<LogicalCollection> Database::createCollection(
   auto const& dbName = _info.getName();
   std::string name = descriptor.mutableProps.name;
 
+  if (auto res = validateCollectionDescriptor(descriptor); res.fail()) {
+    events::CreateCollection(dbName, name, res.errorNumber());
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
   try {
     auto collection =
         createCollectionObject(std::move(descriptor), /*isAStub*/ false);
@@ -980,8 +985,7 @@ std::vector<std::shared_ptr<LogicalCollection>> Database::createCollections(
   collections.reserve(descriptors.size());
 
   for (auto& descriptor : descriptors) {
-    // license check for enterprise features
-    if (auto res = validateEnterpriseLicense(descriptor); res.fail()) {
+    if (auto res = validateCollectionDescriptor(descriptor); res.fail()) {
       events::CreateCollection(dbName, descriptor.mutableProps.name,
                                res.errorNumber());
       THROW_ARANGO_EXCEPTION(res);
@@ -1077,6 +1081,32 @@ Result Database::validateCollectionParameters(velocypack::Slice parameters) {
 
   // needed for EE
   return validateExtendedCollectionParameters(parameters);
+}
+
+Result Database::validateCollectionDescriptor(
+    CollectionDescriptor const& descriptor) {
+  auto const& name = descriptor.mutableProps.name;
+  if (auto res = CollectionNameValidator::validateName(
+          descriptor.constant.isSystem, extendedNames(), name);
+      res.fail()) {
+    return res;
+  }
+
+  auto collectionType = descriptor.constant.getType();
+  if (collectionType != TRI_col_type_e::TRI_COL_TYPE_DOCUMENT &&
+      collectionType != TRI_col_type_e::TRI_COL_TYPE_EDGE) {
+    return {TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+            "invalid collection type for collection '" + name + "'"};
+  }
+
+  if (auto status =
+          CollectionDescriptor::Invariants::isSmartConfiguration(descriptor);
+      !status.ok()) {
+    return {TRI_ERROR_BAD_PARAMETER, status.error()};
+  }
+
+  // needed for EE
+  return validateEnterpriseLicense(descriptor);
 }
 
 #ifndef USE_ENTERPRISE

@@ -451,6 +451,11 @@ struct Database {
   arangodb::Result validateCollectionParameters(
       arangodb::velocypack::Slice parameters);
 
+  /// @brief validate a collection descriptor before it is used to create a
+  /// collection.
+  arangodb::Result validateCollectionDescriptor(
+      arangodb::CollectionDescriptor const& descriptor);
+
   /// @brief locks a collection for usage by id.
   /// note: when the collection is not used anymore, the caller *must*
   /// call vocbase::releaseCollection() to decrease the reference

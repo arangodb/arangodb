@@ -41,11 +41,14 @@ class Result;
 
 struct ClusteringMutableProperties {
   struct Transformers {
-    // Serialized form is a number, or the string "satellite" for 0. Every
-    // writer spells 0 as "satellite", so a numeric 0 is rejected everywhere.
+    // Serialized form is a number, or the string "satellite" for 0.
+    // User input must spell "satellite" for 0. Every writer stores "satellite",
+    // but the internal path still accepts a numeric 0 so that a database
+    // carrying one (numeric zero) won't fail to load.
     struct ReplicationSatellite {
       using MemoryType = uint64_t;
       using SerializedType = arangodb::velocypack::Builder;
+      bool acceptNumericZero{false};
       arangodb::inspection::Status toSerialized(MemoryType v,
                                                 SerializedType& result) const;
       arangodb::inspection::Status fromSerialized(SerializedType const& v,
@@ -90,8 +93,9 @@ auto inspect(Inspector& f, ClusteringMutableProperties& props) {
       f.field(StaticStrings::WriteConcern, props.writeConcern)
           .fallback(f.keep()),
       f.field(StaticStrings::ReplicationFactor, props.replicationFactor)
-          .transformWith(ClusteringMutableProperties::Transformers::
-                             ReplicationSatellite{}));
+          .transformWith(
+              ClusteringMutableProperties::Transformers::ReplicationSatellite{
+                  .acceptNumericZero = isInternalContext<Inspector>}));
 
   if constexpr (isInternalContext<Inspector>) {
     // Not an invariant of the type: EE SmartGraph edge collections are

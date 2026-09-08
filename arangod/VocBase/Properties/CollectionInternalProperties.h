@@ -79,7 +79,7 @@ auto inspect(Inspector& f, CollectionInternalProperties& props) {
           .transformWith(
               CollectionInternalProperties::Transformers::IdIdentifier{})
           .fallback(f.keep())
-          .when([]() {
+          .whenLoading([]() {
             // Markers and plan entries store the id as a number or under
             // "cid". LogicalDataSource owns the id on that path, so accept
             // the attribute there and drop it.
