@@ -37,6 +37,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Statistics/StatisticsFeature.h"
+#include "Utils/ExecContext.h"
 #include "RestServer/QueryRegistryFeature.h"
 #ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
@@ -55,6 +56,7 @@ class FlushFeatureTest
       public arangodb::tests::LogSuppressor<arangodb::Logger::ENGINES,
                                             arangodb::LogLevel::FATAL> {
  protected:
+  arangodb::ExecContextSuperuserScope execContextScope;
   arangodb::application_features::ApplicationServer server;
   StorageEngineMock engine;
   std::vector<

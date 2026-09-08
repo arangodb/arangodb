@@ -31,6 +31,7 @@
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/StorageEngineMock.h"
+#include "Utils/ExecContext.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlFunctionFeature.h"
@@ -272,6 +273,7 @@ class IResearchOrderTest
                                             arangodb::LogLevel::FATAL>,
       public arangodb::tests::IResearchLogSuppressor {
  protected:
+  arangodb::ExecContextSuperuserScope execContextScope;
   arangodb::application_features::ApplicationServer server;
   StorageEngineMock engine;
   std::vector<

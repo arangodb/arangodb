@@ -168,11 +168,15 @@ TEST(ExecContextTest, superuser_as_shared_returns_same_object) {
 
 TEST(ExecContextTest, current_returns_superuser_when_no_context_set) {
   // CURRENT is thread_local and starts as nullptr in a fresh thread.
-  // current() should fall back to superuser.
   auto old = ExecContext::set(nullptr);
 
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
+  // COR-824: in maintainer mode, current() asserts that a context is
+  // installed; the silent superuser fallback only remains in production
+  // builds, so it can only be tested there.
   EXPECT_TRUE(ExecContext::current().isSuperuserOrDisabled());
   EXPECT_TRUE(ExecContext::current().isSuperuser());
+#endif
   EXPECT_EQ(ExecContext::currentAsShared(), nullptr);
 
   ExecContext::set(old);

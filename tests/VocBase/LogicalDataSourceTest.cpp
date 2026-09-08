@@ -30,6 +30,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Sharding/ShardingFeature.h"
+#include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "velocypack/Parser.h"
@@ -70,6 +71,7 @@ class LogicalViewImpl : public arangodb::LogicalView {
 
 class LogicalDataSourceTest : public ::testing::Test {
  protected:
+  arangodb::ExecContextSuperuserScope execContextScope;
   arangodb::application_features::ApplicationServer server;
   StorageEngineMock engine;
   std::vector<

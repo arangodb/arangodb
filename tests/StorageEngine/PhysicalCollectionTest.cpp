@@ -44,6 +44,7 @@
 #include "Transaction/Options.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
+#include "Utils/ExecContext.h"
 #include "Cluster/ClusterFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Statistics/StatisticsFeature.h"
@@ -61,6 +62,7 @@ class PhysicalCollectionTest
       arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
                                      arangodb::LogLevel::WARN> {
  protected:
+  arangodb::ExecContextSuperuserScope execContextScope;
   arangodb::application_features::ApplicationServer server;
   StorageEngineMock engine;
   std::vector<std::reference_wrapper<

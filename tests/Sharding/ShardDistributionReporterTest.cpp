@@ -38,6 +38,7 @@
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Sharding/ShardDistributionReporter.h"
+#include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "Cluster/ClusterFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
@@ -121,6 +122,7 @@ class ShardDistributionReporterTest
       public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER,
                                             arangodb::LogLevel::FATAL> {
  protected:
+  arangodb::ExecContextSuperuserScope execContextScope;
   arangodb::application_features::ApplicationServer server;
   StorageEngineMock engine;
   std::vector<
