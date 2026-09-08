@@ -1071,30 +1071,34 @@ class instance {
         if (!this.options.noStartStopLogs) {
           print(Date() + ' ' + this.url + '/_admin/shutdown');
         }
-        if (!this.toThisInstance(() => {
-          let oldTimeout = arango.timeout();
-          arango.timeout(5);
-          let reply = arango.DELETE_RAW('/_admin/shutdown', '');
-          arango.timeout(oldTimeout);
-          if ((reply.code !== 200) && // if the server should reply, we expect 200 - if not:
-              !((reply.code === 500) &&
-                (
-                  (reply.message === "Connection closed by remote") || // http connection
-                    reply.message.includes('failed with #111')           // https connection
-                ))) {
-            this.serverCrashedLocal = true;
-            print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' " + sockStat + " continuing with hard kill!");
-            this.shutdownArangod(true);
-            return false;
+        try {
+          if (!this.toThisInstance(() => {
+            let oldTimeout = arango.timeout();
+            arango.timeout(5);
+            let reply = arango.DELETE_RAW('/_admin/shutdown', '');
+            arango.timeout(oldTimeout);
+            if ((reply.code !== 200) && // if the server should reply, we expect 200 - if not:
+                !((reply.code === 500) &&
+                  (
+                    (reply.message === "Connection closed by remote") || // http connection
+                      reply.message.includes('failed with #111')           // https connection
+                  ))) {
+              this.serverCrashedLocal = true;
+              print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' " + sockStat + " continuing with hard kill!");
+              this.shutdownArangod(true);
+              return false;
+            }
+            else if (this.options.extremeVerbosity) {
+              print(Date() + ' Shutdown response: ' + JSON.stringify(reply));
+            }
+            return true;
+          })) {
+            if (!this.options.noStartStopLogs) {
+              print(sockStat);
+            }
           }
-          else if (this.options.extremeVerbosity) {
-            print(Date() + ' Shutdown response: ' + JSON.stringify(reply));
-          }
-          return true;
-        })) {
-          if (!this.options.noStartStopLogs) {
-            print(sockStat);
-          }
+        } catch (ex) {
+          print(`${RED}${Date()} During shutdown: ${ex.message} - will try to continue anyways`);
         }
       }  
     } else {
