@@ -121,6 +121,9 @@ void Options::fromVelocyPack(arangodb::velocypack::Slice slice) {
   if (auto value = slice.get("skipFastLockRound"); value.isBool()) {
     skipFastLockRound = value.isTrue();
   }
+  if (auto value = slice.get("readTimestamp"); value.isNumber()) {
+    readTimestamp = value.getNumber<uint64_t>();
+  }
 
   if (!ServerState::instance()->isSingleServer()) {
     if (auto value = slice.get("isFollowerTransaction"); value.isBool()) {
@@ -166,6 +169,9 @@ void Options::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   builder.add("allowDirtyReads", VPackValue(allowDirtyReads));
 
   builder.add("skipFastLockRound", VPackValue(skipFastLockRound));
+  if (readTimestamp.has_value()) {
+    builder.add("readTimestamp", VPackValue(*readTimestamp));
+  }
 
   // serialize data for cluster-wide collections
   if (!ServerState::instance()->isSingleServer()) {

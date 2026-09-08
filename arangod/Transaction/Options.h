@@ -23,6 +23,7 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 
 #include "Cluster/RebootTracker.h"
 
@@ -110,6 +111,14 @@ struct Options {
   /// snapshot. This allows us to lock the used keys before the
   /// snapshot is acquired in order to avoid write-write conflict.
   bool avoidSnapshot = false;
+
+  /// @brief time-travel point-in-time read. When set, reads observe the state
+  /// of the data as of this timestamp; when unset they observe the current
+  /// state. Only meaningful for collections with time travel enabled - other
+  /// collections keep no history to select from and ignore it. Selecting a
+  /// point in the past is irreconcilable with writing at a later commit
+  /// timestamp, so it is only accepted on read-only transactions.
+  std::optional<std::uint64_t> readTimestamp;
 
   /// @brief if set to true, skips the fast, unordered lock round and always
   /// uses the sequential, ordered lock round.
