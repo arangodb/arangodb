@@ -13,7 +13,8 @@
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "USE_ENTERPRISE": "On",
         "STATIC_EXECUTABLES": "On",
-        "USE_JEMALLOC": "On"
+        "USE_JEMALLOC": "Off",
+        "USE_MIMALLOC": "On"
       }
     },
     {

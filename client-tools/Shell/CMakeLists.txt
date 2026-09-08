@@ -56,6 +56,9 @@ target_link_libraries(${BIN_ARANGOSH}
 if (USE_JEMALLOC)
   target_link_libraries(${BIN_ARANGOSH} jemalloc)
 endif ()
+if (USE_MIMALLOC)
+  target_link_libraries(${BIN_ARANGOSH} mimalloc)
+endif ()
 
 install(FILES ${ICU_DT}
   DESTINATION "${INSTALL_ICU_DT_DEST}"

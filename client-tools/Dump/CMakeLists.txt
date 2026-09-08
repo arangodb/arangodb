@@ -20,6 +20,9 @@ target_link_libraries(${BIN_ARANGODUMP}
 if (USE_JEMALLOC)
   target_link_libraries(${BIN_ARANGODUMP} jemalloc)
 endif ()
+if (USE_MIMALLOC)
+  target_link_libraries(${BIN_ARANGODUMP} mimalloc)
+endif ()
 
 install(
   TARGETS ${BIN_ARANGODUMP}
