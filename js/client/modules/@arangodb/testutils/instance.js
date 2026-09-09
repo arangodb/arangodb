@@ -1067,16 +1067,15 @@ class instance {
           print(Date() + ' Shutdown response: ' + JSON.stringify(reply));
         }
       } else {
+        let oldTimeout = arango.timeout();
         let sockStat = this.getSockStat("Sock stat for: ");
         if (!this.options.noStartStopLogs) {
           print(Date() + ' ' + this.url + '/_admin/shutdown');
         }
         try {
           if (!this.toThisInstance(() => {
-            let oldTimeout = arango.timeout();
             arango.timeout(5);
             let reply = arango.DELETE_RAW('/_admin/shutdown', '');
-            arango.timeout(oldTimeout);
             if ((reply.code !== 200) && // if the server should reply, we expect 200 - if not:
                 !((reply.code === 500) &&
                   (
@@ -1099,6 +1098,11 @@ class instance {
           }
         } catch (ex) {
           print(`${RED}${Date()} During shutdown: ${ex.message} - will try to continue anyways`);
+          this.exitStatus = killExternal(this.pid);
+          this._disconnect();
+          this.pid = null;
+        } finally {
+            arango.timeout(oldTimeout);
         }
       }  
     } else {
