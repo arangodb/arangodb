@@ -22,6 +22,7 @@
 
 #include "UpgradeFeature.h"
 
+#include "Agency/AgencyFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Auth/UserManager.h"
@@ -81,6 +82,9 @@ UpgradeFeature::UpgradeFeature(
   // in the way...
   if (!ServerState::instance()->isCoordinator()) {
     server.forceDisableFeatures(_nonServerFeatures);
+    if (server.hasFeature<AgencyFeature>()) {
+      server.forceDisableFeatures<AgencyFeature>();
+    }
     std::array bootstrapFeatures{std::type_index(typeid(BootstrapFeature)),
                                  std::type_index(typeid(HttpEndpointProvider))};
     server.forceDisableFeatures(bootstrapFeatures);

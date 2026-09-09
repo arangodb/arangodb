@@ -28,6 +28,7 @@
 #include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "RocksDBEngine/ISortingPolicy.h"
 
 // The list of includes for the features is defined in the following file -
 // please add new includes there!
@@ -42,8 +43,21 @@ namespace {
 // the rest of what this used to list is now conditionally registered instead
 auto const kNonServerFeatures =
     std::array{std::type_index(typeid(ActionFeature)),
-               std::type_index(typeid(AgencyFeature)),
                std::type_index(typeid(ClusterFeature))};
+
+// decouples RocksDBEngine from needing AgencyFeature to exist
+struct SortingPolicy final : public ISortingPolicy {
+  explicit SortingPolicy(bool agencyActivated)
+      : _agencyActivated(agencyActivated) {}
+
+  basics::VelocyPackHelper::SortingMethod getSortingMethod()
+      const noexcept override {
+    return _agencyActivated ? basics::VelocyPackHelper::SortingMethod::Correct
+                            : basics::VelocyPackHelper::SortingMethod::Legacy;
+  }
+
+  bool _agencyActivated;
+};
 
 void applyAgencyRocksDBMemoryLimits(
     options::ProgramOptions::ProcessingResult const& result,
@@ -427,7 +441,9 @@ void ArangodServer::addFeatures() {
     addFeature<iresearch::IResearchFeature>(
         metrics, getOptions<iresearch::IResearchOptionsProvider>());
   }
-  auto& agency = addFeature<AgencyFeature>(getOptions<AgencyOptionsProvider>());
+  if (agencyActivated) {
+    addFeature<AgencyFeature>(getOptions<AgencyOptionsProvider>());
+  }
   addFeature<CheckVersionFeature>(
       _ret, kNonServerFeatures,
       getOptions<check_version::CheckVersionOptionsProvider>());
@@ -438,11 +454,12 @@ void ArangodServer::addFeatures() {
   auto& rocksdbOption = addFeature<RocksDBOptionFeature>(
       getOptions<RocksDBOptionFeatureOptionsProvider>());
   addFeature<ClusterEngine>(clusterFeature, database, metrics);
+  static SortingPolicy const sortingPolicy(agencyActivated);
   addFeature<RocksDBEngine>(
       rocksdbOption, metrics, databasePath, vectorIndex, flush, dumpLimits,
       replication2::EnableReplication2 ? &replicatedLogFeature : nullptr,
       scheduler, rocksdbRecovery, database, rocksdbCacheRefill, cacheManager,
-      agency, getOptions<RocksDBEngineOptionsProvider>());
+      sortingPolicy, getOptions<RocksDBEngineOptionsProvider>());
   addFeature<replication2::replicated_state::ReplicatedStateAppFeature>();
   addFeature<replication2::replicated_state::black_hole::
                  BlackHoleStateMachineFeature>();
