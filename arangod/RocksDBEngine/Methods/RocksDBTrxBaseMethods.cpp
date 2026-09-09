@@ -451,7 +451,7 @@ Result RocksDBTrxBaseMethods::doCommitImpl() {
 
   // we may need to block intermediate commits
   ExecContext const& exec = ExecContext::current();
-  bool cancelRW = ServerState::readOnly() && !exec.isSuperuser();
+  bool cancelRW = ServerState::readOnly() && !exec.isSuperuserOrDisabled();
   if (exec.isCanceled() || cancelRW) {
     return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
   }

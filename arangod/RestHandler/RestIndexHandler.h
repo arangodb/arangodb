@@ -57,7 +57,7 @@ class RestIndexHandler : public arangodb::RestVocbaseBaseHandler {
   void syncCaches();
 
   // Wait for a vector index to reach a definitive training outcome. On
-  // DBServer/SingleServer delegates to VectorIndexBuildManager. On
+  // DBServer/SingleServer delegates to BuildManager. On
   // Coordinator, polls shard training states from CollectionInfoCurrent
   // until all report "ready" or "unusable", or a timeout is reached.
   [[nodiscard]] futures::Future<ResultT<std::string>> waitForVectorIndexReady(

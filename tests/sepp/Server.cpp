@@ -163,7 +163,7 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<ApiRecordingFeature>(nullptr, metrics);
   _server.addFeature<AqlFeature>();
   _server.addFeature<async_registry::Feature>();
-  _server.addFeature<AuthenticationFeature>();
+  auto& authenticationFeature = _server.addFeature<AuthenticationFeature>();
   _server.addFeature<BootstrapFeature>();
 #ifdef TRI_HAVE_GETRLIMIT
   _server.addFeature<BumpFileDescriptorsFeature>();
@@ -204,6 +204,7 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<MaxMapCountFeature>();
   _server.addFeature<NetworkFeature>(metrics,
                                      network::ConnectionPool::Config{});
+  _server.addFeature<RbacFeature>(authenticationFeature);
   _server.addFeature<NonceFeature>();
   _server.addFeature<OptionsCheckFeature>();
   _server.addFeature<PrivilegeFeature>();

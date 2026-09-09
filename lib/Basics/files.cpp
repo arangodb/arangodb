@@ -64,7 +64,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
 #include "Basics/conversions.h"
@@ -960,7 +960,7 @@ ErrorCode TRI_CreateLockFile(char const* filename) {
     return TRI_set_errno(TRI_ERROR_SYS_ERROR);
   }
 
-  TRI_pid_t pid = Thread::currentProcessId();
+  TRI_pid_t pid = BasicThread::currentProcessId();
   std::string buf = std::to_string(pid);
 
   int rv = TRI_WRITE(fd, buf.c_str(), static_cast<TRI_write_t>(buf.size()));
@@ -1722,7 +1722,7 @@ ErrorCode TRI_GetTempName(char const* directory, std::string& result,
 
   int tries = 0;
   while (tries++ < 10) {
-    TRI_pid_t pid = Thread::currentProcessId();
+    TRI_pid_t pid = BasicThread::currentProcessId();
 
     std::string tempName =
         "tmp-" + std::to_string(pid) + '-' +

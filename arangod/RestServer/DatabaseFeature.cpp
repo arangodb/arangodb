@@ -115,7 +115,8 @@ std::unique_ptr<TRI_vocbase_t> calculationVocbase;
 DatabaseManagerThread::DatabaseManagerThread(
     application_features::ApplicationServer& server,
     DatabaseFeature& databaseFeature, StorageEngine& engine)
-    : ServerThread(server, "DatabaseManager"),
+    // engine-level cleanup of dropped databases, no ExecContext required
+    : ServerThread(server, "DatabaseManager", nullptr),
       _databaseFeature(databaseFeature),
       _engine(engine)
 #ifdef USE_V8
@@ -847,11 +848,10 @@ std::vector<std::string> DatabaseFeature::getDatabaseNames() {
   return names;
 }
 
-std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
-    std::string const& username) {
+std::vector<std::string> DatabaseFeature::getDatabaseNamesForCurrentUser() {
   std::vector<std::string> names;
 
-  AuthenticationFeature* af = AuthenticationFeature::instance();
+  auto& exec = ExecContext::current();
   {
     auto databases = _databases.load();
 
@@ -862,12 +862,8 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
         continue;
       }
 
-      if (af->isActive() && af->userManager() != nullptr) {
-        auto level = af->userManager()->databaseAuthLevel(
-            username, vocbase->name(), false);
-        if (level == auth::Level::NONE) {  // hide dbs without access
-          continue;
-        }
+      if (exec.canSeeDatabase(vocbase->name()).fail()) {
+        continue;
       }
 
       names.emplace_back(vocbase->name());

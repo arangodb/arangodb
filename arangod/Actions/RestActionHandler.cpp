@@ -26,6 +26,7 @@
 #include "Actions/actions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Statistics/RequestStatistics.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "VocBase/vocbase.h"
@@ -43,12 +44,15 @@ RestActionHandler::RestActionHandler(ApplicationServer& server,
       _action(TRI_LookupActionVocBase(request)),
       _data(nullptr) {}
 
+// Mounted at / (prefix, catchall)
 RestStatus RestActionHandler::execute() {
   // need an action
   if (_action == nullptr) {
     generateNotImplemented(_request->fullUrl());
     return RestStatus::DONE;
   }
+
+  ExecContextSuperuserScope escope(_mustEscalateToSuperuser);
 
   // extract the sub-request type
   rest::RequestType type = _request->requestType();
@@ -109,6 +113,88 @@ void RestActionHandler::executeAction() {
       generateNotImplemented(_action->_url);
     }
   }
+}
+
+// The aardvark web UI serves a handful of static assets and harmless
+// metadata that must be reachable before the user has logged in (so the
+// UI itself can load and offer a login form). Unlike the rest of
+// /_admin/aardvark/, none of these need any database access, so they must
+// never be granted superuser rights - doing so previously allowed
+// unauthenticated AQL execution and other superuser-level operations via
+// any path merely prefixed with /_admin/aardvark/.
+
+bool isPublicAardvarkPath(std::string_view path) {
+  using namespace std::string_view_literals;
+  constexpr std::array exact = {
+      "/_admin/aardvark/index.html"sv,
+      "/_admin/aardvark/config.js"sv,
+      "/_admin/aardvark/whoAmI"sv,
+  };
+  constexpr std::array prefixes = {
+      "/_admin/aardvark/static/"sv,
+      "/_admin/aardvark/img/"sv,
+  };
+  return std::ranges::any_of(exact, [&](auto p) { return path == p; }) ||
+         std::ranges::any_of(prefixes,
+                             [&](auto p) { return path.starts_with(p); });
+}
+
+bool RestActionHandler::hasAllowedUnauthenticatedPath() const {
+  auto const* const auth = AuthenticationFeature::instance();
+  ADB_PROD_ASSERT(auth->isActive());
+  auto const& path = request()->requestPath();
+
+  // requestPath contains raw path, but this check relies on decoded paths
+  auto isUnauthenticatedFoxxPath = [](std::string_view path) {
+    return !path.empty() && !StringUtils::urlDecodePath(path).starts_with("/_");
+  };
+
+  return auth->authenticationSystemOnly() &&  // TODO remove in 4.0
+         isUnauthenticatedFoxxPath(path);
+}
+
+async<RestHandler::AuthenticationGrant>
+RestActionHandler::checkUserAuthentication() const {
+  if (isPublicAardvarkPath(request()->requestPath())) {
+    // Note that we do **not** escalate to superuser for these!
+    co_return AuthenticationGrant::GRANTED_EARLY;
+  }
+
+  auto auth = co_await RestHandler::checkUserAuthentication();
+  if (auth == AuthenticationGrant::DENIED) {
+    if (hasAllowedUnauthenticatedPath()) {
+      co_return AuthenticationGrant::GRANTED;
+    }
+  }
+
+  co_return auth;
+}
+
+async<Result> RestActionHandler::checkApiVersionAccess() const {
+  if (hasAllowedUnauthenticatedPath()) {
+    co_return Result{};
+  }
+
+  co_return co_await RestHandler::checkApiVersionAccess();
+}
+
+async<Result> RestActionHandler::checkDatabaseAccess() const {
+  if (isPublicAardvarkPath(request()->requestPath())) {
+    // Note that we do **not** escalate to superuser for these!
+    co_return Result{};
+  }
+
+  auto r = co_await RestHandler::checkDatabaseAccess();
+  if (r.ok()) {
+    co_return Result{};
+  }
+
+  if (hasAllowedUnauthenticatedPath()) {
+    // check if path is / which is required for the web UI to get started
+    _mustEscalateToSuperuser = true;
+    co_return Result{};
+  }
+  co_return r;
 }
 
 }  // namespace arangodb

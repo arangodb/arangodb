@@ -477,7 +477,8 @@ Result RocksDBReplicationContext::getInventory(
   result.add("collections", VPackValue(VPackValueType::Array));
 
   ExecContext const& exec = ExecContext::current();
-  if (exec.canUseCollection(vocbase.name(), collectionName, auth::Level::RO)) {
+  if (exec.canUseCollection(vocbase.name(), collectionName, AccessLevel::Read)
+          .ok()) {
     auto collection = vocbase.lookupCollection(collectionName);
     if (collection != nullptr && !collection->deleted()) {
       // dump inventory data for collection/shard into result
@@ -1213,7 +1214,7 @@ void RocksDBReplicationContext::CollectionIterator::setSorted(bool sorted) {
     if (sorted) {
       auto index = logical->getPhysical()->lookupIndex(
           IndexId::primary());  // RocksDBCollection->primaryIndex() is private
-      TRI_ASSERT(index->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
+      TRI_ASSERT(index->type() == IndexType::Primary);
       auto primaryIndex = static_cast<RocksDBPrimaryIndex*>(index.get());
       _bounds = RocksDBKeyBounds::PrimaryIndex(primaryIndex->objectId());
     } else {

@@ -63,7 +63,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/build.h"
 #include "Basics/debugging.h"
@@ -2950,7 +2950,7 @@ static void JS_GetPid(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("getPid()");
   }
-  TRI_pid_t pid = Thread::currentProcessId();
+  TRI_pid_t pid = BasicThread::currentProcessId();
   TRI_V8_RETURN_INTEGER(pid);
 
   TRI_V8_TRY_CATCH_END

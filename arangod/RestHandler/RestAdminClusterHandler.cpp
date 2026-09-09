@@ -35,6 +35,7 @@
 #include "Agency/Supervision.h"
 #include "Agency/TransactionBuilder.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/Common.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/ResultT.h"
 #include "Basics/StaticStrings.h"
@@ -46,11 +47,9 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
-#include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -63,7 +62,6 @@
 #include "StorageEngine/VPackSortMigration.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/Methods/Databases.h"
 #include "Inspection/VPack.h"
 
 using namespace arangodb;
@@ -201,7 +199,7 @@ delayedCalculator(F) -> delayedCalculator<std::invoke_result_t<F>, F>;
 void buildHealthResult(
     VPackBuilder& builder,
     std::vector<futures::Try<agentConfigHealthResult>> const& config,
-    VPackSlice store) {
+    VPackSlice store, uint32_t apiVersion) {
   auto rootPath = arangodb::cluster::paths::root()->arango();
 
   using server_set = std::unordered_set<std::string>;
@@ -265,7 +263,16 @@ void buildHealthResult(
       {
         VPackObjectBuilder obMember(&builder, serverId);
 
-        builder.add(VPackObjectIterator(member.value));
+        if (apiVersion == 0) {
+          builder.add(VPackObjectIterator(member.value));
+        } else {
+          for (auto const& agentIter : VPackObjectIterator(member.value)) {
+            if (!agentIter.key.isEqualString("Timestamp")) {
+              builder.add(agentIter.key.stringView(), agentIter.value);
+            }
+          }
+        }
+
         if (ClusterHelpers::isDBServerName(serverId)) {
           builder.add("Role", VPackValue("DBServer"));
           builder.add("CanBeDeleted",
@@ -359,8 +366,9 @@ std::string const RestAdminClusterHandler::VPackSortMigrationMigrate =
     "migrate";
 std::string const RestAdminClusterHandler::VPackSortMigrationStatus = "status";
 
+// Mounted at /_admin/cluster (prefix)
 auto RestAdminClusterHandler::executeAsync() -> futures::Future<futures::Unit> {
-  // here we first do a glboal check, which is based on the setting in startup
+  // here we first do a global check, which is based on the setting in startup
   // option
   // `--cluster.api-jwt-policy`:
   // - "jwt-all"    = JWT required to access all operations
@@ -368,7 +376,7 @@ auto RestAdminClusterHandler::executeAsync() -> futures::Future<futures::Unit> {
   // - "jwt-compat" = compatibility mode = same permissions as in 3.7 (default)
   // this is a convenient way to lock the entire /_admin/cluster API for users
   // w/o JWT.
-  if (!ExecContext::current().isSuperuser()) {
+  if (!ExecContext::current().isSuperuserOrDisabled()) {
     // no superuser... now check if the API policy is set to jwt-all or
     // jwt-write. in this case only requests with valid JWT will have access to
     // the operations (jwt-all = all operations require the JWT, jwt-write =
@@ -414,10 +422,11 @@ auto RestAdminClusterHandler::executeAsync() -> futures::Future<futures::Unit> {
     } else if (command == NodeEngine) {
       co_await handleNodeEngine();
       co_return;
-    } else if (command == NodeStatistics) {
+    } else if (command == NodeStatistics &&
+               _request->requestedApiVersion() == 0) {
       co_await handleNodeStatistics();
       co_return;
-    } else if (command == Statistics) {
+    } else if (command == Statistics && _request->requestedApiVersion() == 0) {
       co_await handleStatistics();
       co_return;
     } else if (command == ShardDistribution) {
@@ -650,14 +659,23 @@ async<void> RestAdminClusterHandler::handlePostRemoveServer(
 }
 
 async<void> RestAdminClusterHandler::handleRemoveServer() {
-  if (!ExecContext::current().isAdminUser()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseAdminAction(
+          auth::perms::AdminRemoveServer{});
+      r.fail()) {
+    generateError(r);
     co_return;
   }
 
   if (request()->requestType() != rest::RequestType::POST) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    co_return;
+  }
+
+  if (request()->requestedApiVersion() > 0 &&
+      !ServerState::instance()->isCoordinator()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "only allowed on coordinators");
     co_return;
   }
 
@@ -685,8 +703,10 @@ async<void> RestAdminClusterHandler::handleRemoveServer() {
 }
 
 void RestAdminClusterHandler::handleShardStatistics() {
-  if (!ExecContext::current().isAdminUser()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseAdminAction(
+          auth::perms::AdminClusterInfo{});
+      r.fail()) {
+    generateError(r);
     return;
   }
 
@@ -792,13 +812,27 @@ async<void> RestAdminClusterHandler::handleMoveShard() {
       ctx->database = _vocbase.name();
     }
 
+    // In the future, only allow collection names here:
+    if (request()->requestedApiVersion() > 0) {
+      if (auto r = auth::isNameAndNoId(ctx->database); r.fail()) {
+        generateError(r);
+        co_return;
+      }
+      if (auto r = auth::isNameAndNoId(ctx->collection); r.fail()) {
+        generateError(r);
+        co_return;
+      }
+    }
     auto const& exec = ExecContext::current();
-    bool canAccess = exec.isAdminUser() ||
-                     exec.collectionAuthLevel(ctx->database, ctx->collection) ==
-                         auth::Level::RW;
+    bool canAccess =
+        exec.canUseAdminAction(auth::perms::AdminMoveShards{}).ok() ||
+        exec.canUseCollection(ctx->database, ctx->collection,
+                              CollectionAccessLevel::WriteMeta)
+            .ok();
     if (!canAccess) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    "insufficient permissions on database to move shard");
+      generateError(
+          rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+          "insufficient permissions on database or collection to move shard");
       co_return;
     }
 
@@ -974,8 +1008,10 @@ async<void> RestAdminClusterHandler::handlePostMoveShard(
 }
 
 async<void> RestAdminClusterHandler::handleQueryJobStatus() {
-  if (!ExecContext::current().isAdminUser()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseAdminAction(
+          auth::perms::AdminMoveShards{});
+      r.fail()) {
+    generateError(r);
     co_return;
   }
 
@@ -1052,8 +1088,10 @@ async<void> RestAdminClusterHandler::handleQueryJobStatus() {
 }
 
 async<void> RestAdminClusterHandler::handleCancelJob() {
-  if (!ExecContext::current().isAdminUser()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseAdminAction(
+          auth::perms::AdminMoveShards{});
+      r.fail()) {
+    generateError(r);
     co_return;
   }
 
@@ -1222,8 +1260,10 @@ async<void> RestAdminClusterHandler::handleCancelJob() {
 
 async<void> RestAdminClusterHandler::handleSingleServerJob(
     std::string const& job) {
-  if (!ExecContext::current().isAdminUser()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseAdminAction(
+          auth::perms::AdminMoveShards{});
+      r.fail()) {
+    generateError(r);
     co_return;
   }
 
@@ -1390,8 +1430,10 @@ void RestAdminClusterHandler::handleShardDistribution() {
     return;
   }
 
-  if (!ExecContext::current().isAdminUser()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseAdminAction(
+          auth::perms::AdminClusterInfo{});
+      r.fail()) {
+    generateError(r);
     return;
   }
 
@@ -1439,8 +1481,10 @@ void RestAdminClusterHandler::handleCollectionShardDistribution() {
     return;
   }
 
-  if (!ExecContext::current().isAdminUser()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseAdminAction(
+          auth::perms::AdminClusterInfo{});
+      r.fail()) {
+    generateError(r);
     return;
   }
 
@@ -1824,8 +1868,10 @@ async<void> RestAdminClusterHandler::handlePutDBServerMaintenance(
 }
 
 async<void> RestAdminClusterHandler::handleMaintenance() {
-  if (!ExecContext::current().isAdminUser()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseAdminAction(
+          auth::perms::AdminMaintenance{});
+      r.fail()) {
+    generateError(r);
     co_return;
   }
 
@@ -1856,8 +1902,10 @@ async<void> RestAdminClusterHandler::handleMaintenance() {
 
 async<void> RestAdminClusterHandler::handleDBServerMaintenance(
     std::string const& serverId) {
-  if (!ExecContext::current().isAdminUser()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseAdminAction(
+          auth::perms::AdminMaintenance{});
+      r.fail()) {
+    generateError(r);
     co_return;
   }
 
@@ -1934,8 +1982,10 @@ async<void> RestAdminClusterHandler::handleGetNumberOfServers() {
 }
 
 async<void> RestAdminClusterHandler::handlePutNumberOfServers() {
-  if (!ExecContext::current().isAdminUser()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseAdminAction(
+          auth::perms::AdminMaintenance{});
+      r.fail()) {
+    generateError(r);
     co_return;
   }
 
@@ -2048,18 +2098,23 @@ async<void> RestAdminClusterHandler::handleNumberOfServers() {
     co_return;
   }
 
-  // GET requests are allowed for everyone, unless --server.harden is used.
-  // in this case admin privileges are required.
-  // PUT requests always require admin privileges
-  ServerSecurityFeature& security =
-      server().getFeature<ServerSecurityFeature>();
-  bool const needsAdminPrivileges =
-      (request()->requestType() != rest::RequestType::GET ||
-       security.isRestApiHardened());
-
-  if (needsAdminPrivileges && !ExecContext::current().isAdminUser()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
-    co_return;
+  // GET requests are allowed for everyone, unless --server.harden is
+  // used, in which case admin privileges are required.
+  // PUT always needs db:AdminMaintenance is needed for PUT
+  if (request()->requestType() == rest::RequestType::GET) {
+    if (auto r = ExecContext::current().canUseHardenedAction(
+            auth::perms::AdminMaintenance{});
+        r.fail()) {
+      generateError(r);
+      co_return;
+    }
+  } else {
+    if (auto r = ExecContext::current().canUseAdminAction(
+            auth::perms::AdminMaintenance{});
+        r.fail()) {
+      generateError(r);
+      co_return;
+    }
   }
 
   switch (request()->requestType()) {
@@ -2082,8 +2137,10 @@ async<void> RestAdminClusterHandler::handleUniqId() {
   }
 
   // Only PUT method is allowed and always requires admin privileges
-  if (!ExecContext::current().isAdminUser()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseAdminAction(
+          auth::perms::AdminMaintenance{});
+      r.fail()) {
+    generateError(r);
     co_return;
   }
 
@@ -2238,7 +2295,7 @@ async<void> RestAdminClusterHandler::handlePutUniqId() {
 
 async<void> RestAdminClusterHandler::handleHealth() {
   // We allow this API whenever one is authenticated in some way. There used
-  // to be a check for isAdminUser here. However, we want that the UI with
+  // to be a check for canUseAdminAction here. However, we want that the UI with
   // the cluster health dashboard works for every authenticated user.
   if (request()->requestType() != rest::RequestType::GET) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
@@ -2304,7 +2361,8 @@ async<void> RestAdminClusterHandler::handleHealth() {
       VPackBuilder builder;
       {
         VPackObjectBuilder ob(&builder);
-        ::buildHealthResult(builder, configResult, storeResult.slice().at(0));
+        ::buildHealthResult(builder, configResult, storeResult.slice().at(0),
+                            _request->requestedApiVersion());
       }
       generateOk(rest::ResponseCode::OK, builder);
     } else {
@@ -2503,9 +2561,9 @@ async<void> RestAdminClusterHandler::handleRebalanceShards() {
   }
 
   ExecContext const& exec = ExecContext::current();
-  if (!exec.canUseDatabase(auth::Level::RW)) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "insufficient permissions");
+  if (auto r = exec.canUseAdminAction(auth::perms::AdminRebalance{});
+      r.fail()) {
+    generateError(r);
     co_return;
   }
 
@@ -2833,8 +2891,10 @@ async<void> RestAdminClusterHandler::handleRebalance() {
     co_return;
   }
 
-  if (!ExecContext::current().isAdminUser()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseAdminAction(
+          auth::perms::AdminRebalance{});
+      r.fail()) {
+    generateError(r);
     co_return;
   }
 
@@ -3003,7 +3063,7 @@ async<void> RestAdminClusterHandler::handleVPackSortMigration(
     std::string const& subCommand) {
   // First we do the authentication: We only allow superuser access, since
   // this is a critical migration operation:
-  if (ExecContext::isAuthEnabled() && !ExecContext::current().isSuperuser()) {
+  if (!ExecContext::current().isSuperuserOrDisabled()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
                   "only superusers may run vpack index migration");
     co_return;

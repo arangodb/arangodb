@@ -24,7 +24,7 @@
 
 #include "Basics/ConditionVariable.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Basics/system-functions.h"
@@ -53,7 +53,7 @@
 namespace arangodb {
 namespace arangobench {
 
-class BenchmarkThread : public arangodb::Thread {
+class BenchmarkThread : public arangodb::BasicThread {
  public:
   BenchmarkThread(BenchmarkOperation* operation,
                   basics::ConditionVariable* condition, void (*callback)(),
@@ -62,7 +62,7 @@ class BenchmarkThread : public arangodb::Thread {
                   ClientFeature& client, bool keepAlive, bool async,
                   double histogramIntervalSize, uint64_t histogramNumIntervals,
                   bool generateHistogram)
-      : Thread("BenchmarkThread"),
+      : BasicThread("BenchmarkThread"),
         _operation(operation),
         _startCondition(condition),
         _callback(callback),

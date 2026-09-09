@@ -392,10 +392,10 @@ Result Database::loadCollection(LogicalCollection& collection,
 
   if (checkPermissions) {
     std::string const& dbName = _info.getName();
-    if (!ExecContext::current().canUseCollection(dbName, collection.name(),
-                                                 auth::Level::RO)) {
-      return {TRI_ERROR_FORBIDDEN, std::string("cannot access collection '") +
-                                       collection.name() + "'"};
+    if (auto r = ExecContext::current().canUseCollection(
+            dbName, collection.name(), AccessLevel::Read);
+        !r.ok()) {
+      return r;
     }
   }
 
@@ -629,7 +629,7 @@ void Database::inventory(
       continue;
     }
 
-    if (!exec.canUseCollection(dbName, collection->name(), auth::Level::RO)) {
+    if (exec.canSeeCollection(dbName, collection->name()).fail()) {
       continue;
     }
 
@@ -1458,13 +1458,15 @@ replication::Version Database::replicationVersion() const {
   return _info.replicationVersion();
 }
 
-void Database::toVelocyPack(VPackBuilder& result) const {
+void Database::toVelocyPack(VPackBuilder& result, uint32_t apiVersion) const {
   VPackObjectBuilder b(&result);
   _info.toVelocyPack(result);
-  if (ServerState::instance()->isCoordinator()) {
-    result.add("path", VPackValue(path()));
-  } else {
-    result.add("path", VPackValue("none"));
+  if (apiVersion == 0) {
+    if (ServerState::instance()->isCoordinator()) {
+      result.add("path", VPackValue("none"));
+    } else {
+      result.add("path", VPackValue(path()));
+    }
   }
 }
 

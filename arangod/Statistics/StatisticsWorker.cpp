@@ -47,6 +47,7 @@
 #include "Statistics/StatisticsFeature.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #ifdef USE_V8
@@ -95,7 +96,10 @@ using namespace arangodb;
 using namespace arangodb::statistics;
 
 StatisticsWorker::StatisticsWorker(TRI_vocbase_t& vocbase)
-    : ServerThread(vocbase.server(), "StatisticsWorker"),
+    // needs superuser permissions to run AQL queries and transactions on the
+    // _statistics* system collections
+    : ServerThread(vocbase.server(), "StatisticsWorker",
+                   ExecContext::superuserAsShared()),
       _gcTask(GC_STATS),
       _vocbase(vocbase) {
   _bytesSentDistribution.openArray();

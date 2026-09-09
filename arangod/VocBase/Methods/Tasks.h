@@ -38,11 +38,10 @@ class ExecContext;
 
 class Task : public std::enable_shared_from_this<Task> {
  public:
-  static std::shared_ptr<Task> createTask(std::string const& id,
-                                          std::string const& name,
-                                          Database* vocbase,
-                                          std::string const& command,
-                                          bool allowUseDatabase, ErrorCode& ec);
+  static std::shared_ptr<Task> createTask(
+      std::string const& id, std::string const& name,
+      std::shared_ptr<ExecContext const> execContext, Database* vocbase,
+      std::string const& command, bool allowUseDatabase, ErrorCode& ec);
 
   static ErrorCode unregisterTask(std::string const& id, bool cancel);
 
@@ -56,21 +55,19 @@ class Task : public std::enable_shared_from_this<Task> {
 
  private:
   static std::mutex _tasksLock;
-  // id => [ user, task ]
-  static std::unordered_map<std::string,
-                            std::pair<std::string, std::shared_ptr<Task>>>
-      _tasks;
+  // Keys are IDs
+  static std::unordered_map<std::string, std::shared_ptr<Task>> _tasks;
 
  public:
-  Task(std::string const& id, std::string const& name, Database& vocbase,
-       std::string const& command, bool allowUseDatabase);
+  Task(std::string id, std::string name,
+       std::shared_ptr<ExecContext const> execContext, Database& vocbase,
+       std::string command, bool allowUseDatabase);
   ~Task();
 
  public:
   void setOffset(double offset);
   void setPeriod(double offset, double period);
   void setParameter(std::shared_ptr<velocypack::Builder> const& parameters);
-  void setUser(std::string const& user);
 
   void start();
   void cancel();
@@ -78,6 +75,7 @@ class Task : public std::enable_shared_from_this<Task> {
   std::shared_ptr<velocypack::Builder> toVelocyPack() const;
 
   bool databaseMatches(std::string const&) const;
+  std::string_view username() const;
 
  private:
   void toVelocyPack(velocypack::Builder&) const;
@@ -89,8 +87,8 @@ class Task : public std::enable_shared_from_this<Task> {
  private:
   std::string const _id;
   std::string const _name;
+  std::shared_ptr<ExecContext const> const _execContext;
   double const _created;
-  std::string _user;
 
   Scheduler::WorkHandle _taskHandle;
   std::mutex _taskHandleMutex;

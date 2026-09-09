@@ -1392,6 +1392,7 @@ class instanceManager {
     if (!this.isCluster) {
       return true;
     }
+    print(`${CYAN}${Date()} waitForAllShardsInSync${RESET}`);
     let count = 0;
     let collections = [];
     let dbs = db._databases();
@@ -1417,9 +1418,9 @@ class instanceManager {
                 collections.push([c, s]);
               }
             } catch (ex) {
-              print(`${Date()} 015: ${s}`);
-              print(`${Date()} 015: ${JSON.stringify(col)}`);
-              print(`${Date()} 015: ${ex}`);
+              print(`${Date()}${s}`);
+              print(`${Date()}${JSON.stringify(col)}`);
+              print(`${Date()}${ex}`);
             }
           });
         });
@@ -1429,6 +1430,7 @@ class instanceManager {
           count += 1;
         } else {
           dbsOk += 1;
+          print(`${CYAN}${Date()} waitForAllShardsInSync done.${RESET}`);
           return;
         }
       });
@@ -1436,6 +1438,7 @@ class instanceManager {
         break;
       }
     }
+    print(`${RED}${Date()} waitForAllShardsInSync FAILED.${RESET}`);
     return count < 500;
   }
 

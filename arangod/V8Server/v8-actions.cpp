@@ -56,7 +56,6 @@
 #include "V8Server/FoxxFeature.h"
 #include "V8Server/GlobalExecutorMethods.h"
 #include "V8Server/V8DealerFeature.h"
-#include "V8Server/v8-vocbase.h"
 #include "VocBase/vocbase.h"
 
 #include <absl/strings/escaping.h>
@@ -394,18 +393,15 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
         .FromMaybe(false);
   }
 
+  // This is a simplification of what we had before the introduction
+  // of RBAC. However, the API will be removed in 4.0 anyway and this
+  // particular field was not used anywhere. Therefore we now simply
+  // return if we are superuser or not.
   TRI_GET_GLOBAL_STRING(IsAdminUser);
-  if (request->authenticated()) {
-    if (user.empty() || ExecContext::current().isAdminUser()) {
-      req->Set(context, IsAdminUser, v8::True(isolate)).FromMaybe(false);
-    } else {
-      req->Set(context, IsAdminUser, v8::False(isolate)).FromMaybe(false);
-    }
+  if (ExecContext::current().isSuperuserOrDisabled()) {
+    req->Set(context, IsAdminUser, v8::True(isolate)).FromMaybe(false);
   } else {
-    req->Set(context, IsAdminUser,
-             ExecContext::isAuthEnabled() ? v8::False(isolate)
-                                          : v8::True(isolate))
-        .FromMaybe(false);
+    req->Set(context, IsAdminUser, v8::False(isolate)).FromMaybe(false);
   }
 
   // create database attribute

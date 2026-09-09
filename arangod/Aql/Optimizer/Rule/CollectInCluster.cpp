@@ -35,27 +35,27 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Optimizer.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils/GetCollection.h"
 #include "Aql/SortElement.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
 #include "Cluster/ServerState.h"
 #include "Containers/SmallVector.h"
 
+namespace arangodb::aql {
 namespace {
 
-using EN = arangodb::aql::ExecutionNode;
+using EN = ExecutionNode;
 
 void replaceGatherNodeVariables(
-    arangodb::aql::ExecutionPlan* plan, arangodb::aql::GatherNode* gatherNode,
-    std::unordered_map<arangodb::aql::Variable const*,
-                       arangodb::aql::Variable const*> const& replacements) {
+    ExecutionPlan* plan, GatherNode* gatherNode,
+    std::unordered_map<Variable const*, Variable const*> const& replacements) {
   std::string cmp;
   std::string buffer;
 
   // look for all sort elements in the GatherNode and replace them
   // if they match what we have changed
-  arangodb::aql::SortElementVector& elements = gatherNode->elements();
+  SortElementVector& elements = gatherNode->elements();
   for (auto& it : elements) {
     // replace variables
     auto it2 = replacements.find(it.var);
@@ -73,8 +73,7 @@ void replaceGatherNodeVariables(
         if (setter == nullptr || setter->getType() != EN::CALCULATION) {
           continue;
         }
-        auto* expr = EN::castTo<arangodb::aql::CalculationNode const*>(setter)
-                         ->expression();
+        auto* expr = EN::castTo<CalculationNode const*>(setter)->expression();
         buffer.clear();
         expr->stringify(buffer);
         if (cmp == buffer) {
@@ -88,8 +87,6 @@ void replaceGatherNodeVariables(
 }
 
 }  // namespace
-
-namespace arangodb::aql {
 
 void collectInClusterRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                           OptimizerRule const& rule) {
@@ -160,7 +157,7 @@ void collectInClusterRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
               }
               case ExecutionNode::ENUMERATE_COLLECTION:
               case ExecutionNode::INDEX: {
-                auto col = utils::getCollection(p);
+                auto col = optimizer::getCollection(p);
                 if (col->numberOfShards() > 1 ||
                     (col->type() == TRI_COL_TYPE_EDGE && col->isSmart())) {
                   hasFoundMultipleShards = true;

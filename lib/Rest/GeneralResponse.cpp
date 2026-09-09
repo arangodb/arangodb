@@ -378,6 +378,7 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_HTTP_UNAUTHORIZED):
       return ResponseCode::UNAUTHORIZED;
 
+    case static_cast<int>(TRI_ERROR_HTTP_FORBIDDEN):
     case static_cast<int>(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE):
     case static_cast<int>(TRI_ERROR_ARANGO_READ_ONLY):
     case static_cast<int>(TRI_ERROR_FORBIDDEN):

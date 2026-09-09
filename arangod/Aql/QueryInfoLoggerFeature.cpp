@@ -30,7 +30,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/application-exit.h"
 #include "Basics/conversions.h"
 #include "Basics/system-functions.h"
@@ -48,6 +48,7 @@
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
+#include "Utils/Thread.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -74,7 +75,9 @@ class QueryInfoLoggerThread final : public Thread {
       application_features::ApplicationServer& server,
       size_t maxBufferedQueries, uint64_t pushInterval,
       uint64_t cleanupInterval, double retentionTime)
-      : Thread("QueryInfoLogger"),
+      // every operation of this thread is already wrapped in its own
+      // ExecContextSuperuserScope where needed
+      : Thread("QueryInfoLogger", nullptr),
         _maxBufferedQueries(maxBufferedQueries),
         _pushInterval(pushInterval),
         _cleanupInterval(cleanupInterval),

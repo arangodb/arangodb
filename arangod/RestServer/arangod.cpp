@@ -39,6 +39,7 @@
 #include "RestServer/PrivilegeFeature.h"
 #include "RestServer/RestartAction.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "Utils/ExecContext.h"
 
 using namespace arangodb;
 
@@ -73,6 +74,12 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
            }
          },
          {}});
+
+    // Everything the application server runs on this thread -- feature
+    // preparation and start (including recovery, upgrade, and bootstrap),
+    // the wait loop, and shutdown -- acts on behalf of the server itself,
+    // not on behalf of any user, and must therefore run as Superuser.
+    ExecContextSuperuserScope superuserScope;
 
     try {
       server.run(argc, argv);

@@ -22,6 +22,7 @@
 
 #include "RestHandlerFactory.h"
 #include "Basics/Exceptions.h"
+#include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -174,7 +175,11 @@ void RestHandlerFactory::addHandler(std::string const& path, create_fptr func,
   TRI_ASSERT(!_sealed);
 
   for (uint32_t apiVersion : apiVersions) {
-    if (!api_version::isApiVersionSupported(apiVersion) &&
+    bool versionSupported = api_version::isApiVersionSupported(apiVersion);
+    TRI_IF_FAILURE("ApiVersion::treatVersion1AsSupported") {
+      versionSupported = versionSupported || apiVersion == 1;
+    }
+    if (!versionSupported &&
         apiVersion != api_version::experimentalApiVersion) {
       // version 1 has been removed from the list of supported versions, but we
       // did not change the version list in the handler factory, so we need to
@@ -205,7 +210,11 @@ void RestHandlerFactory::addPrefixHandler(
   addHandler(path, func, apiVersions, data);
 
   for (uint32_t apiVersion : apiVersions) {
-    if (!api_version::isApiVersionSupported(apiVersion) &&
+    bool versionSupported = api_version::isApiVersionSupported(apiVersion);
+    TRI_IF_FAILURE("ApiVersion::treatVersion1AsSupported") {
+      versionSupported = versionSupported || apiVersion == 1;
+    }
+    if (!versionSupported &&
         apiVersion != api_version::experimentalApiVersion) {
       // version 1 has been removed from the list of supported versions, but we
       // did not change the version list in the handler factory, so we need to

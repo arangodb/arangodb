@@ -23,7 +23,7 @@
 #pragma once
 
 #include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
+#include "Utils/Thread.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>

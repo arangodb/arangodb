@@ -25,7 +25,7 @@
 #include "RestHandler/RestBaseHandler.h"
 
 #include "Rest/GeneralResponse.h"
-#include "RestServer/VocbaseContext.h"
+#include "Utils/ExecContext.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/Options.h"
 #include "Utils/OperationResult.h"
@@ -40,8 +40,6 @@ namespace arangodb {
 namespace transaction {
 class Methods;
 }
-
-class VocbaseContext;
 
 // abstract base request handler
 class RestVocbaseBaseHandler : public RestBaseHandler {
@@ -206,10 +204,11 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   [[nodiscard]] auto makeSharedLogContextValue() const
       -> std::shared_ptr<LogContext::Values> override;
 
-  // request context
-  VocbaseContext& _context;
+ protected:
+  // request context (ExecContext with auth + vocbase)
+  ExecContext& _context;
 
-  // the vocbase, managed by VocbaseContext
+  // the database, managed by ExecContext
   Database& _vocbase;
 };
 

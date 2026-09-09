@@ -21,7 +21,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestHandlerMock.h"
-#include "RestServer/VocbaseContext.h"
+#include "Mocks/ExecContextFactory.h"
+#include "Utils/ExecContext.h"
+#include "Utils/DatabaseGuard.h"
 #include "VocBase/vocbase.h"
 
 auto GeneralRequestMock::generate(TRI_vocbase_t& vocbase,
@@ -41,13 +43,13 @@ auto GeneralRequestMock::generate(TRI_vocbase_t& vocbase,
 
 GeneralRequestMock::GeneralRequestMock(TRI_vocbase_t& vocbase)
     : arangodb::GeneralRequest(arangodb::ConnectionInfo{}, 1) {
-  _authenticated = false;  // must be set before VocbaseContext::create(...)
-  _context = arangodb::VocbaseContext::create(*this, vocbase);
-  _context->vocbase().forceUse();  // must be called or ~VocbaseContext() will
-                                   // fail at '_vocbase.release()'
-  _requestContext =
-      _context;  // do not use setRequestContext(...) since '_requestContext'
-                 // has not been initialized and contains garbage
+  _authenticated = false;
+  // Create a superuser ExecContext that holds a reference to the vocbase,
+  // replacing the old VocbaseContext which no longer exists.
+  auto ctx = arangodb::tests::mocks::createSharedExecContext(
+      arangodb::AuthMode{arangodb::AuthMode::Superuser{}}, false,
+      vocbase.getSharedPtr());
+  setRequestContext(std::move(ctx));
 }
 GeneralRequestMock::~GeneralRequestMock() = default;
 

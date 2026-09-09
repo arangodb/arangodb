@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
@@ -32,7 +32,6 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/hashes.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterInfo.h"
@@ -43,7 +42,6 @@
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ResignShardLeadership.h"
 #include "Cluster/ServerState.h"
-#include "Containers/HashSet.h"
 #include "Containers/MerkleTree.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
@@ -54,9 +52,8 @@
 #include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "VectorIndex/VectorIndexFeature.h"
+#include "VectorIndex/Feature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
-#include "Sharding/ShardingInfo.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
@@ -67,13 +64,11 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utilities/NameValidator.h"
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/Properties/CreateCollectionBody.h"
 #include "VocBase/Methods/Collections.h"
-#include "VocBase/Methods/CollectionCreationInfo.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 
 #include <absl/strings/str_cat.h>
@@ -88,7 +83,6 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::cluster;
-using Helper = arangodb::basics::VelocyPackHelper;
 
 namespace {
 std::string const dataString("data");
@@ -127,8 +121,11 @@ auto handlingOfExistingCollection(TRI_vocbase_t& vocbase,
                                   std::string const& name, bool dropExisting)
     -> futures::Future<ResultT<bool>> {
   ExecContextSuperuserScope escope(
-      ExecContext::current().isSuperuser() ||
-      (ExecContext::current().isAdminUser() && !ServerState::readOnly()));
+      ExecContext::current().isSuperuserOrDisabled() ||
+      (ExecContext::current()
+           .canUseAdminAction(auth::perms::AdminRestore{})
+           .ok() &&
+       !ServerState::readOnly()));
 
   std::shared_ptr<LogicalCollection> col;
   auto lookupResult = methods::Collections::lookup(vocbase, name, col);
@@ -420,12 +417,8 @@ std::string const RestReplicationHandler::HoldReadLockCollection =
     "holdReadLockCollection";
 
 // main function that dispatches the different routes and commands
+// Mounted at /_api/replication (prefix)
 auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
-  auto res = testPermissions();
-  if (!res.ok()) {
-    generateError(res);
-    co_return;
-  }
   // extract the request type
   auto const type = _request->requestType();
   auto const& suffixes = _request->suffixes();
@@ -557,6 +550,11 @@ auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
         goto BAD_CALL;
       }
 
+      auto isAllowed = checkDumpPermissions();
+      if (not isAllowed.ok()) {
+        generateError(isAllowed);
+        co_return;
+      }
       if (ServerState::instance()->isCoordinator()) {
         handleUnforwardedTrampolineCoordinator();
       } else {
@@ -664,102 +662,35 @@ BAD_CALL:
   co_return;
 }
 
-Result RestReplicationHandler::testPermissions() {
-  if (!_request->authenticated()) {
-    return TRI_ERROR_NO_ERROR;
-  }
+Result RestReplicationHandler::checkDumpPermissions() const {
+  // check dump collection permissions (at least ro needed)
+  std::string collectionName = _request->value("collection");
 
-  std::string user = _request->user();
-  auto const& suffixes = _request->suffixes();
-  size_t const len = suffixes.size();
-  if (len >= 1) {
-    auto const type = _request->requestType();
-    std::string const& command = suffixes[0];
-    if ((command == Batch) ||
-        (command == Inventory && type == rest::RequestType::GET) ||
-        (command == Dump && type == rest::RequestType::GET) ||
-        (command == RestoreCollection && type == rest::RequestType::PUT)) {
-      if (command == Dump) {
-        // check dump collection permissions (at least ro needed)
-        std::string collectionName = _request->value("collection");
-
-        if (ServerState::instance()->isCoordinator()) {
-          // We have a shard id, need to translate.
-          // This API is explicitly called with Shards not with Collections.
-          ClusterInfo& ci = _clusterFeature.clusterInfo();
-          auto maybeShardID = ShardID::shardIdFromString(collectionName);
-          if (maybeShardID.fail()) {
-            // Compatibility with old API, which would return
-            // an empty collection name if we were not handing in a shard.
-            return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
-          }
-          collectionName = ci.getCollectionNameForShard(maybeShardID.get());
-        }
-
-        if (!collectionName.empty()) {
-          auto& exec = ExecContext::current();
-          ExecContextSuperuserScope escope(exec.isAdminUser());
-          if (!exec.isAdminUser() &&
-              !exec.canUseCollection(collectionName, auth::Level::RO)) {
-            // not enough rights
-            return Result(TRI_ERROR_FORBIDDEN);
-          }
-        } else {
-          // not found, return 404
-          return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-        }
-      } else if (command == RestoreCollection) {
-        VPackSlice const slice = _request->payload();
-        VPackSlice const parameters = slice.get("parameters");
-        if (parameters.isObject()) {
-          if (parameters.get("name").isString()) {
-            std::string collectionName = parameters.get("name").copyString();
-            if (!collectionName.empty()) {
-              std::string dbName = _request->databaseName();
-              DatabaseFeature& databaseFeature = _databaseFeature;
-              auto vocbase = databaseFeature.useDatabase(dbName);
-              if (vocbase == nullptr) {
-                return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-              }
-
-              std::string const& overwriteCollection =
-                  _request->value("overwrite");
-
-              auto& exec = ExecContext::current();
-              ExecContextSuperuserScope escope(exec.isAdminUser());
-
-              if (overwriteCollection == "true" ||
-                  vocbase->lookupCollection(collectionName) == nullptr) {
-                // 1.) re-create collection, means: overwrite=true (rw database)
-                // OR 2.) not existing, new collection (rw database)
-                if (!exec.isAdminUser() &&
-                    !exec.canUseDatabase(dbName, auth::Level::RW)) {
-                  return Result(TRI_ERROR_FORBIDDEN);
-                }
-              } else {
-                // 3.) Existing collection (ro database, rw collection)
-                // no overwrite. restoring into an existing collection
-                if (!exec.isAdminUser() &&
-                    !exec.canUseCollection(collectionName, auth::Level::RW)) {
-                  return Result(TRI_ERROR_FORBIDDEN);
-                }
-              }
-            } else {
-              return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
-                            "empty collection name");
-            }
-
-          } else {
-            return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
-                          "invalid collection name type");
-          }
-        } else {
-          return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
-                        "invalid collection parameter type");
-        }
-      }
+  if (ServerState::instance()->isCoordinator()) {
+    // We have a shard id, need to translate.
+    // This API is explicitly called with Shards not with Collections.
+    ClusterInfo& ci = _clusterFeature.clusterInfo();
+    auto maybeShardID = ShardID::shardIdFromString(collectionName);
+    if (maybeShardID.fail()) {
+      // Compatibility with old API, which would return
+      // an empty collection name if we were not handing in a shard.
+      return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
     }
+    collectionName = ci.getCollectionNameForShard(maybeShardID.get());
   }
+
+  if (!collectionName.empty()) {
+    auto& exec = ExecContext::current();
+    if (auto r = exec.canDumpCollection(_vocbase.name(), collectionName);
+        r.fail()) {
+      // not enough rights
+      return r;
+    }
+  } else {
+    // not found, return 404
+    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  }
+
   return Result(TRI_ERROR_NO_ERROR);
 }
 
@@ -771,11 +702,6 @@ RestReplicationHandler::forwardingTarget() {
     return base;
   }
 
-  auto res = testPermissions();
-  if (!res.ok()) {
-    return res;
-  }
-
   bool found;
   ServerID const& DBserver = _request->value("DBserver", found);
   if (found) {
@@ -784,18 +710,16 @@ RestReplicationHandler::forwardingTarget() {
     // executed on the target DBServer with cluster-internal superuser
     // privileges. That is only safe for the few commands that (a) legitimately
     // need this forward and (b) have fully validated the caller's permissions
-    // in testPermissions() above.
-    if (!isDBserverForwardingAllowed()) {
+    // beforehand, which is what checkDBserverForwardingAllowed() ensures.
+    auto res = checkDBserverForwardingAllowed();
+    if (not res.ok()) {
       auto const& suffixes = _request->suffixes();
       LOG_TOPIC("dbc2b", INFO, Logger::AUTHORIZATION)
           << "rejecting replication request from user '" << _request->user()
           << "' with 'DBserver' parameter for command '"
           << (suffixes.empty() ? "" : suffixes[0])
-          << "': forwarding to a DBserver is not supported for this command";
-      return Result(
-          TRI_ERROR_FORBIDDEN,
-          "the 'DBserver' parameter is not allowed for this replication "
-          "command");
+          << "': " << res.errorMessage();
+      return res;
     }
     // if DBserver property present, remove auth header
     return std::make_pair(DBserver, true);
@@ -804,23 +728,36 @@ RestReplicationHandler::forwardingTarget() {
   return {std::make_pair(StaticStrings::Empty, false)};
 }
 
-bool RestReplicationHandler::isDBserverForwardingAllowed() const {
+Result RestReplicationHandler::checkDBserverForwardingAllowed() const {
   auto const& suffixes = _request->suffixes();
   if (suffixes.empty()) {
-    return false;
+    return Result(
+        TRI_ERROR_FORBIDDEN,
+        "the 'DBserver' parameter is not allowed for this replication "
+        "command");
   }
   std::string_view command = suffixes[0];
   auto const method = _request->requestType();
 
   // The only replication commands that are legitimately invoked with a
   // client-supplied 'DBserver' parameter are the ones used by arangodump:
-  //   - "dump"  (GET):           permissions checked in testPermissions()
-  //   - "batch" (POST/PUT/DEL):  batch/snapshot lifecycle management
-  // Both are validated (or intentionally unrestricted, for batch) in
-  // testPermissions(). No other command must be forwardable with the caller's
-  // authorization stripped; see forwardingTarget().
-  return (command == Dump and method == rest::RequestType::GET) or
-         command == Batch;
+  //   - "dump"  (GET):           permissions checked below
+  //   - "batch" (POST/PUT/DEL):  batch/snapshot lifecycle management,
+  //                              intentionally unrestricted
+  // No other command must be forwardable with the caller's authorization
+  // stripped; see forwardingTarget().
+
+  if (command == Dump and method == rest::RequestType::GET) {
+    return checkDumpPermissions();
+  }
+
+  if (command == Batch) {
+    return Result{};
+  }
+
+  return Result(TRI_ERROR_FORBIDDEN,
+                "the 'DBserver' parameter is not allowed for this replication "
+                "command");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -869,16 +806,15 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   }
 
   resultBuilder.add(VPackValue(StaticStrings::Properties));
-  vocbase->toVelocyPack(resultBuilder);
+  vocbase->toVelocyPack(resultBuilder, _request->requestedApiVersion());
   vocbase.reset();
 
   auto& exec = ExecContext::current();
-  ExecContextSuperuserScope escope(exec.isAdminUser());
 
   resultBuilder.add("collections", VPackValue(VPackValueType::Array));
   for (std::shared_ptr<LogicalCollection> const& c : cols) {
-    if (!exec.isAdminUser() &&
-        !exec.canUseCollection(dbName, c->name(), auth::Level::RO)) {
+    if (exec.canUseAdminAction(auth::perms::AdminDump{}).fail() &&
+        exec.canUseCollection(dbName, c->name(), AccessLevel::Read).fail()) {
       continue;
     }
 
@@ -969,27 +905,66 @@ RestReplicationHandler::handleCommandRestoreCollection() {
   if (!parseSuccess) {  // error message generated in parseVPackBody
     co_return;
   }
+  if (not body.isObject()) {
+    generateError(Result(TRI_ERROR_HTTP_BAD_PARAMETER, "invalid body type"));
+    co_return;
+  }
   auto pair = rocksutils::stripObjectIds(body);
   VPackSlice const slice = pair.first;
 
+  auto parameters = slice.get("parameters");
+  if (not parameters.isObject()) {
+    generateError(Result(TRI_ERROR_HTTP_BAD_PARAMETER,
+                         "invalid collection parameter type"));
+    co_return;
+  }
+  if (not parameters.get("name").isString()) {
+    generateError(
+        Result(TRI_ERROR_HTTP_BAD_PARAMETER, "invalid collection name type"));
+    co_return;
+  }
+  auto collectionName = parameters.get("name").copyString();
+  if (collectionName.empty()) {
+    generateError(
+        Result(TRI_ERROR_HTTP_BAD_PARAMETER, "empty collection name"));
+    co_return;
+  }
+  std::string dbName = _request->databaseName();
+  auto vocbase = _databaseFeature.useDatabase(dbName);
+  if (vocbase == nullptr) {
+    generateError(Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND));
+    co_return;
+  }
   bool overwrite = _request->parsedValue<bool>("overwrite", false);
-  bool force = _request->parsedValue<bool>("force", false);
-  bool ignoreDistributeShardsLikeErrors =
-      _request->parsedValue<bool>("ignoreDistributeShardsLikeErrors", false);
+
+  auto& exec = ExecContext::current();
+  if (overwrite || vocbase->lookupCollection(collectionName) == nullptr) {
+    // 1.) re-create collection, means: overwrite=true (rw database)
+    // OR 2.) not existing, new collection (rw database)
+    if (auto r = exec.canRestoreCollection(dbName, collectionName, true);
+        r.fail()) {
+      generateError(r);
+      co_return;
+    }
+  } else {
+    // 3.) Existing collection (ro database, rw collection)
+    // no overwrite. restoring into an existing collection
+    if (auto r = exec.canRestoreCollection(dbName, collectionName, false);
+        r.fail()) {
+      generateError(r);
+      co_return;
+    }
+  }
 
   Result res = co_await processRestoreCollection(
-      slice, overwrite, force, ignoreDistributeShardsLikeErrors);
+      slice, overwrite, _request->parsedValue<bool>("force", false),
+      _request->parsedValue<bool>("ignoreDistributeShardsLikeErrors", false));
 
   if (res.is(TRI_ERROR_ARANGO_DUPLICATE_NAME)) {
-    VPackSlice name = slice.get("parameters");
-    if (name.isObject()) {
-      name = name.get("name");
-      if (name.isString() && !name.copyString().empty() &&
-          name.copyString()[0] == '_') {
-        // system collection, may have been created in the meantime by a
-        // background action collection should be there now
-        res.reset();
-      }
+    if (collectionName[0] == '_') {
+      // system collection, may have been created in the meantime by a
+      // background action collection should be there now
+      res.reset();
     }
   }
 
@@ -1101,7 +1076,7 @@ futures::Future<Result> RestReplicationHandler::processRestoreCollection(
   if (input.fail()) {
     co_return input.result();
   }
-  OperationOptions options(_context);
+  OperationOptions options;
 
   if (ignoreHiddenEnterpriseCollection(input->name, force)) {
     co_return {TRI_ERROR_NO_ERROR};
@@ -1168,9 +1143,16 @@ futures::Future<Result> RestReplicationHandler::processRestoreData(
   }
 #endif
 
-  ExecContextSuperuserScope escope(
-      ExecContext::current().isSuperuser() ||
-      (ExecContext::current().isAdminUser() && !ServerState::readOnly()));
+  // Check permissions:
+  auto& exec = ExecContext::current();
+  if (auto r = exec.canRestoreWriteData(_vocbase.name(), colName); r.fail()) {
+    co_return r;
+  }
+
+  // Need to raise privileges here, or else writing to the _users collection
+  // or restoring analyzers or indeed writing to anything when we are Admin
+  // in Classic will not work!
+  ExecContextSuperuserScope escope;
 
   if (colName == StaticStrings::UsersCollection) {
     // We need to handle the _users in a special way
@@ -1557,7 +1539,13 @@ Result RestReplicationHandler::processRestoreDataBatch(
     return res;
   }
 
-  OperationOptions options(_context);
+  // As far as I can tell, this is the only place where the ExecContext in the
+  // OperationOptions differs from ExecContext::current().
+  // It is also somewhat curious. The caller,
+  // RestReplicationHandler::processRestoreData, explicitly creates a SuperUser
+  // context. This overrides that for the following operations: But it is not
+  // used for permission checks, only for auditing.
+  OperationOptions options;
   options.silent = true;
   options.ignoreRevs = true;
   options.isRestore = true;
@@ -1703,6 +1691,12 @@ Result RestReplicationHandler::processRestoreIndexes(
     return {};
   }
 
+  // Check permissions:
+  auto& exec = ExecContext::current();
+  if (auto r = exec.canRestoreCreateIndex(_vocbase.name(), name); r.fail()) {
+    return r;
+  }
+
   std::shared_ptr<LogicalCollection> coll = _vocbase.lookupCollection(name);
   if (!coll) {
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -1714,8 +1708,10 @@ Result RestReplicationHandler::processRestoreIndexes(
   Result fres;
 
   ExecContextSuperuserScope escope(
-      ExecContext::current().isSuperuser() ||
-      (ExecContext::current().isAdminUser() && !ServerState::readOnly()));
+      ExecContext::current()
+          .canUseAdminAction(auth::perms::AdminRestore{})
+          .ok() &&
+      !ServerState::readOnly());
 
   READ_LOCKER(readLocker, _vocbase._inventoryLock);
 
@@ -1827,6 +1823,12 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(
   if (name.empty()) {
     std::string errorMsg = "collection indexes declaration is invalid";
     return {TRI_ERROR_HTTP_BAD_PARAMETER, errorMsg};
+  }
+
+  // Check permissions:
+  auto& exec = ExecContext::current();
+  if (auto r = exec.canRestoreCreateIndex(_vocbase.name(), name); r.fail()) {
+    return r;
   }
 
   if (ignoreHiddenEnterpriseCollection(name, force)) {
@@ -1961,9 +1963,12 @@ void RestReplicationHandler::handleCommandRestoreView() {
   LOG_TOPIC("f874e", TRACE, Logger::REPLICATION)
       << "restoring view: " << nameSlice.stringView();
 
+  auto& exec = ExecContext::current();
+  std::string name = nameSlice.copyString();
+
   try {
     CollectionNameResolver resolver(_vocbase);
-    auto view = resolver.getView(nameSlice.copyString());
+    auto view = resolver.getView(name);
 
     if (view) {
       if (!overwrite) {
@@ -1976,6 +1981,10 @@ void RestReplicationHandler::handleCommandRestoreView() {
         return;
       }
 
+      if (auto r = exec.canRestoreDropView(_vocbase.name(), name); r.fail()) {
+        generateError(r);
+        return;
+      }
       auto res = view->drop();
 
       if (!res.ok()) {
@@ -1985,6 +1994,19 @@ void RestReplicationHandler::handleCommandRestoreView() {
     }
 
     // must create() since view was drop()ed
+    std::vector<std::string> linkedCollNames;
+    VPackSlice links = slice.get("links");
+    if (links.isObject()) {
+      for (auto const& p : VPackObjectIterator(links)) {
+        linkedCollNames.emplace_back(p.key.copyString());
+      }
+    }
+    if (auto r = exec.canRestoreCreateView(_vocbase.name(), name,
+                                           std::move(linkedCollNames));
+        r.fail()) {
+      generateError(r);
+      return;
+    }
     auto res = LogicalView::create(view, _vocbase, slice, true);
 
     if (!res.ok()) {
@@ -2072,7 +2094,7 @@ RestReplicationHandler::handleCommandAddFollower() {
     auto res = co_await trx.beginAsync();
 
     if (res.ok()) {
-      OperationOptions options(_context);
+      OperationOptions options;
       auto countRes =
           trx.count(col->name(), transaction::CountType::kNormal, options);
 
@@ -2145,7 +2167,8 @@ RestReplicationHandler::handleCommandAddFollower() {
 
   TransactionId readLockId = ExtractReadlockId(readLockIdSlice);
 
-  // referenceChecksum is the stringified number of documents in the collection
+  // referenceChecksum is the stringified number of documents in the
+  // collection
   ResultT<std::string> referenceChecksum =
       co_await computeCollectionChecksum(readLockId, col.get());
   if (!referenceChecksum.ok()) {
@@ -2731,16 +2754,26 @@ bool RestReplicationHandler::prepareCollectionForRevisionOperation(
                   "invalid collection parameter");
     return false;
   }
+  if (_request->requestedApiVersion() > 0) {
+    if (auto r = auth::isNameAndNoId(ctx.cname); r.fail()) {
+      generateError(r);
+      return false;
+    }
+  }
 
   // print request
   LOG_TOPIC("6e075", TRACE, arangodb::Logger::REPLICATION)
       << "requested revision tree for collection '" << ctx.cname << "'";
 
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
+  ExecContextSuperuserScope escope(
+      ExecContext::current()
+          .canUseAdminAction(auth::perms::AdminWriteReplicatedLog{})
+          .ok());
 
-  if (!ExecContext::current().canUseCollection(_vocbase.name(), ctx.cname,
-                                               auth::Level::RO)) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseCollection(
+          _vocbase.name(), ctx.cname, AccessLevel::Read);
+      r.fail()) {
+    generateError(r);
     return false;
   }
 
@@ -2831,7 +2864,8 @@ void RestReplicationHandler::handleCommandRevisionTreePendingUpdates() {
 ///           * ranges, VPackArray of VPackArray of revisions
 ///           * resume, optional, if response is chunked; revision resume
 ///                     point to specify on subsequent requests
-/////////////////////////////////////////////// ///////////////////////////////
+///////////////////////////////////////////////
+//////////////////////////////////
 
 void RestReplicationHandler::handleCommandRevisionRanges() {
   RevisionOperationContext ctx;

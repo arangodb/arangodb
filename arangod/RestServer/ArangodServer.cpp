@@ -119,7 +119,24 @@ void ArangodServer::processOptions() {
   }
 #endif
 
-  // Cap RocksDB memory defaults on agency agents unless explicitly configured.
+  // RBAC has no non-hardened mode. Force the flag on rather than rejecting the
+  // combination, so that `--server.harden` simply has no effect once RBAC is
+  // enabled.
+  if (!getOptions<AuthenticationOptionsProvider>()
+           .externalRbacService.empty()) {
+    if (options()->processingResult().touched("--server.harden") &&
+        !getOptions<security::ServerSecurityOptionsProvider>()
+             .hardenedRestApi) {
+      LOG_TOPIC("f3e1c", WARN, Logger::STARTUP)
+          << "RBAC is enabled, but REST API is not hardened: "
+             "RBAC implies --server.harden=true - forcing hardened REST API";
+    }
+    mutableOptions<security::ServerSecurityOptionsProvider>().hardenedRestApi =
+        true;
+  }
+
+  // Cap RocksDB memory defaults on agency agents unless explicitly
+  // configured.
   auto const& agencyOptions = getOptions<AgencyOptionsProvider>();
   if (agencyOptions.activated) {
     applyAgencyRocksDBMemoryLimits(
@@ -200,7 +217,7 @@ void ArangodServer::addFeatures() {
       _dataSourceRegistry, getOptions<async_registry::OptionsProvider>());
   addFeature<activities::Feature>(_dataSourceRegistry,
                                   getOptions<activities::OptionsProvider>());
-  addFeature<AuthenticationFeature>(
+  auto& authentication = addFeature<AuthenticationFeature>(
       getOptions<AuthenticationOptionsProvider>());
 #ifdef TRI_HAVE_GETRLIMIT
   addFeature<BumpFileDescriptorsFeature>(
@@ -274,7 +291,7 @@ void ArangodServer::addFeatures() {
       addFeature<SchedulerFeature>(metrics, sharedPRNGFeature.getPRNG(),
                                    getOptions<SchedulerOptionsProvider>());
   auto& vectorIndex = addFeature<VectorIndexFeature>(
-      database, getOptions<vector_index::VectorIndexOptionsProvider>());
+      database, getOptions<vector_index::OptionsProvider>());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   addFeature<ProcessEnvironmentFeature>(
       std::string{_binaryName},
@@ -349,6 +366,7 @@ void ArangodServer::addFeatures() {
 #else
   addFeature<SslServerFeature>(getOptions<SslServerOptionsProvider>());
 #endif
+  addFeature<RbacFeature>(authentication);
   addFeature<iresearch::IResearchAnalyzerFeature>(
       iresearch::IResearchAnalyzerFeature::Dependencies{
           .databaseFeature = database,

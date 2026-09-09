@@ -58,6 +58,7 @@ RestDumpHandler::RestDumpHandler(
 }
 
 // main function that dispatches the different routes and commands
+// Mounted at /_api/dump (prefix)
 RestStatus RestDumpHandler::execute() {
   if (!ServerState::instance()->isDBServer() &&
       !ServerState::instance()->isSingleServer()) {
@@ -85,6 +86,7 @@ RestStatus RestDumpHandler::execute() {
     // already validated by validateRequest()
     TRI_ASSERT(len == 1);
     // end a dump
+    // permission checked in DumpManager
     handleCommandDumpFinished();
   } else if (type == rest::RequestType::POST) {
     if (len == 1) {
@@ -94,6 +96,7 @@ RestStatus RestDumpHandler::execute() {
     } else if (len == 2) {
       TRI_ASSERT(suffixes[0] == "next");
       // fetch next data from a dump
+      // permission checked in DumpManager
       handleCommandDumpNext();
     } else {
       // unreachable. already validated by validateRequest()
@@ -162,8 +165,12 @@ void RestDumpHandler::handleCommandDumpStart() {
 
   // adjust permissions in single server case, so that the behavior
   // is identical to non-parallel dumps
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser() &&
-                                   ServerState::instance()->isSingleServer());
+  // TODO What permission should this check? It was _system RW (admin) check
+  //      before. Should it be specific to `database`?
+  //      Should isSingleServer() be part of the permission check?
+  ExecContextSuperuserScope escope(
+      ExecContext::current().canUseAdminAction(auth::perms::AdminDump{}).ok() &&
+      ServerState::instance()->isSingleServer());
 
   auto guard =
       _dumpManager->createContext(std::move(opts), user, database, useVPack);
@@ -300,12 +307,6 @@ Result RestDumpHandler::validateRequest() {
       }
 
       if (!ServerState::instance()->isDBServer()) {
-        // make this version of dump compatible with the previous version of
-        // arangodump. the previous version assumed that as long as you are
-        // an admin user, you can dump every collection
-        ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
-
-        // validate permissions for all participating shards
         RocksDBDumpContextOptions opts;
         velocypack::deserializeUnsafe(body, opts);
 
@@ -322,11 +323,10 @@ Result RestDumpHandler::validateRequest() {
                   _clusterInfo.getCollectionNameForShard(maybeShardID.get());
             }
           }
-          if (!ExecContext::current().canUseCollection(
-                  _request->databaseName(), collectionName, auth::Level::RO)) {
-            return {TRI_ERROR_FORBIDDEN,
-                    absl::StrCat("insufficient permissions to access shard ",
-                                 it, " of collection ", collectionName)};
+          if (auto r = ExecContext::current().canDumpCollection(
+                  _request->databaseName(), collectionName);
+              !r.ok()) {
+            return r;
           }
         }
       }

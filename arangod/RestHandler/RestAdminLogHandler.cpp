@@ -28,12 +28,10 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "GeneralServer/ServerSecurityFeature.h"
 #include "Inspection/VPack.h"
 #include "Logger/LogLevel.h"
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
-#include "Logger/LogLevel.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -60,29 +58,42 @@ RestAdminLogHandler::RestAdminLogHandler(
       _clusterFeature(server.getFeature<ClusterFeature>()),
       _connectionPool(server.getFeature<NetworkFeature>().pool()) {}
 
-arangodb::Result RestAdminLogHandler::verifyPermitted() {
+arangodb::Result RestAdminLogHandler::verifyPermitted(RequestType const type) {
   if (!_logApiOptions.apiEnabled) {
     return arangodb::Result(TRI_ERROR_HTTP_FORBIDDEN, "log API is disabled");
   }
 
   // do we have admin rights (if rights are active)
   if (_logApiOptions.apiSwitch == "jwt") {
-    if (!ExecContext::current().isSuperuser()) {
+    if (!ExecContext::current().isSuperuserOrDisabled()) {
       return arangodb::Result(TRI_ERROR_HTTP_FORBIDDEN,
                               "you need super user rights for log operations");
-    }  // if
+    }
   } else {
-    if (!ExecContext::current().isAdminUser()) {
-      return arangodb::Result(TRI_ERROR_HTTP_FORBIDDEN,
-                              "you need admin rights for log operations");
-    }  // if
+    if (type == RequestType::GET) {
+      if (auto r = ExecContext::current().canUseAdminAction(
+              auth::perms::AdminReadLogs{});
+          r.fail()) {
+        return r;
+      }
+    } else {
+      // Please note that this means that both `clearLogs` as well as
+      // setting logs levels is allowed by AdminSetLogLevel!
+      if (auto r = ExecContext::current().canUseAdminAction(
+              auth::perms::AdminSetLogLevel{});
+          r.fail()) {
+        return r;
+      }
+    }
   }
 
   return arangodb::Result();
 }
 
+// Mounted at /_admin/log (prefix)
 auto RestAdminLogHandler::executeAsync() -> futures::Future<futures::Unit> {
-  auto result = verifyPermitted();
+  auto const type = _request->requestType();
+  auto result = verifyPermitted(type);
   if (!result.ok()) {
     generateError(rest::ResponseCode::FORBIDDEN, result.errorNumber(),
                   result.errorMessage());
@@ -90,11 +101,17 @@ auto RestAdminLogHandler::executeAsync() -> futures::Future<futures::Unit> {
   }
 
   auto const& suffixes = _request->suffixes();
-  auto const type = _request->requestType();
 
   if (type == rest::RequestType::DELETE_REQ) {
-    if (suffixes.empty() ||
-        (suffixes.size() == 1 && suffixes[0] == "entries")) {
+    if (suffixes.empty()) {
+      if (_request->requestedApiVersion() == 0) {
+        clearLogs();
+      } else {
+        generateError(rest::ResponseCode::GONE, TRI_ERROR_HTTP_GONE,
+                      "This endpoint has been removed. Please use DELETE "
+                      "`/_admin/log/entries` instead.");
+      }
+    } else if (suffixes.size() == 1 && suffixes[0] == "entries") {
       clearLogs();
     } else if (suffixes.size() == 1 && suffixes[0] == "level") {
       // reset log levels to defaults
@@ -103,11 +120,18 @@ auto RestAdminLogHandler::executeAsync() -> futures::Future<futures::Unit> {
       generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                     "superfluous suffix, expecting /_admin/log/<suffix>, "
-                    "where suffix can be either omitted or 'level'");
+                    "where suffix can be either 'entries' or 'level'");
     }
   } else if (type == rest::RequestType::GET) {
     if (suffixes.empty()) {
-      co_await reportLogs(/*newFormat*/ false);
+      if (_request->requestedApiVersion() == 0) {
+        co_await reportLogs(/*newFormat*/ false);
+      } else {
+        generateError(rest::ResponseCode::GONE, TRI_ERROR_HTTP_GONE,
+                      "This endpoint has been removed. Please use GET "
+                      "`/_admin/log/entries` instead.");
+      }
+
     } else if (suffixes.size() == 1 && suffixes[0] == "entries") {
       co_await reportLogs(/*newFormat*/ true);
     } else if (suffixes.size() == 1 && suffixes[0] == "level") {

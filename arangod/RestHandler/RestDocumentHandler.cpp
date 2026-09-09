@@ -89,6 +89,7 @@ RequestLane RestDocumentHandler::lane() const {
   return RequestLane::CLIENT_SLOW;
 }
 
+// Mounted at /_api/document (prefix)
 auto RestDocumentHandler::executeAsync() -> futures::Future<futures::Unit> {
   // extract the sub-request type
   auto const type = _request->requestType();
@@ -155,9 +156,18 @@ async<void> RestDocumentHandler::insertDocument() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.size() > 1) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
-                  "superfluous suffix, expecting " + DOCUMENT_PATH +
-                      "?collection=<identifier>");
+    generateError(
+        rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+        "superfluous suffix, expecting " + DOCUMENT_PATH + "/<collection>");
+    co_return;
+  }
+
+  if (_request->requestedApiVersion() > 0 &&
+      (suffixes.empty() || suffixes[0].empty())) {
+    generateError(rest::ResponseCode::BAD,
+                  TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
+                  "the collection must be given in the URL path: POST " +
+                      DOCUMENT_PATH + "/<collection>");
     co_return;
   }
 
@@ -173,9 +183,13 @@ async<void> RestDocumentHandler::insertDocument() {
   if (!found || cname.empty()) {
     generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
-                  "'collection' is missing, expecting " + DOCUMENT_PATH +
-                      " POST /_api/document/<collection> or query parameter "
-                      "'collection'");
+                  "'collection' is missing, expecting POST " + DOCUMENT_PATH +
+                      "/<collection>");
+    co_return;
+  }
+
+  // if name is a numeric collection id, generate a 400 error
+  if (_request->requestedApiVersion() > 0 && rejectNumericCollectionId(cname)) {
     co_return;
   }
 
@@ -185,7 +199,7 @@ async<void> RestDocumentHandler::insertDocument() {
     co_return;
   }
 
-  arangodb::OperationOptions opOptions(_context);
+  arangodb::OperationOptions opOptions;
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
   opOptions.versionAttribute =
@@ -202,6 +216,12 @@ async<void> RestDocumentHandler::insertDocument() {
   handleFillIndexCachesValue(opOptions);
 
   if (_request->parsedValue(StaticStrings::Overwrite, false)) {
+    if (_request->requestedApiVersion() > 0) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "the 'overwrite' option has been removed, use "
+                    "'overwriteMode' instead");
+      co_return;
+    }
     // the default behavior if just "overwrite" is set
     opOptions.overwriteMode = OperationOptions::OverwriteMode::Replace;
   }
@@ -333,6 +353,12 @@ async<void> RestDocumentHandler::readSingleDocument(bool generateBody) {
   // split the document reference
   std::string const& collection = suffixes[0];
 
+  // if name is a numeric collection id, generate a 400 error
+  if (_request->requestedApiVersion() > 0 &&
+      rejectNumericCollectionId(collection)) {
+    co_return;
+  }
+
   std::string const& key = suffixes[1];
 
   // check for an etag
@@ -343,7 +369,7 @@ async<void> RestDocumentHandler::readSingleDocument(bool generateBody) {
                                     // will happen
   }
 
-  OperationOptions options(_context);
+  OperationOptions options;
   options.ignoreRevs = true;
 
   // Check if dirty reads are allowed:
@@ -464,15 +490,21 @@ async<void> RestDocumentHandler::updateDocument() {
 async<void> RestDocumentHandler::modifyDocument(bool isPatch) {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
-  if (suffixes.size() > 2) {
+  if (suffixes.size() > 2 ||
+      (_request->requestedApiVersion() > 0 && suffixes.size() == 0)) {
     std::string msg("expecting ");
     msg.append(isPatch ? "PATCH" : "PUT");
     msg.append(
         " /_api/document/<collection> or"
-        " /_api/document/<collection>/<key> or"
-        " /_api/document and query parameter 'collection'");
+        " /_api/document/<collection>/<key>");
 
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, msg);
+    co_return;
+  }
+
+  // if name is a numeric collection id, generate a 400 error
+  if (_request->requestedApiVersion() > 0 &&
+      rejectNumericCollectionId(suffixes[0])) {
     co_return;
   }
 
@@ -490,10 +522,8 @@ async<void> RestDocumentHandler::modifyDocument(bool isPatch) {
       cname = _request->value("collection", found);
     }
     if (!found) {
-      std::string msg(
-          "collection must be given in URL path or query parameter "
-          "'collection' must be specified");
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, msg);
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "collection name must be non-empty in URL path");
       co_return;
     }
   } else {
@@ -507,7 +537,7 @@ async<void> RestDocumentHandler::modifyDocument(bool isPatch) {
     co_return;
   }
 
-  OperationOptions opOptions(_context);
+  OperationOptions opOptions;
   if ((!isArrayCase && !body.isObject()) || (isArrayCase && !body.isArray())) {
     generateTransactionError(
         cname,
@@ -677,6 +707,11 @@ async<void> RestDocumentHandler::removeDocument() {
   // split the document reference
   std::string const& cname = suffixes[0];
 
+  // if name is a numeric collection id, generate a 400 error
+  if (_request->requestedApiVersion() > 0 && rejectNumericCollectionId(cname)) {
+    co_return;
+  }
+
   std::string key;
   if (suffixes.size() == 2) {
     key = suffixes[1];
@@ -693,7 +728,7 @@ async<void> RestDocumentHandler::removeDocument() {
     }
   }
 
-  OperationOptions opOptions(_context);
+  OperationOptions opOptions;
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
   opOptions.returnOld =
@@ -817,7 +852,11 @@ async<void> RestDocumentHandler::readManyDocuments() {
   // split the document reference
   std::string const& cname = suffixes[0];
 
-  OperationOptions opOptions(_context);
+  if (_request->requestedApiVersion() > 0 && rejectNumericCollectionId(cname)) {
+    co_return;
+  }
+
+  OperationOptions opOptions;
   opOptions.ignoreRevs =
       _request->parsedValue(StaticStrings::IgnoreRevsString, true);
 
