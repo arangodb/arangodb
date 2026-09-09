@@ -1,5 +1,4 @@
 /*jshint globalstrict:false, strict:false */
-/*global fail */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -29,6 +28,7 @@
 // Run in the `authentication` suite (auth is on there).
 
 const jsunity = require("jsunity");
+const { assertTrue, assertNotEqual } = jsunity.jsUnity.assertions;
 const arango = require("@arangodb").arango;
 const db = require("internal").db;
 const wait = require("internal").wait;
