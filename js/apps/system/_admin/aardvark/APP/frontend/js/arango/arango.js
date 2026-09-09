@@ -1160,6 +1160,28 @@
       });
     },
 
+    // arangod's generic forbidden error number.
+    ERROR_FORBIDDEN: 11,
+
+    // The access-level probes ask about the current user, which classic mode
+    // always allows. A forbidden answer therefore only happens in RBAC mode,
+    // where grants are per action and resource name and cannot be known
+    // upfront; callers show everything and let the server answer each write.
+    isOwnAccessLevelForbidden: function (xhr) {
+      if (xhr.status !== 403) {
+        return false;
+      }
+      var body = xhr.responseJSON;
+      if (!body) {
+        try {
+          body = JSON.parse(xhr.responseText);
+        } catch (e) {
+          body = {};
+        }
+      }
+      return body.errorNum === arangoHelper.ERROR_FORBIDDEN;
+    },
+
     checkCollectionPermissions: function (collectionID, roCallback) {
       var url = arangoHelper.databaseUrl('/_api/user/' +
         encodeURIComponent(window.App.userCollection.activeUser || "root") +
@@ -1177,6 +1199,9 @@
           }
         },
         error: function (data) {
+          if (arangoHelper.isOwnAccessLevelForbidden(data)) {
+            return;
+          }
           arangoHelper.arangoError('User', 'Could not fetch collection permissions.');
         }
       });
@@ -1215,7 +1240,13 @@
           }
         },
         error: function (data) {
-          arangoHelper.arangoError('User', 'Could not fetch collection permissions.');
+          if (arangoHelper.isOwnAccessLevelForbidden(data)) {
+            if (rwCallback) {
+              rwCallback(false);
+            }
+            return;
+          }
+          arangoHelper.arangoError('User', 'Could not fetch database permissions.');
           if (errorCallback) {
             errorCallback(data);
           }
