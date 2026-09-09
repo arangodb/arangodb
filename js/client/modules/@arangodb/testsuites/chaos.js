@@ -99,7 +99,10 @@ function chaos (options) {
     }
   };
 
-  return new chaosRunner(options, 'chaos', {"--server.maximal-threads":"8"}).run(testCases);
+  return new chaosRunner(options, 'chaos', {
+    "--server.maximal-threads":"8",
+    "--server.authentication": false,
+  }).run(testCases);
 }
 
 function deadlock (options) {

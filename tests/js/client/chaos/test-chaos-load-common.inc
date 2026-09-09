@@ -35,7 +35,6 @@ const {
   deriveTestSuite,
   runParallelArangoshTests,
   waitForShardsInSync,
-  getInstanceInfo
 } = require('@arangodb/test-helper');
 let { instanceRole } = require('@arangodb/testutils/instance');
 
@@ -48,9 +47,13 @@ const fetchRevisionTree = (server, shardId) => {
     }
     let cursorID = result.parsedBody.id;
     result = arango.GET_RAW(`/_api/replication/revisions/tree?collection=${encodeURIComponent(shardId)}&verification=true&batchId=${cursorID}&onlyPopulated=true`);
-    assertEqual(200, result.code, result);
-    arango.DELETE_RAW(`/_api/replication/batch/${cursorID}`);
-    return result.parsedBody;
+    if (result.code !== 404 && result.parsedBody.errorNum !== internal.error.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
+      assertEqual(200, result.code, {result, cursorID, shardId});
+      arango.DELETE_RAW(`/_api/replication/batch/${cursorID}`);
+    } else {
+      print(`             ${Date()} fetching revision tree for ${shardId} from ${server.name} failed: ${JSON.stringify(result.parsedBody)}`);
+      return result.parsedBody;
+    }
   });
 };
 
@@ -60,8 +63,8 @@ const compareTree = function (left, right) {
 };
 
 const checkCollectionConsistency = (cn) => {
+  let IM = global.instanceManager;
   const c = db._collection(cn);
-  let IM = getInstanceInfo();
   const dbServers = IM.getInstancesRole(instanceRole.dbserver);
   const shardInfo = c.shards(true);
   
@@ -77,6 +80,10 @@ const checkCollectionConsistency = (cn) => {
         let leader = IM.getInstanceByID(leaderID);
         let follower = IM.getInstanceByID(followerID);
         const leaderTree = fetchRevisionTree(leader, shard);
+        if (leaderTree.errorNum !== 0) {
+          failed = true;
+          return;
+        }        
         // We remove the computed and stored nodes since we may want to print the trees, but we
         // don't want to print the 262k buckets! Equality of the trees is checked using the single
         // combined hash and document count.
@@ -110,7 +117,7 @@ const checkCollectionConsistency = (cn) => {
         }
       });
     if (failed) {
-      if (++tries >= 6) {
+      if (++tries >= 60) {
         assertFalse(failed, `Cluster still not in sync - giving up!`);
       }
       console.warn(`Found some inconsistencies! Giving cluster some more time to get in sync before checking again... try=${tries}`);
@@ -158,7 +165,6 @@ function BaseChaosSuite(testOpts) {
   // generate a random collection name
   const cn = "UnitTests" + require("@arangodb/crypto").md5(internal.genRandomAlphaNumbers(32));
   const coordination_cn = cn + "_coord";
-  let IM = getInstanceInfo();
 
   const createAnalyzers = () => {
     try {
@@ -267,6 +273,7 @@ function BaseChaosSuite(testOpts) {
 
   return {
     setUp: function () {
+      let IM = global.instanceManager;
       if (testOpts.withOneShard) {
         db._createDatabase(dbname,  {sharding:"single"});
       } else {
@@ -309,7 +316,6 @@ function BaseChaosSuite(testOpts) {
         IM.debugSetFailAt("lowCountCacheTimeout", instanceRole.coordinator);
       }
       if (testOpts.withDelays) {
-        let IM = getInstanceInfo();
         IM.debugSetFailAt("TransactionChaos::blockerOnSync", instanceRole.dbServer);
         IM.debugSetFailAt("TransactionChaos::randomSleep", instanceRole.dbServer);
         IM.debugSetFailAt("TransactionChaos::randomSync", instanceRole.dbServer);
@@ -318,6 +324,7 @@ function BaseChaosSuite(testOpts) {
     },
 
     tearDown: function () {
+      let IM = global.instanceManager;
       db._useDatabase(dbname);
       try {
         print(Date() + " tearDown: flushing failurepoints");
@@ -347,6 +354,7 @@ function BaseChaosSuite(testOpts) {
     },
     
     testRunChaos: function () {
+      let IM = global.instanceManager;
       let code = (testOpts) => {
         const pid = require("internal").getPid();
         const errors = require("@arangodb").errors;
@@ -602,9 +610,9 @@ function BaseChaosSuite(testOpts) {
         // run the suite for a few minutes
         let client_ret = runParallelArangoshTests(tests, 3 * 60, coordination_cn);
 
-        print(Date() + " Finished load test; Clearing failurepoints");
+        print(`${Date()} Finished load test; Clearing failurepoints`);
         IM.debugClearFailAt();
-        print(Date() + " Waiting for shards to get in sync");
+        print(`${Date()} Waiting for shards to get in sync ${cn}`);
         waitForShardsInSync(cn, 300, db[cn].properties().replicationFactor - 1);
         print(Date() + " checking consistency");
         checkCollectionConsistency(cn);
