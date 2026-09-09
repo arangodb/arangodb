@@ -62,6 +62,8 @@ Result writeConcernError(std::size_t replicationFactor,
 
 }  // namespace
 
+// TODO (COR-885): the slice ctor goes away there; this normalization has to
+// move to wherever the marker is parsed into a CollectionDescriptor.
 ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info,
                            LogicalCollection* collection)
     : _collection(collection),
@@ -84,6 +86,22 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info,
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
         "invalid non-string value for 'distributeShardsLike'");
+  }
+
+  // A single server persists the leader's name, the agency plan its id.
+  // Normalize it so _distributeShardsLike is always a cid.
+  if (!_distributeShardsLike.empty() &&
+      basics::StringUtils::try_uint64(_distributeShardsLike).fail()) {
+    TRI_ASSERT(_collection != nullptr);
+    CollectionNameResolver resolver(_collection->vocbase());
+    auto id = resolver.getCollectionId(_distributeShardsLike);
+    if (!id.isSet()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
+          absl::StrCat("Collection not found: ", _distributeShardsLike,
+                       " in database ", _collection->vocbase().name()));
+    }
+    _distributeShardsLike = std::to_string(id.id());
   }
 
   VPackSlice v = info.get(StaticStrings::NumberOfShards);
@@ -476,23 +494,16 @@ void ShardingInfo::toVelocyPack(VPackBuilder& result,
     result.add(StaticStrings::MinReplicationFactor, VPackValue(_writeConcern));
   }
 
-  if (!_distributeShardsLike.empty()) {
-    if (ServerState::instance()->isCoordinator()) {
-      // We either want to expose _distributeShardsLike if we're either on a
-      // Coordinator
-      if (translateCids) {
-        CollectionNameResolver resolver(_collection->vocbase());
-
-        result.add(StaticStrings::DistributeShardsLike,
-                   VPackValue(resolver.getCollectionNameCluster(DataSourceId{
-                       basics::StringUtils::uint64(distributeShardsLike())})));
-      } else {
-        result.add(StaticStrings::DistributeShardsLike,
-                   VPackValue(distributeShardsLike()));
-      }
-    } else if (ServerState::instance()->isSingleServer()) {
-      // Or we have found a Smart or Satellite collection on a single server
-      // instance.
+  auto role = ServerState::instance();
+  if (!_distributeShardsLike.empty() &&
+      (role->isSingleServer() || role->isCoordinator())) {
+    // Single server wants to expose a name regardless the context
+    if (role->isSingleServer() || translateCids) {
+      CollectionNameResolver resolver(_collection->vocbase());
+      result.add(StaticStrings::DistributeShardsLike,
+                 VPackValue(resolver.getCollectionNameCluster(DataSourceId{
+                     basics::StringUtils::uint64(distributeShardsLike())})));
+    } else {
       result.add(StaticStrings::DistributeShardsLike,
                  VPackValue(distributeShardsLike()));
     }

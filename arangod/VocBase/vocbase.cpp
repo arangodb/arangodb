@@ -1089,7 +1089,6 @@ Result Database::validateCollectionDescriptor(CollectionDescriptor const& d) {
                 std::string{d.mutableProps.name} + "'"};
   }
 
-  // a userInvariant, so it does not run on descriptors we build ourselves
   if (auto status = CollectionDescriptor::Invariants::isSmartConfiguration(d);
       !status.ok()) {
     return {TRI_ERROR_BAD_PARAMETER, status.error()};

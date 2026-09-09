@@ -25,9 +25,13 @@
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/debugging.h"
+#include "Inspection/Status.h"
 #include "Utilities/NameValidator.h"
 #include "VocBase/Properties/CollectionDescriptor.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
+#include "VocBase/Properties/UtilityInvariants.h"
+
+#include <absl/strings/str_cat.h>
 
 #include <string>
 #include <variant>
@@ -36,6 +40,51 @@
 using namespace arangodb;
 
 namespace {
+
+Result validateUserInput(CollectionDescriptor const& d) {
+  Result res;
+
+  auto onAttribute = [&res](inspection::Status status,
+                            std::string_view attribute) {
+    if (res.ok() && !status.ok()) {
+      res = {TRI_ERROR_BAD_PARAMETER,
+             absl::StrCat(status.error(), " (on attribute \"", attribute,
+                          "\")")};
+    }
+  };
+  auto withCode = [&res](inspection::Status status, ErrorCode code) {
+    if (res.ok() && !status.ok()) {
+      res = {code, status.error()};
+    }
+  };
+
+  withCode(UtilityInvariants::isValidCollectionType(d.constant.type),
+           TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
+  withCode(
+      UtilityInvariants::isNonEmptyIfPresent(d.constant.smartJoinAttribute),
+      TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE);
+  onAttribute(
+      UtilityInvariants::isNonEmptyIfPresent(d.internal.smartGraphAttribute),
+      StaticStrings::GraphSmartGraphAttribute);
+  withCode(CollectionMutableProperties::Invariants::isJsonSchema(
+               d.mutableProps.schema),
+           TRI_ERROR_VALIDATION_BAD_PARAMETER);
+  onAttribute(UtilityInvariants::isGreaterZeroIfPresent(
+                  d.clusteringConstant.numberOfShards),
+              StaticStrings::NumberOfShards);
+  onAttribute(UtilityInvariants::isValidShardingStrategyIfPresent(
+                  d.clusteringConstant.shardingStrategy),
+              StaticStrings::ShardingStrategy);
+  onAttribute(UtilityInvariants::isNonEmptyIfPresent(
+                  d.clusteringConstant.distributeShardsLike),
+              StaticStrings::DistributeShardsLike);
+  // An object invariant, so it never had an attribute path.
+  withCode(ClusteringMutableProperties::Invariants::
+               writeConcernAllowedToBeZeroForSatellite(d.clusteringMutable),
+           TRI_ERROR_BAD_PARAMETER);
+
+  return res;
+}
 
 Result validateOrSetDefaultShardingStrategy(CollectionDescriptor& d) {
   if (d.constant.isSmart) {
@@ -144,6 +193,10 @@ Result validateSmartJoin(CollectionDescriptor& d) {
 
 Result arangodb::applyDefaultsAndValidate(CollectionDescriptor& d,
                                           DatabaseConfiguration const& config) {
+  if (auto res = validateUserInput(d); res.fail()) {
+    return res;
+  }
+
   //  Check name is allowed
   if (auto res = CollectionNameValidator::validateName(
           d.constant.isSystem, config.allowExtendedNames, d.mutableProps.name);
@@ -177,36 +230,22 @@ Result arangodb::applyDefaultsAndValidate(CollectionDescriptor& d,
       return groupInfo.result();
     }
     auto const& leader = groupInfo.get();
-    if (leader.clusteringConstant.distributeShardsLike.has_value() ||
-        leader.clusteringConstant.distributeShardsLikeCid.has_value()) {
-      // We are creating a chain of distributeShardsLike, this is not allowed.
-      // TODO: For Collection groups, we may want to allow this, as the target
-      // distributeShardsLike will be the Collection group, and we have to read
-      // this. This version is for original distributeShardsLike behaviour.
-
-      // At the time this was implemented the internal structure was always
-      // using CID.
-      TRI_ASSERT(leader.clusteringConstant.distributeShardsLikeCid.has_value());
-      // This is a bit of an overkill just for the message, but we have the
-      // operations in our hands right now. LongTermPlan: At this point in time
-      // we should see a collection by name, not by cid, and not have two
-      // values, this way we can save the lookup here.
+    if (leader.clusteringConstant.distributeShardsLike.has_value()) {
+      // A chain of distributeShardsLike is not allowed. The leader's field is
+      // already normalised to a cid, and the resolver takes either.
       auto leadersLeader = config.getCollectionGroupSharding(
-          leader.clusteringConstant.distributeShardsLikeCid.value());
+          leader.clusteringConstant.distributeShardsLike.value());
       // We cannot see a follower to a non-existent leader.
       TRI_ASSERT(leadersLeader.ok());
-
       return {TRI_ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE,
               "Cannot distribute shards like '" + dsl.value() +
                   "' it is already distributed like '" +
                   leadersLeader->mutableProps.name + "'."};
     }
 
-    // We cannot have a cid set yet, this can only be set if we read from
-    // agency which is not yet implemented using this path.
-    TRI_ASSERT(!d.clusteringConstant.distributeShardsLikeCid.has_value());
-    d.clusteringConstant.distributeShardsLikeCid =
-        std::to_string(leader.internal.id.id());
+    // From here on the field holds the leader's id, not the name the caller
+    // gave us.
+    dsl = std::to_string(leader.internal.id.id());
 
     TRI_ASSERT(leader.clusteringConstant.numberOfShards.has_value());
     if (d.clusteringConstant.numberOfShards.has_value()) {

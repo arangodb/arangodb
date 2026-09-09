@@ -140,6 +140,28 @@ TEST_F(CollectionDescriptorFactoryTest, test_requires_some_input) {
   assertParsingThrows(body);
 }
 
+// These used to be inspector invariants, so the property tests asserted them
+// on parsing. They now run in applyDefaultsAndValidate, which is also the only
+// place that can report the error code the create API has always used.
+TEST_F(CollectionDescriptorFactoryTest, test_userInputInvariants) {
+  auto fails = [&](std::string const& attribute, auto value, ErrorCode code) {
+    auto body = createMinimumBodyWithOneValue(attribute, value);
+    auto testee = parse(body.slice());
+    ASSERT_TRUE(testee.fail()) << " On body " << body.toJson();
+    EXPECT_EQ(testee.errorNumber(), code) << " On body " << body.toJson();
+  };
+
+  fails("name", "", TRI_ERROR_ARANGO_ILLEGAL_NAME);
+  fails("type", 4, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
+  fails("smartJoinAttribute", "", TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE);
+  fails("smartGraphAttribute", "", TRI_ERROR_BAD_PARAMETER);
+  fails("schema", 5, TRI_ERROR_VALIDATION_BAD_PARAMETER);
+  fails("numberOfShards", 0, TRI_ERROR_BAD_PARAMETER);
+  fails("shardingStrategy", "dogfather", TRI_ERROR_BAD_PARAMETER);
+  fails("distributeShardsLike", "", TRI_ERROR_BAD_PARAMETER);
+  fails("writeConcern", 0, TRI_ERROR_BAD_PARAMETER);
+}
+
 TEST_F(CollectionDescriptorFactoryTest, test_minimal_user_input) {
   std::string colName = "test";
   VPackBuilder body;
@@ -300,8 +322,10 @@ TEST_F(CollectionDescriptorFactoryTest, test_distributeShardsLike_default) {
   auto testee = parse(body.slice(), config);
   // Default value should be taken if none is set
   ASSERT_TRUE(testee.ok()) << "Failed on " << testee.errorMessage();
+  // the name the caller gave is replaced by the leader's id
   EXPECT_EQ(testee->clusteringConstant.distributeShardsLike.value(),
-            defaultShardBy);
+            std::to_string(leader.internal.id.id()));
+
   EXPECT_EQ(testee->clusteringConstant.numberOfShards.value(),
             leader.clusteringConstant.numberOfShards.value());
   EXPECT_EQ(testee->clusteringMutable.replicationFactor.value(),
@@ -358,7 +382,7 @@ TEST_F(CollectionDescriptorFactoryTest,
   // Default value should be taken if none is set
   ASSERT_TRUE(testee.ok()) << "Failed on " << testee.errorMessage();
   EXPECT_EQ(testee->clusteringConstant.distributeShardsLike.value(),
-            defaultShardBy);
+            std::to_string(leader.internal.id.id()));
   EXPECT_EQ(testee->clusteringConstant.numberOfShards.value(),
             leader.clusteringConstant.numberOfShards.value());
   EXPECT_EQ(testee->clusteringMutable.replicationFactor.value(),

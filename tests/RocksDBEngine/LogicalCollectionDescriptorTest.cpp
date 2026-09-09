@@ -421,6 +421,8 @@ TEST_F(LogicalCollectionDescriptorTest, Context_objectIdIsInternalOnly) {
   EXPECT_FALSE(velocypack::deserializeWithStatus(body.slice(), userProps, {},
                                                  InspectUserContext{})
                    .ok());
+}
+
 TEST_F(LogicalCollectionDescriptorTest,
        Validation_rejectsSmartGraphAttributeWithoutIsSmart) {
   auto descriptor = representativeCreateDescriptor();
@@ -528,4 +530,33 @@ TEST_F(LogicalCollectionDescriptorTest,
   auto collection =
       database->createCollection(representativeCreateSlice().slice());
   EXPECT_FALSE(collection->usesRevisionsAsDocumentIds());
+}
+
+TEST_F(LogicalCollectionDescriptorTest,
+       SliceCtor_distributeShardsLikeRoundTrip) {
+  // A single server persists the leader's name, so loading such a marker has
+  // to turn it back into a cid.
+  auto database = makeDatabase("testDatabase", 42);
+  auto leader = database->createCollection(representativeCreateDescriptor());
+  engine().createCollection(*database, *leader);
+
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder guard(&builder);
+    builder.add(StaticStrings::DataSourceName, VPackValue("comments"));
+    builder.add(StaticStrings::DataSourceType,
+                VPackValue(static_cast<int>(TRI_COL_TYPE_DOCUMENT)));
+    builder.add(StaticStrings::DistributeShardsLike,
+                VPackValue(leader->name()));
+  }
+
+  auto follower = database->createCollection(builder.slice());
+  EXPECT_EQ(follower->shardingInfo()->distributeShardsLike(),
+            std::to_string(leader->id().id()));
+
+  auto marker = follower->toVelocyPackIgnore(
+      volatileKeys(), LogicalDataSource::Serialization::Persistence);
+  EXPECT_EQ(
+      marker.slice().get(StaticStrings::DistributeShardsLike).copyString(),
+      leader->name());
 }

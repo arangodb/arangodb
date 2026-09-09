@@ -228,8 +228,8 @@ Result impl(ClusterInfo& ci, application_features::ApplicationServer& server,
     // If we have some, let's see if they are about to be generated or not:
     if (!distributeShardsLikeColls.empty()) {
       for (auto const& c : colls) {
-        auto const& name = c.getName();
-        distributeShardsLikeColls.erase(name);
+        auto cid = std::to_string(c.properties().internal.id.id());
+        distributeShardsLikeColls.erase(cid);
       }
     }
     // If we still have some, they must be existing collections and we must
@@ -797,14 +797,14 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
       selfCreatedGroups;
   for (auto& col : collections) {
     if (col.clusteringConstant.distributeShardsLike.has_value()) {
-      auto const& leadingName =
+      auto const& leadingCid =
           col.clusteringConstant.distributeShardsLike.value();
-      if (selfCreatedGroups.contains(leadingName)) {
-        auto groupId = selfCreatedGroups.at(leadingName);
+      if (selfCreatedGroups.contains(leadingCid)) {
+        auto groupId = selfCreatedGroups.at(leadingCid);
         groups.addToNewGroup(groupId, col.internal.id);
         col.clusteringConstant.groupId = groupId;
       } else {
-        auto c = ci.getCollection(databaseName, leadingName);
+        auto c = ci.getCollection(databaseName, leadingCid);
         TRI_ASSERT(c.get() != nullptr);
         // We never get a nullptr here because an exception is thrown if the
         // collection does not exist. Also, the createCollection should have
@@ -817,7 +817,7 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
       // Create a new CollectionGroup
       auto groupId = groups.addNewGroup(col, [&ci]() { return ci.uniqid(); });
       // Remember it for reuse
-      selfCreatedGroups.emplace(col.mutableProps.name, groupId);
+      selfCreatedGroups.emplace(std::to_string(col.internal.id.id()), groupId);
       col.clusteringConstant.groupId = groupId;
     }
   }
@@ -874,7 +874,8 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
   } else if (col.clusteringMutable.isSatellite()) {
     // We are a Satellite collection, use Satellite sharding
     auto distribution = std::make_shared<SatelliteDistribution>();
-    allUsedDistributions.emplace(col.mutableProps.name, distribution);
+    allUsedDistributions.emplace(std::to_string(col.internal.id.id()),
+                                 distribution);
     return distribution;
   } else {
     // Just distribute evenly
@@ -882,7 +883,8 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
         col.clusteringConstant.numberOfShards.value(),
         col.clusteringMutable.replicationFactor.value(), options.avoidServers,
         internalOptions.enforceReplicationFactor);
-    allUsedDistributions.emplace(col.mutableProps.name, distribution);
+    allUsedDistributions.emplace(std::to_string(col.internal.id.id()),
+                                 distribution);
     return distribution;
   }
 }

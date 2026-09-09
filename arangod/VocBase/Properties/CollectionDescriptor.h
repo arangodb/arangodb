@@ -57,17 +57,10 @@ struct CollectionDescriptor {
 
 template<class Inspector>
 auto inspect(Inspector& f, CollectionDescriptor& d) {
-  auto result = f.object(d).fields(
+  return f.object(d).fields(
       f.embedFields(d.constant), f.embedFields(d.internal),
       f.embedFields(d.clusteringConstant), f.embedFields(d.clusteringMutable),
       f.embedFields(d.mutableProps), f.embedFields(d.storage));
-
-  if constexpr (isInternalContext<Inspector>) {
-    return inspection::Status{std::move(result)};
-  } else {
-    return result.invariant(
-        CollectionDescriptor::Invariants::isSmartConfiguration);
-  }
 }
 
 }  // namespace arangodb
