@@ -746,8 +746,8 @@ void V8ClientConnection::getConnectionHandleTable(
 
         setBool("active", isActive, entry);
         if (conn) {
-          setBool("connected", conn->state() == fu::Connection::State::Connected,
-                  entry);
+          setBool("connected",
+                  conn->state() == fu::Connection::State::Connected, entry);
           setString("endpoint", conn->endpoint(), entry);
           setString("localPort", conn->localEndpoint(), entry);
         } else {
