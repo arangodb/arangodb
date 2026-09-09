@@ -25,27 +25,20 @@
 #include <gtest/gtest.h>
 
 TEST(ActivityDocumentationMarkdownTest, generates_markdown_correctly) {
-  EXPECT_EQ(
-      activities_to_markdown(
-          std::vector<ActivityDeclaration>{
-              ActivityDeclaration{
-                  .owner = "ns::Holder",
-                  .type = "ns::Foo",
-                  .data_type_definition =
-                      {Struct{.name = "ns::FooData",
-                              .fields = {Member{.name = "id", .type = "int"},
-                                         Member{.name = "label",
-                                                .type = "std::string"}}},
-                       Struct{.name = "ns::Bar", .fields = {}}}},
-              ActivityDeclaration{.owner = "ns::run",
-                                  .type = "ns::Empty",
-                                  .data_type_definition = {}}},
-          std::vector<repository::Commit>{
-              repository::Commit{"arangodb", "abc1234"}}),
-      R""""(# Activities
-This document lists all existing activities in arangodb on commit abc1234
-You can produce the latest activities list yourself via the activities docu, see lib/Activities/docu/README.md in the arangodb repository for details.
-
+  EXPECT_EQ(markdown::activities_to_markdown(std::vector<ActivityDeclaration>{
+                ActivityDeclaration{
+                    .owner = "ns::Holder",
+                    .type = "ns::Foo",
+                    .data_type_definition =
+                        {Struct{.name = "ns::FooData",
+                                .fields = {Member{.name = "id", .type = "int"},
+                                           Member{.name = "label",
+                                                  .type = "std::string"}}},
+                         Struct{.name = "ns::Bar", .fields = {}}}},
+                ActivityDeclaration{.owner = "ns::run",
+                                    .type = "ns::Empty",
+                                    .data_type_definition = {}}}),
+            R""""(
 ## ns::Holder
 type: ns::Foo
 
@@ -62,14 +55,24 @@ type: ns::Empty
 )"""");
 }
 
+TEST(ActivityDocumentationMarkdownTest, preamble_gives_arangodb_commit) {
+  EXPECT_EQ(markdown::preamble(std::vector<std::string>{"lib/"},
+                               std::vector<repository::Commit>{
+                                   repository::Commit{"arangodb", "abc1234"}}),
+            R""""(# Activities
+This document lists all existing activities inside lib/ in arangodb on commit abc1234.
+You can produce the latest activities list yourself via the activities docu, see lib/Activities/docu/README.md in the arangodb repository for details.
+)"""");
+}
+
 TEST(ActivityDocumentationMarkdownTest, lists_an_enterprise_commit_too) {
   EXPECT_EQ(
-      activities_to_markdown(std::vector<ActivityDeclaration>{},
-                             std::vector<repository::Commit>{
-                                 repository::Commit{"arangodb", "abc1234"},
-                                 repository::Commit{"enterprise", "def5678"}}),
+      markdown::preamble(std::vector<std::string>{"lib/", "arangod/"},
+                         std::vector<repository::Commit>{
+                             repository::Commit{"arangodb", "abc1234"},
+                             repository::Commit{"enterprise", "def5678"}}),
       R""""(# Activities
-This document lists all existing activities in arangodb on commit abc1234, enterprise on commit def5678
+This document lists all existing activities inside lib/, arangod/ in arangodb on commit abc1234, enterprise on commit def5678.
 You can produce the latest activities list yourself via the activities docu, see lib/Activities/docu/README.md in the arangodb repository for details.
 )"""");
 }

@@ -40,9 +40,10 @@ int main(int argc, char const** argv) {
   }
 
   // 3. execute search and output-formatting
-  std::cout << activities_to_markdown(
-      find_all_activities(compilation_database, source_files),
-      repository::commit_ids(compilation_database, source_paths));
+  std::cout << markdown::preamble(
+      source_paths, repository::commit_ids(compilation_database, source_paths));
+  std::cout << markdown::activities_to_markdown(
+      find_all_activities(compilation_database, source_files));
 
   return 0;
 }

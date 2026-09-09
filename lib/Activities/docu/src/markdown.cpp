@@ -59,18 +59,37 @@ auto commit_clause(std::vector<repository::Commit> const& commits)
   return clause;
 }
 
+auto source_clause(std::vector<std::string> const& source_paths)
+    -> std::string {
+  auto clause = std::string{};
+  for (auto const& path : source_paths) {
+    if (not clause.empty()) {
+      clause += ", ";
+    }
+    clause += path;
+  }
+  return clause;
+}
+
 }  // namespace
 
-auto activities_to_markdown(std::vector<ActivityDeclaration> const& activities,
-                            std::vector<repository::Commit> const& commits)
+auto markdown::preamble(std::vector<std::string> const& source_paths,
+                        std::vector<repository::Commit> const& commits)
     -> std::string {
   auto markdown = std::string{"# Activities\n"};
-  markdown += "This document lists all existing activities in " +
-              commit_clause(commits) + "\n";
+  markdown += "This document lists all existing activities inside " +
+              source_clause(source_paths) + " in " + commit_clause(commits) +
+              ".\n";
   markdown +=
       "You can produce the latest activities list yourself via the activities "
       "docu, see lib/Activities/docu/README.md in the arangodb repository for "
       "details.\n";
+  return markdown;
+}
+
+auto markdown::activities_to_markdown(
+    std::vector<ActivityDeclaration> const& activities) -> std::string {
+  auto markdown = std::string{};
   for (auto const& activity : activities) {
     markdown += "\n## " + activity.owner + "\n";
     markdown += "type: " + activity.type + "\n";
