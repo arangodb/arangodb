@@ -62,12 +62,39 @@ bool MatchPathRange::isFixed() const noexcept {
   return _maxDepth.has_value() && _minDepth == *_maxDepth;
 }
 
-Variable const* MatchPatternElement::outputVariable() const noexcept {
-  if (kind == Kind::kVariableReference) {
-    return variableReference;
+MatchProjectionItem MatchProjectionItem::keepPath(
+    std::vector<std::string> path) {
+  TRI_ASSERT(!path.empty());
+  MatchProjectionItem item;
+  item.kind = Kind::kKeepAttribute;
+  item.name = path.size() == 1 ? path.front() : std::string{};
+  item.path = std::move(path);
+  return item;
+}
+
+MatchProjectionItem MatchProjectionItem::keepLiteral(std::string key) {
+  MatchProjectionItem item;
+  item.kind = Kind::kKeepLiteral;
+  item.path = {key};
+  item.name = std::move(key);
+  return item;
+}
+
+MatchProjectionItem MatchProjectionItem::alias(std::string name,
+                                               MatchExpressionRef expression) {
+  MatchProjectionItem item;
+  item.kind = Kind::kAlias;
+  item.name = std::move(name);
+  item.expression = expression;
+  return item;
+}
+
+std::string_view MatchProjectionItem::topLevelKey() const noexcept {
+  if (isAlias()) {
+    return name;
   }
-  TRI_ASSERT(vertex.has_value());
-  return vertex->variable;
+  TRI_ASSERT(!path.empty());
+  return path.front();
 }
 
 }  // namespace arangodb::aql

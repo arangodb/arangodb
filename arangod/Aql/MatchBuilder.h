@@ -27,6 +27,7 @@
 
 #include <cstddef>
 #include <optional>
+#include <span>
 #include <string_view>
 #include <tuple>
 #include <unordered_map>
@@ -102,9 +103,22 @@ class MatchBuilder {
       NormalizedVertex const& vertex, Variable const* fullDocumentVariable,
       std::unordered_map<VariableId, Variable const*> const& subst);
 
+  ExecutionNode* createDocumentPatternProjection(
+      Variable const* destinationVariable, Variable const* fullDocumentVar,
+      std::optional<MatchProjection> const& projection,
+      std::unordered_map<VariableId, Variable const*> const& subst);
+
+  ExecutionNode* createEdgeDocumentPatternProjection(
+      Variable const* destinationVariable, Variable const* fullDocumentVar,
+      std::optional<MatchProjection> const& projection,
+      std::unordered_map<VariableId, Variable const*> const& subst);
+
+  /// @brief Shared MATCH projection lowering. @p mandatoryAttributes are
+  /// auto-injected and treated as reserved for user projection handling.
   ExecutionNode* createPatternProjection(
       Variable const* destinationVariable, Variable const* fullDocumentVar,
-      std::optional<MatchProjection> const& projection, bool isEdge,
+      std::optional<MatchProjection> const& projection,
+      std::span<std::string_view const> mandatoryAttributes,
       std::unordered_map<VariableId, Variable const*> const& subst);
 
   std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>

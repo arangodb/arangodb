@@ -118,8 +118,13 @@ void MatchBuilder::maybeQueueProjection(
   if (!binding.hasProjection) {
     return;
   }
-  projections.push_back(createPatternProjection(
-      binding.destination, binding.fullDocument, projection, isEdge, subst));
+  if (isEdge) {
+    projections.push_back(createEdgeDocumentPatternProjection(
+        binding.destination, binding.fullDocument, projection, subst));
+  } else {
+    projections.push_back(createDocumentPatternProjection(
+        binding.destination, binding.fullDocument, projection, subst));
+  }
 }
 
 AstNode* MatchBuilder::createPropertyAccess(Variable const* variable,
@@ -219,9 +224,28 @@ MatchBuilder::createCollectionAccess(
                              vertex.properties, vertex.filter, subst);
 }
 
+ExecutionNode* MatchBuilder::createDocumentPatternProjection(
+    Variable const* destinationVariable, Variable const* fullDocumentVar,
+    std::optional<MatchProjection> const& projection,
+    std::unordered_map<VariableId, Variable const*> const& subst) {
+  return createPatternProjection(
+      destinationVariable, fullDocumentVar, projection,
+      kMandatoryDocumentMatchProjectionAttributes, subst);
+}
+
+ExecutionNode* MatchBuilder::createEdgeDocumentPatternProjection(
+    Variable const* destinationVariable, Variable const* fullDocumentVar,
+    std::optional<MatchProjection> const& projection,
+    std::unordered_map<VariableId, Variable const*> const& subst) {
+  return createPatternProjection(
+      destinationVariable, fullDocumentVar, projection,
+      kMandatoryEdgeDocumentMatchProjectionAttributes, subst);
+}
+
 ExecutionNode* MatchBuilder::createPatternProjection(
     Variable const* destinationVariable, Variable const* fullDocumentVar,
-    std::optional<MatchProjection> const& projectionOpt, bool isEdge,
+    std::optional<MatchProjection> const& projectionOpt,
+    std::span<std::string_view const> mandatoryAttributes,
     std::unordered_map<VariableId, Variable const*> const& subst) {
   if (!projectionOpt.has_value()) {
     auto* root = _ast->createNodeReference(fullDocumentVar);
@@ -230,15 +254,15 @@ ExecutionNode* MatchBuilder::createPatternProjection(
         destinationVariable);
   }
 
+  // Projection semantics (paths, aliases, reserved attributes) are already
+  // normalized; this method only builds the AST / CalculationNode.
   auto const& projection = *projectionOpt;
   auto* root = _ast->createNodeObject();
   auto* ref = _ast->createNodeReference(fullDocumentVar);
 
-  auto isSystemAttribute = [&](std::string_view name) {
-    return name == "_id" || (isEdge && (name == "_from" || name == "_to"));
-  };
-
   auto registerKey = [&](std::string_view key) -> std::string_view {
+    // Copy into Ast resource pool so the resulting AstNode outlives the
+    // temporary NormalizedMatchStatement that owns MatchProjection strings.
     char const* p = _ast->resources().registerString(key);
     return {p, key.size()};
   };
@@ -276,10 +300,13 @@ ExecutionNode* MatchBuilder::createPatternProjection(
     insertNestedPath(root, path, attrAccess);
   };
 
-  addProjectedAttribute({"_id"});
-  if (isEdge) {
-    addProjectedAttribute({"_from"});
-    addProjectedAttribute({"_to"});
+  auto const isReservedAttribute = [&](std::string_view name) noexcept {
+    return std::find(mandatoryAttributes.begin(), mandatoryAttributes.end(),
+                     name) != mandatoryAttributes.end();
+  };
+
+  for (auto attr : mandatoryAttributes) {
+    addProjectedAttribute({std::string(attr)});
   }
 
   std::vector<std::vector<std::string>> keepPaths;
@@ -290,16 +317,20 @@ ExecutionNode* MatchBuilder::createPatternProjection(
   std::vector<AliasItem> aliases;
 
   for (auto const& item : projection.items) {
-    if (item.kind == MatchProjectionItem::Kind::kAlias) {
+    if (item.isAlias()) {
       aliases.push_back(
           AliasItem{item.name, const_cast<AstNode*>(item.expression.node)});
-    } else {
-      TRI_ASSERT(!item.path.empty());
-      if (isSystemAttribute(item.path[0])) {
-        continue;
-      }
-      keepPaths.push_back(item.path);
+      continue;
     }
+    TRI_ASSERT(item.isKeep());
+    TRI_ASSERT(!item.path.empty());
+    // Reserved attributes are already mandatory. Ignore user projection paths
+    // rooted at _id, _from, or _to to avoid overwriting these scalar
+    // attributes.
+    if (isReservedAttribute(item.topLevelKey())) {
+      continue;
+    }
+    keepPaths.push_back(item.path);
   }
 
   // Drop paths that are duplicates or have a shorter kept prefix
@@ -326,10 +357,8 @@ ExecutionNode* MatchBuilder::createPatternProjection(
   }
 
   std::unordered_set<std::string_view> usedTopLevelKeys;
-  usedTopLevelKeys.emplace("_id");
-  if (isEdge) {
-    usedTopLevelKeys.emplace("_from");
-    usedTopLevelKeys.emplace("_to");
+  for (auto attr : mandatoryAttributes) {
+    usedTopLevelKeys.emplace(attr);
   }
   for (auto const& path : keepPaths) {
     TRI_ASSERT(!path.empty());
@@ -341,7 +370,7 @@ ExecutionNode* MatchBuilder::createPatternProjection(
   }
 
   for (auto const& alias : aliases) {
-    if (isSystemAttribute(alias.name)) {
+    if (isReservedAttribute(alias.name)) {
       continue;
     }
     if (!usedTopLevelKeys.emplace(alias.name).second) {
