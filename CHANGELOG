@@ -1,7 +1,7 @@
 3.12.12 (XXXX-XX-XX)
 --------------------
 
-* Update FAISS to v1.15.0.
+* Update FAISS to v1.15.0 patched with alubsan fix.
 
 * Rebuilt included rclone v1.75.0 with go1.26.8 and non-vulnerable
   dependencies.
