@@ -93,7 +93,6 @@ class Future;
 }
 class CursorRepository;
 struct DatabaseConfiguration;
-class DatabaseReplicationApplier;
 class LogicalCollection;
 class LogicalDataSource;
 class LogicalView;
@@ -186,7 +185,6 @@ struct Database {
 
   std::unique_ptr<arangodb::VocbaseMetrics> _metrics;
 
-  std::unique_ptr<arangodb::DatabaseReplicationApplier> _replicationApplier;
   std::unique_ptr<arangodb::ReplicationClientsProgressTracker>
       _replicationClients;
 
@@ -208,6 +206,7 @@ struct Database {
   template<typename As>
   As& engine() const noexcept
       requires(std::derived_from<As, arangodb::StorageEngine>) {
+    TRI_ASSERT(dynamic_cast<As*>(&_engine) != nullptr);
     return static_cast<As&>(_engine);
   }
 
@@ -272,15 +271,11 @@ struct Database {
   decltype(auto) sharding() const { return _info.sharding(); }
   bool isOneShard() const;
 
-  void toVelocyPack(arangodb::velocypack::Builder& result) const;
+  void toVelocyPack(arangodb::velocypack::Builder& result,
+                    uint32_t apiVersion) const;
   arangodb::ReplicationClientsProgressTracker& replicationClients() {
     return *_replicationClients;
   }
-
-  arangodb::DatabaseReplicationApplier* replicationApplier() const {
-    return _replicationApplier.get();
-  }
-  void addReplicationApplier();
 
   arangodb::aql::QueryList* queryList() const { return _queries.get(); }
   arangodb::aql::QueryPlanCache& queryPlanCache() const {

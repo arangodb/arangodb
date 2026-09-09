@@ -39,6 +39,9 @@ class RestUsersHandler : public arangodb::RestBaseHandler {
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   RestStatus execute() override;
 
+ protected:
+  async<Result> checkDatabaseAccess() const override;
+
  private:
   // helper to generate a compliant response for individual user requests
   void generateUserResult(rest::ResponseCode code,

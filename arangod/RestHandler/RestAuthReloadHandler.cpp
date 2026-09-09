@@ -39,9 +39,12 @@ RestAuthReloadHandler::RestAuthReloadHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/auth/reload (exact)
 RestStatus RestAuthReloadHandler::execute() {
-  if (!ExecContext::current().isAdminUser()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseAdminAction(
+          auth::perms::AdminAuthReload{});
+      r.fail()) {
+    generateError(r);
     return RestStatus::DONE;
   }
 

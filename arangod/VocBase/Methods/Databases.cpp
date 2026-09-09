@@ -28,8 +28,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/FeatureFlags.h"
 #include "Basics/ScopeGuard.h"
-#include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/AgencyCache.h"
@@ -39,7 +37,6 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/SystemDatabaseFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "Sharding/ShardingInfo.h"
 #include "Utils/Events.h"
@@ -54,7 +51,6 @@
 #include <absl/strings/str_cat.h>
 
 #include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
 using namespace arangodb;
@@ -62,19 +58,19 @@ using namespace arangodb::methods;
 using namespace arangodb::velocypack;
 
 std::vector<std::string> Databases::list(
-    application_features::ApplicationServer& server, std::string const& user) {
+    application_features::ApplicationServer& server, bool onlyCurrentUser) {
   if (!server.hasFeature<DatabaseFeature>()) {
     return std::vector<std::string>();
   }
 
   return list(server.getFeature<DatabaseFeature>(),
-              &server.getFeature<ClusterFeature>(), user);
+              &server.getFeature<ClusterFeature>(), onlyCurrentUser);
 }
 
 std::vector<std::string> Databases::list(DatabaseFeature& databaseFeature,
                                          ClusterFeature* clusterFeature,
-                                         std::string const& user) {
-  if (user.empty()) {
+                                         bool onlyCurrentUser) {
+  if (!onlyCurrentUser) {
     if (ServerState::instance()->isCoordinator()) {
       ADB_PROD_ASSERT(clusterFeature != nullptr);
       ClusterInfo& ci = clusterFeature->clusterInfo();
@@ -85,40 +81,8 @@ std::vector<std::string> Databases::list(DatabaseFeature& databaseFeature,
     }
   } else {
     // slow path for user case
-    return databaseFeature.getDatabaseNamesForUser(user);
+    return databaseFeature.getDatabaseNamesForCurrentUser();
   }
-}
-
-// Grant permissions on newly created database to current user
-// to be able to run the upgrade script
-Result Databases::grantCurrentUser(CreateDatabaseInfo const& info) {
-  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
-
-  Result res;
-
-  if (um != nullptr) {
-    ExecContext const& exec = ExecContext::current();
-    // If the current user is empty (which happens if a Maintenance job
-    // called us, or when authentication is off), granting rights
-    // will fail. We hence ignore it here, but issue a warning below
-    if (!exec.isAdminUser()) {
-      res = um->updateUser(
-          exec.user(),
-          [&](auth::User& entry) {
-            entry.grantDatabase(info.getName(), auth::Level::RW);
-            entry.grantCollection(info.getName(), "*", auth::Level::RW);
-            return TRI_ERROR_NO_ERROR;
-          },
-          auth::UserManager::RetryOnConflict::Yes);
-      return res;
-    }
-
-    LOG_TOPIC("2a4dd", DEBUG, Logger::FIXME)
-        << "current ExecContext's user() is empty. "
-        << "Database will be created without any user having permissions";
-  }
-
-  return res;
 }
 
 // Create database on cluster;
@@ -200,11 +164,6 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
     }
   });
 
-  res = grantCurrentUser(info);
-  if (!res.ok()) {
-    return res;
-  }
-
   LOG_TOPIC("54323", DEBUG, Logger::CLUSTER)
       << "createDatabase on coordinator: have granted current user for "
          "database: "
@@ -282,11 +241,6 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
 
   auto sg = scopeGuard([&]() noexcept { vocbase->release(); });
 
-  Result res = grantCurrentUser(info);
-  if (!res.ok()) {
-    return res;
-  }
-
   VPackBuilder userBuilder;
   info.UsersToVelocyPack(userBuilder);
   UpgradeResult upgradeRes =
@@ -300,14 +254,9 @@ Result Databases::create(application_features::ApplicationServer& server,
                          std::string const& dbName, velocypack::Slice users,
                          velocypack::Slice options) {
   Result res = basics::catchToResult([&]() {
-    Result res;
-
-    // Only admin users are permitted to create databases
-    if (!exec.isAdminUser()) {
-      return res.reset(TRI_ERROR_FORBIDDEN);
-    }
-    if (ServerState::readOnly() && !exec.isSuperuser()) {
-      return res.reset(TRI_ERROR_FORBIDDEN, "server is in read-only mode");
+    if (auto r = exec.canCreateDatabase(std::string(dbName)); r.fail()) {
+      events::CreateDatabase(dbName, r, exec);
+      return r;
     }
 
     bool extendedNames = server.getFeature<DatabaseFeature>().extendedNames();
@@ -330,7 +279,7 @@ Result Databases::create(application_features::ApplicationServer& server,
       createInfo.strictValidation(false);
     }
 
-    res = createInfo.load(dbName, options, users);
+    auto res = createInfo.load(dbName, options, users);
 
     if (!res.ok()) {
       return res;
@@ -444,9 +393,10 @@ ErrorCode dropDBCoordinator(DatabaseFeature& df, std::string const& dbName) {
 Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
                        std::string const& dbName) {
   TRI_ASSERT(systemVocbase->isSystem());
-  if (exec.systemAuthLevel() != auth::Level::RW) {
-    events::DropDatabase(dbName, Result(TRI_ERROR_FORBIDDEN), exec);
-    return TRI_ERROR_FORBIDDEN;
+
+  if (auto r = exec.canDropDatabase(dbName); r.fail()) {
+    events::DropDatabase(dbName, r, exec);
+    return r;
   }
 
   Result res;

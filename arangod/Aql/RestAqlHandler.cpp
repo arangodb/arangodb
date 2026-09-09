@@ -456,6 +456,7 @@ auto RestAqlHandler::useQuery(std::string const& operation,
 }
 
 // executes the handler
+// Mounted at /_api/aql (prefix)
 auto RestAqlHandler::executeAsync() -> futures::Future<futures::Unit> {
   if (ServerState::instance()->isSingleServer()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,

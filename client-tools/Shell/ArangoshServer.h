@@ -38,7 +38,7 @@ class ArangoshServer final
                  char const* binaryPath, std::string binaryName, int* ret);
 
  protected:
-  void addFeaturesWithOptionProvider() override;
+  void addFeatures() override;
 };
 
 }  // namespace arangodb

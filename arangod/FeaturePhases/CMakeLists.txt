@@ -9,9 +9,11 @@ add_library(arango_feature_phases STATIC
 
 target_link_libraries(arango_feature_phases
   PUBLIC
-    arango_basic_utils velocypack
-    arango::validation rocksdb_interface immer arango_actor
-    arango_iresearch arango_v8)
+    arango_basic_utils
+    arango_rest_server
+    arango_scheduler
+    arango_vector_index
+    )
 
 target_include_directories(arango_feature_phases PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"

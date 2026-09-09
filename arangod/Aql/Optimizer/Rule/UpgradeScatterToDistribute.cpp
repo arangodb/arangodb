@@ -230,8 +230,7 @@ std::unique_ptr<Condition> getCondition(ExecutionPlan* plan,
 
     auto indexes = indexNode->getIndexes();
     for (auto&& i : indexes) {
-      if (i->type() ==
-          arangodb::Index::IndexType::TRI_IDX_TYPE_INVERTED_INDEX) {
+      if (i->type() == arangodb::IndexType::Inverted) {
         LOG_RULE << "Inverted Indexes are unsupported for this rule";
         return nullptr;
       }

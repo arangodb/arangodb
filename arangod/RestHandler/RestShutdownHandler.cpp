@@ -44,6 +44,7 @@ RestShutdownHandler::RestShutdownHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/shutdown (prefix)
 RestStatus RestShutdownHandler::execute() {
   if (_request->requestType() != rest::RequestType::DELETE_REQ &&
       _request->requestType() != rest::RequestType::GET) {
@@ -52,24 +53,15 @@ RestStatus RestShutdownHandler::execute() {
     return RestStatus::DONE;
   }
 
-  AuthenticationFeature* af = AuthenticationFeature::instance();
-  if (af->isActive() && !_request->user().empty()) {
-    auth::Level lvl;
-    if (af->userManager() != nullptr) {
-      lvl = af->userManager()->databaseAuthLevel(_request->user(), "_system",
-                                                 /*configured*/ true);
-    } else {
-      lvl = auth::Level::RW;
-    }
-    if (lvl < auth::Level::RW) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    "you need admin rights to trigger shutdown");
-      return RestStatus::DONE;
-    }
-  }
-
   auto const& softShutdownFeature{server().getFeature<SoftShutdownFeature>()};
   auto& softShutdownTracker{softShutdownFeature.softShutdownTracker()};
+
+  if (auto r = ExecContext::current().canUseAdminAction(
+          auth::perms::AdminShutdown{});
+      r.fail()) {
+    generateError(r);
+    return RestStatus::DONE;
+  }
 
   if (_request->requestType() == rest::RequestType::GET) {
     if (!ServerState::instance()->isCoordinator()) {

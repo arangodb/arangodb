@@ -292,12 +292,11 @@ void optimizeJoinNode(ExecutionPlan& plan, JoinNode* jn) {
                           << node->toString() << ")";
 
   if (isVarAccessToOthersSideOutVariable) {
-    // Only constant if we're sure that both (lhs + rhs) are not used outVars
-    // of our first candidate.
+    // Simple attribute access to the first candidate's outVariable is a join
+    // key, not a constant expression evaluated by JoinExecutor.
     return false;
   }
 
-  // TODO:  Quickly explain this section
   VarSet result;
   Ast::getReferencedVariables(node, result);
 
@@ -305,16 +304,16 @@ void optimizeJoinNode(ExecutionPlan& plan, JoinNode* jn) {
     return true;
   }
 
-  // Print names of the known constant variables
+  // knownConstVariables is the JoinNode input-row set
+  // (firstCandidate->getFirstDependency()->getVarsValid()).
+  TRI_ASSERT(knownConstVariables != nullptr);
   LOG_JOIN_OPTIMIZER_RULE << "Known constant variables:";
-  if (knownConstVariables != nullptr) {
-    for (auto const& var : *knownConstVariables) {
-      LOG_JOIN_OPTIMIZER_RULE << "  - " << var->name;
-    }
-    for (auto const& var : result) {
-      if (!knownConstVariables->contains(var)) {
-        return false;
-      }
+  for (auto const& var : *knownConstVariables) {
+    LOG_JOIN_OPTIMIZER_RULE << "  - " << var->name;
+  }
+  for (auto const& var : result) {
+    if (!knownConstVariables->contains(var)) {
+      return false;
     }
   }
 
@@ -647,27 +646,27 @@ bool checkCandidateEligibleForAdvancedJoin(
 std::tuple<bool, IndicesOffsets> checkCandidatesEligible(
     ExecutionPlan& plan, std::span<IndexNode*> candidates) {
   IndicesOffsets indicesOffsets = {};
+  // Variables available on the JoinNode *input* row when JoinExecutor
+  // evaluates constantExpressions. JoinNode replaces the first candidate, so
+  // its input corresponds to that candidate's dependency (vars valid *before*
+  // the first index runs). Join keys such as `doc2.x == doc1.x` are handled
+  // separately via isVarAccessToOthersSideOutVariable / processJoinKeyFinding.
   VarSet const* knownConstVariables = nullptr;
 
   for (auto* candidate : candidates) {
     LOG_JOIN_OPTIMIZER_RULE << "==> Checking candidate: (" << candidate->id()
                             << ")";
     if (candidate == candidates.front()) {
+      TRI_ASSERT(candidate->hasDependency());
+      knownConstVariables = &candidate->getFirstDependency()->getVarsValid();
+      LOG_JOIN_OPTIMIZER_RULE << "Variables which are known as constants: ";
+      for (auto kVar : *knownConstVariables) {
+        LOG_JOIN_OPTIMIZER_RULE << " -> " << kVar->name;
+      }
+
       auto const* root = candidate->condition()->root();
 
       if (root != nullptr) {
-        // Build-up the known variables for the first index node.
-        // This operation is only needed for the first index node, because
-        // we're only interested in the variables which are known for the
-        // first index node including the outVariable of the first index node.
-        // Therefore, we call getVarsValid instead of getVariablesUsedHere.
-        knownConstVariables = &candidate->getVarsValid();
-        TRI_ASSERT(knownConstVariables != nullptr);
-        LOG_JOIN_OPTIMIZER_RULE << "Variables which are known: ";
-        for (auto kVar : *knownConstVariables) {
-          LOG_JOIN_OPTIMIZER_RULE << " -> " << kVar->name;
-        }
-
         LOG_JOIN_OPTIMIZER_RULE
             << "Calling CandidateEligible check for first candidate";
         bool eligible = checkCandidateEligibleForAdvancedJoin(

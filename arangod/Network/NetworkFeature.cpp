@@ -27,7 +27,7 @@
 #include "Basics/EncodingUtils.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/ScopeGuard.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Cluster/ClusterFeature.h"
@@ -43,6 +43,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Utils/Thread.h"
 
 #include <fuerte/connection.h>
 
@@ -68,7 +69,8 @@ class RetryThread : public Thread {
 
  public:
   explicit RetryThread()
-      : Thread("NetworkRetry"),
+      // connection retry plumbing only, no ExecContext required
+      : Thread("NetworkRetry", nullptr),
         _nextRetryTime(std::chrono::steady_clock::now() + kDefaultSleepTime) {}
 
   ~RetryThread() {

@@ -34,7 +34,6 @@ add_library(arango_rocksdb STATIC
   RocksDBMethods.cpp
   RocksDBMethodsMemoryTracker.cpp
   RocksDBMultiDimIndex.cpp
-  RocksDBOptimizerRules.cpp
   RocksDBOptionFeature.cpp
   RocksDBOptionFeatureOptions.cpp
   RocksDBOptionFeatureOptionsProvider.cpp
@@ -48,10 +47,6 @@ add_library(arango_rocksdb STATIC
   RocksDBReplicationIterator.cpp
   RocksDBReplicationManager.cpp
   RocksDBReplicationTailing.cpp
-  RocksDBRestCollectionHandler.cpp
-  RocksDBRestHandlers.cpp
-  RocksDBRestReplicationHandler.cpp
-  RocksDBRestWalHandler.cpp
   RocksDBSavePoint.cpp
   RocksDBSettingsManager.cpp
   RocksDBSortedRowsStorageContext.cpp
@@ -76,7 +71,6 @@ add_library(arango_rocksdb STATIC
 target_link_libraries(arango_rocksdb
   PUBLIC
     arango_cache
-    arango_common_rest_handler
     arango_indexes
     arango_restart_action
     arango_storage_engine_common
@@ -88,6 +82,24 @@ target_link_libraries(arango_rocksdb
     arango_health
     snappy)
 
+add_library(arango_rocksdb_rest STATIC
+  RocksDBRestCollectionHandler.cpp
+  RocksDBRestHandlers.cpp
+  RocksDBRestReplicationHandler.cpp
+  RocksDBRestWalHandler.cpp
+)
+
+target_link_libraries(arango_rocksdb_rest
+  PUBLIC
+    arango_rocksdb
+    arango_common_rest_handler
+)
+
+target_include_directories(arango_rocksdb_rest PRIVATE
+  "${PROJECT_SOURCE_DIR}/arangod"
+  "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}"
+)
+
 set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
 target_include_directories(arango_rocksdb PUBLIC ${SNAPPY_INCLUDE_DIR})
 
@@ -97,6 +109,10 @@ if (USE_ENTERPRISE)
     ${IRESEARCH_INCLUDE})
   target_link_libraries(arango_rocksdb PUBLIC
     arango_rclone
+    arango_enterprise_storage_engine
+  )
+  target_link_libraries(arango_rocksdb PRIVATE
+    arango_enterprise_audit
   )
 endif()
 

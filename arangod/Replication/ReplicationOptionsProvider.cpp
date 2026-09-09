@@ -32,11 +32,9 @@ using namespace arangodb::options;
 void ReplicationOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, ReplicationOptions& options) {
   opts->addSection("replication", "replication");
-  opts->addOption(
+  opts->addObsoleteOption(
       "--replication.auto-start",
-      "Enable or disable the automatic start of replication appliers.",
-      new BooleanParameter(&options.replicationApplierAutoStart),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+      "Enable or disable the automatic start of replication appliers.", true);
 
   opts->addOption(
       "--replication.max-parallel-tailing-invocations",

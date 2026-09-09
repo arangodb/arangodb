@@ -38,6 +38,7 @@
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "Mocks/Servers.h"
+#include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 

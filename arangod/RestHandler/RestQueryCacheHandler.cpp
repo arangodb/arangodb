@@ -22,6 +22,7 @@
 
 #include "RestQueryCacheHandler.h"
 #include "Aql/QueryCache.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -33,6 +34,7 @@ RestQueryCacheHandler::RestQueryCacheHandler(
     GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
+// Mounted at /_api/query-cache (prefix)
 RestStatus RestQueryCacheHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
@@ -48,7 +50,7 @@ RestStatus RestQueryCacheHandler::execute() {
       replaceProperties();
       break;
     default:
-      generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);
+      generateNotImplemented("ILLEGAL /_api/query-cache");
       break;
   }
 
@@ -57,6 +59,12 @@ RestStatus RestQueryCacheHandler::execute() {
 }
 
 void RestQueryCacheHandler::clearCache() {
+  if (auto r = ExecContext::current().canUseAdminAction(
+          auth::perms::AdminQueryCache{});
+      r.fail()) {
+    generateError(r);
+    return;
+  }
   auto queryCache = arangodb::aql::QueryCache::instance();
   queryCache->invalidate(&_vocbase);
 
@@ -108,6 +116,20 @@ void RestQueryCacheHandler::replaceProperties() {
   if (suffixes.size() != 1 || suffixes[0] != "properties") {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/query-cache/properties");
+    return;
+  }
+
+  if (_request->requestedApiVersion() > 0) {
+    if (!_vocbase.isSystem()) {
+      generateError(rest::ResponseCode::FORBIDDEN,
+                    TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
+      return;
+    }
+  }
+  if (auto r = ExecContext::current().canUseAdminAction(
+          auth::perms::AdminQueryCache{});
+      r.fail()) {
+    generateError(r);
     return;
   }
 

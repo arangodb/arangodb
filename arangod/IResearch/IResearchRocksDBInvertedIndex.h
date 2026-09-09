@@ -61,7 +61,7 @@ class IResearchRocksDBInvertedIndex final : public RocksDBIndex,
   IResearchRocksDBInvertedIndex(IndexId id, LogicalCollection& collection,
                                 uint64_t objectId, std::string const& name);
 
-  IndexType type() const final { return Index::TRI_IDX_TYPE_INVERTED_INDEX; }
+  IndexType type() const final { return IndexType::Inverted; }
 
   std::string getCollectionName() const;
   std::string const& getShardName() const noexcept;

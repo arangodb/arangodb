@@ -36,7 +36,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/EnvironmentFeature.h"
-#include "Replication/ReplicationFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "VocBase/Methods/Version.h"
@@ -82,10 +81,6 @@ CheckVersionFeature::CheckVersionFeature(
 
   LoggerFeature& logger = server.getFeature<LoggerFeature>();
   logger.disableThreaded();
-
-  ReplicationFeature& replicationFeature =
-      server.getFeature<ReplicationFeature>();
-  replicationFeature.disableReplicationApplier();
 
   DatabaseFeature& databaseFeature = server.getFeature<DatabaseFeature>();
   databaseFeature.enableCheckVersion();
