@@ -62,7 +62,7 @@ const testPaths = {
 
 const allowedGoVersions = ['v2', 'v3'];
 
-function defaultGoVersionFromArango() {
+function defaultGoVersionFromArango () {
   const version = String(internal.version || '');
   const match = /^(\d+)\./.exec(version);
   if (match === null) {
