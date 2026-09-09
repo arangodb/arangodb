@@ -1,6 +1,8 @@
 3.12.12 (XXXX-XX-XX)
 --------------------
 
+* Updated node module js-yaml to 4.3.2 to resolve CVE-2026-84375.
+
 * COR-967: Fixed the web UI in RBAC mode, where the classic permission API is
   rejected.
 
