@@ -24,7 +24,6 @@
 
 #include "Agency/AgencyFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Auth/UserManager.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
 #include "Basics/StaticStrings.h"
@@ -85,9 +84,7 @@ UpgradeFeature::UpgradeFeature(
     if (server.hasFeature<AgencyFeature>()) {
       server.forceDisableFeatures<AgencyFeature>();
     }
-    std::array bootstrapFeatures{std::type_index(typeid(BootstrapFeature)),
-                                 std::type_index(typeid(HttpEndpointProvider))};
-    server.forceDisableFeatures(bootstrapFeatures);
+    server.forceDisableFeatures<BootstrapFeature>();
   }
   // a coordinator has nothing left to disable here: already unregistered
 
