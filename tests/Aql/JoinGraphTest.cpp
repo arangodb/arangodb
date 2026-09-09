@@ -23,7 +23,7 @@
 
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/Optimizer/Rule/OptimizeJoinOrder.h"
+#include "Aql/Optimizer/Rule/OptimizeJoinOrder/JoinGraph.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
 #include "Aql/Variable.h"
@@ -45,11 +45,11 @@ using namespace arangodb::aql;
 
 namespace arangodb::tests::aql {
 namespace {
-class OptimizeJoinOrderTest : public testing::Test {
+class JoinGraphTest : public testing::Test {
  protected:
   mocks::MockAqlServer server;
 
-  OptimizeJoinOrderTest() {
+  JoinGraphTest() {
     auto& vocbase = server.getSystemDatabase();
     for (auto const& name : {"c1", "c2", "c3"}) {
       auto json = velocypack::Parser::fromJson(std::string{R"({"name":")"} +
@@ -121,7 +121,7 @@ class OptimizeJoinOrderTest : public testing::Test {
 };
 }  // namespace
 
-TEST_F(OptimizeJoinOrderTest, linear_three_way_chain) {
+TEST_F(JoinGraphTest, linear_three_way_chain) {
   auto q = prepare(
       "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
       "FOR c IN c3 FILTER b.z == c.w RETURN [a, b, c]");
@@ -134,7 +134,7 @@ TEST_F(OptimizeJoinOrderTest, linear_three_way_chain) {
   EXPECT_EQ(g.connectedComponents().size(), 1u);
 }
 
-TEST_F(OptimizeJoinOrderTest, equijoin_edge_records_attribute_paths) {
+TEST_F(JoinGraphTest, equijoin_edge_records_attribute_paths) {
   auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
   auto g = build(*q);
 
@@ -152,7 +152,7 @@ TEST_F(OptimizeJoinOrderTest, equijoin_edge_records_attribute_paths) {
   EXPECT_EQ(got, (std::vector<std::string_view>{"x", "y"}));
 }
 
-TEST_F(OptimizeJoinOrderTest, constant_restriction_becomes_node_condition) {
+TEST_F(JoinGraphTest, constant_restriction_becomes_node_condition) {
   auto q = prepare(
       "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
       "FILTER a.k == 'v' RETURN [a, b]");
@@ -169,7 +169,7 @@ TEST_F(OptimizeJoinOrderTest, constant_restriction_becomes_node_condition) {
   EXPECT_EQ(a->conditions.front().front(), "k");
 }
 
-TEST_F(OptimizeJoinOrderTest, non_equijoin_predicate_becomes_residual) {
+TEST_F(JoinGraphTest, non_equijoin_predicate_becomes_residual) {
   auto q = prepare(
       "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
       "FILTER a.p < b.q RETURN [a, b]");
@@ -179,7 +179,7 @@ TEST_F(OptimizeJoinOrderTest, non_equijoin_predicate_becomes_residual) {
   EXPECT_FALSE(g.residuals.empty());
 }
 
-TEST_F(OptimizeJoinOrderTest, id_is_remapped_to_key) {
+TEST_F(JoinGraphTest, id_is_remapped_to_key) {
   auto q =
       prepare("FOR a IN c1 FOR b IN c2 FILTER a._id == b._id RETURN [a, b]");
   auto g = build(*q);
@@ -193,7 +193,7 @@ TEST_F(OptimizeJoinOrderTest, id_is_remapped_to_key) {
   EXPECT_EQ(e.toAttributes.front(), (AttributePath{std::string_view{"_key"}}));
 }
 
-TEST_F(OptimizeJoinOrderTest, disconnected_graph_has_two_components) {
+TEST_F(JoinGraphTest, disconnected_graph_has_two_components) {
   auto q = prepare(
       "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
       "FOR c IN c3 FOR d IN c1 FILTER c.x == d.y RETURN [a, b, c, d]");
@@ -204,7 +204,7 @@ TEST_F(OptimizeJoinOrderTest, disconnected_graph_has_two_components) {
   EXPECT_EQ(g.connectedComponents().size(), 2u);
 }
 
-TEST_F(OptimizeJoinOrderTest, single_enumeration_has_no_join) {
+TEST_F(JoinGraphTest, single_enumeration_has_no_join) {
   auto q = prepare("FOR a IN c1 FILTER a.x == 1 RETURN a");
   auto g = build(*q);
 
@@ -214,7 +214,7 @@ TEST_F(OptimizeJoinOrderTest, single_enumeration_has_no_join) {
   EXPECT_EQ(g.connectedComponents().size(), 1u);
 }
 
-TEST_F(OptimizeJoinOrderTest, separate_runs_produce_separate_graphs) {
+TEST_F(JoinGraphTest, separate_runs_produce_separate_graphs) {
   // The two joins are split by a SORT, which terminates the first run of
   // adjacent enumerations, so the walk produces one graph per run.
   auto q = prepare(

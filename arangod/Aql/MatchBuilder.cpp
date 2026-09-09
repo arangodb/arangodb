@@ -182,9 +182,28 @@ MatchBuilder::createCollectionAccess(
   return std::make_tuple(enumCollection, lastNode, fullDocumentVariable);
 }
 
+ExecutionNode* MatchBuilder::createDocumentPatternProjection(
+    Variable const* destinationVariable, Variable const* fullDocumentVar,
+    std::optional<MatchProjection> const& projection,
+    std::unordered_map<VariableId, Variable const*> const& subst) {
+  return createPatternProjection(
+      destinationVariable, fullDocumentVar, projection,
+      kMandatoryDocumentMatchProjectionAttributes, subst);
+}
+
+ExecutionNode* MatchBuilder::createEdgeDocumentPatternProjection(
+    Variable const* destinationVariable, Variable const* fullDocumentVar,
+    std::optional<MatchProjection> const& projection,
+    std::unordered_map<VariableId, Variable const*> const& subst) {
+  return createPatternProjection(
+      destinationVariable, fullDocumentVar, projection,
+      kMandatoryEdgeDocumentMatchProjectionAttributes, subst);
+}
+
 ExecutionNode* MatchBuilder::createPatternProjection(
     Variable const* destinationVariable, Variable const* fullDocumentVar,
-    std::optional<MatchProjection> const& projectionOpt, bool isEdge,
+    std::optional<MatchProjection> const& projectionOpt,
+    std::span<std::string_view const> mandatoryAttributes,
     std::unordered_map<VariableId, Variable const*> const& subst) {
   if (!projectionOpt.has_value()) {
     auto* root = _ast->createNodeReference(fullDocumentVar);
@@ -193,15 +212,15 @@ ExecutionNode* MatchBuilder::createPatternProjection(
         destinationVariable);
   }
 
+  // Projection semantics (paths, aliases, reserved attributes) are already
+  // normalized; this method only builds the AST / CalculationNode.
   auto const& projection = *projectionOpt;
   auto* root = _ast->createNodeObject();
   auto* ref = _ast->createNodeReference(fullDocumentVar);
 
-  auto isSystemAttribute = [&](std::string_view name) {
-    return name == "_id" || (isEdge && (name == "_from" || name == "_to"));
-  };
-
   auto registerKey = [&](std::string_view key) -> std::string_view {
+    // Copy into Ast resource pool so the resulting AstNode outlives the
+    // temporary NormalizedMatchStatement that owns MatchProjection strings.
     char const* p = _ast->resources().registerString(key);
     return {p, key.size()};
   };
@@ -239,10 +258,13 @@ ExecutionNode* MatchBuilder::createPatternProjection(
     insertNestedPath(root, path, attrAccess);
   };
 
-  addProjectedAttribute({"_id"});
-  if (isEdge) {
-    addProjectedAttribute({"_from"});
-    addProjectedAttribute({"_to"});
+  auto const isReservedAttribute = [&](std::string_view name) noexcept {
+    return std::find(mandatoryAttributes.begin(), mandatoryAttributes.end(),
+                     name) != mandatoryAttributes.end();
+  };
+
+  for (auto attr : mandatoryAttributes) {
+    addProjectedAttribute({std::string(attr)});
   }
 
   std::vector<std::vector<std::string>> keepPaths;
@@ -253,16 +275,20 @@ ExecutionNode* MatchBuilder::createPatternProjection(
   std::vector<AliasItem> aliases;
 
   for (auto const& item : projection.items) {
-    if (item.kind == MatchProjectionItem::Kind::kAlias) {
+    if (item.isAlias()) {
       aliases.push_back(
           AliasItem{item.name, const_cast<AstNode*>(item.expression.node)});
-    } else {
-      TRI_ASSERT(!item.path.empty());
-      if (isSystemAttribute(item.path[0])) {
-        continue;
-      }
-      keepPaths.push_back(item.path);
+      continue;
     }
+    TRI_ASSERT(item.isKeep());
+    TRI_ASSERT(!item.path.empty());
+    // Reserved attributes are already mandatory. Ignore user projection paths
+    // rooted at _id, _from, or _to to avoid overwriting these scalar
+    // attributes.
+    if (isReservedAttribute(item.topLevelKey())) {
+      continue;
+    }
+    keepPaths.push_back(item.path);
   }
 
   // Drop paths that are duplicates or have a shorter kept prefix
@@ -289,10 +315,8 @@ ExecutionNode* MatchBuilder::createPatternProjection(
   }
 
   std::unordered_set<std::string_view> usedTopLevelKeys;
-  usedTopLevelKeys.emplace("_id");
-  if (isEdge) {
-    usedTopLevelKeys.emplace("_from");
-    usedTopLevelKeys.emplace("_to");
+  for (auto attr : mandatoryAttributes) {
+    usedTopLevelKeys.emplace(attr);
   }
   for (auto const& path : keepPaths) {
     TRI_ASSERT(!path.empty());
@@ -304,7 +328,7 @@ ExecutionNode* MatchBuilder::createPatternProjection(
   }
 
   for (auto const& alias : aliases) {
-    if (isSystemAttribute(alias.name)) {
+    if (isReservedAttribute(alias.name)) {
       continue;
     }
     if (!usedTopLevelKeys.emplace(alias.name).second) {
@@ -400,9 +424,9 @@ std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
 MatchBuilder::createTraversalForPattern(
     Variable const* startNodeVar, NormalizedEdge const& edge,
     MatchPatternElement const& target,
+    Variable const* edgeDocumentOutputVariable,
+    Variable const* vertexDocumentOutputVariable,
     std::unordered_map<VariableId, Variable const*> const& subst) {
-  auto const* patternEdgeOutputVariable = edge.variable;
-
   aql::QueryContext& query = _ast->query();
   auto options = std::make_unique<traverser::TraverserOptions>(query);
   applyPathRange(edge.range, *options);
@@ -433,9 +457,12 @@ MatchBuilder::createTraversalForPattern(
 
   bool const fixedDepth = edge.range.isDefaultFixedOne();
   if (fixedDepth) {
-    traversal->setEdgeOutput(patternEdgeOutputVariable);
+    ADB_PROD_ASSERT(edgeDocumentOutputVariable != nullptr);
+    traversal->setEdgeOutput(edgeDocumentOutputVariable);
   } else {
-    traversal->setPathOutput(patternEdgeOutputVariable);
+    // Variable length: edge.variable receives the path object; individual
+    // edge documents go to an unused temporary.
+    traversal->setPathOutput(edge.variable);
     auto traversalEdgeOutputVar = _ast->variables()->createTemporaryVariable();
     traversal->setEdgeOutput(traversalEdgeOutputVar);
   }
@@ -465,9 +492,10 @@ MatchBuilder::createTraversalForPattern(
     }
     case MatchPatternElement::Kind::kVertex: {
       ADB_PROD_ASSERT(target.vertex.has_value());
+      ADB_PROD_ASSERT(vertexDocumentOutputVariable != nullptr);
       auto const& vertex = *target.vertex;
 
-      auto traversalVertexOutputVar = vertex.variable;
+      auto traversalVertexOutputVar = vertexDocumentOutputVariable;
       traversal->setVertexOutput(traversalVertexOutputVar);
 
       auto traversalVertexOutputId =
@@ -492,6 +520,8 @@ MatchBuilder::createTraversalForPattern(
           _plan.createNode<FilterNode>(&_plan, _plan.nextId(), filterVar);
       filter->addDependency(calc);
 
+      // COR-959: apply target vertex {props}/WHERE on the full document
+      // (pre-projection) while still inside the traversal fragment.
       ExecutionNode* lastNode = filter;
       if (!vertex.properties.empty() || vertex.filter.has_value()) {
         auto [propCalc, propFilter] = createPropertiesFilter(
@@ -532,6 +562,30 @@ CalculationNode* MatchBuilder::constructPathObject(
       outVariable);
 }
 
+void MatchBuilder::addPathVertex(std::vector<AstNode const*>& pathVertices,
+                                 Variable const* variable) {
+  pathVertices.push_back(_ast->createNodeReference(variable));
+}
+
+void MatchBuilder::addPathEdge(std::vector<AstNode const*>& pathEdges,
+                               Variable const* variable) {
+  pathEdges.push_back(_ast->createNodeReference(variable));
+}
+
+void MatchBuilder::appendTraversalPath(
+    std::vector<AstNode const*>& pathVertices,
+    std::vector<AstNode const*>& pathEdges,
+    Variable const* traversalPathVariable) {
+  pathEdges.push_back(
+      _ast->createNodeArraySplice(_ast->createNodeAttributeAccess(
+          _ast->createNodeReference(traversalPathVariable), "edges")));
+
+  pathVertices.pop_back();
+  pathVertices.push_back(
+      _ast->createNodeArraySplice(_ast->createNodeAttributeAccess(
+          _ast->createNodeReference(traversalPathVariable), "vertices")));
+}
+
 ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
                                    AstNode const* matchNode) {
   MatchPatternNormalizer normalizer(*_ast);
@@ -565,11 +619,11 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
       en->addDependency(previous);
       previous = en = lastNode;
 
-      pathVertices.push_back(_ast->createNodeReference(destinationVariable));
+      addPathVertex(pathVertices, destinationVariable);
 
       if (hasProjection) {
-        projections.push_back(createPatternProjection(
-            destinationVariable, prevVar, vertex.projection, false,
+        projections.push_back(createDocumentPatternProjection(
+            destinationVariable, prevVar, vertex.projection,
             variableSubstitutions));
       }
     };
@@ -585,7 +639,7 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
           it != std::end(variableSubstitutions)) {
         prevVar = it->second;
       }
-      pathVertices.push_back(_ast->createNodeReference(prevVar));
+      addPathVertex(pathVertices, prevVar);
     }
 
     for (auto const& segment : pattern.segments) {
@@ -594,23 +648,70 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
       ADB_PROD_ASSERT(prevVar != nullptr);
 
       if (edge.range.isDefaultFixedOne() && edge.collections.size() > 1) {
+        // Multi-collection one-hop: same projection temp/subst pattern as the
+        // single-collection join path. Substitutions must be registered before
+        // later elements rewrite aliases that may reference these variables.
+        auto edgeDestinationVariable = edge.variable;
+        bool const edgeHasProjection = edge.projection.has_value();
+        Variable const* edgeTraversalOutputVariable =
+            edgeHasProjection ? _ast->variables()->createTemporaryVariable()
+                              : edgeDestinationVariable;
+        if (edgeHasProjection) {
+          variableSubstitutions.emplace(edgeDestinationVariable->id,
+                                        edgeTraversalOutputVariable);
+        }
+
+        Variable const* vertexDestinationVariable = nullptr;
+        Variable const* vertexTraversalOutputVariable = nullptr;
+        bool vertexHasProjection = false;
+
+        if (target.kind == MatchPatternElement::Kind::kVariableReference) {
+          vertexDestinationVariable = target.variableReference;
+          vertexTraversalOutputVariable = nullptr;
+        } else {
+          ADB_PROD_ASSERT(target.kind == MatchPatternElement::Kind::kVertex);
+          ADB_PROD_ASSERT(target.vertex.has_value());
+          vertexDestinationVariable = target.vertex->variable;
+          vertexHasProjection = target.vertex->projection.has_value();
+          vertexTraversalOutputVariable =
+              vertexHasProjection ? _ast->variables()->createTemporaryVariable()
+                                  : vertexDestinationVariable;
+          if (vertexHasProjection) {
+            variableSubstitutions.emplace(vertexDestinationVariable->id,
+                                          vertexTraversalOutputVariable);
+          }
+        }
+
         auto [firstNode, lastNode, rightVertexVar] = createTraversalForPattern(
-            prevVar, edge, target, variableSubstitutions);
+            prevVar, edge, target, edgeTraversalOutputVariable,
+            vertexTraversalOutputVariable, variableSubstitutions);
 
         firstNode->addDependency(previous);
         previous = en = lastNode;
 
-        auto const* edgeVar = edge.variable;
+        // Filters must see the full edge document (pre-projection).
         if (!edge.properties.empty() || edge.filter.has_value()) {
           auto [propCalc, propFilter] = createPropertiesFilter(
-              edgeVar, edge.properties, edge.filter, variableSubstitutions);
+              edgeTraversalOutputVariable, edge.properties, edge.filter,
+              variableSubstitutions);
           propCalc->addDependency(previous);
           previous = en = propFilter;
         }
 
+        if (edgeHasProjection) {
+          projections.push_back(createEdgeDocumentPatternProjection(
+              edgeDestinationVariable, edgeTraversalOutputVariable,
+              edge.projection, variableSubstitutions));
+        }
+        if (vertexHasProjection) {
+          projections.push_back(createDocumentPatternProjection(
+              vertexDestinationVariable, rightVertexVar,
+              target.vertex->projection, variableSubstitutions));
+        }
+
         prevVar = rightVertexVar;
-        pathEdges.push_back(_ast->createNodeReference(edgeVar));
-        pathVertices.push_back(_ast->createNodeReference(prevVar));
+        addPathEdge(pathEdges, edgeDestinationVariable);
+        addPathVertex(pathVertices, vertexDestinationVariable);
       } else if (edge.range.isDefaultFixedOne()) {
         ExecutionNode* lastNodeFilter;
         Variable const* edgeVar;
@@ -632,9 +733,9 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
         previous = en = lastNodeFilter;
 
         if (edgeHasProjection) {
-          projections.push_back(createPatternProjection(
+          projections.push_back(createEdgeDocumentPatternProjection(
               edgeDestinationVariable, edgeEnumOutputVariable, edge.projection,
-              true, variableSubstitutions));
+              variableSubstitutions));
         }
 
         Variable const* rightVertexVar;
@@ -663,9 +764,9 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
           en->addDependency(previous);
 
           if (vertexHasProjection) {
-            projections.push_back(createPatternProjection(
+            projections.push_back(createDocumentPatternProjection(
                 vertexDestinationVariable, rightVertexVar,
-                target.vertex->projection, false, variableSubstitutions));
+                target.vertex->projection, variableSubstitutions));
           }
 
           previous = en = lastNodeFilter;
@@ -677,25 +778,48 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
         previous = en = lastNode;
         prevVar = rightVertexVar;
 
-        pathEdges.push_back(_ast->createNodeReference(edgeDestinationVariable));
-        pathVertices.push_back(
-            _ast->createNodeReference(vertexDestinationVariable));
+        addPathEdge(pathEdges, edgeDestinationVariable);
+        addPathVertex(pathVertices, vertexDestinationVariable);
       } else {
+        // Variable-length: edge.variable is a path object, so edge-document
+        // RETURN projections do not apply here. Target vertex projections do.
+        Variable const* vertexDestinationVariable = nullptr;
+        Variable const* vertexTraversalOutputVariable = nullptr;
+        bool vertexHasProjection = false;
+
+        if (target.kind == MatchPatternElement::Kind::kVariableReference) {
+          vertexDestinationVariable = target.variableReference;
+          vertexTraversalOutputVariable = nullptr;
+        } else {
+          ADB_PROD_ASSERT(target.kind == MatchPatternElement::Kind::kVertex);
+          ADB_PROD_ASSERT(target.vertex.has_value());
+          vertexDestinationVariable = target.vertex->variable;
+          vertexHasProjection = target.vertex->projection.has_value();
+          vertexTraversalOutputVariable =
+              vertexHasProjection ? _ast->variables()->createTemporaryVariable()
+                                  : vertexDestinationVariable;
+          if (vertexHasProjection) {
+            variableSubstitutions.emplace(vertexDestinationVariable->id,
+                                          vertexTraversalOutputVariable);
+          }
+        }
+
         auto [firstNode, lastNode, rightVertexVar] = createTraversalForPattern(
-            prevVar, edge, target, variableSubstitutions);
+            prevVar, edge, target, /*edgeDocumentOutputVariable*/ nullptr,
+            vertexTraversalOutputVariable, variableSubstitutions);
 
         firstNode->addDependency(previous);
         previous = en = lastNode;
+
+        if (vertexHasProjection) {
+          projections.push_back(createDocumentPatternProjection(
+              vertexDestinationVariable, rightVertexVar,
+              target.vertex->projection, variableSubstitutions));
+        }
+
         prevVar = rightVertexVar;
 
-        pathEdges.push_back(
-            _ast->createNodeArraySplice(_ast->createNodeAttributeAccess(
-                _ast->createNodeReference(edge.variable), "edges")));
-
-        pathVertices.pop_back();
-        pathVertices.push_back(
-            _ast->createNodeArraySplice(_ast->createNodeAttributeAccess(
-                _ast->createNodeReference(edge.variable), "vertices")));
+        appendTraversalPath(pathVertices, pathEdges, edge.variable);
       }
     }
 

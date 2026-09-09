@@ -70,3 +70,5 @@ target_sources(arango_aql PRIVATE
   UseIndexes.cpp
   UseVectorIndex.cpp
 )
+
+add_subdirectory(OptimizeJoinOrder)

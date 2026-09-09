@@ -25,17 +25,21 @@
 #include <rocksdb/db.h>
 
 #include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
+#include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/StorageEngineDataTest.h"
 #include "RocksDBEngine/StorageEngineDocumentTest.h"
 #include "RocksDBEngine/StorageEngineFixture.h"
+#include "Transaction/Hints.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
@@ -294,4 +298,227 @@ TEST_F(TimeTravelStorageEngineDocumentTest,
   auto b = read("k2");
   ASSERT_TRUE(b.ok()) << b.errorMessage();
   EXPECT_EQ(b.slice().get(StaticStrings::Created).getNumber<uint64_t>(), 1000u);
+}
+
+namespace {
+
+// Writes an additional version of an existing document straight through
+// rocksdb: a new Documents entry under a fresh LocalDocumentId, plus a primary
+// index entry for the same _key committed at `created`. This is what an update
+// on a time-travel collection will do once COR-651 lands; until then it is the
+// only way to get several versions of one key, which is exactly what
+// point-in-time reads exist to tell apart.
+void writeRawVersion(RocksDBEngine& engine, LogicalCollection& collection,
+                     std::string_view key, int value, uint64_t created) {
+  auto* physical = toRocksDBCollection(collection.getPhysical());
+  auto* index = physical->primaryIndex();
+  auto* documentsCf = RocksDBColumnFamilyManager::get(
+      RocksDBColumnFamilyManager::Family::Documents);
+  auto* indexCf = RocksDBColumnFamilyManager::get(
+      RocksDBColumnFamilyManager::Family::PrimaryIndex_TT);
+
+  // Resolve the newest version so the new one can inherit the immutable system
+  // attributes (_key, _id) byte for byte - _id is a Custom slice that cannot be
+  // rebuilt from a document read back through the engine.
+  RocksDBKey indexKey;
+  indexKey.constructPrimaryIndexValue(index->objectId(), key);
+  rocksdb::Slice latest = rocksdb::MaxU64Ts();
+  rocksdb::ReadOptions indexReadOptions;
+  indexReadOptions.timestamp = &latest;
+  rocksdb::PinnableSlice indexValue;
+  ASSERT_TRUE(
+      engine.db()
+          ->Get(indexReadOptions, indexCf, indexKey.string(), &indexValue)
+          .ok());
+
+  RocksDBKey previousDocumentKey;
+  previousDocumentKey.constructDocument(physical->objectId(),
+                                        RocksDBValue::documentId(indexValue));
+  rocksdb::PinnableSlice previousBody;
+  ASSERT_TRUE(engine.db()
+                  ->Get(rocksdb::ReadOptions{}, documentsCf,
+                        previousDocumentKey.string(), &previousBody)
+                  .ok());
+
+  RevisionId revision = collection.newRevisionId();
+  LocalDocumentId documentId = LocalDocumentId::create(revision);
+
+  char ridBuffer[basics::maxUInt64StringSize];
+  VPackBuilder body;
+  body.openObject();
+  VPackSlice previous{reinterpret_cast<uint8_t const*>(previousBody.data())};
+  for (auto it : VPackObjectIterator(previous, true)) {
+    auto name = it.key.stringView();
+    if (name == StaticStrings::RevString) {
+      body.add(name, revision.toValuePair(ridBuffer));
+    } else if (name == StaticStrings::Created) {
+      body.add(name, VPackValue(created));
+    } else if (name == "value") {
+      body.add(name, VPackValue(value));
+    } else {
+      body.add(name, it.value);
+    }
+  }
+  body.close();
+
+  RocksDBKey documentKey;
+  documentKey.constructDocument(physical->objectId(), documentId);
+  auto entry = RocksDBValue::PrimaryIndexValue(documentId, revision);
+
+  std::unique_ptr<rocksdb::Transaction> trx{
+      engine.db()->BeginTransaction(rocksdb::WriteOptions{})};
+  ASSERT_TRUE(trx->Put(documentsCf, documentKey.string(),
+                       rocksdb::Slice(body.slice().startAs<char>(),
+                                      body.slice().byteSize()))
+                  .ok());
+  ASSERT_TRUE(trx->Put(indexCf, indexKey.string(), entry.string()).ok());
+  ASSERT_TRUE(trx->SetCommitTimestamp(created).ok());
+  ASSERT_TRUE(trx->Commit().ok());
+}
+
+}  // namespace
+
+// ================ point-in-time reads ================
+
+TEST_F(TimeTravelStorageEngineDocumentTest,
+       ReadBeforeCreatedTimestampFindsNothing) {
+  constexpr uint64_t T1 = 1000;
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, T1).slice()).ok());
+
+  auto before = readAt("k1", T1 - 1);
+  ASSERT_TRUE(before.fail());
+  EXPECT_EQ(before.errorNumber(), TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)
+      << before.errorMessage();
+
+  auto at = readAt("k1", T1);
+  ASSERT_TRUE(at.ok()) << at.errorMessage();
+  EXPECT_EQ(at.slice().get("value").getNumber<int>(), 1);
+}
+
+// Keys have independent timelines: a read at T1 sees the key created then and
+// not the one created later, even though both live in the same collection.
+TEST_F(TimeTravelStorageEngineDocumentTest, ReadAtTimestampHidesLaterVersions) {
+  constexpr uint64_t T1 = 1000;
+  constexpr uint64_t T2 = 2000;
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, T1).slice()).ok());
+  ASSERT_TRUE(insertR(createdDoc("k2", 2, T2).slice()).ok());
+
+  EXPECT_TRUE(readAt("k1", T1).ok());
+  EXPECT_TRUE(readAt("k2", T1).fail());
+
+  EXPECT_TRUE(readAt("k1", T2).ok());
+  EXPECT_TRUE(readAt("k2", T2).ok());
+}
+
+// The "no read timestamp == current state" invariant. With several versions of
+// the key on disk, a read without a timestamp must still resolve to the newest
+// one - exactly what the same read on a non-time-travel collection returns.
+TEST_F(TimeTravelStorageEngineDocumentTest,
+       ReadWithoutTimestampSeesNewestVersion) {
+  constexpr uint64_t T1 = 1000;
+  constexpr uint64_t T2 = 2000;
+  constexpr uint64_t T3 = 3000;
+
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, T1).slice()).ok());
+  writeRawVersion(engine(), *_collection, "k1", 2, T2);
+  writeRawVersion(engine(), *_collection, "k1", 3, T3);
+
+  auto res = read("k1");
+  ASSERT_TRUE(res.ok()) << res.errorMessage();
+  EXPECT_EQ(res.slice().get("value").getNumber<int>(), 3);
+  EXPECT_EQ(res.slice().get(StaticStrings::Created).getNumber<uint64_t>(), T3);
+  EXPECT_TRUE(res.slice().get(StaticStrings::Expired).isNull());
+}
+
+// A read timestamp selects a point in the past, which cannot be reconciled with
+// writing at the (later) commit timestamp - so it is rejected up front.
+TEST_F(TimeTravelStorageEngineDocumentTest,
+       ReadTimestampRejectedOnWriteTransaction) {
+  transaction::Options trxOptions;
+  trxOptions.readTimestamp = 1000;
+
+  SingleCollectionTransaction trx{context(), *_collection,
+                                  AccessMode::Type::WRITE, trxOptions};
+  auto res = trx.begin();
+  ASSERT_TRUE(res.fail());
+  EXPECT_EQ(res.errorNumber(), TRI_ERROR_BAD_PARAMETER) << res.errorMessage();
+}
+
+// Reads that serve a transaction's own uncommitted writes go through a
+// different RocksDBMethods implementation than the read-only ones, and must
+// supply the current-state timestamp just the same.
+TEST_F(TimeTravelStorageEngineDocumentTest,
+       ReadOwnWritesInsideWriteTransaction) {
+  SingleCollectionTransaction trx{context(), *_collection,
+                                  AccessMode::Type::WRITE};
+  trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+  ASSERT_TRUE(trx.begin().ok());
+  OperationOptions options;
+  ASSERT_TRUE(trx.insert(_collection->name(), createdDoc("k1", 1, 1000).slice(),
+                         options)
+                  .ok());
+
+  auto lookup = keyOnly("k1");
+  auto res = trx.document(_collection->name(), lookup.slice(), options);
+  ASSERT_TRUE(res.ok()) << res.errorMessage();
+  EXPECT_EQ(res.slice().get("value").getNumber<int>(), 1);
+
+  std::ignore = trx.abort();
+}
+
+// A plain collection keeps no history, so a read timestamp has nothing to
+// select from: it is ignored and the read answers from the current state.
+TEST_F(StorageEngineDocumentTest, ReadTimestampIsInertOnPlainCollection) {
+  ASSERT_TRUE(insertR(keyed("k1", 1).slice()).ok());
+
+  auto res = readAt("k1", 1);
+  ASSERT_TRUE(res.ok()) << res.errorMessage();
+  EXPECT_EQ(res.slice().get("value").getNumber<int>(), 1);
+}
+
+// The core of point-in-time reading: one _key with three versions, each read
+// back at its own timestamp. Every read must resolve the primary index to a
+// *different* LocalDocumentId and materialize the matching document body.
+TEST_F(TimeTravelStorageEngineDocumentTest,
+       ReadResolvesTheVersionLiveAtEachTimestamp) {
+  constexpr uint64_t T1 = 1000;
+  constexpr uint64_t T2 = 2000;
+  constexpr uint64_t T3 = 3000;
+
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, T1).slice()).ok());
+  writeRawVersion(engine(), *_collection, "k1", 2, T2);
+  writeRawVersion(engine(), *_collection, "k1", 3, T3);
+
+  auto versionAt = [&](uint64_t ts) {
+    auto res = readAt("k1", ts);
+    EXPECT_TRUE(res.ok()) << "ts=" << ts << ": " << res.errorMessage();
+    return res;
+  };
+
+  // each timestamp sees the version created then, with its own _created stamp
+  auto v1 = versionAt(T1);
+  EXPECT_EQ(v1.slice().get("value").getNumber<int>(), 1);
+  EXPECT_EQ(v1.slice().get(StaticStrings::Created).getNumber<uint64_t>(), T1);
+
+  auto v2 = versionAt(T2);
+  EXPECT_EQ(v2.slice().get("value").getNumber<int>(), 2);
+  EXPECT_EQ(v2.slice().get(StaticStrings::Created).getNumber<uint64_t>(), T2);
+
+  auto v3 = versionAt(T3);
+  EXPECT_EQ(v3.slice().get("value").getNumber<int>(), 3);
+  EXPECT_EQ(v3.slice().get(StaticStrings::Created).getNumber<uint64_t>(), T3);
+
+  // a version stays live until the next one supersedes it
+  EXPECT_EQ(versionAt(T2 - 1).slice().get("value").getNumber<int>(), 1);
+  EXPECT_EQ(versionAt(T3 - 1).slice().get("value").getNumber<int>(), 2);
+  EXPECT_EQ(versionAt(T3 + 1000).slice().get("value").getNumber<int>(), 3);
+
+  // nothing at all exists before the first version
+  EXPECT_TRUE(readAt("k1", T1 - 1).fail());
+
+  // every version resolved to its own document, none of them shared
+  EXPECT_NE(v1.slice().get(StaticStrings::RevString).stringView(),
+            v2.slice().get(StaticStrings::RevString).stringView());
+  EXPECT_NE(v2.slice().get(StaticStrings::RevString).stringView(),
+            v3.slice().get(StaticStrings::RevString).stringView());
 }

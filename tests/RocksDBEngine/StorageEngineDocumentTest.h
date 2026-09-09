@@ -29,6 +29,7 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/CountCache.h"
 #include "Transaction/OperationOrigin.h"
+#include "Transaction/Options.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
@@ -191,9 +192,23 @@ class BasicStorageEngineDocumentTest : public BaseDataTest {
   // Reads a document by key in its own read-only transaction, committing before
   // returning so the result slice stays valid for the caller.
   OperationResult read(std::string_view key) {
+    return readWith(key, transaction::Options{});
+  }
+
+  // Point-in-time read: returns the version of `key` that was valid at
+  // `timestamp`, or "document not found" if the key had no version then.
+  // Time-travel collections only.
+  OperationResult readAt(std::string_view key, uint64_t timestamp) {
+    transaction::Options trxOptions;
+    trxOptions.readTimestamp = timestamp;
+    return readWith(key, trxOptions);
+  }
+
+  OperationResult readWith(std::string_view key,
+                           transaction::Options const& trxOptions) {
     auto lookup = keyOnly(key);
     SingleCollectionTransaction trx{context(), *_collection,
-                                    AccessMode::Type::READ};
+                                    AccessMode::Type::READ, trxOptions};
     if (auto res = trx.begin(); res.fail()) {
       return OperationResult{res, OperationOptions{}};
     }

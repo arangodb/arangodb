@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -36,7 +37,7 @@ struct Variable;
 /// @brief references an expression subtree owned by the query Ast
 /// valid for the lifetime of the associated Ast object
 struct MatchExpressionRef {
-  AstNode const* node;
+  AstNode const* node{nullptr};
 };
 
 /// @brief a collection name or an unresolved collection bind parameter
@@ -99,20 +100,58 @@ struct MatchPropertyConstraint {
   MatchExpressionRef value;
 };
 
-struct MatchProjectionItem {
-  enum class Kind : uint8_t { kKeepAttribute, kAlias };
+/// @brief Attributes always present in a projected MATCH vertex document.
+inline constexpr std::array<std::string_view, 1>
+    kMandatoryDocumentMatchProjectionAttributes{"_id"};
 
-  Kind kind;
-  /// @brief alias name for kAlias; for single-segment keeps equals path[0]
+/// @brief Attributes always present in a projected MATCH edge document.
+inline constexpr std::array<std::string_view, 3>
+    kMandatoryEdgeDocumentMatchProjectionAttributes{"_id", "_from", "_to"};
+
+/// @brief One RETURN item from an in-pattern MATCH projection.
+///
+/// All strings are owned. Alias expression subtrees remain Ast-owned via
+/// MatchExpressionRef (same lifetime model as filters/properties).
+struct MatchProjectionItem {
+  enum class Kind : uint8_t {
+    /// Unquoted keep path. Nested dotted access is a multi-segment path:
+    /// `profile.name` → path {"profile","name"}.
+    kKeepAttribute,
+    /// Quoted literal keep. Dots inside the quotes are NOT hierarchy:
+    /// `"profile.name"` → path {"profile.name"}.
+    kKeepLiteral,
+    /// Alias / flatten: `name = <expression>` (expression is normal AQL scope).
+    kAlias,
+  };
+
+  Kind kind{Kind::kKeepAttribute};
+  /// @brief alias name for kAlias; for single-segment keeps equals path[0];
+  /// empty for multi-segment keep paths
   std::string name;
-  /// @brief keep attribute path segments (COR-741 nested keeps). Empty for
-  /// aliases. Quoted literal keeps are a single-element path whose value may
-  /// contain dots that are NOT hierarchy.
+  /// @brief keep attribute path segments. Empty for aliases.
+  /// Quoted literal keeps are a single-element path whose value may contain
+  /// dots that are NOT hierarchy.
   std::vector<std::string> path;
-  /// @brief only set for alias items
+  /// @brief only set for alias items; Ast-owned expression subtree
   MatchExpressionRef expression;
+
+  [[nodiscard]] static MatchProjectionItem keepPath(
+      std::vector<std::string> path);
+  [[nodiscard]] static MatchProjectionItem keepLiteral(std::string key);
+  [[nodiscard]] static MatchProjectionItem alias(std::string name,
+                                                 MatchExpressionRef expression);
+
+  [[nodiscard]] bool isKeep() const noexcept {
+    return kind == Kind::kKeepAttribute || kind == Kind::kKeepLiteral;
+  }
+  [[nodiscard]] bool isAlias() const noexcept { return kind == Kind::kAlias; }
+
+  /// @brief Top-level output object key used for collision / reserved checks
+  [[nodiscard]] std::string_view topLevelKey() const noexcept;
 };
 
+/// @brief Stable semantic representation of an in-pattern MATCH projection.
+/// Independent of parser positional AST layout.
 struct MatchProjection {
   std::vector<MatchProjectionItem> items;
 };
@@ -145,8 +184,6 @@ struct MatchPatternElement {
   Kind kind{Kind::kVariableReference};
   std::optional<NormalizedVertex> vertex;
   Variable const* variableReference{nullptr};
-
-  Variable const* outputVariable() const noexcept;
 };
 
 struct NormalizedMatchSegment {

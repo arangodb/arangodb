@@ -27,6 +27,7 @@
 
 #include <cstddef>
 #include <optional>
+#include <span>
 #include <string_view>
 #include <tuple>
 #include <unordered_map>
@@ -69,9 +70,22 @@ class MatchBuilder {
       NormalizedVertex const& vertex, Variable const* fullDocumentVariable,
       std::unordered_map<VariableId, Variable const*> const& subst);
 
+  ExecutionNode* createDocumentPatternProjection(
+      Variable const* destinationVariable, Variable const* fullDocumentVar,
+      std::optional<MatchProjection> const& projection,
+      std::unordered_map<VariableId, Variable const*> const& subst);
+
+  ExecutionNode* createEdgeDocumentPatternProjection(
+      Variable const* destinationVariable, Variable const* fullDocumentVar,
+      std::optional<MatchProjection> const& projection,
+      std::unordered_map<VariableId, Variable const*> const& subst);
+
+  /// @brief Shared MATCH projection lowering. @p mandatoryAttributes are
+  /// auto-injected and treated as reserved for user projection handling.
   ExecutionNode* createPatternProjection(
       Variable const* destinationVariable, Variable const* fullDocumentVar,
-      std::optional<MatchProjection> const& projection, bool isEdge,
+      std::optional<MatchProjection> const& projection,
+      std::span<std::string_view const> mandatoryAttributes,
       std::unordered_map<VariableId, Variable const*> const& subst);
 
   std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
@@ -83,10 +97,20 @@ class MatchBuilder {
       Variable const* leftVertex, Variable const* edge,
       Variable const* rightVertex, MatchEdgeDirection direction);
 
+  /// @param edgeDocumentOutputVariable Edge document output for fixed-depth
+  /// traversals. Ignored when the edge variable receives a path object.
+  /// @param vertexDocumentOutputVariable Vertex output when @p target is a
+  /// vertex pattern. Ignored for variable reference targets. Callers that
+  /// apply MATCH projections must pass temporaries and register substitutions
+  /// before later alias rewrites (same ordering as the join lowering path).
+  /// @param subst Variable substitutions for target-vertex property/WHERE
+  /// filters applied inside the traversal fragment (COR-959).
   std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
   createTraversalForPattern(
       Variable const* startNodeVar, NormalizedEdge const& edge,
       MatchPatternElement const& target,
+      Variable const* edgeDocumentOutputVariable,
+      Variable const* vertexDocumentOutputVariable,
       std::unordered_map<VariableId, Variable const*> const& subst);
 
   AstNode* constructArray(std::vector<AstNode const*> const& vars);
@@ -94,6 +118,16 @@ class MatchBuilder {
   CalculationNode* constructPathObject(
       Variable const* outVariable, std::vector<AstNode const*> const& vertices,
       std::vector<AstNode const*> const& edges);
+
+  void addPathVertex(std::vector<AstNode const*>& pathVertices,
+                     Variable const* variable);
+
+  void addPathEdge(std::vector<AstNode const*>& pathEdges,
+                   Variable const* variable);
+
+  void appendTraversalPath(std::vector<AstNode const*>& pathVertices,
+                           std::vector<AstNode const*>& pathEdges,
+                           Variable const* traversalPathVariable);
 
   ExecutionPlan& _plan;
   Ast* _ast;
