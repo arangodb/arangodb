@@ -1,6 +1,9 @@
 3.12.12 (XXXX-XX-XX)
 --------------------
 
+* COR-967: Fixed the web UI in RBAC mode, where the classic permission API is
+  rejected.
+
 * COR-837 & COR-838 Fix a bug where deactivated users where still able to renew their token.
 
 * Vector index `factory` strings are now validated on index creation instead
