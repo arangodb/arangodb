@@ -45,6 +45,7 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/QueryInfoLoggerFeature.h"
+#include "Auth/Rbac/RbacFeature.h"
 #include "SystemMonitor/AsyncRegistry/Feature.h"
 #include "SystemMonitor/Activities/Feature.h"
 #include "Basics/ArangoGlobalContext.h"
@@ -104,7 +105,6 @@
 #include "RestServer/FortuneFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/LanguageCheckFeature.h"
-#include "RestServer/LegacyOptionsFeature.h"
 #include "RestServer/LockfileFeature.h"
 #include "RestServer/LogBufferFeature.h"
 #include "RestServer/MaxMapCountFeature.h"
@@ -130,7 +130,7 @@
 #include "Sharding/ShardingFeature.h"
 #include "Ssl/SslFeature.h"
 #include "Transaction/ManagerFeature.h"
-#include "VectorIndex/VectorIndexFeature.h"
+#include "VectorIndex/Feature.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Audit/AuditFeature.h"

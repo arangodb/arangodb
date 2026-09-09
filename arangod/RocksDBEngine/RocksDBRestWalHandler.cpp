@@ -41,6 +41,7 @@ RocksDBRestWalHandler::RocksDBRestWalHandler(
     GeneralResponse* response, StorageEngine* engine)
     : RestBaseHandler(server, request, response), _engine(engine) {}
 
+// Mounted at /_admin/wal (prefix, RocksDB engine)
 RestStatus RocksDBRestWalHandler::execute() {
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() != 1) {
@@ -65,9 +66,10 @@ RestStatus RocksDBRestWalHandler::execute() {
       return RestStatus::DONE;
     }
 #else
-    if (!ExecContext::current().isAdminUser()) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    "you need admin rights to produce a cluster info dump");
+    if (auto r = ExecContext::current().canUseAdminAction(
+            auth::perms::AdminWalAccess{});
+        r.fail()) {
+      generateError(r);
       return RestStatus::DONE;
     }
 #endif

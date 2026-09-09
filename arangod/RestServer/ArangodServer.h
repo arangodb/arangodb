@@ -42,14 +42,13 @@ class ArangodServer : public OptionProvidingServer<ArangodOptionProviders> {
         _dumpManager(dumpManager),
         _dataSourceRegistry(dataSourceRegistry) {}
 
-  // Adds all features to the server. Must be called before run().
-  void addFeatures();
-
  protected:
   // Called by server::run() after collect & validate.
-  void addFeaturesWithOptionProvider() final;
+  void addFeatures() final;
 
-  void processOptions() override final;
+  void processOptions() final;
+
+  void validateOptions() final;
 
  private:
   static ServerState::RoleEnum resolveRole(ClusterOptions const& clusterOptions,

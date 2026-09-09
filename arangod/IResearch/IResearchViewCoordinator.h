@@ -80,6 +80,11 @@ class IResearchViewCoordinator final : public LogicalView {
 
   bool visitCollections(CollectionVisitor const& visitor) const final;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief names of all collections currently linked to this view
+  //////////////////////////////////////////////////////////////////////////////
+  std::vector<std::string> linkedCollectionNames() const final;
+
   IResearchViewMeta const& meta() const noexcept { return _meta; }
 
   ///////////////////////////////////////////////////////////////////////////////

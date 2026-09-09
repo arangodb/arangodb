@@ -4,6 +4,7 @@ add_library(arango_cache STATIC
   CacheManagerFeature.cpp
   CacheManagerFeatureThreads.cpp
   CacheFeatureOptionsProvider.cpp
+  CacheOptions.cpp
   CacheOptionsFeature.cpp
   CachedValue.cpp
   Finding.cpp

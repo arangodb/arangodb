@@ -31,15 +31,12 @@
 #include "Cluster/ClusterAdminOperations.h"
 #include "ClusterEngine/ClusterCollection.h"
 #include "ClusterEngine/ClusterIndexFactory.h"
-#include "ClusterEngine/ClusterRestHandlers.h"
 #include "ClusterEngine/ClusterTransactionState.h"
-#include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "Transaction/Context.h"
 #include "Transaction/Manager.h"
 #include "Transaction/Options.h"
@@ -180,16 +177,6 @@ ErrorCode ClusterEngine::getViews(TRI_vocbase_t& vocbase,
   return TRI_ERROR_NO_ERROR;
 }
 
-VPackBuilder ClusterEngine::getReplicationApplierConfiguration(
-    TRI_vocbase_t& vocbase, ErrorCode& status) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-VPackBuilder ClusterEngine::getReplicationApplierConfiguration(
-    ErrorCode& status) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
 // database, collection and index management
 // -----------------------------------------
 
@@ -257,25 +244,6 @@ Result ClusterEngine::compactAll(bool changeLevel,
                                  bool compactBottomMostLevel) {
   return compactOnAllDBServers(_clusterFeature, changeLevel,
                                compactBottomMostLevel);
-}
-
-/// @brief Add engine-specific optimizer rules
-void ClusterEngine::addOptimizerRules(aql::OptimizerRulesFeature& feature) {
-  if (engineType() == ClusterEngineType::RocksDBEngine) {
-    RocksDBOptimizerRules::registerResources(feature);
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  } else if (engineType() == ClusterEngineType::MockEngine) {
-    // do nothing
-#endif
-  } else {
-    // invalid engine type...
-    TRI_ASSERT(false);
-  }
-}
-
-/// @brief Add engine-specific REST handlers
-void ClusterEngine::addRestHandlers(rest::RestHandlerFactory& handlerFactory) {
-  ClusterRestHandlers::registerResources(&handlerFactory);
 }
 
 void ClusterEngine::waitForEstimatorSync() {

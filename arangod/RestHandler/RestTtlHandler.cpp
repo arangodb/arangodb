@@ -40,6 +40,7 @@ RestTtlHandler::RestTtlHandler(application_features::ApplicationServer& server,
                                GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
+// Mounted at /_api/ttl (prefix)
 RestStatus RestTtlHandler::execute() {
   if (!_vocbase.isSystem()) {
     // ttl operations only allowed in _system database

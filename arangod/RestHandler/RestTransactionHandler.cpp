@@ -96,6 +96,7 @@ RequestLane RestTransactionHandler::lane() const {
   return RequestLane::CLIENT_V8;
 }
 
+// Mounted at /_api/transaction (prefix)
 auto RestTransactionHandler::executeAsync() -> futures::Future<futures::Unit> {
   switch (_request->requestType()) {
     case rest::RequestType::POST:
@@ -169,9 +170,7 @@ void RestTransactionHandler::executeGetState() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // unofficial API to retrieve the transactions history. NOT A PUBLIC API!
   if (_request->suffixes()[0] == "history") {
-    auto auth = AuthenticationFeature::instance();
-    if ((auth == nullptr || !auth->isActive()) ||
-        (auth->isActive() && ExecContext::current().isSuperuser())) {
+    if (ExecContext::current().isSuperuserOrDisabled()) {
       velocypack::Builder builder;
       mgr->history().toVelocyPack(builder);
       generateResult(rest::ResponseCode::OK, builder.slice());
@@ -330,9 +329,7 @@ futures::Future<futures::Unit> RestTransactionHandler::executeAbort() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // unofficial API to clear the transactions history. NOT A PUBLIC API!
   } else if (_request->suffixes()[0] == "history") {
-    auto auth = AuthenticationFeature::instance();
-    if ((auth == nullptr || !auth->isActive()) ||
-        (auth->isActive() && ExecContext::current().isSuperuser())) {
+    if (ExecContext::current().isSuperuserOrDisabled()) {
       mgr->history().clear();
       generateOk(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
     } else {

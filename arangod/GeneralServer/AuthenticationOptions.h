@@ -27,26 +27,24 @@
 
 namespace arangodb {
 
+// TODO Should be renamed to AuthOptions, as it contains both authentication and
+//      authorization options.
 struct AuthenticationOptions {
   static constexpr size_t kMaxSecretLength = 64;
 
   bool authenticationUnixSockets = true;
   bool active = true;
-  std::string externalRBACservice = "";  // means deactivated RBAC
-  double authenticationTimeout = 0.0;
+  std::string externalRbacService;  // empty string means deactivated RBAC
+  double authenticationTimeout = static_cast<double>(1 * 3600);  // 1 hour
   double sessionTimeout = static_cast<double>(1 * 3600);  // 1 hour in seconds
   double minimalJwtExpiryTime = 10.0;                     // 10 seconds
   double maximalJwtExpiryTime = 3600.0;                   // 3600 seconds
+  double maximalAccessTokenExpiryTime =
+      static_cast<double>(7 * 24 * 3600);  // 1 week in seconds
 
   std::string jwtSecretProgramOption;
   std::string jwtSecretKeyfileProgramOption;
   std::string jwtSecretFolderProgramOption;
-  bool jwtSecretIsES256 = false;  // true if the active secret uses ES256
-
-#ifdef USE_ENTERPRISE
-  /// verification only secrets
-  std::vector<std::string> jwtPassiveSecrets;
-#endif
 };
 
 }  // namespace arangodb

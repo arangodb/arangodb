@@ -123,9 +123,10 @@ RestVocbaseBaseHandler::RestVocbaseBaseHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
     : RestBaseHandler(server, request, response),
-      _context(static_cast<VocbaseContext&>(*request->requestContext())),
-      _vocbase(_context.vocbase()) {
+      _context(*request->requestContext()),
+      _vocbase(_context.vocbase().value()) {
   TRI_ASSERT(request->requestContext());
+  TRI_ASSERT(_context.vocbase().has_value());
 }
 
 RestVocbaseBaseHandler::~RestVocbaseBaseHandler() = default;

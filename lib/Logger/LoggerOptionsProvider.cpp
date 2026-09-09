@@ -31,7 +31,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StringUtils.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/application-exit.h"
 #include "Basics/error.h"
 #include "Basics/voc-errors.h"
@@ -260,10 +260,9 @@ The available log levels are:
 
 Note that the `debug` and `trace` levels are very verbose.
 
-Some relevant log topics available in ArangoDB 3 are:
+Some relevant log topics available in ArangoDB are:
 
 - `agency`: Information about the cluster Agency.
-- `performance`: Performance-related messages.
 - `queries`: Executed AQL queries, slow queries.
 - `replication`: Replication-related information.
 - `requests`: HTTP requests.
@@ -273,10 +272,10 @@ Some relevant log topics available in ArangoDB 3 are:
 You can adjust the log levels at runtime via the `PUT /_admin/log/level`
 HTTP API endpoint.
 
-**Audit logging** (Enterprise Edition): The server logs all audit events by
-default. Low priority events, such as statistics operations, are logged with the
-`debug` log level. To keep such events from cluttering the log, set the
-appropriate log topics to the `info` log level.)");
+**Audit logging**: The audit log topics use the `info` log level by default.
+Low priority events, such as from synchronous replication, are logged with the
+`debug` log level. To include low priority events in the log, set the
+respective log topics to the `debug` log level.)");
 
   opts->addOption("--log.max-entry-length",
                   "The maximum length of a log entry (in bytes).",
@@ -560,8 +559,8 @@ void LoggerOptionsProvider::validateOptionsImpl(
 
   // replace $PID with current process id in filenames
   for (auto& output : options.output) {
-    output = StringUtils::replace(output, "$PID",
-                                  std::to_string(Thread::currentProcessId()));
+    output = StringUtils::replace(
+        output, "$PID", std::to_string(BasicThread::currentProcessId()));
   }
 }
 

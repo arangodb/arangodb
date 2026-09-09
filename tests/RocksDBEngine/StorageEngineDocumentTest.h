@@ -24,14 +24,19 @@
 #include "RocksDBEngine/StorageEngineDataTest.h"
 
 #include "Basics/ResultAssertions.h"
+#include "Basics/ResultT.h"
 #include "Basics/StaticStrings.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/CountCache.h"
 #include "Transaction/OperationOrigin.h"
+#include "Transaction/Options.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
+#include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -52,14 +57,21 @@ namespace arangodb::tests {
 // posting to one. Most tests use the committed-single-op helpers (insertR /
 // updateR / read): each write commits in its own transaction and is verified by
 // reading it back in a separate one, so the default pattern exercises persisted
-// visibility. Tests that need multi-op or read-own-writes behaviour instead
+// visibility. Tests that need multi-op or read-own-writes behavior instead
 // drive a SingleCollectionTransaction directly (see the transaction-lifecycle
 // group in DocumentTest.cpp).
-class StorageEngineDocumentTest : public StorageEngineDataTest {
+//
+// Parameterized on the base data-test fixture, which selects plain vs.
+// time-travel engine and carries the matching `timeTravelEnabled` flag, so the
+// same helpers serve both worlds and the collection can never disagree with the
+// engine it runs on.
+template<class BaseDataTest>
+class BasicStorageEngineDocumentTest : public BaseDataTest {
  protected:
   void SetUp() override {
-    _database = makeDatabase("testDatabase", 42);
-    _collection = makeCollection(*_database, "testCollection");
+    _database = this->makeDatabase("testDatabase", 42);
+    _collection = this->makeCollection(*_database, "testCollection",
+                                       BaseDataTest::timeTravelEnabled);
   }
 
   void TearDown() override {
@@ -180,15 +192,64 @@ class StorageEngineDocumentTest : public StorageEngineDataTest {
   // Reads a document by key in its own read-only transaction, committing before
   // returning so the result slice stays valid for the caller.
   OperationResult read(std::string_view key) {
+    return readWith(key, transaction::Options{});
+  }
+
+  // Point-in-time read: returns the version of `key` that was valid at
+  // `timestamp`, or "document not found" if the key had no version then.
+  // Time-travel collections only.
+  OperationResult readAt(std::string_view key, uint64_t timestamp) {
+    transaction::Options trxOptions;
+    trxOptions.readTimestamp = timestamp;
+    return readWith(key, trxOptions);
+  }
+
+  OperationResult readWith(std::string_view key,
+                           transaction::Options const& trxOptions) {
     auto lookup = keyOnly(key);
     SingleCollectionTransaction trx{context(), *_collection,
-                                    AccessMode::Type::READ};
+                                    AccessMode::Type::READ, trxOptions};
     if (auto res = trx.begin(); res.fail()) {
       return OperationResult{res, OperationOptions{}};
     }
     OperationOptions options;
     auto res = trx.document(_collection->name(), lookup.slice(), options);
     std::ignore = trx.finish(res.result);
+    return res;
+  }
+
+  // Physical storage identity, bypassing the document-body path.
+  ResultT<std::pair<LocalDocumentId, RevisionId>> lookupKeyResult(
+      std::string_view key) {
+    SingleCollectionTransaction trx{context(), *_collection,
+                                    AccessMode::Type::READ};
+    EXPECT_TRUE(IsOk(trx.begin()));
+    std::pair<LocalDocumentId, RevisionId> result;
+    auto res = _collection->getPhysical()->lookupKey(&trx, key, result,
+                                                     ReadOwnWrites::no);
+    std::ignore = trx.finish(res);
+    if (res.fail()) {
+      return res;
+    }
+    return result;
+  }
+
+  std::pair<LocalDocumentId, RevisionId> lookupKey(std::string_view key) {
+    auto res = lookupKeyResult(key);
+    EXPECT_TRUE(IsOk(res));
+    return res.ok() ? *res : std::pair<LocalDocumentId, RevisionId>{};
+  }
+
+  // Direct-by-id lookup, bypassing the primary index (and thus the key).
+  Result existsById(LocalDocumentId id) {
+    SingleCollectionTransaction trx{context(), *_collection,
+                                    AccessMode::Type::READ};
+    EXPECT_TRUE(IsOk(trx.begin()));
+    auto res = _collection->getPhysical()->lookup(
+        &trx, id,
+        [](LocalDocumentId, aql::DocumentData&&, VPackSlice) { return true; },
+        PhysicalCollection::LookupOptions{});
+    std::ignore = trx.finish(res);
     return res;
   }
 
@@ -220,5 +281,11 @@ class StorageEngineDocumentTest : public StorageEngineDataTest {
   std::unique_ptr<Database> _database;
   std::shared_ptr<LogicalCollection> _collection;
 };
+
+using StorageEngineDocumentTest =
+    BasicStorageEngineDocumentTest<StorageEngineDataTest>;
+
+using TimeTravelStorageEngineDocumentTest =
+    BasicStorageEngineDocumentTest<TimeTravelStorageEngineDataTest>;
 
 }  // namespace arangodb::tests

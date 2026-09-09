@@ -273,7 +273,7 @@ Result CreateCollection::createCollectionReplication1(
   }
 
   std::shared_ptr<LogicalCollection> col;
-  OperationOptions options(ExecContext::current());
+  OperationOptions options;
   auto res = Collections::createShard(vocbase, options, shard, collectionType,
                                       properties, col);
   if (col) {

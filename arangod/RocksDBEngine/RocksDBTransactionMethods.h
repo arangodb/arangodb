@@ -25,9 +25,9 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 
-namespace rocksdb {
-class Slice;
-}  // namespace rocksdb
+#include <rocksdb/slice.h>
+
+#include <string>
 
 namespace arangodb {
 class RocksDBKey;
@@ -44,9 +44,15 @@ struct ReadOptions : public rocksdb::ReadOptions {
 
 class RocksDBTransactionMethods : public RocksDBMethods {
  public:
-  explicit RocksDBTransactionMethods(RocksDBTransactionState* state)
-      : _state(state) {}
+  explicit RocksDBTransactionMethods(RocksDBTransactionState* state);
   ~RocksDBTransactionMethods() override = default;
+
+  // _udtReadTimestamp points into _udtReadTimestampStorage, so a copy would
+  // leave the Slice referring to the original's buffer. These objects are only
+  // ever owned by the transaction state, so copying is simply forbidden.
+  RocksDBTransactionMethods(RocksDBTransactionMethods const&) = delete;
+  RocksDBTransactionMethods& operator=(RocksDBTransactionMethods const&) =
+      delete;
 
   virtual Result beginTransaction() = 0;
 
@@ -108,13 +114,42 @@ class RocksDBTransactionMethods : public RocksDBMethods {
   virtual rocksdb::Status RollbackToWriteBatchSavePoint() = 0;
   virtual void PopSavePoint() = 0;
 
+  /// @brief record the commit timestamp applied to User-Defined Timestamp
+  /// column families (time travel) when this transaction commits. A rocksdb
+  /// transaction commits its UDT families with a single timestamp, so every
+  /// time-travel write in the same transaction must agree on it; a conflicting
+  /// timestamp is rejected. No-op for methods that do not commit a rocksdb
+  /// transaction. See RocksDBTrxBaseMethods.
+  virtual Result setCommitTimestamp(uint64_t /*ts*/) { return {}; }
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   std::size_t countInBounds(RocksDBKeyBounds const& bounds,
                             bool isElementInRange = false);
 #endif
 
  protected:
+  /// @brief User-Defined Timestamp column families (time travel) require a read
+  /// timestamp on every read, while non-UDT families reject one, so it must be
+  /// applied per column family. For a UDT `cf` this returns a copy of `base`
+  /// reading at this transaction's read timestamp; for any other `cf` it
+  /// returns `base` unchanged.
+  rocksdb::ReadOptions withUdtReadTimestamp(
+      rocksdb::ReadOptions const& base, rocksdb::ColumnFamilyHandle* cf) const;
+
   RocksDBTransactionState* _state;
+
+ private:
+  /// @brief the transaction's read timestamp for User-Defined Timestamp column
+  /// families, encoded as rocksdb expects it. Fixed for the lifetime of the
+  /// transaction: either the point in time requested via
+  /// transaction::Options::readTimestamp, or kMax for "current state".
+  ///
+  /// ReadOptions::timestamp is a `Slice const*`, so the Slice itself - not just
+  /// the bytes it points at - must outlive every ReadOptions that
+  /// withUdtReadTimestamp() hands out. Hence both live here instead of being
+  /// rebuilt per call.
+  std::string _udtReadTimestampStorage;
+  rocksdb::Slice _udtReadTimestamp;
 };
 
 }  // namespace arangodb

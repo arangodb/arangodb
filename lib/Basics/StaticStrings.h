@@ -53,6 +53,8 @@ class StaticStrings {
   static std::string const RevString;
   static std::string const FromString;
   static std::string const ToString;
+  static std::string const Created;  // time-travel version validity start
+  static std::string const Expired;  // time-travel version validity end
 
   // URL parameter names
   static std::string const IgnoreRevsString;
@@ -264,7 +266,6 @@ class StaticStrings {
   static std::string const CacheEnabled;  // also used for indexes
   static std::string const ComputedValues;
   static std::string const EnableTimeTravel;
-  static std::string const SupportsRBAC;
   static std::string const DistributeShardsLike;
   static std::string const Indexes;
   static std::string const IsLocalGraphNode;
