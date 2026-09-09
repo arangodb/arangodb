@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
@@ -745,10 +745,16 @@ void V8ClientConnection::getConnectionHandleTable(
         v8::Local<v8::Object> entry = v8::Object::New(isolate);
 
         setBool("active", isActive, entry);
-        setBool("connected", conn->state() == fu::Connection::State::Connected,
-                entry);
-        setString("endpoint", conn->endpoint(), entry);
-        setString("localPort", conn->localEndpoint(), entry);
+        if (conn) {
+          setBool("connected", conn->state() == fu::Connection::State::Connected,
+                  entry);
+          setString("endpoint", conn->endpoint(), entry);
+          setString("localPort", conn->localEndpoint(), entry);
+        } else {
+          setBool("connected", false, entry);
+          setString("endpoint", "N/A", entry);
+          setString("localPort", "N/A", entry);
+        }
         setString("username", builder.user(), entry);
         setString("password", builder.password(), entry);
         setString("jwtToken", builder.jwtToken(), entry);
