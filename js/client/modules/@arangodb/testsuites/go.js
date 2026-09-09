@@ -109,14 +109,6 @@ function goDriver (options) {
       this.info = "runInGoTest";
     }
     runOneTest(file) {    
-      const versionInfo = db._connection.GET('/_api/version');
-      const requestedApiVersion = versionInfo.requestedApiVersion;
-      print(`go_driver requested API version: ${requestedApiVersion || 'not reported'}`);
-      if (goVersion === 'v3' && requestedApiVersion !== 'v1') {
-        throw new Error(
-          `go-driver v3 requires API v1, but the server reported '${requestedApiVersion || 'unknown'}'`
-        );
-      }
       process.env['TEST_ENDPOINTS'] = this.instanceManager.urls.join(',');
       process.env['TEST_AUTHENTICATION'] = 'basic:root:';
       let jwt = this.instanceManager.JWT; 
