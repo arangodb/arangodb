@@ -28,7 +28,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Optimizer.h"
 #include "Aql/Optimizer/Utils/OptimizeTraversalPathVariable.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils/FindProjections.h"
 #include "Aql/Projections.h"
 #include "Aql/Query.h"
 #include "Aql/TraversalConditionFinder.h"
@@ -57,14 +57,14 @@ bool applyGraphProjections(TraversalNode* traversal) {
   // if the path does not include vertices, we can restrict the vertex
   // gathering to only the required attributes
   if (traversal->vertexOutVariable() != nullptr) {
-    useVertexProjections = utils::findProjections(
+    useVertexProjections = optimizer::findProjections(
         traversal, traversal->vertexOutVariable(), /*expectedAttribute*/ "",
         /*excludeStartNodeFilterCondition*/ false, attributes);
   }
 
   if (useVertexProjections && options->producePathsVertices() &&
       pathOutVariable != nullptr) {
-    useVertexProjections = utils::findProjections(
+    useVertexProjections = optimizer::findProjections(
         traversal, pathOutVariable, StaticStrings::GraphQueryVertices,
         /*excludeStartNodeFilterCondition*/ false, attributes);
   }
@@ -80,14 +80,14 @@ bool applyGraphProjections(TraversalNode* traversal) {
   bool useEdgeProjections = true;
 
   if (traversal->edgeOutVariable() != nullptr) {
-    useEdgeProjections = utils::findProjections(
+    useEdgeProjections = optimizer::findProjections(
         traversal, traversal->edgeOutVariable(), /*expectedAttribute*/ "",
         /*excludeStartNodeFilterCondition*/ false, attributes);
   }
 
   if (useEdgeProjections && options->producePathsEdges() &&
       pathOutVariable != nullptr) {
-    useEdgeProjections = utils::findProjections(
+    useEdgeProjections = optimizer::findProjections(
         traversal, pathOutVariable, StaticStrings::GraphQueryEdges,
         /*excludeStartNodeFilterCondition*/ false, attributes);
   }
