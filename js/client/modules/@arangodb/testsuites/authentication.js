@@ -24,6 +24,8 @@
 // /
 // //////////////////////////////////////////////////////////////////////////////
 
+// these tests check how the client responds to unauthenticated requests
+
 const functionsDocumentation = {
   'authentication': 'authentication tests',
   'authentication_parameters': 'authentication parameters tests'
@@ -76,7 +78,10 @@ function authenticationClient (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 const authTestExpectRC = [
-  [401, 401, 401, 401, 401, 401, 401],
+  // authentication: true
+  // only /_api/version handler exists which can check authentication
+  [404, 404, 401, 404, 404, 404, 404],
+  // authentication: false
   [404, 404, 200, 404, 404, 404, 404]
 ];
 

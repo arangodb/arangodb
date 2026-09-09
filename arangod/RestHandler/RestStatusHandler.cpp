@@ -67,6 +67,10 @@ RestStatusHandler::RestStatusHandler(
 
 // Mounted at /_admin/status (exact)
 RestStatus RestStatusHandler::execute() {
+  if (!isAllowedHttpMethod({RequestType::GET})) {
+    return RestStatus::DONE;
+  }
+
   if (auto r = ExecContext::current().canUseHardenedAction(
           auth::perms::AdminMonitoring{});
       r.fail()) {

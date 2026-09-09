@@ -793,8 +793,9 @@ void GeneralServerFeature::defineRemainingHandlers(
       {1}, queryRegistry);
 
   // And now some handlers which are registered in both /_api and /_admin
-  f.addHandler("/_admin/actions",
-               RestHandlerCreator<MaintenanceRestHandler>::createNoData, {1});
+  f.addPrefixHandler("/_admin/actions",
+                     RestHandlerCreator<MaintenanceRestHandler>::createNoData,
+                     {1});
 
   f.addHandler("/_admin/auth/reload",
                RestHandlerCreator<RestAuthReloadHandler>::createNoData, {1});

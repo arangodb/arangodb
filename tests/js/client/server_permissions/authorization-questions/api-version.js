@@ -74,7 +74,7 @@ function apiVersionAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_api/engine`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },

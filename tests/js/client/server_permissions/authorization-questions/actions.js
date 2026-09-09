@@ -69,7 +69,7 @@ function actionApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/actions`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -79,7 +79,7 @@ function actionApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/_system/_admin/actions`, { execute: 'proceed' });
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -90,7 +90,7 @@ function actionApiAuthzSuite () {
       arango.POST_RAW(`/_db/_system/_admin/actions`,
                       { execute: 'pause', duration: 1 });
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read"
       ], endObserve());
       arango.POST_RAW(`/_db/_system/_admin/actions`, { execute: 'proceed' });
@@ -101,7 +101,7 @@ function actionApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_admin/actions`, {});
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -114,7 +114,7 @@ function actionApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_admin/actions/999999`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },

@@ -30,7 +30,7 @@
 //
 // RestAqlFunctionsHandler just serialises the list of built-in AQL functions
 // and returns it; it performs no in-handler authorization check. The only
-// questions are the universal base checks: `UseApiVersion version=0` and
+// questions are the universal base checks: `UseApiVersion version=1` and
 // `UseDatabase name=<db> level=read` for the database in the request path.
 // The endpoint has no /_db/ prefix in the apitest and runs in the connected
 // database context; here we address it explicitly in _system.
@@ -74,7 +74,7 @@ function aqlApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_api/aql-builtin`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
