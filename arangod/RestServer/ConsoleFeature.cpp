@@ -55,9 +55,7 @@ ConsoleFeature::ConsoleFeature(ApplicationServer& server)
 }
 
 void ConsoleFeature::start() {
-  if (!server().hasFeature<ServerFeature>()) {
-    return;
-  }
+  TRI_ASSERT(server().hasFeature<ServerFeature>());
   auto& serverFeature = server().getFeature<ServerFeature>();
 
   _operationMode = serverFeature.operationMode();

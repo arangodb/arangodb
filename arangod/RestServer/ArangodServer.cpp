@@ -235,20 +235,6 @@ void ArangodServer::addFeatures() {
   auto& clusterUpgradeFeature = addFeature<ClusterUpgradeFeature>(
       database, getOptions<upgrade::ClusterUpgradeOptionsProvider>());
   addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());
-#ifdef USE_V8
-  bool const enableJS = getOptions<V8DealerOptionsProvider>().enableJS;
-  bool const agencyActivated = getOptions<AgencyOptionsProvider>().activated;
-  bool const enableFoxx = enableJS && !agencyActivated;
-  bool const enableV8Runtime =
-      enableJS && (!agencyActivated ||
-                   V8DealerFeature::javascriptRequestedViaOptions(options()));
-  addFeature<ConsoleFeature>();
-  if (enableV8Runtime) {
-    addFeature<V8PlatformFeature>(getOptions<V8PlatformOptionsProvider>());
-  }
-  addFeature<V8SecurityFeature>(AllowListStrictness::STRICT,
-                                getOptions<V8SecurityOptionsProvider>());
-#endif
   // init-db/restore-admin/check-version/upgrade don't need a real server
   bool const initDatabase =
       getOptions<InitDatabaseOptionsProvider>().initDatabase ||
@@ -266,6 +252,22 @@ void ArangodServer::addFeatures() {
       getOptions<ServerOptionsProvider>().operationMode;
   bool const enableDaemonSupervisor =
       !auxMode && restServer && operationMode != OperationMode::MODE_CONSOLE;
+#ifdef USE_V8
+  bool const enableJS = getOptions<V8DealerOptionsProvider>().enableJS;
+  bool const agencyActivated = getOptions<AgencyOptionsProvider>().activated;
+  bool const enableFoxx = enableJS && !agencyActivated;
+  bool const enableV8Runtime =
+      enableJS && (!agencyActivated ||
+                   V8DealerFeature::javascriptRequestedViaOptions(options()));
+  if (!skipNonServerFeatures) {
+    addFeature<ConsoleFeature>();
+  }
+  if (enableV8Runtime) {
+    addFeature<V8PlatformFeature>(getOptions<V8PlatformOptionsProvider>());
+  }
+  addFeature<V8SecurityFeature>(AllowListStrictness::STRICT,
+                                getOptions<V8SecurityOptionsProvider>());
+#endif
   addFeature<CpuUsageFeature>();
   auto& databasePath = addFeature<DatabasePathFeature>(
       getOptions<DatabasePathOptionsProvider>());
@@ -339,7 +341,7 @@ void ArangodServer::addFeatures() {
   }
 #endif
 #ifdef USE_V8
-  if (enableV8Runtime) {
+  if (enableV8Runtime && !skipNonServerFeatures) {
     addFeature<ScriptFeature>(_ret, getOptions<ScriptOptionsProvider>());
   }
   auto& v8DealerFeature = addFeature<V8DealerFeature>(
