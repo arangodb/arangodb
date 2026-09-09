@@ -118,9 +118,9 @@ bool idLookupSupportedViaKeyField(
     return false;
   }
   switch (idx->type()) {
-    case Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX:
+    case IndexType::Primary:
       return true;
-    case Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX:
+    case IndexType::Persistent:
       return op->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
              op->type == aql::NODE_TYPE_OPERATOR_BINARY_IN;
     default:
@@ -166,10 +166,9 @@ bool SortedIndexAttributeMatcher::accessFitsIndex(
   std::pair<arangodb::aql::Variable const*,
             std::vector<arangodb::basics::AttributeName>>
       attributeData;
-  bool const isPrimaryIndex =
-      idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX;
+  bool const isPrimaryIndex = idx->type() == IndexType::Primary;
 
-  if (idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_TTL_INDEX &&
+  if (idx->type() == IndexType::TTL &&
       (!other->isConstant() ||
        !(other->isIntValue() || other->isDoubleValue()))) {
     // TTL index can only be used for numeric lookup values, no date strings or

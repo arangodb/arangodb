@@ -36,7 +36,8 @@ using namespace arangodb;
 RocksDBSyncThread::RocksDBSyncThread(RocksDBEngine& engine,
                                      std::chrono::milliseconds interval,
                                      std::chrono::milliseconds delayThreshold)
-    : Thread("RocksDBSync"),
+    // WAL sync only, no ExecContext required
+    : Thread("RocksDBSync", nullptr),
       _engine(engine),
       _interval(interval),
       _lastSyncTime(std::chrono::steady_clock::now()),

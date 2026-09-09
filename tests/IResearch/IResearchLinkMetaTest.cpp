@@ -129,7 +129,7 @@ class IResearchLinkMetaTest
     auto sysvocbase =
         dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
     std::shared_ptr<arangodb::LogicalCollection> unused;
-    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::OperationOptions options;
     arangodb::methods::Collections::createSystem(
         *sysvocbase, options, arangodb::tests::AnalyzerCollectionName, false,
         unused);
@@ -2716,7 +2716,7 @@ class IResearchLinkMetaTestNoSystem
     auto sysvocbase =
         dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
     std::shared_ptr<arangodb::LogicalCollection> unused;
-    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::OperationOptions options;
     arangodb::methods::Collections::createSystem(
         *sysvocbase, options, arangodb::tests::AnalyzerCollectionName, false,
         unused);

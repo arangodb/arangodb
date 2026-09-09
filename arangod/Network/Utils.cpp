@@ -61,6 +61,14 @@ futures::Future<ErrorCode> resolveDestination(ClusterInfo& ci,
     spec.endpoint = dest;
     co_return TRI_ERROR_NO_ERROR;  // all good
   }
+  if (dest.starts_with("http://")) {
+    spec.endpoint = absl::StrCat("tcp://", dest.substr(7));
+    co_return TRI_ERROR_NO_ERROR;
+  }
+  if (dest.starts_with("https://")) {
+    spec.endpoint = absl::StrCat("ssl://", dest.substr(8));
+    co_return TRI_ERROR_NO_ERROR;
+  }
 
   if (dest.starts_with("http+tcp://") || dest.starts_with("http+ssl://")) {
     spec.endpoint = dest.substr(5);

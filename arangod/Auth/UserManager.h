@@ -32,7 +32,7 @@
 
 namespace arangodb::auth {
 
-using UserMap = std::unordered_map<std::string, User>;
+// TODO Take std::string_view instead of std::string const&
 
 // UserManager is the sole point of access for users and permissions
 // stored in `_system/_users`. The permissions are cached locally if possible,
@@ -83,7 +83,7 @@ class UserManager {
                                 RetryOnConflict) = 0;
 
   // Update specific user
-  virtual Result updateUser(std::string const& user, UserCallback&&,
+  virtual Result updateUser(std::string_view user, UserCallback&&,
                             RetryOnConflict) = 0;
 
   // Access user without modifying it
@@ -99,15 +99,28 @@ class UserManager {
   virtual Result removeUser(std::string const& user) = 0;
   virtual Result removeAllUsers() = 0;
 
-  // Convenience methods to check a password or access token
+  // Convenience methods to check a password or access token. tokenValidUntil
+  // is only ever written to when the credential is an access token and
+  // authentication succeeds, in which case it is set to the token's own
+  // expiration timestamp (seconds since epoch). It is left unmodified for
+  // password authentication and for failed authentication attempts.
+  // Initialize it to `std::nullopt` before the call if you need to tell
+  // whether it was set.
   virtual bool checkCredentials(std::string const& username,
-                                std::string const& token, std::string& un) = 0;
+                                std::string const& token, std::string& un,
+                                std::optional<double>& tokenValidUntil) = 0;
+  bool checkCredentials(std::string const& username, std::string const& token,
+                        std::string& un) {
+    // Legacy method if we do not care for the expiration time of the access
+    // token:
+    std::optional<double> ignored;
+    return checkCredentials(username, token, un, ignored);
+  }
 
-  virtual Level databaseAuthLevel(std::string const& username,
-                                  std::string const& dbname,
-                                  bool configured) = 0;
-  virtual Level collectionAuthLevel(std::string const& username,
-                                    std::string const& dbname,
+  virtual Level databaseAuthLevel(std::string_view username,
+                                  std::string_view dbname, bool configured) = 0;
+  virtual Level collectionAuthLevel(std::string_view username,
+                                    std::string_view dbname,
                                     std::string_view coll, bool configured) = 0;
 
   // Return all access tokens of an user
@@ -125,16 +138,5 @@ class UserManager {
   // This will shut down the running thread on demand.
   // It should only be use when the UserManager is being destroyed.
   virtual void shutdown() = 0;
-
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  // Overwrite internally cached permissions, only use
-  // for testing purposes.
-  // This will assert that the underlying UpdateThread was started.
-  virtual void setAuthInfo(UserMap const& userEntryMap) = 0;
-
-  // Need this to find out if the loadFromDB was run and the internal version
-  // was updated
-  [[nodiscard]] virtual uint64_t internalVersion() const noexcept = 0;
-#endif  // ARANGODB_USE_GOOGLE_TESTS
 };
 }  // namespace arangodb::auth

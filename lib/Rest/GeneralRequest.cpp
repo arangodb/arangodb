@@ -32,7 +32,6 @@
 #include "Basics/error.h"
 #include "Logger/LogMacros.h"
 #include "Rest/ApiVersion.h"
-#include "Rest/RequestContext.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -164,7 +163,7 @@ rest::RequestType GeneralRequest::findRequestType(char const* ptr,
 }
 
 void GeneralRequest::setRequestContext(
-    std::shared_ptr<RequestContext> requestContext) {
+    std::shared_ptr<ExecContext> requestContext) {
   TRI_ASSERT(requestContext != nullptr);
 
   _requestContext = std::move(requestContext);
@@ -482,11 +481,16 @@ void GeneralRequest::detectAndStripApiVersion(char const*& start,
               ", got path: ", std::string_view(start, end - start)));
     }
 
+    bool versionSupported = api_version::isApiVersionSupported(version);
+    TRI_IF_FAILURE("ApiVersion::treatVersion1AsSupported") {
+      versionSupported = versionSupported || version == 1;
+    }
+
     // If the parsed version is not supported or experimental we do NOT set
     // _requestedApiVersion or strip the prefix. This will cause the handler
     // lookup to fail and return a 404 Not Found
     if (version < std::numeric_limits<uint32_t>::max() &&
-        (api_version::isApiVersionSupported(version) || isExperimental)) {
+        (versionSupported || isExperimental)) {
       _requestedApiVersion = static_cast<uint32_t>(version);
       start = p + 1 + numEnd;  // advance past "/_arango/vX"
     }

@@ -39,6 +39,13 @@ futures::Future<Result> ClusterRestCollectionHandler::handleExtraCommandPut(
     std::shared_ptr<LogicalCollection> coll, std::string const& suffix,
     velocypack::Builder& builder) {
   if (suffix == "recalculateCount") {
+    // Note that this check was missing before the RBAC change and we have
+    // considered to be a bug, so it is fixed here.
+    if (auto r = ExecContext::current().canUseCollection(
+            coll->vocbase().name(), coll->name(), AccessLevel::WriteMeta);
+        !r.ok()) {
+      return r;
+    }
     Result res = recalculateCountsOnAllDBServers(
         server().getFeature<ClusterFeature>(), _vocbase.name(), coll->name());
     if (res.ok()) {

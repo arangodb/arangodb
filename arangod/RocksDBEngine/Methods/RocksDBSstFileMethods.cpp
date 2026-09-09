@@ -27,7 +27,7 @@
 #include "Basics/files.h"
 #include "Basics/FileUtils.h"
 #include "Basics/RocksDBUtils.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/TemporaryStorageFeature.h"
@@ -103,7 +103,7 @@ rocksdb::Status RocksDBSstFileMethods::writeToFile() {
             [&comparator](auto& v1, auto& v2) {
               return comparator->Compare({v1.first}, {v2.first}) < 0;
             });
-  TRI_pid_t pid = Thread::currentProcessId();
+  TRI_pid_t pid = BasicThread::currentProcessId();
   std::string tmpFileName =
       std::to_string(pid) + '-' +
       std::to_string(RandomGenerator::interval(UINT32_MAX));

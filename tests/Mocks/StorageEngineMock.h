@@ -42,9 +42,6 @@ class PhysicalCollection;
 class TransactionCollection;
 class TransactionManager;
 class WalAccess;
-namespace aql {
-class OptimizerRulesFeature;
-}
 namespace iresearch {
 class IResearchLinkMock;
 class IResearchInvertedIndexMock;
@@ -129,10 +126,7 @@ class StorageEngineMock : private StorageEngineMockBase,
       arangodb::application_features::ApplicationServer& server,
       bool injectClusterIndexes = false);
   arangodb::HealthData healthCheck() override;
-  void addOptimizerRules(
-      arangodb::aql::OptimizerRulesFeature& feature) override;
-  void addRestHandlers(
-      arangodb::rest::RestHandlerFactory& handlerFactory) override;
+
   void changeCollection(TRI_vocbase_t& vocbase,
                         arangodb::LogicalCollection const& collection) override;
   arangodb::Result changeView(arangodb::LogicalView const& view,
@@ -169,10 +163,6 @@ class StorageEngineMock : private StorageEngineMockBase,
                                      bool isUpgrade) override;
   void getDatabases(arangodb::velocypack::Builder& result) override;
   void cleanupReplicationContexts() override;
-  arangodb::velocypack::Builder getReplicationApplierConfiguration(
-      TRI_vocbase_t& vocbase, ErrorCode& result) override;
-  arangodb::velocypack::Builder getReplicationApplierConfiguration(
-      ErrorCode& result) override;
   ErrorCode getViews(TRI_vocbase_t& vocbase,
                      arangodb::velocypack::Builder& result) override;
   arangodb::Result handleSyncKeys(arangodb::DatabaseInitialSyncer& syncer,
@@ -187,17 +177,9 @@ class StorageEngineMock : private StorageEngineMockBase,
   using StorageEngine::registerView;
   TRI_voc_tick_t releasedTick() const override;
   void releaseTick(TRI_voc_tick_t) override;
-  ErrorCode removeReplicationApplierConfiguration(
-      TRI_vocbase_t& vocbase) override;
-  ErrorCode removeReplicationApplierConfiguration() override;
   arangodb::Result renameCollection(
       TRI_vocbase_t& vocbase, arangodb::LogicalCollection const& collection,
       std::string const& oldName) override;
-  ErrorCode saveReplicationApplierConfiguration(
-      TRI_vocbase_t& vocbase, arangodb::velocypack::Slice slice,
-      bool doSync) override;
-  ErrorCode saveReplicationApplierConfiguration(arangodb::velocypack::Slice,
-                                                bool) override;
   std::string versionFilename(TRI_voc_tick_t) const override;
   void waitForEstimatorSync() override;
   arangodb::WalAccess const* walAccess() const override;

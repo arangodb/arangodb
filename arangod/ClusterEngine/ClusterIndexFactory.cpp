@@ -108,8 +108,8 @@ struct EdgeIndexFactory : public DefaultIndexFactory {
     }
 
     auto ct = _engine.engineType();
-    return std::make_shared<ClusterIndex>(
-        id, collection, ct, Index::TRI_IDX_TYPE_EDGE_INDEX, definition);
+    return std::make_shared<ClusterIndex>(id, collection, ct, IndexType::Edge,
+                                          definition);
   }
 };
 
@@ -130,8 +130,7 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
 
     auto ct = _engine.engineType();
     return std::make_shared<ClusterIndex>(IndexId::primary(), collection, ct,
-                                          Index::TRI_IDX_TYPE_PRIMARY_INDEX,
-                                          definition);
+                                          IndexType::Primary, definition);
   }
 };
 
@@ -222,13 +221,13 @@ ClusterIndexFactory::ClusterIndexFactory(
 }
 
 std::vector<std::pair<std::string_view, std::string_view>>
-ClusterIndexFactory::indexAliases() const {
+ClusterIndexFactory::indexAliases(uint32_t apiVersion) const {
   auto* ae = _engine.actualEngine();
   if (!ae) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "no actual storage engine for ClusterIndexFactory");
   }
-  return ae->indexFactory().indexAliases();
+  return ae->indexFactory().indexAliases(apiVersion);
 }
 
 Result ClusterIndexFactory::enhanceIndexDefinition(  // normalize definition
@@ -268,8 +267,7 @@ void ClusterIndexFactory::fillSystemIndexes(
   ClusterEngineType ct = _engine.engineType();
 
   systemIndexes.emplace_back(std::make_shared<ClusterIndex>(
-      IndexId::primary(), col, ct, Index::TRI_IDX_TYPE_PRIMARY_INDEX,
-      input.slice()));
+      IndexId::primary(), col, ct, IndexType::Primary, input.slice()));
 
   // create edges indexes
   if (col.type() == TRI_COL_TYPE_EDGE) {
@@ -277,7 +275,7 @@ void ClusterIndexFactory::fillSystemIndexes(
     input.clear();
     input.openObject();
     input.add(StaticStrings::IndexType,
-              VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_EDGE_INDEX)));
+              VPackValue(Index::oldtypeName(IndexType::Edge)));
     input.add(StaticStrings::IndexId,
               VPackValue(std::to_string(IndexId::edgeFrom().id())));
 
@@ -294,15 +292,14 @@ void ClusterIndexFactory::fillSystemIndexes(
     input.add(StaticStrings::IndexSparse, VPackValue(false));
     input.close();
     systemIndexes.emplace_back(std::make_shared<ClusterIndex>(
-        IndexId::edgeFrom(), col, ct, Index::TRI_IDX_TYPE_EDGE_INDEX,
-        input.slice()));
+        IndexId::edgeFrom(), col, ct, IndexType::Edge, input.slice()));
 
     // second edge index
     if (ct == ClusterEngineType::RocksDBEngine) {
       input.clear();
       input.openObject();
       input.add(StaticStrings::IndexType,
-                VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_EDGE_INDEX)));
+                VPackValue(Index::oldtypeName(IndexType::Edge)));
       input.add(StaticStrings::IndexId,
                 VPackValue(std::to_string(IndexId::edgeTo().id())));
       input.add(StaticStrings::IndexName,
@@ -314,8 +311,7 @@ void ClusterIndexFactory::fillSystemIndexes(
       input.add(StaticStrings::IndexSparse, VPackValue(false));
       input.close();
       systemIndexes.emplace_back(std::make_shared<ClusterIndex>(
-          IndexId::edgeTo(), col, ct, Index::TRI_IDX_TYPE_EDGE_INDEX,
-          input.slice()));
+          IndexId::edgeTo(), col, ct, IndexType::Edge, input.slice()));
     }
   }
 }

@@ -30,7 +30,7 @@ namespace tao::json::jaxn
 
    inline namespace literals
    {
-      [[nodiscard]] inline value operator"" _jaxn( const char* data, const std::size_t size )
+      [[nodiscard]] inline value operator""_jaxn( const char* data, const std::size_t size )
       {
          return jaxn::from_string( data, size, "literal" );
       }

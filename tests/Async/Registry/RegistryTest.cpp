@@ -23,7 +23,7 @@
 #include "Async/Registry/registry_variable.h"
 #include "Containers/Concurrent/shared.h"
 #include "Containers/Concurrent/thread.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 
 #include <format>
 #include <gtest/gtest.h>

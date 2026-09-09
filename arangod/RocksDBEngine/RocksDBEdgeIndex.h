@@ -60,7 +60,7 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   ~RocksDBEdgeIndex();
 
-  IndexType type() const override { return Index::TRI_IDX_TYPE_EDGE_INDEX; }
+  IndexType type() const override { return IndexType::Edge; }
 
   char const* typeName() const override { return "edge"; }
 

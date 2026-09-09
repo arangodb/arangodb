@@ -26,8 +26,8 @@
 
 #include "AgentConfiguration.h"
 #include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
 #include "Metrics/Fwd.h"
+#include "Utils/Thread.h"
 
 #include <list>
 #include <mutex>

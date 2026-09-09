@@ -704,6 +704,39 @@ function complexFilteringSuite() {
       assertEqual(stats.filtered, 0);
     },
 
+    // An expansion with an inline FILTER is pushed into the traversal, so a
+    // vertex failing the condition is not expanded any further: D is dropped
+    // and its subtree is never walked. With optimize-traversals disabled the
+    // condition is a post filter and everything below D is visited first,
+    // which is what the index lookup comparison below measures.
+    // Note the inline FILTER matters here: B and D carry a `value`, A, C and F
+    // do not, so a plain ALL would reject every path.
+    testVertexInlineFilterPrunesSubtree: function () {
+      var query = `WITH ${vn}
+      FOR v, e, p IN 1..2 OUTBOUND @start @@eCol
+      FILTER p.vertices[* FILTER CURRENT.value != null].value ALL < 50
+      SORT v._key
+      RETURN v._key`;
+      var bindVars = {
+        '@eCol': en,
+        'start': vertex.A
+      };
+
+      var cursor = executeQuery(query, bindVars);
+      assertEqual(cursor.toArray(), ['B', 'C', 'F']);
+      var stats = cursor.getExtra().stats;
+      assertEqual(stats.scannedFull, 0);
+
+      // the same query with the pushdown disabled: same result, but the
+      // traversal has to walk everything below D and discard it afterwards
+      var noOpt = db._query(query, bindVars, {optimizer: {rules: ['-optimize-traversals']}});
+      var noOptStats = noOpt.getExtra().stats;
+      assertEqual(noOpt.toArray(), ['B', 'C', 'F']);
+      assertEqual(noOptStats.scannedFull, 0);
+      assertTrue(stats.scannedIndex < noOptStats.scannedIndex,
+        `expected fewer index lookups when the condition is pushed into the traversal, got ${stats.scannedIndex} vs ${noOptStats.scannedIndex}`);
+    },
+
     testVertexLevel0: function () {
       var query = `WITH ${vn}
       FOR v, e, p IN 1..2 OUTBOUND @start @@ecol
