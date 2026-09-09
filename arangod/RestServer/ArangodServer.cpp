@@ -273,10 +273,9 @@ void ArangodServer::addFeatures() {
       getOptions<DatabasePathOptionsProvider>());
   auto& dumpLimits =
       addFeature<DumpLimitsFeature>(getOptions<DumpLimitsOptionsProvider>());
-  auto& httpEndpoint = addFeature<HttpEndpointProvider, EndpointFeature>(
-      getOptions<EndpointOptionsProvider>());
-  if (skipNonServerFeatures || !restServer) {
-    httpEndpoint.disable();
+  if (!skipNonServerFeatures && restServer) {
+    addFeature<HttpEndpointProvider, EndpointFeature>(
+        getOptions<EndpointOptionsProvider>());
   }
   auto& systemDatabaseFeature = addFeature<SystemDatabaseFeature>();
   addFeature<EnvironmentFeature>();

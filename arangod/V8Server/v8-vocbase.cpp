@@ -1887,8 +1887,6 @@ static void JS_Endpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  TRI_ASSERT(v8g->server().hasFeature<HttpEndpointProvider>());
-  auto& endpoints = v8g->server().getFeature<HttpEndpointProvider>();
   auto& vocbase = GetContextVocBase(isolate);
 
   if (!vocbase.isSystem()) {
@@ -1898,13 +1896,17 @@ static void JS_Endpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Handle<v8::Array> result = v8::Array::New(isolate);
   uint32_t j = 0;
 
-  for (auto const& it : endpoints.httpEndpoints()) {
-    v8::Handle<v8::Object> item = v8::Object::New(isolate);
-    item->Set(context, TRI_V8_ASCII_STRING(isolate, "endpoint"),
-              TRI_V8_STD_STRING(isolate, it))
-        .FromMaybe(false);
+  // no HttpEndpointProvider means REST is off, i.e. no endpoints to report
+  if (v8g->server().hasFeature<HttpEndpointProvider>()) {
+    auto& endpoints = v8g->server().getFeature<HttpEndpointProvider>();
+    for (auto const& it : endpoints.httpEndpoints()) {
+      v8::Handle<v8::Object> item = v8::Object::New(isolate);
+      item->Set(context, TRI_V8_ASCII_STRING(isolate, "endpoint"),
+                TRI_V8_STD_STRING(isolate, it))
+          .FromMaybe(false);
 
-    result->Set(context, j++, item).FromMaybe(false);
+      result->Set(context, j++, item).FromMaybe(false);
+    }
   }
 
   TRI_V8_RETURN(result);

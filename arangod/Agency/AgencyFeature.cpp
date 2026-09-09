@@ -112,9 +112,10 @@ void AgencyFeature::prepare() {
   if (_options.agencyMyAddress.empty()) {
     std::string port = "8529";
 
-    HttpEndpointProvider& endpointFeature =
-        server().getFeature<HttpEndpointProvider>();
-    auto endpoints = endpointFeature.httpEndpoints();
+    std::vector<std::string> endpoints;
+    if (server().hasFeature<HttpEndpointProvider>()) {
+      endpoints = server().getFeature<HttpEndpointProvider>().httpEndpoints();
+    }
 
     if (!endpoints.empty()) {
       std::string const& tmp = endpoints.front();
