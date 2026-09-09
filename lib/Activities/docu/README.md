@@ -21,15 +21,15 @@ made from, which is looked up on every run.
 
 ## Build
 
-Building is currently hidden behind the feature-flag `USE_ACTIVITY_DOCS`:
+Building is currently hidden behind the feature-flag `USE_ACTIVITY_DOCS`, specifyable at configuration time.
 ```sh
-cmake --build <build-dir> -DUSE_ACTIVITY_DOCS=On find-activity-subclasses
+cmake --build <build-dir> --target find-activity-subclasses
 ```
 
 ## Run
 
 ```sh
-./find-activity-subclasses --build-path <build-path> <source-path> [<source-path> ...]
+./find-activity-subclasses --build-path <build-path> <source-path> [<source-path> ...] > all_activities.md
 ```
 
 - `--build-path` (or `-p`, required) is the arangodb build directory that holds
@@ -51,8 +51,8 @@ the `enterprise` submodule, that submodule's own commit is listed as well.
 
 ## Test
 
-Building is currently hidden behind the feature-flag `USE_ACTIVITY_DOCS`:
+Building is currently hidden behind the feature-flag `USE_ACTIVITY_DOCS`, specifyable at configuration time.
 ```sh
-cmake --build <build-dir> -DUSE_ACTIVITY_DOCS=On arangodbtests_activities_documentation
+cmake --build <build-dir> --target arangodbtests_activities_documentation
 ./arangodbtests_activities_documentation
 ```
