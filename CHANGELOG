@@ -1,6 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Updated node module js-yaml to 4.3.2 to resolve CVE-2026-84375.
+
 * Upgraded included rclone to v1.75.0 with go1.26.8 and non-vulnerable
   dependencies.
 
