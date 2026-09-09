@@ -1640,12 +1640,14 @@ class instance {
       if (failurePoint === "") {
         failurePoint = undefined;
       }
+      print(`${Date()} clearing ${failurePoint} on ${this.name}`);
       let deleteUrl = `/_admin/debug/failat/${(failurePoint=== undefined)?'': encodeURIComponent(failurePoint)}`;
       let reply;
       let count = 0;
       while (count < 10) {
         try {
           reply = arango.DELETE_RAW(deleteUrl);
+          print(reply)
           break;
         } catch (ex) {
           count += 1;
