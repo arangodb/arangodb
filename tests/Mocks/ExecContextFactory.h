@@ -96,9 +96,15 @@ struct ClassicExecContext {
 /// @param dbLevel      Access level returned for dbname (and its collections).
 /// @param isRestApiHardened  Passed to Classic ctor; set true to require admin
 ///                           for hardened actions. Defaults to false.
+/// @param apiVersion  The requested API version recalled by the Classic auth
+///                    context (0 = v0, the default). Set to 1 to exercise
+///                    version-gated checks (e.g. the collection-visibility
+///                    check in lookupCollection).
 inline ClassicExecContext makeClassicExecContext(
-    std::string username, std::string dbname, auth::Level systemLevel,
-    auth::Level dbLevel, bool isRestApiHardened = false) {
+    std::string username, auth::Level systemLevel,
+    std::tuple<std::string, auth::Level> database,
+    std::vector<std::tuple<std::string, auth::Level>> collections,
+    bool isRestApiHardened = false, uint32_t apiVersion = 0) {
   auto um = std::make_shared<auth::UserManagerTester>();
 
   // Build a UserMap containing one entry for 'username' with the requested
@@ -109,9 +115,14 @@ inline ClassicExecContext makeClassicExecContext(
   user.setActive(true);
   user.grantDatabase(StaticStrings::SystemDatabase, systemLevel);
   user.grantCollection(StaticStrings::SystemDatabase, "*", systemLevel);
-  if (!dbname.empty() && dbname != StaticStrings::SystemDatabase) {
-    user.grantDatabase(dbname, dbLevel);
-    user.grantCollection(dbname, "*", dbLevel);
+  if (!std::get<std::string>(database).empty() &&
+      std::get<std::string>(database) != StaticStrings::SystemDatabase) {
+    user.grantDatabase(std::get<std::string>(database),
+                       std::get<auth::Level>(database));
+    for (auto const& [collName, collLevel] : collections) {
+      user.grantCollection(std::get<std::string>(database), collName,
+                           collLevel);
+    }
   }
   // Catch-all: no access to any other database.
   user.grantDatabase("*", auth::Level::NONE);
@@ -120,12 +131,25 @@ inline ClassicExecContext makeClassicExecContext(
   um->setAuthInfo(userMap);
 
   auto req = std::make_shared<FakeGeneralRequest>();
+  // Set before constructing the Classic auth mode, which recalls the version.
+  req->setRequestedApiVersion(apiVersion);
 
   auto authMode = AuthMode{AuthMode::Classic{*um, std::move(username), *req}};
   auto ctx = createSharedExecContext(std::move(authMode), isRestApiHardened,
                                      VocbasePtr{nullptr});
 
   return ClassicExecContext{std::move(um), std::move(req), std::move(ctx)};
+}
+
+inline ClassicExecContext makeClassicExecContext(std::string username,
+                                                 std::string dbname,
+                                                 auth::Level systemLevel,
+                                                 auth::Level dbLevel,
+                                                 bool isRestApiHardened = false,
+                                                 uint32_t apiVersion = 0) {
+  return makeClassicExecContext(std::move(username), systemLevel,
+                                {std::move(dbname), dbLevel}, {{"*", dbLevel}},
+                                isRestApiHardened, apiVersion);
 }
 
 /// @brief Ownership bundle for a Classic-auth ExecContext that borrows an
