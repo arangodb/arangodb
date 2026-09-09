@@ -205,6 +205,17 @@ TokenCache::Entry TokenCache::checkAuthenticationBasic(
 }
 
 TokenCache::Entry TokenCache::checkAuthenticationJWT(std::string const& jwt) {
+  // Invalidate the JWT cache when user data changes (e.g. user
+  // deactivated).
+  if (_userManager != nullptr) {
+    uint64_t const version = _userManager->globalVersion();
+    if (_jwtCacheVersion.load(std::memory_order_acquire) != version) {
+      std::lock_guard<std::mutex> guard(_jwtCacheMutex);
+      _jwtCache.clear();
+      _jwtCacheVersion.store(version, std::memory_order_release);
+    }
+  }
+
   // note that we need the write lock here because it is an LRU
   // cache. reading from it will move the read entry to the start of
   // the cache's linked list. so acquiring just a read-lock is
@@ -366,8 +377,17 @@ TokenCache::Entry TokenCache::validateJwtBody(std::string_view bodyWebBase64) {
       return TokenCache::Entry::Unauthenticated();
     }
     authResult._username = usernameSlice.copyString();
-    if (_userManager == nullptr ||
-        !_userManager->userExists(authResult._username)) {
+    if (_userManager == nullptr) {
+      return TokenCache::Entry::Unauthenticated();
+    }
+    Result const userFoundAndActiveResult =
+        _userManager->accessUser(authResult._username, [](User const& user) {
+          if (!user.isActive()) {
+            return Result{TRI_ERROR_FAILED};
+          }
+          return Result{};
+        });
+    if (userFoundAndActiveResult.fail()) {
       return TokenCache::Entry::Unauthenticated();
     }
   } else if (bodySlice.hasKey("server_id")) {

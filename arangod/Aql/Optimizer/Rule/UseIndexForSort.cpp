@@ -34,7 +34,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Optimizer.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils/GetIndexForSortCondition.h"
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
 #include "Aql/TypedAstNodes.h"
@@ -199,7 +199,7 @@ struct SortToIndexNode final
           coll->count(&_plan->getAst()->query().trxForOptimization(),
                       transaction::CountType::kTryCache);
 
-      bool canBeUsed = arangodb::aql::utils::getIndexForSortCondition(
+      bool canBeUsed = arangodb::aql::optimizer::getIndexForSortCondition(
           *coll, &sortCondition, outVariable, numDocs,
           enumerateCollectionNode->hint(), usedIndexes, coveredAttributes);
       if (canBeUsed) {
