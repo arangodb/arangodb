@@ -1,10 +1,10 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
-* Updated node module js-yaml to 4.3.2 to resolve CVE-2026-84375.
-
 * Upgraded included rclone to v1.75.0 with go1.26.8 and non-vulnerable
   dependencies.
+
+* Updated node module js-yaml to 4.3.2 to resolve CVE-2026-84375.
 
 * Updated node modules:
  - fast-uri to 3.1.7 to resolve CVE-2026-75899, CVE-2026-75931,
@@ -27,8 +27,6 @@
   (`matchStatement: "experimental"`).
 
 * Updated ArangoDB Starter to v0.20.0-preview-16.
-
-* Updated node module js-yaml to 4.3.1 to resolve GHSA-5p4m-2wfm-xmqj.
 
 * COR-742: AQL `MATCH` inline projections support aliasing / flattening via
   `RETURN name = <expr>` in addition to bare attribute keeps. Alias expressions
