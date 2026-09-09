@@ -35,7 +35,7 @@
 TRI_v8_global_t::TRI_v8_global_t(
     arangodb::application_features::ApplicationServer& server,
     arangodb::V8SecurityFeature& v8security,
-    arangodb::HttpEndpointProvider& endpoints,
+    arangodb::HttpEndpointProvider* endpoints,
     arangodb::application_features::CommunicationFeaturePhase& comm,
 #ifdef USE_ENTERPRISE
     arangodb::EncryptionFeature& encryption,
@@ -222,7 +222,9 @@ TRI_v8_global_t::TRI_v8_global_t(
     : TRI_v8_global_t{
           server,
           server.getFeature<arangodb::V8SecurityFeature>(),
-          server.getFeature<arangodb::HttpEndpointProvider>(),
+          server.hasFeature<arangodb::HttpEndpointProvider>()
+              ? &server.getFeature<arangodb::HttpEndpointProvider>()
+              : nullptr,
           server.getFeature<
               arangodb::application_features::CommunicationFeaturePhase>(),
 #ifdef USE_ENTERPRISE
