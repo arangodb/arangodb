@@ -73,7 +73,7 @@ function defaultGoVersionFromArango () {
 }
 
 function resolveGoVersion(options) {
-  const goVersion = options.goVersion || defaultGoVersionFromArango();
+  const goVersion = options.goVersion;
   if (allowedGoVersions.indexOf(goVersion) === -1) {
     throw new Error(`Invalid goVersion '${goVersion}', expected v2 or v3`);
   }
@@ -290,7 +290,7 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   tu.CopyIntoObject(opts, {
     'goOptions': '',
     'gosource': '../go-driver',
-    'goVersion': '',
+    'goVersion': defaultGoVersionFromArango(),
   });
   tu.CopyIntoList(optionsDoc, optionsDocumentation);
 };
