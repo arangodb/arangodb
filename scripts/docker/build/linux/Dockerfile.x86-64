@@ -65,15 +65,11 @@ RUN apt-get update --fix-missing && \
   apt-get build-dep -y llvm-${CLANG_VERSION}-dev && \
   apt-get update --fix-missing && \
   apt-get install -y clang-${CLANG_VERSION} clang++-${CLANG_VERSION} && \
-  apt-get install -y clang-tidy-${CLANG_VERSION} && \
   rm -rf /var/cache/apt/archives /var/lib/apt/lists
 
 COPY patches/diff_llvm.patch .
 
 RUN ln -s $(echo llvm-toolchain-${CLANG_VERSION}-*) /llvm-toolchain-${CLANG_VERSION}
-
-RUN ln -s $(which clang-tidy-${CLANG_VERSION}) /usr/local/bin/clang-tidy
-RUN ln -s $(which run-clang-tidy-${CLANG_VERSION}.py) /usr/local/bin/run-clang-tidy.py
 
 WORKDIR /llvm-toolchain-${CLANG_VERSION}
 
@@ -139,8 +135,12 @@ RUN apt-get update --fix-missing && \
   apt-get install -y gcc-${COMPILER_VERSION} g++-${COMPILER_VERSION} \
     clang-${CLANG_VERSION} lldb-${CLANG_VERSION} lld-${CLANG_VERSION} \
     libc++-${CLANG_VERSION}-dev libc++abi-${CLANG_VERSION}-dev libclang-common-${CLANG_VERSION}-dev \
-    libclang-rt-${CLANG_VERSION}-dev libomp-${CLANG_VERSION}-dev findutils && \
+    libclang-rt-${CLANG_VERSION}-dev libomp-${CLANG_VERSION}-dev findutils clang-tidy-${CLANG_VERSION} && \
   rm -rf /var/cache/apt/archives /var/lib/apt/lists
+
+# make clang-tidy-VERSION available as clang-tidy standalone
+RUN ln -s $(which clang-tidy-${CLANG_VERSION}) /usr/local/bin/clang-tidy
+RUN ln -s $(which run-clang-tidy-${CLANG_VERSION}.py) /usr/local/bin/run-clang-tidy.py
 
 # sccache for cloud compiler cache:
 
