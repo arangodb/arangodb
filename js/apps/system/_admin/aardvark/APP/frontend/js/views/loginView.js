@@ -65,17 +65,12 @@
 
         $.ajax({
           type: "GET",
-          url: user
-            ? arangoHelper.databaseUrl(`/_api/user/${encodeURIComponent(user)}/database`, '_system')
-            : arangoHelper.databaseUrl('/_api/database/user'),
+          // /_api/user/<user>/database is rejected in RBAC mode;
+          // /_api/database/user lists the caller's databases in both modes.
+          url: arangoHelper.databaseUrl('/_api/database/user'),
           success: (permissions) => {
-            let dbs = permissions.result;
-            if (user) {
-              // key, value tuples of database name and permission
-              dbs = Object.keys(dbs);
-            }
             // enable db select and login button
-            this.renderDatabasesDropdown(dbs);
+            this.renderDatabasesDropdown(permissions.result);
             this.renderDBS();
             $('.bodyWrapper').show();
           },
@@ -86,16 +81,6 @@
       }
 
       return this;
-    },
-
-    sortDatabases: function (obj) {
-      if (frontendConfig.authenticationEnabled) {
-        // key, value tuples of database name and permission
-        obj = Object.keys(obj);
-      } else {
-        // array contained only the database names
-      }
-      return _.sortBy(obj, (value) => value.toLowerCase());
     },
 
     clear: function () {
@@ -153,20 +138,13 @@
       // get list of allowed dbs
       $.ajax({
         type: "GET",
-        url: frontendConfig.authenticationEnabled
-          ? arangoHelper.databaseUrl(`/_api/user/${encodeURIComponent(username)}/database`, '_system')
-          : arangoHelper.databaseUrl('/_api/database/user'),
+        url: arangoHelper.databaseUrl('/_api/database/user'),
         success: (permissions) => {
           $('#loginForm').hide();
           $('.login-window #databases').show();
 
           // enable db select and login button
-          let dbs = permissions.result;
-          if (frontendConfig.authenticationEnabled) {
-            // key, value tuples of database name and permission
-            dbs = Object.keys(dbs);
-          }
-          this.renderDatabasesDropdown(dbs);
+          this.renderDatabasesDropdown(permissions.result);
           this.renderDBS();
         },
         error: () => {
