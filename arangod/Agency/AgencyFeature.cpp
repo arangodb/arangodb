@@ -83,7 +83,9 @@ AgencyFeature::AgencyFeature(ApplicationServer& server, AgencyOptions options)
     ss->findHost(fallback);
   }
 
-  server.disableFeatures<ActionFeature>();
+  if (server.hasFeature<ActionFeature>()) {
+    server.disableFeatures<ActionFeature>();
+  }
 
 #ifdef USE_V8
   if (!V8DealerFeature::javascriptRequestedViaOptions(server.options())) {
