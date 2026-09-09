@@ -990,6 +990,8 @@ Once this is completed, you may run it like this:
 
     ./scripts/unittest go_driver --gosource ../go-driver/ --testCase View --goOptions:timeout 180m --cluster true
 
+`go_driver` picks the driver from the ArangoDB version: **v3** on 4.0+, **v2** on 3.12.*. Override with `--goVersion v2` or `--goVersion v3`.
+
 This will invoke the test with a filter to only execute tests that have `View` in their name.
 As an additional parameter we pass `-timeout 100m` to the driver test.
 

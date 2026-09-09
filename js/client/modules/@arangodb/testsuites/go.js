@@ -25,10 +25,11 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
-  'go_driver': 'go client driver test',
+  'go_driver': 'go client driver test (v3 on ArangoDB 4.0+, v2 on 3.12.*)',
 };
 const optionsDocumentation = [
   '   - `gosource`: directory of the go driver',
+  '   - `goVersion`: go-driver subdirectory under gosource (`v2` or `v3`). If unset, ArangoDB 4.0+ uses v3 and 3.12.* uses v2',
   '   - `goOptions`: additional arguments to pass via the `TEST_OPTIONS` environment, i.e. ` -timeout 180m` (prepend blank!)'
 ];
 
@@ -59,11 +60,34 @@ const testPaths = {
   'go_driver': []
 };
 
+const allowedGoVersions = ['v2', 'v3'];
+
+function defaultGoVersionFromArango() {
+  const version = String(internal.version || '');
+  const match = /^(\d+)\./.exec(version);
+  if (match === null) {
+    throw new Error(`Unable to determine go-driver version from ArangoDB version '${version}'`);
+  }
+  const major = parseInt(match[1], 10);
+  return (major >= 4) ? 'v3' : 'v2';
+}
+
+function resolveGoVersion(options) {
+  const goVersion = options.goVersion || defaultGoVersionFromArango();
+  if (allowedGoVersions.indexOf(goVersion) === -1) {
+    throw new Error(`Invalid goVersion '${goVersion}', expected v2 or v3`);
+  }
+  return goVersion;
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: shell_http
 // //////////////////////////////////////////////////////////////////////////////
 
 function goDriver (options) {
+  const goVersion = resolveGoVersion(options);
+  options.goVersion = goVersion;
+  print(`go_driver using go-driver ${goVersion} (ArangoDB ${internal.version})`);
   class runGoTest extends testRunnerBase {
     constructor(options, testname, ...optionalArgs) {
       let opts = {};
@@ -85,6 +109,14 @@ function goDriver (options) {
       this.info = "runInGoTest";
     }
     runOneTest(file) {    
+      const versionInfo = db._connection.GET('/_api/version');
+      const requestedApiVersion = versionInfo.requestedApiVersion;
+      print(`go_driver requested API version: ${requestedApiVersion || 'not reported'}`);
+      if (goVersion === 'v3' && requestedApiVersion !== 'v1') {
+        throw new Error(
+          `go-driver v3 requires API v1, but the server reported '${requestedApiVersion || 'unknown'}'`
+        );
+      }
       process.env['TEST_ENDPOINTS'] = this.instanceManager.urls.join(',');
       process.env['TEST_AUTHENTICATION'] = 'basic:root:';
       let jwt = this.instanceManager.JWT; 
@@ -130,7 +162,7 @@ function goDriver (options) {
         print(args);
       }
       let start = Date();
-      const res = executeExternal('go', args, true, [], path.join(this.options.gosource, 'v2'));
+      const res = executeExternal('go', args, true, [], path.join(this.options.gosource, goVersion));
       // let alljsonLines = []
       let b = '';
       let results = {};
@@ -266,6 +298,7 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   tu.CopyIntoObject(opts, {
     'goOptions': '',
     'gosource': '../go-driver',
+    'goVersion': '',
   });
   tu.CopyIntoList(optionsDoc, optionsDocumentation);
 };
