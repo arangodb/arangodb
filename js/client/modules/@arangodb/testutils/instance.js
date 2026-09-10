@@ -1610,35 +1610,34 @@ class instance {
     return true;
   }
   debugResetRaceControl() {
-    if (!this.connect()) {
-      throw new Error(`${this.name}: failed to connect my instance {JSON.stringify(this.getStructure())}`);
-    }
-    let deleteUrl = '/_admin/debug/raceControl';
-    let reply;
-    let count = 0;
-    while (count < 10) {
-      try {
-        reply = arango.DELETE_RAW(deleteUrl);
-        break;
-      } catch (ex) {
-        count += 1;
-        print(`${RED} ${this.name}: failed to reset race control by ${ex}`);
-        this._disconnect();
-        this.connect();
+    return this.toThisInstance(() => {
+      let deleteUrl = '/_admin/debug/raceControl';
+      let reply;
+      let count = 0;
+      while (count < 10) {
+        try {
+          reply = arango.DELETE_RAW(deleteUrl);
+          break;
+        } catch (ex) {
+          count += 1;
+          print(`${RED} ${this.name}: failed to reset race control by ${ex}`);
+          this._disconnect();
+          this.connect();
+        }
       }
-    }
-    if (reply.code !== 200) {
-      // we may no longer be able to work on a database as forced by fuerte
-      print(`${BLUE}${this.name}: fallback to internal.download to clear race control${RESET}`);
-      let httpOptions = _.clone(this.authHeaders);
-      httpOptions.method = 'DELETE';
-      httpOptions.returnBodyOnError = true;
-      const reply = download(deleteUrl, '', httpOptions);
       if (reply.code !== 200) {
-        throw new Error(`${this.name}: Failed to remove race control: =>  ${JSON.stringify(reply.parsedBody)}`);
+        // we may no longer be able to work on a database as forced by fuerte
+        print(`${BLUE}${this.name}: fallback to internal.download to clear race control${RESET}`);
+        let httpOptions = _.clone(this.authHeaders);
+        httpOptions.method = 'DELETE';
+        httpOptions.returnBodyOnError = true;
+        const reply = download(deleteUrl, '', httpOptions);
+        if (reply.code !== 200) {
+          throw new Error(`${this.name}: Failed to remove race control: =>  ${JSON.stringify(reply.parsedBody)}`);
+        }
       }
-    }
-    return true;
+      return true;
+    });
   }
   debugClearFailAt(failurePoint) {
     return this.toThisInstance(() => {
