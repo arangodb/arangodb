@@ -1,6 +1,9 @@
 3.12.12 (XXXX-XX-XX)
 --------------------
 
+* COR-984: Enforced a size limit on HTTP/2 request bodies, matching the
+  existing HTTP/1 limit.
+
 * Rebuilt included rclone v1.75.0 with go1.26.8 and non-vulnerable
   dependencies.
 

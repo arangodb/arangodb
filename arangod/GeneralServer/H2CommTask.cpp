@@ -23,6 +23,7 @@
 #include "H2CommTask.h"
 
 #include "Basics/Exceptions.h"
+#include "Basics/PhysicalMemory.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
@@ -41,6 +42,8 @@
 
 #include <absl/strings/escaping.h>
 
+#include <algorithm>
+#include <atomic>
 #include <cstring>
 
 #include <llhttp.h>
@@ -58,6 +61,18 @@ constexpr std::string_view switchingProtocols(
 bool expectResponseBody(int statusCode) {
   return statusCode == 101 ||
          (statusCode / 100 != 1 && statusCode != 304 && statusCode != 204);
+}
+
+// undispatched HTTP/2 request body bytes across all connections; released on
+// dispatch, stream close and connection teardown
+std::atomic<uint64_t> gBufferedH2BodyBytes{0};
+
+uint64_t maxBufferedH2BodyBytes() {
+  // keep at least MaximalBodySize so one legit max-size upload still fits
+  static uint64_t const value =
+      std::max<uint64_t>(arangodb::rest::CommTask::MaximalBodySize,
+                         arangodb::PhysicalMemory::getEffectiveValue() / 8);
+  return value;
 }
 
 }  // namespace
@@ -174,7 +189,7 @@ template<SocketType T>
             << me;
 
         Stream* strm = me->findStream(sid);
-        if (strm) {
+        if (strm && !strm->bodyLimitExceeded) {
           me->processStream(*strm);
         }
       }
@@ -198,6 +213,27 @@ template<SocketType T>
   H2CommTask<T>* me = static_cast<H2CommTask<T>*>(user_data);
   Stream* strm = me->findStream(stream_id);
   if (strm) {
+    // auth only runs once the client sends END_STREAM, so cap the body as it
+    // arrives. HTTP/1 caps it via Content-Length
+    bool overLimit = strm->bodySize + len > CommTask::MaximalBodySize ||
+                     me->_bufferedBodyBytes + len > CommTask::MaximalBodySize;
+    if (!overLimit) {
+      if (gBufferedH2BodyBytes.fetch_add(len, std::memory_order_relaxed) + len >
+          maxBufferedH2BodyBytes()) {
+        gBufferedH2BodyBytes.fetch_sub(len, std::memory_order_relaxed);
+        overLimit = true;
+      }
+    }
+    if (overLimit) {
+      LOG_TOPIC("2823d", WARN, Logger::REQUESTS)
+          << "<http2> request body on stream " << stream_id
+          << " exceeds the allowed size, resetting the stream";
+      strm->bodyLimitExceeded = true;
+      return nghttp2_submit_rst_stream(me->_session, NGHTTP2_FLAG_NONE,
+                                       stream_id, NGHTTP2_ENHANCE_YOUR_CALM);
+    }
+    strm->bodySize += len;
+    me->_bufferedBodyBytes += len;
     strm->request->appendBody(reinterpret_cast<char const*>(data), len);
   }
 
@@ -206,6 +242,16 @@ template<SocketType T>
   // the caller of this function is a C function, which doesn't know
   // exceptions. we must not let an exception escape from here.
   return HPE_INTERNAL;
+}
+
+template<SocketType T>
+void H2CommTask<T>::releaseBufferedBody(Stream& strm) noexcept {
+  if (strm.bodySize != 0) {
+    TRI_ASSERT(_bufferedBodyBytes >= strm.bodySize);
+    _bufferedBodyBytes -= strm.bodySize;
+    gBufferedH2BodyBytes.fetch_sub(strm.bodySize, std::memory_order_relaxed);
+    strm.bodySize = 0;
+  }
 }
 
 template<SocketType T>
@@ -223,6 +269,7 @@ template<SocketType T>
         h2Response->statistics.SET_WRITE_END();
       }
     }
+    me->releaseBufferedBody(strm);
     me->_streams.erase(it);
   }
 
@@ -288,6 +335,10 @@ H2CommTask<T>::~H2CommTask() noexcept {
   if (!_streams.empty()) {
     LOG_TOPIC("924cf", DEBUG, Logger::REQUESTS)
         << "<http2> got " << _streams.size() << " remaining streams";
+    // nghttp2_session_del does not fire on_stream_close, so release the rest
+    for (auto& [sid, strm] : _streams) {
+      releaseBufferedBody(strm);
+    }
   }
   HttpResponse* res = nullptr;
   while (_responses.pop(res)) {
@@ -580,6 +631,8 @@ void H2CommTask<T>::processStream(Stream& stream) {
     stream.mustSendAuthHeader = true;
   }
   std::unique_ptr<HttpRequest> req = std::move(stream.request);
+  // release before the try, so a throw during dispatch still frees the budget
+  releaseBufferedBody(stream);
 
   auto msgId = req->messageId();
   auto respContentType = req->contentTypeResponse();
