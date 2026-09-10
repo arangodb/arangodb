@@ -1771,7 +1771,7 @@ License Id: MIT
 #### js-yaml
 
 Name: js-yaml
-Version: 3.15.1
+Version: 3.15.2
 Project Home: https://github.com/nodeca/js-yaml
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/js-yaml/LICENSE
 License Name: MIT License

@@ -283,6 +283,14 @@ function captureSegment(state, start, end, checkJson) {
   }
 }
 
+function chargeMergeWork(state) {
+  state.totalMergeKeys += 1;
+
+  if (state.maxTotalMergeKeys !== -1 && state.totalMergeKeys > state.maxTotalMergeKeys) {
+    throwError(state, 'merge keys exceeded maxTotalMergeKeys (' + state.maxTotalMergeKeys + ')');
+  }
+}
+
 function mergeMappings(state, destination, source, overridableKeys) {
   var sourceKeys, key, index, quantity;
 
@@ -290,14 +298,15 @@ function mergeMappings(state, destination, source, overridableKeys) {
     throwError(state, 'cannot merge mappings; the provided source object is unacceptable');
   }
 
+  // Count the source mapping itself to bound sequences of empty mappings.
+  chargeMergeWork(state);
+
   sourceKeys = Object.keys(source);
 
   for (index = 0, quantity = sourceKeys.length; index < quantity; index += 1) {
     key = sourceKeys[index];
 
-    if (state.maxTotalMergeKeys !== -1 && ++state.totalMergeKeys > state.maxTotalMergeKeys) {
-      throwError(state, 'merge keys exceeded maxTotalMergeKeys (' + state.maxTotalMergeKeys + ')');
-    }
+    chargeMergeWork(state);
 
     if (!_hasOwnProperty.call(destination, key)) {
       setProperty(destination, key, source[key]);
@@ -342,6 +351,10 @@ function storeMappingPair(state, _result, overridableKeys, keyTag, keyNode, valu
 
   if (keyTag === 'tag:yaml.org,2002:merge') {
     if (Array.isArray(valueNode)) {
+      if (valueNode.length > 100) {
+        throwError(state, 'abnormal merge sequence size');
+      }
+
       for (index = 0, quantity = valueNode.length; index < quantity; index += 1) {
         mergeMappings(state, _result, valueNode[index], overridableKeys);
       }
