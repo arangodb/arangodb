@@ -20,7 +20,7 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "MatchBuilder.h"
+#include "Aql/Match/Builder.h"
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
@@ -32,7 +32,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/IndexHint.h"
-#include "Aql/MatchPatternNormalizer.h"
+#include "Aql/Match/PatternNormalizer.h"
 #include "Aql/QueryContext.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
@@ -47,11 +47,11 @@
 #include <unordered_set>
 #include <utility>
 
-namespace arangodb::aql {
+namespace arangodb::aql::match {
 namespace {
 
-std::string requireCollectionName(MatchDataSource const& ds) {
-  if (ds.kind() != MatchDataSource::Kind::kCollection) {
+std::string requireCollectionName(DataSource const& ds) {
+  if (ds.kind() != DataSource::Kind::kCollection) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
         "MATCH planning requires resolved collection names; unresolved "
@@ -60,20 +60,20 @@ std::string requireCollectionName(MatchDataSource const& ds) {
   return std::string(ds.name());
 }
 
-int directionFilterBits(MatchEdgeDirection direction) {
+int directionFilterBits(EdgeDirection direction) {
   switch (direction) {
-    case MatchEdgeDirection::kInbound:
+    case EdgeDirection::kInbound:
       return 1;
-    case MatchEdgeDirection::kOutbound:
+    case EdgeDirection::kOutbound:
       return 2;
-    case MatchEdgeDirection::kAny:
+    case EdgeDirection::kAny:
       return 3;
   }
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                  "invalid direction for match expression");
 }
 
-void applyPathRange(MatchPathRange const& range,
+void applyPathRange(PathRange const& range,
                     traverser::TraverserOptions& options) {
   if (range.isDefaultFixedOne()) {
     options.minDepth = 1;
@@ -92,12 +92,12 @@ void applyPathRange(MatchPathRange const& range,
 
 }  // namespace
 
-MatchBuilder::MatchBuilder(ExecutionPlan& plan, Ast* ast)
+Builder::Builder(ExecutionPlan& plan, Ast* ast)
     : _plan(plan), _ast(ast) {}
 
-MatchBuilder::ProjectionBinding MatchBuilder::bindProjectedVariable(
+Builder::ProjectionBinding Builder::bindProjectedVariable(
     Variable const* destination,
-    std::optional<MatchProjection> const& projection,
+    std::optional<Projection> const& projection,
     std::unordered_map<VariableId, Variable const*>& subst) {
   ProjectionBinding binding;
   binding.destination = destination;
@@ -111,9 +111,9 @@ MatchBuilder::ProjectionBinding MatchBuilder::bindProjectedVariable(
   return binding;
 }
 
-void MatchBuilder::maybeQueueProjection(
+void Builder::maybeQueueProjection(
     std::vector<ExecutionNode*>& projections, ProjectionBinding const& binding,
-    std::optional<MatchProjection> const& projection, bool isEdge,
+    std::optional<Projection> const& projection, bool isEdge,
     std::unordered_map<VariableId, Variable const*> const& subst) {
   if (!binding.hasProjection) {
     return;
@@ -127,7 +127,7 @@ void MatchBuilder::maybeQueueProjection(
   }
 }
 
-AstNode* MatchBuilder::createPropertyAccess(Variable const* variable,
+AstNode* Builder::createPropertyAccess(Variable const* variable,
                                             std::string_view property) {
   char const* registered = _ast->resources().registerString(property);
   return _ast->createNodeAttributeAccess(
@@ -135,7 +135,7 @@ AstNode* MatchBuilder::createPropertyAccess(Variable const* variable,
       std::string_view(registered, property.size()));
 }
 
-AstNode* MatchBuilder::buildEdgeCollectionList(NormalizedEdge const& edge) {
+AstNode* Builder::buildEdgeCollectionList(NormalizedEdge const& edge) {
   auto* edgeCollectionList = _ast->createNodeArray();
   if (!edge.collectionAstNodes.empty()) {
     for (AstNode const* collectionNode : edge.collectionAstNodes) {
@@ -152,10 +152,10 @@ AstNode* MatchBuilder::buildEdgeCollectionList(NormalizedEdge const& edge) {
   return edgeCollectionList;
 }
 
-std::tuple<CalculationNode*, FilterNode*> MatchBuilder::createPropertiesFilter(
+std::tuple<CalculationNode*, FilterNode*> Builder::createPropertiesFilter(
     Variable const* variable,
-    std::vector<MatchPropertyConstraint> const& properties,
-    std::optional<MatchExpressionRef> const& additionalFilter,
+    std::vector<PropertyConstraint> const& properties,
+    std::optional<ExpressionRef> const& additionalFilter,
     std::unordered_map<VariableId, Variable const*> const& subst) {
   AstNode* root = nullptr;
   if (additionalFilter.has_value()) {
@@ -192,10 +192,10 @@ std::tuple<CalculationNode*, FilterNode*> MatchBuilder::createPropertiesFilter(
 }
 
 std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
-MatchBuilder::enumerateCollection(
-    MatchDataSource const& dataSource, Variable const* outputVariable,
-    std::vector<MatchPropertyConstraint> const& properties,
-    std::optional<MatchExpressionRef> const& filter,
+Builder::enumerateCollection(
+    DataSource const& dataSource, Variable const* outputVariable,
+    std::vector<PropertyConstraint> const& properties,
+    std::optional<ExpressionRef> const& filter,
     std::unordered_map<VariableId, Variable const*> const& subst) {
   auto collectionName = requireCollectionName(dataSource);
   auto& collections = _ast->query().collections();
@@ -217,34 +217,34 @@ MatchBuilder::enumerateCollection(
 }
 
 std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
-MatchBuilder::createCollectionAccess(
+Builder::createCollectionAccess(
     NormalizedVertex const& vertex, Variable const* fullDocumentVariable,
     std::unordered_map<VariableId, Variable const*> const& subst) {
   return enumerateCollection(vertex.collection, fullDocumentVariable,
                              vertex.properties, vertex.filter, subst);
 }
 
-ExecutionNode* MatchBuilder::createDocumentPatternProjection(
+ExecutionNode* Builder::createDocumentPatternProjection(
     Variable const* destinationVariable, Variable const* fullDocumentVar,
-    std::optional<MatchProjection> const& projection,
+    std::optional<Projection> const& projection,
     std::unordered_map<VariableId, Variable const*> const& subst) {
   return createPatternProjection(
       destinationVariable, fullDocumentVar, projection,
-      kMandatoryDocumentMatchProjectionAttributes, subst);
+      kMandatoryDocumentProjectionAttributes, subst);
 }
 
-ExecutionNode* MatchBuilder::createEdgeDocumentPatternProjection(
+ExecutionNode* Builder::createEdgeDocumentPatternProjection(
     Variable const* destinationVariable, Variable const* fullDocumentVar,
-    std::optional<MatchProjection> const& projection,
+    std::optional<Projection> const& projection,
     std::unordered_map<VariableId, Variable const*> const& subst) {
   return createPatternProjection(
       destinationVariable, fullDocumentVar, projection,
-      kMandatoryEdgeDocumentMatchProjectionAttributes, subst);
+      kMandatoryEdgeDocumentProjectionAttributes, subst);
 }
 
-ExecutionNode* MatchBuilder::createPatternProjection(
+ExecutionNode* Builder::createPatternProjection(
     Variable const* destinationVariable, Variable const* fullDocumentVar,
-    std::optional<MatchProjection> const& projectionOpt,
+    std::optional<Projection> const& projectionOpt,
     std::span<std::string_view const> mandatoryAttributes,
     std::unordered_map<VariableId, Variable const*> const& subst) {
   if (!projectionOpt.has_value()) {
@@ -262,7 +262,7 @@ ExecutionNode* MatchBuilder::createPatternProjection(
 
   auto registerKey = [&](std::string_view key) -> std::string_view {
     // Copy into Ast resource pool so the resulting AstNode outlives the
-    // temporary NormalizedMatchStatement that owns MatchProjection strings.
+    // temporary NormalizedStatement that owns Projection strings.
     char const* p = _ast->resources().registerString(key);
     return {p, key.size()};
   };
@@ -393,7 +393,7 @@ ExecutionNode* MatchBuilder::createPatternProjection(
 }
 
 std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
-MatchBuilder::createPatternEdgeEnumerateAccess(
+Builder::createPatternEdgeEnumerateAccess(
     NormalizedEdge const& edge, Variable const* outputVariable,
     std::unordered_map<VariableId, Variable const*> const& subst) {
   ADB_PROD_ASSERT(!edge.collections.empty());
@@ -401,9 +401,9 @@ MatchBuilder::createPatternEdgeEnumerateAccess(
                              edge.properties, edge.filter, subst);
 }
 
-std::tuple<CalculationNode*, FilterNode*> MatchBuilder::createVertexEdgeFilter(
+std::tuple<CalculationNode*, FilterNode*> Builder::createVertexEdgeFilter(
     Variable const* leftVertex, Variable const* edge,
-    Variable const* rightVertex, MatchEdgeDirection direction) {
+    Variable const* rightVertex, EdgeDirection direction) {
   AstNode* root = nullptr;
   int const bits = directionFilterBits(direction);
 
@@ -449,9 +449,9 @@ std::tuple<CalculationNode*, FilterNode*> MatchBuilder::createVertexEdgeFilter(
 }
 
 std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
-MatchBuilder::createTraversalForPattern(
+Builder::createTraversalForPattern(
     Variable const* startNodeVar, NormalizedEdge const& edge,
-    MatchPatternElement const& target,
+    PatternElement const& target,
     Variable const* edgeDocumentOutputVariable,
     Variable const* vertexDocumentOutputVariable,
     std::unordered_map<VariableId, Variable const*> const& subst) {
@@ -460,13 +460,13 @@ MatchBuilder::createTraversalForPattern(
   applyPathRange(edge.range, *options);
 
   auto dirNode = _ast->createNodeValueInt(std::invoke(
-      [](MatchEdgeDirection d) {
+      [](EdgeDirection d) {
         switch (d) {
-          case MatchEdgeDirection::kInbound:
+          case EdgeDirection::kInbound:
             return 1;
-          case MatchEdgeDirection::kOutbound:
+          case EdgeDirection::kOutbound:
             return 2;
-          case MatchEdgeDirection::kAny:
+          case EdgeDirection::kAny:
             return 0;
         }
         THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -496,7 +496,7 @@ MatchBuilder::createTraversalForPattern(
   }
 
   switch (target.kind) {
-    case MatchPatternElement::Kind::kVariableReference: {
+    case PatternElement::Kind::kVariableReference: {
       auto const* traversalVertexOutputVar =
           _ast->variables()->createTemporaryVariable();
       traversal->setVertexOutput(traversalVertexOutputVar);
@@ -518,7 +518,7 @@ MatchBuilder::createTraversalForPattern(
 
       return std::make_tuple(traversal, filter, rightVertexVar);
     }
-    case MatchPatternElement::Kind::kVertex: {
+    case PatternElement::Kind::kVertex: {
       ADB_PROD_ASSERT(target.vertex.has_value());
       ADB_PROD_ASSERT(vertexDocumentOutputVariable != nullptr);
       auto const& vertex = *target.vertex;
@@ -567,7 +567,7 @@ MatchBuilder::createTraversalForPattern(
   return std::make_tuple(nullptr, nullptr, nullptr);
 }
 
-AstNode* MatchBuilder::constructArray(std::vector<AstNode const*> const& vars) {
+AstNode* Builder::constructArray(std::vector<AstNode const*> const& vars) {
   auto root = _ast->createNodeArray();
   for (auto v : vars) {
     root->addMember(v);
@@ -575,7 +575,7 @@ AstNode* MatchBuilder::constructArray(std::vector<AstNode const*> const& vars) {
   return root;
 }
 
-CalculationNode* MatchBuilder::constructPathObject(
+CalculationNode* Builder::constructPathObject(
     Variable const* outVariable, std::vector<AstNode const*> const& vertices,
     std::vector<AstNode const*> const& edges) {
   auto root = _ast->createNodeObject();
@@ -590,17 +590,17 @@ CalculationNode* MatchBuilder::constructPathObject(
       outVariable);
 }
 
-void MatchBuilder::addPathVertex(std::vector<AstNode const*>& pathVertices,
+void Builder::addPathVertex(std::vector<AstNode const*>& pathVertices,
                                  Variable const* variable) {
   pathVertices.push_back(_ast->createNodeReference(variable));
 }
 
-void MatchBuilder::addPathEdge(std::vector<AstNode const*>& pathEdges,
+void Builder::addPathEdge(std::vector<AstNode const*>& pathEdges,
                                Variable const* variable) {
   pathEdges.push_back(_ast->createNodeReference(variable));
 }
 
-void MatchBuilder::appendTraversalPath(
+void Builder::appendTraversalPath(
     std::vector<AstNode const*>& pathVertices,
     std::vector<AstNode const*>& pathEdges,
     Variable const* traversalPathVariable) {
@@ -614,10 +614,10 @@ void MatchBuilder::appendTraversalPath(
           _ast->createNodeReference(traversalPathVariable), "vertices")));
 }
 
-ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
+ExecutionNode* Builder::build(ExecutionNode* previous,
                                    AstNode const* matchNode) {
-  MatchPatternNormalizer normalizer(*_ast);
-  NormalizedMatchStatement const statement = normalizer.normalize(*matchNode);
+  PatternNormalizer normalizer(*_ast);
+  NormalizedStatement const statement = normalizer.normalize(*matchNode);
 
   auto en = previous;
 
@@ -646,12 +646,12 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
                            /*isEdge*/ false, variableSubstitutions);
     };
 
-    if (pattern.start.kind == MatchPatternElement::Kind::kVertex) {
+    if (pattern.start.kind == PatternElement::Kind::kVertex) {
       ADB_PROD_ASSERT(pattern.start.vertex.has_value());
       handleStartVertex(*pattern.start.vertex);
     } else {
       ADB_PROD_ASSERT(pattern.start.kind ==
-                      MatchPatternElement::Kind::kVariableReference);
+                      PatternElement::Kind::kVariableReference);
       prevVar = pattern.start.variableReference;
       if (auto it = variableSubstitutions.find(prevVar->id);
           it != std::end(variableSubstitutions)) {
@@ -676,11 +676,11 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
         Variable const* vertexTraversalOutputVariable = nullptr;
         ProjectionBinding vertexBinding{};
 
-        if (target.kind == MatchPatternElement::Kind::kVariableReference) {
+        if (target.kind == PatternElement::Kind::kVariableReference) {
           vertexDestinationVariable = target.variableReference;
           vertexTraversalOutputVariable = nullptr;
         } else {
-          ADB_PROD_ASSERT(target.kind == MatchPatternElement::Kind::kVertex);
+          ADB_PROD_ASSERT(target.kind == PatternElement::Kind::kVertex);
           ADB_PROD_ASSERT(target.vertex.has_value());
           vertexBinding = bindProjectedVariable(target.vertex->variable,
                                                 target.vertex->projection,
@@ -738,11 +738,11 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
         Variable const* rightVertexVar;
         Variable const* vertexDestinationVariable = nullptr;
 
-        if (target.kind == MatchPatternElement::Kind::kVariableReference) {
+        if (target.kind == PatternElement::Kind::kVariableReference) {
           rightVertexVar = target.variableReference;
           vertexDestinationVariable = rightVertexVar;
         } else {
-          ADB_PROD_ASSERT(target.kind == MatchPatternElement::Kind::kVertex);
+          ADB_PROD_ASSERT(target.kind == PatternElement::Kind::kVertex);
           ADB_PROD_ASSERT(target.vertex.has_value());
 
           auto vertexBinding = bindProjectedVariable(target.vertex->variable,
@@ -776,10 +776,10 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
         Variable const* vertexTraversalOutputVariable = nullptr;
         ProjectionBinding vertexBinding{};
 
-        if (target.kind == MatchPatternElement::Kind::kVariableReference) {
+        if (target.kind == PatternElement::Kind::kVariableReference) {
           vertexTraversalOutputVariable = nullptr;
         } else {
-          ADB_PROD_ASSERT(target.kind == MatchPatternElement::Kind::kVertex);
+          ADB_PROD_ASSERT(target.kind == PatternElement::Kind::kVertex);
           ADB_PROD_ASSERT(target.vertex.has_value());
           vertexBinding = bindProjectedVariable(target.vertex->variable,
                                                 target.vertex->projection,
@@ -825,4 +825,4 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
   return en;
 }
 
-}  // namespace arangodb::aql
+}  // namespace arangodb::aql::match

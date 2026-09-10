@@ -20,76 +20,76 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "MatchPatternTypes.h"
+#include "Aql/Match/PatternTypes.h"
 
 #include "Aql/Variable.h"
 #include "Basics/debugging.h"
 
-namespace arangodb::aql {
+namespace arangodb::aql::match {
 
-MatchDataSource MatchDataSource::collection(std::string name) {
-  return MatchDataSource{Kind::kCollection, std::move(name)};
+DataSource DataSource::collection(std::string name) {
+  return DataSource{Kind::kCollection, std::move(name)};
 }
 
-MatchDataSource MatchDataSource::bindParameter(std::string name) {
-  return MatchDataSource{Kind::kBindParameter, std::move(name)};
+DataSource DataSource::bindParameter(std::string name) {
+  return DataSource{Kind::kBindParameter, std::move(name)};
 }
 
-MatchDataSource::MatchDataSource(Kind kind, std::string name)
+DataSource::DataSource(Kind kind, std::string name)
     : _kind{kind}, _name{std::move(name)} {}
 
-MatchPathRange MatchPathRange::defaultFixedOne() {
-  return MatchPathRange{Kind::kDefaultFixedOne, 1, 1};
+PathRange PathRange::defaultFixedOne() {
+  return PathRange{Kind::kDefaultFixedOne, 1, 1};
 }
 
-MatchPathRange MatchPathRange::bounded(uint64_t minDepth, uint64_t maxDepth) {
-  return MatchPathRange{Kind::kBounded, minDepth, maxDepth};
+PathRange PathRange::bounded(uint64_t minDepth, uint64_t maxDepth) {
+  return PathRange{Kind::kBounded, minDepth, maxDepth};
 }
 
-MatchPathRange MatchPathRange::unboundedMin(uint64_t minDepth) {
-  return MatchPathRange{Kind::kUnboundedMin, minDepth, std::nullopt};
+PathRange PathRange::unboundedMin(uint64_t minDepth) {
+  return PathRange{Kind::kUnboundedMin, minDepth, std::nullopt};
 }
 
-MatchPathRange::MatchPathRange(Kind kind, uint64_t minDepth,
+PathRange::PathRange(Kind kind, uint64_t minDepth,
                                std::optional<uint64_t> maxDepth)
     : _kind{kind}, _minDepth{minDepth}, _maxDepth{maxDepth} {}
 
-bool MatchPathRange::isFixedOne() const noexcept {
+bool PathRange::isFixedOne() const noexcept {
   return _minDepth == 1 && _maxDepth == 1;
 }
 
-bool MatchPathRange::isFixed() const noexcept {
+bool PathRange::isFixed() const noexcept {
   return _maxDepth.has_value() && _minDepth == *_maxDepth;
 }
 
-MatchProjectionItem MatchProjectionItem::keepPath(
+ProjectionItem ProjectionItem::keepPath(
     std::vector<std::string> path) {
   TRI_ASSERT(!path.empty());
-  MatchProjectionItem item;
+  ProjectionItem item;
   item.kind = Kind::kKeepAttribute;
   item.name = path.size() == 1 ? path.front() : std::string{};
   item.path = std::move(path);
   return item;
 }
 
-MatchProjectionItem MatchProjectionItem::keepLiteral(std::string key) {
-  MatchProjectionItem item;
+ProjectionItem ProjectionItem::keepLiteral(std::string key) {
+  ProjectionItem item;
   item.kind = Kind::kKeepLiteral;
   item.path = {key};
   item.name = std::move(key);
   return item;
 }
 
-MatchProjectionItem MatchProjectionItem::alias(std::string name,
-                                               MatchExpressionRef expression) {
-  MatchProjectionItem item;
+ProjectionItem ProjectionItem::alias(std::string name,
+                                               ExpressionRef expression) {
+  ProjectionItem item;
   item.kind = Kind::kAlias;
   item.name = std::move(name);
   item.expression = expression;
   return item;
 }
 
-std::string_view MatchProjectionItem::topLevelKey() const noexcept {
+std::string_view ProjectionItem::topLevelKey() const noexcept {
   if (isAlias()) {
     return name;
   }
@@ -97,4 +97,4 @@ std::string_view MatchProjectionItem::topLevelKey() const noexcept {
   return path.front();
 }
 
-}  // namespace arangodb::aql
+}  // namespace arangodb::aql::match

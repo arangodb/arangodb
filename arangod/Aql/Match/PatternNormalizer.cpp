@@ -20,7 +20,7 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "MatchPatternNormalizer.h"
+#include "Aql/Match/PatternNormalizer.h"
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
@@ -31,7 +31,7 @@
 #include <cmath>
 #include <cstdint>
 
-namespace arangodb::aql {
+namespace arangodb::aql::match {
 namespace {
 
 uint64_t checkDepthValue(AstNode const* node) {
@@ -55,13 +55,13 @@ uint64_t checkDepthValue(AstNode const* node) {
 
 }  // namespace
 
-MatchPatternNormalizer::MatchPatternNormalizer(Ast& ast) noexcept : _ast{ast} {}
+PatternNormalizer::PatternNormalizer(Ast& ast) noexcept : _ast{ast} {}
 
-NormalizedMatchStatement MatchPatternNormalizer::normalize(
+NormalizedStatement PatternNormalizer::normalize(
     AstNode const& matchNode) const {
   TRI_ASSERT(matchNode.type == NODE_TYPE_MATCH);
 
-  NormalizedMatchStatement statement;
+  NormalizedStatement statement;
   statement.patterns.reserve(matchNode.numMembers());
 
   for (size_t i = 0; i < matchNode.numMembers(); ++i) {
@@ -72,11 +72,11 @@ NormalizedMatchStatement MatchPatternNormalizer::normalize(
   return statement;
 }
 
-NormalizedMatchPattern MatchPatternNormalizer::normalizePattern(
+NormalizedPattern PatternNormalizer::normalizePattern(
     AstNode const& matchExpr) const {
   TRI_ASSERT(matchExpr.type == NODE_TYPE_PATTERN_MATCH_EXPRESSION);
 
-  NormalizedMatchPattern pattern;
+  NormalizedPattern pattern;
   pattern.pathVariable = nullptr;
   bool hasStart = false;
 
@@ -122,33 +122,33 @@ NormalizedMatchPattern MatchPatternNormalizer::normalizePattern(
   return pattern;
 }
 
-MatchPatternElement MatchPatternNormalizer::normalizeStartElement(
+PatternElement PatternNormalizer::normalizeStartElement(
     AstNode const& node) const {
   if (node.type == NODE_TYPE_REFERENCE) {
-    MatchPatternElement element;
-    element.kind = MatchPatternElement::Kind::kVariableReference;
+    PatternElement element;
+    element.kind = PatternElement::Kind::kVariableReference;
     element.variableReference = static_cast<Variable const*>(node.getData());
     return element;
   }
 
   TRI_ASSERT(node.type == NODE_TYPE_PATTERN_NODE_PATTERN);
-  MatchPatternElement element;
-  element.kind = MatchPatternElement::Kind::kVertex;
+  PatternElement element;
+  element.kind = PatternElement::Kind::kVertex;
   element.vertex = normalizeVertex(node);
   return element;
 }
 
-NormalizedMatchSegment MatchPatternNormalizer::normalizeSegment(
+NormalizedSegment PatternNormalizer::normalizeSegment(
     AstNode const& segment) const {
   ast::PatternSegment typed{&segment};
 
-  NormalizedMatchSegment result;
+  NormalizedSegment result;
   result.edge = normalizeEdge(*typed.getEdge().get());
   result.target = normalizeStartElement(*typed.getNode());
   return result;
 }
 
-NormalizedVertex MatchPatternNormalizer::normalizeVertex(
+NormalizedVertex PatternNormalizer::normalizeVertex(
     AstNode const& nodePattern) const {
   ast::PatternNodePattern typed{&nodePattern};
 
@@ -167,7 +167,7 @@ NormalizedVertex MatchPatternNormalizer::normalizeVertex(
   return vertex;
 }
 
-NormalizedEdge MatchPatternNormalizer::normalizeEdge(
+NormalizedEdge PatternNormalizer::normalizeEdge(
     AstNode const& edge) const {
   ast::PatternEdge typed{&edge};
 
@@ -193,13 +193,13 @@ NormalizedEdge MatchPatternNormalizer::normalizeEdge(
   return result;
 }
 
-MatchDataSource MatchPatternNormalizer::normalizeDataSource(
+DataSource PatternNormalizer::normalizeDataSource(
     AstNode const& node) const {
   switch (node.type) {
     case NODE_TYPE_COLLECTION:
-      return MatchDataSource::collection(std::string(node.getStringView()));
+      return DataSource::collection(std::string(node.getStringView()));
     case NODE_TYPE_PARAMETER_DATASOURCE:
-      return MatchDataSource::bindParameter(std::string(node.getStringView()));
+      return DataSource::bindParameter(std::string(node.getStringView()));
     default:
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL,
@@ -207,9 +207,9 @@ MatchDataSource MatchPatternNormalizer::normalizeDataSource(
   }
 }
 
-std::vector<MatchDataSource> MatchPatternNormalizer::normalizeDataSourceList(
+std::vector<DataSource> PatternNormalizer::normalizeDataSourceList(
     AstNode const* node) const {
-  std::vector<MatchDataSource> collections;
+  std::vector<DataSource> collections;
   if (node == nullptr || node->type == NODE_TYPE_VALUE) {
     return collections;
   }
@@ -222,9 +222,9 @@ std::vector<MatchDataSource> MatchPatternNormalizer::normalizeDataSourceList(
   return collections;
 }
 
-std::vector<MatchPropertyConstraint>
-MatchPatternNormalizer::normalizeProperties(AstNode const* node) const {
-  std::vector<MatchPropertyConstraint> properties;
+std::vector<PropertyConstraint>
+PatternNormalizer::normalizeProperties(AstNode const* node) const {
+  std::vector<PropertyConstraint> properties;
   if (node == nullptr || node->type == NODE_TYPE_NOP) {
     return properties;
   }
@@ -234,35 +234,35 @@ MatchPatternNormalizer::normalizeProperties(AstNode const* node) const {
   for (size_t i = 0; i < node->numMembers(); ++i) {
     AstNode const* member = node->getMember(i);
     TRI_ASSERT(member->type == NODE_TYPE_OBJECT_ELEMENT);
-    properties.push_back(MatchPropertyConstraint{
+    properties.push_back(PropertyConstraint{
         std::string(member->getStringView()), {member->getMember(0)}});
   }
   return properties;
 }
 
-std::optional<MatchExpressionRef> MatchPatternNormalizer::normalizeFilter(
+std::optional<ExpressionRef> PatternNormalizer::normalizeFilter(
     AstNode const* node) const {
   if (node == nullptr || node->type == NODE_TYPE_NOP) {
     return std::nullopt;
   }
-  return MatchExpressionRef{node};
+  return ExpressionRef{node};
 }
 
-std::optional<MatchProjection> MatchPatternNormalizer::normalizeProjection(
+std::optional<Projection> PatternNormalizer::normalizeProjection(
     AstNode const* node) const {
   if (node == nullptr || node->type == NODE_TYPE_NOP) {
     return std::nullopt;
   }
 
   TRI_ASSERT(node->type == NODE_TYPE_ARRAY);
-  MatchProjection projection;
+  Projection projection;
   projection.items.reserve(node->numMembers());
 
   for (size_t i = 0; i < node->numMembers(); ++i) {
     AstNode const* item = node->getMemberUnchecked(i);
     if (item->type == NODE_TYPE_OBJECT_ELEMENT) {
       // Alias: name = <expression>. Expression remains Ast-owned.
-      projection.items.push_back(MatchProjectionItem::alias(
+      projection.items.push_back(ProjectionItem::alias(
           std::string(item->getStringView()), {item->getMember(0)}));
     } else if (item->type == NODE_TYPE_ARRAY) {
       // Unquoted keep path: ARRAY of path segments (nested when size > 1).
@@ -275,12 +275,12 @@ std::optional<MatchProjection> MatchPatternNormalizer::normalizeProjection(
         path.emplace_back(part->getString());
       }
       projection.items.push_back(
-          MatchProjectionItem::keepPath(std::move(path)));
+          ProjectionItem::keepPath(std::move(path)));
     } else if (item->type == NODE_TYPE_VALUE && item->isStringValue()) {
       // Quoted literal keep: single top-level key (dots are not hierarchy).
       // e.g. "profile.name" → {"profile.name"}
       projection.items.push_back(
-          MatchProjectionItem::keepLiteral(std::string(item->getStringView())));
+          ProjectionItem::keepLiteral(std::string(item->getStringView())));
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "unexpected match projection item");
@@ -290,28 +290,28 @@ std::optional<MatchProjection> MatchPatternNormalizer::normalizeProjection(
   return projection;
 }
 
-MatchEdgeDirection MatchPatternNormalizer::normalizeDirection(
+EdgeDirection PatternNormalizer::normalizeDirection(
     AstNode const* node) const {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_VALUE);
 
   switch (node->getIntValue()) {
     case 1:
-      return MatchEdgeDirection::kInbound;
+      return EdgeDirection::kInbound;
     case 2:
-      return MatchEdgeDirection::kOutbound;
+      return EdgeDirection::kOutbound;
     case 3:
-      return MatchEdgeDirection::kAny;
+      return EdgeDirection::kAny;
     default:
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "invalid direction for match expression");
   }
 }
 
-MatchPathRange MatchPatternNormalizer::normalizeRange(
+PathRange PatternNormalizer::normalizeRange(
     AstNode const* node) const {
   if (node == nullptr || node->type == NODE_TYPE_NOP) {
-    return MatchPathRange::defaultFixedOne();
+    return PathRange::defaultFixedOne();
   }
 
   TRI_ASSERT(node->type == NODE_TYPE_RANGE);
@@ -323,7 +323,7 @@ MatchPathRange MatchPatternNormalizer::normalizeRange(
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
                                    "invalid traversal depth");
   }
-  return MatchPathRange::bounded(minDepth, maxDepth);
+  return PathRange::bounded(minDepth, maxDepth);
 }
 
-}  // namespace arangodb::aql
+}  // namespace arangodb::aql::match

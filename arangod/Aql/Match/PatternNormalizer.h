@@ -22,46 +22,48 @@
 
 #pragma once
 
-#include "Aql/MatchPatternTypes.h"
+#include "Aql/Match/PatternTypes.h"
 
 namespace arangodb::aql {
-
 class Ast;
 struct AstNode;
+}  // namespace arangodb::aql
+
+namespace arangodb::aql::match {
 
 /// @brief converts MATCH parser AST into a semantic representation
-class MatchPatternNormalizer {
+class PatternNormalizer {
  public:
-  explicit MatchPatternNormalizer(Ast& ast) noexcept;
+  explicit PatternNormalizer(Ast& ast) noexcept;
 
-  [[nodiscard]] NormalizedMatchStatement normalize(
+  [[nodiscard]] NormalizedStatement normalize(
       AstNode const& matchNode) const;
 
  private:
-  [[nodiscard]] NormalizedMatchPattern normalizePattern(
+  [[nodiscard]] NormalizedPattern normalizePattern(
       AstNode const& matchExpr) const;
-  [[nodiscard]] MatchPatternElement normalizeStartElement(
+  [[nodiscard]] PatternElement normalizeStartElement(
       AstNode const& node) const;
-  [[nodiscard]] NormalizedMatchSegment normalizeSegment(
+  [[nodiscard]] NormalizedSegment normalizeSegment(
       AstNode const& segment) const;
   [[nodiscard]] NormalizedVertex normalizeVertex(
       AstNode const& nodePattern) const;
   [[nodiscard]] NormalizedEdge normalizeEdge(AstNode const& edge) const;
 
-  [[nodiscard]] MatchDataSource normalizeDataSource(AstNode const& node) const;
-  [[nodiscard]] std::vector<MatchDataSource> normalizeDataSourceList(
+  [[nodiscard]] DataSource normalizeDataSource(AstNode const& node) const;
+  [[nodiscard]] std::vector<DataSource> normalizeDataSourceList(
       AstNode const* node) const;
-  [[nodiscard]] std::vector<MatchPropertyConstraint> normalizeProperties(
+  [[nodiscard]] std::vector<PropertyConstraint> normalizeProperties(
       AstNode const* node) const;
-  [[nodiscard]] std::optional<MatchExpressionRef> normalizeFilter(
+  [[nodiscard]] std::optional<ExpressionRef> normalizeFilter(
       AstNode const* node) const;
-  [[nodiscard]] std::optional<MatchProjection> normalizeProjection(
+  [[nodiscard]] std::optional<Projection> normalizeProjection(
       AstNode const* node) const;
-  [[nodiscard]] MatchEdgeDirection normalizeDirection(
+  [[nodiscard]] EdgeDirection normalizeDirection(
       AstNode const* node) const;
-  [[nodiscard]] MatchPathRange normalizeRange(AstNode const* node) const;
+  [[nodiscard]] PathRange normalizeRange(AstNode const* node) const;
 
   Ast& _ast;
 };
 
-}  // namespace arangodb::aql
+}  // namespace arangodb::aql::match

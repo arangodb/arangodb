@@ -27,7 +27,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/BindParameters.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/MatchPatternNormalizer.h"
+#include "Aql/Match/PatternNormalizer.h"
 #include "Aql/Parser/Parser.h"
 #include "Aql/QueryContext.h"
 #include "Aql/QueryString.h"
@@ -51,47 +51,48 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+using namespace arangodb::aql::match;
 using namespace arangodb::tests;
 
 namespace {
 
 /// @brief Test-only mirror of MATCH projection reserved-attribute
-/// classification. Production code uses kMandatory*MatchProjectionAttributes
+/// classification. Production code uses kMandatory*ProjectionAttributes
 /// membership instead.
-enum class MatchProjectionReservedAttribute : uint8_t {
+enum class ProjectionReservedAttribute : uint8_t {
   kNone,
   kId,
   kFrom,
   kTo,
 };
 
-[[nodiscard]] MatchProjectionReservedAttribute
-classifyDocumentMatchProjectionReservedAttribute(
+[[nodiscard]] ProjectionReservedAttribute
+classifyDocumentProjectionReservedAttribute(
     std::string_view name) noexcept {
   if (name == StaticStrings::IdString) {
-    return MatchProjectionReservedAttribute::kId;
+    return ProjectionReservedAttribute::kId;
   }
-  return MatchProjectionReservedAttribute::kNone;
+  return ProjectionReservedAttribute::kNone;
 }
 
-[[nodiscard]] MatchProjectionReservedAttribute
-classifyEdgeDocumentMatchProjectionReservedAttribute(
+[[nodiscard]] ProjectionReservedAttribute
+classifyEdgeDocumentProjectionReservedAttribute(
     std::string_view name) noexcept {
   auto const documentClass =
-      classifyDocumentMatchProjectionReservedAttribute(name);
-  if (documentClass != MatchProjectionReservedAttribute::kNone) {
+      classifyDocumentProjectionReservedAttribute(name);
+  if (documentClass != ProjectionReservedAttribute::kNone) {
     return documentClass;
   }
   if (name == StaticStrings::FromString) {
-    return MatchProjectionReservedAttribute::kFrom;
+    return ProjectionReservedAttribute::kFrom;
   }
   if (name == StaticStrings::ToString) {
-    return MatchProjectionReservedAttribute::kTo;
+    return ProjectionReservedAttribute::kTo;
   }
-  return MatchProjectionReservedAttribute::kNone;
+  return ProjectionReservedAttribute::kNone;
 }
 
-class MatchPatternNormalizerTest : public ::testing::Test {
+class PatternNormalizerTest : public ::testing::Test {
  protected:
   static void createDocumentCollection(std::string_view name) {
     auto& vocbase = server->getSystemDatabase();
@@ -213,8 +214,8 @@ class MatchPatternNormalizerTest : public ::testing::Test {
     return start->getMember(1);
   }
 
-  static NormalizedMatchStatement normalize(ParsedMatch const& parsed) {
-    MatchPatternNormalizer normalizer(*parsed.ast);
+  static NormalizedStatement normalize(ParsedMatch const& parsed) {
+    PatternNormalizer normalizer(*parsed.ast);
     return normalizer.normalize(*parsed.matchNode);
   }
 
@@ -224,7 +225,7 @@ class MatchPatternNormalizerTest : public ::testing::Test {
   }
 
   /// @brief run AST validation/optimization so expression trees match what
-  /// MatchBuilder / MatchPatternNormalizer observe after Query::prepare.
+  /// Builder / PatternNormalizer observe after Query::prepare.
   static void optimizeAst(ParsedMatch& parsed) {
     parsed.ast->validateAndOptimize(parsed.queryContext->trxForOptimization(),
                                     Ast::ValidateAndOptimizeOptions{});
@@ -314,16 +315,16 @@ class MatchPatternNormalizerTest : public ::testing::Test {
   static inline std::unique_ptr<mocks::MockRestAqlServer> server;
 };
 
-TEST_F(MatchPatternNormalizerTest, simpleVertex) {
+TEST_F(PatternNormalizerTest, simpleVertex) {
   auto parsed = parseMatch("MATCH (v :vc) RETURN v");
   auto statement = normalize(parsed);
 
   ASSERT_EQ(1U, statement.patterns.size());
   auto const& pattern = statement.patterns.front();
-  ASSERT_EQ(MatchPatternElement::Kind::kVertex, pattern.start.kind);
+  ASSERT_EQ(PatternElement::Kind::kVertex, pattern.start.kind);
   ASSERT_TRUE(pattern.start.vertex.has_value());
   EXPECT_EQ("v", pattern.start.vertex->variable->name);
-  EXPECT_EQ(MatchDataSource::Kind::kCollection,
+  EXPECT_EQ(DataSource::Kind::kCollection,
             pattern.start.vertex->collection.kind());
   EXPECT_EQ("vc", pattern.start.vertex->collection.name());
   EXPECT_TRUE(pattern.start.vertex->properties.empty());
@@ -332,7 +333,7 @@ TEST_F(MatchPatternNormalizerTest, simpleVertex) {
   EXPECT_TRUE(pattern.segments.empty());
 }
 
-TEST_F(MatchPatternNormalizerTest, outboundEdgeSingleCollection) {
+TEST_F(PatternNormalizerTest, outboundEdgeSingleCollection) {
   auto parsed = parseMatch("MATCH (v :vc) -[ e :ec ]-> (w :vc) RETURN [v,e,w]");
   auto statement = normalize(parsed);
 
@@ -344,7 +345,7 @@ TEST_F(MatchPatternNormalizerTest, outboundEdgeSingleCollection) {
   EXPECT_EQ("e", edge.variable->name);
   ASSERT_EQ(1U, edge.collections.size());
   EXPECT_EQ("ec", edge.collections.front().name());
-  EXPECT_EQ(MatchEdgeDirection::kOutbound, edge.direction);
+  EXPECT_EQ(EdgeDirection::kOutbound, edge.direction);
   EXPECT_TRUE(edge.range.isDefaultFixedOne());
   EXPECT_TRUE(edge.range.isFixedOne());
   EXPECT_TRUE(edge.properties.empty());
@@ -352,26 +353,26 @@ TEST_F(MatchPatternNormalizerTest, outboundEdgeSingleCollection) {
   EXPECT_FALSE(edge.projection.has_value());
 
   auto const& target = pattern.segments.front().target;
-  ASSERT_EQ(MatchPatternElement::Kind::kVertex, target.kind);
+  ASSERT_EQ(PatternElement::Kind::kVertex, target.kind);
   EXPECT_EQ("w", target.vertex->variable->name);
   EXPECT_EQ("vc", target.vertex->collection.name());
 }
 
-TEST_F(MatchPatternNormalizerTest, inboundEdge) {
+TEST_F(PatternNormalizerTest, inboundEdge) {
   auto parsed = parseMatch("MATCH (v :vc) <-[ e :ec ]- (w :vc) RETURN [v,e,w]");
   auto statement = normalize(parsed);
-  EXPECT_EQ(MatchEdgeDirection::kInbound,
+  EXPECT_EQ(EdgeDirection::kInbound,
             statement.patterns.front().segments.front().edge.direction);
 }
 
-TEST_F(MatchPatternNormalizerTest, anyDirectionEdge) {
+TEST_F(PatternNormalizerTest, anyDirectionEdge) {
   auto parsed = parseMatch("MATCH (v :vc) -[ e :ec ]- (w :vc) RETURN [v,e,w]");
   auto statement = normalize(parsed);
-  EXPECT_EQ(MatchEdgeDirection::kAny,
+  EXPECT_EQ(EdgeDirection::kAny,
             statement.patterns.front().segments.front().edge.direction);
 }
 
-TEST_F(MatchPatternNormalizerTest, multipleEdgeCollections) {
+TEST_F(PatternNormalizerTest, multipleEdgeCollections) {
   auto parsed =
       parseMatch("MATCH (v :vc) -[ e :ec|ec2 ]-> (w :vc) RETURN [v,e,w]");
   auto statement = normalize(parsed);
@@ -383,7 +384,7 @@ TEST_F(MatchPatternNormalizerTest, multipleEdgeCollections) {
   EXPECT_EQ("ec2", collections[1].name());
 }
 
-TEST_F(MatchPatternNormalizerTest, literalCollectionVertexAndEdge) {
+TEST_F(PatternNormalizerTest, literalCollectionVertexAndEdge) {
   auto parsed = parseMatch("MATCH (v :vc1) -[ e :ec1 ]-> (w :vc2) RETURN 1");
 
   // Literal collection labels are NODE_TYPE_COLLECTION with Ast-owned
@@ -405,7 +406,7 @@ TEST_F(MatchPatternNormalizerTest, literalCollectionVertexAndEdge) {
                        .name());
 }
 
-TEST_F(MatchPatternNormalizerTest, collectionBindParameter) {
+TEST_F(PatternNormalizerTest, collectionBindParameter) {
   auto parsed = parseMatch("MATCH (v :@@vc) -[ e :@@ec ]-> (w :@@vc) RETURN 1");
 
   AstNode const* vertexLabel = startVertexCollectionNode(parsed);
@@ -415,17 +416,17 @@ TEST_F(MatchPatternNormalizerTest, collectionBindParameter) {
 
   auto statement = normalize(parsed);
 
-  EXPECT_EQ(MatchDataSource::Kind::kBindParameter,
+  EXPECT_EQ(DataSource::Kind::kBindParameter,
             statement.patterns.front().start.vertex->collection.kind());
   EXPECT_EQ("@vc", statement.patterns.front().start.vertex->collection.name());
 
   auto const& edgeCollection =
       statement.patterns.front().segments.front().edge.collections.front();
-  EXPECT_EQ(MatchDataSource::Kind::kBindParameter, edgeCollection.kind());
+  EXPECT_EQ(DataSource::Kind::kBindParameter, edgeCollection.kind());
   EXPECT_EQ("@ec", edgeCollection.name());
 }
 
-TEST_F(MatchPatternNormalizerTest, resolvedCollectionBindParameter) {
+TEST_F(PatternNormalizerTest, resolvedCollectionBindParameter) {
   auto parsed =
       parseMatch("MATCH (v :@@vc) -[ e :@@ec ]-> (w :@@vc) RETURN 1", true,
                  {{"@vc", "resolved_vc"}, {"@ec", "resolved_ec"}});
@@ -452,7 +453,7 @@ TEST_F(MatchPatternNormalizerTest, resolvedCollectionBindParameter) {
 
   auto statement = normalize(parsed);
 
-  EXPECT_EQ(MatchDataSource::Kind::kCollection,
+  EXPECT_EQ(DataSource::Kind::kCollection,
             statement.patterns.front().start.vertex->collection.kind());
   EXPECT_EQ("resolved_vc",
             statement.patterns.front().start.vertex->collection.name());
@@ -460,7 +461,7 @@ TEST_F(MatchPatternNormalizerTest, resolvedCollectionBindParameter) {
                                .segments.front()
                                .edge.collections.front()
                                .name());
-  EXPECT_EQ(MatchDataSource::Kind::kCollection,
+  EXPECT_EQ(DataSource::Kind::kCollection,
             statement.patterns.front()
                 .segments.front()
                 .target.vertex->collection.kind());
@@ -469,7 +470,7 @@ TEST_F(MatchPatternNormalizerTest, resolvedCollectionBindParameter) {
                                .target.vertex->collection.name());
 }
 
-TEST_F(MatchPatternNormalizerTest, fixedRange) {
+TEST_F(PatternNormalizerTest, fixedRange) {
   auto parsed = parseMatch("MATCH (v :vc) -[ e :ec ]-> (w :vc) RETURN 1");
   auto statement = normalize(parsed);
   auto const& range = statement.patterns.front().segments.front().edge.range;
@@ -480,7 +481,7 @@ TEST_F(MatchPatternNormalizerTest, fixedRange) {
   EXPECT_EQ(1U, range.maxDepth());
 }
 
-TEST_F(MatchPatternNormalizerTest, fixedRangeThree) {
+TEST_F(PatternNormalizerTest, fixedRangeThree) {
   auto parsed = parseMatch("MATCH (v :vc) -[ e :ec *3..3 ]-> (w :vc) RETURN 1");
   auto statement = normalize(parsed);
   auto const& range = statement.patterns.front().segments.front().edge.range;
@@ -493,7 +494,7 @@ TEST_F(MatchPatternNormalizerTest, fixedRangeThree) {
   EXPECT_EQ(3U, range.maxDepth());
 }
 
-TEST_F(MatchPatternNormalizerTest, boundedRange) {
+TEST_F(PatternNormalizerTest, boundedRange) {
   auto parsed =
       parseMatch("MATCH (v :vc) -[ e :ec * 2..5 ]-> (w :vc) RETURN 1");
   auto statement = normalize(parsed);
@@ -505,25 +506,25 @@ TEST_F(MatchPatternNormalizerTest, boundedRange) {
   EXPECT_EQ(5U, range.maxDepth());
 }
 
-TEST_F(MatchPatternNormalizerTest, explicitFixedRangeIsNotDefault) {
+TEST_F(PatternNormalizerTest, explicitFixedRangeIsNotDefault) {
   auto parsed =
       parseMatch("MATCH (v :vc) -[ e :ec * 1..1 ]-> (w :vc) RETURN 1");
   auto statement = normalize(parsed);
   auto const& range = statement.patterns.front().segments.front().edge.range;
   EXPECT_FALSE(range.isDefaultFixedOne());
   EXPECT_TRUE(range.isFixedOne());
-  EXPECT_EQ(MatchPathRange::Kind::kBounded, range.kind());
+  EXPECT_EQ(PathRange::Kind::kBounded, range.kind());
 }
 
-TEST_F(MatchPatternNormalizerTest, unboundedRangeSemanticType) {
-  auto range = MatchPathRange::unboundedMin(3);
+TEST_F(PatternNormalizerTest, unboundedRangeSemanticType) {
+  auto range = PathRange::unboundedMin(3);
   EXPECT_EQ(3U, range.minDepth());
   EXPECT_FALSE(range.hasMaxDepth());
   EXPECT_FALSE(range.isFixedOne());
   EXPECT_FALSE(range.isDefaultFixedOne());
 }
 
-TEST_F(MatchPatternNormalizerTest, projectionKeepPath) {
+TEST_F(PatternNormalizerTest, projectionKeepPath) {
   auto parsed =
       parseMatch("MATCH (v :vc RETURN i) -[ e :ec ]-> (w :vc) RETURN 1");
   auto statement = normalize(parsed);
@@ -531,13 +532,13 @@ TEST_F(MatchPatternNormalizerTest, projectionKeepPath) {
   auto const& projection = statement.patterns.front().start.vertex->projection;
   ASSERT_TRUE(projection.has_value());
   ASSERT_EQ(1U, projection->items.size());
-  EXPECT_EQ(MatchProjectionItem::Kind::kKeepAttribute,
+  EXPECT_EQ(ProjectionItem::Kind::kKeepAttribute,
             projection->items.front().kind);
   EXPECT_EQ("i", projection->items.front().name);
   ASSERT_EQ((std::vector<std::string>{"i"}), projection->items.front().path);
 }
 
-TEST_F(MatchPatternNormalizerTest, projectionAliasAndNestedPath) {
+TEST_F(PatternNormalizerTest, projectionAliasAndNestedPath) {
   auto parsed = parseMatch(
       "MATCH (v :vc RETURN idx = v.profile.first_name, status) "
       "-[ e :ec RETURN edgeI = e.i ]-> (w :vc) RETURN 1");
@@ -548,11 +549,11 @@ TEST_F(MatchPatternNormalizerTest, projectionAliasAndNestedPath) {
   ASSERT_TRUE(vertexProjection.has_value());
   ASSERT_EQ(2U, vertexProjection->items.size());
 
-  EXPECT_EQ(MatchProjectionItem::Kind::kAlias, vertexProjection->items[0].kind);
+  EXPECT_EQ(ProjectionItem::Kind::kAlias, vertexProjection->items[0].kind);
   EXPECT_EQ("idx", vertexProjection->items[0].name);
   ASSERT_NE(nullptr, vertexProjection->items[0].expression.node);
 
-  EXPECT_EQ(MatchProjectionItem::Kind::kKeepAttribute,
+  EXPECT_EQ(ProjectionItem::Kind::kKeepAttribute,
             vertexProjection->items[1].kind);
   EXPECT_EQ("status", vertexProjection->items[1].name);
   ASSERT_EQ((std::vector<std::string>{"status"}),
@@ -562,11 +563,11 @@ TEST_F(MatchPatternNormalizerTest, projectionAliasAndNestedPath) {
       statement.patterns.front().segments.front().edge.projection;
   ASSERT_TRUE(edgeProjection.has_value());
   ASSERT_EQ(1U, edgeProjection->items.size());
-  EXPECT_EQ(MatchProjectionItem::Kind::kAlias, edgeProjection->items[0].kind);
+  EXPECT_EQ(ProjectionItem::Kind::kAlias, edgeProjection->items[0].kind);
   EXPECT_EQ("edgeI", edgeProjection->items[0].name);
 }
 
-TEST_F(MatchPatternNormalizerTest, projectionNestedKeepPath) {
+TEST_F(PatternNormalizerTest, projectionNestedKeepPath) {
   auto parsed = parseMatch(
       "MATCH (v :vc RETURN profile.name) -[ e :ec ]-> (w :vc) RETURN 1");
   auto statement = normalize(parsed);
@@ -574,7 +575,7 @@ TEST_F(MatchPatternNormalizerTest, projectionNestedKeepPath) {
   auto const& projection = statement.patterns.front().start.vertex->projection;
   ASSERT_TRUE(projection.has_value());
   ASSERT_EQ(1U, projection->items.size());
-  EXPECT_EQ(MatchProjectionItem::Kind::kKeepAttribute,
+  EXPECT_EQ(ProjectionItem::Kind::kKeepAttribute,
             projection->items.front().kind);
   EXPECT_TRUE(projection->items.front().name.empty());
   ASSERT_EQ((std::vector<std::string>{"profile", "name"}),
@@ -582,7 +583,7 @@ TEST_F(MatchPatternNormalizerTest, projectionNestedKeepPath) {
   EXPECT_EQ("profile", projection->items.front().topLevelKey());
 }
 
-TEST_F(MatchPatternNormalizerTest, projectionQuotedLiteralKeep) {
+TEST_F(PatternNormalizerTest, projectionQuotedLiteralKeep) {
   // Quoted "profile.name" is one literal key, not nested hierarchy.
   auto parsed = parseMatch(
       "MATCH (v :vc RETURN \"profile.name\") -[ e :ec ]-> (w :vc) RETURN 1");
@@ -592,14 +593,14 @@ TEST_F(MatchPatternNormalizerTest, projectionQuotedLiteralKeep) {
   ASSERT_TRUE(projection.has_value());
   ASSERT_EQ(1U, projection->items.size());
   auto const& item = projection->items.front();
-  EXPECT_EQ(MatchProjectionItem::Kind::kKeepLiteral, item.kind);
+  EXPECT_EQ(ProjectionItem::Kind::kKeepLiteral, item.kind);
   EXPECT_TRUE(item.isKeep());
   EXPECT_EQ("profile.name", item.name);
   ASSERT_EQ((std::vector<std::string>{"profile.name"}), item.path);
   EXPECT_EQ("profile.name", item.topLevelKey());
 }
 
-TEST_F(MatchPatternNormalizerTest, projectionNestedVsQuotedDottedName) {
+TEST_F(PatternNormalizerTest, projectionNestedVsQuotedDottedName) {
   auto nestedParsed = parseMatch(
       "MATCH (v :vc RETURN Data.Weight) -[ e :ec ]-> (w :vc) RETURN 1");
   auto quotedParsed = parseMatch(
@@ -613,16 +614,16 @@ TEST_F(MatchPatternNormalizerTest, projectionNestedVsQuotedDottedName) {
   auto const& quotedItem =
       quoted.patterns.front().start.vertex->projection->items.front();
 
-  EXPECT_EQ(MatchProjectionItem::Kind::kKeepAttribute, nestedItem.kind);
+  EXPECT_EQ(ProjectionItem::Kind::kKeepAttribute, nestedItem.kind);
   ASSERT_EQ((std::vector<std::string>{"Data", "Weight"}), nestedItem.path);
 
-  EXPECT_EQ(MatchProjectionItem::Kind::kKeepLiteral, quotedItem.kind);
+  EXPECT_EQ(ProjectionItem::Kind::kKeepLiteral, quotedItem.kind);
   ASSERT_EQ((std::vector<std::string>{"Data.Weight"}), quotedItem.path);
 
   EXPECT_NE(nestedItem.path, quotedItem.path);
 }
 
-TEST_F(MatchPatternNormalizerTest, projectionEdgeKeepAndAlias) {
+TEST_F(PatternNormalizerTest, projectionEdgeKeepAndAlias) {
   auto parsed = parseMatch(
       "MATCH (v :vc) -[ e :ec RETURN i, num = e.j ]-> (w :vc) RETURN 1");
   auto statement = normalize(parsed);
@@ -632,20 +633,20 @@ TEST_F(MatchPatternNormalizerTest, projectionEdgeKeepAndAlias) {
   ASSERT_TRUE(projection.has_value());
   ASSERT_EQ(2U, projection->items.size());
 
-  EXPECT_EQ(MatchProjectionItem::Kind::kKeepAttribute,
+  EXPECT_EQ(ProjectionItem::Kind::kKeepAttribute,
             projection->items[0].kind);
   EXPECT_EQ("i", projection->items[0].name);
   ASSERT_EQ((std::vector<std::string>{"i"}), projection->items[0].path);
 
-  EXPECT_EQ(MatchProjectionItem::Kind::kAlias, projection->items[1].kind);
+  EXPECT_EQ(ProjectionItem::Kind::kAlias, projection->items[1].kind);
   EXPECT_EQ("num", projection->items[1].name);
   EXPECT_TRUE(projection->items[1].path.empty());
   ASSERT_NE(nullptr, projection->items[1].expression.node);
 }
 
-TEST_F(MatchPatternNormalizerTest, projectionSystemAttributeKeeps) {
+TEST_F(PatternNormalizerTest, projectionSystemAttributeKeeps) {
   // Normalization preserves requested system attribute names as ordinary
-  // keeps; MatchBuilder applies reserved-attribute rules when lowering.
+  // keeps; Builder applies reserved-attribute rules when lowering.
   auto vertexParsed = parseMatch(
       "MATCH (v :vc RETURN _id, _key, _rev) -[ e :ec ]-> (w :vc) RETURN 1");
   auto edgeParsed = parseMatch(
@@ -674,45 +675,45 @@ TEST_F(MatchPatternNormalizerTest, projectionSystemAttributeKeeps) {
   EXPECT_EQ((std::vector<std::string>{"_to"}), edgeProj->items[4].path);
 }
 
-TEST_F(MatchPatternNormalizerTest, projectionReservedAttributeClassification) {
-  EXPECT_EQ(MatchProjectionReservedAttribute::kId,
-            classifyDocumentMatchProjectionReservedAttribute("_id"));
-  EXPECT_EQ(MatchProjectionReservedAttribute::kId,
-            classifyEdgeDocumentMatchProjectionReservedAttribute("_id"));
-  EXPECT_EQ(MatchProjectionReservedAttribute::kNone,
-            classifyDocumentMatchProjectionReservedAttribute("_key"));
-  EXPECT_EQ(MatchProjectionReservedAttribute::kNone,
-            classifyDocumentMatchProjectionReservedAttribute("_rev"));
-  EXPECT_EQ(MatchProjectionReservedAttribute::kNone,
-            classifyDocumentMatchProjectionReservedAttribute("_from"));
-  EXPECT_EQ(MatchProjectionReservedAttribute::kFrom,
-            classifyEdgeDocumentMatchProjectionReservedAttribute("_from"));
-  EXPECT_EQ(MatchProjectionReservedAttribute::kTo,
-            classifyEdgeDocumentMatchProjectionReservedAttribute("_to"));
+TEST_F(PatternNormalizerTest, projectionReservedAttributeClassification) {
+  EXPECT_EQ(ProjectionReservedAttribute::kId,
+            classifyDocumentProjectionReservedAttribute("_id"));
+  EXPECT_EQ(ProjectionReservedAttribute::kId,
+            classifyEdgeDocumentProjectionReservedAttribute("_id"));
+  EXPECT_EQ(ProjectionReservedAttribute::kNone,
+            classifyDocumentProjectionReservedAttribute("_key"));
+  EXPECT_EQ(ProjectionReservedAttribute::kNone,
+            classifyDocumentProjectionReservedAttribute("_rev"));
+  EXPECT_EQ(ProjectionReservedAttribute::kNone,
+            classifyDocumentProjectionReservedAttribute("_from"));
+  EXPECT_EQ(ProjectionReservedAttribute::kFrom,
+            classifyEdgeDocumentProjectionReservedAttribute("_from"));
+  EXPECT_EQ(ProjectionReservedAttribute::kTo,
+            classifyEdgeDocumentProjectionReservedAttribute("_to"));
 
   EXPECT_EQ((std::vector<std::string_view>{"_id"}),
             std::vector<std::string_view>(
-                kMandatoryDocumentMatchProjectionAttributes.begin(),
-                kMandatoryDocumentMatchProjectionAttributes.end()));
+                kMandatoryDocumentProjectionAttributes.begin(),
+                kMandatoryDocumentProjectionAttributes.end()));
 
   EXPECT_EQ((std::vector<std::string_view>{"_id", "_from", "_to"}),
             std::vector<std::string_view>(
-                kMandatoryEdgeDocumentMatchProjectionAttributes.begin(),
-                kMandatoryEdgeDocumentMatchProjectionAttributes.end()));
+                kMandatoryEdgeDocumentProjectionAttributes.begin(),
+                kMandatoryEdgeDocumentProjectionAttributes.end()));
 }
 
-TEST_F(MatchPatternNormalizerTest, variableReferenceTarget) {
+TEST_F(PatternNormalizerTest, variableReferenceTarget) {
   auto parsed = parseMatch(
       "FOR w IN 1..1 LET start = \"vc/v0\" "
       "MATCH (v :vc) -[ e :ec ]-> (w) RETURN [v,e,w]");
   auto statement = normalize(parsed);
 
   auto const& target = statement.patterns.front().segments.front().target;
-  ASSERT_EQ(MatchPatternElement::Kind::kVariableReference, target.kind);
+  ASSERT_EQ(PatternElement::Kind::kVariableReference, target.kind);
   EXPECT_EQ("w", target.variableReference->name);
 }
 
-TEST_F(MatchPatternNormalizerTest, pathVariable) {
+TEST_F(PatternNormalizerTest, pathVariable) {
   auto parsed =
       parseMatch("MATCH p = (v :vc) -[ e :ec * 1..2 ]-> (w :vc) RETURN p");
   auto statement = normalize(parsed);
@@ -721,7 +722,7 @@ TEST_F(MatchPatternNormalizerTest, pathVariable) {
   EXPECT_EQ("p", statement.patterns.front().pathVariable->name);
 }
 
-TEST_F(MatchPatternNormalizerTest, vertexPropertiesAndWhereFilter) {
+TEST_F(PatternNormalizerTest, vertexPropertiesAndWhereFilter) {
   auto parsed = parseMatch(
       "MATCH (v :vc {j: 0, k: 1} WHERE v.i > 0) -[ e :ec {j: 2} WHERE e.i > 1 "
       "]-> (w :vc) RETURN 1");
@@ -741,7 +742,7 @@ TEST_F(MatchPatternNormalizerTest, vertexPropertiesAndWhereFilter) {
   ASSERT_TRUE(edge.filter.has_value());
 }
 
-TEST_F(MatchPatternNormalizerTest, vertexPropertiesAfterOptimize) {
+TEST_F(PatternNormalizerTest, vertexPropertiesAfterOptimize) {
   auto parsed = parseMatch("MATCH (v :vc {j: 0}) RETURN v");
   optimizeAst(parsed);
 
@@ -762,7 +763,7 @@ TEST_F(MatchPatternNormalizerTest, vertexPropertiesAfterOptimize) {
   EXPECT_EQ("j", vertex->properties.front().key);
 }
 
-TEST_F(MatchPatternNormalizerTest, combinedPattern) {
+TEST_F(PatternNormalizerTest, combinedPattern) {
   auto parsed = parseMatch(
       "MATCH p = (v :@@vc RETURN i) "
       "-[ e :@@ec1|@@ec2 * 2..4 ]-> (w :@@vc RETURN wId = w._key) "
@@ -782,7 +783,7 @@ TEST_F(MatchPatternNormalizerTest, combinedPattern) {
   ASSERT_EQ(2U, segment.edge.collections.size());
   EXPECT_EQ("mec1", segment.edge.collections[0].name());
   EXPECT_EQ("mec2", segment.edge.collections[1].name());
-  EXPECT_EQ(MatchEdgeDirection::kOutbound, segment.edge.direction);
+  EXPECT_EQ(EdgeDirection::kOutbound, segment.edge.direction);
   EXPECT_EQ(2U, segment.edge.range.minDepth());
   EXPECT_EQ(4U, segment.edge.range.maxDepth());
   EXPECT_FALSE(segment.edge.projection.has_value());
@@ -791,7 +792,7 @@ TEST_F(MatchPatternNormalizerTest, combinedPattern) {
   ASSERT_TRUE(segment.target.vertex->projection.has_value());
 }
 
-TEST_F(MatchPatternNormalizerTest, multiplePatternsInOneMatch) {
+TEST_F(PatternNormalizerTest, multiplePatternsInOneMatch) {
   auto parsed = parseMatch(
       "MATCH (v :vc) -[ e :ec ]-> (w :vc), (a :vc2) -[ b :ec2 ]-> (c :vc2) "
       "RETURN 1");
@@ -802,27 +803,27 @@ TEST_F(MatchPatternNormalizerTest, multiplePatternsInOneMatch) {
   EXPECT_EQ("a", statement.patterns[1].start.vertex->variable->name);
 }
 
-TEST_F(MatchPatternNormalizerTest, rejectsInvalidDirectionValue) {
+TEST_F(PatternNormalizerTest, rejectsInvalidDirectionValue) {
   auto parsed = parseMatch("MATCH (v :vc) -[ e :ec ]-> (w :vc) RETURN 1");
 
   AstNode* matchNode = const_cast<AstNode*>(parsed.matchNode);
   AstNode* edge = matchNode->getMember(0)->getMember(1)->getMember(0);
   edge->getMember(4)->setIntValue(99);
 
-  MatchPatternNormalizer normalizer(*parsed.ast);
+  PatternNormalizer normalizer(*parsed.ast);
   EXPECT_THROW({ (void)normalizer.normalize(*parsed.matchNode); },
                basics::Exception);
 }
 
-TEST_F(MatchPatternNormalizerTest, rejectsInvalidRange) {
+TEST_F(PatternNormalizerTest, rejectsInvalidRange) {
   auto parsed =
       parseMatch("MATCH (v :vc) -[ e :ec * 5..2 ]-> (w :vc) RETURN 1");
-  MatchPatternNormalizer normalizer(*parsed.ast);
+  PatternNormalizer normalizer(*parsed.ast);
   EXPECT_THROW({ (void)normalizer.normalize(*parsed.matchNode); },
                basics::Exception);
 }
 
-TEST_F(MatchPatternNormalizerTest, whereNestedDottedAttributeAccess) {
+TEST_F(PatternNormalizerTest, whereNestedDottedAttributeAccess) {
   auto parsed = parseMatch(
       "MATCH (v :vc) -[ e :ec WHERE e.Data.Weight == 1 ]-> (w :vc) RETURN 1");
   auto statement = normalize(parsed);
@@ -833,7 +834,7 @@ TEST_F(MatchPatternNormalizerTest, whereNestedDottedAttributeAccess) {
   expectNestedAttributeAccess(lhs, "e", {"Data", "Weight"});
 }
 
-TEST_F(MatchPatternNormalizerTest, whereBracketDottedAttributeName) {
+TEST_F(PatternNormalizerTest, whereBracketDottedAttributeName) {
   auto parsed = parseMatch(
       "MATCH (v :vc) -[ e :ec WHERE e[\"Data.Weight\"] == 2 ]-> (w :vc) "
       "RETURN 1");
@@ -847,7 +848,7 @@ TEST_F(MatchPatternNormalizerTest, whereBracketDottedAttributeName) {
   EXPECT_EQ(NODE_TYPE_INDEXED_ACCESS, lhs->type);
 }
 
-TEST_F(MatchPatternNormalizerTest, whereNestedAndBracketRemainDistinct) {
+TEST_F(PatternNormalizerTest, whereNestedAndBracketRemainDistinct) {
   auto parsed = parseMatch(
       "MATCH (v :vc) -[ e :ec WHERE e.Data.Weight == 1 AND "
       "e[\"Data.Weight\"] == 2 ]-> (w :vc) RETURN 1");
@@ -871,7 +872,7 @@ TEST_F(MatchPatternNormalizerTest, whereNestedAndBracketRemainDistinct) {
   EXPECT_EQ(NODE_TYPE_INDEXED_ACCESS, dottedLhs->type);
 }
 
-TEST_F(MatchPatternNormalizerTest,
+TEST_F(PatternNormalizerTest,
        whereNestedAndBracketRemainDistinctAfterOptimize) {
   // Mirrors Query prepare order: parse → validateAndOptimize → normalize
   // (as invoked from ExecutionPlan::fromNodeMatch).
@@ -909,7 +910,7 @@ TEST_F(MatchPatternNormalizerTest,
   EXPECT_EQ(NODE_TYPE_REFERENCE, dottedLeaf.getObject()->type);
 }
 
-TEST_F(MatchPatternNormalizerTest, nestedAttributeEquivalentForms) {
+TEST_F(PatternNormalizerTest, nestedAttributeEquivalentForms) {
   auto parsed = parseMatch(
       "MATCH (v :vc) -[ e :ec WHERE e.Data.Weight == 1 AND "
       "e[\"Data\"][\"Weight\"] == 1 AND e.Data[\"Weight\"] == 1 ]-> "
@@ -935,7 +936,7 @@ TEST_F(MatchPatternNormalizerTest, nestedAttributeEquivalentForms) {
   expectNestedAttributeAccess(formMixed, "e", {"Data", "Weight"});
 }
 
-TEST_F(MatchPatternNormalizerTest, edgePropertyDottedNameVsNestedAttribute) {
+TEST_F(PatternNormalizerTest, edgePropertyDottedNameVsNestedAttribute) {
   auto parsed = parseMatch(
       "MATCH (v :vc) -[ e :ec {nested: e.Data.Weight, dotted: "
       "e[\"Data.Weight\"]} ]-> "
@@ -957,7 +958,7 @@ TEST_F(MatchPatternNormalizerTest, edgePropertyDottedNameVsNestedAttribute) {
                                     "Data.Weight");
 }
 
-TEST_F(MatchPatternNormalizerTest, matchBuilderConsumesNormalizedSimpleVertex) {
+TEST_F(PatternNormalizerTest, matchBuilderConsumesNormalizedSimpleVertex) {
   auto parsed = parseMatch("MATCH (v :vc) RETURN v");
   auto statement = normalize(parsed);
 
@@ -969,7 +970,7 @@ TEST_F(MatchPatternNormalizerTest, matchBuilderConsumesNormalizedSimpleVertex) {
   ASSERT_NE(nullptr, plan);
 }
 
-TEST_F(MatchPatternNormalizerTest, matchBuilderConsumesNormalizedEdgeMatch) {
+TEST_F(PatternNormalizerTest, matchBuilderConsumesNormalizedEdgeMatch) {
   auto parsed =
       parseMatch("MATCH (v :vc) -[ e :ec ]-> (w :vc) RETURN [v, e, w]");
   auto statement = normalize(parsed);
@@ -987,7 +988,7 @@ TEST_F(MatchPatternNormalizerTest, matchBuilderConsumesNormalizedEdgeMatch) {
   ASSERT_NE(nullptr, plan);
 }
 
-TEST_F(MatchPatternNormalizerTest,
+TEST_F(PatternNormalizerTest,
        matchBuilderConsumesNormalizedMultipleEdgeCollections) {
   auto parsed =
       parseMatch("MATCH (v :vc) -[ e :ec|ec2 ]-> (w :vc) RETURN [v, e, w]");
@@ -1000,7 +1001,7 @@ TEST_F(MatchPatternNormalizerTest,
   ASSERT_NE(nullptr, plan);
 }
 
-TEST_F(MatchPatternNormalizerTest,
+TEST_F(PatternNormalizerTest,
        matchBuilderConsumesNormalizedFixedPathRange) {
   auto parsed =
       parseMatch("MATCH (v :vc) -[ e :ec * 2..2 ]-> (w :vc) RETURN [v, e, w]");
@@ -1016,7 +1017,7 @@ TEST_F(MatchPatternNormalizerTest,
   ASSERT_NE(nullptr, plan);
 }
 
-TEST_F(MatchPatternNormalizerTest,
+TEST_F(PatternNormalizerTest,
        matchBuilderConsumesNormalizedBoundedPathRange) {
   auto parsed =
       parseMatch("MATCH (v :vc) -[ e :ec * 1..3 ]-> (w :vc) RETURN [v, e, w]");
@@ -1031,7 +1032,7 @@ TEST_F(MatchPatternNormalizerTest,
   ASSERT_NE(nullptr, plan);
 }
 
-TEST_F(MatchPatternNormalizerTest,
+TEST_F(PatternNormalizerTest,
        matchBuilderConsumesNormalizedPropertyAccessForms) {
   auto parsed = parseMatch(
       "MATCH (v :vc) -[ e :ec WHERE e.Data.Weight == 1 AND "
@@ -1046,13 +1047,13 @@ TEST_F(MatchPatternNormalizerTest,
   ASSERT_NE(nullptr, plan);
 }
 
-TEST_F(MatchPatternNormalizerTest,
+TEST_F(PatternNormalizerTest,
        matchBuilderConsumesResolvedCollectionBindParameter) {
   auto parsed = parseMatch("MATCH (v :@@vc) -[ e :@@ec ]-> (w :@@vc) RETURN v",
                            true, {{"@vc", "vc"}, {"@ec", "ec"}});
   auto statement = normalize(parsed);
 
-  EXPECT_EQ(MatchDataSource::Kind::kCollection,
+  EXPECT_EQ(DataSource::Kind::kCollection,
             statement.patterns.front().start.vertex->collection.kind());
   EXPECT_EQ("vc", statement.patterns.front().start.vertex->collection.name());
 
@@ -1060,10 +1061,10 @@ TEST_F(MatchPatternNormalizerTest,
   ASSERT_NE(nullptr, plan);
 }
 
-TEST_F(MatchPatternNormalizerTest,
+TEST_F(PatternNormalizerTest,
        fromNodeMatchRejectsUnresolvedCollectionBindParameter) {
   // Normalization intentionally preserves unresolved collection bind
-  // parameters as MatchDataSource::Kind::kBindParameter. MatchBuilder then
+  // parameters as DataSource::Kind::kBindParameter. Builder then
   // rejects them via requireCollectionName (TRI_ERROR_INTERNAL).
 
   auto parsed = parseMatch("MATCH (v :@@vc) -[ e :ec ]-> (w :vc) RETURN 1");
@@ -1071,7 +1072,7 @@ TEST_F(MatchPatternNormalizerTest,
   auto statement = normalize(parsed);
   ASSERT_EQ(1U, statement.patterns.size());
   ASSERT_TRUE(statement.patterns.front().start.vertex.has_value());
-  EXPECT_EQ(MatchDataSource::Kind::kBindParameter,
+  EXPECT_EQ(DataSource::Kind::kBindParameter,
             statement.patterns.front().start.vertex->collection.kind());
 
   try {
@@ -1087,7 +1088,7 @@ TEST_F(MatchPatternNormalizerTest,
   }
 }
 
-TEST_F(MatchPatternNormalizerTest,
+TEST_F(PatternNormalizerTest,
        fromNodeMatchRejectsUnresolvedEdgeCollectionBindParameter) {
   // Start/target use an existing collection so plan construction reaches
   // requireCollectionName on the unresolved edge bind parameter.
@@ -1096,7 +1097,7 @@ TEST_F(MatchPatternNormalizerTest,
   auto statement = normalize(parsed);
   ASSERT_EQ(1U, statement.patterns.size());
   ASSERT_EQ(1U, statement.patterns.front().segments.size());
-  EXPECT_EQ(MatchDataSource::Kind::kBindParameter, statement.patterns.front()
+  EXPECT_EQ(DataSource::Kind::kBindParameter, statement.patterns.front()
                                                        .segments.front()
                                                        .edge.collections.front()
                                                        .kind());

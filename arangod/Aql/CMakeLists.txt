@@ -62,9 +62,6 @@ add_library(arango_aql STATIC
   InsertModifier.cpp
   LateMaterializedExpressionContext.cpp
   LimitStats.cpp
-  MatchBuilder.cpp
-  MatchPatternNormalizer.cpp
-  MatchPatternTypes.cpp
   ModificationExecutorFlags.h
   ModificationOptions.cpp
   MultiAqlItemBlockInputRange.cpp
@@ -148,6 +145,7 @@ add_subdirectory(ExecutionNode)
 add_subdirectory(Executor)
 add_subdirectory(Function)
 add_subdirectory(Parser)
+add_subdirectory(Match)
 add_subdirectory(Optimizer)
 
 target_link_libraries(arango_aql
