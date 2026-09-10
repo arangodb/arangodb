@@ -58,7 +58,8 @@ const functionsDocumentation = {
 };
 
 const testPaths = {
-  'server_permissions': [tu.pathForTesting('client/server_permissions')],
+  'server_permissions': [tu.pathForTesting('client/server_permissions'),
+                         tu.pathForTesting('client/server_permissions/authorization-questions')],
   'server_parameters': [tu.pathForTesting('client/server_parameters')],
   'server_secrets': [tu.pathForTesting('client/server_secrets')]
 };

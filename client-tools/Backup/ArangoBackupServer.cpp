@@ -54,26 +54,25 @@ ArangoBackupServer::ArangoBackupServer(
     : OptionProvidingServer<ArangoBackupOptionProviders>(
           options, binaryPath, std::move(binaryName), ret) {}
 
-void ArangoBackupServer::addFeaturesWithOptionProvider() {
+void ArangoBackupServer::addFeatures() {
   addFeature<BasicFeaturePhaseClient>();
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
+  auto& client = addFeature<HttpEndpointProvider, ClientFeature>(
+      getOptions<ClientOptionsProvider>());
+  addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());
+  addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
+  addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
   addFeature<OptionsCheckFeature>();
+  addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(
       std::array{std::type_index(typeid(BackupFeature))});
-  addFeature<SslFeature>();
-
-  addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
-  addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());
-  addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
-  addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   addFeature<ProcessEnvironmentFeature>(
       _binaryName, getOptions<ProcessEnvironmentOptionsProvider>());
 #endif
-  auto& client = addFeature<HttpEndpointProvider, ClientFeature>(
-      getOptions<ClientOptionsProvider>());
+  addFeature<SslFeature>();
   addFeature<BackupFeature>(client, *_ret, getOptions<BackupOptionsProvider>());
 }
 

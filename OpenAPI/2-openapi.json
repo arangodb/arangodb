@@ -14,7 +14,7 @@
   },
   "summary": "The HTTP API of the ArangoDB graph database system",
   "title": "ArangoDB Core API",
-  "version": "3.12.9 (API experimental)"
+  "version": "3.12.12-devel (API experimental)"
  },
  "openapi": "3.1.0",
  "paths": {

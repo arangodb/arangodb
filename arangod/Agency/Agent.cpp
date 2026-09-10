@@ -41,6 +41,7 @@
 #include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
+#include "Utils/ExecContext.h"
 #include "Network/NetworkFeature.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
@@ -96,7 +97,8 @@ std::string const NO_LEADER("");
 /// Agent configuration
 Agent::Agent(application_features::ApplicationServer& server,
              metrics::IRegistry& metricsRegistry, config_t const& config)
-    : arangodb::ServerThread(server, "Agent"),
+    // needs superuser permissions for log persistence: transactions via State
+    : arangodb::ServerThread(server, "Agent", ExecContext::superuserAsShared()),
       _constituent(server),
       _supervision(std::make_unique<Supervision>(server, metricsRegistry)),
       _state(metricsRegistry),

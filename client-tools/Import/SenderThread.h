@@ -24,7 +24,7 @@
 
 #include "Basics/ConditionVariable.h"
 #include "Basics/StringBuffer.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 
 namespace arangodb {
@@ -36,7 +36,7 @@ class SimpleHttpResult;
 namespace import {
 struct ImportStatistics;
 
-class SenderThread final : public arangodb::Thread {
+class SenderThread final : public arangodb::BasicThread {
  private:
   SenderThread(SenderThread const&) = delete;
   SenderThread& operator=(SenderThread const&) = delete;
