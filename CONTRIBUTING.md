@@ -1025,6 +1025,8 @@ Once this is completed, you may run it like this:
 
     ./scripts/unittest go_driver --gosource ../go-driver/ --testCase View --goOptions:timeout 180m --cluster true
 
+`go_driver` defaults to **v3** on ArangoDB 4.0+ and **v2** on 3.12.*. Pass `--goVersion v2` or `--goVersion v3` to override. On ArangoDB 4.0, CI uses `go-v2.yml` and `go-v3.yml` to run both driver versions.
+
 This will invoke the test with a filter to only execute tests that have `View` in their name.
 As an additional parameter we pass `-timeout 100m` to the driver test.
 
