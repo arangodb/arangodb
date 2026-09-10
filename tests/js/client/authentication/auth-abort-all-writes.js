@@ -66,8 +66,7 @@ function suite() {
 
     // COR-986
     testTransactionBetweenDatabaseIsolation: function() {
-      // bob opens a streaming modification query. it stays registered in
-      // the query list until the last batch is fetched, so no waiting needed
+      // bob opens a streaming modification query
       login(dbB, "bob");
       let res = arango.POST_RAW("/_api/cursor",
                                 { query, batchSize: 1, options: { stream: true } });
@@ -81,7 +80,7 @@ function suite() {
       const abort = arango.DELETE_RAW(`/_db/${dbA}/_api/transaction/write`);
       assertEqual(200, abort.code, JSON.stringify(abort));
 
-      // bob's query must survive (fails on buggy code: killed -> 410 / 1500)
+      // bob's query must survive
       login(dbB, "bob");
       while (res.parsedBody.hasMore) {
         res = arango.POST_RAW(`/_api/cursor/${cursorId}`, {});
