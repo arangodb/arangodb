@@ -67,8 +67,7 @@ enum class ProjectionReservedAttribute : uint8_t {
 };
 
 [[nodiscard]] ProjectionReservedAttribute
-classifyDocumentProjectionReservedAttribute(
-    std::string_view name) noexcept {
+classifyDocumentProjectionReservedAttribute(std::string_view name) noexcept {
   if (name == StaticStrings::IdString) {
     return ProjectionReservedAttribute::kId;
   }
@@ -78,8 +77,7 @@ classifyDocumentProjectionReservedAttribute(
 [[nodiscard]] ProjectionReservedAttribute
 classifyEdgeDocumentProjectionReservedAttribute(
     std::string_view name) noexcept {
-  auto const documentClass =
-      classifyDocumentProjectionReservedAttribute(name);
+  auto const documentClass = classifyDocumentProjectionReservedAttribute(name);
   if (documentClass != ProjectionReservedAttribute::kNone) {
     return documentClass;
   }
@@ -633,8 +631,7 @@ TEST_F(PatternNormalizerTest, projectionEdgeKeepAndAlias) {
   ASSERT_TRUE(projection.has_value());
   ASSERT_EQ(2U, projection->items.size());
 
-  EXPECT_EQ(ProjectionItem::Kind::kKeepAttribute,
-            projection->items[0].kind);
+  EXPECT_EQ(ProjectionItem::Kind::kKeepAttribute, projection->items[0].kind);
   EXPECT_EQ("i", projection->items[0].name);
   ASSERT_EQ((std::vector<std::string>{"i"}), projection->items[0].path);
 
@@ -1001,8 +998,7 @@ TEST_F(PatternNormalizerTest,
   ASSERT_NE(nullptr, plan);
 }
 
-TEST_F(PatternNormalizerTest,
-       matchBuilderConsumesNormalizedFixedPathRange) {
+TEST_F(PatternNormalizerTest, matchBuilderConsumesNormalizedFixedPathRange) {
   auto parsed =
       parseMatch("MATCH (v :vc) -[ e :ec * 2..2 ]-> (w :vc) RETURN [v, e, w]");
   auto statement = normalize(parsed);
@@ -1017,8 +1013,7 @@ TEST_F(PatternNormalizerTest,
   ASSERT_NE(nullptr, plan);
 }
 
-TEST_F(PatternNormalizerTest,
-       matchBuilderConsumesNormalizedBoundedPathRange) {
+TEST_F(PatternNormalizerTest, matchBuilderConsumesNormalizedBoundedPathRange) {
   auto parsed =
       parseMatch("MATCH (v :vc) -[ e :ec * 1..3 ]-> (w :vc) RETURN [v, e, w]");
   auto statement = normalize(parsed);
@@ -1098,9 +1093,9 @@ TEST_F(PatternNormalizerTest,
   ASSERT_EQ(1U, statement.patterns.size());
   ASSERT_EQ(1U, statement.patterns.front().segments.size());
   EXPECT_EQ(DataSource::Kind::kBindParameter, statement.patterns.front()
-                                                       .segments.front()
-                                                       .edge.collections.front()
-                                                       .kind());
+                                                  .segments.front()
+                                                  .edge.collections.front()
+                                                  .kind());
 
   try {
     auto plan = ExecutionPlan::instantiateFromAst(parsed.ast.get(), false);
