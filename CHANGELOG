@@ -14,7 +14,18 @@
 * Rebuilt included rclone v1.75.0 with go1.25.13 and non-vulnerable
   dependencies.
 
-* Fixed access token expiry (COR-825).
+* Fixed access token expiry (COR-825, GHSA-pcr8-3w4f-34wm).
+
+* Fixed the path check in `--server.authentication-system-only` mode to use the
+  decoded request path, so URL-encoded `/_api` and other system paths no longer
+  bypass authentication (COR-913, GHSA-rrgq-978q-36mq).
+
+* The `isSystem` flag on `POST /_api/tasks` and `PUT /_api/tasks/<id>` is now
+  rejected for requests without superuser privileges (COR-914,
+  GHSA-rvhw-4hpw-9vrx).
+
+* Fixed JWT signature verification in ES256 folder mode so that HS256 tokens
+  signed with the EC public key are rejected (COR-894, GHSA-8v35-895w-232p).
 
 * COR-669: Server State Metric.
   Added the arangodb_server_health gauge metric to report the health status of
