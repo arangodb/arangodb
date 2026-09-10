@@ -88,20 +88,21 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info,
         "invalid non-string value for 'distributeShardsLike'");
   }
 
-  // A single server persists the leader's name, the agency plan its id.
-  // Normalize it so _distributeShardsLike is always a cid.
-  if (!_distributeShardsLike.empty() &&
+  // TODO (COR-885): move this to wherever the marker becomes a descriptor.
+  // Only a single server persists the leader's name; the plan stores its id.
+  if (ServerState::instance()->isSingleServer() &&
+      !_distributeShardsLike.empty() &&
       basics::StringUtils::try_uint64(_distributeShardsLike).fail()) {
     TRI_ASSERT(_collection != nullptr);
     CollectionNameResolver resolver(_collection->vocbase());
-    auto id = resolver.getCollectionId(_distributeShardsLike);
-    if (!id.isSet()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
-          absl::StrCat("Collection not found: ", _distributeShardsLike,
-                       " in database ", _collection->vocbase().name()));
+    if (auto id = resolver.getCollectionId(_distributeShardsLike); id.isSet()) {
+      _distributeShardsLike = std::to_string(id.id());
+    } else {
+      LOG_TOPIC("3f0a1", WARN, Logger::CLUSTER)
+          << "could not resolve distributeShardsLike '"
+          << _distributeShardsLike << "' of collection '"
+          << _collection->name() << "'";
     }
-    _distributeShardsLike = std::to_string(id.id());
   }
 
   VPackSlice v = info.get(StaticStrings::NumberOfShards);

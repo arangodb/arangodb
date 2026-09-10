@@ -47,9 +47,9 @@ Result validateUserInput(CollectionDescriptor const& d) {
   auto onAttribute = [&res](inspection::Status status,
                             std::string_view attribute) {
     if (res.ok() && !status.ok()) {
-      res = {TRI_ERROR_BAD_PARAMETER,
-             absl::StrCat(status.error(), " (on attribute \"", attribute,
-                          "\")")};
+      res = {
+          TRI_ERROR_BAD_PARAMETER,
+          absl::StrCat(status.error(), " (on attribute \"", attribute, "\")")};
     }
   };
   auto withCode = [&res](inspection::Status status, ErrorCode code) {
@@ -82,7 +82,8 @@ Result validateUserInput(CollectionDescriptor const& d) {
   withCode(ClusteringMutableProperties::Invariants::
                writeConcernAllowedToBeZeroForSatellite(d.clusteringMutable),
            TRI_ERROR_BAD_PARAMETER);
-
+  withCode(CollectionDescriptor::Invariants::isSmartConfiguration(d),
+           TRI_ERROR_BAD_PARAMETER);
   return res;
 }
 
