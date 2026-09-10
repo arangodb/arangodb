@@ -1887,8 +1887,6 @@ static void JS_Endpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  TRI_ASSERT(v8g->server().hasFeature<HttpEndpointProvider>());
-  auto& endpoints = v8g->server().getFeature<HttpEndpointProvider>();
   auto& vocbase = GetContextVocBase(isolate);
 
   if (!vocbase.isSystem()) {
@@ -1898,13 +1896,15 @@ static void JS_Endpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Handle<v8::Array> result = v8::Array::New(isolate);
   uint32_t j = 0;
 
-  for (auto const& it : endpoints.httpEndpoints()) {
-    v8::Handle<v8::Object> item = v8::Object::New(isolate);
-    item->Set(context, TRI_V8_ASCII_STRING(isolate, "endpoint"),
-              TRI_V8_STD_STRING(isolate, it))
-        .FromMaybe(false);
+  if (v8g->_endpoints != nullptr) {
+    for (auto const& it : v8g->_endpoints->httpEndpoints()) {
+      v8::Handle<v8::Object> item = v8::Object::New(isolate);
+      item->Set(context, TRI_V8_ASCII_STRING(isolate, "endpoint"),
+                TRI_V8_STD_STRING(isolate, it))
+          .FromMaybe(false);
 
-    result->Set(context, j++, item).FromMaybe(false);
+      result->Set(context, j++, item).FromMaybe(false);
+    }
   }
 
   TRI_V8_RETURN(result);
@@ -2403,13 +2403,14 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
           v8::Number::New(isolate, (double)threadNumber), v8::ReadOnly)
       .FromMaybe(false);  // ignore result
 
-  // whether or not statistics are enabled
+  bool const statisticsEnabled =
+      server.hasFeature<StatisticsFeature>() &&
+      server.getFeature<StatisticsFeature>().isEnabled();
   context->Global()
-      ->DefineOwnProperty(
-          TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "ENABLE_STATISTICS"),
-          v8::Boolean::New(isolate,
-                           server.getFeature<StatisticsFeature>().isEnabled()),
-          v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
+      ->DefineOwnProperty(TRI_IGETC,
+                          TRI_V8_ASCII_STRING(isolate, "ENABLE_STATISTICS"),
+                          v8::Boolean::New(isolate, statisticsEnabled),
+                          v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
 
   // replication factors

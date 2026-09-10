@@ -1920,21 +1920,24 @@ void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
 
   // poll interval for Foxx queues
   TRI_GET_GLOBALS();
-  FoxxFeature& foxxFeature = v8g->server().getFeature<FoxxFeature>();
+  if (v8g->server().hasFeature<FoxxFeature>()) {
+    FoxxFeature& foxxFeature = v8g->server().getFeature<FoxxFeature>();
 
-  isolate->GetCurrentContext()
-      ->Global()
-      ->DefineOwnProperty(
-          TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "FOXX_QUEUES_POLL_INTERVAL"),
-          v8::Number::New(isolate, foxxFeature.pollInterval()), v8::ReadOnly)
-      .FromMaybe(false);  // ignore result
+    isolate->GetCurrentContext()
+        ->Global()
+        ->DefineOwnProperty(
+            TRI_IGETC,
+            TRI_V8_ASCII_STRING(isolate, "FOXX_QUEUES_POLL_INTERVAL"),
+            v8::Number::New(isolate, foxxFeature.pollInterval()), v8::ReadOnly)
+        .FromMaybe(false);  // ignore result
 
-  isolate->GetCurrentContext()
-      ->Global()
-      ->DefineOwnProperty(
-          TRI_IGETC,
-          TRI_V8_ASCII_STRING(isolate, "FOXX_STARTUP_WAIT_FOR_SELF_HEAL"),
-          v8::Boolean::New(isolate, foxxFeature.startupWaitForSelfHeal()),
-          v8::ReadOnly)
-      .FromMaybe(false);  // ignore result
+    isolate->GetCurrentContext()
+        ->Global()
+        ->DefineOwnProperty(
+            TRI_IGETC,
+            TRI_V8_ASCII_STRING(isolate, "FOXX_STARTUP_WAIT_FOR_SELF_HEAL"),
+            v8::Boolean::New(isolate, foxxFeature.startupWaitForSelfHeal()),
+            v8::ReadOnly)
+        .FromMaybe(false);  // ignore result
+  }
 }

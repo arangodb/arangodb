@@ -735,7 +735,9 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (url.starts_with('/')) {
     // check if we are a server
-    endpoints = v8g->_endpoints.httpEndpoints();
+    if (v8g->_endpoints != nullptr) {
+      endpoints = v8g->_endpoints->httpEndpoints();
+    }
 
     // a relative url. now make this an absolute URL if possible
     for (auto const& endpoint : endpoints) {

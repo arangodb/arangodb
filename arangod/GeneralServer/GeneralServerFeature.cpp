@@ -567,7 +567,9 @@ void GeneralServerFeature::defineRemainingHandlers(
     rest::RestHandlerFactory& f) {
   TRI_ASSERT(_jobManager != nullptr);
 
-  AgencyFeature& agency = server().getFeature<AgencyFeature>();
+  AgencyFeature* agency = server().hasFeature<AgencyFeature>()
+                              ? &server().getFeature<AgencyFeature>()
+                              : nullptr;
   ClusterFeature& cluster = server().getFeature<ClusterFeature>();
 
   // ...........................................................................
@@ -727,16 +729,16 @@ void GeneralServerFeature::defineRemainingHandlers(
                      RestHandlerCreator<RestWalAccessHandler>::createNoData,
                      {0, 1});
 
-  if (agency.isEnabled()) {
+  if (agency != nullptr && agency->isEnabled()) {
     f.addPrefixHandler(
         RestVocbaseBaseHandler::AGENCY_PATH,
         RestHandlerCreator<RestAgencyHandler>::createData<consensus::Agent*>,
-        {0, 1}, agency.agent());
+        {0, 1}, agency->agent());
 
     f.addPrefixHandler(RestVocbaseBaseHandler::AGENCY_PRIV_PATH,
                        RestHandlerCreator<RestAgencyPrivHandler>::createData<
                            consensus::Agent*>,
-                       {0, 1}, agency.agent());
+                       {0, 1}, agency->agent());
   }
 
   if (cluster.isEnabled()) {
