@@ -28,10 +28,9 @@
 // Run in the `authentication` suite (auth is on there).
 
 const jsunity = require("jsunity");
-const { assertTrue, assertNotEqual } = jsunity.jsUnity.assertions;
+const { assertTrue, assertEqual, assertNotEqual } = jsunity.jsUnity.assertions;
 const arango = require("@arangodb").arango;
 const db = require("internal").db;
-const wait = require("internal").wait;
 const users = require("@arangodb/users");
 const KILLED = require("internal").errors.ERROR_QUERY_KILLED.code;
 const IM = require("@arangodb/test-helper").getInstanceInfo();
@@ -41,11 +40,8 @@ function suite() {
   const dbB = "AbortB";
   const coll = "victim";
 
-  const query = `FOR i IN 1..200 INSERT {i, w: SLEEP(0.05)} INTO ${coll}`;
+  const query = `FOR i IN 1..3 INSERT {i} INTO ${coll} RETURN NEW.i`;
   const login = (d, u) => arango.reconnect(arango.getEndpoint(), d, u, "pw");
-  const running = () =>
-    require("@arangodb/aql/queries").current().some((x) => x.query === query);
-  const poll = (fn) => { for (let i = 0; i < 3000; i++, wait(0.02)) { const r = fn(); if (r !== undefined) { return r; } } };
 
   return {
     setUpAll: function() {
@@ -70,26 +66,32 @@ function suite() {
 
     // COR-986
     testTransactionBetweenDatabaseIsolation: function() {
-      // bob starts a tracked modification query and we wait until it runs
+      // bob opens a streaming modification query. it stays registered in
+      // the query list until the last batch is fetched, so no waiting needed
       login(dbB, "bob");
-      const jobId = arango.POST_RAW("/_api/cursor", { query },
-                                    { "x-arango-async": "store" })
-                         .headers["x-arango-async-id"];
-      assertTrue(poll(() => running() || undefined), "query never started");
+      let res = arango.POST_RAW("/_api/cursor",
+                                { query, batchSize: 1, options: { stream: true } });
+      assertEqual(201, res.code, JSON.stringify(res));
+      assertTrue(res.parsedBody.hasMore, JSON.stringify(res));
+      const cursorId = res.parsedBody.id;
+      let results = res.parsedBody.result;
 
       // alice, read-only on dbA and no access to dbB, fires the bulk cancel
       login(dbA, "alice");
-      arango.DELETE_RAW(`/_db/${dbA}/_api/transaction/write`);
+      const abort = arango.DELETE_RAW(`/_db/${dbA}/_api/transaction/write`);
+      assertEqual(200, abort.code, JSON.stringify(abort));
 
-      // bob's query must survive (fails on current code: killed -> 410 / 1500)
+      // bob's query must survive (fails on buggy code: killed -> 410 / 1500)
       login(dbB, "bob");
-      const res = poll(() => {
-        const r = arango.PUT_RAW("/_api/job/" + jobId, {});
-        return r.code === 204 ? undefined : r;
-      });
-      assertNotEqual(410, res.code, "alice killed bob's query: " + JSON.stringify(res));
-      assertNotEqual(KILLED, res.parsedBody && res.parsedBody.errorNum,
-                     JSON.stringify(res));
+      while (res.parsedBody.hasMore) {
+        res = arango.POST_RAW(`/_api/cursor/${cursorId}`, {});
+        assertNotEqual(410, res.code, "alice killed bob's query: " + JSON.stringify(res));
+        assertNotEqual(KILLED, res.parsedBody.errorNum, JSON.stringify(res));
+        assertEqual(200, res.code, JSON.stringify(res));
+        results = results.concat(res.parsedBody.result);
+      }
+      assertEqual([1, 2, 3], results);
+      assertEqual(3, db._collection(coll).count());
     },
   };
 }
