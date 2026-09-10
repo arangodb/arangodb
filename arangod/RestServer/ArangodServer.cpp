@@ -42,8 +42,7 @@ using namespace arangodb::application_features;
 namespace {
 // the rest of what this used to list is now conditionally registered instead
 auto const kNonServerFeatures =
-    std::array{std::type_index(typeid(ActionFeature)),
-               std::type_index(typeid(ClusterFeature))};
+    std::array{std::type_index(typeid(ClusterFeature))};
 
 // decouples RocksDBEngine from needing AgencyFeature to exist
 struct SortingPolicy final : public ISortingPolicy {
@@ -207,7 +206,6 @@ void ArangodServer::addFeatures() {
       getOptions<metrics::MetricsOptionsProvider>());
   addFeature<metrics::ClusterMetricsFeature>(
       getOptions<metrics::ClusterMetricsOptionsProvider>());
-  addFeature<ActionFeature>(getOptions<ActionOptionsProvider>());
   addFeature<ApiRecordingFeature>(_dataSourceRegistry, metrics,
                                   getOptions<ApiRecordingOptionsProvider>());
   addFeature<AqlFeature>();
@@ -252,6 +250,9 @@ void ArangodServer::addFeatures() {
       getOptions<ServerOptionsProvider>().operationMode;
   bool const enableDaemonSupervisor =
       !auxMode && restServer && operationMode != OperationMode::MODE_CONSOLE;
+  if (!skipNonServerFeatures) {
+    addFeature<ActionFeature>(getOptions<ActionOptionsProvider>());
+  }
 #ifdef USE_V8
   bool const enableJS = getOptions<V8DealerOptionsProvider>().enableJS;
   bool const agencyActivated = getOptions<AgencyOptionsProvider>().activated;
@@ -349,14 +350,16 @@ void ArangodServer::addFeatures() {
     v8DealerFeature.disable();
   }
 #endif
-  addFeature<BootstrapFeature>(
-      clusterFeature, database, &systemDatabaseFeature, &clusterUpgradeFeature
+  if (!skipNonServerFeatures) {
+    addFeature<BootstrapFeature>(
+        clusterFeature, database, &systemDatabaseFeature, &clusterUpgradeFeature
 #ifdef USE_V8
-      ,
-      &v8DealerFeature
+        ,
+        &v8DealerFeature
 #endif
-      ,
-      getOptions<bootstrap::BootstrapOptionsProvider>());
+        ,
+        getOptions<bootstrap::BootstrapOptionsProvider>());
+  }
   if (!skipNonServerFeatures) {
     addFeature<ServerFeature>(_ret, getOptions<ServerOptionsProvider>());
   }
