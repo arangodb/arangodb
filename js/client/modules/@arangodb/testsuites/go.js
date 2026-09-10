@@ -25,11 +25,11 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
-  'go_driver': 'go client driver test (v3 on ArangoDB 4.0+, v2 on 3.12.*)',
+  'go_driver': 'go client driver test (driver version defaults based on ArangoDB version)',
 };
 const optionsDocumentation = [
   '   - `gosource`: directory of the go driver',
-  '   - `goVersion`: go-driver subdirectory under gosource (`v2` or `v3`). If unset, ArangoDB 4.0+ uses v3 and 3.12.* uses v2',
+  '   - `goVersion`: go-driver subdirectory under gosource (`v2` or `v3`); defaults to v3 on ArangoDB 4.0+ and v2 on 3.12.*',
   '   - `goOptions`: additional arguments to pass via the `TEST_OPTIONS` environment, i.e. ` -timeout 180m` (prepend blank!)'
 ];
 

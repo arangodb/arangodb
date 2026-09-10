@@ -10,15 +10,19 @@ tests:
       priority: 500
       type: single
       size: large
+      suffix: v2
     args:
       extremeVerbosity: true
+      goVersion: v2
 - go_driver:
     job: run-driver-tests
     options:
       priority: 500
       type: cluster
+      suffix: v2
       size: large
       timeLimit: 7200
     args:
       extremeVerbosity: true
       oneTestTimeout: 7150
+      goVersion: v2
