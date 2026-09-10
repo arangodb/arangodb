@@ -906,10 +906,7 @@ void RocksDBEngine::start() {
   // up
   determineWalFilesInitial();
 
-  VPackBuilder databases;
-  getDatabases(databases);
-  TRI_ASSERT(databases.slice().isArray());
-  _databaseBootstrap.bootstrapDatabases(databases.slice());
+  materializeDatabases();
 
   runRecovery();
 
@@ -924,8 +921,13 @@ void RocksDBEngine::start() {
         << "could not start rocksdb counter manager thread";
     FATAL_ERROR_EXIT();
   }
+}
 
-  _databaseBootstrap.recoveryDone();
+void RocksDBEngine::materializeDatabases() {
+  VPackBuilder databases;
+  getDatabases(databases);
+  TRI_ASSERT(databases.slice().isArray());
+  _databaseBootstrap.bootstrapDatabases(databases.slice());
 }
 
 void RocksDBEngine::runRecovery() {
@@ -934,6 +936,7 @@ void RocksDBEngine::runRecovery() {
   manager.runRecovery();
   // synchronizes with engineState()'s acquire-load; publishes _recoveryTick too
   _engineState.store(EngineState::kRunning, std::memory_order_release);
+  _databaseBootstrap.recoveryDone();
 }
 
 void RocksDBEngine::beginShutdown() {

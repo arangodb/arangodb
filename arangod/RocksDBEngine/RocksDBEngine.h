@@ -580,6 +580,9 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   bool checkExistingDB(
       std::vector<rocksdb::ColumnFamilyDescriptor> const& cfFamilies);
 
+  // hands the on-disk database inventory to the bootstrap provider
+  void materializeDatabases();
+
   void runRecovery();
 
   auto makeLogStorageMethods(replication2::LogId logId, uint64_t objectId,
