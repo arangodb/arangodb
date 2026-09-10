@@ -38,8 +38,9 @@ const {
 } = require('@arangodb/test-helper');
 let { instanceRole } = require('@arangodb/testutils/instance');
 
-const fetchRevisionTree = (server, shardId) => {
+const fetchRevisionTree = (server, dbname, shardId) => {
   return server.toThisInstance(() => {
+    db._useDatabase(dbname);
     let result = arango.POST_RAW("/_api/replication/batch", {ttl : 3600});
     assertEqual(200, result.code);
     if (!result.parsedBody.hasOwnProperty("id")) {
@@ -47,13 +48,9 @@ const fetchRevisionTree = (server, shardId) => {
     }
     let cursorID = result.parsedBody.id;
     result = arango.GET_RAW(`/_api/replication/revisions/tree?collection=${encodeURIComponent(shardId)}&verification=true&batchId=${cursorID}&onlyPopulated=true`);
-    if (result.code !== 404 && result.parsedBody.errorNum !== internal.error.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
-      assertEqual(200, result.code, {result, cursorID, shardId});
-      arango.DELETE_RAW(`/_api/replication/batch/${cursorID}`);
-    } else {
-      print(`             ${Date()} fetching revision tree for ${shardId} from ${server.name} failed: ${JSON.stringify(result.parsedBody)}`);
-      return result.parsedBody;
-    }
+    assertEqual(200, result.code, {result, cursorID, shardId});
+    arango.DELETE_RAW(`/_api/replication/batch/${cursorID}`);
+    return result.parsedBody;
   });
 };
 
@@ -62,7 +59,7 @@ const compareTree = function (left, right) {
   return _.every(attributes, (attr) => left[attr] === right[attr]);
 };
 
-const checkCollectionConsistency = (cn) => {
+const checkCollectionConsistency = (cn, dbname) => {
   let IM = global.instanceManager;
   const c = db._collection(cn);
   const dbServers = IM.getInstancesRole(instanceRole.dbserver);
@@ -79,11 +76,7 @@ const checkCollectionConsistency = (cn) => {
       ([shard, [leaderID, followerID]]) => {
         let leader = IM.getInstanceByID(leaderID);
         let follower = IM.getInstanceByID(followerID);
-        const leaderTree = fetchRevisionTree(leader, shard);
-        if (leaderTree.errorNum !== 0) {
-          failed = true;
-          return;
-        }        
+        const leaderTree = fetchRevisionTree(leader, dbname, shard);
         // We remove the computed and stored nodes since we may want to print the trees, but we
         // don't want to print the 262k buckets! Equality of the trees is checked using the single
         // combined hash and document count.
@@ -97,7 +90,7 @@ const checkCollectionConsistency = (cn) => {
         // note: with rf > 1, follower is always present. the code is generalized however so
         // that the tests can easily be run with rf = 1 for debugging purposes.
         if (follower) {
-          const followerTree = fetchRevisionTree(follower, shard);
+          const followerTree = fetchRevisionTree(follower, dbname, shard);
           followerTree.computed.nodes = "<reduced>";
           followerTree.stored.nodes = "<reduced>";
           if (!followerTree.equal) {
@@ -117,7 +110,7 @@ const checkCollectionConsistency = (cn) => {
         }
       });
     if (failed) {
-      if (++tries >= 60) {
+      if (++tries >= 10) {
         assertFalse(failed, `Cluster still not in sync - giving up!`);
       }
       console.warn(`Found some inconsistencies! Giving cluster some more time to get in sync before checking again... try=${tries}`);
@@ -615,7 +608,7 @@ function BaseChaosSuite(testOpts) {
         print(`${Date()} Waiting for shards to get in sync ${cn}`);
         waitForShardsInSync(cn, 300, db[cn].properties().replicationFactor - 1);
         print(Date() + " checking consistency");
-        checkCollectionConsistency(cn);
+        checkCollectionConsistency(cn, dbname);
         let viewCounts = [];
         if (testOpts.withViews) {
           print(Date() + " checking view 1 consistency");
