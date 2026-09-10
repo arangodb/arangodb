@@ -51,7 +51,7 @@ PathRange PathRange::unboundedMin(uint64_t minDepth) {
 }
 
 PathRange::PathRange(Kind kind, uint64_t minDepth,
-                               std::optional<uint64_t> maxDepth)
+                     std::optional<uint64_t> maxDepth)
     : _kind{kind}, _minDepth{minDepth}, _maxDepth{maxDepth} {}
 
 bool PathRange::isFixedOne() const noexcept {
@@ -62,8 +62,7 @@ bool PathRange::isFixed() const noexcept {
   return _maxDepth.has_value() && _minDepth == *_maxDepth;
 }
 
-ProjectionItem ProjectionItem::keepPath(
-    std::vector<std::string> path) {
+ProjectionItem ProjectionItem::keepPath(std::vector<std::string> path) {
   TRI_ASSERT(!path.empty());
   ProjectionItem item;
   item.kind = Kind::kKeepAttribute;
@@ -81,7 +80,7 @@ ProjectionItem ProjectionItem::keepLiteral(std::string key) {
 }
 
 ProjectionItem ProjectionItem::alias(std::string name,
-                                               ExpressionRef expression) {
+                                     ExpressionRef expression) {
   ProjectionItem item;
   item.kind = Kind::kAlias;
   item.name = std::move(name);

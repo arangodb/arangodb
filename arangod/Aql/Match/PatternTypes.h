@@ -89,8 +89,7 @@ struct PathRange {
   bool isFixed() const noexcept;
 
  private:
-  PathRange(Kind kind, uint64_t minDepth,
-                 std::optional<uint64_t> maxDepth);
+  PathRange(Kind kind, uint64_t minDepth, std::optional<uint64_t> maxDepth);
 
   Kind _kind{Kind::kDefaultFixedOne};
   uint64_t _minDepth{1};
@@ -137,11 +136,10 @@ struct ProjectionItem {
   /// @brief only set for alias items; Ast-owned expression subtree
   ExpressionRef expression;
 
-  [[nodiscard]] static ProjectionItem keepPath(
-      std::vector<std::string> path);
+  [[nodiscard]] static ProjectionItem keepPath(std::vector<std::string> path);
   [[nodiscard]] static ProjectionItem keepLiteral(std::string key);
   [[nodiscard]] static ProjectionItem alias(std::string name,
-                                                 ExpressionRef expression);
+                                            ExpressionRef expression);
 
   [[nodiscard]] bool isKeep() const noexcept {
     return kind == Kind::kKeepAttribute || kind == Kind::kKeepLiteral;

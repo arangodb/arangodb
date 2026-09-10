@@ -36,14 +36,12 @@ class PatternNormalizer {
  public:
   explicit PatternNormalizer(Ast& ast) noexcept;
 
-  [[nodiscard]] NormalizedStatement normalize(
-      AstNode const& matchNode) const;
+  [[nodiscard]] NormalizedStatement normalize(AstNode const& matchNode) const;
 
  private:
   [[nodiscard]] NormalizedPattern normalizePattern(
       AstNode const& matchExpr) const;
-  [[nodiscard]] PatternElement normalizeStartElement(
-      AstNode const& node) const;
+  [[nodiscard]] PatternElement normalizeStartElement(AstNode const& node) const;
   [[nodiscard]] NormalizedSegment normalizeSegment(
       AstNode const& segment) const;
   [[nodiscard]] NormalizedVertex normalizeVertex(
@@ -59,8 +57,7 @@ class PatternNormalizer {
       AstNode const* node) const;
   [[nodiscard]] std::optional<Projection> normalizeProjection(
       AstNode const* node) const;
-  [[nodiscard]] EdgeDirection normalizeDirection(
-      AstNode const* node) const;
+  [[nodiscard]] EdgeDirection normalizeDirection(AstNode const* node) const;
   [[nodiscard]] PathRange normalizeRange(AstNode const* node) const;
 
   Ast& _ast;

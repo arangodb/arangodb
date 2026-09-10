@@ -73,8 +73,7 @@ class Builder {
   /// variable and register destination→temp in @p subst; otherwise enumerate
   /// directly into @p destination.
   ProjectionBinding bindProjectedVariable(
-      Variable const* destination,
-      std::optional<Projection> const& projection,
+      Variable const* destination, std::optional<Projection> const& projection,
       std::unordered_map<VariableId, Variable const*>& subst);
 
   /// @brief Queue a delayed projection CalculationNode when @p binding has a
@@ -143,8 +142,7 @@ class Builder {
   std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
   createTraversalForPattern(
       Variable const* startNodeVar, NormalizedEdge const& edge,
-      PatternElement const& target,
-      Variable const* edgeDocumentOutputVariable,
+      PatternElement const& target, Variable const* edgeDocumentOutputVariable,
       Variable const* vertexDocumentOutputVariable,
       std::unordered_map<VariableId, Variable const*> const& subst);
 

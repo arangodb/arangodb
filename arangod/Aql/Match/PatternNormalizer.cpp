@@ -167,8 +167,7 @@ NormalizedVertex PatternNormalizer::normalizeVertex(
   return vertex;
 }
 
-NormalizedEdge PatternNormalizer::normalizeEdge(
-    AstNode const& edge) const {
+NormalizedEdge PatternNormalizer::normalizeEdge(AstNode const& edge) const {
   ast::PatternEdge typed{&edge};
 
   NormalizedEdge result;
@@ -193,8 +192,7 @@ NormalizedEdge PatternNormalizer::normalizeEdge(
   return result;
 }
 
-DataSource PatternNormalizer::normalizeDataSource(
-    AstNode const& node) const {
+DataSource PatternNormalizer::normalizeDataSource(AstNode const& node) const {
   switch (node.type) {
     case NODE_TYPE_COLLECTION:
       return DataSource::collection(std::string(node.getStringView()));
@@ -222,8 +220,8 @@ std::vector<DataSource> PatternNormalizer::normalizeDataSourceList(
   return collections;
 }
 
-std::vector<PropertyConstraint>
-PatternNormalizer::normalizeProperties(AstNode const* node) const {
+std::vector<PropertyConstraint> PatternNormalizer::normalizeProperties(
+    AstNode const* node) const {
   std::vector<PropertyConstraint> properties;
   if (node == nullptr || node->type == NODE_TYPE_NOP) {
     return properties;
@@ -274,8 +272,7 @@ std::optional<Projection> PatternNormalizer::normalizeProjection(
         TRI_ASSERT(part->isStringValue());
         path.emplace_back(part->getString());
       }
-      projection.items.push_back(
-          ProjectionItem::keepPath(std::move(path)));
+      projection.items.push_back(ProjectionItem::keepPath(std::move(path)));
     } else if (item->type == NODE_TYPE_VALUE && item->isStringValue()) {
       // Quoted literal keep: single top-level key (dots are not hierarchy).
       // e.g. "profile.name" → {"profile.name"}
@@ -290,8 +287,7 @@ std::optional<Projection> PatternNormalizer::normalizeProjection(
   return projection;
 }
 
-EdgeDirection PatternNormalizer::normalizeDirection(
-    AstNode const* node) const {
+EdgeDirection PatternNormalizer::normalizeDirection(AstNode const* node) const {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_VALUE);
 
@@ -308,8 +304,7 @@ EdgeDirection PatternNormalizer::normalizeDirection(
   }
 }
 
-PathRange PatternNormalizer::normalizeRange(
-    AstNode const* node) const {
+PathRange PatternNormalizer::normalizeRange(AstNode const* node) const {
   if (node == nullptr || node->type == NODE_TYPE_NOP) {
     return PathRange::defaultFixedOne();
   }
