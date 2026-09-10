@@ -39,7 +39,10 @@
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
 #include "Aql/OptimizerRulesFeature.h"
-#include "Auth/UserManagerMock.h"
+#include "Aql/QueryRegistry.h"
+#include "Mocks/Auth/UserManagerTester.h"
+#include "Mocks/ExecContextFactory.h"
+#include "Basics/files.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -91,8 +94,8 @@ struct TestIndex : arangodb::Index {
   }
   void load() override {}
   size_t memory() const override { return sizeof(Index); }
-  arangodb::Index::IndexType type() const override {
-    return arangodb::Index::TRI_IDX_TYPE_UNKNOWN;
+  arangodb::IndexType type() const override {
+    return arangodb::IndexType::Unknown;
   }
   char const* typeName() const override { return "testType"; }
   void unload() override {}
@@ -430,53 +433,20 @@ class IResearchAnalyzerFeatureTest
     server.addFeature<arangodb::aql::OptimizerRulesFeature>(true);
 
     server.startFeatures();
-    expectUserManagerCalls();
 
     auto vocbase =
         _databaseFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
     std::shared_ptr<arangodb::LogicalCollection> unused;
-    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::OperationOptions options;
     arangodb::methods::Collections::createSystem(
         *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
         unused);
   }
 
-  void expectUserManagerCalls() {
-    using namespace arangodb;
-    auto* authFeature = AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
-    auto* um =
-        dynamic_cast<testing::StrictMock<auth::UserManagerMock>*>(userManager);
-    EXPECT_NE(um, nullptr);
-
-    using namespace ::testing;
-    EXPECT_CALL(*um, databaseAuthLevel)
-        .WillRepeatedly(WithArgs<0, 1>(
-            [this](std::string const& username, std::string const& dbname) {
-              auto const it = _userMap.find(username);
-              EXPECT_NE(it, _userMap.end());
-              return it->second.databaseAuthLevel(dbname);
-            }));
-    EXPECT_CALL(*um, collectionAuthLevel)
-        .WillRepeatedly(WithArgs<0, 1, 2>([this](std::string const& username,
-                                                 std::string const& dbname,
-                                                 std::string_view cname) {
-          auto const it = _userMap.find(username);
-          if (it == _userMap.end()) {
-            return auth::Level::NONE;
-          }
-          EXPECT_EQ(username, it->second.username());
-          return it->second.collectionAuthLevel(dbname, cname);
-        }));
-    EXPECT_CALL(*um, setAuthInfo)
-        .WillRepeatedly(WithArgs<0>(
-            [this](auth::UserMap const& userMap) { _userMap = userMap; }));
-  }
-  arangodb::auth::UserMap _userMap;
-
   void userSetAccessLevel(arangodb::auth::Level db, arangodb::auth::Level col) {
     auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
-    auto* um = authFeature.userManager();
+    auto* um = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature.userManager());
     ASSERT_NE(um, nullptr);
     auto user = arangodb::auth::User::newUser("testUser", "testPW");
     user.grantDatabase("testVocbase", db);
@@ -487,8 +457,10 @@ class IResearchAnalyzerFeatureTest
                                           // configuration from system database
   }
 
-  std::shared_ptr<arangodb::ExecContext> getLoggedInContext() const {
-    return arangodb::ExecContext::create("testUser", "testVocbase");
+  arangodb::tests::mocks::BorrowedExecContext getLoggedInContext() {
+    auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
+    auto* um = authFeature.userManager();
+    return arangodb::tests::mocks::makeClassicExecContextFrom(*um, "testUser");
   }
 
   std::string analyzerName() const {
@@ -510,93 +482,6 @@ class IResearchAnalyzerFeatureTest
 // -----------------------------------------------------------------------------
 // --SECTION--                                         authentication test suite
 // -----------------------------------------------------------------------------
-
-TEST_F(IResearchAnalyzerFeatureTest, test_auth_no_auth) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
-  EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RW));
-}
-TEST_F(IResearchAnalyzerFeatureTest, test_auth_no_vocbase_read) {
-  // no vocbase read access
-  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
-  userSetAccessLevel(arangodb::auth::Level::NONE, arangodb::auth::Level::NONE);
-  auto ctxt = getLoggedInContext();
-  arangodb::ExecContextScope execContextScope(ctxt);
-  EXPECT_FALSE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RO));
-}
-
-// no collection read access (vocbase read access, no user)
-TEST_F(IResearchAnalyzerFeatureTest,
-       test_auth_vocbase_none_collection_read_no_user) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
-  userSetAccessLevel(arangodb::auth::Level::NONE, arangodb::auth::Level::RO);
-  auto ctxt = getLoggedInContext();
-  arangodb::ExecContextScope execContextScope(ctxt);
-  EXPECT_FALSE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RO));
-}
-
-// no collection read access (vocbase read access)
-TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_none) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
-  userSetAccessLevel(arangodb::auth::Level::RO, arangodb::auth::Level::NONE);
-  auto ctxt = getLoggedInContext();
-  arangodb::ExecContextScope execContextScope(ctxt);
-  // implicit RO access to collection _analyzers collection granted due to RO
-  // access to db
-  EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RO));
-
-  EXPECT_FALSE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RW));
-}
-
-TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_ro) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
-  userSetAccessLevel(arangodb::auth::Level::RO, arangodb::auth::Level::RO);
-  auto ctxt = getLoggedInContext();
-  arangodb::ExecContextScope execContextScope(ctxt);
-  EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RO));
-  EXPECT_FALSE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RW));
-}
-
-TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_rw) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
-  userSetAccessLevel(arangodb::auth::Level::RO, arangodb::auth::Level::RW);
-  auto ctxt = getLoggedInContext();
-  arangodb::ExecContextScope execContextScope(ctxt);
-  EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RO));
-  EXPECT_FALSE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RW));
-}
-
-TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_rw_collection_ro) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
-  userSetAccessLevel(arangodb::auth::Level::RW, arangodb::auth::Level::RO);
-  auto ctxt = getLoggedInContext();
-  arangodb::ExecContextScope execContextScope(ctxt);
-  EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RO));
-  // implicit access for system analyzers collection granted due to RW access to
-  // database
-  EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RW));
-}
-
-TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_rw_collection_rw) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
-  userSetAccessLevel(arangodb::auth::Level::RW, arangodb::auth::Level::RW);
-  auto ctxt = getLoggedInContext();
-  arangodb::ExecContextScope execContextScope(ctxt);
-  EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RO));
-  EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RW));
-}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                emplace test suite
@@ -1241,7 +1126,7 @@ class IResearchAnalyzerFeatureGetTest : public IResearchAnalyzerFeatureTest {
             .ok());
     ASSERT_NE(_vocbase, nullptr);
     std::shared_ptr<arangodb::LogicalCollection> unused;
-    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::OperationOptions options;
     arangodb::methods::Collections::createSystem(
         *_vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
         unused);
@@ -3093,7 +2978,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
       arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
       auto feature = createAnalyzerFeature();
       std::shared_ptr<arangodb::LogicalCollection> unused;
-      arangodb::OperationOptions options(arangodb::ExecContext::current());
+      arangodb::OperationOptions options;
       arangodb::methods::Collections::createSystem(
           *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
           unused);
@@ -3223,7 +3108,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
       arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
       auto feature = createAnalyzerFeature();
       std::shared_ptr<arangodb::LogicalCollection> unused;
-      arangodb::OperationOptions options(arangodb::ExecContext::current());
+      arangodb::OperationOptions options;
       arangodb::methods::Collections::createSystem(
           *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
           unused);
@@ -3341,7 +3226,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   }
 
   std::shared_ptr<arangodb::LogicalCollection> unused;
-  arangodb::OperationOptions options(arangodb::ExecContext::current());
+  arangodb::OperationOptions options;
   arangodb::methods::Collections::createSystem(
       *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
       unused);
@@ -3980,7 +3865,7 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest, no_system_no_analyzer) {
   // TODO: We should use global system creation here instead of all the
   // exissting manual stuff ...
   std::shared_ptr<arangodb::LogicalCollection> unused;
-  arangodb::OperationOptions options(arangodb::ExecContext::current());
+  arangodb::OperationOptions options;
   arangodb::methods::Collections::createSystem(
       *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
       unused);
@@ -4032,7 +3917,7 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest,
   // TODO: We should use global system creation here instead of all the
   // exissting manual stuff ...
   std::shared_ptr<arangodb::LogicalCollection> unused;
-  arangodb::OperationOptions options(arangodb::ExecContext::current());
+  arangodb::OperationOptions options;
   arangodb::methods::Collections::createSystem(
       *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
       unused);
@@ -4077,7 +3962,7 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest,
   // TODO: We should use global system creation here instead of all the
   // exissting manual stuff ...
   std::shared_ptr<arangodb::LogicalCollection> unused;
-  arangodb::OperationOptions options(arangodb::ExecContext::current());
+  arangodb::OperationOptions options;
   arangodb::methods::Collections::createSystem(
       *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
       unused);
@@ -4135,7 +4020,7 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest,
   // TODO: We should use global system creation here instead of all the
   // exissting manual stuff ...
   std::shared_ptr<arangodb::LogicalCollection> unused;
-  arangodb::OperationOptions options(arangodb::ExecContext::current());
+  arangodb::OperationOptions options;
   arangodb::methods::Collections::createSystem(
       *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
       unused);
@@ -4200,7 +4085,7 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest,
   // TODO: We should use global system creation here instead of all the
   // exissting manual stuff ...
   std::shared_ptr<arangodb::LogicalCollection> unused;
-  arangodb::OperationOptions options(arangodb::ExecContext::current());
+  arangodb::OperationOptions options;
   arangodb::methods::Collections::createSystem(
       *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
       unused);
@@ -4258,7 +4143,7 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest,
   // TODO: We should use global system creation here instead of all the
   // exissting manual stuff ...
   std::shared_ptr<arangodb::LogicalCollection> unused;
-  arangodb::OperationOptions options(arangodb::ExecContext::current());
+  arangodb::OperationOptions options;
   arangodb::methods::Collections::createSystem(
       *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
       unused);
@@ -4399,7 +4284,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
     sysDatabase.start();  // get system database from DatabaseFeature
     auto system = sysDatabase.use();
     std::shared_ptr<arangodb::LogicalCollection> unused;
-    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::OperationOptions options;
     arangodb::methods::Collections::createSystem(
         *system, options, arangodb::tests::AnalyzerCollectionName, false,
         unused);
@@ -4527,7 +4412,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
           .createDatabase(createInfo(server.server(), "vocbase2", 1), vocbase2)
           .ok());
   std::shared_ptr<arangodb::LogicalCollection> unused;
-  arangodb::OperationOptions options(arangodb::ExecContext::current());
+  arangodb::OperationOptions options;
   arangodb::methods::Collections::createSystem(
       *vocbase0, options, arangodb::tests::AnalyzerCollectionName, false,
       unused);
@@ -4746,7 +4631,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
     auto vocbase =
         dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
     std::shared_ptr<arangodb::LogicalCollection> unused;
-    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::OperationOptions options;
     arangodb::methods::Collections::createSystem(
         *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
         unused);
@@ -4894,7 +4779,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
     auto vocbase =
         dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
     std::shared_ptr<arangodb::LogicalCollection> unused;
-    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::OperationOptions options;
     arangodb::methods::Collections::createSystem(
         *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
         unused);

@@ -52,11 +52,11 @@ function error_handlingSuite () {
       let cmd = api + "/123456/123456";
       let doc = arango.GET_RAW(cmd);
 
-      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_FORBIDDEN.code);
       assertEqual(doc.headers['content-type'], contentType);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], 1203);
-      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_FORBIDDEN.code);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_FORBIDDEN.code);
     },
 
     test_returns_an_error_if_index_identifier_is_unknown: function() {

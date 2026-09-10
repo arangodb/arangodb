@@ -23,7 +23,7 @@
 #pragma once
 
 #include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 
 namespace arangodb {
 namespace application_features {
@@ -34,7 +34,7 @@ namespace import {
 
 class ImportHelper;
 
-class AutoTuneThread final : public arangodb::Thread {
+class AutoTuneThread final : public arangodb::BasicThread {
  private:
   AutoTuneThread(AutoTuneThread const&) = delete;
   AutoTuneThread& operator=(AutoTuneThread const&) = delete;

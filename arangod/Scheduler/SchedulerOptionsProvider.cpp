@@ -32,20 +32,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-namespace {
-/// @brief return the default number of threads to use (upper bound)
-size_t defaultNumberOfThreads() {
-  // use two times the number of hardware threads as the default
-  size_t result = arangodb::NumberOfCores::getValue() * 2;
-  // but only if higher than 64. otherwise use a default minimum value of 32
-  if (result < 32) {
-    result = 32;
-  }
-  return result;
-}
-}  // namespace
-
-void SchedulerOptionsProvider::declareOptions(
+void SchedulerOptionsProvider::declareOptionsImpl(
     std::shared_ptr<options::ProgramOptions> options,
     SchedulerFeatureOptions& opts) {
   options
@@ -53,7 +40,8 @@ void SchedulerOptionsProvider::declareOptions(
           "--server.maximal-threads",
           std::string("The maximum number of request handling threads to run "
                       "(0 = use system-specific default of ") +
-              std::to_string(defaultNumberOfThreads()) + ")",
+              std::to_string(SchedulerFeatureOptions::getDefaultMaxThreads()) +
+              ")",
           new UInt64Parameter(&opts.nrMaximalThreads),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Dynamic))
@@ -190,7 +178,7 @@ return HTTP 503 instead of HTTP 200 when their availability API is probed.)");
       .setIntroducedIn(31201);
 }
 
-void SchedulerOptionsProvider::validateOptions(
+void SchedulerOptionsProvider::processOptionsImpl(
     std::shared_ptr<options::ProgramOptions> options,
     SchedulerFeatureOptions& opts) {
   auto const N = NumberOfCores::getValue();
@@ -206,7 +194,7 @@ void SchedulerOptionsProvider::validateOptions(
         << ") is more than eight times the number of cores (" << N
         << "), this might overload the server";
   } else if (opts.nrMaximalThreads == 0) {
-    opts.nrMaximalThreads = defaultNumberOfThreads();
+    opts.nrMaximalThreads = SchedulerFeatureOptions::getDefaultMaxThreads();
   }
 
   if (opts.nrMinimalThreads < 4) {

@@ -32,7 +32,7 @@
 #include "Cache/BinaryKeyHasher.h"
 #include "Cache/Cache.h"
 #include "Cache/CachedValue.h"
-#include "Cache/CacheOptionsProvider.h"
+#include "Cache/CacheOptions.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/Rebalancer.h"

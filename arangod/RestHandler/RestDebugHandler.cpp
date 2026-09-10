@@ -23,6 +23,7 @@
 #include "RestDebugHandler.h"
 
 #include "Basics/DebugRaceController.h"
+#include "Cluster/ServerState.h"
 
 #include <velocypack/Slice.h>
 
@@ -35,6 +36,24 @@ RestDebugHandler::RestDebugHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+async<RestHandler::AuthenticationGrant>
+RestDebugHandler::checkUserAuthentication() const {
+  // Note that this particular RestHandler might be called during startup (or
+  // in maintenance mode). The AuthenticationFeature might not yet be available
+  // for authorization, and must not be consulted.
+  if (auto const mode = ServerState::mode();
+      mode == ServerState::Mode::STARTUP ||
+      mode == ServerState::Mode::MAINTENANCE) {
+    co_return request()->authenticated()  // with JWT can also be authenticated
+        ? AuthenticationGrant::GRANTED_EARLY
+        : AuthenticationGrant::DENIED;
+  }
+
+  co_return co_await RestBaseHandler::checkUserAuthentication();
+}
+
+// Mounted at /_admin/debug (prefix, only when ARANGODB_ENABLE_FAILURE_TESTS is
+// defined)
 RestStatus RestDebugHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();

@@ -1,0 +1,11 @@
+# Disable clang-tidy entirely for vendored / third-party code.
+#
+# clang-tidy applies the *nearest* .clang-tidy walking up from each file, so
+# this file shadows the repository-root config for everything under 3rdParty/.
+# We neither own nor style this code (it is also compiled with -w, warnings
+# off, in 3rdParty/CMakeLists.txt), so analyzing it only produces noise.
+#
+# Note: run-clang-tidy / utils/clang-tidy.sh additionally avoid *invoking*
+# clang-tidy on 3rdParty translation units in the first place; this file is the
+# backstop for the case where a 3rdParty header is reached transitively.
+Checks: '-*'
