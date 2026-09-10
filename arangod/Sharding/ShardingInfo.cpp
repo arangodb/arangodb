@@ -99,9 +99,8 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info,
       _distributeShardsLike = std::to_string(id.id());
     } else {
       LOG_TOPIC("3f0a1", WARN, Logger::CLUSTER)
-          << "could not resolve distributeShardsLike '"
-          << _distributeShardsLike << "' of collection '"
-          << _collection->name() << "'";
+          << "could not resolve distributeShardsLike '" << _distributeShardsLike
+          << "' of collection '" << _collection->name() << "'";
     }
   }
 

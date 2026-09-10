@@ -82,8 +82,6 @@ Result validateUserInput(CollectionDescriptor const& d) {
   withCode(ClusteringMutableProperties::Invariants::
                writeConcernAllowedToBeZeroForSatellite(d.clusteringMutable),
            TRI_ERROR_BAD_PARAMETER);
-  withCode(CollectionDescriptor::Invariants::isSmartConfiguration(d),
-           TRI_ERROR_BAD_PARAMETER);
   return res;
 }
 

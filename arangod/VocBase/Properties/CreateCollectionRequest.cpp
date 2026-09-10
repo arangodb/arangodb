@@ -658,6 +658,12 @@ ResultT<CreateCollectionRequest> parseAndValidate(
     auto status =
         velocypack::deserializeWithStatus(input, res, {}, InspectUserContext{});
     if (status.ok()) {
+      if (auto invariant =
+              CollectionDescriptor::Invariants::isSmartConfiguration(
+                  res.descriptor);
+          !invariant.ok()) {
+        return statusToResult(invariant);
+      }
       applyCompatibilityHacks(res.descriptor);
       // Inject default values, and finally check if collection is allowed
       auto result = applyDefaultsAndValidate(res.descriptor, config);
