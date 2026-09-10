@@ -110,7 +110,7 @@ const checkCollectionConsistency = (cn, dbname) => {
         }
       });
     if (failed) {
-      if (++tries >= 10) {
+      if (++tries >= 6) {
         assertFalse(failed, `Cluster still not in sync - giving up!`);
       }
       console.warn(`Found some inconsistencies! Giving cluster some more time to get in sync before checking again... try=${tries}`);
