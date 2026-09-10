@@ -39,7 +39,7 @@ CZRZoPjLL1cD3WtipcIV4klbI6yhRANCAAQ4VbtPOezJa9iday7L1aXICQ+AY5Ua
 0g6LZsHQRZdTVtIhaEyKhDASvzwdagTU9UY4dTcmTMA4XS7bIJt0n3ZO
 -----END PRIVATE KEY-----
 `;
-privateKey1Sha256 = crypto.sha256(privateKey1.trim());
+const privateKey1Sha256 = crypto.sha256(privateKey1.trim());
 
 const publicKey1 = `-----BEGIN PUBLIC KEY-----
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEOFW7TznsyWvYnWsuy9WlyAkPgGOV
