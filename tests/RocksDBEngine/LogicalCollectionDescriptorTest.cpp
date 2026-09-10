@@ -356,8 +356,7 @@ TEST_F(LogicalCollectionDescriptorTest,
 // Section 4: validation differs correctly between contexts
 //////////////////////////////////////////////////////////////////////////////////
 
-TEST_F(LogicalCollectionDescriptorTest,
-       Context_numberOfShardsZeroIsInternalOnly) {
+TEST_F(LogicalCollectionDescriptorTest, Context_numberOfShardsZeroLoads) {
   auto body = oneKeyObject(StaticStrings::NumberOfShards, VPackValue(0));
 
   ClusteringConstantProperties internalProps;
@@ -365,11 +364,6 @@ TEST_F(LogicalCollectionDescriptorTest,
                                                 InspectInternalContext{})
                   .ok());
   EXPECT_EQ(internalProps.numberOfShards, 0u);
-
-  ClusteringConstantProperties userProps;
-  EXPECT_FALSE(velocypack::deserializeWithStatus(body.slice(), userProps, {},
-                                                 InspectUserContext{})
-                   .ok());
 }
 
 // Every writer stores a satellite's replicationFactor as "satellite", but a

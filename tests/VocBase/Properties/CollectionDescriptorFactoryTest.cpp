@@ -94,15 +94,24 @@ class CollectionDescriptorFactoryTest : public ::testing::Test {
 
   static DatabaseConfiguration defaultDBConfig(
       std::unordered_map<std::string, CollectionDescriptor> lookupMap = {}) {
+    // Leaders are looked up by name on a create and by id afterwards, because
+    // validation rewrites distributeShardsLike to the leader's id. The
+    // resolver behind this in production takes either.
+    std::unordered_map<std::string, CollectionDescriptor> byId;
+    for (auto const& [name, props] : lookupMap) {
+      byId.emplace(std::to_string(props.internal.id.id()), props);
+    }
+    lookupMap.merge(byId);
+
     return DatabaseConfiguration{
         []() { return DataSourceId(42); },
         [lookupMap = std::move(lookupMap)](
-            std::string const& name) -> ResultT<CollectionDescriptor> {
+            std::string const& nameOrId) -> ResultT<CollectionDescriptor> {
           // Set a lookup method
-          if (!lookupMap.contains(name)) {
+          if (!lookupMap.contains(nameOrId)) {
             return {TRI_ERROR_INTERNAL};
           }
-          return lookupMap.at(name);
+          return lookupMap.at(nameOrId);
         }};
   }
 
