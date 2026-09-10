@@ -872,14 +872,16 @@ class instance {
           this.dumpConnectionTable();
           return arango.connectHandle(this.connectionHandle);
         } catch (ex) {
+          if (this.PID === null) {
+            return false;
+          }
           print(`${this.name}: Connection ${this.connectionHandle} not found, continuing with regular connection: ${ex}\n${ex.stack}`);
           this.dumpConnectionTable(true);
           this.connectionHandle = undefined;
         }
       }
     }
-    
-    if (this.JWT) {
+    if (this.jwt_secret) {
       print(`${Date()} ${this.name}: re/connecting with JWT ${this.url}, ${this.JWT}`);
       const ret = arango.reconnect(this.endpoint, '_system',
                                    this.isFrontend() ? `${this.options.username}` : undefined,
@@ -1495,7 +1497,10 @@ class instance {
   toThisInstance(callback) {
     let handle = arango.getConnectionHandle();
     let dbName = arango.getDatabaseName();
-    this.connect();
+    if (!this.connect()) {
+      print(`${RED}${Date()} toThisInstance(): could not connect to ${this.name} - won't execute ${callback}${RESET}`);
+      return false;
+    }
     db._useDatabase("_system");
     let reconnected = false;
     let ret;

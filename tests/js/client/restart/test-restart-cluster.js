@@ -80,7 +80,9 @@ function testSuite() {
       let coordinator = coordinators[0];
       coordinator.exitStatus = null;
       coordinator.shutdownArangod(false);
-      coordinator.waitForInstanceShutdown(30);
+      if (coordinator.pid !== null) {
+        coordinator.waitForInstanceShutdown(30);
+      }
       coordinator.pid = null;
       console.warn("Cleaning up and restarting coordinator without authentication...", coordinator.getStructure());
       coordinator.exitStatus = null;
@@ -97,7 +99,9 @@ function testSuite() {
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
       coordinator.shutdownArangod(false);
-      coordinator.waitForInstanceShutdown(30);
+      if (coordinator.pid !== null) {
+        coordinator.waitForInstanceShutdown(30);
+      }
       coordinator.exitStatus = null;
       coordinator.pid = null;
       console.warn("Cleaning up and restarting coordinator without authentication...", coordinator.getStructure());
@@ -119,7 +123,9 @@ function testSuite() {
       let coordinator = coordinators[0];
 
       coordinator.shutdownArangod(false);
-      coordinator.waitForInstanceShutdown(30);
+      if (coordinator.pid !== null) {
+        coordinator.waitForInstanceShutdown(30);
+      }
       coordinator.exitStatus = null;
       coordinator.pid = null;
       console.warn("Cleaning up and restarting coordinator without authentication...", coordinator.getStructure());
@@ -160,7 +166,9 @@ function testSuite() {
       let coordinator = coordinators[0];
 
       coordinator.shutdownArangod(false);
-      coordinator.waitForInstanceShutdown(30);
+      if (coordinator.pid !== null) {
+        coordinator.waitForInstanceShutdown(30);
+      }
       coordinator.exitStatus = null;
       coordinator.pid = null;
       coordinator.suspended = true; 
@@ -201,7 +209,9 @@ function testSuite() {
       let coordinator = coordinators[0];
 
       coordinator.shutdownArangod(false);
-      coordinator.waitForInstanceShutdown(30);
+      if (coordinator.pid !== null) {
+        coordinator.waitForInstanceShutdown(30);
+      }
       coordinator.exitStatus = null;
       coordinator.pid = null;
 

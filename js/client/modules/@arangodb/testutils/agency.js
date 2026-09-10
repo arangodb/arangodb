@@ -699,17 +699,21 @@ class agencyMgr {
     if (this.options.extremeVerbosity) {
       print('--------------------------------- '+ fn + ' -----------------------------------------------');
     }
-    let agencyReply = this.getAnyAgent(agent, path, method);
-    if (agencyReply !== undefined && agencyReply.code === 200) {
-      if (fn === "agencyState") {
-        fs.write(fs.join(dumpdir, `${fn}_${agent.pid}.json`), agencyReply.parsedBody);
+    try {
+      let agencyReply = this.getAnyAgent(agent, path, method);
+      if (agencyReply !== undefined && agencyReply.code === 200) {
+        if (fn === "agencyState") {
+          fs.write(fs.join(dumpdir, `${fn}_${agent.pid}.json`), agencyReply.parsedBody);
+        } else {
+          let agencyValue = agencyReply.parsedBody;
+          fs.write(fs.join(dumpdir, `${fn}_${agent.pid}.json`), JSON.stringify(agencyValue, null, 2));
+        }
       } else {
-        let agencyValue = agencyReply.parsedBody;
-        fs.write(fs.join(dumpdir, `${fn}_${agent.pid}.json`), JSON.stringify(agencyValue, null, 2));
+        print(`${RED}${Date()} agency ${agent.name} did not return the proper HTTP Status code to ${path} ${method}. Whole reply:${RESET}`);
+        print(agencyReply);
       }
-    } else {
-      print(`${RED}${Date()} agency ${agent.name} did not return the proper HTTP Status code to ${path} ${method}. Whole reply:${RESET}`);
-      print(agencyReply);
+    } catch (ex) {
+      print(`${RED}${Date()} while dumping ${agent.name} - ${ex} - ignoring.`);
     }
   }
 
