@@ -1647,7 +1647,6 @@ class instance {
       while (count < 10) {
         try {
           reply = arango.DELETE_RAW(deleteUrl);
-          print(reply)
           break;
         } catch (ex) {
           count += 1;
