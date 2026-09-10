@@ -931,7 +931,7 @@ class instance {
         print(`${RED}was expecting the ${this.name} process ${this.pid} to be gone, but ${JSON.stringify(ret)}${RESET}`);
         this.processSanitizerReports();
         killExternal(this.pid, abortSignal);
-        print(statusExternal(this.pid, true));
+        this.exitStatus = statusExternal(this.pid, true);
       }
       this._disconnect();
    } catch(ex) {
