@@ -63,8 +63,12 @@ add_library(arango_aql STATIC
   LateMaterializedExpressionContext.cpp
   LimitStats.cpp
   MatchBuilder.cpp
+  MatchCollectionAccessBuilder.cpp
+  MatchFilterBuilder.cpp
   MatchPatternNormalizer.cpp
   MatchPatternTypes.cpp
+  MatchProjectionBuilder.cpp
+  MatchVariableScope.cpp
   ModificationExecutorFlags.h
   ModificationOptions.cpp
   MultiAqlItemBlockInputRange.cpp
