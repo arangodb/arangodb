@@ -1,5 +1,9 @@
 3.12.12 (XXXX-XX-XX)
 --------------------
+* COR-915: returnNew/returnOld are stored as document attributes in the _to_ shadow 
+  collection of a non-disjoint SmartGraph.
+  Fix remote SmartGraph edge modifications so returnNew/returnOld response
+  data is not persisted in the _to shadow collection.
 
 * Rebuilt included rclone v1.75.0 with go1.26.8 and non-vulnerable
   dependencies.
