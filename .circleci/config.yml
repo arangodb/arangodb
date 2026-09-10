@@ -207,7 +207,7 @@ jobs:
       config-definitions-branches:
         type: string
         default: ""
-      
+
     steps:
       - run:
           name: Print pipeline parameters
