@@ -22,6 +22,7 @@
 
 #include "RocksDBEngine.h"
 
+#include <atomic>
 #include <filesystem>
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -204,6 +205,40 @@ static std::atomic<bool> cancelCompactions{false};
 std::vector<std::shared_ptr<RocksDBRecoveryHelper>>
     RocksDBEngine::_recoveryHelpers;
 
+namespace {
+
+struct RocksDBAsyncLogWriteBatcherMetricsImpl
+    : replication2::storage::rocksdb::AsyncLogWriteBatcherMetrics {
+  explicit RocksDBAsyncLogWriteBatcherMetricsImpl(metrics::IRegistry& metrics) {
+    using namespace arangodb::replication2::storage::rocksdb;
+    numWorkerThreadsWaitForSync = &metrics.add(
+        arangodb_replication2_rocksdb_num_persistor_worker{}.withLabel("ws",
+                                                                       "true"));
+    numWorkerThreadsNoWaitForSync = &metrics.add(
+        arangodb_replication2_rocksdb_num_persistor_worker{}.withLabel(
+            "ws", "false"));
+
+    queueLength = &metrics.add(arangodb_replication2_rocksdb_queue_length{});
+    writeBatchSize =
+        &metrics.add(arangodb_replication2_rocksdb_write_batch_size{});
+    rocksdbWriteTimeInUs =
+        &metrics.add(arangodb_replication2_rocksdb_write_time{});
+    rocksdbSyncTimeInUs =
+        &metrics.add(arangodb_replication2_rocksdb_sync_time{});
+
+    operationLatencyInsert = &metrics.add(
+        arangodb_replication2_storage_operation_latency{}.withLabel("op",
+                                                                    "insert"));
+    operationLatencyRemoveFront = &metrics.add(
+        arangodb_replication2_storage_operation_latency{}.withLabel(
+            "op", "remove-front"));
+    operationLatencyRemoveBack = &metrics.add(
+        arangodb_replication2_storage_operation_latency{}.withLabel(
+            "op", "remove-back"));
+  }
+};
+}  // namespace
+
 RocksDBFilePurgePreventer::RocksDBFilePurgePreventer(RocksDBEngine* engine)
     : _engine(engine) {
   TRI_ASSERT(_engine != nullptr);
@@ -255,40 +290,20 @@ RocksDBEngine::RocksDBEngine(
     IFlushControl& flushControl, IDumpLimitsProvider const& dumpLimitsProvider,
     replication2::IReplicatedLogProvider* replicatedLogProvider,
     ISchedulerProvider const& schedulerProvider,
-    RocksDBRecoveryManager const& rocksDbRecoveryManager,
-    IDatabaseProvider& databaseProvider, IIndexCacheRefill& indexCacheRefill,
-    ICacheManagerProvider& cacheManagerProvider,
-    ISortingPolicy const& sortingPolicy)
-    : RocksDBEngine(server, optionsProvider, metrics, databasePathProvider,
-                    vectorIndexProvider, flushControl, dumpLimitsProvider,
-                    replicatedLogProvider, schedulerProvider,
-                    rocksDbRecoveryManager, databaseProvider, indexCacheRefill,
-                    cacheManagerProvider, sortingPolicy,
-                    RocksDBEngineOptions{}) {}
-
-RocksDBEngine::RocksDBEngine(
-    application_features::ApplicationServer& server,
-    RocksDBOptionsProvider& optionsProvider, metrics::IRegistry& metrics,
-    IDatabasePathProvider const& databasePathProvider,
-    IVectorIndexProvider const& vectorIndexProvider,
-    IFlushControl& flushControl, IDumpLimitsProvider const& dumpLimitsProvider,
-    replication2::IReplicatedLogProvider* replicatedLogProvider,
-    ISchedulerProvider const& schedulerProvider,
-    RocksDBRecoveryManager const& rocksDbRecoveryManager,
-    IDatabaseProvider& databaseProvider, IIndexCacheRefill& indexCacheRefill,
+    IDatabaseProvider& databaseProvider, IDatabaseBootstrap& databaseBootstrap,
+    IIndexCacheRefill& indexCacheRefill,
     ICacheManagerProvider& cacheManagerProvider,
     ISortingPolicy const& sortingPolicy, RocksDBEngineOptions options)
     : StorageEngine(
           server, kEngineName, name(), typeid(RocksDBEngine),
           std::make_unique<RocksDBIndexFactory>(server, vectorIndexProvider),
-          databaseProvider),
+          databaseProvider, databaseBootstrap),
       _databasePathProvider(databasePathProvider),
       _vectorIndexProvider(vectorIndexProvider),
       _flushControl(flushControl),
       _dumpLimitsProvider(dumpLimitsProvider),
       _replicatedLogProvider(replicatedLogProvider),
       _schedulerProvider(schedulerProvider),
-      _rocksDbRecoveryManager(rocksDbRecoveryManager),
       _indexCacheRefill(indexCacheRefill),
       _cacheManagerProvider(cacheManagerProvider),
       _sortingPolicy(sortingPolicy),
@@ -483,40 +498,6 @@ void RocksDBEngine::verifySstFiles(rocksdb::Options const& options) const {
 bool RocksDBEngine::isVectorIndexEnabled() const {
   return _vectorIndexProvider.isVectorIndexEnabled();
 }
-
-namespace {
-
-struct RocksDBAsyncLogWriteBatcherMetricsImpl
-    : replication2::storage::rocksdb::AsyncLogWriteBatcherMetrics {
-  explicit RocksDBAsyncLogWriteBatcherMetricsImpl(metrics::IRegistry& metrics) {
-    using namespace arangodb::replication2::storage::rocksdb;
-    numWorkerThreadsWaitForSync = &metrics.add(
-        arangodb_replication2_rocksdb_num_persistor_worker{}.withLabel("ws",
-                                                                       "true"));
-    numWorkerThreadsNoWaitForSync = &metrics.add(
-        arangodb_replication2_rocksdb_num_persistor_worker{}.withLabel(
-            "ws", "false"));
-
-    queueLength = &metrics.add(arangodb_replication2_rocksdb_queue_length{});
-    writeBatchSize =
-        &metrics.add(arangodb_replication2_rocksdb_write_batch_size{});
-    rocksdbWriteTimeInUs =
-        &metrics.add(arangodb_replication2_rocksdb_write_time{});
-    rocksdbSyncTimeInUs =
-        &metrics.add(arangodb_replication2_rocksdb_sync_time{});
-
-    operationLatencyInsert = &metrics.add(
-        arangodb_replication2_storage_operation_latency{}.withLabel("op",
-                                                                    "insert"));
-    operationLatencyRemoveFront = &metrics.add(
-        arangodb_replication2_storage_operation_latency{}.withLabel(
-            "op", "remove-front"));
-    operationLatencyRemoveBack = &metrics.add(
-        arangodb_replication2_storage_operation_latency{}.withLabel(
-            "op", "remove-back"));
-  }
-};
-}  // namespace
 
 void RocksDBEngine::start() {
   // it is already decided that rocksdb is used
@@ -911,15 +892,6 @@ void RocksDBEngine::start() {
 
   _settingsManager->retrieveInitialValues();
 
-  double const counterSyncSeconds = 2.5;
-  _backgroundThread = std::make_unique<RocksDBBackgroundThread>(
-      *this, counterSyncSeconds, _metrics);
-  if (!_backgroundThread->start()) {
-    LOG_TOPIC("a5e96", FATAL, Logger::ENGINES)
-        << "could not start rocksdb counter manager thread";
-    FATAL_ERROR_EXIT();
-  }
-
   if (!systemDatabaseExists()) {
     addSystemDatabase();
   }
@@ -934,6 +906,38 @@ void RocksDBEngine::start() {
   // metrics are correctly populated once the HTTP interface comes
   // up
   determineWalFilesInitial();
+
+  materializeDatabases();
+
+  runRecovery();
+
+  // the background thread can't do anything meaningful before recovery has
+  // finished, so it's only started here
+  TRI_ASSERT(isReady());
+  double const counterSyncSeconds = 2.5;
+  _backgroundThread = std::make_unique<RocksDBBackgroundThread>(
+      *this, counterSyncSeconds, _metrics);
+  if (!_backgroundThread->start()) {
+    LOG_TOPIC("a5e96", FATAL, Logger::ENGINES)
+        << "could not start rocksdb counter manager thread";
+    FATAL_ERROR_EXIT();
+  }
+}
+
+void RocksDBEngine::materializeDatabases() {
+  VPackBuilder databases;
+  getDatabases(databases);
+  TRI_ASSERT(databases.slice().isArray());
+  _databaseBootstrap.bootstrapDatabases(databases.slice());
+}
+
+void RocksDBEngine::runRecovery() {
+  _engineState.store(EngineState::kRecovering, std::memory_order_release);
+  RocksDBRecoveryManager manager(*this, _recoveryTick);
+  manager.runRecovery();
+  // synchronizes with engineState()'s acquire-load; publishes _recoveryTick too
+  _engineState.store(EngineState::kRunning, std::memory_order_release);
+  _databaseBootstrap.recoveryDone();
 }
 
 void RocksDBEngine::beginShutdown() {
@@ -1342,16 +1346,6 @@ Result RocksDBEngine::dropDatabase(TRI_vocbase_t& database) {
   dumpManager()->dropDatabase(database);
 
   return dropDatabase(database.id());
-}
-
-// current recovery state
-RecoveryState RocksDBEngine::recoveryState() noexcept {
-  return _rocksDbRecoveryManager.recoveryState();
-}
-
-// current recovery tick
-TRI_voc_tick_t RocksDBEngine::recoveryTick() noexcept {
-  return _rocksDbRecoveryManager.recoverySequenceNumber();
 }
 
 void RocksDBEngine::scheduleTreeRebuild(TRI_voc_tick_t database,
@@ -1841,7 +1835,7 @@ Result RocksDBEngine::changeView(LogicalView const& view,
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   LOG_TOPIC("405da", DEBUG, Logger::ENGINES) << "RocksDBEngine::changeView";
 #endif
-  if (inRecovery()) {
+  if (!isReady()) {
     // nothing to do
     return {};
   }
@@ -2668,7 +2662,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 
   // replicated states should be loaded before their respective shards
   if (vocbase->replicationVersion() == replication::Version::TWO) {
-    if (syncThread() == nullptr) {
+    if (_options.syncInterval <= 0) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_ILLEGAL_OPTION,
           "Automatic syncing must be enabled for replication "

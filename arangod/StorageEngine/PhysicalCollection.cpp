@@ -419,7 +419,7 @@ Result PhysicalCollection::dropIndex(IndexId iid) {
 
   Result res = basics::catchToResult([&]() -> Result {
     auto& engine = _logicalCollection.vocbase().engine();
-    bool const inRecovery = engine.inRecovery();
+    bool const isReady = engine.isReady();
 
     std::shared_ptr<arangodb::Index> toRemove;
     {
@@ -440,7 +440,7 @@ Result PhysicalCollection::dropIndex(IndexId iid) {
         // index to be deleted already.
         _indexes.erase(it);
 
-        if (!inRecovery) {
+        if (isReady) {
           Result res = duringDropIndex(toRemove);
           if (res.fail()) {
             // callback failed - revert back to copy

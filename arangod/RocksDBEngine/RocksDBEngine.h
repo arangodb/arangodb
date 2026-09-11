@@ -24,6 +24,7 @@
 
 #include "RocksDBEngine/RocksDBEngineOptions.h"
 
+#include <atomic>
 #include <chrono>
 #include <deque>
 #include <map>
@@ -43,9 +44,9 @@
 #include "ISortingPolicy.h"
 #include "RocksDBEngine/RocksDBReadWriteMetrics.h"
 #include "Cache/ICacheManagerProvider.h"
-#include "Metrics/IRegistry.h"
 #include "Replication2/ReplicatedLog/IReplicatedLogProvider.h"
 #include "RestServer/IDatabasePathProvider.h"
+#include "RestServer/IDatabaseBootstrap.h"
 #include "RestServer/IDatabaseProvider.h"
 #include "RestServer/IDumpLimitsProvider.h"
 #include "RestServer/IFlushControl.h"
@@ -92,7 +93,6 @@ class RocksDBDumpManager;
 class RocksDBKey;
 class RocksDBLogValue;
 class RocksDBRecoveryHelper;
-class RocksDBRecoveryManager;
 class RocksDBReplicationManager;
 class RocksDBSettingsManager;
 class RocksDBSyncThread;
@@ -182,26 +182,12 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
                 IDumpLimitsProvider const& dumpLimitsProvider,
                 replication2::IReplicatedLogProvider* replicatedLogProvider,
                 ISchedulerProvider const& schedulerProvider,
-                RocksDBRecoveryManager const& rocksDbRecoveryManager,
                 IDatabaseProvider& databaseProvider,
+                IDatabaseBootstrap& databaseBootstrap,
                 IIndexCacheRefill& indexCacheRefill,
                 ICacheManagerProvider& cacheManagerProvider,
                 ISortingPolicy const& sortingPolicy,
-                RocksDBEngineOptions options);
-  RocksDBEngine(application_features::ApplicationServer& server,
-                RocksDBOptionsProvider& optionsProvider,
-                metrics::IRegistry& metrics,
-                IDatabasePathProvider const& databasePathProvider,
-                IVectorIndexProvider const& vectorIndexProvider,
-                IFlushControl& flushControl,
-                IDumpLimitsProvider const& dumpLimitsProvider,
-                replication2::IReplicatedLogProvider* replicatedLogProvider,
-                ISchedulerProvider const& schedulerProvider,
-                RocksDBRecoveryManager const& rocksDbRecoveryManager,
-                IDatabaseProvider& databaseProvider,
-                IIndexCacheRefill& indexCacheRefill,
-                ICacheManagerProvider& cacheManagerProvider,
-                ISortingPolicy const& sortingPolicy);
+                RocksDBEngineOptions options = {});
   ~RocksDBEngine();
 
   auto getDatabaseProvider() const -> IDatabaseProvider&;
@@ -296,10 +282,13 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   Result dropDatabase(TRI_vocbase_t& database) override;
 
   // wal in recovery
-  RecoveryState recoveryState() noexcept override;
+  EngineState engineState() noexcept override {
+    return _engineState.load(std::memory_order_acquire);
+  }
 
-  /// @brief current recovery tick
-  TRI_voc_tick_t recoveryTick() noexcept override;
+  TRI_voc_tick_t recoveryTick() noexcept override {
+    return _recoveryTick.load(std::memory_order_relaxed);
+  }
 
   /// @brief disallow purging of WAL files even if the archive gets too big
   /// removing WAL files does not seem to be thread-safe, so we have to track
@@ -526,6 +515,11 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
     TRI_ASSERT(_recoveryStartSequence == 0);
     _recoveryStartSequence = value;
   }
+
+  // IResearchFeature could have left stale helpers from a previous test.
+  static void cleanupStaleRecoveryHelpers() noexcept {
+    _recoveryHelpers.clear();
+  }
 #endif
 
   class RocksDBSnapshot final : public StorageSnapshot {
@@ -589,6 +583,11 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   bool checkExistingDB(
       std::vector<rocksdb::ColumnFamilyDescriptor> const& cfFamilies);
 
+  // hands the on-disk database inventory to the bootstrap provider
+  void materializeDatabases();
+
+  void runRecovery();
+
   auto makeLogStorageMethods(replication2::LogId logId, uint64_t objectId,
                              std::uint64_t vocbaseId,
                              rocksdb::ColumnFamilyHandle* const logCf,
@@ -608,13 +607,14 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   }
 
  private:
+  std::atomic<EngineState> _engineState{EngineState::kPreRecovery};
+  std::atomic<rocksdb::SequenceNumber> _recoveryTick{0};
   IDatabasePathProvider const& _databasePathProvider;
   IVectorIndexProvider const& _vectorIndexProvider;
   IFlushControl& _flushControl;
   IDumpLimitsProvider const& _dumpLimitsProvider;
   replication2::IReplicatedLogProvider* _replicatedLogProvider;
   ISchedulerProvider const& _schedulerProvider;
-  RocksDBRecoveryManager const& _rocksDbRecoveryManager;
   IIndexCacheRefill& _indexCacheRefill;
   ICacheManagerProvider& _cacheManagerProvider;
   ISortingPolicy const& _sortingPolicy;
