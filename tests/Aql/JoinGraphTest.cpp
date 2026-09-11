@@ -206,4 +206,57 @@ TEST_F(JoinGraphTest, residual_without_graph_variable_stays_graph_level) {
   EXPECT_TRUE(nodeByName(g, "a")->residuals.empty());
 }
 
+TEST_F(JoinGraphTest, adding_an_edge_invalidates_the_adjacency_index) {
+  // getEdgesForNode caches an adjacency index of Edge* into the `edges`
+  // vector, which appending reallocates. Production never interleaves the two
+  // -- the graph is fully built before the search reads it -- so nothing else
+  // exercises addJoinCondition's invalidation, and it would rot silently.
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FOR c IN c3 FILTER b.z == c.w RETURN [a, b, c]");
+  auto g = buildGraph(*q);
+  ASSERT_EQ(g.edges.size(), 2u);
+
+  auto* b = nodeByName(g, "b");
+  ASSERT_NE(b, nullptr);
+  // Populate the cache, and read the count through it.
+  auto const before = g.getEdgesForNode(b).size();
+  ASSERT_EQ(before, 2u);
+
+  // A fresh edge on the same vertex. Appending reallocates `edges`, so a
+  // stale index would hand back dangling pointers or a stale count.
+  auto* a = nodeByName(g, "a");
+  auto* c = nodeByName(g, "c");
+  ASSERT_NE(a, nullptr);
+  ASSERT_NE(c, nullptr);
+  g.addJoinCondition(a->executionNode->outVariable(), {"p"},
+                     c->executionNode->outVariable(), {"q"});
+  ASSERT_EQ(g.edges.size(), 3u);
+
+  // b is untouched by the new edge, but its cached Edge* all pointed into the
+  // reallocated buffer; the rebuilt index must still report exactly 2, and
+  // dereferencing must be safe.
+  auto const& after = g.getEdgesForNode(b);
+  EXPECT_EQ(after.size(), 2u);
+  for (auto const* edge : after) {
+    EXPECT_TRUE(edge->from == b || edge->to == b);
+  }
+  // and a's adjacency must now include the new edge
+  EXPECT_EQ(g.getEdgesForNode(a).size(), 2u);
+}
+
+TEST_F(JoinGraphTest, non_deterministic_calculation_is_flagged) {
+  auto q = prepare(
+      "FOR a IN c1 LET r = RAND() FILTER a.x > r "
+      "FOR b IN c2 FILTER a.y == b.z RETURN [a, b]");
+  auto g = buildGraph(*q);
+  EXPECT_TRUE(g.hasNonDeterministicCalculation);
+}
+
+TEST_F(JoinGraphTest, deterministic_run_is_not_flagged) {
+  auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
+  auto g = buildGraph(*q);
+  EXPECT_FALSE(g.hasNonDeterministicCalculation);
+}
+
 }  // namespace arangodb::tests::aql

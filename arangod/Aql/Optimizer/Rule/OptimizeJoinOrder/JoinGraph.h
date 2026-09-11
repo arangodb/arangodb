@@ -23,8 +23,9 @@
 
 #include <map>
 #include <optional>
-#include <utility>
 #include <string_view>
+#include <unordered_map>
+#include <utility>
 #include <vector>
 
 namespace arangodb::aql {
@@ -88,11 +89,13 @@ struct JoinGraph {
   /// for later optimizer stages.
   void addResidual(AstNode const* node);
 
-  auto getEdgesForNode(Node* node) -> std::vector<Edge*>;
+  /// @brief the edges incident to `node`. The reference is valid until the
+  /// next addJoinCondition() call, which drops the adjacency index.
+  auto getEdgesForNode(Node* node) -> std::vector<Edge*> const&;
 
-  /// @brief partition the vertices into connected components (the graph may be
-  /// disconnected). Each returned vector holds the out variables of one
-  /// component. Order within and across components is unspecified.
+  /// @brief partition the vertices into connected components. Order within
+  /// and across components follows `nodes`, i.e. pointer order -- callers
+  /// needing reproducibility must re-sort (see nodesInIdOrder).
   [[nodiscard]] auto connectedComponents() const
       -> std::vector<std::vector<Variable const*>>;
 
@@ -104,8 +107,22 @@ struct JoinGraph {
   std::vector<Edge> edges;
   std::vector<AstNode const*> residuals;
 
+  /// @brief true when the run contains a calculation whose expression is not
+  /// deterministic. Hoisting enumerations above such a calculation changes how
+  /// many times it is evaluated, which changes results, so the run must not be
+  /// reordered.
+  bool hasNonDeterministicCalculation = false;
+
  private:
   auto ensureEdge(Variable const* v, Variable const* w) -> Edge&;
+
+  /// @brief incident edges per vertex, built on first use. Holds `Edge*` into
+  /// `edges`, which appending reallocates, so ensureEdge() drops it whenever
+  /// it adds an edge; the graph is fully built before the search reads it.
+  void buildAdjacency();
+
+  std::unordered_map<Node const*, std::vector<Edge*>> _adjacency;
+  bool _adjacencyBuilt = false;
 };
 
 /// @brief build the join graph for the maximal run of adjacent collection

@@ -65,6 +65,10 @@ auto JoinGraph::ensureEdge(Variable const* v, Variable const* w) -> Edge& {
     return (e.from == from && e.to == to) || (e.from == to && e.to == from);
   });
   if (iter == edges.end()) {
+    // Appending may reallocate `edges`, invalidating every Edge* the
+    // adjacency index holds. Drop it; the next reader rebuilds it.
+    _adjacency.clear();
+    _adjacencyBuilt = false;
     edges.emplace_back(from, to);
     return edges.back();
   }
@@ -110,14 +114,28 @@ void JoinGraph::addResidual(AstNode const* node) {
   }
 }
 
-auto JoinGraph::getEdgesForNode(Node* node) -> std::vector<Edge*> {
-  std::vector<Edge*> result;
+void JoinGraph::buildAdjacency() {
+  _adjacency.clear();
+  _adjacency.reserve(nodes.size());
+  for (auto& [variable, node] : nodes) {
+    _adjacency.try_emplace(&node);
+  }
   for (auto& e : edges) {
-    if (e.from == node || e.to == node) {
-      result.emplace_back(&e);
+    _adjacency[e.from].emplace_back(&e);
+    if (e.to != e.from) {
+      _adjacency[e.to].emplace_back(&e);
     }
   }
-  return result;
+  _adjacencyBuilt = true;
+}
+
+auto JoinGraph::getEdgesForNode(Node* node) -> std::vector<Edge*> const& {
+  if (!_adjacencyBuilt) {
+    buildAdjacency();
+  }
+  auto const it = _adjacency.find(node);
+  ADB_PROD_ASSERT(it != _adjacency.end());
+  return it->second;
 }
 
 auto JoinGraph::connectedComponents() const
@@ -288,8 +306,10 @@ auto buildJoinGraph(ExecutionPlan const* plan, ExecutionNode* firstEnumeration,
       }
 
       case ExecutionNode::CALCULATION: {
-        // calculations feeding filters are inspected via the FILTER case; the
-        // calculation node itself is part of the run but carries no join info.
+        auto* calc = ExecutionNode::castTo<CalculationNode*>(n);
+        if (!calc->expression()->isDeterministic()) {
+          graph.hasNonDeterministicCalculation = true;
+        }
         break;
       }
 
