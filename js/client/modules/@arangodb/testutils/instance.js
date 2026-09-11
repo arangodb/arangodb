@@ -1090,13 +1090,13 @@ class instance {
               print(Date() + ' Shutdown response: ' + JSON.stringify(reply));
             }
             return true;
-          })) {
+          }, false)) { // the primary connection may not be restored - we don't care.
             if (!this.options.noStartStopLogs) {
               print(sockStat);
             }
           }
         } catch (ex) {
-          print(`${RED}${Date()} During shutdown: ${ex.message} - will try to continue anyways`);
+          print(`${RED}${Date()} During shutdown: ${ex.message} - will try to continue anyways ${ex.stack}`);
           this.exitStatus = killExternal(this.pid);
           this._disconnect();
           this.pid = null;
@@ -1491,7 +1491,7 @@ class instance {
     return `  [${this.name}] up with pid ${this.pid} - ${this.dataDir}`;
   }
 
-  toThisInstance(callback) {
+  toThisInstance(callback, reconnectFatal=true) {
     let handle = arango.getConnectionHandle();
     let dbName = arango.getDatabaseName();
     if (!this.connect()) {
@@ -1507,10 +1507,17 @@ class instance {
       print(`${RED}${Date()} failed to connect ${this.name} - ${err}${RESET}`);
       throw err;
     } finally {
-      reconnected = arango.connectHandle(handle);
+      try {
+        reconnected = arango.connectHandle(handle);
+      } catch (ex) {
+        print(`${RED} connecting Handle failed with: ${ex}${RESET}`);
+        if (reconnectFatal) {
+          throw ex;
+        }
+      }
       db._useDatabase(dbName);
     }
-    if (!reconnected) {
+    if (!reconnected && reconnectFatal) {
       throw new Error(`failed to restore connection to ${handle}`);
     }
     return ret;
