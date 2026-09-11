@@ -11,3 +11,4 @@ set(Clang_DIR "${ACTIVITY_DOCS_LLVM_ROOT}/lib/cmake/clang")
 find_package(Clang REQUIRED CONFIG)
 
 add_subdirectory(src)
+add_subdirectory(tests)
