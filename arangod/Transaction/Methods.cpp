@@ -638,7 +638,10 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
         _needToFetchOldDocument(
             operationType == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
             _indexesSnapshot.hasSecondaryIndex() || options.returnOld ||
-            !options.versionAttribute.empty()),
+            !options.versionAttribute.empty() ||
+            // time travel retains the previous version and stamps its _expired,
+            // which means rewriting its full body - a _key-only stub won't do
+            collection.timeTravelEnabled()),
         _replicationVersion(collection.replicationVersion()) {
     // this call will populate replicationType and followers
     Result res = this->_methods.determineReplicationTypeAndFollowers(
@@ -839,6 +842,54 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
   Methods::ReplicationType _replicationType = Methods::ReplicationType::NONE;
   TRI_voc_document_operation_e _operationType;
   bool _excludeAllFromReplication;
+  // Time travel: hand the transaction the timestamp this operation writes at.
+  // Must run before the document key is locked - the engine validates
+  // write-write conflicts against that timestamp while taking the lock. A no-op
+  // on collections without time travel.
+  Result prepareTimeTravelWrite(velocypack::Slice value) {
+    if (!this->_collection.timeTravelEnabled()) {
+      return {};
+    }
+    auto timestamp = timeTravelWriteTimestamp(value);
+    if (timestamp.fail()) {
+      return timestamp.result();
+    }
+    _timeTravelWriteTimestamp = timestamp.get();
+    return this->_methods.state()->setTimeTravelWriteTimestamp(
+        this->_collection.id(), _timeTravelWriteTimestamp);
+  }
+
+  // Time travel: the key lock also rejects a write whose timestamp is not
+  // strictly newer than the current version - validation reads at
+  // `timestamp - 1`, so an existing later version trips it - and rocksdb
+  // reports that as a write-write conflict. For a user-supplied timestamp that
+  // is bad input rather than contention: retrying would never help. Turn it
+  // into a precise error, and leave genuine conflicts alone.
+  Result diagnoseTimeTravelConflict(std::string_view key, Result conflict) {
+    TRI_ASSERT(this->_collection.timeTravelEnabled());
+    TRI_ASSERT(conflict.is(TRI_ERROR_ARANGO_CONFLICT));
+    TRI_ASSERT(_timeTravelWriteTimestamp != 0);
+
+    auto existing =
+        this->_collection.getPhysical()->currentVersionTimestamp(key);
+    if (existing.fail() || !existing.get().has_value() ||
+        existing.get().value() < _timeTravelWriteTimestamp) {
+      // the current version really is older than what we are writing, so the
+      // conflict came from a concurrent writer after all
+      return conflict;
+    }
+    return Result{TRI_ERROR_BAD_PARAMETER,
+                  absl::StrCat("'", StaticStrings::Created,
+                               "' must be newer than the current version of '",
+                               key, "' (", existing.get().value(), "), but is ",
+                               _timeTravelWriteTimestamp)};
+  }
+
+  // Time travel: the timestamp the value currently being processed writes at,
+  // as handed to the transaction by prepareTimeTravelWrite(). 0 when the
+  // collection has no time travel.
+  std::uint64_t _timeTravelWriteTimestamp = 0;
+
   // whether or not we need to read the previous document version
   bool _needToFetchOldDocument;
   // whether we use replication 1 or 2
@@ -1245,6 +1296,10 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
       }
     }
 
+    if (auto r = this->prepareTimeTravelWrite(value); r.fail()) {
+      return r;
+    }
+
     std::pair<LocalDocumentId, RevisionId> lookupResult;
     auto res = _collection.getPhysical()->lookupKeyForUpdate(&_methods, key,
                                                              lookupResult);
@@ -1271,6 +1326,10 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
       }
     } else if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
       // Error reporting in the babies case is done outside of here.
+      if (res.is(TRI_ERROR_ARANGO_CONFLICT) &&
+          _collection.timeTravelEnabled()) {
+        res = this->diagnoseTimeTravelConflict(key, std::move(res));
+      }
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isArray) {
         TRI_ASSERT(_replicationType != Methods::ReplicationType::FOLLOWER);
         // if possible we want to provide information about the conflicting
@@ -1503,10 +1562,19 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
     // be single document operations. We need to have a lock here already.
     TRI_ASSERT(_methods.isLocked(&_collection, AccessMode::Type::WRITE));
 
+    if (auto r = this->prepareTimeTravelWrite(newValue); r.fail()) {
+      return r;
+    }
+
     std::pair<LocalDocumentId, RevisionId> lookupResult;
     Result res = _collection.getPhysical()->lookupKeyForUpdate(
         &_methods, key.stringView(), lookupResult);
     if (res.fail()) {
+      if (res.is(TRI_ERROR_ARANGO_CONFLICT) &&
+          _collection.timeTravelEnabled()) {
+        res =
+            this->diagnoseTimeTravelConflict(key.stringView(), std::move(res));
+      }
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isArray) {
         TRI_ASSERT(_replicationType != Methods::ReplicationType::FOLLOWER);
         // if possible we want to provide information about the conflicting
