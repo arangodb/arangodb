@@ -33,13 +33,13 @@ let IM = global.instanceManager;
 
 
 // Dummy ES256 key pair 1 (primary)
-const privateKey1 = `-----BEGIN PRIVATE KEY-----
+const publicPrivateKeypair1 = `-----BEGIN PRIVATE KEY-----
 MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgE9UrCRndJypo4FJG
 CZRZoPjLL1cD3WtipcIV4klbI6yhRANCAAQ4VbtPOezJa9iday7L1aXICQ+AY5Ua
 0g6LZsHQRZdTVtIhaEyKhDASvzwdagTU9UY4dTcmTMA4XS7bIJt0n3ZO
 -----END PRIVATE KEY-----
 `;
-const privateKey1Sha256 = crypto.sha256(privateKey1.trim());
+const publicPrivateKeypair1Sha256 = crypto.sha256(publicPrivateKeypair1.trim());
 
 const publicKey1 = `-----BEGIN PUBLIC KEY-----
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEOFW7TznsyWvYnWsuy9WlyAkPgGOV
@@ -49,13 +49,13 @@ GtIOi2bB0EWXU1bSIWhMioQwEr88HWoE1PVGOHU3JkzAOF0u2yCbdJ92Tg==
 const publicKey1Sha256 = crypto.sha256(publicKey1.trim());
 
 // Dummy ES256 key pair 2 (secondary)
-const privateKey2 = `-----BEGIN PRIVATE KEY-----
+const publicPrivateKeypair2 = `-----BEGIN PRIVATE KEY-----
 MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgUQAbplUZLUp+JVQJ
 RrMwcTKW7qQAfdjQsBdi9vTOq+ChRANCAAQFywYqn11zi3YO1B5QJHi9shcfFb2o
 qWUVFw/7F/PnJB6IvNy+Ap+9PjzjjQwKV7EtyGWrD6UihBTEhHB85c+K
 -----END PRIVATE KEY-----
 `;
-const privateKey2Sha256 = crypto.sha256(privateKey2.trim());
+const publicPrivateKeypair2Sha256 = crypto.sha256(publicPrivateKeypair2.trim());
 
 const publicKey2 = `-----BEGIN PUBLIC KEY-----
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEBcsGKp9dc4t2DtQeUCR4vbIXHxW9
@@ -83,9 +83,9 @@ if (getOptions === true) {
   fs.makeDirectory(secretDir);
 
   // Write the key files to the temporary directory
-  fs.write(fs.join(secretDir, 'jwt-secret-1.pem'), privateKey1);
+  fs.write(fs.join(secretDir, 'jwt-secret-1.pem'), publicPrivateKeypair1);
   fs.write(fs.join(secretDir, 'jwt-secret-2.pem'), publicKey2);
-  fs.write(fs.join(secretDir, '.jwt-secret-1.pem'), privateKey1);
+  fs.write(fs.join(secretDir, '.jwt-secret-1.pem'), publicPrivateKeypair1);
   fs.write(fs.join(secretDir, 'jwt-secret-3.pem.tmp'), hmac1);
   fs.write(fs.join(secretDir, 'jwt-secret-4.pem'), hmac2);
   fs.write(fs.join(secretDir, 'jwt-secret-5.pem.tmp'), hmac3);
@@ -135,12 +135,12 @@ function testSuite() {
     },
 
     testKeysLoadedInCorrectOrder : function () {
-      const token = createToken(privateKey1);
+      const token = createToken(publicPrivateKeypair1);
       const res = makeRequest(token);
 
       assertEqual(200, res.status, "Request with valid token from primary key should succeed");
-      assertEqual(res.json.result.active.sha256, crypto.sha256(privateKey1.trim()),
-                  `Expecting ${privateKey1.trim} with sha256 ${privateKey1Sha256} to be the primary secret`);
+      assertEqual(res.json.result.active.sha256, crypto.sha256(publicPrivateKeypair1.trim()),
+                  `Expecting ${publicPrivateKeypair1.trim} with sha256 ${publicPrivateKeypair1Sha256} to be the primary secret`);
 
       assertEqual(res.json.result.passive.length, 3,
                   `Expecting 3 passive secrets`); 
