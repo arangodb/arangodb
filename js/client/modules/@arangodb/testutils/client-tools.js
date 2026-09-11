@@ -945,6 +945,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
   tu.CopyIntoObject(optionsDefaults, {
     'rtasource': fs.makeAbsolute(fs.join('.', '3rdParty', 'rta-makedata')),
     'makedataArgs': undefined,
+    'rtaRbacDir': undefined,
     'rtaNegFilter': '',
     'makedataDB': "_system",
     'serverRequestTimeout': (isCov || isSan) ? 30 * 40 : 120
@@ -957,6 +958,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
     '   - `rtasource`: source directory of rta-makedata if not 3rdparty.',
     '   - `rtaNegFilter`: inverse logic to --test.',
     '   - `makedataArgs`: list of arguments ala --makedataArgs:bigDoc true',
+    '   - `rtaRbacDir`: directory holding the RBAC scenario runner (default: tests/api/rbac/rta). Used by rta_makedata when --rbac names a sidecar URL',
     ''
   ]);
 };
