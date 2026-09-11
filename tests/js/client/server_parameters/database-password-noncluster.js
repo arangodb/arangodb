@@ -52,7 +52,7 @@ function OptionsTestSuite () {
     },
 
     testConnectValidPassword: function () {
-      arango.reconnect(IM.endpoint, db._name(), arango.connectedUser(), "testi1234");
+      arango.reconnect(IM.endpoint, db._name(), "root", "testi1234");
       assertTrue(arango.isConnected());
     },
 

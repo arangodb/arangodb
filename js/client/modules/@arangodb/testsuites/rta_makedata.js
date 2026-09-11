@@ -98,9 +98,7 @@ function makeDataWrapper (options) {
     }
 
     postStart() {
-      if (!this.options.cluster) {
-        this.instanceManager.setPassvoid();
-      }
+      this.instanceManager.setPassvoid();
       return {
         message: '',
         state: true,

@@ -182,7 +182,7 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
     this.dumpConfig.setUseSplitFiles(this.dumpOptions.splitFiles);
     if (this.dumpOptions.jwtSecret) {
       this.keyDir = fs.join(fs.getTempPath(), 'jwtSecrets');
-      if (!fs.exists(this.keyDir)) {  // needed on win32
+      if (!fs.exists(this.keyDir)) {
         fs.makeDirectory(this.keyDir);
       }
       let keyFile = fs.join(this.keyDir, 'secret-for-dump');

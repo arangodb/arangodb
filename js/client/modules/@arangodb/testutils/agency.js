@@ -122,10 +122,6 @@ class agencyMgr {
     return this.wholeCluster.arangods.filter(arangod => arangod.isRole("dbserver")).map((x) => x.id);
   }
 
-  getAgency(path, method, body = null) {
-    return this.getAnyAgent(this.agencyInstances[0], path, method, body);
-  }
-
   shouldBeCompleted() {
     let count = 0;
     this.agencyInstances.forEach(agent => { if (agent.pid !== null) {count ++;}});
@@ -141,47 +137,35 @@ class agencyMgr {
     while(true) {
       let opts = {};
       if (body === null) {
-        body = (method === 'POST') ? '[["/"]]' : '';
+        body = (method === 'POST' || method === 'POST_RAW') ? '[["/"]]' : '';
       }
-      if (agent.JWT) {
-        opts = pu.makeAuthorizationHeaders(agent.options, agent.args, agent.JWT);
-      } else {
-        let allArgs = [agent.args, agent.moreArgs];
-        allArgs.forEach(args => {
-          if (allArgs.hasOwnProperty('authOpts')) {
-            opts['jwt'] = crypto.jwtEncode(agent.authOpts['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
-          } else if (allArgs.hasOwnProperty('server.jwt-secret')) {
-            opts['jwt'] = crypto.jwtEncode(args['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
-          } else if (agent.jwtFiles) {
-            opts['jwt'] = crypto.jwtEncode(fs.read(agent.jwtFiles[0]), {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
-          }
-        });
-      }
-      opts['method'] = method;
-      opts['returnBodyOnError'] = true;
-      opts['followRedirects'] = false;
-      let ret = download(agent.url + path, body, opts);
-      if (ret.code !== 307 && ret.code !== 303) {
+      let ret = agent.toThisInstance(() => {
+        let ret = arango[method](path, body);
+        if (ret.code !== 307 && ret.code !== 303) {
+          return ret;
+        }
+        try {
+          let newAgentUrl = ret.headers['location'];
+          agent = this.agencyInstances.filter(agent => { return newAgentUrl.search(agent.url) === 0;})[0];
+        } catch (ex) {
+          throw new Error(`couldn't find agent to redirect to ${JSON.stringify(ret)}`);
+        }
+        print(`following redirect to ${agent.name}`);
+      });
+      if (ret !== undefined) {
         return ret;
-      }
-      try {
-        let newAgentUrl = ret.headers['location'];
-        agent = this.agencyInstances.filter(agent => { return newAgentUrl.search(agent.url) === 0;})[0];
-      } catch (ex) {
-        throw new Error(`couldn't find agent to redirect to ${JSON.stringify(ret)}`);
-      }
-      print(`following redirect to ${agent.name}`);
+      } // else: follow redirect
     }
   }
   postAgency(operation, body = null) {
     let res = this.getAnyAgent(this.agencyInstances[0],
                                `/_api/agency/${operation}`,
-                               'POST',
+                               'POST_RAW',
                                JSON.stringify(body));
     assertTrue(res.hasOwnProperty('code'), JSON.stringify(res));
     assertEqual(res.code, 200, JSON.stringify(res));
-    assertTrue(res.hasOwnProperty('message'));
-    return arangosh.checkRequestResult(JSON.parse(res.body));
+    assertTrue(res.hasOwnProperty('parsedBody'));
+    return arangosh.checkRequestResult(res.parsedBody);
   }
   call(operation, body) {
     return this.postAgency(operation, body);
@@ -268,7 +252,7 @@ class agencyMgr {
   delaySupervisionFailoverActions(value) {
     this.agencyInstances.forEach(agent => {
       let res = this.getAnyAgent(agent,
-                                 "/_api/agency/config", 'PUT',
+                                 "/_api/agency/config", 'PUT_RAW',
                                  JSON.stringify(
                                    {
                                      delayAddFollower: value,
@@ -715,16 +699,21 @@ class agencyMgr {
     if (this.options.extremeVerbosity) {
       print('--------------------------------- '+ fn + ' -----------------------------------------------');
     }
-    let agencyReply = this.getAnyAgent(agent, path, method);
-    if (agencyReply.code === 200) {
-      if (fn === "agencyState") {
-        fs.write(fs.join(dumpdir, `${fn}_${agent.pid}.json`), agencyReply.body);
+    try {
+      let agencyReply = this.getAnyAgent(agent, path, method);
+      if (agencyReply !== undefined && agencyReply.code === 200) {
+        if (fn === "agencyState") {
+          fs.write(fs.join(dumpdir, `${fn}_${agent.pid}.json`), agencyReply.parsedBody);
+        } else {
+          let agencyValue = agencyReply.parsedBody;
+          fs.write(fs.join(dumpdir, `${fn}_${agent.pid}.json`), JSON.stringify(agencyValue, null, 2));
+        }
       } else {
-        let agencyValue = JSON.parse(agencyReply.body);
-        fs.write(fs.join(dumpdir, `${fn}_${agent.pid}.json`), JSON.stringify(agencyValue, null, 2));
+        print(`${RED}${Date()} agency ${agent.name} did not return the proper HTTP Status code to ${path} ${method}. Whole reply:${RESET}`);
+        print(agencyReply);
       }
-    } else {
-      print(agencyReply);
+    } catch (ex) {
+      print(`${RED}${Date()} while dumping ${agent.name} - ${ex} - ignoring.`);
     }
   }
 
@@ -760,11 +749,11 @@ class agencyMgr {
           print(Date() + " Attempting to dump Agent: " + JSON.stringify(arangod.getStructure()));
         }
         try {
-          this.dumpAgent(arangod,  '/_api/agency/config', 'GET', 'agencyConfig', dumpdir);
+          this.dumpAgent(arangod,  '/_api/agency/config', 'GET_RAW', 'agencyConfig', dumpdir);
 
-          this.dumpAgent(arangod, '/_api/agency/state', 'GET', 'agencyState', dumpdir);
+          this.dumpAgent(arangod, '/_api/agency/state', 'GET_RAW', 'agencyState', dumpdir);
 
-          this.dumpAgent(arangod, '/_api/agency/read', 'POST', 'agencyPlan', dumpdir);
+          this.dumpAgent(arangod, '/_api/agency/read', 'POST_RAW', 'agencyPlan', dumpdir);
         } catch (ex) {
           print(`${RED}${Date()} ignoring that we failed to dump the agent ${arangod.name}: ${ex}\n${ex.stack}${RESET}`);
         }
@@ -787,11 +776,11 @@ class agencyMgr {
     fs.removeDirectory(dumpdir);
   }
   getFromPlan(path) {
-    let req = this.getAnyAgent(this.agencyInstances[0], '/_api/agency/read', 'POST', `[["/arango/${path}"]]`);
+    let req = this.getAnyAgent(this.agencyInstances[0], '/_api/agency/read', 'POST_RAW', `[["/arango/${path}"]]`);
     if (req.code !== 200) {
       throw new Error(`Failed to query agency [["/arango/${path}"]] : ${JSON.stringify(req)}`);
     }
-    return JSON.parse(req["body"])[0];
+    return req.parsedBody[0];
   }
 
   getShardsToLogsMapping(dbName, colId) {
@@ -900,35 +889,44 @@ class agencyMgr {
       let haveLeader = 0;
       let leaderId = null;
       for (let agentIndex = 0; agentIndex < this.agencySize; agentIndex ++) {
-        let reply = this.getAnyAgent(this.agencyInstances[agentIndex], '/_api/agency/config', 'GET');
-        if (this.options.extremeVerbosity) {
-          print("Response ====> ");
-          print(reply);
-        }
-        if (!reply.error && reply.code === 200) {
-          let res = JSON.parse(reply.body);
-          if (res.hasOwnProperty('lastAcked')){
-            haveLeader += 1;
+        let reply;
+        try {
+          reply = this.getAnyAgent(this.agencyInstances[agentIndex], '/_api/agency/config', 'GET_RAW');
+          if (this.options.extremeVerbosity) {
+            print("Response ====> ");
+            print(reply);
           }
-          if (res.hasOwnProperty('leaderId') && res.leaderId !== "") {
-            haveConfig += 1;
-            if (leaderId === null) {
-              leaderId = res.leaderId;
-            } else if (leaderId !== res.leaderId) {
-              haveLeader = 0;
-              haveConfig = 0;
+          if (!reply.error && reply.code === 200) {
+            let res = reply.parsedBody;
+            if (res.hasOwnProperty('lastAcked')){
+              haveLeader += 1;
+            }
+            if (res.hasOwnProperty('leaderId') && res.leaderId !== "") {
+              haveConfig += 1;
+              if (leaderId === null) {
+                leaderId = res.leaderId;
+              } else if (leaderId !== res.leaderId) {
+                haveLeader = 0;
+                haveConfig = 0;
+              }
             }
           }
-        }
-        if (haveLeader === 1 && haveConfig === this.agencySize) {
-          print("Agency Up!");
-          try {
-            // set back log level to info for agents
-            for (let agentIndex = 0; agentIndex < this.agencySize; agentIndex ++) {
-              this.getAnyAgent(this.agencyInstances[agentIndex], '/_admin/log/level', 'PUT', JSON.stringify({"agency":"info"}));
-            }
-          } catch (err) {}
-          return;
+          if (haveLeader === 1 && haveConfig === this.agencySize) {
+            print("Agency Up!");
+            try {
+              // set back log level to info for agents
+              for (let agentIndex = 0; agentIndex < this.agencySize; agentIndex ++) {
+                this.getAnyAgent(this.agencyInstances[agentIndex], '/_admin/log/level', 'PUT_RAW', JSON.stringify({"agency":"info"}));
+              }
+            } catch (err) {}
+            return;
+          }
+        } catch (ex) {
+          if (ex.errorNum === 10) {
+            count -= 1;
+            sleep(1);
+            continue;
+          }
         }
         if (count === 0) {
           throw new Error("Agency didn't come alive in time!");

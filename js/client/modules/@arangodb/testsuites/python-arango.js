@@ -93,7 +93,7 @@ class runInPythonTest extends runWithAllureReport {
     let args = [
       '--root', 'root',
       '--password', 'pythonarango',
-      '--secret', this.instanceManager.JWT,
+      '--secret', this.instanceManager.jwt_secret,
       '--junitxml', 'test-results/junit.xml',
       '--log-cli-level', 'DEBUG',
       '--host', '127.0.0.1',

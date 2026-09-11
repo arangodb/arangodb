@@ -102,6 +102,7 @@ class permissionsRunner extends trs.runLocalInArangoshRunner {
         let paramsSecondRun = executeScript(content, true, te);
         let rootDir = fs.join(fs.getTempPath(), count.toString());
         let runSetup = paramsSecondRun.hasOwnProperty('runSetup');
+        delete paramsSecondRun['runSetup'];
         if (paramsSecondRun.hasOwnProperty('opts')) {
           _.defaults(paramsSecondRun.opts, clonedOpts);
           clonedOpts = _.clone(paramsSecondRun.opts);
@@ -208,6 +209,7 @@ class permissionsRunner extends trs.runLocalInArangoshRunner {
                                                        paramsSecondRun,
                                                        this.friendlyName,
                                                        rootDir);
+          this.instanceManager.launchTcpDump("");
           global.theInstanceManager = this.instanceManager;
           // if failurepoints are active, disable SUT-sanity checks:
           let failurePoints = paramsSecondRun.hasOwnProperty('server.failure-point');
@@ -248,10 +250,15 @@ class permissionsRunner extends trs.runLocalInArangoshRunner {
         }
 
         this.results[te] = this.runOneTest(te);
-        if (this.instanceManager.addArgs.hasOwnProperty("authOpts") &&
-            this.instanceInfo.addArgs.hasOwnProperty("server.jwt-secret")) {
+        if (this.instanceManager.addArgs.hasOwnProperty("authOpts") ||
+            this.instanceManager.addArgs.hasOwnProperty("server.jwt-secret")) {
           // Reconnect to set the server credentials right
-          arango.reconnect(arango.getEndpoint(), '_system', "root", "", true,
+          let hasJWT = this.instanceManager.jwt_secret !== "";
+          arango.reconnect(arango.getEndpoint(),
+                           '_system',
+                           hasJWT ? "root":undefined,
+                           hasJWT ? "":undefined,
+                           true,
                            this.instanceManager.addArgs["server.jwt-secret"]);
         }
         this.results.status = this.results.status && this.results[te].status;
