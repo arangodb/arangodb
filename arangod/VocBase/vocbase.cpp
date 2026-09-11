@@ -358,11 +358,8 @@ std::shared_ptr<LogicalCollection> Database::createCollectionObject(
   // collection objects on single servers must not be stubs
   TRI_ASSERT(!ServerState::instance()->isSingleServer() || !isAStub);
   if (!isAStub) {
-    // stubs are not persisted, so they get no storage-engine properties —
-    // same split as createCollectionObject / createCollectionObjectForStorage
-    // TODO (COR-981): fix this ugly line by CollectionDefinition
-    descriptor.storage.objectId =
-        _engine.createPropertiesForNewCollection(descriptor).objectId;
+    // stubs are not persisted, so they get no object id
+    descriptor.storage.objectId = _engine.resolveObjectId(descriptor.storage);
   }
 
   return std::make_shared<LogicalCollection>(*this, std::move(descriptor),

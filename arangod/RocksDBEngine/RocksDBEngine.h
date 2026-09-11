@@ -359,8 +359,8 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   void addParametersForNewCollection(velocypack::Builder& builder,
                                      velocypack::Slice info) override;
-  LocalStorageProperties createPropertiesForNewCollection(
-      CollectionDescriptor const& descriptor) const override;
+  uint64_t resolveObjectId(
+      CollectionStorageProperties const& storage) const override;
 
   rocksdb::TransactionDB* db() const { return _db; }
 

@@ -110,7 +110,7 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/ticks.h"
-#include "VocBase/Properties/CollectionDescriptor.h"
+#include "VocBase/Properties/CollectionStorageProperties.h"
 
 #include <rocksdb/convenience.h>
 #include <rocksdb/db.h>
@@ -1067,13 +1067,9 @@ void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder,
   }
 }
 
-LocalStorageProperties RocksDBEngine::createPropertiesForNewCollection(
-    CollectionDescriptor const& descriptor) const {
-  auto props = StorageEngine::createPropertiesForNewCollection(descriptor);
-  if (props.objectId == 0) {
-    props.objectId = TRI_NewTickServer();
-  }
-  return props;
+uint64_t RocksDBEngine::resolveObjectId(
+    CollectionStorageProperties const& storage) const {
+  return storage.objectId != 0 ? storage.objectId : TRI_NewTickServer();
 }
 
 // create storage-engine specific collection
