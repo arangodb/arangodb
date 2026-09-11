@@ -138,9 +138,8 @@ class OneSidedEnumerator final : public ITraversalEnumerator {
   bool skipPath() override;
   auto destroyEngines() -> void override;
 
-  template<typename =
-               std::enable_if<std::is_same_v<Step, enterprise::SmartGraphStep>>>
-  auto getSmartSearch() -> ResultPathType const&;
+  auto getSmartSearch() -> ResultPathType const& requires
+      std::is_same_v<Step, enterprise::SmartGraphStep>;
 
   auto prepareIndexExpressions(aql::Ast* ast) -> void override;
 

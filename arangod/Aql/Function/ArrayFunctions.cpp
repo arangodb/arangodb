@@ -731,20 +731,29 @@ AqlValue functions::Range(ExpressionContext* expressionContext, AstNode const&,
 
   auto builder = ThreadLocalBuilderLeaser::lease();
   builder->openArray(true);
+  // TODO(COR-938): Fix the float-loop-counter and maybe the one-off
   if (step < 0.0 && to <= from) {
     TRI_ASSERT(step != 0.0);
     Range::throwIfTooBigForMaterialization(
         static_cast<uint64_t>((from - to) / -step));
+    // NOLINTBEGIN(clang-analyzer-security.FloatLoopCounter,
+    // bugprone-float-loop-counter)
     for (; from >= to; from += step) {
       builder->add(VPackValue(from));
     }
+    // NOLINTEND(clang-analyzer-security.FloatLoopCounter,
+    // bugprone-float-loop-counter)
   } else {
     TRI_ASSERT(step != 0.0);
     Range::throwIfTooBigForMaterialization(
         static_cast<uint64_t>((to - from) / step));
+    // NOLINTBEGIN(clang-analyzer-security.FloatLoopCounter,
+    // bugprone-float-loop-counter)
     for (; from <= to; from += step) {
       builder->add(VPackValue(from));
     }
+    // NOLINTEND(clang-analyzer-security.FloatLoopCounter,
+    // bugprone-float-loop-counter)
   }
   builder->close();
   return AqlValue(builder->slice(), builder->size());

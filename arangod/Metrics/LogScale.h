@@ -84,7 +84,7 @@ class LogScale final : public Scale<T> {
     TRI_ASSERT(_div > 0);
     TRI_ASSERT(_lbase > 0);
     return static_cast<size_t>(
-        1 + std::floor(log((val - this->_low) / _div) / _lbase));
+        1 + std::floor(std::log((val - this->_low) / _div) / _lbase));
   }
 
   T base() const { return _base; }

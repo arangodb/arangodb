@@ -47,7 +47,7 @@ template<typename T, typename C = unsigned int>
 struct enumerate_iterator;
 
 template<typename T, typename C>
-void swap(enumerate_iterator<T, C>& a, enumerate_iterator<T, C>& b);
+void swap(enumerate_iterator<T, C>& a, enumerate_iterator<T, C>& b) noexcept;
 
 template<typename T, typename C>
 struct enumerate_iterator {
@@ -62,7 +62,8 @@ struct enumerate_iterator {
 
   ~enumerate_iterator() = default;
 
-  friend void swap<>(enumerate_iterator<T, C>& a, enumerate_iterator<T, C>& b);
+  friend void swap<>(enumerate_iterator<T, C>& a,
+                     enumerate_iterator<T, C>& b) noexcept;
 
   using difference_type = typename std::iterator_traits<T>::difference_type;
   using value_type = std::pair<C, typename std::iterator_traits<T>::value_type>;
@@ -97,10 +98,9 @@ struct enumerate_wrapper {
 };
 
 template<typename T, typename C>
-void swap(enumerate_iterator<T, C>& a, enumerate_iterator<T, C>& b) {
-  using std::swap;
-  swap(a._iter, b._iter);
-  swap(a._c, b._c);
+void swap(enumerate_iterator<T, C>& a, enumerate_iterator<T, C>& b) noexcept {
+  std::swap(a._iter, b._iter);
+  std::swap(a._c, b._c);
 }
 
 template<typename T, typename C>

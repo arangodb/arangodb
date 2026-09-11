@@ -56,9 +56,9 @@ struct SharedCounter {
     }
   }
 
-  explicit SharedCounter(SharedCounter<stripes> const& other) { copy(other); }
+  explicit SharedCounter(SharedCounter const& other) { copy(other); }
 
-  SharedCounter<stripes>& operator=(SharedCounter<stripes> const& other) {
+  SharedCounter& operator=(SharedCounter const& other) {
     copy(other);
     return *this;
   }
@@ -102,7 +102,7 @@ struct SharedCounter {
   IdFunc _id;
   uint64_t _mask;
 
-  void copy(SharedCounter<stripes> const& other) {
+  void copy(SharedCounter const& other) {
     if (this != &other) {
       _id = other._id;
       _mask = other._mask;
