@@ -736,24 +736,24 @@ AqlValue functions::Range(ExpressionContext* expressionContext, AstNode const&,
     TRI_ASSERT(step != 0.0);
     Range::throwIfTooBigForMaterialization(
         static_cast<uint64_t>((from - to) / -step));
-    // NOLINTBEGIN(clang-analyzer-security.FloatLoopCounter,
-    // bugprone-float-loop-counter)
+    // NOLINTBEGIN(clang-analyzer-security.FloatLoopCounter)
+    // NOLINTBEGIN(bugprone-float-loop-counter)
     for (; from >= to; from += step) {
       builder->add(VPackValue(from));
     }
-    // NOLINTEND(clang-analyzer-security.FloatLoopCounter,
-    // bugprone-float-loop-counter)
+    // NOLINTEND(bugprone-float-loop-counter)
+    // NOLINTEND(clang-analyzer-security.FloatLoopCounter)
   } else {
     TRI_ASSERT(step != 0.0);
     Range::throwIfTooBigForMaterialization(
         static_cast<uint64_t>((to - from) / step));
-    // NOLINTBEGIN(clang-analyzer-security.FloatLoopCounter,
-    // bugprone-float-loop-counter)
+    // NOLINTBEGIN(clang-analyzer-security.FloatLoopCounter)
+    // NOLINTBEGIN(bugprone-float-loop-counter)
     for (; from <= to; from += step) {
       builder->add(VPackValue(from));
     }
-    // NOLINTEND(clang-analyzer-security.FloatLoopCounter,
-    // bugprone-float-loop-counter)
+    // NOLINTEND(bugprone-float-loop-counter)
+    // NOLINTEND(clang-analyzer-security.FloatLoopCounter)
   }
   builder->close();
   return AqlValue(builder->slice(), builder->size());
