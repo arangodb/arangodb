@@ -32,7 +32,6 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
-#include "Utils/CursorRepository.h"
 
 #include <atomic>
 
@@ -62,6 +61,9 @@ void RocksDBBackgroundThread::beginShutdown() {
 }
 
 void RocksDBBackgroundThread::run() {
+  // bg thread must only run after recovery is done
+  TRI_ASSERT(_engine.isReady());
+
   auto& flushControl = _engine.getFlushControl();
 
   double const startTime = TRI_microtime();
@@ -74,10 +76,6 @@ void RocksDBBackgroundThread::run() {
       _condition.cv.wait_for(guard,
                              std::chrono::microseconds{
                                  static_cast<uint64_t>(_interval * 1000000.0)});
-    }
-
-    if (_engine.inRecovery()) {
-      continue;
     }
 
     TRI_IF_FAILURE("RocksDBBackgroundThread::run") { continue; }

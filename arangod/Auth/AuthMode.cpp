@@ -363,11 +363,6 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
 
             if (requestedLevel <= effectiveLevel) {
               return {};
-            } else if (_requestedApiVersion > 0 &&
-                       effectiveLevel == auth::Level::NONE) {
-              // User has no access to the database at all: report as not found
-              // to avoid revealing its existence.
-              return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND};
             } else {
               return {TRI_ERROR_FORBIDDEN,
                       failureMessage(database,
@@ -427,19 +422,6 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             if (requestedLevel > effectiveLevel) {
               // If we are using API version > 0, then we return NOT_FOUND to
               // hide the fact that the collection exists:
-              if (_requestedApiVersion > 0) {
-                if (effectiveLevel == auth::Level::NONE) {
-                  // User has no access to this collection: report as not found
-                  // to avoid revealing its existence.
-
-                  if (ServerState::instance()->isSingleServer()) {
-                    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
-                  } else {
-                    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                            "collection not found"};
-                  }
-                }
-              }
               if (requestedLevel == arangodb::auth::Level::RW &&
                   effectiveLevel == arangodb::auth::Level::RO) {
                 return {TRI_ERROR_ARANGO_READ_ONLY,
@@ -556,9 +538,6 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
 
             if (auth::Level::RO <= effectiveLevel) {
               return {};
-            } else if (_requestedApiVersion > 0 &&
-                       effectiveLevel == auth::Level::NONE) {
-              return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
             } else {
               return {
                   TRI_ERROR_FORBIDDEN,
@@ -858,7 +837,10 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                     .name = StaticStrings::SystemDatabase,
                     .level = DatabaseAccessLevel::Write});
                 r.fail()) {
-              return {TRI_ERROR_HTTP_FORBIDDEN, r.errorMessage()};
+              if (_requestedApiVersion == 0) {
+                return {TRI_ERROR_HTTP_FORBIDDEN, r.errorMessage()};
+              }
+              return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
             }
             return {};
           },
@@ -918,10 +900,16 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
 Result AuthMode::Classic::isAdmin() const {
   auto r = check(auth::perms::UseDatabase{.name = StaticStrings::SystemDatabase,
                                           .level = DatabaseAccessLevel::Write});
-  return r.ok() ? Result{}
-                : Result{TRI_ERROR_HTTP_FORBIDDEN,
-                         std::format("Failed admin-permission check: {}",
-                                     r.errorMessage())};
+  if (r.ok()) {
+    return Result{};
+  }
+
+  auto message =
+      std::format("Failed admin-permission check: {}", r.errorMessage());
+  if (_requestedApiVersion == 0) {
+    return Result{TRI_ERROR_HTTP_FORBIDDEN, message};
+  }
+  return Result{TRI_ERROR_FORBIDDEN, message};
 }
 
 auto AuthMode::Rbac::username() const noexcept -> std::string_view {

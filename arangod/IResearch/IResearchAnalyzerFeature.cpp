@@ -1439,8 +1439,8 @@ Result IResearchAnalyzerFeature::emplace(
                 "'")};
       }
 
-      // persist only on coordinator and single-server while not in recovery
-      if ((!engine().inRecovery())  // do not persist during recovery
+      // persist only on coordinator and single-server while engine is ready
+      if ((engine().isReady())  // do not persist until ready
           && (ServerState::instance()->isCoordinator()          // coordinator
               || ServerState::instance()->isSingleServer())) {  // single-server
         res = storeAnalyzer(*pool, operationOrigin);
@@ -1505,7 +1505,7 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(
     }
   }
   auto& engine = vocbase.engine();
-  TRI_ASSERT(!engine.inRecovery());
+  TRI_ASSERT(engine.isReady());
   if (!analyzerModificationTrx) {
     // no modification transaction. Just truncate
     auto ctx = transaction::StandaloneContext::create(vocbase, operationOrigin);
@@ -1619,7 +1619,7 @@ Result IResearchAnalyzerFeature::bulkEmplace(
     }
 
     auto& engine = vocbase.engine();
-    TRI_ASSERT(!engine.inRecovery());
+    TRI_ASSERT(engine.isReady());
 
     WRITE_LOCKER(lock, _mutex);
 
@@ -1683,8 +1683,8 @@ Result IResearchAnalyzerFeature::bulkEmplace(
                                name, "' type '", type, "' properties '",
                                properties.toString(), "'")};
         }
-        TRI_ASSERT(!engine.inRecovery());
-        // persist only on coordinator and single-server while not in recovery
+        TRI_ASSERT(engine.isReady());
+        // persist only on coordinator and single-server while ready
         if (ServerState::instance()->isCoordinator()         // coordinator
             || ServerState::instance()->isSingleServer()) {  // single-server
           res = storeAnalyzer(*pool, operationOrigin);
@@ -1981,7 +1981,7 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(
   if (ServerState::instance()->isCoordinator()) {
     auto vocbase = _databaseFeature.useDatabase(database);
     if (!vocbase) {
-      if (engine().inRecovery()) {
+      if (!engine().isReady()) {
         return {};  // database might not have come up yet
       }
       return {TRI_ERROR_INTERNAL,
@@ -2148,7 +2148,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
 
     auto vocbase = _databaseFeature.useDatabase(database);
     if (!vocbase) {
-      if (engine().inRecovery()) {
+      if (!engine().isReady()) {
         return {};  // database might not have come up yet
       }
       if (itr != _lastLoad.end()) {
@@ -2164,12 +2164,12 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
     AnalyzersRevision::Revision loadingRevision{
         getAnalyzersRevision(*vocbase, true)->getRevision()};
 
-    if (engine().inRecovery()) {
-      // always load if inRecovery since collection contents might have changed
+    if (!engine().isReady()) {
+      // always load if not ready since collection contents might have changed
       // unless on db-server which does not store analyzer definitions in
       // collections
       if (ServerState::instance()->isDBServer()) {
-        return {};  // db-server should not access cluster during inRecovery
+        return {};  // db-server should not access cluster while !isReady()
       }
     } else if (ServerState::instance()->isSingleServer()) {  // single server
       if (itr != _lastLoad.end()) {
@@ -2621,7 +2621,7 @@ Result IResearchAnalyzerFeature::remove(
     }
 
     // on db-server analyzers are not persisted
-    // allow removal even inRecovery()
+    // allow removal even while !isReady()
     if (ServerState::instance()->isDBServer()) {
       _analyzers.erase(itr);
 
@@ -2655,8 +2655,8 @@ Result IResearchAnalyzerFeature::remove(
                        "' while removing arangosearch analyzer '", name, "'")};
     }
 
-    // do not allow persistence while in recovery
-    if (engine().inRecovery()) {
+    // do not allow persistence before engine is ready
+    if (!engine().isReady()) {
       return {TRI_ERROR_INTERNAL,
               absl::StrCat("failure to remove arangosearch analyzer '", name,
                            "' configuration while storage engine in recovery")};
@@ -2816,8 +2816,8 @@ Result IResearchAnalyzerFeature::storeAnalyzer(
                            pool.name(), "' configuration with 'null' type")};
     }
 
-    // do not allow persistence while in recovery
-    if (engine().inRecovery()) {
+    // do not allow persistence before engine is ready
+    if (!engine().isReady()) {
       return {TRI_ERROR_INTERNAL,
               absl::StrCat("failure to persist arangosearch analyzer '",
                            pool.name(),

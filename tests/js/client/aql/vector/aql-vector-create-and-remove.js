@@ -972,11 +972,98 @@ function VectorIndexDropDuringBuildSuite() {
     };
 }
 
+function VectorIndexFactoryStringTestSuite() {
+    let collection;
+    const dimension = 128;
+    const indexName = "vector_factory";
+    const seed = generateSeed();
+    const docsPerShard = 100;
+
+    const ensureIndexWithParams = (params) => collection.ensureIndex({
+        name: indexName,
+        type: "vector",
+        fields: ["vector"],
+        inBackground: false,
+        params: { metric: "l2", dimension, ...params },
+    });
+
+    const assertEnsureIndexRejected = (params) => {
+        try {
+            ensureIndexWithParams(params);
+            fail();
+        } catch (e) {
+            assertEqual(errors.ERROR_BAD_PARAMETER.code, e.errorNum);
+        }
+        assertEqual(undefined,
+            collection.getIndexes().find(i => i.name === indexName));
+    };
+
+    const assertIndexReady = (expectedNLists) => {
+        assertTrue(waitForVectorIndexState(collection, indexName,
+            VectorIndexTrainingState.kReady));
+        const idx = collection.getIndexes().find(i => i.name === indexName);
+        assertEqual(expectedNLists, idx.params.nLists);
+    };
+
+    return {
+        setUp: function() {
+            db._useDatabase("_system");
+            db._createDatabase(dbName);
+            db._useDatabase(dbName);
+
+            collection = db._create(collName, { numberOfShards });
+            const shards = isCluster ? numberOfShards : 1;
+            collection.insert(generateDocs(randomNumberGeneratorFloat(seed),
+                docsPerShard * shards, dimension));
+        },
+
+        tearDown: function() {
+            db._useDatabase("_system");
+            db._dropDatabase(dbName);
+        },
+
+        testFixedFactoryWithMatchingNLists: function() {
+            ensureIndexWithParams({ factory: "IVF15,Flat", nLists: 15 });
+            assertIndexReady(15);
+        },
+
+        testFactoryTemplateWithFixedNLists: function() {
+            ensureIndexWithParams({ factory: "IVF{},Flat", nLists: 15 });
+            assertIndexReady(15);
+        },
+
+        testFixedFactoryWithMismatchedNListsFails: function() {
+            assertEnsureIndexRejected({ factory: "IVF15,Flat", nLists: 20 });
+        },
+
+        testFixedFactoryWithoutNListsFails: function() {
+            // nLists defaults to a scaling spec, which a fixed IVF count
+            // contradicts.
+            assertEnsureIndexRejected({ factory: "IVF15,Flat" });
+        },
+
+        testNonIvfFactoryFails: function() {
+            assertEnsureIndexRejected({ factory: "Flat", nLists: 15 });
+        },
+
+        testUnparseableFactoryFails: function() {
+            assertEnsureIndexRejected({ factory: "IVF15,Random", nLists: 15 });
+        },
+
+        testFactoryIncompatibleWithDimensionFails: function() {
+            // PQ requires the dimension to be divisible by the number of
+            // sub-quantizers.
+            assertEnsureIndexRejected({ factory: "IVF15,PQ7", nLists: 15 });
+        },
+    };
+}
+
 jsunity.run(VectorIndexCreateAndRemoveTestSuite);
 jsunity.run(VectorIndexStoredValuesTestSuite);
 
 jsunity.run(VectorIndexTestCreationWithVectors);
 jsunity.run(VectorIndexInsertDuringTrainingSuite);
 jsunity.run(VectorIndexDropDuringBuildSuite);
+jsunity.run(VectorIndexFactoryStringTestSuite);
 
 return jsunity.done();
