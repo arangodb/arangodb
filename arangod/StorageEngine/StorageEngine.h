@@ -26,6 +26,7 @@
 #include "Basics/Result.h"
 #include "Indexes/IndexFactory.h"
 #include "StorageEngine/HealthData.h"
+#include "StorageEngine/LocalStorageProperties.h"
 #include "StorageEngine/TransactionStatistics.h"
 #include "Transaction/ManagerFeatureOptions.h"
 #include "Transaction/OperationOrigin.h"
@@ -61,6 +62,7 @@ class TransactionState;
 class WalAccess;
 struct IDatabaseProvider;
 struct IDatabaseBootstrap;
+struct CollectionStorageProperties;
 
 namespace rest {
 class RestHandlerFactory;
@@ -125,10 +127,14 @@ class StorageEngine : public application_features::ApplicationFeature {
   // collection creation data with engine-specific information
   virtual void addParametersForNewCollection(velocypack::Builder&,
                                              velocypack::Slice /*info*/);
+  // the id the engine uses to address the collection's data; keeps one that
+  // was supplied already
+  virtual uint64_t resolveObjectId(
+      CollectionStorageProperties const& storage) const;
 
   // create storage-engine specific collection
   virtual std::unique_ptr<PhysicalCollection> createPhysicalCollection(
-      LogicalCollection& collection, velocypack::Slice info) = 0;
+      LogicalCollection& collection, LocalStorageProperties const& storage) = 0;
 
   // status functionality
   // --------------------
