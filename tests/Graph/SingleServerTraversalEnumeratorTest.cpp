@@ -98,33 +98,33 @@ TEST(SingleServerTraversalEnumeratorTest,
 }
 
 TEST(SingleServerTraversalEnumeratorTest, querying_path_of_length_one) {
-  // TODO create graph
-  // auto graph = Graph({"v/0", "v/1"}, {{"v/0", "v/1"}});
-  auto graph = experimental::InMemoryGraph();
-  // TODO give graph to enumerator
+  auto v0 = std::string{"v/0"};
+  auto v0Ref = VertexRef{velocypack::HashedStringRef{
+      v0.c_str(), static_cast<uint32_t>(v0.length())}};
+  auto v1 = std::string{"v/1"};
+  auto v1Ref = VertexRef{velocypack::HashedStringRef{
+      v1.c_str(), static_cast<uint32_t>(v1.length())}};
+  auto graph = experimental::InMemoryGraph({v0Ref, v1Ref}, {{v0Ref, v1Ref}});
   auto enumerator = SingleServerTraversalEnumerator(graph);
-  auto start = std::string{"v/0"};
-  enumerator.reset(graph::VertexRef{velocypack::HashedStringRef{
-      start.c_str(), static_cast<uint32_t>(start.length())}});
+  enumerator.reset(v0Ref);
 
   {
     auto nextPath = enumerator.getNextPath();
     EXPECT_NE(nextPath, nullptr);
+    auto expected = SingleServerPathResult{{v0Ref, v1Ref},
+                                           {Edge{.from = v0Ref, .to = v1Ref}}};
     // TODO make this work
-    // ASSERT_EQ((static_cast<const SingleServerPathResult&>(*nextPath)),
-    //           (SingleServerPathResult{{"v/0", "v/1"},
-    //                                   {Edge{._from = "v/0", ._to =
-    //                                   "v/1"}}}));
+    assertEqual(*nextPath, expected);
 
     // TODO make this work
     // TODO really false? or directly true here?
-    // EXPECT_FALSE(enumerator.isDone());
+    EXPECT_FALSE(enumerator.isDone());
   }
 
-  // TODO make this work
-  // {
-  //   auto nextPath = enumerator.getNextPath();
-  //   EXPECT_EQ(nextPath, nullptr);
-  //   EXPECT_TRUE(enumerator.isDone());
-  // }
+  {
+    auto nextPath = enumerator.getNextPath();
+    // TODO make this work
+    EXPECT_EQ(nextPath, nullptr);
+    EXPECT_TRUE(enumerator.isDone());
+  }
 }
