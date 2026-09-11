@@ -34,7 +34,6 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "VectorIndex/Feature.h"
 #include "RestServer/ViewTypesFeature.h"
-#include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/ManagerFeature.h"
 
@@ -55,7 +54,6 @@ DatabaseFeaturePhase::DatabaseFeaturePhase(
   startsAfter<LockfileFeature>();
   startsAfter<ReplicationFeature>();
   startsAfter<StorageEngine>();
-  startsAfter<RocksDBRecoveryManager>();
   startsAfter<ServerIdFeature>();
   startsAfter<SystemDatabaseFeature>();
   startsAfter<transaction::ManagerFeature>();

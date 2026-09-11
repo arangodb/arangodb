@@ -2362,7 +2362,7 @@ TEST_F(IResearchViewTest, test_drop_cid) {
       StorageEngineMock::before = [&persisted]() -> void { persisted = true; };
       auto beforeRecovery = StorageEngineMock::recoveryStateResult;
       StorageEngineMock::recoveryStateResult =
-          arangodb::RecoveryState::IN_PROGRESS;
+          arangodb::EngineState::kRecovering;
       irs::Finally restoreRecovery = [&beforeRecovery]() noexcept {
         StorageEngineMock::recoveryStateResult = beforeRecovery;
       };
@@ -2570,7 +2570,7 @@ TEST_F(IResearchViewTest, test_drop_cid) {
       StorageEngineMock::before = [&persisted]() -> void { persisted = true; };
       auto beforeRecovery = StorageEngineMock::recoveryStateResult;
       StorageEngineMock::recoveryStateResult =
-          arangodb::RecoveryState::IN_PROGRESS;
+          arangodb::EngineState::kRecovering;
       irs::Finally restoreRecovery = [&beforeRecovery]() noexcept {
         StorageEngineMock::recoveryStateResult = beforeRecovery;
       };
@@ -3074,7 +3074,7 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       StorageEngineMock::before = [&persisted]() -> void { persisted = true; };
       auto beforeRecovery = StorageEngineMock::recoveryStateResult;
       StorageEngineMock::recoveryStateResult =
-          arangodb::RecoveryState::IN_PROGRESS;
+          arangodb::EngineState::kRecovering;
       irs::Finally restoreRecovery = [&beforeRecovery]() noexcept {
         StorageEngineMock::recoveryStateResult = beforeRecovery;
       };
@@ -3229,7 +3229,7 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       StorageEngineMock::before = [&persisted]() -> void { persisted = true; };
       auto beforeRecovery = StorageEngineMock::recoveryStateResult;
       StorageEngineMock::recoveryStateResult =
-          arangodb::RecoveryState::IN_PROGRESS;
+          arangodb::EngineState::kRecovering;
       irs::Finally restoreRecovery = [&beforeRecovery]() noexcept {
         StorageEngineMock::recoveryStateResult = beforeRecovery;
       };
@@ -3302,10 +3302,10 @@ TEST_F(IResearchViewTest, test_insert) {
         dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     ASSERT_NE(nullptr, view);
     StorageEngineMock::recoveryTickResult = 42;
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRunning;
     StorageEngineMock::recoveryTickCallback = []() {
       StorageEngineMock::recoveryStateResult =
-          arangodb::RecoveryState::IN_PROGRESS;
+          arangodb::EngineState::kRecovering;
     };
     auto index = StorageEngineMock::buildLinkMock(
         arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
@@ -3365,8 +3365,7 @@ TEST_F(IResearchViewTest, test_insert) {
   // in recovery batch (skip operations before or at recovery tick)
   {
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     Vocbase vocbase(testDBInfo(server.server()), _engine);
 
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
@@ -3378,10 +3377,10 @@ TEST_F(IResearchViewTest, test_insert) {
     EXPECT_TRUE((nullptr != view));
 
     StorageEngineMock::recoveryTickResult = 42;
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRunning;
     StorageEngineMock::recoveryTickCallback = []() {
       StorageEngineMock::recoveryStateResult =
-          arangodb::RecoveryState::IN_PROGRESS;
+          arangodb::EngineState::kRecovering;
     };
     auto index = StorageEngineMock::buildLinkMock(
         arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
@@ -3450,7 +3449,7 @@ TEST_F(IResearchViewTest, test_insert) {
 
   // not in recovery (FindOrCreate)
   {
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRunning;
     Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
@@ -3507,7 +3506,7 @@ TEST_F(IResearchViewTest, test_insert) {
 
   // not in recovery (SyncAndReplace)
   {
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRunning;
     Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
@@ -3566,7 +3565,7 @@ TEST_F(IResearchViewTest, test_insert) {
 
   // not in recovery : single operation transaction
   {
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRunning;
     Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
@@ -3617,7 +3616,7 @@ TEST_F(IResearchViewTest, test_insert) {
 
   // not in recovery batch (FindOrCreate)
   {
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRunning;
     Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
@@ -3674,7 +3673,7 @@ TEST_F(IResearchViewTest, test_insert) {
 
   // not in recovery batch (SyncAndReplace)
   {
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRunning;
     Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
@@ -3833,10 +3832,10 @@ TEST_F(IResearchViewTest, test_remove) {
         dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     ASSERT_NE(nullptr, view);
     StorageEngineMock::recoveryTickResult = 42;
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRunning;
     StorageEngineMock::recoveryTickCallback = []() {
       StorageEngineMock::recoveryStateResult =
-          arangodb::RecoveryState::IN_PROGRESS;
+          arangodb::EngineState::kRecovering;
     };
     auto index = StorageEngineMock::buildLinkMock(
         arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
@@ -3904,8 +3903,7 @@ TEST_F(IResearchViewTest, test_remove) {
   // in recovery batch (skip operations before or at recovery tick)
   {
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
@@ -3916,10 +3914,10 @@ TEST_F(IResearchViewTest, test_remove) {
     EXPECT_TRUE((nullptr != view));
 
     StorageEngineMock::recoveryTickResult = 42;
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRunning;
     StorageEngineMock::recoveryTickCallback = []() {
       StorageEngineMock::recoveryStateResult =
-          arangodb::RecoveryState::IN_PROGRESS;
+          arangodb::EngineState::kRecovering;
     };
     auto index = StorageEngineMock::buildLinkMock(
         arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
@@ -3988,7 +3986,7 @@ TEST_F(IResearchViewTest, test_remove) {
 
   // not in recovery (FindOrCreate)
   {
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRunning;
     Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
@@ -4045,7 +4043,7 @@ TEST_F(IResearchViewTest, test_remove) {
 
   // not in recovery (SyncAndReplace)
   {
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRunning;
     Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
@@ -4104,7 +4102,7 @@ TEST_F(IResearchViewTest, test_remove) {
 
   // not in recovery : single operation transaction
   {
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRunning;
     Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
@@ -4155,7 +4153,7 @@ TEST_F(IResearchViewTest, test_remove) {
 
   // not in recovery batch (FindOrCreate)
   {
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRunning;
     Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
@@ -4212,7 +4210,7 @@ TEST_F(IResearchViewTest, test_remove) {
 
   // not in recovery batch (SyncAndReplace)
   {
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRunning;
     Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
@@ -4595,8 +4593,7 @@ TEST_F(IResearchViewTest, test_register_link) {
     }
 
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -4945,8 +4942,7 @@ TEST_F(IResearchViewTest, test_unregister_link) {
     EXPECT_TRUE((nullptr != vocbase.lookupCollection("testCollection")));
 
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -8523,8 +8519,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
         "{ \"links\": { \"testCollection\": {} } }");
 
     auto beforeRec = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&beforeRec]() noexcept {
       StorageEngineMock::recoveryStateResult = beforeRec;
     };
@@ -8915,7 +8910,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       persisted = false;
       auto beforeRecovery = StorageEngineMock::recoveryStateResult;
       StorageEngineMock::recoveryStateResult =
-          arangodb::RecoveryState::IN_PROGRESS;
+          arangodb::EngineState::kRecovering;
       irs::Finally restoreRecovery = [&beforeRecovery]() noexcept {
         StorageEngineMock::recoveryStateResult = beforeRecovery;
       };
@@ -8953,7 +8948,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
       auto before = StorageEngineMock::recoveryStateResult;
       StorageEngineMock::recoveryStateResult =
-          arangodb::RecoveryState::IN_PROGRESS;
+          arangodb::EngineState::kRecovering;
       irs::Finally restoreRecovery = [&before]() noexcept {
         StorageEngineMock::recoveryStateResult = before;
       };

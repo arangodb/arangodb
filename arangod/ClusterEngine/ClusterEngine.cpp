@@ -128,7 +128,7 @@ ClusterEngine::ClusterEngine(application_features::ApplicationServer& server,
                              IVectorIndexProvider const& vectorIndexProvider)
     : StorageEngine(server, EngineName, name(),
                     std::make_unique<ClusterIndexFactory>(server, *this),
-                    database),
+                    database, database),
       _clusterFeature(clusterFeature),
       _metrics(metrics),
       _indexDefinitions(std::make_unique<ClusterIndexDefinitions>(
@@ -167,6 +167,11 @@ void ClusterEngine::prepare() {
 void ClusterEngine::start() {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   initTransactionStatistics(_metrics);
+
+  VPackBuilder databases;
+  getDatabases(databases);
+  TRI_ASSERT(databases.slice().isArray());
+  _databaseBootstrap.bootstrapDatabases(databases.slice());
 }
 
 std::shared_ptr<TransactionState> ClusterEngine::createTransactionState(
@@ -244,12 +249,12 @@ Result ClusterEngine::dropDatabase(TRI_vocbase_t& database) {
 }
 
 // current recovery state
-RecoveryState ClusterEngine::recoveryState() {
-  return RecoveryState::DONE;  // never in recovery
+EngineState ClusterEngine::engineState() noexcept {
+  return EngineState::kRunning;  // never in recovery
 }
 
 // current recovery tick
-TRI_voc_tick_t ClusterEngine::recoveryTick() {
+TRI_voc_tick_t ClusterEngine::recoveryTick() noexcept {
   return 0;  // never in recovery
 }
 
@@ -287,7 +292,7 @@ arangodb::Result ClusterEngine::dropView(TRI_vocbase_t const& vocbase,
 }
 
 Result ClusterEngine::changeView(LogicalView const&, velocypack::Slice) {
-  if (inRecovery()) {
+  if (!isReady()) {
     return {};
   }
   return TRI_ERROR_NOT_IMPLEMENTED;

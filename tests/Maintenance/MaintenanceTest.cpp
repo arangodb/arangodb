@@ -57,7 +57,6 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
 #include "RocksDBEngine/RocksDBOptionFeature.h"
-#include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "VocBase/LogicalCollection.h"
@@ -551,8 +550,6 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
     auto& dumpLimits = as.addFeature<DumpLimitsFeature>();
     auto& scheduler = as.addFeature<SchedulerFeature>(metrics, sharedPRNG);
 
-    auto& rocksDbRecoveryManager =
-        as.addFeature<RocksDBRecoveryManager>(dbFeature, dbFeature);
     auto& vectorIndex = as.addFeature<VectorIndexFeature>(dbFeature);
     auto& rocksDbIndexCacheRefillFeature =
         as.addFeature<RocksDBIndexCacheRefillFeature>(dbFeature, nullptr,
@@ -568,7 +565,7 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
     // server
     engine = &as.addFeature<StorageEngine, RocksDBEngine>(
         roOptions, metrics, dbpath, vectorIndex, flush, dumpLimits,
-        replicatedLogFeature, scheduler, rocksDbRecoveryManager, dbFeature,
+        replicatedLogFeature, scheduler, dbFeature, dbFeature,
         rocksDbIndexCacheRefillFeature, cacheManagerFeature, agencyFeature);
   }
 

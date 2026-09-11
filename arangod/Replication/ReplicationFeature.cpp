@@ -36,7 +36,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "StorageEngine/StorageEngine.h"
 
 using namespace arangodb::application_features;
@@ -71,7 +70,6 @@ ReplicationFeature::ReplicationFeature(
 
   startsAfter<DatabaseFeature>();
   startsAfter<StorageEngine>();
-  startsAfter<RocksDBRecoveryManager>();
   startsAfter<ServerIdFeature>();
   startsAfter<SystemDatabaseFeature>();
 }

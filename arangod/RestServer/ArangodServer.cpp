@@ -340,8 +340,6 @@ void ArangodServer::addFeatures() {
   auto& rocksdbCacheRefill = addFeature<RocksDBIndexCacheRefillFeature>(
       database, &clusterFeature, metrics,
       getOptions<RocksDBIndexCacheRefillOptionsProvider>());
-  auto& rocksdbRecovery =
-      addFeature<RocksDBRecoveryManager>(database, database);
 #ifdef TRI_HAVE_GETRLIMIT
   addFeature<FileDescriptorsFeature>(
       metrics, getOptions<file_descriptors::FileDescriptorsOptionsProvider>());
@@ -393,8 +391,8 @@ void ArangodServer::addFeatures() {
     enginePtr = &addFeature<StorageEngine, RocksDBEngine>(
         rocksdbOption, metrics, databasePath, vectorIndex, flush, dumpLimits,
         replication2::EnableReplication2 ? &replicatedLogFeature : nullptr,
-        scheduler, rocksdbRecovery, database, rocksdbCacheRefill, cacheManager,
-        agency, getOptions<RocksDBEngineOptionsProvider>());
+        scheduler, database, database, rocksdbCacheRefill, cacheManager, agency,
+        getOptions<RocksDBEngineOptionsProvider>());
   }
   addFeature<transaction::ManagerFeature>(
       metrics, *enginePtr, getOptions<transaction::ManagerOptionsProvider>());

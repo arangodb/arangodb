@@ -62,6 +62,7 @@
 
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 
 namespace {
 
@@ -184,8 +185,8 @@ StorageEngineMock::buildInvertedIndexMock(
 }
 
 std::function<void()> StorageEngineMock::before = []() -> void {};
-arangodb::RecoveryState StorageEngineMock::recoveryStateResult =
-    arangodb::RecoveryState::DONE;
+arangodb::EngineState StorageEngineMock::recoveryStateResult =
+    arangodb::EngineState::kRunning;
 TRI_voc_tick_t StorageEngineMock::recoveryTickResult = 0;
 std::function<void()> StorageEngineMock::recoveryTickCallback = []() -> void {};
 
@@ -197,7 +198,7 @@ StorageEngineMock::StorageEngineMock(
     : StorageEngine(server, "Mock", "Mock",
                     std::unique_ptr<arangodb::IndexFactory>(
                         new IndexFactoryMock(server, injectClusterIndexes)),
-                    _dbProvider),
+                    _dbProvider, _dbProvider),
       vocbaseCount(1),
       _releasedTick(0) {
   initTransactionStatistics(_mockRegistry);
@@ -376,10 +377,10 @@ arangodb::Result StorageEngineMock::handleSyncKeys(
   return arangodb::Result();
 }
 
-arangodb::RecoveryState StorageEngineMock::recoveryState() {
+arangodb::EngineState StorageEngineMock::engineState() noexcept {
   return recoveryStateResult;
 }
-TRI_voc_tick_t StorageEngineMock::recoveryTick() {
+TRI_voc_tick_t StorageEngineMock::recoveryTick() noexcept {
   if (recoveryTickCallback) {
     recoveryTickCallback();
   }
