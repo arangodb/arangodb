@@ -100,15 +100,15 @@ function chaos (options) {
   };
 
   return new chaosRunner(options, 'chaos', {
-    "--server.maximal-threads":"8",
-    "--server.authentication": false,
+    "server.maximal-threads":"8",
   }).run(testCases);
 }
 
 function deadlock (options) {
   let testCases = tu.scanTestPaths(testPaths.deadlock, options).filter((c) => c.includes("test-deadlock"));
   // start with intentionally few threads, so that deadlocks become more likely
-  return new trs.runLocalInArangoshRunner(options, 'deadlock', {"--server.maximal-threads":"8"}).run(testCases);
+  return new trs.runLocalInArangoshRunner(options, 'deadlock', {
+    "server.maximal-threads":"8"}).run(testCases);
 }
 
 function subQueryChaos (options) {
