@@ -408,7 +408,7 @@ commands:
             unset IFS
             for var in $(compgen -e); do
                for filter in AWS CIRCLE CONTAINER GITHUB KUBERNETES; do
-                 if [[ "$var" == *"$filter"* ]] then
+                 if [[ "$var" == *"$filter"* ]]; then
                    unset "$var"
                  fi
                done
@@ -1281,7 +1281,7 @@ jobs:
           name: Run << parameters.suiteName >> tests
           no_output_timeout: 20m
           command: |
-            set +x
+            BUCKETS="$CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX"
             unset IFS
             for var in $(compgen -e); do
                for filter in AWS CIRCLE CONTAINER GITHUB KUBERNETES; do
@@ -1318,7 +1318,7 @@ jobs:
               --no-run-upgrade  \
               --selenium << parameters.browser >> \
               --starter-mode << parameters.deployment >> \
-              --buckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
+              --buckets $BUCKETS \
               << parameters.filterStatement >>
             exit_code=$?
             docker run \
