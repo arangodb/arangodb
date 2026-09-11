@@ -1,13 +1,12 @@
 set(ARANGODB_VOCBASE_PROPERTIES_TEST_SOURCES
         ClusteringConstantPropertiesTest.cpp
         ClusteringMutablePropertiesTest.cpp
-        ClusteringPropertiesTest.cpp
         CollectionPropertiesTest.cpp
         CollectionConstantPropertiesTest.cpp
         CollectionMutablePropertiesTest.cpp
         CollectionInternalPropertiesTest.cpp
         CollectionCreateOptionsTest.cpp
-        CreateCollectionBodyTest.cpp
+        CollectionDescriptorFactoryTest.cpp
         KeyGeneratorPropertiesTest.cpp
 
         ${PROJECT_SOURCE_DIR}/arangod/VocBase/Identifiers/DataSourceId.cpp

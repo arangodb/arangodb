@@ -25,7 +25,7 @@
 #include "Aql/VariableGenerator.h"
 #include "Cluster/ClusterInfo.h"
 #include "Basics/ResultT.h"
-#include "VocBase/Properties/CreateCollectionBody.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 
 #include <velocypack/Buffer.h>
 
@@ -288,14 +288,14 @@ class Graph {
       std::optional<std::string> const& leadingCollection,
       std::unordered_set<std::string> const& satellites,
       DatabaseConfiguration const& config) const noexcept
-      -> ResultT<CreateCollectionBody>;
+      -> ResultT<CollectionDescriptor>;
 
   auto prepareCreateCollectionBodyVertex(
       std::string_view name,
       std::optional<std::string> const& leadingCollection,
       std::unordered_set<std::string> const& satellites,
       DatabaseConfiguration const& config) const noexcept
-      -> ResultT<CreateCollectionBody>;
+      -> ResultT<CollectionDescriptor>;
 
   /**
    *
@@ -324,7 +324,7 @@ class Graph {
 
  protected:
   virtual auto injectShardingToCollectionBody(
-      CreateCollectionBody& body,
+      CollectionDescriptor& body,
       std::optional<std::string> const& leadingCollection,
       std::unordered_set<std::string> const& satellites,
       DatabaseConfiguration const& config) const noexcept -> Result;

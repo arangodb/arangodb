@@ -49,7 +49,7 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
-#include "VocBase/Properties/CreateCollectionBody.h"
+#include "VocBase/Properties/CreateCollectionRequest.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 
 namespace {
@@ -206,27 +206,23 @@ auto Runner::createCollection(std::string const& name, std::string const& type)
         VPackValue(type == "edge" ? TRI_COL_TYPE_EDGE : TRI_COL_TYPE_DOCUMENT));
   b.close();
 
-  bool enforceReplicationFactor = true;
   auto config = _server->vocbase()->getDatabaseConfiguration();
-  config.enforceReplicationFactor = enforceReplicationFactor;
 
   auto planCollection =
-      CreateCollectionBody::fromCreateAPIBody(b.slice(), config);
+      CreateCollectionRequest::fromCreateAPIBody(b.slice(), config);
 
   if (planCollection.fail()) {
     throw std::runtime_error("Failed to create collection: " +
                              std::string(planCollection.errorMessage()));
   }
 
-  std::vector<CreateCollectionBody> collections{
-      std::move(planCollection.get())};
+  std::vector<CollectionDescriptor> collections{
+      std::move(planCollection->descriptor)};
 
+  OperationOptions options;
+  // all internal options keep their defaults
   auto res = methods::Collections::create(
-      *_server->vocbase(),  // collection vocbase
-      {},                   // operation options
-      collections,
-      /*waitForSyncReplication*/ true, enforceReplicationFactor,
-      /*isNewDatabase*/ false);
+      *_server->vocbase(), options, collections, {}, planCollection->options);
 
   if (!res.ok()) {
     throw std::runtime_error("Failed to create collection: " +

@@ -22,39 +22,39 @@
 
 #include "PlanCollectionEntry.h"
 #include "Inspection/VPack.h"
-#include "VocBase/Properties/CreateCollectionBody.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 
 using namespace arangodb;
-PlanCollectionEntry::PlanCollectionEntry(UserInputCollectionProperties col,
+PlanCollectionEntry::PlanCollectionEntry(CollectionDescriptor col,
                                          ShardDistribution shardDistribution,
                                          AgencyIsBuildingFlags isBuildingFlags)
     : _properties{std::move(col)},
       _buildingFlags{std::move(isBuildingFlags)},
       _indexProperties(
           CollectionIndexesProperties::defaultIndexesForCollectionType(
-              col.getType())),
+              col.constant.getType())),
       _shardDistribution(std::move(shardDistribution)) {}
 
 std::string PlanCollectionEntry::getCID() const {
-  TRI_ASSERT(!_properties.id.empty());
-  return std::to_string(_properties.id.id());
+  TRI_ASSERT(!_properties.internal.id.empty());
+  return std::to_string(_properties.internal.id.id());
 }
 
 std::string const& PlanCollectionEntry::getName() const {
-  TRI_ASSERT(!_properties.name.empty());
-  return {_properties.name};
+  TRI_ASSERT(!_properties.mutableProps.name.empty());
+  return {_properties.mutableProps.name};
 }
 
 bool PlanCollectionEntry::requiresCurrentWatcher() const {
-  return _properties.numberOfShards != 0ull;
+  return _properties.clusteringConstant.numberOfShards != 0ull;
 }
 
 PlanShardToServerMapping PlanCollectionEntry::getShardMapping() const {
   TRI_ASSERT(_shardDistribution.getDistributionForShards().shards.size() ==
-             _properties.numberOfShards);
+             _properties.clusteringConstant.numberOfShards);
   return _shardDistribution.getDistributionForShards();
 }
 

@@ -24,7 +24,7 @@
 #include "Inspection/VPack.h"
 #include "Replication2/AgencyCollectionSpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
-#include "VocBase/Properties/CreateCollectionBody.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Builder.h>
@@ -35,34 +35,35 @@
 using namespace arangodb;
 
 namespace {
-auto transform(UserInputCollectionProperties col)
+auto transform(CollectionDescriptor col)
     -> replication2::agency::CollectionTargetSpecification {
   // TODO Maybe we can find a better way than this for transformation.
   replication2::agency::CollectionTargetSpecification spec;
-  spec.groupId = col.groupId.value();
-  spec.mutableProperties = {.computedValues = std::move(col.computedValues),
-                            .schema = std::move(col.schema),
-                            .cacheEnabled = col.cacheEnabled};
-  spec.immutableProperties = {col,
-                              col.name,
-                              col.isSystem,
-                              col.type,
-                              col.keyOptions,
-                              col.isSmart,
-                              col.isDisjoint,
-                              col.shardingStrategy.value(),
-                              col.shardKeys.value(),
-                              col.smartJoinAttribute,
-                              col.smartGraphAttribute,
-                              col.shadowCollections};
+  spec.groupId = col.clusteringConstant.groupId.value();
+  spec.mutableProperties = {
+      .computedValues = std::move(col.mutableProps.computedValues),
+      .schema = std::move(col.mutableProps.schema),
+      .cacheEnabled = col.mutableProps.cacheEnabled};
+  spec.immutableProperties = {col.internal,
+                              col.mutableProps.name,
+                              col.constant.isSystem,
+                              col.constant.type,
+                              col.constant.keyOptions,
+                              col.constant.isSmart,
+                              col.constant.isDisjoint,
+                              col.clusteringConstant.shardingStrategy.value(),
+                              col.clusteringConstant.shardKeys.value(),
+                              col.constant.smartJoinAttribute,
+                              col.internal.smartGraphAttribute,
+                              col.constant.shadowCollections};
   spec.indexes = CollectionIndexesProperties::defaultIndexesForCollectionType(
-      col.getType());
+      col.constant.getType());
   return spec;
 }
 }  // namespace
 
 PlanCollectionEntryReplication2::PlanCollectionEntryReplication2(
-    UserInputCollectionProperties col)
+    CollectionDescriptor col)
     : _properties{::transform(std::move(col))} {}
 
 std::string PlanCollectionEntryReplication2::getCID() const {
