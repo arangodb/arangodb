@@ -1282,6 +1282,7 @@ jobs:
           no_output_timeout: 20m
           command: |
             unset IFS
+            set +x
             for var in $(compgen -e); do
                for filter in AWS CIRCLE CONTAINER GITHUB KUBERNETES; do
                  if [[ "$var" == *"$filter"* ]] then
