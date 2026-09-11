@@ -1281,11 +1281,11 @@ jobs:
           name: Run << parameters.suiteName >> tests
           no_output_timeout: 20m
           command: |
-            unset IFS
             set +x
+            unset IFS
             for var in $(compgen -e); do
                for filter in AWS CIRCLE CONTAINER GITHUB KUBERNETES; do
-                 if [[ "$var" == *"$filter"* ]] then
+                 if [[ "$var" == *"$filter"* ]]; then
                    unset "$var"
                  fi
                done
