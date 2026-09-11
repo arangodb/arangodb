@@ -55,7 +55,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-for tool in clang-tidy run-clang-tidy jq; do
+for tool in clang-tidy-19 run-clang-tidy-19 jq; do
   if ! command -v "$tool" >/dev/null 2>&1; then
     echo "error: '$tool' not found in PATH." >&2
     exit 1
@@ -197,4 +197,4 @@ echo
 
 # run-clang-tidy matches its positional args as regexes against DB paths.
 # Passing the exact relative paths is specific enough in practice.
-run-clang-tidy -p "$build_dir" -j "$jobs" -quiet $fix "${present[@]}"
+run-clang-tidy-19 -p "$build_dir" -j "$jobs" -quiet $fix "${present[@]}"

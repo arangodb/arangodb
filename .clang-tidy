@@ -102,6 +102,71 @@ Checks: |
   # now; re-enable when we tackle it as a dedicated effort.
   -misc-use-anonymous-namespace
 
+  # We are working on fixing up these rules, basically everytime we fix one, 
+  # we can either remove it here or move it up if we want to keep it off.
+  # The list ordered reversed in least to most occurrences 
+  -bugprone-return-const-ref-from-parameter
+  -clang-analyzer-core.NonNullParamChecker
+  -clang-analyzer-cplusplus.PlacementNew
+  -clang-analyzer-unix.BlockInCriticalSection
+  -clang-analyzer-unix.Malloc
+  -clang-diagnostic-error
+  -misc-non-copyable-objects
+  -misc-unused-alias-decls
+  -bugprone-incorrect-roundings
+  -bugprone-signed-char-misuse
+  -clang-analyzer-core.uninitialized.Branch
+  -clang-analyzer-optin.cplusplus.UninitializedObject
+  -clang-analyzer-optin.cplusplus.VirtualCall
+  -bugprone-integer-division
+  -clang-analyzer-optin.performance.Padding
+  -bugprone-string-constructor
+  -bugprone-unhandled-self-assignment
+  -clang-analyzer-core.CallAndMessage
+  -misc-header-include-cycle
+  -performance-faster-string-find
+  -bugprone-forwarding-reference-overload
+  -clang-analyzer-core.NullDereference
+  -clang-analyzer-cplusplus.Move
+  -performance-inefficient-vector-operation
+  -performance-trivially-destructible
+  -bugprone-inc-dec-in-conditions
+  -performance-no-int-to-ptr
+  -bugprone-sizeof-expression
+  -bugprone-forward-declaration-namespace
+  -bugprone-unused-local-non-trivial-variable
+  -performance-noexcept-move-constructor
+  -performance-unnecessary-copy-initialization
+  -bugprone-multi-level-implicit-pointer-conversion
+  -bugprone-switch-missing-default-case
+  -bugprone-unused-return-value
+  -clang-analyzer-deadcode.DeadStores
+  -bugprone-assignment-in-if-condition
+  -clang-analyzer-optin.core.EnumCastOutOfRange
+  -bugprone-use-after-move
+  -modernize-use-equals-default
+  -performance-for-range-copy
+  -bugprone-reserved-identifier
+  -bugprone-move-forwarding-reference
+  -performance-inefficient-string-concatenation
+  -bugprone-crtp-constructor-accessibility
+  -bugprone-macro-parentheses
+  -bugprone-branch-clone
+  -bugprone-suspicious-stringview-data-usage
+  -bugprone-exception-escape
+  -modernize-use-equals-delete
+  -performance-avoid-endl
+  -bugprone-implicit-widening-of-multiplication-result
+  -modernize-use-nullptr
+  -bugprone-unchecked-optional-access
+  -misc-use-internal-linkage
+  -performance-move-const-arg
+  -bugprone-empty-catch
+  -performance-unnecessary-value-param
+  -bugprone-narrowing-conversions
+  -modernize-use-override
+
+
 # Only emit diagnostics for headers under our own source roots. Without this,
 # clang-tidy would either stay silent on headers or flood us with findings from
 # system and third-party headers pulled in transitively.
