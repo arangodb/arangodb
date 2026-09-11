@@ -1286,7 +1286,6 @@ jobs:
             for var in $(compgen -e); do
                for filter in AWS CIRCLE CONTAINER GITHUB KUBERNETES; do
                  if [[ "$var" == *"$filter"* ]] then
-                   echo "deleting $var"
                    unset "$var"
                  fi
                done
