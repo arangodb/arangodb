@@ -138,7 +138,7 @@ class MockServer {
   // raw pointes to, so they must live longer than _server.
   std::vector<std::shared_ptr<void>> _optionProviders;
   arangodb::application_features::ApplicationServer _server;
-  std::unique_ptr<StorageEngineMock> _engine;
+  StorageEngineMock* _engine = nullptr;
   std::unordered_map<arangodb::application_features::ApplicationFeature*, bool>
       _features;
   std::string _testFilesystemPath;

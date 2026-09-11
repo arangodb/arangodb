@@ -41,7 +41,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RocksDBEngine/RocksDBEngine.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Methods.h"
@@ -498,7 +498,7 @@ QueryInfoLoggerFeature::QueryInfoLoggerFeature(
       _options(std::move(options)) {
   setOptional(true);
   startsAfter<application_features::DatabaseFeaturePhase>();
-  startsAfter<RocksDBEngine>();
+  startsAfter<StorageEngine>();
   startsAfter<application_features::CommunicationFeaturePhase>();
 }
 

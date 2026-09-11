@@ -313,7 +313,7 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
     }
 
     auto& server = _state.config._server;
-    auto& engine = server.getFeature<DatabaseFeature>().engine();
+    auto& engine = server.getFeature<StorageEngine>();
     VPackSlice users = VPackSlice::emptyArraySlice();
     Result res =
         methods::Databases::create(server, engine, ExecContext::current(), name,

@@ -27,7 +27,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryOptions.h"
 #include "RestServer/IDatabasePathProvider.h"
-#include "RocksDBEngine/RocksDBEngine.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/BasicThread.h"
@@ -122,7 +122,7 @@ TemporaryStorageFeature::TemporaryStorageFeature(
       _options(std::move(options)),
       _cleanedUpDirectory(false),
       _databasePathProvider(databasePathProvider) {
-  startsAfter<RocksDBEngine>();
+  startsAfter<StorageEngine>();
   startsAfter<DatabasePathFeature>();
 
   if (!canBeUsed() || ServerState::instance()->isAgent()) {

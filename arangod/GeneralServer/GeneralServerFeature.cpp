@@ -951,7 +951,7 @@ void GeneralServerFeature::defineRemainingHandlers(
                      {0});
 
   // engine specific handlers
-  StorageEngine& engine = server().getFeature<DatabaseFeature>().engine();
+  StorageEngine& engine = server().getFeature<StorageEngine>();
   if (ServerState::instance()->isCoordinator()) {
     ClusterRestHandlers::registerResources(&f);
   } else {

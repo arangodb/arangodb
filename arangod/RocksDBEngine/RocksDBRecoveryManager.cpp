@@ -31,6 +31,7 @@
 #include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
 #include "Basics/files.h"
+#include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/IDatabaseProvider.h"
@@ -61,7 +62,6 @@
 
 namespace arangodb {
 
-RocksDBRecoveryManager::RocksDBRecoveryManager(
     RocksDBEngine& engine, std::atomic<rocksdb::SequenceNumber>& recoveryTick)
     : _engine(engine),
       _dbProvider(engine.getDatabaseProvider()),
