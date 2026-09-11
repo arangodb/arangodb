@@ -1501,6 +1501,7 @@ class instance {
     db._useDatabase("_system");
     let reconnected = false;
     let ret;
+    let caughtEx = null;
     try {
       ret = callback();
     } catch (err) {
@@ -1511,13 +1512,14 @@ class instance {
         reconnected = arango.connectHandle(handle);
       } catch (ex) {
         print(`${RED} connecting Handle failed with: ${ex}${RESET}`);
-        if (reconnectFatal) {
-          throw ex;
-        }
+        caughtEx = ex;
       }
       db._useDatabase(dbName);
     }
     if (!reconnected && reconnectFatal) {
+      if (caughtEx !== null) {
+        throw caughtEx;
+      }
       throw new Error(`failed to restore connection to ${handle}`);
     }
     return ret;
