@@ -1014,9 +1014,6 @@ class instance {
       return;
     }
 
-    if (this.options.valgrind) {
-      this.waitOnServerForGC(60);
-    }
     if (this.options.rr && forceTerminate) {
       forceTerminate = false;
       this.options.useKillExternal = true;
