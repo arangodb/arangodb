@@ -321,9 +321,6 @@ function makeArgsArangosh (options, instanceManager, force_jwt) {
   };
 
   if (force_jwt) {
-    if (options.hasOwnProperty('jwtFiles')) {
-      
-    }
     args['server.jwt-token'] = instanceManager.JWT;
   } else {
     if (options.hasOwnProperty('username')) {
