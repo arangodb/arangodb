@@ -29,7 +29,8 @@
 #endif
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
+#include "Basics/application-exit.h"
 #include "Logger/LogTimeFormat.h"
 #include "Logger/Logger.h"
 

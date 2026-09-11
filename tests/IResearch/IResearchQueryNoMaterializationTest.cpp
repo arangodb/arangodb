@@ -75,7 +75,7 @@ class QueryTestMulti
     dbFeature.createDatabase(testDBInfo(server.server()), _vocbase);
 
     std::shared_ptr<arangodb::LogicalCollection> unused;
-    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::OperationOptions options;
     arangodb::methods::Collections::createSystem(
         *_vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
         unused);

@@ -20,7 +20,6 @@
 // /
 // / Copyright holder is triAGENS GmbH, Cologne, Germany
 // /
-// / @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require('jsunity');

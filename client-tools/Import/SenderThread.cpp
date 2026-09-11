@@ -37,7 +37,7 @@ using namespace arangodb::import;
 SenderThread::SenderThread(std::unique_ptr<httpclient::SimpleHttpClient> client,
                            ImportStatistics* stats,
                            std::function<void()> const& wakeup)
-    : Thread("Import Sender"),
+    : BasicThread("Import Sender"),
       _client(std::move(client)),
       _wakeup(wakeup),
       _data(false),
@@ -51,7 +51,7 @@ SenderThread::SenderThread(std::unique_ptr<httpclient::SimpleHttpClient> client,
 SenderThread::~SenderThread() { shutdown(); }
 
 void SenderThread::beginShutdown() {
-  Thread::beginShutdown();
+  BasicThread::beginShutdown();
 
   // wake up the thread that may be waiting in run()
   std::lock_guard guard{_condition.mutex};

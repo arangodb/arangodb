@@ -29,7 +29,7 @@
 using namespace arangodb;
 
 LogThread::LogThread(std::string const& name, uint32_t maxQueuedLogMessages)
-    : Thread(name),
+    : BasicThread(name),
       _messages(64),
       _maxQueuedLogMessages(maxQueuedLogMessages) {}
 

@@ -43,8 +43,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/UpgradeOptionsProvider.h"
-#include "Replication/ReplicationFeature.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
@@ -104,8 +102,10 @@ UpgradeFeature::UpgradeFeature(
                                  std::type_index(typeid(HttpEndpointProvider))};
     server.forceDisableFeatures(bootstrapFeatures);
   }
-  server.getFeature<ReplicationFeature>().disableReplicationApplier();
-  server.getFeature<DatabaseFeature>().enableUpgrade();
+
+  DatabaseFeature& database = server.getFeature<DatabaseFeature>();
+  database.enableUpgrade();
+
 #ifdef USE_ENTERPRISE
   server.getFeature<HotBackupFeature>().forceDisable();
 #endif

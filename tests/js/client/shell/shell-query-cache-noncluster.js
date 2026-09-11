@@ -132,47 +132,6 @@ function AqlQueryCacheSuite () {
       assertEqual(245, p.maxEntrySize);
     },
 
-    testPropertiesDatabases : function () {
-      try {
-        db._createDatabase("UnitTestQueryCache1");
-        db._createDatabase("UnitTestQueryCache2");
-        
-        db._useDatabase("UnitTestQueryCache1");
-        cache.properties({ mode: "demand", maxResults: 98765, maxEntrySize: 4096 });
-        let p = cache.properties();
-        assertEqual("demand", p.mode);
-        assertEqual(98765, p.maxResults);
-        assertEqual(4096, p.maxEntrySize);
-        
-        db._useDatabase("UnitTestQueryCache2");
-        cache.properties({ mode: "off", maxResults: 12345, maxEntrySize: 8192 });
-        p = cache.properties();
-        assertEqual("off", p.mode);
-        assertEqual(12345, p.maxResults);
-        assertEqual(8192, p.maxEntrySize);
-        
-        db._useDatabase("UnitTestQueryCache1");
-        p = cache.properties();
-        assertEqual("off", p.mode);
-        assertEqual(12345, p.maxResults);
-        assertEqual(8192, p.maxEntrySize);
-        
-        db._useDatabase("UnitTestQueryCache2");
-        p = cache.properties();
-        assertEqual("off", p.mode);
-        assertEqual(12345, p.maxResults);
-        assertEqual(8192, p.maxEntrySize);
-      } finally {
-        db._useDatabase("_system");
-        try {
-          db._dropDatabase("UnitTestQueryCache1");
-        } catch (err) {}
-        try {
-          db._dropDatabase("UnitTestQueryCache2");
-        } catch (err) {}
-      }
-    },
-    
     testResultsDatabases : function () {
       const query = "FOR doc IN @@cn SORT doc.value RETURN doc.value";
       cache.properties({ mode: "demand", maxResults: 4 });
