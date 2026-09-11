@@ -405,6 +405,15 @@ commands:
           no_output_timeout: 20m
           command: |
             set -x
+            unset IFS
+            for var in $(compgen -e); do
+               for filter in AWS CIRCLE CONTAINER GITHUB KUBERNETES; do
+                 if [[ "$var" == *"$filter"* ]] then
+                   echo "deleting $var"
+                   unset "$var"
+                 fi
+               done
+            done
             # ulimit needs to be in here since it only has effect for this verry shell and its subprocesses:
             ulimit -c unlimited
             mkdir work
@@ -1272,6 +1281,15 @@ jobs:
           name: Run << parameters.suiteName >> tests
           no_output_timeout: 20m
           command: |
+            unset IFS
+            for var in $(compgen -e); do
+               for filter in AWS CIRCLE CONTAINER GITHUB KUBERNETES; do
+                 if [[ "$var" == *"$filter"* ]] then
+                   echo "deleting $var"
+                   unset "$var"
+                 fi
+               done
+            done
             set +x
             pwd
             export SOURCE=nightlypublic
