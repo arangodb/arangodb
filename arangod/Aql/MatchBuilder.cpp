@@ -101,8 +101,8 @@ MatchBuilder::ProjectionBinding MatchBuilder::bindProjectedVariable(
     std::unordered_map<VariableId, Variable const*>& subst) {
   ProjectionBinding binding;
   binding.destination = destination;
-  binding.hasProjection = projection.has_value();
-  if (binding.hasProjection) {
+  binding.projection = projection;
+  if (binding.hasProjection()) {
     binding.fullDocument = _ast->variables()->createTemporaryVariable();
     subst.emplace(destination->id, binding.fullDocument);
   } else {
@@ -111,20 +111,24 @@ MatchBuilder::ProjectionBinding MatchBuilder::bindProjectedVariable(
   return binding;
 }
 
-void MatchBuilder::maybeQueueProjection(
+void MatchBuilder::maybeQueueDocumentProjection(
     std::vector<ExecutionNode*>& projections, ProjectionBinding const& binding,
-    std::optional<MatchProjection> const& projection, bool isEdge,
     std::unordered_map<VariableId, Variable const*> const& subst) {
-  if (!binding.hasProjection) {
+  if (!binding.hasProjection()) {
     return;
   }
-  if (isEdge) {
-    projections.push_back(createEdgeDocumentPatternProjection(
-        binding.destination, binding.fullDocument, projection, subst));
-  } else {
-    projections.push_back(createDocumentPatternProjection(
-        binding.destination, binding.fullDocument, projection, subst));
+  projections.push_back(createDocumentPatternProjection(
+      binding.destination, binding.fullDocument, binding.projection, subst));
+}
+
+void MatchBuilder::maybeQueueEdgeProjection(
+    std::vector<ExecutionNode*>& projections, ProjectionBinding const& binding,
+    std::unordered_map<VariableId, Variable const*> const& subst) {
+  if (!binding.hasProjection()) {
+    return;
   }
+  projections.push_back(createEdgeDocumentPatternProjection(
+      binding.destination, binding.fullDocument, binding.projection, subst));
 }
 
 AstNode* MatchBuilder::createPropertyAccess(Variable const* variable,
@@ -642,8 +646,7 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
 
       addPathVertex(pathVertices, binding.destination);
 
-      maybeQueueProjection(projections, binding, vertex.projection,
-                           /*isEdge*/ false, variableSubstitutions);
+      maybeQueueDocumentProjection(projections, binding, variableSubstitutions);
     };
 
     if (pattern.start.kind == MatchPatternElement::Kind::kVertex) {
@@ -705,15 +708,15 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
           previous = en = propFilter;
         }
 
-        maybeQueueProjection(projections, edgeBinding, edge.projection,
-                             /*isEdge*/ true, variableSubstitutions);
-        if (vertexBinding.hasProjection) {
-          // Traversal returns the full-document output in rightVertexVar;
-          // keep that binding for the delayed projection node.
-          vertexBinding.fullDocument = rightVertexVar;
-          maybeQueueProjection(projections, vertexBinding,
-                               target.vertex->projection, /*isEdge*/ false,
-                               variableSubstitutions);
+        maybeQueueEdgeProjection(projections, edgeBinding,
+                                 variableSubstitutions);
+        if (vertexBinding.hasProjection()) {
+          // createTraversalForPattern (kVertex) writes into and returns the
+          // vertexDocumentOutputVariable we passed — already
+          // vertexBinding.fullDocument.
+          ADB_PROD_ASSERT(rightVertexVar == vertexBinding.fullDocument);
+          maybeQueueDocumentProjection(projections, vertexBinding,
+                                       variableSubstitutions);
         }
 
         prevVar = rightVertexVar;
@@ -732,8 +735,8 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
         en->addDependency(previous);
         previous = en = lastNodeFilter;
 
-        maybeQueueProjection(projections, edgeBinding, edge.projection,
-                             /*isEdge*/ true, variableSubstitutions);
+        maybeQueueEdgeProjection(projections, edgeBinding,
+                                 variableSubstitutions);
 
         Variable const* rightVertexVar;
         Variable const* vertexDestinationVariable = nullptr;
@@ -755,9 +758,8 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
                                      variableSubstitutions);
           en->addDependency(previous);
 
-          maybeQueueProjection(projections, vertexBinding,
-                               target.vertex->projection, /*isEdge*/ false,
-                               variableSubstitutions);
+          maybeQueueDocumentProjection(projections, vertexBinding,
+                                       variableSubstitutions);
 
           previous = en = lastNodeFilter;
         }
@@ -794,11 +796,13 @@ ExecutionNode* MatchBuilder::build(ExecutionNode* previous,
         firstNode->addDependency(previous);
         previous = en = lastNode;
 
-        if (vertexBinding.hasProjection) {
-          vertexBinding.fullDocument = rightVertexVar;
-          maybeQueueProjection(projections, vertexBinding,
-                               target.vertex->projection, /*isEdge*/ false,
-                               variableSubstitutions);
+        if (vertexBinding.hasProjection()) {
+          // createTraversalForPattern (kVertex) writes into and returns the
+          // vertexDocumentOutputVariable we passed — already
+          // vertexBinding.fullDocument.
+          ADB_PROD_ASSERT(rightVertexVar == vertexBinding.fullDocument);
+          maybeQueueDocumentProjection(projections, vertexBinding,
+                                       variableSubstitutions);
         }
 
         prevVar = rightVertexVar;

@@ -59,7 +59,11 @@ class MatchBuilder {
   struct ProjectionBinding {
     Variable const* destination{nullptr};
     Variable const* fullDocument{nullptr};
-    bool hasProjection{false};
+    std::optional<MatchProjection> projection;
+
+    [[nodiscard]] bool hasProjection() const noexcept {
+      return projection.has_value();
+    }
   };
 
   AstNode* createPropertyAccess(Variable const* variable,
@@ -69,18 +73,25 @@ class MatchBuilder {
 
   /// @brief When @p projection is set, create a temporary full-document
   /// variable and register destination→temp in @p subst; otherwise enumerate
-  /// directly into @p destination.
+  /// directly into @p destination. Stores @p projection on the binding.
   ProjectionBinding bindProjectedVariable(
       Variable const* destination,
       std::optional<MatchProjection> const& projection,
       std::unordered_map<VariableId, Variable const*>& subst);
 
-  /// @brief Queue a delayed projection CalculationNode when @p binding has a
-  /// projection. Preserves existing ordering (applied after segment lowering).
-  void maybeQueueProjection(
+  /// @brief Queue a delayed document projection CalculationNode when @p binding
+  /// has a projection. Preserves existing ordering (after segment lowering).
+  void maybeQueueDocumentProjection(
       std::vector<ExecutionNode*>& projections,
       ProjectionBinding const& binding,
-      std::optional<MatchProjection> const& projection, bool isEdge,
+      std::unordered_map<VariableId, Variable const*> const& subst);
+
+  /// @brief Queue a delayed edge-document projection CalculationNode when
+  /// @p binding has a projection. Preserves existing ordering (after segment
+  /// lowering).
+  void maybeQueueEdgeProjection(
+      std::vector<ExecutionNode*>& projections,
+      ProjectionBinding const& binding,
       std::unordered_map<VariableId, Variable const*> const& subst);
 
   std::tuple<CalculationNode*, FilterNode*> createPropertiesFilter(
