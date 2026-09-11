@@ -101,7 +101,7 @@ MatchBuilder::ProjectionBinding MatchBuilder::bindProjectedVariable(
     std::unordered_map<VariableId, Variable const*>& subst) {
   ProjectionBinding binding;
   binding.destination = destination;
-  binding.projection = projection;
+  binding.projection = projection ? &*projection : nullptr;
   if (binding.hasProjection()) {
     binding.fullDocument = _ast->variables()->createTemporaryVariable();
     subst.emplace(destination->id, binding.fullDocument);
@@ -118,7 +118,7 @@ void MatchBuilder::maybeQueueDocumentProjection(
     return;
   }
   projections.push_back(createDocumentPatternProjection(
-      binding.destination, binding.fullDocument, binding.projection, subst));
+      binding.destination, binding.fullDocument, *binding.projection, subst));
 }
 
 void MatchBuilder::maybeQueueEdgeProjection(
@@ -128,7 +128,7 @@ void MatchBuilder::maybeQueueEdgeProjection(
     return;
   }
   projections.push_back(createEdgeDocumentPatternProjection(
-      binding.destination, binding.fullDocument, binding.projection, subst));
+      binding.destination, binding.fullDocument, *binding.projection, subst));
 }
 
 AstNode* MatchBuilder::createPropertyAccess(Variable const* variable,
@@ -230,28 +230,28 @@ MatchBuilder::createCollectionAccess(
 
 ExecutionNode* MatchBuilder::createDocumentPatternProjection(
     Variable const* destinationVariable, Variable const* fullDocumentVar,
-    std::optional<MatchProjection> const& projection,
+    MatchProjection const& projection,
     std::unordered_map<VariableId, Variable const*> const& subst) {
   return createPatternProjection(
-      destinationVariable, fullDocumentVar, projection,
+      destinationVariable, fullDocumentVar, &projection,
       kMandatoryDocumentMatchProjectionAttributes, subst);
 }
 
 ExecutionNode* MatchBuilder::createEdgeDocumentPatternProjection(
     Variable const* destinationVariable, Variable const* fullDocumentVar,
-    std::optional<MatchProjection> const& projection,
+    MatchProjection const& projection,
     std::unordered_map<VariableId, Variable const*> const& subst) {
   return createPatternProjection(
-      destinationVariable, fullDocumentVar, projection,
+      destinationVariable, fullDocumentVar, &projection,
       kMandatoryEdgeDocumentMatchProjectionAttributes, subst);
 }
 
 ExecutionNode* MatchBuilder::createPatternProjection(
     Variable const* destinationVariable, Variable const* fullDocumentVar,
-    std::optional<MatchProjection> const& projectionOpt,
+    MatchProjection const* projection,
     std::span<std::string_view const> mandatoryAttributes,
     std::unordered_map<VariableId, Variable const*> const& subst) {
-  if (!projectionOpt.has_value()) {
+  if (projection == nullptr) {
     auto* root = _ast->createNodeReference(fullDocumentVar);
     return _plan.createNode<CalculationNode>(
         &_plan, _plan.nextId(), std::make_unique<Expression>(_ast, root),
@@ -260,7 +260,7 @@ ExecutionNode* MatchBuilder::createPatternProjection(
 
   // Projection semantics (paths, aliases, reserved attributes) are already
   // normalized; this method only builds the AST / CalculationNode.
-  auto const& projection = *projectionOpt;
+  auto const& projectionRef = *projection;
   auto* root = _ast->createNodeObject();
   auto* ref = _ast->createNodeReference(fullDocumentVar);
 
@@ -320,7 +320,7 @@ ExecutionNode* MatchBuilder::createPatternProjection(
   };
   std::vector<AliasItem> aliases;
 
-  for (auto const& item : projection.items) {
+  for (auto const& item : projectionRef.items) {
     if (item.isAlias()) {
       aliases.push_back(
           AliasItem{item.name, const_cast<AstNode*>(item.expression.node)});

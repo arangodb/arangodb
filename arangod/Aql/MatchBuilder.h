@@ -56,13 +56,15 @@ class MatchBuilder {
  private:
   /// @brief User-facing pattern variable plus the variable that holds the full
   /// document during enumeration/traversal (a temporary when projecting).
+  /// @p projection points into the NormalizedMatchStatement owned for the
+  /// duration of build(); null when not projecting.
   struct ProjectionBinding {
     Variable const* destination{nullptr};
     Variable const* fullDocument{nullptr};
-    std::optional<MatchProjection> projection;
+    MatchProjection const* projection{nullptr};
 
     [[nodiscard]] bool hasProjection() const noexcept {
-      return projection.has_value();
+      return projection != nullptr;
     }
   };
 
@@ -73,7 +75,8 @@ class MatchBuilder {
 
   /// @brief When @p projection is set, create a temporary full-document
   /// variable and register destination→temp in @p subst; otherwise enumerate
-  /// directly into @p destination. Stores @p projection on the binding.
+  /// directly into @p destination. Stores a pointer to @p projection's value
+  /// on the binding (must outlive the binding; true for normalize→build).
   ProjectionBinding bindProjectedVariable(
       Variable const* destination,
       std::optional<MatchProjection> const& projection,
@@ -116,19 +119,20 @@ class MatchBuilder {
 
   ExecutionNode* createDocumentPatternProjection(
       Variable const* destinationVariable, Variable const* fullDocumentVar,
-      std::optional<MatchProjection> const& projection,
+      MatchProjection const& projection,
       std::unordered_map<VariableId, Variable const*> const& subst);
 
   ExecutionNode* createEdgeDocumentPatternProjection(
       Variable const* destinationVariable, Variable const* fullDocumentVar,
-      std::optional<MatchProjection> const& projection,
+      MatchProjection const& projection,
       std::unordered_map<VariableId, Variable const*> const& subst);
 
   /// @brief Shared MATCH projection lowering. @p mandatoryAttributes are
   /// auto-injected and treated as reserved for user projection handling.
+  /// @p projection may be null for an identity (full-document) projection.
   ExecutionNode* createPatternProjection(
       Variable const* destinationVariable, Variable const* fullDocumentVar,
-      std::optional<MatchProjection> const& projection,
+      MatchProjection const* projection,
       std::span<std::string_view const> mandatoryAttributes,
       std::unordered_map<VariableId, Variable const*> const& subst);
 
