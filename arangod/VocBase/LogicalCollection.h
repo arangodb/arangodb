@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include "Basics/Guarded.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/debugging.h"
 #include "Containers/FlatHashMap.h"
@@ -177,9 +178,8 @@ class LogicalCollection : public LogicalDataSource {
   bool hasSmartJoinAttribute() const noexcept {
     return _invariants.smartJoinAttribute.has_value();
   }
-  bool hasSmartGraphAttribute() const noexcept {
-    return std::atomic_load_explicit(&_smartGraphAttribute,
-                                     std::memory_order_acquire) != nullptr;
+  bool hasSmartGraphAttribute() const {
+    return !_smartGraphAttribute.getLockedGuard()->empty();
   }
 
   bool isLocalSmartEdgeCollection() const noexcept;
@@ -480,9 +480,8 @@ class LogicalCollection : public LogicalDataSource {
 
 #ifdef USE_ENTERPRISE
   // Set once, either during construction or by the DBServer maintenance
-  // during an upgrade. `nullptr` means "not set". Must be used with atomic
-  // accessors only!! Acquire/release access (load/store).
-  std::shared_ptr<std::string const> _smartGraphAttribute;
+  // during an upgrade. Empty means "not set".
+  Guarded<std::string> _smartGraphAttribute;
 #endif
 
   transaction::CountCache _countCache;

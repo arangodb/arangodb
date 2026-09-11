@@ -357,11 +357,8 @@ std::shared_ptr<LogicalCollection> Database::createCollectionObject(
   // collection objects on single servers must not be stubs
   TRI_ASSERT(!ServerState::instance()->isSingleServer() || !isAStub);
   if (!isAStub) {
-    // stubs are not persisted, so they get no storage-engine properties —
-    // same split as createCollectionObject / createCollectionObjectForStorage
-    // TODO (COR-981): fix this ugly line by CollectionDefinition
-    descriptor.storage.objectId =
-        _engine.createPropertiesForNewCollection(descriptor).objectId;
+    // stubs are not persisted, so they get no object id
+    descriptor.storage.objectId = _engine.resolveObjectId(descriptor.storage);
   }
 
   return std::make_shared<LogicalCollection>(*this, std::move(descriptor),
@@ -1011,7 +1008,7 @@ Result Database::dropCollection(DataSourceId cid, bool allowDropSystem) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
-  if (!allowDropSystem && collection->system() && !_engine.inRecovery()) {
+  if (!allowDropSystem && collection->system() && _engine.isReady()) {
     // prevent dropping of system collections
     events::DropCollection(dbName, collection->name(), TRI_ERROR_FORBIDDEN);
     return TRI_ERROR_FORBIDDEN;
@@ -1157,8 +1154,8 @@ Result Database::renameView(DataSourceId cid, std::string_view oldName) {
   // Important to save it here, before emplace in map
   auto dataSource = it1->second;
   TRI_ASSERT(std::dynamic_pointer_cast<LogicalView>(dataSource));
-  // skip persistence while in recovery since definition already from engine
-  if (!_engine.inRecovery()) {
+  // not ready means this definition already came from the engine
+  if (_engine.isReady()) {
     velocypack::Builder build;
     build.openObject();
     auto r = view->properties(
@@ -1414,7 +1411,7 @@ Result Database::dropView(DataSourceId cid, bool allowDropSystem) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
-  if (!allowDropSystem && view->system() && !_engine.inRecovery()) {
+  if (!allowDropSystem && view->system() && _engine.isReady()) {
     events::DropView(dbName, view->name(), TRI_ERROR_FORBIDDEN);
     return TRI_ERROR_FORBIDDEN;  // prevent dropping of system views
   }

@@ -401,7 +401,7 @@ class IResearchAnalyzerFeature final
   /// @param features the expected features the analyzer should produce
   /// @param implicitCreation false == treat as error if creation is required
   /// @return success
-  /// @note emplacement while inRecovery() will not allow adding new analyzers
+  /// @note emplacement while !isReady() will not allow adding new analyzers
   ///       valid because for existing links the analyzer definition should
   ///       already have been persisted and feature administration is not
   ///       allowed during recovery
@@ -420,7 +420,7 @@ class IResearchAnalyzerFeature final
   /// @param vocbase target vocbase
   /// @param dumpedAnalyzers VPack array of dumped data
   /// @return OK or first failure
-  /// @note should not be used while inRecovery()
+  /// @note should not be used while !isReady()
   //////////////////////////////////////////////////////////////////////////////
   Result bulkEmplace(Database& vocbase, VPackSlice const dumpedAnalyzers,
                      transaction::OperationOrigin operationOrigin);
@@ -429,7 +429,7 @@ class IResearchAnalyzerFeature final
   /// @brief removes all analyzers from database in single revision
   /// @param vocbase target vocbase
   /// @return operation result
-  /// @note should not be used while inRecovery()
+  /// @note should not be used while !isReady()
   //////////////////////////////////////////////////////////////////////////////
   Result removeAllAnalyzers(Database& vocbase,
                             transaction::OperationOrigin operationOrigin);
