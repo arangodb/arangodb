@@ -46,6 +46,15 @@
   // / @brief set deadline for external requests & sleeps
   // //////////////////////////////////////////////////////////////////////////////
 
+  if (global.SYS_IS_DEADLINE_REACHED) {
+    exports.IsDeadlineReached = global.SYS_IS_DEADLINE_REACHED;
+    delete global.SYS_IS_DEADLINE_REACHED;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief set deadline for external requests & sleeps
+  // //////////////////////////////////////////////////////////////////////////////
+
   if (global.SYS_COMMUNICATE_SLEEP_DEADLINE) {
     exports.SetGlobalExecutionDeadlineTo = global.SYS_COMMUNICATE_SLEEP_DEADLINE;
     delete global.SYS_COMMUNICATE_SLEEP_DEADLINE;

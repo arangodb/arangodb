@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <errno.h>
+#include <poll.h>
 #include <spawn.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -904,14 +905,76 @@ void TRI_ClosePipe(ExternalProcess* process, bool read) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_read_return_t TRI_ReadPipe(ExternalProcess const* process, char* buffer,
-                               size_t bufferSize) {
+                               size_t bufferSize,
+                               std::function<bool()> const& deadlineReached) {
   if (process == nullptr || TRI_IS_INVALID_PIPE(process->_readPipe)) {
     return 0;
   }
 
   memset(buffer, 0, bufferSize);
 
-  return TRI_ReadPointer(process->_readPipe, buffer, bufferSize);
+  if (!deadlineReached) {
+    return TRI_ReadPointer(process->_readPipe, buffer, bufferSize);
+  }
+
+  // We must not park in a blocking read() here: a child process that stopped
+  // producing output - i.e. because it is waiting for a server that just died
+  // - would block us forever, and the cooperative deadline would never be
+  // noticed. Hence we wait for the pipe to become readable in small slices,
+  // and re-evaluate the deadline in between.
+  constexpr int kPollIntervalMs = 100;
+
+  char* ptr = buffer;
+  size_t remainLength = bufferSize;
+
+  while (remainLength > 0 && !deadlineReached()) {
+    struct pollfd pfd = {};
+    pfd.fd = process->_readPipe;
+    pfd.events = POLLIN;
+
+    int rc = poll(&pfd, 1, kPollIntervalMs);
+
+    if (rc == 0) {
+      // nothing to read yet - re-check the deadline and try again
+      continue;
+    }
+
+    if (rc < 0) {
+      if (errno == EINTR) {
+        continue;
+      }
+      TRI_set_errno(TRI_ERROR_SYS_ERROR);
+      LOG_TOPIC("a2f31", ERR, arangodb::Logger::FIXME)
+          << "cannot poll pipe of pid " << process->_pid << ": "
+          << TRI_LAST_ERROR_STR;
+      break;
+    }
+
+    TRI_read_return_t n = TRI_READ(process->_readPipe, ptr,
+                                   static_cast<TRI_read_t>(remainLength));
+
+    if (n == 0) {
+      // the other side closed the pipe
+      break;
+    }
+
+    if (n < 0) {
+      if (errno == EINTR) {
+        continue;
+      }
+      TRI_set_errno(TRI_ERROR_SYS_ERROR);
+      LOG_TOPIC("c7e05", ERR, arangodb::Logger::FIXME)
+          << "cannot read pipe of pid " << process->_pid << ": "
+          << TRI_LAST_ERROR_STR;
+      break;
+    }
+
+    ptr += n;
+    remainLength -= n;
+  }
+
+  TRI_ASSERT(ptr >= buffer);
+  return static_cast<TRI_read_return_t>(ptr - buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
