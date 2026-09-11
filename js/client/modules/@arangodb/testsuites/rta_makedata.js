@@ -185,6 +185,16 @@ function makeDataWrapper (options) {
         let moreargv = [];
         count += 1;
         let whichRTA = `rta_${testCases[testCount]}_${count}`;
+        if (!this.continueTesting) {
+          res[whichRTA] = {
+            'status': true,
+            'skipped': true,
+            'failed': 0,
+            'duration': 0.0,
+            'message': `skipped ${messages[count-1]} due to a previous failure`
+          };
+          return;
+        }
         res[whichRTA] = { 'status': true, 'message': ''};
         if (this.options.cluster) {
           if (count === 2) {
