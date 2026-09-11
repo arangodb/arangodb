@@ -24,9 +24,17 @@
 
 namespace arangodb {
 
-struct IRecoveryCallback {
-  virtual ~IRecoveryCallback() = default;
+namespace velocypack {
+class Slice;
+}  // namespace velocypack
+
+struct IDatabaseBootstrap {
+  virtual ~IDatabaseBootstrap() = default;
+
   virtual void recoveryDone() = 0;
+
+  // materializes databases from an engine inventory; called by the engine.
+  virtual void bootstrapDatabases(velocypack::Slice databases) = 0;
 };
 
 }  // namespace arangodb
