@@ -1326,6 +1326,10 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
       }
     } else if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
       // Error reporting in the babies case is done outside of here.
+      if (res.is(TRI_ERROR_ARANGO_CONFLICT) &&
+          _collection.timeTravelEnabled()) {
+        res = this->diagnoseTimeTravelConflict(key, std::move(res));
+      }
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isArray) {
         TRI_ASSERT(_replicationType != Methods::ReplicationType::FOLLOWER);
         // if possible we want to provide information about the conflicting

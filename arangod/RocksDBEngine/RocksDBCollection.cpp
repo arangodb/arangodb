@@ -1915,10 +1915,10 @@ Result RocksDBCollection::modifyDocument(
       // expired it. Its key holds the old LocalDocumentId, which the new
       // version does not share, so this rewrites exactly one entry and never
       // collides with the PutUntracked of the new version below.
-      VPackBuilder expiredVersion;
+      auto expiredVersion = ThreadLocalBuilderLeaser::lease();
       TRI_ASSERT(writeTimestamp != 0);
-      buildExpiredVersion(oldDoc, writeTimestamp, expiredVersion);
-      VPackSlice expired = expiredVersion.slice();
+      buildExpiredVersion(oldDoc, writeTimestamp, *expiredVersion);
+      VPackSlice expired = expiredVersion->slice();
       return mthds->PutUntracked(
           documentsCf, key,
           rocksdb::Slice(expired.startAs<char>(), expired.byteSize()));

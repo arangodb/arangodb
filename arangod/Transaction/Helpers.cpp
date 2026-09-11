@@ -45,6 +45,9 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
+#include <absl/strings/str_cat.h>
+
+#include <limits>
 #include <optional>
 #include <string_view>
 
@@ -101,12 +104,19 @@ ResultT<std::uint64_t> timeTravelWriteTimestamp(velocypack::Slice value) {
       ts = static_cast<std::uint64_t>(v);
     }
   }
-  // 0 is rejected alongside non-integers and negative values: write-write
-  // validation reads at `_created - 1`, which 0 leaves no room for.
-  if (!ts.has_value() || *ts == 0) {
+  // Both ends of the range are reserved, so they are rejected alongside
+  // non-integers and negative values: write-write validation reads at
+  // `_created - 1`, which 0 leaves no room for, and the maximum value is the
+  // "current state" timestamp, which rocksdb reads back as "no commit
+  // timestamp was assigned at all".
+  if (!ts.has_value() || *ts == 0 ||
+      *ts == std::numeric_limits<std::uint64_t>::max()) {
     return Result{TRI_ERROR_BAD_PARAMETER,
-                  "time-travel collections require a positive integer "
-                  "'_created' timestamp on every write"};
+                  absl::StrCat("time-travel collections require '",
+                               StaticStrings::Created,
+                               "' to be an integer timestamp greater than 0 "
+                               "and less than ",
+                               std::numeric_limits<std::uint64_t>::max())};
   }
   return *ts;
 }

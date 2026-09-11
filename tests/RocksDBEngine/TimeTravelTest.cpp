@@ -21,6 +21,8 @@
 
 #include <gtest/gtest.h>
 
+#include <limits>
+
 #include <rocksdb/comparator.h>
 #include <rocksdb/db.h>
 
@@ -637,4 +639,50 @@ TEST_F(TimeTravelStorageEngineDocumentTest,
   auto upd = updateR(createdDoc("k1", 2, 1000).slice());
   ASSERT_TRUE(upd.fail());
   EXPECT_EQ(upd.errorNumber(), TRI_ERROR_BAD_PARAMETER) << upd.errorMessage();
+}
+
+// The maximum timestamp is the reserved "current state" value: rocksdb reads a
+// commit timestamp of that value back as "none was assigned" and fails the
+// commit, so it has to be rejected up front like 0 is.
+TEST_F(TimeTravelStorageEngineDocumentTest, InsertWithMaxCreatedIsRejected) {
+  auto doc = createdDoc("k1", 1, std::numeric_limits<uint64_t>::max());
+  auto ins = insertR(doc.slice());
+  ASSERT_TRUE(ins.fail());
+  EXPECT_EQ(ins.errorNumber(), TRI_ERROR_BAD_PARAMETER) << ins.errorMessage();
+  // rejected by our own validation, not by rocksdb failing the commit with
+  // "Must assign a commit timestamp"
+  EXPECT_NE(ins.errorMessage().find(StaticStrings::Created), std::string::npos)
+      << ins.errorMessage();
+  EXPECT_TRUE(read("k1").fail());
+}
+
+// Inserting over an existing key with a backdated _created trips the same key
+// lock as a backdated update, and must be diagnosed the same way rather than
+// reported as a write-write conflict the caller could retry.
+TEST_F(TimeTravelStorageEngineDocumentTest,
+       InsertOverExistingKeyWithOlderCreatedIsRejected) {
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, 1000).slice()).ok());
+
+  auto ins = insertR(createdDoc("k1", 2, 500).slice());
+  ASSERT_TRUE(ins.fail());
+  EXPECT_EQ(ins.errorNumber(), TRI_ERROR_BAD_PARAMETER) << ins.errorMessage();
+  EXPECT_NE(ins.errorMessage().find("1000"), std::string::npos)
+      << ins.errorMessage();
+
+  // the existing version is untouched
+  auto current = read("k1");
+  ASSERT_TRUE(current.ok()) << current.errorMessage();
+  EXPECT_EQ(current.slice().get("value").getNumber<int>(), 1);
+}
+
+// A *newer* timestamp on an existing key is still a plain duplicate key: the
+// timestamp is fine, the key is taken.
+TEST_F(TimeTravelStorageEngineDocumentTest,
+       InsertOverExistingKeyWithNewerCreatedIsDuplicate) {
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, 1000).slice()).ok());
+
+  auto ins = insertR(createdDoc("k1", 2, 2000).slice());
+  ASSERT_TRUE(ins.fail());
+  EXPECT_EQ(ins.errorNumber(), TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)
+      << ins.errorMessage();
 }
