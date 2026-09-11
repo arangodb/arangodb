@@ -1106,8 +1106,8 @@ static void ClientConnection_reconnect(
 
   try {
     v8connection->reconnect();
-  } catch (std::string const& errorMessage) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER(errorMessage);
+  } catch (std::exception const& ex) {
+    TRI_V8_THROW_EXCEPTION_PARAMETER(ex.what());
   } catch (...) {
     std::string errorMessage = absl::StrCat("error in '", endpoint, "'");
     TRI_V8_THROW_EXCEPTION_PARAMETER(errorMessage);
