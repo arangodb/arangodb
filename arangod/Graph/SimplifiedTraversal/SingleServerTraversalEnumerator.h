@@ -43,10 +43,11 @@ struct SingleServerTraversalEnumerator : ITraversalEnumerator {
         std::vector<Edge>{});
   };
 
-    // batched:
+    // batched [later]:
     // auto [previous, next] = _queue.pop_front();
     // _queue.push_back(graph.createNeighbourCursor(next));
 
+    // TODO
     // auto neighbourhood() {
     //   auto [previous, next] = _queue.pop_front();
     //   for (auto const neighbour : graph.getNeighbours(next)) {
