@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include "Aql/MatchPatternTypes.h"
+#include "Aql/Match/PatternTypes.h"
 #include "Aql/types.h"
 
 #include <cstddef>
@@ -34,7 +34,6 @@
 #include <vector>
 
 namespace arangodb::aql {
-
 class Ast;
 struct AstNode;
 class CalculationNode;
@@ -42,27 +41,62 @@ class ExecutionNode;
 class ExecutionPlan;
 class FilterNode;
 struct Variable;
+}  // namespace arangodb::aql
+
+namespace arangodb::aql::match {
 
 /// @brief Lowers normalized MATCH patterns into ExecutionPlan fragments.
-/// Parser AST semantics are normalized by MatchPatternNormalizer before
+/// Parser AST semantics are normalized by PatternNormalizer before
 /// planning; this class owns only execution-plan construction.
-class MatchBuilder {
+class Builder {
  public:
-  MatchBuilder(ExecutionPlan& plan, Ast* ast);
+  Builder(ExecutionPlan& plan, Ast* ast);
 
   /// @brief Lower a NODE_TYPE_MATCH AST node, chaining onto @p previous.
   ExecutionNode* build(ExecutionNode* previous, AstNode const* matchNode);
 
  private:
+  /// @brief User-facing pattern variable plus the variable that holds the full
+  /// document during enumeration/traversal (a temporary when projecting).
+  struct ProjectionBinding {
+    Variable const* destination{nullptr};
+    Variable const* fullDocument{nullptr};
+    bool hasProjection{false};
+  };
+
   AstNode* createPropertyAccess(Variable const* variable,
                                 std::string_view property);
 
   AstNode* buildEdgeCollectionList(NormalizedEdge const& edge);
 
+  /// @brief When @p projection is set, create a temporary full-document
+  /// variable and register destination→temp in @p subst; otherwise enumerate
+  /// directly into @p destination.
+  ProjectionBinding bindProjectedVariable(
+      Variable const* destination, std::optional<Projection> const& projection,
+      std::unordered_map<VariableId, Variable const*>& subst);
+
+  /// @brief Queue a delayed projection CalculationNode when @p binding has a
+  /// projection. Preserves existing ordering (applied after segment lowering).
+  void maybeQueueProjection(
+      std::vector<ExecutionNode*>& projections,
+      ProjectionBinding const& binding,
+      std::optional<Projection> const& projection, bool isEdge,
+      std::unordered_map<VariableId, Variable const*> const& subst);
+
   std::tuple<CalculationNode*, FilterNode*> createPropertiesFilter(
       Variable const* variable,
-      std::vector<MatchPropertyConstraint> const& properties,
-      std::optional<MatchExpressionRef> const& additionalFilter,
+      std::vector<PropertyConstraint> const& properties,
+      std::optional<ExpressionRef> const& additionalFilter,
+      std::unordered_map<VariableId, Variable const*> const& subst);
+
+  /// @brief Shared EnumerateCollection + property/WHERE filter fragment used
+  /// by both vertex and edge collection scans.
+  std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
+  enumerateCollection(
+      DataSource const& dataSource, Variable const* outputVariable,
+      std::vector<PropertyConstraint> const& properties,
+      std::optional<ExpressionRef> const& filter,
       std::unordered_map<VariableId, Variable const*> const& subst);
 
   std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
@@ -72,19 +106,19 @@ class MatchBuilder {
 
   ExecutionNode* createDocumentPatternProjection(
       Variable const* destinationVariable, Variable const* fullDocumentVar,
-      std::optional<MatchProjection> const& projection,
+      std::optional<Projection> const& projection,
       std::unordered_map<VariableId, Variable const*> const& subst);
 
   ExecutionNode* createEdgeDocumentPatternProjection(
       Variable const* destinationVariable, Variable const* fullDocumentVar,
-      std::optional<MatchProjection> const& projection,
+      std::optional<Projection> const& projection,
       std::unordered_map<VariableId, Variable const*> const& subst);
 
   /// @brief Shared MATCH projection lowering. @p mandatoryAttributes are
   /// auto-injected and treated as reserved for user projection handling.
   ExecutionNode* createPatternProjection(
       Variable const* destinationVariable, Variable const* fullDocumentVar,
-      std::optional<MatchProjection> const& projection,
+      std::optional<Projection> const& projection,
       std::span<std::string_view const> mandatoryAttributes,
       std::unordered_map<VariableId, Variable const*> const& subst);
 
@@ -95,7 +129,7 @@ class MatchBuilder {
 
   std::tuple<CalculationNode*, FilterNode*> createVertexEdgeFilter(
       Variable const* leftVertex, Variable const* edge,
-      Variable const* rightVertex, MatchEdgeDirection direction);
+      Variable const* rightVertex, EdgeDirection direction);
 
   /// @param edgeDocumentOutputVariable Edge document output for fixed-depth
   /// traversals. Ignored when the edge variable receives a path object.
@@ -108,8 +142,7 @@ class MatchBuilder {
   std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
   createTraversalForPattern(
       Variable const* startNodeVar, NormalizedEdge const& edge,
-      MatchPatternElement const& target,
-      Variable const* edgeDocumentOutputVariable,
+      PatternElement const& target, Variable const* edgeDocumentOutputVariable,
       Variable const* vertexDocumentOutputVariable,
       std::unordered_map<VariableId, Variable const*> const& subst);
 
@@ -133,4 +166,4 @@ class MatchBuilder {
   Ast* _ast;
 };
 
-}  // namespace arangodb::aql
+}  // namespace arangodb::aql::match

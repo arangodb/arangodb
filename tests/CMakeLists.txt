@@ -101,7 +101,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/AqlValueMemoryLayoutTest.cpp
   Aql/AstNodeTest.cpp
   Aql/AstResourcesTest.cpp
-  Aql/MatchPatternNormalizerTest.cpp
+  Aql/Match/PatternNormalizerTest.cpp
   Aql/AttributeNamePathTest.cpp  
   Aql/BlockCollector.cpp
   Aql/ConditionRemoveForIndexTest.cpp
