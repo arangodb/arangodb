@@ -1623,9 +1623,11 @@ Result Manager::abortAllManagedWriteTrx(std::string_view username,
   databaseFeature.enumerate([](TRI_vocbase_t* vocbase) {
     auto queryList = vocbase->queryList();
     TRI_ASSERT(queryList != nullptr);
-    // we are only interested in killed write queries
     queryList->kill(
-        [](aql::Query& query) { return query.isModificationQuery(); }, false);
+        [](aql::Query& query) {
+          return ::authorized(query.user()) && query.isModificationQuery();
+        },
+        false);
   });
 
   // abort local transactions
