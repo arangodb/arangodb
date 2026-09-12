@@ -1,6 +1,12 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* arangodump, arangorestore and arangobackup now report the server's error
+  (e.g. "HTTP 401 (Unauthorized): ArangoError 11: User not authenticated")
+  together with the "Could not connect to endpoint" message when the initial
+  connection to the server is rejected. Previously the reason was dropped and
+  only the generic message was shown.
+
 * Upgraded included rclone to v1.75.0 with go1.26.8 and non-vulnerable
   dependencies.
 
