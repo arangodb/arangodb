@@ -78,8 +78,6 @@
       type: cluster
       buckets: 8
       size: small
-    args:
-      extremeVerbosity: true
 
 - recovery_server:
     options:
@@ -618,7 +616,6 @@
       size: large
       parallelity: 5
     args:
-      extremeVerbosity: true
       dumpAgencyOnError: true
 
 # Full Tests Single Server

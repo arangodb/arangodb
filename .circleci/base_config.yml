@@ -404,6 +404,15 @@ commands:
           # we increase the no_output_timeout so our own timeout mechanism can kick in and gather more information
           no_output_timeout: 20m
           command: |
+            BUCKETS="$CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX"
+            unset IFS
+            for var in $(compgen -e); do
+               for filter in AWS CIRCLE CONTAINER GITHUB KUBERNETES; do
+                 if [[ "$var" == *"$filter"* ]]; then
+                   unset "$var"
+                 fi
+               done
+            done
             set -x
             # ulimit needs to be in here since it only has effect for this verry shell and its subprocesses:
             ulimit -c unlimited
@@ -445,7 +454,7 @@ commands:
             python3 -u scripts/test/test_launch_controller.py '<< parameters.suites >>' \
               --suiteName '<< parameters.suiteName >>' \
               --arangosh_args '<< parameters.arangosh_args >>' \
-              --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
+              --testBuckets $BUCKETS \
               --cluster << parameters.cluster >> \
               --extraArgs "${EXTRA_ARGS}"
       - run:
@@ -1272,6 +1281,15 @@ jobs:
           name: Run << parameters.suiteName >> tests
           no_output_timeout: 20m
           command: |
+            BUCKETS="$CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX"
+            unset IFS
+            for var in $(compgen -e); do
+               for filter in AWS CIRCLE CONTAINER GITHUB KUBERNETES; do
+                 if [[ "$var" == *"$filter"* ]]; then
+                   unset "$var"
+                 fi
+               done
+            done
             set +x
             pwd
             export SOURCE=nightlypublic
@@ -1300,7 +1318,7 @@ jobs:
               --no-run-upgrade  \
               --selenium << parameters.browser >> \
               --starter-mode << parameters.deployment >> \
-              --buckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
+              --buckets $BUCKETS \
               << parameters.filterStatement >>
             exit_code=$?
             docker run \
