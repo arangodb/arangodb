@@ -244,6 +244,7 @@ class instanceManager {
       endpointPort: this.endpointPort,
       arangods: d,
       restKeyFile: this.restKeyFile,
+      jwt_secret: this.jwt_secret,
       tcpdump: this.tcpdump,
       cleanup: this.cleanup,
     };
@@ -265,6 +266,7 @@ class instanceManager {
     this.endpointPorts = struct['endpointPorts'];
     this.endpointPort = struct['endpointPort'];
     this.restKeyFile = struct['restKeyFile'];
+    this.jwt_secret = struct['jwt_secret'];
     this.tcpdump = struct['tcpdump'];
     this.cleanup = struct['cleanup'];
     struct['arangods'].forEach(arangodStruct => {

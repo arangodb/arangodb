@@ -242,6 +242,7 @@ class instance {
       id: this.id,
       shortName: this.shortName,
       JWT: this.JWT,
+      jwt_secret: this.jwt_secret,
       jwtFiles: this.jwtFiles,
       exitStatus: this.exitStatus,
       serverCrashedLocal: this.serverCrashedLocal
@@ -271,6 +272,7 @@ class instance {
     this.id = struct['id'];
     this.shortName = struct['shortName'];
     this.JWT = struct['JWT'];
+    this.jwt_secret = struct['jwt_secret'];
     this.jwtFiles = struct['jwtFiles'];
     this.exitStatus = struct['exitStatus'];
     this.serverCrashedLocal = struct['serverCrashedLocal'];
