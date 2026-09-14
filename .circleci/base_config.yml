@@ -1407,6 +1407,9 @@ jobs:
             du -sh /root/workspace/*
             echo "==================="
             du -sh /root/workspace/build/*
+            echo "=== container limits ==="
+            nproc
+            cat /sys/fs/cgroup/memory.max 2>/dev/null || cat /sys/fs/cgroup/memory/memory.limit_in_bytes
       - checkout-arangodb:
           with-submodules: true
           destination: "/root/project"
@@ -1421,7 +1424,9 @@ jobs:
             ln -s /root/workspace/build/ /root/project/
             cp -r /root/workspace/tidy-headers/build/. /root/workspace/build/
             cd /root/project/
-            utils/clang-tidy.sh arangod lib client-tools enterprise -B /root/workspace/build/ | tee clang-tidy-results.txt
+            # -j is explicit: nproc reports host cores, not the container limit,
+            # and each clang-tidy holds up to ~1.6GB for a large TU.
+            utils/clang-tidy.sh arangod lib client-tools enterprise -B /root/workspace/build/ -j 4 | tee clang-tidy-results.txt
       - run:
           name: Format result
           when: always
