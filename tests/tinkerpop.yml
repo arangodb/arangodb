@@ -12,7 +12,6 @@ tests:
     requires:
       instrumentation: false
     args:
-      extremeVerbosity: true
       tinkerpopGraphType: simple
 - tinkerpop_provider:
     job: run-driver-tests
@@ -23,7 +22,6 @@ tests:
     requires:
       instrumentation: false
     args:
-      extremeVerbosity: true
       tinkerpopGraphType: simple
 
 - tinkerpop_provider:
@@ -37,7 +35,6 @@ tests:
     requires:
       instrumentation: false
     args:
-      extremeVerbosity: true
       tinkerpopGraphType: complex
 - tinkerpop_provider:
     job: run-driver-tests
@@ -50,5 +47,4 @@ tests:
     requires:
       instrumentation: false
     args:
-      extremeVerbosity: true
       tinkerpopGraphType: complex
