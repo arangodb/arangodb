@@ -1396,12 +1396,12 @@ jobs:
           when: always
           command: |
             cd /root/project/
-            echo "TODO implement parsing, probably strip path first"
+            sed -i 's#/root/project/##g' clang-tidy-results.txt
+            utils/clang-tidy-junit.py clang-tidy-results.txt clang-tidy-junit.xml
       - store_artifacts:
           path: /root/project/clang-tidy-results.txt
       - store_test_results:
-          #TODO: parse them first to whatever cirlce-ci accepts
-          path: /root/project/clang-tidy-results.txt
+          path: /root/project/clang-tidy-junit.xml
 
 workflows:
   lint:
