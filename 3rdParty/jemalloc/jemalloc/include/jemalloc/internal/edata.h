@@ -21,10 +21,18 @@
  */
 #define EDATA_ALIGNMENT 128
 
+/*
+ * Defines how many nodes visited when enumerating the heap to search for
+ * qualified extents.  More nodes visited may result in better choices at
+ * the cost of longer search time.  This size should not exceed 2^16 - 1
+ * because we use uint16_t for accessing the queue needed for enumeration.
+ */
+#define ESET_ENUMERATE_MAX_NUM 32
+
 enum extent_state_e {
-	extent_state_active   = 0,
-	extent_state_dirty    = 1,
-	extent_state_muzzy    = 2,
+	extent_state_active = 0,
+	extent_state_dirty = 1,
+	extent_state_muzzy = 2,
 	extent_state_retained = 3,
 	extent_state_transition = 4, /* States below are intermediate. */
 	extent_state_merging = 5,
@@ -34,7 +42,7 @@ typedef enum extent_state_e extent_state_t;
 
 enum extent_head_state_e {
 	EXTENT_NOT_HEAD,
-	EXTENT_IS_HEAD   /* See comments in ehooks_default_merge_impl(). */
+	EXTENT_IS_HEAD /* See comments in ehooks_default_merge_impl(). */
 };
 typedef enum extent_head_state_e extent_head_state_t;
 
@@ -42,25 +50,22 @@ typedef enum extent_head_state_e extent_head_state_t;
  * Which implementation of the page allocator interface, (PAI, defined in
  * pai.h) owns the given extent?
  */
-enum extent_pai_e {
-	EXTENT_PAI_PAC = 0,
-	EXTENT_PAI_HPA = 1
-};
+enum extent_pai_e { EXTENT_PAI_PAC = 0, EXTENT_PAI_HPA = 1 };
 typedef enum extent_pai_e extent_pai_t;
 
 struct e_prof_info_s {
 	/* Time when this was allocated. */
-	nstime_t	e_prof_alloc_time;
+	nstime_t e_prof_alloc_time;
 	/* Allocation request size. */
-	size_t		e_prof_alloc_size;
+	size_t e_prof_alloc_size;
 	/* Points to a prof_tctx_t. */
-	atomic_p_t	e_prof_tctx;
+	atomic_p_t e_prof_tctx;
 	/*
 	 * Points to a prof_recent_t for the allocation; NULL
 	 * means the recent allocation record no longer exists.
 	 * Protected by prof_recent_alloc_mtx.
 	 */
-	atomic_p_t	e_prof_recent_alloc;
+	atomic_p_t e_prof_recent_alloc;
 };
 typedef struct e_prof_info_s e_prof_info_t;
 
@@ -77,20 +82,20 @@ typedef struct e_prof_info_s e_prof_info_t;
  */
 typedef struct edata_map_info_s edata_map_info_t;
 struct edata_map_info_s {
-	bool slab;
+	bool    slab;
 	szind_t szind;
 };
 
 typedef struct edata_cmp_summary_s edata_cmp_summary_t;
 struct edata_cmp_summary_s {
-	uint64_t sn;
+	uint64_t  sn;
 	uintptr_t addr;
 };
 
 /* Extent (span of pages).  Use accessor functions for e_* fields. */
 typedef struct edata_s edata_t;
-ph_structs(edata_avail, edata_t);
-ph_structs(edata_heap, edata_t);
+ph_structs(edata_avail, edata_t, ESET_ENUMERATE_MAX_NUM);
+ph_structs(edata_heap, edata_t, ESET_ENUMERATE_MAX_NUM);
 struct edata_s {
 	/*
 	 * Bitfield containing several fields:
@@ -141,55 +146,72 @@ struct edata_s {
 	 *
 	 * bin_shard: the shard of the bin from which this extent came.
 	 */
-	uint64_t		e_bits;
-#define MASK(CURRENT_FIELD_WIDTH, CURRENT_FIELD_SHIFT) ((((((uint64_t)0x1U) << (CURRENT_FIELD_WIDTH)) - 1)) << (CURRENT_FIELD_SHIFT))
+	uint64_t e_bits;
+#define MASK(CURRENT_FIELD_WIDTH, CURRENT_FIELD_SHIFT)                         \
+	((((((uint64_t)0x1U) << (CURRENT_FIELD_WIDTH)) - 1))                   \
+	    << (CURRENT_FIELD_SHIFT))
 
-#define EDATA_BITS_ARENA_WIDTH  MALLOCX_ARENA_BITS
-#define EDATA_BITS_ARENA_SHIFT  0
-#define EDATA_BITS_ARENA_MASK  MASK(EDATA_BITS_ARENA_WIDTH, EDATA_BITS_ARENA_SHIFT)
+#define EDATA_BITS_ARENA_WIDTH MALLOCX_ARENA_BITS
+#define EDATA_BITS_ARENA_SHIFT 0
+#define EDATA_BITS_ARENA_MASK                                                  \
+	MASK(EDATA_BITS_ARENA_WIDTH, EDATA_BITS_ARENA_SHIFT)
 
-#define EDATA_BITS_SLAB_WIDTH  1
-#define EDATA_BITS_SLAB_SHIFT  (EDATA_BITS_ARENA_WIDTH + EDATA_BITS_ARENA_SHIFT)
-#define EDATA_BITS_SLAB_MASK  MASK(EDATA_BITS_SLAB_WIDTH, EDATA_BITS_SLAB_SHIFT)
+#define EDATA_BITS_SLAB_WIDTH 1
+#define EDATA_BITS_SLAB_SHIFT (EDATA_BITS_ARENA_WIDTH + EDATA_BITS_ARENA_SHIFT)
+#define EDATA_BITS_SLAB_MASK MASK(EDATA_BITS_SLAB_WIDTH, EDATA_BITS_SLAB_SHIFT)
 
-#define EDATA_BITS_COMMITTED_WIDTH  1
-#define EDATA_BITS_COMMITTED_SHIFT  (EDATA_BITS_SLAB_WIDTH + EDATA_BITS_SLAB_SHIFT)
-#define EDATA_BITS_COMMITTED_MASK  MASK(EDATA_BITS_COMMITTED_WIDTH, EDATA_BITS_COMMITTED_SHIFT)
+#define EDATA_BITS_COMMITTED_WIDTH 1
+#define EDATA_BITS_COMMITTED_SHIFT                                             \
+	(EDATA_BITS_SLAB_WIDTH + EDATA_BITS_SLAB_SHIFT)
+#define EDATA_BITS_COMMITTED_MASK                                              \
+	MASK(EDATA_BITS_COMMITTED_WIDTH, EDATA_BITS_COMMITTED_SHIFT)
 
-#define EDATA_BITS_PAI_WIDTH  1
-#define EDATA_BITS_PAI_SHIFT  (EDATA_BITS_COMMITTED_WIDTH + EDATA_BITS_COMMITTED_SHIFT)
-#define EDATA_BITS_PAI_MASK  MASK(EDATA_BITS_PAI_WIDTH, EDATA_BITS_PAI_SHIFT)
+#define EDATA_BITS_PAI_WIDTH 1
+#define EDATA_BITS_PAI_SHIFT                                                   \
+	(EDATA_BITS_COMMITTED_WIDTH + EDATA_BITS_COMMITTED_SHIFT)
+#define EDATA_BITS_PAI_MASK MASK(EDATA_BITS_PAI_WIDTH, EDATA_BITS_PAI_SHIFT)
 
-#define EDATA_BITS_ZEROED_WIDTH  1
-#define EDATA_BITS_ZEROED_SHIFT  (EDATA_BITS_PAI_WIDTH + EDATA_BITS_PAI_SHIFT)
-#define EDATA_BITS_ZEROED_MASK  MASK(EDATA_BITS_ZEROED_WIDTH, EDATA_BITS_ZEROED_SHIFT)
+#define EDATA_BITS_ZEROED_WIDTH 1
+#define EDATA_BITS_ZEROED_SHIFT (EDATA_BITS_PAI_WIDTH + EDATA_BITS_PAI_SHIFT)
+#define EDATA_BITS_ZEROED_MASK                                                 \
+	MASK(EDATA_BITS_ZEROED_WIDTH, EDATA_BITS_ZEROED_SHIFT)
 
-#define EDATA_BITS_GUARDED_WIDTH  1
-#define EDATA_BITS_GUARDED_SHIFT  (EDATA_BITS_ZEROED_WIDTH + EDATA_BITS_ZEROED_SHIFT)
-#define EDATA_BITS_GUARDED_MASK  MASK(EDATA_BITS_GUARDED_WIDTH, EDATA_BITS_GUARDED_SHIFT)
+#define EDATA_BITS_GUARDED_WIDTH 1
+#define EDATA_BITS_GUARDED_SHIFT                                               \
+	(EDATA_BITS_ZEROED_WIDTH + EDATA_BITS_ZEROED_SHIFT)
+#define EDATA_BITS_GUARDED_MASK                                                \
+	MASK(EDATA_BITS_GUARDED_WIDTH, EDATA_BITS_GUARDED_SHIFT)
 
-#define EDATA_BITS_STATE_WIDTH  3
-#define EDATA_BITS_STATE_SHIFT  (EDATA_BITS_GUARDED_WIDTH + EDATA_BITS_GUARDED_SHIFT)
-#define EDATA_BITS_STATE_MASK  MASK(EDATA_BITS_STATE_WIDTH, EDATA_BITS_STATE_SHIFT)
+#define EDATA_BITS_STATE_WIDTH 3
+#define EDATA_BITS_STATE_SHIFT                                                 \
+	(EDATA_BITS_GUARDED_WIDTH + EDATA_BITS_GUARDED_SHIFT)
+#define EDATA_BITS_STATE_MASK                                                  \
+	MASK(EDATA_BITS_STATE_WIDTH, EDATA_BITS_STATE_SHIFT)
 
-#define EDATA_BITS_SZIND_WIDTH  LG_CEIL(SC_NSIZES)
-#define EDATA_BITS_SZIND_SHIFT  (EDATA_BITS_STATE_WIDTH + EDATA_BITS_STATE_SHIFT)
-#define EDATA_BITS_SZIND_MASK  MASK(EDATA_BITS_SZIND_WIDTH, EDATA_BITS_SZIND_SHIFT)
+#define EDATA_BITS_SZIND_WIDTH LG_CEIL(SC_NSIZES)
+#define EDATA_BITS_SZIND_SHIFT (EDATA_BITS_STATE_WIDTH + EDATA_BITS_STATE_SHIFT)
+#define EDATA_BITS_SZIND_MASK                                                  \
+	MASK(EDATA_BITS_SZIND_WIDTH, EDATA_BITS_SZIND_SHIFT)
 
-#define EDATA_BITS_NFREE_WIDTH  (SC_LG_SLAB_MAXREGS + 1)
-#define EDATA_BITS_NFREE_SHIFT  (EDATA_BITS_SZIND_WIDTH + EDATA_BITS_SZIND_SHIFT)
-#define EDATA_BITS_NFREE_MASK  MASK(EDATA_BITS_NFREE_WIDTH, EDATA_BITS_NFREE_SHIFT)
+#define EDATA_BITS_NFREE_WIDTH (SC_LG_SLAB_MAXREGS + 1)
+#define EDATA_BITS_NFREE_SHIFT (EDATA_BITS_SZIND_WIDTH + EDATA_BITS_SZIND_SHIFT)
+#define EDATA_BITS_NFREE_MASK                                                  \
+	MASK(EDATA_BITS_NFREE_WIDTH, EDATA_BITS_NFREE_SHIFT)
 
-#define EDATA_BITS_BINSHARD_WIDTH  6
-#define EDATA_BITS_BINSHARD_SHIFT  (EDATA_BITS_NFREE_WIDTH + EDATA_BITS_NFREE_SHIFT)
-#define EDATA_BITS_BINSHARD_MASK  MASK(EDATA_BITS_BINSHARD_WIDTH, EDATA_BITS_BINSHARD_SHIFT)
+#define EDATA_BITS_BINSHARD_WIDTH 6
+#define EDATA_BITS_BINSHARD_SHIFT                                              \
+	(EDATA_BITS_NFREE_WIDTH + EDATA_BITS_NFREE_SHIFT)
+#define EDATA_BITS_BINSHARD_MASK                                               \
+	MASK(EDATA_BITS_BINSHARD_WIDTH, EDATA_BITS_BINSHARD_SHIFT)
 
 #define EDATA_BITS_IS_HEAD_WIDTH 1
-#define EDATA_BITS_IS_HEAD_SHIFT  (EDATA_BITS_BINSHARD_WIDTH + EDATA_BITS_BINSHARD_SHIFT)
-#define EDATA_BITS_IS_HEAD_MASK  MASK(EDATA_BITS_IS_HEAD_WIDTH, EDATA_BITS_IS_HEAD_SHIFT)
+#define EDATA_BITS_IS_HEAD_SHIFT                                               \
+	(EDATA_BITS_BINSHARD_WIDTH + EDATA_BITS_BINSHARD_SHIFT)
+#define EDATA_BITS_IS_HEAD_MASK                                                \
+	MASK(EDATA_BITS_IS_HEAD_WIDTH, EDATA_BITS_IS_HEAD_SHIFT)
 
 	/* Pointer to the extent that this structure is responsible for. */
-	void			*e_addr;
+	void *e_addr;
 
 	union {
 		/*
@@ -199,16 +221,16 @@ struct edata_s {
 		 *
 		 * ssssssss [...] ssssssss ssssnnnn nnnnnnnn
 		 */
-		size_t			e_size_esn;
-	#define EDATA_SIZE_MASK	((size_t)~(PAGE-1))
-	#define EDATA_ESN_MASK		((size_t)PAGE-1)
+		size_t e_size_esn;
+#define EDATA_SIZE_MASK ((size_t) ~(PAGE - 1))
+#define EDATA_ESN_MASK ((size_t)PAGE - 1)
 		/* Base extent size, which may not be a multiple of PAGE. */
-		size_t			e_bsize;
+		size_t e_bsize;
 	};
 
 	/*
 	 * If this edata is a user allocation from an HPA, it comes out of some
-	 * pageslab (we don't yet support huegpage allocations that don't fit
+	 * pageslab (we don't yet support hugepage allocations that don't fit
 	 * into pageslabs).  This tracks it.
 	 */
 	hpdata_t *e_ps;
@@ -224,7 +246,7 @@ struct edata_s {
 		 * List linkage used when the edata_t is active; either in
 		 * arena's large allocations or bin_t's slabs_full.
 		 */
-		ql_elm(edata_t)	ql_link_active;
+		ql_elm(edata_t) ql_link_active;
 		/*
 		 * Pairing heap linkage.  Used whenever the extent is inactive
 		 * (in the page allocators), or when it is active and in
@@ -232,7 +254,7 @@ struct edata_s {
 		 * extent and sitting in an edata_cache.
 		 */
 		union {
-			edata_heap_link_t heap_link;
+			edata_heap_link_t  heap_link;
 			edata_avail_link_t avail_link;
 		};
 	};
@@ -245,10 +267,10 @@ struct edata_s {
 		 */
 		ql_elm(edata_t) ql_link_inactive;
 		/* Small region slab metadata. */
-		slab_data_t	e_slab_data;
+		slab_data_t e_slab_data;
 
 		/* Profiling data, used for large objects. */
-		e_prof_info_t	e_prof_info;
+		e_prof_info_t e_prof_info;
 	};
 };
 
@@ -257,8 +279,8 @@ TYPED_LIST(edata_list_inactive, edata_t, ql_link_inactive)
 
 static inline unsigned
 edata_arena_ind_get(const edata_t *edata) {
-	unsigned arena_ind = (unsigned)((edata->e_bits &
-	    EDATA_BITS_ARENA_MASK) >> EDATA_BITS_ARENA_SHIFT);
+	unsigned arena_ind = (unsigned)((edata->e_bits & EDATA_BITS_ARENA_MASK)
+	    >> EDATA_BITS_ARENA_SHIFT);
 	assert(arena_ind < MALLOCX_ARENA_LIMIT);
 
 	return arena_ind;
@@ -266,8 +288,8 @@ edata_arena_ind_get(const edata_t *edata) {
 
 static inline szind_t
 edata_szind_get_maybe_invalid(const edata_t *edata) {
-	szind_t szind = (szind_t)((edata->e_bits & EDATA_BITS_SZIND_MASK) >>
-	    EDATA_BITS_SZIND_SHIFT);
+	szind_t szind = (szind_t)((edata->e_bits & EDATA_BITS_SZIND_MASK)
+	    >> EDATA_BITS_SZIND_SHIFT);
 	assert(szind <= SC_NSIZES);
 	return szind;
 }
@@ -281,13 +303,61 @@ edata_szind_get(const edata_t *edata) {
 
 static inline size_t
 edata_usize_get(const edata_t *edata) {
-	return sz_index2size(edata_szind_get(edata));
+	assert(edata != NULL);
+	/*
+	 * When sz_large_size_classes_disabled() is true, two cases:
+	 * 1. if usize_from_ind is not smaller than SC_LARGE_MINCLASS,
+	 * usize_from_size is accurate;
+	 * 2. otherwise, usize_from_ind is accurate.
+	 *
+	 * When sz_large_size_classes_disabled() is not true, the two should be the
+	 * same when usize_from_ind is not smaller than SC_LARGE_MINCLASS.
+	 *
+	 * Note sampled small allocs will be promoted.  Their extent size is
+	 * recorded in edata_size_get(edata), while their szind reflects the
+	 * true usize.  Thus, usize retrieved here is still accurate for
+	 * sampled small allocs.
+	 */
+	szind_t szind = edata_szind_get(edata);
+#ifdef JEMALLOC_JET
+	/*
+	 * Double free is invalid and results in undefined behavior.  However,
+	 * for double free tests to end gracefully, return an invalid usize
+	 * when szind shows the edata is not active, i.e., szind == SC_NSIZES.
+	 */
+	if (unlikely(szind == SC_NSIZES)) {
+		return SC_LARGE_MAXCLASS + 1;
+	}
+#endif
+
+	if (!sz_large_size_classes_disabled() || szind < SC_NBINS) {
+		size_t usize_from_ind = sz_index2size(szind);
+		if (!sz_large_size_classes_disabled()
+		    && usize_from_ind >= SC_LARGE_MINCLASS) {
+			size_t size = (edata->e_size_esn & EDATA_SIZE_MASK);
+			assert(size > sz_large_pad);
+			size_t usize_from_size = size - sz_large_pad;
+			assert(usize_from_ind == usize_from_size);
+		}
+		return usize_from_ind;
+	}
+
+	size_t size = (edata->e_size_esn & EDATA_SIZE_MASK);
+	assert(size > sz_large_pad);
+	size_t usize_from_size = size - sz_large_pad;
+	/*
+	 * no matter large size classes disabled or not, usize retrieved from
+	 * size is not accurate when smaller than SC_LARGE_MINCLASS.
+	 */
+	assert(usize_from_size >= SC_LARGE_MINCLASS);
+	return usize_from_size;
 }
 
 static inline unsigned
 edata_binshard_get(const edata_t *edata) {
-	unsigned binshard = (unsigned)((edata->e_bits &
-	    EDATA_BITS_BINSHARD_MASK) >> EDATA_BITS_BINSHARD_SHIFT);
+	unsigned binshard = (unsigned)((edata->e_bits
+	                                   & EDATA_BITS_BINSHARD_MASK)
+	    >> EDATA_BITS_BINSHARD_SHIFT);
 	assert(binshard < bin_infos[edata_szind_get(edata)].n_shards);
 	return binshard;
 }
@@ -299,58 +369,58 @@ edata_sn_get(const edata_t *edata) {
 
 static inline extent_state_t
 edata_state_get(const edata_t *edata) {
-	return (extent_state_t)((edata->e_bits & EDATA_BITS_STATE_MASK) >>
-	    EDATA_BITS_STATE_SHIFT);
+	return (extent_state_t)((edata->e_bits & EDATA_BITS_STATE_MASK)
+	    >> EDATA_BITS_STATE_SHIFT);
 }
 
 static inline bool
 edata_guarded_get(const edata_t *edata) {
-	return (bool)((edata->e_bits & EDATA_BITS_GUARDED_MASK) >>
-	    EDATA_BITS_GUARDED_SHIFT);
+	return (bool)((edata->e_bits & EDATA_BITS_GUARDED_MASK)
+	    >> EDATA_BITS_GUARDED_SHIFT);
 }
 
 static inline bool
 edata_zeroed_get(const edata_t *edata) {
-	return (bool)((edata->e_bits & EDATA_BITS_ZEROED_MASK) >>
-	    EDATA_BITS_ZEROED_SHIFT);
+	return (bool)((edata->e_bits & EDATA_BITS_ZEROED_MASK)
+	    >> EDATA_BITS_ZEROED_SHIFT);
 }
 
 static inline bool
 edata_committed_get(const edata_t *edata) {
-	return (bool)((edata->e_bits & EDATA_BITS_COMMITTED_MASK) >>
-	    EDATA_BITS_COMMITTED_SHIFT);
+	return (bool)((edata->e_bits & EDATA_BITS_COMMITTED_MASK)
+	    >> EDATA_BITS_COMMITTED_SHIFT);
 }
 
 static inline extent_pai_t
 edata_pai_get(const edata_t *edata) {
-	return (extent_pai_t)((edata->e_bits & EDATA_BITS_PAI_MASK) >>
-	    EDATA_BITS_PAI_SHIFT);
+	return (extent_pai_t)((edata->e_bits & EDATA_BITS_PAI_MASK)
+	    >> EDATA_BITS_PAI_SHIFT);
 }
 
 static inline bool
 edata_slab_get(const edata_t *edata) {
-	return (bool)((edata->e_bits & EDATA_BITS_SLAB_MASK) >>
-	    EDATA_BITS_SLAB_SHIFT);
+	return (bool)((edata->e_bits & EDATA_BITS_SLAB_MASK)
+	    >> EDATA_BITS_SLAB_SHIFT);
 }
 
 static inline unsigned
 edata_nfree_get(const edata_t *edata) {
 	assert(edata_slab_get(edata));
-	return (unsigned)((edata->e_bits & EDATA_BITS_NFREE_MASK) >>
-	    EDATA_BITS_NFREE_SHIFT);
+	return (unsigned)((edata->e_bits & EDATA_BITS_NFREE_MASK)
+	    >> EDATA_BITS_NFREE_SHIFT);
 }
 
 static inline void *
 edata_base_get(const edata_t *edata) {
-	assert(edata->e_addr == PAGE_ADDR2BASE(edata->e_addr) ||
-	    !edata_slab_get(edata));
+	assert(edata->e_addr == PAGE_ADDR2BASE(edata->e_addr)
+	    || !edata_slab_get(edata));
 	return PAGE_ADDR2BASE(edata->e_addr);
 }
 
 static inline void *
 edata_addr_get(const edata_t *edata) {
-	assert(edata->e_addr == PAGE_ADDR2BASE(edata->e_addr) ||
-	    !edata_slab_get(edata));
+	assert(edata->e_addr == PAGE_ADDR2BASE(edata->e_addr)
+	    || !edata_slab_get(edata));
 	return edata->e_addr;
 }
 
@@ -382,14 +452,14 @@ edata_before_get(const edata_t *edata) {
 
 static inline void *
 edata_last_get(const edata_t *edata) {
-	return (void *)((byte_t *)edata_base_get(edata) +
-	    edata_size_get(edata) - PAGE);
+	return (void *)((byte_t *)edata_base_get(edata) + edata_size_get(edata)
+	    - PAGE);
 }
 
 static inline void *
 edata_past_get(const edata_t *edata) {
-	return (void *)((byte_t *)edata_base_get(edata) +
-	    edata_size_get(edata));
+	return (
+	    void *)((byte_t *)edata_base_get(edata) + edata_size_get(edata));
 }
 
 static inline slab_data_t *
@@ -406,8 +476,8 @@ edata_slab_data_get_const(const edata_t *edata) {
 
 static inline prof_tctx_t *
 edata_prof_tctx_get(const edata_t *edata) {
-	return (prof_tctx_t *)atomic_load_p(&edata->e_prof_info.e_prof_tctx,
-	    ATOMIC_ACQUIRE);
+	return (prof_tctx_t *)atomic_load_p(
+	    &edata->e_prof_info.e_prof_tctx, ATOMIC_ACQUIRE);
 }
 
 static inline const nstime_t *
@@ -428,16 +498,16 @@ edata_prof_recent_alloc_get_dont_call_directly(const edata_t *edata) {
 
 static inline void
 edata_arena_ind_set(edata_t *edata, unsigned arena_ind) {
-	edata->e_bits = (edata->e_bits & ~EDATA_BITS_ARENA_MASK) |
-	    ((uint64_t)arena_ind << EDATA_BITS_ARENA_SHIFT);
+	edata->e_bits = (edata->e_bits & ~EDATA_BITS_ARENA_MASK)
+	    | ((uint64_t)arena_ind << EDATA_BITS_ARENA_SHIFT);
 }
 
 static inline void
 edata_binshard_set(edata_t *edata, unsigned binshard) {
 	/* The assertion assumes szind is set already. */
 	assert(binshard < bin_infos[edata_szind_get(edata)].n_shards);
-	edata->e_bits = (edata->e_bits & ~EDATA_BITS_BINSHARD_MASK) |
-	    ((uint64_t)binshard << EDATA_BITS_BINSHARD_SHIFT);
+	edata->e_bits = (edata->e_bits & ~EDATA_BITS_BINSHARD_MASK)
+	    | ((uint64_t)binshard << EDATA_BITS_BINSHARD_SHIFT);
 }
 
 static inline void
@@ -453,8 +523,8 @@ edata_size_set(edata_t *edata, size_t size) {
 
 static inline void
 edata_esn_set(edata_t *edata, size_t esn) {
-	edata->e_size_esn = (edata->e_size_esn & ~EDATA_ESN_MASK) | (esn &
-	    EDATA_ESN_MASK);
+	edata->e_size_esn = (edata->e_size_esn & ~EDATA_ESN_MASK)
+	    | (esn & EDATA_ESN_MASK);
 }
 
 static inline void
@@ -471,25 +541,26 @@ edata_ps_set(edata_t *edata, hpdata_t *ps) {
 static inline void
 edata_szind_set(edata_t *edata, szind_t szind) {
 	assert(szind <= SC_NSIZES); /* SC_NSIZES means "invalid". */
-	edata->e_bits = (edata->e_bits & ~EDATA_BITS_SZIND_MASK) |
-	    ((uint64_t)szind << EDATA_BITS_SZIND_SHIFT);
+	edata->e_bits = (edata->e_bits & ~EDATA_BITS_SZIND_MASK)
+	    | ((uint64_t)szind << EDATA_BITS_SZIND_SHIFT);
 }
 
 static inline void
 edata_nfree_set(edata_t *edata, unsigned nfree) {
 	assert(edata_slab_get(edata));
-	edata->e_bits = (edata->e_bits & ~EDATA_BITS_NFREE_MASK) |
-	    ((uint64_t)nfree << EDATA_BITS_NFREE_SHIFT);
+	edata->e_bits = (edata->e_bits & ~EDATA_BITS_NFREE_MASK)
+	    | ((uint64_t)nfree << EDATA_BITS_NFREE_SHIFT);
 }
 
 static inline void
 edata_nfree_binshard_set(edata_t *edata, unsigned nfree, unsigned binshard) {
 	/* The assertion assumes szind is set already. */
 	assert(binshard < bin_infos[edata_szind_get(edata)].n_shards);
-	edata->e_bits = (edata->e_bits &
-	    (~EDATA_BITS_NFREE_MASK & ~EDATA_BITS_BINSHARD_MASK)) |
-	    ((uint64_t)binshard << EDATA_BITS_BINSHARD_SHIFT) |
-	    ((uint64_t)nfree << EDATA_BITS_NFREE_SHIFT);
+	edata->e_bits = (edata->e_bits
+	                    & (~EDATA_BITS_NFREE_MASK
+	                        & ~EDATA_BITS_BINSHARD_MASK))
+	    | ((uint64_t)binshard << EDATA_BITS_BINSHARD_SHIFT)
+	    | ((uint64_t)nfree << EDATA_BITS_NFREE_SHIFT);
 }
 
 static inline void
@@ -517,38 +588,38 @@ edata_sn_set(edata_t *edata, uint64_t sn) {
 
 static inline void
 edata_state_set(edata_t *edata, extent_state_t state) {
-	edata->e_bits = (edata->e_bits & ~EDATA_BITS_STATE_MASK) |
-	    ((uint64_t)state << EDATA_BITS_STATE_SHIFT);
+	edata->e_bits = (edata->e_bits & ~EDATA_BITS_STATE_MASK)
+	    | ((uint64_t)state << EDATA_BITS_STATE_SHIFT);
 }
 
 static inline void
 edata_guarded_set(edata_t *edata, bool guarded) {
-	edata->e_bits = (edata->e_bits & ~EDATA_BITS_GUARDED_MASK) |
-	    ((uint64_t)guarded << EDATA_BITS_GUARDED_SHIFT);
+	edata->e_bits = (edata->e_bits & ~EDATA_BITS_GUARDED_MASK)
+	    | ((uint64_t)guarded << EDATA_BITS_GUARDED_SHIFT);
 }
 
 static inline void
 edata_zeroed_set(edata_t *edata, bool zeroed) {
-	edata->e_bits = (edata->e_bits & ~EDATA_BITS_ZEROED_MASK) |
-	    ((uint64_t)zeroed << EDATA_BITS_ZEROED_SHIFT);
+	edata->e_bits = (edata->e_bits & ~EDATA_BITS_ZEROED_MASK)
+	    | ((uint64_t)zeroed << EDATA_BITS_ZEROED_SHIFT);
 }
 
 static inline void
 edata_committed_set(edata_t *edata, bool committed) {
-	edata->e_bits = (edata->e_bits & ~EDATA_BITS_COMMITTED_MASK) |
-	    ((uint64_t)committed << EDATA_BITS_COMMITTED_SHIFT);
+	edata->e_bits = (edata->e_bits & ~EDATA_BITS_COMMITTED_MASK)
+	    | ((uint64_t)committed << EDATA_BITS_COMMITTED_SHIFT);
 }
 
 static inline void
 edata_pai_set(edata_t *edata, extent_pai_t pai) {
-	edata->e_bits = (edata->e_bits & ~EDATA_BITS_PAI_MASK) |
-	    ((uint64_t)pai << EDATA_BITS_PAI_SHIFT);
+	edata->e_bits = (edata->e_bits & ~EDATA_BITS_PAI_MASK)
+	    | ((uint64_t)pai << EDATA_BITS_PAI_SHIFT);
 }
 
 static inline void
 edata_slab_set(edata_t *edata, bool slab) {
-	edata->e_bits = (edata->e_bits & ~EDATA_BITS_SLAB_MASK) |
-	    ((uint64_t)slab << EDATA_BITS_SLAB_SHIFT);
+	edata->e_bits = (edata->e_bits & ~EDATA_BITS_SLAB_MASK)
+	    | ((uint64_t)slab << EDATA_BITS_SLAB_SHIFT);
 }
 
 static inline void
@@ -567,22 +638,22 @@ edata_prof_alloc_size_set(edata_t *edata, size_t size) {
 }
 
 static inline void
-edata_prof_recent_alloc_set_dont_call_directly(edata_t *edata,
-    prof_recent_t *recent_alloc) {
+edata_prof_recent_alloc_set_dont_call_directly(
+    edata_t *edata, prof_recent_t *recent_alloc) {
 	atomic_store_p(&edata->e_prof_info.e_prof_recent_alloc, recent_alloc,
 	    ATOMIC_RELAXED);
 }
 
 static inline bool
 edata_is_head_get(edata_t *edata) {
-	return (bool)((edata->e_bits & EDATA_BITS_IS_HEAD_MASK) >>
-	    EDATA_BITS_IS_HEAD_SHIFT);
+	return (bool)((edata->e_bits & EDATA_BITS_IS_HEAD_MASK)
+	    >> EDATA_BITS_IS_HEAD_SHIFT);
 }
 
 static inline void
 edata_is_head_set(edata_t *edata, bool is_head) {
-	edata->e_bits = (edata->e_bits & ~EDATA_BITS_IS_HEAD_MASK) |
-	    ((uint64_t)is_head << EDATA_BITS_IS_HEAD_SHIFT);
+	edata->e_bits = (edata->e_bits & ~EDATA_BITS_IS_HEAD_MASK)
+	    | ((uint64_t)is_head << EDATA_BITS_IS_HEAD_SHIFT);
 }
 
 static inline bool
@@ -621,8 +692,8 @@ edata_init(edata_t *edata, unsigned arena_ind, void *addr, size_t size,
 }
 
 static inline void
-edata_binit(edata_t *edata, void *addr, size_t bsize, uint64_t sn,
-    bool reused) {
+edata_binit(
+    edata_t *edata, void *addr, size_t bsize, uint64_t sn, bool reused) {
 	edata_arena_ind_set(edata, (1U << MALLOCX_ARENA_BITS) - 1);
 	edata_addr_set(edata, addr);
 	edata_bsize_set(edata, bsize);
@@ -666,6 +737,23 @@ edata_cmp_summary_get(const edata_t *edata) {
 	return result;
 }
 
+#ifdef JEMALLOC_HAVE_INT128
+JEMALLOC_ALWAYS_INLINE unsigned __int128
+edata_cmp_summary_encode(edata_cmp_summary_t src) {
+	return ((unsigned __int128)src.sn << 64) | src.addr;
+}
+
+static inline int
+edata_cmp_summary_comp(edata_cmp_summary_t a, edata_cmp_summary_t b) {
+	unsigned __int128 a_encoded = edata_cmp_summary_encode(a);
+	unsigned __int128 b_encoded = edata_cmp_summary_encode(b);
+	if (a_encoded < b_encoded)
+		return -1;
+	if (a_encoded == b_encoded)
+		return 0;
+	return 1;
+}
+#else
 static inline int
 edata_cmp_summary_comp(edata_cmp_summary_t a, edata_cmp_summary_t b) {
 	/*
@@ -680,9 +768,10 @@ edata_cmp_summary_comp(edata_cmp_summary_t a, edata_cmp_summary_t b) {
 	 * prediction accuracy is not great. As a result, this implementation
 	 * is measurably faster (by around 30%).
 	 */
-	return (2 * ((a.sn > b.sn) - (a.sn < b.sn))) +
-	       ((a.addr > b.addr) - (a.addr < b.addr));
+	return (2 * ((a.sn > b.sn) - (a.sn < b.sn)))
+	    + ((a.addr > b.addr) - (a.addr < b.addr));
 }
+#endif
 
 static inline int
 edata_snad_comp(const edata_t *a, const edata_t *b) {
@@ -701,7 +790,6 @@ edata_esnead_comp(const edata_t *a, const edata_t *b) {
 	return (2 * edata_esn_comp(a, b)) + edata_ead_comp(a, b);
 }
 
-ph_proto(, edata_avail, edata_t)
-ph_proto(, edata_heap, edata_t)
+ph_proto(, edata_avail, edata_t) ph_proto(, edata_heap, edata_t)
 
 #endif /* JEMALLOC_INTERNAL_EDATA_H */

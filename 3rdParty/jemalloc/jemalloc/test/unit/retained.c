@@ -3,21 +3,22 @@
 #include "jemalloc/internal/san.h"
 #include "jemalloc/internal/spin.h"
 
-static unsigned		arena_ind;
-static size_t		sz;
-static size_t		esz;
-#define NEPOCHS		8
-#define PER_THD_NALLOCS	1
-static atomic_u_t	epoch;
-static atomic_u_t	nfinished;
+static unsigned arena_ind;
+static size_t   sz;
+static size_t   esz;
+#define NEPOCHS 8
+#define PER_THD_NALLOCS 1
+static atomic_u_t epoch;
+static atomic_u_t nfinished;
 
 static unsigned
 do_arena_create(extent_hooks_t *h) {
 	unsigned new_arena_ind;
-	size_t ind_sz = sizeof(unsigned);
-	expect_d_eq(mallctl("arenas.create", (void *)&new_arena_ind, &ind_sz,
-	    (void *)(h != NULL ? &h : NULL), (h != NULL ? sizeof(h) : 0)), 0,
-	    "Unexpected mallctl() failure");
+	size_t   ind_sz = sizeof(unsigned);
+	expect_d_eq(
+	    mallctl("arenas.create", (void *)&new_arena_ind, &ind_sz,
+	        (void *)(h != NULL ? &h : NULL), (h != NULL ? sizeof(h) : 0)),
+	    0, "Unexpected mallctl() failure");
 	return new_arena_ind;
 }
 
@@ -26,7 +27,7 @@ do_arena_destroy(unsigned ind) {
 	size_t mib[3];
 	size_t miblen;
 
-	miblen = sizeof(mib)/sizeof(size_t);
+	miblen = sizeof(mib) / sizeof(size_t);
 	expect_d_eq(mallctlnametomib("arena.0.destroy", mib, &miblen), 0,
 	    "Unexpected mallctlnametomib() failure");
 	mib[1] = (size_t)ind;
@@ -38,7 +39,8 @@ static void
 do_refresh(void) {
 	uint64_t refresh_epoch = 1;
 	expect_d_eq(mallctl("epoch", NULL, NULL, (void *)&refresh_epoch,
-	    sizeof(refresh_epoch)), 0, "Unexpected mallctl() failure");
+	                sizeof(refresh_epoch)),
+	    0, "Unexpected mallctl() failure");
 }
 
 static size_t
@@ -47,12 +49,12 @@ do_get_size_impl(const char *cmd, unsigned ind) {
 	size_t miblen = sizeof(mib) / sizeof(size_t);
 	size_t z = sizeof(size_t);
 
-	expect_d_eq(mallctlnametomib(cmd, mib, &miblen),
-	    0, "Unexpected mallctlnametomib(\"%s\", ...) failure", cmd);
+	expect_d_eq(mallctlnametomib(cmd, mib, &miblen), 0,
+	    "Unexpected mallctlnametomib(\"%s\", ...) failure", cmd);
 	mib[2] = ind;
 	size_t size;
-	expect_d_eq(mallctlbymib(mib, miblen, (void *)&size, &z, NULL, 0),
-	    0, "Unexpected mallctlbymib([\"%s\"], ...) failure", cmd);
+	expect_d_eq(mallctlbymib(mib, miblen, (void *)&size, &z, NULL, 0), 0,
+	    "Unexpected mallctlbymib([\"%s\"], ...) failure", cmd);
 
 	return size;
 }
@@ -72,9 +74,9 @@ thd_start(void *arg) {
 	for (unsigned next_epoch = 1; next_epoch < NEPOCHS; next_epoch++) {
 		/* Busy-wait for next epoch. */
 		unsigned cur_epoch;
-		spin_t spinner = SPIN_INITIALIZER;
-		while ((cur_epoch = atomic_load_u(&epoch, ATOMIC_ACQUIRE)) !=
-		    next_epoch) {
+		spin_t   spinner = SPIN_INITIALIZER;
+		while ((cur_epoch = atomic_load_u(&epoch, ATOMIC_ACQUIRE))
+		    != next_epoch) {
 			spin_adaptive(&spinner);
 		}
 		expect_u_eq(cur_epoch, next_epoch, "Unexpected epoch");
@@ -84,11 +86,10 @@ thd_start(void *arg) {
 		 * no need to deallocate.
 		 */
 		for (unsigned i = 0; i < PER_THD_NALLOCS; i++) {
-			void *p = mallocx(sz, MALLOCX_ARENA(arena_ind) |
-			    MALLOCX_TCACHE_NONE
-			    );
-			expect_ptr_not_null(p,
-			    "Unexpected mallocx() failure\n");
+			void *p = mallocx(
+			    sz, MALLOCX_ARENA(arena_ind) | MALLOCX_TCACHE_NONE);
+			expect_ptr_not_null(
+			    p, "Unexpected mallocx() failure\n");
 		}
 
 		/* Let the main thread know we've finished this iteration. */
@@ -110,8 +111,15 @@ TEST_BEGIN(test_retained) {
 	atomic_store_u(&epoch, 0, ATOMIC_RELAXED);
 
 	unsigned nthreads = ncpus * 2;
-	if (LG_SIZEOF_PTR < 3 && nthreads > 16) {
-		nthreads = 16; /* 32-bit platform could run out of vaddr. */
+	if (nthreads > 16) {
+		/*
+		 * Limit number of threads we are creating for following
+		 * reasons.
+		 * 1. On 32-bit platforms could run out of vaddr.
+		 * 2. On boxes with a lot of CPUs we might have not enough
+		 *    memory to fit thd_t into VARIABLE_ARRAY.
+		 */
+		nthreads = 16;
 	}
 	VARIABLE_ARRAY(thd_t, threads, nthreads);
 	for (unsigned i = 0; i < nthreads; i++) {
@@ -135,17 +143,17 @@ TEST_BEGIN(test_retained) {
 		 */
 		do_refresh();
 
-		size_t allocated = (esz - guard_sz) * nthreads *
-		    PER_THD_NALLOCS;
+		size_t allocated = (esz - guard_sz) * nthreads
+		    * PER_THD_NALLOCS;
 		size_t active = do_get_active(arena_ind);
 		expect_zu_le(allocated, active, "Unexpected active memory");
 		size_t mapped = do_get_mapped(arena_ind);
 		expect_zu_le(active, mapped, "Unexpected mapped memory");
 
 		arena_t *arena = arena_get(tsdn_fetch(), arena_ind, false);
-		size_t usable = 0;
-		for (pszind_t pind = sz_psz2ind(HUGEPAGE); pind <
-		    arena->pa_shard.pac.exp_grow.next; pind++) {
+		size_t   usable = 0;
+		for (pszind_t pind = sz_psz2ind(HUGEPAGE);
+		     pind < arena->pa_shard.pac.exp_grow.next; pind++) {
 			size_t psz = sz_pind2sz(pind);
 			size_t psz_fragmented = psz % esz;
 			size_t psz_usable = psz - psz_fragmented;
@@ -155,8 +163,8 @@ TEST_BEGIN(test_retained) {
 			if (psz_usable > 0) {
 				expect_zu_lt(usable, allocated,
 				    "Excessive retained memory "
-				    "(%#zx[+%#zx] > %#zx)", usable, psz_usable,
-				    allocated);
+				    "(%#zx[+%#zx] > %#zx)",
+				    usable, psz_usable, allocated);
 				usable += psz_usable;
 			}
 		}
@@ -167,8 +175,8 @@ TEST_BEGIN(test_retained) {
 		 * (rather than retaining) during reset.
 		 */
 		do_arena_destroy(arena_ind);
-		expect_u_eq(do_arena_create(NULL), arena_ind,
-		    "Unexpected arena index");
+		expect_u_eq(
+		    do_arena_create(NULL), arena_ind, "Unexpected arena index");
 	}
 
 	for (unsigned i = 0; i < nthreads; i++) {
@@ -181,6 +189,5 @@ TEST_END
 
 int
 main(void) {
-	return test(
-	    test_retained);
+	return test(test_retained);
 }

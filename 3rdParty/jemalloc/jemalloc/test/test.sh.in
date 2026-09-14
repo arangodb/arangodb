@@ -43,6 +43,7 @@ for t in $@; do
     # per test shell script to ignore the @JEMALLOC_CPREFIX@ detail).
     enable_fill=@enable_fill@ \
     enable_prof=@enable_prof@ \
+    disable_large_size_classes=@disable_large_size_classes@ \
     . @srcroot@${t}.sh && \
     export_malloc_conf && \
     $JEMALLOC_TEST_PREFIX ${t}@exe@ @abs_srcroot@ @abs_objroot@

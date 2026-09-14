@@ -1,27 +1,30 @@
 #include "test/jemalloc_test.h"
 
-#define TEST_UTIL_EINVAL(node, a, b, c, d, why_inval) do {		\
-	assert_d_eq(mallctl("experimental.utilization." node,		\
-	    a, b, c, d), EINVAL, "Should fail when " why_inval);	\
-	assert_zu_eq(out_sz, out_sz_ref,				\
-	    "Output size touched when given invalid arguments");	\
-	assert_d_eq(memcmp(out, out_ref, out_sz_ref), 0,		\
-	    "Output content touched when given invalid arguments");	\
-} while (0)
+#define TEST_UTIL_EINVAL(node, a, b, c, d, why_inval)                          \
+	do {                                                                   \
+		assert_d_eq(                                                   \
+		    mallctl("experimental.utilization." node, a, b, c, d),     \
+		    EINVAL, "Should fail when " why_inval);                    \
+		assert_zu_eq(out_sz, out_sz_ref,                               \
+		    "Output size touched when given invalid arguments");       \
+		assert_d_eq(memcmp(out, out_ref, out_sz_ref), 0,               \
+		    "Output content touched when given invalid arguments");    \
+	} while (0)
 
-#define TEST_UTIL_QUERY_EINVAL(a, b, c, d, why_inval)			\
+#define TEST_UTIL_QUERY_EINVAL(a, b, c, d, why_inval)                          \
 	TEST_UTIL_EINVAL("query", a, b, c, d, why_inval)
-#define TEST_UTIL_BATCH_EINVAL(a, b, c, d, why_inval)			\
+#define TEST_UTIL_BATCH_EINVAL(a, b, c, d, why_inval)                          \
 	TEST_UTIL_EINVAL("batch_query", a, b, c, d, why_inval)
 
-#define TEST_UTIL_VALID(node) do {					\
-        assert_d_eq(mallctl("experimental.utilization." node,		\
-	    out, &out_sz, in, in_sz), 0,				\
-	    "Should return 0 on correct arguments");			\
-        expect_zu_eq(out_sz, out_sz_ref, "incorrect output size");	\
-	expect_d_ne(memcmp(out, out_ref, out_sz_ref), 0,		\
-	    "Output content should be changed");			\
-} while (0)
+#define TEST_UTIL_VALID(node)                                                  \
+	do {                                                                   \
+		assert_d_eq(mallctl("experimental.utilization." node, out,     \
+		                &out_sz, in, in_sz),                           \
+		    0, "Should return 0 on correct arguments");                \
+		expect_zu_eq(out_sz, out_sz_ref, "incorrect output size");     \
+		expect_d_ne(memcmp(out, out_ref, out_sz_ref), 0,               \
+		    "Output content should be changed");                       \
+	} while (0)
 
 #define TEST_UTIL_BATCH_VALID TEST_UTIL_VALID("batch_query")
 
@@ -34,21 +37,19 @@ TEST_BEGIN(test_query) {
 	 * numerically unrelated to any size boundaries.
 	 */
 	for (sz = 7; sz <= TEST_MAX_SIZE && sz <= SC_LARGE_MAXCLASS;
-	    sz += (sz <= SC_SMALL_MAXCLASS ? 1009 : 99989)) {
-		void *p = mallocx(sz, 0);
+	     sz += (sz <= SC_SMALL_MAXCLASS ? 1009 : 99989)) {
+		void  *p = mallocx(sz, 0);
 		void **in = &p;
 		size_t in_sz = sizeof(const void *);
 		size_t out_sz = sizeof(void *) + sizeof(size_t) * 5;
-		void *out = mallocx(out_sz, 0);
-		void *out_ref = mallocx(out_sz, 0);
+		void  *out = mallocx(out_sz, 0);
+		void  *out_ref = mallocx(out_sz, 0);
 		size_t out_sz_ref = out_sz;
 
-		assert_ptr_not_null(p,
-		    "test pointer allocation failed");
-		assert_ptr_not_null(out,
-		    "test output allocation failed");
-		assert_ptr_not_null(out_ref,
-		    "test reference output allocation failed");
+		assert_ptr_not_null(p, "test pointer allocation failed");
+		assert_ptr_not_null(out, "test output allocation failed");
+		assert_ptr_not_null(
+		    out_ref, "test reference output allocation failed");
 
 #define SLABCUR_READ(out) (*(void **)out)
 #define COUNTS(out) ((size_t *)((void **)out + 1))
@@ -64,21 +65,18 @@ TEST_BEGIN(test_query) {
 		memcpy(out_ref, out, out_sz);
 
 		/* Test invalid argument(s) errors */
-		TEST_UTIL_QUERY_EINVAL(NULL, &out_sz, in, in_sz,
-		    "old is NULL");
-		TEST_UTIL_QUERY_EINVAL(out, NULL, in, in_sz,
-		    "oldlenp is NULL");
-		TEST_UTIL_QUERY_EINVAL(out, &out_sz, NULL, in_sz,
-		    "newp is NULL");
-		TEST_UTIL_QUERY_EINVAL(out, &out_sz, in, 0,
-		    "newlen is zero");
+		TEST_UTIL_QUERY_EINVAL(NULL, &out_sz, in, in_sz, "old is NULL");
+		TEST_UTIL_QUERY_EINVAL(out, NULL, in, in_sz, "oldlenp is NULL");
+		TEST_UTIL_QUERY_EINVAL(
+		    out, &out_sz, NULL, in_sz, "newp is NULL");
+		TEST_UTIL_QUERY_EINVAL(out, &out_sz, in, 0, "newlen is zero");
 		in_sz -= 1;
-		TEST_UTIL_QUERY_EINVAL(out, &out_sz, in, in_sz,
-		    "invalid newlen");
+		TEST_UTIL_QUERY_EINVAL(
+		    out, &out_sz, in, in_sz, "invalid newlen");
 		in_sz += 1;
 		out_sz_ref = out_sz -= 2 * sizeof(size_t);
-		TEST_UTIL_QUERY_EINVAL(out, &out_sz, in, in_sz,
-		    "invalid *oldlenp");
+		TEST_UTIL_QUERY_EINVAL(
+		    out, &out_sz, in, in_sz, "invalid *oldlenp");
 		out_sz_ref = out_sz += 2 * sizeof(size_t);
 
 		/* Examine output for valid call */
@@ -100,8 +98,9 @@ TEST_BEGIN(test_query) {
 			    "Extent region count exceeded size");
 			expect_zu_ne(NREGS_READ(out), 0,
 			    "Extent region count must be positive");
-			expect_true(NFREE_READ(out) == 0 || (SLABCUR_READ(out)
-			    != NULL && SLABCUR_READ(out) <= p),
+			expect_true(NFREE_READ(out) == 0
+			        || (SLABCUR_READ(out) != NULL
+			            && SLABCUR_READ(out) <= p),
 			    "Allocation should follow first fit principle");
 
 			if (config_stats) {
@@ -117,8 +116,8 @@ TEST_BEGIN(test_query) {
 				    BIN_NREGS_READ(out),
 				    "Extent region count exceeded "
 				    "bin region count");
-				expect_zu_eq(BIN_NREGS_READ(out)
-				    % NREGS_READ(out), 0,
+				expect_zu_eq(
+				    BIN_NREGS_READ(out) % NREGS_READ(out), 0,
 				    "Bin region count isn't a multiple of "
 				    "extent region count");
 				expect_zu_le(
@@ -171,10 +170,10 @@ TEST_BEGIN(test_batch) {
 	 * numerically unrelated to any size boundaries.
 	 */
 	for (sz = 17; sz <= TEST_MAX_SIZE && sz <= SC_LARGE_MAXCLASS;
-	    sz += (sz <= SC_SMALL_MAXCLASS ? 1019 : 99991)) {
-		void *p = mallocx(sz, 0);
-		void *q = mallocx(sz, 0);
-		void *in[] = {p, q};
+	     sz += (sz <= SC_SMALL_MAXCLASS ? 1019 : 99991)) {
+		void  *p = mallocx(sz, 0);
+		void  *q = mallocx(sz, 0);
+		void  *in[] = {p, q};
 		size_t in_sz = sizeof(const void *) * 2;
 		size_t out[] = {-1, -1, -1, -1, -1, -1};
 		size_t out_sz = sizeof(size_t) * 6;
@@ -185,17 +184,14 @@ TEST_BEGIN(test_batch) {
 		assert_ptr_not_null(q, "test pointer allocation failed");
 
 		/* Test invalid argument(s) errors */
-		TEST_UTIL_BATCH_EINVAL(NULL, &out_sz, in, in_sz,
-		    "old is NULL");
-		TEST_UTIL_BATCH_EINVAL(out, NULL, in, in_sz,
-		    "oldlenp is NULL");
-		TEST_UTIL_BATCH_EINVAL(out, &out_sz, NULL, in_sz,
-		    "newp is NULL");
-		TEST_UTIL_BATCH_EINVAL(out, &out_sz, in, 0,
-		    "newlen is zero");
+		TEST_UTIL_BATCH_EINVAL(NULL, &out_sz, in, in_sz, "old is NULL");
+		TEST_UTIL_BATCH_EINVAL(out, NULL, in, in_sz, "oldlenp is NULL");
+		TEST_UTIL_BATCH_EINVAL(
+		    out, &out_sz, NULL, in_sz, "newp is NULL");
+		TEST_UTIL_BATCH_EINVAL(out, &out_sz, in, 0, "newlen is zero");
 		in_sz -= 1;
-		TEST_UTIL_BATCH_EINVAL(out, &out_sz, in, in_sz,
-		    "newlen is not an exact multiple");
+		TEST_UTIL_BATCH_EINVAL(
+		    out, &out_sz, in, in_sz, "newlen is not an exact multiple");
 		in_sz += 1;
 		out_sz_ref = out_sz -= 2 * sizeof(size_t);
 		TEST_UTIL_BATCH_EINVAL(out, &out_sz, in, in_sz,
@@ -206,8 +202,8 @@ TEST_BEGIN(test_batch) {
 		    "*oldlenp and newlen do not match");
 		in_sz += sizeof(const void *);
 
-	/* Examine output for valid calls */
-#define TEST_EQUAL_REF(i, message) \
+		/* Examine output for valid calls */
+#define TEST_EQUAL_REF(i, message)                                             \
 	assert_d_eq(memcmp(out + (i) * 3, out_ref + (i) * 3, 3), 0, message)
 
 #define NFREE_READ(out, i) out[(i) * 3]
@@ -238,8 +234,8 @@ TEST_BEGIN(test_batch) {
 			expect_zu_eq(NREGS_READ(out, 0), 1,
 			    "Extent region count should be one");
 		}
-		TEST_EQUAL_REF(1,
-		    "Should not overwrite content beyond what's needed");
+		TEST_EQUAL_REF(
+		    1, "Should not overwrite content beyond what's needed");
 		in_sz *= 2;
 		out_sz_ref = out_sz *= 2;
 

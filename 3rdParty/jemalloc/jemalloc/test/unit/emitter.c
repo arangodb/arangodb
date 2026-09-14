@@ -12,9 +12,9 @@ static bool print_escaped = false;
 
 typedef struct buf_descriptor_s buf_descriptor_t;
 struct buf_descriptor_s {
-	char *buf;
+	char  *buf;
 	size_t len;
-	bool mid_quote;
+	bool   mid_quote;
 };
 
 /*
@@ -56,8 +56,8 @@ forwarding_cb(void *buf_descriptor_v, const char *str) {
 		}
 	}
 
-	size_t written = malloc_snprintf(buf_descriptor->buf,
-	    buf_descriptor->len, "%s", str);
+	size_t written = malloc_snprintf(
+	    buf_descriptor->buf, buf_descriptor->len, "%s", str);
 	expect_zu_eq(written, strlen(str), "Buffer overflow!");
 	buf_descriptor->buf += written;
 	buf_descriptor->len -= written;
@@ -66,19 +66,18 @@ forwarding_cb(void *buf_descriptor_v, const char *str) {
 
 static void
 expect_emit_output(void (*emit_fn)(emitter_t *),
-    const char *expected_json_output,
-    const char *expected_json_compact_output,
+    const char *expected_json_output, const char *expected_json_compact_output,
     const char *expected_table_output) {
-	emitter_t emitter;
-	char buf[MALLOC_PRINTF_BUFSIZE];
+	emitter_t        emitter;
+	char             buf[MALLOC_PRINTF_BUFSIZE];
 	buf_descriptor_t buf_descriptor;
 
 	buf_descriptor.buf = buf;
 	buf_descriptor.len = MALLOC_PRINTF_BUFSIZE;
 	buf_descriptor.mid_quote = false;
 
-	emitter_init(&emitter, emitter_output_json, &forwarding_cb,
-	    &buf_descriptor);
+	emitter_init(
+	    &emitter, emitter_output_json, &forwarding_cb, &buf_descriptor);
 	(*emit_fn)(&emitter);
 	expect_str_eq(expected_json_output, buf, "json output failure");
 
@@ -89,24 +88,24 @@ expect_emit_output(void (*emit_fn)(emitter_t *),
 	emitter_init(&emitter, emitter_output_json_compact, &forwarding_cb,
 	    &buf_descriptor);
 	(*emit_fn)(&emitter);
-	expect_str_eq(expected_json_compact_output, buf,
-	    "compact json output failure");
+	expect_str_eq(
+	    expected_json_compact_output, buf, "compact json output failure");
 
 	buf_descriptor.buf = buf;
 	buf_descriptor.len = MALLOC_PRINTF_BUFSIZE;
 	buf_descriptor.mid_quote = false;
 
-	emitter_init(&emitter, emitter_output_table, &forwarding_cb,
-	    &buf_descriptor);
+	emitter_init(
+	    &emitter, emitter_output_table, &forwarding_cb, &buf_descriptor);
 	(*emit_fn)(&emitter);
 	expect_str_eq(expected_table_output, buf, "table output failure");
 }
 
 static void
 emit_dict(emitter_t *emitter) {
-	bool b_false = false;
-	bool b_true = true;
-	int i_123 = 123;
+	bool        b_false = false;
+	bool        b_true = true;
+	int         i_123 = 123;
 	const char *str = "a string";
 
 	emitter_begin(emitter);
@@ -122,48 +121,49 @@ emit_dict(emitter_t *emitter) {
 }
 
 static const char *dict_json =
-"{\n"
-"\t\"foo\": {\n"
-"\t\t\"abc\": false,\n"
-"\t\t\"def\": true,\n"
-"\t\t\"ghi\": 123,\n"
-"\t\t\"jkl\": \"a string\"\n"
-"\t}\n"
-"}\n";
+    "{\n"
+    "\t\"foo\": {\n"
+    "\t\t\"abc\": false,\n"
+    "\t\t\"def\": true,\n"
+    "\t\t\"ghi\": 123,\n"
+    "\t\t\"jkl\": \"a string\"\n"
+    "\t}\n"
+    "}\n";
 static const char *dict_json_compact =
-"{"
-	"\"foo\":{"
-		"\"abc\":false,"
-		"\"def\":true,"
-		"\"ghi\":123,"
-		"\"jkl\":\"a string\""
-	"}"
-"}";
+    "{"
+    "\"foo\":{"
+    "\"abc\":false,"
+    "\"def\":true,"
+    "\"ghi\":123,"
+    "\"jkl\":\"a string\""
+    "}"
+    "}";
 static const char *dict_table =
-"This is the foo table:\n"
-"  ABC: false\n"
-"  DEF: true\n"
-"  GHI: 123 (note_key1: \"a string\")\n"
-"  JKL: \"a string\" (note_key2: false)\n";
+    "This is the foo table:\n"
+    "  ABC: false\n"
+    "  DEF: true\n"
+    "  GHI: 123 (note_key1: \"a string\")\n"
+    "  JKL: \"a string\" (note_key2: false)\n";
 
 static void
 emit_table_printf(emitter_t *emitter) {
 	emitter_begin(emitter);
 	emitter_table_printf(emitter, "Table note 1\n");
-	emitter_table_printf(emitter, "Table note 2 %s\n",
-	    "with format string");
+	emitter_table_printf(
+	    emitter, "Table note 2 %s\n", "with format string");
 	emitter_end(emitter);
 }
 
 static const char *table_printf_json =
-"{\n"
-"}\n";
+    "{\n"
+    "}\n";
 static const char *table_printf_json_compact = "{}";
 static const char *table_printf_table =
-"Table note 1\n"
-"Table note 2 with format string\n";
+    "Table note 1\n"
+    "Table note 2 with format string\n";
 
-static void emit_nested_dict(emitter_t *emitter) {
+static void
+emit_nested_dict(emitter_t *emitter) {
 	int val = 123;
 	emitter_begin(emitter);
 	emitter_dict_begin(emitter, "json1", "Dict 1");
@@ -174,54 +174,65 @@ static void emit_nested_dict(emitter_t *emitter) {
 	emitter_dict_end(emitter); /* Close 3 */
 	emitter_dict_end(emitter); /* Close 1 */
 	emitter_dict_begin(emitter, "json4", "Dict 4");
-	emitter_kv(emitter, "primitive", "Another primitive",
-	    emitter_type_int, &val);
+	emitter_kv(
+	    emitter, "primitive", "Another primitive", emitter_type_int, &val);
 	emitter_dict_end(emitter); /* Close 4 */
 	emitter_end(emitter);
 }
 
 static const char *nested_dict_json =
-"{\n"
-"\t\"json1\": {\n"
-"\t\t\"json2\": {\n"
-"\t\t\t\"primitive\": 123\n"
-"\t\t},\n"
-"\t\t\"json3\": {\n"
-"\t\t}\n"
-"\t},\n"
-"\t\"json4\": {\n"
-"\t\t\"primitive\": 123\n"
-"\t}\n"
-"}\n";
+    "{\n"
+    "\t\"json1\": {\n"
+    "\t\t\"json2\": {\n"
+    "\t\t\t\"primitive\": 123\n"
+    "\t\t},\n"
+    "\t\t\"json3\": {\n"
+    "\t\t}\n"
+    "\t},\n"
+    "\t\"json4\": {\n"
+    "\t\t\"primitive\": 123\n"
+    "\t}\n"
+    "}\n";
 static const char *nested_dict_json_compact =
-"{"
-	"\"json1\":{"
-		"\"json2\":{"
-			"\"primitive\":123"
-		"},"
-		"\"json3\":{"
-		"}"
-	"},"
-	"\"json4\":{"
-		"\"primitive\":123"
-	"}"
-"}";
+    "{"
+    "\"json1\":{"
+    "\"json2\":{"
+    "\"primitive\":123"
+    "},"
+    "\"json3\":{"
+    "}"
+    "},"
+    "\"json4\":{"
+    "\"primitive\":123"
+    "}"
+    "}";
 static const char *nested_dict_table =
-"Dict 1\n"
-"  Dict 2\n"
-"    A primitive: 123\n"
-"  Dict 3\n"
-"Dict 4\n"
-"  Another primitive: 123\n";
+    "Dict 1\n"
+    "  Dict 2\n"
+    "    A primitive: 123\n"
+    "  Dict 3\n"
+    "Dict 4\n"
+    "  Another primitive: 123\n";
 
 static void
 emit_types(emitter_t *emitter) {
-	bool b = false;
-	int i = -123;
-	unsigned u = 123;
-	ssize_t zd = -456;
-	size_t zu = 456;
+	bool        b = false;
+	int         i = -123;
+	unsigned    u = 123;
+	ssize_t     zd = -456;
+	size_t      zu = 456;
 	const char *str = "string";
+	const char *long_str =
+	    "abcdefghijklmnopqrstuvwxyz "
+	    "abcdefghijklmnopqrstuvwxyz "
+	    "abcdefghijklmnopqrstuvwxyz "
+	    "abcdefghijklmnopqrstuvwxyz "
+	    "abcdefghijklmnopqrstuvwxyz "
+	    "abcdefghijklmnopqrstuvwxyz "
+	    "abcdefghijklmnopqrstuvwxyz "
+	    "abcdefghijklmnopqrstuvwxyz "
+	    "abcdefghijklmnopqrstuvwxyz "
+	    "abcdefghijklmnopqrstuvwxyz";
 	uint32_t u32 = 789;
 	uint64_t u64 = 10000000000ULL;
 
@@ -232,8 +243,9 @@ emit_types(emitter_t *emitter) {
 	emitter_kv(emitter, "k4", "K4", emitter_type_ssize, &zd);
 	emitter_kv(emitter, "k5", "K5", emitter_type_size, &zu);
 	emitter_kv(emitter, "k6", "K6", emitter_type_string, &str);
-	emitter_kv(emitter, "k7", "K7", emitter_type_uint32, &u32);
-	emitter_kv(emitter, "k8", "K8", emitter_type_uint64, &u64);
+	emitter_kv(emitter, "k7", "K7", emitter_type_string, &long_str);
+	emitter_kv(emitter, "k8", "K8", emitter_type_uint32, &u32);
+	emitter_kv(emitter, "k9", "K9", emitter_type_uint64, &u64);
 	/*
 	 * We don't test the title type, since it's only used for tables.  It's
 	 * tested in the emitter_table_row tests.
@@ -242,36 +254,66 @@ emit_types(emitter_t *emitter) {
 }
 
 static const char *types_json =
-"{\n"
-"\t\"k1\": false,\n"
-"\t\"k2\": -123,\n"
-"\t\"k3\": 123,\n"
-"\t\"k4\": -456,\n"
-"\t\"k5\": 456,\n"
-"\t\"k6\": \"string\",\n"
-"\t\"k7\": 789,\n"
-"\t\"k8\": 10000000000\n"
-"}\n";
+    "{\n"
+    "\t\"k1\": false,\n"
+    "\t\"k2\": -123,\n"
+    "\t\"k3\": 123,\n"
+    "\t\"k4\": -456,\n"
+    "\t\"k5\": 456,\n"
+    "\t\"k6\": \"string\",\n"
+    "\t\"k7\": \"abcdefghijklmnopqrstuvwxyz "
+    "abcdefghijklmnopqrstuvwxyz "
+    "abcdefghijklmnopqrstuvwxyz "
+    "abcdefghijklmnopqrstuvwxyz "
+    "abcdefghijklmnopqrstuvwxyz "
+    "abcdefghijklmnopqrstuvwxyz "
+    "abcdefghijklmnopqrstuvwxyz "
+    "abcdefghijklmnopqrstuvwxyz "
+    "abcdefghijklmnopqrstuvwxyz "
+    "abcdefghijklmnopqrstuvwxyz\",\n"
+    "\t\"k8\": 789,\n"
+    "\t\"k9\": 10000000000\n"
+    "}\n";
 static const char *types_json_compact =
-"{"
-	"\"k1\":false,"
-	"\"k2\":-123,"
-	"\"k3\":123,"
-	"\"k4\":-456,"
-	"\"k5\":456,"
-	"\"k6\":\"string\","
-	"\"k7\":789,"
-	"\"k8\":10000000000"
-"}";
+    "{"
+    "\"k1\":false,"
+    "\"k2\":-123,"
+    "\"k3\":123,"
+    "\"k4\":-456,"
+    "\"k5\":456,"
+    "\"k6\":\"string\","
+    "\"k7\":\"abcdefghijklmnopqrstuvwxyz "
+    "abcdefghijklmnopqrstuvwxyz "
+    "abcdefghijklmnopqrstuvwxyz "
+    "abcdefghijklmnopqrstuvwxyz "
+    "abcdefghijklmnopqrstuvwxyz "
+    "abcdefghijklmnopqrstuvwxyz "
+    "abcdefghijklmnopqrstuvwxyz "
+    "abcdefghijklmnopqrstuvwxyz "
+    "abcdefghijklmnopqrstuvwxyz "
+    "abcdefghijklmnopqrstuvwxyz\","
+    "\"k8\":789,"
+    "\"k9\":10000000000"
+    "}";
 static const char *types_table =
-"K1: false\n"
-"K2: -123\n"
-"K3: 123\n"
-"K4: -456\n"
-"K5: 456\n"
-"K6: \"string\"\n"
-"K7: 789\n"
-"K8: 10000000000\n";
+    "K1: false\n"
+    "K2: -123\n"
+    "K3: 123\n"
+    "K4: -456\n"
+    "K5: 456\n"
+    "K6: \"string\"\n"
+    "K7: \"abcdefghijklmnopqrstuvwxyz "
+    "abcdefghijklmnopqrstuvwxyz "
+    "abcdefghijklmnopqrstuvwxyz "
+    "abcdefghijklmnopqrstuvwxyz "
+    "abcdefghijklmnopqrstuvwxyz "
+    "abcdefghijklmnopqrstuvwxyz "
+    "abcdefghijklmnopqrstuvwxyz "
+    "abcdefghijklmnopqrstuvwxyz "
+    "abcdefghijklmnopqrstuvwxyz "
+    "abcdefghijklmnopqrstuvwxyz\"\n"
+    "K8: 789\n"
+    "K9: 10000000000\n";
 
 static void
 emit_modal(emitter_t *emitter) {
@@ -294,37 +336,37 @@ emit_modal(emitter_t *emitter) {
 }
 
 const char *modal_json =
-"{\n"
-"\t\"j0\": {\n"
-"\t\t\"j1\": {\n"
-"\t\t\t\"i1\": 123,\n"
-"\t\t\t\"i2\": 123,\n"
-"\t\t\t\"i4\": 123\n"
-"\t\t},\n"
-"\t\t\"i5\": 123,\n"
-"\t\t\"i6\": 123\n"
-"\t}\n"
-"}\n";
+    "{\n"
+    "\t\"j0\": {\n"
+    "\t\t\"j1\": {\n"
+    "\t\t\t\"i1\": 123,\n"
+    "\t\t\t\"i2\": 123,\n"
+    "\t\t\t\"i4\": 123\n"
+    "\t\t},\n"
+    "\t\t\"i5\": 123,\n"
+    "\t\t\"i6\": 123\n"
+    "\t}\n"
+    "}\n";
 const char *modal_json_compact =
-"{"
-	"\"j0\":{"
-		"\"j1\":{"
-			"\"i1\":123,"
-			"\"i2\":123,"
-			"\"i4\":123"
-		"},"
-		"\"i5\":123,"
-		"\"i6\":123"
-	"}"
-"}";
+    "{"
+    "\"j0\":{"
+    "\"j1\":{"
+    "\"i1\":123,"
+    "\"i2\":123,"
+    "\"i4\":123"
+    "},"
+    "\"i5\":123,"
+    "\"i6\":123"
+    "}"
+    "}";
 const char *modal_table =
-"T0\n"
-"  I1: 123\n"
-"  I3: 123\n"
-"  T1\n"
-"    I4: 123\n"
-"    I5: 123\n"
-"  I6: 123\n";
+    "T0\n"
+    "  I1: 123\n"
+    "  I3: 123\n"
+    "  T1\n"
+    "    I4: 123\n"
+    "    I5: 123\n"
+    "  I6: 123\n";
 
 static void
 emit_json_array(emitter_t *emitter) {
@@ -345,121 +387,124 @@ emit_json_array(emitter_t *emitter) {
 	emitter_json_kv(emitter, "bar", emitter_type_int, &ival);
 	emitter_json_kv(emitter, "baz", emitter_type_int, &ival);
 	emitter_json_object_end(emitter); /* Close arr[3]. */
-	emitter_json_array_end(emitter); /* Close arr. */
+	emitter_json_array_end(emitter);  /* Close arr. */
 	emitter_json_object_end(emitter); /* Close dict. */
 	emitter_end(emitter);
 }
 
 static const char *json_array_json =
-"{\n"
-"\t\"dict\": {\n"
-"\t\t\"arr\": [\n"
-"\t\t\t{\n"
-"\t\t\t\t\"foo\": 123\n"
-"\t\t\t},\n"
-"\t\t\t123,\n"
-"\t\t\t123,\n"
-"\t\t\t{\n"
-"\t\t\t\t\"bar\": 123,\n"
-"\t\t\t\t\"baz\": 123\n"
-"\t\t\t}\n"
-"\t\t]\n"
-"\t}\n"
-"}\n";
+    "{\n"
+    "\t\"dict\": {\n"
+    "\t\t\"arr\": [\n"
+    "\t\t\t{\n"
+    "\t\t\t\t\"foo\": 123\n"
+    "\t\t\t},\n"
+    "\t\t\t123,\n"
+    "\t\t\t123,\n"
+    "\t\t\t{\n"
+    "\t\t\t\t\"bar\": 123,\n"
+    "\t\t\t\t\"baz\": 123\n"
+    "\t\t\t}\n"
+    "\t\t]\n"
+    "\t}\n"
+    "}\n";
 static const char *json_array_json_compact =
-"{"
-	"\"dict\":{"
-		"\"arr\":["
-			"{"
-				"\"foo\":123"
-			"},"
-			"123,"
-			"123,"
-			"{"
-				"\"bar\":123,"
-				"\"baz\":123"
-			"}"
-		"]"
-	"}"
-"}";
+    "{"
+    "\"dict\":{"
+    "\"arr\":["
+    "{"
+    "\"foo\":123"
+    "},"
+    "123,"
+    "123,"
+    "{"
+    "\"bar\":123,"
+    "\"baz\":123"
+    "}"
+    "]"
+    "}"
+    "}";
 static const char *json_array_table = "";
 
 static void
 emit_json_nested_array(emitter_t *emitter) {
-	int ival = 123;
+	int   ival = 123;
 	char *sval = "foo";
 	emitter_begin(emitter);
 	emitter_json_array_begin(emitter);
-		emitter_json_array_begin(emitter);
-		emitter_json_value(emitter, emitter_type_int, &ival);
-		emitter_json_value(emitter, emitter_type_string, &sval);
-		emitter_json_value(emitter, emitter_type_int, &ival);
-		emitter_json_value(emitter, emitter_type_string, &sval);
-		emitter_json_array_end(emitter);
-		emitter_json_array_begin(emitter);
-		emitter_json_value(emitter, emitter_type_int, &ival);
-		emitter_json_array_end(emitter);
-		emitter_json_array_begin(emitter);
-		emitter_json_value(emitter, emitter_type_string, &sval);
-		emitter_json_value(emitter, emitter_type_int, &ival);
-		emitter_json_array_end(emitter);
-		emitter_json_array_begin(emitter);
-		emitter_json_array_end(emitter);
+	emitter_json_array_begin(emitter);
+	emitter_json_value(emitter, emitter_type_int, &ival);
+	emitter_json_value(emitter, emitter_type_string, &sval);
+	emitter_json_value(emitter, emitter_type_int, &ival);
+	emitter_json_value(emitter, emitter_type_string, &sval);
+	emitter_json_array_end(emitter);
+	emitter_json_array_begin(emitter);
+	emitter_json_value(emitter, emitter_type_int, &ival);
+	emitter_json_array_end(emitter);
+	emitter_json_array_begin(emitter);
+	emitter_json_value(emitter, emitter_type_string, &sval);
+	emitter_json_value(emitter, emitter_type_int, &ival);
+	emitter_json_array_end(emitter);
+	emitter_json_array_begin(emitter);
+	emitter_json_array_end(emitter);
 	emitter_json_array_end(emitter);
 	emitter_end(emitter);
 }
 
 static const char *json_nested_array_json =
-"{\n"
-"\t[\n"
-"\t\t[\n"
-"\t\t\t123,\n"
-"\t\t\t\"foo\",\n"
-"\t\t\t123,\n"
-"\t\t\t\"foo\"\n"
-"\t\t],\n"
-"\t\t[\n"
-"\t\t\t123\n"
-"\t\t],\n"
-"\t\t[\n"
-"\t\t\t\"foo\",\n"
-"\t\t\t123\n"
-"\t\t],\n"
-"\t\t[\n"
-"\t\t]\n"
-"\t]\n"
-"}\n";
+    "{\n"
+    "\t[\n"
+    "\t\t[\n"
+    "\t\t\t123,\n"
+    "\t\t\t\"foo\",\n"
+    "\t\t\t123,\n"
+    "\t\t\t\"foo\"\n"
+    "\t\t],\n"
+    "\t\t[\n"
+    "\t\t\t123\n"
+    "\t\t],\n"
+    "\t\t[\n"
+    "\t\t\t\"foo\",\n"
+    "\t\t\t123\n"
+    "\t\t],\n"
+    "\t\t[\n"
+    "\t\t]\n"
+    "\t]\n"
+    "}\n";
 static const char *json_nested_array_json_compact =
-"{"
-	"["
-		"["
-			"123,"
-			"\"foo\","
-			"123,"
-			"\"foo\""
-		"],"
-		"["
-			"123"
-		"],"
-		"["
-			"\"foo\","
-			"123"
-		"],"
-		"["
-		"]"
-	"]"
-"}";
+    "{"
+    "["
+    "["
+    "123,"
+    "\"foo\","
+    "123,"
+    "\"foo\""
+    "],"
+    "["
+    "123"
+    "],"
+    "["
+    "\"foo\","
+    "123"
+    "],"
+    "["
+    "]"
+    "]"
+    "}";
 static const char *json_nested_array_table = "";
 
 static void
 emit_table_row(emitter_t *emitter) {
 	emitter_begin(emitter);
 	emitter_row_t row;
-	emitter_col_t abc = {emitter_justify_left, 10, emitter_type_title, {0}, {0, 0}};
+	emitter_col_t abc = {
+	    emitter_justify_left, 10, emitter_type_title, {0}, {0, 0}};
 	abc.str_val = "ABC title";
-	emitter_col_t def = {emitter_justify_right, 15, emitter_type_title, {0}, {0, 0}};
+	emitter_col_t def = {
+	    emitter_justify_right, 15, emitter_type_title, {0}, {0, 0}};
 	def.str_val = "DEF title";
-	emitter_col_t ghi = {emitter_justify_right, 5, emitter_type_title, {0}, {0, 0}};
+	emitter_col_t ghi = {
+	    emitter_justify_right, 5, emitter_type_title, {0}, {0, 0}};
 	ghi.str_val = "GHI";
 
 	emitter_row_init(&row);
@@ -494,21 +539,21 @@ emit_table_row(emitter_t *emitter) {
 }
 
 static const char *table_row_json =
-"{\n"
-"}\n";
+    "{\n"
+    "}\n";
 static const char *table_row_json_compact = "{}";
 static const char *table_row_table =
-"ABC title       DEF title  GHI\n"
-"123                  true  456\n"
-"789                 false 1011\n"
-"\"a string\"          false  ghi\n";
+    "ABC title       DEF title  GHI\n"
+    "123                  true  456\n"
+    "789                 false 1011\n"
+    "\"a string\"          false  ghi\n";
 
-#define GENERATE_TEST(feature)					\
-TEST_BEGIN(test_##feature) {					\
-	expect_emit_output(emit_##feature, feature##_json,	\
-	    feature##_json_compact, feature##_table);		\
-}								\
-TEST_END
+#define GENERATE_TEST(feature)                                                 \
+	TEST_BEGIN(test_##feature) {                                           \
+		expect_emit_output(emit_##feature, feature##_json,             \
+		    feature##_json_compact, feature##_table);                  \
+	}                                                                      \
+	TEST_END
 
 GENERATE_TEST(dict)
 GENERATE_TEST(table_printf)
@@ -521,13 +566,7 @@ GENERATE_TEST(table_row)
 
 int
 main(void) {
-	return test_no_reentrancy(
-	    test_dict,
-	    test_table_printf,
-	    test_nested_dict,
-	    test_types,
-	    test_modal,
-	    test_json_array,
-	    test_json_nested_array,
-	    test_table_row);
+	return test_no_reentrancy(test_dict, test_table_printf,
+	    test_nested_dict, test_types, test_modal, test_json_array,
+	    test_json_nested_array, test_table_row);
 }

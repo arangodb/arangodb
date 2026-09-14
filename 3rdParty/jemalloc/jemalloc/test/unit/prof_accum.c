@@ -3,10 +3,10 @@
 #include "jemalloc/internal/prof_data.h"
 #include "jemalloc/internal/prof_sys.h"
 
-#define NTHREADS		4
-#define NALLOCS_PER_THREAD	50
-#define DUMP_INTERVAL		1
-#define BT_COUNT_CHECK_INTERVAL	5
+#define NTHREADS 4
+#define NALLOCS_PER_THREAD 50
+#define DUMP_INTERVAL 1
+#define BT_COUNT_CHECK_INTERVAL 5
 
 static int
 prof_dump_open_file_intercept(const char *filename, int mode) {
@@ -20,13 +20,13 @@ prof_dump_open_file_intercept(const char *filename, int mode) {
 
 static void *
 alloc_from_permuted_backtrace(unsigned thd_ind, unsigned iteration) {
-	return btalloc(1, thd_ind*NALLOCS_PER_THREAD + iteration);
+	return btalloc(1, thd_ind * NALLOCS_PER_THREAD + iteration);
 }
 
 static void *
 thd_start(void *varg) {
 	unsigned thd_ind = *(unsigned *)varg;
-	size_t bt_count_prev, bt_count;
+	size_t   bt_count_prev, bt_count;
 	unsigned i_prev, i;
 
 	i_prev = 0;
@@ -39,10 +39,10 @@ thd_start(void *varg) {
 			    0, "Unexpected error while dumping heap profile");
 		}
 
-		if (i % BT_COUNT_CHECK_INTERVAL == 0 ||
-		    i+1 == NALLOCS_PER_THREAD) {
+		if (i % BT_COUNT_CHECK_INTERVAL == 0
+		    || i + 1 == NALLOCS_PER_THREAD) {
 			bt_count = prof_bt_count();
-			expect_zu_le(bt_count_prev+(i-i_prev), bt_count,
+			expect_zu_le(bt_count_prev + (i - i_prev), bt_count,
 			    "Expected larger backtrace count increase");
 			i_prev = i;
 			bt_count_prev = bt_count;
@@ -53,17 +53,17 @@ thd_start(void *varg) {
 }
 
 TEST_BEGIN(test_idump) {
-	bool active;
-	thd_t thds[NTHREADS];
+	bool     active;
+	thd_t    thds[NTHREADS];
 	unsigned thd_args[NTHREADS];
 	unsigned i;
 
 	test_skip_if(!config_prof);
 
 	active = true;
-	expect_d_eq(mallctl("prof.active", NULL, NULL, (void *)&active,
-	    sizeof(active)), 0,
-	    "Unexpected mallctl failure while activating profiling");
+	expect_d_eq(
+	    mallctl("prof.active", NULL, NULL, (void *)&active, sizeof(active)),
+	    0, "Unexpected mallctl failure while activating profiling");
 
 	prof_dump_open_file = prof_dump_open_file_intercept;
 
@@ -79,6 +79,5 @@ TEST_END
 
 int
 main(void) {
-	return test_no_reentrancy(
-	    test_idump);
+	return test_no_reentrancy(test_idump);
 }

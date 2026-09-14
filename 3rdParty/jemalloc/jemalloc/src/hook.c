@@ -9,19 +9,19 @@
 typedef struct hooks_internal_s hooks_internal_t;
 struct hooks_internal_s {
 	hooks_t hooks;
-	bool in_use;
+	bool    in_use;
 };
 
 seq_define(hooks_internal_t, hooks)
 
-static atomic_u_t nhooks = ATOMIC_INIT(0);
-static seq_hooks_t hooks[HOOK_MAX];
+    static atomic_u_t nhooks = ATOMIC_INIT(0);
+static seq_hooks_t    hooks[HOOK_MAX];
 static malloc_mutex_t hooks_mu;
 
 bool
 hook_boot(void) {
-	return malloc_mutex_init(&hooks_mu, "hooks", WITNESS_RANK_HOOK,
-	    malloc_mutex_rank_exclusive);
+	return malloc_mutex_init(
+	    &hooks_mu, "hooks", WITNESS_RANK_HOOK, malloc_mutex_rank_exclusive);
 }
 
 static void *
@@ -84,20 +84,18 @@ hook_remove(tsdn_t *tsdn, void *opaque) {
 	malloc_mutex_unlock(tsdn, &hooks_mu);
 }
 
-#define FOR_EACH_HOOK_BEGIN(hooks_internal_ptr)				\
-for (int for_each_hook_counter = 0;					\
-    for_each_hook_counter < HOOK_MAX;					\
-    for_each_hook_counter++) {						\
-	bool for_each_hook_success = seq_try_load_hooks(		\
-	    (hooks_internal_ptr), &hooks[for_each_hook_counter]);	\
-	if (!for_each_hook_success) {					\
-		continue;						\
-	}								\
-	if (!(hooks_internal_ptr)->in_use) {				\
-		continue;						\
-	}
-#define FOR_EACH_HOOK_END						\
-}
+#define FOR_EACH_HOOK_BEGIN(hooks_internal_ptr)                                \
+	for (int for_each_hook_counter = 0; for_each_hook_counter < HOOK_MAX;  \
+	     for_each_hook_counter++) {                                        \
+		bool for_each_hook_success = seq_try_load_hooks(               \
+		    (hooks_internal_ptr), &hooks[for_each_hook_counter]);      \
+		if (!for_each_hook_success) {                                  \
+			continue;                                              \
+		}                                                              \
+		if (!(hooks_internal_ptr)->in_use) {                           \
+			continue;                                              \
+		}
+#define FOR_EACH_HOOK_END }
 
 static bool *
 hook_reentrantp(void) {
@@ -129,26 +127,25 @@ hook_reentrantp(void) {
 	 * untouched.
 	 */
 	static bool in_hook_global = true;
-	tsdn_t *tsdn = tsdn_fetch();
-	bool *in_hook = tsdn_in_hookp_get(tsdn);
-	if (in_hook!= NULL) {
+	tsdn_t     *tsdn = tsdn_fetch();
+	bool       *in_hook = tsdn_in_hookp_get(tsdn);
+	if (in_hook != NULL) {
 		return in_hook;
 	}
 	return &in_hook_global;
 }
 
-#define HOOK_PROLOGUE							\
-	if (likely(atomic_load_u(&nhooks, ATOMIC_RELAXED) == 0)) {	\
-		return;							\
-	}								\
-	bool *in_hook = hook_reentrantp();				\
-	if (*in_hook) {							\
-		return;							\
-	}								\
+#define HOOK_PROLOGUE                                                          \
+	if (likely(atomic_load_u(&nhooks, ATOMIC_RELAXED) == 0)) {             \
+		return;                                                        \
+	}                                                                      \
+	bool *in_hook = hook_reentrantp();                                     \
+	if (*in_hook) {                                                        \
+		return;                                                        \
+	}                                                                      \
 	*in_hook = true;
 
-#define HOOK_EPILOGUE							\
-	*in_hook = false;
+#define HOOK_EPILOGUE *in_hook = false;
 
 void
 hook_invoke_alloc(hook_alloc_t type, void *result, uintptr_t result_raw,
@@ -157,10 +154,10 @@ hook_invoke_alloc(hook_alloc_t type, void *result, uintptr_t result_raw,
 
 	hooks_internal_t hook;
 	FOR_EACH_HOOK_BEGIN(&hook)
-		hook_alloc h = hook.hooks.alloc_hook;
-		if (h != NULL) {
-			h(hook.hooks.extra, type, result, result_raw, args_raw);
-		}
+	hook_alloc h = hook.hooks.alloc_hook;
+	if (h != NULL) {
+		h(hook.hooks.extra, type, result, result_raw, args_raw);
+	}
 	FOR_EACH_HOOK_END
 
 	HOOK_EPILOGUE
@@ -171,10 +168,10 @@ hook_invoke_dalloc(hook_dalloc_t type, void *address, uintptr_t args_raw[3]) {
 	HOOK_PROLOGUE
 	hooks_internal_t hook;
 	FOR_EACH_HOOK_BEGIN(&hook)
-		hook_dalloc h = hook.hooks.dalloc_hook;
-		if (h != NULL) {
-			h(hook.hooks.extra, type, address, args_raw);
-		}
+	hook_dalloc h = hook.hooks.dalloc_hook;
+	if (h != NULL) {
+		h(hook.hooks.extra, type, address, args_raw);
+	}
 	FOR_EACH_HOOK_END
 	HOOK_EPILOGUE
 }
@@ -185,11 +182,11 @@ hook_invoke_expand(hook_expand_t type, void *address, size_t old_usize,
 	HOOK_PROLOGUE
 	hooks_internal_t hook;
 	FOR_EACH_HOOK_BEGIN(&hook)
-		hook_expand h = hook.hooks.expand_hook;
-		if (h != NULL) {
-			h(hook.hooks.extra, type, address, old_usize, new_usize,
-			    result_raw, args_raw);
-		}
+	hook_expand h = hook.hooks.expand_hook;
+	if (h != NULL) {
+		h(hook.hooks.extra, type, address, old_usize, new_usize,
+		    result_raw, args_raw);
+	}
 	FOR_EACH_HOOK_END
 	HOOK_EPILOGUE
 }

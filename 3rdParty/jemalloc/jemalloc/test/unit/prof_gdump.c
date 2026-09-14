@@ -18,16 +18,16 @@ prof_dump_open_file_intercept(const char *filename, int mode) {
 
 TEST_BEGIN(test_gdump) {
 	test_skip_if(opt_hpa);
-	bool active, gdump, gdump_old;
-	void *p, *q, *r, *s;
+	bool   active, gdump, gdump_old;
+	void  *p, *q, *r, *s;
 	size_t sz;
 
 	test_skip_if(!config_prof);
 
 	active = true;
-	expect_d_eq(mallctl("prof.active", NULL, NULL, (void *)&active,
-	    sizeof(active)), 0,
-	    "Unexpected mallctl failure while activating profiling");
+	expect_d_eq(
+	    mallctl("prof.active", NULL, NULL, (void *)&active, sizeof(active)),
+	    0, "Unexpected mallctl failure while activating profiling");
 
 	prof_dump_open_file = prof_dump_open_file_intercept;
 
@@ -44,8 +44,8 @@ TEST_BEGIN(test_gdump) {
 	gdump = false;
 	sz = sizeof(gdump_old);
 	expect_d_eq(mallctl("prof.gdump", (void *)&gdump_old, &sz,
-	    (void *)&gdump, sizeof(gdump)), 0,
-	    "Unexpected mallctl failure while disabling prof.gdump");
+	                (void *)&gdump, sizeof(gdump)),
+	    0, "Unexpected mallctl failure while disabling prof.gdump");
 	assert(gdump_old);
 	did_prof_dump_open = false;
 	r = mallocx((1U << SC_LG_LARGE_MINCLASS), 0);
@@ -55,8 +55,8 @@ TEST_BEGIN(test_gdump) {
 	gdump = true;
 	sz = sizeof(gdump_old);
 	expect_d_eq(mallctl("prof.gdump", (void *)&gdump_old, &sz,
-	    (void *)&gdump, sizeof(gdump)), 0,
-	    "Unexpected mallctl failure while enabling prof.gdump");
+	                (void *)&gdump, sizeof(gdump)),
+	    0, "Unexpected mallctl failure while enabling prof.gdump");
 	assert(!gdump_old);
 	did_prof_dump_open = false;
 	s = mallocx((1U << SC_LG_LARGE_MINCLASS), 0);
@@ -72,6 +72,5 @@ TEST_END
 
 int
 main(void) {
-	return test_no_reentrancy(
-	    test_gdump);
+	return test_no_reentrancy(test_gdump);
 }

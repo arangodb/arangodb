@@ -8,48 +8,46 @@
 #include "jemalloc/internal/malloc_io.h"
 
 #ifdef JEMALLOC_SYSCTL_VM_OVERCOMMIT
-#include <sys/sysctl.h>
-#ifdef __FreeBSD__
-#include <vm/vm_param.h>
-#endif
+#	include <sys/sysctl.h>
+#	ifdef __FreeBSD__
+#		include <vm/vm_param.h>
+#	endif
 #endif
 #ifdef __NetBSD__
-#include <sys/bitops.h>	/* ilog2 */
+#	include <sys/bitops.h> /* ilog2 */
 #endif
 #ifdef JEMALLOC_HAVE_VM_MAKE_TAG
-#define PAGES_FD_TAG VM_MAKE_TAG(101U)
+#	define PAGES_FD_TAG VM_MAKE_TAG(254U)
 #else
-#define PAGES_FD_TAG -1
+#	define PAGES_FD_TAG -1
 #endif
 #if defined(JEMALLOC_HAVE_PRCTL) && defined(JEMALLOC_PAGEID)
-#include <sys/prctl.h>
-#ifndef PR_SET_VMA
-#define PR_SET_VMA 0x53564d41
-#define PR_SET_VMA_ANON_NAME 0
-#endif
+#	include <sys/prctl.h>
+#	ifndef PR_SET_VMA
+#		define PR_SET_VMA 0x53564d41
+#		define PR_SET_VMA_ANON_NAME 0
+#	endif
 #endif
 
 /******************************************************************************/
 /* Data. */
 
 /* Actual operating system page size, detected during bootstrap, <= PAGE. */
-size_t	os_page;
+size_t os_page;
 
 #ifndef _WIN32
-#  define PAGES_PROT_COMMIT (PROT_READ | PROT_WRITE)
-#  define PAGES_PROT_DECOMMIT (PROT_READ | PROT_WRITE)
-static int	mmap_flags;
+#	define PAGES_PROT_COMMIT (PROT_READ | PROT_WRITE)
+#	define PAGES_PROT_DECOMMIT (PROT_NONE | PROT_WRITE)
+static int mmap_flags;
 #endif
-static bool	os_overcommits;
+static bool os_overcommits;
 
 const char *const thp_mode_names[] = {
-	"default",
-	"always",
-	"never",
-	"not supported"
-};
-thp_mode_t opt_thp = THP_MODE_DEFAULT;
-thp_mode_t init_system_thp_mode;
+    "default", "always", "never", "not supported"};
+const char *const system_thp_mode_names[] = {
+    "madvise", "always", "never", "not supported"};
+thp_mode_t        opt_thp = THP_MODE_DEFAULT;
+system_thp_mode_t init_system_thp_mode;
 
 /* Runtime support for lazy purge. Irrelevant when !pages_can_purge_lazy. */
 static bool pages_can_purge_lazy_runtime = true;
@@ -66,15 +64,16 @@ static int madvise_dont_need_zeros_is_faulty = -1;
  *
  *   [1]: https://patchwork.kernel.org/patch/10576637/
  */
-static int madvise_MADV_DONTNEED_zeroes_pages(void)
-{
+static int
+madvise_MADV_DONTNEED_zeroes_pages(void) {
 	size_t size = PAGE;
 
-	void * addr = mmap(NULL, size, PROT_READ|PROT_WRITE,
-	    MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+	void *addr = mmap(NULL, size, PROT_READ | PROT_WRITE,
+	    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
 	if (addr == MAP_FAILED) {
-		malloc_write("<jemalloc>: Cannot allocate memory for "
+		malloc_write(
+		    "<jemalloc>: Cannot allocate memory for "
 		    "MADV_DONTNEED check\n");
 		if (opt_abort) {
 			abort();
@@ -94,7 +93,8 @@ static int madvise_MADV_DONTNEED_zeroes_pages(void)
 	}
 
 	if (munmap(addr, size) != 0) {
-		malloc_write("<jemalloc>: Cannot deallocate memory for "
+		malloc_write(
+		    "<jemalloc>: Cannot deallocate memory for "
 		    "MADV_DONTNEED check\n");
 		if (opt_abort) {
 			abort();
@@ -106,18 +106,22 @@ static int madvise_MADV_DONTNEED_zeroes_pages(void)
 #endif
 
 #ifdef JEMALLOC_PAGEID
-static int os_page_id(void *addr, size_t size, const char *name)
-{
-#ifdef JEMALLOC_HAVE_PRCTL
+static int
+os_page_id(void *addr, size_t size, const char *name) {
+#	ifdef JEMALLOC_HAVE_PRCTL
 	/*
 	 * While parsing `/proc/<pid>/maps` file, the block could appear as
 	 * 7f4836000000-7f4836800000 rw-p 00000000 00:00 0 [anon:jemalloc_pg_overcommit]`
 	 */
-	return prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, (uintptr_t)addr, size,
+	int n;
+	assert(addr != NULL);
+	n = prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, (uintptr_t)addr, size,
 	    (uintptr_t)name);
-#else
+	assert(n == 0 || (n == -1 && get_errno() == EINVAL));
+	return n;
+#	else
 	return 0;
-#endif
+#	endif
 }
 #endif
 
@@ -156,7 +160,7 @@ os_pages_map(void *addr, size_t size, size_t alignment, bool *commit) {
 	 */
 	{
 		int flags = mmap_flags;
-#ifdef __NetBSD__
+#	ifdef __NetBSD__
 		/*
 		 * On NetBSD PAGE for a platform is defined to the
 		 * maximum page size of all machine architectures
@@ -167,7 +171,7 @@ os_pages_map(void *addr, size_t size, size_t alignment, bool *commit) {
 			unsigned int a = ilog2(MAX(alignment, PAGE));
 			flags |= MAP_ALIGNED(a);
 		}
-#endif
+#	endif
 		int prot = *commit ? PAGES_PROT_COMMIT : PAGES_PROT_DECOMMIT;
 
 		ret = mmap(addr, size, prot, flags, PAGES_FD_TAG, 0);
@@ -184,19 +188,20 @@ os_pages_map(void *addr, size_t size, size_t alignment, bool *commit) {
 		ret = NULL;
 	}
 #endif
-	assert(ret == NULL || (addr == NULL && ret != addr) || (addr != NULL &&
-	    ret == addr));
+	assert(ret == NULL || (addr == NULL && ret != addr)
+	    || (addr != NULL && ret == addr));
 #ifdef JEMALLOC_PAGEID
-	int n = os_page_id(ret, size,
-	    os_overcommits ? "jemalloc_pg_overcommit" : "jemalloc_pg");
-	assert(n == 0 || (n == -1 && get_errno() == EINVAL));
+	if (ret != NULL) {
+		os_page_id(ret, size,
+		    os_overcommits ? "jemalloc_pg_overcommit" : "jemalloc_pg");
+	}
 #endif
 	return ret;
 }
 
 static void *
-os_pages_trim(void *addr, size_t alloc_size, size_t leadsize, size_t size,
-    bool *commit) {
+os_pages_trim(
+    void *addr, size_t alloc_size, size_t leadsize, size_t size, bool *commit) {
 	void *ret = (void *)((byte_t *)addr + leadsize);
 
 	assert(alloc_size >= leadsize + size);
@@ -237,13 +242,15 @@ os_pages_unmap(void *addr, size_t size) {
 		char buf[BUFERROR_BUF];
 
 		buferror(get_errno(), buf, sizeof(buf));
-		malloc_printf("<jemalloc>: Error in "
+		malloc_printf(
+		    "<jemalloc>: Error in "
 #ifdef _WIN32
 		    "VirtualFree"
 #else
 		    "munmap"
 #endif
-		    "(): %s\n", buf);
+		    "(): %s\n",
+		    buf);
 		if (opt_abort) {
 			abort();
 		}
@@ -350,13 +357,14 @@ os_pages_commit(void *addr, size_t size, bool commit) {
 	assert(PAGE_CEILING(size) == size);
 
 #ifdef _WIN32
-	return (commit ? (addr != VirtualAlloc(addr, size, MEM_COMMIT,
-	    PAGE_READWRITE)) : (!VirtualFree(addr, size, MEM_DECOMMIT)));
+	return (commit
+	        ? (addr != VirtualAlloc(addr, size, MEM_COMMIT, PAGE_READWRITE))
+	        : (!VirtualFree(addr, size, MEM_DECOMMIT)));
 #else
 	{
-		int prot = commit ? PAGES_PROT_COMMIT : PAGES_PROT_DECOMMIT;
-		void *result = mmap(addr, size, prot, mmap_flags | MAP_FIXED,
-		    PAGES_FD_TAG, 0);
+		int   prot = commit ? PAGES_PROT_COMMIT : PAGES_PROT_DECOMMIT;
+		void *result = mmap(
+		    addr, size, prot, mmap_flags | MAP_FIXED, PAGES_FD_TAG, 0);
 		if (result == MAP_FAILED) {
 			return true;
 		}
@@ -395,8 +403,8 @@ pages_decommit(void *addr, size_t size) {
 void
 pages_mark_guards(void *head, void *tail) {
 	assert(head != NULL || tail != NULL);
-	assert(head == NULL || tail == NULL ||
-	    (uintptr_t)head < (uintptr_t)tail);
+	assert(
+	    head == NULL || tail == NULL || (uintptr_t)head < (uintptr_t)tail);
 #ifdef JEMALLOC_HAVE_MPROTECT
 	if (head != NULL) {
 		mprotect(head, PAGE, PROT_NONE);
@@ -418,13 +426,12 @@ pages_mark_guards(void *head, void *tail) {
 void
 pages_unmark_guards(void *head, void *tail) {
 	assert(head != NULL || tail != NULL);
-	assert(head == NULL || tail == NULL ||
-	    (uintptr_t)head < (uintptr_t)tail);
+	assert(
+	    head == NULL || tail == NULL || (uintptr_t)head < (uintptr_t)tail);
 #ifdef JEMALLOC_HAVE_MPROTECT
-	bool head_and_tail = (head != NULL) && (tail != NULL);
-	size_t range = head_and_tail ?
-	    (uintptr_t)tail - (uintptr_t)head + PAGE :
-	    SIZE_T_MAX;
+	bool   head_and_tail = (head != NULL) && (tail != NULL);
+	size_t range = head_and_tail ? (uintptr_t)tail - (uintptr_t)head + PAGE
+	                             : SIZE_T_MAX;
 	/*
 	 * The amount of work that the kernel does in mprotect depends on the
 	 * range argument.  SC_LARGE_MINCLASS is an arbitrary threshold chosen
@@ -473,17 +480,18 @@ pages_purge_lazy(void *addr, size_t size) {
 	return false;
 #elif defined(JEMALLOC_PURGE_MADVISE_FREE)
 	return (madvise(addr, size,
-#  ifdef MADV_FREE
-	    MADV_FREE
-#  else
-	    JEMALLOC_MADV_FREE
-#  endif
-	    ) != 0);
-#elif defined(JEMALLOC_PURGE_MADVISE_DONTNEED) && \
-    !defined(JEMALLOC_PURGE_MADVISE_DONTNEED_ZEROS)
+#	ifdef MADV_FREE
+	            MADV_FREE
+#	else
+	            JEMALLOC_MADV_FREE
+#	endif
+	            )
+	    != 0);
+#elif defined(JEMALLOC_PURGE_MADVISE_DONTNEED)                                 \
+    && !defined(JEMALLOC_PURGE_MADVISE_DONTNEED_ZEROS)
 	return (madvise(addr, size, MADV_DONTNEED) != 0);
-#elif defined(JEMALLOC_PURGE_POSIX_MADVISE_DONTNEED) && \
-    !defined(JEMALLOC_PURGE_POSIX_MADVISE_DONTNEED_ZEROS)
+#elif defined(JEMALLOC_PURGE_POSIX_MADVISE_DONTNEED)                           \
+    && !defined(JEMALLOC_PURGE_POSIX_MADVISE_DONTNEED_ZEROS)
 	return (posix_madvise(addr, size, POSIX_MADV_DONTNEED) != 0);
 #else
 	not_reached();
@@ -499,14 +507,14 @@ pages_purge_forced(void *addr, size_t size) {
 		return true;
 	}
 
-#if defined(JEMALLOC_PURGE_MADVISE_DONTNEED) && \
-    defined(JEMALLOC_PURGE_MADVISE_DONTNEED_ZEROS)
-	return (unlikely(madvise_dont_need_zeros_is_faulty) ||
-	    madvise(addr, size, MADV_DONTNEED) != 0);
-#elif defined(JEMALLOC_PURGE_POSIX_MADVISE_DONTNEED) && \
-    defined(JEMALLOC_PURGE_POSIX_MADVISE_DONTNEED_ZEROS)
-	return (unlikely(madvise_dont_need_zeros_is_faulty) ||
-	    posix_madvise(addr, size, POSIX_MADV_DONTNEED) != 0);
+#if defined(JEMALLOC_PURGE_MADVISE_DONTNEED)                                   \
+    && defined(JEMALLOC_PURGE_MADVISE_DONTNEED_ZEROS)
+	return (unlikely(madvise_dont_need_zeros_is_faulty)
+	    || madvise(addr, size, MADV_DONTNEED) != 0);
+#elif defined(JEMALLOC_PURGE_POSIX_MADVISE_DONTNEED)                           \
+    && defined(JEMALLOC_PURGE_POSIX_MADVISE_DONTNEED_ZEROS)
+	return (unlikely(madvise_dont_need_zeros_is_faulty)
+	    || posix_madvise(addr, size, POSIX_MADV_DONTNEED) != 0);
 #elif defined(JEMALLOC_MAPS_COALESCE)
 	/* Try to overlay a new demand-zeroed mapping. */
 	return pages_commit(addr, size);
@@ -568,6 +576,30 @@ pages_nohuge_unaligned(void *addr, size_t size) {
 }
 
 bool
+pages_collapse(void *addr, size_t size) {
+	assert(PAGE_ADDR2BASE(addr) == addr);
+	assert(PAGE_CEILING(size) == size);
+	/*
+	 * There is one more MADV_COLLAPSE precondition that is not easy to
+	 * express with assert statement.  In order to madvise(addr, size,
+	 * MADV_COLLAPSE) call to be successful, at least one page in the range
+	 * must currently be backed by physical memory.  In particularly, this
+	 * means we can't call pages_collapse on freshly mapped memory region.
+	 * See madvise(2) man page for more details.
+	 */
+#if defined(JEMALLOC_HAVE_MADVISE_COLLAPSE)                                    \
+    && (defined(MADV_COLLAPSE) || defined(JEMALLOC_MADV_COLLAPSE))
+#	if defined(MADV_COLLAPSE)
+	return (madvise(addr, size, MADV_COLLAPSE) != 0);
+#	elif defined(JEMALLOC_MADV_COLLAPSE)
+	return (madvise(addr, size, JEMALLOC_MADV_COLLAPSE) != 0);
+#	endif
+#else
+	return true;
+#endif
+}
+
+bool
 pages_dontdump(void *addr, size_t size) {
 	assert(PAGE_ADDR2BASE(addr) == addr);
 	assert(PAGE_CEILING(size) == size);
@@ -593,6 +625,83 @@ pages_dodump(void *addr, size_t size) {
 #endif
 }
 
+#ifdef JEMALLOC_HAVE_PROCESS_MADVISE
+#	include <sys/mman.h>
+#	include <sys/syscall.h>
+
+#	ifndef PIDFD_SELF
+#		define PIDFD_SELF -10000
+#	endif
+
+static atomic_b_t process_madvise_gate = ATOMIC_INIT(true);
+
+static bool
+init_process_madvise(void) {
+	if (opt_process_madvise_max_batch == 0) {
+		return false;
+	}
+
+	if (opt_process_madvise_max_batch > PROCESS_MADVISE_MAX_BATCH_LIMIT) {
+		opt_process_madvise_max_batch = PROCESS_MADVISE_MAX_BATCH_LIMIT;
+	}
+
+	return false;
+}
+
+#	ifdef SYS_process_madvise
+#		define JE_SYS_PROCESS_MADVISE_NR SYS_process_madvise
+#	else
+#		define JE_SYS_PROCESS_MADVISE_NR                              \
+			EXPERIMENTAL_SYS_PROCESS_MADVISE_NR
+#	endif
+
+static bool
+pages_purge_process_madvise_impl(
+    void *vec, size_t vec_len, size_t total_bytes) {
+	if (!atomic_load_b(&process_madvise_gate, ATOMIC_RELAXED)) {
+		return true;
+	}
+
+	/*
+	 * TODO: remove this save/restore of errno after supporting errno
+	 * preservation for free() call properly.
+	 */
+	int    saved_errno = get_errno();
+	size_t purged_bytes = (size_t)syscall(JE_SYS_PROCESS_MADVISE_NR,
+	    PIDFD_SELF, (struct iovec *)vec, vec_len, MADV_DONTNEED, 0);
+	if (purged_bytes == (size_t)-1) {
+		if (errno == EPERM || errno == EINVAL || errno == ENOSYS
+		    || errno == EBADF) {
+			/* Process madvise not supported the way we need it. */
+			atomic_store_b(
+			    &process_madvise_gate, false, ATOMIC_RELAXED);
+		}
+		set_errno(saved_errno);
+	}
+
+	return purged_bytes != total_bytes;
+}
+
+#else
+
+static bool
+init_process_madvise(void) {
+	return false;
+}
+
+static bool
+pages_purge_process_madvise_impl(
+    void *vec, size_t vec_len, size_t total_bytes) {
+	not_reached();
+	return true;
+}
+
+#endif
+
+bool
+pages_purge_process_madvise(void *vec, size_t vec_len, size_t total_bytes) {
+	return pages_purge_process_madvise_impl(vec, vec_len, total_bytes);
+}
 
 static size_t
 os_page_detect(void) {
@@ -609,7 +718,7 @@ os_page_detect(void) {
 #else
 	long result = sysconf(_SC_PAGESIZE);
 	if (result == -1) {
-		return LG_PAGE;
+		return PAGE;
 	}
 	return (size_t)result;
 #endif
@@ -618,11 +727,11 @@ os_page_detect(void) {
 #ifdef JEMALLOC_SYSCTL_VM_OVERCOMMIT
 static bool
 os_overcommits_sysctl(void) {
-	int vm_overcommit;
+	int    vm_overcommit;
 	size_t sz;
 
 	sz = sizeof(vm_overcommit);
-#if defined(__FreeBSD__) && defined(VM_OVERCOMMIT)
+#	if defined(__FreeBSD__) && defined(VM_OVERCOMMIT)
 	int mib[2];
 
 	mib[0] = CTL_VM;
@@ -630,69 +739,38 @@ os_overcommits_sysctl(void) {
 	if (sysctl(mib, 2, &vm_overcommit, &sz, NULL, 0) != 0) {
 		return false; /* Error. */
 	}
-#else
+#	else
 	if (sysctlbyname("vm.overcommit", &vm_overcommit, &sz, NULL, 0) != 0) {
 		return false; /* Error. */
 	}
-#endif
+#	endif
 
 	return ((vm_overcommit & 0x3) == 0);
 }
 #endif
 
 #ifdef JEMALLOC_PROC_SYS_VM_OVERCOMMIT_MEMORY
-/*
- * Use syscall(2) rather than {open,read,close}(2) when possible to avoid
- * reentry during bootstrapping if another library has interposed system call
- * wrappers.
- */
 static bool
 os_overcommits_proc(void) {
-	int fd;
+	int  fd;
 	char buf[1];
 
-#if defined(JEMALLOC_USE_SYSCALL) && defined(SYS_open)
-	#if defined(O_CLOEXEC)
-		fd = (int)syscall(SYS_open, "/proc/sys/vm/overcommit_memory", O_RDONLY |
-			O_CLOEXEC);
-	#else
-		fd = (int)syscall(SYS_open, "/proc/sys/vm/overcommit_memory", O_RDONLY);
-		if (fd != -1) {
-			fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC);
-		}
-	#endif
-#elif defined(JEMALLOC_USE_SYSCALL) && defined(SYS_openat)
-	#if defined(O_CLOEXEC)
-		fd = (int)syscall(SYS_openat,
-			AT_FDCWD, "/proc/sys/vm/overcommit_memory", O_RDONLY | O_CLOEXEC);
-	#else
-		fd = (int)syscall(SYS_openat,
-			AT_FDCWD, "/proc/sys/vm/overcommit_memory", O_RDONLY);
-		if (fd != -1) {
-			fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC);
-		}
-	#endif
-#else
-	#if defined(O_CLOEXEC)
-		fd = open("/proc/sys/vm/overcommit_memory", O_RDONLY | O_CLOEXEC);
-	#else
-		fd = open("/proc/sys/vm/overcommit_memory", O_RDONLY);
-		if (fd != -1) {
-			fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC);
-		}
-	#endif
-#endif
+#	if defined(O_CLOEXEC)
+	fd = malloc_open(
+	    "/proc/sys/vm/overcommit_memory", O_RDONLY | O_CLOEXEC);
+#	else
+	fd = malloc_open("/proc/sys/vm/overcommit_memory", O_RDONLY);
+	if (fd != -1) {
+		fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC);
+	}
+#	endif
 
 	if (fd == -1) {
 		return false; /* Error. */
 	}
 
 	ssize_t nread = malloc_read_fd(fd, &buf, sizeof(buf));
-#if defined(JEMALLOC_USE_SYSCALL) && defined(SYS_close)
-	syscall(SYS_close, fd);
-#else
-	close(fd);
-#endif
+	malloc_close(fd);
 
 	if (nread < 1) {
 		return false; /* Error. */
@@ -707,21 +785,31 @@ os_overcommits_proc(void) {
 }
 #endif
 
+static bool
+pages_should_skip_set_thp_state() {
+	if (opt_thp == thp_mode_do_nothing
+	    || (opt_thp == thp_mode_always
+	        && init_system_thp_mode == system_thp_mode_always)
+	    || (opt_thp == thp_mode_never
+	        && init_system_thp_mode == system_thp_mode_never)) {
+		return true;
+	}
+	return false;
+}
 void
-pages_set_thp_state (void *ptr, size_t size) {
-	if (opt_thp == thp_mode_default || opt_thp == init_system_thp_mode) {
+pages_set_thp_state(void *ptr, size_t size) {
+	if (pages_should_skip_set_thp_state()) {
 		return;
 	}
-	assert(opt_thp != thp_mode_not_supported &&
-	    init_system_thp_mode != thp_mode_not_supported);
+	assert(opt_thp != thp_mode_not_supported
+	    && init_system_thp_mode != system_thp_mode_not_supported);
 
 	if (opt_thp == thp_mode_always
-	    && init_system_thp_mode != thp_mode_never) {
-		assert(init_system_thp_mode == thp_mode_default);
+	    && init_system_thp_mode == system_thp_mode_madvise) {
 		pages_huge_unaligned(ptr, size);
 	} else if (opt_thp == thp_mode_never) {
-		assert(init_system_thp_mode == thp_mode_default ||
-		    init_system_thp_mode == thp_mode_always);
+		assert(init_system_thp_mode == system_thp_mode_madvise
+		    || init_system_thp_mode == system_thp_mode_always);
 		pages_nohuge_unaligned(ptr, size);
 	}
 }
@@ -739,48 +827,47 @@ init_thp_state(void) {
 	static const char sys_state_madvise[] = "always [madvise] never\n";
 	static const char sys_state_always[] = "[always] madvise never\n";
 	static const char sys_state_never[] = "always madvise [never]\n";
-	char buf[sizeof(sys_state_madvise)];
+	char              buf[sizeof(sys_state_madvise)];
 
-#if defined(JEMALLOC_USE_SYSCALL) && defined(SYS_open)
-	int fd = (int)syscall(SYS_open,
+	int fd = malloc_open(
 	    "/sys/kernel/mm/transparent_hugepage/enabled", O_RDONLY);
-#elif defined(JEMALLOC_USE_SYSCALL) && defined(SYS_openat)
-	int fd = (int)syscall(SYS_openat,
-		    AT_FDCWD, "/sys/kernel/mm/transparent_hugepage/enabled", O_RDONLY);
-#else
-	int fd = open("/sys/kernel/mm/transparent_hugepage/enabled", O_RDONLY);
-#endif
 	if (fd == -1) {
 		goto label_error;
 	}
 
 	ssize_t nread = malloc_read_fd(fd, &buf, sizeof(buf));
-#if defined(JEMALLOC_USE_SYSCALL) && defined(SYS_close)
-	syscall(SYS_close, fd);
-#else
-	close(fd);
-#endif
-
-        if (nread < 0) {
+	malloc_close(fd);
+	if (nread < 0) {
 		goto label_error;
-        }
+	}
 
 	if (strncmp(buf, sys_state_madvise, (size_t)nread) == 0) {
-		init_system_thp_mode = thp_mode_default;
+		init_system_thp_mode = system_thp_mode_madvise;
 	} else if (strncmp(buf, sys_state_always, (size_t)nread) == 0) {
-		init_system_thp_mode = thp_mode_always;
+		init_system_thp_mode = system_thp_mode_always;
 	} else if (strncmp(buf, sys_state_never, (size_t)nread) == 0) {
-		init_system_thp_mode = thp_mode_never;
+		init_system_thp_mode = system_thp_mode_never;
 	} else {
 		goto label_error;
 	}
+	if (opt_hpa_opts.hugify_style == hpa_hugify_style_auto) {
+		if (init_system_thp_mode == system_thp_mode_madvise) {
+			opt_hpa_opts.hugify_style = hpa_hugify_style_lazy;
+		} else {
+			opt_hpa_opts.hugify_style = hpa_hugify_style_none;
+		}
+	}
 	return;
 #elif defined(JEMALLOC_HAVE_MEMCNTL)
-	init_system_thp_mode = thp_mode_default;
+	init_system_thp_mode = system_thp_mode_madvise;
+	if (opt_hpa_opts.hugify_style == hpa_hugify_style_auto) {
+		opt_hpa_opts.hugify_style = hpa_hugify_style_eager;
+	}
 	return;
 #endif
 label_error:
-	opt_thp = init_system_thp_mode = thp_mode_not_supported;
+	opt_thp = thp_mode_not_supported;
+	init_system_thp_mode = system_thp_mode_not_supported;
 }
 
 bool
@@ -796,10 +883,13 @@ pages_boot(void) {
 
 #ifdef JEMALLOC_PURGE_MADVISE_DONTNEED_ZEROS
 	if (!opt_trust_madvise) {
-		madvise_dont_need_zeros_is_faulty = !madvise_MADV_DONTNEED_zeroes_pages();
+		madvise_dont_need_zeros_is_faulty =
+		    !madvise_MADV_DONTNEED_zeroes_pages();
 		if (madvise_dont_need_zeros_is_faulty) {
-			malloc_write("<jemalloc>: MADV_DONTNEED does not work (memset will be used instead)\n");
-			malloc_write("<jemalloc>: (This is the expected behaviour if you are running under QEMU)\n");
+			malloc_write(
+			    "<jemalloc>: MADV_DONTNEED does not work (memset will be used instead)\n");
+			malloc_write(
+			    "<jemalloc>: (This is the expected behaviour if you are running under QEMU)\n");
 		}
 	} else {
 		/* In case opt_trust_madvise is disable,
@@ -816,11 +906,11 @@ pages_boot(void) {
 	os_overcommits = os_overcommits_sysctl();
 #elif defined(JEMALLOC_PROC_SYS_VM_OVERCOMMIT_MEMORY)
 	os_overcommits = os_overcommits_proc();
-#  ifdef MAP_NORESERVE
+#	ifdef MAP_NORESERVE
 	if (os_overcommits) {
 		mmap_flags |= MAP_NORESERVE;
 	}
-#  endif
+#	endif
 #elif defined(__NetBSD__)
 	os_overcommits = true;
 #else
@@ -836,8 +926,9 @@ pages_boot(void) {
 #else
 	/* Detect lazy purge runtime support. */
 	if (pages_can_purge_lazy) {
-		bool committed = false;
-		void *madv_free_page = os_pages_map(NULL, PAGE, PAGE, &committed);
+		bool  committed = false;
+		void *madv_free_page = os_pages_map(
+		    NULL, PAGE, PAGE, &committed);
 		if (madv_free_page == NULL) {
 			return true;
 		}
@@ -848,6 +939,12 @@ pages_boot(void) {
 		os_pages_unmap(madv_free_page, PAGE);
 	}
 #endif
+	if (init_process_madvise()) {
+		if (opt_abort) {
+			abort();
+		}
+		return true;
+	}
 
 	return false;
 }

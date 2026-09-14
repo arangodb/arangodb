@@ -1,5 +1,5 @@
 #ifdef JEMALLOC_INTERNAL_TSD_GENERIC_H
-#error This file should be included only once, by tsd.h.
+#	error This file should be included only once, by tsd.h.
 #endif
 #define JEMALLOC_INTERNAL_TSD_GENERIC_H
 
@@ -12,25 +12,24 @@ typedef struct tsd_init_block_s tsd_init_block_t;
 struct tsd_init_block_s {
 	ql_elm(tsd_init_block_t) link;
 	pthread_t thread;
-	void *data;
+	void     *data;
 };
 
 /* Defined in tsd.c, to allow the mutex headers to have tsd dependencies. */
 typedef struct tsd_init_head_s tsd_init_head_t;
 
 typedef struct {
-	bool initialized;
+	bool  initialized;
 	tsd_t val;
 } tsd_wrapper_t;
 
-void *tsd_init_check_recursion(tsd_init_head_t *head,
-    tsd_init_block_t *block);
-void tsd_init_finish(tsd_init_head_t *head, tsd_init_block_t *block);
+void *tsd_init_check_recursion(tsd_init_head_t *head, tsd_init_block_t *block);
+void  tsd_init_finish(tsd_init_head_t *head, tsd_init_block_t *block);
 
-extern pthread_key_t tsd_tsd;
+extern pthread_key_t   tsd_tsd;
 extern tsd_init_head_t tsd_init_head;
-extern tsd_wrapper_t tsd_boot_wrapper;
-extern bool tsd_booted;
+extern tsd_wrapper_t   tsd_boot_wrapper;
+extern bool            tsd_booted;
 
 /* Initialization/cleanup. */
 JEMALLOC_ALWAYS_INLINE void
@@ -42,8 +41,8 @@ tsd_cleanup_wrapper(void *arg) {
 		tsd_cleanup(&wrapper->val);
 		if (wrapper->initialized) {
 			/* Trigger another cleanup round. */
-			if (pthread_setspecific(tsd_tsd, (void *)wrapper) != 0)
-			{
+			if (pthread_setspecific(tsd_tsd, (void *)wrapper)
+			    != 0) {
 				malloc_write("<jemalloc>: Error setting TSD\n");
 				if (opt_abort) {
 					abort();
@@ -78,23 +77,23 @@ tsd_wrapper_get(bool init) {
 
 	if (init && unlikely(wrapper == NULL)) {
 		tsd_init_block_t block;
-		wrapper = (tsd_wrapper_t *)
-		    tsd_init_check_recursion(&tsd_init_head, &block);
+		wrapper = (tsd_wrapper_t *)tsd_init_check_recursion(
+		    &tsd_init_head, &block);
 		if (wrapper) {
 			return wrapper;
 		}
-		wrapper = (tsd_wrapper_t *)
-		    malloc_tsd_malloc(sizeof(tsd_wrapper_t));
+		wrapper = (tsd_wrapper_t *)malloc_tsd_malloc(
+		    sizeof(tsd_wrapper_t));
 		block.data = (void *)wrapper;
 		if (wrapper == NULL) {
 			malloc_write("<jemalloc>: Error allocating TSD\n");
 			abort();
 		} else {
 			wrapper->initialized = false;
-      JEMALLOC_DIAGNOSTIC_PUSH
-      JEMALLOC_DIAGNOSTIC_IGNORE_MISSING_STRUCT_FIELD_INITIALIZERS
+			JEMALLOC_DIAGNOSTIC_PUSH
+			JEMALLOC_DIAGNOSTIC_IGNORE_MISSING_STRUCT_FIELD_INITIALIZERS
 			tsd_t initializer = TSD_INITIALIZER;
-      JEMALLOC_DIAGNOSTIC_POP
+			JEMALLOC_DIAGNOSTIC_POP
 			wrapper->val = initializer;
 		}
 		tsd_wrapper_set(wrapper);
@@ -105,11 +104,11 @@ tsd_wrapper_get(bool init) {
 
 JEMALLOC_ALWAYS_INLINE bool
 tsd_boot0(void) {
-	tsd_wrapper_t *wrapper;
+	tsd_wrapper_t   *wrapper;
 	tsd_init_block_t block;
 
-	wrapper = (tsd_wrapper_t *)
-	    tsd_init_check_recursion(&tsd_init_head, &block);
+	wrapper = (tsd_wrapper_t *)tsd_init_check_recursion(
+	    &tsd_init_head, &block);
 	if (wrapper) {
 		return false;
 	}
@@ -134,10 +133,10 @@ tsd_boot1(void) {
 	tsd_boot_wrapper.initialized = false;
 	tsd_cleanup(&tsd_boot_wrapper.val);
 	wrapper->initialized = false;
-  JEMALLOC_DIAGNOSTIC_PUSH
-  JEMALLOC_DIAGNOSTIC_IGNORE_MISSING_STRUCT_FIELD_INITIALIZERS
+	JEMALLOC_DIAGNOSTIC_PUSH
+	JEMALLOC_DIAGNOSTIC_IGNORE_MISSING_STRUCT_FIELD_INITIALIZERS
 	tsd_t initializer = TSD_INITIALIZER;
-  JEMALLOC_DIAGNOSTIC_POP
+	JEMALLOC_DIAGNOSTIC_POP
 	wrapper->val = initializer;
 	tsd_wrapper_set(wrapper);
 }
