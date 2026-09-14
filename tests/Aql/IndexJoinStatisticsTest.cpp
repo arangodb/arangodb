@@ -164,7 +164,7 @@ auto singleField(std::string_view name, bool expand = false)
 // covering exactly one field, with a controllable estimate.
 auto qualifyingIndex(std::string_view name, double selectivity) -> IndexFacts {
   IndexFacts facts;
-  facts.type = Index::TRI_IDX_TYPE_PERSISTENT_INDEX;
+  facts.type = IndexType::Persistent;
   facts.fields = {singleField(name)};
   facts.hasSelectivityEstimate = true;
   facts.selectivityEstimate = selectivity;
@@ -220,7 +220,7 @@ TEST(IndexFactsRulesTest,
   // Inverted, geo, ttl, mdi and vector indexes report unrelated numbers, so
   // only primary/edge/persistent indexes are trusted.
   auto disallowed = qualifyingIndex("x", 1.0);
-  disallowed.type = Index::TRI_IDX_TYPE_INVERTED_INDEX;
+  disallowed.type = IndexType::Inverted;
   std::array<IndexFacts, 2> candidates{qualifyingIndex("x", 0.1), disallowed};
   std::array<AttributePath, 1> attributes{AttributePath{"x"}};
 
@@ -331,7 +331,7 @@ TEST(IndexFactsRulesTest,
 TEST(IndexFactsRulesTest, covering_needs_the_leading_field) {
   // an index on (y,x) cannot serve a probe by x alone
   IndexFacts compound;
-  compound.type = Index::TRI_IDX_TYPE_PERSISTENT_INDEX;
+  compound.type = IndexType::Persistent;
   compound.fields = {singleField("y"), singleField("x")};
   compound.hasSelectivityEstimate = true;
   compound.selectivityEstimate = 1.0;
@@ -348,7 +348,7 @@ TEST(IndexFactsRulesTest, covering_succeeds_without_a_selectivity_estimate) {
   // selectivity estimate at all -- that is a distinctValues() concern, not a
   // hasIndexCovering() one.
   IndexFacts noEstimate;
-  noEstimate.type = Index::TRI_IDX_TYPE_PERSISTENT_INDEX;
+  noEstimate.type = IndexType::Persistent;
   noEstimate.fields = {singleField("x")};
   noEstimate.hasSelectivityEstimate = false;
   std::array<IndexFacts, 1> candidates{noEstimate};
