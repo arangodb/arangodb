@@ -703,7 +703,7 @@ class agencyMgr {
       let agencyReply = this.getAnyAgent(agent, path, method);
       if (agencyReply !== undefined && agencyReply.code === 200) {
         if (fn === "agencyState") {
-          fs.write(fs.join(dumpdir, `${fn}_${agent.pid}.json`), agencyReply.parsedBody);
+          fs.write(fs.join(dumpdir, `${fn}_${agent.pid}.json`), JSON.stringify(agencyReply.parsedBody, null, 2));
         } else {
           let agencyValue = agencyReply.parsedBody;
           fs.write(fs.join(dumpdir, `${fn}_${agent.pid}.json`), JSON.stringify(agencyValue, null, 2));
