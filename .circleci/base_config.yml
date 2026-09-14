@@ -1391,7 +1391,7 @@ jobs:
   run-clang-tidy:
     docker:
       - image: << pipeline.parameters.build-docker-image >>
-    resource_class: arangodb/medium-amd64
+    resource_class: arangodb/large-amd64
     steps:
       - run:
           name: Prepare container
@@ -1424,16 +1424,50 @@ jobs:
             ln -s /root/workspace/build/ /root/project/
             cp -r /root/workspace/tidy-headers/build/. /root/workspace/build/
             cd /root/project/
-            # -j is explicit: nproc reports host cores, not the container limit,
-            # and each clang-tidy holds up to ~1.6GB for a large TU.
-            utils/clang-tidy.sh arangod lib client-tools enterprise -B /root/workspace/build/ -j 4 | tee clang-tidy-results.txt
+
+            # Derive -j from the container's memory limit, not nproc: nproc reports
+            # host cores. Measured 1.47GiB per job over a full run; budget 1.5
+            # and keep 2GiB for the container.
+            mem=$(cat /sys/fs/cgroup/memory.max 2>/dev/null || cat /sys/fs/cgroup/memory/memory.limit_in_bytes 2>/dev/null || echo "")
+            case "$mem" in
+              ''|*[!0-9]*) mem=8589934592 ;;
+            esac
+            jobs=$(( (mem / 1073741824 - 2) * 10 / 15 ))
+            if [ "$jobs" -lt 1 ]; then jobs=1; fi
+            if [ "$jobs" -gt "$(nproc)" ]; then jobs=$(nproc); fi
+            echo "memory limit: $((mem / 1073741824)) GiB, cores: $(nproc), using -j $jobs"
+
+            # /usr/bin/time is not in the build image; use the clock and the
+            # cgroup's own peak-usage counter instead.
+            start=$(date +%s)
+            rc=0
+            utils/clang-tidy.sh arangod lib client-tools enterprise -B /root/workspace/build/ -j "$jobs" \
+              | tee clang-tidy-results.txt || rc=$?
+            end=$(date +%s)
+            peak=$(cat /sys/fs/cgroup/memory.peak 2>/dev/null \
+                   || cat /sys/fs/cgroup/memory/memory.max_usage_in_bytes 2>/dev/null \
+                   || echo 0)
+            echo "elapsed_s=$((end - start)) peak_rss_kb=$((peak / 1024)) jobs=$jobs" \
+              > /root/project/clang-tidy-time.txt
+            cat /root/project/clang-tidy-time.txt
+            exit $rc
+      - run:
+          name: Analyze run
+          when: always
+          command: |
+            cd /root/project/
+            echo "cores: $(nproc)"
+            cat clang-tidy-time.txt 2>/dev/null || echo "(no timing captured)"
+            python3 utils/clang-tidy-analyze.py clang-tidy-results.txt
+      - store_artifacts:
+          path: /root/project/clang-tidy-time.txt
       - run:
           name: Format result
           when: always
           command: |
             cd /root/project/
             sed -i 's#/root/project/##g' clang-tidy-results.txt
-            utils/clang-tidy-junit.py clang-tidy-results.txt clang-tidy-junit.xml
+            python3 utils/clang-tidy-junit.py clang-tidy-results.txt clang-tidy-junit.xml
       - store_artifacts:
           path: /root/project/clang-tidy-results.txt
       - store_test_results:
