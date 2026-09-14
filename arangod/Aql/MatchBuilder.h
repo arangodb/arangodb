@@ -54,15 +54,62 @@ class MatchBuilder {
   ExecutionNode* build(ExecutionNode* previous, AstNode const* matchNode);
 
  private:
+  /// @brief User-facing pattern variable plus the variable that holds the full
+  /// document during enumeration/traversal (a temporary when projecting).
+  /// @p projection points into the NormalizedMatchStatement owned for the
+  /// duration of build(); null when not projecting.
+  struct ProjectionBinding {
+    Variable const* destination{nullptr};
+    Variable const* fullDocument{nullptr};
+    MatchProjection const* projection{nullptr};
+
+    [[nodiscard]] bool hasProjection() const noexcept {
+      return projection != nullptr;
+    }
+  };
+
   AstNode* createPropertyAccess(Variable const* variable,
                                 std::string_view property);
 
   AstNode* buildEdgeCollectionList(NormalizedEdge const& edge);
 
+  /// @brief When @p projection is set, create a temporary full-document
+  /// variable and register destination→temp in @p subst; otherwise enumerate
+  /// directly into @p destination. Stores a pointer to @p projection's value
+  /// on the binding (must outlive the binding; true for normalize→build).
+  ProjectionBinding bindProjectedVariable(
+      Variable const* destination,
+      std::optional<MatchProjection> const& projection,
+      std::unordered_map<VariableId, Variable const*>& subst);
+
+  /// @brief Queue a delayed document projection CalculationNode when @p binding
+  /// has a projection. Preserves existing ordering (after segment lowering).
+  void maybeQueueDocumentProjection(
+      std::vector<ExecutionNode*>& projections,
+      ProjectionBinding const& binding,
+      std::unordered_map<VariableId, Variable const*> const& subst);
+
+  /// @brief Queue a delayed edge-document projection CalculationNode when
+  /// @p binding has a projection. Preserves existing ordering (after segment
+  /// lowering).
+  void maybeQueueEdgeProjection(
+      std::vector<ExecutionNode*>& projections,
+      ProjectionBinding const& binding,
+      std::unordered_map<VariableId, Variable const*> const& subst);
+
   std::tuple<CalculationNode*, FilterNode*> createPropertiesFilter(
       Variable const* variable,
       std::vector<MatchPropertyConstraint> const& properties,
       std::optional<MatchExpressionRef> const& additionalFilter,
+      std::unordered_map<VariableId, Variable const*> const& subst);
+
+  /// @brief Shared EnumerateCollection + property/WHERE filter fragment used
+  /// by both vertex and edge collection scans.
+  std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
+  enumerateCollection(
+      MatchDataSource const& dataSource, Variable const* outputVariable,
+      std::vector<MatchPropertyConstraint> const& properties,
+      std::optional<MatchExpressionRef> const& filter,
       std::unordered_map<VariableId, Variable const*> const& subst);
 
   std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
@@ -72,19 +119,20 @@ class MatchBuilder {
 
   ExecutionNode* createDocumentPatternProjection(
       Variable const* destinationVariable, Variable const* fullDocumentVar,
-      std::optional<MatchProjection> const& projection,
+      MatchProjection const& projection,
       std::unordered_map<VariableId, Variable const*> const& subst);
 
   ExecutionNode* createEdgeDocumentPatternProjection(
       Variable const* destinationVariable, Variable const* fullDocumentVar,
-      std::optional<MatchProjection> const& projection,
+      MatchProjection const& projection,
       std::unordered_map<VariableId, Variable const*> const& subst);
 
   /// @brief Shared MATCH projection lowering. @p mandatoryAttributes are
   /// auto-injected and treated as reserved for user projection handling.
+  /// @p projection may be null for an identity (full-document) projection.
   ExecutionNode* createPatternProjection(
       Variable const* destinationVariable, Variable const* fullDocumentVar,
-      std::optional<MatchProjection> const& projection,
+      MatchProjection const* projection,
       std::span<std::string_view const> mandatoryAttributes,
       std::unordered_map<VariableId, Variable const*> const& subst);
 
