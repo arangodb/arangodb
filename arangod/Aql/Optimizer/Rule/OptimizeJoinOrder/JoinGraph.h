@@ -22,6 +22,8 @@
 #pragma once
 
 #include <map>
+#include <optional>
+#include <utility>
 #include <string_view>
 #include <vector>
 
@@ -35,6 +37,12 @@ struct Variable;
 /// @brief a path of nested attribute accesses, e.g. `doc.a.b` -> {"a", "b"}.
 using AttributePath = std::vector<std::string_view>;
 
+/// @brief if `n` is a chain of attribute accesses rooted at a variable
+/// reference, return that variable and the path. A leading `_id` is rewritten
+/// to `_key` so it matches the primary index.
+auto extractAttributeAccess(AstNode const* n)
+    -> std::optional<std::pair<Variable const*, AttributePath>>;
+
 /// @brief The join graph describes a maximal run of adjacent collection
 /// enumerations (`FOR`-loops) that are connected via equijoin conditions.
 struct JoinGraph {
@@ -44,6 +52,11 @@ struct JoinGraph {
     /// @brief attribute paths that are constrained by a constant restriction
     /// on this node (e.g. the `x` of `doc.x == 'foo'`).
     std::vector<AttributePath> conditions;
+
+    /// @brief residual predicates that reference this node's variable and no
+    /// other graph variable. Priced with a default selectivity factor by the
+    /// cost estimator.
+    std::vector<AstNode const*> residuals;
 
     explicit Node(EnumerateCollectionNode* executionNode)
         : executionNode(executionNode) {}
