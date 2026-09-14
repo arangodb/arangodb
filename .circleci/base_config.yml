@@ -945,11 +945,20 @@ jobs:
                   - tsan_arangodb_suppressions.txt
                   - ubsan_arangodb_suppressions.txt
                   - lsan_arangodb_suppressions.txt
+            # clang-tidy can only parse if generated headers (voc-errors.h, ...) exist.
+            - run:
+                name: Stage generated headers for clang-tidy
+                command: |
+                  cd /root/project
+                  find build \( -name '*.h' -o -name '*.hpp' -o -name '*.inc' \) -print0 \
+                    | tar --null -cf - -T - \
+                    | (mkdir -p tidy-headers && tar -xf - -C tidy-headers)
             - persist_workspace_to_s3:
                 root: .
                 archive: compile_commands.tar.gz
                 paths: |
                   build/compile_commands.json
+                  tidy-headers
             - persist_workspace_to_s3:
                 # not there? install.tar.gz
                 root: .
@@ -1405,10 +1414,14 @@ jobs:
           destination: "/root/project/enterprise"
       - run:
           name: Run clang-tidy
+          # tee, not >, so the console keeps producing output and CircleCI does
+          # not kill the step after 10 minutes of silence.
+          no_output_timeout: 3h
           command: |
             ln -s /root/workspace/build/ /root/project/
+            cp -r /root/workspace/tidy-headers/build/. /root/workspace/build/
             cd /root/project/
-            utils/clang-tidy.sh arangod lib client-tools enterprise -B /root/workspace/build/ > clang-tidy-results.txt
+            utils/clang-tidy.sh arangod lib client-tools enterprise -B /root/workspace/build/ | tee clang-tidy-results.txt
       - run:
           name: Format result
           when: always
