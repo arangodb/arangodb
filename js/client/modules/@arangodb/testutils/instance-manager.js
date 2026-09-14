@@ -1226,7 +1226,7 @@ class instanceManager {
       let reply = arangod.toThisInstance(() => {
         return arango.GET_RAW('/_admin/statistics');
       });
-      if (reply.code !== 200 && reply.parsedBody.hasOwnProperty('error')) {
+      if (reply.code !== 200 || reply.parsedBody.error) {
         throw new Error("unable to get statistics reply: " + JSON.stringify(reply));
       }
 
