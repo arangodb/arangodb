@@ -40,9 +40,8 @@ namespace {
 /// semantics this model needs. Inverted, geo, ttl, mdi and vector indexes
 /// report unrelated numbers.
 auto isAllowedType(IndexFacts const& facts) noexcept -> bool {
-  return facts.type == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
-         facts.type == Index::TRI_IDX_TYPE_EDGE_INDEX ||
-         facts.type == Index::TRI_IDX_TYPE_PERSISTENT_INDEX;
+  return facts.type == IndexType::Primary || facts.type == IndexType::Edge ||
+         facts.type == IndexType::Persistent;
 }
 
 auto hasExpandedField(IndexFacts const& facts) noexcept -> bool {
