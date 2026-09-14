@@ -100,8 +100,11 @@ void performRequests(fu::ProtocolType pt) {
   for (int i = 0; i < 8; i++) {
     // should not fail
     req = ::sleepRequest(4.0);
+#if defined(__SANITIZE_ADDRESS__) || defined(__SANITIZE_THREAD__)
+    req->timeout(std::chrono::seconds(100));
+#else
     req->timeout(std::chrono::seconds(60));
-
+#endif
     wg->add();
     connection->sendRequest(std::move(req),
                             [wg](fu::Error e, std::unique_ptr<fu::Request> req,
