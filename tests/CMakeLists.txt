@@ -170,6 +170,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/Function/NgramSimilarityFunctionTest.cpp
   Aql/IndexJoinStatisticsTest.cpp
   Aql/InputRangeTest.cpp
+  Aql/JoinCostEstimatorTest.cpp
   Aql/JoinGraphTest.cpp
   Aql/JoinStatisticsTest.cpp
   Aql/JoinStrategy/GenericAndTwoNonUniqueJoinTest.cpp
