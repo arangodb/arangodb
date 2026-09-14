@@ -75,49 +75,39 @@ function authenticationClient (options) {
 // / @brief TEST: authentication parameters
 // //////////////////////////////////////////////////////////////////////////////
 
-const authTestExpectRC = [
-  [401, 401, 401, 401, 401, 301, 301, 301, 401, 401, 401],
-  [401, 401, 401, 401, 401, 301, 301, 301, 401, 404, 404],
-  [404, 404, 200, 301, 301, 301, 301, 301, 301, 404, 404]
-];
+// server parameters per authentication configuration under test
+const authTestConfigs = {
+  Full: {
+    'server.authentication': 'true',
+    'server.authentication-system-only': 'false'
+  },
+  SystemAuth: {
+    'server.authentication': 'true',
+    'server.authentication-system-only': 'true'
+  },
+  None: {
+    'server.authentication': 'false',
+    'server.authentication-system-only': 'true'
+  }
+};
 
-const authTestUrls = [
-  '/_api/',
-  '/_api',
-  '/_api/version',
-  '/_admin/html',
-  '/_admin/html/',
-  // the bare "/" must redirect to the web UI without credentials in every
-  // configuration (BTS-2450: the ArangoGraph dashboard relies on it)
-  '/',
-  '//',
-  '/_db/_system/',
-  // without the trailing slash the request path is empty once the /_db/<name>
-  // prefix is stripped, so this is not public when authentication is on
-  '/_db/_system',
-  '/test',
-  '/the-big-fat-fox'
-];
-
-// every 301 above is the redirect to the web UI of the _system database
+// every 301 below is a redirect to the web UI of the _system database
 const authTestRedirectLocation = '/_db/_system/_admin/aardvark/index.html';
 
-const authTestNames = [
-  'Full',
-  'SystemAuth',
-  'None'
-];
-
-const authTestServerParams = [{
-  'server.authentication': 'true',
-  'server.authentication-system-only': 'false'
-}, {
-  'server.authentication': 'true',
-  'server.authentication-system-only': 'true'
-}, {
-  'server.authentication': 'false',
-  'server.authentication-system-only': 'true'
-}];
+// expected HTTP response code per URL and authentication configuration
+const authTestUrls = {
+  '/_api/':           { Full: 401, SystemAuth: 401, None: 404 },
+  '/_api':            { Full: 401, SystemAuth: 401, None: 404 },
+  '/_api/version':    { Full: 401, SystemAuth: 401, None: 200 },
+  '/_admin/html':     { Full: 401, SystemAuth: 401, None: 301 },
+  '/_admin/html/':    { Full: 401, SystemAuth: 401, None: 301 },
+  '/':                { Full: 301, SystemAuth: 301, None: 301 },
+  '//':               { Full: 301, SystemAuth: 301, None: 301 },
+  '/_db/_system/':    { Full: 301, SystemAuth: 301, None: 301 },
+  '/_db/_system':     { Full: 401, SystemAuth: 401, None: 301 },
+  '/test':            { Full: 401, SystemAuth: 404, None: 404 },
+  '/the-big-fat-fox': { Full: 401, SystemAuth: 404, None: 404 }
+};
 
 function checkBodyForJsonToParse (request) {
   if (request.hasOwnProperty('body')) {
@@ -159,12 +149,12 @@ function authenticationParameters (options) {
   let continueTesting = true;
   let results = {};
 
-  for (let test = 0; test < 3; test++) {
+  for (const [authTestName, authTestServerParams] of Object.entries(authTestConfigs)) {
     let cleanup = true;
 
     let instanceManager = new im.instanceManager('tcp', options,
-                                                 authTestServerParams[test],
-                                                 'authentication_parameters_' + authTestNames[test]);
+                                                 authTestServerParams,
+                                                 'authentication_parameters_' + authTestName);
     instanceManager.prepareInstance();
     instanceManager.launchTcpDump("");
     if (!instanceManager.launchInstance()) {
@@ -177,16 +167,16 @@ function authenticationParameters (options) {
     }
     instanceManager.reconnect();
 
-    print(CYAN + Date() + ' Starting ' + authTestNames[test] + ' test' + RESET);
+    print(CYAN + Date() + ' Starting ' + authTestName + ' test' + RESET);
 
-    const testName = 'auth_' + authTestNames[test];
+    const testName = 'auth_' + authTestName;
     results[testName] = {
       failed: 0,
       total: 0
     };
 
-    for (let i = 0; i < authTestUrls.length; i++) {
-      const authTestUrl = authTestUrls[i];
+    for (const [authTestUrl, expectedRCs] of Object.entries(authTestUrls)) {
+      const expectedRC = expectedRCs[authTestName];
 
       ++results[testName].total;
 
@@ -208,7 +198,7 @@ function authenticationParameters (options) {
 
       let reply = download(instanceManager.url + authTestUrl, '', downloadOptions);
 
-      if (reply.code !== authTestExpectRC[test][i]) {
+      if (reply.code !== expectedRC) {
         checkBodyForJsonToParse(reply);
 
         ++results[testName].failed;
@@ -216,7 +206,7 @@ function authenticationParameters (options) {
         results[testName][authTestUrl] = {
           status: false,
           message: 'we expected ' +
-            authTestExpectRC[test][i] +
+            expectedRC +
             ' and we got ' + reply.code +
             ' Full Status: ' + yaml.safeDump(reply)
         };
@@ -244,9 +234,9 @@ function authenticationParameters (options) {
 
     results[testName].status = results[testName].failed === 0;
 
-    print(CYAN + 'Shutting down ' + authTestNames[test] + ' test...' + RESET);
+    print(CYAN + 'Shutting down ' + authTestName + ' test...' + RESET);
     results['shutdown'] = instanceManager.shutdownInstance();
-    print(CYAN + 'done with ' + authTestNames[test] + ' test.' + RESET);
+    print(CYAN + 'done with ' + authTestName + ' test.' + RESET);
   }
 
   print();
