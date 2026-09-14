@@ -24,7 +24,7 @@
 
 #include "Aql/Optimizer/Rule/OptimizeJoinOrder/JoinStatistics.h"
 #include "Basics/AttributeNameParser.h"
-#include "Indexes/Index.h"
+#include "Indexes/IndexType.h"
 
 #include <span>
 #include <string>
@@ -37,7 +37,7 @@ class ExecutionPlan;
 /// @brief the index properties this model consults, lifted out of Index so
 /// the selection rules below can be exercised without a storage engine.
 struct IndexFacts {
-  Index::IndexType type = Index::TRI_IDX_TYPE_UNKNOWN;
+  IndexType type = IndexType::Unknown;
   std::vector<std::vector<basics::AttributeName>> fields;
   bool hidden = false;
   bool inProgress = false;
