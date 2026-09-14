@@ -164,4 +164,66 @@ TEST_F(JoinGraphTest, separate_runs_produce_separate_graphs) {
   }
 }
 
+TEST_F(JoinGraphTest, single_variable_residual_attaches_to_node) {
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FILTER a.p < 5 RETURN [a, b]");
+  auto g = buildGraph(*q);
+
+  EXPECT_TRUE(g.residuals.empty()) << "should have been attached to node a";
+  auto* a = nodeByName(g, "a");
+  ASSERT_NE(a, nullptr);
+  EXPECT_EQ(a->residuals.size(), 1u);
+  auto* b = nodeByName(g, "b");
+  ASSERT_NE(b, nullptr);
+  EXPECT_TRUE(b->residuals.empty());
+}
+
+TEST_F(JoinGraphTest, two_variable_residual_stays_graph_level) {
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FILTER a.p < b.q RETURN [a, b]");
+  auto g = buildGraph(*q);
+
+  EXPECT_EQ(g.residuals.size(), 1u);
+  EXPECT_TRUE(nodeByName(g, "a")->residuals.empty());
+  EXPECT_TRUE(nodeByName(g, "b")->residuals.empty());
+}
+
+TEST_F(JoinGraphTest, residual_over_a_non_graph_variable_attaches_to_the_node) {
+  // `lim` is bound by an EnumerateListNode, which never becomes a graph node,
+  // so `a.p < lim` is loop-invariant from the graph's point of view and
+  // restricts `a` per binding of `lim`. Ast::getReferencedVariables reports
+  // two variables here, so classifying on that count instead of on how many
+  // resolve to a node would send this to graph level and lose the
+  // restriction.
+  auto q = prepare(
+      "FOR lim IN [1, 2, 3] FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FILTER a.p < lim RETURN [a, b]");
+  auto g = buildGraph(*q);
+
+  EXPECT_EQ(g.nodes.size(), 2u);
+  EXPECT_TRUE(g.residuals.empty());
+  auto* a = nodeByName(g, "a");
+  ASSERT_NE(a, nullptr);
+  EXPECT_EQ(a->residuals.size(), 1u);
+  EXPECT_TRUE(nodeByName(g, "b")->residuals.empty());
+}
+
+TEST_F(JoinGraphTest, residual_without_graph_variable_stays_graph_level) {
+  // NOOPT() is load-bearing: Ast::optimizeBinaryOperatorRelational
+  // constant-folds a comparison whose both sides are constant, so a literal `1
+  // < 2` collapses to `true` during AST optimization and never reaches
+  // addResidual at all. NOOPT keeps the left side non-constant so the predicate
+  // survives as a real residual that happens to reference no graph variable. Do
+  // not "simplify" this back to `1 < 2`.
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FILTER NOOPT(1) < 2 RETURN [a, b]");
+  auto g = buildGraph(*q);
+
+  EXPECT_EQ(g.residuals.size(), 1u);
+  EXPECT_TRUE(nodeByName(g, "a")->residuals.empty());
+}
+
 }  // namespace arangodb::tests::aql
