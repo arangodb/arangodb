@@ -1039,15 +1039,17 @@ class instance {
       } else if (this.protocol === 'unix') {
         let sockStat = this.getSockStat("Sock stat for: ");
         let reply = {code: 555};
+        let oldTimeout = arango.timeout();
         try {
           print(this.connect());
-          let oldTimeout = arango.timeout();
           arango.timeout(5);
           reply = arango.DELETE_RAW('/_admin/shutdown');
           arango.timeout(oldTimeout);
         } catch(ex) {
           print(RED + 'while invoking shutdown via unix domain socket: ' + ex + RESET);
-        };
+        } finally {
+          arango.timeout(oldTimeout);
+        }
         if ((reply.code !== 200) && // if the server should reply, we expect 200 - if not:
             !((reply.code === 500) &&
               (
@@ -1103,7 +1105,7 @@ class instance {
           this._disconnect();
           this.pid = null;
         } finally {
-            arango.timeout(oldTimeout);
+          arango.timeout(oldTimeout);
         }
       }  
     } else {
