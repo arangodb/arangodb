@@ -145,7 +145,10 @@ function catchallAuthzSuite () {
   // //////////////////////////////////////////////////////////////////////////
 
   const anonymousGet = (path) =>
-    request.get({ url: endpointToURL(arango.getEndpoint()) + path });
+    request.get({
+      url: endpointToURL(arango.getEndpoint()) + path,
+      followRedirect: false,
+    });
 
   // //////////////////////////////////////////////////////////////////////////
   // / @brief the Foxx service registry reads, which are not per-request
