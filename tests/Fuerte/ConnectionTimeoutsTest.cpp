@@ -103,6 +103,9 @@ void performRequests(fu::ProtocolType pt) {
 #if defined(__SANITIZE_ADDRESS__) || defined(__SANITIZE_THREAD__)
     req->timeout(std::chrono::seconds(100));
 #else
+#if __has_feature(address_sanitizer) || __has_feature(thread_sanitizer)
+    req->timeout(std::chrono::seconds(100));
+#endif
     req->timeout(std::chrono::seconds(60));
 #endif
     wg->add();
