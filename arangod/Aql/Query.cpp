@@ -1950,6 +1950,19 @@ void Query::initTrxForTests() {
   auto res = _trx->begin();
   TRI_ASSERT(res.ok());
 }
+
+void Query::prepareOptimizedPlanForTests() {
+  // Mirrors the beginning of prepareQuery(): initialize, then hand off to
+  // preparePlan(), which parses, validates/optimizes the AST, opens the
+  // transaction, instantiates the plan and runs the optimizer. Unlike
+  // prepareQuery(), we stop right there instead of going on to physically
+  // instantiate the execution engine and enter EXECUTION.
+  init(/*createProfile*/ false);
+  enterState(QueryExecutionState::ValueType::PARSING);
+  auto plan = preparePlan();
+  TRI_ASSERT(plan != nullptr);
+  _plans.push_back(std::move(plan));
+}
 #endif
 
 /// @brief return the query's shared state
