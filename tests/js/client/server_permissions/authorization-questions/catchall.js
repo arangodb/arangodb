@@ -237,6 +237,12 @@ function catchallAuthzSuite () {
 
     testRootRedirectSystemUnauthenticated: function () {
       beginObserve();
+      anonymousGet(`/_db/_system/`);
+      assertPermissions([], observe());
+    },
+
+    testRootRedirectOtherDatabaseUnauthenticated: function () {
+      beginObserve();
       anonymousGet(`/_db/${DB}/`);
       assertPermissions([], observe());
     },
