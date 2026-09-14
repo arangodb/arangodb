@@ -76,9 +76,9 @@ function authenticationClient (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 const authTestExpectRC = [
-  [401, 401, 401, 401, 401, 401, 401],
-  [401, 401, 401, 401, 401, 404, 404],
-  [404, 404, 200, 301, 301, 404, 404]
+  [401, 401, 401, 401, 401, 301, 301, 301, 401, 401, 401],
+  [401, 401, 401, 401, 401, 301, 301, 301, 401, 404, 404],
+  [404, 404, 200, 301, 301, 301, 301, 301, 301, 404, 404]
 ];
 
 const authTestUrls = [
@@ -87,9 +87,20 @@ const authTestUrls = [
   '/_api/version',
   '/_admin/html',
   '/_admin/html/',
+  // the bare "/" must redirect to the web UI without credentials in every
+  // configuration (BTS-2450: the ArangoGraph dashboard relies on it)
+  '/',
+  '//',
+  '/_db/_system/',
+  // without the trailing slash the request path is empty once the /_db/<name>
+  // prefix is stripped, so this is not public when authentication is on
+  '/_db/_system',
   '/test',
   '/the-big-fat-fox'
 ];
+
+// every 301 above is the redirect to the web UI of the _system database
+const authTestRedirectLocation = '/_db/_system/_admin/aardvark/index.html';
 
 const authTestNames = [
   'Full',
@@ -197,11 +208,7 @@ function authenticationParameters (options) {
 
       let reply = download(instanceManager.url + authTestUrl, '', downloadOptions);
 
-      if (reply.code === authTestExpectRC[test][i]) {
-        results[testName][authTestUrl] = {
-          status: true
-        };
-      } else {
+      if (reply.code !== authTestExpectRC[test][i]) {
         checkBodyForJsonToParse(reply);
 
         ++results[testName].failed;
@@ -214,6 +221,22 @@ function authenticationParameters (options) {
             ' Full Status: ' + yaml.safeDump(reply)
         };
         cleanup = false;
+      } else if (reply.code === 301 &&
+                 reply.headers['location'] !== authTestRedirectLocation) {
+        ++results[testName].failed;
+
+        results[testName][authTestUrl] = {
+          status: false,
+          message: 'we expected a redirect to ' +
+            authTestRedirectLocation +
+            ' and we got ' + reply.headers['location'] +
+            ' Full Status: ' + yaml.safeDump(reply)
+        };
+        cleanup = false;
+      } else {
+        results[testName][authTestUrl] = {
+          status: true
+        };
       }
 
       continueTesting = instanceManager.checkInstanceAlive();

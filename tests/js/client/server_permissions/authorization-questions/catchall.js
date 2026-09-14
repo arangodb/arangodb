@@ -42,7 +42,8 @@
 // hooks of RestHandler, so it is the only one where the base checks can be
 // skipped or turned into a superuser escalation:
 //
-//   checkUserAuthentication()  GRANTED_EARLY for isPublicAardvarkPath(), which
+//   checkUserAuthentication()  GRANTED_EARLY for isPublicAardvarkPath() (which
+//                              includes the bare "/", see BTS-2450), which
 //                              makes RestHandler::handleAuthorizationChecks()
 //                              return before BOTH remaining checks
 //   checkApiVersionAccess()    skipped for hasAllowedUnauthenticatedPath()
@@ -54,7 +55,7 @@
 // unauthenticated - despite its name it only tests authenticationSystemOnly()
 // (default true) and that the path does not start with /_. It therefore holds for
 // authenticated requests too, so the API version question is skipped for the
-// whole non-/_ path space, including the bare "/".
+// whole non-/_ path space (the bare "/" never gets that far, see above).
 //
 // Everything the handler fronts - the JS action framework (js/actions/*.js) and,
 // through js/actions/api-system.js (url: '', prefix: true -> routeRequest), the
@@ -129,8 +130,8 @@ function catchallAuthzSuite () {
   // authenticated, only at authenticationSystemOnly() and at the path not
   // starting with /_ - and checkApiVersionAccess() returns OK early whenever it
   // holds. So no path outside /_ is subject to API version restrictions at all,
-  // not even for an authenticated user, and that includes the bare "/" of the
-  // redirect branch. Only the database question is asked there.
+  // not even for an authenticated user. Only the database question is asked
+  // there.
   const baseOutsideUnderscore = (db) => [
     `UseDatabase name=${db} level=read`
   ];
@@ -205,20 +206,30 @@ function catchallAuthzSuite () {
     // redirect to /_db/<db><redirectRootTo()> without executing the action -
     // but the checks have already run at that point.
     //
-    // The two triggers of this one branch differ in what they ask, because "/"
-    // does not start with /_ while "/_admin/html" does: only the latter is asked
-    // the API version question. See baseOutsideUnderscore above.
+    // The two triggers of this one branch differ in what they ask: "/" is on
+    // the public allowlist (BTS-2450: the ArangoGraph dashboard opens "/"
+    // without credentials and needs the redirect, also with
+    // --server.authentication-system-only=false), so it is GRANTED_EARLY and
+    // NOTHING is asked, with or without credentials. "/_admin/html" is not
+    // public and goes through the normal checks.
 
     testRootRedirectSystem: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/`);
-      assertPermissions(baseOutsideUnderscore('_system'), observe());
+      assertPermissions([], observe());
     },
 
     testRootRedirectOtherDatabase: function () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/`);
-      assertPermissions(baseOutsideUnderscore(DB), observe());
+      assertPermissions([], observe());
+    },
+
+    // the same without credentials: the redirect is served before any check
+    testRootRedirectUnauthenticated: function () {
+      beginObserve();
+      anonymousGet(`/_db/${DB}/`);
+      assertPermissions([], observe());
     },
 
     // the second trigger of the same branch: suffixes ["_admin", "html"]
