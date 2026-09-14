@@ -68,9 +68,9 @@ _Enterprise Edition only_
 ### faiss
 
 * Name: faiss
-* Version: 1.14.2
-* Date: 2026-05-22
-* Project Home:https://github.com/facebookresearch/faiss/
+* Version: 1.15.0
+* Date: 2026-08-03
+* Project Home:https://github.com/facebookresearch/faiss
 * License: https://github.com/facebookresearch/faiss/blob/main/LICENSE
 * License Name: MIT License
 * License Id: MIT
@@ -1452,7 +1452,7 @@ License Id: -
 #### js-yaml
 
 * Name: js-yaml
-* Version: 4.3.1
+* Version: 4.3.2
 * Project Home: <https://github.com/nodeca/js-yaml>
 * License: <https://raw.githubusercontent.com/nodeca/js-yaml/refs/heads/master/LICENSE>
 * License Name: MIT License
