@@ -322,7 +322,7 @@ jobs:
       # Service container: arangod, reachable from the primary at 127.0.0.1:8529
       # (container runners have no docker daemon, so the harness cannot start it
       # itself - the executor does, and the script waits via ARANGO_START=external).
-      - image: public.ecr.aws/b0b8h2r4/arangodb/enterprise-test:02ffb1d_7b52a55-deb
+      - image: public.ecr.aws/b0b8h2r4/arangodb/enterprise-test:02cec4c_2f64c55-deb
         name: arangod
         environment:
           ARANGO_NO_AUTH: "1"
