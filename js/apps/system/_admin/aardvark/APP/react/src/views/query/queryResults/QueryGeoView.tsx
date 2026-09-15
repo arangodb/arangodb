@@ -1,12 +1,11 @@
 import { Box } from "@chakra-ui/react";
-import type { GeoJSON as GeoJSONUnionType } from "geojson";
-import L, { Layer } from "leaflet";
+import type { GeoJSON as GeoJSONUnionType, Geometry } from "geojson";
+import L from "leaflet";
 import GestureHandling from "leaflet-gesture-handling";
 import "leaflet-gesture-handling/dist/leaflet-gesture-handling.css";
-import { GeodesicLine } from "leaflet.geodesic";
 import React from "react";
-import { GeoJSON, MapContainer, TileLayer, useMap } from "react-leaflet";
 import { QueryResultType } from "../ArangoQuery.types";
+import { toGreatCircle } from "./great-circle";
 
 type NestedGeometryType = {
   geometry: GeoJSONUnionType;
@@ -20,134 +19,101 @@ const geojsonMarkerOptions = {
   opacity: 1,
   fillOpacity: 0.64
 };
+
+L.Map.addInitHook("addHandler", "gestureHandling", GestureHandling);
+
 export const QueryGeoView = ({
   queryResult
 }: {
   queryResult: QueryResultType<GeometryResultType>;
 }) => {
-  const newResult = queryResult.result?.map(item => {
-    if (Object.prototype.hasOwnProperty.call(item, "geometry")) {
-      return (item as NestedGeometryType).geometry;
-    }
-    return item as GeoJSONUnionType;
-  });
-  if (!newResult) {
-    return null;
-  }
-  L.Map.addInitHook("addHandler", "gestureHandling", GestureHandling);
-  return (
-    <Box height="500px">
-      <MapContainer
-        style={{
-          height: "500px"
-        }}
-        scrollWheelZoom={false}
-        // @ts-expect-error gestureHandling is provided by leaflet-gesture-handling, not typed on MapContainer
-        gestureHandling={true}
-      >
-        <MapInner geometryResult={newResult} />
-      </MapContainer>
-    </Box>
+  const geometries = React.useMemo(
+    () =>
+      queryResult.result?.map(item =>
+        Object.prototype.hasOwnProperty.call(item, "geometry")
+          ? (item as NestedGeometryType).geometry
+          : (item as GeoJSONUnionType)
+      ) ?? [],
+    [queryResult.result]
   );
-};
+  const [map, setMap] = React.useState<L.Map | null>(null);
+  const mapRef = React.useRef<L.Map | null>(null);
 
-const MapInner = ({
-  geometryResult
-}: {
-  geometryResult: GeoJSONUnionType[];
-}) => {
-  const areAllPoints = geometryResult.every(
-    geometry => geometry.type === "Point" || geometry.type === "MultiPoint"
-  );
-  const map = useMap();
+  // ref callback so the map is created once the container mounts and torn
+  // down when it unmounts.
+  const containerRef = React.useCallback((node: HTMLDivElement | null) => {
+    if (node && !mapRef.current) {
+      const instance = L.map(node, {
+        center: [0, 0],
+        zoom: 2,
+        scrollWheelZoom: false,
+        gestureHandling: true
+      });
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(instance);
+      mapRef.current = instance;
+      setMap(instance);
+    } else if (!node && mapRef.current) {
+      mapRef.current.remove();
+      mapRef.current = null;
+      setMap(null);
+    }
+  }, []);
+
   React.useEffect(() => {
-    if (areAllPoints) {
-      const markers = geometryResult
-        .map(geometry => {
-          const { type } = geometry;
-          if (type === "Point" || type === "MultiPoint") {
-            return new L.CircleMarker(
-              L.latLng(
-                (geometry.coordinates as any)[1],
-                (geometry.coordinates as any)[0]
+    if (!map) {
+      return;
+    }
+    const layers: L.Layer[] = [];
+    const bounds = L.latLngBounds([]);
+    geometries.forEach(geometry => {
+      try {
+        // the result type is the whole GeoJSON union, but this view only ever
+        // receives bare geometries; a Feature would pass straight through
+        // toGreatCircle anyway
+        const layer = L.geoJSON(toGreatCircle(geometry as Geometry), {
+          pointToLayer: (_feature, latlng) =>
+            L.circleMarker(latlng, geojsonMarkerOptions),
+          onEachFeature: (feature, layerInstance) => {
+            // create a HTML element for the popup, showing the geometry as the
+            // document stores it rather than the interpolated arc
+            const element = document.createElement("pre");
+            element.appendChild(
+              document.createTextNode(
+                JSON.stringify({ ...feature, geometry }, null, 2)
               )
             );
+            layerInstance.bindPopup(element, {
+              maxWidth: 300,
+              minWidth: 300,
+              maxHeight: 250
+            });
           }
-          return null;
-        })
-        .filter(Boolean);
-      const featureGroup = new L.FeatureGroup(markers as any);
-      const bounds = featureGroup.getBounds();
-      map.fitBounds(bounds);
-    }
-  }, [areAllPoints, geometryResult, map]);
-
-  return (
-    <>
-      <TileLayer
-        attribution={
-          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }
-        url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
-      {geometryResult.map((geometry, index) => {
-        return <SingleGeometry key={index} geometry={geometry} />;
-      })}
-    </>
-  );
-};
-
-const SingleGeometry = ({ geometry }: { geometry: GeoJSONUnionType }) => {
-  const map = useMap();
-
-  const [markers, setMarkers] = React.useState<any[]>([]);
-  const { type } = geometry;
-  const isPointGeometry = type === "Point" || type === "MultiPoint";
-  const isPolygonGeometry = type === "Polygon" || type === "MultiPolygon";
-  const isLineStringGeometry =
-    type === "MultiLineString" || type === "LineString";
-  React.useEffect(() => {
-    if (markers.length > 0 && !isPointGeometry) {
-      const featureGroup = new L.FeatureGroup(markers);
-      const bounds = featureGroup.getBounds();
-      map.fitBounds(bounds);
-    }
-  }, [markers, map, isPointGeometry]);
-  React.useEffect(() => {
-    if (isPolygonGeometry || isLineStringGeometry) {
-      try {
-        const geojson = (
-          new GeodesicLine().fromGeoJson(geometry) as any as Layer
-        ).addTo(map);
-        setMarkers([geojson]);
+        });
+        layer.addTo(map);
+        layers.push(layer);
+        bounds.extend(layer.getBounds());
       } catch {
         // ignore error as the tab will not be displayed after first render
       }
+    });
+    if (bounds.isValid()) {
+      map.fitBounds(bounds);
     }
-  }, [geometry, isPolygonGeometry, isLineStringGeometry, map]);
-  if (isPointGeometry) {
-    return (
-      <GeoJSON
-        onEachFeature={(feature, layer) => {
-          // create a HTML element for the popup
-          const element = document.createElement("pre");
-          element.appendChild(
-            document.createTextNode(JSON.stringify(feature, null, 2))
-          );
-          layer.bindPopup(element, {
-            maxWidth: 300,
-            minWidth: 300,
-            maxHeight: 250
-          });
-        }}
-        data={geometry}
-        pointToLayer={(_feature, latlng) => {
-          const marker = L.circleMarker(latlng, geojsonMarkerOptions);
-          setMarkers(markers => [...markers, marker]);
-          return marker;
-        }}
-      />
-    );
+    return () => {
+      layers.forEach(layer => layer.remove());
+    };
+  }, [map, geometries]);
+
+  if (!queryResult.result) {
+    return null;
   }
-  return null;
+
+  return (
+    <Box height="500px">
+      <div ref={containerRef} style={{ height: "500px" }} />
+    </Box>
+  );
 };

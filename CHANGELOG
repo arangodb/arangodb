@@ -1,6 +1,8 @@
 3.12.12 (XXXX-XX-XX)
 --------------------
 
+* AIS-2021: Replaced the web UI's geo map dependencies.
+
 * Upgraded included rclone to v1.75.1 with go1.26.8 and non-vulnerable
   dependencies.
 
