@@ -80,8 +80,7 @@ class Builder {
   /// directly into @p destination. Stores a pointer to @p projection's value
   /// on the binding (must outlive the binding; true for normalize→build).
   ProjectionBinding bindProjectedVariable(
-      Variable const* destination,
-      std::optional<Projection> const& projection,
+      Variable const* destination, std::optional<Projection> const& projection,
       std::unordered_map<VariableId, Variable const*>& subst);
 
   /// @brief Queue a delayed document projection CalculationNode when @p binding
@@ -158,8 +157,7 @@ class Builder {
   std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
   createTraversalForPattern(
       Variable const* startNodeVar, NormalizedEdge const& edge,
-      PatternElement const& target,
-      Variable const* edgeDocumentOutputVariable,
+      PatternElement const& target, Variable const* edgeDocumentOutputVariable,
       Variable const* vertexDocumentOutputVariable,
       std::unordered_map<VariableId, Variable const*> const& subst);
 

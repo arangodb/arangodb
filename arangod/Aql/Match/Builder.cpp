@@ -92,12 +92,10 @@ void applyPathRange(PathRange const& range,
 
 }  // namespace
 
-Builder::Builder(ExecutionPlan& plan, Ast* ast)
-    : _plan(plan), _ast(ast) {}
+Builder::Builder(ExecutionPlan& plan, Ast* ast) : _plan(plan), _ast(ast) {}
 
 Builder::ProjectionBinding Builder::bindProjectedVariable(
-    Variable const* destination,
-    std::optional<Projection> const& projection,
+    Variable const* destination, std::optional<Projection> const& projection,
     std::unordered_map<VariableId, Variable const*>& subst) {
   ProjectionBinding binding;
   binding.destination = destination;
@@ -132,7 +130,7 @@ void Builder::maybeQueueEdgeProjection(
 }
 
 AstNode* Builder::createPropertyAccess(Variable const* variable,
-                                            std::string_view property) {
+                                       std::string_view property) {
   char const* registered = _ast->resources().registerString(property);
   return _ast->createNodeAttributeAccess(
       _ast->createNodeReference(variable),
@@ -157,8 +155,7 @@ AstNode* Builder::buildEdgeCollectionList(NormalizedEdge const& edge) {
 }
 
 std::tuple<CalculationNode*, FilterNode*> Builder::createPropertiesFilter(
-    Variable const* variable,
-    std::vector<PropertyConstraint> const& properties,
+    Variable const* variable, std::vector<PropertyConstraint> const& properties,
     std::optional<ExpressionRef> const& additionalFilter,
     std::unordered_map<VariableId, Variable const*> const& subst) {
   AstNode* root = nullptr;
@@ -232,9 +229,9 @@ ExecutionNode* Builder::createDocumentPatternProjection(
     Variable const* destinationVariable, Variable const* fullDocumentVar,
     Projection const& projection,
     std::unordered_map<VariableId, Variable const*> const& subst) {
-  return createPatternProjection(
-      destinationVariable, fullDocumentVar, &projection,
-      kMandatoryDocumentProjectionAttributes, subst);
+  return createPatternProjection(destinationVariable, fullDocumentVar,
+                                 &projection,
+                                 kMandatoryDocumentProjectionAttributes, subst);
 }
 
 ExecutionNode* Builder::createEdgeDocumentPatternProjection(
@@ -455,8 +452,7 @@ std::tuple<CalculationNode*, FilterNode*> Builder::createVertexEdgeFilter(
 std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
 Builder::createTraversalForPattern(
     Variable const* startNodeVar, NormalizedEdge const& edge,
-    PatternElement const& target,
-    Variable const* edgeDocumentOutputVariable,
+    PatternElement const& target, Variable const* edgeDocumentOutputVariable,
     Variable const* vertexDocumentOutputVariable,
     std::unordered_map<VariableId, Variable const*> const& subst) {
   aql::QueryContext& query = _ast->query();
@@ -595,19 +591,18 @@ CalculationNode* Builder::constructPathObject(
 }
 
 void Builder::addPathVertex(std::vector<AstNode const*>& pathVertices,
-                                 Variable const* variable) {
+                            Variable const* variable) {
   pathVertices.push_back(_ast->createNodeReference(variable));
 }
 
 void Builder::addPathEdge(std::vector<AstNode const*>& pathEdges,
-                               Variable const* variable) {
+                          Variable const* variable) {
   pathEdges.push_back(_ast->createNodeReference(variable));
 }
 
-void Builder::appendTraversalPath(
-    std::vector<AstNode const*>& pathVertices,
-    std::vector<AstNode const*>& pathEdges,
-    Variable const* traversalPathVariable) {
+void Builder::appendTraversalPath(std::vector<AstNode const*>& pathVertices,
+                                  std::vector<AstNode const*>& pathEdges,
+                                  Variable const* traversalPathVariable) {
   pathEdges.push_back(
       _ast->createNodeArraySplice(_ast->createNodeAttributeAccess(
           _ast->createNodeReference(traversalPathVariable), "edges")));
@@ -619,7 +614,7 @@ void Builder::appendTraversalPath(
 }
 
 ExecutionNode* Builder::build(ExecutionNode* previous,
-                                   AstNode const* matchNode) {
+                              AstNode const* matchNode) {
   PatternNormalizer normalizer(*_ast);
   NormalizedStatement const statement = normalizer.normalize(*matchNode);
 
