@@ -107,14 +107,7 @@ function HandleContentEncodingSuite() {
         // this is still supposed to fail, because we are not sending any
         // valid content
         assertEqual(400, res.status);
-        let count = 0;
-        ['support for handling Content-Encoding headers is turned off for unauthenticated requests', 
-         'decoding error occurred while handling Content-Encoding'].forEach(msg => {
-           if (res.json.errorMessage.search(msg) >= 0) {
-             count += 1;
-           }
-         });
-        assertTrue(count > 0, `error message not one of the wanted: ${JSON.stringify(res)}`);
+        assertMatch(new RegExp(`decoding error occurred while handling Content-Encoding: ${h["Content-Encoding"]}`), res.json.errorMessage);
       });
     },
 
