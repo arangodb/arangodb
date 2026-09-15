@@ -109,8 +109,8 @@ auto disjunctionSelectivity(AstNode const* disjunction,
 }
 
 /// @brief Table 1, `column IN (list of values)`: (number of items in list) *
-/// (the factor for `column = value`). The paper caps this at 1/2; we cap at
-/// 1.0, so a long list is priced as no restriction rather than as half.
+/// (the factor for `column = value`), which the paper allows "to be no more
+/// than 1/2".
 auto inSelectivity(AstNode const* in, JoinStatistics const& stats,
                    JoinGraph::Node const& node) -> double {
   if (in->numMembers() != 2) {
@@ -135,8 +135,8 @@ auto inSelectivity(AstNode const* in, JoinStatistics const& stats,
   if (distinct.defaulted) {
     return 1.0;
   }
-  return std::min(1.0, static_cast<double>(values->numMembers()) /
-                           std::max(distinct.value, 1.0));
+  return std::min(kInCapSelectivity, static_cast<double>(values->numMembers()) /
+                                         std::max(distinct.value, 1.0));
 }
 
 }  // namespace
