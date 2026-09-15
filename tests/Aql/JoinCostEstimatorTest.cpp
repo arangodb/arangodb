@@ -502,14 +502,14 @@ TEST_F(SystemRCostEstimatorTest,
   EXPECT_TRUE(est.defaulted);
 }
 
-TEST_F(SystemRCostEstimatorTest, in_residual_uses_min_of_one_and_the_ratio) {
-  // The ratio must exceed 1 to exercise the min at all, and the node needs a
+TEST_F(SystemRCostEstimatorTest, in_residual_is_capped_at_a_half) {
+  // The ratio must exceed the cap to exercise it at all, and the node needs a
   // separate constant restriction so restricted(a) < count(a): otherwise
   // restricted == count and the [1, count] clamp on base() would mask a
-  // missing min() just as easily as a correct one. distinct(c) = 10 shrinks
+  // missing cap just as easily as a correct one. distinct(c) = 10 shrinks
   // restricted(a) to 100; the IN array of 5 over distinct(k) = 2 gives a raw
-  // ratio of 2.5, so 100 * 2.5 = 250 sits well inside [1, 1000] and is
-  // genuinely visible if the min is dropped.
+  // ratio of 2.5, so an uncapped 100 * 2.5 = 250 sits well inside [1, 1000]
+  // and is genuinely visible.
   auto q = prepare(
       "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
       "FILTER a.c == 'v' "
@@ -521,8 +521,23 @@ TEST_F(SystemRCostEstimatorTest, in_residual_uses_min_of_one_and_the_ratio) {
   stats->distinct["a"]["k"] = {2.0, false};   // ratio = 5/2 = 2.5
 
   auto seeded = estimator->seed(*nodeByName(g, "a"));
-  // base(a) = 100 * min(1, 2.5) = 100. Without the min, base(a) = 250.
-  EXPECT_DOUBLE_EQ(seeded.cardinality, 100.0);
+  // base(a) = 100 * 1/2 = 50; uncapped it would be 250, capped at 1 it would
+  // be 100.
+  EXPECT_DOUBLE_EQ(seeded.cardinality, 50.0);
+}
+
+TEST_F(SystemRCostEstimatorTest, in_residual_below_the_cap_is_left_alone) {
+  // A list shorter than the distinct count is priced by the ratio itself, so
+  // the cap must not flatten every IN to one half.
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FILTER a.k IN ['p', 'q'] RETURN [a, b]");
+  auto g = buildGraph(*q);
+  auto [estimator, stats] = makeEstimator();
+  stats->counts = {{"a", 1000.0}, {"b", 100.0}};
+  stats->distinct["a"]["k"] = {10.0, false};  // ratio = 2/10 = 0.2
+
+  EXPECT_DOUBLE_EQ(estimator->seed(*nodeByName(g, "a")).cardinality, 200.0);
 }
 
 TEST_F(SystemRCostEstimatorTest,
