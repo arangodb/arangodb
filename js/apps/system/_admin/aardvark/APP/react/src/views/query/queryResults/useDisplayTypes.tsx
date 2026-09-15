@@ -1,5 +1,4 @@
 import L from "leaflet";
-import { GeodesicLine } from "leaflet.geodesic";
 import React from "react";
 import { QueryResultType } from "../ArangoQuery.types";
 
@@ -167,14 +166,6 @@ const GEOMETRY_TYPES = [
   "MultiPolygon"
 ];
 
-const POINT_GEOMETRY_TYPES = ["Point", "MultiPoint"];
-
-const GEODESIC_GEOMETRY_TYPES = [
-  "LineString",
-  "MultiLineString",
-  "Polygon",
-  "MultiPolygon"
-];
 type GeoItemType = {
   type?: string;
   coordinates?: any[];
@@ -184,20 +175,10 @@ type GeoItemType = {
   };
 };
 
-const isValidPoint = (item: { type?: string; coordinates?: any[] }) => {
-  if (item.type && POINT_GEOMETRY_TYPES.includes(item.type)) {
+const isValidGeometry = (item: GeoItemType) => {
+  if (item.type && GEOMETRY_TYPES.includes(item.type)) {
     try {
       new L.GeoJSON(item as any);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-};
-const isValidGeodesic = (item: GeoItemType) => {
-  if (item.type && GEODESIC_GEOMETRY_TYPES.includes(item.type)) {
-    try {
-      new GeodesicLine().fromGeoJson(item as any);
       return true;
     } catch {
       return false;
@@ -237,7 +218,7 @@ const detectGeo = ({
     }
     if (resultItem.coordinates && resultItem.type) {
       if (GEOMETRY_TYPES.includes(resultItem.type)) {
-        if (isValidPoint(resultItem) || isValidGeodesic(resultItem)) {
+        if (isValidGeometry(resultItem)) {
           validGeojsonCount++;
         }
       }
@@ -247,10 +228,7 @@ const detectGeo = ({
       resultItem.geometry.type
     ) {
       if (GEOMETRY_TYPES.includes(resultItem.geometry.type)) {
-        if (
-          isValidPoint(resultItem.geometry) ||
-          isValidGeodesic(resultItem.geometry)
-        ) {
+        if (isValidGeometry(resultItem.geometry)) {
           validGeojsonCount++;
         }
       }
