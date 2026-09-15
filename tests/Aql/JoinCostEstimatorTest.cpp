@@ -185,6 +185,34 @@ TEST_F(SystemRCostEstimatorTest, empty_connecting_span_is_a_cross_product) {
   EXPECT_DOUBLE_EQ(est.cost, 1000.0 + scanCost(1000.0, 100.0));
 }
 
+TEST_F(SystemRCostEstimatorTest,
+       cross_product_ignores_edges_elsewhere_in_the_graph) {
+  // Two independent components, a-b and c-d. Concatenating them extends a
+  // prefix by a vertex it shares no edge with, so the span is empty even
+  // though the graph has edges -- that, not an edgeless graph, is the shape
+  // the search actually produces. The c-d estimates below are deliberately
+  // selective, so a caller that passed the wrong edges would read 10000 here
+  // rather than land on the same number by coincidence.
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FOR c IN c3 FOR d IN c1 FILTER c.x == d.y RETURN [a, b, c, d]");
+  auto g = buildGraph(*q);
+  ASSERT_EQ(g.edges.size(), 2u);
+  ASSERT_EQ(g.connectedComponents().size(), 2u);
+
+  auto [estimator, stats] = makeEstimator();
+  stats->counts = {{"a", 1000.0}, {"b", 100.0}, {"c", 50.0}, {"d", 50.0}};
+  stats->distinct["c"]["x"] = {5.0, false};
+  stats->distinct["d"]["y"] = {5.0, false};
+
+  auto est = estimator->extend(estimator->seed(*nodeByName(g, "a")),
+                               *nodeByName(g, "c"), {});
+
+  EXPECT_DOUBLE_EQ(est.cardinality, 50000.0);  // 1000 * 50, no reduction
+  EXPECT_DOUBLE_EQ(est.cost, 1000.0 + scanCost(1000.0, 50.0));
+  EXPECT_FALSE(est.defaulted);
+}
+
 TEST_F(SystemRCostEstimatorTest, missing_statistic_defaults_to_one_and_flags) {
   auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
   auto g = buildGraph(*q);
