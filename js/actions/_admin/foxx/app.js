@@ -123,53 +123,13 @@ function throwIfApiDisabled () {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief sets up a Foxx service
-// //////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url: '_admin/foxx/setup',
-  prefix: false,
-  isSystem: true,
-
-  callback: easyPostCallback({
-    body: true,
-    callback: function (body, req) {
-      throwIfApiDisabled();
-
-      const mount = body.mount;
-      return FoxxManager.setup(mount);
-    }
-  })
-});
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief tears down a Foxx service
-// //////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url: '_admin/foxx/teardown',
-  prefix: false,
-  isSystem: true,
-
-  callback: easyPostCallback({
-    body: true,
-    callback: function (body, req) {
-      throwIfApiDisabled();
-
-      const mount = body.mount;
-      return FoxxManager.teardown(mount);
-    }
-  })
-});
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief installs a Foxx service
 // //////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
   url: '_admin/foxx/install',
   prefix: false,
-  isSystem: true,
+  isSystem: false,
 
   callback: easyPostCallback({
     body: true,
@@ -193,7 +153,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/uninstall',
   prefix: false,
-  isSystem: true,
+  isSystem: false,
 
   callback: easyPostCallback({
     body: true,
@@ -219,7 +179,7 @@ actions.defineHttp({
   isSystem: true,
 
   callback: easyPostCallback({
-    body: true,
+    body: false,
     callback: function (body, req) {
       throwIfApiDisabled();
 
@@ -240,7 +200,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/upgrade',
   prefix: false,
-  isSystem: true,
+  isSystem: false,
 
   callback: easyPostCallback({
     body: true,
@@ -264,7 +224,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/configure',
   prefix: false,
-  isSystem: true,
+  isSystem: false,
 
   callback: easyPostCallback({
     body: true,
@@ -283,33 +243,13 @@ actions.defineHttp({
 });
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief Gets the configuration of a Foxx service
-// //////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url: '_admin/foxx/configuration',
-  prefix: false,
-  isSystem: true,
-
-  callback: easyPostCallback({
-    body: true,
-    callback: function (body, req) {
-      throwIfApiDisabled();
-
-      const mount = body.mount;
-      return FoxxManager.configuration(mount);
-    }
-  })
-});
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief configures a Foxx service's dependencies
 // //////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
   url: '_admin/foxx/set-dependencies',
   prefix: false,
-  isSystem: true,
+  isSystem: false,
 
   callback: easyPostCallback({
     body: true,
@@ -328,44 +268,13 @@ actions.defineHttp({
 });
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief Gets the dependencies of a Foxx service
-// //////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url: '_admin/foxx/dependencies',
-  prefix: false,
-  isSystem: true,
-
-  callback: easyPostCallback({
-    body: true,
-    callback: function (body, req) {
-      throwIfApiDisabled();
-
-      const mount = body.mount;
-      const deps = FoxxManager.dependencies(mount);
-      for (const key of Object.keys(deps)) {
-        const dep = deps[key];
-        deps[key] = {
-          definition: dep,
-          title: dep.title,
-          current: dep.current
-        };
-        delete dep.title;
-        delete dep.current;
-      }
-      return deps;
-    }
-  })
-});
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief Toggles the development mode of a Foxx service
 // //////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
   url: '_admin/foxx/development',
   prefix: false,
-  isSystem: true,
+  isSystem: false,
 
   callback: easyPostCallback({
     body: true,
@@ -390,7 +299,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/tests',
   prefix: false,
-  isSystem: true,
+  isSystem: false,
 
   callback: easyPostCallback({
     body: true,
@@ -411,7 +320,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/script',
   prefix: false,
-  isSystem: true,
+  isSystem: false,
 
   callback: easyPostCallback({
     body: true,
