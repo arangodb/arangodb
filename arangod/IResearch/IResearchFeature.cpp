@@ -78,8 +78,6 @@
 
 #include <absl/strings/str_cat.h>
 
-#include <type_traits>
-
 using namespace std::chrono_literals;
 
 namespace arangodb::aql {
@@ -575,9 +573,10 @@ void registerIndexTypeFactories(application_features::ApplicationServer& server,
   }
   auto& engine = server.getFeature<StorageEngine>();
 
-  auto emplace = [&engine](auto const& target, auto& value) {
-    auto r = const_cast<std::decay_t<decltype(target)>&>(target).emplace(
-        std::string{StaticStrings::ViewArangoSearchType}, value);
+  auto emplace = [&engine](IndexFactory const& target,
+                           IndexTypeFactory& factory) {
+    auto r = const_cast<IndexFactory&>(target).emplace(
+        std::string{StaticStrings::ViewArangoSearchType}, factory);
     if (!r.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           r.errorNumber(),
@@ -589,10 +588,7 @@ void registerIndexTypeFactories(application_features::ApplicationServer& server,
 
   if (auto* clusterEngine = dynamic_cast<ClusterEngine*>(&engine)) {
     emplace(clusterEngine->indexFactory(), clusterFactory);
-
-    // indexDefinitions() only takes IndexDefinition, so adapt rocksDBFactory
-    static DelegatingIndexDefinition rocksDBDefinition(rocksDBFactory);
-    emplace(clusterEngine->indexDefinitions(), rocksDBDefinition);
+    emplace(clusterEngine->indexDefinitions(), rocksDBFactory);
   } else if (dynamic_cast<RocksDBEngine*>(&engine) != nullptr) {
     emplace(engine.indexFactory(), rocksDBFactory);
   }

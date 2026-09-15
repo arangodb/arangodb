@@ -25,7 +25,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/voc-errors.h"
 #include "Cluster/ServerState.h"
-#include "Indexes/IndexDefinitions.h"
+#include "Indexes/DefaultIndexFactories.h"
 #include "Indexes/Index.h"
 #include "IResearch/IResearchRocksDBInvertedIndex.h"
 #include "Logger/LogMacros.h"
@@ -53,9 +53,9 @@ using namespace arangodb;
 
 namespace {
 
-struct EdgeIndexFactory : public DelegatingIndexFactory<EdgeIndexDefinition> {
+struct EdgeIndexFactory : public EdgeIndexDefinition {
   explicit EdgeIndexFactory(application_features::ApplicationServer& server)
-      : DelegatingIndexFactory(server) {}
+      : EdgeIndexDefinition(server) {}
 
   std::shared_ptr<Index> instantiate(LogicalCollection& collection,
                                      velocypack::Slice definition, IndexId id,
@@ -77,10 +77,9 @@ struct EdgeIndexFactory : public DelegatingIndexFactory<EdgeIndexDefinition> {
   }
 };
 
-struct FulltextIndexFactory
-    : public DelegatingIndexFactory<FulltextIndexDefinition> {
+struct FulltextIndexFactory : public FulltextIndexDefinition {
   explicit FulltextIndexFactory(application_features::ApplicationServer& server)
-      : DelegatingIndexFactory(server) {}
+      : FulltextIndexDefinition(server) {}
 
   std::shared_ptr<Index> instantiate(
       LogicalCollection& collection, velocypack::Slice definition, IndexId id,
@@ -89,9 +88,9 @@ struct FulltextIndexFactory
   }
 };
 
-struct GeoIndexFactory : public DelegatingIndexFactory<GeoIndexDefinition> {
+struct GeoIndexFactory : public GeoIndexDefinition {
   explicit GeoIndexFactory(application_features::ApplicationServer& server)
-      : DelegatingIndexFactory(server) {}
+      : GeoIndexDefinition(server) {}
 
   std::shared_ptr<Index> instantiate(
       LogicalCollection& collection, velocypack::Slice definition, IndexId id,
@@ -100,9 +99,9 @@ struct GeoIndexFactory : public DelegatingIndexFactory<GeoIndexDefinition> {
   }
 };
 
-struct Geo1IndexFactory : public DelegatingIndexFactory<Geo1IndexDefinition> {
+struct Geo1IndexFactory : public Geo1IndexDefinition {
   explicit Geo1IndexFactory(application_features::ApplicationServer& server)
-      : DelegatingIndexFactory(server) {}
+      : Geo1IndexDefinition(server) {}
 
   std::shared_ptr<Index> instantiate(
       LogicalCollection& collection, velocypack::Slice definition, IndexId id,
@@ -112,9 +111,9 @@ struct Geo1IndexFactory : public DelegatingIndexFactory<Geo1IndexDefinition> {
   }
 };
 
-struct Geo2IndexFactory : public DelegatingIndexFactory<Geo2IndexDefinition> {
+struct Geo2IndexFactory : public Geo2IndexDefinition {
   explicit Geo2IndexFactory(application_features::ApplicationServer& server)
-      : DelegatingIndexFactory(server) {}
+      : Geo2IndexDefinition(server) {}
 
   std::shared_ptr<Index> instantiate(
       LogicalCollection& collection, velocypack::Slice definition, IndexId id,
@@ -125,11 +124,10 @@ struct Geo2IndexFactory : public DelegatingIndexFactory<Geo2IndexDefinition> {
 };
 
 template<typename F, IndexType type>
-struct SecondaryIndexFactory
-    : public DelegatingIndexFactory<SecondaryIndexDefinition> {
+struct SecondaryIndexFactory : public SecondaryIndexDefinition {
   explicit SecondaryIndexFactory(
       application_features::ApplicationServer& server)
-      : DelegatingIndexFactory(server, type) {}
+      : SecondaryIndexDefinition(server, type) {}
 
   std::shared_ptr<Index> instantiate(
       LogicalCollection& collection, velocypack::Slice definition, IndexId id,
@@ -138,10 +136,10 @@ struct SecondaryIndexFactory
   }
 };
 
-struct MdiIndexFactory : public DelegatingIndexFactory<MdiIndexDefinition> {
+struct MdiIndexFactory : public MdiIndexDefinition {
   MdiIndexFactory(application_features::ApplicationServer& server,
                   IndexType type)
-      : DelegatingIndexFactory(server, type) {}
+      : MdiIndexDefinition(server, type) {}
 
   std::shared_ptr<arangodb::Index> instantiate(
       arangodb::LogicalCollection& collection,
@@ -157,11 +155,10 @@ struct MdiIndexFactory : public DelegatingIndexFactory<MdiIndexDefinition> {
   }
 };
 
-struct MdiPrefixedIndexFactory
-    : public DelegatingIndexFactory<MdiPrefixedIndexDefinition> {
+struct MdiPrefixedIndexFactory : public MdiPrefixedIndexDefinition {
   explicit MdiPrefixedIndexFactory(
       application_features::ApplicationServer& server)
-      : DelegatingIndexFactory(server) {}
+      : MdiPrefixedIndexDefinition(server) {}
 
   std::shared_ptr<arangodb::Index> instantiate(
       arangodb::LogicalCollection& collection,
@@ -177,12 +174,11 @@ struct MdiPrefixedIndexFactory
   }
 };
 
-struct VectorIndexFactory
-    : public DelegatingIndexFactory<VectorIndexDefinition> {
+struct VectorIndexFactory : public VectorIndexDefinition {
   explicit VectorIndexFactory(application_features::ApplicationServer& server,
                               IndexType type,
                               IVectorIndexProvider const& vectorIndexProvider)
-      : DelegatingIndexFactory(server, type, vectorIndexProvider) {}
+      : VectorIndexDefinition(server, type, vectorIndexProvider) {}
 
   std::shared_ptr<arangodb::Index> instantiate(
       arangodb::LogicalCollection& collection,
@@ -192,10 +188,10 @@ struct VectorIndexFactory
   }
 };
 
-struct TtlIndexFactory : public DelegatingIndexFactory<TtlIndexDefinition> {
+struct TtlIndexFactory : public TtlIndexDefinition {
   TtlIndexFactory(application_features::ApplicationServer& server,
                   IndexType type)
-      : DelegatingIndexFactory(server, type) {}
+      : TtlIndexDefinition(server, type) {}
 
   std::shared_ptr<Index> instantiate(
       LogicalCollection& collection, velocypack::Slice definition, IndexId id,
@@ -204,10 +200,9 @@ struct TtlIndexFactory : public DelegatingIndexFactory<TtlIndexDefinition> {
   }
 };
 
-struct PrimaryIndexFactory
-    : public DelegatingIndexFactory<PrimaryIndexDefinition> {
+struct PrimaryIndexFactory : public PrimaryIndexDefinition {
   explicit PrimaryIndexFactory(application_features::ApplicationServer& server)
-      : DelegatingIndexFactory(server) {}
+      : PrimaryIndexDefinition(server) {}
 
   std::shared_ptr<Index> instantiate(LogicalCollection& collection,
                                      velocypack::Slice definition,
