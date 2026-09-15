@@ -39,8 +39,13 @@ ExecutionNode* IndexCollectNode::clone(ExecutionPlan* plan,
   IndexCollectAggregations aggregations;
   aggregations.reserve(_aggregations.size());
   for (auto const& agg : _aggregations) {
-    aggregations.emplace_back(IndexCollectAggregation{
-        agg.type, agg.outVariable, agg.expression->clone(plan->getAst())});
+    std::vector<std::unique_ptr<Expression>> expressions;
+    expressions.reserve(agg.expressions.size());
+    for (auto const& expression : agg.expressions) {
+      expressions.emplace_back(expression->clone(plan->getAst()));
+    }
+    aggregations.emplace_back(IndexCollectAggregation{agg.type, agg.outVariable,
+                                                      std::move(expressions)});
   }
 
   auto c = std::make_unique<IndexCollectNode>(
@@ -120,14 +125,20 @@ std::unique_ptr<ExecutionBlock> IndexCollectNode::createBlockAggregationScan(
     auto& a = infos.aggregations.emplace_back();
     a.type = agg.type;
     a.outputRegister = getRegisterPlan()->variableToRegisterId(agg.outVariable);
-    a.expression = agg.expression->clone(infos.query->ast());
     writableOutputRegisters.emplace(a.outputRegister);
 
-    // find attributes used in expression
+    a.expressions.reserve(agg.expressions.size());
+    for (auto const& source : agg.expressions) {
+      a.expressions.emplace_back(source->clone(infos.query->ast()));
+    }
+
+    // find attributes used in the expressions
     containers::FlatHashSet<aql::AttributeNamePath> attributes;
-    Ast::getReferencedAttributesRecursive(a.expression->node(),
-                                          _oldIndexVariable, "", attributes,
-                                          infos.query->resourceMonitor());
+    for (auto const& expression : a.expressions) {
+      Ast::getReferencedAttributesRecursive(expression->node(),
+                                            _oldIndexVariable, "", attributes,
+                                            infos.query->resourceMonitor());
+    }
     // get what index fields cover these attributes
     for (auto const& attr : attributes) {
       auto iter = std::find_if(
@@ -149,8 +160,10 @@ std::unique_ptr<ExecutionBlock> IndexCollectNode::createBlockAggregationScan(
       std::copy(attr.get().begin(), attr.get().end(),
                 std::back_inserter(attribView));
 
-      a.expression->replaceAttributeAccess(_oldIndexVariable, attribView,
+      for (auto& expression : a.expressions) {
+        expression->replaceAttributeAccess(_oldIndexVariable, attribView,
                                            it->second);
+      }
     }
   }
 
@@ -191,7 +204,18 @@ IndexCollectNode::IndexCollectNode(ExecutionPlan* plan,
     auto& agg = _aggregations.emplace_back();
     agg.outVariable = Variable::varFromVPack(plan->getAst(), as, "outVariable");
     agg.type = as.get("type").copyString();
-    agg.expression = std::make_unique<Expression>(plan->getAst(), as);
+    if (VPackSlice expressions = as.get("expressions"); expressions.isArray()) {
+      for (auto es : VPackArrayIterator(expressions)) {
+        agg.expressions.emplace_back(std::make_unique<Expression>(
+            plan->getAst(), plan->getAst()->createNode(es)));
+      }
+    } else {
+      // A coordinator from before multi-argument aggregates writes a single
+      // "expression". Coordinators are upgraded after DB servers, so during a
+      // rolling upgrade this is the shape a DB server receives.
+      agg.expressions.emplace_back(
+          std::make_unique<Expression>(plan->getAst(), as));
+    }
   }
 }
 
@@ -211,10 +235,12 @@ IndexCollectNode::IndexCollectNode(ExecutionPlan* plan, ExecutionNodeId id,
       _collectOptions(collectOptions) {
 #if ARANGODB_ENABLE_MAINTAINER_MODE
   for (auto const& agg : _aggregations) {
-    VarSet usedVariables;
-    agg.expression->variables(usedVariables);
-    TRI_ASSERT(usedVariables.size() == 1);
-    TRI_ASSERT(usedVariables.contains(_oldIndexVariable));
+    for (auto const& expression : agg.expressions) {
+      VarSet usedVariables;
+      expression->variables(usedVariables);
+      TRI_ASSERT(usedVariables.size() == 1);
+      TRI_ASSERT(usedVariables.contains(_oldIndexVariable));
+    }
   }
 #endif
 }
@@ -251,8 +277,15 @@ void IndexCollectNode::doToVelocyPack(velocypack::Builder& builder,
       builder.add("type", agg.type);
       builder.add(VPackValue("outVariable"));
       agg.outVariable->toVelocyPack(builder);
-      builder.add(VPackValue("expression"));
-      agg.expression->toVelocyPack(builder, true);
+      builder.add(VPackValue("expressions"));
+      {
+        VPackArrayBuilder exprGuard(&builder);
+        for (auto const& expression : agg.expressions) {
+          // Expression::toVelocyPack emits the bare node, so the array holds
+          // nodes rather than {"expression": ...} objects
+          expression->toVelocyPack(builder, true);
+        }
+      }
     }
   }
 

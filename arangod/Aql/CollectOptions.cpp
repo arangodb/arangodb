@@ -21,13 +21,54 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CollectOptions.h"
+#include "Aql/Ast.h"
+#include "Aql/Variable.h"
+#include "Aql/VariableGenerator.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
 namespace arangodb::aql {
+
+std::vector<AggregateVarInfo> AggregateVarInfo::fromVelocyPack(
+    Ast* ast, velocypack::Slice aggregates) {
+  if (!aggregates.isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                   "invalid \"aggregates\" definition");
+  }
+
+  std::vector<AggregateVarInfo> result;
+  result.reserve(aggregates.length());
+
+  for (velocypack::Slice it : velocypack::ArrayIterator(aggregates)) {
+    Variable* outVar = Variable::varFromVPack(ast, it, "outVariable");
+
+    std::vector<Variable const*> inVars;
+    if (velocypack::Slice inVarsSlice = it.get("inVariables");
+        inVarsSlice.isArray()) {
+      inVars.reserve(inVarsSlice.length());
+      for (velocypack::Slice inVarSlice :
+           velocypack::ArrayIterator(inVarsSlice)) {
+        inVars.emplace_back(ast->variables()->createVariable(inVarSlice));
+      }
+    } else if (Variable* inVar = Variable::varFromVPack(ast, it, "inVariable",
+                                                        /*optional*/ true);
+               inVar != nullptr) {
+      // A coordinator from before multi-argument aggregates writes a single
+      // "inVariable". Coordinators are upgraded after DB servers, so during a
+      // rolling upgrade this is the shape a DB server receives.
+      inVars.emplace_back(inVar);
+    }
+
+    result.emplace_back(AggregateVarInfo{outVar, std::move(inVars),
+                                         it.get("type").copyString()});
+  }
+
+  return result;
+}
 
 CollectOptions::CollectOptions() noexcept
     : method(CollectMethod::kUndefined), fixed(false) {}
