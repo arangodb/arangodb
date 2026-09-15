@@ -303,6 +303,14 @@ function catchallAuthzSuite () {
       assertPermissions([], observe());
     },
 
+    // prefix entry for the REST API documentation; its swagger.json handler
+    // only serves files shipped with the server, and asks nothing
+    testAardvarkApiPrefix: function () {
+      beginObserve();
+      arango.GET_RAW(`/_db/_system/_admin/aardvark/api/swagger.json`);
+      assertPermissions([], observe());
+    },
+
     // Negative guard for the vulnerability quoted above: a path that only
     // *resembles* an allowlist entry must go through the normal checks. Near
     // miss on an exact entry ...
