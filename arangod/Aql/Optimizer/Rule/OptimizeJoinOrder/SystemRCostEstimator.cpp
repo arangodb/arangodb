@@ -40,8 +40,8 @@ namespace {
 auto dedupe(std::vector<AttributePath> const& paths)
     -> std::vector<AttributePath> {
   std::vector<AttributePath> result = paths;
-  std::sort(result.begin(), result.end());
-  result.erase(std::unique(result.begin(), result.end()), result.end());
+  std::ranges::sort(result);
+  result.erase(std::ranges::unique(result).begin(), result.end());
   return result;
 }
 
@@ -66,7 +66,7 @@ auto equalitySelectivity(AstNode const* eq, JoinStatistics const& stats,
       // an equality against a constant and nothing else
       continue;
     }
-    std::array<AttributePath, 1> attributes{std::move(access->second)};
+    std::array attributes{std::move(access->second)};
     auto distinct = stats.distinctValues(node, attributes);
     if (distinct.defaulted) {
       return 1.0;
