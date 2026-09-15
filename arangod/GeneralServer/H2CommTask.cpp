@@ -23,7 +23,6 @@
 #include "H2CommTask.h"
 
 #include "Basics/Exceptions.h"
-#include "Basics/PhysicalMemory.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
@@ -61,18 +60,6 @@ constexpr std::string_view switchingProtocols(
 bool expectResponseBody(int statusCode) {
   return statusCode == 101 ||
          (statusCode / 100 != 1 && statusCode != 304 && statusCode != 204);
-}
-
-// undispatched HTTP/2 request body bytes across all connections; released on
-// dispatch, stream close and connection teardown
-std::atomic<uint64_t> gBufferedH2BodyBytes{0};
-
-uint64_t maxBufferedH2BodyBytes() {
-  // keep at least MaximalBodySize so one legit max-size upload still fits
-  static uint64_t const value =
-      std::max<uint64_t>(arangodb::rest::CommTask::MaximalBodySize,
-                         arangodb::PhysicalMemory::getEffectiveValue() / 8);
-  return value;
 }
 
 }  // namespace
@@ -215,15 +202,9 @@ template<SocketType T>
   if (strm) {
     // auth only runs once the client sends END_STREAM, so cap the body as it
     // arrives. HTTP/1 caps it via Content-Length
-    bool overLimit = strm->bodySize + len > CommTask::MaximalBodySize ||
-                     me->_bufferedBodyBytes + len > CommTask::MaximalBodySize;
-    if (!overLimit) {
-      if (gBufferedH2BodyBytes.fetch_add(len, std::memory_order_relaxed) + len >
-          maxBufferedH2BodyBytes()) {
-        gBufferedH2BodyBytes.fetch_sub(len, std::memory_order_relaxed);
-        overLimit = true;
-      }
-    }
+    bool const overLimit =
+        strm->bodySize + len > CommTask::MaximalBodySize ||
+        me->_bufferedBodyBytes + len > CommTask::MaximalBodySize;
     if (overLimit) {
       LOG_TOPIC("2823d", WARN, Logger::REQUESTS)
           << "<http2> request body on stream " << stream_id
@@ -249,7 +230,6 @@ void H2CommTask<T>::releaseBufferedBody(Stream& strm) noexcept {
   if (strm.bodySize != 0) {
     TRI_ASSERT(_bufferedBodyBytes >= strm.bodySize);
     _bufferedBodyBytes -= strm.bodySize;
-    gBufferedH2BodyBytes.fetch_sub(strm.bodySize, std::memory_order_relaxed);
     strm.bodySize = 0;
   }
 }
