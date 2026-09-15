@@ -47,7 +47,7 @@ ServerIdFeature::ServerIdFeature(
     : ApplicationFeature{server, *this} {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
-
+  startsAfter<DatabasePathFeature>();
   startsAfter<DatabaseFeature>();
   startsAfter<InitDatabaseFeature>();
   startsAfter<SystemDatabaseFeature>();

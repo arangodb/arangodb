@@ -32,6 +32,7 @@
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "VectorIndex/Definition.h"
+#include "VectorIndex/FaissFactory.h"
 #include "IResearch/IResearchCommon.h"
 #include "Inspection/VPack.h"
 #include "RestServer/BootstrapFeature.h"
@@ -917,7 +918,7 @@ Result IndexFactory::enhanceJsonIndexMdiPrefixed(VPackSlice definition,
 Result IndexFactory::enhanceJsonIndexVector(
     arangodb::velocypack::Slice definition,
     arangodb::velocypack::Builder& builder, bool create) {
-  Result const res =
+  Result res =
       processIndexFields(definition, builder, 1, 1, create,
                          /*allowExpansion*/ false, /*allowSubAttributes*/ true,
                          /*allowIdAttribute*/ false);
@@ -938,12 +939,17 @@ Result IndexFactory::enhanceJsonIndexVector(
       return {TRI_ERROR_BAD_PARAMETER, "Vector index cannot be unique"};
     }
 
-    if (auto const res =
+    if (auto factoryRes = vector::validateFactoryString(vectorIndexDefinition);
+        factoryRes.fail()) {
+      return factoryRes;
+    }
+
+    if (auto storedValuesRes =
             processIndexStoredValues(definition, builder, 1, 32, create,
                                      /*allowSubAttributes*/ true,
                                      /* allowOverlappingFields */ true);
-        res.fail()) {
-      return res;
+        storedValuesRes.fail()) {
+      return storedValuesRes;
     }
     builder.add(VPackValue("params"));
     velocypack::serialize(builder, vectorIndexDefinition);

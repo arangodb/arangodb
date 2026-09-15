@@ -73,11 +73,11 @@ rocksdb::SequenceNumber forceWrite(RocksDBEngine& engine) {
 }  // namespace
 
 RocksDBMetaCollection::RocksDBMetaCollection(
-    LogicalCollection& collection, CollectionDescriptor const& descriptor)
+    LogicalCollection& collection, LocalStorageProperties const& storage)
     : PhysicalCollection(collection),
       _exclusiveLock(_schedulerWrapper),
       _engine(collection.vocbase().engine<RocksDBEngine>()),
-      _objectId(descriptor.storage.objectId),
+      _objectId(storage.objectId),
       _revisionTreeApplied(0),
       _revisionTreeCreationSeq(0),
       _revisionTreeSerializedSeq(0),
@@ -1262,7 +1262,7 @@ void RocksDBMetaCollection::bufferUpdates(
         << "rejecting change with too low sequence number " << seq
         << " for collection " << _logicalCollection.name();
 
-    TRI_ASSERT(_engine.inRecovery());
+    TRI_ASSERT(!_engine.isReady());
     return;
   }
 
