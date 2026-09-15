@@ -262,6 +262,77 @@ TEST_F(SystemRCostEstimatorTest, residual_factor_does_not_set_defaulted) {
   EXPECT_FALSE(estimator->seed(*nodeByName(g, "a")).defaulted);
 }
 
+TEST_F(SystemRCostEstimatorTest, disjunction_residual_combines_its_branches) {
+  // A real disjunction survives normalization as an OR, so the whole
+  // expression is attached as one residual rather than split into conjuncts.
+  // System-R combines independent branches as s1 + s2 - s1*s2.
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FILTER a.p == 1 OR a.q == 2 RETURN [a, b]");
+  auto g = buildGraph(*q);
+  auto [estimator, stats] = makeEstimator();
+  stats->counts = {{"a", 1000.0}, {"b", 100.0}};
+  stats->distinct["a"]["p"] = {10.0, false};  // 1/10
+  stats->distinct["a"]["q"] = {4.0, false};   // 1/4
+
+  auto seeded = estimator->seed(*nodeByName(g, "a"));
+  // 0.1 + 0.25 - 0.1*0.25 = 0.325
+  EXPECT_DOUBLE_EQ(seeded.cardinality, 325.0);
+  // and, as for every residual, the scan itself is not cheapened
+  EXPECT_DOUBLE_EQ(seeded.cost, 1000.0);
+}
+
+TEST_F(SystemRCostEstimatorTest,
+       disjunction_with_an_unknown_branch_claims_nothing) {
+  // A union cannot be bounded by one branch: if either side is unmeasurable
+  // the disjunction must claim no reduction at all. Falls out of the formula
+  // with s2 = 1, but it is the property worth pinning.
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FILTER a.p == 1 OR a.q == 2 RETURN [a, b]");
+  auto g = buildGraph(*q);
+  auto [estimator, stats] = makeEstimator();
+  stats->counts = {{"a", 1000.0}, {"b", 100.0}};
+  stats->distinct["a"]["p"] = {10.0, false};  // 'q' is left unscripted
+
+  EXPECT_DOUBLE_EQ(estimator->seed(*nodeByName(g, "a")).cardinality, 1000.0);
+}
+
+TEST_F(SystemRCostEstimatorTest,
+       disjunction_of_a_conjunction_multiplies_within_a_branch) {
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FILTER (a.p == 1 AND a.r < 5) OR a.q == 2 RETURN [a, b]");
+  auto g = buildGraph(*q);
+  auto [estimator, stats] = makeEstimator();
+  stats->counts = {{"a", 1000.0}, {"b", 100.0}};
+  stats->distinct["a"]["p"] = {10.0, false};  // 1/10
+  stats->distinct["a"]["q"] = {4.0, false};   // 1/4
+
+  // branch1 = 1/10 * 1/3, branch2 = 1/4
+  auto const branch1 = 0.1 * (1.0 / 3.0);
+  auto const expected = branch1 + 0.25 - branch1 * 0.25;
+  EXPECT_DOUBLE_EQ(estimator->seed(*nodeByName(g, "a")).cardinality,
+                   1000.0 * expected);
+}
+
+TEST_F(SystemRCostEstimatorTest,
+       equality_against_another_variable_is_not_priced) {
+  // `b.q` is not a constant, so 1/distinct does not model it. Reachable only
+  // inside a disjunction -- a top-level equality between two graph variables
+  // is an edge, not a residual.
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FILTER a.p == b.q OR a.p == b.r RETURN [a, b]");
+  auto g = buildGraph(*q);
+  auto [estimator, stats] = makeEstimator();
+  stats->counts = {{"a", 1000.0}, {"b", 100.0}};
+  stats->distinct["a"]["p"] = {10.0, false};
+
+  // two graph variables -> the residual stays graph-level and is unpriced
+  EXPECT_DOUBLE_EQ(estimator->seed(*nodeByName(g, "a")).cardinality, 1000.0);
+}
+
 TEST_F(SystemRCostEstimatorTest, distinct_is_capped_by_the_restricted_base) {
   auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
   auto g = buildGraph(*q);
