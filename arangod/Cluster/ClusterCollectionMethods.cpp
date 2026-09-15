@@ -228,7 +228,7 @@ Result impl(ClusterInfo& ci, application_features::ApplicationServer& server,
     // If we have some, let's see if they are about to be generated or not:
     if (!distributeShardsLikeColls.empty()) {
       for (auto const& c : colls) {
-        auto cid = std::to_string(c.properties().internal.id.id());
+        auto cid = std::to_string(c.properties().identity.id.id());
         distributeShardsLikeColls.erase(cid);
       }
     }

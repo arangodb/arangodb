@@ -157,8 +157,7 @@ arangodb::CollectionInvariants makeInvariants(
           .isSmartChild = descriptor.internal.isSmartChild,
           .smartJoinAttribute = descriptor.constant.smartJoinAttribute,
           .groupId = descriptor.clusteringConstant.groupId,
-          .replicatedStateId =
-              descriptor.clusteringConstant.replicatedStateId};
+          .replicatedStateId = descriptor.clusteringConstant.replicatedStateId};
 }
 
 arangodb::LocalStorageProperties makeStorageProperties(
@@ -488,9 +487,15 @@ CollectionDescriptor LogicalCollection::properties() const {
   if (auto distLike = distributeShardsLike(); !distLike.empty()) {
     d.clusteringConstant.distributeShardsLike = std::move(distLike);
   }
-  d.clusteringConstant.shards = *shardIds();
-  d.clusteringConstant.groupId = _invariants.groupId;
-  d.clusteringConstant.replicatedStateId = _invariants.replicatedStateId;
+  if (auto shards = shardIds(); shards != nullptr && !shards->empty()) {
+    d.clusteringConstant.shards = *shards;
+  }
+  if (_invariants.groupId.has_value()) {
+    d.clusteringConstant.groupId = *_invariants.groupId;
+  }
+  if (_invariants.replicatedStateId.has_value()) {
+    d.clusteringConstant.replicatedStateId = *_invariants.replicatedStateId;
+  }
   // shardsR2 is agency plan content with no owner here.
 
   d.clusteringMutable.waitForSync =
@@ -936,20 +941,6 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
     build.add("status", VPackValue(/*TRI_VOC_COL_STATUS_LOADED*/ 3));
     build.add("statusString", VPackValue("loaded"));
   }
-  // Keys another object owns the live value for. It emits them below, so the
-  // descriptor's copy is skipped here to avoid a duplicate key.
-  static constexpr std::array kEmittedElsewhere{
-      // LogicalDataSource
-      "id", "cid", "name", "isSystem", "deleted", "globallyUniqueId", "planId",
-      // ShardingInfo
-      "numberOfShards", "shardKeys", "shards", "shardingStrategy",
-      "distributeShardsLike", "replicationFactor", "writeConcern",
-      "minReplicationFactor",
-      // PhysicalCollection
-      "objectId", "cacheEnabled", "indexes",
-      // LogicalCollection and VirtualClusterSmartEdgeCollection, below
-      "keyOptions", "schema", "computedValues", "smartGraphAttribute",
-      "smartJoinAttribute", "shadowCollections"};
 
   build.add(StaticStrings::Version,
             VPackValue(static_cast<uint32_t>(_version)));

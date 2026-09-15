@@ -62,8 +62,6 @@ Result writeConcernError(std::size_t replicationFactor,
 
 }  // namespace
 
-// TODO (COR-885): the slice ctor goes away there; this normalization has to
-// move to wherever the marker is parsed into a CollectionDescriptor.
 ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info,
                            LogicalCollection* collection)
     : _collection(collection),
@@ -88,21 +86,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info,
         "invalid non-string value for 'distributeShardsLike'");
   }
 
-  // TODO (COR-885): move this to wherever the marker becomes a descriptor.
-  // Only a single server persists the leader's name; the plan stores its id.
-  if (ServerState::instance()->isSingleServer() &&
-      !_distributeShardsLike.empty() &&
-      basics::StringUtils::try_uint64(_distributeShardsLike).fail()) {
-    TRI_ASSERT(_collection != nullptr);
-    CollectionNameResolver resolver(_collection->vocbase());
-    if (auto id = resolver.getCollectionId(_distributeShardsLike); id.isSet()) {
-      _distributeShardsLike = std::to_string(id.id());
-    } else {
-      LOG_TOPIC("3f0a1", WARN, Logger::CLUSTER)
-          << "could not resolve distributeShardsLike '" << _distributeShardsLike
-          << "' of collection '" << _collection->name() << "'";
-    }
-  }
+  resolveDistributeShardsLike();
 
   VPackSlice v = info.get(StaticStrings::NumberOfShards);
   if (!v.isNone() && !v.isNumber() && !v.isNull()) {
@@ -182,20 +166,17 @@ ShardingInfo::ShardingInfo(CollectionDescriptor const& descriptor,
       _numberOfShards(descriptor.clusteringConstant.numberOfShards.value_or(1)),
       _replicationFactor(1),
       _writeConcern(1),
-      // in internal/agency context the "distributeShardsLike" key carries the
-      // cid, which is what the emission below expects on a coordinator
+      // the field holds the leader's cid everywhere but in a marker
       _distributeShardsLike(
-          ServerState::instance()->isCoordinator()
-              ? descriptor.clusteringConstant.distributeShardsLikeCid.value_or(
-                    "")
-              : descriptor.clusteringConstant.distributeShardsLike.value_or(
-                    "")),
+          descriptor.clusteringConstant.distributeShardsLike.value_or("")),
       _shardIds(std::make_shared<ShardMap>()) {
   TRI_ASSERT(_collection != nullptr);
 
   bool const isSmart = descriptor.constant.isSmart;
 
   resolveNumberOfShards(isSmart);
+
+  resolveDistributeShardsLike();
 
   // the inspector's transformer already turned "satellite" into 0
   applyReplicationFactorAndWriteConcern(
@@ -215,6 +196,26 @@ ShardingInfo::ShardingInfo(CollectionDescriptor const& descriptor,
   }
 
   initializeShardingStrategy(descriptor);
+}
+
+// ShardingInfo::toVelocyPack writes the leader's name on a single server, so a
+// marker comes back carrying one. Everything else expects the id.
+void ShardingInfo::resolveDistributeShardsLike() {
+  if (!ServerState::instance()->isSingleServer() ||
+      _distributeShardsLike.empty() ||
+      basics::StringUtils::try_uint64(_distributeShardsLike).ok()) {
+    return;
+  }
+
+  TRI_ASSERT(_collection != nullptr);
+  CollectionNameResolver resolver(_collection->vocbase());
+  if (auto id = resolver.getCollectionId(_distributeShardsLike); id.isSet()) {
+    _distributeShardsLike = std::to_string(id.id());
+  } else {
+    LOG_TOPIC("3f0a1", WARN, Logger::CLUSTER)
+        << "could not resolve distributeShardsLike '" << _distributeShardsLike
+        << "' of collection '" << _collection->name() << "'";
+  }
 }
 
 void ShardingInfo::resolveNumberOfShards(bool isSmart) {
