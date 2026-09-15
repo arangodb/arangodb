@@ -102,9 +102,9 @@ void performRequests(fu::ProtocolType pt) {
     req = ::sleepRequest(4.0);
     req->timeout(std::chrono::seconds(60));
 #if defined(__SANITIZE_ADDRESS__) || defined(__SANITIZE_THREAD__)
-    req->timeout(std::chrono::seconds(100));
+    req->timeout(std::chrono::seconds(300));
 #elif __has_feature(address_sanitizer) || __has_feature(thread_sanitizer)
-    req->timeout(std::chrono::seconds(100));
+    req->timeout(std::chrono::seconds(300));
 #endif
     wg->add();
     connection->sendRequest(std::move(req),
