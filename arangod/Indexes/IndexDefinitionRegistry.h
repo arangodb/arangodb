@@ -34,6 +34,12 @@
 
 namespace arangodb {
 
+namespace application_features {
+
+class ApplicationServer;
+
+}  // namespace application_features
+
 // Definition-only counterpart to IndexFactory; deliberately not derived
 // from it, since IndexFactory::emplace() is typed to IndexTypeFactory
 class IndexDefinitionRegistry {
