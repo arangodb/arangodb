@@ -27,8 +27,6 @@
 
 #include <cstddef>
 #include <optional>
-#include <span>
-#include <string_view>
 #include <tuple>
 #include <unordered_map>
 #include <vector>
@@ -39,7 +37,6 @@ struct AstNode;
 class CalculationNode;
 class ExecutionNode;
 class ExecutionPlan;
-class FilterNode;
 struct Variable;
 }  // namespace arangodb::aql
 
@@ -179,6 +176,9 @@ class Builder {
 
   ExecutionPlan& _plan;
   Ast* _ast;
+  MatchFilterBuilder _filters;
+  MatchCollectionAccessBuilder _collections;
+  MatchProjectionBuilder _projections;
 };
 
 }  // namespace arangodb::aql::match

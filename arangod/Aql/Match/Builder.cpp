@@ -24,9 +24,7 @@
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
-#include "Aql/Collection.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
-#include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/ExecutionNode/FilterNode.h"
 #include "Aql/ExecutionNode/TraversalNode.h"
 #include "Aql/ExecutionPlan.h"
@@ -37,14 +35,10 @@
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 #include "Graph/TraverserOptions.h"
-#include "VocBase/AccessMode.h"
 
-#include <absl/strings/str_cat.h>
-
-#include <algorithm>
+#include <functional>
 #include <limits>
 #include <memory>
-#include <unordered_set>
 #include <utility>
 
 namespace arangodb::aql::match {
@@ -475,7 +469,7 @@ Builder::createTraversalForPattern(
       edge.direction));
 
   auto* startNode = _ast->createNodeReference(startNodeVar);
-  auto* edgeCollectionList = buildEdgeCollectionList(edge);
+  auto* edgeCollectionList = _collections.buildEdgeCollectionList(edge);
   auto* graphNode = _ast->createNodeCollectionList(edgeCollectionList,
                                                    _ast->query().resolver());
 
@@ -503,8 +497,8 @@ Builder::createTraversalForPattern(
       auto rightVertexVar = target.variableReference;
 
       auto traversalOutputVertexId =
-          createPropertyAccess(traversalVertexOutputVar, "_id");
-      auto rightVertexId = createPropertyAccess(rightVertexVar, "_id");
+          _filters.createPropertyAccess(traversalVertexOutputVar, "_id");
+      auto rightVertexId = _filters.createPropertyAccess(rightVertexVar, "_id");
       auto condition = _ast->createNodeBinaryOperator(
           NODE_TYPE_OPERATOR_BINARY_EQ, rightVertexId, traversalOutputVertexId);
       auto const* filterVar = _ast->variables()->createTemporaryVariable();
@@ -527,8 +521,10 @@ Builder::createTraversalForPattern(
       traversal->setVertexOutput(traversalVertexOutputVar);
 
       auto traversalVertexOutputId =
-          createPropertyAccess(traversalVertexOutputVar, "_id");
-      auto vertexCollectionName = requireCollectionName(vertex.collection);
+          _filters.createPropertyAccess(traversalVertexOutputVar, "_id");
+      auto vertexCollectionName =
+          MatchCollectionAccessBuilder::requireCollectionName(
+              vertex.collection);
       char const* registeredCollectionName =
           _ast->resources().registerString(vertexCollectionName);
 
@@ -552,7 +548,7 @@ Builder::createTraversalForPattern(
       // (pre-projection) while still inside the traversal fragment.
       ExecutionNode* lastNode = filter;
       if (!vertex.properties.empty() || vertex.filter.has_value()) {
-        auto [propCalc, propFilter] = createPropertiesFilter(
+        auto [propCalc, propFilter] = _filters.createPropertiesFilter(
             traversalVertexOutputVar, vertex.properties, vertex.filter, subst);
         propCalc->addDependency(lastNode);
         lastNode = propFilter;
@@ -627,7 +623,7 @@ ExecutionNode* Builder::build(ExecutionNode* previous,
     std::vector<AstNode const*> pathEdges;
     std::vector<ExecutionNode*> projections;
 
-    std::unordered_map<VariableId, Variable const*> variableSubstitutions;
+    MatchVariableScope variableScope;
 
     auto const handleStartVertex = [&](NormalizedVertex const& vertex) {
       auto binding = bindProjectedVariable(vertex.variable, vertex.projection,
@@ -759,7 +755,7 @@ ExecutionNode* Builder::build(ExecutionNode* previous,
           previous = en = lastNodeFilter;
         }
 
-        auto [firstNode, lastNode] = createVertexEdgeFilter(
+        auto [firstNode, lastNode] = _filters.createVertexEdgeFilter(
             prevVar, edgeVar, rightVertexVar, edge.direction);
         firstNode->addDependency(previous);
         previous = en = lastNode;
@@ -786,7 +782,7 @@ ExecutionNode* Builder::build(ExecutionNode* previous,
 
         auto [firstNode, lastNode, rightVertexVar] = createTraversalForPattern(
             prevVar, edge, target, /*edgeDocumentOutputVariable*/ nullptr,
-            vertexTraversalOutputVariable, variableSubstitutions);
+            vertexTraversalOutputVariable, variableScope.map());
 
         firstNode->addDependency(previous);
         previous = en = lastNode;
