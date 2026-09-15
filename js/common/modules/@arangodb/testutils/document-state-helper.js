@@ -97,11 +97,12 @@ const localKeyStatus = function (db, col, key, available, value) {
  * To check for the absence of a key, pass `null` as the value.
  */
 const checkFollowersValue = function (servers, db, shardId, logId, key, value, isReplication2) {
+  throw new Error("fixme");/*
   let localValues = {};
   for (const [serverId] of Object.entries(servers)) {
     if (value === null) {
       // Check for absence of key
-      lh.waitFor(localKeyStatus(db, shardId, key, false));
+      lh.waitFor(localKeyStatus(serverId, db, shardId, key, false));
     } else {
       // Check for key and value
       lh.waitFor(localKeyStatus(db, shardId, key, true, value));
@@ -139,7 +140,8 @@ const checkFollowersValue = function (servers, db, shardId, logId, key, value, i
     const ids = Object.values(localValues).map(value => value._id);
     assertTrue(ids.every((val, i, arr) => val === arr[0]), `_id mismatch ${JSON.stringify(localValues)}` +
       `\n${replication2Log}`);
-  }
+      }
+      */
 };
 
 /**

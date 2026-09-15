@@ -272,8 +272,10 @@ const replicatedLogDeletePlan = function (database, logId) {
 };
 
 const replicatedLogDeleteTarget = function (database, logId) {
+  throw new Error("fixme: use agencymanager"); /*
   clientHelper.agency.remove(`Target/ReplicatedLogs/${database}/${logId}`);
   clientHelper.agency.increaseVersion(`Target/Version`);
+  */
 };
 
 const createReconfigureJob = function (database, logId, ops) {
