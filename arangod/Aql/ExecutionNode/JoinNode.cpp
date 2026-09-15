@@ -343,7 +343,7 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
         continue;
       }
       TRI_ASSERT(var != nullptr);
-      auto regId = variableToRegisterId(var);
+      auto regId = outputRegister(var);
       varsToRegs.emplace(var->id, regId);
       if (idx.producesOutput) {
         writableOutputRegisters.emplace(regId);
@@ -353,7 +353,7 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
     RegisterId documentOutputRegister = RegisterId::maxRegisterId;
     if (!p.hasOutputRegisters()) {
       if (idx.producesOutput && !idx.isLateMaterialized) {
-        documentOutputRegister = variableToRegisterId(idx.outVariable);
+        documentOutputRegister = outputRegister(idx.outVariable);
         writableOutputRegisters.emplace(documentOutputRegister);
       }
     }
@@ -368,7 +368,7 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
     data.isLateMaterialized = idx.isLateMaterialized;
     data.isUniqueStream = idx.isUniqueStream;
     if (data.isLateMaterialized) {
-      data.docIdOutputRegister = variableToRegisterId(idx.outDocIdVariable);
+      data.docIdOutputRegister = outputRegister(idx.outDocIdVariable);
       writableOutputRegisters.emplace(data.docIdOutputRegister);
     }
 
@@ -385,9 +385,18 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
         data.constantFields = idx.constantFields;
       }
 
+      // These are constant for the whole lookup, so they come from the input
+      // row.
+      //
+      // TODO (COR-958) The join rule also admits expressions over an earlier
+      // index's document, such as `FILTER doc2.x == doc1.z + 1`. That shape
+      // cannot work: JoinExecutor evaluates these expressions once per input
+      // row, where that document does not exist, and the variable is never
+      // assigned a register. Such a query now fails with "no register
+      // assigned" instead of aborting the server. The fix belongs in the
+      // rule, not here.
       for (auto const& var : varsUsed) {
-        auto regId = variableToRegisterId(var);
-        data.expressionVarsToRegs.emplace_back(var->id, regId);
+        data.expressionVarsToRegs.emplace_back(var->id, inputRegister(var));
       }
     } else {
       data.usedKeyFields = {0};
@@ -407,15 +416,19 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
 
       for (auto const& var : inVars) {
         TRI_ASSERT(var != nullptr);
-        if (var->id == idx.outVariable->id &&
-            idx.filterProjections.usesCoveringIndex()) {
-          // if the index covers the filter projections, then don't add the
-          // document variable to the filter vars. It is not used and will cause
-          // an error during register planning.
+        if (var->id == idx.outVariable->id) {
+          if (idx.filterProjections.usesCoveringIndex()) {
+            // the index covers the filter projections, so the filter does not
+            // read the document at all. Adding it would cause an error during
+            // register planning.
+            continue;
+          }
+          // not covered: the filter reads the document this node produces.
+          // getVariablesSetHere() reports it because idx.filter is set.
+          filter.filterVarsToRegs.emplace_back(var->id, outputRegister(var));
           continue;
         }
-        auto regId = variableToRegisterId(var);
-        filter.filterVarsToRegs.emplace_back(var->id, regId);
+        filter.filterVarsToRegs.emplace_back(var->id, inputRegister(var));
       }
       if (filter.projections.usesCoveringIndex()) {
         for (auto const& p : filter.projections.projections()) {

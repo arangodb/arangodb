@@ -101,24 +101,16 @@ std::unique_ptr<ExecutionBlock> MaterializeRocksDBNode::createBlock(
 
   RegisterId outDocumentRegId;
   if (projections().empty() || !projections().hasOutputRegisters()) {
-    auto it = getRegisterPlan()->varInfo.find(_outVariable->id);
-    TRI_ASSERT(it != getRegisterPlan()->varInfo.end())
-        << "variable not found = " << _outVariable->id;
-    outDocumentRegId = it->second.registerId;
+    outDocumentRegId = outputRegister(_outVariable);
     writableOutputRegisters.emplace(outDocumentRegId);
   } else {
     for (auto const& p : projections().projections()) {
-      auto reg = getRegisterPlan()->variableToRegisterId(p.variable);
+      auto reg = outputRegister(p.variable);
       varsToRegs.emplace(p.variable->id, reg);
       writableOutputRegisters.emplace(reg);
     }
   }
-  RegisterId inNmDocIdRegId;
-  {
-    auto it = getRegisterPlan()->varInfo.find(_inNonMaterializedDocId->id);
-    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-    inNmDocIdRegId = it->second.registerId;
-  }
+  RegisterId inNmDocIdRegId = inputRegister(_inNonMaterializedDocId);
   RegIdSet readableInputRegisters;
   if (inNmDocIdRegId.isValid()) {
     readableInputRegisters.emplace(inNmDocIdRegId);

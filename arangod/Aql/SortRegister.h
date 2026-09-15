@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include "Aql/VarInfoMap.h"
 #include "Aql/types.h"
 
 #include <string>
@@ -48,8 +49,10 @@ struct SortRegister {
 
   SortRegister(RegisterId reg, SortElement const& element) noexcept;
 
+  /// @brief `registers` must be bound to the depth of the rows the sort
+  /// criteria are read from, i.e. the consuming node's input rows.
   static void fill(ExecutionPlan const& /*execPlan*/,
-                   RegisterPlan const& regPlan,
+                   RegisterResolver const& registers,
                    std::vector<SortElement> const& elements,
                    std::vector<SortRegister>& sortRegisters);
 };  // SortRegister
