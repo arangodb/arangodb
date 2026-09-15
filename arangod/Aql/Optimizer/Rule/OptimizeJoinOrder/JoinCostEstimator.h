@@ -79,7 +79,7 @@ class JoinCostEstimator {
   /// @brief the estimate for a prefix consisting of `start` alone.
   virtual auto seed(JoinGraph::Node const& start) const -> JoinEstimate = 0;
 
-  /// @brief extend the prefix by `next`, joined via `connecting` -- *all* edges
+  /// @brief extend the prefix by `next`, joined via `connecting` *all* edges
   /// between `next` and the prefix, because a cycle constrains the new vertex
   /// with more than one predicate. An empty span means a cross product.
   virtual auto extend(JoinEstimate const& prefix, JoinGraph::Node const& next,
