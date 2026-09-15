@@ -96,17 +96,19 @@ const authTestRedirectLocation = '/_db/_system/_admin/aardvark/index.html';
 
 // expected HTTP response code per URL and authentication configuration
 const authTestUrls = {
-  '/_api/':           { Full: 401, SystemAuth: 401, None: 404 },
-  '/_api':            { Full: 401, SystemAuth: 401, None: 404 },
-  '/_api/version':    { Full: 401, SystemAuth: 401, None: 200 },
-  '/_admin/html':     { Full: 401, SystemAuth: 401, None: 301 },
-  '/_admin/html/':    { Full: 401, SystemAuth: 401, None: 301 },
-  '/':                { Full: 301, SystemAuth: 301, None: 301 },
-  '//':               { Full: 301, SystemAuth: 301, None: 301 },
-  '/_db/_system/':    { Full: 301, SystemAuth: 301, None: 301 },
-  '/_db/_system':     { Full: 401, SystemAuth: 401, None: 301 },
-  '/test':            { Full: 401, SystemAuth: 404, None: 404 },
-  '/the-big-fat-fox': { Full: 401, SystemAuth: 404, None: 404 }
+  '/_api/':                            { Full: 401, SystemAuth: 401, None: 404 },
+  '/_api':                             { Full: 401, SystemAuth: 401, None: 404 },
+  '/_api/version':                     { Full: 401, SystemAuth: 401, None: 200 },
+  '/_admin/html':                      { Full: 401, SystemAuth: 401, None: 301 },
+  '/_admin/html/':                     { Full: 401, SystemAuth: 401, None: 301 },
+  '/':                                 { Full: 301, SystemAuth: 301, None: 301 },
+  '//':                                { Full: 301, SystemAuth: 301, None: 301 },
+  '/_db/_system/':                     { Full: 301, SystemAuth: 301, None: 301 },
+  '/_db/_system':                      { Full: 401, SystemAuth: 401, None: 301 },
+  '/test':                             { Full: 401, SystemAuth: 404, None: 404 },
+  '/the-big-fat-fox':                  { Full: 401, SystemAuth: 404, None: 404 },
+  '/_admin/aardvark/api/index.html':   { Full: 200, SystemAuth: 200, None: 200 },
+  '/_admin/aardvark/api/swagger.json': { Full: 200, SystemAuth: 200, None: 200 },
 };
 
 function checkBodyForJsonToParse (request) {
