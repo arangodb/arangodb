@@ -129,7 +129,7 @@ function throwIfApiDisabled () {
 actions.defineHttp({
   url: '_admin/foxx/install',
   prefix: false,
-  isSystem: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
@@ -153,7 +153,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/uninstall',
   prefix: false,
-  isSystem: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
@@ -179,7 +179,7 @@ actions.defineHttp({
   isSystem: true,
 
   callback: easyPostCallback({
-    body: false,
+    body: true,
     callback: function (body, req) {
       throwIfApiDisabled();
 
@@ -200,7 +200,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/upgrade',
   prefix: false,
-  isSystem: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
@@ -224,7 +224,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/configure',
   prefix: false,
-  isSystem: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
@@ -249,7 +249,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/set-dependencies',
   prefix: false,
-  isSystem: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
