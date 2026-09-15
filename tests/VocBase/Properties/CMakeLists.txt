@@ -33,6 +33,7 @@ target_include_directories(arangodb_vocbase_properties_test PRIVATE
 target_link_libraries(
   arangodb_vocbase_properties_test
   arango_vocbase_api
-  arango_inspection
+  arango_basic_errors
+  immer
   gtest
 )
