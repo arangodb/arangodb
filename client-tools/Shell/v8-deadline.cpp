@@ -248,6 +248,29 @@ static void JS_RemovePidFromMonitor(
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_IsDeadlineReached(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  // extract the argument
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("isExecutionDeadlineReached()");
+  }
+
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_v8security;
+
+  if (!v8security.isAllowedToControlProcesses(isolate)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        "not allowed to execute or modify state of external processes");
+  }
+
+  TRI_V8_RETURN_BOOL(isExecutionDeadlineReached(isolate));
+  TRI_V8_TRY_CATCH_END
+}
+
 static void JS_RegisterExecutionDeadlineInterruptHandler(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -294,6 +317,10 @@ void TRI_InitV8Deadline(v8::Isolate* isolate, uint32_t timeout) {
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_INTERRUPT_TO_DEADLINE"),
       JS_RegisterExecutionDeadlineInterruptHandler);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_IS_DEADLINE_REACHED"),
+      JS_IsDeadlineReached);
+
   if (timeout != 0) {
     std::lock_guard mutex{singletonDeadlineMutex};
     executionDeadline = TRI_microtime() + timeout;
