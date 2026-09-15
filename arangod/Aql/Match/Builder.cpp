@@ -92,15 +92,17 @@ void applyPathRange(PathRange const& range,
 
 }  // namespace
 
-Builder::Builder(ExecutionPlan& plan, Ast* ast) : _plan(plan), _ast(ast) {}
+Builder::Builder(ExecutionPlan& plan, Ast* ast)
+    : _plan(plan), _ast(ast) {}
 
 Builder::ProjectionBinding Builder::bindProjectedVariable(
-    Variable const* destination, std::optional<Projection> const& projection,
+    Variable const* destination,
+    std::optional<Projection> const& projection,
     std::unordered_map<VariableId, Variable const*>& subst) {
   ProjectionBinding binding;
   binding.destination = destination;
-  binding.hasProjection = projection.has_value();
-  if (binding.hasProjection) {
+  binding.projection = projection ? &*projection : nullptr;
+  if (binding.hasProjection()) {
     binding.fullDocument = _ast->variables()->createTemporaryVariable();
     subst.emplace(destination->id, binding.fullDocument);
   } else {
@@ -109,24 +111,28 @@ Builder::ProjectionBinding Builder::bindProjectedVariable(
   return binding;
 }
 
-void Builder::maybeQueueProjection(
+void Builder::maybeQueueDocumentProjection(
     std::vector<ExecutionNode*>& projections, ProjectionBinding const& binding,
-    std::optional<Projection> const& projection, bool isEdge,
     std::unordered_map<VariableId, Variable const*> const& subst) {
-  if (!binding.hasProjection) {
+  if (!binding.hasProjection()) {
     return;
   }
-  if (isEdge) {
-    projections.push_back(createEdgeDocumentPatternProjection(
-        binding.destination, binding.fullDocument, projection, subst));
-  } else {
-    projections.push_back(createDocumentPatternProjection(
-        binding.destination, binding.fullDocument, projection, subst));
+  projections.push_back(createDocumentPatternProjection(
+      binding.destination, binding.fullDocument, *binding.projection, subst));
+}
+
+void Builder::maybeQueueEdgeProjection(
+    std::vector<ExecutionNode*>& projections, ProjectionBinding const& binding,
+    std::unordered_map<VariableId, Variable const*> const& subst) {
+  if (!binding.hasProjection()) {
+    return;
   }
+  projections.push_back(createEdgeDocumentPatternProjection(
+      binding.destination, binding.fullDocument, *binding.projection, subst));
 }
 
 AstNode* Builder::createPropertyAccess(Variable const* variable,
-                                       std::string_view property) {
+                                            std::string_view property) {
   char const* registered = _ast->resources().registerString(property);
   return _ast->createNodeAttributeAccess(
       _ast->createNodeReference(variable),
@@ -151,7 +157,8 @@ AstNode* Builder::buildEdgeCollectionList(NormalizedEdge const& edge) {
 }
 
 std::tuple<CalculationNode*, FilterNode*> Builder::createPropertiesFilter(
-    Variable const* variable, std::vector<PropertyConstraint> const& properties,
+    Variable const* variable,
+    std::vector<PropertyConstraint> const& properties,
     std::optional<ExpressionRef> const& additionalFilter,
     std::unordered_map<VariableId, Variable const*> const& subst) {
   AstNode* root = nullptr;
@@ -223,28 +230,28 @@ Builder::createCollectionAccess(
 
 ExecutionNode* Builder::createDocumentPatternProjection(
     Variable const* destinationVariable, Variable const* fullDocumentVar,
-    std::optional<Projection> const& projection,
+    Projection const& projection,
     std::unordered_map<VariableId, Variable const*> const& subst) {
-  return createPatternProjection(destinationVariable, fullDocumentVar,
-                                 projection,
-                                 kMandatoryDocumentProjectionAttributes, subst);
+  return createPatternProjection(
+      destinationVariable, fullDocumentVar, &projection,
+      kMandatoryDocumentProjectionAttributes, subst);
 }
 
 ExecutionNode* Builder::createEdgeDocumentPatternProjection(
     Variable const* destinationVariable, Variable const* fullDocumentVar,
-    std::optional<Projection> const& projection,
+    Projection const& projection,
     std::unordered_map<VariableId, Variable const*> const& subst) {
   return createPatternProjection(
-      destinationVariable, fullDocumentVar, projection,
+      destinationVariable, fullDocumentVar, &projection,
       kMandatoryEdgeDocumentProjectionAttributes, subst);
 }
 
 ExecutionNode* Builder::createPatternProjection(
     Variable const* destinationVariable, Variable const* fullDocumentVar,
-    std::optional<Projection> const& projectionOpt,
+    Projection const* projection,
     std::span<std::string_view const> mandatoryAttributes,
     std::unordered_map<VariableId, Variable const*> const& subst) {
-  if (!projectionOpt.has_value()) {
+  if (projection == nullptr) {
     auto* root = _ast->createNodeReference(fullDocumentVar);
     return _plan.createNode<CalculationNode>(
         &_plan, _plan.nextId(), std::make_unique<Expression>(_ast, root),
@@ -253,7 +260,7 @@ ExecutionNode* Builder::createPatternProjection(
 
   // Projection semantics (paths, aliases, reserved attributes) are already
   // normalized; this method only builds the AST / CalculationNode.
-  auto const& projection = *projectionOpt;
+  auto const& projectionRef = *projection;
   auto* root = _ast->createNodeObject();
   auto* ref = _ast->createNodeReference(fullDocumentVar);
 
@@ -313,7 +320,7 @@ ExecutionNode* Builder::createPatternProjection(
   };
   std::vector<AliasItem> aliases;
 
-  for (auto const& item : projection.items) {
+  for (auto const& item : projectionRef.items) {
     if (item.isAlias()) {
       aliases.push_back(
           AliasItem{item.name, const_cast<AstNode*>(item.expression.node)});
@@ -448,7 +455,8 @@ std::tuple<CalculationNode*, FilterNode*> Builder::createVertexEdgeFilter(
 std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
 Builder::createTraversalForPattern(
     Variable const* startNodeVar, NormalizedEdge const& edge,
-    PatternElement const& target, Variable const* edgeDocumentOutputVariable,
+    PatternElement const& target,
+    Variable const* edgeDocumentOutputVariable,
     Variable const* vertexDocumentOutputVariable,
     std::unordered_map<VariableId, Variable const*> const& subst) {
   aql::QueryContext& query = _ast->query();
@@ -587,18 +595,19 @@ CalculationNode* Builder::constructPathObject(
 }
 
 void Builder::addPathVertex(std::vector<AstNode const*>& pathVertices,
-                            Variable const* variable) {
+                                 Variable const* variable) {
   pathVertices.push_back(_ast->createNodeReference(variable));
 }
 
 void Builder::addPathEdge(std::vector<AstNode const*>& pathEdges,
-                          Variable const* variable) {
+                               Variable const* variable) {
   pathEdges.push_back(_ast->createNodeReference(variable));
 }
 
-void Builder::appendTraversalPath(std::vector<AstNode const*>& pathVertices,
-                                  std::vector<AstNode const*>& pathEdges,
-                                  Variable const* traversalPathVariable) {
+void Builder::appendTraversalPath(
+    std::vector<AstNode const*>& pathVertices,
+    std::vector<AstNode const*>& pathEdges,
+    Variable const* traversalPathVariable) {
   pathEdges.push_back(
       _ast->createNodeArraySplice(_ast->createNodeAttributeAccess(
           _ast->createNodeReference(traversalPathVariable), "edges")));
@@ -610,7 +619,7 @@ void Builder::appendTraversalPath(std::vector<AstNode const*>& pathVertices,
 }
 
 ExecutionNode* Builder::build(ExecutionNode* previous,
-                              AstNode const* matchNode) {
+                                   AstNode const* matchNode) {
   PatternNormalizer normalizer(*_ast);
   NormalizedStatement const statement = normalizer.normalize(*matchNode);
 
@@ -637,8 +646,7 @@ ExecutionNode* Builder::build(ExecutionNode* previous,
 
       addPathVertex(pathVertices, binding.destination);
 
-      maybeQueueProjection(projections, binding, vertex.projection,
-                           /*isEdge*/ false, variableSubstitutions);
+      maybeQueueDocumentProjection(projections, binding, variableSubstitutions);
     };
 
     if (pattern.start.kind == PatternElement::Kind::kVertex) {
@@ -700,15 +708,15 @@ ExecutionNode* Builder::build(ExecutionNode* previous,
           previous = en = propFilter;
         }
 
-        maybeQueueProjection(projections, edgeBinding, edge.projection,
-                             /*isEdge*/ true, variableSubstitutions);
-        if (vertexBinding.hasProjection) {
-          // Traversal returns the full-document output in rightVertexVar;
-          // keep that binding for the delayed projection node.
-          vertexBinding.fullDocument = rightVertexVar;
-          maybeQueueProjection(projections, vertexBinding,
-                               target.vertex->projection, /*isEdge*/ false,
-                               variableSubstitutions);
+        maybeQueueEdgeProjection(projections, edgeBinding,
+                                 variableSubstitutions);
+        if (vertexBinding.hasProjection()) {
+          // createTraversalForPattern (kVertex) writes into and returns the
+          // vertexDocumentOutputVariable we passed — already
+          // vertexBinding.fullDocument.
+          ADB_PROD_ASSERT(rightVertexVar == vertexBinding.fullDocument);
+          maybeQueueDocumentProjection(projections, vertexBinding,
+                                       variableSubstitutions);
         }
 
         prevVar = rightVertexVar;
@@ -727,8 +735,8 @@ ExecutionNode* Builder::build(ExecutionNode* previous,
         en->addDependency(previous);
         previous = en = lastNodeFilter;
 
-        maybeQueueProjection(projections, edgeBinding, edge.projection,
-                             /*isEdge*/ true, variableSubstitutions);
+        maybeQueueEdgeProjection(projections, edgeBinding,
+                                 variableSubstitutions);
 
         Variable const* rightVertexVar;
         Variable const* vertexDestinationVariable = nullptr;
@@ -750,9 +758,8 @@ ExecutionNode* Builder::build(ExecutionNode* previous,
                                      variableSubstitutions);
           en->addDependency(previous);
 
-          maybeQueueProjection(projections, vertexBinding,
-                               target.vertex->projection, /*isEdge*/ false,
-                               variableSubstitutions);
+          maybeQueueDocumentProjection(projections, vertexBinding,
+                                       variableSubstitutions);
 
           previous = en = lastNodeFilter;
         }
@@ -789,11 +796,13 @@ ExecutionNode* Builder::build(ExecutionNode* previous,
         firstNode->addDependency(previous);
         previous = en = lastNode;
 
-        if (vertexBinding.hasProjection) {
-          vertexBinding.fullDocument = rightVertexVar;
-          maybeQueueProjection(projections, vertexBinding,
-                               target.vertex->projection, /*isEdge*/ false,
-                               variableSubstitutions);
+        if (vertexBinding.hasProjection()) {
+          // createTraversalForPattern (kVertex) writes into and returns the
+          // vertexDocumentOutputVariable we passed — already
+          // vertexBinding.fullDocument.
+          ADB_PROD_ASSERT(rightVertexVar == vertexBinding.fullDocument);
+          maybeQueueDocumentProjection(projections, vertexBinding,
+                                       variableSubstitutions);
         }
 
         prevVar = rightVertexVar;

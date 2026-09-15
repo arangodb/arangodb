@@ -696,6 +696,39 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
   return RocksDBValue::documentId(val);
 }
 
+ResultT<std::optional<std::uint64_t>>
+RocksDBPrimaryIndex::currentVersionTimestamp(std::string_view key) const {
+  TRI_ASSERT(_cf->GetComparator()->timestamp_size() > 0);
+
+  RocksDBKey indexKey(ThreadLocalStringLeaser::lease());
+  indexKey.constructPrimaryIndexValue(objectId(), key);
+
+  // Deliberately read the committed state rather than going through a
+  // transaction: the caller wants to know what the key actually looks like
+  // now, which is exactly what its own (possibly older) snapshot cannot show.
+  rocksdb::Slice latest = rocksdb::MaxU64Ts();
+  rocksdb::ReadOptions ro;
+  ro.timestamp = &latest;
+  rocksdb::PinnableSlice value;
+  std::string timestamp;
+  rocksdb::Status s =
+      _engine.db()->Get(ro, _cf, indexKey.string(), &value, &timestamp);
+  if (s.IsNotFound()) {
+    return ResultT<std::optional<std::uint64_t>>::success(std::nullopt);
+  }
+  if (!s.ok()) {
+    return rocksutils::convertStatus(s, rocksutils::index);
+  }
+
+  // the entry's own timestamp is the _created of the version it points at
+  std::uint64_t created = 0;
+  if (auto d = rocksdb::DecodeU64Ts(rocksdb::Slice(timestamp), &created);
+      !d.ok()) {
+    return rocksutils::convertStatus(d, rocksutils::index);
+  }
+  return ResultT<std::optional<std::uint64_t>>::success(created);
+}
+
 /// @brief reads a revision id from the primary index
 /// if the document does not exist, this function will return false
 /// if the document exists, the function will return true

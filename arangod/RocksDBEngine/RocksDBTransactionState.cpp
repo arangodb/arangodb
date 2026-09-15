@@ -77,6 +77,11 @@ void RocksDBTransactionState::unuse() noexcept {
 #endif
 
 /// @brief start a transaction
+Result RocksDBTransactionState::setTimeTravelWriteTimestamp(
+    DataSourceId collectionId, std::uint64_t timestamp) {
+  return rocksdbMethods(collectionId)->setWriteTimestamp(timestamp);
+}
+
 futures::Future<Result> RocksDBTransactionState::beginTransaction(
     transaction::Hints hints) {
   LOG_TRX("0c057", TRACE, this)

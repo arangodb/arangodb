@@ -75,6 +75,13 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
                             ReadOwnWrites readOwnWrites,
                             bool& foundInCache) const;
 
+  /// @brief the timestamp at which the currently committed version of `key`
+  /// was created, taken from its index entry's own User-Defined Timestamp. An
+  /// unset optional means the key has no current version. Time-travel
+  /// collections only.
+  ResultT<std::optional<std::uint64_t>> currentVersionTimestamp(
+      std::string_view key) const;
+
   /// @brief reads a revision id from the primary index
   /// the revision id will only be non-zero if the primary index
   /// value contains the document's revision id. note that this is not
