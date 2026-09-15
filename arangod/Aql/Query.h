@@ -262,8 +262,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// prepareQuery() uses (via preparePlan()), but, unlike prepareQuery(),
   /// never proceeds to physically instantiate the execution engine or enter
   /// EXECUTION state. The query is left in PLAN_OPTIMIZATION with its
-  /// transaction open, so optimization-time APIs such as
-  /// trxForOptimization() remain callable on the result afterwards.
+  /// transaction open.
   void prepareOptimizedPlanForTests();
 #endif
 
