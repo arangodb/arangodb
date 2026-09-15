@@ -37,7 +37,7 @@ RestEngineHandler::RestEngineHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
     : RestBaseHandler(server, request, response),
-      _engine(server.getFeature<DatabaseFeature>().engine()) {}
+      _engine(server.getFeature<StorageEngine>()) {}
 
 // Mounted at /_api/engine (prefix)
 RestStatus RestEngineHandler::execute() {

@@ -248,7 +248,8 @@ void SupportInfoBuilder::buildHostInfo(VPackBuilder& result,
   if (!ServerState::instance()->isCoordinator()) {
     result.add("engineStats", VPackValue(VPackValueType::Object));
     VPackBuilder stats;
-    StorageEngine& engine = databaseFeature.engine();
+    StorageEngine& engine =
+        databaseFeature.server().getFeature<StorageEngine>();
     engine.getStatistics(stats);
     auto names = {
         // edge cache

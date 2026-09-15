@@ -563,23 +563,34 @@ void registerFilters(aql::AqlFunctionFeature& functions) {
   addFunction(functions, {"ANALYZER", ".,.", flagsNoAnalyzer, &contextFunc});
 }
 
-template<typename T>
-void registerSingleFactory(IndexTypeFactory& factory,
-                           application_features::ApplicationServer& server) {
-  if (!server.hasFeature<T>()) {
+// ClusterEngine's equal/normalize/enhanceIndexDefinition delegate to
+// indexDefinitions(), not indexFactory(), so both need arangosearch
+void registerIndexTypeFactories(application_features::ApplicationServer& server,
+                                IndexTypeFactory& clusterFactory,
+                                IndexTypeFactory& rocksDBFactory) {
+  if (!server.hasFeature<StorageEngine>()) {
     return;
   }
-  auto& engine = server.getFeature<T>();
-  auto& engineFactory = const_cast<IndexFactory&>(engine.indexFactory());
-  // TODO(MBkkt) remove std::string and update IndexFactory interface
-  auto r = engineFactory.emplace(
-      std::string{StaticStrings::ViewArangoSearchType}, factory);
-  if (!r.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        r.errorNumber(),
-        absl::StrCat("failure registering IResearch link factory with index "
-                     "factory from feature '",
-                     engine.name(), "': ", r.errorMessage()));
+  auto& engine = server.getFeature<StorageEngine>();
+
+  auto emplace = [&engine](IndexFactory const& target,
+                           IndexTypeFactory& factory) {
+    auto r = const_cast<IndexFactory&>(target).emplace(
+        std::string{StaticStrings::ViewArangoSearchType}, factory);
+    if (!r.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          r.errorNumber(),
+          absl::StrCat("failure registering IResearch link factory with "
+                       "index factory from feature '",
+                       engine.name(), "': ", r.errorMessage()));
+    }
+  };
+
+  if (auto* clusterEngine = dynamic_cast<ClusterEngine*>(&engine)) {
+    emplace(clusterEngine->indexFactory(), clusterFactory);
+    emplace(clusterEngine->indexDefinitions(), rocksDBFactory);
+  } else if (dynamic_cast<RocksDBEngine*>(&engine) != nullptr) {
+    emplace(engine.indexFactory(), rocksDBFactory);
   }
 }
 
@@ -1016,6 +1027,11 @@ bool IResearchFeature::failQueriesOnOutOfSync() const noexcept {
 }
 
 void IResearchFeature::registerRecoveryHelper() {
+  if (ServerState::instance()->isCoordinator()) {
+    // no local WAL to recover on coordinators
+    return;
+  }
+
   if (!_options.skipRecoveryItems.empty()) {
     LOG_TOPIC("e36f2", WARN, arangodb::iresearch::TOPIC)
         << "arangosearch recovery explicitly disabled via the '"
@@ -1040,9 +1056,8 @@ void IResearchFeature::registerRecoveryHelper() {
 
 void IResearchFeature::registerIndexFactory() {
   _clusterFactory = IResearchLinkCoordinator::createFactory(server());
-  registerSingleFactory<ClusterEngine>(*_clusterFactory, server());
   _rocksDBFactory = IResearchRocksDBLink::createFactory(server());
-  registerSingleFactory<RocksDBEngine>(*_rocksDBFactory, server());
+  registerIndexTypeFactories(server(), *_clusterFactory, *_rocksDBFactory);
 }
 
 #ifdef USE_ENTERPRISE

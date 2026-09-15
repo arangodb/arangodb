@@ -35,13 +35,12 @@
 #include "Network/types.h"
 #include "Rest/CommonDefines.h"
 #include "Metrics/Fwd.h"
-#include "RestServer/DatabaseFeature.h"
 
 namespace arangodb {
 class Endpoint;
 class Result;
 class ClusterFeature;
-class DatabaseFeature;
+struct IDatabaseProvider;
 
 namespace application_features {
 class ApplicationServer;
@@ -586,7 +585,7 @@ class AgencyComm {
       "dependency")]] explicit AgencyComm(application_features::
                                               ApplicationServer&);
   AgencyComm(application_features::ApplicationServer&, ClusterFeature&,
-             DatabaseFeature&);
+             IDatabaseProvider&);
 
   AgencyCommResult sendServerState(double timeout);
 
@@ -664,7 +663,7 @@ class AgencyComm {
 
   application_features::ApplicationServer& _server;
   ClusterFeature& _clusterFeature;
-  DatabaseFeature& _databaseFeature;
+  IDatabaseProvider& _databaseFeature;
   metrics::Histogram<metrics::LogScale<uint64_t>>& _agency_comm_request_time_ms;
 };
 
