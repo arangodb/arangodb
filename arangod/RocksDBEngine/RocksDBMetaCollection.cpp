@@ -104,7 +104,9 @@ RocksDBMetaCollection::SchedulerWrapper::queueDelayed(
       timeout, std::forward<F>(fn));
 }
 
-RocksDBMetaCollection::~RocksDBMetaCollection() { freeMemory(); }
+RocksDBMetaCollection::~RocksDBMetaCollection() {
+  RocksDBMetaCollection::freeMemory();
+}
 
 void RocksDBMetaCollection::freeMemory() noexcept {
   std::unique_lock<std::mutex> lock(_revisionTreeLock);
