@@ -146,7 +146,7 @@ function catchallAuthzSuite () {
   // //////////////////////////////////////////////////////////////////////////
 
   const anonymousGet = (path) =>
-    request.get({ url: `${IM.url}/${path}` }, followRedirect: false);
+        request.get({ url: `${IM.url}/${path}`, followRedirect: false});
 
   // //////////////////////////////////////////////////////////////////////////
   // / @brief the Foxx service registry reads, which are not per-request
