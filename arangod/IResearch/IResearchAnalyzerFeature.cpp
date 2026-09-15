@@ -1214,8 +1214,7 @@ Result IResearchAnalyzerFeature::createAnalyzerPool(
 
   // validate that features are supported by arangod an ensure that their
   // dependencies are met
-  const auto validationRes = features.validate(type);
-  if (validationRes.fail()) {
+  if (auto validationRes = features.validate(type); validationRes.fail()) {
     return validationRes;
   }
 
@@ -2275,7 +2274,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
       }
       return {};
     };
-    auto const res =
+    auto res =
         visitAnalyzers(*vocbase, visitor, operationOrigin, _clusterFeature,
                        _networkFeature ? _networkFeature->pool() : nullptr);
     if (!res.ok()) {

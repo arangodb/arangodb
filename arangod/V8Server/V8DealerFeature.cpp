@@ -542,7 +542,7 @@ void V8DealerFeature::unprepare() {
                                                          std::string_view id) {
   bool const isOldStyleName =
       DatabaseNameValidator::validateName(
-          /*allowSystem=*/true, /*extendedNames=*/false, name)
+          /*allowSystem=*/true, /*extendNames=*/false, name)
           .ok();
   return (isOldStyleName || id.empty()) ? name : id;
 }
@@ -809,11 +809,9 @@ void V8DealerFeature::collectGarbage() {
                                         _options.maxExecutorInvocations) &&
               _dynamicExecutorCreationBlockers == 0) {
             // remove the extra context as it is not needed anymore
-            _executors.erase(std::remove_if(_executors.begin(),
-                                            _executors.end(),
-                                            [&executor](V8Executor* e) {
-                                              return e->id() == executor->id();
-                                            }));
+            std::erase_if(_executors, [&executor](V8Executor const* e) {
+              return e->id() == executor->id();
+            });
 
             LOG_TOPIC("0a995", DEBUG, Logger::V8)
                 << "removed superfluous V8 executor #" << executor->id()

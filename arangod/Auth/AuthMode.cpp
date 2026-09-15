@@ -89,6 +89,7 @@ auto describe(auth::perms::CreateGraph const& perm) -> std::string {
 // Admin permissions carry no resource, so each maps to a fixed phrase naming
 // the administrative action it guards.
 auto describe(auth::perms::AnyAdmin auto const& admin) -> std::string {
+  // NOLINTNEXTLINE(misc-unused-alias-decls)
   namespace p = auth::perms;
   using T = std::remove_cvref_t<decltype(admin)>;
   if constexpr (std::is_same_v<T, p::AdminReadUsers>) {
