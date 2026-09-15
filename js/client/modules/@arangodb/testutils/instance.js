@@ -1589,15 +1589,27 @@ class instance {
   
   debugGetFailurePoints() {
     return this.toThisInstance(() => {
-      let haveFailAt = arango.GET("/_admin/debug/failat") === true;
-      if (haveFailAt) {
-        let res = arango.GET_RAW('/_admin/debug/failat/all');
-        if (res.code !== 200) {
-          throw "Error checking failure points = " + JSON.stringify(res);
+      while (true) {
+        try {
+          let haveFailAt = arango.GET("/_admin/debug/failat") === true;
+          if (haveFailAt) {
+            let res = arango.GET_RAW('/_admin/debug/failat/all');
+            if (res.code !== 200) {
+              throw "Error checking failure points = " + JSON.stringify(res);
+            }
+            return res.parsedBody;
+          }
+          return [];
+        } catch (ex) {
+          if (ex.errorNum === internal.errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) {
+            this._disconnect();
+            this.connect();
+            // retry
+          } else {
+            throw ex;
+          }
         }
-        return res.parsedBody;
       }
-      return [];
     });
   }
   debugSetFailAt(failurePoint) {
