@@ -43,6 +43,11 @@ namespace arangodb::aql {
 /// less than 1/2" -- so it is not a measurement to be tuned.
 constexpr double kRangeSelectivityFactor = 1.0 / 3.0;
 
+/// @brief Table 1, `column IN (list of values)`: the factor "is allowed to be
+/// no more than 1/2", so a list long enough to cover most of the distinct
+/// values is still charged as a restriction rather than as none.
+constexpr double kInCapSelectivity = 0.5;
+
 /// @brief the fraction of `node`'s rows that survive the residual predicate
 /// `residual`, in the surviving-fraction sense (1.0 filters nothing -- the
 /// opposite direction from Index::selectivityEstimate). Returns 1.0 for any
