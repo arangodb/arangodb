@@ -146,7 +146,8 @@ function AuthSuite() {
       }
 
       let result = arango.GET('/_api/user/' + encodeURIComponent(user));
-      assertEqual(404, result.code);
+      // User deleted, thus unauthenticated
+      assertEqual(401, result.code);
     },
 
     testApiNonExistingUserRW: function () {
