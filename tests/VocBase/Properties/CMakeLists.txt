@@ -22,6 +22,7 @@ add_executable(
         arangodb_vocbase_properties_test EXCLUDE_FROM_ALL
         ${ARANGODB_VOCBASE_PROPERTIES_TEST_SOURCES}
         main.cpp
+        arango_inspection
 )
 
 target_include_directories(arangodb_vocbase_properties_test PRIVATE

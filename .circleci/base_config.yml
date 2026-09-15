@@ -950,7 +950,7 @@ jobs:
                 name: Stage generated headers for clang-tidy
                 command: |
                   cd /root/project
-                  find build \( -name '*.h' -o -name '*.hpp' -o -name '*.inc' \) -print0 \
+                  find build \( -name '*.h' -o -name '*.hpp' -o -name '*.inc' -o -name '*.csx' \) -print0 \
                     | tar --null -cf - -T - \
                     | (mkdir -p tidy-headers && tar -xf - -C tidy-headers)
             - persist_workspace_to_s3:
@@ -1425,17 +1425,36 @@ jobs:
             cp -r /root/workspace/tidy-headers/build/. /root/workspace/build/
             cd /root/project/
 
-            # Derive -j from the container's memory limit, not nproc: nproc reports
-            # host cores. Measured 1.47GiB per job over a full run; budget 1.5
-            # and keep 2GiB for the container.
-            mem=$(cat /sys/fs/cgroup/memory.max 2>/dev/null || cat /sys/fs/cgroup/memory/memory.limit_in_bytes 2>/dev/null || echo "")
+            # -j is bounded by two container limits, either of which can bind.
+            # nproc is neither: it reports host cores, not this container's quota.
+            mem=$(cat /sys/fs/cgroup/memory.max 2>/dev/null \
+                  || cat /sys/fs/cgroup/memory/memory.limit_in_bytes 2>/dev/null \
+                  || echo "")
             case "$mem" in
               ''|*[!0-9]*) mem=8589934592 ;;
             esac
-            jobs=$(( (mem / 1073741824 - 2) * 10 / 15 ))
+            # Measured 1.47GiB per job on a full run; budget 1.5, keep 2GiB spare.
+            by_mem=$(( (mem / 1073741824 - 2) * 10 / 15 ))
+
+            cpus=""
+            if [ -r /sys/fs/cgroup/cpu.max ]; then
+              read -r quota period < /sys/fs/cgroup/cpu.max || true
+              if [ "$quota" != "max" ] && [ "${period:-0}" -gt 0 ]; then
+                cpus=$(( quota / period ))
+              fi
+            elif [ -r /sys/fs/cgroup/cpu/cpu.cfs_quota_us ]; then
+              quota=$(cat /sys/fs/cgroup/cpu/cpu.cfs_quota_us)
+              period=$(cat /sys/fs/cgroup/cpu/cpu.cfs_period_us)
+              if [ "$quota" -gt 0 ] && [ "$period" -gt 0 ]; then
+                cpus=$(( quota / period ))
+              fi
+            fi
+            if [ -z "$cpus" ] || [ "$cpus" -lt 1 ]; then cpus=$(nproc); fi
+
+            jobs=$by_mem
+            if [ "$jobs" -gt "$cpus" ]; then jobs=$cpus; fi
             if [ "$jobs" -lt 1 ]; then jobs=1; fi
-            if [ "$jobs" -gt "$(nproc)" ]; then jobs=$(nproc); fi
-            echo "memory limit: $((mem / 1073741824)) GiB, cores: $(nproc), using -j $jobs"
+            echo "limits: mem=$((mem / 1073741824))GiB allows $by_mem, cpu quota $cpus, nproc $(nproc) -> using -j $jobs"
 
             # /usr/bin/time is not in the build image; use the clock and the
             # cgroup's own peak-usage counter instead.
@@ -1452,13 +1471,11 @@ jobs:
             cat /root/project/clang-tidy-time.txt
             exit $rc
       - run:
-          name: Analyze run
+          name: Report run cost
           when: always
           command: |
             cd /root/project/
-            echo "cores: $(nproc)"
             cat clang-tidy-time.txt 2>/dev/null || echo "(no timing captured)"
-            python3 utils/clang-tidy-analyze.py clang-tidy-results.txt
       - store_artifacts:
           path: /root/project/clang-tidy-time.txt
       - run:
