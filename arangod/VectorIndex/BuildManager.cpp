@@ -98,7 +98,10 @@ BuildManager::BuildManager(DatabaseFeature& dbFeature,
           metricsRegistry.add(arangodb_vector_index_ingestion_duration{})) {}
 
 void BuildManager::start() {
-  _thread = std::jthread([this](std::stop_token stopToken) { run(stopToken); });
+  _thread = std::jthread([this](std::stop_token stopToken) {
+    auto scope = ExecContextScope(ExecContext::superuserAsShared());
+    run(stopToken);
+  });
 }
 
 void BuildManager::beginShutdown() { _thread.request_stop(); }

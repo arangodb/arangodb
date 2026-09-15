@@ -84,6 +84,8 @@ class StorageEngineDataTest : public StorageEngineFixture {
 
   static std::shared_ptr<transaction::Manager> _transactionManager;
 
+  ExecContextScope scope = ExecContextScope{ExecContext::superuserAsShared()};
+
   // Build an in-memory Database object. We construct the database directly
   // with the fixture's injected database provider rather than going through
   // engine().openDatabase(): the direct path keeps the test in full control of
