@@ -62,6 +62,7 @@
 
 namespace arangodb {
 
+RocksDBRecoveryManager::RocksDBRecoveryManager(
     RocksDBEngine& engine, std::atomic<rocksdb::SequenceNumber>& recoveryTick)
     : _engine(engine),
       _dbProvider(engine.getDatabaseProvider()),
