@@ -31,8 +31,16 @@
 
 namespace arangodb::aql {
 
-/// @brief System-R's default selectivity factor for a range comparison with
-/// unknown bounds: a third of the rows survive.
+/// @brief the selectivity factors used here are System-R's, from Table 1 of
+/// P. Griffiths Selinger, M. M. Astrahan, D. D. Chamberlin, R. A. Lorie and
+/// T. G. Price, "Access Path Selection in a Relational Database Management
+/// System", SIGMOD 1979, pp. 23-34.
+
+/// @brief Table 1, `column > value`: the factor when the bound is not known at
+/// optimization time. The paper is explicit that the number is a guess -- "no
+/// significance to this number, other than that it is less selective than the
+/// guesses for equal predicates for which there are no indexes, and that it is
+/// less than 1/2" -- so it is not a measurement to be tuned.
 constexpr double kRangeSelectivityFactor = 1.0 / 3.0;
 
 /// @brief the fraction of `node`'s rows that survive the residual predicate
