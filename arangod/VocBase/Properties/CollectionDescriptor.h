@@ -28,8 +28,12 @@
 #include "VocBase/Properties/CollectionMutableProperties.h"
 #include "VocBase/Properties/CollectionInternalProperties.h"
 #include "VocBase/Properties/CollectionStorageProperties.h"
+#include "VocBase/voc-types.h"
 
 namespace arangodb {
+template<typename T>
+class ResultT;
+struct DatabaseConfiguration;
 
 struct CollectionDescriptor {
   CollectionConstantProperties constant{};
@@ -47,6 +51,9 @@ struct CollectionDescriptor {
         CollectionDescriptor const& d) -> inspection::Status;
   };
 };
+
+[[nodiscard]] velocypack::Builder collectionCreateResponse(
+    CollectionDescriptor const& d);
 
 template<class Inspector>
 auto inspect(Inspector& f, CollectionDescriptor& d) {

@@ -100,10 +100,11 @@ GenerateBoolAttributeTest(ClusteringMutablePropertiesTest, waitForSync);
 
 GeneratePositiveIntegerAttributeTest(ClusteringMutablePropertiesTest,
                                      replicationFactor);
-GeneratePositiveIntegerAttributeTest(ClusteringMutablePropertiesTest,
-                                     writeConcern);
+// A writeConcern of zero parses. Only a satellite may keep it, and that rule
+// now lives in applyDefaultsAndValidate.
+GenerateIntegerAttributeTest(ClusteringMutablePropertiesTest, writeConcern);
 GeneratePositiveIntegerAttributeTestInternal(ClusteringMutablePropertiesTest,
                                              minReplicationFactor, writeConcern,
-                                             false, GenerateFailsOnNull);
+                                             true, GenerateFailsOnNull);
 
 }  // namespace arangodb::tests
