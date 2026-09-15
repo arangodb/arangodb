@@ -220,24 +220,6 @@ auto coveringFromIndexFacts(std::span<IndexFacts const> candidates,
 IndexJoinStatistics::IndexJoinStatistics(ExecutionPlan const& plan)
     : _plan(plan) {}
 
-/// @brief unlike distinctValues(), this has no `defaulted` channel: an
-/// out-of-transaction call silently reads back as 0.0 rather than reporting
-/// that it guessed. That is safe only by the combination of two properties,
-/// both worth re-checking before trusting this again:
-///   1. restrictedFor() clamps this to count = std::max(documentCount, 1.0),
-///      so a 0.0 here becomes count = 1 everywhere downstream, which makes
-///      probeCost == scanCost for every candidate order -- no order looks
-///      cheaper than any other, so this alone cannot steer the greedy.
-///   2. any real equijoin also calls distinctValues() with a non-empty
-///      attribute set, which *does* honestly report `defaulted = true` when
-///      the transaction is not RUNNING (see below) -- so the existing
-///      `defaulted` flag still reaches a caller through that second lookup,
-///      even though this one is silent.
-/// If either property stops holding -- e.g. a caller starts using
-/// documentCount for something other than a uniform "all counts are 1"
-/// clamp, or a code path reaches this with conditions/residuals empty and no
-/// accompanying distinctValues() call -- this reasoning breaks and
-/// documentCount needs its own `defaulted` channel.
 auto IndexJoinStatistics::documentCount(JoinGraph::Node const& node) const
     -> double {
   if (auto it = _counts.find(node.executionNode); it != _counts.end()) {
@@ -259,8 +241,8 @@ auto IndexJoinStatistics::distinctValues(
     std::span<AttributePath const> attributes) const -> DistinctEstimate {
   if (attributes.empty()) {
     // No restriction at all. This is the empty-subset case of the rule below,
-    // not an exception to it -- and it must not be reported as a guess.
-    return {1.0, false};
+    // not an exception to it. It must not be reported as a guess.
+    return {1.0, false};  // Empty set.
   }
 
   auto const key = cacheKey(node, attributes);
@@ -268,13 +250,6 @@ auto IndexJoinStatistics::distinctValues(
     return it->second;
   }
 
-  // Defaults to "no confident estimate" and stays there unless the
-  // transaction is actually RUNNING. documentCount() has no defaulted
-  // channel of its own (it would silently read back as 0), and feeding that
-  // into the rule below for a qualifying index would look like a confident
-  // distinct count of 1 -- an unusable transaction must not masquerade as a
-  // confident estimate, so that case is rejected up front rather than being
-  // allowed to fall out of the arithmetic.
   DistinctEstimate estimate{1.0, true};
   auto& trx = _plan.getAst()->query().trxForOptimization();
   if (trx.status() == transaction::Status::RUNNING) {
