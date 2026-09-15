@@ -85,3 +85,6 @@ race:v8::*
 
 # Suppress tsan races from OpenBLAS used by faiss
 race:libopenblas
+
+# Since archer does not manage to ignore all races from libomp this is needed
+race:libomp
