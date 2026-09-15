@@ -20,13 +20,12 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IndexDefinitions.h"
+#include "DefaultIndexFactories.h"
 
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
-#include "Indexes/IndexFactory.h"
 #include "VectorIndex/IVectorIndexProvider.h"
 #include "VocBase/ticks.h"
 

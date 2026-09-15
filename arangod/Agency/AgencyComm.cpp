@@ -660,10 +660,10 @@ AgencyComm::AgencyComm(application_features::ApplicationServer& server)
 
 AgencyComm::AgencyComm(ApplicationServer& server,
                        ClusterFeature& clusterFeature,
-                       IDatabaseProvider& databaseProvider)
+                       IDatabaseProvider& databaseFeature)
     : _server(server),
       _clusterFeature(clusterFeature),
-      _databaseProvider(databaseProvider),
+      _databaseFeature(databaseFeature),
       _agency_comm_request_time_ms(
           _clusterFeature.agency_comm_request_time_ms()) {}
 
@@ -1319,7 +1319,7 @@ bool AgencyComm::tryInitializeStructure() {
           builder.add(StaticStrings::DatabaseId, VPackValue("1"));
           builder.add(StaticStrings::ReplicationVersion,
                       arangodb::replication::versionToString(
-                          _databaseProvider.defaultReplicationVersion()));
+                          _databaseFeature.defaultReplicationVersion()));
           // We need to also take care of the `cluster.force-one-shard` option
           // here. If set, the entire cluster is forced to be a OneShard
           // deployment.

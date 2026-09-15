@@ -38,11 +38,11 @@ namespace iresearch {
 
 IResearchInvertedIndexDefinition::IResearchInvertedIndexDefinition(
     application_features::ApplicationServer& server)
-    : IndexDefinition(IndexType::Inverted), _server(server) {}
+    : IndexTypeFactory(server) {}
 
 IResearchRocksDBInvertedIndexFactory::IResearchRocksDBInvertedIndexFactory(
     application_features::ApplicationServer& server)
-    : DelegatingIndexFactory(server, server) {}
+    : IResearchInvertedIndexDefinition(server) {}
 
 bool IResearchInvertedIndexDefinition::equal(velocypack::Slice lhs,
                                              velocypack::Slice rhs,
