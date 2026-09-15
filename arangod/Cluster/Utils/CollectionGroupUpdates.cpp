@@ -40,7 +40,7 @@ agency::CollectionGroupId CollectionGroupUpdates::addNewGroup(
   auto newId = agency::CollectionGroupId(generateId());
   agency::CollectionGroupTargetSpecification g;
   g.id = newId;
-  g.groupLeader = ::toCollectionIdString(collection.internal.id);
+  g.groupLeader = ::toCollectionIdString(collection.identity.id);
   g.version = 1;
   g.attributes.mutableAttributes.waitForSync =
       collection.clusteringMutable.waitForSync;
@@ -50,7 +50,7 @@ agency::CollectionGroupId CollectionGroupUpdates::addNewGroup(
       collection.clusteringMutable.replicationFactor.value();
   g.attributes.immutableAttributes.numberOfShards =
       collection.clusteringConstant.numberOfShards.value();
-  g.collections.emplace(::toCollectionIdString(collection.internal.id),
+  g.collections.emplace(::toCollectionIdString(collection.identity.id),
                         agency::CollectionGroup::Collection{});
   newGroups.emplace_back(std::move(g));
   return newId;

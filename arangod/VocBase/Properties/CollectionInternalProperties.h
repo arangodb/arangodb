@@ -24,11 +24,9 @@
 
 #include "Basics/StaticStrings.h"
 #include "Inspection/Access.h"
-#include "Inspection/Types.h"
-#include "VocBase/Identifiers/DataSourceId.h"
-#include "VocBase/voc-types.h"
 #include "VocBase/Properties/InspectContexts.h"
 
+#include <cstdint>
 #include <string>
 
 namespace arangodb {
@@ -41,20 +39,9 @@ struct Status;
 }
 
 struct CollectionInternalProperties {
-  struct Transformers {
-    struct IdIdentifier {
-      using MemoryType = DataSourceId;
-      using SerializedType = std::string;
+  // Set when the collection is dropped, read back on load.
+  bool deleted = false;
 
-      static arangodb::inspection::Status toSerialized(MemoryType v,
-                                                       SerializedType& result);
-
-      static arangodb::inspection::Status fromSerialized(
-          SerializedType const& v, MemoryType& result);
-    };
-  };
-
-  DataSourceId id{0};
   bool syncByRevision = true;
   bool usesRevisionsAsDocumentIds = true;
   bool isSmartChild = false;
@@ -65,27 +52,13 @@ struct CollectionInternalProperties {
   // runtime and cannot live with the immutable properties.
   inspection::NonNullOptional<std::string> smartGraphAttribute = std::nullopt;
 
-  [[nodiscard]] arangodb::Result applyDefaultsAndValidateDatabaseConfiguration(
-      DatabaseConfiguration const& config);
-
   bool operator==(CollectionInternalProperties const&) const = default;
 };
 
 template<class Inspector>
 auto inspect(Inspector& f, CollectionInternalProperties& props) {
   return f.object(props).fields(
-      f.field(StaticStrings::Id, props.id)
-          .transformWith(
-              CollectionInternalProperties::Transformers::IdIdentifier{})
-          .fallback(f.keep())
-          .whenLoading([]() {
-            // Markers and plan entries store the id as a number or under
-            // "cid". LogicalDataSource owns the id on that path, so accept
-            // the attribute there and drop it.
-            return isInternalContext<Inspector>
-                       ? inspection::FieldCondition::Ignore
-                       : inspection::FieldCondition::Process;
-          }),
+      internalOnlyField(f, StaticStrings::DataSourceDeleted, props.deleted),
       f.field(StaticStrings::SyncByRevision, props.syncByRevision)
           .fallback(f.keep()),
       f.field(StaticStrings::UsesRevisionsAsDocumentIds,
