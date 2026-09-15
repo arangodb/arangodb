@@ -1093,6 +1093,8 @@ bool read_cwd(
     struct deleter_t {
       void operator()(char* ptr) const { free(ptr); }
     };
+    // getcwd(nullptr, 0) is the glibc extension that allocates the buffer.
+    // NOLINTNEXTLINE(clang-analyzer-unix.StdCLibraryFunctions)
     std::unique_ptr<char, deleter_t> pcwd(getcwd(nullptr, 0));
 
     if (!pcwd) {
