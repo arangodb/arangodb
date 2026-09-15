@@ -350,6 +350,21 @@ std::shared_ptr<LogicalCollection> Database::createCollectionObject(
 
   return std::make_shared<LogicalCollection>(*this, data, isAStub);
 }
+
+std::shared_ptr<LogicalCollection> Database::createCollectionObject(
+    CollectionDescriptor descriptor, bool isAStub) {
+  // every collection object on coordinators must be a stub
+  TRI_ASSERT(!ServerState::instance()->isCoordinator() || isAStub);
+  // collection objects on single servers must not be stubs
+  TRI_ASSERT(!ServerState::instance()->isSingleServer() || !isAStub);
+  if (!isAStub) {
+    // stubs are not persisted, so they get no object id
+    descriptor.storage.objectId = _engine.resolveObjectId(descriptor.storage);
+  }
+
+  return std::make_shared<LogicalCollection>(*this, std::move(descriptor),
+                                             isAStub);
+}
 #endif
 
 void Database::persistCollection(
@@ -807,47 +822,49 @@ std::shared_ptr<LogicalCollection> Database::createCollection(
   }
 }
 
-ResultT<std::vector<std::shared_ptr<arangodb::LogicalCollection>>>
-Database::createCollections(
-    std::vector<arangodb::CreateCollectionBody> const& collections,
-    bool allowEnterpriseCollectionsOnSingleServer) {
-  /// Code from here is copy pasted from original create and
-  /// has not been refacored yet.
-  VPackBuilder builder =
-      CreateCollectionBody::toCreateCollectionProperties(collections);
-  VPackSlice infoSlice = builder.slice();
+std::shared_ptr<LogicalCollection> Database::createCollection(
+    CollectionDescriptor descriptor) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
-  TRI_ASSERT(infoSlice.isArray());
-  TRI_ASSERT(infoSlice.length() >= 1);
-  TRI_ASSERT(infoSlice.length() == collections.size());
+  auto const& dbName = _info.getName();
+  std::string name = descriptor.mutableProps.name;
+
+  if (auto res = validateCollectionDescriptor(descriptor); res.fail()) {
+    events::CreateCollection(dbName, name, res.errorNumber());
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
   try {
-    // Here we do have a single server setup, or we're either on a DBServer
-    // / Agency. In that case, we're not batching collection creating.
-    // Therefore, we need to iterate over the infoSlice and create each
-    // collection one by one.
-    auto result =
-        createCollections(infoSlice, allowEnterpriseCollectionsOnSingleServer);
+    auto collection =
+        createCollectionObject(std::move(descriptor), /*isAStub*/ false);
 
-    // Update metadata metrics on single server after collections are created
-    if (ServerState::instance()->isSingleServer() &&
-        _server.hasFeature<DatabaseFeature>()) {
-      _server.getFeature<DatabaseFeature>().incrementCollectionCount(
-          result.size());
+    {
+      READ_LOCKER(readLocker, _inventoryLock);
+      persistCollection(collection);
     }
 
-    return {result};
+    events::CreateCollection(dbName, name, TRI_ERROR_NO_ERROR);
+    _databaseProvider.notifyDdlChange("create collection");
 
+    // Update metadata metrics on single server
+    if (ServerState::instance()->isSingleServer() &&
+        _server.hasFeature<DatabaseFeature>()) {
+      _server.getFeature<DatabaseFeature>().incrementCollectionCount();
+    }
+
+    return collection;
   } catch (basics::Exception const& ex) {
-    return Result(ex.code(), ex.what());
-  } catch (std::exception const& ex) {
-    return Result(TRI_ERROR_INTERNAL, ex.what());
-  } catch (...) {
-    return Result(TRI_ERROR_INTERNAL, "cannot create collection");
+    events::CreateCollection(dbName, name, ex.code());
+    throw;
+  } catch (std::exception const&) {
+    events::CreateCollection(dbName, name, TRI_ERROR_INTERNAL);
+    throw;
   }
 }
 
-std::vector<std::shared_ptr<LogicalCollection>> Database::createCollections(
-    velocypack::Slice infoSlice,
+ResultT<std::vector<std::shared_ptr<arangodb::LogicalCollection>>>
+Database::createCollections(
+    std::vector<arangodb::CreateCollectionBody> const& collections,
     bool allowEnterpriseCollectionsOnSingleServer) {
   TRI_ASSERT(!allowEnterpriseCollectionsOnSingleServer ||
              ServerState::instance()->isSingleServer());
@@ -860,6 +877,37 @@ std::vector<std::shared_ptr<LogicalCollection>> Database::createCollections(
   }
 #endif
 
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
+  // typed path: hand the properties down as a descriptor instead of
+  // serializing them and parsing them again
+  try {
+    std::vector<CollectionDescriptor> descriptors;
+    descriptors.reserve(collections.size());
+    for (auto const& c : collections) {
+      descriptors.emplace_back(c.toDescriptor());
+    }
+
+    auto result = createCollections(std::move(descriptors));
+
+    if (ServerState::instance()->isSingleServer() &&
+        _server.hasFeature<DatabaseFeature>()) {
+      _server.getFeature<DatabaseFeature>().incrementCollectionCount(
+          result.size());
+    }
+    return {result};
+  } catch (basics::Exception const& ex) {
+    return Result(ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    return Result(TRI_ERROR_INTERNAL, ex.what());
+  } catch (...) {
+    return Result(TRI_ERROR_INTERNAL, "cannot create collection");
+  }
+}
+
+std::vector<std::shared_ptr<LogicalCollection>> Database::createCollections(
+    velocypack::Slice infoSlice,
+    bool allowEnterpriseCollectionsOnSingleServer) {
   auto const& dbName = _info.getName();
 
   // first validate all collections
@@ -916,6 +964,41 @@ std::vector<std::shared_ptr<LogicalCollection>> Database::createCollections(
   }
 
   // audit-log all collections
+  for (auto& col : collections) {
+    events::CreateCollection(dbName, col->name(), TRI_ERROR_NO_ERROR);
+  }
+
+  _databaseProvider.notifyDdlChange("create collection");
+  return collections;
+}
+
+std::vector<std::shared_ptr<LogicalCollection>> Database::createCollections(
+    std::vector<CollectionDescriptor> descriptors) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
+  auto const& dbName = _info.getName();
+
+  std::vector<std::shared_ptr<LogicalCollection>> collections;
+  collections.reserve(descriptors.size());
+
+  for (auto& descriptor : descriptors) {
+    if (auto res = validateCollectionDescriptor(descriptor); res.fail()) {
+      events::CreateCollection(dbName, descriptor.mutableProps.name,
+                               res.errorNumber());
+      THROW_ARANGO_EXCEPTION(res);
+    }
+    auto col = createCollectionObject(std::move(descriptor), /*isAStub*/ false);
+    TRI_ASSERT(col != nullptr);
+    collections.emplace_back(std::move(col));
+  }
+
+  {
+    READ_LOCKER(readLocker, _inventoryLock);
+    for (auto& col : collections) {
+      persistCollection(col);
+    }
+  }
+
   for (auto& col : collections) {
     events::CreateCollection(dbName, col->name(), TRI_ERROR_NO_ERROR);
   }
@@ -997,6 +1080,32 @@ Result Database::validateCollectionParameters(velocypack::Slice parameters) {
   return validateExtendedCollectionParameters(parameters);
 }
 
+Result Database::validateCollectionDescriptor(
+    CollectionDescriptor const& descriptor) {
+  auto const& name = descriptor.mutableProps.name;
+  if (auto res = CollectionNameValidator::validateName(
+          descriptor.constant.isSystem, extendedNames(), name);
+      res.fail()) {
+    return res;
+  }
+
+  auto collectionType = descriptor.constant.getType();
+  if (collectionType != TRI_col_type_e::TRI_COL_TYPE_DOCUMENT &&
+      collectionType != TRI_col_type_e::TRI_COL_TYPE_EDGE) {
+    return {TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+            "invalid collection type for collection '" + name + "'"};
+  }
+
+  if (auto status =
+          CollectionDescriptor::Invariants::isSmartConfiguration(descriptor);
+      !status.ok()) {
+    return {TRI_ERROR_BAD_PARAMETER, status.error()};
+  }
+
+  // needed for EE
+  return validateEnterpriseLicense(descriptor);
+}
+
 #ifndef USE_ENTERPRISE
 void Database::addSmartGraphCollections(
     std::shared_ptr<LogicalCollection> const& /*collection*/,
@@ -1005,6 +1114,11 @@ void Database::addSmartGraphCollections(
 }
 
 Result Database::validateExtendedCollectionParameters(velocypack::Slice) {
+  // nothing to be done here. more in EE version
+  return {};
+}
+
+Result Database::validateEnterpriseLicense(CollectionDescriptor const&) {
   // nothing to be done here. more in EE version
   return {};
 }

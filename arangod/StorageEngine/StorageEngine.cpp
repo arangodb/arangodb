@@ -36,6 +36,7 @@
 #include "RestServer/IDatabaseProvider.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
+#include "VocBase/Properties/CollectionStorageProperties.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
 
@@ -69,6 +70,11 @@ StorageEngine::StorageEngine(application_features::ApplicationServer& server,
 
 void StorageEngine::addParametersForNewCollection(velocypack::Builder&,
                                                   VPackSlice) {}
+
+uint64_t StorageEngine::resolveObjectId(
+    CollectionStorageProperties const& storage) const {
+  return storage.objectId;
+}
 
 std::unique_ptr<TRI_vocbase_t> StorageEngine::createDatabase(
     CreateDatabaseInfo&& info) {
