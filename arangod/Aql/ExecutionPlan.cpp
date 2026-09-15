@@ -55,7 +55,7 @@
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
 #include "Aql/IndexHint.h"
-#include "Aql/MatchBuilder.h"
+#include "Aql/Match/Builder.h"
 #include "Aql/NodeFinder.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
@@ -2427,7 +2427,7 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous,
 
 ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
                                             AstNode const* matchNode) {
-  return MatchBuilder{*this, _ast}.build(previous, matchNode);
+  return match::Builder{*this, _ast}.build(previous, matchNode);
 }
 
 /// @brief create an execution plan from an abstract syntax tree node
