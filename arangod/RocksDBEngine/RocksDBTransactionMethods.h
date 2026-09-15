@@ -114,13 +114,18 @@ class RocksDBTransactionMethods : public RocksDBMethods {
   virtual rocksdb::Status RollbackToWriteBatchSavePoint() = 0;
   virtual void PopSavePoint() = 0;
 
-  /// @brief record the commit timestamp applied to User-Defined Timestamp
-  /// column families (time travel) when this transaction commits. A rocksdb
-  /// transaction commits its UDT families with a single timestamp, so every
-  /// time-travel write in the same transaction must agree on it; a conflicting
-  /// timestamp is rejected. No-op for methods that do not commit a rocksdb
-  /// transaction. See RocksDBTrxBaseMethods.
-  virtual Result setCommitTimestamp(uint64_t /*ts*/) { return {}; }
+  /// @brief record the timestamp this transaction's time-travel writes happen
+  /// at. It becomes the commit timestamp of every User-Defined Timestamp column
+  /// family the transaction touches, and arms write-write validation to read at
+  /// the instant before it. A rocksdb transaction commits its UDT families with
+  /// a single timestamp, so every time-travel write in the same transaction
+  /// must agree on it; a conflicting timestamp is rejected.
+  ///
+  /// Must be called before the operation locks its document key: rocksdb
+  /// refuses a validated GetForUpdate on a UDT family without a validation read
+  /// timestamp. No-op for methods that do not drive a rocksdb transaction.
+  /// See RocksDBTrxBaseMethods.
+  virtual Result setWriteTimestamp(uint64_t /*ts*/) { return {}; }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   std::size_t countInBounds(RocksDBKeyBounds const& bounds,
