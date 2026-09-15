@@ -553,7 +553,7 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
     auto buildIdx = std::make_shared<RocksDBBuilderIndex>(
         std::static_pointer_cast<RocksDBIndex>(newIdx), _meta.numberDocuments(),
         getParallelism(info));
-    if (!engine.inRecovery()) {
+    if (engine.isReady()) {
       // manually modify collection entry, other methods need lock
       RocksDBKey key;  // read collection info from database
       key.constructCollection(vocbase.id(), _logicalCollection.id());
@@ -655,7 +655,7 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
     }
 
     // Step 6. persist in rocksdb
-    if (!engine.inRecovery()) {
+    if (engine.isReady()) {
       // write new collection marker
       auto builder = _logicalCollection.toVelocyPackIgnore(
           {"path", "statusString"},
@@ -693,7 +693,7 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
 // during recovery.
 Result RocksDBCollection::duringDropIndex(std::shared_ptr<Index> idx) {
   auto& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
-  TRI_ASSERT(!engine.inRecovery());
+  TRI_ASSERT(engine.isReady());
 
   auto builder = _logicalCollection.toVelocyPackIgnore(
       {"path", "statusString"},

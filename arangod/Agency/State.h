@@ -194,9 +194,6 @@ class State {
   /// @brief Persist active agency in pool, throws an exception in case of error
   void persistActiveAgents(query_t const& active, query_t const& pool);
 
-  /// @brief Get everything from the state machine
-  query_t allLogs() const;
-
   /// @brief load a compacted snapshot, returns true if successful and false
   /// otherwise. In case of success store and index are modified. The store
   /// is reset to the state after log index `index` has been applied. Sets
