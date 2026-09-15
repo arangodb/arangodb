@@ -75,6 +75,64 @@ auto equalitySelectivity(AstNode const* eq, JoinStatistics const& stats,
   return 1.0;
 }
 
+auto conjunctionSelectivity(AstNode const* conjunction,
+                            JoinStatistics const& stats,
+                            JoinGraph::Node const& node) -> double {
+  double factor = 1.0;
+  for (size_t i = 0; i < conjunction->numMembers(); ++i) {
+    factor *= residualSelectivityFactor(conjunction->getMemberUnchecked(i),
+                                        stats, node);
+  }
+  return factor;
+}
+
+/// @brief P(A or B) = P(A) + P(B) - P(A)P(B), assuming the branches are
+/// independent. An unmeasurable branch contributes 1.0 and collapses the whole
+/// disjunction to 1.0, which is the honest answer: a union cannot be bounded
+/// below by one of its branches.
+auto disjunctionSelectivity(AstNode const* disjunction,
+                            JoinStatistics const& stats,
+                            JoinGraph::Node const& node) -> double {
+  if (disjunction->numMembers() == 0) {
+    return 1.0;
+  }
+  double factor = 0.0;
+  for (size_t i = 0; i < disjunction->numMembers(); ++i) {
+    double const branch = residualSelectivityFactor(
+        disjunction->getMemberUnchecked(i), stats, node);
+    factor = factor + branch - factor * branch;
+  }
+  return std::clamp(factor, 0.0, 1.0);
+}
+
+auto inSelectivity(AstNode const* in, JoinStatistics const& stats,
+                   JoinGraph::Node const& node) -> double {
+  if (in->numMembers() != 2) {
+    return 1.0;
+  }
+  auto const* values = in->getMemberUnchecked(1);
+  if (!values->isArray()) {
+    return 1.0;
+  }
+  auto access = extractAttributeAccess(in->getMemberUnchecked(0));
+  if (!access.has_value() ||
+      access->first != node.executionNode->outVariable()) {
+    // Either not an attribute access, or an access on some other variable: a
+    // residual is attached to a node when it references exactly one *graph*
+    // variable, but it may also reference non-graph variables (e.g.
+    // `FILTER t.k IN [a.x, 1, 2]` attaches to `a`), so this cannot be assumed
+    // to be about `node`'s own attribute.
+    return 1.0;
+  }
+  std::array<AttributePath, 1> attributes{std::move(access->second)};
+  auto distinct = stats.distinctValues(node, attributes);
+  if (distinct.defaulted) {
+    return 1.0;
+  }
+  return std::min(1.0, static_cast<double>(values->numMembers()) /
+                           std::max(distinct.value, 1.0));
+}
+
 }  // namespace
 
 auto residualSelectivityFactor(AstNode const* residual,
@@ -91,59 +149,15 @@ auto residualSelectivityFactor(AstNode const* residual,
       return equalitySelectivity(residual, stats, node);
 
     case NODE_TYPE_OPERATOR_BINARY_AND:
-    case NODE_TYPE_OPERATOR_NARY_AND: {
-      double factor = 1.0;
-      for (size_t i = 0; i < residual->numMembers(); ++i) {
-        factor *= residualSelectivityFactor(residual->getMemberUnchecked(i),
-                                            stats, node);
-      }
-      return factor;
-    }
+    case NODE_TYPE_OPERATOR_NARY_AND:
+      return conjunctionSelectivity(residual, stats, node);
 
     case NODE_TYPE_OPERATOR_BINARY_OR:
-    case NODE_TYPE_OPERATOR_NARY_OR: {
-      if (residual->numMembers() == 0) {
-        return 1.0;
-      }
-      // P(A or B) = P(A) + P(B) - P(A)P(B), assuming the branches are
-      // independent. An unmeasurable branch contributes 1.0 and collapses the
-      // whole disjunction to 1.0, which is the honest answer: a union cannot
-      // be bounded below by one of its branches.
-      double factor = 0.0;
-      for (size_t i = 0; i < residual->numMembers(); ++i) {
-        double const branch = residualSelectivityFactor(
-            residual->getMemberUnchecked(i), stats, node);
-        factor = factor + branch - factor * branch;
-      }
-      return std::clamp(factor, 0.0, 1.0);
-    }
+    case NODE_TYPE_OPERATOR_NARY_OR:
+      return disjunctionSelectivity(residual, stats, node);
 
-    case NODE_TYPE_OPERATOR_BINARY_IN: {
-      if (residual->numMembers() != 2) {
-        return 1.0;
-      }
-      auto const* values = residual->getMemberUnchecked(1);
-      if (!values->isArray()) {
-        return 1.0;
-      }
-      auto access = extractAttributeAccess(residual->getMemberUnchecked(0));
-      if (!access.has_value() ||
-          access->first != node.executionNode->outVariable()) {
-        // Either not an attribute access, or an access on some other
-        // variable: a residual is attached to a node when it references
-        // exactly one *graph* variable, but it may also reference non-graph
-        // variables (e.g. `FILTER t.k IN [a.x, 1, 2]` attaches to `a`), so
-        // this cannot be assumed to be about `node`'s own attribute.
-        return 1.0;
-      }
-      std::array<AttributePath, 1> attributes{std::move(access->second)};
-      auto distinct = stats.distinctValues(node, attributes);
-      if (distinct.defaulted) {
-        return 1.0;
-      }
-      return std::min(1.0, static_cast<double>(values->numMembers()) /
-                               std::max(distinct.value, 1.0));
-    }
+    case NODE_TYPE_OPERATOR_BINARY_IN:
+      return inSelectivity(residual, stats, node);
 
     default:
       // no principled constant for this shape; do not guess
