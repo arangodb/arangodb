@@ -45,10 +45,11 @@ auto dedupe(std::vector<AttributePath> const& paths)
   return result;
 }
 
-/// @brief 1/|distinct| for `v.attr == <constant>`, the same selectivity the
-/// constant restrictions get in restrictedFor(). Only reachable from inside a
-/// disjunction: a top-level equality on one graph variable is extracted as a
-/// node condition, and one between two of them becomes an edge.
+/// @brief Table 1, `column = value`: F = 1/ICARD(column index), i.e. the same
+/// selectivity the constant restrictions get in restrictedFor(). Only
+/// reachable from inside a disjunction: a top-level equality on one graph
+/// variable is extracted as a node condition, and one between two of them
+/// becomes an edge.
 auto equalitySelectivity(AstNode const* eq, JoinStatistics const& stats,
                          JoinGraph::Node const& node) -> double {
   if (eq->numMembers() != 2) {
@@ -75,6 +76,8 @@ auto equalitySelectivity(AstNode const* eq, JoinStatistics const& stats,
   return 1.0;
 }
 
+/// @brief Table 1, `(pred1) AND (pred2)`: F = F(pred1) * F(pred2), which
+/// assumes the column values are independent.
 auto conjunctionSelectivity(AstNode const* conjunction,
                             JoinStatistics const& stats,
                             JoinGraph::Node const& node) -> double {
@@ -86,10 +89,10 @@ auto conjunctionSelectivity(AstNode const* conjunction,
   return factor;
 }
 
-/// @brief P(A or B) = P(A) + P(B) - P(A)P(B), assuming the branches are
-/// independent. An unmeasurable branch contributes 1.0 and collapses the whole
-/// disjunction to 1.0, which is the honest answer: a union cannot be bounded
-/// below by one of its branches.
+/// @brief Table 1, `(pred1) OR (pred2)`: F = F(pred1) + F(pred2) -
+/// F(pred1) * F(pred2), again assuming independence. An unmeasurable branch
+/// contributes 1.0 and collapses the whole disjunction to 1.0, which is the
+/// honest answer: a union cannot be bounded below by one of its branches.
 auto disjunctionSelectivity(AstNode const* disjunction,
                             JoinStatistics const& stats,
                             JoinGraph::Node const& node) -> double {
@@ -105,6 +108,9 @@ auto disjunctionSelectivity(AstNode const* disjunction,
   return std::clamp(factor, 0.0, 1.0);
 }
 
+/// @brief Table 1, `column IN (list of values)`: (number of items in list) *
+/// (the factor for `column = value`). The paper caps this at 1/2; we cap at
+/// 1.0, so a long list is priced as no restriction rather than as half.
 auto inSelectivity(AstNode const* in, JoinStatistics const& stats,
                    JoinGraph::Node const& node) -> double {
   if (in->numMembers() != 2) {
