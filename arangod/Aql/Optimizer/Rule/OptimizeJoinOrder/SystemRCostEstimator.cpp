@@ -45,6 +45,36 @@ auto dedupe(std::vector<AttributePath> const& paths)
   return result;
 }
 
+/// @brief 1/|distinct| for `v.attr == <constant>`, the same selectivity the
+/// constant restrictions get in restrictedFor(). Only reachable from inside a
+/// disjunction: a top-level equality on one graph variable is extracted as a
+/// node condition, and one between two of them becomes an edge.
+auto equalitySelectivity(AstNode const* eq, JoinStatistics const& stats,
+                         JoinGraph::Node const& node) -> double {
+  if (eq->numMembers() != 2) {
+    return 1.0;
+  }
+  for (size_t i = 0; i < 2; ++i) {
+    auto access = extractAttributeAccess(eq->getMemberUnchecked(i));
+    if (!access.has_value() ||
+        access->first != node.executionNode->outVariable()) {
+      continue;
+    }
+    if (!eq->getMemberUnchecked(1 - i)->isConstant()) {
+      // comparing against something that varies per row; 1/|distinct| models
+      // an equality against a constant and nothing else
+      continue;
+    }
+    std::array<AttributePath, 1> attributes{std::move(access->second)};
+    auto distinct = stats.distinctValues(node, attributes);
+    if (distinct.defaulted) {
+      return 1.0;
+    }
+    return std::clamp(1.0 / std::max(distinct.value, 1.0), 0.0, 1.0);
+  }
+  return 1.0;
+}
+
 }  // namespace
 
 auto residualSelectivityFactor(AstNode const* residual,
@@ -56,6 +86,37 @@ auto residualSelectivityFactor(AstNode const* residual,
     case NODE_TYPE_OPERATOR_BINARY_GT:
     case NODE_TYPE_OPERATOR_BINARY_GE:
       return kRangeSelectivityFactor;
+
+    case NODE_TYPE_OPERATOR_BINARY_EQ:
+      return equalitySelectivity(residual, stats, node);
+
+    case NODE_TYPE_OPERATOR_BINARY_AND:
+    case NODE_TYPE_OPERATOR_NARY_AND: {
+      double factor = 1.0;
+      for (size_t i = 0; i < residual->numMembers(); ++i) {
+        factor *= residualSelectivityFactor(residual->getMemberUnchecked(i),
+                                            stats, node);
+      }
+      return factor;
+    }
+
+    case NODE_TYPE_OPERATOR_BINARY_OR:
+    case NODE_TYPE_OPERATOR_NARY_OR: {
+      if (residual->numMembers() == 0) {
+        return 1.0;
+      }
+      // P(A or B) = P(A) + P(B) - P(A)P(B), assuming the branches are
+      // independent. An unmeasurable branch contributes 1.0 and collapses the
+      // whole disjunction to 1.0, which is the honest answer: a union cannot
+      // be bounded below by one of its branches.
+      double factor = 0.0;
+      for (size_t i = 0; i < residual->numMembers(); ++i) {
+        double const branch = residualSelectivityFactor(
+            residual->getMemberUnchecked(i), stats, node);
+        factor = factor + branch - factor * branch;
+      }
+      return std::clamp(factor, 0.0, 1.0);
+    }
 
     case NODE_TYPE_OPERATOR_BINARY_IN: {
       if (residual->numMembers() != 2) {
