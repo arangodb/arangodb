@@ -509,8 +509,8 @@ void HeartbeatThread::runDBServer() {
   // thread. If it is zero, the heartbeat schedules another
   // run, which at its end, sets it back to 0:
   auto getNewsRunning = std::make_shared<std::atomic<int>>(0);
-  auto waitForGetNews = scopeGuard(
-      [&]() noexcept { waitForScheduledGetNews(*getNewsRunning); });
+  auto waitForGetNews =
+      scopeGuard([&]() noexcept { waitForScheduledGetNews(*getNewsRunning); });
 
   // Loop priorities / goals
   // 0. send state to agency server
@@ -809,8 +809,8 @@ void HeartbeatThread::runCoordinator() {
   // thread. If it is zero, the heartbeat schedules another
   // run, which at its end, sets it back to 0:
   auto getNewsRunning = std::make_shared<std::atomic<int>>(0);
-  auto waitForGetNews = scopeGuard(
-      [&]() noexcept { waitForScheduledGetNews(*getNewsRunning); });
+  auto waitForGetNews =
+      scopeGuard([&]() noexcept { waitForScheduledGetNews(*getNewsRunning); });
 
   while (!isStopping()) {
     try {
