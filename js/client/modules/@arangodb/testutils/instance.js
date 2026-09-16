@@ -834,7 +834,7 @@ class instance {
       wait(1, false);
       try {
         if (true) {//if (this.options.useReconnect && this.isFrontend()) {
-          if (this.JWT) {
+          if (this.jwt_secret) {
             print(`${Date()} reconnecting ${this.name} with JWT '${this.jwt_secret}' to ${this.url}`);
             if (arango.reconnect(this.endpoint,
                                  '_system',

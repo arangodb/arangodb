@@ -77,7 +77,7 @@ class endpointRunner extends trs.runInArangoshRunner {
         'rocksdb.debug-logging': 'true',
         'server.authentication': false,
       },
-      this.dummyDir, '',
+      this.dummyDir, '', '',
       '', this.options.memory
     );
     this.endpoint = this.instance.args['server.endpoint'];
