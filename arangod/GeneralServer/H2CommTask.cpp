@@ -811,7 +811,8 @@ void H2CommTask<T>::queueHttp2Responses() {
       LOG_TOPIC("e2773", DEBUG, Logger::REQUESTS)
           << "response with message id '" << streamId
           << "' has no H2 stream on server";
-      return;
+      continue;  // Need to keep going for the rest of the responses, since
+                 // they might be for other streams!
     }
     strm->response = std::move(guard);
     auto& res = *response;
