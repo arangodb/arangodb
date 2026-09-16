@@ -922,7 +922,7 @@ class agencyMgr {
             return;
           }
         } catch (ex) {
-          if (ex.errorNum === 10) {
+          if (ex.errorNum === internal.errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) {
             count -= 1;
             sleep(1);
             continue;
