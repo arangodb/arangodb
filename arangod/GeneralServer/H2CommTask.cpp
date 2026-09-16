@@ -27,6 +27,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/asio_ns.h"
+#include "Basics/debugging.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -200,11 +201,14 @@ template<SocketType T>
   H2CommTask<T>* me = static_cast<H2CommTask<T>*>(user_data);
   Stream* strm = me->findStream(stream_id);
   if (strm) {
-    // auth only runs once the client sends END_STREAM, so cap the body as it
-    // arrives. HTTP/1 caps it via Content-Length
-    bool const overLimit =
-        strm->bodySize + len > CommTask::MaximalBodySize ||
-        me->_bufferedBodyBytes + len > CommTask::MaximalBodySize;
+    // auth only runs at END_STREAM, so cap the body as it arrives
+    size_t maxBodySize = CommTask::MaximalBodySize;
+    TRI_IF_FAILURE("H2CommTask::lowerBodySizeLimit") {
+      // lets tests trigger the limit without sending a 1GB body
+      maxBodySize = 16;
+    }
+    bool const overLimit = strm->bodySize + len > maxBodySize ||
+                           me->_bufferedBodyBytes + len > maxBodySize;
     if (overLimit) {
       LOG_TOPIC("2823d", WARN, Logger::REQUESTS)
           << "<http2> request body on stream " << stream_id

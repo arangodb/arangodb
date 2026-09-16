@@ -98,7 +98,7 @@ class H2CommTask final : public GeneralCommTask<T> {
 
     size_t headerBuffSize = 0;  // total header size
     size_t responseOffset = 0;  // current offset in response body
-    // bytes this stream has added to the connection + process budgets
+    // bytes this stream has added to the connection budget
     size_t bodySize = 0;
     // stream was reset for an oversized body; must not be dispatched
     bool bodyLimitExceeded = false;
@@ -110,8 +110,7 @@ class H2CommTask final : public GeneralCommTask<T> {
   /// handle stream request in arangodb
   void processStream(Stream& strm);
 
-  /// give this stream's body bytes back to the budgets, ok to call more than
-  /// once
+  /// returns this stream's body bytes to the budgets; safe to call twice
   void releaseBufferedBody(Stream& strm) noexcept;
 
   void processRequest(Stream& stream, std::unique_ptr<HttpRequest> req);
