@@ -1130,10 +1130,12 @@ def main():
     if args.group:
         selected = [s for s in selected if s.group in args.group]
     if not args.scenario and not args.group:
-        # Opt-in groups. `known-issue` asserts a defect; `role-modelling`
-        # demonstrates a consequence of the role catalog as written rather than a
-        # pass/deny decision. Both expect the workload to break, so leaving them
-        # in the default set would make a healthy run look like a failure.
+        # Opt-in groups. `known-issue` asserts a defect, so it expects the
+        # workload to break and would make a healthy run look like a failure if
+        # left in by default. `role-modelling` runs the documented action sets
+        # exactly as published, with nothing added; it is opt-in because it is a
+        # narrower variant of a scenario already in the default set and costs a
+        # full makedata pass, not because it expects a failure.
         opt_in = ("known-issue", "role-modelling")
         excluded = [s for s in selected if s.group in opt_in]
         selected = [s for s in selected if s.group not in opt_in]

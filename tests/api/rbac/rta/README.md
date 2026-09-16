@@ -62,7 +62,7 @@ Four of five steps look fine with the feature switched off. Hence the probe.
 Differences worth knowing when comparing the catalogs:
 
 - Classic has no scope. The database grant *is* the boundary, so "out of scope" becomes "granted on a different database".
-- Classic gates the server version on `--server.harden` + `rw` on `_system`; RBAC always gates it, on `db:AdminMonitoringInternal`. `start_arangod_classic.sh` does not harden, so classic keeps the `version` field for everyone. See "Reading the server version needs an admin action" below.
+- Classic gates the server version on `--server.harden` + `rw` on `_system`; RBAC no longer gates it at all (as of 3.12.12-devel). `start_arangod_classic.sh` does not harden, so classic keeps the `version` field for everyone too. See "Reading the server version no longer needs an admin action under RBAC" below.
 - **Every classic scenario needs `_system` read access**, for the same reason the RBAC scopes need `db:database:_system`: arangosh's connect handshake and makedata's startup probes carry no `/_db/` prefix. Without it a scenario is refused at the handshake, which makes the deny scenarios pass for the wrong reason and the positive ones fail for an unrelated one.
 - **Creating or dropping a database is gated on `_system` rw** in classic, where RBAC maps it to `db:Create` / `db:Drop` on the database resource. The classic full-cycle scenario therefore needs a broader grant than its RBAC counterpart — a real model difference, not a harness quirk.
 - A **collection-level** grant requires its database to already exist (`404 database not found` otherwise), while a database-level grant on an absent database is accepted and stored. The runner pre-creates the database for scenarios whose grants name a collection.
@@ -244,7 +244,7 @@ Exit code is 0 only if every step matched its expectation.
 | `admin-without-api-version` | full action set minus `db:UseApiVersion` | denied — the gate runs before every handler |
 | `admin-with-explicit-deny` | admin policy + `Deny` on one collection | denied — `Deny` beats `Allow` in the same policy |
 | `reader-permissive-mode` | insufficient policy, `central-permissive` | passes — denials logged, not enforced |
-| `documented-admin-set-only` | the documented coredb-admin set *without* `db:AdminMonitoringInternal` | the workload cannot read the server version, so version-dependent suites break before any permission decision. Intended behaviour; opt-in via `--group role-modelling` |
+| `documented-admin-set-only` | the documented coredb-admin set *without* `db:AdminMonitoringInternal` | passes — the documented set is self-sufficient, including version-dependent suites. Guards against the old `/_api/version` gate returning; opt-in via `--group role-modelling` |
 
 ### Why the roles are emulated rather than bound
 
@@ -262,7 +262,7 @@ When the predefined roles gain real bundled policies, the natural follow-up is a
 
 **Suite filter.** Default `--test 050,100,400,500,580,607,612` — databases; collections, indexes and documents; views; graphs; analyzers. Every suite in that list has been verified to run under both authorization models.
 
-Suite `100` gates itself on `semver.coerce(db._version())`, which needs `db:AdminMonitoringInternal` under RBAC; the scenarios grant it, so it is included. This requirement will change some time soon.
+Suite `100` gates itself on `semver.coerce(db._version())`. That used to need `db:AdminMonitoringInternal` under RBAC; as of 3.12.12-devel it does not, and `documented-admin-set-only` asserts so.
 
 Pass `--test ''` for everything, bearing the Foxx blocker in mind.
 
@@ -330,32 +330,37 @@ Two traps worth knowing, both of which produced wrong readings while this was be
 
 **Reader vs developer is not positively separable.** makedata has no write-without-create phase, so both roles pass `checkdata` and fail `makedata`. The developer scenario therefore establishes only that the developer action set is insufficient for the workload (i.e. `db:Create` really is required and enforced), not that writing works where creating does not. Separating them would need a workload phase that writes into existing collections.
 
-**Reading the server version needs an admin action.** This is **intended behaviour**, not a defect. On a hardened server the `version` field of `/_api/version` sits behind an admin permission:
+**Reading the server version no longer needs an admin action under RBAC.** This changed in `3.12.12-devel` (`refs/feature/rbac-tests af30759075a`); the paragraph below records both states, because the classic half still stands and because the tests were written against the old one.
 
-| model | what the user needs | when |
+`RestVersionHandler::getVersion()` now reads:
+
+```cpp
+// "version" can be added unconditionally in 4.0
+if (allowInfo || !ExecContext::current().isClassic() ||
+    requestedApiVersion > 0) {
+  result.add("version", VPackValue(ARANGODB_VERSION));
+}
+```
+
+`allowInfo` is still `canUseHardenedAction(AdminMonitoringInternal).ok()`, and `canUseHardenedAction()` still returns early — allowing everyone — unless the server is hardened. What is new is the `!isClassic()` disjunct.
+
+| model | what the user needs to see `version` | when |
 |---|---|---|
-| RBAC | `db:AdminMonitoringInternal` = Allow | always — RBAC forces `--server.harden` (`ExecContext.h:160` asserts it) |
-| classic | `rw` on `_system` (i.e. admin) | only when started with `--server.harden` |
+| RBAC | **nothing** — `!isClassic()` is always true | since 3.12.12-devel; previously `db:AdminMonitoringInternal` = Allow, always, because RBAC forces `--server.harden` |
+| classic | `rw` on `_system` (i.e. admin), or a request for API version > 0 | only when started with `--server.harden`; `start_arangod_classic.sh` does not harden, so the field is visible to everyone there |
 
-The gate is `canUseHardenedAction()`, which returns early — allowing everyone — unless the server is hardened, and otherwise requires the admin action.
+Under the old behaviour the `version` **field itself** was withheld, not merely the details block, so `db._version()` returned `undefined` and every version-dependent client path broke — arangosh printed `server version: ` with an empty value, and rta-makedata died on `TypeError: Invalid version. Must be a string.` from `semver` inside `100_collections.js::isSupported`, *before any permission decision was reached*. That is why the `error` expectation existed at all.
 
-In `RestVersionHandler.cpp::getVersion()`, `result.add("version", ...)` sits inside `if (allowInfo)`, so it is the **`version` field itself** that is withheld, not merely the details block:
+Consequences for this catalog:
 
-```
-$ curl -H "authorization: bearer $SUPERUSER" .../_api/version
-{"server":"arango","license":"enterprise","version":"3.12.11-devel",...}
+- `documented-admin-set-only` has been **flipped** from expecting `error` to expecting `pass`. It now asserts that the documented coredb-admin action set is self-sufficient under RBAC, and guards against the gate returning.
+- `MONITORING` (`db:AdminMonitoringInternal`) in the other scenarios' scopes is now **vestigial** under RBAC. It is retained because an action a user holds but never needs changes no decision, and because removing it from every scope would risk the scenarios for no gain.
 
-$ curl -H "authorization: bearer $SCOPED_ADMIN" .../_api/version
-{"server":"arango","license":"enterprise","apiVersions":["v0"],...}     # no version
-```
-
-`db._version()` returns `requestResult.version`, so it yields `undefined`, and every version-dependent client path breaks. arangosh itself prints `Client/server version mismatch detected. arangosh version: 3.12.11-devel, server version: ` with an empty value. In rta-makedata it surfaces as a `TypeError: Invalid version. Must be a string.` from `semver` inside `100_collections.js::isSupported` — **before any permission decision is reached**, which is why it classifies as `error` rather than `deny`.
-
-The scenarios therefore grant `db:AdminMonitoringInternal` explicitly (see `MONITORING` in `scenarios.py`), which is what lets suite `100` run under RBAC.
+The scenarios still grant `db:AdminMonitoringInternal` explicitly (see `MONITORING` in `scenarios.py`), which used to be what let suite `100` run under RBAC and is now vestigial there.
 
 **Two consequences worth passing to whoever owns the role catalog.** Neither is a bug; both are things a deployment has to get right.
 
-1. `db:AdminMonitoringInternal` is not part of any documented `coredb-*` action set, so a user holding only those roles cannot run arangosh-based tooling that reads the server version. The `documented-admin-set-only` scenario (`--group role-modelling`) demonstrates exactly that.
+1. `db:AdminMonitoringInternal` is not part of any documented `coredb-*` action set. That used to mean a user holding only those roles could not run arangosh-based tooling that reads the server version; since 3.12.12-devel it does not, and `documented-admin-set-only` (`--group role-modelling`) asserts the documented set is sufficient. The gap still matters for anything *else* gated on an admin action, and for classic deployments started hardened.
 2. An admin action carries **no resource** — `resourceToWireString()` maps `NoResource` to the empty string, and only the bare `*` pattern matches it. So a binding scope has to permit admin actions in a statement of their own. The scope example in `RbacPredefinedRolesInformationFlow.md` (`actions: ["*"]`, `resources: ["db:database:xyz", "db:collection:xyz:*"]`) cannot grant any admin action at all. The catalog keeps that allowance in a separate statement so resource scoping still applies to every data action — putting `*` in the main statement would silently unscope everything.
 
 **Propagation.** A permission change travels operator → sidecar pool → streaming cache before arangod sees it; the documented worst case is ~30s. The driver polls the PDP until the new binding is visible, up to `--propagation-timeout` (90s).
@@ -472,9 +477,10 @@ definitions say they should. Notably:
 - **Permissive mode** was verified to be doing real work rather than
   accidentally permitting: the sidecar logged 317 `Permissive.Evaluate`
   overrides during that scenario.
-- Reading the server version needs an admin action under both models —
-  `db:AdminMonitoringInternal` under RBAC, `rw` on `_system` under classic.
-  This is intended behaviour, not a defect; see "Reading the server version
-  needs an admin action" above.
+- Reading the server version needs **no** admin action under RBAC as of
+  3.12.12-devel; classic still wants `rw` on `_system`, and only when
+  hardened. `documented-admin-set-only` was flipped to assert the new
+  behaviour — see "Reading the server version no longer needs an admin action
+  under RBAC" above.
 
 Caveat: single-server only. Cluster remains untested, and so do Foxx and users.

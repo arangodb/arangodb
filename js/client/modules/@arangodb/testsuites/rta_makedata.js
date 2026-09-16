@@ -156,7 +156,13 @@ function makeDataWrapper (options) {
     // //////////////////////////////////////////////////////////////////////
     rbacRunnerArgs() {
       const secretFile = fs.join(this.instanceManager.rootDir, 'rta_rbac_jwt_secret');
-      fs.write(secretFile, this.instanceManager.JWT);
+      const secret = this.instanceManager.jwt_secret;
+      if (typeof secret !== 'string' || secret === '') {
+        throw new Error(
+          'instanceManager.jwt_secret is empty - cannot sign RBAC scenario ' +
+          'tokens. --rbac requires authentication to be enabled on the server.');
+      }
+      fs.write(secretFile, secret);
       return [
         fs.join(this.options.rtaRbacDir, 'run_scenarios.py'),
         '--management', this.options.rbac,

@@ -57,18 +57,20 @@ READ = ["db:Read"]
 WRITE = ["db:WriteData", "db:WriteMeta"]
 LIFECYCLE = ["db:Create", "db:Drop"]
 
-# Required to read the server version, and therefore by any arangosh-based
-# tooling: on a hardened server `/_api/version` puts its `version` field behind
-# canUseHardenedAction(AdminMonitoringInternal) - see RestVersionHandler.cpp
-# getVersion(), where result.add("version", ...) sits inside `if (allowInfo)`.
-# RBAC *requires* --server.harden (ExecContext.h:160 asserts it), so under RBAC
-# this is always needed; classic only gates it when started hardened, and then
-# wants rw on _system instead. This is intended behaviour, not a defect.
+# NO LONGER REQUIRED under RBAC, and kept deliberately.
 #
-# Worth noting for the role catalog: it is NOT part of any documented coredb-*
-# action set, so a user holding only those roles cannot run tooling that reads
-# the version - rta-makedata's 100_collections.js gates itself on
-# semver.coerce(db._version()) and dies before any permission decision.
+# It used to be: on a hardened server `/_api/version` put its `version` field
+# behind canUseHardenedAction(AdminMonitoringInternal), and since RBAC requires
+# --server.harden (ExecContext.h:160 asserts it), any arangosh-based tooling
+# needed this action. RestVersionHandler::getVersion() now adds `version`
+# whenever the execution context is not classic, so under RBAC it is always
+# present. The classic gate survives: rw on _system, and only when hardened.
+#
+# Retained in the scenario scopes because it is harmless - an action a user
+# holds but never needs changes no decision - and because churning every scope
+# would risk the scenarios for no gain. `documented-admin-set-only` is what
+# asserts the current behaviour, running the documented action set with nothing
+# added. Note this action is NOT part of any documented coredb-* set.
 MONITORING = ["db:AdminMonitoringInternal"]
 
 # The five CoreDB resource types a scope can be expressed over, per the
@@ -469,35 +471,50 @@ def build(database, other_database, denied_collection, api_version_gate=True):
             ),
         ),
         # -- what the documented role set alone can do ----------------------
-        # Not a defect: on a hardened server the `version` field of
-        # /_api/version sits behind AdminMonitoringInternal, by design. RBAC
-        # forces hardening, so a user holding *only* the documented coredb-admin
-        # action set cannot read the version - and any arangosh-based tooling that
-        # does breaks before reaching a permission decision. Kept as a scenario
-        # because it is a real consequence of the role catalog as written, and it
-        # is the reason MONITORING is added to the other scenarios.
+        # This scenario used to assert the opposite. Until 3.12.12-devel
+        # (refs/feature/rbac-tests af30759075a) the `version` field of
+        # /_api/version sat behind AdminMonitoringInternal on a hardened server,
+        # and since RBAC forces hardening, a user holding *only* the documented
+        # coredb-admin set could not read it - version-reading tooling such as
+        # 100_collections.js died on semver.coerce(undefined) before any
+        # permission decision. RestVersionHandler::getVersion now reads:
+        #
+        #   // "version" can be added unconditionally in 4.0
+        #   if (allowInfo || !ExecContext::current().isClassic() ||
+        #       requestedApiVersion > 0) {
+        #     result.add("version", VPackValue(ARANGODB_VERSION));
+        #
+        # `!isClassic()` is always true under RBAC, so the field is always
+        # present and the action is no longer required. The classic gate
+        # survives: `allowInfo` still means rw on _system, and only on a
+        # hardened server.
+        #
+        # Flipped rather than deleted, so it now guards the new behaviour: if the
+        # gate ever comes back under RBAC, this fails. It is also the reason
+        # MONITORING is no longer load-bearing in the other scenarios' scopes;
+        # those keep it because it is harmless and because removing it would
+        # leave nothing asserting either way (see MONITORING).
         Scenario(
             name="documented-admin-set-only",
-            summary="the documented coredb-admin set alone cannot run version-reading tooling",
+            summary="the documented coredb-admin set alone suffices, incl. version-reading tooling",
             policy=ADMIN_POLICY_AS_DOCUMENTED,
             scope=in_scope,
             group="role-modelling",
-            # 100_collections.js gates itself on semver.coerce(db._version()).
+            # 100_collections.js gates itself on semver.coerce(db._version()),
+            # which is the whole point: it is the suite that needs the version.
             test_filter="050,100,400",
-            steps=[Step("makedata", SCENARIO, ERROR,
-                        note="semver TypeError - the client breaks, no denial is reached")],
+            steps=[Step("makedata", SCENARIO, PASS,
+                        note="version is readable without db:AdminMonitoringInternal")],
             expect_note=(
-                "Intended behaviour, confirmed against RestVersionHandler.cpp "
-                "getVersion() and ExecContext.h:160: `version` is inside "
-                "`if (allowInfo)`, and canUseHardenedAction returns early unless "
-                "the server is hardened. Under RBAC hardening is mandatory, so "
-                "db:AdminMonitoringInternal is always required; under classic the "
-                "equivalent is rw on _system, and only when started hardened. "
-                "The point of the scenario is that the documented coredb-* sets "
-                "do not include that action, so the other scenarios add it "
-                "explicitly (see MONITORING) - otherwise none of them could run "
-                "a version-dependent suite. Outcome is `error` rather than `deny` "
-                "because the client dies before any permission decision."
+                "Asserts that the documented coredb-admin action set is "
+                "self-sufficient under RBAC - no db:AdminMonitoringInternal "
+                "needed to read the server version. Confirmed against "
+                "RestVersionHandler::getVersion(), where `version` is now added "
+                "whenever the execution context is not classic. Kept opt-in "
+                "because it is a narrower variant of coredb-admin-in-scope and "
+                "costs a full makedata pass; kept at all because it is the only "
+                "scenario that exercises the documented action set *exactly* as "
+                "published, with nothing added."
             ),
         ),
         # -- permissive mode ----------------------------------------------
