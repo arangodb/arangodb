@@ -34,6 +34,7 @@ const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
 const ct = require('@arangodb/testutils/client-tools');
+const inst = require('@arangodb/testutils/instance');
 const {
   toArgv,
   download,
@@ -144,7 +145,7 @@ class runOnArangodRunner extends testRunnerBase{
   runOneTest(file) {
     try {
       let testCode = getTestCode(file, this.options, this.instanceManager);
-      let httpOptions = _.clone(this.instanceManager.httpAuthOptions);
+      let httpOptions = inst.makeAuthorizationHeaders(this.options, this.instanceManager.jwt_secret);
       httpOptions.method = 'POST';
 
       httpOptions.timeout = this.options.oneTestTimeout;
