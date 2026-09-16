@@ -890,10 +890,6 @@ void TRI_ClosePipe(ExternalProcess* process, bool read) {
   auto pipe = (read) ? &process->_readPipe : &process->_writePipe;
 
   if (*pipe != -1) {
-    FILE* stream = fdopen(*pipe, "w");
-    if (stream != nullptr) {
-      fflush(stream);
-    }
     close(*pipe);
     *pipe = -1;
   }
