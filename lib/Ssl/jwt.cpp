@@ -22,17 +22,20 @@
 
 #include "jwt.h"
 
+#include "Basics/StringUtils.h"
 #include "Ssl/SslInterface.h"
 
 #include <absl/strings/escaping.h>
 #include <absl/strings/internal/escaping.h>
 #include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
+#include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 
 #include <chrono>
+#include <optional>
 
 namespace arangodb::rest::SslInterface::jwt {
 
@@ -137,6 +140,36 @@ std::string generateRawJwt(std::string_view secret,
   }
 
   return absl::StrCat(fullMessage, ".", absl::WebSafeBase64Escape(signature));
+}
+
+std::optional<double> extractExpiration(std::string_view token) {
+  auto const parts = basics::StringUtils::split(token, '.');
+  if (parts.size() != 3) {
+    return std::nullopt;
+  }
+
+  // JWTs are specified as base64url, but generateRawJwt encodes the body
+  // with the standard alphabet, so both have to be accepted
+  std::string body;
+  if (!absl::WebSafeBase64Unescape(parts[1], &body) &&
+      !absl::Base64Unescape(parts[1], &body)) {
+    return std::nullopt;
+  }
+
+  try {
+    auto const parsed = velocypack::Parser::fromJson(body);
+    auto const bodySlice = parsed->slice();
+    if (!bodySlice.isObject()) {
+      return std::nullopt;
+    }
+    auto const expiration = bodySlice.get("exp");
+    if (!expiration.isNumber()) {
+      return std::nullopt;
+    }
+    return expiration.getNumber<double>();
+  } catch (...) {
+    return std::nullopt;
+  }
 }
 
 }  // namespace arangodb::rest::SslInterface::jwt

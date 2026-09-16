@@ -206,9 +206,6 @@ class V8ClientConnection {
   // Helper function to authenticate via /_open/auth endpoint
   ResultT<std::string> authenticateViaOpenAuth();
 
-  // Helper function to extract expiration time from JWT token
-  std::optional<double> extractJwtExpiration(std::string const& jwt);
-
   // Helper function to check if JWT token needs renewal
   bool needsTokenRenewal();
 

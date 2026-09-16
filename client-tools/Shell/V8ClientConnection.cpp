@@ -52,7 +52,6 @@
 #include "Enterprise/Encryption/EncryptionFeature.h"
 #endif
 
-#include <absl/strings/escaping.h>
 #include <absl/strings/str_cat.h>
 #include <fuerte/connection.h>
 #include <fuerte/requests.h>
@@ -485,50 +484,6 @@ ResultT<std::string> V8ClientConnection::authenticateViaOpenAuth() {
   return {VelocyPackHelper::getStringValue(slice, "jwt", "")};
 }
 
-// Helper function to extract expiration time from JWT token
-std::optional<double> V8ClientConnection::extractJwtExpiration(
-    std::string const& jwt) {
-  // JWT tokens consist of three parts separated by dots: header.body.signature
-  std::vector<std::string> const parts = basics::StringUtils::split(jwt, '.');
-  if (parts.size() != 3) {
-    // Invalid JWT format
-    return std::nullopt;
-  }
-
-  // Decode the body (second part) which contains the expiration time
-  std::string const& bodyWebBase64 = parts[1];
-  std::string body;
-  if (!absl::WebSafeBase64Unescape(bodyWebBase64, &body)) {
-    // Failed to decode base64
-    return std::nullopt;
-  }
-
-  // Parse the JSON body
-  try {
-    auto bodyBuilder = VPackParser::fromJson(body);
-    if (bodyBuilder == nullptr) {
-      return std::nullopt;
-    }
-
-    VPackSlice const bodySlice = bodyBuilder->slice();
-    if (!bodySlice.isObject()) {
-      return std::nullopt;
-    }
-
-    // Extract the expiration time from the "exp" field
-    VPackSlice const expSlice = bodySlice.get("exp");
-    if (!expSlice.isNone() && expSlice.isNumber()) {
-      return expSlice.getNumber<double>();
-    }
-  } catch (...) {
-    // Parsing failed
-    return std::nullopt;
-  }
-
-  // No expiration time found (some tokens don't expire)
-  return std::nullopt;
-}
-
 // Helper function to check if JWT token needs renewal
 bool V8ClientConnection::needsTokenRenewal() {
   // If we don't have stored credentials, we can't renew
@@ -576,7 +531,8 @@ void V8ClientConnection::renewJwtToken() {
 
         // Store the new token and extract its expiration time
         _currentJwtToken = newJwtToken;
-        auto expiry = extractJwtExpiration(_currentJwtToken);
+        auto expiry = arangodb::rest::SslInterface::jwt::extractExpiration(
+            _currentJwtToken);
         _jwtTokenExpiry = expiry.value_or(0.0);
 
         // Force reconnection with the new token
@@ -632,7 +588,8 @@ void V8ClientConnection::prepareConnection() {
         _currentJwtToken = jwtToken;
 
         // Extract and store the expiration time
-        auto expiry = extractJwtExpiration(_currentJwtToken);
+        auto expiry = arangodb::rest::SslInterface::jwt::extractExpiration(
+            _currentJwtToken);
         _jwtTokenExpiry = expiry.value_or(0.0);
       }
       if (res.errorNumber() == TRI_ERROR_ARANGO_TRY_AGAIN ||
