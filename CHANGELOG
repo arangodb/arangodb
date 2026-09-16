@@ -1,6 +1,8 @@
 3.12.12 (XXXX-XX-XX)
 --------------------
 
+* COR-995: Security fix.
+
 * COR-984: Security fix.
 
 * BTS-2453: Allow again to access /_admin/aardvark/api/ (the REST API
