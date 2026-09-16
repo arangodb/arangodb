@@ -565,7 +565,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
 #endif
       emptyScorers, {&sort, 1U}, _view->storedValues(), *plan,
       viewNode.outVariable(), viewNode.filterCondition(), {false, false}, 0,
-      viewNode.getRegisterPlan()->varInfo, 0,
+      viewNode.getRegisterPlan()->resolverForDepth(0),
       arangodb::iresearch::IResearchViewNode::ViewValuesRegisters{},
       arangodb::iresearch::CountApproximate::Exact,
       arangodb::iresearch::FilterOptimization::MAX, emptyScorersSort, 0,
@@ -647,7 +647,7 @@ TEST_F(IResearchViewCountApproximateTest,
 #endif
       emptyScorers, {&sort, 1U}, _view->storedValues(), *plan,
       viewNode.outVariable(), viewNode.filterCondition(), {false, false}, 0,
-      viewNode.getRegisterPlan()->varInfo, 0,
+      viewNode.getRegisterPlan()->resolverForDepth(0),
       arangodb::iresearch::IResearchViewNode::ViewValuesRegisters{},
       arangodb::iresearch::CountApproximate::Exact,
       arangodb::iresearch::FilterOptimization::MAX, emptyScorersSort, 0,
@@ -731,7 +731,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
 #endif
       emptyScorers, {&sort, 1U}, _view->storedValues(), *plan,
       viewNode.outVariable(), viewNode.filterCondition(), {false, false}, 0,
-      viewNode.getRegisterPlan()->varInfo, 0,
+      viewNode.getRegisterPlan()->resolverForDepth(0),
       arangodb::iresearch::IResearchViewNode::ViewValuesRegisters{},
       arangodb::iresearch::CountApproximate::Cost,
       arangodb::iresearch::FilterOptimization::MAX, emptyScorersSort, 0,

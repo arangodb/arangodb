@@ -1945,9 +1945,17 @@ aql::RegIdSet IResearchViewNode::calcInputRegs() const {
       vars.erase(_outVariable);
     }
 
+    // The filter condition may refer to variables that this node writes
+    // itself, and to variables that only become available further downstream:
+    // under late materialization the document variable is produced by the
+    // MaterializeNode, at a greater depth than this node's input rows. Neither
+    // is an input register, so probe instead of resolving.
+    auto const registers = inputRegisterResolver();
     for (auto const& it : vars) {
-      aql::RegisterId reg = variableToRegisterId(it);
-      // The filter condition may refer to registers that are written here
+      auto const [reg, status] = registers.lookup(it->id);
+      if (status != aql::RegisterResolver::Status::Ok) {
+        continue;
+      }
       if (reg.isConstRegister() || reg < getNrInputRegisters()) {
         inputRegs.emplace(reg);
       }
@@ -2066,20 +2074,20 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
     aql::RegisterId searchDocRegId{aql::RegisterId::makeInvalid()};
     if (_outSearchDocId != nullptr) {
-      searchDocRegId = variableToRegisterId(_outSearchDocId);
+      searchDocRegId = outputRegister(_outSearchDocId);
       writableOutputRegisters.emplace(searchDocRegId);
     }
 
     auto const outRegister = std::invoke([&]() -> aql::RegisterId {
       if (isLateMaterialized()) {
         aql::RegisterId documentRegId =
-            variableToRegisterId(_outNonMaterializedDocId);
+            outputRegister(_outNonMaterializedDocId);
         writableOutputRegisters.emplace(documentRegId);
         return documentRegId;
       } else if (isNoMaterialization()) {
         return aql::RegisterId::makeInvalid();
       } else {
-        auto outReg = variableToRegisterId(_outVariable);
+        auto outReg = outputRegister(_outVariable);
         writableOutputRegisters.emplace(outReg);
         return outReg;
       }
@@ -2088,23 +2096,17 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     std::vector<aql::RegisterId> scoreRegisters;
     scoreRegisters.reserve(numScoreRegisters);
     std::for_each(_scorers.begin(), _scorers.end(), [&](auto const& scorer) {
-      auto registerId = variableToRegisterId(scorer.var);
+      auto registerId = outputRegister(scorer.var);
       writableOutputRegisters.emplace(registerId);
       scoreRegisters.emplace_back(registerId);
     });
-
-    // TODO remove if not needed
-    auto const& varInfos = getRegisterPlan()->varInfo;
 
     ViewValuesRegisters outNonMaterializedViewRegs;
 
     for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
       for (auto const& fieldsVars : columnFieldsVars.second) {
         auto& fields = outNonMaterializedViewRegs[columnFieldsVars.first];
-        auto const it = varInfos.find(fieldsVars.var->id);
-
-        TRI_ASSERT(it != varInfos.cend());
-        auto const regId = it->second.registerId;
+        auto const regId = outputRegister(fieldsVars.var);
         writableOutputRegisters.emplace(regId);
         fields.emplace(fieldsVars.fieldNum, regId);
       }
@@ -2116,31 +2118,20 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         calcInputRegs(), std::move(writableOutputRegisters));
     TRI_ASSERT(_view || _meta);
     auto executorInfos = aql::IResearchViewExecutorInfos{
-        std::move(reader),
-        outRegister,
-        searchDocRegId,
-        std::move(scoreRegisters),
-        engine.getQuery(),
+        std::move(reader), outRegister, searchDocRegId,
+        std::move(scoreRegisters), engine.getQuery(),
 #ifdef USE_ENTERPRISE
         optimizeTopK(_meta, _view),
 #endif
-        scorers(),
-        sort(),
-        iresearch::getStoredValues(_meta, _view),
-        *plan(),
-        outVariable(),
-        filterCondition(),
-        volatility(),
-        _immutableParts,
-        getRegisterPlan()->varInfo,  // ??? do we need this?
-        getDepth(),
-        std::move(outNonMaterializedViewRegs),
-        _options.countApproximate,
-        filterOptimization(),
-        _heapSort,
-        _heapSortLimit,
-        _meta.get(),
-        _options.parallelism,
+        scorers(), sort(), iresearch::getStoredValues(_meta, _view), *plan(),
+        outVariable(), filterCondition(), volatility(), _immutableParts,
+        // TODO ViewExpressionContext resolves these against InputAqlItemRows,
+        // so this arguably wants inputRegisterResolver(). Switching it changes
+        // when "variable is used before being assigned" is reported, so it
+        // needs its own change; kept at the node's own depth for now.
+        outputRegisterResolver(), std::move(outNonMaterializedViewRegs),
+        _options.countApproximate, filterOptimization(), _heapSort,
+        _heapSortLimit, _meta.get(), _options.parallelism,
         _vocbase.server().getFeature<IResearchFeature>().getSearchPool()};
     return std::make_tuple(materializeType, std::move(executorInfos),
                            std::move(registerInfos));
