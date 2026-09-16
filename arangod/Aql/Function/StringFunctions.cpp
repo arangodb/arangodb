@@ -772,6 +772,10 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
   velocypack::StringSink adapter(buffer.get());
 
   appendAsString(vopts, adapter, value);
+  if (buffer->empty()) {
+    // ICU's StringSearch rejects an empty text with U_ILLEGAL_ARGUMENT_ERROR
+    return AqlValue(*buffer);
+  }
   icu_64_64::UnicodeString unicodeStr(buffer->data(),
                                       static_cast<int32_t>(buffer->length()));
 
