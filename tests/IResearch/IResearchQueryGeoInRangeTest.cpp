@@ -24,6 +24,7 @@
 
 #include <s2/s2latlng.h>
 
+#include "Mocks/CollectionDescriptors.h"
 #include "Geo/GeoJson.h"
 #include "Geo/ShapeContainer.h"
 #include "IResearch/IResearchView.h"
@@ -96,8 +97,8 @@ class QueryGeoInRange : public QueryTest {
   }
 
   void createCollections() {
-    auto createJson = VPackParser::fromJson(R"({ "name": "testCollection0" })");
-    auto collection = _vocbase.createCollection(createJson->slice());
+    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection0");
+    auto collection = _vocbase.createCollection(colDescriptor);
     ASSERT_TRUE(collection);
   }
 

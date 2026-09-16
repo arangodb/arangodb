@@ -849,7 +849,8 @@ TEST_F(LogicalCollectionDescriptorTest,
                 VPackValue(leader->name()));
   }
 
-  auto follower = database->createCollection(builder.slice());
+  auto follower = database->createCollection(
+      CollectionDescriptor::fromVelocyPack(builder.slice()));
   EXPECT_EQ(follower->shardingInfo()->distributeShardsLike(),
             std::to_string(leader->id().id()));
 

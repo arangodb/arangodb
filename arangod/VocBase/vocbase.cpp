@@ -759,15 +759,6 @@ std::shared_ptr<LogicalView> Database::lookupView(
 }
 
 std::shared_ptr<LogicalCollection> Database::createCollection(
-    velocypack::Slice parameters) {
-  if (!parameters.isObject()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "collection parameters should be an object");
-  }
-  return createCollection(CollectionDescriptor::fromVelocyPack(parameters));
-}
-
-std::shared_ptr<LogicalCollection> Database::createCollection(
     CollectionDescriptor descriptor) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 

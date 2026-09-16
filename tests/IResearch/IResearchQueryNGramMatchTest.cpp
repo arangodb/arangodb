@@ -24,6 +24,7 @@
 
 #include <velocypack/Iterator.h>
 
+#include "Mocks/CollectionDescriptors.h"
 #include "IResearch/IResearchVPackComparer.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewSort.h"
@@ -87,9 +88,8 @@ class QueryNGramMatch : public QueryTest {
       }
       // create collection0
       {
-        auto createJson = arangodb::velocypack::Parser::fromJson(
-            "{ \"name\": \"testCollection0\" }");
-        auto collection = vocbase.createCollection(createJson->slice());
+        auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection0");
+        auto collection = vocbase.createCollection(colDescriptor);
         ASSERT_NE(nullptr, collection);
 
         std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
@@ -175,9 +175,8 @@ class QueryNGramMatch : public QueryTest {
       }
       // create collection0
       {
-        auto createJson = arangodb::velocypack::Parser::fromJson(
-            "{ \"name\": \"testCollection0\" }");
-        auto collection = vocbase.createCollection(createJson->slice());
+        auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection0");
+        auto collection = vocbase.createCollection(colDescriptor);
         ASSERT_NE(nullptr, collection);
 
         std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{

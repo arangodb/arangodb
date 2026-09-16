@@ -29,6 +29,7 @@
 #include "IResearch/IResearchTestCommon.h"
 #include "IResearch/RestHandlerMock.h"
 #include "IResearch/common.h"
+#include "Mocks/CollectionDescriptors.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
@@ -64,6 +65,7 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Sharding/ShardingFeature.h"
+#include "Sharding/ShardingInfo.h"
 #include "Statistics/StatisticsFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
@@ -3817,6 +3819,21 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   }
 }
 
+namespace {
+
+// 'id' and 'shards' are required for the coordinator tests
+arangodb::CollectionDescriptor analyzerCollectionDescriptor(
+    std::string name, arangodb::DataSourceId id) {
+  auto d = arangodb::tests::testCollectionDescriptor(std::move(name), id);
+  d.constant.isSystem = true;
+  d.clusteringConstant.shards =
+      arangodb::ShardMap{{arangodb::ShardID{1337},
+                          {"shard-server-does-not-matter"}}};
+  return d;
+}
+
+}  // namespace
+
 class IResearchAnalyzerFeatureUpgradeStaticLegacyTest
     : public IResearchAnalyzerFeatureTest {
  protected:
@@ -3828,23 +3845,12 @@ class IResearchAnalyzerFeatureUpgradeStaticLegacyTest
       "text_de", "text_en", "text_es", "text_fi", "text_fr", "text_it",
       "text_nl", "text_no", "text_pt", "text_ru", "text_sv", "text_zh",
   };
-  std::shared_ptr<VPackBuilder> createCollectionJson = VPackParser::fromJson(
-      std::string("{ \"id\": 42, \"name\": \"") +
-      arangodb::tests::AnalyzerCollectionName +
-      "\", \"isSystem\": true, \"shards\": { \"s1337\": [ "
-      "\"shard-server-does-not-matter\" ] }, \"type\": 2 }");  // 'id' and
-                                                               // 'shards'
-                                                               // required for
-                                                               // coordinator
-                                                               // tests
-  std::shared_ptr<VPackBuilder> createLegacyCollectionJson =
-      VPackParser::fromJson(std::string("{ \"id\": 43, \"name\": \"") +
-                            LEGACY_ANALYZER_COLLECTION_NAME +
-                            "\", \"isSystem\": true, \"shards\": { "
-                            "\"s1337\": [ "
-                            "\"shard-server-does-not-matter\" ] }, \"type\": 2 "
-                            "}");  // 'id' and 'shards' required for coordinator
-                                   // tests
+  arangodb::CollectionDescriptor createCollectionDescriptor =
+      analyzerCollectionDescriptor(arangodb::tests::AnalyzerCollectionName,
+                                   arangodb::DataSourceId{42});
+  arangodb::CollectionDescriptor createLegacyCollectionDescriptor =
+      analyzerCollectionDescriptor(LEGACY_ANALYZER_COLLECTION_NAME,
+                                   arangodb::DataSourceId{43});
   std::string collectionId = std::to_string(42);
   std::string legacyCollectionId = std::to_string(43);
   std::shared_ptr<VPackBuilder> versionJson =
@@ -3904,7 +3910,7 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest,
   EXPECT_TRUE(
       _databaseFeature.createDatabase(testDBInfo(server.server()), vocbase)
           .ok());
-  EXPECT_FALSE(!vocbase->createCollection(createCollectionJson->slice()));
+  EXPECT_FALSE(!vocbase->createCollection(createCollectionDescriptor));
 
   // add document to collection
   {
@@ -4008,7 +4014,7 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest,
   EXPECT_TRUE(
       _databaseFeature.createDatabase(testDBInfo(server.server()), vocbase)
           .ok());
-  EXPECT_FALSE(!vocbase->createCollection(createCollectionJson->slice()));
+  EXPECT_FALSE(!vocbase->createCollection(createCollectionDescriptor));
 
   // add document to collection
   {
@@ -4068,7 +4074,7 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest,
     auto collection = system->lookupCollection(LEGACY_ANALYZER_COLLECTION_NAME);
     ASSERT_FALSE(collection);
     ASSERT_FALSE(
-        !system->createCollection(createLegacyCollectionJson->slice()));
+        !system->createCollection(createLegacyCollectionDescriptor));
   }
 
   // add document to legacy collection after feature start
@@ -4131,7 +4137,7 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest,
   EXPECT_TRUE(
       _databaseFeature.createDatabase(testDBInfo(server.server()), vocbase)
           .ok());
-  EXPECT_FALSE(!vocbase->createCollection(createCollectionJson->slice()));
+  EXPECT_FALSE(!vocbase->createCollection(createCollectionDescriptor));
 
   // add document to collection
   {

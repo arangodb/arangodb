@@ -24,6 +24,7 @@
 
 #include <velocypack/Iterator.h>
 
+#include "Mocks/CollectionDescriptors.h"
 #include "IResearch/IResearchVPackComparer.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewSort.h"
@@ -43,16 +44,15 @@ class QueryTraversal : public QueryTest {
   void create() {
     // create _graphs system collection as it is required to parse graph queries
     {
-      auto createJson = arangodb::velocypack::Parser::fromJson(
-          "{ \"name\": \"_graphs\", \"isSystem\": true }");
-      auto collection = _vocbase.createCollection(createJson->slice());
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor("_graphs");
+      colDescriptor.constant.isSystem = true;
+      auto collection = _vocbase.createCollection(colDescriptor);
       ASSERT_NE(nullptr, collection);
     }
     // create collection0
     {
-      auto createJson = arangodb::velocypack::Parser::fromJson(
-          "{ \"name\": \"testCollection0\" }");
-      auto collection = _vocbase.createCollection(createJson->slice());
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection0");
+      auto collection = _vocbase.createCollection(colDescriptor);
       ASSERT_NE(nullptr, collection);
 
       std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
@@ -97,9 +97,8 @@ class QueryTraversal : public QueryTest {
     }
     // create collection1
     {
-      auto createJson = arangodb::velocypack::Parser::fromJson(
-          "{ \"name\": \"testCollection1\" }");
-      auto collection = _vocbase.createCollection(createJson->slice());
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection1");
+      auto collection = _vocbase.createCollection(colDescriptor);
       ASSERT_NE(nullptr, collection);
 
       std::filesystem::path resource;
@@ -129,9 +128,9 @@ class QueryTraversal : public QueryTest {
     }
     // create edge collection
     {
-      auto createJson = arangodb::velocypack::Parser::fromJson(
-          "{ \"name\": \"edges\", \"type\": 3 }");
-      auto collection = _vocbase.createCollection(createJson->slice());
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+          "edges", arangodb::DataSourceId::none(), TRI_COL_TYPE_EDGE);
+      auto collection = _vocbase.createCollection(colDescriptor);
       ASSERT_NE(nullptr, collection);
 
       auto createIndexJson =

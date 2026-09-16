@@ -37,31 +37,32 @@ class QueryJoin : public QueryTest {
  protected:
   void createCollections1() {
     {
-      auto json = VPackParser::fromJson(R"({ "name": "entities" })");
-      auto collection = _vocbase.createCollection(json->slice());
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor("entities");
+      auto collection = _vocbase.createCollection(colDescriptor);
       ASSERT_TRUE(collection);
     }
     {
-      auto json = VPackParser::fromJson(R"({ "name": "links", "type": 3 })");
-      auto collection = _vocbase.createCollection(json->slice());
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+          "links", arangodb::DataSourceId::none(), TRI_COL_TYPE_EDGE);
+      auto collection = _vocbase.createCollection(colDescriptor);
       ASSERT_TRUE(collection);
     }
   }
 
   void createCollections23() {
     {
-      auto json = VPackParser::fromJson(R"({ "name": "testCollection0" })");
-      auto collection = _vocbase.createCollection(json->slice());
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection0");
+      auto collection = _vocbase.createCollection(colDescriptor);
       ASSERT_TRUE(collection);
     }
     {
-      auto json = VPackParser::fromJson(R"({ "name": "testCollection1" })");
-      auto collection = _vocbase.createCollection(json->slice());
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection1");
+      auto collection = _vocbase.createCollection(colDescriptor);
       ASSERT_TRUE(collection);
     }
     {
-      auto json = VPackParser::fromJson(R"({ "name": "testCollection2" })");
-      auto collection = _vocbase.createCollection(json->slice());
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection2");
+      auto collection = _vocbase.createCollection(colDescriptor);
       ASSERT_TRUE(collection);
     }
   }

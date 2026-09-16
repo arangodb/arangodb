@@ -22,6 +22,7 @@
 
 #include <absl/strings/str_replace.h>
 
+#include "Mocks/CollectionDescriptors.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/MakeViewSnapshot.h"
 #include "IResearchQueryCommon.h"
@@ -47,8 +48,8 @@ class QueryGeoIntersects : public QueryTest {
   }
 
   void createCollections() {
-    auto createJson = VPackParser::fromJson(R"({ "name": "testCollection0" })");
-    auto collection = _vocbase.createCollection(createJson->slice());
+    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection0");
+    auto collection = _vocbase.createCollection(colDescriptor);
     ASSERT_TRUE(collection);
   }
 

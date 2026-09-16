@@ -32,6 +32,7 @@
 
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "Mocks/CollectionDescriptors.h"
 #include "Mocks/ExecContextFactory.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -183,9 +184,9 @@ TEST_F(RestTransactionHandlerTest, collection_not_found_exclusive) {
 TEST_F(RestTransactionHandlerTest, simple_transaction_abort) {
   std::shared_ptr<LogicalCollection> coll;
   {
-    auto json =
-        VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice());
+    auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+        "testCollection", arangodb::DataSourceId{42});
+    coll = vocbase.createCollection(colDescriptor);
   }
   ASSERT_NE(coll, nullptr);
 
@@ -263,9 +264,9 @@ TEST_F(RestTransactionHandlerTest, simple_transaction_abort) {
 TEST_F(RestTransactionHandlerTest, simple_transaction_and_commit) {
   std::shared_ptr<LogicalCollection> coll;
   {
-    auto json =
-        VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice());
+    auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+        "testCollection", arangodb::DataSourceId{42});
+    coll = vocbase.createCollection(colDescriptor);
   }
   ASSERT_NE(coll, nullptr);
 
@@ -321,9 +322,9 @@ TEST_F(RestTransactionHandlerTest, simple_transaction_and_commit) {
 TEST_F(RestTransactionHandlerTest, permission_denied_read_only) {
   std::shared_ptr<LogicalCollection> coll;
   {
-    auto json =
-        VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice());
+    auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+        "testCollection", arangodb::DataSourceId{42});
+    coll = vocbase.createCollection(colDescriptor);
   }
   ASSERT_NE(coll, nullptr);
 
@@ -361,9 +362,9 @@ TEST_F(RestTransactionHandlerTest, permission_denied_read_only) {
 TEST_F(RestTransactionHandlerTest, permission_denied_forbidden) {
   std::shared_ptr<LogicalCollection> coll;
   {
-    auto json =
-        VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice());
+    auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+        "testCollection", arangodb::DataSourceId{42});
+    coll = vocbase.createCollection(colDescriptor);
   }
   ASSERT_NE(coll, nullptr);
 

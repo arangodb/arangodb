@@ -32,6 +32,7 @@
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Cluster/ServerState.h"
+#include "Mocks/CollectionDescriptors.h"
 #include "Mocks/Servers.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -90,9 +91,9 @@ arangodb::aql::QueryResult executeQuery(
 TEST_F(IndexNodeTest, objectQuery) {
   TRI_vocbase_t vocbase(createInfo(server.server()), server.engine());
   // create a collection
-  auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{\"name\": \"testCollection\", \"id\": 42}");
-  auto collection = vocbase.createCollection(collectionJson->slice());
+  auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+      "testCollection", arangodb::DataSourceId{42});
+  auto collection = vocbase.createCollection(colDescriptor);
   ASSERT_FALSE(!collection);
   auto indexJson = arangodb::velocypack::Parser::fromJson(
       "{\"type\": \"hash\", \"fields\": [\"obj.a\", \"obj.b\", \"obj.c\"]}");
@@ -171,9 +172,9 @@ TEST_F(IndexNodeTest, objectQuery) {
 TEST_F(IndexNodeTest, expansionQuery) {
   TRI_vocbase_t vocbase(createInfo(server.server()), server.engine());
   // create a collection
-  auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{\"name\": \"testCollection\", \"id\": 42}");
-  auto collection = vocbase.createCollection(collectionJson->slice());
+  auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+      "testCollection", arangodb::DataSourceId{42});
+  auto collection = vocbase.createCollection(colDescriptor);
   ASSERT_FALSE(!collection);
   auto indexJson = arangodb::velocypack::Parser::fromJson(
       "{\"type\": \"hash\", \"fields\": [\"tags.hop[*].foo.fo\", "
@@ -226,9 +227,9 @@ TEST_F(IndexNodeTest, expansionQuery) {
 TEST_F(IndexNodeTest, expansionIndexAndNotExpansionDocumentQuery) {
   TRI_vocbase_t vocbase(createInfo(server.server()), server.engine());
   // create a collection
-  auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{\"name\": \"testCollection\", \"id\": 42}");
-  auto collection = vocbase.createCollection(collectionJson->slice());
+  auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+      "testCollection", arangodb::DataSourceId{42});
+  auto collection = vocbase.createCollection(colDescriptor);
   ASSERT_FALSE(!collection);
   auto indexJson = arangodb::velocypack::Parser::fromJson(
       "{\"type\": \"hash\", \"fields\": [\"tags.hop[*].foo.fo\", "
@@ -270,9 +271,9 @@ TEST_F(IndexNodeTest, expansionIndexAndNotExpansionDocumentQuery) {
 TEST_F(IndexNodeTest, lastExpansionQuery) {
   TRI_vocbase_t vocbase(createInfo(server.server()), server.engine());
   // create a collection
-  auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{\"name\": \"testCollection\", \"id\": 42}");
-  auto collection = vocbase.createCollection(collectionJson->slice());
+  auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+      "testCollection", arangodb::DataSourceId{42});
+  auto collection = vocbase.createCollection(colDescriptor);
   ASSERT_FALSE(!collection);
   auto indexJson = arangodb::velocypack::Parser::fromJson(
       "{\"type\": \"hash\", \"fields\": [\"tags[*]\"]}");
@@ -331,9 +332,9 @@ TEST_F(IndexNodeTest, lastExpansionQuery) {
 TEST_F(IndexNodeTest, constructIndexNode) {
   TRI_vocbase_t vocbase(createInfo(server.server()), server.engine());
   // create a collection
-  auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{\"name\": \"testCollection\", \"id\": 42}");
-  auto collection = vocbase.createCollection(collectionJson->slice());
+  auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+      "testCollection", arangodb::DataSourceId{42});
+  auto collection = vocbase.createCollection(colDescriptor);
   ASSERT_FALSE(!collection);
   // create an index node
   auto indexJson = arangodb::velocypack::Parser::fromJson(
@@ -592,9 +593,9 @@ TEST_F(IndexNodeTest, constructIndexNode) {
 TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
   TRI_vocbase_t vocbase(createInfo(server.server()), server.engine());
   // create a collection
-  auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{\"name\": \"testCollection\", \"id\": 42}");
-  auto collection = vocbase.createCollection(collectionJson->slice());
+  auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+      "testCollection", arangodb::DataSourceId{42});
+  auto collection = vocbase.createCollection(colDescriptor);
   ASSERT_FALSE(!collection);
   // create an index node
   auto indexJson = arangodb::velocypack::Parser::fromJson(

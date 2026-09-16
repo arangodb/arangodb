@@ -19,6 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 ////////////////////////////////////////////////////////////////////////////////
+#include "Mocks/CollectionDescriptors.h"
 #include "Metrics/MetricsFeature.h"
 #include "common.h"
 #include "gtest/gtest.h"
@@ -125,9 +126,8 @@ class IResearchInvertedIndexIteratorTestBase
         *_vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
         _analyzers);
 
-    auto createCollection = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testCollection0\" }");
-    _collection = vocbase().createCollection(createCollection->slice());
+    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection0");
+    _collection = vocbase().createCollection(colDescriptor);
     EXPECT_TRUE(_collection);
     arangodb::IndexId id(1);
     auto storedFields = Provider::storedFields();

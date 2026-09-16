@@ -22,6 +22,7 @@
 
 #include <velocypack/Iterator.h>
 
+#include "Mocks/CollectionDescriptors.h"
 #include "IResearch/IResearchVPackComparer.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewSort.h"
@@ -4041,9 +4042,8 @@ class QueryPhrase : public QueryTest {
 
     // create collection0
     {
-      auto createJson = arangodb::velocypack::Parser::fromJson(
-          "{ \"name\": \"testCollection0\" }");
-      auto collection = vocbase.createCollection(createJson->slice());
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection0");
+      auto collection = vocbase.createCollection(colDescriptor);
       ASSERT_NE(nullptr, collection);
 
       std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
@@ -4080,9 +4080,8 @@ class QueryPhrase : public QueryTest {
 
     // create collection1
     {
-      auto createJson = arangodb::velocypack::Parser::fromJson(
-          "{ \"name\": \"testCollection1\" }");
-      auto collection = vocbase.createCollection(createJson->slice());
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection1");
+      auto collection = vocbase.createCollection(colDescriptor);
       ASSERT_NE(nullptr, collection);
 
       std::filesystem::path resource;
@@ -4115,9 +4114,8 @@ class QueryPhrase : public QueryTest {
   void create1() {
     // create collection0
     {
-      auto createJson = arangodb::velocypack::Parser::fromJson(
-          "{ \"name\": \"testCollection0\" }");
-      auto collection = _vocbase.createCollection(createJson->slice());
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection0");
+      auto collection = _vocbase.createCollection(colDescriptor);
       ASSERT_NE(nullptr, collection);
 
       std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
@@ -4154,9 +4152,8 @@ class QueryPhrase : public QueryTest {
 
     // create collection1
     {
-      auto createJson = arangodb::velocypack::Parser::fromJson(
-          "{ \"name\": \"testCollection1\" }");
-      auto collection = _vocbase.createCollection(createJson->slice());
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection1");
+      auto collection = _vocbase.createCollection(colDescriptor);
       ASSERT_NE(nullptr, collection);
 
       std::filesystem::path resource;
