@@ -33,6 +33,7 @@ const rp = require('@arangodb/testutils/result-processing');
 const pm = require('@arangodb/testutils/portmanager');
 const yaml = require('js-yaml');
 const internal = require('internal');
+const crypto = require('@arangodb/crypto');
 const {versionHas} = require("@arangodb/test-helper");
 const crashUtils = require('@arangodb/testutils/crash-utils');
 const {sanHandler} = require('@arangodb/testutils/san-file-handler');
