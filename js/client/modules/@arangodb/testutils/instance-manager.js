@@ -1897,7 +1897,7 @@ class instanceManager {
   getMemProfSnapshot(instanceInfo, options, counter) {
     if (this.options.memprof) {
       this.arangods.forEach(arangod => {
-        arangod.getMemprofSnapshot();
+        arangod.getMemProfSnapshot();
       });
     }
   }
