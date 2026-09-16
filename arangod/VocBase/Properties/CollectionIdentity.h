@@ -86,15 +86,17 @@ auto inspect(Inspector& f, CollectionIdentity& props) {
   return f.object(props).fields(
       // declared before "id" so that "id" wins when a pre-3.1 collection
       // carries both
-      serverOnlyField(f, StaticStrings::DataSourceCid, props.id)
+      internalFieldRejectingUserInput(f, StaticStrings::DataSourceCid, props.id)
           .transformWith(idTransformer),
       f.field(StaticStrings::Id, props.id)
           .transformWith(idTransformer)
           .fallback(f.keep()),
       // guid is documented as having no effect, so on the user path it stays
       // accepted and is dropped
-      internalOnlyField(f, StaticStrings::DataSourceGuid, props.guid),
-      serverOnlyField(f, StaticStrings::DataSourcePlanId, props.planId)
+      internalFieldDroppingUserInput(f, StaticStrings::DataSourceGuid,
+                                     props.guid),
+      internalFieldRejectingUserInput(f, StaticStrings::DataSourcePlanId,
+                                      props.planId)
           .transformWith(idTransformer));
 }
 

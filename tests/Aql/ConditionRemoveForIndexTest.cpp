@@ -78,7 +78,7 @@ class ConditionRemoveForIndexTest : public ::testing::Test {
   Variable* _d{_ast->variables()->createTemporaryVariable()};
   Variable* _e{_ast->variables()->createTemporaryVariable()};
   TRI_vocbase_t& _vocbase{_server.getSystemDatabase()};
-  LogicalCollection _collection{_vocbase, velocypack::Slice::emptyObjectSlice(),
+  LogicalCollection _collection{_vocbase, CollectionDescriptor{},
                                 true};
 
   std::shared_ptr<arangodb::Index> makePersistent(

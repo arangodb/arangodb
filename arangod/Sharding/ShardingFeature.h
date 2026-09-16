@@ -27,6 +27,8 @@
 
 #include <velocypack/Slice.h>
 
+#include <optional>
+
 namespace arangodb {
 
 class ShardingInfo;

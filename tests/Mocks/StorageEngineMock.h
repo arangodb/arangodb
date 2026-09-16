@@ -42,9 +42,6 @@ class PhysicalCollection;
 class TransactionCollection;
 class TransactionManager;
 class WalAccess;
-namespace aql {
-class OptimizerRulesFeature;
-}
 namespace iresearch {
 class IResearchLinkMock;
 class IResearchInvertedIndexMock;
@@ -116,7 +113,7 @@ class StorageEngineMock : private StorageEngineMockBase,
  public:
   static std::function<void()> before;
   static arangodb::Result flushSubscriptionResult;
-  static arangodb::RecoveryState recoveryStateResult;
+  static arangodb::EngineState recoveryStateResult;
   static TRI_voc_tick_t recoveryTickResult;
   static std::string versionFilenameResult;
   static std::function<void()> recoveryTickCallback;
@@ -129,8 +126,6 @@ class StorageEngineMock : private StorageEngineMockBase,
       arangodb::application_features::ApplicationServer& server,
       bool injectClusterIndexes = false);
   arangodb::HealthData healthCheck() override;
-  void addOptimizerRules(
-      arangodb::aql::OptimizerRulesFeature& feature) override;
 #ifdef USE_V8
   void addV8Functions() override;
 #endif
@@ -144,7 +139,7 @@ class StorageEngineMock : private StorageEngineMockBase,
   arangodb::Result createLoggerState(TRI_vocbase_t*, VPackBuilder&) override;
   std::unique_ptr<arangodb::PhysicalCollection> createPhysicalCollection(
       arangodb::LogicalCollection& collection,
-      arangodb::CollectionDescriptor const& /*descriptor*/) override;
+      arangodb::LocalStorageProperties const& /*storage*/) override;
   std::shared_ptr<arangodb::TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
       arangodb::transaction::Options const& options,
@@ -171,8 +166,8 @@ class StorageEngineMock : private StorageEngineMockBase,
   arangodb::Result handleSyncKeys(arangodb::DatabaseInitialSyncer& syncer,
                                   arangodb::LogicalCollection& col,
                                   std::string const& keysId) override;
-  arangodb::RecoveryState recoveryState() override;
-  TRI_voc_tick_t recoveryTick() override;
+  arangodb::EngineState engineState() noexcept override;
+  TRI_voc_tick_t recoveryTick() noexcept override;
 
   std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::CreateDatabaseInfo&&,
                                               bool isUpgrade) override;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -19,31 +19,28 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
 #include <memory>
+#include <vector>
 
 namespace arangodb {
+class Index;
+
 namespace aql {
-class ExecutionPlan;
-class Optimizer;
-struct OptimizerRule;
-class OptimizerRulesFeature;
+
+struct Collection;
+class SortCondition;
+struct Variable;
+class IndexHint;
+
+namespace optimizer {
+bool getIndexForSortCondition(Collection const& coll,
+                              SortCondition const* sortCondition,
+                              Variable const* reference, size_t itemsInIndex,
+                              IndexHint const& hint,
+                              std::vector<std::shared_ptr<Index>>& usedIndexes,
+                              size_t& coveredAttributes);
+}
 }  // namespace aql
-
-struct RocksDBOptimizerRules {
-  static void registerResources(aql::OptimizerRulesFeature& feature);
-
-  // simplify an EnumerationCollectionNode that fetches an entire document to a
-  // projection of this document
-  static void reduceExtractionToProjectionRule(
-      aql::Optimizer* opt, std::unique_ptr<aql::ExecutionPlan> plan,
-      aql::OptimizerRule const& rule);
-  // remove SORT RAND() LIMIT 1 if appropriate
-  static void removeSortRandRule(aql::Optimizer* opt,
-                                 std::unique_ptr<aql::ExecutionPlan> plan,
-                                 aql::OptimizerRule const& rule);
-};
-
 }  // namespace arangodb

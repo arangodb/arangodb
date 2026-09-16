@@ -267,6 +267,8 @@ class PhysicalCollection {
 
   virtual bool cacheEnabled() const noexcept = 0;
 
+  virtual uint64_t objectId() const noexcept { return 0; }
+
  protected:
   explicit PhysicalCollection(LogicalCollection& collection);
 

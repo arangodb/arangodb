@@ -25,6 +25,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "ClusterEngine/ClusterSelectivityEstimates.h"
 #include "ClusterEngine/Common.h"
+#include "StorageEngine/LocalStorageProperties.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/LogicalCollection.h"
@@ -48,7 +49,7 @@ class ClusterCollection final : public PhysicalCollection {
  public:
   explicit ClusterCollection(LogicalCollection& collection,
                              ClusterEngineType engineType,
-                             CollectionDescriptor const& descriptor);
+                             LocalStorageProperties const& storage);
 
   ~ClusterCollection();
 

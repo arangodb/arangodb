@@ -28,7 +28,6 @@
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Properties/KeyGeneratorProperties.h"
 #include "VocBase/Properties/InspectContexts.h"
-#include "VocBase/Properties/UtilityInvariants.h"
 #include "VocBase/voc-types.h"
 
 #include <optional>
@@ -71,22 +70,13 @@ auto inspect(Inspector& f, CollectionConstantProperties& props) {
           .fallback(f.keep()),
       f.field(StaticStrings::IsSmart, props.isSmart).fallback(f.keep()),
       f.field(StaticStrings::IsDisjoint, props.isDisjoint).fallback(f.keep()),
-      userInvariant(
-          f,
-          f.field(StaticStrings::SmartJoinAttribute, props.smartJoinAttribute),
-          UtilityInvariants::isNonEmptyIfPresent),
-      userInvariant(
-          f,
-          f.field(StaticStrings::DataSourceType, props.type).fallback(f.keep()),
-          UtilityInvariants::isValidCollectionType),
+      f.field(StaticStrings::SmartJoinAttribute, props.smartJoinAttribute),
+      f.field(StaticStrings::DataSourceType, props.type).fallback(f.keep()),
       f.field(StaticStrings::KeyOptions, props.keyOptions).fallback(f.keep()),
       /* Backwards compatibility, fields are allowed (MMFILES) but have no
          relevance anymore */
       f.ignoreField("doCompact"), f.ignoreField("isVolatile"),
-      // Written by the server, so always written out. A coordinator loading a
-      // plan entry needs these to resolve the existing shadow collections
-      // instead of building new ones, which would come out with the parent's
-      // numberOfShards of 0. User input is accepted and dropped.
+      // Written by the server; ignored from users, who do not own this field.
       f.field(StaticStrings::ShadowCollections, props.shadowCollections)
           .fallback(f.keep())
           .whenLoading([]() {
