@@ -344,8 +344,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   void addV8Functions() override;
 #endif
 
-  void addParametersForNewCollection(velocypack::Builder& builder,
-                                     velocypack::Slice info) override;
   uint64_t resolveObjectId(
       CollectionStorageProperties const& storage) const override;
 

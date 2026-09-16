@@ -102,7 +102,6 @@ class LogicalCollection : public LogicalDataSource {
 
  public:
   LogicalCollection() = delete;
-  LogicalCollection(Database& vocbase, velocypack::Slice info, bool isAStub);
   LogicalCollection(Database& vocbase, CollectionDescriptor descriptor,
                     bool isAStub);
   LogicalCollection(LogicalCollection const&) = delete;
@@ -426,13 +425,6 @@ class LogicalCollection : public LogicalDataSource {
   CollectionDescriptor properties() const;
 
  private:
-  /// @brief The slice ctor delegates here to keep the parsed descriptor alive
-  /// for the whole body. Collapses into the descriptor ctor in COR-885.
-  LogicalCollection(Database& vocbase, CollectionDescriptor const& descriptor,
-                    velocypack::Slice info, bool isAStub);
-
-  void initializeSmartAttributesBefore(velocypack::Slice info);
-  void initializeSmartAttributesAfter(velocypack::Slice info);
   void initializeSmartAttributesBefore(CollectionDescriptor const& descriptor);
   void initializeSmartAttributesAfter(CollectionDescriptor const& descriptor);
 

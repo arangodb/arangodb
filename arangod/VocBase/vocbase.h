@@ -426,24 +426,21 @@ struct Database {
                         parametersOfCollections,
                     bool allowEnterpriseCollectionsOnSingleServer);
 
+  // TODO (COR965): delete this bridge function
+  std::shared_ptr<arangodb::LogicalCollection> createCollection(
+      arangodb::velocypack::Slice parameters);
+
   /// @brief creates a new collection from parameter set
   /// collection id ("cid") is normally passed with a value of 0
   /// this means that the system will assign a new collection id automatically
   /// using a cid of > 0 is supported to import dumps from other servers etc.
   /// but the functionality is not advertised
   std::shared_ptr<arangodb::LogicalCollection> createCollection(
-      arangodb::velocypack::Slice parameters);
-
-  std::shared_ptr<arangodb::LogicalCollection> createCollection(
       CollectionDescriptor descriptor);
 
   /// @brief drops a collection.
   arangodb::Result dropCollection(arangodb::DataSourceId cid,
                                   bool allowDropSystem);
-
-  /// @brief validate parameters for collection creation.
-  arangodb::Result validateCollectionParameters(
-      arangodb::velocypack::Slice parameters);
 
   /// @brief checks a descriptor on its own. Checks that need the
   /// `DatabaseConfiguration` are in `applyDefaultsAndValidate()`,
@@ -476,20 +473,7 @@ struct Database {
   /// the isAStub flag should be set to true for collections created by
   /// ClusterInfo.
   std::shared_ptr<arangodb::LogicalCollection> createCollectionObject(
-      arangodb::velocypack::Slice data, bool isAStub);
-
-  std::shared_ptr<arangodb::LogicalCollection> createCollectionObject(
       CollectionDescriptor descriptor, bool isAStub);
-
-  /// @brief creates a collection object (of type LogicalCollection or one of
-  /// the SmartGraph-specific subtypes) for storage. The object is augmented
-  /// with storage engine-specific data (e.g. objectId). the object only exists
-  /// on the heap and is not yet persisted anywhere. note: this should only be
-  /// called for valid collection definitions (i.e. validation should be done
-  /// before!) and not on coordinators (coordinators are not expected to store
-  /// any collections).
-  std::shared_ptr<arangodb::LogicalCollection> createCollectionObjectForStorage(
-      arangodb::velocypack::Slice parameters);
 
   /// @brief callback for collection dropping
   static bool dropCollectionCallback(arangodb::LogicalCollection& collection);
@@ -502,11 +486,6 @@ struct Database {
       std::shared_ptr<arangodb::LogicalCollection> const& collection,
       std::vector<std::shared_ptr<arangodb::LogicalCollection>>& collections)
       const;
-
-  /// @brief validates SmartGraph-specific collection parameters. does nothing
-  /// in community edition or if the collection is not a SmartGraph collection.
-  arangodb::Result validateExtendedCollectionParameters(
-      arangodb::velocypack::Slice parameters);
 
   /// @brief checks the licence for SmartGraph collections. does nothing in
   /// community edition or if the collection is not a SmartGraph collection.

@@ -78,47 +78,6 @@ double defaultCountCacheTtl(bool system) noexcept {
   return /*ttl*/ system ? 900.0 : 180.0;
 }
 
-std::string readGloballyUniqueId(velocypack::Slice info) {
-  auto guid = basics::VelocyPackHelper::getStringValue(
-      info, StaticStrings::DataSourceGuid, StaticStrings::Empty);
-
-  if (!guid.empty()) {
-    // check if the globallyUniqueId is only numeric. This causes ambiguities
-    // later and can only happen (only) for collections created with v3.3.0 (the
-    // GUID generation process was changed in v3.3.1 already to fix this issue).
-    // remove the globallyUniqueId so a new one will be generated server.side
-    bool validNumber = false;
-    NumberUtils::atoi_positive<uint64_t>(guid.data(), guid.data() + guid.size(),
-                                         validNumber);
-    if (!validNumber) {
-      // GUID is not just numeric, this is fine
-      return guid;
-    }
-
-    // GUID is only numeric - we must not use it
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    // this should never happen for any collections created during testing. the
-    // only way to make this happen is using a collection created with v3.3.0,
-    // which we will not have in our tests.
-    TRI_ASSERT(false);
-#endif
-  }
-
-  auto version = basics::VelocyPackHelper::getNumericValue<uint32_t>(
-      info, StaticStrings::Version,
-      static_cast<uint32_t>(LogicalCollection::currentVersion()));
-
-  // predictable UUID for legacy collections
-  if (static_cast<LogicalCollection::Version>(version) <
-          LogicalCollection::Version::v33 &&
-      info.isObject()) {
-    return basics::VelocyPackHelper::getStringValue(
-        info, StaticStrings::DataSourceName, StaticStrings::Empty);
-  }
-
-  return StaticStrings::Empty;
-}
-
 std::string readGloballyUniqueId(CollectionDescriptor const& d) {
   auto const& guid = d.identity.guid;
   if (!guid.empty()) {
@@ -167,109 +126,6 @@ arangodb::LocalStorageProperties makeStorageProperties(
 }
 
 }  // namespace
-
-// The Slice contains the part of the plan that
-// is relevant for this collection.
-LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
-                                     bool isAStub)
-    : LogicalCollection(vocbase, CollectionDescriptor::fromVelocyPack(info),
-                        info, isAStub) {}
-
-LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase,
-                                     CollectionDescriptor const& descriptor,
-                                     VPackSlice info, bool isAStub)
-    : LogicalDataSource(
-          *this, vocbase, DataSourceId{Helper::extractIdValue(info)},
-          ::readGloballyUniqueId(info),
-          DataSourceId{
-              Helper::stringUInt64(info.get(StaticStrings::DataSourcePlanId))},
-          Helper::getStringValue(info, StaticStrings::DataSourceName, ""),
-          NameValidator::isSystemName(Helper::getStringValue(
-              info, StaticStrings::DataSourceName, "")) &&
-              Helper::getBooleanValue(info, StaticStrings::DataSourceSystem,
-                                      false),
-          Helper::getBooleanValue(info, StaticStrings::DataSourceDeleted,
-                                  false)),
-      _invariants(::makeInvariants(descriptor)),
-      _version(static_cast<Version>(Helper::getNumericValue<uint32_t>(
-          info, StaticStrings::Version,
-          static_cast<uint32_t>(currentVersion())))),
-      _v8CacheVersion(0),
-      _isAStub(isAStub),
-      _usesRevisionsAsDocumentIds(Helper::getBooleanValue(
-          info, StaticStrings::UsesRevisionsAsDocumentIds, false)),
-      _syncByRevision(determineSyncByRevision()),
-      _waitForSync(descriptor.clusteringMutable.waitForSync),
-      _internalValidatorTypes(descriptor.internal.internalValidatorType),
-      _countCache(defaultCountCacheTtl(system())),
-      _physical(vocbase.engine().createPhysicalCollection(
-          *this, ::makeStorageProperties(descriptor))) {
-  TRI_IF_FAILURE("disableRevisionsAsDocumentIds") {
-    _usesRevisionsAsDocumentIds = false;
-    _syncByRevision.store(false);
-  }
-
-  TRI_ASSERT(info.isObject());
-
-  if (_version < minimumVersion()) {
-    // collection is too "old"
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_FAILED,
-        absl::StrCat("collection '", name(),
-                     "' has a too old version. Please start the server "
-                     "with the --database.auto-upgrade option."));
-  }
-
-  if (auto res = updateSchema(info.get(StaticStrings::Schema)); res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  TRI_ASSERT(!guid().empty());
-
-  // update server's tick value
-  TRI_UpdateTickServer(id().id());
-
-  if (replicationVersion() == replication::Version::TWO &&
-      _invariants.groupId.has_value()) {
-    TRI_ASSERT(planId() == id() || replicatedStateIdIfAny().has_value());
-  }
-  // TODO: THIS NEEDS CLEANUP (Naming & Structural issue)
-  initializeSmartAttributesBefore(info);
-
-  _sharding = std::make_unique<ShardingInfo>(info, this);
-
-  // TODO: THIS NEEDS CLEANUP (Naming & Structural issue)
-  initializeSmartAttributesAfter(info);
-
-  if (ServerState::instance()->isDBServer() ||
-      !ServerState::instance()->isRunningInCluster()) {
-    if (!isAStub) {
-      _followers = std::make_unique<FollowerInfo>(this);
-    }
-  }
-
-  TRI_ASSERT(_physical != nullptr);
-  // This has to be called AFTER _physical and _logical are properly linked
-  // together.
-
-  prepareIndexes(info.get(StaticStrings::Indexes));
-  decorateWithInternalValidators();
-
-  // create key generator based on keyOptions from slice
-  _keyGenerator = KeyGeneratorHelper::createKeyGenerator(
-      *this, descriptor.constant.keyOptions);
-
-  // computed values
-  if (auto res = updateComputedValues(info.get(StaticStrings::ComputedValues));
-      res.fail()) {
-    LOG_TOPIC("4c73f", ERR, Logger::FIXME)
-        << "collection '" << this->vocbase().name() << "/" << name() << ": "
-        << res.errorMessage()
-        << " - disabling computed values for this collection. original value: "
-        << info.get(StaticStrings::ComputedValues).toJson();
-    TRI_ASSERT(_computedValues == nullptr);
-  }
-}
 
 LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase,
                                      CollectionDescriptor descriptor,
@@ -367,13 +223,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase,
 LogicalCollection::~LogicalCollection() = default;
 
 #ifndef USE_ENTERPRISE
-void LogicalCollection::initializeSmartAttributesBefore(
-    velocypack::Slice info) {
-  // nothing to do in community edition
-}
-void LogicalCollection::initializeSmartAttributesAfter(velocypack::Slice info) {
-  // nothing to do in community edition
-}
 void LogicalCollection::initializeSmartAttributesBefore(
     CollectionDescriptor const& descriptor) {
   // nothing to do in community edition
