@@ -51,7 +51,6 @@ using ShardMap = containers::FlatHashMap<ShardID, std::vector<ServerID>>;
 class ShardingInfo {
  public:
   ShardingInfo() = delete;
-  ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* collection);
   ShardingInfo(CollectionDescriptor const& descriptor,
                LogicalCollection* collection);
   ShardingInfo(ShardingInfo const& other, LogicalCollection* collection);
@@ -115,13 +114,6 @@ class ShardingInfo {
 
   template<typename T>
   static void sortShardNamesNumerically(T& list);
-
-  static Result extractReplicationFactor(velocypack::Slice info, bool isSmart,
-                                         size_t& replicationFactor);
-
-  static Result extractShardKeys(velocypack::Slice info,
-                                 size_t replicationFactor,
-                                 std::vector<std::string>& shardKeys);
 
   static Result extractShardKeys(
       std::optional<std::vector<std::string>> const& input,

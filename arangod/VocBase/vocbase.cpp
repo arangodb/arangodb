@@ -758,67 +758,13 @@ std::shared_ptr<LogicalView> Database::lookupView(
   return basics::downCast<LogicalView>(std::move(ptr));
 }
 
-std::shared_ptr<LogicalCollection> Database::createCollectionObjectForStorage(
-    velocypack::Slice parameters) {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-
-  // augment collection parameters with storage-engine specific data
-  VPackBuilder merged;
-  merged.openObject();
-  _engine.addParametersForNewCollection(merged, parameters);
-  merged.close();
-
-  merged =
-      velocypack::Collection::merge(parameters, merged.slice(), true, false);
-  parameters = merged.slice();
-
-  // Try to create a new collection. This is not registered yet
-  // This is always a new and empty collection.
-  return createCollectionObject(parameters, /*isAStub*/ false);
-}
-
 std::shared_ptr<LogicalCollection> Database::createCollection(
     velocypack::Slice parameters) {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-
-  auto const& dbName = _info.getName();
-  std::string name = VelocyPackHelper::getStringValue(
-      parameters, StaticStrings::DataSourceName, "");
-
-  // validate collection parameters
-  Result res = validateCollectionParameters(parameters);
-  if (res.fail()) {
-    events::CreateCollection(dbName, name, res.errorNumber());
-    THROW_ARANGO_EXCEPTION(res);
+  if (!parameters.isObject()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "collection parameters should be an object");
   }
-
-  try {
-    // Try to create a new collection. This is not registered yet
-    auto collection = createCollectionObjectForStorage(parameters);
-
-    {
-      READ_LOCKER(readLocker, _inventoryLock);
-      persistCollection(collection);
-    }
-
-    events::CreateCollection(dbName, name, TRI_ERROR_NO_ERROR);
-
-    _databaseProvider.notifyDdlChange("create collection");
-
-    // Update metadata metrics on single server
-    if (ServerState::instance()->isSingleServer() &&
-        _server.hasFeature<DatabaseFeature>()) {
-      _server.getFeature<DatabaseFeature>().incrementCollectionCount();
-    }
-
-    return collection;
-  } catch (basics::Exception const& ex) {
-    events::CreateCollection(dbName, name, ex.code());
-    throw;
-  } catch (std::exception const&) {
-    events::CreateCollection(dbName, name, TRI_ERROR_INTERNAL);
-    throw;
-  }
+  return createCollection(CollectionDescriptor::fromVelocyPack(parameters));
 }
 
 std::shared_ptr<LogicalCollection> Database::createCollection(
@@ -975,36 +921,6 @@ Result Database::dropCollection(DataSourceId cid, bool allowDropSystem) {
   return res;
 }
 
-Result Database::validateCollectionParameters(velocypack::Slice parameters) {
-  if (!parameters.isObject()) {
-    return {TRI_ERROR_BAD_PARAMETER,
-            "collection parameters should be an object"};
-  }
-  // check that the name does not contain any strange characters
-  std::string name = VelocyPackHelper::getStringValue(
-      parameters, StaticStrings::DataSourceName, "");
-  bool isSystem = VelocyPackHelper::getBooleanValue(
-      parameters, StaticStrings::DataSourceSystem, false);
-  if (auto res = CollectionNameValidator::validateName(isSystem,
-                                                       extendedNames(), name);
-      res.fail()) {
-    return res;
-  }
-
-  TRI_col_type_e collectionType =
-      VelocyPackHelper::getNumericValue<TRI_col_type_e, int>(
-          parameters, StaticStrings::DataSourceType, TRI_COL_TYPE_DOCUMENT);
-
-  if (collectionType != TRI_col_type_e::TRI_COL_TYPE_DOCUMENT &&
-      collectionType != TRI_col_type_e::TRI_COL_TYPE_EDGE) {
-    return {TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
-            "invalid collection type for collection '" + name + "'"};
-  }
-
-  // needed for EE
-  return validateExtendedCollectionParameters(parameters);
-}
-
 Result Database::validateCollectionDescriptor(CollectionDescriptor const& d) {
   if (auto res = CollectionNameValidator::validateName(
           d.constant.isSystem, extendedNames(), d.mutableProps.name);
@@ -1032,11 +948,6 @@ void Database::addSmartGraphCollections(
     std::shared_ptr<LogicalCollection> const& /*collection*/,
     std::vector<std::shared_ptr<LogicalCollection>>& /*collections*/) const {
   // nothing to be done here. more in EE version
-}
-
-Result Database::validateExtendedCollectionParameters(velocypack::Slice) {
-  // nothing to be done here. more in EE version
-  return {};
 }
 
 Result Database::validateEnterpriseLicense(CollectionDescriptor const&) {

@@ -860,65 +860,6 @@ TEST_F(LogicalCollectionDescriptorTest,
       leader->name());
 }
 
-// The slice ctor goes away in COR-885. Until then, one test keeps it honest:
-// the same input through either ctor must produce the same collection. Delete
-// this block together with the ctor.
-
-TEST_F(LogicalCollectionDescriptorTest, SliceCtor_matchesDescriptorCtor) {
-  VPackBuilder sliceBuilder;
-  sliceBuilder.openObject();
-  sliceBuilder.add(VPackObjectIterator(representativeCreateSlice().slice()));
-  // Collections::create injects this for every user create on a single server
-  // or coordinator; without it the two paths legitimately disagree
-  sliceBuilder.add(StaticStrings::UsesRevisionsAsDocumentIds, VPackValue(true));
-  sliceBuilder.close();
-
-  // baseline: the existing slice path
-  auto viaSlice = makeDatabase("viaSlice", 42);
-  auto expected = viaSlice->createCollection(sliceBuilder.slice());
-  engine().createCollection(*viaSlice, *expected);
-
-  // same input, taken through the descriptor factory
-  DatabaseConfiguration config{
-      []() { return DataSourceId(42); },
-      [](std::string const&) -> ResultT<CollectionDescriptor> {
-        return {TRI_ERROR_INTERNAL};
-      }};
-  auto request = CreateCollectionRequest::fromCreateAPIBody(
-      sliceBuilder.slice(), config, /*backwardsCompatibility*/ false);
-  ASSERT_TRUE(request.ok()) << request.errorMessage();
-
-  auto viaDescriptor = makeDatabase("viaDescriptor", 43);
-  auto actual = viaDescriptor->createCollection(std::move(request->descriptor));
-  engine().createCollection(*viaDescriptor, *actual);
-
-  EXPECT_EQ(
-      actual
-          ->toVelocyPackIgnore(volatileKeys(),
-                               LogicalDataSource::Serialization::Persistence)
-          .slice()
-          .toJson(),
-      expected
-          ->toVelocyPackIgnore(volatileKeys(),
-                               LogicalDataSource::Serialization::Persistence)
-          .slice()
-          .toJson());
-}
-
-TEST_F(LogicalCollectionDescriptorTest,
-       SliceCtor_usesRevisionsAsDocumentIdsDefaults) {
-  // The descriptor defaults to true, matching what Collections::create injects
-  // for a user create. The slice ctor defaults to false, which is what the
-  // agency's own collections and pre-v37 markers rely on.
-  CollectionDescriptor d;
-  EXPECT_TRUE(d.internal.usesRevisionsAsDocumentIds);
-
-  auto database = makeDatabase("testDatabase", 42);
-  auto collection =
-      database->createCollection(representativeCreateSlice().slice());
-  EXPECT_FALSE(collection->usesRevisionsAsDocumentIds());
-}
-
 //////////////////////////////////////////////////////////////////////////////////
 // Section 5: shard path parses a maintenance docket
 //////////////////////////////////////////////////////////////////////////////////
