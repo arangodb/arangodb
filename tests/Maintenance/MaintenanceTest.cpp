@@ -27,6 +27,7 @@
 #include "ApplicationFeatures/FileSystemFeature.h"
 #include "Logger/LoggerFeature.h"
 
+#include "Actions/ActionFeature.h"
 #include "Agency/AgencyComm.h"
 #include "Agency/AgencyFeature.h"
 #include "Agency/AgencyPaths.h"
@@ -57,9 +58,9 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
 #include "RocksDBEngine/RocksDBOptionFeature.h"
-#include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/StatisticsFeature.h"
+#include "V8Server/V8DealerFeature.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
@@ -516,13 +517,11 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
   std::shared_ptr<options::ProgramOptions> po;
   basics::SharedPRNG sharedPRNG;
   application_features::ApplicationServer as;
+  std::unique_ptr<RocksDBEngine> engine;
   containers::FlatHashSet<DatabaseID> makeDirty;
   MaintenanceFeature::errors_t errors;
 
   std::map<std::string, NodePtr> localNodes;
-
-  std::unique_ptr<RocksDBEngine>
-      engine;  // arbitrary implementation that has index types registered
 
   MaintenanceTestActionPhaseOne()
       : SharedMaintenanceTest(),
@@ -533,7 +532,6 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
         localNodes{{dbsIds[shortNames[0]], createNode(dbs0Str)},
                    {dbsIds[shortNames[1]], createNode(dbs1Str)},
                    {dbsIds[shortNames[2]], createNode(dbs2Str)}} {
-    auto& agencyFeature = as.addFeature<AgencyFeature>();
     auto& roOptions = as.addFeature<RocksDBOptionFeature>();
     as.addFeature<application_features::GreetingsFeaturePhase>(
         std::false_type{});
@@ -545,14 +543,17 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
             nullptr),
         LazyApplicationFeatureReference<ClusterFeature>(nullptr));
 
+    // AgencyFeature's ctor unconditionally disables these when inactive
+    as.addFeature<ActionFeature>();
+    as.addFeature<V8DealerFeature>(metrics);
+    auto& agencyFeature = as.addFeature<AgencyFeature>();
+
     as.addFeature<MaintenanceFeature>(nullptr);
     auto& dbpath = as.addFeature<DatabasePathFeature>();
     auto& flush = as.addFeature<FlushFeature>(metrics);
     auto& dumpLimits = as.addFeature<DumpLimitsFeature>();
     auto& scheduler = as.addFeature<SchedulerFeature>(metrics, sharedPRNG);
 
-    auto& rocksDbRecoveryManager =
-        as.addFeature<RocksDBRecoveryManager>(dbFeature, dbFeature);
     auto& vectorIndex = as.addFeature<VectorIndexFeature>(dbFeature);
     auto& rocksDbIndexCacheRefillFeature =
         as.addFeature<RocksDBIndexCacheRefillFeature>(dbFeature, nullptr,
@@ -564,11 +565,9 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
     auto* replicatedLogFeature = replication2::EnableReplication2
                                      ? &as.addFeature<ReplicatedLogFeature>()
                                      : nullptr;
-    // need to construct this after adding the MetricsFeature to the application
-    // server
     engine = std::make_unique<RocksDBEngine>(
         as, roOptions, metrics, dbpath, vectorIndex, flush, dumpLimits,
-        replicatedLogFeature, scheduler, rocksDbRecoveryManager, dbFeature,
+        replicatedLogFeature, scheduler, dbFeature, dbFeature,
         rocksDbIndexCacheRefillFeature, cacheManagerFeature, agencyFeature);
     dbFeature.setEngineTesting(engine.get());
   }

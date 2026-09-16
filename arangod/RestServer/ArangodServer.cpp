@@ -284,11 +284,8 @@ void ArangodServer::addFeatures() {
   auto& flush = addFeature<FlushFeature>(metrics);
   addFeature<FortuneFeature>(getOptions<fortune::FortuneOptionsProvider>());
 #ifdef USE_V8
-  auto& foxx = addFeature<FoxxFeature>(getOptions<FoxxOptionsProvider>());
-  if (!enableFoxx || skipNonServerFeatures) {
-    foxx.disable();
-  }
   if (enableFoxx && !skipNonServerFeatures) {
+    addFeature<FoxxFeature>(getOptions<FoxxOptionsProvider>());
     addFeature<FrontendFeature>(getOptions<FrontendOptionsProvider>());
   }
 #endif
@@ -398,8 +395,6 @@ void ArangodServer::addFeatures() {
   auto& rocksdbCacheRefill = addFeature<RocksDBIndexCacheRefillFeature>(
       database, &clusterFeature, metrics,
       getOptions<RocksDBIndexCacheRefillOptionsProvider>());
-  auto& rocksdbRecovery =
-      addFeature<RocksDBRecoveryManager>(database, database);
 #ifdef TRI_HAVE_GETRLIMIT
   addFeature<FileDescriptorsFeature>(
       metrics, getOptions<file_descriptors::FileDescriptorsOptionsProvider>());
@@ -462,7 +457,7 @@ void ArangodServer::addFeatures() {
   addFeature<RocksDBEngine>(
       rocksdbOption, metrics, databasePath, vectorIndex, flush, dumpLimits,
       replication2::EnableReplication2 ? &replicatedLogFeature : nullptr,
-      scheduler, rocksdbRecovery, database, rocksdbCacheRefill, cacheManager,
+      scheduler, database, database, rocksdbCacheRefill, cacheManager,
       sortingPolicy, getOptions<RocksDBEngineOptionsProvider>());
   addFeature<replication2::replicated_state::ReplicatedStateAppFeature>();
   addFeature<replication2::replicated_state::black_hole::

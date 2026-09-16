@@ -159,6 +159,8 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
       LazyApplicationFeatureReference<ClusterFeature>(_server));
   _server.addFeature<metrics::ClusterMetricsFeature>();
   _server.addFeature<ActionFeature>();
+  // AgencyFeature's ctor unconditionally disables these when inactive
+  _server.addFeature<V8DealerFeature>(metrics);
   auto& agency = _server.addFeature<AgencyFeature>();
   _server.addFeature<ApiRecordingFeature>(nullptr, metrics);
   _server.addFeature<AqlFeature>();
@@ -251,8 +253,6 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   auto& rocksdbCacheRefill =
       _server.addFeature<RocksDBIndexCacheRefillFeature>();
   _server.addFeature<RocksDBOptionFeature>();
-  auto& rocksdbRecovery =
-      _server.addFeature<RocksDBRecoveryManager>(database, database);
 #ifdef TRI_HAVE_GETRLIMIT
   _server.addFeature<FileDescriptorsFeature>(metrics);
 #endif
@@ -271,7 +271,7 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
       replication2::EnableReplication2
           ? &_server.getFeature<ReplicatedLogFeature>()
           : nullptr,
-      rocksdbRecovery, database, rocksdbCacheRefill, cacheManager, agency);
+      scheduler, database, database, rocksdbCacheRefill, cacheManager, agency);
 
   _server
       .addFeature<replication2::replicated_state::ReplicatedStateAppFeature>();

@@ -551,6 +551,7 @@ template<typename T>
 auto zkd::to_byte_string_fixed_length(T v) -> zkd::byte_string {
   byte_string result;
   static_assert(std::is_integral_v<T>);
+  static_assert(sizeof(T) == 8, "T must be 8 bytes for the bitshift below.");
   if constexpr (std::is_unsigned_v<T>) {
     result.reserve(sizeof(T));
     for (size_t i = 0; i < sizeof(T); i++) {
@@ -576,10 +577,6 @@ auto zkd::to_byte_string_fixed_length(T v) -> zkd::byte_string {
 template auto zkd::to_byte_string_fixed_length<uint64_t>(uint64_t)
     -> zkd::byte_string;
 template auto zkd::to_byte_string_fixed_length<int64_t>(int64_t)
-    -> zkd::byte_string;
-template auto zkd::to_byte_string_fixed_length<uint32_t>(uint32_t)
-    -> zkd::byte_string;
-template auto zkd::to_byte_string_fixed_length<int32_t>(int32_t)
     -> zkd::byte_string;
 
 inline constexpr auto fp_infinity_expo_biased = (1u << 11) - 1;

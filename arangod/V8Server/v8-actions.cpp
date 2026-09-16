@@ -1700,9 +1700,9 @@ static void JS_FoxxQueueVersion(
     TRI_V8_THROW_EXCEPTION_USAGE("foxxQueueVersion(<version>)");
   }
 
-  if (ServerState::instance()->isCoordinator()) {
-    TRI_GET_GLOBALS();
-
+  TRI_GET_GLOBALS();
+  if (ServerState::instance()->isCoordinator() &&
+      v8g->server().hasFeature<FoxxFeature>()) {
     auto& feature = v8g->server().getFeature<FoxxFeature>();
 
     if (args.Length() == 1) {
@@ -1716,7 +1716,7 @@ static void JS_FoxxQueueVersion(
       TRI_V8_RETURN(TRI_V8UInt64String(isolate, version));
     }
   } else {
-    // single server response.
+    // single server response, or Foxx is disabled on this instance.
     TRI_V8_RETURN_NULL();
   }
 
@@ -1732,12 +1732,11 @@ static void JS_FoxxQueueVersionBump(
     TRI_V8_THROW_EXCEPTION_USAGE("FOXX_QUEUE_VERSION_BUMP()");
   }
 
-  if (ServerState::instance()->isCoordinator()) {
+  TRI_GET_GLOBALS();
+  if (ServerState::instance()->isCoordinator() &&
+      v8g->server().hasFeature<FoxxFeature>()) {
     // only necessary in coordinator
-    TRI_GET_GLOBALS();
-
-    auto& feature = v8g->server().getFeature<FoxxFeature>();
-    feature.bumpQueueVersionIfRequired();
+    v8g->server().getFeature<FoxxFeature>().bumpQueueVersionIfRequired();
   }
   TRI_V8_RETURN_NULL();
 

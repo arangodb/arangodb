@@ -270,6 +270,8 @@ void RestAdminServerHandler::handleTLS() {
   auto const requestType = _request->requestType();
   VPackBuilder builder;
   auto& sslServerFeature = server().getFeature<SslServerFeature>();
+  // only reachable while the HTTP server is running
+  TRI_ASSERT(sslServerFeature.isEnabled());
   if (requestType == rest::RequestType::GET) {
     // Put together a TLS-based cocktail:
     sslServerFeature.dumpTLSData(builder);

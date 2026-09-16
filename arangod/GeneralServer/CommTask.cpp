@@ -325,8 +325,9 @@ CommTask::Flow CommTask::prepareExecution(
 
   if (ServerState::instance()->isSingleServerOrCoordinator()) {
 #ifdef USE_V8
-    auto& ff = _server.server().getFeature<FoxxFeature>();
-    bool foxxEnabled = ff.foxxEnabled();
+    auto& server = _server.server();
+    bool const foxxEnabled = server.hasFeature<FoxxFeature>() &&
+                             server.getFeature<FoxxFeature>().foxxEnabled();
 #else
     constexpr bool foxxEnabled = false;
 #endif

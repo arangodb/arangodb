@@ -42,7 +42,7 @@ concept HasChildren = requires(T t, Id id) {
  */
 template<HasChildren Forest>
 struct DFS_PostOrder {
-  DFS_PostOrder(Forest& forest, Id start) : _forest{forest}, _start{start} {
+  DFS_PostOrder(Forest& forest, Id start) : _forest{forest} {
     _stack.push(std::make_tuple(start, 0, false));
   }
   auto next() -> std::optional<std::pair<Id, TreeHierarchy>> {
@@ -53,22 +53,19 @@ struct DFS_PostOrder {
     _stack.pop();
     if (hasChildrenProcessed) {
       return std::make_pair(item, hierarchy);
-    } else {
-      auto children = _forest.children(item);
-      if (children.empty()) {
-        return std::make_pair(item, hierarchy);
-      } else {
-        _stack.push(std::make_tuple(item, hierarchy, true));
-        for (auto const& child : children) {
-          _stack.push(std::make_tuple(child, hierarchy + 1, false));
-        }
-      }
+    }
+    auto children = _forest.children(item);
+    if (children.empty()) {
+      return std::make_pair(item, hierarchy);
+    }
+    _stack.push(std::make_tuple(item, hierarchy, true));
+    for (auto const& child : children) {
+      _stack.push(std::make_tuple(child, hierarchy + 1, false));
     }
     return next();
   }
 
   Forest const& _forest = {};
-  const Id _start = nullptr;
   std::stack<std::tuple<Id, TreeHierarchy, bool>> _stack = {};
 };
 
