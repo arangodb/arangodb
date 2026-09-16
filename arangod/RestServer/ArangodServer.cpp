@@ -283,11 +283,8 @@ void ArangodServer::addFeatures() {
   auto& flush = addFeature<FlushFeature>(metrics);
   addFeature<FortuneFeature>(getOptions<fortune::FortuneOptionsProvider>());
 #ifdef USE_V8
-  auto& foxx = addFeature<FoxxFeature>(getOptions<FoxxOptionsProvider>());
-  if (!enableFoxx || skipNonServerFeatures) {
-    foxx.disable();
-  }
   if (enableFoxx && !skipNonServerFeatures) {
+    addFeature<FoxxFeature>(getOptions<FoxxOptionsProvider>());
     addFeature<FrontendFeature>(getOptions<FrontendOptionsProvider>());
   }
 #endif

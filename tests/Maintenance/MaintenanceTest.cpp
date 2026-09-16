@@ -27,6 +27,7 @@
 #include "ApplicationFeatures/FileSystemFeature.h"
 #include "Logger/LoggerFeature.h"
 
+#include "Actions/ActionFeature.h"
 #include "Agency/AgencyComm.h"
 #include "Agency/AgencyFeature.h"
 #include "Agency/AgencyPaths.h"
@@ -59,6 +60,7 @@
 #include "RocksDBEngine/RocksDBOptionFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/StatisticsFeature.h"
+#include "V8Server/V8DealerFeature.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
@@ -530,7 +532,6 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
         localNodes{{dbsIds[shortNames[0]], createNode(dbs0Str)},
                    {dbsIds[shortNames[1]], createNode(dbs1Str)},
                    {dbsIds[shortNames[2]], createNode(dbs2Str)}} {
-    auto& agencyFeature = as.addFeature<AgencyFeature>();
     auto& roOptions = as.addFeature<RocksDBOptionFeature>();
     as.addFeature<application_features::GreetingsFeaturePhase>(
         std::false_type{});
@@ -541,6 +542,11 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
         LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
             nullptr),
         LazyApplicationFeatureReference<ClusterFeature>(nullptr));
+
+    // AgencyFeature's ctor unconditionally disables these when inactive
+    as.addFeature<ActionFeature>();
+    as.addFeature<V8DealerFeature>(metrics);
+    auto& agencyFeature = as.addFeature<AgencyFeature>();
 
     as.addFeature<MaintenanceFeature>(nullptr);
     auto& dbpath = as.addFeature<DatabasePathFeature>();

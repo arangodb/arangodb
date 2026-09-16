@@ -62,11 +62,6 @@ AgencyFeature::AgencyFeature(ApplicationServer& server, AgencyOptions options)
   startsAfter<application_features::ServerFeaturePhase>();
 #endif
 
-  if (!_options.activated) {
-    disable();
-    return;
-  }
-
   if (!_options.agencyMyAddress.empty()) {
     std::string const unified = Endpoint::unifiedForm(_options.agencyMyAddress);
 

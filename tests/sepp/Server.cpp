@@ -159,6 +159,8 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
       LazyApplicationFeatureReference<ClusterFeature>(_server));
   _server.addFeature<metrics::ClusterMetricsFeature>();
   _server.addFeature<ActionFeature>();
+  // AgencyFeature's ctor unconditionally disables these when inactive
+  _server.addFeature<V8DealerFeature>(metrics);
   auto& agency = _server.addFeature<AgencyFeature>();
   _server.addFeature<ApiRecordingFeature>(nullptr, metrics);
   _server.addFeature<AqlFeature>();
