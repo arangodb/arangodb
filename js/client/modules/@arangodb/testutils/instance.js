@@ -126,7 +126,7 @@ class instance {
   #pid = null;
 
   // / protocol must be one of ["tcp", "ssl", "unix"]
-  constructor(options, myInstanceRole, addArgs, acPort
+  constructor(options, myInstanceRole, addArgs, rbacPort,
               authHeaders, jwt_secret, JWT, authHeadersJWT,
               protocol, rootDir, restKeyFile,
               agencyMgr, tmpDir, mem) {
