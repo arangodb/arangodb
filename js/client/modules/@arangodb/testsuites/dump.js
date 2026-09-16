@@ -417,7 +417,10 @@ function dumpJwt (options) {
   };
 
   let opts = Object.assign({}, options, tu.testServerAuthInfo, {
-    extraArgs: { 'vector-index': true, 'vector-index-build-retry-backoff': 10 },
+    extraArgs: {
+      'vector-index': true,
+      'vector-index-build-retry-backoff': 10
+    },
     multipleDumps: true,
     dbServers: 3
   });
