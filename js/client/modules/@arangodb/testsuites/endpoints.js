@@ -75,8 +75,9 @@ class endpointRunner extends trs.runInArangoshRunner {
                                         'log.level': ['startup=trace', 'rocksdb=trace'],
                                         'log.force-direct': 'true',
                                         'rocksdb.debug-logging': 'true',
+                                        'server.authentication': false,
                                       },
-                                      {}, {}, 'tcp', this.dummyDir, '',
+                                      {}, '', '', {}, 'tcp', this.dummyDir, '',
                                       new agencyMgr(this.options, null),
                                       this.dummyDir,
                                       this.options.memory

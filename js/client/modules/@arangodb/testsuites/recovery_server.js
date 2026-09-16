@@ -111,10 +111,14 @@ function runArangodRecovery (params, useEncryption, exitSuccessOk, exitFailOk) {
     }
     params.options.disableMonitor = true;
     params.testDir = fs.join(params.tempDir, `${params.count}`);
-    params['instance'] = new inst.instance(params.options,
-                                           inst.instanceRole.single,
-                                           args, {}, {}, 'tcp', params.testDir, '',
-                                           new agencyMgr(params.options, null));
+    params['instance'] = new inst.instance(
+      params.options,
+      inst.instanceRole.single,
+      args,
+      {}, '', '', {},
+      'tcp', params.testDir, '',
+      new agencyMgr(params.options, null),
+      params.testDir);
     argv = toArgv(Object.assign(params.instance.args, additionalParams));
   } else {
     additionalParams['javascript.script-parameter'] = 'recovery';
