@@ -268,6 +268,7 @@ set(ARANGODB_TESTS_SOURCES
   Sharding/ShardDistributionReporterTest.cpp
   SimpleHttpClient/ConnectionCacheTest.cpp
   SimpleHttpClient/HttpResponseCheckerTest.cpp
+  SimpleHttpClient/SimpleHttpClientParamsTest.cpp
   Ssl/JwtTest.cpp
   StorageEngine/PhysicalCollectionTest.cpp
   Transaction/ContextTest.cpp
