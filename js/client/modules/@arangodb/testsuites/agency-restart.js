@@ -74,7 +74,7 @@ function runArangodRecovery (params, agencyMgr) {
     let args = Object.assign({
       'server.rest-server': 'false',
       'javascript.script': params.script,
-      'log.output': 'file://' + params.crashLog
+      'log.output': 'file://' + params.crashLog,
     }, params.options.extraArgs);
 
     if (params.options.extremeVerbosity === true) {
@@ -82,7 +82,9 @@ function runArangodRecovery (params, agencyMgr) {
     }
     params['instance'] = new inst.instance(params.options,
                                            inst.instanceRole.agent,
-                                           args, {}, {}, 'tcp', params.rootDir, '',
+                                           args,
+                                           {}, '', '', {},
+                                           'tcp', params.rootDir, '',
                                            agencyMgr);
 
     argv = toArgv(Object.assign(params.instance.args, additionalParams));

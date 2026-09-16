@@ -131,7 +131,13 @@ function runArangodRecovery (params, useEncryption, isKillAfterSetup = true) {
         process.env["rocksdb-encryption-keyfile"] = keyfile;
       }
     }
+    let fileContent = fs.readFileSync(params.script);
+    if (String(fileContent).search('getOptions') > 0) {
+      let content = `(function(){ const runSetup = false; const getOptions = true; ${fileContent} 
+}())`; // DO NOT JOIN WITH THE LINE ABOVE -- because of content could contain '//' at the very EOF
 
+      instanceArgs = Object.assign(instanceArgs, executeScript(content, true, params.script));
+    }
     params.instanceArgs = instanceArgs;
       
   }
@@ -184,7 +190,7 @@ function runArangodRecovery (params, useEncryption, isKillAfterSetup = true) {
   let testFunc;
   let success = -1;
   try {
-    let content = `(function(){ let runSetup=${params.setup?"true":"false"};${testCode}
+    let content = `(function(){ let runSetup=${params.setup?"true":"false"}; const getOptions = false;;${testCode}
 }())`; // DO NOT JOIN WITH THE LINE ABOVE -- because of content could contain '//' at the very EOF
     success = executeScript(content, true, params.script);
 

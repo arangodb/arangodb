@@ -1,6 +1,22 @@
 3.12.12 (XXXX-XX-XX)
 --------------------
 
+* COR-995: Security fix.
+
+* COR-984: Security fix.
+
+* BTS-2453: Allow again to access /_admin/aardvark/api/ (the REST API
+  documentation shown in the web UI's Support tab) without authentication.
+  This changed along with a security fix in 3.12.10. The web UI loads the
+  documentation in a frame that carries no credentials, even when a user is
+  logged in, so the Support/Rest API tab failed with a 401 error.
+
+* BTS-2450: Allow again to access / without authentication with
+  --server.authentication-system-only=false. This changed unintentionally
+  with 3.12.11, which led to a 401 error instead of redirecting to the UI
+  entry point at /_admin/aardvark/index.html. Note that requesting
+  /_admin/aardvark/index.html directly still worked.
+
 * AIS-2021: Replaced the web UI's geo map dependencies.
 
 * Upgraded included rclone to v1.75.1 with go1.26.8 and non-vulnerable

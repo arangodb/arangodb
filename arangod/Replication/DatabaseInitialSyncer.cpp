@@ -2632,8 +2632,7 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(
 
   // STEP 3: restore data for system collections
   // ----------------------------------------------------------------------------------
-  auto const res =
-      iterateCollections(systemCollections, incremental, PHASE_DUMP);
+  auto res = iterateCollections(systemCollections, incremental, PHASE_DUMP);
 
   if (res.fail()) {
     return res;
