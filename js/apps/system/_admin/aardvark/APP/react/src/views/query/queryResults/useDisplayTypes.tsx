@@ -178,8 +178,9 @@ type GeoItemType = {
 const isValidGeometry = (item: GeoItemType) => {
   if (item.type && GEOMETRY_TYPES.includes(item.type)) {
     try {
-      new L.GeoJSON(item as any);
-      return true;
+      // an empty coordinate array builds a layer without throwing, but has no
+      // bounds; counting it as geo offers the map tab and then renders nothing
+      return new L.GeoJSON(item as any).getBounds().isValid();
     } catch {
       return false;
     }
