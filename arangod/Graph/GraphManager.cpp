@@ -561,11 +561,8 @@ Result GraphManager::ensureCollections(
     if (distLike.empty()) {
       return col.name();
     }
-    if (ServerState::instance()->isRunningInCluster()) {
-      return resolver.getCollectionNameCluster(
-          DataSourceId{basics::StringUtils::uint64(distLike)});
-    }
-    return distLike;
+    return resolver.getCollectionNameCluster(
+        DataSourceId{basics::StringUtils::uint64(distLike)});
   };
 
   auto anyExistingCollection =

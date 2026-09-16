@@ -25,7 +25,6 @@
 #include "Basics/StaticStrings.h"
 #include "Inspection/Access.h"
 #include "VocBase/Properties/InspectContexts.h"
-#include "VocBase/Properties/UtilityInvariants.h"
 
 #include <cstdint>
 #include <string>
@@ -59,7 +58,8 @@ struct CollectionInternalProperties {
 template<class Inspector>
 auto inspect(Inspector& f, CollectionInternalProperties& props) {
   return f.object(props).fields(
-      internalOnlyField(f, StaticStrings::DataSourceDeleted, props.deleted),
+      internalFieldDroppingUserInput(f, StaticStrings::DataSourceDeleted,
+                                     props.deleted),
       f.field(StaticStrings::SyncByRevision, props.syncByRevision)
           .fallback(f.keep()),
       f.field(StaticStrings::UsesRevisionsAsDocumentIds,
@@ -70,10 +70,13 @@ auto inspect(Inspector& f, CollectionInternalProperties& props) {
       f.field(StaticStrings::InternalValidatorTypes,
               props.internalValidatorType)
           .fallback(f.keep()),
-      userInvariant(f,
-                    f.field(StaticStrings::GraphSmartGraphAttribute,
-                            props.smartGraphAttribute),
-                    UtilityInvariants::isNonEmptyIfPresent));
+      f.field(StaticStrings::GraphSmartGraphAttribute,
+              props.smartGraphAttribute),
+      /* Backwards compatibility, field is documented but does not have an
+       * effect
+       */
+      f.ignoreField(StaticStrings::DataSourceGuid),
+      f.ignoreField(StaticStrings::DataSourceDeleted));
 }
 
 }  // namespace arangodb

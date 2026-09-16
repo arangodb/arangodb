@@ -86,6 +86,8 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info,
         "invalid non-string value for 'distributeShardsLike'");
   }
 
+  resolveDistributeShardsLike();
+
   VPackSlice v = info.get(StaticStrings::NumberOfShards);
   if (!v.isNone() && !v.isNumber() && !v.isNull()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -164,19 +166,19 @@ ShardingInfo::ShardingInfo(CollectionDescriptor const& descriptor,
       _numberOfShards(descriptor.clusteringConstant.numberOfShards.value_or(1)),
       _replicationFactor(1),
       _writeConcern(1),
-      // internal and agency contexts parse the key as a collection id, the
-      // user path as a name, so pick by which one the parse can have filled
+      // the field holds the leader's cid everywhere, but single server writes
+      // the name rather than cid, so _distributeShardsLike is a name here;
+      // will be resolved by resolveDistributeShardsLike()
       _distributeShardsLike(
-          ServerState::instance()->isSingleServer()
-              ? descriptor.clusteringConstant.distributeShardsLike.value_or("")
-              : descriptor.clusteringConstant.distributeShardsLikeCid.value_or(
-                    "")),
+          descriptor.clusteringConstant.distributeShardsLike.value_or("")),
       _shardIds(std::make_shared<ShardMap>()) {
   TRI_ASSERT(_collection != nullptr);
 
   bool const isSmart = descriptor.constant.isSmart;
 
   resolveNumberOfShards(isSmart);
+
+  resolveDistributeShardsLike();
 
   // the inspector's transformer already turned "satellite" into 0
   applyReplicationFactorAndWriteConcern(
@@ -196,6 +198,26 @@ ShardingInfo::ShardingInfo(CollectionDescriptor const& descriptor,
   }
 
   initializeShardingStrategy(descriptor);
+}
+
+// ShardingInfo::toVelocyPack writes the leader's name on a single server, so a
+// marker comes back carrying one. Everything else expects the id.
+void ShardingInfo::resolveDistributeShardsLike() {
+  if (!ServerState::instance()->isSingleServer() ||
+      _distributeShardsLike.empty() ||
+      basics::StringUtils::try_uint64(_distributeShardsLike).ok()) {
+    return;
+  }
+
+  TRI_ASSERT(_collection != nullptr);
+  CollectionNameResolver resolver(_collection->vocbase());
+  if (auto id = resolver.getCollectionId(_distributeShardsLike); id.isSet()) {
+    _distributeShardsLike = std::to_string(id.id());
+  } else {
+    LOG_TOPIC("3f0a1", WARN, Logger::CLUSTER)
+        << "could not resolve distributeShardsLike '" << _distributeShardsLike
+        << "' of collection '" << _collection->name() << "'";
+  }
 }
 
 void ShardingInfo::resolveNumberOfShards(bool isSmart) {
@@ -264,6 +286,8 @@ void ShardingInfo::initializeShardingStrategy(
   }
 #endif
 
+  // the create path resolves the strategy, but collections created before 3.4
+  // have none in their meta data, so fall back to the default strategy
   _shardingStrategy =
       _collection->vocbase()
           .server()
@@ -485,23 +509,16 @@ void ShardingInfo::toVelocyPack(VPackBuilder& result,
     result.add(StaticStrings::MinReplicationFactor, VPackValue(_writeConcern));
   }
 
-  if (!_distributeShardsLike.empty()) {
-    if (ServerState::instance()->isCoordinator()) {
-      // We either want to expose _distributeShardsLike if we're either on a
-      // Coordinator
-      if (translateCids) {
-        CollectionNameResolver resolver(_collection->vocbase());
-
-        result.add(StaticStrings::DistributeShardsLike,
-                   VPackValue(resolver.getCollectionNameCluster(DataSourceId{
-                       basics::StringUtils::uint64(distributeShardsLike())})));
-      } else {
-        result.add(StaticStrings::DistributeShardsLike,
-                   VPackValue(distributeShardsLike()));
-      }
-    } else if (ServerState::instance()->isSingleServer()) {
-      // Or we have found a Smart or Satellite collection on a single server
-      // instance.
+  auto role = ServerState::instance();
+  if (!_distributeShardsLike.empty() &&
+      (role->isSingleServer() || role->isCoordinator())) {
+    // Single server wants to expose a name regardless the context
+    if (role->isSingleServer() || translateCids) {
+      CollectionNameResolver resolver(_collection->vocbase());
+      result.add(StaticStrings::DistributeShardsLike,
+                 VPackValue(resolver.getCollectionNameCluster(DataSourceId{
+                     basics::StringUtils::uint64(distributeShardsLike())})));
+    } else {
       result.add(StaticStrings::DistributeShardsLike,
                  VPackValue(distributeShardsLike()));
     }

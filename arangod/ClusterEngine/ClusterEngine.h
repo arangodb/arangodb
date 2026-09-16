@@ -76,7 +76,7 @@ class ClusterEngine final : public StorageEngine {
   // create storage-engine specific collection
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(
       LogicalCollection& collection,
-      CollectionDescriptor const& descriptor) override;
+      LocalStorageProperties const& storage) override;
 
   void getStatistics(velocypack::Builder& builder) const override;
 
@@ -133,9 +133,9 @@ class ClusterEngine final : public StorageEngine {
   Result dropDatabase(TRI_vocbase_t& database) override;
 
   // current recovery state
-  RecoveryState recoveryState() override;
+  EngineState engineState() noexcept override;
   // current recovery tick
-  TRI_voc_tick_t recoveryTick() override;
+  TRI_voc_tick_t recoveryTick() noexcept override;
 
   void createCollection(TRI_vocbase_t& vocbase,
                         LogicalCollection const& collection) override;
@@ -170,9 +170,6 @@ class ClusterEngine final : public StorageEngine {
       const replication2::storage::PersistedStateInfo& info)
       -> ResultT<std::unique_ptr<
           replication2::storage::IStorageEngineMethods>> override;
-
-  /// @brief Add engine-specific optimizer rules
-  void addOptimizerRules(aql::OptimizerRulesFeature& feature) override;
 
 #ifdef USE_V8
   /// @brief Add engine-specific V8 functions

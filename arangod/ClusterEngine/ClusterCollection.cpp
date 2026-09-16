@@ -51,10 +51,10 @@ namespace arangodb {
 
 ClusterCollection::ClusterCollection(LogicalCollection& collection,
                                      ClusterEngineType engineType,
-                                     CollectionDescriptor const& descriptor)
+                                     LocalStorageProperties const& storage)
     : PhysicalCollection(collection),
       _engineType(engineType),
-      _cacheEnabled(descriptor.mutableProps.cacheEnabled),
+      _cacheEnabled(storage.cacheEnabled),
       _selectivityEstimates(collection) {
   TRI_ASSERT(_engineType == ClusterEngineType::RocksDBEngine ||
              _engineType == ClusterEngineType::MockEngine);

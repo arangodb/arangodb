@@ -62,36 +62,28 @@ inline constexpr bool isAgencyContext =
     std::is_same_v<typename detail::ContextOf<Inspector>::type,
                    InspectAgencyContext>;
 
-// Assigned by the server, never chosen by the client. Parsed on the load path;
-// on the user path the key stays accepted but its value is dropped
+// Both helpers carry a field the server assigns and only the load path parses.
+// They differ in what a user sending the key gets back.
+
+// The key is accepted and its value dropped, so the request still succeeds.
 template<class Inspector, class T>
-auto internalOnlyField(Inspector& f, std::string_view name, T& value) {
+auto internalFieldDroppingUserInput(Inspector& f, std::string_view name,
+                                    T& value) {
   return f.field(name, value).fallback(f.keep()).when([]() {
     return isInternalContext<Inspector> ? inspection::FieldCondition::Process
                                         : inspection::FieldCondition::Ignore;
   });
 }
 
-// Assigned by the server, never chosen by the client. Parsed on the load path;
-// on the user path the key was never declared, so the create API answers with
-// an unexpected-attribute error
+// The key is not declared for users, so the request fails with an
+// unexpected-attribute error.
 template<class Inspector, class T>
-auto serverOnlyField(Inspector& f, std::string_view name, T& value) {
+auto internalFieldRejectingUserInput(Inspector& f, std::string_view name,
+                                     T& value) {
   return f.field(name, value).fallback(f.keep()).when([]() {
     return isInternalContext<Inspector> ? inspection::FieldCondition::Process
                                         : inspection::FieldCondition::Reject;
   });
-}
-
-// Applies `invariant` to `field` only when the value come from user input
-template<class Inspector, class Field, class Invariant>
-auto userInvariant(Inspector&, Field&& field, Invariant&& invariant) {
-  if constexpr (isInternalContext<Inspector>) {
-    return std::forward<Field>(field);
-  } else {
-    return std::forward<Field>(field).invariant(
-        std::forward<Invariant>(invariant));
-  }
 }
 
 }  // namespace arangodb

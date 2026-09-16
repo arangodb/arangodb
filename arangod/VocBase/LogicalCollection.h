@@ -22,7 +22,9 @@
 
 #pragma once
 
+#include "Basics/Guarded.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/debugging.h"
 #include "Containers/FlatHashMap.h"
 #include "Cluster/Utils/ShardID.h"
 #include "Futures/Future.h"
@@ -34,6 +36,7 @@
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/Properties/CollectionDescriptor.h"
+#include "VocBase/Properties/CollectionInvariants.h"
 #include "VocBase/Properties/CollectionVersion.h"
 #include "VocBase/Validators.h"
 #include "VocBase/voc-types.h"
@@ -151,9 +154,7 @@ class LogicalCollection : public LogicalDataSource {
 
   uint32_t v8CacheVersion() const noexcept { return _v8CacheVersion; }
 
-  TRI_col_type_e type() const noexcept {
-    return _properties.constant.getType();
-  }
+  TRI_col_type_e type() const noexcept { return _invariants.type; }
 
   // For normal collections the realNames is just a vector of length 1
   // with its name. For smart edge collections (Enterprise Edition only)
@@ -175,17 +176,14 @@ class LogicalCollection : public LogicalDataSource {
   bool waitForSync() const noexcept;
   bool cacheEnabled() const noexcept;
 #ifdef USE_ENTERPRISE
-  bool isDisjoint() const noexcept { return _properties.constant.isDisjoint; }
-  bool isSmart() const noexcept { return _properties.constant.isSmart; }
-  bool isSmartChild() const noexcept {
-    return _properties.internal.isSmartChild;
-  }
+  bool isDisjoint() const noexcept { return _invariants.isDisjoint; }
+  bool isSmart() const noexcept { return _invariants.isSmart; }
+  bool isSmartChild() const noexcept { return _invariants.isSmartChild; }
   bool hasSmartJoinAttribute() const noexcept {
-    return _properties.constant.smartJoinAttribute.has_value();
+    return _invariants.smartJoinAttribute.has_value();
   }
-  bool hasSmartGraphAttribute() const noexcept {
-    return std::atomic_load_explicit(&_smartGraphAttribute,
-                                     std::memory_order_acquire) != nullptr;
+  bool hasSmartGraphAttribute() const {
+    return !_smartGraphAttribute.getLockedGuard()->empty();
   }
 
   bool isLocalSmartEdgeCollection() const noexcept;
@@ -323,8 +321,7 @@ class LogicalCollection : public LogicalDataSource {
   using LogicalDataSource::properties;
 
   /// @brief updates properties of an existing DataSource
-  /// TODO: Investigate if this can take a data structure like
-  /// CollectionDescriptor instead of a VPackSlice
+  /// TODO (COR-980): Investigate if this can take a typed parse
   virtual Result properties(velocypack::Slice definition);
 
   /// @brief return the figures for a collection
@@ -397,7 +394,10 @@ class LogicalCollection : public LogicalDataSource {
                   VPackOptions const*) const;
 
   // Get a reference to this KeyGenerator.
-  KeyGenerator& keyGenerator() const noexcept { return *_keyGenerator; }
+  KeyGenerator& keyGenerator() const noexcept {
+    TRI_ASSERT(_keyGenerator != nullptr);
+    return *_keyGenerator;
+  }
 
   transaction::CountCache& countCache() { return _countCache; }
 
@@ -426,6 +426,11 @@ class LogicalCollection : public LogicalDataSource {
   CollectionDescriptor properties() const;
 
  private:
+  /// @brief The slice ctor delegates here to keep the parsed descriptor alive
+  /// for the whole body. Collapses into the descriptor ctor in COR-885.
+  LogicalCollection(Database& vocbase, CollectionDescriptor const& descriptor,
+                    velocypack::Slice info, bool isAStub);
+
   void initializeSmartAttributesBefore(velocypack::Slice info);
   void initializeSmartAttributesAfter(velocypack::Slice info);
   void initializeSmartAttributesBefore(CollectionDescriptor const& descriptor);
@@ -443,14 +448,12 @@ class LogicalCollection : public LogicalDataSource {
   // that it is set.
   std::optional<replication2::LogId> const& replicatedStateIdIfAny()
       const noexcept {
-    return _properties.clusteringConstant.replicatedStateId;
+    return _invariants.replicatedStateId;
   }
 
  protected:
-  // Parsed once at construction; only its immutable fields are authoritative;
-  // the mutable ones are seeded from here into the attributes below and are
-  // stale afterwards
-  CollectionDescriptor const _properties;
+  // Only contains the immutable properties; single source of truth.
+  CollectionInvariants const _invariants;
 
   void addInternalValidator(std::unique_ptr<ValidatorBase>);
 
@@ -478,8 +481,6 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief is this a global collection on a DBServer
   bool const _isAStub;
 
-  bool const _allowUserKeys;
-
   bool _usesRevisionsAsDocumentIds;
 
   std::atomic<bool> _syncByRevision;
@@ -492,9 +493,8 @@ class LogicalCollection : public LogicalDataSource {
 
 #ifdef USE_ENTERPRISE
   // Set once, either during construction or by the DBServer maintenance
-  // during an upgrade. `nullptr` means "not set". Must be used with atomic
-  // accessors only!! Acquire/release access (load/store).
-  std::shared_ptr<std::string const> _smartGraphAttribute;
+  // during an upgrade. Empty means "not set".
+  Guarded<std::string> _smartGraphAttribute;
 #endif
 
   transaction::CountCache _countCache;
