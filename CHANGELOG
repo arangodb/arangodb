@@ -1,6 +1,8 @@
 3.12.12 (XXXX-XX-XX)
 --------------------
 
+* AIS-2021: Replaced the web UI's geo map dependencies.
+
 * Fixed the AQL function SUBSTITUTE() returning null and emitting the warning
   "icu error: U_ILLEGAL_ARGUMENT_ERROR" when the input string is empty and a
   non-empty search string is given. It now returns the empty string.
@@ -20,8 +22,6 @@
   with 3.12.11, which led to a 401 error instead of redirecting to the UI
   entry point at /_admin/aardvark/index.html. Note that requesting
   /_admin/aardvark/index.html directly still worked.
-
-* AIS-2021: Replaced the web UI's geo map dependencies.
 
 * Upgraded included rclone to v1.75.1 with go1.26.8 and non-vulnerable
   dependencies.
