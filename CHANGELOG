@@ -1,6 +1,8 @@
 3.12.12 (XXXX-XX-XX)
 --------------------
 
+* COR-984: Security fix.
+
 * BTS-2453: Allow again to access /_admin/aardvark/api/ (the REST API
   documentation shown in the web UI's Support tab) without authentication.
   This changed along with a security fix in 3.12.10. The web UI loads the
