@@ -22,45 +22,39 @@
 
 #pragma once
 
-#include "Aql/MatchPatternTypes.h"
 #include "Aql/types.h"
 
-#include <optional>
-#include <string_view>
-#include <tuple>
 #include <unordered_map>
-#include <vector>
 
 namespace arangodb::aql {
-
-class Ast;
-struct AstNode;
-class CalculationNode;
-class ExecutionPlan;
-class FilterNode;
 struct Variable;
+}  // namespace arangodb::aql
 
-/// @brief Builds MATCH property / edge-direction filter fragments.
-class MatchFilterBuilder {
+namespace arangodb::aql::match {
+
+/// @brief Tracks MATCH variable substitutions for projection temporaries.
+/// User-facing MATCH variables may temporarily map to full-document plan
+/// variables until projections are applied at the end of a pattern.
+class VariableScope {
  public:
-  MatchFilterBuilder(ExecutionPlan& plan, Ast* ast);
+  void registerSubstitution(Variable const* userVariable,
+                            Variable const* planVariable);
 
-  AstNode* createPropertyAccess(Variable const* variable,
-                                std::string_view property);
+  /// @brief Resolve @p variable through any registered substitution.
+  [[nodiscard]] Variable const* resolve(Variable const* variable) const;
 
-  std::tuple<CalculationNode*, FilterNode*> createPropertiesFilter(
-      Variable const* variable,
-      std::vector<MatchPropertyConstraint> const& properties,
-      std::optional<MatchExpressionRef> const& additionalFilter,
-      std::unordered_map<VariableId, Variable const*> const& subst);
+  [[nodiscard]] std::unordered_map<VariableId, Variable const*>&
+  map() noexcept {
+    return _substitutions;
+  }
 
-  std::tuple<CalculationNode*, FilterNode*> createVertexEdgeFilter(
-      Variable const* leftVertex, Variable const* edge,
-      Variable const* rightVertex, MatchEdgeDirection direction);
+  [[nodiscard]] std::unordered_map<VariableId, Variable const*> const& map()
+      const noexcept {
+    return _substitutions;
+  }
 
  private:
-  ExecutionPlan& _plan;
-  Ast* _ast;
+  std::unordered_map<VariableId, Variable const*> _substitutions;
 };
 
-}  // namespace arangodb::aql
+}  // namespace arangodb::aql::match

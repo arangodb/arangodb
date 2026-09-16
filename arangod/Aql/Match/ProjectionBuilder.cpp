@@ -20,7 +20,7 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "MatchProjectionBuilder.h"
+#include "Aql/Match/ProjectionBuilder.h"
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
@@ -39,35 +39,35 @@
 #include <unordered_set>
 #include <vector>
 
-namespace arangodb::aql {
+namespace arangodb::aql::match {
 
-MatchProjectionBuilder::MatchProjectionBuilder(ExecutionPlan& plan, Ast* ast)
+ProjectionBuilder::ProjectionBuilder(ExecutionPlan& plan, Ast* ast)
     : _plan(plan), _ast(ast) {}
 
-ExecutionNode* MatchProjectionBuilder::createDocumentPatternProjection(
+ExecutionNode* ProjectionBuilder::createDocumentPatternProjection(
     Variable const* destinationVariable, Variable const* fullDocumentVar,
-    std::optional<MatchProjection> const& projection,
+    Projection const& projection,
     std::unordered_map<VariableId, Variable const*> const& subst) {
-  return createPatternProjection(
-      destinationVariable, fullDocumentVar, projection,
-      kMandatoryDocumentMatchProjectionAttributes, subst);
+  return createPatternProjection(destinationVariable, fullDocumentVar,
+                                 &projection,
+                                 kMandatoryDocumentProjectionAttributes, subst);
 }
 
-ExecutionNode* MatchProjectionBuilder::createEdgeDocumentPatternProjection(
+ExecutionNode* ProjectionBuilder::createEdgeDocumentPatternProjection(
     Variable const* destinationVariable, Variable const* fullDocumentVar,
-    std::optional<MatchProjection> const& projection,
+    Projection const& projection,
     std::unordered_map<VariableId, Variable const*> const& subst) {
   return createPatternProjection(
-      destinationVariable, fullDocumentVar, projection,
-      kMandatoryEdgeDocumentMatchProjectionAttributes, subst);
+      destinationVariable, fullDocumentVar, &projection,
+      kMandatoryEdgeDocumentProjectionAttributes, subst);
 }
 
-ExecutionNode* MatchProjectionBuilder::createPatternProjection(
+ExecutionNode* ProjectionBuilder::createPatternProjection(
     Variable const* destinationVariable, Variable const* fullDocumentVar,
-    std::optional<MatchProjection> const& projectionOpt,
+    Projection const* projection,
     std::span<std::string_view const> mandatoryAttributes,
     std::unordered_map<VariableId, Variable const*> const& subst) {
-  if (!projectionOpt.has_value()) {
+  if (projection == nullptr) {
     auto* root = _ast->createNodeReference(fullDocumentVar);
     return _plan.createNode<CalculationNode>(
         &_plan, _plan.nextId(), std::make_unique<Expression>(_ast, root),
@@ -76,13 +76,13 @@ ExecutionNode* MatchProjectionBuilder::createPatternProjection(
 
   // Projection semantics (paths, aliases, reserved attributes) are already
   // normalized; this method only builds the AST / CalculationNode.
-  auto const& projection = *projectionOpt;
+  auto const& projectionRef = *projection;
   auto* root = _ast->createNodeObject();
   auto* ref = _ast->createNodeReference(fullDocumentVar);
 
   auto registerKey = [&](std::string_view key) -> std::string_view {
     // Copy into Ast resource pool so the resulting AstNode outlives the
-    // temporary NormalizedMatchStatement that owns MatchProjection strings.
+    // temporary NormalizedStatement that owns Projection strings.
     char const* p = _ast->resources().registerString(key);
     return {p, key.size()};
   };
@@ -136,7 +136,7 @@ ExecutionNode* MatchProjectionBuilder::createPatternProjection(
   };
   std::vector<AliasItem> aliases;
 
-  for (auto const& item : projection.items) {
+  for (auto const& item : projectionRef.items) {
     if (item.isAlias()) {
       aliases.push_back(
           AliasItem{item.name, const_cast<AstNode*>(item.expression.node)});
@@ -212,4 +212,4 @@ ExecutionNode* MatchProjectionBuilder::createPatternProjection(
       destinationVariable);
 }
 
-}  // namespace arangodb::aql
+}  // namespace arangodb::aql::match

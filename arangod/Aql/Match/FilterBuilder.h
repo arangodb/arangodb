@@ -22,47 +22,47 @@
 
 #pragma once
 
-#include "Aql/MatchPatternTypes.h"
+#include "Aql/Match/PatternTypes.h"
 #include "Aql/types.h"
 
 #include <optional>
-#include <span>
 #include <string_view>
+#include <tuple>
 #include <unordered_map>
+#include <vector>
 
 namespace arangodb::aql {
-
 class Ast;
-class ExecutionNode;
+struct AstNode;
+class CalculationNode;
 class ExecutionPlan;
+class FilterNode;
 struct Variable;
+}  // namespace arangodb::aql
 
-/// @brief Lowers MatchProjection into CalculationNode fragments.
-class MatchProjectionBuilder {
+namespace arangodb::aql::match {
+
+/// @brief Builds MATCH property / edge-direction filter fragments.
+class FilterBuilder {
  public:
-  MatchProjectionBuilder(ExecutionPlan& plan, Ast* ast);
+  FilterBuilder(ExecutionPlan& plan, Ast* ast);
 
-  ExecutionNode* createDocumentPatternProjection(
-      Variable const* destinationVariable, Variable const* fullDocumentVar,
-      std::optional<MatchProjection> const& projection,
+  AstNode* createPropertyAccess(Variable const* variable,
+                                std::string_view property);
+
+  std::tuple<CalculationNode*, FilterNode*> createPropertiesFilter(
+      Variable const* variable,
+      std::vector<PropertyConstraint> const& properties,
+      std::optional<ExpressionRef> const& additionalFilter,
       std::unordered_map<VariableId, Variable const*> const& subst);
 
-  ExecutionNode* createEdgeDocumentPatternProjection(
-      Variable const* destinationVariable, Variable const* fullDocumentVar,
-      std::optional<MatchProjection> const& projection,
-      std::unordered_map<VariableId, Variable const*> const& subst);
+  std::tuple<CalculationNode*, FilterNode*> createVertexEdgeFilter(
+      Variable const* leftVertex, Variable const* edge,
+      Variable const* rightVertex, EdgeDirection direction);
 
  private:
-  /// @brief Shared MATCH projection lowering. @p mandatoryAttributes are
-  /// auto-injected and treated as reserved for user projection handling.
-  ExecutionNode* createPatternProjection(
-      Variable const* destinationVariable, Variable const* fullDocumentVar,
-      std::optional<MatchProjection> const& projection,
-      std::span<std::string_view const> mandatoryAttributes,
-      std::unordered_map<VariableId, Variable const*> const& subst);
-
   ExecutionPlan& _plan;
   Ast* _ast;
 };
 
-}  // namespace arangodb::aql
+}  // namespace arangodb::aql::match

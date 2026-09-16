@@ -22,47 +22,63 @@
 
 #pragma once
 
-#include "Aql/MatchPatternTypes.h"
+#include "Aql/Match/PatternTypes.h"
 #include "Aql/types.h"
 
+#include <optional>
 #include <string>
 #include <tuple>
 #include <unordered_map>
+#include <vector>
 
 namespace arangodb::aql {
-
 class Ast;
 struct AstNode;
 class ExecutionNode;
 class ExecutionPlan;
-class MatchFilterBuilder;
 struct Variable;
+}  // namespace arangodb::aql
+
+namespace arangodb::aql::match {
+
+class FilterBuilder;
+
+using VariableSubstitution = std::unordered_map<VariableId, Variable const*>;
 
 /// @brief Resolves MATCH collections and builds EnumerateCollection access.
-class MatchCollectionAccessBuilder {
+/// Uses a single shared enumeration preamble for vertex and edge scans
+class CollectionAccessBuilder {
  public:
-  MatchCollectionAccessBuilder(ExecutionPlan& plan, Ast* ast,
-                               MatchFilterBuilder& filters);
+  CollectionAccessBuilder(ExecutionPlan& plan, Ast* ast,
+                          FilterBuilder& filters);
 
-  [[nodiscard]] static std::string requireCollectionName(
-      MatchDataSource const& ds);
+  [[nodiscard]] static std::string requireCollectionName(DataSource const& ds);
 
   AstNode* buildEdgeCollectionList(NormalizedEdge const& edge);
 
   std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
-  createCollectionAccess(
-      NormalizedVertex const& vertex, Variable const* fullDocumentVariable,
-      std::unordered_map<VariableId, Variable const*> const& subst);
+  createCollectionAccess(NormalizedVertex const& vertex,
+                         Variable const* fullDocumentVariable,
+                         VariableSubstitution const& subst);
 
   std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
-  createPatternEdgeEnumerateAccess(
-      NormalizedEdge const& edge, Variable const* outputVariable,
-      std::unordered_map<VariableId, Variable const*> const& subst);
+  createPatternEdgeEnumerateAccess(NormalizedEdge const& edge,
+                                   Variable const* outputVariable,
+                                   VariableSubstitution const& subst);
 
  private:
+  /// @brief Shared logic for enumerating collections and applying
+  /// property/WHERE filters for both vertex and edge scans
+  std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
+  enumerateCollection(DataSource const& dataSource,
+                      Variable const* outputVariable,
+                      std::vector<PropertyConstraint> const& properties,
+                      std::optional<ExpressionRef> const& filter,
+                      VariableSubstitution const& subst);
+
   ExecutionPlan& _plan;
   Ast* _ast;
-  MatchFilterBuilder& _filters;
+  FilterBuilder& _filters;
 };
 
-}  // namespace arangodb::aql
+}  // namespace arangodb::aql::match

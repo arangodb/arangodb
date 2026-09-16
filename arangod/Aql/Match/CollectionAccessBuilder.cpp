@@ -20,7 +20,7 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "MatchCollectionAccessBuilder.h"
+#include "Aql/Match/CollectionAccessBuilder.h"
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
@@ -31,7 +31,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/IndexHint.h"
-#include "Aql/MatchFilterBuilder.h"
+#include "Aql/Match/FilterBuilder.h"
 #include "Aql/QueryContext.h"
 #include "Basics/Exceptions.h"
 #include "Basics/debugging.h"
@@ -40,15 +40,15 @@
 #include <memory>
 #include <utility>
 
-namespace arangodb::aql {
+namespace arangodb::aql::match {
 
-MatchCollectionAccessBuilder::MatchCollectionAccessBuilder(
-    ExecutionPlan& plan, Ast* ast, MatchFilterBuilder& filters)
+CollectionAccessBuilder::CollectionAccessBuilder(ExecutionPlan& plan, Ast* ast,
+                                                 FilterBuilder& filters)
     : _plan(plan), _ast(ast), _filters(filters) {}
 
-std::string MatchCollectionAccessBuilder::requireCollectionName(
-    MatchDataSource const& ds) {
-  if (ds.kind() != MatchDataSource::Kind::kCollection) {
+std::string CollectionAccessBuilder::requireCollectionName(
+    DataSource const& ds) {
+  if (ds.kind() != DataSource::Kind::kCollection) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
         "MATCH planning requires resolved collection names; unresolved "
@@ -57,7 +57,7 @@ std::string MatchCollectionAccessBuilder::requireCollectionName(
   return std::string(ds.name());
 }
 
-AstNode* MatchCollectionAccessBuilder::buildEdgeCollectionList(
+AstNode* CollectionAccessBuilder::buildEdgeCollectionList(
     NormalizedEdge const& edge) {
   auto* edgeCollectionList = _ast->createNodeArray();
   if (!edge.collectionAstNodes.empty()) {
@@ -76,34 +76,12 @@ AstNode* MatchCollectionAccessBuilder::buildEdgeCollectionList(
 }
 
 std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
-MatchCollectionAccessBuilder::createCollectionAccess(
-    NormalizedVertex const& vertex, Variable const* fullDocumentVariable,
-    std::unordered_map<VariableId, Variable const*> const& subst) {
-  auto collectionName = requireCollectionName(vertex.collection);
-  auto& collections = _ast->query().collections();
-  auto collection = collections.get(collectionName);
-  if (collection == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "no collection for EnumerateCollection");
-  }
-  IndexHint hint(_ast->query(), _ast->createNodeNop(),
-                 IndexHint::FromCollectionOperation{});
-  auto enumCollection = _plan.createNode<EnumerateCollectionNode>(
-      &_plan, _plan.nextId(), collection, fullDocumentVariable, false,
-      std::move(hint));
-
-  auto [firstNode, lastNode] = _filters.createPropertiesFilter(
-      fullDocumentVariable, vertex.properties, vertex.filter, subst);
-  firstNode->addDependency(enumCollection);
-  return std::make_tuple(enumCollection, lastNode, fullDocumentVariable);
-}
-
-std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
-MatchCollectionAccessBuilder::createPatternEdgeEnumerateAccess(
-    NormalizedEdge const& edge, Variable const* outputVariable,
-    std::unordered_map<VariableId, Variable const*> const& subst) {
-  ADB_PROD_ASSERT(!edge.collections.empty());
-  auto collectionName = requireCollectionName(edge.collections.front());
+CollectionAccessBuilder::enumerateCollection(
+    DataSource const& dataSource, Variable const* outputVariable,
+    std::vector<PropertyConstraint> const& properties,
+    std::optional<ExpressionRef> const& filter,
+    VariableSubstitution const& subst) {
+  auto collectionName = requireCollectionName(dataSource);
   auto& collections = _ast->query().collections();
   auto collection = collections.get(collectionName);
   if (collection == nullptr) {
@@ -115,10 +93,28 @@ MatchCollectionAccessBuilder::createPatternEdgeEnumerateAccess(
   auto enumCollection = _plan.createNode<EnumerateCollectionNode>(
       &_plan, _plan.nextId(), collection, outputVariable, false,
       std::move(hint));
+
   auto [firstNode, lastNode] = _filters.createPropertiesFilter(
-      outputVariable, edge.properties, edge.filter, subst);
+      outputVariable, properties, filter, subst);
   firstNode->addDependency(enumCollection);
   return std::make_tuple(enumCollection, lastNode, outputVariable);
 }
 
-}  // namespace arangodb::aql
+std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
+CollectionAccessBuilder::createCollectionAccess(
+    NormalizedVertex const& vertex, Variable const* fullDocumentVariable,
+    VariableSubstitution const& subst) {
+  return enumerateCollection(vertex.collection, fullDocumentVariable,
+                             vertex.properties, vertex.filter, subst);
+}
+
+std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
+CollectionAccessBuilder::createPatternEdgeEnumerateAccess(
+    NormalizedEdge const& edge, Variable const* outputVariable,
+    VariableSubstitution const& subst) {
+  ADB_PROD_ASSERT(!edge.collections.empty());
+  return enumerateCollection(edge.collections.front(), outputVariable,
+                             edge.properties, edge.filter, subst);
+}
+
+}  // namespace arangodb::aql::match

@@ -20,34 +20,27 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "Aql/Match/VariableScope.h"
 
-#include "Aql/types.h"
+#include "Aql/Variable.h"
+#include "Basics/debugging.h"
 
-#include <unordered_map>
+namespace arangodb::aql::match {
 
-namespace arangodb::aql {
+void VariableScope::registerSubstitution(Variable const* userVariable,
+                                         Variable const* planVariable) {
+  TRI_ASSERT(userVariable != nullptr);
+  TRI_ASSERT(planVariable != nullptr);
+  _substitutions.emplace(userVariable->id, planVariable);
+}
 
-struct Variable;
-
-/// @brief Tracks MATCH variable substitutions for projection temporaries.
-/// User-facing MATCH variables may temporarily map to full-document plan
-/// variables until projections are applied at the end of a pattern.
-class MatchVariableScope {
- public:
-  void registerSubstitution(Variable const* userVariable,
-                            Variable const* planVariable);
-
-  /// @brief Resolve @p variable through any registered substitution.
-  [[nodiscard]] Variable const* resolve(Variable const* variable) const;
-
-  [[nodiscard]] std::unordered_map<VariableId, Variable const*> const& map()
-      const noexcept {
-    return _substitutions;
+Variable const* VariableScope::resolve(Variable const* variable) const {
+  TRI_ASSERT(variable != nullptr);
+  if (auto it = _substitutions.find(variable->id);
+      it != std::end(_substitutions)) {
+    return it->second;
   }
+  return variable;
+}
 
- private:
-  std::unordered_map<VariableId, Variable const*> _substitutions;
-};
-
-}  // namespace arangodb::aql
+}  // namespace arangodb::aql::match

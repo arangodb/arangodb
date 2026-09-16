@@ -20,7 +20,7 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "MatchFilterBuilder.h"
+#include "Aql/Match/FilterBuilder.h"
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
@@ -33,16 +33,16 @@
 
 #include <memory>
 
-namespace arangodb::aql {
+namespace arangodb::aql::match {
 namespace {
 
-int directionFilterBits(MatchEdgeDirection direction) {
+int directionFilterBits(EdgeDirection direction) {
   switch (direction) {
-    case MatchEdgeDirection::kInbound:
+    case EdgeDirection::kInbound:
       return 1;
-    case MatchEdgeDirection::kOutbound:
+    case EdgeDirection::kOutbound:
       return 2;
-    case MatchEdgeDirection::kAny:
+    case EdgeDirection::kAny:
       return 3;
   }
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -51,22 +51,20 @@ int directionFilterBits(MatchEdgeDirection direction) {
 
 }  // namespace
 
-MatchFilterBuilder::MatchFilterBuilder(ExecutionPlan& plan, Ast* ast)
+FilterBuilder::FilterBuilder(ExecutionPlan& plan, Ast* ast)
     : _plan(plan), _ast(ast) {}
 
-AstNode* MatchFilterBuilder::createPropertyAccess(Variable const* variable,
-                                                  std::string_view property) {
+AstNode* FilterBuilder::createPropertyAccess(Variable const* variable,
+                                             std::string_view property) {
   char const* registered = _ast->resources().registerString(property);
   return _ast->createNodeAttributeAccess(
       _ast->createNodeReference(variable),
       std::string_view(registered, property.size()));
 }
 
-std::tuple<CalculationNode*, FilterNode*>
-MatchFilterBuilder::createPropertiesFilter(
-    Variable const* variable,
-    std::vector<MatchPropertyConstraint> const& properties,
-    std::optional<MatchExpressionRef> const& additionalFilter,
+std::tuple<CalculationNode*, FilterNode*> FilterBuilder::createPropertiesFilter(
+    Variable const* variable, std::vector<PropertyConstraint> const& properties,
+    std::optional<ExpressionRef> const& additionalFilter,
     std::unordered_map<VariableId, Variable const*> const& subst) {
   AstNode* root = nullptr;
   if (additionalFilter.has_value()) {
@@ -102,11 +100,9 @@ MatchFilterBuilder::createPropertiesFilter(
   return std::make_tuple(calc, filter);
 }
 
-std::tuple<CalculationNode*, FilterNode*>
-MatchFilterBuilder::createVertexEdgeFilter(Variable const* leftVertex,
-                                           Variable const* edge,
-                                           Variable const* rightVertex,
-                                           MatchEdgeDirection direction) {
+std::tuple<CalculationNode*, FilterNode*> FilterBuilder::createVertexEdgeFilter(
+    Variable const* leftVertex, Variable const* edge,
+    Variable const* rightVertex, EdgeDirection direction) {
   AstNode* root = nullptr;
   int const bits = directionFilterBits(direction);
 
@@ -151,4 +147,4 @@ MatchFilterBuilder::createVertexEdgeFilter(Variable const* leftVertex,
   return std::make_tuple(calc, filter);
 }
 
-}  // namespace arangodb::aql
+}  // namespace arangodb::aql::match
