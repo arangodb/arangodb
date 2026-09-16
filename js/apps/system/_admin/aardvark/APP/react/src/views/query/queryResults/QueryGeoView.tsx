@@ -1,5 +1,5 @@
 import { Box } from "@chakra-ui/react";
-import type { GeoJSON as GeoJSONUnionType, Geometry } from "geojson";
+import type { Geometry } from "geojson";
 import L from "leaflet";
 import GestureHandling from "leaflet-gesture-handling";
 import "leaflet-gesture-handling/dist/leaflet-gesture-handling.css";
@@ -8,9 +8,9 @@ import { QueryResultType } from "../ArangoQuery.types";
 import { toGreatCircle } from "./great-circle";
 
 type NestedGeometryType = {
-  geometry: GeoJSONUnionType;
+  geometry: Geometry;
 };
-type GeometryResultType = GeoJSONUnionType[] | NestedGeometryType[];
+type GeometryResultType = Geometry[] | NestedGeometryType[];
 const geojsonMarkerOptions = {
   radius: 8,
   fillColor: "#2ecc71",
@@ -32,7 +32,7 @@ export const QueryGeoView = ({
       queryResult.result?.map(item =>
         Object.prototype.hasOwnProperty.call(item, "geometry")
           ? (item as NestedGeometryType).geometry
-          : (item as GeoJSONUnionType)
+          : (item as Geometry)
       ) ?? [],
     [queryResult.result]
   );
@@ -70,10 +70,7 @@ export const QueryGeoView = ({
     const bounds = L.latLngBounds([]);
     geometries.forEach(geometry => {
       try {
-        // the result type is the whole GeoJSON union, but this view only ever
-        // receives bare geometries; a Feature would pass straight through
-        // toGreatCircle anyway
-        const layer = L.geoJSON(toGreatCircle(geometry as Geometry), {
+        const layer = L.geoJSON(toGreatCircle(geometry), {
           pointToLayer: (_feature, latlng) =>
             L.circleMarker(latlng, geojsonMarkerOptions),
           onEachFeature: (feature, layerInstance) => {
