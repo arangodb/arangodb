@@ -41,6 +41,9 @@ auto inspect(Inspector& f, ThreadId& x) {
 }
 
 struct ThreadInfo {
+  ThreadInfo() = default;
+  ThreadInfo(pid_t kernel_id, std::string name)
+      : kernel_id(kernel_id), name(std::move(name)) {}
   static auto current() noexcept -> containers::SharedPtr<ThreadInfo>;
   pid_t kernel_id;
   std::string name;

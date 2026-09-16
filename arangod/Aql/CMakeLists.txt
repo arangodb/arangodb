@@ -72,7 +72,6 @@ add_library(arango_aql STATIC
   Optimizer.cpp
   OptimizerRulesFeature.cpp
   OptimizerRulesOptionsProvider.cpp
-  OptimizerUtils.cpp
   OutputAqlItemRow.cpp
   Projections.cpp
   PruneExpressionEvaluator.cpp

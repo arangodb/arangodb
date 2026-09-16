@@ -32,6 +32,7 @@
 #include "RestServer/ViewTypesFeature.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
+#include "RestServer/IDatabaseBootstrap.h"
 #include "RestServer/IDatabaseProvider.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
@@ -47,9 +48,11 @@ StorageEngine::StorageEngine(application_features::ApplicationServer& server,
                              std::string_view featureName,
                              std::type_index registration,
                              std::unique_ptr<IndexFactory>&& indexFactory,
-                             IDatabaseProvider& databaseProvider)
+                             IDatabaseProvider& databaseProvider,
+                             IDatabaseBootstrap& databaseBootstrap)
     : ApplicationFeature{server, registration, featureName},
       _databaseProvider(databaseProvider),
+      _databaseBootstrap(databaseBootstrap),
       _indexFactory(std::move(indexFactory)),
       _typeName(engineName) {
   // each specific storage engine feature is optional. the storage engine
@@ -80,9 +83,7 @@ Result StorageEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
 
 Result StorageEngine::prepareDropDatabase(TRI_vocbase_t& vocbase) { return {}; }
 
-bool StorageEngine::inRecovery() {
-  return recoveryState() < RecoveryState::DONE;
-}
+bool StorageEngine::isReady() { return engineState() == EngineState::kRunning; }
 
 void StorageEngine::scheduleFullIndexRefill(std::string const& database,
                                             std::string const& collection,
@@ -100,21 +101,22 @@ IndexFactory const& StorageEngine::indexFactory() const {
   return *_indexFactory;
 }
 
-void StorageEngine::getCapabilities(velocypack::Builder& builder) const {
+void StorageEngine::getCapabilities(velocypack::Builder& builder,
+                                    uint32_t apiVersion) const {
   builder.openObject();
   builder.add("name", velocypack::Value(typeName()));
 
   builder.add("supports", velocypack::Value(VPackValueType::Object));
 
   builder.add("indexes", velocypack::Value(VPackValueType::Array));
-  for (auto const& it : indexFactory().supportedIndexes()) {
+  for (auto const& it : indexFactory().supportedIndexes(apiVersion)) {
     builder.add(velocypack::Value(it));
   }
   builder.close();  // indexes
 
   builder.add("aliases", velocypack::Value(VPackValueType::Object));
   builder.add("indexes", velocypack::Value(VPackValueType::Object));
-  for (auto const& [alias, type] : indexFactory().indexAliases()) {
+  for (auto const& [alias, type] : indexFactory().indexAliases(apiVersion)) {
     builder.add(alias, velocypack::Value(type));
   }
   builder.close();  // indexes
@@ -153,8 +155,6 @@ void StorageEngine::registerReplicatedState(
 }
 
 std::string_view StorageEngine::typeName() const { return _typeName; }
-
-void StorageEngine::addOptimizerRules(aql::OptimizerRulesFeature&) {}
 
 #ifdef USE_V8
 void StorageEngine::addV8Functions() {}

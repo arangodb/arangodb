@@ -328,6 +328,7 @@ bool IResearchViewCoordinator::visitCollections(
 
 std::vector<std::string> IResearchViewCoordinator::linkedCollectionNames()
     const {
+  std::shared_lock lock{_mutex};
   std::vector<std::string> names;
   for (auto const& pair : _collections) {
     names.push_back(pair.second->collectionName);
@@ -470,8 +471,11 @@ Result IResearchViewCoordinator::dropImpl() {
   }
   // drop links first
   containers::FlatHashSet<DataSourceId> currentCids;
-  for (auto& it : _collections) {
-    currentCids.emplace(it.first);
+  {
+    std::shared_lock lock{_mutex};
+    for (auto& it : _collections) {
+      currentCids.emplace(it.first);
+    }
   }
   containers::FlatHashSet<DataSourceId> collections;
   auto r = IResearchLinkHelper::updateLinks(

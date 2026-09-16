@@ -29,7 +29,8 @@
 
 if (getOptions === true) {
   return {
-    'rocksdb.force-legacy-comparator': 'true'
+    'rocksdb.force-legacy-comparator': 'true',
+    "server.authentication": false
   };
 }
 

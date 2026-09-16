@@ -35,7 +35,6 @@
 #include "Aql/Executor/IResearchViewHeapSortExecutor.h"
 #include "Aql/Executor/IResearchViewMergeExecutor.h"
 #include "Aql/Executor/NoResultsExecutor.h"
-#include "Aql/OptimizerUtils.h"
 #include "Aql/Optimizer/Utils/IResearchViewSortHelpers.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterInfos.h"

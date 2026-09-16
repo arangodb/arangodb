@@ -35,6 +35,7 @@
 #include "Agency/Supervision.h"
 #include "Agency/TransactionBuilder.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/Common.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/ResultT.h"
 #include "Basics/StaticStrings.h"
@@ -198,7 +199,7 @@ delayedCalculator(F) -> delayedCalculator<std::invoke_result_t<F>, F>;
 void buildHealthResult(
     VPackBuilder& builder,
     std::vector<futures::Try<agentConfigHealthResult>> const& config,
-    VPackSlice store) {
+    VPackSlice store, uint32_t apiVersion) {
   auto rootPath = arangodb::cluster::paths::root()->arango();
 
   using server_set = std::unordered_set<std::string>;
@@ -262,7 +263,16 @@ void buildHealthResult(
       {
         VPackObjectBuilder obMember(&builder, serverId);
 
-        builder.add(VPackObjectIterator(member.value));
+        if (apiVersion == 0) {
+          builder.add(VPackObjectIterator(member.value));
+        } else {
+          for (auto const& agentIter : VPackObjectIterator(member.value)) {
+            if (!agentIter.key.isEqualString("Timestamp")) {
+              builder.add(agentIter.key.stringView(), agentIter.value);
+            }
+          }
+        }
+
         if (ClusterHelpers::isDBServerName(serverId)) {
           builder.add("Role", VPackValue("DBServer"));
           builder.add("CanBeDeleted",
@@ -412,10 +422,11 @@ auto RestAdminClusterHandler::executeAsync() -> futures::Future<futures::Unit> {
     } else if (command == NodeEngine) {
       co_await handleNodeEngine();
       co_return;
-    } else if (command == NodeStatistics) {
+    } else if (command == NodeStatistics &&
+               _request->requestedApiVersion() == 0) {
       co_await handleNodeStatistics();
       co_return;
-    } else if (command == Statistics) {
+    } else if (command == Statistics && _request->requestedApiVersion() == 0) {
       co_await handleStatistics();
       co_return;
     } else if (command == ShardDistribution) {
@@ -801,6 +812,17 @@ async<void> RestAdminClusterHandler::handleMoveShard() {
       ctx->database = _vocbase.name();
     }
 
+    // In the future, only allow collection names here:
+    if (request()->requestedApiVersion() > 0) {
+      if (auto r = auth::isNameAndNoId(ctx->database); r.fail()) {
+        generateError(r);
+        co_return;
+      }
+      if (auto r = auth::isNameAndNoId(ctx->collection); r.fail()) {
+        generateError(r);
+        co_return;
+      }
+    }
     auto const& exec = ExecContext::current();
     bool canAccess =
         exec.canUseAdminAction(auth::perms::AdminMoveShards{}).ok() ||
@@ -2339,7 +2361,8 @@ async<void> RestAdminClusterHandler::handleHealth() {
       VPackBuilder builder;
       {
         VPackObjectBuilder ob(&builder);
-        ::buildHealthResult(builder, configResult, storeResult.slice().at(0));
+        ::buildHealthResult(builder, configResult, storeResult.slice().at(0),
+                            _request->requestedApiVersion());
       }
       generateOk(rest::ResponseCode::OK, builder);
     } else {
