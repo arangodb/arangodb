@@ -103,6 +103,43 @@ const instanceRole = {
   coordinator: 'coordinator',
 };
 
+function encodeJWTSecret(jwtSecret) {
+    if (jwtSecret.startsWith("-----BEGIN PRIVATE KEY-----")) {
+      return crypto.jwtEncode(jwtSecret,
+                              {'server_id': 'none',
+                               'iss': 'arangodb'}, 'ES256');
+    } else {
+      return crypto.jwtEncode(jwtSecret,
+                              {'server_id': 'none',
+                               'iss': 'arangodb'}, 'HS256');
+    }
+}
+  
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief adds authorization headers
+// //////////////////////////////////////////////////////////////////////////////
+
+function makeAuthorizationHeaders (options, jwtSecret=false) {
+  if (jwtSecret) {
+    let jwt = encodeJWTSecret(jwtSecret);
+    if (options.extremeVerbosity) {
+      print(Date() + ' Using jw token:     ' + jwt);
+    }
+    return {
+      'headers': {
+        'Authorization': 'bearer ' + jwt
+      }
+    };
+  } else {
+    return {
+      'headers': {
+        'Authorization': 'Basic ' + base64Encode(options.username + ':' +
+            options.password)
+      }
+    };
+  }
+}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief converts endpoints to URL
@@ -126,10 +163,10 @@ class instance {
   #pid = null;
 
   // / protocol must be one of ["tcp", "ssl", "unix"]
-  constructor(options, myInstanceRole, addArgs,
-              authHeaders, jwt_secret, JWT, authHeadersJWT,
-              protocol, rootDir, restKeyFile,
-              agencyMgr, tmpDir, mem) {
+  constructor(options, myInstanceRole, protocol,
+              agencyMgr, addArgs,
+              rootDir, tmpDir, restKeyFile,
+              jwt_secret, mem) {
     this.id = null;
     this.shortName = null;
     this.pm = pm.getPortManager(options);
@@ -155,8 +192,6 @@ class instance {
         this.args[key] = value;
       }
     }
-    this.authHeaders = authHeaders;
-    this.authHeadersJWT = authHeadersJWT;
     this.restKeyFile = restKeyFile;
     this.agencyMgr = agencyMgr;
 
@@ -185,7 +220,6 @@ class instance {
     if (process.env.hasOwnProperty('COREDIR')) {
       this.coreDirectory = process.env['COREDIR'];
     }
-    this.JWT = JWT;
     this.jwt_secret = jwt_secret;
     this.jwtFiles = null;
     this.jwtSecrets = [];
@@ -224,8 +258,6 @@ class instance {
       message: this.message,
       rootDir: this.rootDir,
       protocol: this.protocol,
-      authHeaders: this.authHeaders,
-      authHeadersJWT: this.authHeadersJWT,
       restKeyFile: this.restKeyFile,
       agencyConfig: (this.agencyMgr !== undefined) ? this.agencyMgr.getStructure():{},
       upAndRunning: this.upAndRunning,
@@ -255,8 +287,6 @@ class instance {
     this.message = struct['message'];
     this.rootDir = struct['rootDir'];
     this.protocol = struct['protocol'];
-    this.authHeaders = struct['authHeaders'];
-    this.authHeadersJWT = struct['authHeadersJWT'];
     this.restKeyFile = struct['restKeyFile'];
     this.upAndRunning = struct['upAndRunning'];
     this.suspended = struct['suspended'];
@@ -315,11 +345,6 @@ class instance {
       arango.disconnectHandle(this.connectionHandle);
     }
     this.connectionHandle = undefined;
-  }
-
-  resetAuthHeaders(authHeaders, JWT) {
-    this.authHeaders = authHeaders;
-    this.JWT = JWT;
   }
 
   dumpConnectionTable(force) {
@@ -676,7 +701,7 @@ class instance {
 
     print(CYAN + Date()  + " relaunching: " + this.name + ', url: ' + this.url + RESET);
     this.launchInstance(moreArgs, instanceJson);
-    this.pingUntilReady(this.authHeadersJWT, time() + seconds(60));
+    this.pingUntilReady(time() + seconds(60));
     print(CYAN + Date() + ' ' + this.name + ', url: ' + this.url + ', running again with PID ' + this.pid + RESET);
   }
 
@@ -791,11 +816,11 @@ class instance {
     }
   }
 
-  pingUntilReady(httpAuthOptions, deadline) {
+  pingUntilReady(deadline) {
     if (this.suspended) {
       return;
     }
-    let httpOptions = _.clone(httpAuthOptions);
+    let httpOptions = makeAuthorizationHeaders(this.options, this.jwt_secret);
     httpOptions.method = 'POST';
     httpOptions.returnBodyOnError = true;
     while (true) {
@@ -1656,7 +1681,7 @@ class instance {
       if (reply.code !== 200) {
         // we may no longer be able to work on a database as forced by fuerte
         print(`${BLUE}${this.name}: fallback to internal.download to clear race control${RESET}`);
-        let httpOptions = _.clone(this.authHeaders);
+        let httpOptions = makeAuthorizationHeaders(this.options, this.jwt_secret);
         httpOptions.method = 'DELETE';
         httpOptions.returnBodyOnError = true;
         const reply = download(deleteUrl, '', httpOptions);
@@ -1690,7 +1715,7 @@ class instance {
       if (reply.code !== 200) {
         // we may no longer be able to work on a database as forced by fuerte
         print(`${BLUE}${this.name}: fallback to internal.download to clear failurepoint${RESET}`);
-        let httpOptions = _.clone(this.authHeaders);
+        let httpOptions = makeAuthorizationHeaders(this.options, this.jwt_secret);
         httpOptions.method = 'DELETE';
         httpOptions.returnBodyOnError = true;
         const reply = download(deleteUrl, '', httpOptions);
@@ -1797,6 +1822,8 @@ class instance {
 }
 
 
+exports.makeAuthorizationHeaders = makeAuthorizationHeaders;
+exports.encodeJWTSecret = encodeJWTSecret;
 exports.instance = instance;
 exports.instanceType = instanceType;
 exports.instanceRole = instanceRole;
