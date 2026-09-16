@@ -129,7 +129,10 @@ function throwIfApiDisabled () {
 actions.defineHttp({
   url: '_admin/foxx/install',
   prefix: false,
-  isSystem: true,
+  isSystem: true,  // this is needed to allow proxyLocal, note that resolveAppInfo
+                   // and FoxxManager.lookupService are relatively simple metadata
+                   // lookups, which do not execute user defined code. Therefore
+                   // it is OK, to waive sandbox requirements here.
 
   callback: easyPostCallback({
     body: true,
@@ -153,7 +156,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/uninstall',
   prefix: false,
-  isSystem: true,
+  isSystem: true,  // this is needed to allow proxyLocal
 
   callback: easyPostCallback({
     body: true,
@@ -176,7 +179,10 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/replace',
   prefix: false,
-  isSystem: true,
+  isSystem: true,  // this is needed to allow proxyLocal, note that resolveAppInfo
+                   // and FoxxManager.lookupService are relatively simple metadata
+                   // lookups, which do not execute user defined code. Therefore
+                   // it is OK, to waive sandbox requirements here.
 
   callback: easyPostCallback({
     body: true,
@@ -200,7 +206,10 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/upgrade',
   prefix: false,
-  isSystem: true,
+  isSystem: true,  // this is needed to allow proxyLocal, note that resolveAppInfo
+                   // and FoxxManager.lookupService are relatively simple metadata
+                   // lookups, which do not execute user defined code. Therefore
+                   // it is OK, to waive sandbox requirements here.
 
   callback: easyPostCallback({
     body: true,
@@ -224,7 +233,10 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/configure',
   prefix: false,
-  isSystem: true,
+  isSystem: true,  // this is needed to allow proxyLocal, note that
+                   // FoxxManager.lookupService is a relatively simple metadata
+                   // lookup, which do not execute user defined code. Therefore
+                   // it is OK, to waive sandbox requirements here.
 
   callback: easyPostCallback({
     body: true,
@@ -249,7 +261,10 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/set-dependencies',
   prefix: false,
-  isSystem: true,
+  isSystem: true,  // this is needed to allow proxyLocal, note that
+                   // FoxxManager.lookupService is a relatively simple metadata
+                   // lookup, which do not execute user defined code. Therefore
+                   // it is OK, to waive sandbox requirements here.
 
   callback: easyPostCallback({
     body: true,
