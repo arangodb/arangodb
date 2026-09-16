@@ -73,10 +73,11 @@ struct CollectionStorageProperties {
 template<class Inspector>
 auto inspect(Inspector& f, CollectionStorageProperties& props) {
   return f.object(props).fields(
-      serverOnlyField(f, StaticStrings::ObjectId, props.objectId)
+      internalFieldRejectingUserInput(f, StaticStrings::ObjectId,
+                                      props.objectId)
           .transformWith(
               CollectionStorageProperties::Transformers::ObjectIdAsString{}),
-      serverOnlyField(f, StaticStrings::Version, props.version)
+      internalFieldRejectingUserInput(f, StaticStrings::Version, props.version)
           .transformWith(
               CollectionStorageProperties::Transformers::VersionAsNumber{}));
 }

@@ -68,7 +68,7 @@ auto inspect(Inspector& f, CollectionDescriptor& d) {
       f.embedFields(d.internal), f.embedFields(d.clusteringConstant),
       f.embedFields(d.clusteringMutable), f.embedFields(d.mutableProps),
       f.embedFields(d.storage),
-      serverOnlyField(f, StaticStrings::Indexes, d.indexes));
+      internalFieldRejectingUserInput(f, StaticStrings::Indexes, d.indexes));
 }
 
 }  // namespace arangodb

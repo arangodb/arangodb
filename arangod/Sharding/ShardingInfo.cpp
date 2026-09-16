@@ -166,7 +166,9 @@ ShardingInfo::ShardingInfo(CollectionDescriptor const& descriptor,
       _numberOfShards(descriptor.clusteringConstant.numberOfShards.value_or(1)),
       _replicationFactor(1),
       _writeConcern(1),
-      // the field holds the leader's cid everywhere but in a marker
+      // the field holds the leader's cid everywhere, but single server writes
+      // the name rather than cid, so _distributeShardsLike is a name here;
+      // will be resolved by resolveDistributeShardsLike()
       _distributeShardsLike(
           descriptor.clusteringConstant.distributeShardsLike.value_or("")),
       _shardIds(std::make_shared<ShardMap>()) {

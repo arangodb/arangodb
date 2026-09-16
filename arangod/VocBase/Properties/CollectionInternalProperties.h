@@ -58,7 +58,8 @@ struct CollectionInternalProperties {
 template<class Inspector>
 auto inspect(Inspector& f, CollectionInternalProperties& props) {
   return f.object(props).fields(
-      internalOnlyField(f, StaticStrings::DataSourceDeleted, props.deleted),
+      internalFieldDroppingUserInput(f, StaticStrings::DataSourceDeleted,
+                                     props.deleted),
       f.field(StaticStrings::SyncByRevision, props.syncByRevision)
           .fallback(f.keep()),
       f.field(StaticStrings::UsesRevisionsAsDocumentIds,

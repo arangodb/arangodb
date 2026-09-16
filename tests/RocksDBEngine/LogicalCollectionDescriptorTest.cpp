@@ -491,7 +491,8 @@ TEST_F(LogicalCollectionDescriptorTest, LoadPath_restoresTheShardMap) {
 }
 
 // Save a collection, read its own marker back, expect the same collection.
-TEST_F(LogicalCollectionDescriptorTest, Restart_keepsARepresentativeCollection) {
+TEST_F(LogicalCollectionDescriptorTest,
+       Restart_keepsARepresentativeCollection) {
   ASSERT_NO_FATAL_FAILURE(
       expectSurvivesRestart(representativeCreateDescriptor()));
 }
@@ -538,8 +539,7 @@ TEST_F(LogicalCollectionDescriptorTest, Restart_keepsDistributeShardsLikeACid) {
 
   // the descriptor keeps whatever the marker held; ShardingInfo resolves it
   ShardingInfo restored(reloaded, follower.get());
-  EXPECT_EQ(restored.distributeShardsLike(),
-            std::to_string(leader->id().id()))
+  EXPECT_EQ(restored.distributeShardsLike(), std::to_string(leader->id().id()))
       << "marker stored "
       << marker.slice().get(StaticStrings::DistributeShardsLike).toJson();
 }

@@ -984,6 +984,8 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
                                        decltype(Index::makeFlags())& flags) {
     if ((forPersistence || !idx->isHidden()) &&
         (showInProgress || !idx->inProgress() ||
+         // We do this since we need trainingState of the vector index in agency
+         // so we can report it to the end user
          (forMaintance && idx->type() == IndexType::Vector))) {
       flags = indexFlags;
       return true;
