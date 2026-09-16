@@ -62,6 +62,22 @@ RestStatus RestDatabaseHandler::execute() {
   }
 }
 
+async<Result> RestUsersHandler::checkDatabaseAccess() const {
+  constexpr std::string_view pathApiDatabaseUser("/_api/database/user");
+
+  auto const& path = _request->requestPath();
+
+  if (_request->authenticated() && path == pathPrefixApiUser) {
+    // This is the route the UI uses to list the databases a user has access to,
+    // directly after login to bring up a dialog to let the user choose a
+    // database. Therefore, we must allow this, even if the user has no access
+    // to the _system database.
+    co_return Result{};
+  }
+
+  co_return co_await RestBaseHandler::checkDatabaseAccess();
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief get database infos
 // //////////////////////////////////////////////////////////////////////////////

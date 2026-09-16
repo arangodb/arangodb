@@ -1,6 +1,9 @@
 3.12.12 (XXXX-XX-XX)
 --------------------
 
+* Fix UI login for users without access to the _system database. This involves
+  allowing the API `GET /_api/database/user` in this case.
+
 * Fixed the AQL function SUBSTITUTE() returning null and emitting the warning
   "icu error: U_ILLEGAL_ARGUMENT_ERROR" when the input string is empty and a
   non-empty search string is given. It now returns the empty string.
