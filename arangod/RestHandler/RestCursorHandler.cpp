@@ -96,7 +96,8 @@ futures::Future<futures::Unit> RestCursorHandler::executeAsync() {
     // POST /_api/cursor/cursor-id/batch-id
     co_await showLatestBatch();
     co_return;
-  } else if (type == rest::RequestType::PUT) {
+  } else if (type == rest::RequestType::PUT &&
+             _request->requestedApiVersion() == 0) {
     co_await modifyQueryCursor();
     co_return;
   } else if (type == rest::RequestType::DELETE_REQ) {

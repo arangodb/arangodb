@@ -890,6 +890,67 @@ auto inspect(Inspector& f, AlternativeFields& x) {
           .when(ifUsingName));
 }
 
+// A group of fields embedded into an enclosing object, guarded as a whole.
+struct EmbeddableGroup {
+  int a = 0;
+  int b = 0;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, EmbeddableGroup& x) {
+  return f.object(x).fields(f.field("a", x.a), f.field("b", x.b));
+}
+
+struct ConditionalGroupReject {
+  int version = 1;
+  EmbeddableGroup group;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, ConditionalGroupReject& x) {
+  return f.object(x).fields(
+      f.field("version", x.version),
+      f.embedFields(x.group).when(processFromV2(x.version)));
+}
+
+struct ConditionalGroupIgnore {
+  int version = 1;
+  EmbeddableGroup group;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, ConditionalGroupIgnore& x) {
+  return f.object(x).fields(
+      f.field("version", x.version),
+      f.embedFields(x.group).when(ignoreBeforeV2(x.version)));
+}
+
+// The group carries an object invariant, which must be checked even when the
+// group itself is skipped.
+struct GroupWithObjectInvariant {
+  int a = 0;
+  int b = 0;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, GroupWithObjectInvariant& x) {
+  return f.object(x)
+      .fields(f.field("a", x.a), f.field("b", x.b))
+      .invariant([](GroupWithObjectInvariant& o) { return o.a != 99; });
+}
+
+struct ConditionalGroupWithObjectInvariant {
+  int version = 1;
+  GroupWithObjectInvariant group;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, ConditionalGroupWithObjectInvariant& x) {
+  return f.object(x).fields(
+      f.field("version", x.version),
+      f.embedFields(x.group).when(processFromV2(x.version)));
+}
+
 struct ConditionalEmbeddable {
   int innerVersion = 1;
   int newField = 0;

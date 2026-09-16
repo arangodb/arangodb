@@ -108,7 +108,7 @@ struct MockService : rbac::Service {
 // Fixture bundling a mock service and the Rbac auth mode under test.
 struct RbacAuthModeTest : ::testing::Test {
   MockService svc;
-  AuthMode::Rbac rbac{svc, "myuser", "mytoken"};
+  AuthMode::Rbac rbac{svc, "myuser", "mytoken", 0};
 
   // Discarding wrapper around rbac.check(). IAuth::check is [[nodiscard]], so
   // tests that only inspect the recorded queries would otherwise not compile

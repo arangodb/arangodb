@@ -183,6 +183,10 @@ RestStatus RestUsersHandler::getRequest(auth::UserManager* um) {
     }
 
     if (suffixes[1] == "database") {
+      if (!(exec.isClassic() || exec.isSuperuserOrDisabled())) {
+        generateError(Result{TRI_ERROR_FORBIDDEN, "Not allowed in RBAC mode."});
+        return RestStatus::DONE;
+      }
       if (suffixes.size() == 2) {
         //_api/user/<user>/database?full=<true/false>
         bool full = false;

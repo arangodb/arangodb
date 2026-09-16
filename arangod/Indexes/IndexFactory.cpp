@@ -32,6 +32,7 @@
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "VectorIndex/Definition.h"
+#include "VectorIndex/FaissFactory.h"
 #include "IResearch/IResearchCommon.h"
 #include "Inspection/VPack.h"
 #include "RestServer/BootstrapFeature.h"
@@ -366,19 +367,23 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
 }
 
 /// same for both storage engines
-std::vector<std::string_view> IndexFactory::supportedIndexes() const {
+std::vector<std::string_view> IndexFactory::supportedIndexes(
+    uint32_t apiVersion) const {
   std::vector<std::string_view> enabledFeatures{
       "primary",
       "edge",
-      "hash",
-      "skiplist",
       "ttl",
       "persistent",
       "geo",
-      "fulltext",
+
       "mdi",
       "mdi-prefixed",
       arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE};
+  if (apiVersion == 0) {
+    enabledFeatures.push_back("hash");
+    enabledFeatures.push_back("skiplist");
+    enabledFeatures.push_back("fulltext");
+  }
   if (_server.getFeature<VectorIndexFeature>().isVectorIndexEnabled()) {
     enabledFeatures.push_back("vector");
   }
@@ -387,7 +392,7 @@ std::vector<std::string_view> IndexFactory::supportedIndexes() const {
 }
 
 std::vector<std::pair<std::string_view, std::string_view>>
-IndexFactory::indexAliases() const {
+IndexFactory::indexAliases(uint32_t apiVersion) const {
   return {};
 }
 
@@ -913,13 +918,13 @@ Result IndexFactory::enhanceJsonIndexMdiPrefixed(VPackSlice definition,
 Result IndexFactory::enhanceJsonIndexVector(
     arangodb::velocypack::Slice definition,
     arangodb::velocypack::Builder& builder, bool create) {
-  Result const res =
+  Result processIndexFieldsResult =
       processIndexFields(definition, builder, 1, 1, create,
                          /*allowExpansion*/ false, /*allowSubAttributes*/ true,
                          /*allowIdAttribute*/ false);
 
   vector::UserDefinition vectorIndexDefinition;
-  if (res.ok()) {
+  if (processIndexFieldsResult.ok()) {
     auto const paramsSlice = definition.get("params");
     if (auto const res = velocypack::deserializeWithStatus(
             paramsSlice, vectorIndexDefinition);
@@ -934,12 +939,17 @@ Result IndexFactory::enhanceJsonIndexVector(
       return {TRI_ERROR_BAD_PARAMETER, "Vector index cannot be unique"};
     }
 
-    if (auto const res =
+    if (auto factoryRes = vector::validateFactoryString(vectorIndexDefinition);
+        factoryRes.fail()) {
+      return factoryRes;
+    }
+
+    if (auto storedValuesRes =
             processIndexStoredValues(definition, builder, 1, 32, create,
                                      /*allowSubAttributes*/ true,
                                      /* allowOverlappingFields */ true);
-        res.fail()) {
-      return res;
+        storedValuesRes.fail()) {
+      return storedValuesRes;
     }
     builder.add(VPackValue("params"));
     velocypack::serialize(builder, vectorIndexDefinition);
@@ -949,7 +959,7 @@ Result IndexFactory::enhanceJsonIndexVector(
     processIndexParallelism(definition, builder);
   }
 
-  return res;
+  return processIndexFieldsResult;
 }
 
 }  // namespace arangodb

@@ -147,7 +147,19 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
 
   filter.includeSystem =
       _request->parsedValue("includeSystem", filter.includeSystem);
-  filter.includeFoxxQueues = _request->parsedValue("includeFoxxQueues", false);
+  if (_request->requestedApiVersion() == 0) {
+    filter.includeFoxxQueues =
+        _request->parsedValue("includeFoxxQueues", false);
+  } else {
+    bool found = false;
+    std::ignore = _request->value("includeFoxxQueues", found);
+    if (found) {
+      LOG_TOPIC("f1c3e", WARN, Logger::REQUESTS)
+          << "ignoring 'includeFoxxQueues' query parameter: it no longer "
+             "exists in API version 1 and above";
+    }
+    filter.includeFoxxQueues = false;
+  }
 
   // grab list of transactions from the body value
   if (_request->requestType() == arangodb::rest::RequestType::PUT) {
@@ -200,9 +212,12 @@ RestStatus RestWalAccessHandler::execute() {
 
   std::vector<std::string> suffixes = _request->decodedSuffixes();
   if (suffixes.empty()) {
-    generateError(
-        ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        "expected GET /_api/wal/[tail|range|lastTick|open-transactions]>");
+    std::string msg = "expected GET /_api/wal/[tail|range|lastTick";
+    if (_request->requestedApiVersion() == 0) {
+      msg.append("|open-transactions");
+    }
+    msg.append("]");
+    generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, msg);
     return RestStatus::DONE;
   }
 
@@ -221,12 +236,16 @@ RestStatus RestWalAccessHandler::execute() {
               _request->requestType() == RequestType::DELETE_REQ)) {
     handleCommandTail(wal);
   } else if (suffixes[0] == "open-transactions" &&
-             _request->requestType() == RequestType::GET) {
+             _request->requestType() == RequestType::GET &&
+             _request->requestedApiVersion() == 0) {
     handleCommandDetermineOpenTransactions(wal);
   } else {
-    generateError(
-        ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        "expected GET /_api/wal/[tail|range|lastTick|open-transactions]>");
+    std::string msg = "expected GET /_api/wal/[tail|range|lastTick";
+    if (_request->requestedApiVersion() == 0) {
+      msg.append("|open-transactions");
+    }
+    msg.append("]");
+    generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, msg);
   }
 
   return RestStatus::DONE;

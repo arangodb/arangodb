@@ -518,6 +518,26 @@ TEST_F(VPackSaveInspectorTest, store_ignores_load_scoped_condition) {
   EXPECT_EQ(42, builder.slice()["newField"].getInt());
 }
 
+TEST_F(VPackSaveInspectorTest, store_conditional_group) {
+  {  // condition met: the whole group is written
+    ConditionalGroupReject c{.version = 2, .group = {.a = 1, .b = 2}};
+    auto result = inspector.apply(c);
+    ASSERT_TRUE(result.ok()) << result.error();
+    EXPECT_EQ(1, builder.slice()["a"].getInt());
+    EXPECT_EQ(2, builder.slice()["b"].getInt());
+  }
+  {  // condition not met: no member of the group is written
+    velocypack::Builder b;
+    VPackSaveInspector i{b};
+    ConditionalGroupReject c{.version = 1, .group = {.a = 1, .b = 2}};
+    auto result = i.apply(c);
+    ASSERT_TRUE(result.ok()) << result.error();
+    EXPECT_EQ(1u, b.slice().length());
+    EXPECT_TRUE(b.slice()["a"].isNone());
+    EXPECT_TRUE(b.slice()["b"].isNone());
+  }
+}
+
 TEST_F(VPackSaveInspectorTest, store_omits_conditional_embedded_field) {
   ConditionalEmbedded c;
   c.inner.newField = 42;

@@ -57,7 +57,7 @@ RocksDBTransactionCollection::RocksDBTransactionCollection(
 RocksDBTransactionCollection::~RocksDBTransactionCollection() {
   try {
     // cppcheck-suppress virtualCallInConstructor
-    releaseUsage();
+    releaseUsage();  // NOLINT(clang-analyzer-optin.cplusplus.VirtualCall)
   } catch (...) {
   }
 }

@@ -1,5 +1,5 @@
 name: arangodb_rbac_request_duration
-introducedIn: "3.12.10"
+introducedIn: "3.12.11"
 help: |
   Duration of requests to the external RBAC authorization service in microseconds.
 unit: microseconds

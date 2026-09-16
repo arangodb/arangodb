@@ -25,7 +25,6 @@
 #include "Ssl/AuthInfo.h"
 #include "Basics/LruCache.h"
 #include "Basics/ReadWriteLock.h"
-#include "Basics/Result.h"
 #include "Basics/Guarded.h"
 #include "Cluster/ServerState.h"
 #include "Rest/CommonDefines.h"
@@ -33,6 +32,7 @@
 #include <atomic>
 #include <memory>
 #include <mutex>
+#include <shared_mutex>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -103,7 +103,7 @@ class TokenCache {
   void setJwtSecrets(AuthInfo secrets);
 
   /// Get the jwt token, which should be used for communication
-  std::string const& jwtToken() const noexcept;
+  std::string jwtToken() const noexcept;
 
   auth::AuthKey jwtSecret() const;
 
@@ -112,9 +112,6 @@ class TokenCache {
   TokenCache::Entry checkAuthenticationBasic(std::string const& secret);
   /// Check JWT token contents
   TokenCache::Entry checkAuthenticationJWT(std::string const& secret);
-  /// Check JWT token contents and return full token string
-  TokenCache::Entry checkAuthenticationJWT(std::string const& secret,
-                                           std::string const& fullToken);
 
   bool validateJwtHeader(std::string_view headerWebBase64, bool& isES256);
   TokenCache::Entry validateJwtBody(std::string_view bodyWebBase64);
@@ -133,10 +130,12 @@ class TokenCache {
   std::atomic<uint64_t> _basicCacheVersion{0};
 
   Guarded<AuthInfo> _jwtSecrets;
+  mutable std::shared_mutex _jwtSuperTokenLock;
   std::string _jwtSuperToken;  /// token for internal use
 
   mutable std::mutex _jwtCacheMutex;
   arangodb::basics::LruCache<std::string, TokenCache::Entry> _jwtCache;
+  std::atomic<uint64_t> _jwtCacheVersion{0};
 
   /// Timeout in seconds
   double const _authTimeout;

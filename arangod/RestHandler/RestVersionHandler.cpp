@@ -74,12 +74,15 @@ static void addApiVersions(VPackBuilder& result) {
 }
 
 static void addVersionDetails(application_features::ApplicationServer& server,
-                              VPackBuilder& result) {
+                              VPackBuilder& result,
+                              uint32_t requestedApiVersion) {
   result.add("details", VPackValue(VPackValueType::Object));
   Version::getVPack(result);
 
   auto& serverFeature = server.getFeature<ServerFeature>();
-  result.add("mode", VPackValue(serverFeature.operationModeString()));
+  if (requestedApiVersion == 0) {
+    result.add("mode", VPackValue(serverFeature.operationModeString()));
+  }
   auto serverState = ServerState::instance();
   if (serverState != nullptr) {
     result.add("role",
@@ -146,7 +149,7 @@ void RestVersionHandler::getVersion(
   }
 
   if (allowInfo && includeDetails) {
-    addVersionDetails(server, result);
+    addVersionDetails(server, result, requestedApiVersion);
   }
 
   // Add API version information (both in short and long form)
@@ -161,6 +164,11 @@ void RestVersionHandler::getVersion(
 
 // Mounted at /_api/version (exact) and /_admin/version (exact)
 RestStatus RestVersionHandler::execute() {
+  if (_request->requestedApiVersion() > 0 &&
+      !isAllowedHttpMethod({RequestType::GET})) {
+    return RestStatus::DONE;
+  }
+
   VPackBuilder result;
 
   bool const allowInfo =

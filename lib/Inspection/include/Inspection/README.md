@@ -278,6 +278,26 @@ f.field("waitForSync", x.waitForSync)
     })
 ```
 
+A condition can also be attached to a whole group of embedded fields (see
+"Embedded fields" below) rather than to each field individually:
+```cpp
+template<class Inspector>
+auto inspect(Inspector& f, Config& x) {
+  return f.object(x).fields(
+      f.field("version", x.version),
+      f.embedFields(x.v2Settings).when([&x] {
+        return x.version >= 2 ? FieldCondition::Process
+                              : FieldCondition::Reject;
+      }));
+}
+```
+The three results mean the same as for a single field, applied to every
+attribute the group contributes: a rejected group reports each of its
+attributes as unexpected, an ignored group tolerates all of them, and neither
+writes anything when saving. The group's object invariant, if it has one, is
+checked either way - again because the condition governs the attributes rather
+than the validity of the object.
+
 `when` applies in both directions. To control only one of them, use
 `whenLoading` or `whenSaving`; the field is unconditionally processed in the
 other direction. A field carries at most one condition - combining two of these
