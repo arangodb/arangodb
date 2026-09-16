@@ -22,13 +22,13 @@
 
 #pragma once
 
+#include "Aql/Match/CollectionAccessBuilder.h"
+#include "Aql/Match/FilterBuilder.h"
 #include "Aql/Match/PatternTypes.h"
+#include "Aql/Match/ProjectionBuilder.h"
 #include "Aql/types.h"
 
-#include <cstddef>
 #include <optional>
-#include <span>
-#include <string_view>
 #include <tuple>
 #include <unordered_map>
 #include <vector>
@@ -39,15 +39,15 @@ struct AstNode;
 class CalculationNode;
 class ExecutionNode;
 class ExecutionPlan;
-class FilterNode;
 struct Variable;
 }  // namespace arangodb::aql
 
 namespace arangodb::aql::match {
 
-/// @brief Lowers normalized MATCH patterns into ExecutionPlan fragments.
-/// Parser AST semantics are normalized by PatternNormalizer before
-/// planning; this class owns only execution-plan construction.
+/// @brief Orchestrates lowering of normalized MATCH patterns into
+/// ExecutionPlan fragments. Collection access, filtering, and projection are
+/// delegated to focused helpers; this class coordinates pattern construction
+/// and plan wiring (including COR-888 projection bindings).
 class Builder {
  public:
   Builder(ExecutionPlan& plan, Ast* ast);
@@ -69,11 +69,6 @@ class Builder {
       return projection != nullptr;
     }
   };
-
-  AstNode* createPropertyAccess(Variable const* variable,
-                                std::string_view property);
-
-  AstNode* buildEdgeCollectionList(NormalizedEdge const& edge);
 
   /// @brief When @p projection is set, create a temporary full-document
   /// variable and register destination→temp in @p subst; otherwise enumerate
@@ -97,54 +92,6 @@ class Builder {
       std::vector<ExecutionNode*>& projections,
       ProjectionBinding const& binding,
       std::unordered_map<VariableId, Variable const*> const& subst);
-
-  std::tuple<CalculationNode*, FilterNode*> createPropertiesFilter(
-      Variable const* variable,
-      std::vector<PropertyConstraint> const& properties,
-      std::optional<ExpressionRef> const& additionalFilter,
-      std::unordered_map<VariableId, Variable const*> const& subst);
-
-  /// @brief Shared EnumerateCollection + property/WHERE filter fragment used
-  /// by both vertex and edge collection scans.
-  std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
-  enumerateCollection(
-      DataSource const& dataSource, Variable const* outputVariable,
-      std::vector<PropertyConstraint> const& properties,
-      std::optional<ExpressionRef> const& filter,
-      std::unordered_map<VariableId, Variable const*> const& subst);
-
-  std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
-  createCollectionAccess(
-      NormalizedVertex const& vertex, Variable const* fullDocumentVariable,
-      std::unordered_map<VariableId, Variable const*> const& subst);
-
-  ExecutionNode* createDocumentPatternProjection(
-      Variable const* destinationVariable, Variable const* fullDocumentVar,
-      Projection const& projection,
-      std::unordered_map<VariableId, Variable const*> const& subst);
-
-  ExecutionNode* createEdgeDocumentPatternProjection(
-      Variable const* destinationVariable, Variable const* fullDocumentVar,
-      Projection const& projection,
-      std::unordered_map<VariableId, Variable const*> const& subst);
-
-  /// @brief Shared MATCH projection lowering. @p mandatoryAttributes are
-  /// auto-injected and treated as reserved for user projection handling.
-  /// @p projection may be null for an identity (full-document) projection.
-  ExecutionNode* createPatternProjection(
-      Variable const* destinationVariable, Variable const* fullDocumentVar,
-      Projection const* projection,
-      std::span<std::string_view const> mandatoryAttributes,
-      std::unordered_map<VariableId, Variable const*> const& subst);
-
-  std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
-  createPatternEdgeEnumerateAccess(
-      NormalizedEdge const& edge, Variable const* outputVariable,
-      std::unordered_map<VariableId, Variable const*> const& subst);
-
-  std::tuple<CalculationNode*, FilterNode*> createVertexEdgeFilter(
-      Variable const* leftVertex, Variable const* edge,
-      Variable const* rightVertex, EdgeDirection direction);
 
   /// @param edgeDocumentOutputVariable Edge document output for fixed-depth
   /// traversals. Ignored when the edge variable receives a path object.
@@ -179,6 +126,9 @@ class Builder {
 
   ExecutionPlan& _plan;
   Ast* _ast;
+  FilterBuilder _filters;
+  CollectionAccessBuilder _collections;
+  ProjectionBuilder _projections;
 };
 
 }  // namespace arangodb::aql::match
