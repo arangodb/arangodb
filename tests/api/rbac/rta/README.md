@@ -17,6 +17,9 @@ So the question each scenario asks is not "does endpoint X return 403" but **"gi
 ```
 tests/api/rbac/
   scripts/            stack setup, reused as-is (see "Provenance" below)
+    start_stack_for_unittest.sh
+                      one command for a stack `unittest --rbac <url>` can use,
+                      with the requirements enforced and verified
   mkjwt.py            mints ArangoDB-compatible HS256 JWTs
   rta/
     run_all.sh        every layer, cheapest first - start here
@@ -124,29 +127,38 @@ Most of the wall time is denials: a step that is *meant* to be refused still cos
 
 ## Running through the standard test harness
 
+The stack has fixed requirements that are easy to get wrong and fail
+confusingly, so there is a script that sets them up and **verifies** them:
+
+```bash
+# start + verify, then print the command to run
+tests/api/rbac/scripts/start_stack_for_unittest.sh
+
+# or do both in one go
+tests/api/rbac/scripts/start_stack_for_unittest.sh --run
+tests/api/rbac/scripts/start_stack_for_unittest.sh --run --test 050,400
+
+tests/api/rbac/scripts/start_stack_for_unittest.sh --stop
+```
+
+It derives the binary paths from the checkout, finds the kube-arangodb sidecar
+next to it, frees the fixed ports (refusing to kill anything it cannot identify
+as `arangod`/`arangodb_operator`), writes the right JWT key, starts both
+processes and then proves they agree before handing the stack over. No
+environment variables needed; `OPERATOR` still overrides the sidecar binary and
+`RBAC_WORK` the work directory.
+
+Without the script:
+
 ```bash
 # 1. plain workload under RBAC. Starts utils/rbac_dummy.py, an allow-everything
 #    stub. Proves the RBAC code path does not break the workload - and nothing
-#    more (see the warning below).
-./scripts/unittest rta_makedata --rbac true
+#    more (see the warning below). Needs no sidecar.
+./scripts/unittest rta_makedata --rbac true --test 050,100,400,500,580,607,612
 
 # 2. the same, plus the scenario matrix, against a real authorization sidecar.
-#    The sidecar must validate tokens with the harness JWT secret ('haxxmann').
-#    env.sh generates a *random* secret when the key file is absent, so write it
-#    yourself before bringing the stack up:
-export RBAC_WORK=/tmp/rbac-ut
-mkdir -p $RBAC_WORK/jwt && printf haxxmann > $RBAC_WORK/jwt/-
-tests/api/rbac/scripts/start_arangod.sh http://127.0.0.1:8108
-OPERATOR=/path/to/kube-arangodb/bin/linux/amd64/arangodb_operator \
-  tests/api/rbac/scripts/start_sidecar.sh central
-
-./scripts/unittest rta_makedata --rbac http://127.0.0.1:8108
+./scripts/unittest rta_makedata --rbac http://127.0.0.1:8108 --test 050,100,400,500,580,607,612
 ```
-
-A stack whose key file holds a random secret works fine for `run_all.sh` — the
-runner mints its own tokens with that same secret — but the harness signs with
-`haxxmann` and cannot be told otherwise, so its tokens are rejected. The
-symptom is every phase failing to authenticate, not a policy denial.
 
 With a URL, `rta_makedata` runs the scenario matrix as a final phase, reported as
 `rta_RbacScenarios`. It is skipped, with a reason, when `--rbac` is just `true`:
@@ -157,6 +169,47 @@ through. `--rtaRbacDir` overrides where the runner is looked for.
 > `Allow` to everything, so the plain workload only proves the RBAC code path
 > does not break it. Use the sidecar URL form for anything that has to be
 > sensitive to policy.
+
+### The JWT secret has to match, and the symptom does not say so
+
+The harness starts its own arangod with `--server.jwt-secret <testsecret>`
+(`haxxmann`, in `test-utils.js`), and **that arangod authenticates itself to the
+sidecar's integration services with that secret**. So the sidecar's
+`--sidecar.auth` key folder has to hold the same value.
+
+`env.sh`'s `ensure_secret()` generates a *random* secret when the key file is
+absent. That is correct for `run_all.sh`, which owns both ends, and fatal here.
+Measured, with a random-key sidecar:
+
+```
+Connection attempt to endpoint '...' failed: Caught exception in
+`handleAuthorizationChecks`: bad parameter
+ArangoError 2001: not connected
+```
+
+Nothing in that mentions a secret, or the sidecar. Worse, the failure is in the
+*workload* phase: the sidecar's **management** API needs no token at all, so
+seeding policies succeeds and `'root' now has an allow-all binding` is printed
+just before the collapse. This was confirmed by deliberately pointing the
+harness at a random-key sidecar, having first assumed - wrongly - that only the
+runner's own tokens mattered.
+
+`start_stack_for_unittest.sh` reads the value out of `test-utils.js` rather than
+hardcoding it, so a rename or a change of value cannot drift, and it mints a
+token and checks arangod accepts it before declaring the stack ready.
+
+### Port ownership
+
+`env.sh` pins `:8107`-`:8109` and `:8529`, so a `run_all.sh` stack and a
+harness stack cannot coexist; run one, then the other.
+`start_sidecar.sh` kills only the sidecar recorded in `$RBAC_WORK/sidecar.pid`
+and refuses to start when something it does not own holds the ports, naming the
+holding process. `start_stack_for_unittest.sh` clears them for you, but will not
+kill a process whose name is neither `arangod` nor `arangodb_operator`.
+
+One caveat inherited from `start_arangod.sh`: it runs `pkill -9 -x arangod`,
+which kills **every** `arangod` owned by the user, including an in-flight
+unittest instance. Do not bring a stack up while a test is running.
 
 ### What the harness has to do for RBAC to be real
 
@@ -186,15 +239,6 @@ Measured falsifications of the integrated path:
 | `--rbac http://127.0.0.1:1` (dead PDP) | `Fail` - bootstrap cannot reach the sidecar |
 | authentication fix reverted | `Fail` - 7 scenario `MISMATCH`es |
 | both fixes in place | `Success` |
-
-## Port ownership
-
-`start_sidecar.sh` kills only the sidecar recorded in `$RBAC_WORK/sidecar.pid`.
-A sidecar started from a different `RBAC_WORK` - for instance the long-lived one
-you point `--rbac <url>` at - still holds `:8107`, `:8108` and `:8109`, and
-`run_all.sh` cannot then bring up its own. The script now says so explicitly and
-names the holding process; stop it first, or set `RBAC_WORK` to the directory
-that owns it.
 
 ## Running individual pieces
 
