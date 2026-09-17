@@ -888,6 +888,23 @@ class CompareAstNodesTest : public ::testing::Test {
     return _ast->createNodeAttributeAccess(base, name);
   }
 
+  AstNode* array(std::initializer_list<AstNode*> elems) {
+    AstNode* node = _ast->createNodeArray(elems.size());
+    for (auto* e : elems) {
+      node->addMember(e);
+    }
+    return node;
+  }
+
+  AstNode* object(
+      std::initializer_list<std::pair<std::string_view, AstNode*>> members) {
+    AstNode* node = _ast->createNodeObject();
+    for (auto const& [name, value] : members) {
+      node->addMember(_ast->createNodeObjectElement(name, value));
+    }
+    return node;
+  }
+
   AstNode* intVal(int64_t v) { return _ast->createNodeValueInt(v); }
 
   AstNode* strVal(std::string_view s) {
@@ -1456,6 +1473,76 @@ TEST_F(CompareAstNodesTest, differentStructuralTypesOrderedByEnum) {
   AstNode* attrNode = attr(createRefNode(x), "f");
   EXPECT_LT(compare(attrNode, refNode), 0);
   EXPECT_GT(compare(refNode, attrNode), 0);
+}
+
+// --- OBJECT nodes whose members are not constants
+// ------------------------------
+
+// Objects reading different attributes are different expressions, so a caller
+// deduplicating on equality must not collapse them.
+TEST_F(CompareAstNodesTest, objectsSelectingDifferentAttributesNotEqual) {
+  auto* doc = makeVar("doc");
+  auto* lhs = object({{"x", attr(createRefNode(doc), "a")}});
+  auto* rhs = object({{"x", attr(createRefNode(doc), "b")}});
+  ASSERT_FALSE(lhs->valueHasVelocyPackRepresentation());
+  EXPECT_NE(0, compare(lhs, rhs));
+}
+
+// Members bound to variable references are part of the object's identity, as
+// is the attribute each remaining member reads.
+TEST_F(CompareAstNodesTest, objectsWithDifferentReferenceMembersNotEqual) {
+  auto* doc = makeVar("doc");
+  auto* s1 = makeVar("s1");
+  auto* s2 = makeVar("s2");
+  auto* lhs = object({{"a", createRefNode(s1)},
+                      {"b", createRefNode(s2)},
+                      {"email", attr(createRefNode(doc), "email")}});
+  auto* rhs = object({{"a", createRefNode(s2)},
+                      {"b", createRefNode(s1)},
+                      {"email", attr(createRefNode(doc), "other")}});
+  EXPECT_NE(0, compare(lhs, rhs));
+}
+
+// Comparing objects whose members have no VelocyPack representation must not
+// throw.
+TEST_F(CompareAstNodesTest, objectWithReferenceMemberDoesNotThrow) {
+  auto* doc = makeVar("doc");
+  auto* sub = makeVar("sub");
+  auto makeObject = [&]() {
+    return object(
+        {{"a", createRefNode(sub)},
+         {"email", attr(createRefNode(doc), "email")},
+         {"first", attr(createRefNode(doc), "first")},
+         {"is_deactivated", attr(createRefNode(doc), "is_deactivated")}});
+  };
+  EXPECT_NO_THROW(compare(makeObject(), makeObject()));
+}
+
+// Function call arguments are compared child by child, so a nested object is
+// reached like a top-level one.
+TEST_F(CompareAstNodesTest, objectNestedInFunctionCallNotEqual) {
+  auto* doc = makeVar("doc");
+  auto* lhs = fcall("MERGE", {object({{"x", attr(createRefNode(doc), "a")}})});
+  auto* rhs = fcall("MERGE", {object({{"x", attr(createRefNode(doc), "b")}})});
+  EXPECT_NE(0, compare(lhs, rhs));
+}
+
+// Array elements that are not constants are told apart.
+TEST_F(CompareAstNodesTest, arraysOfNonConstantElementsCompared) {
+  auto* doc = makeVar("doc");
+  EXPECT_NE(0, compare(array({attr(createRefNode(doc), "a")}),
+                       array({attr(createRefNode(doc), "b")})));
+}
+
+// An array member counts towards the object's identity, both its length and
+// the variables it holds.
+TEST_F(CompareAstNodesTest, objectsWithDifferingArrayMembersNotEqual) {
+  auto* a = makeVar("a");
+  auto* b = makeVar("b");
+  auto* c = makeVar("c");
+  auto* lhs = object({{"x", array({createRefNode(a)})}});
+  auto* rhs = object({{"x", array({createRefNode(b), createRefNode(c)})}});
+  EXPECT_NE(0, compare(lhs, rhs));
 }
 
 }  // namespace
