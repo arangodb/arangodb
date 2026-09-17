@@ -33,6 +33,7 @@ const rp = require('@arangodb/testutils/result-processing');
 const pm = require('@arangodb/testutils/portmanager');
 const yaml = require('js-yaml');
 const internal = require('internal');
+const crypto = require('@arangodb/crypto');
 const {versionHas} = require("@arangodb/test-helper");
 const crashUtils = require('@arangodb/testutils/crash-utils');
 const {sanHandler} = require('@arangodb/testutils/san-file-handler');
@@ -103,6 +104,43 @@ const instanceRole = {
   coordinator: 'coordinator',
 };
 
+function encodeJWTSecret(jwtSecret) {
+    if (jwtSecret.startsWith("-----BEGIN PRIVATE KEY-----")) {
+      return crypto.jwtEncode(jwtSecret,
+                              {'server_id': 'none',
+                               'iss': 'arangodb'}, 'ES256');
+    } else {
+      return crypto.jwtEncode(jwtSecret,
+                              {'server_id': 'none',
+                               'iss': 'arangodb'}, 'HS256');
+    }
+}
+  
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief adds authorization headers
+// //////////////////////////////////////////////////////////////////////////////
+
+function makeAuthorizationHeaders (options, jwtSecret=false) {
+  if (jwtSecret && jwtSecret.length > 0) {
+    let jwt = encodeJWTSecret(jwtSecret);
+    if (options.extremeVerbosity) {
+      print(Date() + ' Using jw token:     ' + jwt);
+    }
+    return {
+      'headers': {
+        'Authorization': 'bearer ' + jwt
+      }
+    };
+  } else {
+    return {
+      'headers': {
+        'Authorization': 'Basic ' + base64Encode(options.username + ':' +
+            options.password)
+      }
+    };
+  }
+}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief converts endpoints to URL
@@ -126,10 +164,10 @@ class instance {
   #pid = null;
 
   // / protocol must be one of ["tcp", "ssl", "unix"]
-  constructor(options, myInstanceRole, addArgs,
-              authHeaders, jwt_secret, JWT, authHeadersJWT,
-              protocol, rootDir, restKeyFile,
-              agencyMgr, tmpDir, mem) {
+  constructor(options, myInstanceRole, protocol,
+              agencyMgr, addArgs,
+              rootDir, tmpDir, restKeyFile,
+              jwt_secret, mem) {
     this.id = null;
     this.shortName = null;
     this.pm = pm.getPortManager(options);
@@ -155,8 +193,6 @@ class instance {
         this.args[key] = value;
       }
     }
-    this.authHeaders = authHeaders;
-    this.authHeadersJWT = authHeadersJWT;
     this.restKeyFile = restKeyFile;
     this.agencyMgr = agencyMgr;
 
@@ -185,7 +221,6 @@ class instance {
     if (process.env.hasOwnProperty('COREDIR')) {
       this.coreDirectory = process.env['COREDIR'];
     }
-    this.JWT = JWT;
     this.jwt_secret = jwt_secret;
     this.jwtFiles = null;
     this.jwtSecrets = [];
@@ -224,8 +259,6 @@ class instance {
       message: this.message,
       rootDir: this.rootDir,
       protocol: this.protocol,
-      authHeaders: this.authHeaders,
-      authHeadersJWT: this.authHeadersJWT,
       restKeyFile: this.restKeyFile,
       agencyConfig: (this.agencyMgr !== undefined) ? this.agencyMgr.getStructure():{},
       upAndRunning: this.upAndRunning,
@@ -255,8 +288,6 @@ class instance {
     this.message = struct['message'];
     this.rootDir = struct['rootDir'];
     this.protocol = struct['protocol'];
-    this.authHeaders = struct['authHeaders'];
-    this.authHeadersJWT = struct['authHeadersJWT'];
     this.restKeyFile = struct['restKeyFile'];
     this.upAndRunning = struct['upAndRunning'];
     this.suspended = struct['suspended'];
@@ -315,11 +346,6 @@ class instance {
       arango.disconnectHandle(this.connectionHandle);
     }
     this.connectionHandle = undefined;
-  }
-
-  resetAuthHeaders(authHeaders, JWT) {
-    this.authHeaders = authHeaders;
-    this.JWT = JWT;
   }
 
   dumpConnectionTable(force) {
@@ -562,11 +588,11 @@ class instance {
 
   _executeArangod (moreArgs, instanceJson) {
     if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
-      this.JWT = moreArgs['server.jwt-secret'];
+      this.jwt_secret = moreArgs['server.jwt-secret'];
     } else if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret-folder')) {
       let files = fs.list(moreArgs['server.jwt-secret-folder']);
       files = files.sort();
-      this.JWT = fs.read(fs.join(moreArgs['server.jwt-secret-folder'], files[0]));
+      this.jwt_secret = fs.read(fs.join(moreArgs['server.jwt-secret-folder'], files[0]));
     }
 
     let cmd = pu.ARANGOD_BIN;
@@ -676,7 +702,7 @@ class instance {
 
     print(CYAN + Date()  + " relaunching: " + this.name + ', url: ' + this.url + RESET);
     this.launchInstance(moreArgs, instanceJson);
-    this.pingUntilReady(this.authHeadersJWT, time() + seconds(60));
+    this.pingUntilReady(time() + seconds(60));
     print(CYAN + Date() + ' ' + this.name + ', url: ' + this.url + ', running again with PID ' + this.pid + RESET);
   }
 
@@ -791,11 +817,11 @@ class instance {
     }
   }
 
-  pingUntilReady(httpAuthOptions, deadline) {
+  pingUntilReady(deadline) {
     if (this.suspended) {
       return;
     }
-    let httpOptions = _.clone(httpAuthOptions);
+    let httpOptions = makeAuthorizationHeaders(this.options, this.jwt_secret);
     httpOptions.method = 'POST';
     httpOptions.returnBodyOnError = true;
     while (true) {
@@ -808,7 +834,7 @@ class instance {
       wait(1, false);
       try {
         if (true) {//if (this.options.useReconnect && this.isFrontend()) {
-          if (this.JWT) {
+          if (this.jwt_secret) {
             print(`${Date()} reconnecting ${this.name} with JWT '${this.jwt_secret}' to ${this.url}`);
             if (arango.reconnect(this.endpoint,
                                  '_system',
@@ -1094,7 +1120,7 @@ class instance {
               print(Date() + ' Shutdown response: ' + JSON.stringify(reply));
             }
             return true;
-          }, false)) { // the primary connection may not be restored - we don't care.
+          }, false, false)) { // the primary connection may not be restored - we don't care.
             if (!this.options.noStartStopLogs) {
               print(sockStat);
             }
@@ -1495,7 +1521,7 @@ class instance {
     return `  [${this.name}] up with pid ${this.pid} - ${this.dataDir}`;
   }
 
-  toThisInstance(callback, reconnectFatal=true) {
+  toThisInstance(callback, reconnectRetry=false, reconnectFatal=true) {
     let handle = arango.getConnectionHandle();
     let dbName = arango.getDatabaseName();
     if (!this.connect()) {
@@ -1510,7 +1536,13 @@ class instance {
       ret = callback();
     } catch (err) {
       print(`${RED}${Date()} failed to connect ${this.name} - ${err}${RESET}`);
-      throw err;
+      if (reconnectRetry) {
+        this._disconnect();
+        this.connect();
+        ret = callback();
+      } else {
+        throw err;
+      }
     } finally {
       try {
         reconnected = arango.connectHandle(handle);
@@ -1532,7 +1564,7 @@ class instance {
   getRawMetric(tags="") {
     return this.toThisInstance(() => {
       return arango.GET_RAW('/_admin/metrics' + tags, { 'accept-encoding': 'identity' });
-    });
+    }, true);
   }
 
   getAllMetric(tags="") {
@@ -1546,7 +1578,7 @@ class instance {
   getRawUsageMetric(tags="") {
     return this.toThisInstance(() => {
       return arango.GET_RAW('/_admin/usage-metrics' + tags, { 'accept-encoding': 'identity' });
-    });
+    }, true);
   }
 
   getAllUsageMetric(tags="") {
@@ -1610,7 +1642,7 @@ class instance {
           }
         }
       }
-    });
+    }, true);
   }
   debugSetFailAt(failurePoint) {
     this.toThisInstance(() => {
@@ -1618,7 +1650,7 @@ class instance {
       if (reply.code !== 200) {
         throw new Error(`${this.name}: Failed to set ${failurePoint}: ${reply.parsedBody}`);
       }
-    });
+    }, true);
     return true;
   }
   debugShouldFailAt(failurePoint) {
@@ -1628,7 +1660,7 @@ class instance {
       if (reply.code !== 200) {
         throw new Error(`${this.name}: Failed to set ${failurePoint}: ${reply.parsedBody}`);
       }
-    });
+    }, true);
     return true;
   }
   debugResetRaceControl() {
@@ -1650,7 +1682,7 @@ class instance {
       if (reply.code !== 200) {
         // we may no longer be able to work on a database as forced by fuerte
         print(`${BLUE}${this.name}: fallback to internal.download to clear race control${RESET}`);
-        let httpOptions = _.clone(this.authHeaders);
+        let httpOptions = makeAuthorizationHeaders(this.options, this.jwt_secret);
         httpOptions.method = 'DELETE';
         httpOptions.returnBodyOnError = true;
         const reply = download(deleteUrl, '', httpOptions);
@@ -1684,7 +1716,7 @@ class instance {
       if (reply.code !== 200) {
         // we may no longer be able to work on a database as forced by fuerte
         print(`${BLUE}${this.name}: fallback to internal.download to clear failurepoint${RESET}`);
-        let httpOptions = _.clone(this.authHeaders);
+        let httpOptions = makeAuthorizationHeaders(this.options, this.jwt_secret);
         httpOptions.method = 'DELETE';
         httpOptions.returnBodyOnError = true;
         const reply = download(deleteUrl, '', httpOptions);
@@ -1693,17 +1725,19 @@ class instance {
         }
       }
       return true;
-    });
+    }, true);
   }
   debugCanUseFailAt() {
-    let reply = arango.GET_RAW('/_admin/debug/failat/');
-    if (reply.code !== 200) {
-      if (reply.code === 401) {
-        throw new Error(`${this.name}: Failed to ask for failurepoint: ${reply.parsedBody}`);
+    return this.toThisInstance(() => {
+      let reply = arango.GET_RAW('/_admin/debug/failat/');
+      if (reply.code !== 200) {
+        if (reply.code === 401) {
+          throw new Error(`${this.name}: Failed to ask for failurepoint: ${reply.parsedBody}`);
+        }
+        return false;
       }
-      return false;
-    }
-    return reply.parsedBody === true;
+      return reply.parsedBody === true;
+    }, true);
   }
 
   removeCoredump() {
@@ -1789,6 +1823,8 @@ class instance {
 }
 
 
+exports.makeAuthorizationHeaders = makeAuthorizationHeaders;
+exports.encodeJWTSecret = encodeJWTSecret;
 exports.instance = instance;
 exports.instanceType = instanceType;
 exports.instanceRole = instanceRole;
