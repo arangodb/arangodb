@@ -176,9 +176,6 @@ class ClusterEngine final : public StorageEngine {
   void addV8Functions() override;
 #endif
 
-  void addParametersForNewCollection(arangodb::velocypack::Builder& builder,
-                                     arangodb::velocypack::Slice info) override;
-
   // management methods for synchronizing with external persistent stores
   TRI_voc_tick_t currentTick() const override { return 0; }
   TRI_voc_tick_t releasedTick() const override { return 0; }

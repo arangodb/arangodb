@@ -123,10 +123,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   // createTransactionManager). Must only be called once the manager exists.
   transaction::Manager& transactionManager() const;
 
-  // when a new collection is created, this method is called to augment the
-  // collection creation data with engine-specific information
-  virtual void addParametersForNewCollection(velocypack::Builder&,
-                                             velocypack::Slice /*info*/);
   // the id the engine uses to address the collection's data; keeps one that
   // was supplied already
   virtual uint64_t resolveObjectId(

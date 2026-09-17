@@ -133,16 +133,6 @@ std::shared_ptr<TransactionState> ClusterEngine::createTransactionState(
       vocbase, tid, options, operationOrigin, transactionManager());
 }
 
-void ClusterEngine::addParametersForNewCollection(VPackBuilder& builder,
-                                                  VPackSlice info) {
-  if (isRocksDB()) {
-    // deliberately not add objectId
-    if (!info.get(StaticStrings::CacheEnabled).isBool()) {
-      builder.add(StaticStrings::CacheEnabled, VPackValue(false));
-    }
-  }
-}
-
 // create storage-engine specific collection
 std::unique_ptr<PhysicalCollection> ClusterEngine::createPhysicalCollection(
     LogicalCollection& collection, LocalStorageProperties const& storage) {
