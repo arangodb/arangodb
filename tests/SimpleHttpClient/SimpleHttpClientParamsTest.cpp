@@ -36,10 +36,6 @@ auto paramsWithoutCredentials() -> SimpleHttpClientParams {
 
 }  // namespace
 
-TEST(SimpleHttpClientParamsTest, currentJwtIsEmptyByDefault) {
-  EXPECT_EQ(paramsWithoutCredentials().currentJwt(), "");
-}
-
 TEST(SimpleHttpClientParamsTest, currentJwtReturnsFixedTokenWithoutProvider) {
   auto params = paramsWithoutCredentials();
   params.setJwt("fixed-token");

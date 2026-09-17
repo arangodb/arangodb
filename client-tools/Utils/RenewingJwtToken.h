@@ -98,7 +98,7 @@ auto parseRenewalResponse(httpclient::SimpleHttpResult const& response)
     -> RenewalOutcome;
 
 /**
- * Thread-safe holder of a user JWT that renews itself before it expires
+ * Thread-safe holder of a user JWT that is renewed before it expires
  *
  * Example:
  *   auto token = std::make_shared<RenewingJwtToken>(
@@ -106,9 +106,10 @@ auto parseRenewalResponse(httpclient::SimpleHttpResult const& response)
  *       [](JwtToken const& current) { return postRenewWith(current); },
  *       std::chrono::seconds{300}, &JwtClock::now);
  *   params.setJwtProvider([token] { return token->current(); });
+ *   auto const renewal = BackgroundJwtRenewal{token, std::chrono::seconds{1}};
  *
- * The renewer runs while the holder is locked, so concurrent callers trigger a
- * single renewal request and afterwards all see the renewed token.
+ * Renewal happens only in renewIfDue(), which is meant to be driven by one
+ * background thread. current() never waits for a renewal request.
  */
 class RenewingJwtToken {
  public:
@@ -121,21 +122,19 @@ class RenewingJwtToken {
                    JwtClock::duration renewalThreshold, TimeSource now);
 
   /**
-   * Token to send now; renews it first if due
+   * Token to send now
    */
   auto current() -> JwtToken;
 
   /**
-   * Renews the token if due, independent of any request being sent
+   * Renews the token if due
+   *
+   * The renewal request runs unlocked, so current() keeps answering with the
+   * still valid token meanwhile. Meant to be called from a single thread.
    */
   void renewIfDue();
 
  private:
-  /**
-   * Renews the token if due; the caller holds _mutex
-   */
-  void renewIfDueLocked(JwtClock::time_point now);
-
   std::mutex _mutex;
   JwtTokenState _state;
   Renewer _renewer;

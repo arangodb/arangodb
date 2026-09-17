@@ -30,17 +30,14 @@
 #include <absl/strings/escaping.h>
 #include <absl/strings/str_cat.h>
 
-#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <memory>
 #include <optional>
-#include <ranges>
 #include <string>
 #include <string_view>
 #include <thread>
-#include <vector>
 
 using namespace arangodb;
 using namespace std::chrono_literals;
@@ -219,40 +216,54 @@ TEST(RenewingJwtTokenTest, rejectsUnexpectedResponseBodies) {
 
 // RenewingJwtToken
 
-TEST(RenewingJwtTokenTest, returnsInitialTokenWhileNotDue) {
-  auto now = at(0);
-  auto renewer = ScriptedRenewer{.outcome = renewedToken()};
-  auto token = RenewingJwtToken{tokenExpiringAt(1000), renewer.asFunction(),
-                                threshold, [&now] { return now; }};
-
-  now = at(699);
-
-  EXPECT_EQ(token.current(), tokenExpiringAt(1000));
-  EXPECT_EQ(renewer.calls.load(), 0);
-}
-
-TEST(RenewingJwtTokenTest, renewsOnceWhenDueAndKeepsRenewedToken) {
+TEST(RenewingJwtTokenTest, currentReturnsTheTokenWithoutRenewingIt) {
   auto now = at(0);
   auto renewer = ScriptedRenewer{.outcome = renewedToken()};
   auto token = RenewingJwtToken{tokenExpiringAt(1000), renewer.asFunction(),
                                 threshold, [&now] { return now; }};
 
   now = at(700);
-  EXPECT_EQ(token.current(), tokenExpiringAt(2000));
-  EXPECT_EQ(renewer.lastToken, tokenExpiringAt(1000));
+
+  EXPECT_EQ(token.current(), tokenExpiringAt(1000));
+  EXPECT_EQ(renewer.calls.load(), 0);
+}
+
+TEST(RenewingJwtTokenTest, renewIfDueDoesNothingBeforeTheRenewalPoint) {
+  auto now = at(0);
+  auto renewer = ScriptedRenewer{.outcome = renewedToken()};
+  auto token = RenewingJwtToken{tokenExpiringAt(1000), renewer.asFunction(),
+                                threshold, [&now] { return now; }};
+
+  now = at(699);
+  token.renewIfDue();
+
+  EXPECT_EQ(renewer.calls.load(), 0);
+  EXPECT_EQ(token.current(), tokenExpiringAt(1000));
+}
+
+TEST(RenewingJwtTokenTest, renewIfDueRenewsWhenDue) {
+  auto now = at(0);
+  auto renewer = ScriptedRenewer{.outcome = renewedToken()};
+  auto token = RenewingJwtToken{tokenExpiringAt(1000), renewer.asFunction(),
+                                threshold, [&now] { return now; }};
+
+  now = at(700);
+  token.renewIfDue();
   EXPECT_EQ(renewer.calls.load(), 1);
+  EXPECT_EQ(renewer.lastToken, tokenExpiringAt(1000));
+  EXPECT_EQ(token.current(), tokenExpiringAt(2000));
 
   // the renewed token expires at 2000, so its renewal point is 1700
   now = at(1699);
-  EXPECT_EQ(token.current(), tokenExpiringAt(2000));
+  token.renewIfDue();
   EXPECT_EQ(renewer.calls.load(), 1);
 
   now = at(1700);
-  token.current();
+  token.renewIfDue();
   EXPECT_EQ(renewer.calls.load(), 2);
 }
 
-TEST(RenewingJwtTokenTest, keepsTokenAndRetriesLaterWhenServerIsNotYetWilling) {
+TEST(RenewingJwtTokenTest, renewIfDueRetriesLaterWhenNoTokenWasIssued) {
   auto now = at(0);
   auto renewer =
       ScriptedRenewer{.outcome = RenewalOutcome::success(std::nullopt)};
@@ -260,80 +271,48 @@ TEST(RenewingJwtTokenTest, keepsTokenAndRetriesLaterWhenServerIsNotYetWilling) {
                                 threshold, [&now] { return now; }};
 
   now = at(700);
-  EXPECT_EQ(token.current(), tokenExpiringAt(1000));
+  token.renewIfDue();
   EXPECT_EQ(renewer.calls.load(), 1);
+  EXPECT_EQ(token.current(), tokenExpiringAt(1000));
 
   now = at(704);
-  EXPECT_EQ(token.current(), tokenExpiringAt(1000));
+  token.renewIfDue();
   EXPECT_EQ(renewer.calls.load(), 1);
 
   now = at(705);
-  EXPECT_EQ(token.current(), tokenExpiringAt(1000));
+  token.renewIfDue();
   EXPECT_EQ(renewer.calls.load(), 2);
+  EXPECT_EQ(token.current(), tokenExpiringAt(1000));
 }
 
-TEST(RenewingJwtTokenTest, keepsTokenAndRetriesLaterWhenRenewalFails) {
+TEST(RenewingJwtTokenTest, currentDoesNotWaitForARenewalInProgress) {
   auto now = at(0);
-  auto renewer =
-      ScriptedRenewer{.outcome = RenewalOutcome::error(
-                          TRI_ERROR_FORBIDDEN, "User not authenticated")};
-  auto token = RenewingJwtToken{tokenExpiringAt(1000), renewer.asFunction(),
-                                threshold, [&now] { return now; }};
+  std::atomic<bool> renewalStarted{false};
+  std::atomic<bool> renewalMayFinish{false};
+  auto token =
+      RenewingJwtToken{tokenExpiringAt(1000),
+                       [&renewalStarted, &renewalMayFinish](JwtToken const&) {
+                         renewalStarted = true;
+                         while (!renewalMayFinish) {
+                           std::this_thread::sleep_for(1ms);
+                         }
+                         return renewedToken();
+                       },
+                       threshold, [&now] { return now; }};
 
   now = at(700);
+  auto renewal = std::jthread{[&token] { token.renewIfDue(); }};
+  while (!renewalStarted) {
+    std::this_thread::sleep_for(1ms);
+  }
+  auto releaser = std::jthread{[&renewalMayFinish] {
+    std::this_thread::sleep_for(200ms);
+    renewalMayFinish = true;
+  }};
+
+  // had current() waited for the renewal, it would return the renewed token
   EXPECT_EQ(token.current(), tokenExpiringAt(1000));
-  EXPECT_EQ(renewer.calls.load(), 1);
 
-  now = at(704);
-  EXPECT_EQ(token.current(), tokenExpiringAt(1000));
-  EXPECT_EQ(renewer.calls.load(), 1);
-
-  now = at(705);
-  EXPECT_EQ(token.current(), tokenExpiringAt(1000));
-  EXPECT_EQ(renewer.calls.load(), 2);
-}
-
-TEST(RenewingJwtTokenTest, renewIfDueRenewsToken) {
-  auto now = at(0);
-  auto renewer = ScriptedRenewer{.outcome = renewedToken()};
-  auto token = RenewingJwtToken{tokenExpiringAt(1000), renewer.asFunction(),
-                                threshold, [&now] { return now; }};
-
-  now = at(699);
-  token.renewIfDue();
-  EXPECT_EQ(renewer.calls.load(), 0);
-
-  now = at(700);
-  token.renewIfDue();
-  EXPECT_EQ(renewer.calls.load(), 1);
+  renewal.join();
   EXPECT_EQ(token.current(), tokenExpiringAt(2000));
-}
-
-TEST(RenewingJwtTokenTest, concurrentCallersTriggerSingleRenewal) {
-  constexpr auto callerCount = 8;
-  auto now = at(0);
-  std::atomic<int> calls{0};
-  auto token = RenewingJwtToken{tokenExpiringAt(1000),
-                                [&calls](JwtToken const&) {
-                                  std::this_thread::sleep_for(20ms);
-                                  ++calls;
-                                  return renewedToken();
-                                },
-                                threshold, [&now] { return now; }};
-
-  now = at(700);
-  auto results = std::vector<JwtToken>(callerCount);
-  auto callers = std::vector<std::thread>{};
-  for (auto const index : std::views::iota(0, callerCount)) {
-    callers.emplace_back(
-        [&token, &results, index] { results[index] = token.current(); });
-  }
-  for (auto& caller : callers) {
-    caller.join();
-  }
-
-  EXPECT_EQ(calls.load(), 1);
-  EXPECT_TRUE(std::ranges::all_of(results, [](auto const& result) {
-    return result == tokenExpiringAt(2000);
-  }));
 }

@@ -153,20 +153,24 @@ RenewingJwtToken::RenewingJwtToken(JwtToken initialToken, Renewer renewer,
 
 auto RenewingJwtToken::current() -> JwtToken {
   auto const guard = std::lock_guard{_mutex};
-  renewIfDueLocked(_now());
   return _state.token;
 }
 
 void RenewingJwtToken::renewIfDue() {
-  auto const guard = std::lock_guard{_mutex};
-  renewIfDueLocked(_now());
-}
-
-void RenewingJwtToken::renewIfDueLocked(JwtClock::time_point now) {
-  if (!isRenewalDue(_state, now, _renewalThreshold)) {
+  auto const now = _now();
+  auto const currentToken = [&] {
+    auto const guard = std::lock_guard{_mutex};
+    return isRenewalDue(_state, now, _renewalThreshold)
+               ? std::optional{_state.token}
+               : std::nullopt;
+  }();
+  if (!currentToken.has_value()) {
     return;
   }
-  auto const outcome = _renewer(_state.token);
+
+  auto const outcome = _renewer(*currentToken);
+
+  auto const guard = std::lock_guard{_mutex};
   _state = applyRenewal(std::move(_state), outcome, now);
   logRenewal(outcome, _state, now);
 }

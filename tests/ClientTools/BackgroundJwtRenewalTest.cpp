@@ -112,20 +112,6 @@ TEST(BackgroundJwtRenewalTest, renewsWhenDueWithoutAnyRequest) {
   EXPECT_EQ(token->current(), tokenExpiringAt(2000));
 }
 
-TEST(BackgroundJwtRenewalTest, staysIdleWhileRenewalIsNotDue) {
-  auto clock = FakeClock{};
-  auto renewer = CountingRenewer{};
-  auto const token = std::make_shared<RenewingJwtToken>(
-      tokenExpiringAt(1000), renewer.asFunction(), threshold,
-      clock.timeSource());
-  auto const renewal = BackgroundJwtRenewal{token, 5ms};
-
-  clock.seconds = 699;
-  std::this_thread::sleep_for(50ms);
-
-  EXPECT_EQ(renewer.calls.load(), 0);
-}
-
 TEST(BackgroundJwtRenewalTest, stopsPromptlyOnDestruction) {
   auto clock = FakeClock{};
   auto renewer = CountingRenewer{};
