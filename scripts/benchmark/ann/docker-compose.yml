@@ -1,0 +1,92 @@
+# Default (`docker compose up -d`): results store + schema + Grafana, i.e. what
+# CI assumes is already running.
+# `--profile ci` adds the arangod under test and the harness, wired like the
+# CircleCI job, to reproduce a CI run locally:
+#   docker compose --profile ci up --build harness
+services:
+  arangodb:
+    image: arangodb:latest
+    environment:
+      ARANGO_NO_AUTH: "1"
+    ports:
+      - "8529:8529"
+    volumes:
+      - arangodata:/var/lib/arangodb3
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8529/_api/version >/dev/null"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  # One-shot: applies schema.js to the running server on every `up`; the script is
+  # idempotent. Not done via /docker-entrypoint-initdb.d because the 3.12 image's init
+  # instance writes to a throwaway directory instead of the data volume.
+  schema:
+    image: arangodb:latest
+    entrypoint: ["arangosh"]
+    command:
+      - --server.endpoint=tcp://arangodb:8529
+      - --server.authentication=false
+      - --javascript.execute=/schema.js
+    volumes:
+      - ./schema.js:/schema.js:ro
+    depends_on:
+      arangodb:
+        condition: service_healthy
+
+  grafana:
+    # Pinned together: Infinity 4.x needs Grafana >= 12.2.5
+    image: grafana/grafana:12.4.10
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_INSTALL_PLUGINS: yesoreyeram-infinity-datasource 4.0.0
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafanadata:/var/lib/grafana
+    depends_on:
+      schema:
+        condition: service_completed_successfully
+
+  # System under test: same image + flags as the CircleCI service container.
+  arangod-sut:
+    profiles: [ci]
+    image: ${ARANGODB_IMAGE:-public.ecr.aws/b0b8h2r4/arangodb/enterprise-test:02cec4c_2f64c55-deb}
+    command: ["--vector-index=true"]
+    environment:
+      ARANGO_NO_AUTH: "1"
+    ports:
+      - "8530:8529"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8529/_api/version >/dev/null"]
+      interval: 3s
+      timeout: 5s
+      retries: 40
+
+  harness:
+    profiles: [ci]
+    build: .
+    environment:
+      ARANGO_HOST: arangod-sut
+      ARANGODB_IMAGE: ${ARANGODB_IMAGE:-public.ecr.aws/b0b8h2r4/arangodb/enterprise-test:02cec4c_2f64c55-deb}
+      RESULTS_ARANGO_URL: http://arangodb:8529
+      GRAFANA_URL: http://localhost:3000
+      ANN_STAMP: compose
+      ANN_DATASETS: ${ANN_DATASETS:-glove-100-angular}
+      ANN_RUNS: ${ANN_RUNS:-1}
+    volumes:
+      - ./ann-output:/out
+      - anndata:/data
+    depends_on:
+      arangod-sut:
+        condition: service_healthy
+      schema:
+        condition: service_completed_successfully
+
+volumes:
+  arangodata:
+  grafanadata:
+  anndata:
