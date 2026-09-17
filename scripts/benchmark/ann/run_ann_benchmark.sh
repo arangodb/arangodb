@@ -3,38 +3,32 @@
 # Run the public ann-benchmarks harness against ArangoDB's faiss-based IVF
 # vector index and produce the standard ann-benchmarks HTML site + CSV.
 #
-# CI-agnostic: it boots arangod from the nightly enterprise docker image with
-# the vector index enabled, clones a pinned ann-benchmarks fork and runs a
-# fixed sweep (single nLists build, nProbe query sweep) over one L2 and one
-# cosine dataset. Runnable on a laptop too - every knob is an env var.
+# arangod is always provided from the outside (a locally started server, the
+# CircleCI service container, or the `arangod-sut` compose service); this script
+# only waits for it. It clones a pinned ann-benchmarks fork, runs a fixed sweep,
+# writes the site + CSV + logs under $ANN_OUTPUT_DIR and, when
+# RESULTS_ARANGO_URL is set, loads the run into the results store (schema.js)
+# that Grafana reads.
 #
-# Everything is written under $ANN_WORKDIR (default: a fresh temp dir). The
-# arangod container (when this script starts it) is torn down on exit.
+#   run_ann_benchmark.sh          full flow
+#   run_ann_benchmark.sh setup    only clone the fork + create the venv
+#                                 (used by the Dockerfile at build time)
+#
+# Every knob is an env var; see README.md.
 
 set -euo pipefail
-# TODOs
-# 1. Make the datasets caches since we alywas run it on same ones
-# 2. Setup run params properly
 
 # ---------------------------------------------------------------------------
 # Configuration (all overridable from the environment)
 # ---------------------------------------------------------------------------
 
-# arangod comes from the official nightly enterprise docker image. It runs
-# unlicensed - enterprise only restricts dataset disk usage (~100 GiB), which
-# these datasets (~0.5 GB each) never approach. devel-nightly is the rolling
-# latest-devel tag.
-ARANGODB_IMAGE="${ARANGODB_IMAGE:-public.ecr.aws/b0b8h2r4/arangodb/enterprise-test:02cec4c_2f64c55-deb}"
-
-# How arangod is provided:
-#   docker    - this script runs the image itself (default; laptops / hosts
-#               with a docker daemon)
-#   external  - arangod is already listening at $ARANGO_URL and the script only
-#               waits for it. Used in CircleCI, where a service container in the
-#               job's docker: list starts arangod (container runners have no
-#               docker daemon to run it from inside the job).
-ARANGO_START="${ARANGO_START:-docker}"
-ARANGO_CONTAINER="${ARANGO_CONTAINER:-ann-bench-arangod}"
+# System under test. Single server only.
+ARANGO_HOST="${ARANGO_HOST:-127.0.0.1}"
+ARANGO_PORT="${ARANGO_PORT:-8529}"
+ARANGO_USER="${ARANGO_USER:-root}"
+ARANGO_PASSWORD="${ARANGO_PASSWORD:-}"
+# Recorded in run_meta.json only; whoever started arangod knows the image.
+ARANGODB_IMAGE="${ARANGODB_IMAGE:-}"
 
 # ann-benchmarks fork, pinned. The circle-ci branch carries the CI sweep:
 # arangodb-ivf = single nLists=16384 build + nProbe query sweep.
@@ -46,71 +40,38 @@ ANN_DATASETS="${ANN_DATASETS:-glove-100-angular}"
 # TODO  ANN_RUNS="${ANN_RUNS:-3}"
 ANN_RUNS="${ANN_RUNS:-1}"
 
-# This runs only on single server
-ARANGO_HOST="${ARANGO_HOST:-127.0.0.1}"
-ARANGO_PORT="${ARANGO_PORT:-8529}"
-# The startup flag that unlocks the experimental vector index. Kept as a
-# variable because its exact spelling has changed across versions.
-VECTOR_INDEX_FLAG="${VECTOR_INDEX_FLAG:---vector-index=true}"
-
 # Working + output layout.
 ANN_WORKDIR="${ANN_WORKDIR:-$(mktemp -d "${TMPDIR:-/tmp}/ann-bench.XXXXXX")}"
 ANN_OUTPUT_DIR="${ANN_OUTPUT_DIR:-${ANN_WORKDIR}/output}"
 # Persist datasets across runs (hundreds of MB each). Point at a durable path
-# on CI so each run doesn't re-download.
+# so each run doesn't re-download.
 ANN_DATASET_CACHE="${ANN_DATASET_CACHE:-${ANN_WORKDIR}/data}"
 
-# Optional metrics push target. Empty => the push step is a no-op.
-PUSHGATEWAY_URL="${PUSHGATEWAY_URL:-}"
+# Results store (schema.js) + dashboard. Both optional: unset => the run is
+# only written to $ANN_OUTPUT_DIR.
+RESULTS_ARANGO_URL="${RESULTS_ARANGO_URL:-}"
+RESULTS_ARANGO_PASSWORD="${RESULTS_ARANGO_PASSWORD:-}"
+GRAFANA_URL="${GRAFANA_URL:-}"
 
 ARANGO_URL="http://${ARANGO_HOST}:${ARANGO_PORT}"
-# Set once we start the container ourselves, so cleanup only removes our own.
-ARANGOD_STARTED_BY_US=""
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+HARNESS_DIR="${ANN_WORKDIR}/ann-benchmarks"
+VENV_DIR="${ANN_WORKDIR}/venv"
 
 log() { printf '\n=== %s ===\n' "$*"; }
 die() { printf 'error: %s\n' "$*" >&2; exit 1; }
-
-cleanup() {
-  if [[ -n "${ARANGOD_STARTED_BY_US}" ]]; then
-    log "Removing arangod container (${ARANGO_CONTAINER})"
-    docker rm -f "${ARANGO_CONTAINER}" >/dev/null 2>&1 || true
-  fi
-}
-trap cleanup EXIT
+arango_curl() { curl -fsS -u "${ARANGO_USER}:${ARANGO_PASSWORD}" "$@"; }
 
 # ---------------------------------------------------------------------------
-# arangod: start, wait
+# arangod: wait, metadata, log
 # ---------------------------------------------------------------------------
-
-start_arangod() {
-  if [[ "${ARANGO_START}" == "external" ]]; then
-    log "Using external arangod at ${ARANGO_URL}"
-    return
-  fi
-  log "Starting arangod container from ${ARANGODB_IMAGE}"
-  docker rm -f "${ARANGO_CONTAINER}" >/dev/null 2>&1 || true
-  # The image entrypoint prepends `arangod` to leading-dash args, so the vector
-  # flag is passed straight through. No auth keeps the harness connection simple.
-  docker run -d --name "${ARANGO_CONTAINER}" \
-    -p "${ARANGO_PORT}:8529" \
-    -e ARANGO_NO_AUTH=1 \
-    "${ARANGODB_IMAGE}" "${VECTOR_INDEX_FLAG}" >/dev/null \
-    || die "failed to start arangod container"
-  ARANGOD_STARTED_BY_US=1
-}
 
 wait_for_arangod() {
   log "Waiting for arangod at ${ARANGO_URL}"
   for _ in $(seq 1 150); do
-    if curl -fsS "${ARANGO_URL}/_api/version" >/dev/null 2>&1; then
+    if arango_curl "${ARANGO_URL}/_api/version" >/dev/null 2>&1; then
       log "arangod is up"
       return
-    fi
-    # If we own the container and it has died, fail fast with its logs.
-    if [[ -n "${ARANGOD_STARTED_BY_US}" ]] \
-       && [[ -z "$(docker ps -q -f "name=^${ARANGO_CONTAINER}$" 2>/dev/null)" ]]; then
-      docker logs "${ARANGO_CONTAINER}" 2>&1 | tail -n 30 || true
-      die "arangod container exited early"
     fi
     sleep 2
   done
@@ -120,12 +81,8 @@ wait_for_arangod() {
 collect_meta() {
   log "Collecting server metadata (build-id, version)"
   # build-id (ELF GNU sha1) + full version identify the exact binary benchmarked.
-  local ver_json image_id="" bid ver lic ver_full
-  ver_json="$(curl -fsS "${ARANGO_URL}/_api/version?details=true" 2>/dev/null || echo '{}')"
-  # docker image id is only reachable when we run the container ourselves.
-  if [[ -n "${ARANGOD_STARTED_BY_US}" ]] && command -v docker >/dev/null 2>&1; then
-    image_id="$(docker image inspect --format '{{.Id}}' "${ARANGODB_IMAGE}" 2>/dev/null || true)"
-  fi
+  local ver_json bid ver lic ver_full
+  ver_json="$(arango_curl "${ARANGO_URL}/_api/version?details=true" 2>/dev/null || echo '{}')"
   bid="$(jq -r '.details["build-id"] // ""' <<<"${ver_json}")"
   ver="$(jq -r '.version // ""' <<<"${ver_json}")"
   lic="$(jq -r '.license // ""' <<<"${ver_json}")"
@@ -134,44 +91,71 @@ collect_meta() {
   jq -n \
     --arg version "${ver}" --arg version_full "${ver_full}" \
     --arg build_id "${bid}" --arg license "${lic}" \
-    --arg image "${ARANGODB_IMAGE}" --arg image_id "${image_id}" \
+    --arg image "${ARANGODB_IMAGE}" \
     --arg started_at "${ANN_STARTED_AT:-}" \
     '{arangodb_version: $version, arangodb_version_full: $version_full,
-      build_id: $build_id, license: $license, image: $image, image_id: $image_id,
+      build_id: $build_id, license: $license, image: $image,
       started_at: $started_at, ended_at: ""}' \
     > "${ANN_OUTPUT_DIR}/run_meta.json"
   printf '  build-id: %s\n  version:  %s\n' "${bid:-(none)}" "${ver_full}"
+}
+
+collect_arango_log() {
+  log "Fetching arangod log"
+  # Via the REST API, since arangod may run where no docker daemon is reachable.
+  local raw="${ANN_OUTPUT_DIR}/arangod-log.json"
+  if arango_curl "${ARANGO_URL}/_admin/log/entries?upto=info&size=5000" -o "${raw}" 2>/dev/null; then
+    jq -r '.messages[]? | "\(.date) [\(.level)] \(.topic): \(.message)"' "${raw}" \
+      > "${ANN_OUTPUT_DIR}/arangod.log" 2>/dev/null || cp "${raw}" "${ANN_OUTPUT_DIR}/arangod.log"
+  else
+    log "  (could not fetch server log)"
+  fi
 }
 
 # ---------------------------------------------------------------------------
 # ann-benchmarks: env, run, export, site
 # ---------------------------------------------------------------------------
 
+# Idempotent: a checkout / venv left by `setup` (the Docker image) is reused.
 setup_harness() {
-  log "Cloning ann-benchmarks (${ANN_FORK_REF})"
-  git clone --quiet "${ANN_FORK_URL}" "${ANN_WORKDIR}/ann-benchmarks"
-  git -C "${ANN_WORKDIR}/ann-benchmarks" checkout --quiet "${ANN_FORK_REF}"
+  if [[ -d "${HARNESS_DIR}" ]]; then
+    log "Reusing ann-benchmarks checkout at ${HARNESS_DIR}"
+  else
+    log "Cloning ann-benchmarks (${ANN_FORK_REF})"
+    git clone --quiet "${ANN_FORK_URL}" "${HARNESS_DIR}"
+    git -C "${HARNESS_DIR}" checkout --quiet "${ANN_FORK_REF}"
+  fi
 
   # Persist downloaded datasets outside the (ephemeral) checkout.
   mkdir -p "${ANN_DATASET_CACHE}"
-  ln -sfn "${ANN_DATASET_CACHE}" "${ANN_WORKDIR}/ann-benchmarks/data"
+  ln -sfn "${ANN_DATASET_CACHE}" "${HARNESS_DIR}/data"
 
-  log "Creating Python venv"
-  python3 -m venv "${ANN_WORKDIR}/venv"
+  local install=1
+  if [[ -d "${VENV_DIR}" ]]; then
+    log "Reusing Python venv at ${VENV_DIR}"
+    install=0
+  else
+    log "Creating Python venv"
+    python3 -m venv "${VENV_DIR}"
+  fi
   # The activate script references unset vars; don't let set -u abort here.
   set +u
   # shellcheck disable=SC1091
-  source "${ANN_WORKDIR}/venv/bin/activate"
+  source "${VENV_DIR}/bin/activate"
   set -u
-  pip install --quiet --upgrade pip
-  pip install --quiet -r "${ANN_WORKDIR}/ann-benchmarks/requirements.txt"
-  pip install --quiet python-arango
+  if (( install )); then
+    pip install --quiet --upgrade pip
+    pip install --quiet -r "${HARNESS_DIR}/requirements.txt"
+    pip install --quiet python-arango
+  fi
 }
 
 run_sweep() {
-  cd "${ANN_WORKDIR}/ann-benchmarks"
+  cd "${HARNESS_DIR}"
   export ANN_BENCHMARKS_ARANGO_HOST="${ARANGO_HOST}"
   export ANN_BENCHMARKS_ARANGO_PORT="${ARANGO_PORT}"
+  export ANN_BENCHMARKS_ARANGO_USER="${ARANGO_USER}"
+  export ANN_BENCHMARKS_ARANGO_PASSWORD="${ARANGO_PASSWORD}"
   # Tee the run output; validate_results parses it for how many query-arg groups
   # ann-benchmarks intended to run, to detect silently-dropped configs.
   : > "${ANN_OUTPUT_DIR}/run.log"
@@ -183,21 +167,6 @@ run_sweep() {
   done
 }
 
-collect_arango_log() {
-  log "Fetching arangod log"
-  # Via the REST API so it works no matter who started arangod (in CI the
-  # service container has no docker daemon we can reach). Best-effort.
-  local raw="${ANN_OUTPUT_DIR}/arangod-log.json"
-  if curl -fsS "${ARANGO_URL}/_admin/log/entries?upto=info&size=5000" -o "${raw}" 2>/dev/null; then
-    jq -r '.messages[]? | "\(.date) [\(.level)] \(.topic): \(.message)"' "${raw}" \
-      > "${ANN_OUTPUT_DIR}/arangod.log" 2>/dev/null || cp "${raw}" "${ANN_OUTPUT_DIR}/arangod.log"
-  elif [[ -n "${ARANGOD_STARTED_BY_US}" ]] && command -v docker >/dev/null 2>&1; then
-    docker logs "${ARANGO_CONTAINER}" > "${ANN_OUTPUT_DIR}/arangod.log" 2>&1 || true
-  else
-    log "  (could not fetch server log)"
-  fi
-}
-
 # Direct, in-CI diagnosis of the duplicate-candidates bug. Runs against the live
 # SUT, writes findings to the artifact, and never fails the run (best-effort).
 #  1. Compare the number of vector index entries with the document count: more
@@ -207,7 +176,7 @@ collect_arango_log() {
 diagnose_duplicates() {
   log "Comparing vector index entry count with document count"
   local figures="${ANN_OUTPUT_DIR}/figures.json" ndocs="" nentries=""
-  if curl -fsS "${ARANGO_URL}/_api/collection/items/figures?details=true" -o "${figures}" 2>/dev/null; then
+  if arango_curl "${ARANGO_URL}/_api/collection/items/figures?details=true" -o "${figures}" 2>/dev/null; then
     ndocs="$(jq -r '.figures.engine.documents // .count // ""' "${figures}")"
     nentries="$(jq -r '[.figures.engine.indexes[]? | select(.type | test("vector")) | .count] | first // ""' "${figures}")"
   fi
@@ -246,7 +215,7 @@ diagnose_duplicates() {
   body="$(jq -n --arg q "${aql}" --argjson p "${fraction}" --argjson lim "$((sample * 2))" \
              --argjson np "${np}" --argjson k "${k}" \
              '{query: $q, batchSize: 100000, bindVars: {p: $p, lim: $lim, np: $np, k: $k}}')"
-  if curl -fsS -X POST "${ARANGO_URL}/_db/_system/_api/cursor" -d "${body}" -o "${out}" 2>/dev/null; then
+  if arango_curl -X POST "${ARANGO_URL}/_db/_system/_api/cursor" -d "${body}" -o "${out}" 2>/dev/null; then
     {
       echo "duplicate self-probe: ~${sample} random docs (fraction ${fraction}), nProbe=${np}, topK=${k}"
       echo "docs probed: $(jq '.result | length' "${out}" 2>/dev/null || echo '?')"
@@ -288,7 +257,7 @@ validate_results() {
 }
 
 export_results() {
-  cd "${ANN_WORKDIR}/ann-benchmarks"
+  cd "${HARNESS_DIR}"
   mkdir -p "${ANN_OUTPUT_DIR}/site"
   log "Exporting CSV"
   python data_export.py --out "${ANN_OUTPUT_DIR}/results.csv"
@@ -308,6 +277,8 @@ export_results() {
     echo "algorithm: ${ANN_ALGORITHM}"
     echo "datasets:  ${ANN_DATASETS}"
     echo "runs:      ${ANN_RUNS}"
+    [[ -n "${RESULTS_ARANGO_URL}" ]] && echo "results:   ${RESULTS_ARANGO_URL}"
+    [[ -n "${GRAFANA_URL}" ]] && echo "dashboard: ${GRAFANA_URL}/d/ann-bench"
     echo "server:"
     sed 's/^/  /' "${ANN_OUTPUT_DIR}/run_meta.json" 2>/dev/null || echo "  (no metadata)"
   } > "${ANN_OUTPUT_DIR}/site/METADATA.txt"
@@ -321,15 +292,24 @@ export_results() {
   tar -czf "${ANN_OUTPUT_DIR}/ann-benchmark-site.tar.gz" -C "${ANN_OUTPUT_DIR}" site
 }
 
-push_metrics() {
-  if [[ -z "${PUSHGATEWAY_URL}" ]]; then
-    log "PUSHGATEWAY_URL unset - skipping metrics push"
+load_results() {
+  if [[ -z "${RESULTS_ARANGO_URL}" ]]; then
+    log "RESULTS_ARANGO_URL unset - skipping results load"
     return
   fi
-  # Placeholder: no metrics backend is provisioned yet. When one exists, parse
-  # results.csv and push gauges labelled by dataset/nprobe/git_sha here, à la
-  # lib/iresearch/scripts/Prometheus/PythonBenchmark.py.
-  log "PUSHGATEWAY_URL set (${PUSHGATEWAY_URL}) - metrics push not yet implemented"
+  log "Loading run into results store at ${RESULTS_ARANGO_URL}"
+  local meta="${ANN_OUTPUT_DIR}/run_meta.json"
+  python3 "${SCRIPT_DIR}/load_run.py" \
+    --csv "${ANN_OUTPUT_DIR}/results.csv" \
+    --url "${RESULTS_ARANGO_URL}" \
+    --password "${RESULTS_ARANGO_PASSWORD}" \
+    --arangodb-version "$(jq -r '.arangodb_version_full' "${meta}")" \
+    --docker-image "$(jq -r '.image' "${meta}")" \
+    --started-at "$(jq -r '.started_at' "${meta}")" \
+    --ended-at "$(jq -r '.ended_at' "${meta}")"
+  if [[ -n "${GRAFANA_URL}" ]]; then
+    log "Dashboard: ${GRAFANA_URL}/d/ann-bench"
+  fi
 }
 
 # ---------------------------------------------------------------------------
@@ -337,7 +317,6 @@ main() {
   log "Working directory: ${ANN_WORKDIR}"
   mkdir -p "${ANN_OUTPUT_DIR}"
   ANN_STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-  start_arangod
   wait_for_arangod
   collect_meta
   setup_harness
@@ -346,8 +325,12 @@ main() {
   diagnose_duplicates  # self-probe the live index for two-list docs
   export_results       # writes artifacts (incl. logs) BEFORE validation can fail
   validate_results     # fails the job if any config produced no results
-  push_metrics
+  load_results         # only complete runs reach the results store
   log "Done. Artifacts in ${ANN_OUTPUT_DIR} (site/, results.csv, arangod.log)"
 }
 
-main "$@"
+case "${1:-}" in
+  setup) setup_harness ;;
+  "")    main ;;
+  *)     die "unknown command '$1' (expected: setup, or no argument)" ;;
+esac

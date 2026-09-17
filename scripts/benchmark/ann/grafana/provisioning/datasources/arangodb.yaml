@@ -1,0 +1,15 @@
+apiVersion: 1
+
+# Infinity datasource: every panel POSTs an AQL query to ArangoDB's cursor API
+# (http://arangodb:8529/_db/bench/_api/cursor) and reads the `result` array.
+datasources:
+  - name: bench
+    uid: bench
+    type: yesoreyeram-infinity-datasource
+    access: proxy
+    isDefault: true
+    editable: true
+    jsonData:
+      auth_method: none
+      allowedHosts:
+        - http://arangodb:8529
