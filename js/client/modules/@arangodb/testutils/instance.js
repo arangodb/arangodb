@@ -1105,7 +1105,7 @@ class instance {
               print(Date() + ' Shutdown response: ' + JSON.stringify(reply));
             }
             return true;
-          }, false)) { // the primary connection may not be restored - we don't care.
+          }, false, false)) { // the primary connection may not be restored - we don't care.
             if (!this.options.noStartStopLogs) {
               print(sockStat);
             }
@@ -1506,7 +1506,7 @@ class instance {
     return `  [${this.name}] up with pid ${this.pid} - ${this.dataDir}`;
   }
 
-  toThisInstance(callback, reconnectFatal=true) {
+  toThisInstance(callback, reconnectRetry=false, reconnectFatal=true) {
     let handle = arango.getConnectionHandle();
     let dbName = arango.getDatabaseName();
     if (!this.connect()) {
@@ -1521,7 +1521,13 @@ class instance {
       ret = callback();
     } catch (err) {
       print(`${RED}${Date()} failed to connect ${this.name} - ${err}${RESET}`);
-      throw err;
+      if (reconnectRetry) {
+        this._disconnect();
+        this.connect();
+        ret = callback();
+      } else {
+        throw err;
+      }
     } finally {
       try {
         reconnected = arango.connectHandle(handle);
@@ -1543,7 +1549,7 @@ class instance {
   getRawMetric(tags="") {
     return this.toThisInstance(() => {
       return arango.GET_RAW('/_admin/metrics' + tags, { 'accept-encoding': 'identity' });
-    });
+    }, true);
   }
 
   getAllMetric(tags="") {
@@ -1557,7 +1563,7 @@ class instance {
   getRawUsageMetric(tags="") {
     return this.toThisInstance(() => {
       return arango.GET_RAW('/_admin/usage-metrics' + tags, { 'accept-encoding': 'identity' });
-    });
+    }, true);
   }
 
   getAllUsageMetric(tags="") {
@@ -1621,7 +1627,7 @@ class instance {
           }
         }
       }
-    });
+    }, true);
   }
   debugSetFailAt(failurePoint) {
     this.toThisInstance(() => {
@@ -1629,7 +1635,7 @@ class instance {
       if (reply.code !== 200) {
         throw new Error(`${this.name}: Failed to set ${failurePoint}: ${reply.parsedBody}`);
       }
-    });
+    }, true);
     return true;
   }
   debugShouldFailAt(failurePoint) {
@@ -1639,7 +1645,7 @@ class instance {
       if (reply.code !== 200) {
         throw new Error(`${this.name}: Failed to set ${failurePoint}: ${reply.parsedBody}`);
       }
-    });
+    }, true);
     return true;
   }
   debugResetRaceControl() {
@@ -1704,17 +1710,19 @@ class instance {
         }
       }
       return true;
-    });
+    }, true);
   }
   debugCanUseFailAt() {
-    let reply = arango.GET_RAW('/_admin/debug/failat/');
-    if (reply.code !== 200) {
-      if (reply.code === 401) {
-        throw new Error(`${this.name}: Failed to ask for failurepoint: ${reply.parsedBody}`);
+    return this.toThisInstance(() => {
+      let reply = arango.GET_RAW('/_admin/debug/failat/');
+      if (reply.code !== 200) {
+        if (reply.code === 401) {
+          throw new Error(`${this.name}: Failed to ask for failurepoint: ${reply.parsedBody}`);
+        }
+        return false;
       }
-      return false;
-    }
-    return reply.parsedBody === true;
+      return reply.parsedBody === true;
+    }, true);
   }
 
   removeCoredump() {

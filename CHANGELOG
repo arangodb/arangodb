@@ -1,6 +1,23 @@
 3.12.12 (XXXX-XX-XX)
 --------------------
 
+* arangodump, arangorestore and arangobackup now report the server's error (e.g.
+  "HTTP 401 (Unauthorized): ArangoError 11: User not authenticated") together
+  with the "Could not connect to endpoint" message when the initial connection
+  to the server is rejected. Previously the reason was dropped and only the
+  generic message was shown.
+
+* BTS-2450: Fix UI login for users without access to the _system database.
+  This involves allowing the API `GET /_api/database/user` in this case.
+
+* AIS-2021: Replaced the web UI's geo map dependencies.
+
+* Fixed the AQL function SUBSTITUTE() returning null and emitting the warning
+  "icu error: U_ILLEGAL_ARGUMENT_ERROR" when the input string is empty and a
+  non-empty search string is given. It now returns the empty string.
+
+* COR-995: Security fix.
+
 * COR-984: Security fix.
 
 * BTS-2453: Allow again to access /_admin/aardvark/api/ (the REST API
