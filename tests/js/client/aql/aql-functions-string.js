@@ -1332,6 +1332,11 @@ function ahuacatlStringFunctionsTestSuite () {
         [ 'the quick  foxx', 'the quick brown foxx', [ 'brown' ], [ ] ],
         [ 'the   ant', 'the quick brown foxx', [ 'quick', 'brown', 'foxx' ], [ '', null, 'ant' ] ], 
         [ 'the   ant', 'the quick brown foxx', { quick: '', brown: null, foxx: 'ant' } ],
+        [ '', '', 'foo', 'bar' ],
+        [ '', '', 'foo' ],
+        [ '', '', [ 'foo', 'baz' ], [ 'bar', 'qux' ] ],
+        [ '', '', { foo: 'bar' } ],
+        [ '', '', 'foo', 'bar', 1 ],
       ];
 
       values.forEach(function (value) {

@@ -206,6 +206,10 @@ void ArangodServer::addFeatures() {
       getOptions<metrics::MetricsOptionsProvider>());
   addFeature<metrics::ClusterMetricsFeature>(
       getOptions<metrics::ClusterMetricsOptionsProvider>());
+  bool const agencyActivated = getOptions<AgencyOptionsProvider>().activated;
+  if (!agencyActivated) {
+    addFeature<ActionFeature>(getOptions<ActionOptionsProvider>());
+  }
   addFeature<ApiRecordingFeature>(_dataSourceRegistry, metrics,
                                   getOptions<ApiRecordingOptionsProvider>());
   addFeature<AqlFeature>();
@@ -255,7 +259,6 @@ void ArangodServer::addFeatures() {
   }
 #ifdef USE_V8
   bool const enableJS = getOptions<V8DealerOptionsProvider>().enableJS;
-  bool const agencyActivated = getOptions<AgencyOptionsProvider>().activated;
   bool const enableFoxx = enableJS && !agencyActivated;
   bool const enableV8Runtime =
       enableJS && (!agencyActivated ||
@@ -341,10 +344,10 @@ void ArangodServer::addFeatures() {
   if (enableV8Runtime && !skipNonServerFeatures) {
     addFeature<ScriptFeature>(_ret, getOptions<ScriptOptionsProvider>());
   }
-  auto& v8DealerFeature = addFeature<V8DealerFeature>(
-      metrics, getOptions<V8DealerOptionsProvider>());
-  if (!enableV8Runtime) {
-    v8DealerFeature.disable();
+  V8DealerFeature* v8DealerFeature = nullptr;
+  if (enableV8Runtime) {
+    v8DealerFeature = &addFeature<V8DealerFeature>(
+        metrics, getOptions<V8DealerOptionsProvider>());
   }
 #endif
   if (!skipNonServerFeatures) {
@@ -352,7 +355,7 @@ void ArangodServer::addFeatures() {
         clusterFeature, database, &systemDatabaseFeature, &clusterUpgradeFeature
 #ifdef USE_V8
         ,
-        &v8DealerFeature
+        v8DealerFeature
 #endif
         ,
         getOptions<bootstrap::BootstrapOptionsProvider>());
@@ -423,17 +426,16 @@ void ArangodServer::addFeatures() {
     sslServer.disable();
   }
   addFeature<RbacFeature>(authentication);
-  auto& analyzers = addFeature<iresearch::IResearchAnalyzerFeature>(
-      iresearch::IResearchAnalyzerFeature::Dependencies{
-          .databaseFeature = database,
-          .systemDatabase = systemDatabaseFeature,
-          .networkFeature = &networkFeature,
-          .clusterFeature = &clusterFeature,
-          .schedulerFeature = &scheduler,
-          .aqlFunctionFeature = &aqlFunctionFeature,
-      });
-  if (agencyActivated) {
-    analyzers.disable();
+  if (!agencyActivated) {
+    addFeature<iresearch::IResearchAnalyzerFeature>(
+        iresearch::IResearchAnalyzerFeature::Dependencies{
+            .databaseFeature = database,
+            .systemDatabase = systemDatabaseFeature,
+            .networkFeature = &networkFeature,
+            .clusterFeature = &clusterFeature,
+            .schedulerFeature = &scheduler,
+            .aqlFunctionFeature = &aqlFunctionFeature,
+        });
   }
   // an agency has no need for ArangoSearch
   if (!agencyActivated) {

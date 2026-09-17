@@ -543,9 +543,6 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
             nullptr),
         LazyApplicationFeatureReference<ClusterFeature>(nullptr));
 
-    // AgencyFeature's ctor unconditionally disables these when inactive
-    as.addFeature<ActionFeature>();
-    as.addFeature<V8DealerFeature>(metrics);
     auto& agencyFeature = as.addFeature<AgencyFeature>();
 
     as.addFeature<MaintenanceFeature>(nullptr);

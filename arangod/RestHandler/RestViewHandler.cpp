@@ -321,6 +321,11 @@ void RestViewHandler::modifyView(bool partialUpdate) {
     }
   }
 
+  if (!server().hasFeature<iresearch::IResearchAnalyzerFeature>()) {
+    return generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                         TRI_ERROR_NOT_IMPLEMENTED,
+                         "analyzers are not available on this instance");
+  }
   auto& analyzers = server().getFeature<iresearch::IResearchAnalyzerFeature>();
   // First refresh our analyzers cache to see all latest changes in analyzers
   if (auto r = analyzers.loadAvailableAnalyzers(

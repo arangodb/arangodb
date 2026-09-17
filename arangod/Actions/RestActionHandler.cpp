@@ -134,6 +134,7 @@ bool isPublicAardvarkPath(std::string_view path) {
   constexpr std::array prefixes = {
       "/_admin/aardvark/static/"sv,
       "/_admin/aardvark/img/"sv,
+      "/_admin/aardvark/api/"sv,
   };
   return std::ranges::any_of(exact, [&](auto p) { return path == p; }) ||
          std::ranges::any_of(prefixes,
