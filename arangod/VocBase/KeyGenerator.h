@@ -23,6 +23,7 @@
 #pragma once
 
 #include "VocBase/vocbase.h"
+#include "VocBase/Properties/KeyGeneratorProperties.h"
 
 #include <array>
 #include <memory>
@@ -63,7 +64,8 @@ struct KeyGeneratorHelper {
 
   /// @brief create a key generator based on the options specified
   static std::unique_ptr<KeyGenerator> createKeyGenerator(
-      LogicalCollection const& collection, velocypack::Slice);
+      LogicalCollection const& collection,
+      KeyGeneratorProperties const& options);
 
   static std::unique_ptr<KeyGenerator> createEnterpriseKeyGenerator(
       std::unique_ptr<KeyGenerator> generator);
