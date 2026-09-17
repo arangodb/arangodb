@@ -162,7 +162,8 @@ class runInPythonTest extends runWithAllureReport {
       };
       SetGlobalExecutionDeadlineTo(0.0);
     } catch (ex) {
-      let timeout = SetGlobalExecutionDeadlineTo(0.0);
+      status = false;
+      SetGlobalExecutionDeadlineTo(0.0);
       results = {
         status: false,
         failed: 1,
