@@ -911,9 +911,27 @@ License Id: -
 #### Leaflet.js
 
 * Name: leaflet
-* Version: 1.3.3
+* Version: 1.9.3
 * GitHub: https://github.com/Leaflet/Leaflet
 * License: https://raw.githubusercontent.com/Leaflet/Leaflet/master/LICENSE
+* License Name: BSD 2-clause "Simplified" License
+* License Id: BSD-2-Clause
+
+#### Leaflet.GestureHandling
+
+* Name: leaflet-gesture-handling
+* Version: 1.2.2
+* GitHub: https://github.com/elmarquis/Leaflet.GestureHandling
+* License: https://raw.githubusercontent.com/elmarquis/Leaflet.GestureHandling/master/LICENSE
+* License Name: MIT License
+* License Id: MIT
+
+#### arc.js
+
+* Name: arc
+* Version: 1.0.0
+* GitHub: https://github.com/springmeyer/arc.js
+* License: https://raw.githubusercontent.com/springmeyer/arc.js/v1.0.0/LICENSE.md
 * License Name: BSD 2-clause "Simplified" License
 * License Id: BSD-2-Clause
 

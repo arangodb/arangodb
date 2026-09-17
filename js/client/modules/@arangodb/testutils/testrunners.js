@@ -34,6 +34,7 @@ const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
 const ct = require('@arangodb/testutils/client-tools');
+const inst = require('@arangodb/testutils/instance');
 const {
   toArgv,
   download,
@@ -68,7 +69,7 @@ function getTestCode(file, options, instanceManager) {
   }
   let ret = '';
   if (instanceManager != null) {
-    ret = `global.instanceManager = ${JSON.stringify(instanceManager.getStructure())};require('@arangodb/test-helper').pimpInstanceManager();\n`;
+    ret = `global.instanceManager = ${JSON.stringify(instanceManager.getStructure())};\n`;
   }
   return ret + runTest + 'return runTest(' + JSON.stringify(file) + ', true, ' + filter + ');\n';
 }
@@ -140,25 +141,28 @@ class runOnArangodRunner extends testRunnerBase{
   constructor(options, testname, ...optionalArgs) {
     super(options, testname, ...optionalArgs);
     this.info = "onRemoteArangod";
+    this.httpOptions = {};
+  }
+  preRun() {
+      this.httpOptions = inst.makeAuthorizationHeaders(this.options, this.instanceManager.jwt_secret);
+      this.httpOptions.method = 'POST';
+
+      this.httpOptions.timeout = this.options.oneTestTimeout;
+      if (this.options.isSan) {
+        this.httpOptions.timeout *= 2;
+      }
+      if (this.options.valgrind) {
+        this.httpOptions.timeout *= 2;
+      }
+
+      this.httpOptions.returnBodyOnError = true;
   }
   runOneTest(file) {
     try {
       let testCode = getTestCode(file, this.options, this.instanceManager);
-      let httpOptions = _.clone(this.instanceManager.httpAuthOptions);
-      httpOptions.method = 'POST';
-
-      httpOptions.timeout = this.options.oneTestTimeout;
-      if (this.options.isSan) {
-        httpOptions.timeout *= 2;
-      }
-      if (this.options.valgrind) {
-        httpOptions.timeout *= 2;
-      }
-
-      httpOptions.returnBodyOnError = true;
       const reply = download(this.instanceManager.url + '/_admin/execute?returnAsJSON=true',
                              testCode,
-                             httpOptions);
+                             this.httpOptions);
       if (!reply.error && reply.code === 200) {
         return JSON.parse(reply.body);
       } else {
