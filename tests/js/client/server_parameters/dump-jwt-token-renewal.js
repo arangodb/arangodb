@@ -32,7 +32,7 @@ if (getOptions === true) {
 }
 
 const jsunity = require('jsunity');
-const { assertEqual, assertTrue } = jsunity.jsUnity.assertions;
+const { assertEqual, assertNotEqual, assertTrue } = jsunity.jsUnity.assertions;
 const db = require('@arangodb').db;
 const fs = require('fs');
 const internal = require('internal');
@@ -64,7 +64,7 @@ function dumpJwtTokenRenewalSuite() {
     return result.json.jwt;
   };
 
-  const runDump = (outputDirectory, token) => executeExternalAndWaitWithSanitizer(
+  const runDump = (outputDirectory, token, renewalThresholdSeconds) => executeExternalAndWaitWithSanitizer(
     pu.ARANGODUMP_BIN, [
       '--collection', cn,
       '--output-directory', outputDirectory,
@@ -76,7 +76,7 @@ function dumpJwtTokenRenewalSuite() {
       '--server.endpoint', IM.endpoint,
       '--server.database', db._name(),
       '--server.jwt-token', token,
-      '--server.jwt-renewal-threshold', '1',
+      '--server.jwt-renewal-threshold', String(renewalThresholdSeconds),
     ], 'dump-jwt-token-renewal');
 
   return {
@@ -95,11 +95,13 @@ function dumpJwtTokenRenewalSuite() {
       }
     },
 
+    // the collection is deliberately not dropped: the aborted dump leaves a
+    // server-side dump context behind that pins the collection until its
+    // time-to-live expires, and the instance is discarded after this file anyway
     tearDownAll: function () {
       if (IM.debugCanUseFailAt()) {
         IM.debugClearFailAt(slowFetchFailurePoint);
       }
-      db._drop(cn);
     },
 
     testDumpSurvivesTokenExpiry: function () {
@@ -110,7 +112,7 @@ function dumpJwtTokenRenewalSuite() {
       fs.makeDirectory(outputDirectory);
       try {
         const start = internal.time();
-        const rc = runDump(outputDirectory, fetchUserToken());
+        const rc = runDump(outputDirectory, fetchUserToken(), 1);
         const durationSeconds = internal.time() - start;
         assertEqual(0, rc.exit, `arangodump aborted: ${JSON.stringify(rc)}`);
         assertTrue(durationSeconds > tokenLifetimeSeconds,
@@ -118,6 +120,28 @@ function dumpJwtTokenRenewalSuite() {
         const dataFile = fs.join(outputDirectory, cn + '_' + crypto.md5(cn) + '.data.json');
         assertTrue(fs.isFile(dataFile), `no data file in ${JSON.stringify(fs.list(outputDirectory))}`);
         assertEqual(documentCount + 1, fs.readFileSync(dataFile).toString().split('\n').length);
+      } finally {
+        fs.removeDirectoryRecursive(outputDirectory, true);
+      }
+    },
+
+    // with a threshold of 0 the token is only renewed once it has expired,
+    // which the server refuses; this proves the dump really outlives the token
+    testDumpAbortsWithoutRenewal: function () {
+      if (!IM.debugCanUseFailAt()) {
+        return;
+      }
+      const outputDirectory = fs.getTempFile();
+      fs.makeDirectory(outputDirectory);
+      try {
+        const start = internal.time();
+        const rc = runDump(outputDirectory, fetchUserToken(), 0);
+        const durationSeconds = internal.time() - start;
+        assertNotEqual(0, rc.exit, 'arangodump finished although its token expired');
+        // the server truncates the token's issue time to whole seconds, so the
+        // token may expire up to one second earlier than its nominal lifetime
+        assertTrue(durationSeconds >= tokenLifetimeSeconds - 1,
+          `arangodump aborted after ${durationSeconds}s, before its token could expire: ${JSON.stringify(rc)}`);
       } finally {
         fs.removeDirectoryRecursive(outputDirectory, true);
       }

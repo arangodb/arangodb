@@ -154,8 +154,10 @@ arangosh without connecting to a server.)");
   opts->addOption(
       "--server.jwt-renewal-threshold",
       "The time (in seconds) before JWT token expiry to trigger "
-      "automatic renewal. Default is 300 seconds (5 minutes).",
-      new DoubleParameter(&options.jwtRenewalThreshold),
+      "automatic renewal. Default is 300 seconds (5 minutes). With 0, a "
+      "renewal is only attempted once the token has expired.",
+      new DoubleParameter(&options.jwtRenewalThreshold, /*base*/ 1.0,
+                          /*minValue*/ 0.0),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   opts->addOption(
@@ -245,12 +247,6 @@ void ClientOptionsProvider::validateOptionsImpl(
   }
   if (options.requestTimeout == 0.0) {
     options.requestTimeout = LONG_TIMEOUT;
-  }
-
-  if (options.jwtRenewalThreshold < 0.0) {
-    LOG_TOPIC("e6b37", FATAL, arangodb::Logger::FIXME)
-        << "invalid value for --server.jwt-renewal-threshold, must be >= 0";
-    FATAL_ERROR_EXIT();
   }
 
   if (options.maxPacketSize < 1 * 1024 * 1024) {
