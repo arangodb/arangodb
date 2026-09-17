@@ -156,7 +156,6 @@ class runOnArangodRunner extends testRunnerBase{
       }
 
       this.httpOptions.returnBodyOnError = true;
-      print(this.httpOptions)
   }
   runOneTest(file) {
     try {
