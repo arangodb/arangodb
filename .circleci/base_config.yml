@@ -126,6 +126,19 @@ parameters:
 
 
 commands:
+  load_cache:
+    steps:
+      - run:
+          name: Generate Cache Checksum
+          command: find . -name 'pom.xml' | sort | xargs cat > /tmp/maven_cache_seed
+      - restore_cache:
+          key: maven-{{ .Environment.CIRCLE_JOB }}-{{ checksum "/tmp/maven_cache_seed" }}
+  store_cache:
+    steps:
+      - save_cache:
+          key: maven-{{ .Environment.CIRCLE_JOB }}-{{ checksum "/tmp/maven_cache_seed" }}
+          paths:
+            - ~/.m2/repository
   persist_workspace_to_s3:
     parameters:
       root:
@@ -314,6 +327,7 @@ commands:
             cd ..
             export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no"
             git clone --single-branch --branch << parameters.driver-git-branch >> << parameters.driver-git-repo >>
+      - load_cache
 
   fetch-aux-binaries:
     parameters:
@@ -1145,6 +1159,7 @@ jobs:
           timeLimit: << parameters.timeLimit >>
           sanitizer: << parameters.sanitizer >>
           extraArgs: << parameters.extraArgs >>
+      - store_cache
 
   kafka-driver-tests:
     parameters:
@@ -1211,6 +1226,7 @@ jobs:
       - clone-driver-repo:
           driver-git-repo: << parameters.driver-git-repo >>
           driver-git-branch: << parameters.driver-git-branch >>
+      - load_cache
       - run:
           name: Wait for Kafka brokers to be ready
           command: |
@@ -1240,6 +1256,7 @@ jobs:
           sanitizer: << parameters.sanitizer >>
           extraArgs: << parameters.extraArgs >>
           use-s3-workspace: false
+      - store_cache
 
   run-rta-tests:
     machine:
