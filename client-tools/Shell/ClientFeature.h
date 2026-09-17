@@ -23,11 +23,13 @@
 #pragma once
 
 #include <functional>
+#include <memory>
 #include <string>
 #include <string_view>
 
 #include "Shell/ClientFeatureOptions.h"
 #include "Shell/ShellConsoleFeature.h"
+#include "Utils/RenewingJwtToken.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
@@ -130,6 +132,24 @@ class ClientFeature final : public HttpEndpointProvider {
   void readJwtToken();
   void loadJwtSecretFile();
 
+  /**
+   * Parameters shared by all clients: timeouts, warnings, compression
+   */
+  httpclient::SimpleHttpClientParams defaultHttpClientParams() const;
+
+  /**
+   * Client without authentication, location rewriter or token provider
+   */
+  std::unique_ptr<httpclient::SimpleHttpClient> createBareHttpClient(
+      std::string const& definition,
+      httpclient::SimpleHttpClientParams const& params,
+      bool suppressError) const;
+
+  /**
+   * POSTs /_open/auth/renew authenticated with the given token
+   */
+  RenewalOutcome renewJwtViaOpenAuth(JwtToken const& token) const;
+
   ClientFeatureOptions _options;
 
   CommunicationFeaturePhase& _comm;
@@ -138,6 +158,9 @@ class ClientFeature final : public HttpEndpointProvider {
   basics::ReadWriteLock mutable _settingsLock;
 
   std::string _jwtSecret;
+  /// set when a token was passed via --server.jwt-token; shared by all clients
+  /// created by this feature, so every worker thread sees a renewed token
+  std::shared_ptr<RenewingJwtToken> _renewingJwtToken;
   size_t _retries;
 
   bool _warn;
