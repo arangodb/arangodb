@@ -29,6 +29,7 @@
 
 #include "Shell/ClientFeatureOptions.h"
 #include "Shell/ShellConsoleFeature.h"
+#include "Utils/BackgroundJwtRenewal.h"
 #include "Utils/RenewingJwtToken.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
@@ -60,6 +61,8 @@ class ClientFeature final : public HttpEndpointProvider {
   ClientFeature(ApplicationServer& server, ClientFeatureOptions options);
 
   void prepare() override;
+  void start() override;
+  void stop() override;
 
   std::string databaseName() const;
   void setDatabaseName(std::string_view databaseName);
@@ -161,6 +164,8 @@ class ClientFeature final : public HttpEndpointProvider {
   /// set when a token was passed via --server.jwt-token; shared by all clients
   /// created by this feature, so every worker thread sees a renewed token
   std::shared_ptr<RenewingJwtToken> _renewingJwtToken;
+  /// renews _renewingJwtToken even while no requests are sent
+  std::unique_ptr<BackgroundJwtRenewal> _jwtRenewal;
   size_t _retries;
 
   bool _warn;

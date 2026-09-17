@@ -293,6 +293,22 @@ TEST(RenewingJwtTokenTest, keepsTokenAndRetriesLaterWhenRenewalFails) {
   EXPECT_EQ(renewer.calls.load(), 2);
 }
 
+TEST(RenewingJwtTokenTest, renewIfDueRenewsToken) {
+  auto now = at(0);
+  auto renewer = ScriptedRenewer{.outcome = renewedToken()};
+  auto token = RenewingJwtToken{tokenExpiringAt(1000), renewer.asFunction(),
+                                threshold, [&now] { return now; }};
+
+  now = at(699);
+  token.renewIfDue();
+  EXPECT_EQ(renewer.calls.load(), 0);
+
+  now = at(700);
+  token.renewIfDue();
+  EXPECT_EQ(renewer.calls.load(), 1);
+  EXPECT_EQ(token.current(), tokenExpiringAt(2000));
+}
+
 TEST(RenewingJwtTokenTest, concurrentCallersTriggerSingleRenewal) {
   constexpr auto callerCount = 8;
   auto now = at(0);

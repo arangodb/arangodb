@@ -125,7 +125,17 @@ class RenewingJwtToken {
    */
   auto current() -> JwtToken;
 
+  /**
+   * Renews the token if due, independent of any request being sent
+   */
+  void renewIfDue();
+
  private:
+  /**
+   * Renews the token if due; the caller holds _mutex
+   */
+  void renewIfDueLocked(JwtClock::time_point now);
+
   std::mutex _mutex;
   JwtTokenState _state;
   Renewer _renewer;

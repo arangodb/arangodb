@@ -25,7 +25,7 @@
 
 if (getOptions === true) {
   return {
-    'server.session-timeout': '5',
+    'server.session-timeout': '10',
     'server.authentication': 'true',
     'server.jwt-secret': 'haxxmann',
   };
@@ -43,7 +43,7 @@ const { executeExternalAndWaitWithSanitizer } = require('@arangodb/test-helper')
 const IM = global.instanceManager;
 
 // must match 'server.session-timeout' above
-const tokenLifetimeSeconds = 5;
+const tokenLifetimeSeconds = 10;
 // makes every /_api/dump/next request sleep 200 ms on the server
 const slowFetchFailurePoint = 'RestDumpHandler::slow-next';
 
@@ -51,8 +51,8 @@ function dumpJwtTokenRenewalSuite() {
   'use strict';
   const cn = 'UnitTestsDumpJwtRenewal';
   // arangodump never fetches fewer than 100 documents per batch, so this gives
-  // 50 sequential fetches of 200 ms each: the dump outlives the 5 s token
-  const documentCount = 5000;
+  // 100 sequential fetches of 200 ms each: the dump outlives the 10 s token
+  const documentCount = 10000;
 
   const fetchUserToken = () => {
     const result = request.post({
@@ -112,7 +112,8 @@ function dumpJwtTokenRenewalSuite() {
       fs.makeDirectory(outputDirectory);
       try {
         const start = internal.time();
-        const rc = runDump(outputDirectory, fetchUserToken(), 1);
+        // renew 4 s before expiry: enough slack for slow CI machines
+        const rc = runDump(outputDirectory, fetchUserToken(), 4);
         const durationSeconds = internal.time() - start;
         assertEqual(0, rc.exit, `arangodump aborted: ${JSON.stringify(rc)}`);
         assertTrue(durationSeconds > tokenLifetimeSeconds,

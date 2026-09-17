@@ -1,4 +1,5 @@
 add_library(clienttools_utils STATIC
+  BackgroundJwtRenewal.cpp
   ClientManager.cpp
   ManagedDirectory.cpp
   RenewingJwtToken.cpp

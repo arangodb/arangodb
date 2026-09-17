@@ -55,6 +55,7 @@ using namespace arangodb::options;
 
 namespace {
 constexpr size_t DEFAULT_RETRIES = 2;
+constexpr auto kJwtRenewalCheckInterval = std::chrono::seconds{1};
 }  // anonymous namespace
 
 namespace arangodb {
@@ -184,6 +185,15 @@ void ClientFeature::prepare() {
         &JwtClock::now);
   }
 }
+
+void ClientFeature::start() {
+  if (_renewingJwtToken != nullptr) {
+    _jwtRenewal = std::make_unique<BackgroundJwtRenewal>(
+        _renewingJwtToken, kJwtRenewalCheckInterval);
+  }
+}
+
+void ClientFeature::stop() { _jwtRenewal.reset(); }
 
 std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient(
     size_t threadNumber, bool suppressError) const {

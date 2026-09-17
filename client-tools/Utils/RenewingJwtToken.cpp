@@ -153,13 +153,22 @@ RenewingJwtToken::RenewingJwtToken(JwtToken initialToken, Renewer renewer,
 
 auto RenewingJwtToken::current() -> JwtToken {
   auto const guard = std::lock_guard{_mutex};
-  auto const now = _now();
-  if (isRenewalDue(_state, now, _renewalThreshold)) {
-    auto const outcome = _renewer(_state.token);
-    _state = applyRenewal(std::move(_state), outcome, now);
-    logRenewal(outcome, _state, now);
-  }
+  renewIfDueLocked(_now());
   return _state.token;
+}
+
+void RenewingJwtToken::renewIfDue() {
+  auto const guard = std::lock_guard{_mutex};
+  renewIfDueLocked(_now());
+}
+
+void RenewingJwtToken::renewIfDueLocked(JwtClock::time_point now) {
+  if (!isRenewalDue(_state, now, _renewalThreshold)) {
+    return;
+  }
+  auto const outcome = _renewer(_state.token);
+  _state = applyRenewal(std::move(_state), outcome, now);
+  logRenewal(outcome, _state, now);
 }
 
 }  // namespace arangodb
