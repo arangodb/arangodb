@@ -39,7 +39,6 @@ const optionsDocumentation = [
 const internal = require('internal');
 
 const {
-  executeExternalAndWait,
   statusExternal,
   SetGlobalExecutionDeadlineTo } = internal;
 
@@ -145,7 +144,7 @@ arangodb.acquireHostList=true
     const cwd = fs.normalize(fs.makeAbsolute(this.options.javasource));
     SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout);
     try {
-      const rc = executeExternalAndWait('mvn', args, false, 0, [], cwd);
+      const rc = pu.executeAndWait('mvn', args, this.options, "javaDriver", cwd, false, this.options.oneTestTimeout, this.instanceManager, cwd);
       if (rc.exit !== 0) {
         print(`${RED}${Date()} test execution returned non-zero result: ${JSON.stringify(rc)}${RESET}`);
         status = false;
@@ -240,7 +239,7 @@ class runInKafkaTest extends runWithAllureReport {
     const cwd = fs.normalize(fs.makeAbsolute(this.options.kafkasource));
     SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout);
     try {
-      const rc = executeExternalAndWait('mvn', args, false, 0, [], cwd);
+      const rc = pu.executeAndWait('mvn', args, this.options, "kafkaDriver", cwd, false, this.options.oneTestTimeout, this.instanceManager, cwd);
       if (rc.exit !== 0) {
         print(`${RED}${Date()} test execution returned non-zero result: ${JSON.stringify(rc)}${RESET}`);
         status = false;
@@ -321,7 +320,7 @@ class runInSparkDatasourceTest extends runWithAllureReport {
     const cwd = fs.normalize(fs.makeAbsolute(this.options.sparksource));
     SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout);
     try {
-      const rc = executeExternalAndWait('mvn', args, false, 0, [], cwd);
+      const rc = pu.executeAndWait('mvn', args, this.options, "sparkdriver", cwd, false, this.options.oneTestTimeout, this.instanceManager, cwd);
       if (rc.exit !== 0) {
         print(`${RED}${Date()} test execution returned non-zero result: ${JSON.stringify(rc)}${RESET}`);
         status = false;
@@ -399,7 +398,7 @@ class runInSpringDataTest extends runWithAllureReport {
     const cwd = fs.normalize(fs.makeAbsolute(this.options.springsource));
     SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout);
     try {
-      const rc = executeExternalAndWait('mvn', args, false, 0, [], cwd);
+      const rc = pu.executeAndWait('mvn', args, this.options, "SpringDataDriver", cwd, false, this.options.oneTestTimeout, this.instanceManager, cwd);
       if (rc.exit !== 0) {
         print(`${RED}${Date()} test execution returned non-zero result: ${JSON.stringify(rc)}${RESET}`);
         status = false;
@@ -486,7 +485,7 @@ class runInTinkerpopProvider extends runWithAllureReport {
     }
     SetGlobalExecutionDeadlineTo(deadline);
     try {
-      const rc = executeExternalAndWait('mvn', args, false, 0, [], cwd);
+      const rc = pu.executeAndWait('mvn', args, this.options, "TinkerpopDriver", cwd, false, this.options.oneTestTimeout, this.instanceManager, cwd);
       if (rc.exit !== 0) {
         print(`${RED}${Date()} test execution returned non-zero result: ${JSON.stringify(rc)}${RESET}`);
         status = false;
