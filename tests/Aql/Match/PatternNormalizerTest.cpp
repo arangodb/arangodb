@@ -214,7 +214,7 @@ class PatternNormalizerTest : public ::testing::Test {
 
   static NormalizedStatement normalize(ParsedMatch const& parsed) {
     PatternNormalizer normalizer(*parsed.ast);
-    return normalizer.normalize(*parsed.matchNode);
+    return normalizer.normalize(ast::MatchNode(parsed.matchNode));
   }
 
   static std::unique_ptr<ExecutionPlan> instantiatePlan(
@@ -808,16 +808,18 @@ TEST_F(PatternNormalizerTest, rejectsInvalidDirectionValue) {
   edge->getMember(4)->setIntValue(99);
 
   PatternNormalizer normalizer(*parsed.ast);
-  EXPECT_THROW({ (void)normalizer.normalize(*parsed.matchNode); },
-               basics::Exception);
+  EXPECT_THROW(
+      { (void)normalizer.normalize(ast::MatchNode(parsed.matchNode)); },
+      basics::Exception);
 }
 
 TEST_F(PatternNormalizerTest, rejectsInvalidRange) {
   auto parsed =
       parseMatch("MATCH (v :vc) -[ e :ec * 5..2 ]-> (w :vc) RETURN 1");
   PatternNormalizer normalizer(*parsed.ast);
-  EXPECT_THROW({ (void)normalizer.normalize(*parsed.matchNode); },
-               basics::Exception);
+  EXPECT_THROW(
+      { (void)normalizer.normalize(ast::MatchNode(parsed.matchNode)); },
+      basics::Exception);
 }
 
 TEST_F(PatternNormalizerTest, whereNestedDottedAttributeAccess) {
