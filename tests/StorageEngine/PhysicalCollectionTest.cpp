@@ -27,6 +27,7 @@
 #include <velocypack/Parser.h>
 
 #include "IResearch/common.h"
+#include "Mocks/CollectionDescriptors.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/StorageEngineMock.h"
 
@@ -107,8 +108,8 @@ class PhysicalCollectionTest
 TEST_F(PhysicalCollectionTest, test_new_object_for_insert) {
   TRI_vocbase_t vocbase(testDBInfo(server), engine);
 
-  auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"test\" }");
-  auto collection = vocbase.createCollection(json->slice());
+  auto colDescriptor = arangodb::tests::testCollectionDescriptor("test");
+  auto collection = vocbase.createCollection(colDescriptor);
 
   auto physical = engine.createPhysicalCollection(
       *collection, arangodb::LocalStorageProperties{});
@@ -241,8 +242,8 @@ class MockIndex : public Index {
 
 TEST_F(PhysicalCollectionTest, test_index_ordeing) {
   TRI_vocbase_t vocbase(testDBInfo(server), engine);
-  auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"test\" }");
-  auto collection = vocbase.createCollection(json->slice());
+  auto colDescriptor = arangodb::tests::testCollectionDescriptor("test");
+  auto collection = vocbase.createCollection(colDescriptor);
   std::vector<std::vector<arangodb::basics::AttributeName>> dummyFields;
   PhysicalCollection::IndexContainerType test_container;
   // also regular index but no need to be reversed

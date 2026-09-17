@@ -426,10 +426,6 @@ struct Database {
                         parametersOfCollections,
                     bool allowEnterpriseCollectionsOnSingleServer);
 
-  // TODO (COR965): delete this bridge function
-  std::shared_ptr<arangodb::LogicalCollection> createCollection(
-      arangodb::velocypack::Slice parameters);
-
   /// @brief creates a new collection from parameter set
   /// collection id ("cid") is normally passed with a value of 0
   /// this means that the system will assign a new collection id automatically

@@ -20,6 +20,7 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Mocks/CollectionDescriptors.h"
 #include "IResearchQueryCommon.h"
 #include "Aql/AqlCall.h"
 #include "Aql/ExecutionBlockImpl.h"
@@ -69,18 +70,18 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
     // add collection_1
     std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
     {
-      auto collectionJson = VPackParser::fromJson(std::string("{\"name\": \"") +
-                                                  collectionName1 + "\"}");
-      logicalCollection1 = vocbase().createCollection(collectionJson->slice());
+      auto colDescriptor =
+          arangodb::tests::testCollectionDescriptor(collectionName1);
+      logicalCollection1 = vocbase().createCollection(colDescriptor);
       EXPECT_NE(nullptr, logicalCollection1);
     }
 
     // add collection_2
     std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
     {
-      auto collectionJson = VPackParser::fromJson(std::string("{\"name\": \"") +
-                                                  collectionName2 + "\"}");
-      logicalCollection2 = vocbase().createCollection(collectionJson->slice());
+      auto colDescriptor =
+          arangodb::tests::testCollectionDescriptor(collectionName2);
+      logicalCollection2 = vocbase().createCollection(colDescriptor);
       EXPECT_NE(nullptr, logicalCollection2);
     }
     // create view

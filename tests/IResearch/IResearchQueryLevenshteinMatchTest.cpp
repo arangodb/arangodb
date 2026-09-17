@@ -24,6 +24,7 @@
 
 #include <velocypack/Iterator.h>
 
+#include "Mocks/CollectionDescriptors.h"
 #include "IResearch/IResearchVPackComparer.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewSort.h"
@@ -44,9 +45,9 @@ class QueryLevenhsteinMatch : public QueryTest {
   void create() {
     // create collection1
     {
-      auto createJson = arangodb::velocypack::Parser::fromJson(
-          "{ \"name\": \"testCollection1\" }");
-      auto collection = _vocbase.createCollection(createJson->slice()).get();
+      auto colDescriptor =
+          arangodb::tests::testCollectionDescriptor("testCollection1");
+      auto collection = _vocbase.createCollection(colDescriptor).get();
       ASSERT_NE(nullptr, collection);
     }
   }

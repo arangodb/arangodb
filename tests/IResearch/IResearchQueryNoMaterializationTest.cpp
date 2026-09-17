@@ -20,6 +20,7 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Mocks/CollectionDescriptors.h"
 #include "Metrics/MetricsFeature.h"
 #include <absl/strings/str_replace.h>
 
@@ -264,18 +265,18 @@ class QueryNoMaterialization : public QueryTestMulti {
     // add collection_1
     std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
     {
-      auto collectionJson = VPackParser::fromJson(std::string("{\"name\": \"") +
-                                                  collectionName1 + "\"}");
-      logicalCollection1 = vocbase().createCollection(collectionJson->slice());
+      auto colDescriptor =
+          arangodb::tests::testCollectionDescriptor(collectionName1);
+      logicalCollection1 = vocbase().createCollection(colDescriptor);
       ASSERT_NE(nullptr, logicalCollection1);
     }
 
     // add collection_2
     std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
     {
-      auto collectionJson = VPackParser::fromJson(std::string("{\"name\": \"") +
-                                                  collectionName2 + "\"}");
-      logicalCollection2 = vocbase().createCollection(collectionJson->slice());
+      auto colDescriptor =
+          arangodb::tests::testCollectionDescriptor(collectionName2);
+      logicalCollection2 = vocbase().createCollection(colDescriptor);
       ASSERT_NE(nullptr, logicalCollection2);
     }
 
@@ -647,9 +648,9 @@ TEST_P(QueryNoMaterialization, testStoredValuesRecord) {
   auto doc = arangodb::velocypack::Parser::fromJson(
       "{ \"str\": \"abc\", \"value\": 10 }");
   std::string collectionName("testCollection");
-  auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\":\"" + collectionName + "\"}");
-  auto logicalCollection = vocbase().createCollection(collectionJson->slice());
+  auto colDescriptor =
+      arangodb::tests::testCollectionDescriptor(collectionName);
+  auto logicalCollection = vocbase().createCollection(colDescriptor);
   ASSERT_TRUE(logicalCollection);
   size_t const columnsCount = 6;  // PK + storedValues
   auto viewJson = arangodb::velocypack::Parser::fromJson(
@@ -812,9 +813,9 @@ TEST_P(QueryNoMaterialization, testStoredValuesRecordWithCompression) {
   auto doc = arangodb::velocypack::Parser::fromJson(
       "{ \"str\": \"abc\", \"value\": 10 }");
   std::string collectionName("testCollection");
-  auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\":\"" + collectionName + "\"}");
-  auto logicalCollection = vocbase().createCollection(collectionJson->slice());
+  auto colDescriptor =
+      arangodb::tests::testCollectionDescriptor(collectionName);
+  auto logicalCollection = vocbase().createCollection(colDescriptor);
   ASSERT_TRUE(logicalCollection);
   size_t const columnsCount = 6;  // PK + storedValues
   auto viewJson = arangodb::velocypack::Parser::fromJson(

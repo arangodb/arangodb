@@ -28,6 +28,7 @@
 #include "Basics/StaticStrings.h"
 #include "Cluster/Utils/ShardID.h"
 #include "Inspection/VPack.h"
+#include "Mocks/CollectionDescriptors.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Properties/ClusteringConstantProperties.h"
@@ -585,23 +586,16 @@ TEST_F(LogicalCollectionDescriptorTest, Restart_keepsDistributeShardsLikeACid) {
 
 TEST_F(LogicalCollectionDescriptorTest,
        Restart_resolvesDistributeShardsLikeOnLoad) {
-  // A single server persists the leader's name, so loading such a marker has
-  // to turn it back into a cid.
+  // A single server persists the leader's name, so a descriptor carrying a
+  // name has to resolve to a cid, and serialize back as the name.
   auto database = makeDatabase("testDatabase", 42);
   auto leader = database->createCollection(representativeCreateDescriptor());
   engine().createCollection(*database, *leader);
 
-  VPackBuilder builder;
-  {
-    VPackObjectBuilder guard(&builder);
-    builder.add(StaticStrings::DataSourceName, VPackValue("comments"));
-    builder.add(StaticStrings::DataSourceType,
-                VPackValue(static_cast<int>(TRI_COL_TYPE_DOCUMENT)));
-    builder.add(StaticStrings::DistributeShardsLike,
-                VPackValue(leader->name()));
-  }
+  auto d = testCollectionDescriptor("comments");
+  d.clusteringConstant.distributeShardsLike = leader->name();
 
-  auto follower = database->createCollection(builder.slice());
+  auto follower = database->createCollection(std::move(d));
   EXPECT_EQ(follower->shardingInfo()->distributeShardsLike(),
             std::to_string(leader->id().id()));
 
