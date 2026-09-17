@@ -32,7 +32,8 @@ class QueryInRange : public QueryTest {
  protected:
   void createCollections() {
     {
-      auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection0");
+      auto colDescriptor =
+          arangodb::tests::testCollectionDescriptor("testCollection0");
       auto collection = _vocbase.createCollection(colDescriptor);
       ASSERT_TRUE(collection);
       std::vector<std::shared_ptr<velocypack::Builder>> docs{
@@ -64,7 +65,8 @@ class QueryInRange : public QueryTest {
       EXPECT_TRUE(trx.commit().ok());
     }
     {
-      auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection1");
+      auto colDescriptor =
+          arangodb::tests::testCollectionDescriptor("testCollection1");
       auto collection = _vocbase.createCollection(colDescriptor);
       ASSERT_TRUE(collection);
 

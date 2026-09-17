@@ -34,15 +34,15 @@ class QueryFilter : public QueryTest {
  protected:
   void createCollections() {
     {
-      auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection0");
-      auto logicalCollection1 =
-          _vocbase.createCollection(colDescriptor);
+      auto colDescriptor =
+          arangodb::tests::testCollectionDescriptor("testCollection0");
+      auto logicalCollection1 = _vocbase.createCollection(colDescriptor);
       ASSERT_TRUE(logicalCollection1);
     }
     {
-      auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection1");
-      auto logicalCollection2 =
-          _vocbase.createCollection(colDescriptor);
+      auto colDescriptor =
+          arangodb::tests::testCollectionDescriptor("testCollection1");
+      auto logicalCollection2 = _vocbase.createCollection(colDescriptor);
       ASSERT_TRUE(logicalCollection2);
     }
   }

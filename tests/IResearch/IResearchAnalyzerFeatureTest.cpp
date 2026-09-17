@@ -3826,9 +3826,8 @@ arangodb::CollectionDescriptor analyzerCollectionDescriptor(
     std::string name, arangodb::DataSourceId id) {
   auto d = arangodb::tests::testCollectionDescriptor(std::move(name), id);
   d.constant.isSystem = true;
-  d.clusteringConstant.shards =
-      arangodb::ShardMap{{arangodb::ShardID{1337},
-                          {"shard-server-does-not-matter"}}};
+  d.clusteringConstant.shards = arangodb::ShardMap{
+      {arangodb::ShardID{1337}, {"shard-server-does-not-matter"}}};
   return d;
 }
 
@@ -4073,8 +4072,7 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest,
     auto system = _systemDatabaseFeature.use();
     auto collection = system->lookupCollection(LEGACY_ANALYZER_COLLECTION_NAME);
     ASSERT_FALSE(collection);
-    ASSERT_FALSE(
-        !system->createCollection(createLegacyCollectionDescriptor));
+    ASSERT_FALSE(!system->createCollection(createLegacyCollectionDescriptor));
   }
 
   // add document to legacy collection after feature start

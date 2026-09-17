@@ -1844,7 +1844,8 @@ TEST_F(IResearchFeatureTest, test_start) {
 
 TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
   // test single-server (no directory)
-  auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+  auto colDescriptor =
+      arangodb::tests::testCollectionDescriptor("testCollection");
   auto linkJson = arangodb::velocypack::Parser::fromJson(
       "{ \"view\": \"testView\", \"type\": \"arangosearch\", "
       "\"includeAllFields\": true }");
@@ -1954,7 +1955,8 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
 
 TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
   // test single-server (with directory)
-  auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+  auto colDescriptor =
+      arangodb::tests::testCollectionDescriptor("testCollection");
   auto linkJson = arangodb::velocypack::Parser::fromJson(
       "{ \"view\": \"testView\", \"type\": \"arangosearch\", "
       "\"includeAllFields\": true }");
@@ -2680,7 +2682,8 @@ class IResearchFeatureTestDBServer
 
 TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
   // test db-server (no directory)
-  auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+  auto colDescriptor =
+      arangodb::tests::testCollectionDescriptor("testCollection");
   auto linkJson = arangodb::velocypack::Parser::fromJson(
       "{ \"view\": \"testView\", \"type\": \"arangosearch\", "
       "\"includeAllFields\": true }");
@@ -2774,7 +2777,8 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
 
 TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
   // test db-server (with directory)
-  auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+  auto colDescriptor =
+      arangodb::tests::testCollectionDescriptor("testCollection");
   auto linkJson = arangodb::velocypack::Parser::fromJson(
       "{ \"view\": \"testView\", \"type\": \"arangosearch\", "
       "\"includeAllFields\": true }");

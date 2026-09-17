@@ -51,7 +51,8 @@ class QueryTraversal : public QueryTest {
     }
     // create collection0
     {
-      auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection0");
+      auto colDescriptor =
+          arangodb::tests::testCollectionDescriptor("testCollection0");
       auto collection = _vocbase.createCollection(colDescriptor);
       ASSERT_NE(nullptr, collection);
 
@@ -97,7 +98,8 @@ class QueryTraversal : public QueryTest {
     }
     // create collection1
     {
-      auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection1");
+      auto colDescriptor =
+          arangodb::tests::testCollectionDescriptor("testCollection1");
       auto collection = _vocbase.createCollection(colDescriptor);
       ASSERT_NE(nullptr, collection);
 

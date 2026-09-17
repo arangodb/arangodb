@@ -61,7 +61,8 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
 
   // create collection0
   {
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection0");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection0");
     collection = vocbase.createCollection(colDescriptor);
     ASSERT_NE(nullptr, collection);
   }
@@ -189,7 +190,8 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
 
   // create collection0
   {
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection0");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection0");
     collection = vocbase.createCollection(colDescriptor);
     ASSERT_NE(nullptr, collection);
   }
@@ -353,7 +355,8 @@ TEST_F(IResearchPrimaryKeyReuse, test_single_transaction) {
 
   // create collection0
   {
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection0");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection0");
     collection = vocbase.createCollection(colDescriptor);
     ASSERT_NE(nullptr, collection);
   }

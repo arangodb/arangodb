@@ -787,10 +787,9 @@ TEST_F(ComputedValuesTest, createCollectionEmptyComputedValues) {
 TEST_F(ComputedValuesTest, createCollectionComputedValuesInsertOverwriteTrue) {
   auto& vocbase = server->getSystemDatabase();
   auto colDescriptor = arangodb::tests::testCollectionDescriptor("test");
-  colDescriptor.mutableProps.computedValues =
-      *velocypack::Parser::fromJson(
-          "[{\"name\":\"attr\", "
-          "\"expression\":\"RETURN 'test'\", \"overwrite\": true}]");
+  colDescriptor.mutableProps.computedValues = *velocypack::Parser::fromJson(
+      "[{\"name\":\"attr\", "
+      "\"expression\":\"RETURN 'test'\", \"overwrite\": true}]");
 
   auto c = vocbase.createCollection(colDescriptor);
   auto cv = c->computedValues();
@@ -834,10 +833,9 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesInsertOverwriteTrue) {
 TEST_F(ComputedValuesTest, createCollectionComputedValuesInsertOverwriteFalse) {
   auto& vocbase = server->getSystemDatabase();
   auto colDescriptor = arangodb::tests::testCollectionDescriptor("test");
-  colDescriptor.mutableProps.computedValues =
-      *velocypack::Parser::fromJson(
-          "[{\"name\":\"attr\", "
-          "\"expression\":\"RETURN 'test'\", \"overwrite\": false}]");
+  colDescriptor.mutableProps.computedValues = *velocypack::Parser::fromJson(
+      "[{\"name\":\"attr\", "
+      "\"expression\":\"RETURN 'test'\", \"overwrite\": false}]");
 
   auto c = vocbase.createCollection(colDescriptor);
   auto cv = c->computedValues();
@@ -880,11 +878,10 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesInsertOverwriteFalse) {
 TEST_F(ComputedValuesTest, createCollectionComputedValuesUpdateOverwriteTrue) {
   auto& vocbase = server->getSystemDatabase();
   auto colDescriptor = arangodb::tests::testCollectionDescriptor("test");
-  colDescriptor.mutableProps.computedValues =
-      *velocypack::Parser::fromJson(
-          "[{\"name\":\"attr\", "
-          "\"expression\":\"RETURN 'update'\", \"overwrite\": true, "
-          "\"computeOn\":[\"update\"]}]");
+  colDescriptor.mutableProps.computedValues = *velocypack::Parser::fromJson(
+      "[{\"name\":\"attr\", "
+      "\"expression\":\"RETURN 'update'\", \"overwrite\": true, "
+      "\"computeOn\":[\"update\"]}]");
 
   auto c = vocbase.createCollection(colDescriptor);
 
@@ -925,11 +922,10 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesUpdateOverwriteTrue) {
 TEST_F(ComputedValuesTest, createCollectionComputedValuesUpdateOverwriteFalse) {
   auto& vocbase = server->getSystemDatabase();
   auto colDescriptor = arangodb::tests::testCollectionDescriptor("test");
-  colDescriptor.mutableProps.computedValues =
-      *velocypack::Parser::fromJson(
-          "[{\"name\":\"attr\", "
-          "\"expression\":\"RETURN 'update'\", \"overwrite\": false, "
-          "\"computeOn\":[\"update\"]}]");
+  colDescriptor.mutableProps.computedValues = *velocypack::Parser::fromJson(
+      "[{\"name\":\"attr\", "
+      "\"expression\":\"RETURN 'update'\", \"overwrite\": false, "
+      "\"computeOn\":[\"update\"]}]");
 
   auto c = vocbase.createCollection(colDescriptor);
 
@@ -970,11 +966,10 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesUpdateOverwriteFalse) {
 TEST_F(ComputedValuesTest, createCollectionComputedValuesFailOnWarningStatic) {
   auto& vocbase = server->getSystemDatabase();
   auto colDescriptor = arangodb::tests::testCollectionDescriptor("test");
-  colDescriptor.mutableProps.computedValues =
-      *velocypack::Parser::fromJson(
-          "[{\"name\":\"attr\", "
-          "\"expression\":\"RETURN 1 / 0\", \"overwrite\": true, "
-          "\"failOnWarning\": true}]");
+  colDescriptor.mutableProps.computedValues = *velocypack::Parser::fromJson(
+      "[{\"name\":\"attr\", "
+      "\"expression\":\"RETURN 1 / 0\", \"overwrite\": true, "
+      "\"failOnWarning\": true}]");
 
   auto c = vocbase.createCollection(colDescriptor);
   auto cv = c->computedValues();
@@ -984,11 +979,10 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesFailOnWarningStatic) {
 TEST_F(ComputedValuesTest, createCollectionComputedValuesFailOnWarningDynamic) {
   auto& vocbase = server->getSystemDatabase();
   auto colDescriptor = arangodb::tests::testCollectionDescriptor("test");
-  colDescriptor.mutableProps.computedValues =
-      *velocypack::Parser::fromJson(
-          "[{\"name\":\"attr\", "
-          "\"expression\":\"RETURN @doc.value / 0\", \"overwrite\": true, "
-          "\"failOnWarning\": true}]");
+  colDescriptor.mutableProps.computedValues = *velocypack::Parser::fromJson(
+      "[{\"name\":\"attr\", "
+      "\"expression\":\"RETURN @doc.value / 0\", \"overwrite\": true, "
+      "\"failOnWarning\": true}]");
 
   auto c = vocbase.createCollection(colDescriptor);
 
@@ -1008,11 +1002,10 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesFailOnWarningDynamic) {
 TEST_F(ComputedValuesTest, createCollectionComputedValuesInvalidValuesDynamic) {
   auto& vocbase = server->getSystemDatabase();
   auto colDescriptor = arangodb::tests::testCollectionDescriptor("test");
-  colDescriptor.mutableProps.computedValues =
-      *velocypack::Parser::fromJson(
-          "[{\"name\":\"value1\", "
-          "\"expression\":\"RETURN @doc.value / 0\", \"overwrite\": true, "
-          "\"failOnWarning\": false}]");
+  colDescriptor.mutableProps.computedValues = *velocypack::Parser::fromJson(
+      "[{\"name\":\"value1\", "
+      "\"expression\":\"RETURN @doc.value / 0\", \"overwrite\": true, "
+      "\"failOnWarning\": false}]");
 
   auto c = vocbase.createCollection(colDescriptor);
 
@@ -1041,11 +1034,10 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesInvalidValuesDynamic) {
 TEST_F(ComputedValuesTest, insertKeepNullTrue) {
   auto& vocbase = server->getSystemDatabase();
   auto colDescriptor = arangodb::tests::testCollectionDescriptor("test");
-  colDescriptor.mutableProps.computedValues =
-      *velocypack::Parser::fromJson(
-          "[{\"name\":\"attr\", "
-          "\"expression\":\"RETURN @doc.value ?: null\", \"overwrite\": true, "
-          "\"keepNull\": true}]");
+  colDescriptor.mutableProps.computedValues = *velocypack::Parser::fromJson(
+      "[{\"name\":\"attr\", "
+      "\"expression\":\"RETURN @doc.value ?: null\", \"overwrite\": true, "
+      "\"keepNull\": true}]");
 
   auto c = vocbase.createCollection(colDescriptor);
   auto cv = c->computedValues();

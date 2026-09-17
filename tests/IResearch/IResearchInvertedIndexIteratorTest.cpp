@@ -126,7 +126,8 @@ class IResearchInvertedIndexIteratorTestBase
         *_vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
         _analyzers);
 
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection0");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection0");
     _collection = vocbase().createCollection(colDescriptor);
     EXPECT_TRUE(_collection);
     arangodb::IndexId id(1);

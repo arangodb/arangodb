@@ -393,7 +393,7 @@ TEST_F(IResearchViewTest, test_defaults) {
 TEST_F(IResearchViewTest, test_properties_user_request) {
   // new view definition with links
   auto colDescriptor = arangodb::tests::testCollectionDescriptor(
-        "testCollection", arangodb::DataSourceId{100});
+      "testCollection", arangodb::DataSourceId{100});
   auto viewCreateJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101, "
       "  \"links\": { "
@@ -748,7 +748,7 @@ TEST_F(IResearchViewTest, test_properties_user_request) {
 TEST_F(IResearchViewTest, test_properties_user_request_explicit_version) {
   // new view definition with links
   auto colDescriptor = arangodb::tests::testCollectionDescriptor(
-        "testCollection", arangodb::DataSourceId{100});
+      "testCollection", arangodb::DataSourceId{100});
   auto viewCreateJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101, "
       "  \"links\": { "
@@ -1101,7 +1101,7 @@ TEST_F(IResearchViewTest, test_properties_user_request_explicit_version) {
 TEST_F(IResearchViewTest, test_properties_internal_request) {
   // new view definition with links
   auto colDescriptor = arangodb::tests::testCollectionDescriptor(
-        "testCollection", arangodb::DataSourceId{100});
+      "testCollection", arangodb::DataSourceId{100});
   auto viewCreateJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101, "
       "  \"links\": { "
@@ -1453,7 +1453,7 @@ TEST_F(IResearchViewTest, test_properties_internal_request) {
 TEST_F(IResearchViewTest, test_properties_internal_request_explicit_version) {
   // new view definition with links
   auto colDescriptor = arangodb::tests::testCollectionDescriptor(
-        "testCollection", arangodb::DataSourceId{100});
+      "testCollection", arangodb::DataSourceId{100});
   auto viewCreateJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101, "
       "  \"links\": { "
@@ -1806,7 +1806,7 @@ TEST_F(IResearchViewTest, test_properties_internal_request_explicit_version) {
 TEST_F(IResearchViewTest, test_vocbase_inventory) {
   // new view definition with links
   auto colDescriptor = arangodb::tests::testCollectionDescriptor(
-        "testCollection", arangodb::DataSourceId{100});
+      "testCollection", arangodb::DataSourceId{100});
   auto viewCreateJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101, "
       "  \"links\": { "
@@ -1884,7 +1884,8 @@ TEST_F(IResearchViewTest, test_vocbase_inventory) {
 }
 
 TEST_F(IResearchViewTest, test_cleanup) {
-  auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+  auto colDescriptor =
+      arangodb::tests::testCollectionDescriptor("testCollection");
   auto linkJson = arangodb::velocypack::Parser::fromJson(
       "{ \"view\": \"testView\", \"includeAllFields\": true }");
   auto json = arangodb::velocypack::Parser::fromJson(
@@ -1984,7 +1985,8 @@ TEST_F(IResearchViewTest, test_drop) {
 
   EXPECT_TRUE((false == TRI_IsDirectory(dataPath.c_str())));
 
-  auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+  auto colDescriptor =
+      arangodb::tests::testCollectionDescriptor("testCollection");
   auto logicalCollection = vocbase.createCollection(colDescriptor);
   EXPECT_TRUE((nullptr != logicalCollection));
   EXPECT_TRUE((true == !vocbase.lookupView("testView")));
@@ -2024,7 +2026,8 @@ TEST_F(IResearchViewTest, test_drop_with_link) {
 
   EXPECT_TRUE((false == TRI_IsDirectory(dataPath.c_str())));
 
-  auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+  auto colDescriptor =
+      arangodb::tests::testCollectionDescriptor("testCollection");
   auto logicalCollection = vocbase.createCollection(colDescriptor);
   EXPECT_TRUE((nullptr != logicalCollection));
   EXPECT_TRUE((true == !vocbase.lookupView("testView")));
@@ -2094,7 +2097,8 @@ TEST_F(IResearchViewTest, test_drop_with_link) {
 }
 
 TEST_F(IResearchViewTest, test_drop_collection) {
-  auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+  auto colDescriptor =
+      arangodb::tests::testCollectionDescriptor("testCollection");
   auto viewCreateJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   auto viewUpdateJson = arangodb::velocypack::Parser::fromJson(
@@ -2132,7 +2136,8 @@ TEST_F(IResearchViewTest, test_drop_cid) {
   // cid not in list of collections for snapshot (view definition not updated,
   // not persisted)
   {
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection");
     auto linkJson = arangodb::velocypack::Parser::fromJson(
         "{ \"view\": \"testView\", \"includeAllFields\": true }");
     auto json = arangodb::velocypack::Parser::fromJson(
@@ -2701,7 +2706,8 @@ TEST_F(IResearchViewTest, test_truncate_cid) {
   // cid not in list of collections for snapshot (view definition not updated,
   // not persisted)
   {
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection");
     auto linkJson = arangodb::velocypack::Parser::fromJson(
         "{ \"view\": \"testView\", \"includeAllFields\": true }");
     auto json = arangodb::velocypack::Parser::fromJson(
@@ -3274,7 +3280,8 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
 
 TEST_F(IResearchViewTest, test_insert) {
   static std::vector<std::string> const EMPTY;
-  auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+  auto colDescriptor =
+      arangodb::tests::testCollectionDescriptor("testCollection");
   auto linkJson = arangodb::velocypack::Parser::fromJson(
       "{ \"view\": \"testView\", \"includeAllFields\": true }");
   auto viewJson = arangodb::velocypack::Parser::fromJson(
@@ -3726,7 +3733,8 @@ TEST_F(IResearchViewTest, test_insert) {
 TEST_F(IResearchViewTest, test_remove_within_trx) {
   using namespace arangodb;
 
-  auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+  auto colDescriptor =
+      arangodb::tests::testCollectionDescriptor("testCollection");
   auto linkJson = velocypack::Parser::fromJson(
       R"({ "view": "testView",
            "includeAllFields": true,
@@ -3802,7 +3810,8 @@ TEST_F(IResearchViewTest, test_remove_within_trx) {
 
 TEST_F(IResearchViewTest, test_remove) {
   static std::vector<std::string> const EMPTY;
-  auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+  auto colDescriptor =
+      arangodb::tests::testCollectionDescriptor("testCollection");
   auto linkJson = arangodb::velocypack::Parser::fromJson(
       "{ \"view\": \"testView\", \"includeAllFields\": true }");
   auto viewJson = arangodb::velocypack::Parser::fromJson(
@@ -4317,7 +4326,8 @@ TEST_F(IResearchViewTest, test_query) {
 
   // ordered iterator
   {
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection");
     auto linkJson = arangodb::velocypack::Parser::fromJson(
         "{ \"view\": \"testView\", \"includeAllFields\": true }");
     Vocbase vocbase(testDBInfo(server.server()), _engine);
@@ -4374,7 +4384,8 @@ TEST_F(IResearchViewTest, test_query) {
         "{ \
       \"links\": { \"testCollection\": { \"includeAllFields\" : true } } \
     }");
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection");
 
     Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(colDescriptor);
@@ -4461,7 +4472,8 @@ TEST_F(IResearchViewTest, test_query) {
 
   // query while running FlushThread
   {
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection");
     auto viewCreateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson(
@@ -4528,7 +4540,7 @@ TEST_F(IResearchViewTest, test_register_link) {
   StorageEngineMock::before = [&persisted]() -> void { persisted = true; };
 
   auto colDescriptor = arangodb::tests::testCollectionDescriptor(
-        "testCollection", arangodb::DataSourceId{100});
+      "testCollection", arangodb::DataSourceId{100});
   auto viewJson0 = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101 }");
   auto viewJson1 = arangodb::velocypack::Parser::fromJson(
@@ -4845,7 +4857,7 @@ TEST_F(IResearchViewTest, test_unregister_link) {
   StorageEngineMock::before = [&persisted]() -> void { persisted = true; };
 
   auto colDescriptor = arangodb::tests::testCollectionDescriptor(
-        "testCollection", arangodb::DataSourceId{100});
+      "testCollection", arangodb::DataSourceId{100});
   auto linkJson = arangodb::velocypack::Parser::fromJson(
       "{ \"view\": \"testView\", \"includeAllFields\": true }");
   auto viewJson = arangodb::velocypack::Parser::fromJson(
@@ -5190,7 +5202,7 @@ TEST_F(IResearchViewTest, test_unregister_link) {
 
 TEST_F(IResearchViewTest, test_tracked_cids) {
   auto colDescriptor = arangodb::tests::testCollectionDescriptor(
-        "testCollection", arangodb::DataSourceId{100});
+      "testCollection", arangodb::DataSourceId{100});
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101 }");
 
@@ -5323,7 +5335,8 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
   // initial populate persisted view
   {
     _engine.views.clear();
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection");
     auto linkJson =
         arangodb::velocypack::Parser::fromJson("{ \"view\": \"testView\" }");
     auto createJson = arangodb::velocypack::Parser::fromJson(
@@ -5592,8 +5605,10 @@ TEST_F(IResearchViewTest, test_overwrite_immutable_properties) {
 }
 
 TEST_F(IResearchViewTest, test_transaction_registration) {
-  auto colDescriptor0 = arangodb::tests::testCollectionDescriptor("testCollection0");
-  auto colDescriptor1 = arangodb::tests::testCollectionDescriptor("testCollection1");
+  auto colDescriptor0 =
+      arangodb::tests::testCollectionDescriptor("testCollection0");
+  auto colDescriptor1 =
+      arangodb::tests::testCollectionDescriptor("testCollection1");
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   Vocbase vocbase(testDBInfo(server.server()), _engine);
@@ -5951,7 +5966,8 @@ TEST_F(IResearchViewTest, test_transaction_registration) {
 
 TEST_F(IResearchViewTest, test_transaction_snapshot) {
   static std::vector<std::string> const EMPTY;
-  auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+  auto colDescriptor =
+      arangodb::tests::testCollectionDescriptor("testCollection");
   auto linkJson = arangodb::velocypack::Parser::fromJson(
       "{ \"view\": \"testView\", \"includeAllFields\": true }");
   auto viewJson = arangodb::velocypack::Parser::fromJson(
@@ -6506,7 +6522,8 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
   // modify meta params with links with invalid definition
   {
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection");
     TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(colDescriptor);
     ASSERT_TRUE((nullptr != logicalCollection));
@@ -6598,7 +6615,8 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
   // modify meta params with links
   {
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection");
     TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(colDescriptor);
     ASSERT_TRUE((nullptr != logicalCollection));
@@ -6783,13 +6801,13 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
   // overwrite links
   {
     Vocbase vocbase(testDBInfo(server.server()), _engine);
-    auto colDescriptor0 = arangodb::tests::testCollectionDescriptor("testCollection0");
-    auto colDescriptor1 = arangodb::tests::testCollectionDescriptor("testCollection1");
-    auto logicalCollection0 =
-        vocbase.createCollection(colDescriptor0);
+    auto colDescriptor0 =
+        arangodb::tests::testCollectionDescriptor("testCollection0");
+    auto colDescriptor1 =
+        arangodb::tests::testCollectionDescriptor("testCollection1");
+    auto logicalCollection0 = vocbase.createCollection(colDescriptor0);
     ASSERT_TRUE((nullptr != logicalCollection0));
-    auto logicalCollection1 =
-        vocbase.createCollection(colDescriptor1);
+    auto logicalCollection1 = vocbase.createCollection(colDescriptor1);
     ASSERT_TRUE((nullptr != logicalCollection1));
     auto view = vocbase.createView(createJson->slice(), false);
     ASSERT_TRUE((false == !view));
@@ -6997,7 +7015,8 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
   // update existing link (full update)
   {
     Vocbase vocbase(testDBInfo(server.server()), _engine);
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection");
     auto logicalCollection = vocbase.createCollection(colDescriptor);
     ASSERT_TRUE((nullptr != logicalCollection));
     auto view = vocbase.createView(createJson->slice(), false);
@@ -7386,11 +7405,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         "{ \"links\": { \"testCollection0\": {}, \"testCollection1\": {} } }");
 
     TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
-    auto logicalCollection0 =
-        vocbase.createCollection(col0Descriptor);
+    auto logicalCollection0 = vocbase.createCollection(col0Descriptor);
     ASSERT_TRUE((nullptr != logicalCollection0));
-    auto logicalCollection1 =
-        vocbase.createCollection(col1Descriptor);
+    auto logicalCollection1 = vocbase.createCollection(col1Descriptor);
     ASSERT_TRUE((nullptr != logicalCollection1));
     auto logicalView = vocbase.createView(viewCreateJson->slice(), false);
     ASSERT_TRUE((false == !logicalView));
@@ -7500,11 +7517,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         "{ \"links\": { \"testCollection0\": {} } }");
 
     TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
-    auto logicalCollection0 =
-        vocbase.createCollection(col0Descriptor);
+    auto logicalCollection0 = vocbase.createCollection(col0Descriptor);
     ASSERT_TRUE((nullptr != logicalCollection0));
-    auto logicalCollection1 =
-        vocbase.createCollection(col1Descriptor);
+    auto logicalCollection1 = vocbase.createCollection(col1Descriptor);
     ASSERT_TRUE((nullptr != logicalCollection1));
     auto logicalView = vocbase.createView(viewCreateJson->slice(), false);
     ASSERT_TRUE((false == !logicalView));
@@ -7707,11 +7722,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         "{ \"links\": { \"testCollection0\": {}, \"testCollection1\": {} } }");
 
     TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
-    auto logicalCollection0 =
-        vocbase.createCollection(col0Descriptor);
+    auto logicalCollection0 = vocbase.createCollection(col0Descriptor);
     ASSERT_TRUE((nullptr != logicalCollection0));
-    auto logicalCollection1 =
-        vocbase.createCollection(col1Descriptor);
+    auto logicalCollection1 = vocbase.createCollection(col1Descriptor);
     ASSERT_TRUE((nullptr != logicalCollection1));
     auto logicalView = vocbase.createView(viewCreateJson->slice(), false);
     ASSERT_TRUE((false == !logicalView));
@@ -7822,11 +7835,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         "{ \"links\": { \"testCollection0\": {} } }");
 
     TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
-    auto logicalCollection0 =
-        vocbase.createCollection(col0Descriptor);
+    auto logicalCollection0 = vocbase.createCollection(col0Descriptor);
     ASSERT_TRUE((nullptr != logicalCollection0));
-    auto logicalCollection1 =
-        vocbase.createCollection(col1Descriptor);
+    auto logicalCollection1 = vocbase.createCollection(col1Descriptor);
     ASSERT_TRUE((nullptr != logicalCollection1));
     auto logicalView = vocbase.createView(viewCreateJson->slice(), false);
     ASSERT_TRUE((false == !logicalView));
@@ -8186,7 +8197,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
   // modify meta params with links with invalid definition
   {
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection");
     TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(colDescriptor);
     ASSERT_TRUE((nullptr != logicalCollection));
@@ -8275,7 +8287,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
   // modify meta params with links
   {
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection");
     TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(colDescriptor);
     ASSERT_TRUE((nullptr != logicalCollection));
@@ -8484,7 +8497,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
   // add a new link (in recovery)
   {
     Vocbase vocbase(testDBInfo(server.server()), _engine);
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection");
     auto logicalCollection = vocbase.createCollection(colDescriptor);
     ASSERT_TRUE((nullptr != logicalCollection));
     auto view = vocbase.createView(createJson->slice(), false);
@@ -8560,7 +8574,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
   // add a new link
   {
     Vocbase vocbase(testDBInfo(server.server()), _engine);
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection");
     auto logicalCollection = vocbase.createCollection(colDescriptor);
     ASSERT_TRUE((nullptr != logicalCollection));
     auto view = vocbase.createView(createJson->slice(), false);
@@ -8665,7 +8680,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
   // add a new link to a collection with documents
   {
     Vocbase vocbase(testDBInfo(server.server()), _engine);
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection");
     auto logicalCollection = vocbase.createCollection(colDescriptor);
     ASSERT_TRUE((nullptr != logicalCollection));
     auto view = vocbase.createView(createJson->slice(), false);
@@ -8870,7 +8886,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
   // remove link (in recovery)
   {
     Vocbase vocbase(testDBInfo(server.server()), _engine);
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection");
     auto logicalCollection = vocbase.createCollection(colDescriptor);
     ASSERT_TRUE((nullptr != logicalCollection));
     auto view = vocbase.createView(createJson->slice(), false);
@@ -8958,7 +8975,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
   // remove link
   {
     Vocbase vocbase(testDBInfo(server.server()), _engine);
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection");
     auto logicalCollection = vocbase.createCollection(colDescriptor);
     ASSERT_TRUE((nullptr != logicalCollection));
     auto view = vocbase.createView(createJson->slice(), false);
@@ -9196,7 +9214,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
   // remove non-existant link
   {
     Vocbase vocbase(testDBInfo(server.server()), _engine);
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection");
     auto logicalCollection = vocbase.createCollection(colDescriptor);
     ASSERT_TRUE((nullptr != logicalCollection));
     auto view = vocbase.createView(createJson->slice(), false);
@@ -9277,7 +9296,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
   // remove + add link to same collection (reindex)
   {
     Vocbase vocbase(testDBInfo(server.server()), _engine);
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection");
     auto logicalCollection = vocbase.createCollection(colDescriptor);
     ASSERT_TRUE((nullptr != logicalCollection));
     auto view = vocbase.createView(createJson->slice(), false);
@@ -9418,7 +9438,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
   // update existing link (partial update)
   {
     Vocbase vocbase(testDBInfo(server.server()), _engine);
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection");
     auto logicalCollection = vocbase.createCollection(colDescriptor);
     ASSERT_TRUE((nullptr != logicalCollection));
     auto view = vocbase.createView(createJson->slice(), false);
@@ -10122,11 +10143,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         "{ \"links\": { \"testCollection1\": {} } }");
 
     TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
-    auto logicalCollection0 =
-        vocbase.createCollection(col0Descriptor);
+    auto logicalCollection0 = vocbase.createCollection(col0Descriptor);
     ASSERT_TRUE((nullptr != logicalCollection0));
-    auto logicalCollection1 =
-        vocbase.createCollection(col1Descriptor);
+    auto logicalCollection1 = vocbase.createCollection(col1Descriptor);
     ASSERT_TRUE((nullptr != logicalCollection1));
     auto logicalView = vocbase.createView(viewCreateJson->slice(), false);
     ASSERT_TRUE((false == !logicalView));
@@ -10237,11 +10256,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         "{ \"links\": { \"testCollection1\": null } }");
 
     TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
-    auto logicalCollection0 =
-        vocbase.createCollection(col0Descriptor);
+    auto logicalCollection0 = vocbase.createCollection(col0Descriptor);
     ASSERT_TRUE((nullptr != logicalCollection0));
-    auto logicalCollection1 =
-        vocbase.createCollection(col1Descriptor);
+    auto logicalCollection1 = vocbase.createCollection(col1Descriptor);
     ASSERT_TRUE((nullptr != logicalCollection1));
     auto logicalView = vocbase.createView(viewCreateJson->slice(), false);
     ASSERT_TRUE((false == !logicalView));

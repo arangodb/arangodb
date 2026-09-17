@@ -37,7 +37,8 @@ class QueryJoin : public QueryTest {
  protected:
   void createCollections1() {
     {
-      auto colDescriptor = arangodb::tests::testCollectionDescriptor("entities");
+      auto colDescriptor =
+          arangodb::tests::testCollectionDescriptor("entities");
       auto collection = _vocbase.createCollection(colDescriptor);
       ASSERT_TRUE(collection);
     }
@@ -51,17 +52,20 @@ class QueryJoin : public QueryTest {
 
   void createCollections23() {
     {
-      auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection0");
+      auto colDescriptor =
+          arangodb::tests::testCollectionDescriptor("testCollection0");
       auto collection = _vocbase.createCollection(colDescriptor);
       ASSERT_TRUE(collection);
     }
     {
-      auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection1");
+      auto colDescriptor =
+          arangodb::tests::testCollectionDescriptor("testCollection1");
       auto collection = _vocbase.createCollection(colDescriptor);
       ASSERT_TRUE(collection);
     }
     {
-      auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection2");
+      auto colDescriptor =
+          arangodb::tests::testCollectionDescriptor("testCollection2");
       auto collection = _vocbase.createCollection(colDescriptor);
       ASSERT_TRUE(collection);
     }
@@ -219,7 +223,8 @@ class QueryJoin : public QueryTest {
 
     // add logical collection with the same name as view
     {
-      auto colDescriptor = arangodb::tests::testCollectionDescriptor("testView");
+      auto colDescriptor =
+          arangodb::tests::testCollectionDescriptor("testView");
       // TRI_vocbase_t::createCollection(...) throws exception instead of
       // returning a nullptr
       EXPECT_ANY_THROW(_vocbase.createCollection(colDescriptor));

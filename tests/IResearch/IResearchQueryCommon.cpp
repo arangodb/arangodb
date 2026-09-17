@@ -179,7 +179,8 @@ namespace arangodb::tests {
 void QueryTest::createCollections() {
   // testCollection0
   {
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection0");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection0");
     auto collection = _vocbase.createCollection(colDescriptor);
     ASSERT_TRUE(collection);
 
@@ -215,7 +216,8 @@ void QueryTest::createCollections() {
   }
   // testCollection1
   {
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection1");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection1");
     auto collection = _vocbase.createCollection(colDescriptor);
     ASSERT_TRUE(collection);
 

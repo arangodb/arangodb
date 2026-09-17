@@ -97,7 +97,8 @@ class QueryGeoInRange : public QueryTest {
   }
 
   void createCollections() {
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection0");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection0");
     auto collection = _vocbase.createCollection(colDescriptor);
     ASSERT_TRUE(collection);
   }

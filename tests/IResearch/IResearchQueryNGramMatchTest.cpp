@@ -88,7 +88,8 @@ class QueryNGramMatch : public QueryTest {
       }
       // create collection0
       {
-        auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection0");
+        auto colDescriptor =
+            arangodb::tests::testCollectionDescriptor("testCollection0");
         auto collection = vocbase.createCollection(colDescriptor);
         ASSERT_NE(nullptr, collection);
 
@@ -175,7 +176,8 @@ class QueryNGramMatch : public QueryTest {
       }
       // create collection0
       {
-        auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection0");
+        auto colDescriptor =
+            arangodb::tests::testCollectionDescriptor("testCollection0");
         auto collection = vocbase.createCollection(colDescriptor);
         ASSERT_NE(nullptr, collection);
 

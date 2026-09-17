@@ -44,7 +44,8 @@ class QueryWildcard : public QueryTest {
   void create() {
     // create collection1
     {
-      auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection1");
+      auto colDescriptor =
+          arangodb::tests::testCollectionDescriptor("testCollection1");
       auto collection = _vocbase.createCollection(colDescriptor);
       ASSERT_NE(nullptr, collection);
 

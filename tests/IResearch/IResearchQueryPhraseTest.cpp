@@ -4042,7 +4042,8 @@ class QueryPhrase : public QueryTest {
 
     // create collection0
     {
-      auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection0");
+      auto colDescriptor =
+          arangodb::tests::testCollectionDescriptor("testCollection0");
       auto collection = vocbase.createCollection(colDescriptor);
       ASSERT_NE(nullptr, collection);
 
@@ -4080,7 +4081,8 @@ class QueryPhrase : public QueryTest {
 
     // create collection1
     {
-      auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection1");
+      auto colDescriptor =
+          arangodb::tests::testCollectionDescriptor("testCollection1");
       auto collection = vocbase.createCollection(colDescriptor);
       ASSERT_NE(nullptr, collection);
 
@@ -4114,7 +4116,8 @@ class QueryPhrase : public QueryTest {
   void create1() {
     // create collection0
     {
-      auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection0");
+      auto colDescriptor =
+          arangodb::tests::testCollectionDescriptor("testCollection0");
       auto collection = _vocbase.createCollection(colDescriptor);
       ASSERT_NE(nullptr, collection);
 
@@ -4152,7 +4155,8 @@ class QueryPhrase : public QueryTest {
 
     // create collection1
     {
-      auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection1");
+      auto colDescriptor =
+          arangodb::tests::testCollectionDescriptor("testCollection1");
       auto collection = _vocbase.createCollection(colDescriptor);
       ASSERT_NE(nullptr, collection);
 

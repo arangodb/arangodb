@@ -83,7 +83,7 @@ class IResearchLinkHelperTestSingle : public ::testing::Test {
           *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
           unused);
       auto colDescriptor = arangodb::tests::testCollectionDescriptor(
-        "foo", arangodb::DataSourceId{102});
+          "foo", arangodb::DataSourceId{102});
       EXPECT_NE(nullptr, vocbase->createCollection(colDescriptor));
     }
   }

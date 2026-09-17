@@ -122,7 +122,8 @@ TEST_F(IResearchViewDBServerTest, test_drop) {
 
   // drop non-empty
   {
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection0");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection0");
     auto linkJson = arangodb::velocypack::Parser::fromJson(
         "{ \"view\": \"testView0\", \"type\": \"arangosearch\", "
         "\"includeAllFields\": true }");
@@ -165,7 +166,8 @@ TEST_F(IResearchViewDBServerTest, test_drop) {
 
   // drop non-empty (drop failure)
   {
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection1");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection1");
     auto linkJson = arangodb::velocypack::Parser::fromJson(
         "{ \"view\": \"testView1\", \"type\": \"arangosearch\", "
         "\"includeAllFields\": true }");
@@ -217,7 +219,8 @@ TEST_F(IResearchViewDBServerTest, test_drop_cid) {
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
   createTestDatabase(vocbase);
 
-  auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+  auto colDescriptor =
+      arangodb::tests::testCollectionDescriptor("testCollection");
   auto linkJson = arangodb::velocypack::Parser::fromJson(
       "{ \"view\": \"testView\", \"type\": \"arangosearch\", "
       "\"includeAllFields\": true }");
@@ -257,7 +260,8 @@ TEST_F(IResearchViewDBServerTest, test_drop_cid) {
 TEST_F(IResearchViewDBServerTest, test_drop_database) {
   auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
-  auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+  auto colDescriptor =
+      arangodb::tests::testCollectionDescriptor("testCollection");
   auto viewCreateJson = arangodb::velocypack::Parser::fromJson(
       "{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\" }");
   auto viewUpdateJson = arangodb::velocypack::Parser::fromJson(
@@ -297,7 +301,8 @@ TEST_F(IResearchViewDBServerTest, test_ensure) {
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
   createTestDatabase(vocbase);
 
-  auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+  auto colDescriptor =
+      arangodb::tests::testCollectionDescriptor("testCollection");
   auto linkJson = arangodb::velocypack::Parser::fromJson(
       "{ \"view\": \"testView\", \"type\": \"arangosearch\", "
       "\"includeAllFields\": true }");
@@ -390,7 +395,8 @@ TEST_F(IResearchViewDBServerTest, test_open) {
         (((std::filesystem::path() /= server.testFilesystemPath()) /=
           std::string("databases")) /= std::string("arangosearch-123"))
             .string();
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection");
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
@@ -437,7 +443,8 @@ TEST_F(IResearchViewDBServerTest, test_query) {
 
   // no filter/order provided, means "RETURN *"
   {
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection");
     auto linkJson = arangodb::velocypack::Parser::fromJson(
         "{ \"view\": \"testView\", \"type\": \"arangosearch\", "
         "\"includeAllFields\": true }");
@@ -484,7 +491,8 @@ TEST_F(IResearchViewDBServerTest, test_query) {
 
   // ordered iterator
   {
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection");
     auto linkJson = arangodb::velocypack::Parser::fromJson(
         "{ \"view\": \"testView\", \"type\": \"arangosearch\", "
         "\"includeAllFields\": true }");
@@ -671,7 +679,8 @@ TEST_F(IResearchViewDBServerTest, test_query) {
 
   // query while running FlushThread
   {
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection");
     auto viewCreateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson(
@@ -749,7 +758,8 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
 
   // rename empty
   {
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection");
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
@@ -804,7 +814,8 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
 
   // rename non-empty
   {
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection");
     auto const viewId = std::to_string(
         ci.uniqid() +
         1);  // +1 because LogicalView creation will generate a new ID
@@ -1023,7 +1034,8 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", "
       "\"consolidationIntervalMsec\": 0 }");
-  auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+  auto colDescriptor =
+      arangodb::tests::testCollectionDescriptor("testCollection");
   auto linkJson = arangodb::velocypack::Parser::fromJson(
       "{ \"view\": \"testView\", \"type\": \"arangosearch\", "
       "\"includeAllFields\": true }");
@@ -1177,7 +1189,8 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
   // update empty (partial)
   {
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection");
     auto viewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\", "
         "\"collections\": [ 3, 4, 5 ], \"cleanupIntervalStep\": 24, "
@@ -1316,7 +1329,8 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
   // update empty (full)
   {
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection");
     auto viewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\", "
         "\"collections\": [ 3, 4, 5 ], \"cleanupIntervalStep\": 24, "
@@ -1456,7 +1470,8 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
   // update non-empty (partial)
   {
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection");
     auto linkJson = arangodb::velocypack::Parser::fromJson(
         "{ \"view\": \"testView\", \"type\": \"arangosearch\", "
         "\"includeAllFields\": true }");
@@ -1605,7 +1620,8 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
   // update non-empty (full)
   {
-    auto col0Descriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+    auto col0Descriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection");
     auto col1Descriptor = arangodb::tests::testCollectionDescriptor(
         "testCollection1", arangodb::DataSourceId{123});
     auto linkJson = arangodb::velocypack::Parser::fromJson(
@@ -1618,11 +1634,9 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
     createTestDatabase(vocbase, "testDatabase" IRS_TO_STRING(__LINE__));
     ASSERT_NE(nullptr, vocbase);
-    auto logicalCollection0 =
-        vocbase->createCollection(col0Descriptor);
+    auto logicalCollection0 = vocbase->createCollection(col0Descriptor);
     EXPECT_NE(nullptr, logicalCollection0);
-    auto logicalCollection1 =
-        vocbase->createCollection(col1Descriptor);
+    auto logicalCollection1 = vocbase->createCollection(col1Descriptor);
     EXPECT_NE(nullptr, logicalCollection1);
     EXPECT_TRUE(
         (ci.createViewCoordinator(vocbase->name(), "42", viewJson->slice())
@@ -1783,7 +1797,8 @@ TEST_F(IResearchViewDBServerTest, test_visitCollections) {
 
   // visit non-empty
   {
-    auto colDescriptor = arangodb::tests::testCollectionDescriptor("testCollection");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection");
     auto linkJson = arangodb::velocypack::Parser::fromJson(
         "{ \"view\": \"testView\", \"includeAllFields\": true }");
     auto const viewId = std::to_string(

@@ -51,16 +51,16 @@ class QuerySelectAll : public QueryTest {
   void create() {
     // add collection_1
     {
-      auto colDescriptor = arangodb::tests::testCollectionDescriptor("collection_1");
-      auto logicalCollection1 =
-          _vocbase.createCollection(colDescriptor);
+      auto colDescriptor =
+          arangodb::tests::testCollectionDescriptor("collection_1");
+      auto logicalCollection1 = _vocbase.createCollection(colDescriptor);
       ASSERT_NE(nullptr, logicalCollection1);
     }
     // add collection_2
     {
-      auto colDescriptor = arangodb::tests::testCollectionDescriptor("collection_2");
-      auto logicalCollection2 =
-          _vocbase.createCollection(colDescriptor);
+      auto colDescriptor =
+          arangodb::tests::testCollectionDescriptor("collection_2");
+      auto logicalCollection2 = _vocbase.createCollection(colDescriptor);
       ASSERT_NE(nullptr, logicalCollection2);
     }
   }
