@@ -1,7 +1,7 @@
 3.12.12 (XXXX-XX-XX)
 --------------------
 
-* COR-994: arangodump and arangorestore now renew a JWT passed via
+* COR-994: arangodump, arangorestore and arangosh now renew a JWT passed via
   `--server.jwt-token` before it expires, using `POST /_open/auth/renew`
   and controlled by `--server.jwt-renewal-threshold`. Long-running dumps
   no longer fail with HTTP 401 once `--server.session-timeout` elapses.

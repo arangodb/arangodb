@@ -80,6 +80,8 @@ class ClientFeature final : public HttpEndpointProvider {
   std::string jwtSecret() const;
   void setJwtSecret(std::string_view jwtSecret);
 
+  /// the token passed via --server.jwt-token; once the feature has started
+  /// it is renewed in the background, so callers must re-read it
   std::string jwtToken() const;
   void setJwtToken(std::string_view jwtToken);
 

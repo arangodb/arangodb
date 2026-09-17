@@ -366,6 +366,9 @@ void ClientFeature::setJwtSecret(std::string_view jwtSecret) {
 }
 
 std::string ClientFeature::jwtToken() const {
+  if (_renewingJwtToken != nullptr) {
+    return _renewingJwtToken->current();
+  }
   READ_LOCKER(locker, _settingsLock);
   return _options.jwtToken;
 }

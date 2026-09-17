@@ -125,7 +125,8 @@ arangosh without connecting to a server.)");
         arangodb::options::makeDefaultFlags(
             arangodb::options::Flags::Uncommon));
 
-    std::string jwtTokenHelp =
+    opts->addOption(
+        "--server.jwt-token",
         "If enabled, the JWT token is used directly for authentication. You "
         "can either "
         "specify the token directly or set the value to \"-\" to get prompted "
@@ -133,14 +134,10 @@ arangosh without connecting to a server.)");
         "option is not compatible with --server.ask-jwt-secret, "
         "--server.jwt-secret-keyfile, --server.username and --server.password. "
         "If specified, it is used for all connections - even if a new "
-        "connection to another server is created.";
-    if (!isArangosh) {
-      jwtTokenHelp +=
-          " A token with an expiry is renewed automatically before it "
-          "expires (see --server.jwt-renewal-threshold).";
-    }
-    opts->addOption("--server.jwt-token", jwtTokenHelp,
-                    new StringParameter(&options.jwtToken));
+        "connection to another server is created. A token with an expiry is "
+        "renewed automatically before it expires (see "
+        "--server.jwt-renewal-threshold).",
+        new StringParameter(&options.jwtToken));
   }
 
   opts->addOption("--server.connection-timeout",

@@ -212,6 +212,10 @@ class V8ClientConnection {
   // Helper function to renew JWT token
   void renewJwtToken();
 
+  // Switches the connection to a --server.jwt-token that the ClientFeature
+  // renewed in the background; no-op for all other authentication modes
+  void adoptRenewedJwtToken();
+
  private:
   application_features::ApplicationServer& _server;
   ClientFeature& _client;

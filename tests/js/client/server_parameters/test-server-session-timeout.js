@@ -170,6 +170,51 @@ function arangoshTokenRenewalSuite() {
   };
 }
 
+function arangoshProvidedTokenRenewalSuite() {
+  'use strict';
+  const runArangosh = require("@arangodb/testutils/client-tools").run.arangoshCmd;
+
+  // starts arangosh with a token that lives 5 seconds and lets it send
+  // requests for 12 seconds
+  const runArangoshWithToken = function(renewalThresholdSeconds) {
+    const token = request.post({
+      url: IM.url + "/_open/auth",
+      body: { username: "root", password: "" },
+      json: true
+    }).json.jwt;
+    // the helper would otherwise add --server.username, which is not allowed
+    // together with --server.jwt-token
+    const { username, password, ...options } = IM.options;
+    return runArangosh(options, IM, {
+      "server.jwt-token": token,
+      "server.jwt-renewal-threshold": String(renewalThresholdSeconds),
+      "javascript.execute-string": `
+        for (let i = 0; i < 6; ++i) {
+          const result = arango.GET_RAW("/_api/version");
+          if (result.code !== 200) {
+            throw new Error("request failed with HTTP " + result.code);
+          }
+          require("internal").sleep(2);
+        }`,
+    }, "");
+  };
+
+  return {
+    testArangoshRenewsProvidedToken: function() {
+      const res = runArangoshWithToken(2);
+      assertTrue(res.status, JSON.stringify(res));
+    },
+
+    // with a threshold of 0 the token is only renewed once it has expired,
+    // which the server refuses
+    testArangoshAbortsWithoutRenewal: function() {
+      const res = runArangoshWithToken(0);
+      assertFalse(res.status, JSON.stringify(res));
+    },
+  };
+}
+
 jsunity.run(testSuite);
 jsunity.run(arangoshTokenRenewalSuite);
+jsunity.run(arangoshProvidedTokenRenewalSuite);
 return jsunity.done();

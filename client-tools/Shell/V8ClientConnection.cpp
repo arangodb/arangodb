@@ -552,6 +552,17 @@ void V8ClientConnection::renewJwtToken() {
   }
 }
 
+void V8ClientConnection::adoptRenewedJwtToken() {
+  std::lock_guard<std::recursive_mutex> guard(_lock);
+  auto const token = _client.jwtToken();
+  if (token.empty() || token == _builder.jwtToken()) {
+    return;
+  }
+  _builder.jwtToken(token);
+  shutdownConnection();
+  createConnection();
+}
+
 void V8ClientConnection::prepareConnection() {
   // Need to hold _lock when running this function
   _forceJson = _client.forceJson();
@@ -3106,6 +3117,7 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
   if (needsTokenRenewal()) {
     renewJwtToken();
   }
+  adoptRenewedJwtToken();
 
   bool retry = true;
 
@@ -3187,6 +3199,7 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
   if (needsTokenRenewal()) {
     renewJwtToken();
   }
+  adoptRenewedJwtToken();
 
   bool retry = true;
 
