@@ -220,9 +220,9 @@ class instanceManager {
     this.tcpdump = struct['tcpdump'];
     this.cleanup = struct['cleanup'];
     struct['arangods'].forEach(arangodStruct => {
-      let oneArangod = new inst.instance(this.options, '', '',
+      let oneArangod = new inst.instance(this.options, '', 'tcp',
                                          this.agencyMgr, {},
-                                         '', this.tmpDir, '',
+                                         this.tmpDir, this.tmpDir, '',
                                          '', 0);
       oneArangod.setFromStructure(arangodStruct);
       this.arangods.push(oneArangod);
@@ -1061,7 +1061,7 @@ class instanceManager {
     const startTime = time();
     this.addArgs = _.defaults(this.addArgs, moreArgs);
     if (moreArgs.hasOwnProperty('server.jwt-secret')) {
-      this.JWT = moreArgs['server.jwt-secret'];
+      this.jwt_secret = moreArgs['server.jwt-secret'];
       this.arangods.forEach(arangod => {
         if (arangod.args.hasOwnProperty('server.jwt-secret-keyfile')) {
           delete arangod.args['server.jwt-secret-keyfile'];

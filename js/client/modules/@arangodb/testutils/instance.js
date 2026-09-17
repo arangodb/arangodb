@@ -122,7 +122,7 @@ function encodeJWTSecret(jwtSecret) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function makeAuthorizationHeaders (options, jwtSecret=false) {
-  if (jwtSecret) {
+  if (jwtSecret && jwtSecret.length > 0) {
     let jwt = encodeJWTSecret(jwtSecret);
     if (options.extremeVerbosity) {
       print(Date() + ' Using jw token:     ' + jwt);
@@ -588,11 +588,11 @@ class instance {
 
   _executeArangod (moreArgs, instanceJson) {
     if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
-      this.JWT = moreArgs['server.jwt-secret'];
+      this.jwt_secret = moreArgs['server.jwt-secret'];
     } else if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret-folder')) {
       let files = fs.list(moreArgs['server.jwt-secret-folder']);
       files = files.sort();
-      this.JWT = fs.read(fs.join(moreArgs['server.jwt-secret-folder'], files[0]));
+      this.jwt_secret = fs.read(fs.join(moreArgs['server.jwt-secret-folder'], files[0]));
     }
 
     let cmd = pu.ARANGOD_BIN;
