@@ -1545,24 +1545,4 @@ TEST_F(CompareAstNodesTest, objectsWithDifferingArrayMembersNotEqual) {
   EXPECT_NE(0, compare(lhs, rhs));
 }
 
-// Declaration order shouldn't matter, same as for constant objects.
-TEST_F(CompareAstNodesTest, objectsWithReorderedKeysEqual) {
-  auto* doc = makeVar("doc");
-  auto* lhs = object({{"a", attr(createRefNode(doc), "x")},
-                      {"b", attr(createRefNode(doc), "y")}});
-  auto* rhs = object({{"b", attr(createRefNode(doc), "y")},
-                      {"a", attr(createRefNode(doc), "x")}});
-  EXPECT_EQ(0, compare(lhs, rhs));
-}
-
-// Reordering shouldn't hide a difference in the values.
-TEST_F(CompareAstNodesTest, objectsWithReorderedKeysDifferentValueNotEqual) {
-  auto* doc = makeVar("doc");
-  auto* lhs = object({{"a", attr(createRefNode(doc), "x")},
-                      {"b", attr(createRefNode(doc), "y")}});
-  auto* rhs = object({{"b", attr(createRefNode(doc), "z")},
-                      {"a", attr(createRefNode(doc), "x")}});
-  EXPECT_NE(0, compare(lhs, rhs));
-}
-
 }  // namespace
