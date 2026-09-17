@@ -2427,7 +2427,7 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous,
 
 ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
                                             AstNode const* matchNode) {
-  return match::Builder{*this, _ast}.build(previous, matchNode);
+  return match::Builder{*this, _ast}.build(previous, ast::MatchNode(matchNode));
 }
 
 /// @brief create an execution plan from an abstract syntax tree node

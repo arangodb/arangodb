@@ -1050,4 +1050,40 @@ struct PatternSegment : TypedAstNode {
   AstNode const* getNode() const { return _node->getMember(1); }
 };
 
+/// @brief NODE_TYPE_PATTERN_MATCH_EXPRESSION layout (from
+/// Ast::createNodePatternMatchExpression / Parser::pushPatternNode):
+///   ordered members: optional PATH variable, start node
+///   (PATTERN_NODE_PATTERN or REFERENCE), then zero or more PATTERN_SEGMENT
+struct PatternMatchExpression : TypedAstNode {
+  explicit PatternMatchExpression(AstNode const* node) : TypedAstNode(node) {
+    TRI_ASSERT(node->type == NODE_TYPE_PATTERN_MATCH_EXPRESSION)
+        << node->getTypeString();
+  }
+
+  size_t numMembers() const { return _node->numMembers(); }
+
+  AstNode const* getMember(size_t i) const {
+    return _node->getMemberUnchecked(i);
+  }
+
+  AstNode const* get() const noexcept { return _node; }
+};
+
+/// @brief NODE_TYPE_MATCH layout (from Ast::createNodeMatch /
+/// Parser::pushMatchExprNode):
+///   members are PATTERN_MATCH_EXPRESSION nodes (one per MATCH pattern)
+struct MatchNode : TypedAstNode {
+  explicit MatchNode(AstNode const* node) : TypedAstNode(node) {
+    TRI_ASSERT(node->type == NODE_TYPE_MATCH) << node->getTypeString();
+  }
+
+  size_t numPatterns() const { return _node->numMembers(); }
+
+  PatternMatchExpression pattern(size_t i) const {
+    return PatternMatchExpression(_node->getMemberUnchecked(i));
+  }
+
+  AstNode const* get() const noexcept { return _node; }
+};
+
 }  // namespace arangodb::aql::ast

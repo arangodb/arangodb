@@ -58,30 +58,25 @@ uint64_t checkDepthValue(AstNode const* node) {
 PatternNormalizer::PatternNormalizer(Ast& ast) noexcept : _ast{ast} {}
 
 NormalizedStatement PatternNormalizer::normalize(
-    AstNode const& matchNode) const {
-  TRI_ASSERT(matchNode.type == NODE_TYPE_MATCH);
-
+    ast::MatchNode matchNode) const {
   NormalizedStatement statement;
-  statement.patterns.reserve(matchNode.numMembers());
+  statement.patterns.reserve(matchNode.numPatterns());
 
-  for (size_t i = 0; i < matchNode.numMembers(); ++i) {
-    statement.patterns.push_back(
-        normalizePattern(*matchNode.getMemberUnchecked(i)));
+  for (size_t i = 0; i < matchNode.numPatterns(); ++i) {
+    statement.patterns.push_back(normalizePattern(matchNode.pattern(i)));
   }
 
   return statement;
 }
 
 NormalizedPattern PatternNormalizer::normalizePattern(
-    AstNode const& matchExpr) const {
-  TRI_ASSERT(matchExpr.type == NODE_TYPE_PATTERN_MATCH_EXPRESSION);
-
+    ast::PatternMatchExpression matchExpr) const {
   NormalizedPattern pattern;
   pattern.pathVariable = nullptr;
   bool hasStart = false;
 
   for (size_t i = 0; i < matchExpr.numMembers(); ++i) {
-    AstNode const* member = matchExpr.getMemberUnchecked(i);
+    AstNode const* member = matchExpr.getMember(i);
 
     switch (member->type) {
       case NODE_TYPE_PATTERN_PATH_VARIABLE:
