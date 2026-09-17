@@ -99,7 +99,7 @@ class CollectionDescriptorFactoryTest : public ::testing::Test {
     // resolver behind this in production takes either.
     std::unordered_map<std::string, CollectionDescriptor> byId;
     for (auto const& [name, props] : lookupMap) {
-      byId.emplace(std::to_string(props.internal.id.id()), props);
+      byId.emplace(std::to_string(props.identity.id.id()), props);
     }
     lookupMap.merge(byId);
 
@@ -135,7 +135,7 @@ class CollectionDescriptorFactoryTest : public ::testing::Test {
     res.clusteringConstant.numberOfShards = 1;
     res.clusteringMutable.replicationFactor = 3;
     res.clusteringMutable.writeConcern = 2;
-    res.internal.id = DataSourceId{42};
+    res.identity.id = DataSourceId{42};
     res.clusteringConstant.shardingStrategy = "hash";
     res.clusteringConstant.shardKeys =
         std::vector<std::string>{StaticStrings::KeyString};
@@ -333,7 +333,7 @@ TEST_F(CollectionDescriptorFactoryTest, test_distributeShardsLike_default) {
   ASSERT_TRUE(testee.ok()) << "Failed on " << testee.errorMessage();
   // the name the caller gave is replaced by the leader's id
   EXPECT_EQ(testee->clusteringConstant.distributeShardsLike.value(),
-            std::to_string(leader.internal.id.id()));
+            std::to_string(leader.identity.id.id()));
 
   EXPECT_EQ(testee->clusteringConstant.numberOfShards.value(),
             leader.clusteringConstant.numberOfShards.value());
@@ -391,7 +391,7 @@ TEST_F(CollectionDescriptorFactoryTest,
   // Default value should be taken if none is set
   ASSERT_TRUE(testee.ok()) << "Failed on " << testee.errorMessage();
   EXPECT_EQ(testee->clusteringConstant.distributeShardsLike.value(),
-            std::to_string(leader.internal.id.id()));
+            std::to_string(leader.identity.id.id()));
   EXPECT_EQ(testee->clusteringConstant.numberOfShards.value(),
             leader.clusteringConstant.numberOfShards.value());
   EXPECT_EQ(testee->clusteringMutable.replicationFactor.value(),

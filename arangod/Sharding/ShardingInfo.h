@@ -139,6 +139,9 @@ class ShardingInfo {
       bool isSmart, size_t replicationFactor,
       std::optional<size_t> writeConcern);
 
+  // @brief turns a leader's name into its id; a single server stores the name
+  void resolveDistributeShardsLike();
+
   void initializeShardingStrategy(CollectionDescriptor const& descriptor);
 
   // @brief the logical collection we are working for
