@@ -73,13 +73,15 @@ void ServerFeature::prepare() {
 
   bool supportsV8 = false;
 #ifdef USE_V8
-  V8DealerFeature& v8dealer = server().getFeature<V8DealerFeature>();
+  V8DealerFeature* v8dealer = server().hasFeature<V8DealerFeature>()
+                                  ? &server().getFeature<V8DealerFeature>()
+                                  : nullptr;
 
-  if (v8dealer.isEnabled()) {
+  if (v8dealer != nullptr && v8dealer->isEnabled()) {
     if (operationMode() == OperationMode::MODE_SCRIPT) {
-      v8dealer.setMinimumExecutors(2);
+      v8dealer->setMinimumExecutors(2);
     } else {
-      v8dealer.setMinimumExecutors(1);
+      v8dealer->setMinimumExecutors(1);
     }
     supportsV8 = true;
   }
@@ -93,7 +95,9 @@ void ServerFeature::prepare() {
 
 #ifdef USE_V8
   if (operationMode() == OperationMode::MODE_CONSOLE) {
-    v8dealer.setMinimumExecutors(2);
+    // --console requires javascriptRequestedViaOptions(), so it's registered
+    TRI_ASSERT(v8dealer != nullptr);
+    v8dealer->setMinimumExecutors(2);
   }
 #endif
 

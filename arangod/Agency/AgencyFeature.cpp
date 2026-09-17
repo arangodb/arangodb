@@ -82,11 +82,9 @@ AgencyFeature::AgencyFeature(ApplicationServer& server, AgencyOptions options)
   TRI_ASSERT(!server.hasFeature<ActionFeature>());
 
 #ifdef USE_V8
-  if (!V8DealerFeature::javascriptRequestedViaOptions(server.options())) {
-    // specifying --console requires JavaScript, so we can only turn Javascript
-    // off if not requested
-    server.disableFeatures<V8DealerFeature>();
-  }
+  // registered only when JS was requested via options (enableV8Runtime)
+  TRI_ASSERT(server.hasFeature<V8DealerFeature>() ==
+             V8DealerFeature::javascriptRequestedViaOptions(server.options()));
 #endif
 }
 

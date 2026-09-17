@@ -342,17 +342,17 @@ void ArangodServer::addFeatures() {
   if (enableV8Runtime && !skipNonServerFeatures) {
     addFeature<ScriptFeature>(_ret, getOptions<ScriptOptionsProvider>());
   }
-  auto& v8DealerFeature = addFeature<V8DealerFeature>(
-      metrics, getOptions<V8DealerOptionsProvider>());
-  if (!enableV8Runtime) {
-    v8DealerFeature.disable();
+  V8DealerFeature* v8DealerFeature = nullptr;
+  if (enableV8Runtime) {
+    v8DealerFeature = &addFeature<V8DealerFeature>(
+        metrics, getOptions<V8DealerOptionsProvider>());
   }
 #endif
   addFeature<BootstrapFeature>(
       clusterFeature, database, &systemDatabaseFeature, &clusterUpgradeFeature
 #ifdef USE_V8
       ,
-      &v8DealerFeature
+      v8DealerFeature
 #endif
       ,
       getOptions<bootstrap::BootstrapOptionsProvider>());

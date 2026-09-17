@@ -52,7 +52,8 @@ RestAdminExecuteHandler::RestAdminExecuteHandler(
 
 // Mounted at /_admin/execute (exact, requires V8)
 RestStatus RestAdminExecuteHandler::execute() {
-  if (!server().isEnabled<V8DealerFeature>()) {
+  if (!server().hasFeature<V8DealerFeature>() ||
+      !server().isEnabled<V8DealerFeature>()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                   TRI_ERROR_NOT_IMPLEMENTED,
                   "JavaScript operations are disabled");
