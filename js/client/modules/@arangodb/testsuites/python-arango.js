@@ -35,10 +35,7 @@ const optionsDocumentation = [
 
 const internal = require('internal');
 
-const {
-  executeExternalAndWait,
-  statusExternal,
-  SetGlobalExecutionDeadlineTo } = internal;
+const { SetGlobalExecutionDeadlineTo } = internal;
 
 /* Modules: */
 const _ = require('lodash');
@@ -138,7 +135,7 @@ class runInPythonTest extends runWithAllureReport {
     SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout);
     let results;
     try {
-      let rc = executeExternalAndWait('pytest', args, false, 0, [], cwd);
+      const rc = pu.executeAndWait('pytest', args, this.options, "pythonDriver", cwd, false, this.options.oneTestTimeout, this.instanceManager, cwd);
       if (rc.exit !== 0) {
         status = false;
       }
