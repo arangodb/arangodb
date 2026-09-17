@@ -1,6 +1,7 @@
 add_library(clienttools_utils STATIC
   ClientManager.cpp
   ManagedDirectory.cpp
+  RenewingJwtToken.cpp
 )
 
 target_link_libraries(clienttools_utils
