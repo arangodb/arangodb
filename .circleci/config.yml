@@ -314,14 +314,16 @@ jobs:
 
   # Manual-only vector-index benchmark. Runs directly on the self-hosted
   # runner (no continuation): pulls an arangod nightly, runs the ann-benchmarks
-  # harness against the IVF index and publishes the site + CSV.
+  # harness against the IVF index, publishes the site + CSV and loads the run
+  # into the shared results store (RESULTS_ARANGO_URL / RESULTS_ARANGO_PASSWORD /
+  # GRAFANA_URL from the ann-benchmark-store context; unset => load skipped).
   ann-benchmark:
     docker:
       # Primary: runs the ann-benchmarks harness.
       - image: cimg/python:3.11.1
       # Service container: arangod, reachable from the primary at 127.0.0.1:8529
       # (container runners have no docker daemon, so the harness cannot start it
-      # itself - the executor does, and the script waits via ARANGO_START=external).
+      # itself - the executor does, and the script only waits for it).
       - image: public.ecr.aws/b0b8h2r4/arangodb/enterprise-test:02cec4c_2f64c55-deb
         name: arangod
         environment:
@@ -331,7 +333,8 @@ jobs:
     # the pod - testing whether the CI-only duplicate is resource pressure.
     resource_class: arangodb/xlarge-amd64
     environment:
-      ARANGO_START: external
+      # Recorded in run_meta.json; keep in sync with the service image above.
+      ARANGODB_IMAGE: public.ecr.aws/b0b8h2r4/arangodb/enterprise-test:02cec4c_2f64c55-deb
       ANN_OUTPUT_DIR: /tmp/ann-output
       # Self-hosted runner disk persists between jobs, so a fixed path caches
       # the (hundreds of MB) datasets across runs.
@@ -375,5 +378,6 @@ workflows:
   ann-benchmark:
     when: << pipeline.parameters.run-ann-benchmark >>
     jobs:
-      - ann-benchmark
+      - ann-benchmark:
+          context: [ ann-benchmark-store ]
 
