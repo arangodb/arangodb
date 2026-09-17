@@ -37,7 +37,6 @@ const inst = require('@arangodb/testutils/instance');
 const { agencyMgr } = require('@arangodb/testutils/agency');
 const crashUtils = require('@arangodb/testutils/crash-utils');
 const {versionHas} = require("@arangodb/test-helper");
-const crypto = require('@arangodb/crypto');
 const AsciiTable = require('ascii-table');
 const ArangoError = require('@arangodb').ArangoError;;
 const netstat = require('node-netstat');
@@ -76,46 +75,6 @@ const instanceRole = inst.instanceRole;
 
 let instanceCount = 1;
 const seconds = x => x * 1000;
-
-
-function encodeJWTSecret(jwtSecret) {
-    if (jwtSecret.startsWith("-----BEGIN PRIVATE KEY-----")) {
-      return crypto.jwtEncode(jwtSecret,
-                              {'server_id': 'none',
-                               'iss': 'arangodb'}, 'ES256');
-    } else {
-      return crypto.jwtEncode(jwtSecret,
-                              {'server_id': 'none',
-                               'iss': 'arangodb'}, 'HS256');
-    }
-}
-  
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief adds authorization headers
-// //////////////////////////////////////////////////////////////////////////////
-
-function makeAuthorizationHeaders (options, args, jwtSecret=false) {
-  if (jwtSecret) {
-    let jwt = encodeJWTSecret(jwtSecret);
-    if (options.extremeVerbosity) {
-      print(Date() + ' Using jw token:     ' + jwt);
-    }
-    return {
-      'headers': {
-        'Authorization': 'bearer ' + jwt
-      }
-    };
-  } else {
-    return {
-      'headers': {
-        'Authorization': 'Basic ' + base64Encode(options.username + ':' +
-            options.password)
-      }
-    };
-  }
-}
-
 
 
 
@@ -190,13 +149,8 @@ class instanceManager {
       this.addArgs['server.jwt-secret'] = this.jwt_secret;
       //this.addArgs['server.jwt-key'] = encodeJWTSecret(this.jwt_secret);
     }
-    if (this.jwt_secret !== "") {
-      this.JWT = encodeJWTSecret(this.jwt_secret);
-    }
-    this.agencyMgr.JWT = this.JWT;
     this.agencyMgr.jwt_secret = this.jwt_secret;
-    this.httpAuthOptions = makeAuthorizationHeaders(this.options, this.addArgs);
-    this.httpJWTAuthOptions = makeAuthorizationHeaders(this.options, this.addArgs, this.jwt_secret);
+    this.JWT = inst.encodeJWTSecret(this.jwt_secret);
   }
   
   destructor(cleanup) {
@@ -234,8 +188,6 @@ class instanceManager {
       rootDir: this.rootDir,
       leader: ln,
       agencyConfig: this.agencyMgr.getStructure(),
-      httpAuthOptions: this.httpAuthOptions,
-      httpJWTAuthOptions: this.httpJWTAuthOptions,
       urls: this.urls,
       url: this.url,
       endpoints: this.endpoints,
@@ -257,8 +209,6 @@ class instanceManager {
     this.options['dummy'] = true;
     this.addArgs = struct['addArgs'];
     this.rootDir = struct['rootDir'];
-    this.httpAuthOptions = struct['httpAuthOptions'];
-    this.httpJWTAuthOptions = struct['httpJWTAuthOptions'];
     this.urls = struct['urls'];
     this.url = struct['url'];
     this.endpoints = struct['endpoints'];
@@ -270,7 +220,10 @@ class instanceManager {
     this.tcpdump = struct['tcpdump'];
     this.cleanup = struct['cleanup'];
     struct['arangods'].forEach(arangodStruct => {
-      let oneArangod = new inst.instance(this.options, '', {}, {}, '', '', '', this.agencyMgr, this.tmpDir);
+      let oneArangod = new inst.instance(this.options, '', 'tcp',
+                                         this.agencyMgr, {},
+                                         this.tmpDir, this.tmpDir, '',
+                                         '', 0);
       oneArangod.setFromStructure(arangodStruct);
       this.arangods.push(oneArangod);
       if (oneArangod.isAgent()) {
@@ -308,10 +261,10 @@ class instanceManager {
 
     (struct.arangods || []).forEach(srv => {
       let rootDir = srv.rootDir || '';
-      let arangod = new inst.instance(mgr.options, srv.instanceRole, {},
-                                      {}, undefined, undefined, {},
-                                      protocol, rootDir, '',
-                                      mgr.agencyMgr, mgr.tmpDir, null);
+      let arangod = new inst.instance(mgr.options, srv.instanceRole, protocol,
+                                      mgr.agencyMgr, {},
+                                      rootDir, mgr.tmpDir, '',
+                                      '', 0);
       arangod.id = srv.id;
       arangod.instanceRole = srv.instanceRole;
       arangod.endpoint = srv.endpoint;
@@ -583,19 +536,12 @@ class instanceManager {
         for (let count = 0;
              count < this.agencyMgr.agencySize;
              count ++) {
-          this.arangods.push(new inst.instance(this.options,
-                                               instanceRole.agent,
-                                               this.addArgs,
-                                               this.httpAuthOptions,
-                                               this.jwt_secret,
-                                               this.JWT,
-                                               this.httpJWTAuthOptions,
-                                               this.protocol,
-                                               fs.join(this.rootDir, instanceRole.agent + "_" + count),
-                                               this.restKeyFile,
-                                               this.agencyMgr,
-                                               this.tmpDir,
-                                               this.memlayout[instanceRole.agent]));
+          this.arangods.push(new inst.instance(
+            this.options, instanceRole.agent, this.protocol,
+            this.agencyMgr, this.addArgs,
+            fs.join(this.rootDir, instanceRole.agent + "_" + count),
+            this.tmpDir, this.restKeyFile,
+            this.jwt_secret, this.memlayout[instanceRole.agent]));
         }
         this.instanceRoles.push(instanceRole.agent);
       }
@@ -604,38 +550,24 @@ class instanceManager {
         for (let count = 0;
              count < this.options.dbServers;
              count ++) {
-          this.arangods.push(new inst.instance(this.options,
-                                               instanceRole.dbServer,
-                                               this.addArgs,
-                                               this.httpAuthOptions,
-                                               this.jwt_secret,
-                                               this.JWT,
-                                               this.httpJWTAuthOptions,
-                                               this.protocol,
-                                               fs.join(this.rootDir, instanceRole.dbServer + "_" + count),
-                                               this.restKeyFile,
-                                               this.agencyMgr,
-                                               this.tmpDir,
-                                               this.memlayout[instanceRole.dbServer]));
+          this.arangods.push(new inst.instance(
+            this.options, instanceRole.dbServer, this.protocol,
+            this.agencyMgr, this.addArgs,
+            fs.join(this.rootDir, instanceRole.dbServer + "_" + count),
+            this.tmpDir, this.restKeyFile,
+            this.jwt_secret, this.memlayout[instanceRole.dbServer]));
         }
         this.instanceRoles.push(instanceRole.dbServer);
 
         for (let count = 0;
              count < this.options.coordinators;
              count ++) {
-          this.arangods.push(new inst.instance(this.options,
-                                               instanceRole.coordinator,
-                                               this.addArgs,
-                                               this.httpAuthOptions,
-                                               this.jwt_secret,
-                                               this.JWT,
-                                               this.httpJWTAuthOptions,
-                                               this.protocol,
-                                               fs.join(this.rootDir, instanceRole.coordinator + "_" + count),
-                                               this.restKeyFile,
-                                               this.agencyMgr,
-                                               this.tmpDir,
-                                               this.memlayout[instanceRole.coordinator] ));
+          this.arangods.push(new inst.instance(
+            this.options, instanceRole.coordinator, this.protocol,
+            this.agencyMgr, this.addArgs,
+            fs.join(this.rootDir, instanceRole.coordinator + "_" + count),
+            this.tmpDir, this.restKeyFile,
+            this.jwt_secret, this.memlayout[instanceRole.coordinator]));
           frontendCount ++;
         }
         this.instanceRoles.push(instanceRole.coordinator);
@@ -644,19 +576,12 @@ class instanceManager {
              !this.options.agency && count < this.options.singles;
              count ++) {
           // Single server...
-          this.arangods.push(new inst.instance(this.options,
-                                               instanceRole.single,
-                                               this.addArgs,
-                                               this.httpAuthOptions,
-                                               this.jwt_secret,
-                                               this.JWT,
-                                               this.httpJWTAuthOptions,
-                                               this.protocol,
-                                               fs.join(this.rootDir, instanceRole.single + "_" + count),
-                                               this.restKeyFile,
-                                               this.agencyMgr,
-                                               this.tmpDir,
-                                               this.memlayout[instanceRole.single]));
+          this.arangods.push(new inst.instance(
+            this.options, instanceRole.single, this.protocol,
+            this.agencyMgr, this.addArgs,
+            fs.join(this.rootDir, instanceRole.single + "_" + count),
+            this.tmpDir, this.restKeyFile,
+            this.jwt_secret, this.memlayout[instanceRole.single]));
           this.urls.push(this.arangods[this.arangods.length -1].url);
           this.endpoints.push(this.arangods[this.arangods.length -1].endpoint);
           this.endpointPorts.push(this.arangods[this.arangods.length -1].port);
@@ -695,7 +620,7 @@ class instanceManager {
       this.arangods.forEach(arangod => {
         arangod.startArango(JSON.stringify(this.getStructure()));
         count += 1;
-        this.agencyMgr.detectAgencyAlive(this.httpJWTAuthOptions);
+        this.agencyMgr.detectAgencyAlive(false);
       });
       if (this.options.cluster) {
         this.checkClusterAlive();
@@ -1104,7 +1029,7 @@ class instanceManager {
       let deadline = time() + seconds(this.startupMaxCount);
       this.arangods.forEach(arangod => {
         try {
-          arangod.pingUntilReady(this.httpJWTAuthOptions, deadline);
+          arangod.pingUntilReady(deadline);
         } catch (e) {
           this.arangods.forEach( arangod => {
             let status = arangod.status(false);
@@ -1135,10 +1060,8 @@ class instanceManager {
     }
     const startTime = time();
     this.addArgs = _.defaults(this.addArgs, moreArgs);
-    this.httpAuthOptions = makeAuthorizationHeaders(this.options, this.addArgs,this.jwt_secret);
-    this.httpJWTAuthOptions = makeAuthorizationHeaders(this.options, this.addArgs, this.jwt_secret);
     if (moreArgs.hasOwnProperty('server.jwt-secret')) {
-      this.JWT = moreArgs['server.jwt-secret'];
+      this.jwt_secret = moreArgs['server.jwt-secret'];
       this.arangods.forEach(arangod => {
         if (arangod.args.hasOwnProperty('server.jwt-secret-keyfile')) {
           delete arangod.args['server.jwt-secret-keyfile'];
@@ -1150,19 +1073,21 @@ class instanceManager {
     if (moreArgs.hasOwnProperty('server.jwt-secret-folder')) {
       let files = fs.list(moreArgs['server.jwt-secret-folder']);
       files = files.sort();
-      this.JWT = fs.read(fs.join(moreArgs['server.jwt-secret-folder'], files[0]));
+      this.jwt_secret = fs.read(fs.join(moreArgs['server.jwt-secret-folder'], files[0]));
     }
 
+    this.JWT = inst.encodeJWTSecret(this.jwt_secret);
     this.arangods.forEach(arangod => {
       arangod._flushPid();
-      arangod.resetAuthHeaders(this.httpJWTAuthOptions, this.JWT);
+
+      arangod.jwt_secret = this.jwt_secret;
     });
 
     let success = true;
     this.instanceRoles.forEach(instanceRole  => {
       this.arangods.forEach(arangod => {
         arangod.restartIfType(instanceRole, moreArgs, JSON.stringify(this.getStructure()));
-        this.agencyMgr.detectAgencyAlive(this.httpAuthOptions);
+        this.agencyMgr.detectAgencyAlive();
       });
     });
     this.launchFinalize(startTime);
@@ -1201,7 +1126,7 @@ class instanceManager {
           }
           if (arangod.isRole(instanceRole.agent)) {
             print("running agency health check");
-            this.agencyMgr.detectAgencyAlive(this.httpJWTAuthOptions, true);
+            this.agencyMgr.detectAgencyAlive(true);
           }
         }
         hook = `${role}OneDone`;
@@ -1327,18 +1252,8 @@ class instanceManager {
   }
 
   checkClusterAlive() {
-    let httpOptions = _.clone(this.httpJWTAuthOptions);
+    let httpOptions = inst.makeAuthorizationHeaders(this.options, this.jwt_secret);
     httpOptions.returnBodyOnError = true;
-
-    // scrape the jwt token
-    //instanceInfo.authOpts = _.clone(this.options);
-    //if (addArgs['server.jwt-secret'] && !instanceInfo.authOpts['server.jwt-secret']) {
-    //  instanceInfo.authOpts['server.jwt-secret'] = addArgs['server.jwt-secret'];
-    //} else if (addArgs['server.jwt-secret-folder'] && !instanceInfo.authOpts['server.jwt-secret-folder']) {
-    //  instanceInfo.authOpts['server.jwt-secret-folder'] = addArgs['server.jwt-secret-folder'];
-    //}
-
-
     let count = 0;
     while (true) {
       ++count;
@@ -1368,7 +1283,7 @@ class instanceManager {
           print(`Server reply to ${url}: ${JSON.stringify(reply)}`);
         }
         if (!reply.error && reply.code === 200) {
-          arangod.pingUntilReady(arangod.authHeaders, time() + seconds(60));
+          arangod.pingUntilReady(time() + seconds(60));
           arangod.upAndRunning = true;
           return true;
         }
