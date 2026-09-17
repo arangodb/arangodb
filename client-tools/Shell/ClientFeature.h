@@ -71,6 +71,8 @@ class ClientFeature final : public HttpEndpointProvider {
   // set single endpoint
   void setEndpoint(std::string_view value);
 
+  /// the user requests are authenticated as: the user of a --server.jwt-token
+  /// if it names one, otherwise --server.username
   std::string username() const;
   void setUsername(std::string_view value);
 

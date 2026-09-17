@@ -35,6 +35,7 @@
 #include <openssl/pem.h>
 
 #include <chrono>
+#include <memory>
 #include <optional>
 
 namespace arangodb::rest::SslInterface::jwt {
@@ -142,10 +143,12 @@ std::string generateRawJwt(std::string_view secret,
   return absl::StrCat(fullMessage, ".", absl::WebSafeBase64Escape(signature));
 }
 
-std::optional<double> extractExpiration(std::string_view token) {
+namespace {
+
+std::shared_ptr<velocypack::Builder> decodeClaims(std::string_view token) {
   auto const parts = basics::StringUtils::split(token, '.');
   if (parts.size() != 3) {
-    return std::nullopt;
+    return nullptr;
   }
 
   // JWTs are specified as base64url, but generateRawJwt encodes the body
@@ -153,23 +156,46 @@ std::optional<double> extractExpiration(std::string_view token) {
   std::string body;
   if (!absl::WebSafeBase64Unescape(parts[1], &body) &&
       !absl::Base64Unescape(parts[1], &body)) {
-    return std::nullopt;
+    return nullptr;
   }
 
   try {
-    auto const parsed = velocypack::Parser::fromJson(body);
-    auto const bodySlice = parsed->slice();
-    if (!bodySlice.isObject()) {
-      return std::nullopt;
+    auto claims = velocypack::Parser::fromJson(body);
+    if (!claims->slice().isObject()) {
+      return nullptr;
     }
-    auto const expiration = bodySlice.get("exp");
-    if (!expiration.isNumber()) {
-      return std::nullopt;
-    }
-    return expiration.getNumber<double>();
+    return claims;
   } catch (...) {
+    return nullptr;
+  }
+}
+
+}  // namespace
+
+std::optional<double> extractExpiration(std::string_view token) {
+  auto const claims = decodeClaims(token);
+  if (claims == nullptr) {
     return std::nullopt;
   }
+  auto const expiration = claims->slice().get("exp");
+  if (!expiration.isNumber()) {
+    return std::nullopt;
+  }
+  return expiration.getNumber<double>();
+}
+
+/// Returns the "preferred_username" claim of a JWT, or nullopt when absent or
+/// malformed
+std::optional<std::string> extractPreferredUsername(std::string_view token) {
+  auto const claims = decodeClaims(token);
+  if (claims == nullptr) {
+    return std::nullopt;
+  }
+  auto const username = claims->slice().get("preferred_username");
+  if (!username.isString()) {
+    return std::nullopt;
+  }
+  return username.copyString();
 }
 
 }  // namespace arangodb::rest::SslInterface::jwt

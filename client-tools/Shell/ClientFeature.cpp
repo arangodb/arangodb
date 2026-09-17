@@ -331,6 +331,13 @@ void ClientFeature::setEndpoint(std::string_view value) {
 }
 
 std::string ClientFeature::username() const {
+  // a token authenticates as the user it was issued for, whatever
+  // --server.username says
+  if (auto const tokenUser =
+          rest::SslInterface::jwt::extractPreferredUsername(jwtToken());
+      tokenUser.has_value()) {
+    return *tokenUser;
+  }
   READ_LOCKER(locker, _settingsLock);
   return _options.username;
 }

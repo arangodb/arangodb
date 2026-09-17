@@ -118,3 +118,19 @@ TEST(JwtTest, extractExpirationDecodesStandardBase64Body) {
 
   EXPECT_EQ(extractExpiration(tokenWithEncodedBody(encodedBody)), 1000.0);
 }
+
+TEST(JwtTest, extractPreferredUsernameReturnsClaimOfUserToken) {
+  auto const token =
+      generateUserToken("secret", "alice", std::chrono::seconds{60});
+
+  EXPECT_EQ(extractPreferredUsername(token), "alice");
+}
+
+TEST(JwtTest, extractPreferredUsernameIsEmptyWithoutStringClaim) {
+  EXPECT_EQ(extractPreferredUsername(generateInternalToken("secret", "id")),
+            std::nullopt);
+  EXPECT_EQ(extractPreferredUsername(""), std::nullopt);
+  EXPECT_EQ(extractPreferredUsername(tokenWithEncodedBody(
+                absl::WebSafeBase64Escape(R"({"preferred_username":42})"))),
+            std::nullopt);
+}
