@@ -115,7 +115,6 @@ function databaseApiAuthzSuite () {
       arango.GET_RAW(`/_db/${DB}/_api/database/user`);
       assertPermissions([
         "UseApiVersion version=0",
-        "UseDatabase name=d level=read",
         "SeeDatabase name=_system",
         "SeeDatabase name=d"
       ], endObserve());
