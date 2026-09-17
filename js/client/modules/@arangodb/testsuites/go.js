@@ -256,8 +256,14 @@ function goDriver (options) {
         results['message'] = '';
       } catch (ex) {
         let timeout = SetGlobalExecutionDeadlineTo(0.0);
-        res = killExternal(res.pid);
-        let msg = `testrun has thrown ${ex.message} \n ${ex.stack} ${res}`;
+        let killResult = '';
+        if (res && res.pid !== undefined) {
+          try {
+            killResult = killExternal(res.pid);
+          } catch (ignore) {
+          }
+        }
+        let msg = `testrun has thrown ${ex.message} \n ${ex.stack} ${killResult}`;
         print(`${RED}${msg}${RESET}`);
         return {
           status: false,
