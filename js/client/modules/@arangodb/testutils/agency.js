@@ -872,7 +872,7 @@ class agencyMgr {
     }
   }
   
-  detectAgencyAlive(httpAuthOptions, force) {
+  detectAgencyAlive(force) {
     if (force !== true) {
       force = false;
     }
