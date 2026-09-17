@@ -78,7 +78,8 @@ AgencyFeature::AgencyFeature(ApplicationServer& server, AgencyOptions options)
     ss->findHost(fallback);
   }
 
-  server.disableFeatures<ActionFeature>();
+  // ActionFeature is only registered when the agency isn't active
+  TRI_ASSERT(!server.hasFeature<ActionFeature>());
 
 #ifdef USE_V8
   if (!V8DealerFeature::javascriptRequestedViaOptions(server.options())) {

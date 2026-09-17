@@ -1092,6 +1092,11 @@ static void JS_DefineAction(v8::FunctionCallbackInfo<v8::Value> const& args) {
     options = v8::Object::New(isolate);
   }
 
+  if (!v8g->server().hasFeature<ActionFeature>()) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "actions are not available on this instance");
+  }
+
   // create an action with the given options
   auto action =
       std::make_shared<v8_action_t>(v8g->server().getFeature<ActionFeature>());

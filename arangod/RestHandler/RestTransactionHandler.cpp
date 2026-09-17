@@ -406,6 +406,7 @@ void RestTransactionHandler::executeJSTransaction() {
   std::string portType = _request->connectionInfo().portType();
 
   bool allowUseDatabase =
+      server().hasFeature<ActionFeature>() &&
       server().getFeature<ActionFeature>().allowUseDatabase();
   JavaScriptSecurityContext securityContext =
       JavaScriptSecurityContext::createRestActionContext(allowUseDatabase);

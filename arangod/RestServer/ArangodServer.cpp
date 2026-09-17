@@ -207,7 +207,10 @@ void ArangodServer::addFeatures() {
       getOptions<metrics::MetricsOptionsProvider>());
   addFeature<metrics::ClusterMetricsFeature>(
       getOptions<metrics::ClusterMetricsOptionsProvider>());
-  addFeature<ActionFeature>(getOptions<ActionOptionsProvider>());
+  bool const agencyActivated = getOptions<AgencyOptionsProvider>().activated;
+  if (!agencyActivated) {
+    addFeature<ActionFeature>(getOptions<ActionOptionsProvider>());
+  }
   addFeature<ApiRecordingFeature>(_dataSourceRegistry, metrics,
                                   getOptions<ApiRecordingOptionsProvider>());
   addFeature<AqlFeature>();
@@ -254,7 +257,6 @@ void ArangodServer::addFeatures() {
       !auxMode && restServer && operationMode != OperationMode::MODE_CONSOLE;
 #ifdef USE_V8
   bool const enableJS = getOptions<V8DealerOptionsProvider>().enableJS;
-  bool const agencyActivated = getOptions<AgencyOptionsProvider>().activated;
   bool const enableFoxx = enableJS && !agencyActivated;
   bool const enableV8Runtime =
       enableJS && (!agencyActivated ||

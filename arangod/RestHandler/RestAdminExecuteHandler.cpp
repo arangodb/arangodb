@@ -107,6 +107,7 @@ RestStatus RestAdminExecuteHandler::execute() {
 
     // get a V8 context
     bool const allowUseDatabase =
+        server().hasFeature<ActionFeature>() &&
         server().getFeature<ActionFeature>().allowUseDatabase();
     JavaScriptSecurityContext securityContext =
         JavaScriptSecurityContext::createRestAdminScriptActionContext(
