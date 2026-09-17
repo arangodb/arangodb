@@ -278,9 +278,9 @@ class CircleCIGenerator(OutputGenerator):
             workflow["jobs"].append(
                 {"run-cppcheck": {"name": "cppcheck", "requires": [build_jobs[0]]}}
             )
-        # clang-tidy for x64 nightly (non-instrumented builds only)
+        # clang-tidy, opt-in per pipeline (non-instrumented x64 builds only)
         if (
-            build_config.nightly
+            self.config.filter_criteria.clang_tidy
             and build_config.architecture == Architecture.X64
             and not build_config.build_variant.is_instrumented
         ):

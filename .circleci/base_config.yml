@@ -47,6 +47,9 @@ parameters:
   full:
     type: boolean
     default: false
+  with-clang-tidy:
+    type: boolean
+    default: false
   replication-two:
     type: boolean
     default: false
