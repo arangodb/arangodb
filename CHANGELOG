@@ -1,6 +1,13 @@
 3.12.12 (XXXX-XX-XX)
 --------------------
 
+* Fixed a rare issue where a cluster-internal request that was retried with
+  less than one millisecond left until its deadline was sent without any
+  timeout, because the remaining time was truncated to 0ms, which the network
+  layer interprets as "no timeout". In maintainer mode this triggered the
+  assertion `timeout.count() > 0` in NetworkFeature::finishRequest. Request
+  timeouts are now rounded up to whole milliseconds.
+
 * arangodump, arangorestore and arangobackup now report the server's error (e.g.
   "HTTP 401 (Unauthorized): ArangoError 11: User not authenticated") together
   with the "Could not connect to endpoint" message when the initial connection
