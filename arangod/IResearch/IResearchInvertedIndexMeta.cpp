@@ -345,6 +345,10 @@ bool IResearchInvertedIndexMeta::init(
       }
     }
   }
+  if (!server.hasFeature<IResearchAnalyzerFeature>()) {
+    errorField = kFieldName;
+    return false;
+  }
   auto& analyzers = server.getFeature<IResearchAnalyzerFeature>();
 
 #ifdef USE_ENTERPRISE

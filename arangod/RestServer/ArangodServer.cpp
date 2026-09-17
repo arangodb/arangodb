@@ -422,17 +422,16 @@ void ArangodServer::addFeatures() {
     sslServer.disable();
   }
   addFeature<RbacFeature>(authentication);
-  auto& analyzers = addFeature<iresearch::IResearchAnalyzerFeature>(
-      iresearch::IResearchAnalyzerFeature::Dependencies{
-          .databaseFeature = database,
-          .systemDatabase = systemDatabaseFeature,
-          .networkFeature = &networkFeature,
-          .clusterFeature = &clusterFeature,
-          .schedulerFeature = &scheduler,
-          .aqlFunctionFeature = &aqlFunctionFeature,
-      });
-  if (agencyActivated) {
-    analyzers.disable();
+  if (!agencyActivated) {
+    addFeature<iresearch::IResearchAnalyzerFeature>(
+        iresearch::IResearchAnalyzerFeature::Dependencies{
+            .databaseFeature = database,
+            .systemDatabase = systemDatabaseFeature,
+            .networkFeature = &networkFeature,
+            .clusterFeature = &clusterFeature,
+            .schedulerFeature = &scheduler,
+            .aqlFunctionFeature = &aqlFunctionFeature,
+        });
   }
   // an agency has no need for ArangoSearch
   if (!agencyActivated) {
