@@ -1,6 +1,12 @@
 3.12.12 (XXXX-XX-XX)
 --------------------
 
+* arangodump, arangorestore and arangobackup now report the server's error (e.g.
+  "HTTP 401 (Unauthorized): ArangoError 11: User not authenticated") together
+  with the "Could not connect to endpoint" message when the initial connection
+  to the server is rejected. Previously the reason was dropped and only the
+  generic message was shown.
+
 * BTS-2450: Fix UI login for users without access to the _system database.
   This involves allowing the API `GET /_api/database/user` in this case.
 
