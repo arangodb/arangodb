@@ -68,7 +68,7 @@ function getTestCode(file, options, instanceManager) {
   }
   let ret = '';
   if (instanceManager != null) {
-    ret = `global.instanceManager = ${JSON.stringify(instanceManager.getStructure())};require('@arangodb/test-helper').pimpInstanceManager();\n`;
+    ret = `global.instanceManager = ${JSON.stringify(instanceManager.getStructure())};\n`;
   }
   return ret + runTest + 'return runTest(' + JSON.stringify(file) + ', true, ' + filter + ');\n';
 }

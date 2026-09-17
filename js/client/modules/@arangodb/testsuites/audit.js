@@ -60,6 +60,8 @@ class runBasicOnArangod extends trs.runOnArangodRunner{
         'Authorization': 'Basic ' + base64Encode('root:')
       }
     };
+    // detect the server IDs
+    this.instanceManager.launchFinalize();
     return {state: true};
   }
 }
