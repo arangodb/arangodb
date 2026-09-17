@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global assertEqual, assertTrue */
+/* global assertEqual */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -23,64 +23,50 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
-const arangodb = require('@arangodb');
-const db = arangodb.db;
+const db = require('@arangodb').db;
 const { instanceRole } = require('@arangodb/testutils/instance');
 
 const IM = global.instanceManager;
 
 const srcName = 'UnitTestsIntermediateCommitSrc';
 const dstName = 'UnitTestsIntermediateCommitDst';
-const numDocs = 20000;
+const numDocs = 12000;
 const numberOfShards = 4;
-const numIterations = 5;
 
-function sumIntermediateCommits() {
-  return IM.arangods
-    .filter((arangod) => arangod.isRole(instanceRole.dbServer))
-    .reduce((sum, arangod) => sum + arangod.getMetric('arangodb_intermediate_commits_total'), 0);
-}
-
-// BTS-2456: Data race between snippets of a single  query on dbserver
+// BTS-2456: the write snippet re-begins its RocksDB transaction after an
+// intermediate commit while the read snippet of the same query still uses the
+// released snapshot. Only point lookups (index + materialize) use that
+// snapshot; a plain collection scan reads from the stable iterator snapshot.
+// Co-located shards keep the delayed server's read snippet being pulled by the
+// other servers while its write snippet sleeps in the failure point.
 function transactionIntermediateCommitConcurrentSnippetsSuite() {
   'use strict';
 
-  return {
-    setUpAll: function () {
-      const src = db._create(srcName, { numberOfShards });
-      db._create(dstName, { numberOfShards, replicationFactor: 2 });
+  const failurePoint = 'RocksDBTrxBaseMethods::sleepAfterIntermediateCommitReBegin';
 
-      let docs = [];
-      for (let i = 0; i < numDocs; ++i) {
-        docs.push({ value: i });
-        if (docs.length === 5000) {
-          src.insert(docs);
-          docs = [];
-        }
-      }
-      if (docs.length > 0) {
-        src.insert(docs);
-      }
+  return {
+    setUp: function () {
+      IM.debugClearFailAt('', instanceRole.dbServer);
+      db._create(srcName, { numberOfShards, replicationFactor: 2 })
+        .ensureIndex({ type: 'persistent', fields: ['value'] });
+      db._create(dstName, { distributeShardsLike: srcName });
+      db._query(`FOR i IN 1..${numDocs} INSERT { value: i } INTO ${srcName}`);
     },
 
-    tearDownAll: function () {
+    tearDown: function () {
+      IM.debugClearFailAt('', instanceRole.dbServer);
       db._drop(dstName);
       db._drop(srcName);
     },
 
     testCopyWithIntermediateCommitsAndReplication: function () {
-      const dst = db._collection(dstName);
-      for (let i = 0; i < numIterations; ++i) {
-        dst.truncate();
-        const before = sumIntermediateCommits();
-        // we will do 5000/100 = 50 intermediate commits, meaning we have 50 chances to catch
-        // tsan race
-        db._query(`FOR d IN ${srcName} INSERT { value: d.value } INTO ${dstName}`, {},
-                  { intermediateCommitCount: 100 });
+      const shards = db._collection(dstName).shards(true);
+      const leader = IM.getInstanceByID(Object.values(shards)[0][0]);
+      leader.debugSetFailAt(failurePoint);
 
-        assertEqual(numDocs, dst.count());
-        assertTrue(sumIntermediateCommits() > before, 'expected intermediate commits to happen');
-      }
+      db._query(`FOR d IN ${srcName} FILTER d.value >= 0 INSERT d INTO ${dstName}`, {},
+                { intermediateCommitCount: 100 });
+      assertEqual(numDocs, db._collection(dstName).count());
     },
   };
 }
