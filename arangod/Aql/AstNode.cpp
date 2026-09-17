@@ -463,7 +463,7 @@ int compareCommutativeBinary(AstNode const* lhs, AstNode const* rhs,
   return compareAstNodes<false>(lhsRight, rhsRight, compareUtf8);
 }
 
-/// @brief compare n-ary AND/OR nodes independent of child order
+/// @brief compare children independent of order (NARY AND/OR, OBJECT)
 int compareNary(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
   size_t lhsN = lhs->numMembers();
   size_t rhsN = rhs->numMembers();
@@ -561,6 +561,9 @@ int compareAstNodesComplexVPack(AstNode const* lhs, AstNode const* rhs,
     case NODE_TYPE_ARRAY:
       // Same ordering as for constant arrays.
       return compareArrayMembers<false>(lhs, rhs, compareUtf8);
+    case NODE_TYPE_OBJECT:
+      // unordered, like NARY AND/OR: {a,b} must equal {b,a}
+      return compareNary(lhs, rhs, compareUtf8);
     case NODE_TYPE_QUANTIFIER:
       return compareQuantifier(lhs, rhs, compareUtf8);
     case NODE_TYPE_FCALL:
