@@ -22,6 +22,7 @@
 // /
 // //////////////////////////////////////////////////////////////////////////////
 
+let fs = require('fs');
 var db = require('@arangodb').db;
 var jsunity = require('jsunity');
 let IM = global.instanceManager;
@@ -30,7 +31,7 @@ function runSetupRoutine () {
   'use strict';
   db._createDatabase('UnitTestsRecovery');
   db._useDatabase('UnitTestsRecovery');
-  require("fs").remove(db._versionFilename());
+  fs.remove(fs.join(IM.arangods[0].dataDir, `VERSION-${db._id()}`));
   IM.debugTerminate('crashing server');
 }
 

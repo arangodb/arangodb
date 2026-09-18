@@ -70,7 +70,7 @@ function recoverySuite () {
     testIResearchRecoverWithTickInPast: function () {
       let storedTick = db._collection(cn).document("lastLogTick").tick;
 
-      let recoverTick = global.WAL_RECOVERY_START_SEQUENCE();
+      let recoverTick = IM.arangods[0].recoveryStartSequence();
       assertTrue(replication.compareTicks(recoverTick, storedTick) <= 0, { recoverTick, storedTick });
 
       let v = db._view(vn);

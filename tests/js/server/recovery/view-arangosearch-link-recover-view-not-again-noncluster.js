@@ -78,7 +78,7 @@ function recoverySuite () {
       let storedTick1 = db._collection(cn).document("lastLogTick1").tick;
       let storedTick2 = db._collection(cn).document("lastLogTick2").tick;
       let storedTick3 = db._collection(cn).document("lastLogTick3").tick;
-      let recoverTick = global.WAL_RECOVERY_START_SEQUENCE();
+      let recoverTick = IM.arangods[0].recoveryStartSequence();
 
       assertTrue(replication.compareTicks(storedTick1, storedTick2) <= 0, { storedTick1, storedTick2, storedTick3, recoverTick });
       assertTrue(replication.compareTicks(storedTick2, storedTick3) <= 0, { storedTick1, storedTick2, storedTick3, recoverTick });

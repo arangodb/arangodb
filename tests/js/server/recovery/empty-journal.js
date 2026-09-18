@@ -33,7 +33,7 @@ function runSetupRoutine () {
   'use strict';
   let c = db._create('UnitTestsRecovery');
   let walfiles = () => {
-    return db._currentWalFiles().map(function(f) {
+    return IM.arangods[0].getCurrentWalFiles().map(function(f) {
       // strip off leading `/` or `/archive/` if it exists
       let p = f.split('/');
       return p[p.length - 1];
@@ -47,30 +47,37 @@ function runSetupRoutine () {
   }
 
   let initial = walfiles();
-  
-  while (true) {
-    c.insert(docs);
-    let now = walfiles();
-    if (now.length > initial.length) {
-      // filter out the original files
-      let remain = now.filter((f) => {
-        return initial.indexOf(f) === -1;
-      });
 
-      if (remain.length > 0) {
-        // ok, we found a WAL file to destroy!
-        let fn = fs.join(IM.dataDir,
-                         'engine-rocksdb',
-                         'journals',
-                         remain[0]);
-        // remove file and replace it with an empty one!
-        require("console").warn("intentionally truncating log file " + fn);
-        fs.remove(fn);
-        fs.writeFileSync(fn, "");
-        
-        // crash
-        IM.debugTerminate('crashing server');
+  try {
+    while (true) {
+      c.insert(docs);
+      let now = walfiles();
+      if (now.length > initial.length) {
+        // filter out the original files
+        let remain = now.filter((f) => {
+          return initial.indexOf(f) === -1;
+        });
+
+        if (remain.length > 0) {
+          // ok, we found a WAL file to destroy!
+          let fn = fs.join(IM.arangods[0].dataDir,
+                           'engine-rocksdb',
+                           'journals',
+                           remain[0]);
+          // remove file and replace it with an empty one!
+          require("console").warn("intentionally truncating log file " + fn);
+          fs.remove(fn);
+          fs.writeFileSync(fn, "");
+          // crash
+          IM.debugTerminate('crashing server');
+        }
       }
+    }
+    fail();
+  } catch (ex) {
+    if (ex.errorNum !== internal.errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) {
+      print(ex);
+      throw ex;
     }
   }
 }

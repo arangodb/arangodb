@@ -116,7 +116,7 @@ const recoverySuite = function () {
     },
 
     testSelectivityEstimates: () => {
-      internal.waitForEstimatorSync(); // make sure estimates are consistent
+      waitForEstimatorSync(); // make sure estimates are consistent
       let indexes = c.indexes(true);
       for (let i of indexes) {
         switch (i.type) {
