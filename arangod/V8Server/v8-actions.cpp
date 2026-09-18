@@ -1093,8 +1093,8 @@ static void JS_DefineAction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   if (!v8g->server().hasFeature<ActionFeature>()) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL(
-        "actions are not available on this instance");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                   "actions are not supported on this server");
   }
 
   // create an action with the given options
