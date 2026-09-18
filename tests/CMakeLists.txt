@@ -104,6 +104,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/Match/PatternNormalizerTest.cpp
   Aql/AttributeNamePathTest.cpp  
   Aql/BlockCollector.cpp
+  Aql/CachingJoinStatisticsTest.cpp
   Aql/ConditionRemoveForIndexTest.cpp
   Aql/ConditionRemoveForTraversalTest.cpp
   Aql/DependencyProxyMock.cpp
