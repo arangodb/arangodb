@@ -795,10 +795,12 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
             });
       }
 
-      // execute a deferred intermediate commit, if required.
-      intermediateCommit =
-          this->_methods.state()->performIntermediateCommitIfRequired(
-              this->_collection.id());
+      // we are deferring the intermediate commit
+      if (!this->_options.deferIntermediateCommit) {
+        intermediateCommit =
+            this->_methods.state()->performIntermediateCommitIfRequired(
+                this->_collection.id());
+      }
     }
 
     if (this->_options.silent && errorCounter.empty()) {
@@ -3468,6 +3470,7 @@ Future<Result> Methods::replicateOperations(
     if (replicationRes.fail()) {
       co_return replicationRes.result();
     }
+    // TODO for a replication v2 BTS-2456: deferIntermediateCommit is not honored here yet.
     co_return co_await performIntermediateCommitIfRequired(collection->id());
   }
 
@@ -3764,13 +3767,15 @@ Future<Result> Methods::replicateOperations(
 
   if (didRefuse) {  // case (1), caller may abort this transaction
     co_return Result{TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED};
-  } else {
-    // execute a deferred intermediate commit, if required.
-    // note: this runs with the replayed ExecContext of the transaction
-    // initiator (see above).
-    co_return co_await state->performIntermediateCommitIfRequired(
-        collection->id());
   }
+  if (options.deferIntermediateCommit) {
+    // we resumed on a network thread and hold no query lock here, so the
+    // caller performs the intermediate commit once it runs again.
+    co_return Result{};
+  }
+
+  co_return co_await state->performIntermediateCommitIfRequired(
+      collection->id());
 }
 
 Future<Result> Methods::commitInternal(MethodsApi api) noexcept try {

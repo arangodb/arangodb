@@ -151,6 +151,7 @@ ModificationExecutor<FetcherType, ModifierType>::produceOrSkip(
     TRI_ASSERT(_modifier->hasResultOrException());
 
     _modifier->checkException();
+    performDeferredIntermediateCommit();
     if (_infos._doCount) {
       stats.incrWritesExecuted(_modifier->nrOfWritesExecuted());
       stats.incrWritesIgnored(_modifier->nrOfWritesIgnored());
@@ -163,6 +164,22 @@ ModificationExecutor<FetcherType, ModifierType>::produceOrSkip(
   TRI_ASSERT(_modifier->hasNeitherResultNorOperationPending());
 
   return {translateReturnType(input.upstreamState()), stats, upstreamCall};
+}
+
+template<typename FetcherType, typename ModifierType>
+void ModificationExecutor<FetcherType,
+                          ModifierType>::performDeferredIntermediateCommit() {
+  if (!_infos._options.deferIntermediateCommit) {
+    return;
+  }
+  auto fut =
+      _trx.performIntermediateCommitIfRequired(_infos._aqlCollection->id());
+  // replication v1 commits synchronously here. Replication v2 still commits
+  // in its continuation and reports nothing to do.
+  TRI_ASSERT(fut.isReady());
+  if (auto res = std::move(fut).waitAndGet(); res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
 }
 
 template<typename FetcherType, typename ModifierType>

@@ -429,11 +429,11 @@ class Methods {
       velocypack::Builder const& replicationData,
       TRI_voc_document_operation_e operation, std::string_view userName);
 
- private:
   // perform a (deferred) intermediate commit if required
   futures::Future<Result> performIntermediateCommitIfRequired(
       DataSourceId collectionId);
 
+ private:
   // Check that the current user may access the given collection in the
   // requested mode. This closes the gap for operations that run within an
   // already existing transaction and target a collection that was not declared
