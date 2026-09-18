@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertTrue, assertMatch */
+/* global runSetup, assertEqual, assertTrue, assertMatch */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -25,14 +25,15 @@
 
 var internal = require('internal');
 var jsunity = require('jsunity');
+let IM = global.instanceManager;
 
-function runSetup () {
+function runSetupRoutine () {
   'use strict';
   // make log level more verbose, as by default we hide most messages from
   // the test output
-  require("internal").logLevel("crash=info");
+  IM.arangods[0].setLogLevel({crash: "info"});
   // calls std::abort() in the server
-  internal.debugTerminate('CRASH-HANDLER-TEST-ABORT');
+  IM.debugTerminate('CRASH-HANDLER-TEST-ABORT', 9);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -90,13 +91,11 @@ function recoverySuite () {
 // / @brief executes the test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-function main (argv) {
-  'use strict';
-  if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
+'use strict';
+if (runSetup === true ) {
+  runSetupRoutine();
+  return 0;
+} else {
+  jsunity.run(recoverySuite);
+  return jsunity.done();
 }

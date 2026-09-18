@@ -47,7 +47,7 @@ try {
   // it does not matter if the file does not exist
 }
 
-function runSetup (config) {
+function runSetupRoutine (config) {
   // create missing collections
   for (let i = 0; i < numberOfCollections; ++i) {
     if (db._collection(colName + i) === null) {
@@ -235,7 +235,7 @@ function main (argv, config) {
   maxRunTime = config.maxRunTime || maxRunTime;
 
   if (argv[1] === 'setup') {
-    runSetup(config);
+    runSetupRoutine(config);
     return 0;
   } else {
     jsunity.run(recoverySuite);
