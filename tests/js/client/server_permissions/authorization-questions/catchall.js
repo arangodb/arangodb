@@ -101,7 +101,8 @@ if (getOptions === true) {
 
 const jsunity = require('jsunity');
 const request = require('@arangodb/request');
-const { endpointToURL } = require('@arangodb/test-helper-common');
+let IM = global.instanceManager;
+
 const {
   beginObserve,
   endObserve,
@@ -145,10 +146,7 @@ function catchallAuthzSuite () {
   // //////////////////////////////////////////////////////////////////////////
 
   const anonymousGet = (path) =>
-    request.get({
-      url: endpointToURL(arango.getEndpoint()) + path,
-      followRedirect: false,
-    });
+        request.get({ url: `${IM.url}/${path}`, followRedirect: false});
 
   // //////////////////////////////////////////////////////////////////////////
   // / @brief the Foxx service registry reads, which are not per-request
@@ -300,6 +298,14 @@ function catchallAuthzSuite () {
     testAardvarkImgPrefix: function () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/aardvark/img/arango-icon.svg`);
+      assertPermissions([], observe());
+    },
+
+    // prefix entry for the REST API documentation; its swagger.json handler
+    // only serves files shipped with the server, and asks nothing
+    testAardvarkApiPrefix: function () {
+      beginObserve();
+      arango.GET_RAW(`/_db/_system/_admin/aardvark/api/swagger.json`);
       assertPermissions([], observe());
     },
 
