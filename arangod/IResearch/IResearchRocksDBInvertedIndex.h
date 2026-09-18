@@ -22,8 +22,9 @@
 
 #pragma once
 
-#include "Basics/Exceptions.h"
 #include "IResearch/IResearchInvertedIndex.h"
+#include "Indexes/IndexDefinition.h"
+#include "Indexes/IndexFactory.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 
 namespace arangodb {
@@ -32,8 +33,7 @@ struct ResourceMonitor;
 
 namespace iresearch {
 
-// equal()/normalize() need no storage engine, unlike instantiate()
-class IResearchInvertedIndexDefinition : public IndexTypeFactory {
+class IResearchInvertedIndexDefinition : public IndexDefinition {
  public:
   explicit IResearchInvertedIndexDefinition(
       application_features::ApplicationServer& server);
@@ -48,15 +48,13 @@ class IResearchInvertedIndexDefinition : public IndexTypeFactory {
 
   bool attributeOrderMatters() const final { return false; }
 
-  // overridden by the RocksDB-specific subclass; never called on this one
-  std::shared_ptr<Index> instantiate(LogicalCollection&, velocypack::Slice,
-                                     IndexId, bool) const override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
+ private:
+  // needed by IResearchInvertedIndexMeta
+  application_features::ApplicationServer& _server;
 };
 
 class IResearchRocksDBInvertedIndexFactory
-    : public IResearchInvertedIndexDefinition {
+    : public DelegatingIndexFactory<IResearchInvertedIndexDefinition> {
  public:
   explicit IResearchRocksDBInvertedIndexFactory(
       application_features::ApplicationServer& server);

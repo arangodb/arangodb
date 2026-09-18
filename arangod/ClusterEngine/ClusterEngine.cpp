@@ -35,7 +35,7 @@
 #ifdef USE_V8
 #include "ClusterEngine/ClusterV8Functions.h"
 #endif
-#include "Indexes/DefaultIndexFactories.h"
+#include "Indexes/IndexDefinitions.h"
 #include "IResearch/IResearchRocksDBInvertedIndex.h"
 #include "Logger/Logger.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
@@ -54,29 +54,28 @@ using namespace arangodb::application_features;
 
 namespace {
 
-class ClusterIndexDefinitions final : public IndexFactory {
+class ClusterIndexDefinitions final : public IndexDefinitionRegistry {
  public:
   ClusterIndexDefinitions(application_features::ApplicationServer& server,
                           IVectorIndexProvider const& vectorIndexProvider)
-      : IndexFactory(server) {
-    static const EdgeIndexDefinition edgeIndexDefinition(server);
-    static const FulltextIndexDefinition fulltextIndexDefinition(server);
-    static const GeoIndexDefinition geoIndexDefinition(server);
-    static const Geo1IndexDefinition geo1IndexDefinition(server);
-    static const Geo2IndexDefinition geo2IndexDefinition(server);
-    static const SecondaryIndexDefinition hashIndexDefinition(server,
-                                                              IndexType::Hash);
+      : IndexDefinitionRegistry(server) {
+    static const EdgeIndexDefinition edgeIndexDefinition;
+    static const FulltextIndexDefinition fulltextIndexDefinition;
+    static const GeoIndexDefinition geoIndexDefinition;
+    static const Geo1IndexDefinition geo1IndexDefinition;
+    static const Geo2IndexDefinition geo2IndexDefinition;
+    static const SecondaryIndexDefinition hashIndexDefinition(IndexType::Hash);
     static const SecondaryIndexDefinition persistentIndexDefinition(
-        server, IndexType::Persistent);
+        IndexType::Persistent);
     static const SecondaryIndexDefinition skiplistIndexDefinition(
-        server, IndexType::Skiplist);
-    static const TtlIndexDefinition ttlIndexDefinition(server, IndexType::TTL);
-    static const PrimaryIndexDefinition primaryIndexDefinition(server);
-    static const MdiIndexDefinition zkdIndexDefinition(server, IndexType::Zkd);
-    static const MdiIndexDefinition mdiIndexDefinition(server, IndexType::MDI);
-    static const MdiPrefixedIndexDefinition mdiPrefixedIndexDefinition(server);
+        IndexType::Skiplist);
+    static const TtlIndexDefinition ttlIndexDefinition(IndexType::TTL);
+    static const PrimaryIndexDefinition primaryIndexDefinition;
+    static const MdiIndexDefinition zkdIndexDefinition(IndexType::Zkd);
+    static const MdiIndexDefinition mdiIndexDefinition(IndexType::MDI);
+    static const MdiPrefixedIndexDefinition mdiPrefixedIndexDefinition;
     static const VectorIndexDefinition vectorIndexDefinition(
-        server, IndexType::Vector, vectorIndexProvider);
+        IndexType::Vector, vectorIndexProvider);
     static const iresearch::IResearchInvertedIndexDefinition
         invertedIndexDefinition(server);
 
@@ -109,16 +108,6 @@ class ClusterIndexDefinitions final : public IndexFactory {
       };
     }
     return {{"zkd", "mdi"}};
-  }
-
-  // ClusterIndexFactory implements these itself, never delegated here
-  void fillSystemIndexes(LogicalCollection&,
-                         std::vector<std::shared_ptr<Index>>&) const override {
-    TRI_ASSERT(false);
-  }
-  void prepareIndexes(LogicalCollection&, velocypack::Slice,
-                      std::vector<std::shared_ptr<Index>>&) const override {
-    TRI_ASSERT(false);
   }
 };
 
