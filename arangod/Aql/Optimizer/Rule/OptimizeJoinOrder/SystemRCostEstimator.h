@@ -90,6 +90,11 @@ class SystemRCostEstimator final : public JoinCostEstimator {
   // is constructed once per plan, so a freed node's address can be reused by
   // an unrelated later graph's node. Variables are owned by the Ast and stay
   // alive and distinct for the whole plan, so they are a safe cache key.
+  //
+  // Node-based deliberately. restrictedFor() hands out a reference into this
+  // map and extend() holds one across further calls that insert into it, so a
+  // flat map -- which moves its elements on rehash -- would leave that
+  // reference dangling. NodeHashMap, not FlatHashMap, if this is modernised.
   mutable std::unordered_map<Variable const*, Restricted> _restricted;
 };
 
