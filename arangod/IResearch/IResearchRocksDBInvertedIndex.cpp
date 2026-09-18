@@ -36,13 +36,17 @@
 namespace arangodb {
 namespace iresearch {
 
-IResearchRocksDBInvertedIndexFactory::IResearchRocksDBInvertedIndexFactory(
+IResearchInvertedIndexDefinition::IResearchInvertedIndexDefinition(
     application_features::ApplicationServer& server)
     : IndexTypeFactory(server) {}
 
-bool IResearchRocksDBInvertedIndexFactory::equal(
-    velocypack::Slice lhs, velocypack::Slice rhs,
-    std::string const& dbname) const {
+IResearchRocksDBInvertedIndexFactory::IResearchRocksDBInvertedIndexFactory(
+    application_features::ApplicationServer& server)
+    : IResearchInvertedIndexDefinition(server) {}
+
+bool IResearchInvertedIndexDefinition::equal(velocypack::Slice lhs,
+                                             velocypack::Slice rhs,
+                                             std::string const& dbname) const {
   IResearchInvertedIndexMeta lhsFieldsMeta;
   std::string errField;
   if (!lhsFieldsMeta.init(_server, lhs, true, errField, dbname)) {
@@ -126,7 +130,7 @@ std::shared_ptr<Index> IResearchRocksDBInvertedIndexFactory::instantiate(
   return index;
 }
 
-Result IResearchRocksDBInvertedIndexFactory::normalize(
+Result IResearchInvertedIndexDefinition::normalize(
     velocypack::Builder& normalized, velocypack::Slice definition,
     bool isCreation, TRI_vocbase_t const& vocbase) const {
   TRI_ASSERT(normalized.isOpenObject());

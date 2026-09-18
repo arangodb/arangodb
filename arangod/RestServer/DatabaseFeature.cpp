@@ -35,7 +35,6 @@
 #include "Basics/application-exit.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cluster/ServerState.h"
-#include "ClusterEngine/ClusterEngine.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
@@ -52,7 +51,6 @@
 #include "RestServer/IOHeartbeatThread.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
-#include "RocksDBEngine/RocksDBEngine.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/OperationOrigin.h"
@@ -286,8 +284,8 @@ DatabaseFeature::~DatabaseFeature() = default;
 
 void DatabaseFeature::initCalculationVocbase() {
   calculationVocbase = std::make_unique<TRI_vocbase_t>(
-      createExpressionVocbaseInfo(server()), engine(), *this,
-      /*isInternal*/ true);
+      createExpressionVocbaseInfo(server()),
+      server().getFeature<StorageEngine>(), *this, /*isInternal*/ true);
 }
 
 void DatabaseFeature::start() {
@@ -475,24 +473,7 @@ void DatabaseFeature::unprepare() {
 }
 
 void DatabaseFeature::prepare() {
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  if (_engine == nullptr) {
-    // engine not injected by test code, inject it now
-#endif
-    if (ServerState::instance()->isCoordinator()) {
-      auto& ce = server().getFeature<ClusterEngine>();
-      auto& rocksdb = server().getFeature<RocksDBEngine>();
-      rocksdb.disable();
-      ce.setActualEngine(&rocksdb);
-      _engine = &ce;
-    } else {
-      auto& rocksdb = server().getFeature<RocksDBEngine>();
-      rocksdb.enable();
-      _engine = &rocksdb;
-    }
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  }
-#endif
+  _engine = &server().getFeature<StorageEngine>();
 
   // need this to make calculation analyzer available in database links
   initCalculationVocbase();
