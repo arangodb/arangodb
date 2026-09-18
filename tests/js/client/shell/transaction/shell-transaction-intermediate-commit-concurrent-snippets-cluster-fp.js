@@ -33,12 +33,8 @@ const dstName = 'UnitTestsIntermediateCommitDst';
 const numDocs = 12000;
 const numberOfShards = 4;
 
-// BTS-2456: the write snippet re-begins its RocksDB transaction after an
-// intermediate commit while the read snippet of the same query still uses the
-// released snapshot. Only point lookups (index + materialize) use that
-// snapshot; a plain collection scan reads from the stable iterator snapshot.
-// Co-located shards keep the delayed server's read snippet being pulled by the
-// other servers while its write snippet sleeps in the failure point.
+// BTS-2456: the test is designed to catch a tsan race with intermediate commits interleaving 
+// and needing to reaquire the lock.
 function transactionIntermediateCommitConcurrentSnippetsSuite() {
   'use strict';
 
