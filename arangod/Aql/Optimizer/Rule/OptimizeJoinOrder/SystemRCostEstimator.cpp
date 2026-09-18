@@ -24,6 +24,7 @@
 
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
+#include "Aql/Optimizer/Rule/OptimizeJoinOrder/CachingJoinStatistics.h"
 #include "Aql/Optimizer/Rule/OptimizeJoinOrder/IndexJoinStatistics.h"
 #include "Assertions/ProdAssert.h"
 
@@ -280,7 +281,8 @@ auto SystemRCostEstimator::extend(
 auto makeDefaultJoinCostEstimator(ExecutionPlan const& plan)
     -> std::unique_ptr<JoinCostEstimator> {
   return std::make_unique<SystemRCostEstimator>(
-      std::make_unique<IndexJoinStatistics>(plan));
+      std::make_unique<CachingJoinStatistics>(
+          std::make_unique<IndexJoinStatistics>(plan)));
 }
 
 }  // namespace arangodb::aql
