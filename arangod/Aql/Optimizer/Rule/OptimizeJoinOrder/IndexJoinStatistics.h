@@ -22,14 +22,14 @@
 
 #pragma once
 
+#include "Aql/ExecutionNodeId.h"
 #include "Aql/Optimizer/Rule/OptimizeJoinOrder/JoinGraph.h"
 #include "Aql/Optimizer/Rule/OptimizeJoinOrder/JoinStatistics.h"
 #include "Basics/AttributeNameParser.h"
+#include "Containers/FlatHashMap.h"
 #include "Indexes/IndexType.h"
 
 #include <span>
-#include <string>
-#include <unordered_map>
 #include <vector>
 
 namespace arangodb::aql {
@@ -78,10 +78,19 @@ class IndexJoinStatistics final : public JoinStatistics {
       -> bool override;
 
  private:
+  /// @brief the collection's indexes, lifted into IndexFacts once per node.
+  /// Uncached this ran on every distinctValues() and hasIndexCovering() call,
+  /// and it is the expensive part: Collection::indexes() refreshes the cluster
+  /// index estimates on a coordinator, and each index's fields() is a deep
+  /// copy. The returned span survives a rehash -- moving a vector transfers
+  /// its buffer rather than reallocating -- but nothing holds one across a
+  /// call that could insert anyway.
+  [[nodiscard]] auto candidatesFor(JoinGraph::Node const& node) const
+      -> std::span<IndexFacts const>;
+
   ExecutionPlan const& _plan;
-  mutable std::unordered_map<EnumerateCollectionNode const*, double> _counts;
-  mutable std::unordered_map<std::string, DistinctEstimate> _distinct;
-  mutable std::unordered_map<std::string, bool> _covering;
+  mutable containers::FlatHashMap<ExecutionNodeId, std::vector<IndexFacts>>
+      _candidates;
 };
 
 }  // namespace arangodb::aql
