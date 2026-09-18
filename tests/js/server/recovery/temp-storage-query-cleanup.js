@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertFalse, assertTrue */
+/* global runSetup, assertEqual, assertFalse, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -28,11 +28,11 @@ const internal = require('internal');
 const jsunity = require('jsunity');
 const fs = require('fs');
 const cn = "UnitTestCollection";
+let IM = global.instanceManager;
+const {waitForEstimatorSync } = require('@arangodb/test-helper');
 
-function runSetup() {
+function runSetupRoutine() {
   'use strict';
-  internal.debugClearFailAt();
-
   db._drop(cn);
   let c = db._create(cn);
 
@@ -46,7 +46,7 @@ function runSetup() {
   }
 
   db._query(`FOR doc IN ${cn} SORT doc.value1 ASC RETURN doc`, null, {spillOverThresholdNumRows: 5000, stream: true});
-  internal.debugTerminate('crashing server');
+  IM.debugTerminate('crashing server');
 }
 
 function recoverySuite() {
@@ -59,20 +59,18 @@ function recoverySuite() {
     // //////////////////////////////////////////////////////////////////////////////
 
     testTempDirCleanupAfterQuery: function() {
-      const tempDir = fs.join(internal.options()["temp.intermediate-results-path"], "temp");
+      const tempDir = fs.join(IM.arangods[0].args["temp.intermediate-results-path"], "temp");
       const tree = fs.listTree(tempDir);
       assertEqual(tree.length, 1);
     }
   };
 }
 
-function main(argv) {
-  'use strict';
-  if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
+'use strict';
+if (runSetup === true ) {
+  runSetupRoutine();
+  return 0;
+} else {
+  jsunity.run(recoverySuite);
+  return jsunity.done();
 }

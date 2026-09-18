@@ -73,6 +73,8 @@ RestStatus RestAdminServerHandler::execute() {
     handleApiCalls();
   } else if (suffixes.size() == 1 && suffixes[0] == "aql-queries") {
     handleAqlRecordedQueries();
+  } else if (suffixes.size() == 1 && suffixes[0] == "wal-files") {
+    handleGetWalFileList();
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
   }
@@ -402,6 +404,31 @@ void RestAdminServerHandler::handleAqlRecordedQueries() {
           [&builder](AqlQueryRecord const& record) {
             arangodb::velocypack::serialize(builder, record);
           });
+    }
+  }
+  generateOk(rest::ResponseCode::OK, builder.slice());
+}
+
+void RestAdminServerHandler::handleGetWalFileList() {
+  if (_request->requestType() != rest::RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return;
+  }
+  if (!ServerState::instance()->isSingleServer()) {
+    generateError(
+        Result(TRI_ERROR_NOT_IMPLEMENTED,
+               "API only available on single servers"));
+    return;
+  }
+
+  std::vector<std::string> names = _engine.currentWalFiles();
+  std::sort(names.begin(), names.end());
+  VPackBuilder builder;
+  {
+    VPackArrayBuilder guard2(&builder);
+    for (auto walFileName: names) {
+      builder.add(VPackValue(walFileName));
     }
   }
   generateOk(rest::ResponseCode::OK, builder.slice());

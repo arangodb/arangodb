@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertFalse, assertTrue, fail */
+/* global runSetup, assertEqual, assertFalse, assertTrue, fail */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -27,10 +27,10 @@ const db = require('@arangodb').db;
 const internal = require('internal');
 const jsunity = require('jsunity');
 const colName = "UnitTestsRecovery";
+let IM = global.instanceManager;
+const {waitForEstimatorSync } = require('@arangodb/test-helper');
 
-const runSetup = function () {
-  internal.debugClearFailAt();
-
+const runSetupRoutine = function () {
   db._drop(colName);
   const c = db._create(colName);
   c.ensureIndex({ type: "hash", fields: ["value"] });
@@ -45,12 +45,18 @@ const runSetup = function () {
   c.insert(docs);
   c.insert(docs);
 
-  internal.debugSetFailAt("SegfaultAfterIntermediateCommit");
+  IM.debugSetFailAt("SegfaultAfterIntermediateCommit");
 
-  // This will crash the server
-  c.truncate();
-
-  fail();
+  try {
+    // This will crash the server
+    c.truncate();
+    fail();
+  } catch (ex) {
+    if (ex.errorNum !== internal.errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) {
+      print(ex);
+      throw ex;
+    }
+  }
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -110,7 +116,7 @@ const recoverySuite = function () {
     },
 
     testSelectivityEstimates: () => {
-      internal.waitForEstimatorSync(); // make sure estimates are consistent
+      waitForEstimatorSync(); // make sure estimates are consistent
       let indexes = c.indexes(true);
       for (let i of indexes) {
         switch (i.type) {
@@ -136,14 +142,11 @@ const recoverySuite = function () {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-function main (argv) {
-  'use strict';
-
-  if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
+'use strict';
+if (runSetup === true ) {
+  runSetupRoutine();
+  return 0;
+} else {
+  jsunity.run(recoverySuite);
+  return jsunity.done();
 }

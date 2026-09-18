@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused: false */
-/* global assertEqual, assertFalse, assertNotNull, fail */
+/* global runSetup, assertEqual, assertFalse, assertNotNull, fail */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -25,12 +25,14 @@
 var db = require('@arangodb').db;
 var internal = require('internal');
 var jsunity = require('jsunity');
+let IM = global.instanceManager;
+const {waitForEstimatorSync } = require('@arangodb/test-helper');
 
-function runSetup () {
+function runSetupRoutine () {
   'use strict';
   
   // turn off syncing of counters etc.  
-  internal.debugSetFailAt("RocksDBSettingsManagerSync"); 
+  IM.debugSetFailAt("RocksDBSettingsManagerSync"); 
 
   db._drop('UnitTestsRecovery1');
   db._drop('UnitTestsRecovery2');
@@ -55,7 +57,7 @@ function runSetup () {
   c.truncate();
 
   c2.insert({}, { waitForSync: true });
-  internal.debugTerminate('crashing server');
+  IM.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -83,7 +85,7 @@ function recoverySuite () {
         assertEqual([], c.edges("test/" + i));
       }
 
-      internal.waitForEstimatorSync(); // make sure estimates are consistent
+      waitForEstimatorSync(); // make sure estimates are consistent
       let indexes = c.indexes(true);
       assertEqual(indexes.length, 4);
       for (let i of indexes) {
@@ -106,13 +108,11 @@ function recoverySuite () {
 // / @brief executes the test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-function main (argv) {
-  'use strict';
-  if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
+'use strict';
+if (runSetup === true ) {
+  runSetupRoutine();
+  return 0;
+} else {
+  jsunity.run(recoverySuite);
+  return jsunity.done();
 }

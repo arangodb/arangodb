@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertTrue, assertFalse */
+/* global runSetup, assertEqual, assertTrue, assertFalse */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -23,17 +23,16 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const db = require('@arangodb').db;
-const internal = require('internal');
 const jsunity = require('jsunity');
 const replication = require('@arangodb/replication');
+let IM = global.instanceManager;
+const {waitForEstimatorSync } = require('@arangodb/test-helper');
 
 const cn = 'UnitTestsRecovery';
 const vn = 'UnitTestsView';
 
-function runSetup () {
+function runSetupRoutine () {
   'use strict';
-  internal.debugClearFailAt();
-
   let c = db._create(cn);
   let docs = [];
   for (let i = 0; i < 1000; ++i) {
@@ -43,20 +42,20 @@ function runSetup () {
 
   let v = db._createView(vn, 'arangosearch', {});
   
-  internal.debugSetFailAt("StatisticsWorker::bypass");
+  IM.debugSetFailAt("StatisticsWorker::bypass");
 
-  internal.waitForEstimatorSync();
+  waitForEstimatorSync();
   let lastTickBeforeLink = replication.logger.state().state.lastLogTick;
   
   // prevent background thread from running and noting view's progress
-  internal.debugSetFailAt("RocksDBBackgroundThread::run");
+  IM.debugSetFailAt("RocksDBBackgroundThread::run");
 
   let meta = { links: { [cn]: { includeAllFields: true } } };
   v.properties(meta);
 
   c.insert({ _key: "lastLogTick", tick: lastTickBeforeLink }, true);
 
-  internal.debugTerminate('crashing server');
+  IM.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -71,7 +70,7 @@ function recoverySuite () {
     testIResearchRecoverWithTickInPast: function () {
       let storedTick = db._collection(cn).document("lastLogTick").tick;
 
-      let recoverTick = global.WAL_RECOVERY_START_SEQUENCE();
+      let recoverTick = IM.arangods[0].recoveryStartSequence();
       assertTrue(replication.compareTicks(recoverTick, storedTick) <= 0, { recoverTick, storedTick });
 
       let v = db._view(vn);
@@ -88,13 +87,11 @@ function recoverySuite () {
   };
 }
 
-function main (argv) {
-  'use strict';
-  if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
+'use strict';
+if (runSetup === true ) {
+  runSetupRoutine();
+  return 0;
+} else {
+  jsunity.run(recoverySuite);
+  return jsunity.done();
 }

@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused: false */
-/* global assertNotNull */
+/* global runSetup, assertNotNull */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -26,15 +26,14 @@ const db = require('@arangodb').db;
 const internal = require('internal');
 const fs = require('fs');
 const jsunity = require('jsunity');
-let instance = JSON.parse(internal.env.INSTANCEINFO);
+let IM = global.instanceManager;
+const {waitForEstimatorSync } = require('@arangodb/test-helper');
 
-function runSetup () {
+function runSetupRoutine () {
   'use strict';
-  internal.debugClearFailAt();
-
   let c = db._create('UnitTestsRecovery');
   let walfiles = () => {
-    return db._currentWalFiles().map(function(f) {
+    return IM.arangods[0].getCurrentWalFiles().map(function(f) {
       // strip off leading `/` or `/archive/` if it exists
       let p = f.split('/');
       return p[p.length - 1];
@@ -48,30 +47,37 @@ function runSetup () {
   }
 
   let initial = walfiles();
-  
-  while (true) {
-    c.insert(docs);
-    let now = walfiles();
-    if (now.length > initial.length) {
-      // filter out the original files
-      let remain = now.filter((f) => {
-        return initial.indexOf(f) === -1;
-      });
 
-      if (remain.length > 0) {
-        // ok, we found a WAL file to destroy!
-        let fn = fs.join(instance.dataDir,
-                         'engine-rocksdb',
-                         'journals',
-                         remain[0]);
-        // remove file and replace it with an empty one!
-        require("console").warn("intentionally truncating log file " + fn);
-        fs.remove(fn);
-        fs.writeFileSync(fn, "");
-        
-        // crash
-        internal.debugTerminate('crashing server');
+  try {
+    while (true) {
+      c.insert(docs);
+      let now = walfiles();
+      if (now.length > initial.length) {
+        // filter out the original files
+        let remain = now.filter((f) => {
+          return initial.indexOf(f) === -1;
+        });
+
+        if (remain.length > 0) {
+          // ok, we found a WAL file to destroy!
+          let fn = fs.join(IM.arangods[0].dataDir,
+                           'engine-rocksdb',
+                           'journals',
+                           remain[0]);
+          // remove file and replace it with an empty one!
+          require("console").warn("intentionally truncating log file " + fn);
+          fs.remove(fn);
+          fs.writeFileSync(fn, "");
+          // crash
+          IM.debugTerminate('crashing server');
+        }
       }
+    }
+    fail();
+  } catch (ex) {
+    if (ex.errorNum !== internal.errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) {
+      print(ex);
+      throw ex;
     }
   }
 }
@@ -97,13 +103,11 @@ function recoverySuite () {
   };
 }
 
-function main (argv) {
-  'use strict';
-  if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
+'use strict';
+if (runSetup === true ) {
+  runSetupRoutine();
+  return 0;
+} else {
+  jsunity.run(recoverySuite);
+  return jsunity.done();
 }
