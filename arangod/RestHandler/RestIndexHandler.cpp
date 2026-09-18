@@ -233,12 +233,12 @@ ResultT<std::shared_ptr<LogicalCollection>> RestIndexHandler::collection(
   if (_request->requestedApiVersion() > 0 &&
       not ServerState::instance()->isDBServer()) {
     if (auth::isNameAndNoId(cName).fail()) {
-      return Result{TRI_ERROR_FORBIDDEN};
+      return Result{TRI_ERROR_BAD_PARAMETER};
     }
     if (auto r = ExecContext::current().canUseCollection(_vocbase.name(), cName,
                                                          AccessLevel::Read);
         r.fail()) {
-      return Result{TRI_ERROR_FORBIDDEN};
+      return r;
     }
   }
 
