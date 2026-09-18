@@ -81,6 +81,7 @@ std::ostream& arangodb::operator<<(std::ostream& os,
      << ", checkUniqueConstraintsInPreflight: " << ops.checkUniqueConstraintsInPreflight
      << ", truncateCompact: " << ops.truncateCompact
      << ", documentCallFromAql: " << ops.documentCallFromAql
+     << ", deferIntermediateCommit: " << ops.deferIntermediateCommit
      << ", canDisableIndexing: " << ops.canDisableIndexing
      << ", refillIndexCaches: " << ::refillIndexCachesString(ops.refillIndexCaches)
      << ", allowDirtyReads: " << ops.allowDirtyReads

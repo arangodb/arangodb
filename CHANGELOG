@@ -11,6 +11,10 @@
   to the server is rejected. Previously the reason was dropped and only the
   generic message was shown.
 
+* BTS-2456: Fixed a data race on DB-Servers where the intermediate commit of a
+  replicated AQL modification ran on a network thread while other snippets of
+  the same query were executing. The commit now runs under the query lock.
+
 * BTS-2450: Fix UI login for users without access to the _system database.
   This involves allowing the API `GET /_api/database/user` in this case.
 
