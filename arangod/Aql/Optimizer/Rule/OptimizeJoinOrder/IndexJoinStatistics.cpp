@@ -96,33 +96,6 @@ auto fieldsAreSubsetOf(IndexFacts const& facts,
   return true;
 }
 
-auto cacheKey(JoinGraph::Node const& node,
-              std::span<AttributePath const> attributes) -> std::string {
-  std::vector<std::string> parts;
-  parts.reserve(attributes.size());
-  for (auto const& path : attributes) {
-    std::string joined;
-    for (auto const& component : path) {
-      if (!joined.empty()) {
-        // Not '.': it can appear inside an attribute name, so ["a","b"] and
-        // ["a.b"] would collide in the cache. '\x1e' joins path components,
-        // '\x1f' joins whole paths below.
-        joined += '\x1e';
-      }
-      joined += component;
-    }
-    parts.emplace_back(std::move(joined));
-  }
-  std::sort(parts.begin(), parts.end());
-
-  std::string key = std::to_string(node.executionNode->id().id());
-  for (auto const& part : parts) {
-    key += '\x1f';
-    key += part;
-  }
-  return key;
-}
-
 /// @brief lift the properties this model needs out of a real Index.
 auto toIndexFacts(Index const& index) -> IndexFacts {
   IndexFacts facts;
@@ -137,16 +110,6 @@ auto toIndexFacts(Index const& index) -> IndexFacts {
   facts.selectivityEstimate =
       facts.hasSelectivityEstimate ? index.selectivityEstimate() : 0.0;
   return facts;
-}
-
-auto candidatesFor(JoinGraph::Node const& node) -> std::vector<IndexFacts> {
-  std::vector<IndexFacts> candidates;
-  for (auto const& index : node.executionNode->collection()->indexes()) {
-    if (index != nullptr) {
-      candidates.push_back(toIndexFacts(*index));
-    }
-  }
-  return candidates;
 }
 
 }  // namespace
@@ -220,19 +183,30 @@ auto coveringFromIndexFacts(std::span<IndexFacts const> candidates,
 IndexJoinStatistics::IndexJoinStatistics(ExecutionPlan const& plan)
     : _plan(plan) {}
 
-auto IndexJoinStatistics::documentCount(JoinGraph::Node const& node) const
-    -> double {
-  if (auto it = _counts.find(node.executionNode); it != _counts.end()) {
+auto IndexJoinStatistics::candidatesFor(JoinGraph::Node const& node) const
+    -> std::span<IndexFacts const> {
+  auto const id = node.executionNode->id();
+  if (auto it = _candidates.find(id); it != _candidates.end()) {
     return it->second;
   }
 
+  std::vector<IndexFacts> candidates;
+  for (auto const& index : node.executionNode->collection()->indexes()) {
+    if (index != nullptr) {
+      candidates.push_back(toIndexFacts(*index));
+    }
+  }
+  return _candidates.emplace(id, std::move(candidates)).first->second;
+}
+
+auto IndexJoinStatistics::documentCount(JoinGraph::Node const& node) const
+    -> double {
   double count = 0.0;
   auto& trx = _plan.getAst()->query().trxForOptimization();
   if (trx.status() == transaction::Status::RUNNING) {
     count = static_cast<double>(node.executionNode->collection()->count(
         &trx, transaction::CountType::kTryCache));
   }
-  _counts.emplace(node.executionNode, count);
   return count;
 }
 
@@ -245,11 +219,6 @@ auto IndexJoinStatistics::distinctValues(
     return {1.0, false};  // Empty set.
   }
 
-  auto const key = cacheKey(node, attributes);
-  if (auto it = _distinct.find(key); it != _distinct.end()) {
-    return it->second;
-  }
-
   DistinctEstimate estimate{1.0, true};
   auto& trx = _plan.getAst()->query().trxForOptimization();
   if (trx.status() == transaction::Status::RUNNING) {
@@ -257,7 +226,6 @@ auto IndexJoinStatistics::distinctValues(
     estimate = distinctFromIndexFacts(candidatesFor(node), count, attributes);
   }
 
-  _distinct.emplace(key, estimate);
   return estimate;
 }
 
@@ -268,14 +236,8 @@ auto IndexJoinStatistics::hasIndexCovering(
     return false;
   }
 
-  auto const key = cacheKey(node, attributes);
-  if (auto it = _covering.find(key); it != _covering.end()) {
-    return it->second;
-  }
-
   bool const covering = coveringFromIndexFacts(candidatesFor(node), attributes);
 
-  _covering.emplace(key, covering);
   return covering;
 }
 
