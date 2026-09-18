@@ -30,23 +30,55 @@ const isCluster = internal.isCluster();
 let db = arangodb.db;
 const jsunity = require("jsunity");
 
+function getArangoSearchStatsRaw (dbName) {
+  if (dbName == null || dbName === "") {
+    dbName = "_system";
+  }
+  let api = `/_arango/experimental/_db/${dbName}/_admin/arangosearch/stats`;
+  return arango.GET_RAW(api);
+}
+
+function getArangoSearchStats (dbName) {
+  let doc = getArangoSearchStatsRaw(dbName);
+  assertEqual(doc.code, 200);
+  assertFalse(doc.error);
+  return doc.parsedBody;
+}
+
+function verifyIndexStats (result, collection, indexType, indexName) {
+  let matches = result.indexes.filter(function (idx) {
+    if (idx.collection !== collection) {
+      return false;
+    }
+    if (indexType && idx.indexType !== indexType) {
+      return false;
+    }
+    if (indexName && idx.indexName !== indexName) {
+      return false;
+    }
+    return true;
+  });
+  assertEqual(matches.length, 1);
+  return matches[0];
+}
+
+function assertIndexIdentity (idx, collection, indexType, indexName) {
+  assertEqual(idx.collection, collection);
+  assertEqual(idx.indexType, indexType);
+  assertTrue(idx.indexName.length > 0);
+  if (indexName) {
+    assertEqual(idx.indexName, indexName);
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////;
-// error handling;
+// IResearch REST stats;
 ////////////////////////////////////////////////////////////////////////////////;
 function creationSuite () {
   let cn = "test";
   let vn = "vtest";
   let systemDb = '_system';
   let testDb = 'test';
-
-  function getArangoSearchStats (dbName) {
-
-    if (dbName == null || dbName === "") {
-      dbName = systemDb;
-    }
-    let api = `/_arango/experimental/_db/${dbName}/_admin/arangosearch/stats`;
-    return arango.GET(api);
-  }
 
   return {
     setUpAll: function() {
@@ -97,6 +129,35 @@ function creationSuite () {
       db._dropDatabase(testDb);
     },
 
+    testClusterUnsupported: function() {
+      if (!isCluster) {
+        return;
+      }
+
+      let doc = getArangoSearchStatsRaw();
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_IMPLEMENTED.code);
+      assertTrue(doc.parsedBody.error);
+      assertEqual(doc.parsedBody.errorNum, internal.errors.ERROR_CLUSTER_UNSUPPORTED.code);
+    },
+
+    testEmptyDatabaseStats: function() {
+      if (isCluster) {
+        return;
+      }
+
+      let emptyDb = "empty";
+      db._useDatabase(systemDb);
+      db._createDatabase(emptyDb);
+      try {
+        let result = getArangoSearchStats(emptyDb);
+        assertEqual(result.numIndexes, 0);
+        assertEqual(result.indexes.length, 0);
+      } finally {
+        db._useDatabase(systemDb);
+        db._dropDatabase(emptyDb);
+      }
+    },
+
     testArangosearchViewStats: function() {
 
       if (isCluster) {
@@ -118,15 +179,19 @@ function creationSuite () {
       //  wait till view is updated
       db._query("FOR d IN " + vn + " OPTIONS { waitForSync: true } RETURN d");
       let result = getArangoSearchStats();
+      assertEqual(result.numIndexes, 1);
+
+      let idx = verifyIndexStats(result, cn, "arangosearch");
+      assertIndexIdentity(idx, cn, "arangosearch");
 
       //  general stats
-      assertEqual(result.numDocs, 5);
-      assertEqual(result.numFiles, 6);
-      assertEqual(result.numSegments, 1);
-      assertEqual(result.deletionRatio, 0.0);
+      assertEqual(idx.numDocs, 5);
+      assertEqual(idx.numFiles, 6);
+      assertEqual(idx.numSegments, 1);
+      assertEqual(idx.deletionRatio, 0.0);
 
       //  segment info
-      let segment = result.segments[0];
+      let segment = idx.segments[0];
       assertEqual(segment.name, "_1");
       assertEqual(segment.deletionRatio, 0.0);
       assertEqual(segment.numDocs, 5);
@@ -137,11 +202,12 @@ function creationSuite () {
 
       db._query("FOR d IN " + vn + " OPTIONS { waitForSync: true } RETURN d");
       result = getArangoSearchStats("_system");
-      assertEqual(result.numDocs, 6);
-      assertEqual(result.numSegments, 2);
+      idx = verifyIndexStats(result, cn, "arangosearch");
+      assertEqual(idx.numDocs, 6);
+      assertEqual(idx.numSegments, 2);
 
-      let segment1 = result.segments[0];
-      let segment2 = result.segments[1];
+      let segment1 = idx.segments[0];
+      let segment2 = idx.segments[1];
       assertEqual(segment1.name, "_1");
       assertEqual(segment2.name, "_2");
 
@@ -153,14 +219,15 @@ function creationSuite () {
 
       db._query("FOR d IN " + vn + " OPTIONS { waitForSync: true } RETURN d");
       result = getArangoSearchStats("_system");
+      idx = verifyIndexStats(result, cn, "arangosearch");
 
       //  general stats
-      assertEqual(result.numDocs, 6);
-      assertEqual(result.numLiveDocs, 5);
-      assertEqual(result.deletionRatio, 0.17);
+      assertEqual(idx.numDocs, 6);
+      assertEqual(idx.numLiveDocs, 5);
+      assertEqual(idx.deletionRatio, 0.17);
 
       //  segment stats
-      let segments = result.segments;
+      let segments = idx.segments;
       assertEqual(segments[0].deletionRatio, 0.2);
       assertEqual(segments[1].deletionRatio, 0);
     },
@@ -173,11 +240,13 @@ function creationSuite () {
 
       db._useDatabase(testDb);
       let result = getArangoSearchStats(testDb);
+      let idx = verifyIndexStats(result, cn, "inverted", "inverted");
+      assertIndexIdentity(idx, cn, "inverted", "inverted");
 
       //  general stats
-      assertEqual(result.numDocs, 0);
-      assertEqual(result.numFiles, 1);
-      assertEqual(result.numSegments, 0);
+      assertEqual(idx.numDocs, 0);
+      assertEqual(idx.numFiles, 1);
+      assertEqual(idx.numSegments, 0);
 
       let coll = db._collection(cn);
       coll.insert({ name: "Lalo", age: 39 });
@@ -186,9 +255,49 @@ function creationSuite () {
           "waitForSync: true } filter d.name == 'Bolsa' return d");
 
       result = getArangoSearchStats(testDb);
-      assertEqual(result.numDocs, 2);
-      assertEqual(result.numFiles, 6);
-      assertEqual(result.numSegments, 1);
+      assertEqual(result.numIndexes, 1);
+      idx = verifyIndexStats(result, cn, "inverted", "inverted");
+      assertEqual(idx.numDocs, 2);
+      assertEqual(idx.numLiveDocs, 2);
+      assertEqual(idx.numFiles, 6);
+      assertEqual(idx.numSegments, 1);
+      assertEqual(idx.segments[0].numDocs, 2);
+    },
+
+    testMultipleIResearchIndexes: function() {
+      if (isCluster) {
+        return;
+      }
+
+      db._useDatabase(systemDb);
+      let cn2 = "test2";
+      let coll2 = db._create(cn2);
+      try {
+        coll2.ensureIndex({"type": "inverted", "name": "inv2", "fields": ["name"]});
+        coll2.insert({ name: "Mike" });
+        db._query("FOR d IN " + cn2 + " OPTIONS { indexHint: 'inv2', forceIndexHint: true," +
+            " waitForSync: true } FILTER d.name == 'Mike' RETURN d");
+
+        let result = getArangoSearchStats(systemDb);
+        assertTrue(result.numIndexes >= 2);
+
+        let viewIdx = verifyIndexStats(result, cn, "arangosearch");
+        assertIndexIdentity(viewIdx, cn, "arangosearch");
+
+        let invertedIdx = verifyIndexStats(result, cn2, "inverted", "inv2");
+        assertIndexIdentity(invertedIdx, cn2, "inverted", "inv2");
+        assertEqual(invertedIdx.numDocs, 1);
+        assertEqual(invertedIdx.numLiveDocs, 1);
+        assertEqual(invertedIdx.numSegments, 1);
+
+        //  indexes from another database must not leak into this response
+        result.indexes.forEach(function (entry) {
+          assertFalse(entry.indexName === "inverted" && entry.collection === cn);
+        });
+      } finally {
+        db._useDatabase(systemDb);
+        db._drop(cn2);
+      }
     }
   };
 }

@@ -51,6 +51,9 @@ struct IResearchDatastoreSegmentInfo {
 //  IResearch data store which may comprise of multiple
 //  segments.
 struct IResearchDatastoreStats {
+  std::string indexName;
+  std::string indexType;
+  std::string collectionName;
   uint64_t numDocs;         //  total no. of docs in the store
   uint64_t numLiveDocs;     //  total no. of live docs
   double deletionRatio;     //  deletion ratio of the store
@@ -63,11 +66,26 @@ struct IResearchDatastoreStats {
   template<class Inspector>
   friend inline auto inspect(Inspector& f, IResearchDatastoreStats& x) {
     return f.object(x).fields(
-        f.field("numDocs", x.numDocs), f.field("numLiveDocs", x.numLiveDocs),
+        f.field("indexName", x.indexName), f.field("indexType", x.indexType),
+        f.field("collection", x.collectionName), f.field("numDocs", x.numDocs),
+        f.field("numLiveDocs", x.numLiveDocs),
         f.field("deletionRatio", x.deletionRatio),
         f.field("numPrimaryDocs", x.numPrimaryDocs),
         f.field("numSegments", x.numSegments), f.field("numFiles", x.numFiles),
         f.field("indexSize", x.indexSize), f.field("segments", x.segments));
+  }
+};
+
+//  Structure to hold the stats of the entire
+//  IResearch data store which may comprise of multiple
+//  segments.
+struct IResearchIndexStats {
+  std::vector<IResearchDatastoreStats> indexStats;
+
+  template<class Inspector>
+  friend inline auto inspect(Inspector& f, IResearchIndexStats& x) {
+    return f.object(x).fields(f.field("numIndexes", x.indexStats.size()),
+                              f.field("indexes", x.indexStats));
   }
 };
 
@@ -103,10 +121,12 @@ class RestIResearchHandler : public RestVocbaseBaseHandler {
 
  protected:
   /// @brief Get data store statistics for a specific index
-  bool getDatastoreStats(IResearchDatastoreStats& stats);
+  bool getDatastoreStats(std::shared_ptr<iresearch::IResearchDataStore>,
+                         IResearchDatastoreStats& stats);
 
  private:
-  std::shared_ptr<iresearch::IResearchDataStore> getIResearchDatastore();
+  std::vector<std::shared_ptr<iresearch::IResearchDataStore>>
+  getIResearchDatastores();
 };
 
 }  // namespace arangodb
