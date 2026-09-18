@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertTrue, assertFalse */
+/* global runSetup, assertEqual, assertTrue, assertFalse */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -26,13 +26,14 @@ const db = require('@arangodb').db;
 const internal = require('internal');
 const jsunity = require('jsunity');
 const replication = require('@arangodb/replication');
+let IM = global.instanceManager;
+const {waitForEstimatorSync } = require('@arangodb/test-helper');
 
 const cn = 'UnitTestsRecovery';
 const vn = 'UnitTestsView';
 
-function runSetup () {
+function runSetupRoutine () {
   'use strict';
-  internal.debugClearFailAt();
 
   let c = db._create(cn);
   let docs = [];
@@ -43,7 +44,7 @@ function runSetup () {
 
   let v = db._createView(vn, 'arangosearch', {});
   
-  internal.debugSetFailAt("StatisticsWorker::bypass");
+  IM.debugSetFailAt("StatisticsWorker::bypass");
   
   let lastTick = replication.logger.state().state.lastLogTick;
   c.insert({ _key: "lastLogTick1", tick: lastTick });
@@ -56,12 +57,12 @@ function runSetup () {
  
   // make sure view has caught up
   db._query(`FOR doc IN ${vn} SEARCH doc.value1 == 42 OPTIONS {waitForSync: true} RETURN doc`);
-  internal.waitForEstimatorSync();
+  waitForEstimatorSync();
   
   lastTick = replication.logger.state().state.lastLogTick;
   c.insert({ _key: "lastLogTick3", tick: lastTick }, true);
 
-  internal.debugTerminate('crashing server');
+  IM.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -98,13 +99,11 @@ function recoverySuite () {
   };
 }
 
-function main (argv) {
-  'use strict';
-  if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
+'use strict';
+if (runSetup === true ) {
+  runSetupRoutine();
+  return 0;
+} else {
+  jsunity.run(recoverySuite);
+  return jsunity.done();
 }

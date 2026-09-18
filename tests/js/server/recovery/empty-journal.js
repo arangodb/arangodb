@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused: false */
-/* global assertNotNull */
+/* global runSetup, assertNotNull */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -26,12 +26,11 @@ const db = require('@arangodb').db;
 const internal = require('internal');
 const fs = require('fs');
 const jsunity = require('jsunity');
-let instance = JSON.parse(internal.env.INSTANCEINFO);
+let IM = global.instanceManager;
+const {waitForEstimatorSync } = require('@arangodb/test-helper');
 
-function runSetup () {
+function runSetupRoutine () {
   'use strict';
-  internal.debugClearFailAt();
-
   let c = db._create('UnitTestsRecovery');
   let walfiles = () => {
     return db._currentWalFiles().map(function(f) {
@@ -60,7 +59,7 @@ function runSetup () {
 
       if (remain.length > 0) {
         // ok, we found a WAL file to destroy!
-        let fn = fs.join(instance.dataDir,
+        let fn = fs.join(IM.dataDir,
                          'engine-rocksdb',
                          'journals',
                          remain[0]);
@@ -70,7 +69,7 @@ function runSetup () {
         fs.writeFileSync(fn, "");
         
         // crash
-        internal.debugTerminate('crashing server');
+        IM.debugTerminate('crashing server');
       }
     }
   }
@@ -97,13 +96,11 @@ function recoverySuite () {
   };
 }
 
-function main (argv) {
-  'use strict';
-  if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
+'use strict';
+if (runSetup === true ) {
+  runSetupRoutine();
+  return 0;
+} else {
+  jsunity.run(recoverySuite);
+  return jsunity.done();
 }

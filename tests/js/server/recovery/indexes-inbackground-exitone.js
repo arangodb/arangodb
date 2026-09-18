@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertFalse, assertTrue */
+/* global runSetup, assertEqual, assertFalse, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -26,11 +26,10 @@
 var db = require('@arangodb').db;
 var internal = require('internal');
 var jsunity = require('jsunity');
+let IM = global.instanceManager;
 
-function runSetup () {
+function runSetupRoutine () {
   'use strict';
-  internal.debugClearFailAt();
-
   db._drop('UnitTestsRecovery1');
   let c = db._create('UnitTestsRecovery1');
 
@@ -40,9 +39,16 @@ function runSetup () {
   }
   c.insert(docs);
 
-  internal.debugSetFailAt("RocksDBBuilderIndex::fillIndex");
-  c.ensureIndex({ type: "skiplist", fields: ["value"] });
-  return 0;
+  IM.debugSetFailAt("RocksDBBuilderIndex::fillIndex");
+  try {
+    c.ensureIndex({ type: "skiplist", fields: ["value"] });
+    fail();
+  } catch (ex) {
+    if (ex.errorNum !== internal.errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) {
+      print(ex);
+      throw ex;
+    }
+  }
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -75,12 +81,11 @@ function recoverySuite () {
 // / @brief executes the test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-function main (argv) {
-  'use strict';
-  if (argv[1] === 'setup') {
-    return runSetup();
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
+'use strict';
+if (runSetup === true ) {
+  runSetupRoutine();
+  return 0;
+} else {
+  jsunity.run(recoverySuite);
+  return jsunity.done();
 }
