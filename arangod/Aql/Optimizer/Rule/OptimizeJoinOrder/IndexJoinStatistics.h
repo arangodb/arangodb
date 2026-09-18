@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include "Aql/Optimizer/Rule/OptimizeJoinOrder/JoinGraph.h"
 #include "Aql/Optimizer/Rule/OptimizeJoinOrder/JoinStatistics.h"
 #include "Basics/AttributeNameParser.h"
 #include "Indexes/IndexType.h"
