@@ -66,6 +66,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   static constexpr std::string_view Revisions = "revisions";
   static constexpr std::string_view Tree = "tree";
   static constexpr std::string_view TreePending = "treepending";
+  static constexpr std::string_view TreeSummary = "treesummary";
   static constexpr std::string_view Ranges = "ranges";
   static constexpr std::string_view Documents = "documents";
 
@@ -217,6 +218,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //            * truncates integer counter of the pending truncations
   //////////////////////////////////////////////////////////////////////////////
   void handleCommandRevisionTreePendingUpdates();
+  void handleCommandRevisionTreeSummary();
 #endif
 
   //////////////////////////////////////////////////////////////////////////////

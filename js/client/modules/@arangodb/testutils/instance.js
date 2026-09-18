@@ -1276,6 +1276,25 @@ class instance {
       return arango.PUT_RAW('/_admin/log/level', JSON.stringify(logLevel));
     }, true);
   }
+
+  getCurrentWalFiles() {
+    return this.toThisInstance(() => {
+      let ret = arango.GET_RAW('/_admin/server/wal-files');
+      if (ret.code !== 200) {
+        throw new ArangoError(ret);
+      }
+      return ret.parsedBody.result;
+    });
+  }
+  recoveryStartSequence() {
+    return this.toThisInstance(() => {
+      let ret = arango.GET_RAW('/_admin/wal/recovery_start_sequence');
+      if (ret.code !== 200) {
+        throw new ArangoError(ret);
+      }
+      return ret.parsedBody;
+    });
+  }
   /////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////

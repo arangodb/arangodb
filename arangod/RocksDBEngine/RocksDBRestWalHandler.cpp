@@ -21,7 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBRestWalHandler.h"
-
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterAdminOperations.h"
@@ -88,6 +88,28 @@ RestStatus RocksDBRestWalHandler::execute() {
     generateResult(rest::ResponseCode::OK,
                    arangodb::velocypack::Slice::emptyObjectSlice());
     return RestStatus::DONE;
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  } else if (operation == "recovery_start_sequence") {
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
+    if (!ExecContext::current().isSuperuser()) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    "system level access is needed for this API");
+      return RestStatus::DONE;
+    }
+#else
+    if (auto r = ExecContext::current().canUseAdminAction(
+            auth::perms::AdminWalAccess{});
+        r.fail()) {
+      generateError(r);
+      return RestStatus::DONE;
+    }
+#endif
+    VPackBuilder builder;
+    auto* engine = dynamic_cast<RocksDBEngine*>(_engine);
+    builder.add(VPackValue(engine->recoveryStartSequence()));
+    generateResult(rest::ResponseCode::OK, builder.slice());
+    return RestStatus::DONE;
+#endif
   } else {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting /_admin/wal/<operation>");
@@ -162,3 +184,6 @@ void RocksDBRestWalHandler::transactions() {
   builder.close();
   generateResult(rest::ResponseCode::NOT_IMPLEMENTED, builder.slice());
 }
+
+
+

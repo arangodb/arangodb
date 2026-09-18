@@ -42,7 +42,7 @@ function runSetupRoutine() {
   for (i = 0; i < 1000; i++) {
     c.save({value: i});
   }
-  var wals = db._currentWalFiles().map(function(f) {
+  var wals = IM.arangods[0].getCurrentWalFiles().map(function(f) {
     // strip off leading `/` or `/archive/` if it exists
     var p = f.split('/');
     return p[p.length - 1];
@@ -61,7 +61,7 @@ function runSetupRoutine() {
     }
 
     keepWriting = false;
-    var walsLeft = db._currentWalFiles().map(function(f) {
+    var walsLeft = IM.arangods[0].getCurrentWalFiles().map(function(f) {
       // strip off leading `/` or `/archive/` if it exists
       var p = f.split('/');
       return p[p.length - 1];

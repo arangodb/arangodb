@@ -527,6 +527,9 @@ auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
         } else if (type == rest::RequestType::GET &&
                    subCommand == TreePending) {
           handleCommandRevisionTreePendingUpdates();
+        } else if (type == rest::RequestType::GET &&
+                   subCommand == TreeSummary) {
+          handleCommandRevisionTreeSummary();
 #endif
         } else if (type == rest::RequestType::PUT && subCommand == Ranges) {
           handleCommandRevisionRanges();
@@ -2855,6 +2858,25 @@ void RestReplicationHandler::handleCommandRevisionTreePendingUpdates() {
 
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
+
+void RestReplicationHandler::handleCommandRevisionTreeSummary() {
+  RevisionOperationContext ctx;
+  // get collection name
+  if (!prepareCollectionForRevisionOperation(ctx)) {
+    // error was already generator by called function
+    return;
+  }
+  TRI_ASSERT(!ctx.cname.empty());
+  TRI_ASSERT(ctx.collection != nullptr);
+  // currently not implemented - not used.
+  bool fromCollection = false;
+  auto* physical = toRocksDBCollection(*ctx.collection);
+  VPackBuilder builder;
+  physical->revisionTreeSummary(builder, fromCollection).waitAndGet();
+
+  generateResult(rest::ResponseCode::OK, builder.slice());
+}
+
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
