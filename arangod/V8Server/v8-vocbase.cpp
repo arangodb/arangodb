@@ -2127,38 +2127,6 @@ static void JS_AgencyDump(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-#ifdef USE_ENTERPRISE
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief this is rotates the encryption keys, only for testing
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_EncryptionKeyReload(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("encryptionKeyReload()");
-  }
-
-  TRI_GET_GLOBALS();
-  auto* engine = dynamic_cast<RocksDBEngine*>(
-      &v8g->server().getFeature<DatabaseFeature>().engine());
-  if (engine == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-  auto res = engine->rotateUserEncryptionKeys();
-  if (res.fail()) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
-
-  TRI_V8_RETURN_TRUE();
-  TRI_V8_TRY_CATCH_END
-}
-
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a TRI_vocbase_t global context
 ////////////////////////////////////////////////////////////////////////////////
@@ -2358,15 +2326,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "SYSTEM_STATISTICS"),
       JS_SystemStatistics, true);
-
-#ifdef USE_ENTERPRISE
-  if (server.hasFeature<V8DealerFeature>() &&
-      server.getFeature<V8DealerFeature>().allowAdminExecute()) {
-    TRI_AddGlobalFunctionVocbase(
-        isolate, TRI_V8_ASCII_STRING(isolate, "ENCRYPTION_KEY_RELOAD"),
-        JS_EncryptionKeyReload, true);
-  }
-#endif
 
   // .............................................................................
   // create global variables
