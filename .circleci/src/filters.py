@@ -29,6 +29,7 @@ class FilterCriteria:
     # Test type filters
     full: bool = False  # Include full test set (not just PR subset)
     gtest: bool = False
+    clang_tidy: bool = False  # Schedule the clang-tidy job
 
     # Build configuration
     architecture: Optional[Architecture] = None  # Current build architecture
