@@ -723,39 +723,33 @@ AqlValue functions::Range(ExpressionContext* expressionContext, AstNode const&,
 
   double step = stepValue.toDouble();
 
-  if (step == 0.0 || (from < to && step < 0.0) || (from > to && step > 0.0)) {
+  if (!std::isfinite(from) || !std::isfinite(to) || !std::isfinite(step) ||
+      step == 0.0 || (from < to && step < 0.0) || (from > to && step > 0.0)) {
     registerWarning(expressionContext, AFN,
                     TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
 
+  // Cheap up-front rejection. Decides only "absurdly large", never which values
+  // are produced, so its rounding cannot affect the result.
+  if (!((to - from) / step <=
+        static_cast<double>(Range::MaterializationLimit))) {
+    Range::throwIfTooBigForMaterialization(Range::MaterializationLimit + 1);
+  }
+
   auto builder = ThreadLocalBuilderLeaser::lease();
   builder->openArray(true);
-  // TODO(COR-938): Fix the float-loop-counter and maybe the one-off
-  if (step < 0.0 && to <= from) {
-    TRI_ASSERT(step != 0.0);
-    Range::throwIfTooBigForMaterialization(
-        static_cast<uint64_t>((from - to) / -step));
-    // NOLINTBEGIN(clang-analyzer-security.FloatLoopCounter)
-    // NOLINTBEGIN(bugprone-float-loop-counter)
-    for (; from >= to; from += step) {
-      builder->add(VPackValue(from));
+  // from + i*step rather than accumulating: rounding error stays constant
+  // instead of compounding across iterations.
+  for (uint64_t i = 0;; ++i) {
+    double const v = from + static_cast<double>(i) * step;
+    if (step > 0.0 ? v > to : v < to) {
+      break;
     }
-    // NOLINTEND(bugprone-float-loop-counter)
-    // NOLINTEND(clang-analyzer-security.FloatLoopCounter)
-  } else {
-    TRI_ASSERT(step != 0.0);
-    Range::throwIfTooBigForMaterialization(
-        static_cast<uint64_t>((to - from) / step));
-    // NOLINTBEGIN(clang-analyzer-security.FloatLoopCounter)
-    // NOLINTBEGIN(bugprone-float-loop-counter)
-    for (; from <= to; from += step) {
-      builder->add(VPackValue(from));
-    }
-    // NOLINTEND(bugprone-float-loop-counter)
-    // NOLINTEND(clang-analyzer-security.FloatLoopCounter)
+    builder->add(VPackValue(v));
   }
   builder->close();
+
   return AqlValue(builder->slice(), builder->size());
 }
 
