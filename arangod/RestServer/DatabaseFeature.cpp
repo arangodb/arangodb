@@ -121,7 +121,9 @@ DatabaseManagerThread::DatabaseManagerThread(
       _engine(engine)
 #ifdef USE_V8
       ,
-      _dealer(server.getFeature<V8DealerFeature>())
+      _dealer(server.hasFeature<V8DealerFeature>()
+                  ? &server.getFeature<V8DealerFeature>()
+                  : nullptr)
 #endif
 {
 }
@@ -171,7 +173,8 @@ void DatabaseManagerThread::run() {
 
         auto* queryRegistry = QueryRegistryFeature::registry();
 #ifdef USE_V8
-        if (_dealer.isEnabled() || queryRegistry != nullptr) {
+        if ((_dealer != nullptr && _dealer->isEnabled()) ||
+            queryRegistry != nullptr) {
 #else
         if (queryRegistry != nullptr) {
 #endif
@@ -183,8 +186,8 @@ void DatabaseManagerThread::run() {
           TRI_ASSERT(same == nullptr || same->id() != database->id());
           if (same == nullptr) {
 #ifdef USE_V8
-            if (_dealer.isEnabled()) {
-              _dealer.cleanupDatabase(*database);
+            if (_dealer != nullptr && _dealer->isEnabled()) {
+              _dealer->cleanupDatabase(*database);
             }
 #endif
             if (queryRegistry != nullptr) {
@@ -292,9 +295,11 @@ void DatabaseFeature::initCalculationVocbase() {
 
 void DatabaseFeature::start() {
 #ifdef USE_V8
-  auto& dealer = server().getFeature<V8DealerFeature>();
-  if (dealer.isEnabled()) {
-    dealer.verifyAppPaths();
+  if (server().hasFeature<V8DealerFeature>()) {
+    auto& dealer = server().getFeature<V8DealerFeature>();
+    if (dealer.isEnabled()) {
+      dealer.verifyAppPaths();
+    }
   }
 #endif
 
@@ -626,11 +631,13 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
 
     if (!ServerState::instance()->isCoordinator()) {
 #ifdef USE_V8
-      auto& dealer = server().getFeature<V8DealerFeature>();
-      if (dealer.isEnabled()) {
-        auto r = dealer.createDatabase(name, std::to_string(dbId), true);
-        if (r != TRI_ERROR_NO_ERROR) {
-          THROW_ARANGO_EXCEPTION(r);
+      if (server().hasFeature<V8DealerFeature>()) {
+        auto& dealer = server().getFeature<V8DealerFeature>();
+        if (dealer.isEnabled()) {
+          auto r = dealer.createDatabase(name, std::to_string(dbId), true);
+          if (r != TRI_ERROR_NO_ERROR) {
+            THROW_ARANGO_EXCEPTION(r);
+          }
         }
       }
 #endif

@@ -325,14 +325,19 @@ CommTask::Flow CommTask::prepareExecution(
 
   if (ServerState::instance()->isSingleServerOrCoordinator()) {
 #ifdef USE_V8
-    auto& ff = _server.server().getFeature<FoxxFeature>();
-    bool foxxEnabled = ff.foxxEnabled();
+    auto& server = _server.server();
+    // unregistered (JS off) is not the same as explicitly disabled via
+    // --foxx.enable
+    bool const foxxExplicitlyDisabled =
+        server.hasFeature<FoxxFeature>() &&
+        !server.getFeature<FoxxFeature>().foxxEnabled();
 #else
-    constexpr bool foxxEnabled = false;
+    constexpr bool foxxExplicitlyDisabled = false;
 #endif
-    if (!foxxEnabled && !(path == "/" || path.starts_with(::pathPrefixAdmin) ||
-                          path.starts_with(::pathPrefixApi) ||
-                          path.starts_with(::pathPrefixOpen))) {
+    if (foxxExplicitlyDisabled &&
+        !(path == "/" || path.starts_with(::pathPrefixAdmin) ||
+          path.starts_with(::pathPrefixApi) ||
+          path.starts_with(::pathPrefixOpen))) {
       sendErrorResponse(rest::ResponseCode::FORBIDDEN,
                         req.contentTypeResponse(), req.messageId(),
                         TRI_ERROR_FORBIDDEN,
