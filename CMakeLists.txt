@@ -198,7 +198,7 @@ endif()
 
 # enable Enterprise Edition features
 set(ENTERPRISE_INCLUDE_DIR "enterprise")
-option(USE_ENTERPRISE "enable enterprise build" OFF)
+option(USE_ENTERPRISE "enable enterprise build" ON)
 
 # for the packages
 set(ARANGODB_PACKAGE_VENDOR  "ArangoDB GmbH")
