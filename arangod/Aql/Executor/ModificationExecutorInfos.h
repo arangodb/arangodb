@@ -29,6 +29,10 @@
 
 #include <velocypack/Slice.h>
 
+namespace arangodb {
+struct ResourceMonitor;
+}
+
 namespace arangodb::aql {
 struct Collection;
 class ExecutionEngine;
@@ -77,6 +81,8 @@ struct ModificationExecutorInfos {
   RegisterId _outputNewRegisterId;
   RegisterId _outputOldRegisterId;
   RegisterId _outputRegisterId;  // single remote
+
+  ResourceMonitor& getResourceMonitor() const;
 };
 
 }  // namespace arangodb::aql
