@@ -1509,6 +1509,11 @@ ArangoCollection.prototype._CollectionRevisionTreeCorrupt = function (count, has
     `/_api/replication/revisions/tree?collection=${encodeURIComponent(this._name)}&count=${count}&hash=${hash}`), {});
   return requestResult;
 };
+ArangoCollection.prototype._revisionTreeCorrupt = function (count, hash) {
+  let requestResult = this._database._connection.PUT(this._prefixurl(
+    `/_api/replication/revisions/tree?collection=${encodeURIComponent(this._name)}&count=${count}&hash=${hash}`), {});
+  return requestResult;
+};
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test function to enlist the pending tree updates
