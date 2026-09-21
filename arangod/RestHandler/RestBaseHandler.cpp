@@ -233,6 +233,11 @@ auto RestBaseHandler::tryForwarding() -> async<bool> {
   options.timeout = network::Timeout(30.0);
   options.database = _request->databaseName();
   options.parameters = _request->parameters();
+  auto apiVersion = fuerte::api_version::from(_request->requestedApiVersion());
+  if (not apiVersion.has_value()) {
+    co_return false;
+  }
+  options.apiVersion = apiVersion;
 
   auto f = network::sendRequestRetry(
       pool, "server:" + serverId, fuerte::RestVerb::Get,
