@@ -30,6 +30,8 @@ const _ = require('lodash');
 const internal = require('internal');
 const time = internal.time;
 const jsunity = require('jsunity');
+let IM = global.instanceManager;
+const {waitForEstimatorSync } = require('@arangodb/test-helper');
 
 const colName = 'UnitTestsRecovery';
 // number of collections
@@ -100,16 +102,16 @@ function runSetupRoutine (config) {
       if (fpSet > 0 && fp >= 0.95) {
         // remove all failure points
         console.warn("clearing all failure points");
-        internal.debugClearFailAt();
+        IM.debugClearFailAt();
         fpSet = 0;
       } else if (fp >= 0.85 || fpSet === 0) {
         // set failure points
         _.shuffle(failurePoints);
         console.warn("clearing all failure points");
-        internal.debugClearFailAt();
+        IM.debugClearFailAt();
         let fp = Math.floor(Math.random() * failurePoints.length);
         for (let i = 0; i < fp; ++i) {
-          internal.debugSetFailAt(failurePoints[i]);
+          IM.debugSetFailAt(failurePoints[i]);
         }
         fpSet = fp;
       }
@@ -170,7 +172,7 @@ function runSetupRoutine (config) {
 
   require("console").warn("Collection counts written to control:", JSON.stringify(collectionCounts));
 
-  internal.debugTerminate('crashing server');
+  IM.debugTerminate('crashing server');
 }
 
 function recoverySuite () {
@@ -187,7 +189,7 @@ function recoverySuite () {
 
   return {
     setUp: function () {
-      internal.waitForEstimatorSync(); // make sure estimates are consistent
+      waitForEstimatorSync(); // make sure estimates are consistent
     },
 
     testConsistency: function() {
@@ -229,17 +231,17 @@ function recoverySuite () {
   };
 }
 
-function main (argv, config) {
+function main (runSetup, config) {
   numberOfCollections = config.numberOfCollections || numberOfCollections;
   maxIterations = config.maxIterations || maxIterations;
   maxRunTime = config.maxRunTime || maxRunTime;
 
-  if (argv[1] === 'setup') {
+  if (runSetup === true) {
     runSetupRoutine(config);
     return 0;
   } else {
     jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
+    return jsunity.writeDone();
   }
 }
 

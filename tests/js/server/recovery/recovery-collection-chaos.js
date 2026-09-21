@@ -27,11 +27,9 @@ const base = require("fs").join(process.cwd(), require('internal').pathForTestin
   'recovery', 'recovery-collection-chaos.inc');
 const chaos = require(base);
 
-if (runSetup !== true) {
-  return chaos.main(argv, {
-    withFailurePoints: false,
-    numberOfCollections: 5,
-    maxIterations: 5,
-    maxRunTime: 20,
-  });
-}
+return chaos.main(runSetup, {
+  withFailurePoints: false,
+  numberOfCollections: 5,
+  maxIterations: 5,
+  maxRunTime: 20,
+});
