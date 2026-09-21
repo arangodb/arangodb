@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global runSetup, assertEqual, assertFalse, assertTrue */
+/* global runSetup, print, fail, assertEqual, assertFalse, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
