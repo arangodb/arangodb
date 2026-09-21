@@ -1545,4 +1545,74 @@ TEST_F(CompareAstNodesTest, objectsWithDifferingArrayMembersNotEqual) {
   EXPECT_NE(0, compare(lhs, rhs));
 }
 
+TEST_F(CompareAstNodesTest, objectsReorderedNoDuplicateKeysEqual) {
+  auto* doc = makeVar("doc");
+  auto* lhs = object({{"a", attr(createRefNode(doc), "x")},
+                      {"b", attr(createRefNode(doc), "y")}});
+  auto* rhs = object({{"b", attr(createRefNode(doc), "y")},
+                      {"a", attr(createRefNode(doc), "x")}});
+  EXPECT_EQ(0, compare(lhs, rhs));
+}
+
+// a duplicate key means order decides which value survives
+TEST_F(CompareAstNodesTest, objectsWithDuplicateKeysNotReordered) {
+  auto* doc = makeVar("doc");
+  auto* lhs = object({{"x", attr(createRefNode(doc), "a")}, {"x", intVal(4)}});
+  auto* rhs = object({{"x", intVal(4)}, {"x", attr(createRefNode(doc), "a")}});
+  EXPECT_NE(0, compare(lhs, rhs));
+}
+
+// one computed key and the whole object takes the safe path
+TEST_F(CompareAstNodesTest, objectsWithComputedKeyNotReordered) {
+  auto* doc = makeVar("doc");
+  auto* k = attr(createRefNode(doc), "k");
+  auto* lhs = _ast->createNodeObject();
+  lhs->addMember(
+      _ast->createNodeObjectElement("a", attr(createRefNode(doc), "x")));
+  lhs->addMember(_ast->createNodeCalculatedObjectElement(
+      k, attr(createRefNode(doc), "y")));
+  auto* rhs = _ast->createNodeObject();
+  rhs->addMember(_ast->createNodeCalculatedObjectElement(
+      k, attr(createRefNode(doc), "y")));
+  rhs->addMember(
+      _ast->createNodeObjectElement("a", attr(createRefNode(doc), "x")));
+  EXPECT_NE(0, compare(lhs, rhs));
+}
+
+// mustCheckUniqueness() skips it, but one member has nothing to reorder
+TEST_F(CompareAstNodesTest, singleComputedKeyMemberSameKeyAndValueEqual) {
+  auto* doc = makeVar("doc");
+  auto* k = attr(createRefNode(doc), "k");
+  auto* lhs = _ast->createNodeObject();
+  lhs->addMember(_ast->createNodeCalculatedObjectElement(
+      k, attr(createRefNode(doc), "v")));
+  auto* rhs = _ast->createNodeObject();
+  rhs->addMember(_ast->createNodeCalculatedObjectElement(
+      k, attr(createRefNode(doc), "v")));
+  EXPECT_EQ(0, compare(lhs, rhs));
+}
+
+TEST_F(CompareAstNodesTest, singleComputedKeyMemberDifferentKeyNotEqual) {
+  auto* doc = makeVar("doc");
+  auto* lhs = _ast->createNodeObject();
+  lhs->addMember(_ast->createNodeCalculatedObjectElement(
+      attr(createRefNode(doc), "k1"), attr(createRefNode(doc), "v")));
+  auto* rhs = _ast->createNodeObject();
+  rhs->addMember(_ast->createNodeCalculatedObjectElement(
+      attr(createRefNode(doc), "k2"), attr(createRefNode(doc), "v")));
+  EXPECT_NE(0, compare(lhs, rhs));
+}
+
+TEST_F(CompareAstNodesTest, singleComputedKeyMemberDifferentValueNotEqual) {
+  auto* doc = makeVar("doc");
+  auto* k = attr(createRefNode(doc), "k");
+  auto* lhs = _ast->createNodeObject();
+  lhs->addMember(_ast->createNodeCalculatedObjectElement(
+      k, attr(createRefNode(doc), "v1")));
+  auto* rhs = _ast->createNodeObject();
+  rhs->addMember(_ast->createNodeCalculatedObjectElement(
+      k, attr(createRefNode(doc), "v2")));
+  EXPECT_NE(0, compare(lhs, rhs));
+}
+
 }  // namespace

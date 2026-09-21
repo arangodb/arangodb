@@ -493,6 +493,12 @@ int compareNary(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
   return 0;
 }
 
+/// @brief compare OBJECT nodes when both sides have unique, non-computed keys
+int compareObject(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
+  TRI_ASSERT(!lhs->mustCheckUniqueness() && !rhs->mustCheckUniqueness());
+  return compareNary(lhs, rhs, compareUtf8);
+}
+
 /// @brief compare IN/NIN nodes with order-independent array element comparison
 int compareInNin(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
   TRI_ASSERT(lhs->numMembers() == 2);
@@ -561,6 +567,12 @@ int compareAstNodesComplexVPack(AstNode const* lhs, AstNode const* rhs,
     case NODE_TYPE_ARRAY:
       // Same ordering as for constant arrays.
       return compareArrayMembers<false>(lhs, rhs, compareUtf8);
+    case NODE_TYPE_OBJECT:
+      if (lhs->mustCheckUniqueness() || rhs->mustCheckUniqueness()) {
+        // a computed or duplicate key means order decides which value wins
+        return compareChildrenInOrder(lhs, rhs, compareUtf8);
+      }
+      return compareObject(lhs, rhs, compareUtf8);
     case NODE_TYPE_QUANTIFIER:
       return compareQuantifier(lhs, rhs, compareUtf8);
     case NODE_TYPE_FCALL:
