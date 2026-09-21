@@ -416,9 +416,8 @@ void RestAdminServerHandler::handleGetWalFileList() {
     return;
   }
   if (!ServerState::instance()->isSingleServer()) {
-    generateError(
-        Result(TRI_ERROR_NOT_IMPLEMENTED,
-               "API only available on single servers"));
+    generateError(Result(TRI_ERROR_NOT_IMPLEMENTED,
+                         "API only available on single servers"));
     return;
   }
 
@@ -427,7 +426,7 @@ void RestAdminServerHandler::handleGetWalFileList() {
   VPackBuilder builder;
   {
     VPackArrayBuilder guard2(&builder);
-    for (auto walFileName: names) {
+    for (auto walFileName : names) {
       builder.add(VPackValue(walFileName));
     }
   }
