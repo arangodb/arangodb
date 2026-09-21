@@ -216,7 +216,8 @@ void RestHandler::trackTaskEnd() noexcept {
 
 void RestHandler::startActivity() {
   auto headers = request()->headers();
-  headers.erase("authorization");
+  headers.insert_or_assign(StaticStrings::Authorization,
+                           "SENSITIVE_DETAILS_HIDDEN");
 
   _activity = activities::make<arangodb::rest::RestHandlerActivity>(
       RestHandlerActivityData{
