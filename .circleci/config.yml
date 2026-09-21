@@ -92,6 +92,13 @@ parameters:
     default: true
     description: Whether to use minimal debug info.
       This is enabled by default to reduce the size of artifacts, but can optionally be disabled for debugging test failures
+  run-ann-benchmark:
+    type: boolean
+    default: false
+    description: "Manual-only: run the ANN vector-index benchmark instead of the
+      normal test pipeline. Boots the newest arangod devel nightly, runs the
+      ann-benchmarks harness against the IVF index and publishes the HTML site
+      + results.csv as artifacts. See scripts/benchmark/ann/."
 
 
 # our defined job, and its steps
@@ -305,9 +312,52 @@ jobs:
           configuration_path: continuation_config.yml
           parameters: parameters.json
 
+  # Manual-only vector-index benchmark. Runs directly on the self-hosted
+  # runner (no continuation): pulls an arangod nightly, runs the ann-benchmarks
+  # harness against the IVF index, publishes the site + CSV and loads the run
+  # into the shared results store (RESULTS_ARANGO_URL / RESULTS_ARANGO_PASSWORD /
+  # GRAFANA_URL from the ann-benchmark-store context; unset => load skipped).
+  ann-benchmark:
+    docker:
+      # Primary: runs the ann-benchmarks harness.
+      - image: cimg/python:3.11.1
+      # Service container: arangod, reachable from the primary at 127.0.0.1:8529
+      # (container runners have no docker daemon, so the harness cannot start it
+      # itself - the executor does, and the script only waits for it).
+      - image: public.ecr.aws/b0b8h2r4/arangodb/enterprise-test:02cec4c_2f64c55-deb
+        name: arangod
+        environment:
+          ARANGO_NO_AUTH: "1"
+        command: ["--vector-index=true"]
+    # xlarge (largest tier) so the arangod service container isn't squeezed in
+    # the pod - testing whether the CI-only duplicate is resource pressure.
+    resource_class: arangodb/xlarge-amd64
+    environment:
+      # Recorded in run_meta.json; keep in sync with the service image above.
+      ARANGODB_IMAGE: public.ecr.aws/b0b8h2r4/arangodb/enterprise-test:02cec4c_2f64c55-deb
+      ANN_OUTPUT_DIR: /tmp/ann-output
+      # Self-hosted runner disk persists between jobs, so a fixed path caches
+      # the (hundreds of MB) datasets across runs.
+      ANN_DATASET_CACHE: /tmp/ann-benchmarks-data
+      ANN_STAMP: "<< pipeline.number >> << pipeline.git.revision >>"
+    steps:
+      - checkout
+      - run:
+          name: Run ANN benchmark
+          no_output_timeout: 3h
+          command: ./scripts/benchmark/ann/run_ann_benchmark.sh
+      - store_artifacts:
+          # Upload even when the benchmark step fails (e.g. incomplete results),
+          # so a failed run is still debuggable via site/, run.log, arangod.log.
+          when: always
+          path: /tmp/ann-output
+          destination: ann-benchmark
+
 # our single workflow, that triggers the setup job defined above
 workflows:
   setup:
+    # Skip the normal test pipeline when a manual ANN benchmark was requested.
+    unless: << pipeline.parameters.run-ann-benchmark >>
     jobs:
       # we always create a workflow and let the build fail in check-build-trigger unless it has been triggered manually
       # or runs on the devel branch (see condition in check-build-trigger)
@@ -323,3 +373,11 @@ workflows:
           config-definitions-branches: << pipeline.parameters.config-definitions-branches >>
           requires:
             - cancel-redundant-pipelines
+
+  # Manual-only: triggered by setting the run-ann-benchmark pipeline parameter.
+  ann-benchmark:
+    when: << pipeline.parameters.run-ann-benchmark >>
+    jobs:
+      - ann-benchmark:
+          context: [ ann-benchmark-store ]
+
