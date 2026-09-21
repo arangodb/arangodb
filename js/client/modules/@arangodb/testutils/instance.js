@@ -408,13 +408,7 @@ class instance {
       this.appDir = fs.getTempPath();
     }
 
-    let config = 'arangod-' + this.instanceRole + '.conf';
-    if (this.options.arangodConfig !== undefined) {
-      config = this.options.arangodConfig;
-    }
     let default_args = {
-      'configuration': fs.join(pu.CONFIG_DIR, config),
-      'define': 'TOP_DIR=' + pu.TOP_DIR,
       'http.trusted-origin': this.options.httpTrustedOrigin || 'all',
       'temp.path': this.tmpDir,
       'server.endpoint': bindEndpoint,
@@ -596,7 +590,16 @@ class instance {
     }
 
     let cmd = pu.ARANGOD_BIN;
-    let args = _.defaults(moreArgs, this.args);
+    // config file and js tree follow the binary set, so resolve them per launch
+    let config = 'arangod-' + this.instanceRole + '.conf';
+    if (this.options.arangodConfig !== undefined) {
+      config = this.options.arangodConfig;
+    }
+    let configArgs = {
+      'configuration': fs.join(pu.CONFIG_DIR, config),
+      'define': 'TOP_DIR=' + pu.TOP_DIR
+    };
+    let args = _.defaults(moreArgs, this.args, configArgs);
     let argv = [];
     if (this.options.valgrind) {
       let valgrindOpts = {};
@@ -645,6 +648,8 @@ class instance {
     }
     subEnv.push(`ARANGODB_SERVER_DIR=${this.rootDir}`);
     subEnv.push(`INSTANCEINFO=${instanceJson}`);
+    // make arangod use the ICU data of the build it comes from
+    subEnv.push(`ICU_DATA=${pu.BIN_DIR}`);
     let ret = executeExternal(cmd, argv, false, subEnv);
     return ret;
   }
