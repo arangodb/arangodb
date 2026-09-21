@@ -69,19 +69,17 @@ class endpointRunner extends trs.runInArangoshRunner {
     // For now we always want the noise here!
     this.options = _.clone(this.options);
     this.options.extremeVerbosity = true;
-    this.instance = new inst.instance(this.options,
-                                      inst.instanceRole.single,
-                                      {
-                                        'log.level': ['startup=trace', 'rocksdb=trace'],
-                                        'log.force-direct': 'true',
-                                        'rocksdb.debug-logging': 'true',
-                                        'server.authentication': false,
-                                      },
-                                      {}, '', '', {}, 'tcp', this.dummyDir, '',
-                                      new agencyMgr(this.options, null),
-                                      this.dummyDir,
-                                      this.options.memory
-                                     );
+    this.instance = new inst.instance(
+      this.options, inst.instanceRole.single, 'tcp',
+      new agencyMgr(this.options, null), {
+        'log.level': ['startup=trace', 'rocksdb=trace'],
+        'log.force-direct': 'true',
+        'rocksdb.debug-logging': 'true',
+        'server.authentication': false,
+      },
+      this.dummyDir, this.dummyDir, '',
+      '', this.options.memory
+    );
     this.endpoint = this.instance.args['server.endpoint'];
   }
   getEndpoint() {
