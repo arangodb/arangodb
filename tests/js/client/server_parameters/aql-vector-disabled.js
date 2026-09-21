@@ -23,6 +23,12 @@
 //
 // //////////////////////////////////////////////////////////////////////////////
 
+if (getOptions === true) {
+  return {
+    'vector-index': false
+  };
+}
+
 const internal = require("internal");
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
