@@ -39,6 +39,9 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
+#include <algorithm>
+#include <cmath>
+#include <limits>
 #include <list>
 #include <set>
 #include <unordered_map>
@@ -737,13 +740,21 @@ AqlValue functions::Range(ExpressionContext* expressionContext, AstNode const&,
     Range::throwIfTooBigForMaterialization(Range::MaterializationLimit + 1);
   }
 
+  // epsilon is the smallest representable gap between 1.0 and the next double;
+  // times the operand, which gives one ulp (the gap on that scale);
+  // `from`, `to`, and `step` each carry up to 0.5 ulp when stored;
+  // and the multiply and add do 0.5 each, which can land ~2.5 ulp;
+  // therefore, 4 * ulp can absorb the floating point errors.
+  double const tol = 4 * std::numeric_limits<double>::epsilon() *
+                     std::max({std::abs(from), std::abs(to), std::abs(step)});
+
   auto builder = ThreadLocalBuilderLeaser::lease();
   builder->openArray(true);
   // from + i*step rather than accumulating: rounding error stays constant
   // instead of compounding across iterations.
   for (uint64_t i = 0;; ++i) {
     double const v = from + static_cast<double>(i) * step;
-    if (step > 0.0 ? v > to : v < to) {
+    if (step > 0.0 ? v > to + tol : v < to - tol) {
       break;
     }
     builder->add(VPackValue(v));
