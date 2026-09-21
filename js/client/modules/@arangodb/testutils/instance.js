@@ -432,7 +432,6 @@ class instance {
     }
 
     let default_args = {
-      ...this._makeConfigArgs(),
       'http.trusted-origin': this.options.httpTrustedOrigin || 'all',
       'temp.path': this.tmpDir,
       'server.endpoint': bindEndpoint,
@@ -609,9 +608,9 @@ class instance {
 
   _executeArangod (moreArgs, instanceJson) {
     let cmd = pu.ARANGOD_BIN;
-    // the binary set may have changed since the constructor ran
-    Object.assign(this.args, this._makeConfigArgs());
+==== BASE ====
     let args = _.defaults(moreArgs, this.args);
+==== BASE ====
     let argv = [];
     if (this.options.valgrind) {
       let valgrindOpts = {};
