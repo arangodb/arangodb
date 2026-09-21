@@ -1504,11 +1504,6 @@ ArangoCollection.prototype.loadIndexesIntoMemory = function () {
 // / @brief test function to corrupt a revision tree
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype._CollectionRevisionTreeCorrupt = function (count, hash) {
-  let requestResult = this._database._connection.PUT(this._prefixurl(
-    `/_api/replication/revisions/tree?collection=${encodeURIComponent(this._name)}&count=${count}&hash=${hash}`), {});
-  return requestResult;
-};
 ArangoCollection.prototype._revisionTreeCorrupt = function (count, hash) {
   let requestResult = this._database._connection.PUT(this._prefixurl(
     `/_api/replication/revisions/tree?collection=${encodeURIComponent(this._name)}&count=${count}&hash=${hash}`), {});
