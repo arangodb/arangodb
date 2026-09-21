@@ -38,9 +38,9 @@ Builder::Builder(ExecutionPlan& plan, Ast* ast)
                      _vertices) {}
 
 ExecutionNode* Builder::build(ExecutionNode* previous,
-                              AstNode const* matchNode) {
+                              ast::MatchNode matchNode) {
   PatternNormalizer normalizer(*_ast);
-  NormalizedStatement const statement = normalizer.normalize(*matchNode);
+  NormalizedStatement const statement = normalizer.normalize(matchNode);
 
   auto* en = previous;
 

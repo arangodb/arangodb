@@ -23,6 +23,7 @@
 #pragma once
 
 #include "Aql/Match/PatternTypes.h"
+#include "Aql/TypedAstNodes.h"
 
 namespace arangodb::aql {
 class Ast;
@@ -36,11 +37,11 @@ class PatternNormalizer {
  public:
   explicit PatternNormalizer(Ast& ast) noexcept;
 
-  [[nodiscard]] NormalizedStatement normalize(AstNode const& matchNode) const;
+  [[nodiscard]] NormalizedStatement normalize(ast::MatchNode matchNode) const;
 
  private:
   [[nodiscard]] NormalizedPattern normalizePattern(
-      AstNode const& matchExpr) const;
+      ast::PatternMatchExpression matchExpr) const;
   [[nodiscard]] PatternElement normalizeStartElement(AstNode const& node) const;
   [[nodiscard]] NormalizedSegment normalizeSegment(
       AstNode const& segment) const;

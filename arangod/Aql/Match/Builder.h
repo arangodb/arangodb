@@ -26,6 +26,7 @@
 #include "Aql/Match/FilterBuilder.h"
 #include "Aql/Match/PathConstruction.h"
 #include "Aql/Match/ProjectionBuilder.h"
+#include "Aql/TypedAstNodes.h"
 #include "Aql/Match/RelationshipPatternBuilder.h"
 #include "Aql/Match/VertexPatternBuilder.h"
 
@@ -46,7 +47,7 @@ class Builder {
   Builder(ExecutionPlan& plan, Ast* ast);
 
   /// @brief Lower a NODE_TYPE_MATCH AST node, chaining onto @p previous.
-  ExecutionNode* build(ExecutionNode* previous, AstNode const* matchNode);
+  ExecutionNode* build(ExecutionNode* previous, ast::MatchNode matchNode);
 
  private:
   Ast* _ast;
