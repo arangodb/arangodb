@@ -2037,31 +2037,6 @@ void JS_ArangoDBContext(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END;
 }
 
-/// @brief return a list of all wal files (empty list if not rocksdb)
-static void JS_CurrentWalFiles(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-  auto context = TRI_IGETC;
-
-  TRI_GET_GLOBALS();
-  StorageEngine& engine = v8g->server().getFeature<DatabaseFeature>().engine();
-  std::vector<std::string> names = engine.currentWalFiles();
-  std::sort(names.begin(), names.end());
-
-  // already create an array of the correct size
-  uint32_t const n = static_cast<uint32_t>(names.size());
-  v8::Handle<v8::Array> result = v8::Array::New(isolate, static_cast<int>(n));
-
-  for (uint32_t i = 0; i < n; ++i) {
-    result->Set(context, i, TRI_V8_STD_STRING(isolate, names[i]))
-        .FromMaybe(false);
-  }
-
-  TRI_V8_RETURN(result);
-  TRI_V8_TRY_CATCH_END
-}
-
 static void JS_SystemStatistics(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -2179,9 +2154,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                        JS_NameDatabase);
   TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING(isolate, "_path"),
                        JS_PathDatabase);
-  TRI_AddMethodVocbase(isolate, ArangoNS,
-                       TRI_V8_ASCII_STRING(isolate, "_currentWalFiles"),
-                       JS_CurrentWalFiles, true);
   TRI_AddMethodVocbase(isolate, ArangoNS,
                        TRI_V8_ASCII_STRING(isolate, "_versionFilename"),
                        JS_VersionFilenameDatabase, true);
