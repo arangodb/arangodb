@@ -1,5 +1,8 @@
 3.12.12 (XXXX-XX-XX)
 --------------------
+* BTS-2454: Update FAISS to a new patched version which fixes a TSAN race inside
+  the hnsw_stats and rabitq_stats internal counters.
+
 * ES-3044: Fix comparison of array and object literals whose members are not
   constants, such as an object passed to a function call in a `FILTER`
   condition. These were serialized to VelocyPack for comparison, which dropped
