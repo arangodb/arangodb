@@ -32,7 +32,13 @@ struct AstNode;
 
 namespace arangodb::aql::match {
 
-/// @brief converts MATCH parser AST into a semantic representation
+/// @brief Converts MATCH parser AST into the Normalized* semantic IR
+/// (PatternTypes.h) consumed by Builder.
+///
+/// Uses ast::* TypedAstNode wrappers only for safe layout access to the
+/// parser Ast, decoding (datasources, direction/range, projections,
+/// statement reshape) stays here. COR-971: keep TypedAst views and this
+/// IR as two layers — do not merge Normalized* into TypedAstNodes.
 class PatternNormalizer {
  public:
   explicit PatternNormalizer(Ast& ast) noexcept;

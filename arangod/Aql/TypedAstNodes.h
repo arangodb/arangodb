@@ -982,6 +982,13 @@ struct PassthruNode : TypedAstNode {
   AstNode* getWrappedNode() const { return _node->getMember(0); }
 };
 
+/// MATCH TypedAst wrappers (COR-971): non-owning layout views over the
+/// parser Ast, same contract as ForNode / other TypedAstNodes. They do
+/// not replace match::Normalized* in Match/PatternTypes.h — that IR owns
+/// decoded planning semantics (datasources, PathRange kinds, projections).
+/// PatternNormalizer bridges these views to Normalized*. Builder plans
+/// from Normalized* only.
+
 /// @brief NODE_TYPE_PATTERN_EDGE layout (from Ast::createPatternEdge):
 ///   0 outVariable, 1 collections (edge labels), 2 properties, 3 filter,
 ///   4 direction, 5 range, 6 projection
