@@ -79,7 +79,7 @@ auto completeResponse(int httpStatus, std::string_view body)
  * Renewer that always answers with the same outcome and records its calls
  */
 struct ScriptedRenewer {
-  RenewalOutcome outcome;
+  TokenOutcome outcome;
   std::atomic<int> calls{0};
   JwtToken lastToken;
 
@@ -92,8 +92,8 @@ struct ScriptedRenewer {
   }
 };
 
-auto renewedToken() -> RenewalOutcome {
-  return RenewalOutcome::success(std::optional{tokenExpiringAt(2000)});
+auto renewedToken() -> TokenOutcome {
+  return TokenOutcome::success(std::optional{tokenExpiringAt(2000)});
 }
 
 }  // namespace
@@ -156,7 +156,7 @@ TEST(RenewingJwtTokenTest, unwillingServerKeepsTokenAndSchedulesRetry) {
       JwtTokenState{.token = "t", .obtainedAt = at(0), .expiresAt = at(1000)};
 
   auto const after =
-      applyRenewal(before, RenewalOutcome::success(std::nullopt), at(700));
+      applyRenewal(before, TokenOutcome::success(std::nullopt), at(700));
 
   EXPECT_EQ(after.token, "t");
   EXPECT_EQ(after.obtainedAt, at(0));
@@ -170,7 +170,7 @@ TEST(RenewingJwtTokenTest, failedRenewalKeepsTokenAndSchedulesRetry) {
 
   auto const after = applyRenewal(
       before,
-      RenewalOutcome::error(TRI_ERROR_FORBIDDEN, "User not authenticated"),
+      TokenOutcome::error(TRI_ERROR_FORBIDDEN, "User not authenticated"),
       at(700));
 
   EXPECT_EQ(after.token, "t");
@@ -179,25 +179,34 @@ TEST(RenewingJwtTokenTest, failedRenewalKeepsTokenAndSchedulesRetry) {
   EXPECT_EQ(after.nextAttemptAt, at(705));
 }
 
-// parseRenewalResponse
+// parseTokenResponse
 
 TEST(RenewingJwtTokenTest, parsesRenewedTokenFromResponse) {
   auto const outcome =
-      parseRenewalResponse(*completeResponse(200, R"({"jwt":"renewed"})"));
+      parseTokenResponse(*completeResponse(200, R"({"jwt":"renewed"})"));
 
   ASSERT_TRUE(outcome.ok());
   EXPECT_EQ(outcome.get(), std::optional<JwtToken>{"renewed"});
 }
 
-TEST(RenewingJwtTokenTest, parsesEmptyResponseAsNotYetWilling) {
-  auto const outcome = parseRenewalResponse(*completeResponse(200, "{}"));
+TEST(RenewingJwtTokenTest, parsesEmptyResponseAsNoTokenIssued) {
+  auto const outcome = parseTokenResponse(*completeResponse(200, "{}"));
+
+  ASSERT_TRUE(outcome.ok());
+  EXPECT_EQ(outcome.get(), std::nullopt);
+}
+
+TEST(RenewingJwtTokenTest, parsesInvalidTokenAsNoTokenIssued) {
+  // the server answers with the token "invalid" when authentication is off
+  auto const outcome =
+      parseTokenResponse(*completeResponse(200, R"({"jwt":"invalid"})"));
 
   ASSERT_TRUE(outcome.ok());
   EXPECT_EQ(outcome.get(), std::nullopt);
 }
 
 TEST(RenewingJwtTokenTest, parsesHttpErrorIntoErrorNumberAndMessage) {
-  auto const outcome = parseRenewalResponse(*completeResponse(
+  auto const outcome = parseTokenResponse(*completeResponse(
       401,
       R"({"error":true,"errorNum":11,"errorMessage":"User not authenticated","code":401})"));
 
@@ -208,10 +217,10 @@ TEST(RenewingJwtTokenTest, parsesHttpErrorIntoErrorNumberAndMessage) {
 }
 
 TEST(RenewingJwtTokenTest, rejectsUnexpectedResponseBodies) {
-  EXPECT_TRUE(parseRenewalResponse(*completeResponse(200, "[]")).fail());
+  EXPECT_TRUE(parseTokenResponse(*completeResponse(200, "[]")).fail());
   EXPECT_TRUE(
-      parseRenewalResponse(*completeResponse(200, R"({"jwt":1})")).fail());
-  EXPECT_TRUE(parseRenewalResponse(*completeResponse(200, "not json")).fail());
+      parseTokenResponse(*completeResponse(200, R"({"jwt":1})")).fail());
+  EXPECT_TRUE(parseTokenResponse(*completeResponse(200, "not json")).fail());
 }
 
 // RenewingJwtToken
@@ -266,7 +275,7 @@ TEST(RenewingJwtTokenTest, renewIfDueRenewsWhenDue) {
 TEST(RenewingJwtTokenTest, renewIfDueRetriesLaterWhenNoTokenWasIssued) {
   auto now = at(0);
   auto renewer =
-      ScriptedRenewer{.outcome = RenewalOutcome::success(std::nullopt)};
+      ScriptedRenewer{.outcome = TokenOutcome::success(std::nullopt)};
   auto token = RenewingJwtToken{tokenExpiringAt(1000), renewer.asFunction(),
                                 threshold, [&now] { return now; }};
 
