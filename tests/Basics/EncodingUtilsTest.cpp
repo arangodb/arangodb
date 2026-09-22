@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/EncodingUtils.h"
+#include "Basics/Endian.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/fasthash.h"
 
@@ -54,6 +55,27 @@ constexpr char mediumString[] =
     "など独自のスタイルを構築していった。日本では初来日でいきなり武道館での公演"
     "を行うなど、爆発的な人気を誇ったが、英国ではなかなか人気が出ず、初期は典型"
     "的な「ビッグ・イン・ジャパン」状態であった。";
+
+// overwrite the uncompressed-size field (bytes 1-4, big endian) of an lz4
+// payload, to simulate a peer that lies about how large the output will be
+void setDeclaredSize(arangodb::basics::StringBuffer& compressed,
+                     uint32_t declaredSize) {
+  uint32_t encoded = arangodb::basics::hostToBig(declaredSize);
+  memcpy(compressed.begin() + 1, &encoded, sizeof(encoded));
+}
+
+ErrorCode lz4Uncompress(arangodb::basics::StringBuffer const& compressed,
+                        arangodb::basics::StringBuffer& uncompressed) {
+  return arangodb::encoding::lz4Uncompress(
+      reinterpret_cast<uint8_t const*>(compressed.data()), compressed.size(),
+      uncompressed);
+}
+
+ErrorCode lz4Compress(std::string_view input,
+                      arangodb::basics::StringBuffer& compressed) {
+  return arangodb::encoding::lz4Compress(
+      reinterpret_cast<uint8_t const*>(input.data()), input.size(), compressed);
+}
 }  // namespace
 
 TEST(EncodingUtilsTest, testStringBufferZlibInflateDeflate) {
@@ -439,4 +461,108 @@ TEST(EncodingUtilsTest, testVPackBufferZlibInflateDeflate) {
     EXPECT_EQ(14311807558968942501ULL,
               fasthash64(inflated.data(), inflated.size(), 0xdeadbeef));
   }
+}
+
+TEST(EncodingUtilsTest, testStringBufferLz4RoundTrip) {
+  basics::StringBuffer compressed;
+  ASSERT_EQ(TRI_ERROR_NO_ERROR, ::lz4Compress(::shortString, compressed));
+
+  basics::StringBuffer uncompressed;
+  ASSERT_EQ(TRI_ERROR_NO_ERROR, ::lz4Uncompress(compressed, uncompressed));
+
+  EXPECT_EQ(strlen(::shortString), uncompressed.size());
+  EXPECT_EQ(std::string_view(::shortString),
+            std::string_view(uncompressed.data(), uncompressed.size()));
+}
+
+// SimpleHttpResult builds its body buffer this way, which pre-allocates ~157
+// bytes. anything larger must have grown the buffer before LZ4 wrote into it;
+// without the reservation this decompress writes past the allocation.
+TEST(EncodingUtilsTest, testStringBufferLz4OutputExceedsInitialCapacity) {
+  basics::StringBuffer compressed;
+  ASSERT_EQ(TRI_ERROR_NO_ERROR, ::lz4Compress(::mediumString, compressed));
+  ASSERT_LT(compressed.size(), strlen(::mediumString));
+
+  basics::StringBuffer uncompressed(/*initializeMemory*/ false);
+  ASSERT_LT(uncompressed.capacity(), strlen(::mediumString));
+
+  ASSERT_EQ(TRI_ERROR_NO_ERROR, ::lz4Uncompress(compressed, uncompressed));
+
+  EXPECT_EQ(strlen(::mediumString), uncompressed.size());
+  EXPECT_EQ(std::string_view(::mediumString),
+            std::string_view(uncompressed.data(), uncompressed.size()));
+}
+
+// a peer claiming a larger output than the payload actually produces must be
+// rejected. reporting the claimed size would expose uninitialized heap memory.
+TEST(EncodingUtilsTest, testStringBufferLz4DeclaredSizeTooLarge) {
+  basics::StringBuffer compressed;
+  ASSERT_EQ(TRI_ERROR_NO_ERROR, ::lz4Compress(::shortString, compressed));
+  ::setDeclaredSize(compressed, 1024);
+
+  basics::StringBuffer uncompressed;
+  EXPECT_EQ(TRI_ERROR_BAD_PARAMETER, ::lz4Uncompress(compressed, uncompressed));
+  EXPECT_EQ(0, uncompressed.size());
+}
+
+// a claimed size far beyond what the payload could possibly expand to must be
+// rejected before anything is allocated for it
+TEST(EncodingUtilsTest, testStringBufferLz4DeclaredSizeOutOfBounds) {
+  basics::StringBuffer compressed;
+  ASSERT_EQ(TRI_ERROR_NO_ERROR, ::lz4Compress(::shortString, compressed));
+  ::setDeclaredSize(compressed, 600 * 1024 * 1024);
+
+  basics::StringBuffer uncompressed;
+  EXPECT_EQ(TRI_ERROR_BAD_PARAMETER, ::lz4Uncompress(compressed, uncompressed));
+  EXPECT_EQ(0, uncompressed.size());
+}
+
+TEST(EncodingUtilsTest, testStringBufferLz4DeclaredSizeTooSmall) {
+  basics::StringBuffer compressed;
+  ASSERT_EQ(TRI_ERROR_NO_ERROR, ::lz4Compress(::mediumString, compressed));
+  ::setDeclaredSize(compressed, 16);
+
+  basics::StringBuffer uncompressed;
+  EXPECT_EQ(TRI_ERROR_BAD_PARAMETER, ::lz4Uncompress(compressed, uncompressed));
+  EXPECT_EQ(0, uncompressed.size());
+}
+
+// the chunked HTTP client path decompresses into the same body buffer once per
+// chunk, so later chunks must be appended rather than overwrite earlier ones
+TEST(EncodingUtilsTest, testStringBufferLz4AppendsToNonEmptyBuffer) {
+  basics::StringBuffer first;
+  ASSERT_EQ(TRI_ERROR_NO_ERROR, ::lz4Compress(::shortString, first));
+
+  basics::StringBuffer second;
+  ASSERT_EQ(TRI_ERROR_NO_ERROR, ::lz4Compress(::mediumString, second));
+
+  basics::StringBuffer uncompressed;
+  ASSERT_EQ(TRI_ERROR_NO_ERROR, ::lz4Uncompress(first, uncompressed));
+  ASSERT_EQ(TRI_ERROR_NO_ERROR, ::lz4Uncompress(second, uncompressed));
+
+  EXPECT_EQ(strlen(::shortString) + strlen(::mediumString),
+            uncompressed.size());
+  EXPECT_EQ(std::string(::shortString) + ::mediumString,
+            std::string(uncompressed.data(), uncompressed.size()));
+}
+
+TEST(EncodingUtilsTest, testStringBufferLz4BrokenInput) {
+  basics::StringBuffer compressed;
+  compressed.append("this-is-broken-lz4-content");
+
+  basics::StringBuffer uncompressed;
+  EXPECT_EQ(TRI_ERROR_BAD_PARAMETER, ::lz4Uncompress(compressed, uncompressed));
+  EXPECT_EQ(0, uncompressed.size());
+}
+
+TEST(EncodingUtilsTest, testStringBufferLz4TruncatedInput) {
+  basics::StringBuffer compressed;
+  ASSERT_EQ(TRI_ERROR_NO_ERROR, ::lz4Compress(::mediumString, compressed));
+
+  basics::StringBuffer uncompressed;
+  EXPECT_EQ(TRI_ERROR_BAD_PARAMETER,
+            encoding::lz4Uncompress(
+                reinterpret_cast<uint8_t const*>(compressed.data()),
+                compressed.size() / 2, uncompressed));
+  EXPECT_EQ(0, uncompressed.size());
 }
