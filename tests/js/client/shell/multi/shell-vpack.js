@@ -163,7 +163,7 @@ function versionVpackVpack() {
 
   const res = arango.POST_RAW(path, "", headers);
 
-assertMatch(String(res.headers['content-type']), /.*application\/x-velocypack/, res.headers);
+  assertMatch(String(res.headers['content-type']), /.*application\/x-velocypack/, res.headers);
 
   const obj = VPACK_TO_V8(res.body);
 
