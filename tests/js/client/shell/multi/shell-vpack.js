@@ -71,7 +71,7 @@ function cursorAPI() {
       });
       const res = arango.POST_RAW(path, body, headers);
 
-      assertMatch(String(res.headers['content-type']), /.*application\/x-velocypack/, res.headers);
+      assertMatch(/.*application\/x-velocypack/, String(res.headers['content-type']), res.headers);
       const obj = VPACK_TO_V8(res.body);
       assertTrue(Array.isArray(obj.result), JSON.stringify(obj));
     });
@@ -90,7 +90,7 @@ function versionJsonJson() {
 
   const res = arango.POST_RAW(path, "", headers);
 
-  assertMatch(String(res.headers['content-type']), /.*application\/json/, res.headers);
+  assertMatch(/.*application\/json/, String(res.headers['content-type']), res.headers);
 
   const obj = JSON.parse(res.body);
 
@@ -99,9 +99,9 @@ function versionJsonJson() {
   assertTrue(obj.hasOwnProperty('license'), JSON.stringify(obj));
 
   assertEqual(obj.server, 'arango', JSON.stringify(obj));
-  assertMatch(obj.version, /[0-9]+\.[0-9]+\.([0-9]+|(milestone|alpha|beta|devel|rc)[0-9]*)/, JSON.stringify(obj));
+  assertMatch(/[0-9]+\.[0-9]+\.([0-9]+|(milestone|alpha|beta|devel|rc)[0-9]*)/, obj.version, JSON.stringify(obj));
 
-  assertMatch(obj.license, /enterprise|community/g, JSON.stringify(obj));
+  assertMatch(/enterprise|community/g, obj.license, JSON.stringify(obj));
 };
 
 function versionVpackJson() {
@@ -115,7 +115,7 @@ function versionVpackJson() {
   const res = arango.POST_RAW(path, "", headers);
 
   assertTrue(typeof res.body === 'string', JSON.stringify(obj));
-  assertMatch(String(res.headers['content-type']), /.*application\/json/, res.headers);
+  assertMatch(/.*application\/json/, String(res.headers['content-type']), res.headers);
 
   const obj = JSON.parse(res.body);
 
@@ -124,9 +124,9 @@ function versionVpackJson() {
   assertTrue(obj.hasOwnProperty('license'), JSON.stringify(obj));
 
   assertEqual(obj.server, 'arango', JSON.stringify(obj));
-  assertMatch(obj.version, /[0-9]+\.[0-9]+\.([0-9]+|(milestone|alpha|beta|devel|rc)[0-9]*)/, JSON.stringify(obj));
+  assertMatch(/[0-9]+\.[0-9]+\.([0-9]+|(milestone|alpha|beta|devel|rc)[0-9]*)/, obj.version, JSON.stringify(obj));
 
-  assertMatch(obj.license, /enterprise|community/g, JSON.stringify(obj));
+  assertMatch(/enterprise|community/g, obj.license, JSON.stringify(obj));
 };
 
 function versionJsonVpack() {
@@ -139,7 +139,7 @@ function versionJsonVpack() {
 
   const res = arango.POST_RAW(path, "", headers);
 
-  assertMatch(String(res.headers['content-type']), /.*application\/x-velocypack/, res.headers);
+  assertMatch(/.*application\/x-velocypack/, String(res.headers['content-type']), res.headers);
 
   const obj = VPACK_TO_V8(res.body);
 
@@ -148,9 +148,9 @@ function versionJsonVpack() {
   assertTrue(obj.hasOwnProperty('license'), JSON.stringify(obj));
 
   assertEqual(obj.server, 'arango', JSON.stringify(obj));
-  assertMatch(obj.version, /[0-9]+\.[0-9]+\.([0-9]+|(milestone|alpha|beta|devel|rc)[0-9]*)/, JSON.stringify(obj));
+  assertMatch(/[0-9]+\.[0-9]+\.([0-9]+|(milestone|alpha|beta|devel|rc)[0-9]*)/, obj.version, JSON.stringify(obj));
 
-  assertMatch(obj.license, /enterprise|community/g, JSON.stringify(obj));
+  assertMatch(/enterprise|community/g, obj.license, JSON.stringify(obj));
 };
 
 function versionVpackVpack() {
@@ -163,7 +163,7 @@ function versionVpackVpack() {
 
   const res = arango.POST_RAW(path, "", headers);
 
-  assertMatch(String(res.headers['content-type']), /.*application\/x-velocypack/, res.headers);
+  assertMatch(/.*application\/x-velocypack/, String(res.headers['content-type']), res.headers);
 
   const obj = VPACK_TO_V8(res.body);
 
@@ -172,9 +172,9 @@ function versionVpackVpack() {
   assertTrue(obj.hasOwnProperty('license'), JSON.stringify(obj));
 
   assertEqual(obj.server, 'arango', JSON.stringify(obj));
-  assertMatch(obj.version, /[0-9]+\.[0-9]+\.([0-9]+|(milestone|alpha|beta|devel|rc)[0-9]*)/, JSON.stringify(obj));
+  assertMatch(/[0-9]+\.[0-9]+\.([0-9]+|(milestone|alpha|beta|devel|rc)[0-9]*)/, obj.version, JSON.stringify(obj));
 
-  assertMatch(obj.license, /enterprise|community/g, JSON.stringify(obj));
+  assertMatch(/enterprise|community/g, obj.license, JSON.stringify(obj));
 };
 /*
 function echoVpackVpack() {
