@@ -1120,7 +1120,7 @@ void RocksDBReplicationContext::extendLifetime(double ttl) {
 
   std::lock_guard locker{_contextLock};
 
-  ttl = std::min(std::max(_ttl, ttl), replutils::BatchInfo::MaxTimeout);
+  ttl = std::min(std::max(_ttl, ttl), replutils::BatchInfo::kMaxTimeout);
   TRI_ASSERT(ttl > 0.0);
   _expires = now + ttl;
 
