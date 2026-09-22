@@ -432,6 +432,7 @@ class instance {
     }
 
     let default_args = {
+      ...this._makeConfigArgs(),
       'http.trusted-origin': this.options.httpTrustedOrigin || 'all',
       'temp.path': this.tmpDir,
       'server.endpoint': bindEndpoint,
@@ -607,10 +608,18 @@ class instance {
   // //////////////////////////////////////////////////////////////////////////////
 
   _executeArangod (moreArgs, instanceJson) {
+    if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
+      this.jwt_secret = moreArgs['server.jwt-secret'];
+    } else if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret-folder')) {
+      let files = fs.list(moreArgs['server.jwt-secret-folder']);
+      files = files.sort();
+      this.jwt_secret = fs.read(fs.join(moreArgs['server.jwt-secret-folder'], files[0]));
+    }
+
     let cmd = pu.ARANGOD_BIN;
-==== BASE ====
+    // the binary set may have changed since the constructor ran
+    Object.assign(this.args, this._makeConfigArgs());
     let args = _.defaults(moreArgs, this.args);
-==== BASE ====
     let argv = [];
     if (this.options.valgrind) {
       let valgrindOpts = {};
