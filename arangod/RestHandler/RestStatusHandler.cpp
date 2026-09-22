@@ -45,7 +45,6 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Rest/Version.h"
-#include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "StorageEngine/StorageEngine.h"
 

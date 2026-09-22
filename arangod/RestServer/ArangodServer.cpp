@@ -383,7 +383,7 @@ void ArangodServer::addFeatures() {
                              getOptions<UpgradeOptionsProvider>());
   auto& rocksdbOption = addFeature<RocksDBOptionFeature>(
       getOptions<RocksDBOptionFeatureOptionsProvider>());
-  StorageEngine* enginePtr;
+  StorageEngine* enginePtr = nullptr;
   if (ServerState::instance()->isCoordinator()) {
     enginePtr = &addFeature<StorageEngine, ClusterEngine>(
         clusterFeature, database, metrics, vectorIndex);

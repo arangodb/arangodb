@@ -29,7 +29,6 @@
 #include "Cluster/ClusterAdminOperations.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
-#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "V8/v8-conv.h"

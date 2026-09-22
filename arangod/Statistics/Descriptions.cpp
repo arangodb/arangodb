@@ -28,7 +28,6 @@
 #include "Metrics/Counter.h"
 #include "Metrics/MetricsFeature.h"
 #include "Statistics/StatisticsFeature.h"
-#include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Scheduler/SchedulerFeature.h"

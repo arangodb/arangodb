@@ -30,7 +30,6 @@
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/IRegistry.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
 using namespace arangodb::application_features;

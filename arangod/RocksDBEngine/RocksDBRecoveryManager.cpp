@@ -31,7 +31,6 @@
 #include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
 #include "Basics/files.h"
-#include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/IDatabaseProvider.h"
