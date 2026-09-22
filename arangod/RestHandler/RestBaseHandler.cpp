@@ -234,6 +234,8 @@ auto RestBaseHandler::tryForwarding() -> async<bool> {
   options.database = _request->databaseName();
   options.parameters = _request->parameters();
   auto apiVersion = fuerte::api_version::from(_request->requestedApiVersion());
+  TRI_ASSERT(apiVersion.has_value()) << std::format(
+      "API version {} is not defined", _request->requestedApiVersion());
   if (not apiVersion.has_value()) {
     co_return false;
   }

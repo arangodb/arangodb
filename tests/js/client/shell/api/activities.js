@@ -97,6 +97,20 @@ function activityRegistrySuite() {
       }
     },
 
+    testForwardsActivityRequestToSpecifiedServer: function () {
+      if (internal.isCluster()){
+        Object.entries(arango.GET("/_admin/cluster/health").Health)
+          // we cannot directly access agents
+          .filter(([serverId, properties]) => properties.Role !== "Agent")
+          .map(([serverId, properties]) => serverId)
+          .forEach((serverId) => {
+            const activities = arangosh.checkRequestResult(db._connection.GET(`${activitiesModule.get_url()}?serverId=${serverId}`)).activities;
+            assertArrayLengthLargerThan(activities, 0);
+            assertArrayLengthLargerThan(activities.filter(activityRestHandlerFilter()), 0);
+          });
+      }
+    },
+
     testDumpContextIsAnActivity: function () {
       let server;
       let shard;
