@@ -178,8 +178,6 @@ void EnumerateNearVectorsExecutor::searchResults() {
   TRI_ASSERT(_infos.searchConfig.topK > 0) << "LIMIT cannot be 0";
   // A search can never return more hits than the collection holds, so size
   // the result buffers by the document count rather than by LIMIT + OFFSET.
-  // This trusts the RocksDB document counter: if it underreports, matching
-  // documents are cut off until the count is recalculated.
   auto searchConfig = _infos.searchConfig;
   searchConfig.topK = std::min(searchConfig.topK, _collectionCount);
   if (searchConfig.topK == 0) {
