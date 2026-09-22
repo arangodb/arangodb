@@ -6,6 +6,11 @@
   and controlled by `--server.jwt-renewal-threshold`. Long-running dumps
   no longer fail with HTTP 401 once `--server.session-timeout` elapses.
 
+* COR-1012 The client tools started with `--server.username`/`--server.password`
+  now obtain a JWT via `POST /_open/auth` like arangosh and renew it before
+  it expires, which also makes them work against servers in RBAC mode; they
+  fall back to HTTP basic authentication if the server issues no token.
+
 * arangodump, arangorestore and arangobackup now report the server's error (e.g.
   "HTTP 401 (Unauthorized): ArangoError 11: User not authenticated") together
   with the "Could not connect to endpoint" message when the initial connection

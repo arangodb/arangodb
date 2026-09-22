@@ -44,10 +44,12 @@
 #include "Utilities/NameValidator.h"
 
 #include <absl/strings/str_cat.h>
+#include <velocypack/Builder.h>
 #include "Ssl/jwt.h"
 
 #include <chrono>
 #include <exception>
+#include <unordered_map>
 
 using namespace arangodb::application_features;
 using namespace arangodb::httpclient;
@@ -180,17 +182,45 @@ void ClientFeature::prepare() {
     _renewingJwtToken = std::make_shared<RenewingJwtToken>(
         _options.jwtToken,
         [this](JwtToken const& token) { return renewJwtViaOpenAuth(token); },
-        std::chrono::duration_cast<JwtClock::duration>(
-            std::chrono::duration<double>{_options.jwtRenewalThreshold}),
-        &JwtClock::now);
+        renewalThreshold(), &JwtClock::now);
   }
 }
 
 void ClientFeature::start() {
+  if (shouldLoginViaOpenAuth()) {
+    auto const login = loginViaOpenAuth();
+    if (login.ok() && login.get().has_value()) {
+      _renewingJwtToken = std::make_shared<RenewingJwtToken>(
+          *login.get(), [this](JwtToken const&) { return loginViaOpenAuth(); },
+          renewalThreshold(), &JwtClock::now);
+      LOG_TOPIC("f1a92", INFO, Logger::AUTHENTICATION)
+          << "authenticated as user '" << username() << "' via /_open/auth";
+    } else {
+      LOG_TOPIC("e6b37", DEBUG, Logger::AUTHENTICATION)
+          << "using basic authentication: "
+          << (login.fail() ? login.errorMessage()
+                           : "the server issues no tokens, authentication is "
+                             "probably disabled");
+    }
+  }
+
   if (_renewingJwtToken != nullptr) {
     _jwtRenewal = std::make_unique<BackgroundJwtRenewal>(
         _renewingJwtToken, kJwtRenewalCheckInterval);
   }
+}
+
+bool ClientFeature::shouldLoginViaOpenAuth() const {
+  READ_LOCKER(locker, _settingsLock);
+  return _options.loginViaOpenAuth && _options.authentication &&
+         _options.jwtToken.empty() && _jwtSecret.empty() &&
+         !_options.username.empty();
+}
+
+JwtClock::duration ClientFeature::renewalThreshold() const {
+  READ_LOCKER(locker, _settingsLock);
+  return std::chrono::duration_cast<JwtClock::duration>(
+      std::chrono::duration<double>{_options.jwtRenewalThreshold});
 }
 
 void ClientFeature::stop() { _jwtRenewal.reset(); }
@@ -271,22 +301,46 @@ std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
   return httpClient;
 }
 
-RenewalOutcome ClientFeature::renewJwtViaOpenAuth(JwtToken const& token) const {
+TokenOutcome ClientFeature::postForToken(
+    std::string const& path, std::string const& body,
+    std::unordered_map<std::string, std::string> const& headers) const {
   try {
-    auto const client =
-        createBareHttpClient(endpoint(), defaultHttpClientParams(),
-                             /*suppressError*/ false);
+    // a malformed endpoint is reported by the tool's own client, not here
+    auto const client = createBareHttpClient(
+        endpoint(), defaultHttpClientParams(), /*suppressError*/ true);
     std::unique_ptr<SimpleHttpResult> const response(client->request(
-        rest::RequestType::POST, "/_open/auth/renew", nullptr, 0,
-        {{StaticStrings::Authorization, absl::StrCat("bearer ", token)}}));
+        rest::RequestType::POST, path, body.data(), body.size(), headers));
     if (response == nullptr || !response->isComplete()) {
-      return RenewalOutcome::error(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
-                                   client->getErrorMessage());
+      return TokenOutcome::error(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
+                                 client->getErrorMessage());
     }
-    return parseRenewalResponse(*response);
+    return parseTokenResponse(*response);
   } catch (std::exception const& ex) {
-    return RenewalOutcome::error(TRI_ERROR_INTERNAL, ex.what());
+    return TokenOutcome::error(TRI_ERROR_INTERNAL, ex.what());
   }
+}
+
+TokenOutcome ClientFeature::loginViaOpenAuth() const {
+  // read the raw options: username() would answer with the token's user
+  auto const credentials = [&] {
+    READ_LOCKER(locker, _settingsLock);
+    velocypack::Builder builder;
+    {
+      velocypack::ObjectBuilder object(&builder);
+      builder.add("username", velocypack::Value(_options.username));
+      builder.add("password", velocypack::Value(_options.password));
+    }
+    return builder.toJson();
+  }();
+  return postForToken(
+      "/_open/auth", credentials,
+      {{StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeJson}});
+}
+
+TokenOutcome ClientFeature::renewJwtViaOpenAuth(JwtToken const& token) const {
+  return postForToken(
+      "/_open/auth/renew", "",
+      {{StaticStrings::Authorization, absl::StrCat("bearer ", token)}});
 }
 
 std::vector<std::string> ClientFeature::httpEndpoints() {

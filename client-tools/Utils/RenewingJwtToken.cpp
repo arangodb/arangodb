@@ -57,7 +57,7 @@ auto expiryOf(JwtToken const& token) -> std::optional<JwtClock::time_point> {
 /**
  * Reports the outcome of a renewal attempt
  */
-void logRenewal(RenewalOutcome const& outcome, JwtTokenState const& state,
+void logRenewal(TokenOutcome const& outcome, JwtTokenState const& state,
                 JwtClock::time_point now) {
   if (outcome.fail()) {
     LOG_TOPIC("c4d18", WARN, Logger::AUTHENTICATION)
@@ -100,7 +100,7 @@ auto isRenewalDue(JwtTokenState const& state, JwtClock::time_point now,
   return now >= std::max(expiresAt - renewalThreshold, halfLifetime);
 }
 
-auto applyRenewal(JwtTokenState state, RenewalOutcome const& outcome,
+auto applyRenewal(JwtTokenState state, TokenOutcome const& outcome,
                   JwtClock::time_point now) -> JwtTokenState {
   if (outcome.ok() && outcome.get().has_value()) {
     return JwtTokenState{.token = *outcome.get(),
@@ -111,8 +111,8 @@ auto applyRenewal(JwtTokenState state, RenewalOutcome const& outcome,
   return state;
 }
 
-auto parseRenewalResponse(httpclient::SimpleHttpResult const& response)
-    -> RenewalOutcome {
+auto parseTokenResponse(httpclient::SimpleHttpResult const& response)
+    -> TokenOutcome {
   if (auto const check = HttpResponseChecker::check("", &response);
       check.fail()) {
     return check;
@@ -120,24 +120,28 @@ auto parseRenewalResponse(httpclient::SimpleHttpResult const& response)
   try {
     auto const body = response.getBodyVelocyPack()->slice();
     if (!body.isObject()) {
-      return RenewalOutcome::error(
+      return TokenOutcome::error(
           TRI_ERROR_INTERNAL,
-          "unexpected reply from /_open/auth/renew: not an object");
+          "unexpected reply from /_open/auth: not an object");
     }
     auto const jwt = body.get("jwt");
     if (jwt.isNone()) {
-      return RenewalOutcome::success(std::nullopt);
+      return TokenOutcome::success(std::nullopt);
     }
     if (!jwt.isString()) {
-      return RenewalOutcome::error(
+      return TokenOutcome::error(
           TRI_ERROR_INTERNAL,
-          "unexpected reply from /_open/auth/renew: jwt is not a string");
+          "unexpected reply from /_open/auth: jwt is not a string");
     }
-    return RenewalOutcome::success(jwt.copyString());
+    if (jwt.isEqualString("invalid")) {
+      // the server issues no tokens while authentication is disabled
+      return TokenOutcome::success(std::nullopt);
+    }
+    return TokenOutcome::success(jwt.copyString());
   } catch (std::exception const& ex) {
-    return RenewalOutcome::error(
+    return TokenOutcome::error(
         TRI_ERROR_INTERNAL,
-        absl::StrCat("cannot parse reply from /_open/auth/renew: ", ex.what()));
+        absl::StrCat("cannot parse reply from /_open/auth: ", ex.what()));
   }
 }
 
