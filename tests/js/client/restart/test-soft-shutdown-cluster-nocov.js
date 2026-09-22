@@ -1,6 +1,6 @@
 
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, assertFalse, assertEqual, arango */
+/* global getOptions, assertTrue, assertFalse, assertEqual, assertMatch, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
