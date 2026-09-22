@@ -215,7 +215,7 @@ ErrorCode encoding::lz4Uncompress(uint8_t const* compressed,
   memcpy(&uncompressedLength, compressed + 1, sizeof(uncompressedLength));
   uncompressedLength = basics::bigToHost<uint32_t>(uncompressedLength);
 
-  if (uncompressedLength == 0 ||
+  if (uncompressedLength == 0 || uncompressedLength > ::maxUncompressedSize ||
       uncompressedLength >= static_cast<size_t>(LZ4_MAX_INPUT_SIZE)) {
     // uncompressed size is larger than what LZ4 can actually compress.
     // suspicious!
@@ -227,19 +227,27 @@ ErrorCode encoding::lz4Uncompress(uint8_t const* compressed,
   } else if constexpr (std::is_same_v<T,
                                       arangodb::velocypack::Buffer<uint8_t>>) {
     uncompressed.reserve(uncompressedLength);
+  } else if constexpr (std::is_same_v<T, arangodb::basics::StringBuffer>) {
+    auto res = uncompressed.reserve(uncompressedLength);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;  // returns the error of .reserve(), doesn't throw
+    }
+  }
+
+  char* dst;
+  if constexpr (std::is_same_v<T, arangodb::basics::StringBuffer>) {
+    dst = uncompressed.end();
+  } else {
+    dst = const_cast<char*>(reinterpret_cast<char const*>(uncompressed.data()));
   }
 
   // uncompress directly into the result
   // this should not go wrong because we have a big enough output buffer.
   int size = LZ4_decompress_safe(
-      reinterpret_cast<char const*>(compressed) + ::lz4HeaderLength,
-      const_cast<char*>(reinterpret_cast<char const*>(uncompressed.data())),
+      reinterpret_cast<char const*>(compressed) + ::lz4HeaderLength, dst,
       static_cast<int>(compressedLength - ::lz4HeaderLength),
       static_cast<int>(uncompressedLength));
-  TRI_ASSERT(size > 0);
-  TRI_ASSERT(size < LZ4_MAX_INPUT_SIZE);
-  TRI_ASSERT(uncompressedLength == static_cast<size_t>(size));
-  if (size <= 0 || size >= LZ4_MAX_INPUT_SIZE) {
+  if (size <= 0 || static_cast<size_t>(size) != uncompressedLength) {
     return TRI_ERROR_BAD_PARAMETER;
   }
 
@@ -248,6 +256,8 @@ ErrorCode encoding::lz4Uncompress(uint8_t const* compressed,
   } else if constexpr (std::is_same_v<T,
                                       arangodb::velocypack::Buffer<uint8_t>>) {
     uncompressed.resetTo(initial + uncompressedLength);
+  } else if constexpr (std::is_same_v<T, arangodb::basics::StringBuffer>) {
+    uncompressed.increaseLength(uncompressedLength);
   }
 
   return TRI_ERROR_NO_ERROR;
