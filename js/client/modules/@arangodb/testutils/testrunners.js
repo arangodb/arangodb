@@ -34,6 +34,7 @@ const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
 const ct = require('@arangodb/testutils/client-tools');
+const inst = require('@arangodb/testutils/instance');
 const {
   toArgv,
   download,
@@ -140,25 +141,28 @@ class runOnArangodRunner extends testRunnerBase{
   constructor(options, testname, ...optionalArgs) {
     super(options, testname, ...optionalArgs);
     this.info = "onRemoteArangod";
+    this.httpOptions = {};
+  }
+  preRun() {
+      this.httpOptions = inst.makeAuthorizationHeaders(this.options, this.instanceManager.jwt_secret);
+      this.httpOptions.method = 'POST';
+
+      this.httpOptions.timeout = this.options.oneTestTimeout;
+      if (this.options.isSan) {
+        this.httpOptions.timeout *= 2;
+      }
+      if (this.options.valgrind) {
+        this.httpOptions.timeout *= 2;
+      }
+
+      this.httpOptions.returnBodyOnError = true;
   }
   runOneTest(file) {
     try {
       let testCode = getTestCode(file, this.options, this.instanceManager);
-      let httpOptions = _.clone(this.instanceManager.httpAuthOptions);
-      httpOptions.method = 'POST';
-
-      httpOptions.timeout = this.options.oneTestTimeout;
-      if (this.options.isSan) {
-        httpOptions.timeout *= 2;
-      }
-      if (this.options.valgrind) {
-        httpOptions.timeout *= 2;
-      }
-
-      httpOptions.returnBodyOnError = true;
       const reply = download(this.instanceManager.url + '/_admin/execute?returnAsJSON=true',
                              testCode,
-                             httpOptions);
+                             this.httpOptions);
       if (!reply.error && reply.code === 200) {
         return JSON.parse(reply.body);
       } else {
@@ -376,150 +380,46 @@ class shellv8Runner extends runLocalInArangoshRunner {
 
 class runWithAllureReport extends testRunnerBase {
   getAllureResults(testResultsDir, results, status, defaultName) {
-    let allResultJsons = {};
-    let topLevelContainers = [];
-    let allContainerJsons = {};
-    let containerRe = /-container.json/;
-    let resultRe = /-result.json/;
-    let resultFiles = fs.list(testResultsDir).filter(file => {
-      return file.match(resultRe) !== null;
-    });
-    if (resultFiles.length === 0) {
-      let msg = `did not find any files in ${testResultsDir}`;
-      //print(msg);
-      results['status'] = false;
-      results['message'] = msg;
-    }
-    //print(resultFiles)
-    resultFiles.forEach(containerFile => {
-      let resultJson = JSON.parse(fs.read(fs.join(testResultsDir, containerFile)));
-      resultJson['parents'] = [];
-      allResultJsons[resultJson.uuid] = resultJson;
+    // Allure containers describe fixtures, which can be shared by many tests.
+    // Test results, rather than fixture lifetimes, define the test cases.
+    const allResults = new Map();
+    fs.list(testResultsDir).filter(file => file.endsWith('-result.json')).sort().forEach(file => {
+      const testResult = JSON.parse(fs.read(fs.join(testResultsDir, file)));
+      allResults.set(testResult.uuid, testResult);
     });
 
-    let containerFiles = fs.list(testResultsDir).filter(file => file.match(containerRe) !== null);
-    containerFiles.forEach(containerFile => {
-      let container = JSON.parse(fs.read(fs.join(testResultsDir, containerFile)));
-      container['childContainers'] = [];
-      container['isToplevel'] = false;
-      //print(container)
-      if ('children' in container)
-      {
-        container.children.forEach(child => {
-          allResultJsons[child]['parents'].push(container.uuid);
-        });
-      }
-      allContainerJsons[container.uuid] = container;
-    });
-
-    for(let oneResultKey in allResultJsons) {
-      allResultJsons[oneResultKey].parents = 
-        allResultJsons[oneResultKey].parents.sort(function(aUuid, bUuid) {
-          let a = allContainerJsons[aUuid];
-          let b = allContainerJsons[bUuid];
-          if ((a.start !== b.start) || (a.stop !== b.stop)) {
-            return (b.stop - b.start) - (a.stop - a.start);
-          }
-          if (a.children.length !== b.children.length) {
-            return b.children.length - a.children.length;
-          }
-          //print(a)
-          //print(b)
-          //print('--------')
-          return 0;
-        });
-      for (let i = 0; i + 1 < allResultJsons[oneResultKey].parents.length; i++) {
-        let parent = allResultJsons[oneResultKey].parents[i];
-        let child = allResultJsons[oneResultKey].parents[i + 1];
-        if(i === 0) {
-          topLevelContainers.push(parent);
-        }
-        if (!allContainerJsons[parent]['childContainers'].includes(child)) {
-          allContainerJsons[parent]['childContainers'].push(child);
-        }
-        // print(allContainerJsons[parent])
-      }
-      //print('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^')
-      //print(allResultJsons[oneResultKey])
-      //print('vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv')
+    results.total = allResults.size;
+    results.failed = 0;
+    results.timeout = false;
+    if (allResults.size === 0) {
+      results.status = false;
+      results.failed = 1;
+      results.message = `did not find any test results in ${testResultsDir}`;
+      return;
     }
-    //print(topLevelContainers)
-    let totalFailed = 0;
+
     let count = 0;
-    topLevelContainers.forEach(id => {
-      //print('zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz')
-      let tlContainer = allContainerJsons[id];
-      //print(tlContainer)
-      //print(tlContainer['childContainers'])
-
-      let resultSet = {
-        duration: tlContainer.stop - tlContainer.start,
-        total: tlContainer.children.length,
-        failed: 0,
-        status: true
+    allResults.forEach(testResult => {
+      const passed = testResult.status === 'passed' || testResult.status === 'skipped';
+      const details = testResult.statusDetails || {};
+      const message = [details.message, details.trace].filter(part => part).join('\n\n');
+      // Keep parameterized tests with identical names separate, and avoid keys
+      // reserved for result metadata such as "status" or "message".
+      const name = `${defaultName}_${count++}: ${testResult.fullName || testResult.name || testResult.uuid}`;
+      results[name] = {
+        duration: testResult.stop - testResult.start,
+        status: passed,
+        skipped: testResult.status === 'skipped',
+        message: message || (passed ? '' : `Allure test status: ${testResult.status || 'unknown'}`)
       };
-      let name = `${defaultName}_${count++}`;
-      if (tlContainer.hasOwnProperty('name')) {
-        name = tlContainer.name;
+      if (!passed) {
+        results.failed++;
       }
-      results[name] = resultSet;
-      //print('aaaaaaaaaaaaaaaaaa')
-      //print(results)
-
-      let tlCount = 0;
-      tlContainer['childContainers'].forEach(childContainerId => {
-        let childContainer = allContainerJsons[childContainerId];
-        let suiteResult = {
-          status: true,
-          failed: 0,
-          message: ""
-        };
-        let childName = `child_${defaultName}_${tlCount++}`;
-        if (childContainer.hasOwnProperty('name')) {
-          childName = childContainer.name;
-        }
-        resultSet[childName] = suiteResult;
-        //print(childContainer);
-        //print('-------------------------')
-        //print(childName);
-        childContainer['childContainers'].forEach(grandChildContainerId => {
-          let grandChildContainer = allContainerJsons[grandChildContainerId];
-          //print(grandChildContainer);
-          let name = childContainer.name + "." + grandChildContainer.name;
-          if (grandChildContainer.children.length !== 1) {
-            print(RED+"This grandchild has more than one item - not supported!"+RESET);
-            print(RED+grandChildContainer.children+RESET);
-          }
-          let gcTestResult = allResultJsons[grandChildContainer.children[0]];
-          //print('eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee')
-          //print(gcTestResult)
-          let message = "";
-          if (gcTestResult.hasOwnProperty('statusDetails')) {
-            message = gcTestResult.statusDetails.message + "\n\n" + gcTestResult.statusDetails.trace;
-          }
-          let myResult = {
-            duration: gcTestResult.stop - gcTestResult.start,
-            status: (gcTestResult.status === "passed") || (gcTestResult.status === "skipped"),
-            message: message
-          };
-
-          suiteResult[grandChildContainer.name + '.' + gcTestResult.name] = myResult;
-          if (!myResult.status) {
-            resultSet.status = false;
-            resultSet.failed += 1;
-            totalFailed += 1;
-            status = false;
-            suiteResult.status = false;
-            suiteResult.message += myResult.message;
-            results.message += myResult.message;
-          }
-        });
-      });
-      //print('zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz')
     });
-    results['failed'] = totalFailed;
-    results['timeout'] = false;
-    results['status'] = status;
+    results.status = status && results.failed === 0;
+    if (!status && results.failed === 0 && !results.message) {
+      results.message = 'Test process failed although Allure reported no failed tests.';
+    }
   }
 }
 

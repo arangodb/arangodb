@@ -115,5 +115,74 @@ function multiEdgeCollectionGraphSuite() {
   };
 }
 
+function traversalBatchingSuite() {
+  const vertices = "UnitTestTraversalBatchVertices";
+  const edgeCollections = ["UnitTestTraversalBatchEdges1", "UnitTestTraversalBatchEdges2"];
+  const edgeCount = 2500;
+  const expected = edgeCollections.flatMap(name =>
+    Array.from({length: edgeCount}, (_, i) => `${name}/e${i}`)).sort();
+
+  function checkTraversal(indexName, fields) {
+    const indexHint = {};
+    for (const name of edgeCollections) {
+      indexHint[name] = {outbound: {base: indexName}};
+    }
+
+    // Start a graph traversal from the `start` vertex.
+    // Follow outgoing edges exactly one step, using both edge collections.
+    const query = `
+      WITH ${vertices}
+      FOR v, e IN 1..1 OUTBOUND @start ${edgeCollections.join(", ")}
+        OPTIONS {order: "bfs", indexHint: ${JSON.stringify(indexHint)}}
+        RETURN e._id`;
+    const bindVars = {start: `${vertices}/start`};
+
+    // Disable the cluster-one-shard rule so that the Coordinator requests batches from the DBServer.
+    const options = {optimizer: {rules: ["-cluster-one-shard"]}};
+
+    // Check that the traversal returns all edges.
+    const actual = db._query(query, bindVars, options).toArray().sort();
+    assertEqual(expected.length, actual.length);
+    assertEqual(expected, actual);
+  }
+
+  return {
+    setUpAll: function () {
+      db._create(vertices, {numberOfShards: 1, replicationFactor: 1});
+      db._collection(vertices).insert([{_key: "start"}, {_key: "target"}]);
+      for (const name of edgeCollections) {
+        // Make the edge collections follow the vertex collection's shard placement.
+        // Since we gave the vertex collection one shard, their data is placed together on the same DBServer.
+        const edges = db._createEdgeCollection(name, {distributeShardsLike: vertices});
+        // `nonCovering` finds outgoing edges, but must read edge documents to obtain `_to`.
+        edges.ensureIndex({type: "persistent", name: "nonCovering", fields: ["_from"]});
+        // `covering` can obtain both endpoints directly from the index.
+        edges.ensureIndex({type: "persistent", name: "covering", fields: ["_from", "_to"]});
+        edges.insert(Array.from({length: edgeCount}, (_, i) => ({
+          _key: `e${i}`, _from: `${vertices}/start`, _to: `${vertices}/target`
+        })));
+      }
+    },
+
+    tearDownAll: function () {
+      for (const name of edgeCollections) {
+        db._drop(name);
+      }
+      db._drop(vertices);
+    },
+
+    testNonCoveringCacheRefill: function () {
+      checkTraversal("nonCovering", ["_from"]);
+    },
+
+    testCoveringIndexControl: function () {
+      checkTraversal("covering", ["_from", "_to"]);
+    }
+  };
+}
+
 jsunity.run(multiEdgeCollectionGraphSuite);
+if (internal.isCluster()) {
+  jsunity.run(traversalBatchingSuite);
+}
 return jsunity.done();
