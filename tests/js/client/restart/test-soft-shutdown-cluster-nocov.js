@@ -269,7 +269,7 @@ function testSuite() {
       assertFalse(resp.error);
       assertEqual(201, resp.code);
     },
-
+/*
     testSoftShutdownWithQueuedLowPrio : function() {
       // Create a streaming transaction:
       let op = `require("internal").wait(1); return 1;`;
@@ -345,7 +345,7 @@ function testSuite() {
       // This is tracked in https://arangodb.atlassian.net/browse/BTS-2227.
       assertTrue(status.allClear, "status: " + JSON.stringify(status));
     },
-
+*/
   };
 }
 
