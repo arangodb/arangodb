@@ -26,6 +26,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 
 #include "Shell/ClientFeatureOptions.h"
 #include "Shell/ShellConsoleFeature.h"
@@ -153,9 +154,31 @@ class ClientFeature final : public HttpEndpointProvider {
       bool suppressError) const;
 
   /**
+   * POSTs to the given /_open/auth path and interprets the reply
+   */
+  TokenOutcome postForToken(
+      std::string const& path, std::string const& body,
+      std::unordered_map<std::string, std::string> const& headers) const;
+
+  /**
+   * POSTs /_open/auth with the configured username and password
+   */
+  TokenOutcome loginViaOpenAuth() const;
+
+  /**
    * POSTs /_open/auth/renew authenticated with the given token
    */
-  RenewalOutcome renewJwtViaOpenAuth(JwtToken const& token) const;
+  TokenOutcome renewJwtViaOpenAuth(JwtToken const& token) const;
+
+  /**
+   * --server.jwt-renewal-threshold as a duration
+   */
+  JwtClock::duration renewalThreshold() const;
+
+  /**
+   * Whether to exchange the configured credentials for a JWT at startup
+   */
+  bool shouldLoginViaOpenAuth() const;
 
   ClientFeatureOptions _options;
 

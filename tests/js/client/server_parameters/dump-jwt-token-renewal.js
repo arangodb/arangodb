@@ -64,8 +64,9 @@ function dumpJwtTokenRenewalSuite() {
     return result.json.jwt;
   };
 
-  const runDump = (outputDirectory, token, renewalThresholdSeconds) => executeExternalAndWaitWithSanitizer(
-    pu.ARANGODUMP_BIN, [
+  // authArgs: either --server.jwt-token or --server.username/--server.password
+  const runDump = (outputDirectory, authArgs, renewalThresholdSeconds, extraArgs = []) =>
+    executeExternalAndWaitWithSanitizer(pu.ARANGODUMP_BIN, [
       '--collection', cn,
       '--output-directory', outputDirectory,
       '--overwrite', 'true',
@@ -75,9 +76,16 @@ function dumpJwtTokenRenewalSuite() {
       '--local-network-threads', '1',
       '--server.endpoint', IM.endpoint,
       '--server.database', db._name(),
-      '--server.jwt-token', token,
       '--server.jwt-renewal-threshold', String(renewalThresholdSeconds),
+      ...authArgs,
+      ...extraArgs,
     ], 'dump-jwt-token-renewal');
+
+  const assertCompleteDump = (outputDirectory) => {
+    const dataFile = fs.join(outputDirectory, cn + '_' + crypto.md5(cn) + '.data.json');
+    assertTrue(fs.isFile(dataFile), `no data file in ${JSON.stringify(fs.list(outputDirectory))}`);
+    assertEqual(documentCount + 1, fs.readFileSync(dataFile).toString().split('\n').length);
+  };
 
   return {
     setUpAll: function () {
@@ -113,16 +121,42 @@ function dumpJwtTokenRenewalSuite() {
       try {
         const start = internal.time();
         // renew 4 s before expiry: enough slack for slow CI machines
-        const rc = runDump(outputDirectory, fetchUserToken(), 4);
+        const rc = runDump(outputDirectory, ['--server.jwt-token', fetchUserToken()], 4);
         const durationSeconds = internal.time() - start;
         assertEqual(0, rc.exit, `arangodump aborted: ${JSON.stringify(rc)}`);
         assertTrue(durationSeconds > tokenLifetimeSeconds,
           `dump took only ${durationSeconds}s and cannot have outlived the token; increase documentCount`);
-        const dataFile = fs.join(outputDirectory, cn + '_' + crypto.md5(cn) + '.data.json');
-        assertTrue(fs.isFile(dataFile), `no data file in ${JSON.stringify(fs.list(outputDirectory))}`);
-        assertEqual(documentCount + 1, fs.readFileSync(dataFile).toString().split('\n').length);
+        assertCompleteDump(outputDirectory);
       } finally {
         fs.removeDirectoryRecursive(outputDirectory, true);
+      }
+    },
+
+    // with username and password arangodump obtains a JWT via /_open/auth and
+    // renews it by logging in again; as HTTP basic authentication would pass
+    // this dump as well, the arangodump log has to prove that a JWT was renewed
+    testDumpWithCredentialsSurvivesTokenExpiry: function () {
+      if (!IM.debugCanUseFailAt()) {
+        return;
+      }
+      const outputDirectory = fs.getTempFile();
+      fs.makeDirectory(outputDirectory);
+      const logFile = fs.getTempFile();
+      try {
+        const rc = runDump(outputDirectory, ['--server.username', 'root', '--server.password', ''], 4, [
+          '--log.output', 'file://' + logFile,
+          '--log.foreground-tty', 'false',
+          '--log.level', 'authentication=info',
+        ]);
+        assertEqual(0, rc.exit, `arangodump aborted: ${JSON.stringify(rc)}`);
+        assertCompleteDump(outputDirectory);
+        const log = fs.isFile(logFile) ? fs.readFileSync(logFile).toString() : '';
+        assertTrue(log.includes('renewed the JWT token'), `no JWT renewal in the arangodump log:\n${log}`);
+      } finally {
+        fs.removeDirectoryRecursive(outputDirectory, true);
+        if (fs.isFile(logFile)) {
+          fs.remove(logFile);
+        }
       }
     },
 
@@ -136,7 +170,7 @@ function dumpJwtTokenRenewalSuite() {
       fs.makeDirectory(outputDirectory);
       try {
         const start = internal.time();
-        const rc = runDump(outputDirectory, fetchUserToken(), 0);
+        const rc = runDump(outputDirectory, ['--server.jwt-token', fetchUserToken()], 0);
         const durationSeconds = internal.time() - start;
         assertNotEqual(0, rc.exit, 'arangodump finished although its token expired');
         // the server truncates the token's issue time to whole seconds, so the
