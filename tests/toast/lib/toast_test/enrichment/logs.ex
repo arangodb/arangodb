@@ -94,34 +94,25 @@ defmodule ToastTest.Enrichment.Logs do
   # untrusted external input, so atom table exhaustion is not a concern.
   defp maybe_put_atom(entry, key, value), do: Map.put(entry, key, String.to_atom(value))
 
-  @doc """
-  Return the timestamp (Unix microseconds) of the first crash log entry,
-  or `nil` if the log file has no crash block at its end.
-  """
-  @spec extract_crash_timestamp(Path.t()) :: Toast.timestamp() | nil
-  def extract_crash_timestamp(path) do
-    case extract_crash_lines(path) do
-      [%{time: time} | _] -> time
-      [] -> nil
-    end
-  end
+  @max_trailing_errors 100
 
   @doc """
-  Return the last contiguous block of crash-topic log entries.
+  Return the trailing contiguous block of error/fatal log entries.
 
-  Reads the file backwards to efficiently find the most recent crash output.
-  Only returns entries when the crash block is at the very end of the log
-  (the crash handler writes these as the last thing before the process dies).
+  Reads the file backwards to efficiently find entries at the end. Collects
+  all consecutive error/fatal entries working backwards from EOF, stopping
+  at the first non-error/fatal entry or after #{@max_trailing_errors} entries.
+  Returns entries in chronological order.
 
-  Returns `[]` if the file does not exist or contains no crash entries at the end.
+  Returns `[]` if the file does not exist or has no error/fatal entries at the end.
   """
-  @spec extract_crash_lines(Path.t()) :: [map()]
-  def extract_crash_lines(path) do
+  @spec extract_trailing_errors(Path.t()) :: [map()]
+  def extract_trailing_errors(path) do
     case File.open(path, [:read, :binary]) do
       {:ok, device} ->
         try do
           {:ok, file_size} = :file.position(device, :eof)
-          read_crash_entries_backwards(device, file_size)
+          read_trailing_block(device, file_size)
         after
           File.close(device)
         end
@@ -131,17 +122,17 @@ defmodule ToastTest.Enrichment.Logs do
     end
   end
 
-  defp read_crash_entries_backwards(_device, 0), do: []
+  defp read_trailing_block(_device, 0), do: []
 
-  defp read_crash_entries_backwards(device, file_size) do
-    scan_backwards(device, file_size, "", [])
+  defp read_trailing_block(device, file_size) do
+    scan_backwards(device, file_size, "", [], 0)
   end
 
-  defp scan_backwards(_device, 0, leftover, acc) do
-    finalize_crash_block(leftover, acc)
+  defp scan_backwards(_device, 0, leftover, acc, count) do
+    finalize_block(leftover, acc, count)
   end
 
-  defp scan_backwards(device, pos, leftover, acc) do
+  defp scan_backwards(device, pos, leftover, acc, count) do
     read_start = max(pos - @chunk_size, 0)
     bytes_to_read = pos - read_start
 
@@ -151,55 +142,53 @@ defmodule ToastTest.Enrichment.Logs do
     data = chunk <> leftover
     [new_leftover | lines] = String.split(data, "\n")
 
-    case process_lines_reverse(Enum.reverse(lines), acc) do
-      {:done, result} -> result
-      {:continue, new_acc} -> scan_backwards(device, read_start, new_leftover, new_acc)
+    case process_lines_reverse(Enum.reverse(lines), acc, count) do
+      {:done, result} ->
+        result
+
+      {:continue, new_acc, new_count} ->
+        scan_backwards(device, read_start, new_leftover, new_acc, new_count)
     end
   end
 
-  defp process_lines_reverse([], acc), do: {:continue, acc}
+  defp process_lines_reverse([], acc, count), do: {:continue, acc, count}
 
-  defp process_lines_reverse([line | rest], []) do
-    cond do
-      line == "" ->
-        process_lines_reverse(rest, [])
-
-      crash_entry?(line) ->
-        case parse_line(line) do
-          {:ok, entry} -> process_lines_reverse(rest, [entry])
-          :error -> {:done, []}
-        end
-
-      true ->
-        {:done, []}
-    end
-  end
-
-  defp process_lines_reverse([line | rest], acc) do
-    if crash_entry?(line) do
-      case parse_line(line) do
-        {:ok, entry} -> process_lines_reverse(rest, [entry | acc])
-        :error -> {:done, acc}
-      end
+  defp process_lines_reverse([line | rest], [], 0) do
+    if line == "" do
+      process_lines_reverse(rest, [], 0)
     else
-      {:done, acc}
-    end
-  end
-
-  defp finalize_crash_block(leftover, acc) do
-    if crash_entry?(leftover) do
-      case parse_line(leftover) do
-        {:ok, entry} -> [entry | acc]
-        :error -> acc
+      case parse_and_check_level(line) do
+        {:ok, entry} -> process_lines_reverse(rest, [entry], 1)
+        _ -> {:done, []}
       end
-    else
-      acc
     end
   end
 
-  defp crash_entry?(line) do
-    # Quick string check before attempting JSON parse
-    String.contains?(line, "\"crash\"")
+  defp process_lines_reverse(_lines, acc, count) when count >= @max_trailing_errors do
+    {:done, acc}
+  end
+
+  defp process_lines_reverse([line | rest], acc, count) do
+    case parse_and_check_level(line) do
+      {:ok, entry} -> process_lines_reverse(rest, [entry | acc], count + 1)
+      _ -> {:done, acc}
+    end
+  end
+
+  defp finalize_block(_leftover, acc, count) when count >= @max_trailing_errors, do: acc
+
+  defp finalize_block(leftover, acc, _count) do
+    case parse_and_check_level(leftover) do
+      {:ok, entry} -> [entry | acc]
+      _ -> acc
+    end
+  end
+
+  defp parse_and_check_level(line) do
+    case parse_line(line) do
+      {:ok, %{level: level} = entry} when level in [:error, :fatal] -> {:ok, entry}
+      _ -> :skip
+    end
   end
 
   @doc """

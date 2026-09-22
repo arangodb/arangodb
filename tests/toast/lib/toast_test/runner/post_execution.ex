@@ -31,38 +31,16 @@ defmodule ToastTest.Runner.PostExecution do
   @doc """
   Builds a `SuiteResult` after test execution completes.
 
-  For manual-mode suites (no deployment), only processes events from the event
-  store (crashes, timeout kills) and runs attribution.
+  Analyses the EventStore data (crashes, timeout kills, infrastructure issues),
+  collects artifacts from `servers` (coredumps, sanitizer files), gathers server
+  logs, and writes results to disk.
 
-  For deployed suites, additionally stops the deployment, collects artifacts
-  (coredumps, server logs), and performs full post-mortem analysis.
+  The caller is responsible for stopping the deployment and passing the resulting
+  server map. An empty map is valid (manual mode, excluded suites, failed
+  deployments) — the analysis still runs using EventStore data.
   """
-  @spec run(Toast.Deployment.t() | nil, map(), ToastTest.Config.t(), Path.t() | nil) ::
-          SuiteResult.t()
-  def run(deployment, test_data, test_config, pcap_path \\ nil)
-
-  # Manual mode — no deployment was started, so only process event store data.
-  def run(nil, test_data, _test_config, _pcap_path) do
-    snapshot = EventStore.snapshot()
-
-    crash_events = Enum.map(snapshot.unexpected_crashes, &ResultBuilder.to_crash_event/1)
-    test_data = ToastTest.Attribution.Invalidation.apply(test_data, crash_events)
-
-    {issues, _coredump_reports} =
-      ToastTest.Attribution.run(test_data, %{}, crash_events,
-        timeout_kills: snapshot.timeout_kills
-      )
-
-    SuiteResult.build(test_data, issues, events: snapshot.events)
-  end
-
-  def run(deployment, test_data, %ToastTest.Config{} = test_config, pcap_path) do
-    maybe_dump_agency(deployment, test_data, test_config)
-
-    Logger.debug("Post-execution: stopping deployment")
-    {servers, error} = stop_deployment(deployment)
-    if error, do: Logger.warning("Deployment stop error: #{inspect(error)}")
-
+  @spec run(map(), map(), ToastTest.Config.t(), Path.t() | nil) :: SuiteResult.t()
+  def run(servers, test_data, %ToastTest.Config{} = test_config, pcap_path \\ nil) do
     try do
       build_suite_result(servers, test_data, test_config, pcap_path)
     rescue
@@ -75,13 +53,6 @@ defmodule ToastTest.Runner.PostExecution do
         SuiteResult.build(test_data, [],
           warnings: ["Post-execution analysis failed: #{Exception.message(e)}"]
         )
-    end
-  end
-
-  defp stop_deployment(deployment) do
-    case Toast.Deployment.stop(deployment) do
-      {:ok, info} -> {info.servers, info.error}
-      {:error, _reason, info} -> {info.servers, info.error}
     end
   end
 
@@ -172,39 +143,6 @@ defmodule ToastTest.Runner.PostExecution do
     case Toast.Diagnostics.Coredump.resolve_debugger(test_config.debugger) do
       nil -> opts
       debugger -> [{:debugger, debugger} | opts]
-    end
-  end
-
-  defp maybe_dump_agency(deployment, test_data, test_config) do
-    has_error =
-      ToastTest.Abort.reason() != nil or
-        EventStore.unexpected_crashes() != [] or
-        test_data.failures != []
-
-    if has_error and test_config.dump_agency_on_error do
-      case Toast.Deployment.dump_agency(deployment) do
-        {:ok, json} when json != nil ->
-          write_agency_dump(json, test_config.result_dir, deployment.id)
-
-        {:ok, nil} ->
-          Logger.warning("Agency dump returned nil (no responsive agents?)")
-
-        {:error, reason} ->
-          Logger.debug("Agency dump skipped: #{inspect(reason)}")
-      end
-    end
-  rescue
-    e ->
-      Logger.warning("Agency dump failed: #{Exception.message(e)}")
-  end
-
-  defp write_agency_dump(json, result_dir, deployment_id) do
-    case Toast.Diagnostics.AgencyDump.write(json, result_dir, deployment_id) do
-      {:ok, path} ->
-        Logger.info("Agency dump written to #{path}")
-
-      {:error, reason} ->
-        Logger.warning("Failed to write agency dump: #{inspect(reason)}")
     end
   end
 

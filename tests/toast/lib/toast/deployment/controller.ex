@@ -243,8 +243,8 @@ defmodule Toast.Deployment.Controller do
 
       {:error, reason, failed_state} ->
         Logger.debug("Deploy failed: #{inspect(reason)}")
-        new_state = ShutdownPipeline.handle_deploy_failure(failed_state, reason)
-        {:reply, {:error, reason}, new_state}
+        if reason == :timeout, do: notify_startup_timeout(failed_state)
+        {:reply, {:error, reason}, %{failed_state | status: :failed, error: reason}}
     end
   end
 
@@ -660,6 +660,22 @@ defmodule Toast.Deployment.Controller do
       pid: crash_info.os_pid,
       crash_info: crash_info,
       expected: expected,
+      timestamp: Toast.get_timestamp()
+    })
+  end
+
+  defp notify_startup_timeout(state) do
+    servers =
+      Enum.map(state.servers, fn {id, s} ->
+        %{server_id: id, os_pid: s.pid, log_file: s.log_file}
+      end)
+
+    state.event_listener.on_event(%{
+      event: :timeout_kill,
+      deployment_id: state.id,
+      source: :startup,
+      reason: "Startup timeout — deployment did not become ready in time",
+      servers: servers,
       timestamp: Toast.get_timestamp()
     })
   end

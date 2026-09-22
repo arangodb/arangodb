@@ -28,6 +28,7 @@ defmodule ToastTest.Formatting.Utils do
       IO.ANSI.bright(),
       "\n  ",
       String.replace(label, "\n", "\e[K\n"),
+      "\e[K",
       :reset,
       "\n"
     ])

@@ -579,9 +579,9 @@ defmodule ToastTest.AttributionTest do
       assert coredumps == []
     end
 
-    test "timeout kill becomes a :timeout issue with suite scope" do
+    test "timeout kill becomes an :infrastructure issue with suite scope" do
       kill = %{
-        source: :suite_timeout,
+        source: :suite,
         reason: "Suite timeout exceeded",
         servers: [%{server_id: "single1", os_pid: 1001, log_file: "/tmp/single1.log"}],
         timestamp: ~U[2026-03-09 10:05:00Z]
@@ -591,10 +591,11 @@ defmodule ToastTest.AttributionTest do
         Attribution.run(build_test_data(), empty_artifacts(), [], timeout_kills: [kill])
 
       assert [issue] = issues
-      assert issue.type == :timeout
+      assert issue.type == :infrastructure
       assert issue.scope == :suite
       assert issue.confidence == :high
-      assert issue.detail.source == :suite_timeout
+      assert issue.detail.subtype == :timeout
+      assert issue.detail.source == :suite
       assert issue.detail.reason == "Suite timeout exceeded"
       assert issue.detail.timestamp == ~U[2026-03-09 10:05:00Z]
     end
@@ -611,7 +612,7 @@ defmodule ToastTest.AttributionTest do
       }
 
       kill = %{
-        source: :suite_timeout,
+        source: :suite,
         reason: "Suite timeout exceeded",
         servers: [%{server_id: "single1", os_pid: 1001, log_file: "/tmp/single1.log"}],
         timestamp: ~U[2026-03-09 10:05:00Z]
@@ -628,7 +629,7 @@ defmodule ToastTest.AttributionTest do
 
     test "timeout server without artifacts gets nil coredump" do
       kill = %{
-        source: :suite_timeout,
+        source: :suite,
         reason: "Suite timeout exceeded",
         servers: [%{server_id: "single1", os_pid: 1001, log_file: "/tmp/single1.log"}],
         timestamp: ~U[2026-03-09 10:05:00Z]
@@ -660,7 +661,7 @@ defmodule ToastTest.AttributionTest do
       }
 
       kill = %{
-        source: :suite_timeout,
+        source: :suite,
         reason: "Suite timeout exceeded",
         servers: [
           %{server_id: "agent1", os_pid: 2001, log_file: "/tmp/agent1.log"},

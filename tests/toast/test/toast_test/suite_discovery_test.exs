@@ -33,7 +33,7 @@ defmodule ToastTest.SuiteDiscoveryTest do
 
     test "plain ExUnit test module does not export __toast_suite__/0" do
       defmodule PlainTestModule do
-        use ExUnit.Case
+        use ExUnit.Case, register: false
       end
 
       refute function_exported?(PlainTestModule, :__toast_suite__, 0)
@@ -57,7 +57,7 @@ defmodule ToastTest.SuiteDiscoveryTest do
 
       # Now test modules can use it
       defmodule OrderedTestModule do
-        use ToastTest.SuiteDiscoveryTest.OrderedSuite
+        use ToastTest.SuiteDiscoveryTest.OrderedSuite, register: false
       end
 
       assert OrderedTestModule.__toast_suite__() == OrderedSuite

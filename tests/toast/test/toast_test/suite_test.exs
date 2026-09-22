@@ -79,7 +79,7 @@ defmodule ToastTest.SuiteTest do
     end
 
     defmodule TestUsingParent do
-      use ToastTest.SuiteTest.ParentSuite
+      use ToastTest.SuiteTest.ParentSuite, register: false
     end
 
     assert TestUsingParent.__toast_suite__() == ToastTest.SuiteTest.ParentSuite
@@ -91,7 +91,7 @@ defmodule ToastTest.SuiteTest do
     end
 
     defmodule TestDefaultWeight do
-      use ToastTest.SuiteTest.DefaultWeightSuite
+      use ToastTest.SuiteTest.DefaultWeightSuite, register: false
     end
 
     assert TestDefaultWeight.__toast_weight__() == 1
@@ -103,7 +103,7 @@ defmodule ToastTest.SuiteTest do
     end
 
     defmodule TestCustomWeight do
-      use ToastTest.SuiteTest.WeightedSuite, weight: 5
+      use ToastTest.SuiteTest.WeightedSuite, weight: 5, register: false
     end
 
     assert TestCustomWeight.__toast_weight__() == 5
@@ -115,7 +115,7 @@ defmodule ToastTest.SuiteTest do
     end
 
     defmodule TestWithAttr do
-      use ToastTest.SuiteTest.AttrSuite
+      use ToastTest.SuiteTest.AttrSuite, register: false
 
       def get_toast_suite, do: @toast_suite
     end
