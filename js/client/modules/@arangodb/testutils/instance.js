@@ -379,6 +379,18 @@ class instance {
     }
   }
 
+  // config file and js tree; both belong to the current binary set
+  _makeConfigArgs () {
+    let config = 'arangod-' + this.instanceRole + '.conf';
+    if (this.options.arangodConfig !== undefined) {
+      config = this.options.arangodConfig;
+    }
+    return {
+      'configuration': fs.join(pu.CONFIG_DIR, config),
+      'define': 'TOP_DIR=' + pu.TOP_DIR
+    };
+  }
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief arguments for testing (server)
   // //////////////////////////////////////////////////////////////////////////////
@@ -409,6 +421,7 @@ class instance {
     }
 
     let default_args = {
+      ...this._makeConfigArgs(),
       'http.trusted-origin': this.options.httpTrustedOrigin || 'all',
       'temp.path': this.tmpDir,
       'server.endpoint': bindEndpoint,
@@ -590,16 +603,9 @@ class instance {
     }
 
     let cmd = pu.ARANGOD_BIN;
-    // config file and js tree follow the binary set, so resolve them per launch
-    let config = 'arangod-' + this.instanceRole + '.conf';
-    if (this.options.arangodConfig !== undefined) {
-      config = this.options.arangodConfig;
-    }
-    let configArgs = {
-      'configuration': fs.join(pu.CONFIG_DIR, config),
-      'define': 'TOP_DIR=' + pu.TOP_DIR
-    };
-    let args = _.defaults(moreArgs, this.args, configArgs);
+    // the binary set may have changed since the constructor ran
+    Object.assign(this.args, this._makeConfigArgs());
+    let args = _.defaults(moreArgs, this.args);
     let argv = [];
     if (this.options.valgrind) {
       let valgrindOpts = {};
