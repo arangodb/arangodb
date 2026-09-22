@@ -278,6 +278,15 @@ class CircleCIGenerator(OutputGenerator):
             workflow["jobs"].append(
                 {"run-cppcheck": {"name": "cppcheck", "requires": [build_jobs[0]]}}
             )
+        # clang-tidy, opt-in per pipeline (non-instrumented x64 builds only)
+        if (
+            self.config.filter_criteria.clang_tidy
+            and build_config.architecture == Architecture.X64
+            and not build_config.build_variant.is_instrumented
+        ):
+            workflow["jobs"].append(
+                {"run-clang-tidy": {"name": "clang-tidy", "requires": [build_jobs[0]]}}
+            )
 
     # Architecture -> (docker --platform arch, workspace tarball name)
     _DOCKER_IMAGE_ARCHES = (
