@@ -1,5 +1,8 @@
 3.12.12 (XXXX-XX-XX)
 --------------------
+* COR-1018: Cap vector index search result buffers at the collection's
+  document count and track their memory against the query memory limit.
+
 * BTS-2454: Update FAISS to a new patched version which fixes a TSAN race inside
   the hnsw_stats and rabitq_stats internal counters.
 
