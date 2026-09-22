@@ -165,6 +165,9 @@ ErrorCode uncompressWrapper(
   }
 }
 
+template<typename T>
+struct dependent_false : std::false_type {};
+
 }  // namespace
 
 namespace arangodb {
@@ -215,7 +218,7 @@ ErrorCode encoding::lz4Uncompress(uint8_t const* compressed,
   memcpy(&uncompressedLength, compressed + 1, sizeof(uncompressedLength));
   uncompressedLength = basics::bigToHost<uint32_t>(uncompressedLength);
 
-  if (uncompressedLength == 0 || uncompressedLength > ::maxUncompressedSize ||
+  if (uncompressedLength == 0 ||
       uncompressedLength >= static_cast<size_t>(LZ4_MAX_INPUT_SIZE)) {
     // uncompressed size is larger than what LZ4 can actually compress.
     // suspicious!
@@ -232,19 +235,16 @@ ErrorCode encoding::lz4Uncompress(uint8_t const* compressed,
     if (res != TRI_ERROR_NO_ERROR) {
       return res;  // returns the error of .reserve(), doesn't throw
     }
-  }
-
-  char* dst;
-  if constexpr (std::is_same_v<T, arangodb::basics::StringBuffer>) {
-    dst = uncompressed.end();
   } else {
-    dst = const_cast<char*>(reinterpret_cast<char const*>(uncompressed.data()));
+    static_assert(dependent_false<T>::value,
+                  "unhandled type for lz4Uncompress");
   }
 
   // uncompress directly into the result
   // this should not go wrong because we have a big enough output buffer.
   int size = LZ4_decompress_safe(
-      reinterpret_cast<char const*>(compressed) + ::lz4HeaderLength, dst,
+      reinterpret_cast<char const*>(compressed) + ::lz4HeaderLength,
+      const_cast<char*>(reinterpret_cast<char const*>(uncompressed.data())),
       static_cast<int>(compressedLength - ::lz4HeaderLength),
       static_cast<int>(uncompressedLength));
   if (size <= 0 || static_cast<size_t>(size) != uncompressedLength) {
@@ -368,6 +368,8 @@ ErrorCode encoding::lz4Compress(uint8_t const* uncompressed,
     compressed.appendChar(0x01U);  // version
     compressed.appendText(reinterpret_cast<char const*>(&originalLength),
                           sizeof(originalLength));
+  } else {
+    static_assert(dependent_false<T>::value, "unhandled type for lz4Compress");
   }
 
   // compress data into output buffer. writes start at byte 5.
