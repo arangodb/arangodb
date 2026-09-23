@@ -228,7 +228,7 @@ Result impl(ClusterInfo& ci, application_features::ApplicationServer& server,
     // If we have some, let's see if they are about to be generated or not:
     if (!distributeShardsLikeColls.empty()) {
       for (auto const& c : colls) {
-        auto cid = std::to_string(c.properties().internal.id.id());
+        auto cid = std::to_string(c.properties().identity.id.id());
         distributeShardsLikeColls.erase(cid);
       }
     }
@@ -801,7 +801,7 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
           col.clusteringConstant.distributeShardsLike.value();
       if (selfCreatedGroups.contains(leadingCid)) {
         auto groupId = selfCreatedGroups.at(leadingCid);
-        groups.addToNewGroup(groupId, col.internal.id);
+        groups.addToNewGroup(groupId, col.identity.id);
         col.clusteringConstant.groupId = groupId;
       } else {
         auto c = ci.getCollection(databaseName, leadingCid);
@@ -810,14 +810,14 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
         // collection does not exist. Also, the createCollection should have
         // failed before.
         auto groupId = c->groupID();
-        groups.addToExistingGroup(groupId, col.internal.id);
+        groups.addToExistingGroup(groupId, col.identity.id);
         col.clusteringConstant.groupId = groupId;
       }
     } else {
       // Create a new CollectionGroup
       auto groupId = groups.addNewGroup(col, [&ci]() { return ci.uniqid(); });
       // Remember it for reuse
-      selfCreatedGroups.emplace(std::to_string(col.internal.id.id()), groupId);
+      selfCreatedGroups.emplace(std::to_string(col.identity.id.id()), groupId);
       col.clusteringConstant.groupId = groupId;
     }
   }
@@ -874,7 +874,7 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
   } else if (col.clusteringMutable.isSatellite()) {
     // We are a Satellite collection, use Satellite sharding
     auto distribution = std::make_shared<SatelliteDistribution>();
-    allUsedDistributions.emplace(std::to_string(col.internal.id.id()),
+    allUsedDistributions.emplace(std::to_string(col.identity.id.id()),
                                  distribution);
     return distribution;
   } else {
@@ -883,7 +883,7 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
         col.clusteringConstant.numberOfShards.value(),
         col.clusteringMutable.replicationFactor.value(), options.avoidServers,
         internalOptions.enforceReplicationFactor);
-    allUsedDistributions.emplace(std::to_string(col.internal.id.id()),
+    allUsedDistributions.emplace(std::to_string(col.identity.id.id()),
                                  distribution);
     return distribution;
   }

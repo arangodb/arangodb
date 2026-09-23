@@ -31,6 +31,7 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/Properties/KeyGeneratorProperties.h"
 #include "VocBase/Identifiers/DataSourceId.h"
+#include "VocBase/Properties/CollectionIdentity.h"
 #include "VocBase/Properties/CollectionInternalProperties.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "VocBase/Properties/CollectionIndexesProperties.h"
@@ -113,7 +114,8 @@ struct Collection {
 
   MutableProperties mutableProperties;
 
-  struct ImmutableProperties : public CollectionInternalProperties {
+  struct ImmutableProperties : public CollectionInternalProperties,
+                               public CollectionIdentity {
     std::string name{StaticStrings::Empty};
     bool isSystem{false};
     std::underlying_type_t<TRI_col_type_e> type =

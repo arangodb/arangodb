@@ -52,7 +52,8 @@ class ShardingFeature : public application_features::ApplicationFeature {
                                            ShardingInfo* sharding);
 
   /// @brief creates the named strategy, or the default for an existing
-  /// collection when no name is given.
+  /// collection when no name is given. Outside a cluster the strategy is not
+  /// persisted, so a descriptor read back from a marker has none.
   std::unique_ptr<ShardingStrategy> createOrDefault(
       std::optional<std::string> const& name, ShardingInfo* sharding);
 

@@ -23,7 +23,6 @@
 
 #include "RocksDBEngine/StorageEngineDataTest.h"
 
-#include "Basics/StaticStrings.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -43,24 +42,31 @@ std::shared_ptr<transaction::Manager>
 TEST_F(StorageEngineDataTest, CreatedCollectionIsListedInInventory) {
   auto database = makeDatabase("testDatabase", 42);
   auto collection = makeCollection(*database, "testCollection");
-
-  VPackBuilder builder;
-  auto err = engine().getCollectionsAndIndexes(*database, builder,
-                                               /*wasCleanShutdown*/ true,
-                                               /*isUpgrade*/ false);
-  ASSERT_EQ(err, TRI_ERROR_NO_ERROR);
-
-  auto slice = builder.slice();
-  ASSERT_TRUE(slice.isArray());
+  auto descriptors = engine().getCollectionsAndIndexes(*database);
 
   bool found = false;
-  for (auto c : VPackArrayIterator(slice)) {
-    if (c.get(StaticStrings::DataSourceName).stringView() == "testCollection") {
+  for (auto const& d : descriptors) {
+    if (d.mutableProps.name == "testCollection") {
       found = true;
-      EXPECT_EQ(c.get(StaticStrings::DataSourceId).stringView(),
-                std::to_string(collection->id().id()));
+      EXPECT_EQ(d.identity.id, collection->id());
     }
   }
   EXPECT_TRUE(found)
       << "created collection not reported by getCollectionsAndIndexes()";
+}
+
+// A dropped collection's marker stays on disk with deleted: true until
+// compaction removes it. Recovery must skip those, or the collection comes
+// back after a restart.
+TEST_F(StorageEngineDataTest, DeletedCollectionIsNotListedInInventory) {
+  auto database = makeDatabase("deletedTestDatabase", 43);
+  auto collection = makeCollection(*database, "deletedCollection");
+
+  collection->setDeleted();
+  engine().changeCollection(*database, *collection);
+
+  for (auto const& d : engine().getCollectionsAndIndexes(*database)) {
+    EXPECT_NE(d.mutableProps.name, "deletedCollection")
+        << "deleted collection reported by getCollectionsAndIndexes()";
+  }
 }

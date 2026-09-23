@@ -44,4 +44,21 @@ CollectionStorageProperties::Transformers::ObjectIdAsString::fromSerialized(
   return {};
 }
 
+inspection::Status
+CollectionStorageProperties::Transformers::VersionAsNumber::toSerialized(
+    CollectionVersion v, std::underlying_type_t<CollectionVersion>& result) {
+  result = static_cast<std::underlying_type_t<CollectionVersion>>(v);
+  return {};
+}
+
+inspection::Status
+CollectionStorageProperties::Transformers::VersionAsNumber::fromSerialized(
+    std::underlying_type_t<CollectionVersion> const& v,
+    CollectionVersion& result) {
+  // Any number is accepted here; LogicalCollection rejects versions below
+  // minimumCollectionVersion() with a "run --database.auto-upgrade" error.
+  result = static_cast<CollectionVersion>(v);
+  return {};
+}
+
 }  // namespace arangodb
