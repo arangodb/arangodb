@@ -72,6 +72,13 @@ std::shared_ptr<RocksDBDumpContext> RocksDBDumpManager::createContext(
   TRI_ASSERT(ServerState::instance()->isSingleServer() ||
              ServerState::instance()->isDBServer());
 
+  if (opts.shards.empty()) {
+    // such a context would produce no data at all, while holding on to a
+    // snapshot and a database guard for its entire lifetime.
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "expecting at least one entry in 'shards'");
+  }
+
   opts.docsPerBatch =
       std::clamp(opts.docsPerBatch, _limits.docsPerBatchLowerBound,
                  _limits.docsPerBatchUpperBound);
@@ -79,6 +86,9 @@ std::shared_ptr<RocksDBDumpContext> RocksDBDumpManager::createContext(
                               _limits.batchSizeUpperBound);
   opts.parallelism = std::clamp(opts.parallelism, _limits.parallelismLowerBound,
                                 _limits.parallelismUpperBound);
+  opts.prefetchCount =
+      std::clamp(opts.prefetchCount, _limits.prefetchCountLowerBound,
+                 _limits.prefetchCountUpperBound);
 
   // If the local RocksDB database still uses little endian key encoding,
   // then the whole new dump method does not work, since ranges in _revs

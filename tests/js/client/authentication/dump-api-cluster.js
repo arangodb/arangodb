@@ -24,7 +24,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
-const {assertEqual, assertTrue, assertFalse, assertNotUndefined} = jsunity.jsUnity.assertions;
+const {assertEqual, assertTrue, assertFalse, assertNotUndefined, assertUndefined} = jsunity.jsUnity.assertions;
 const arango = require("@arangodb").arango;
 const db = require("internal").db;
 const users = require("@arangodb/users");
@@ -127,6 +127,25 @@ function AuthSuite() {
       arango.reconnect(IM.endpoint, 'UnitTestsDatabase', user1, 'foobar');
       result = dump.delete(token, server);
       assertEqual(result.code, 200);
+    },
+
+    testCreateContextEmptyShards: function () {
+      arango.reconnect(IM.endpoint, 'UnitTestsDatabase', "root", "");
+
+      const shards = db[cn].shards(true);
+      const shard = Object.keys(shards)[0];
+      const server = shards[shard][0];
+
+      // an empty shard list names no collection to check against. Such a
+      // context can never hand out data, so nobody gets one - not user2, who
+      // may not read the collection, not user1, who may, and not root.
+      [user2, user1, "root"].forEach((user) => {
+        arango.reconnect(IM.endpoint, 'UnitTestsDatabase', user,
+                         user === "root" ? "" : 'foobar');
+        let result = dump.start({shards: []}, server);
+        assertEqual(result.code, 400, {user, result});
+        assertUndefined(result.headers["x-arango-dump-id"], {user, result});
+      });
     },
   };
 }
