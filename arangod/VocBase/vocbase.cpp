@@ -362,8 +362,7 @@ std::shared_ptr<LogicalCollection> Database::createCollectionObject(
     descriptor.storage.objectId = _engine.resolveObjectId(descriptor.storage);
   }
 
-  return std::make_shared<LogicalCollection>(*this, std::move(descriptor),
-                                             isAStub);
+  return std::make_shared<LogicalCollection>(*this, descriptor, isAStub);
 }
 #endif
 
@@ -978,15 +977,17 @@ std::vector<std::shared_ptr<LogicalCollection>> Database::createCollections(
 
   auto const& dbName = _info.getName();
 
-  std::vector<std::shared_ptr<LogicalCollection>> collections;
-  collections.reserve(descriptors.size());
-
-  for (auto& descriptor : descriptors) {
+  for (auto const& descriptor : descriptors) {
     if (auto res = validateCollectionDescriptor(descriptor); res.fail()) {
       events::CreateCollection(dbName, descriptor.mutableProps.name,
                                res.errorNumber());
       THROW_ARANGO_EXCEPTION(res);
     }
+  }
+
+  std::vector<std::shared_ptr<LogicalCollection>> collections;
+  collections.reserve(descriptors.size());
+  for (auto& descriptor : descriptors) {
     auto col = createCollectionObject(std::move(descriptor), /*isAStub*/ false);
     TRI_ASSERT(col != nullptr);
     collections.emplace_back(std::move(col));
