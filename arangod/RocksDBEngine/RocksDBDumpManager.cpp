@@ -73,8 +73,6 @@ std::shared_ptr<RocksDBDumpContext> RocksDBDumpManager::createContext(
              ServerState::instance()->isDBServer());
 
   if (opts.shards.empty()) {
-    // such a context would produce no data at all, while holding on to a
-    // snapshot and a database guard for its entire lifetime.
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "expecting at least one entry in 'shards'");
   }

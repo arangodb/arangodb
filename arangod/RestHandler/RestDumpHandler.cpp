@@ -309,9 +309,6 @@ Result RestDumpHandler::validateRequest() {
       RocksDBDumpContextOptions opts;
       velocypack::deserializeUnsafe(body, opts);
 
-      // a context without shards has nothing to hand out, but still holds a
-      // snapshot and a database guard. Reject it here, before the per-shard
-      // permissions below, which have nothing to check in that case.
       if (opts.shards.empty()) {
         return {TRI_ERROR_BAD_PARAMETER,
                 "expecting at least one entry in 'shards'"};
