@@ -34,7 +34,6 @@ namespace arangodb {
 
 class ClusterFeature;
 class DatabaseFeature;
-class RocksDBIndexFactory;
 
 class ClusterEngine final : public StorageEngine {
  public:
@@ -48,10 +47,6 @@ class ClusterEngine final : public StorageEngine {
   ~ClusterEngine();
 
   ClusterEngineType engineType() const;
-
-  RocksDBIndexFactory const& rocksDBIndexFactory() const {
-    return *_rocksDBIndexFactory;
-  }
 
   // storage engine overrides
   // ------------------------
@@ -211,7 +206,6 @@ class ClusterEngine final : public StorageEngine {
   metrics::IRegistry& _metrics;
   /// path to arangodb data dir
   std::string _basePath;
-  std::unique_ptr<RocksDBIndexFactory> _rocksDBIndexFactory;
 };
 
 }  // namespace arangodb

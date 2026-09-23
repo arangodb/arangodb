@@ -35,13 +35,11 @@
 #ifdef USE_V8
 #include "ClusterEngine/ClusterV8Functions.h"
 #endif
-#include "IResearch/IResearchRocksDBInvertedIndex.h"
 #include "Logger/Logger.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "Transaction/Context.h"
 #include "Transaction/Manager.h"
 #include "Transaction/Options.h"
@@ -66,12 +64,11 @@ ClusterEngine::ClusterEngine(application_features::ApplicationServer& server,
                              metrics::IRegistry& metrics,
                              IVectorIndexProvider const& vectorIndexProvider)
     : StorageEngine(server, EngineName, name(),
-                    std::make_unique<ClusterIndexFactory>(server, *this),
+                    std::make_unique<ClusterIndexFactory>(server, *this,
+                                                          vectorIndexProvider),
                     database, database),
       _clusterFeature(clusterFeature),
-      _metrics(metrics),
-      _rocksDBIndexFactory(
-          std::make_unique<RocksDBIndexFactory>(server, vectorIndexProvider)) {
+      _metrics(metrics) {
   setOptional(true);
 }
 

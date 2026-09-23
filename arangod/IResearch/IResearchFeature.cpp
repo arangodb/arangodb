@@ -44,6 +44,7 @@
 #endif
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
+#include "ClusterEngine/ClusterIndexFactory.h"
 #include "CrashHandler/CrashHandler.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "FeaturePhases/V8FeaturePhase.h"
@@ -563,8 +564,8 @@ void registerFilters(aql::AqlFunctionFeature& functions) {
   addFunction(functions, {"ANALYZER", ".,.", flagsNoAnalyzer, &contextFunc});
 }
 
-// ClusterEngine's equal/normalize/enhanceIndexDefinition delegate to
-// indexDefinitions(), not indexFactory(), so both need arangosearch
+// ClusterIndexFactory's equal/normalize/enhanceIndexDefinition delegate to
+// its own rocksDBIndexFactory(), not to itself, so both need arangosearch
 void registerIndexTypeFactories(application_features::ApplicationServer& server,
                                 IndexTypeFactory& clusterFactory,
                                 IndexTypeFactory& rocksDBFactory) {
@@ -586,9 +587,10 @@ void registerIndexTypeFactories(application_features::ApplicationServer& server,
     }
   };
 
-  if (auto* clusterEngine = dynamic_cast<ClusterEngine*>(&engine)) {
-    emplace(clusterEngine->indexFactory(), clusterFactory);
-    emplace(clusterEngine->indexDefinitions(), rocksDBFactory);
+  if (auto* clusterIndexFactory =
+          dynamic_cast<ClusterIndexFactory const*>(&engine.indexFactory())) {
+    emplace(*clusterIndexFactory, clusterFactory);
+    emplace(clusterIndexFactory->rocksDBIndexFactory(), rocksDBFactory);
   } else if (dynamic_cast<RocksDBEngine*>(&engine) != nullptr) {
     emplace(engine.indexFactory(), rocksDBFactory);
   }
