@@ -37,6 +37,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "Aql/ExecutionBlockImpl.tpp"
 
+#include <algorithm>
 #include <cmath>
 
 // Activate logging
@@ -54,12 +55,22 @@ struct Collection;
 
 using Stats = NoStats;
 
+namespace {
+
+std::uint64_t resultBufferBytes(std::size_t topK) noexcept {
+  return static_cast<std::uint64_t>(topK) *
+         (sizeof(vector::LabelId) + sizeof(vector::Distance));
+}
+
+}  // namespace
+
 EnumerateNearVectorsExecutor::EnumerateNearVectorsExecutor(Fetcher& /*unused*/,
                                                            Infos& infos)
     : _infos(infos),
       _trx(_infos.queryContext.newTrxContext()),
       _collection(_infos.collection),
-      _vectorIndex(resolveVectorIndex(_infos)) {}
+      _vectorIndex(resolveVectorIndex(_infos)),
+      _resultBuffersMemory(_infos.queryContext.resourceMonitor()) {}
 
 RocksDBVectorIndex const& EnumerateNearVectorsExecutor::resolveVectorIndex(
     Infos const& infos) {
@@ -124,7 +135,6 @@ void EnumerateNearVectorsExecutor::fillInput(
 
   AqlValue value = _inputRow.getValue(docRegId);
 
-  // TODO currently we do not accept anything else then array
   if (!value.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
@@ -157,24 +167,42 @@ void EnumerateNearVectorsExecutor::fillInput(
 }
 
 void EnumerateNearVectorsExecutor::searchResults() {
+  _currentProcessedResultCount = 0;
+  // Release the previous batch first so the tracked memory below matches
+  // what is actually allocated during readBatch.
+  _labels = {};
+  _distances = {};
+  _documents.clear();
+  _resultBuffersMemory.revert();
+
+  TRI_ASSERT(_infos.searchConfig.topK > 0) << "LIMIT cannot be 0";
+  // A search can never return more hits than the collection holds, so size
+  // the result buffers by the document count rather than by LIMIT + OFFSET.
+  auto searchConfig = _infos.searchConfig;
+  searchConfig.topK = std::min(searchConfig.topK, _collectionCount);
+  if (searchConfig.topK == 0) {
+    // Only reachable for an empty collection; faiss rejects k == 0.
+    return;
+  }
+  _resultBuffersMemory.increase(resultBufferBytes(searchConfig.topK));
+
   vector::VectorSearchContext ctx{
       .inputs = &_inputRowConverted,
       .inputRow = &_inputRow,
       .trx = &_trx,
       .queryContext = &_infos.queryContext,
   };
-  auto result = _vectorIndex.readBatch(_infos.searchConfig, ctx);
+  auto result = _vectorIndex.readBatch(searchConfig, ctx);
   _labels = std::move(result.labels);
   _distances = std::move(result.distances);
   _documents = std::move(result.capturedDocuments);
-  _currentProcessedResultCount = 0;
 
   auto validCount = std::count_if(_labels.begin(), _labels.end(),
                                   [](auto const& l) { return l != -1; });
   LOG_TOPIC("f1a2b", DEBUG, Logger::ENGINES) << std::format(
       "EnumerateNearVectors::searchResults: requested={}, returned={}, "
       "validLabels={}, collectionCount={}",
-      _infos.searchConfig.topK, _labels.size(), validCount, _collectionCount);
+      searchConfig.topK, _labels.size(), validCount, _collectionCount);
 
   LOG_INTERNAL << "Results: " << _labels << " and distances: " << _distances;
 }
