@@ -25,6 +25,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
+#include "Assertions/Assert.h"
 #include "Assertions/ProdAssert.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -116,21 +117,21 @@ auto writtenComponentOrder(
   return order;
 }
 
-/// @brief one connected component after its own accept/decline decision.
-/// `order` is the component's greedy order when that was accepted and the
-/// order it was written in otherwise, so a caller can concatenate these
-/// without knowing which way each decision went. `firstAppearance` and
-/// `order` are kept in one struct deliberately: the sequencing search below
-/// re-sorts these by node id, which would silently desynchronise a parallel
-/// array of positions.
+/// @brief a connected component and the outcome of its own accept/decline
+/// decision. `order` carries the winner either way, so callers concatenate
+/// these without checking which way each decision went.
 struct DecidedComponent {
+  /// @brief the greedy order if it was accepted, the written order if not.
   JoinOrder order;
+  /// @brief where this component's earliest member sits in the plan's written
+  /// enumeration order. Sequences the components against one another.
   size_t firstAppearance;
+  /// @brief whether the greedy order replaced the written one.
   bool reordered;
 };
 
-/// @brief order each connected component internally, then -- independently
-/// for each -- decide whether its greedy order is confident and cheap enough
+/// @brief order each connected component internally, then, independently
+/// for each, decide whether its greedy order is confident and cheap enough
 /// to replace the order it was written in. This decision must be made per
 /// component, not once for the whole graph: a run with two components, one
 /// fully indexed and one not, must not lose the confident reordering of the
@@ -419,37 +420,28 @@ auto chooseJoinOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
   auto candidate =
       getCheapestConcatenation(graph, estimator, decided, graph.nodes.size());
 
-  bool const acceptSequencing =
+  // acceptsResequencing() only accepts a candidate that beats the baseline by
+  // the improvement margin, so an accepted candidate cannot equal it.
+  bool const sequenceChanged =
       acceptsResequencing(graph, estimator, baseline, candidate);
-  bool const sequenceChanged = acceptSequencing && candidate != baseline;
   std::vector<EnumerateCollectionNode*> chosen =
-      acceptSequencing ? std::move(candidate) : std::move(baseline);
+      sequenceChanged ? std::move(candidate) : std::move(baseline);
 
   if (!anyComponentReordered && !sequenceChanged) {
     return std::nullopt;
   }
 
-  // connectedComponents() partitions the vertex set, so the concatenation must
-  // cover every vertex exactly once.
   ADB_PROD_ASSERT(chosen.size() == graph.nodes.size());
-  ADB_PROD_ASSERT(
-      std::unordered_set<EnumerateCollectionNode*>(chosen.begin(), chosen.end())
-          .size() == chosen.size());
-
-  // Defensive: anyComponentReordered or sequenceChanged being true means
-  // `chosen` differs from its respective baseline, so it should differ from
-  // writtenOrder too -- but guard the invariant explicitly rather than
-  // relying on that argument holding for every future change above.
-  if (chosen == writtenOrder) {
-    return std::nullopt;
-  }
+  ADB_PROD_ASSERT(std::unordered_set(chosen.begin(), chosen.end()).size() ==
+                  chosen.size());
+  TRI_ASSERT(chosen != writtenOrder);
 
   return chosen;
 }
 
-void rewriteJoinGraph(ExecutionPlan& plan, ExecutionNode* firstEnumeration,
-                      ExecutionNode* next,
-                      std::vector<EnumerateCollectionNode*> const& order) {
+void rewritePlan(ExecutionPlan& plan, ExecutionNode* firstEnumeration,
+                 ExecutionNode* next,
+                 std::vector<EnumerateCollectionNode*> const& order) {
   // Capture the anchor before touching anything: after the unlink loop the
   // spine no longer contains the enumerations.
   ExecutionNode* firstDependency = firstEnumeration->getFirstDependency();
