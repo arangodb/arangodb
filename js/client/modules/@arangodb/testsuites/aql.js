@@ -311,9 +311,7 @@ function shellClientAqlVector (options) {
   testCases = tu.splitBuckets(options, testCases);
 
   let opts = ensureServers(options, 3);
-  let moreOptions = {
-    "vector-index": "true",
-  };
+  let moreOptions = { };
 
   if (options.isCov) {
     arango.timeout(arango.timeout() * 10);

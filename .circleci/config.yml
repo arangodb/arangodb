@@ -33,6 +33,10 @@ parameters:
     type: boolean
     default: false
     description: "Whether to run the full test set (e.g., for nightly builds) or reduced set (e.g., for normal PR builds)"
+  with-clang-tidy:
+    type: boolean
+    default: false
+    description: "Run clang-tidy over the tree (slow)"
   arangod-without-v8:
     type: boolean
     default: false
@@ -293,6 +297,7 @@ jobs:
               --test-image "<< pipeline.parameters.test-docker-image >>" \
               <<# pipeline.parameters.arangod-without-v8 >> --arangod-without-v8  <</ pipeline.parameters.arangod-without-v8 >>\
               <<# pipeline.parameters.full >> --full <</ pipeline.parameters.full >> \
+              <<# pipeline.parameters.with-clang-tidy >> --clang-tidy <</ pipeline.parameters.with-clang-tidy >> \
               --create-test-docker-images << pipeline.parameters.create-test-docker-images >> \
               <<# pipeline.parameters.replication-two >> -rt <</ pipeline.parameters.replication-two >> \
               --driver-branch-overrides "<<parameters.config-definitions-branches>>" \
