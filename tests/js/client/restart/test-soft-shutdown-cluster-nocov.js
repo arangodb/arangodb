@@ -110,13 +110,13 @@ function testSuite() {
       // Now slowly read the cursor through:
       for (let i = 0; i < 8; ++i) {
         wait(2);
-        let next = arango.PUT("/_api/cursor/" + resp.id, {});
+        let next = arango.POST("/_api/cursor/" + resp.id, {});
         console.warn("Read document:", next);
         assertTrue(next.hasMore);
       }
       // And the last one:
       wait(2);
-      let next = arango.PUT("/_api/cursor/" + resp.id, {});
+      let next = arango.POST("/_api/cursor/" + resp.id, {});
       console.warn("Read last document:", next, "awaiting shutdown...");
       assertFalse(next.hasMore);
       assertFalse(next.error);
@@ -151,7 +151,7 @@ function testSuite() {
       // Now slowly read the cursor through:
       for (let i = 0; i < 8; ++i) {
         wait(2);
-        let next = arango.PUT("/_api/cursor/" + resp.id, {});
+        let next = arango.POST("/_api/cursor/" + resp.id, {});
         console.warn("Read document:", next);
         assertTrue(next.hasMore);
       }
