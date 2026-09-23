@@ -772,6 +772,10 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
   velocypack::StringSink adapter(buffer.get());
 
   appendAsString(vopts, adapter, value);
+  if (buffer->empty()) {
+    // ICU's StringSearch rejects an empty text with U_ILLEGAL_ARGUMENT_ERROR
+    return AqlValue(*buffer);
+  }
   icu_64_64::UnicodeString unicodeStr(buffer->data(),
                                       static_cast<int32_t>(buffer->length()));
 
@@ -1371,7 +1375,7 @@ AqlValue functions::Split(ExpressionContext* expressionContext, AstNode const&,
       return AqlValue(AqlValueHintNull());
     }
 
-    if ((copyThisTime > 0) && (copyThisTime > nrResults)) {
+    if (copyThisTime > nrResults) {
       // last hit is the remaining string to be fed into split in a subsequent
       // invocation
       copyThisTime--;
@@ -1379,7 +1383,7 @@ AqlValue functions::Split(ExpressionContext* expressionContext, AstNode const&,
 
     if ((copyThisTime > 0) &&
         ((copyThisTime == nrResults) || isEmptyExpression)) {
-      // ICU will give us a traling empty string we don't care for if we split
+      // ICU will give us a trailing empty string we don't care for if we split
       // with empty strings.
       copyThisTime--;
     }

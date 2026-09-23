@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global print */
+/* global print, arango */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -27,7 +27,6 @@
 const internal = require('internal');
 const fs = require('fs');
 
-const download = internal.download;
 const time = internal.time;
 const sleep = internal.sleep;
 
@@ -46,9 +45,6 @@ try {
   print(ex.stack);
 }
 const outfn = fs.join(instanceManager.rootDir, 'stats.jsonl');
-// TODO: jwt?
-const opts = Object.assign(pu.makeAuthorizationHeaders(options, {}),
-                           { method: 'GET' });
 
 while(true) {
   let state = {
@@ -67,50 +63,52 @@ while(true) {
         let serverId = arangod.instanceRole + '_' + arangod.port;
         let beforeCall = time();
         let procStats = arangod._getProcessStats();
-        if (arangod.instanceRole === "agent") {
-          let reply = download(arangod.url + '/_api/version', '', opts);
-          if (reply.hasOwnProperty('error') || reply.code !== 200) {
-            print("fail: " + JSON.stringify(reply) +
-                  " - ps before: " + JSON.stringify(procStats) +
-                  " - ps now: " + JSON.stringify(arangod._getProcessStats()));
-            state.state = false;
-            oneSet.state = false;
-            oneSet[serverId] = {
-              error: true,
-              start: beforeCall,
-              delta: time() - beforeCall
-            };
+        arangod.toThisInstance(() => {
+          if (arangod.instanceRole === "agent") {
+            let reply = arango.GET_RAW('/_api/version');
+            if (reply.hasOwnProperty('error') || reply.code !== 200) {
+              print("fail: " + JSON.stringify(reply) +
+                    " - ps before: " + JSON.stringify(procStats) +
+                    " - ps now: " + JSON.stringify(arangod._getProcessStats()));
+              state.state = false;
+              oneSet.state = false;
+              oneSet[serverId] = {
+                error: true,
+                start: beforeCall,
+                delta: time() - beforeCall
+              };
+            } else {
+              let statisticsReply = reply.parsedBody;
+              oneSet[serverId] = {
+                error: false,
+                start: beforeCall,
+                delta: time() - beforeCall
+              };
+            }
           } else {
-            let statisticsReply = JSON.parse(reply.body);
-            oneSet[serverId] = {
-              error: false,
-              start: beforeCall,
-              delta: time() - beforeCall
-            };
+            let reply = arango.GET_RAW('/_admin/statistics');
+            if (reply.hasOwnProperty('error') || reply.code !== 200) {
+              print("fail: " + JSON.stringify(reply) +
+                    " - ps before: " + JSON.stringify(procStats) +
+                    " - ps now: " + JSON.stringify(arangod._getProcessStats()));
+              state.state = false;
+              oneSet.state = false;
+              oneSet[serverId] = {
+                error: true,
+                start: beforeCall,
+                delta: time() - beforeCall
+              };
+            } else {
+              let statisticsReply = reply.parsedBody;
+              oneSet[serverId] = {
+                error: false,
+                start: beforeCall,
+                delta: time() - beforeCall,
+                uptime: statisticsReply.server.uptime
+              };
+            }
           }
-        } else {
-          let reply = download(arangod.url + '/_admin/statistics', '', opts);
-          if (reply.hasOwnProperty('error') || reply.code !== 200) {
-            print("fail: " + JSON.stringify(reply) +
-                  " - ps before: " + JSON.stringify(procStats) +
-                  " - ps now: " + JSON.stringify(arangod._getProcessStats()));
-            state.state = false;
-            oneSet.state = false;
-            oneSet[serverId] = {
-              error: true,
-              start: beforeCall,
-              delta: time() - beforeCall
-            };
-          } else {
-            let statisticsReply = JSON.parse(reply.body);
-            oneSet[serverId] = {
-              error: false,
-              start: beforeCall,
-              delta: time() - beforeCall,
-              uptime: statisticsReply.server.uptime
-            };
-          }
-        }
+        });
       });
       state['delta'].push(time() - before);
       if (state.delta > 1000) {
