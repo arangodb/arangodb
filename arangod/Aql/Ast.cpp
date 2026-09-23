@@ -445,7 +445,6 @@ Ast::Ast(QueryContext& query,
       _containsUpsertNode(false),
       _containsParallelNode(false),
       _containsAsyncPrefetch(false),
-      _willUseV8(false),
       _astFlags(flags) {
   startSubQuery();
 
@@ -2695,12 +2694,9 @@ void Ast::validateAndOptimize(transaction::Methods& trx,
         // NOOPT will turn all function optimizations off
         ++ctx->stopOptimizationRequests;
       }
-      if (node->willUseV8()) {
-        _willUseV8 = true;
-      }
     } else if (node->type == NODE_TYPE_FCALL_USER) {
-      // user-defined function. will always use V8
-      _willUseV8 = true;
+      // TODO: this is for now now empty
+      ADB_PROD_CRASH() << "FCALL_USER not implemented";
     } else if (node->type == NODE_TYPE_COLLECTION_LIST) {
       // a collection list is produced by WITH a, b, c
       // or by traversal declarations
@@ -4074,12 +4070,6 @@ AstNode* Ast::optimizeFunctionCall(
 
   if (!node->getMember(0)->isConstant()) {
     // arguments to function call are not constant
-    return node;
-  }
-
-  if (node->willUseV8()) {
-    // if the expression is going to use V8 internally, we do not
-    // bother to optimize it here
     return node;
   }
 

@@ -60,8 +60,7 @@ struct NonConstExpressionContainer {
   NonConstExpressionContainer(NonConstExpressionContainer&&) = default;
   NonConstExpressionContainer(
       std::vector<std::unique_ptr<NonConstExpression>> expressions,
-      std::vector<std::pair<VariableId, RegisterId>> varToRegisterMapping,
-      bool hasV8Expression);
+      std::vector<std::pair<VariableId, RegisterId>> varToRegisterMapping);
   NonConstExpressionContainer& operator=(NonConstExpressionContainer&&) =
       default;
 
@@ -75,8 +74,6 @@ struct NonConstExpressionContainer {
   // As it is very unlikely to have 20 active variables this variant shall
   // give a better overall read performance.
   std::vector<std::pair<VariableId, RegisterId>> _varToRegisterMapping;
-
-  bool _hasV8Expression = false;
 
   // Serializes this container into a velocypack builder.
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
