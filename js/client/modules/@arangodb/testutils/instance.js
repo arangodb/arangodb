@@ -686,13 +686,11 @@ class instance {
   restartOneInstance(moreArgs, instanceJson) {
     this.moreArgs = moreArgs;
     if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
-      this.JWT = moreArgs['server.jwt-secret'];
       this.jwt_secret = moreArgs['server.jwt-secret'];
     } else if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret-folder')) {
       let files = fs.list(moreArgs['server.jwt-secret-folder']);
       files = files.sort();
-      this.JWT = fs.read(fs.join(moreArgs['server.jwt-secret-folder'], files[0]));
-      this.jwt_secret = this.JWT;
+      this.jwt_secret = fs.read(fs.join(moreArgs['server.jwt-secret-folder'], files[0]));
     }
     const startTime = time();
     this.exitStatus = null;
@@ -910,7 +908,7 @@ class instance {
       }
     }
     if (this.jwt_secret) {
-      print(`${Date()} ${this.name}: re/connecting with JWT ${this.url}, ${this.JWT}`);
+      print(`${Date()} ${this.name}: re/connecting with JWT ${this.url}, ${this.jwt_secret}`);
       const ret = arango.reconnect(this.endpoint, '_system',
                                    this.isFrontend() ? `${this.options.username}` : undefined,
                                    this.isFrontend() ? this.options.password : undefined,

@@ -1515,7 +1515,7 @@ class instanceManager {
   reconnect(privileged)
   {
     let passvoid = this.hasSetPassvoid ? this.options.password:'';
-    if (this.JWT !== null && (privileged || this.forceJWT)) {
+    if (this.jwt_secret !== null && (privileged || this.forceJWT)) {
       let deadline = time() + seconds(60);
       arango.reconnect(this.endpoint,
                        '_system',
