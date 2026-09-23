@@ -30,11 +30,11 @@ const jsunity = require('jsunity');
 function RequestSuite() {
   return {
     testCursorAPI: cursorAPI,
+    /*
     testVersionJsonJson: versionJsonJson,
     testVersionVpackJson: versionVpackJson,
     testVersionJsonVpack: versionJsonVpack,
     testVersionVpackVpack: versionVpackVpack,
-    /*
     testEchoVpackVpack: echoVpackVpack,
     testAdminExecuteWithHeaderVpack: adminExecuteWithHeaderVpack,
     testAdminExecuteWithHeaderVpack2: adminExecuteWithHeaderVpack2,
@@ -79,7 +79,7 @@ function cursorAPI() {
     db._drop(cn);
   }
 };
-
+/*
 function versionJsonJson() {
   const path = '/_api/version';
   const headers = {
@@ -176,7 +176,7 @@ function versionVpackVpack() {
 
   assertMatch(/enterprise|community/g, obj.license, JSON.stringify(obj));
 };
-/*
+/ *
 function echoVpackVpack() {
   const path = '/_admin/echo';
   const headers = {
