@@ -96,8 +96,7 @@ auto writtenComponentOrder(
     std::vector<Variable const*> const& component,
     std::vector<EnumerateCollectionNode*> const& writtenOrder)
     -> std::vector<EnumerateCollectionNode*> {
-  std::unordered_set<Variable const*> members(component.begin(),
-                                              component.end());
+  std::unordered_set members(component.begin(), component.end());
   std::vector<EnumerateCollectionNode*> order;
   order.reserve(component.size());
   for (auto* node : writtenOrder) {
@@ -164,9 +163,9 @@ auto decideComponentOrders(
       LOG_TOPIC("a7f04", TRACE, Logger::AQL)
           << "optimize-join-order: keeping a component's written order, "
              "estimate rests on defaulted statistics";
-      decided.emplace_back(DecidedComponent{
-          JoinOrder{std::move(written), std::move(writtenEstimate)},
-          firstAppearance, false});
+      decided.emplace_back(
+          DecidedComponent{JoinOrder{std::move(written), writtenEstimate},
+                           firstAppearance, false});
       continue;
     }
 
@@ -177,9 +176,9 @@ auto decideComponentOrders(
           << "optimize-join-order: keeping a component's written order, "
           << writtenEstimate.cost << " -> " << greedy.estimate.cost
           << " does not clear the margin";
-      decided.emplace_back(DecidedComponent{
-          JoinOrder{std::move(written), std::move(writtenEstimate)},
-          firstAppearance, false});
+      decided.emplace_back(
+          DecidedComponent{JoinOrder{std::move(written), writtenEstimate},
+                           firstAppearance, false});
       continue;
     }
 
@@ -406,7 +405,8 @@ auto chooseJoinOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
   if (graph.nodes.size() > kMaxEnumerationsToReorder) {
     LOG_TOPIC("a7f03", TRACE, Logger::AQL)
         << "optimize-join-order: skipping a run of " << graph.nodes.size()
-        << " enumerations, above the reordering cap";
+        << " enumerations, above the reordering cap ("
+        << kMaxEnumerationsToReorder << ")";
     return std::nullopt;
   }
 
