@@ -177,6 +177,11 @@ struct OperationOptions {
   // header when putting together the requests for DB servers
   bool documentCallFromAql = false;
 
+  // whether the caller performs intermediate commits itself, synchronously,
+  // after the operation has completed. Set by the AQL modification executors
+  // on DB-Servers, which must run the commit under the query lock.
+  bool deferIntermediateCommit = false;
+
   // whether or not indexing can be disabed. We must not disable indexing if we
   // have to ensure that writes become visible to the current query. This is
   // necessary for UPSERTS where the subquery relies on a non-unique secondary
