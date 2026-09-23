@@ -6,9 +6,19 @@ ensure_secret
 
 RBAC_ENDPOINT="${1:-http://$INTEGRATION_GATEWAY}"
 
-# stop any previous instance and wait for :8529 to free up before wiping data
-pkill -9 -x arangod 2>/dev/null
-for i in $(seq 1 30); do ss -ltn 2>/dev/null | grep -qE '127.0.0.1:8529' || break; sleep 0.5; done
+# Stop the instance this script started last time, by pidfile, and wait for
+# :8529 to free up before wiping its data.
+ARANGOD_PIDFILE="$WORK/arangod.pid"
+if [ -f "$ARANGOD_PIDFILE" ]; then
+  OLD_PID="$(cat "$ARANGOD_PIDFILE" 2>/dev/null)"
+  if [ -n "${OLD_PID:-}" ] && kill -0 "$OLD_PID" 2>/dev/null; then
+    kill -9 "$OLD_PID" 2>/dev/null
+  fi
+  rm -f "$ARANGOD_PIDFILE"
+elif command -v pkill >/dev/null 2>&1; then
+  pkill -9 -x arangod 2>/dev/null
+fi
+for i in $(seq 1 30); do port_open 127.0.0.1:8529 || break; sleep 0.5; done
 
 rm -rf "$WORK/arangod-data"
 mkdir -p "$WORK/arangod-data" "$WORK/arangod-apps"
@@ -34,4 +44,6 @@ nohup "$ARANGOD" \
   --log.level info \
   --log.level authorization=debug \
   > "$LOG_DIR/arangod.stdout.log" 2>&1 &
-echo "arangod (RBAC) PID: $!  endpoint=$ARANGOD_RBAC_ENDPOINT  rbac-service=$RBAC_ENDPOINT"
+ARANGOD_PID=$!
+echo "$ARANGOD_PID" > "$ARANGOD_PIDFILE"
+echo "arangod (RBAC) PID: $ARANGOD_PID  endpoint=$ARANGOD_RBAC_ENDPOINT  rbac-service=$RBAC_ENDPOINT"

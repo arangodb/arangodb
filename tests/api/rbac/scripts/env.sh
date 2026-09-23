@@ -33,6 +33,20 @@ SIDECAR_HEALTH="127.0.0.1:8107"
 # The active JWT signing secret MUST live in a file named "-" (the operator's
 # ActiveJWTKey convention) and be a full 64-byte key so arangod (raw bytes) and
 # the operator (padded to DefaultTokenSecretSize=64) compute the same HMAC key.
+# Is something accepting connections on "host:port"?
+port_open() {
+  local host="${1%:*}" port="${1##*:}"
+  (exec 3<>"/dev/tcp/$host/$port") 2>/dev/null
+}
+
+# Which pid is listening on "host:port". Best effort: needs `ss` and prints
+# nothing when it is absent - so an empty answer means "unknown", not "free".
+pid_on_port() {
+  command -v ss >/dev/null 2>&1 || return 0
+  ss -ltnp 2>/dev/null | awk -v ep="$1" '$4 == ep' \
+    | grep -oE 'pid=[0-9]+' | head -1 | cut -d= -f2
+}
+
 ensure_secret() {
   if [ ! -s "$JWT_DIR/-" ]; then
     python3 -c "import secrets; print(secrets.token_hex(32), end='')" > "$JWT_DIR/-"

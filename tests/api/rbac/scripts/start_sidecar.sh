@@ -27,7 +27,7 @@ if [ -f "$PIDFILE" ]; then
   fi
   rm -f "$PIDFILE"
 fi
-for i in $(seq 1 20); do ss -ltn 2>/dev/null | grep -qE "$SIDECAR_GRPC" || break; sleep 0.5; done
+for i in $(seq 1 20); do port_open "$SIDECAR_GRPC" || break; sleep 0.5; done
 
 # The pidfile only covers sidecars *this* $RBAC_WORK started. A sidecar left
 # running from a different work directory - or anything else on these ports -
@@ -36,10 +36,11 @@ for i in $(seq 1 20); do ss -ltn 2>/dev/null | grep -qE "$SIDECAR_GRPC" || break
 # "authorization.v1 never became healthy", which points at the wrong cause and
 # costs real time. Fail fast with the truth instead.
 for endpoint in "$SIDECAR_GRPC" "$SIDECAR_MGMT" "$SIDECAR_HEALTH"; do
-  if ss -ltn 2>/dev/null | grep -qE "[[:space:]]${endpoint}[[:space:]]"; then
+  if port_open "$endpoint"; then
     echo "sidecar ($MODE) cannot start: ${endpoint} is already in use by a" >&2
     echo "process this script did not start (pidfile: $PIDFILE)." >&2
-    ss -ltnp 2>/dev/null | grep -E "[[:space:]]${endpoint}[[:space:]]" >&2
+    HOLDER="$(pid_on_port "$endpoint")"
+    [ -n "$HOLDER" ] && ps -p "$HOLDER" -o pid,args= >&2
     echo "Stop it first, or point RBAC_WORK at the work directory that owns it." >&2
     exit 2
   fi
@@ -63,25 +64,40 @@ mkdir -p "$RUNDIR/sidecar"
 #    set the sidecar's own authenticator answers its own client with
 #    `Unauthenticated: Unauthorized`.
 #    Both mirror what the operator injects in pkg/deployment/resources/internal_sidecar.go.
+SIDECAR_ARGS=(
+  sidecar
+  --arangodb.endpoint="http://${ARANGOD_RBAC_ENDPOINT#tcp://}"
+  --sidecar.auth="$JWT_DIR"
+  --sidecar.auth.mode="$MODE"
+  --sidecar.address="$SIDECAR_GRPC"
+  --sidecar.gateway.address="$SIDECAR_MGMT"
+  --sidecar.health.address="$SIDECAR_HEALTH"
+)
+
+# Fail early where the namespace is unavailable
+if ! unshare --map-root-user --mount "${BASH:-bash}" -c : 2>/dev/null; then
+  echo "cannot create a user+mount namespace, which this script needs to give" >&2
+  echo "the sidecar a writable /run (see the comment above - the UNIX socket" >&2
+  echo "cannot simply be switched off)." >&2
+  echo "On a host: check /proc/sys/kernel/unprivileged_userns_clone." >&2
+  echo "In a container: it usually needs --privileged or a seccomp profile" >&2
+  echo "that permits unshare(CLONE_NEWUSER|CLONE_NEWNS)." >&2
+  exit 3
+fi
+
 CENTRAL_INTEGRATION_SERVICE_ADDRESS="$SIDECAR_GRPC" \
 INTEGRATION_ARANGO_JWT_FOLDER="$JWT_DIR" \
 setsid unshare --map-root-user --mount bash -c '
   mount --bind "$0" /run || { echo "bind mount over /run failed" >&2; exit 91; }
   shift
   exec "$@"
-' "$RUNDIR" _ "$OPERATOR" sidecar \
-  --arangodb.endpoint="http://${ARANGOD_RBAC_ENDPOINT#tcp://}" \
-  --sidecar.auth="$JWT_DIR" \
-  --sidecar.auth.mode="$MODE" \
-  --sidecar.address="$SIDECAR_GRPC" \
-  --sidecar.gateway.address="$SIDECAR_MGMT" \
-  --sidecar.health.address="$SIDECAR_HEALTH" \
+' "$RUNDIR" _ "$OPERATOR" "${SIDECAR_ARGS[@]}" \
   > "$LOG_DIR/sidecar.log" 2>&1 &
 echo $! > "$PIDFILE"
 disown
 
 for i in $(seq 1 60); do
-  if ss -ltn 2>/dev/null | grep -qE "$SIDECAR_MGMT"; then
+  if port_open "$SIDECAR_MGMT"; then
     # Binding the gateway is not enough: authorization.v1 needs its pool client
     # connected before a decision means anything.
     for j in $(seq 1 40); do

@@ -378,11 +378,20 @@ class Sidecar:
 
     # -- evaluation ----------------------------------------------------
     def evaluate(self, user, action, resource):
-        """Ask the PDP directly; used to detect that a change has propagated."""
+        """Ask the PDP directly; used to detect that a change has propagated.
+
+        Sends the superuser token: current operator builds authenticate the
+        integration services, and an unauthenticated call gets a 401 that this
+        method reports as `None` - which reads as "the change has not propagated
+        yet" and so shows up as a propagation timeout rather than an auth error.
+        Older builds served these endpoints unauthenticated, which is why the
+        token was missing here.
+        """
         status, body = http(
             f"{self.config.integration_url}/_integration/authorization/v1/evaluate",
             "POST",
             {"user": user, "action": action, "resource": resource},
+            self.tokens.superuser(),
         )
         if status != 200:
             return None
@@ -1044,7 +1053,11 @@ def main():
 
     if args.self_check:
         import selfcheck
-        return selfcheck.main()
+        try:
+            return selfcheck.main()
+        except FileNotFoundError as error:
+            print(f"cannot self-check: {error}", file=sys.stderr)
+            return 2
 
     config = Config(args)
 

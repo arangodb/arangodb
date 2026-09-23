@@ -240,6 +240,94 @@ Measured falsifications of the integrated path:
 | authentication fix reverted | `Fail` - 7 scenario `MISMATCH`es |
 | both fixes in place | `Success` |
 
+## Running in CI
+
+`.circleci/base_config.yml` carries a `run-rbac-tests` job, instantiated from
+`tests/tests.yml`:
+
+```yaml
+- rta_makedata:
+    job: run-rbac-tests
+    options: { type: single, size: medium, suffix: rbac, timeLimit: 5400 }
+    requires: { coverage: false, v8: true, arch: x64 }
+    args: { test: "050,100,400,500,580,607,612", oneTestTimeout: 5350 }
+```
+
+| Piece | Does |
+|---|---|
+| `provision-rbac-sidecar` | preflight, then `provision_operator_sidecar.sh`; exports `OPERATOR` |
+| `start-rbac-stack` | `start_stack_for_unittest.sh` with `RBAC_WORK` outside `./work` |
+| `run-rbac-tests` | the two above as `pre-test-steps`, then `run-test`, then stores the stack logs |
+
+`--rbac <endpoint>` is appended by the job, not by the test definition, so the
+endpoint the harness is told about cannot drift from the one the stack binds.
+
+`tests/api/rbac` had to be added to the `binaries.tar.gz` workspace paths -
+only `tests/js` was there, so none of this was present in a test container.
+Note that list is a block scalar word-split into `tar` arguments: `#` is not a
+comment inside it.
+
+### Getting the sidecar binary
+
+`tests/api/rbac/scripts/provision_operator_sidecar.sh` downloads a release
+asset if one exists and builds from source otherwise, printing the path on
+stdout and nothing else.
+
+Today it always builds. kube-arangodb's releases publish
+`arangodb_operator_integration_*`, `arangodb_operator_ops_*` and
+`arangodb_operator_platform_*` but **not** `arangodb_operator` itself, which is
+the binary that serves `sidecar` - checked against release 1.4.5. The download
+path is there so that the day the asset appears, CI picks it up unchanged; a
+missing asset is therefore an ordinary outcome, not a warning.
+
+The build is `go build ./cmd/main`, mirroring kube-arangodb's own
+`binary_operator` rule, not `make bin` (which also builds binaries we do not
+need). Go >= 1.21 fetches the toolchain go.mod asks for by itself; if the image
+has nothing usable the script bootstraps one.
+
+Two things worth knowing:
+
+* kube-arangodb's default branch is **`master`**. `--ref main` fails to clone.
+* Current operator builds **authenticate** the management and integration
+  endpoints. Older ones served them open. Anything talking to them needs a
+  superuser token signed with the sidecar's key.
+
+### The one thing that cannot be settled locally
+
+The sidecar must run inside a user+mount namespace (see
+"Why the UNIX socket cannot be switched off" below), so the executor has to
+permit `unshare(CLONE_NEWUSER|CLONE_NEWNS)`. Whether CircleCI's `test-ubuntu`
+image does was **not** verified - there is no way to test it from a developer
+machine. `provision-rbac-sidecar` checks it in its first seconds and fails with
+that sentence rather than after the multi-minute operator build. If it turns
+out not to be permitted, the job needs a `machine:` executor, as
+`run-rta-tests` already uses.
+
+### Why the UNIX socket cannot be switched off
+
+Newer operator builds offer `--sidecar.unix.enabled=false`, which looks like an
+easy way to avoid the namespace. It is not. Its own help text says the socket
+carries "service-to-service calls that bypass the network authenticator" -
+disable it and those calls go through the authenticator, which rejects them.
+The sidecar then answers arangod with
+
+```
+400 {"code":9, "message":"Unable to validate the token:
+     rpc error: code = Unauthenticated desc = Unauthorized"}
+```
+
+and arangod maps that 400 onto `TRI_ERROR_BAD_PARAMETER`, so every request
+fails with `Caught exception in handleAuthorizationChecks: bad parameter`, and
+nothing in that mentions a socket. Measured both ways against one binary:
+socket on gives a real verdict (`One of the requests has been denied`); socket
+off gives `bad parameter`.
+
+Corollary worth remembering: `bad parameter` from `handleAuthorizationChecks`
+is simply how arangod reports **any** 400 from the sidecar. It is not
+diagnostic of any single cause - it has shown up for a compressed request body,
+for a JWT secret mismatch, and for this. Put a logging proxy between arangod
+and the sidecar and read the actual response.
+
 ## Running individual pieces
 
 ```bash

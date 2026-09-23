@@ -6,7 +6,7 @@ source "$(dirname "$0")/env.sh"
 ensure_secret
 
 pkill -9 -f "arangod-classic-data" 2>/dev/null
-for i in $(seq 1 30); do ss -ltn 2>/dev/null | grep -qE '127.0.0.1:8530' || break; sleep 0.5; done
+for i in $(seq 1 30); do port_open 127.0.0.1:8530 || break; sleep 0.5; done
 
 rm -rf "$WORK/arangod-classic-data"
 mkdir -p "$WORK/arangod-classic-data" "$WORK/arangod-classic-apps"

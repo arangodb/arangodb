@@ -54,11 +54,6 @@ kill_if_named() {
     esac
 }
 
-pid_on_port() {
-    ss -ltnp 2>/dev/null | awk -v ep="$1" '$4 == ep' \
-        | grep -oE 'pid=[0-9]+' | head -1 | cut -d= -f2
-}
-
 free_ports() {
     local failed=0 pid
     if [ -f "$WORK/sidecar.pid" ]; then
@@ -69,14 +64,26 @@ free_ports() {
         pid="$(pid_on_port "$endpoint")"
         [ -n "$pid" ] && { kill_if_named "$pid" arangodb_operat || failed=1; }
     done
+    # Prefer the pidfile: on an image without `ss` the port lookup returns
+    # nothing, and our own arangod would otherwise be unkillable.
+    if [ -f "$WORK/arangod.pid" ]; then
+        kill_if_named "$(cat "$WORK/arangod.pid" 2>/dev/null)" arangod || failed=1
+        rm -f "$WORK/arangod.pid"
+    fi
     pid="$(pid_on_port "${ARANGOD_RBAC_ENDPOINT#tcp://}")"
     [ -n "$pid" ] && { kill_if_named "$pid" arangod || failed=1; }
     [ "$failed" -eq 0 ] || die "could not free the fixed ports; stop whatever holds them by hand"
     for i in $(seq 1 40); do
-        ss -ltn 2>/dev/null | grep -qE "($SIDECAR_MGMT|$SIDECAR_GRPC|$SIDECAR_HEALTH|${ARANGOD_RBAC_ENDPOINT#tcp://})" || return 0
+        local busy=0
+        for endpoint in "$SIDECAR_MGMT" "$SIDECAR_GRPC" "$SIDECAR_HEALTH" \
+                        "${ARANGOD_RBAC_ENDPOINT#tcp://}"; do
+            port_open "$endpoint" && { busy=1; break; }
+        done
+        [ "$busy" -eq 0 ] && return 0
         sleep 0.5
     done
-    die "ports still occupied after 20s"
+    die "ports still occupied after 20s. Without \`ss\` the holding process
+ cannot be identified, so nothing was killed - stop it by hand."
 }
 
 # --- --stop ----------------------------------------------------------------
@@ -162,15 +169,20 @@ esac
 MGMT_CODE=""
 for i in $(seq 1 60); do
     MGMT_CODE="$(curl -s -m 5 -o /dev/null -w '%{http_code}' \
+        -H "Authorization: bearer $SU" \
         "$MGMT_URL/_management/permissions/policy" || true)"
     [ "$MGMT_CODE" = "200" ] && break
     sleep 0.5
 done
-[ "$MGMT_CODE" = "200" ] \
-    || die "the sidecar management API still answered HTTP $MGMT_CODE after 30s,
+case "$MGMT_CODE" in
+    200) echo "  sidecar management API is serving" ;;
+    401) die "the sidecar management API rejected a token signed with the harness
+ secret ($MGMT_CODE). The sidecar's --sidecar.auth key folder and the harness
+ secret have diverged. Check $JWT_DIR/- and $LOG_DIR/sidecar.log." ;;
+    *)   die "the sidecar management API still answered HTTP $MGMT_CODE after 30s,
  expected 200. 503 means its store never became healthy.
- Check $LOG_DIR/sidecar.log."
-echo "  sidecar management API is serving"
+ Check $LOG_DIR/sidecar.log." ;;
+esac
 
 CMD="./scripts/unittest rta_makedata --rbac $MGMT_URL --test $FILTER"
 

@@ -7,7 +7,7 @@ ensure_secret
 MODE="${1:-central}"
 
 pkill -9 -f arangodb_operator_integration 2>/dev/null
-for i in $(seq 1 20); do ss -ltn 2>/dev/null | grep -qE "$INTEGRATION_GATEWAY" || break; sleep 0.5; done
+for i in $(seq 1 20); do port_open "$INTEGRATION_GATEWAY" || break; sleep 0.5; done
 
 # central / central-permissive delegate to the sidecar, whose gRPC address is
 # read from this env var (not a flag).
@@ -23,7 +23,7 @@ setsid "$OPERATOR_INT" \
   > "$LOG_DIR/integration.log" 2>&1 &
 disown
 for i in $(seq 1 30); do
-  ss -ltn 2>/dev/null | grep -qE "$INTEGRATION_GATEWAY" && { echo "integration ($MODE) bound on $INTEGRATION_GATEWAY"; exit 0; }
+  port_open "$INTEGRATION_GATEWAY" && { echo "integration ($MODE) bound on $INTEGRATION_GATEWAY"; exit 0; }
   sleep 0.5
 done
 echo "integration ($MODE) FAILED to bind"; tail -5 "$LOG_DIR/integration.log"; exit 1

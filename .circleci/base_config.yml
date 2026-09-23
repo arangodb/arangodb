@@ -341,6 +341,77 @@ commands:
 
             curl -s -L -o <<parameters.repo-path>>/build/bin/rclone-arangodb "https://github.com/arangodb/rclone-arangodb/releases/download/golang-${RCLONE_GO}/golang-${RCLONE_GO}_${ARANGO_MAJOR_MINOR_VERSION}_v${RCLONE_VERSION}_rclone-arangodb-linux-$arch"
             chmod a+x <<parameters.repo-path>>/build/bin/rclone-arangodb
+  provision-rbac-sidecar:
+    description: >
+      Downloads the `arangodb_operator` binary when it exists or builds it
+      from source when it does not. See
+      tests/api/rbac/scripts/provision_operator_sidecar.sh for why building is
+      currently the normal outcome.
+    parameters:
+      arch:
+        type: string
+        # Empty means "detect from uname"
+        default: ""
+      operator-repo:
+        type: string
+        default: "https://github.com/arangodb/kube-arangodb.git"
+      operator-ref:
+        type: string
+        default: master
+    steps:
+      - run:
+          name: Provision the authorization sidecar binary
+          # Build takes a few minutes and produces no output.
+          no_output_timeout: 20m
+          command: |
+            set -eo pipefail
+            missing=""
+            for tool in curl python3 tar unshare; do
+              command -v "$tool" >/dev/null 2>&1 || missing="$missing $tool"
+            done
+            if [ -n "$missing" ]; then
+              echo "this image is missing:$missing - the RBAC stack scripts need them" >&2
+              exit 1
+            fi
+            if ! unshare --map-root-user --mount "${BASH:-bash}" -c : 2>/dev/null; then
+              echo "this executor cannot create a user+mount namespace, which the" >&2
+              echo "authorization sidecar needs for a writable /run." >&2
+              echo "Either run this job on a machine executor (as run-rta-tests" >&2
+              echo "does) or use an image/seccomp profile that permits" >&2
+              echo "unshare(CLONE_NEWUSER|CLONE_NEWNS)." >&2
+              exit 1
+            fi
+            export RBAC_OPERATOR_DIR="$HOME/rbac-operator"
+            OPERATOR_PATH="$(tests/api/rbac/scripts/provision_operator_sidecar.sh \
+              --arch '<< parameters.arch >>' \
+              --repo '<< parameters.operator-repo >>' \
+              --ref '<< parameters.operator-ref >>')"
+            echo "export OPERATOR='$OPERATOR_PATH'" >> "$BASH_ENV"
+            echo "provisioned: $OPERATOR_PATH"
+
+  start-rbac-stack:
+    description: >
+      Launch the authorization sidecar and the arangod that stores its policies.
+      Must run AFTER the build artifacts are attached, because it starts arangod
+      from build/bin - hence run-test's pre-test-steps rather than a step before
+      it, which is where the driver tests put their setup.
+    parameters:
+      rbac-work:
+        type: string
+        default: /tmp/rbac-stack
+    steps:
+      - run:
+          name: Start the RBAC authorization stack
+          no_output_timeout: 10m
+          command: |
+            set -eo pipefail
+            if [ -z "${OPERATOR:-}" ]; then
+              echo "OPERATOR is not set - provision-rbac-sidecar must run first" >&2
+              exit 1
+            fi
+            export RBAC_WORK="<< parameters.rbac-work >>"
+            tests/api/rbac/scripts/start_stack_for_unittest.sh
+
   run-test:
     parameters:
       suiteName:
@@ -360,6 +431,9 @@ commands:
       use-s3-workspace:
         type: boolean
         default: true
+      pre-test-steps:
+        type: steps
+        default: []
     steps:
       - add_ssh_keys:
           fingerprints:
@@ -402,6 +476,7 @@ commands:
                 name: Symbolizer server
                 command: ./utils/llvm-symbolizer-server.py
                 background: true
+      - steps: << parameters.pre-test-steps >>
       - run:
           name: Run << parameters.suiteName >> tests
           # we increase the no_output_timeout so our own timeout mechanism can kick in and gather more information
@@ -963,7 +1038,6 @@ jobs:
                   build/compile_commands.json
                   tidy-headers
             - persist_workspace_to_s3:
-                # not there? install.tar.gz
                 root: .
                 archive: binaries.tar.gz
                 paths: |
@@ -977,6 +1051,8 @@ jobs:
                   etc/
                   tests/js
                   enterprise/tests/js
+                  tests/api/rbac
+                  arangod/Auth/Rbac/ServiceImpl.cpp
                   utils
                   lib/iresearch/tests/resources
                   3rdParty/rta-makedata
@@ -1240,6 +1316,67 @@ jobs:
           sanitizer: << parameters.sanitizer >>
           extraArgs: << parameters.extraArgs >>
           use-s3-workspace: false
+
+  run-rbac-tests:
+    description: >
+      rta_makedata under RBAC, against a real authorization sidecar.
+
+      Shaped like run-driver-tests - extra setup bolted onto run-test - with one
+      difference that matters: the driver clone needs no build artifacts and so
+      happens before run-test, whereas this has to start arangod, which only
+      exists after run-test attaches the workspace. So the stack launch goes in
+      run-test's pre-test-steps.
+
+      `--rbac <endpoint>` is appended here rather than taken from the test
+      definition, so the endpoint the harness is told about and the one the
+      stack actually binds cannot drift apart.
+    parameters:
+      <<: *shared-test-job-parameters
+      operator-repo:
+        type: string
+        default: "https://github.com/arangodb/kube-arangodb.git"
+      operator-ref:
+        type: string
+        default: master
+      operator-arch:
+        type: string
+        default: ""
+      rbac-endpoint:
+        type: string
+        # Must match SIDECAR_MGMT in tests/api/rbac/scripts/env.sh.
+        default: "http://127.0.0.1:8108"
+      rbac-work:
+        type: string
+        default: /tmp/rbac-stack
+    docker:
+      - image: << parameters.docker_image >>
+    resource_class: << parameters.size >>
+    parallelism: << parameters.buckets >>
+    steps:
+      - run-test:
+          suiteName: << parameters.suiteName >>
+          suites: << parameters.suites >>
+          cluster: << parameters.cluster >>
+          arangosh_args: << parameters.arangosh_args >>
+          timeLimit: << parameters.timeLimit >>
+          sanitizer: << parameters.sanitizer >>
+          extraArgs: << parameters.extraArgs >> --rbac << parameters.rbac-endpoint >>
+          pre-test-steps:
+            - provision-rbac-sidecar:
+                arch: << parameters.operator-arch >>
+                operator-repo: << parameters.operator-repo >>
+                operator-ref: << parameters.operator-ref >>
+            - start-rbac-stack:
+                rbac-work: << parameters.rbac-work >>
+      - run:
+          name: Collect RBAC stack logs
+          when: always
+          command: |
+            mkdir -p rbac-stack-logs
+            cp -a "<< parameters.rbac-work >>/log/." rbac-stack-logs/ 2>/dev/null || true
+      - store_artifacts:
+          destination: << parameters.suiteName >>-rbac-stack
+          path: ./rbac-stack-logs/
 
   run-rta-tests:
     machine:

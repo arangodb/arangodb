@@ -37,7 +37,11 @@ RESOURCE_TYPE_RE = re.compile(r'std::format\("db:([a-z]+):')
 def arangod_vocabulary(path=SERVICE_IMPL):
     """The actions and resource types arangod can actually emit."""
     if not os.path.exists(path):
-        raise FileNotFoundError(path)
+        raise FileNotFoundError(
+            f"{path} not found. The catalog is validated against arangod's own "
+            f"RBAC vocabulary, which is read from that file, so --self-check "
+            f"needs a source checkout - a CI workspace ships binaries only. "
+            f"capabilities() does not need it and falls back to the binary.")
     with open(path, encoding="utf-8") as handle:
         source = handle.read()
     actions = set(ACTION_RE.findall(source))
@@ -103,25 +107,41 @@ def capabilities(path=SERVICE_IMPL, binary=ARANGOD_BINARY):
     catalog tuned to code that is not running. A disagreement is reported under
     the `stale_build` key rather than being resolved quietly.
     """
-    actions, resource_types = arangod_vocabulary(path)
-    from_source = {
-        "api_version_gate": "apiversion" in resource_types,
-        "admin_read_users": "db:AdminReadUsers" in actions,
-    }
-    result = dict(from_source)
-    result["source_of_truth"] = "source"
+    try:
+        actions, resource_types = arangod_vocabulary(path)
+    except FileNotFoundError:
+        from_source = None
+    else:
+        from_source = {
+            "api_version_gate": "apiversion" in resource_types,
+            "admin_read_users": "db:AdminReadUsers" in actions,
+        }
+
+    result = dict(from_source) if from_source else {}
+    result["source_of_truth"] = "source" if from_source else None
     result["stale_build"] = False
+    result["cross_checked"] = False
 
     if binary and os.path.exists(binary):
         try:
             from_binary = _binary_contains(binary, BINARY_MARKERS)
         except OSError:
+            if from_source is None:
+                raise
             return result
         result.update(from_binary)
         result["source_of_truth"] = "binary"
-        result["stale_build"] = any(
-            from_binary[name] != from_source[name] for name in BINARY_MARKERS
-        )
+        if from_source is not None:
+            result["cross_checked"] = True
+            result["stale_build"] = any(
+                from_binary[name] != from_source[name] for name in BINARY_MARKERS
+            )
+        return result
+
+    if from_source is None:
+        raise FileNotFoundError(
+            f"cannot determine arangod's RBAC capabilities: neither the source "
+            f"({path}) nor an arangod binary ({binary!r}) is readable")
     return result
 
 
@@ -131,6 +151,9 @@ def describe_capabilities(caps):
     )
     lines = [f"arangod RBAC capabilities ({flags}) as read from the "
              f"{caps['source_of_truth']}"]
+    if caps.get("source_of_truth") == "binary" and not caps.get("cross_checked"):
+        lines.append("  (the C++ source was not available, so the binary could "
+                     "not be cross-checked against it for staleness)")
     if caps["stale_build"]:
         lines.append(
             "  WARNING build/bin/arangod and the checked-out source disagree about "
