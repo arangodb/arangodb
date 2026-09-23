@@ -77,8 +77,8 @@ auto chooseJoinOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
 /// and filters chained onto the run's first dependency; reinserting the
 /// enumerations above them yields a valid, if un-optimised, plan, which
 /// move-calculations-up-2 and move-filters-up-2 then repair.
-void rewriteJoinGraph(ExecutionPlan& plan, ExecutionNode* firstEnumeration,
-                      ExecutionNode* next,
-                      std::vector<EnumerateCollectionNode*> const& order);
+void rewritePlan(ExecutionPlan& plan, ExecutionNode* firstEnumeration,
+                 ExecutionNode* next,
+                 std::vector<EnumerateCollectionNode*> const& order);
 
 }  // namespace arangodb::aql
