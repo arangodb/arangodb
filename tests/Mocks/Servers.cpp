@@ -118,6 +118,7 @@
 #include "V8Server/V8DealerFeature.h"
 #endif
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 #include "VocBase/vocbase.h"
 #include "utils/log.hpp"
 
@@ -844,7 +845,8 @@ std::shared_ptr<LogicalCollection> MockClusterServer::createCollection(
   VPackBuilder props;
   buildCollectionProperties(props, collectionName, cid, type,
                             additionalProperties);
-  LogicalCollection dummy(*vocbase, props.slice(), true);
+  LogicalCollection dummy(
+      *vocbase, CollectionDescriptor::fromVelocyPack(props.slice()), true);
 
   auto shards = std::make_shared<ShardMap>();
   for (auto const& [shard, server] : shardNameToServerNamePairs) {

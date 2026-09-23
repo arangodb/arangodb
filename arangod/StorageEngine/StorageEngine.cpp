@@ -68,9 +68,6 @@ StorageEngine::StorageEngine(application_features::ApplicationServer& server,
   startsAfter<ViewTypesFeature>();
 }
 
-void StorageEngine::addParametersForNewCollection(velocypack::Builder&,
-                                                  VPackSlice) {}
-
 uint64_t StorageEngine::resolveObjectId(
     CollectionStorageProperties const& storage) const {
   return storage.objectId;
