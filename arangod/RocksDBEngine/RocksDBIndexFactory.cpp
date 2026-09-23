@@ -25,7 +25,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/voc-errors.h"
 #include "Cluster/ServerState.h"
-#include "Indexes/DefaultIndexFactories.h"
 #include "Indexes/Index.h"
 #include "IResearch/IResearchRocksDBInvertedIndex.h"
 #include "Logger/LogMacros.h"
@@ -53,9 +52,22 @@ using namespace arangodb;
 
 namespace {
 
-struct EdgeIndexFactory : public EdgeIndexDefinition {
+struct DefaultIndexFactory : public IndexTypeFactory {
+  IndexType const _type;
+
+  explicit DefaultIndexFactory(application_features::ApplicationServer& server,
+                               IndexType type)
+      : IndexTypeFactory(server), _type(type) {}
+
+  bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
+             std::string const&) const override {
+    return IndexTypeFactory::equal(_type, lhs, rhs, true);
+  }
+};
+
+struct EdgeIndexFactory : public DefaultIndexFactory {
   explicit EdgeIndexFactory(application_features::ApplicationServer& server)
-      : EdgeIndexDefinition(server) {}
+      : DefaultIndexFactory(server, IndexType::Edge) {}
 
   std::shared_ptr<Index> instantiate(LogicalCollection& collection,
                                      velocypack::Slice definition, IndexId id,
@@ -75,33 +87,82 @@ struct EdgeIndexFactory : public EdgeIndexDefinition {
     return std::make_shared<RocksDBEdgeIndex>(id, collection, definition,
                                               direction);
   }
+
+  virtual Result normalize(velocypack::Builder& normalized,
+                           velocypack::Slice /*definition*/, bool isCreation,
+                           TRI_vocbase_t const& /*vocbase*/) const override {
+    if (isCreation) {
+      // creating these indexes yourself is forbidden
+      return TRI_ERROR_FORBIDDEN;
+    }
+
+    TRI_ASSERT(normalized.isOpenObject());
+    normalized.add(StaticStrings::IndexType,
+                   velocypack::Value(Index::oldtypeName(IndexType::Edge)));
+
+    return TRI_ERROR_INTERNAL;
+  }
 };
 
-struct FulltextIndexFactory : public FulltextIndexDefinition {
+struct FulltextIndexFactory : public DefaultIndexFactory {
   explicit FulltextIndexFactory(application_features::ApplicationServer& server)
-      : FulltextIndexDefinition(server) {}
+      : DefaultIndexFactory(server, IndexType::Fulltext) {}
 
   std::shared_ptr<Index> instantiate(
       LogicalCollection& collection, velocypack::Slice definition, IndexId id,
       bool /*isClusterConstructor*/) const override {
     return std::make_shared<RocksDBFulltextIndex>(id, collection, definition);
   }
+
+  virtual Result normalize(velocypack::Builder& normalized,
+                           velocypack::Slice definition, bool isCreation,
+                           TRI_vocbase_t const& /*vocbase*/) const override {
+    TRI_ASSERT(normalized.isOpenObject());
+    normalized.add(StaticStrings::IndexType,
+                   velocypack::Value(Index::oldtypeName(IndexType::Fulltext)));
+
+    if (isCreation && !ServerState::instance()->isCoordinator() &&
+        !definition.hasKey(StaticStrings::ObjectId)) {
+      normalized.add(StaticStrings::ObjectId,
+                     velocypack::Value(std::to_string(TRI_NewTickServer())));
+    }
+
+    return IndexFactory::enhanceJsonIndexFulltext(definition, normalized,
+                                                  isCreation);
+  }
 };
 
-struct GeoIndexFactory : public GeoIndexDefinition {
+struct GeoIndexFactory : public DefaultIndexFactory {
   explicit GeoIndexFactory(application_features::ApplicationServer& server)
-      : GeoIndexDefinition(server) {}
+      : DefaultIndexFactory(server, IndexType::Geo) {}
 
   std::shared_ptr<Index> instantiate(
       LogicalCollection& collection, velocypack::Slice definition, IndexId id,
       bool /*isClusterConstructor*/) const override {
     return std::make_shared<RocksDBGeoIndex>(id, collection, definition, "geo");
   }
+
+  virtual Result normalize(velocypack::Builder& normalized,
+                           velocypack::Slice definition, bool isCreation,
+                           TRI_vocbase_t const& /*vocbase*/) const override {
+    TRI_ASSERT(normalized.isOpenObject());
+    normalized.add(StaticStrings::IndexType,
+                   velocypack::Value(Index::oldtypeName(IndexType::Geo)));
+
+    if (isCreation && !ServerState::instance()->isCoordinator() &&
+        !definition.hasKey(StaticStrings::ObjectId)) {
+      normalized.add(StaticStrings::ObjectId,
+                     VPackValue(std::to_string(TRI_NewTickServer())));
+    }
+
+    return IndexFactory::enhanceJsonIndexGeo(definition, normalized, isCreation,
+                                             1, 2);
+  }
 };
 
-struct Geo1IndexFactory : public Geo1IndexDefinition {
+struct Geo1IndexFactory : public DefaultIndexFactory {
   explicit Geo1IndexFactory(application_features::ApplicationServer& server)
-      : Geo1IndexDefinition(server) {}
+      : DefaultIndexFactory(server, IndexType::Geo) {}
 
   std::shared_ptr<Index> instantiate(
       LogicalCollection& collection, velocypack::Slice definition, IndexId id,
@@ -109,11 +170,28 @@ struct Geo1IndexFactory : public Geo1IndexDefinition {
     return std::make_shared<RocksDBGeoIndex>(id, collection, definition,
                                              "geo1");
   }
+
+  virtual Result normalize(velocypack::Builder& normalized,
+                           velocypack::Slice definition, bool isCreation,
+                           TRI_vocbase_t const& /*vocbase*/) const override {
+    TRI_ASSERT(normalized.isOpenObject());
+    normalized.add(StaticStrings::IndexType,
+                   velocypack::Value(Index::oldtypeName(IndexType::Geo)));
+
+    if (isCreation && !ServerState::instance()->isCoordinator() &&
+        !definition.hasKey(StaticStrings::ObjectId)) {
+      normalized.add(StaticStrings::ObjectId,
+                     velocypack::Value(std::to_string(TRI_NewTickServer())));
+    }
+
+    return IndexFactory::enhanceJsonIndexGeo(definition, normalized, isCreation,
+                                             1, 1);
+  }
 };
 
-struct Geo2IndexFactory : public Geo2IndexDefinition {
+struct Geo2IndexFactory : public DefaultIndexFactory {
   explicit Geo2IndexFactory(application_features::ApplicationServer& server)
-      : Geo2IndexDefinition(server) {}
+      : DefaultIndexFactory(server, IndexType::Geo) {}
 
   std::shared_ptr<Index> instantiate(
       LogicalCollection& collection, velocypack::Slice definition, IndexId id,
@@ -121,25 +199,64 @@ struct Geo2IndexFactory : public Geo2IndexDefinition {
     return std::make_shared<RocksDBGeoIndex>(id, collection, definition,
                                              "geo2");
   }
+
+  virtual Result normalize(velocypack::Builder& normalized,
+                           velocypack::Slice definition, bool isCreation,
+                           TRI_vocbase_t const& /*vocbase*/) const override {
+    TRI_ASSERT(normalized.isOpenObject());
+    normalized.add(StaticStrings::IndexType,
+                   velocypack::Value(Index::oldtypeName(IndexType::Geo)));
+
+    if (isCreation && !ServerState::instance()->isCoordinator() &&
+        !definition.hasKey(StaticStrings::ObjectId)) {
+      normalized.add(StaticStrings::ObjectId,
+                     velocypack::Value(std::to_string(TRI_NewTickServer())));
+    }
+
+    return IndexFactory::enhanceJsonIndexGeo(definition, normalized, isCreation,
+                                             1, 2);
+  }
 };
 
 template<typename F, IndexType type>
-struct SecondaryIndexFactory : public SecondaryIndexDefinition {
+struct SecondaryIndexFactory : public DefaultIndexFactory {
   explicit SecondaryIndexFactory(
       application_features::ApplicationServer& server)
-      : SecondaryIndexDefinition(server, type) {}
+      : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<Index> instantiate(
       LogicalCollection& collection, velocypack::Slice definition, IndexId id,
       bool /*isClusterConstructor*/) const override {
     return std::make_shared<F>(id, collection, definition);
   }
+
+  virtual Result normalize(velocypack::Builder& normalized,
+                           velocypack::Slice definition, bool isCreation,
+                           TRI_vocbase_t const& /*vocbase*/) const override {
+    TRI_ASSERT(normalized.isOpenObject());
+    normalized.add(StaticStrings::IndexType,
+                   velocypack::Value(Index::oldtypeName(type)));
+
+    if (isCreation && !ServerState::instance()->isCoordinator() &&
+        !definition.hasKey(StaticStrings::ObjectId)) {
+      normalized.add(StaticStrings::ObjectId,
+                     velocypack::Value(std::to_string(TRI_NewTickServer())));
+    }
+    if (isCreation) {
+      bool est = basics::VelocyPackHelper::getBooleanValue(
+          definition, StaticStrings::IndexEstimates, true);
+      normalized.add(StaticStrings::IndexEstimates, velocypack::Value(est));
+    }
+
+    return IndexFactory::enhanceJsonIndexGeneric(definition, normalized,
+                                                 isCreation);
+  }
 };
 
-struct MdiIndexFactory : public MdiIndexDefinition {
-  MdiIndexFactory(application_features::ApplicationServer& server,
-                  IndexType type)
-      : MdiIndexDefinition(server, type) {}
+struct MdiIndexFactory : public DefaultIndexFactory {
+  explicit MdiIndexFactory(application_features::ApplicationServer& server,
+                           IndexType type)
+      : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<arangodb::Index> instantiate(
       arangodb::LogicalCollection& collection,
@@ -153,12 +270,38 @@ struct MdiIndexFactory : public MdiIndexDefinition {
 
     return std::make_shared<RocksDBMdiIndex>(id, collection, definition);
   }
+
+  virtual arangodb::Result normalize(
+      velocypack::Builder& normalized, velocypack::Slice definition,
+      bool isCreation, TRI_vocbase_t const& /*vocbase*/) const override {
+    TRI_ASSERT(normalized.isOpenObject());
+    normalized.add(StaticStrings::IndexType,
+                   velocypack::Value(Index::oldtypeName(_type)));
+
+    if (isCreation && !ServerState::instance()->isCoordinator() &&
+        !definition.hasKey(StaticStrings::ObjectId)) {
+      normalized.add(
+          StaticStrings::ObjectId,
+          arangodb::velocypack::Value(std::to_string(TRI_NewTickServer())));
+    }
+
+    if (definition.hasKey(StaticStrings::IndexPrefixFields)) {
+      return Result(TRI_ERROR_BAD_PARAMETER,
+                    "`mdi` index does not support prefixed fields. use "
+                    "`mdi-prefixed` as type instead.");
+    }
+    // a mdi never uses index estimates
+    normalized.add(StaticStrings::IndexEstimates, velocypack::Value(false));
+
+    return IndexFactory::enhanceJsonIndexMdi(definition, normalized,
+                                             isCreation);
+  }
 };
 
-struct MdiPrefixedIndexFactory : public MdiPrefixedIndexDefinition {
+struct MdiPrefixedIndexFactory : public DefaultIndexFactory {
   explicit MdiPrefixedIndexFactory(
       application_features::ApplicationServer& server)
-      : MdiPrefixedIndexDefinition(server) {}
+      : DefaultIndexFactory(server, IndexType::MDIPrefixed) {}
 
   std::shared_ptr<arangodb::Index> instantiate(
       arangodb::LogicalCollection& collection,
@@ -172,13 +315,38 @@ struct MdiPrefixedIndexFactory : public MdiPrefixedIndexDefinition {
 
     return std::make_shared<RocksDBMdiIndex>(id, collection, definition);
   }
+
+  virtual arangodb::Result normalize(
+      velocypack::Builder& normalized, velocypack::Slice definition,
+      bool isCreation, TRI_vocbase_t const& /*vocbase*/) const override {
+    TRI_ASSERT(normalized.isOpenObject());
+    normalized.add(arangodb::StaticStrings::IndexType,
+                   arangodb::velocypack::Value(
+                       arangodb::Index::oldtypeName(IndexType::MDIPrefixed)));
+
+    if (isCreation && !ServerState::instance()->isCoordinator() &&
+        !definition.hasKey(StaticStrings::ObjectId)) {
+      normalized.add(
+          StaticStrings::ObjectId,
+          arangodb::velocypack::Value(std::to_string(TRI_NewTickServer())));
+    }
+    if (isCreation) {
+      bool est = basics::VelocyPackHelper::getBooleanValue(
+          definition, StaticStrings::IndexEstimates, true);
+      normalized.add(StaticStrings::IndexEstimates, velocypack::Value(est));
+    }
+
+    return IndexFactory::enhanceJsonIndexMdiPrefixed(definition, normalized,
+                                                     isCreation);
+  }
 };
 
-struct VectorIndexFactory : public VectorIndexDefinition {
+struct VectorIndexFactory : public DefaultIndexFactory {
   explicit VectorIndexFactory(application_features::ApplicationServer& server,
                               IndexType type,
                               IVectorIndexProvider const& vectorIndexProvider)
-      : VectorIndexDefinition(server, type, vectorIndexProvider) {}
+      : DefaultIndexFactory(server, type),
+        _vectorIndexProvider(vectorIndexProvider) {}
 
   std::shared_ptr<arangodb::Index> instantiate(
       arangodb::LogicalCollection& collection,
@@ -186,23 +354,73 @@ struct VectorIndexFactory : public VectorIndexDefinition {
       bool /*isClusterConstructor*/) const override {
     return std::make_shared<RocksDBVectorIndex>(id, collection, definition);
   }
+
+  virtual arangodb::Result normalize(
+      velocypack::Builder& normalized, velocypack::Slice definition,
+      bool isCreation, TRI_vocbase_t const& /*vocbase*/) const override {
+    TRI_ASSERT(normalized.isOpenObject());
+
+    if (!_vectorIndexProvider.isVectorIndexEnabled()) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              "vector index feature is not enabled. Run ArangoDB with "
+              "`--vector-index` flag turned on."};
+    }
+
+    normalized.add(StaticStrings::IndexType,
+                   velocypack::Value(Index::oldtypeName(_type)));
+
+    if (isCreation && !ServerState::instance()->isCoordinator() &&
+        !definition.hasKey(StaticStrings::ObjectId)) {
+      normalized.add(
+          StaticStrings::ObjectId,
+          arangodb::velocypack::Value(std::to_string(TRI_NewTickServer())));
+    }
+
+    // a vector index never uses index estimates
+    normalized.add(StaticStrings::IndexEstimates, velocypack::Value(false));
+
+    return IndexFactory::enhanceJsonIndexVector(definition, normalized,
+                                                isCreation);
+  }
+
+ private:
+  IVectorIndexProvider const& _vectorIndexProvider;
 };
 
-struct TtlIndexFactory : public TtlIndexDefinition {
+struct TtlIndexFactory : public DefaultIndexFactory {
   TtlIndexFactory(application_features::ApplicationServer& server,
                   IndexType type)
-      : TtlIndexDefinition(server, type) {}
+      : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<Index> instantiate(
       LogicalCollection& collection, velocypack::Slice definition, IndexId id,
       bool /*isClusterConstructor*/) const override {
     return std::make_shared<RocksDBTtlIndex>(id, collection, definition);
   }
+
+  virtual Result normalize(velocypack::Builder& normalized,
+                           velocypack::Slice definition, bool isCreation,
+                           TRI_vocbase_t const& /*vocbase*/) const override {
+    TRI_ASSERT(normalized.isOpenObject());
+    normalized.add(StaticStrings::IndexType,
+                   velocypack::Value(Index::oldtypeName(_type)));
+
+    if (isCreation && !ServerState::instance()->isCoordinator() &&
+        !definition.hasKey(StaticStrings::ObjectId)) {
+      normalized.add(StaticStrings::ObjectId,
+                     velocypack::Value(std::to_string(TRI_NewTickServer())));
+    }
+    // a TTL index never uses index estimates
+    normalized.add(StaticStrings::IndexEstimates, velocypack::Value(false));
+
+    return IndexFactory::enhanceJsonIndexTtl(definition, normalized,
+                                             isCreation);
+  }
 };
 
-struct PrimaryIndexFactory : public PrimaryIndexDefinition {
+struct PrimaryIndexFactory : public DefaultIndexFactory {
   explicit PrimaryIndexFactory(application_features::ApplicationServer& server)
-      : PrimaryIndexDefinition(server) {}
+      : DefaultIndexFactory(server, IndexType::Primary) {}
 
   std::shared_ptr<Index> instantiate(LogicalCollection& collection,
                                      velocypack::Slice definition,
@@ -215,6 +433,21 @@ struct PrimaryIndexFactory : public PrimaryIndexDefinition {
     }
 
     return std::make_shared<RocksDBPrimaryIndex>(collection, definition);
+  }
+
+  virtual Result normalize(velocypack::Builder& normalized,
+                           velocypack::Slice /*definition*/, bool isCreation,
+                           TRI_vocbase_t const& /*vocbase*/) const override {
+    if (isCreation) {
+      // creating these indexes yourself is forbidden
+      return TRI_ERROR_FORBIDDEN;
+    }
+
+    TRI_ASSERT(normalized.isOpenObject());
+    normalized.add(StaticStrings::IndexType,
+                   velocypack::Value(Index::oldtypeName(IndexType::Primary)));
+
+    return TRI_ERROR_INTERNAL;
   }
 };
 
