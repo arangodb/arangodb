@@ -10,6 +10,17 @@ So please use *BULK* inserts to slimline the creation of your test data.
 If you can use a common dataset for several tests, please use `setUpAll` and `tearDownAll` to reduce resource usage.
 If splitting a testsuite between read only and writing tests is necessary for this, please do so.
 
+### C++ unit tests: IResearch and 3rdParty
+
+**Tests in 3rdParty (e.g. “3rdParty/tests”):** There are no runnable tests under 3rdParty. The directory `3rdParty/iresearch-support` (which replaced the old `3rdParty/tests`) only provides header-only support libraries (cmdline, rapidjson, utfcpp) used by IResearch. Nothing there is registered with CTest or executed by CI. No extra test framework or CI setup is required for 3rdParty.
+
+**Tests in `lib/iresearch/tests`:** The IResearch C++ unit tests live in `lib/iresearch/tests`. The test executable is the target `iresearch-tests-static` (output name `iresearch-tests-s`). They are registered with CTest as the test named **`iresearch-tests`**.
+
+- **When they are built:** If `USE_GOOGLE_TESTS` is ON and `USE_TESTS` is not already set in the CMake cache, `USE_TESTS` defaults to ON so this binary is built together with other C++ tests. You can still force `-DUSE_TESTS=OFF` to skip them. CircleCI adds `iresearch-tests-static` to the test build targets when tests are built.
+- **When they run in CI:** The JavaScript suite **`gtest_iresearch_standalone`** runs `iresearch-tests-s` via `js/client/modules/@arangodb/testsuites/gtest.js` (see `tests/tests.yml`). That is separate from **`gtest_iresearch`**, which runs **`arangodbtests`** with `--gtest_filter=IResearch*` (ArangoDB-level IResearch tests).
+- **When they run locally:** `ctest -R iresearch-tests` from the build directory, or the `iresearch-check` CMake target, or run `./build/bin/iresearch-tests-s` after building.
+- **Resources:** Test resources are under `lib/iresearch/tests/resources` and are referenced by the CI workspace (e.g. in `.circleci/base_config.yml`).
+
 ### Testsuites
 Testsuites live in `js/client/modules/@arangodb/testsuites/`. This folder is spidered during the startup of `testing.js` and all files in it are loaded automatically.
 Please think twice whether you need to create a new testsuite or your test will fit into one of the existing ones. All test suites need to be registered within Oskar in order to be executed during CI tests.

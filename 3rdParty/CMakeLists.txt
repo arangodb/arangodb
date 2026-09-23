@@ -8,17 +8,13 @@ include(UpdateModule)
 
 remove_definitions("-DUSE_ENTERPRISE=1")
 
-# Should define it in addition without PARENT_SCOPE
+# LZ4 include path is used by 3rdParty/rocksdb in this directory scope.
+# LZ4_ROOT is needed in the project root scope by lib/iresearch/cmake/FindLz4.cmake.
 set(LZ4_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/lz4)
 set(LZ4_INCLUDE_DIR ${LZ4_ROOT}/lib)
-set(SNOWBALL_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/snowball)
-set(UNWIND_ROOT "invalid")
-
-# Export only what the parent needs
 set(LZ4_ROOT ${LZ4_ROOT} PARENT_SCOPE)
-set(LZ4_INCLUDE_DIR ${LZ4_INCLUDE_DIR} PARENT_SCOPE)
-set(SNOWBALL_ROOT ${SNOWBALL_ROOT} PARENT_SCOPE)
-set(UNWIND_ROOT ${UNWIND_ROOT} PARENT_SCOPE)
+# IResearch (FindSnowball) reads this from the project root scope.
+set(SNOWBALL_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/snowball PARENT_SCOPE)
 
 ################################################################################
 ## gtest
@@ -62,6 +58,7 @@ function (add_snappy)
   add_subdirectory(${SNAPPY_SOURCE_DIR})
 endfunction ()
 add_snappy()
+# add_snappy() set SNAPPY_* in this directory; export to project root (e.g. arangod/RocksDBEngine).
 set(SNAPPY_SOURCE_DIR "${SNAPPY_SOURCE_DIR}" PARENT_SCOPE)
 set(SNAPPY_BUILD_DIR "${SNAPPY_BUILD_DIR}" PARENT_SCOPE)
 
@@ -84,8 +81,9 @@ if (USE_JEMALLOC)
   add_subdirectory(jemalloc)
   include_directories(SYSTEM "${JEMALLOC_HOME}/include")
   link_directories("${JEMALLOC_HOME}/lib")
+  set(SYS_LIBS ${SYS_LIBS} jemalloc)
+  set(SYS_LIBS ${SYS_LIBS} PARENT_SCOPE)
   set(JEMALLOC_HOME "${JEMALLOC_HOME}" PARENT_SCOPE)
-  set(SYS_LIBS ${SYS_LIBS} jemalloc PARENT_SCOPE)
   set(JEMALLOC_LIB "${JEMALLOC_LIB}" PARENT_SCOPE)
   if (USE_JEMALLOC_PROF AND USE_LIBUNWIND)
     add_dependencies(jemalloc_build libunwind_build)
@@ -104,22 +102,22 @@ set(V8_VERSION
   "${PROJECT_NAME}: Version"
   FORCE
 )
-set(V8_VERSION ${V8_VERSION} PARENT_SCOPE)
 set(V8_SUB_DIR "v8")
 add_subdirectory(v8-build)
 add_library(v8_interface INTERFACE)
 target_include_directories(v8_interface SYSTEM INTERFACE ${V8_INCLUDE_DIR})
 
+# v8-build/CMakeLists.txt already set these in this directory; expose to project root.
 set(ICU_DT "${ICU_DT}" PARENT_SCOPE)
 set(ICU_DT_DEST "${ICU_DT_DEST}" PARENT_SCOPE)
-
-set(V8_INTERNAL_INCLUDE_DIR ${V8_INTERNAL_INCLUDE_DIR} PARENT_SCOPE)
+set(V8_INTERNAL_INCLUDE_DIR "${V8_INTERNAL_INCLUDE_DIR}" PARENT_SCOPE)
 
 ################################################################################
 ## Legacy ICU V 64.2 for index backwards compatibility
 ################################################################################
 
 add_subdirectory(icu-legacy)
+# icu-legacy/CMakeLists.txt already set these in this directory; expose to project root.
 set(ICU64_LIBS "${ICU64_LIBS}" PARENT_SCOPE)
 set(ICU64_INCLUDE_DIR "${ICU64_INCLUDE_DIR}" PARENT_SCOPE)
 set(ICU64_LIBRARY_DIR "${ICU64_LIBRARY_DIR}" PARENT_SCOPE)
@@ -155,7 +153,7 @@ set_target_properties(boost-static PROPERTIES
   IMPORTED_LOCATION "boost_system;boost_thread"
 )
 
-# explicitly set since suppressing Boost search
+# Local targets use this; project root and lib/iresearch need it in parent scope too.
 set(Boost_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/boost/${BOOST_VERSION}")
 set(Boost_INCLUDE_DIRS "${Boost_INCLUDE_DIRS}" PARENT_SCOPE)
 
@@ -240,6 +238,7 @@ target_include_directories(linenoise-ng SYSTEM PUBLIC
 ## LINK_DIRECTORIES
 ################################################################################
 
+# v8-build and other subdirs appended here; v8 also reads from project root (e.g. V8_LINK_DIRECTORIES).
 set(LINK_DIRECTORIES "${LINK_DIRECTORIES}" PARENT_SCOPE)
 
 ################################################################################
@@ -401,14 +400,14 @@ target_include_directories(
 ################################################################################
 
 set(FROZEN_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/frozen/include)
-set(FROZEN_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/frozen/include PARENT_SCOPE)
+set(FROZEN_INCLUDE_DIR ${FROZEN_INCLUDE_DIR} PARENT_SCOPE)
 
 ################################################################################
 ### function2 library
 ################################################################################
 
 set(FUNCTION2_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/function2")
-set(FUNCTION2_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/function2" PARENT_SCOPE)
+set(FUNCTION2_INCLUDE_DIR "${FUNCTION2_INCLUDE_DIR}" PARENT_SCOPE)
 
 ################################################################################
 ### Boost::Text library
@@ -430,12 +429,9 @@ set_target_properties(text
 add_subdirectory(fastText)
 
 ################################################################################
-### tests only library
+### IResearch support libraries (cmdline, rapidjson, utfcpp)
 ################################################################################
 
-# Some of the stuff here is needed in `lib/iresearch/CMakeLists.txt`.
-# It does depend on some switches there, but for now, we always
-# build the subdirectory tests here:
-# This is needed for clean builds, since `lib` with its switches
-# is only included later than this directory here.
-add_subdirectory(tests)
+# Required by lib/iresearch (utils, tests, microbench). Must be added here
+# so that iresearch-cmdline etc. are defined before lib/ is processed.
+add_subdirectory(iresearch-support)
