@@ -1471,8 +1471,7 @@ arangodb::Result PhysicalCollectionMock::updateInternal(
   return {TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND};
 }
 
-arangodb::Result PhysicalCollectionMock::updateProperties(
-    arangodb::velocypack::Slice slice) {
+arangodb::Result PhysicalCollectionMock::setCacheEnabled(bool cacheEnabled) {
   before();
 
   return arangodb::Result(
