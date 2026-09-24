@@ -62,22 +62,23 @@ class PhysicalCollectionTest
                                      arangodb::LogLevel::WARN> {
  protected:
   arangodb::application_features::ApplicationServer server;
-  StorageEngineMock engine;
+  StorageEngineMock& engine;
   std::vector<std::reference_wrapper<
       arangodb::application_features::ApplicationFeature>>
       features;
 
-  PhysicalCollectionTest() : server(nullptr, nullptr), engine(server) {
+  PhysicalCollectionTest()
+      : server(nullptr, nullptr),
+        engine(server.addFeature<StorageEngine, StorageEngineMock>()) {
     // setup required application features
     features.emplace_back(
         server.addFeature<
             arangodb::AuthenticationFeature>());  // required for VocbaseContext
     auto& dbFeature = server.addFeature<DatabaseFeature>();
     features.emplace_back(dbFeature);
-    dbFeature.setEngineTesting(&engine);
     features.emplace_back(server.addFeature<metrics::MetricsFeature>(
         LazyApplicationFeatureReference<QueryRegistryFeature>(server),
-        LazyApplicationFeatureReference<StatisticsFeature>(nullptr), dbFeature,
+        LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
         LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
             nullptr),
         LazyApplicationFeatureReference<ClusterFeature>(nullptr)));
@@ -91,8 +92,6 @@ class PhysicalCollectionTest
   }
 
   ~PhysicalCollectionTest() {
-    server.getFeature<DatabaseFeature>().setEngineTesting(nullptr);
-
     for (auto& f : features) {
       f.get().unprepare();
     }

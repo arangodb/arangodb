@@ -90,8 +90,8 @@ void IterateDocuments::Thread::run() {
   auto bounds = RocksDBKeyBounds::CollectionDocuments(rcoll->objectId());
   rocksdb::Slice upper(bounds.end());
 
-  auto& engine =
-      _server.vocbase()->server().getFeature<arangodb::RocksDBEngine>();
+  auto& engine = static_cast<arangodb::RocksDBEngine&>(
+      _server.vocbase()->server().getFeature<arangodb::StorageEngine>());
   rocksdb::DB* rootDB = engine.db()->GetRootDB();
 
   rocksdb::ReadOptions ro(/*cksum*/ false, /*cache*/ _options.fillBlockCache);

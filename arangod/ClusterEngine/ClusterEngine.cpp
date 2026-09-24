@@ -61,45 +61,31 @@ bool ClusterEngine::Mocking = false;
 ClusterEngine::ClusterEngine(application_features::ApplicationServer& server,
                              ClusterFeature& clusterFeature,
                              DatabaseFeature& database,
-                             metrics::IRegistry& metrics)
-    : StorageEngine(server, EngineName, name(), typeid(ClusterEngine),
-                    std::make_unique<ClusterIndexFactory>(server, *this),
+                             metrics::IRegistry& metrics,
+                             IVectorIndexProvider const& vectorIndexProvider)
+    : StorageEngine(server, EngineName, name(),
+                    std::make_unique<ClusterIndexFactory>(server, *this,
+                                                          vectorIndexProvider),
                     database, database),
       _clusterFeature(clusterFeature),
-      _metrics(metrics),
-      _actualEngine(nullptr) {
+      _metrics(metrics) {
   setOptional(true);
 }
 
 ClusterEngine::~ClusterEngine() = default;
 
-void ClusterEngine::setActualEngine(StorageEngine* e) { _actualEngine = e; }
-
-bool ClusterEngine::isRocksDB() const {
-  return !ClusterEngine::Mocking && _actualEngine &&
-         _actualEngine->name() == RocksDBEngine::name();
-}
-
-bool ClusterEngine::isMock() const {
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  return ClusterEngine::Mocking ||
-         (_actualEngine && _actualEngine->name() == "Mock");
-#else
-  return false;
-#endif
+std::string_view ClusterEngine::typeName() const {
+  return RocksDBEngine::kEngineName;
 }
 
 HealthData ClusterEngine::healthCheck() { return {}; }
 
 ClusterEngineType ClusterEngine::engineType() const {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  if (isMock()) {
+  if (ClusterEngine::Mocking) {
     return ClusterEngineType::MockEngine;
   }
 #endif
-  TRI_ASSERT(_actualEngine != nullptr);
-
-  TRI_ASSERT(isRocksDB());
   return ClusterEngineType::RocksDBEngine;
 }
 
@@ -134,7 +120,7 @@ std::shared_ptr<TransactionState> ClusterEngine::createTransactionState(
 
 void ClusterEngine::addParametersForNewCollection(VPackBuilder& builder,
                                                   VPackSlice info) {
-  if (isRocksDB()) {
+  if (engineType() == ClusterEngineType::RocksDBEngine) {
     // deliberately not add objectId
     if (!info.get(StaticStrings::CacheEnabled).isBool()) {
       builder.add(StaticStrings::CacheEnabled, VPackValue(false));
