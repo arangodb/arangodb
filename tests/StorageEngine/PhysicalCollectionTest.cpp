@@ -47,6 +47,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Statistics/StatisticsFeature.h"
+#include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
 
@@ -109,7 +110,8 @@ TEST_F(PhysicalCollectionTest, test_new_object_for_insert) {
   auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"test\" }");
   auto collection = vocbase.createCollection(json->slice());
 
-  auto physical = engine.createPhysicalCollection(*collection, json->slice());
+  auto physical = engine.createPhysicalCollection(
+      *collection, arangodb::LocalStorageProperties{});
 
   auto doc = arangodb::velocypack::Parser::fromJson(
       "{ \"doc1\":\"test1\", \"doc100\":\"test2\", \"doc2\":\"test3\", "
