@@ -28,7 +28,7 @@
 
 namespace arangodb::containers {
 
-using Id = void*;
+using Id = void const*;
 using TreeHierarchy = size_t;
 
 template<typename T>
