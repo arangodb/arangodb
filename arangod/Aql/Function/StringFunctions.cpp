@@ -52,6 +52,7 @@
 #include <unicode/uchar.h>
 #include <unicode/unistr.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <cstring>
 #include <string_view>
@@ -772,21 +773,21 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
   velocypack::StringSink adapter(buffer.get());
 
   appendAsString(vopts, adapter, value);
-  if (buffer->empty()) {
-    // ICU's StringSearch rejects an empty text with U_ILLEGAL_ARGUMENT_ERROR
-    return AqlValue(*buffer);
-  }
   icu_64_64::UnicodeString unicodeStr(buffer->data(),
                                       static_cast<int32_t>(buffer->length()));
 
   auto& server = trx->vocbase().server();
   auto locale = server.getFeature<LanguageFeature>().getLocale();
-  // we can't copy the search instances, thus use pointers:
+  // we can't copy the search instances, thus use pointers.
+  // ICU's StringSearch rejects empty patterns and texts
   std::vector<std::unique_ptr<icu_64_64::StringSearch>> searchVec;
   searchVec.reserve(matchPatterns.size());
   UErrorCode status = U_ZERO_ERROR;
   for (auto const& searchStr : matchPatterns) {
-    // create a vector of string searches
+    if (searchStr.isEmpty() || unicodeStr.isEmpty()) {
+      searchVec.push_back(nullptr);
+      continue;
+    }
     searchVec.push_back(std::make_unique<icu_64_64::StringSearch>(
         searchStr, unicodeStr, locale, nullptr, status));
     if (U_FAILURE(status)) {
@@ -795,117 +796,72 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
     }
   }
 
-  std::vector<std::pair<int32_t, int32_t>> srchResultPtrs;
+  using Match = std::pair<int32_t, int32_t>;
+  auto const fromSearch = [&](size_t which, int32_t pos) -> Match {
+    if (pos == USEARCH_DONE) {
+      return {pos, 0};
+    }
+    return {pos, searchVec[which]->getMatchedLength()};
+  };
+  auto const firstMatch = [&](size_t which) -> Match {
+    if (searchVec[which] == nullptr) {
+      return {matchPatterns[which].isEmpty() ? 0 : USEARCH_DONE, 0};
+    }
+    return fromSearch(which, searchVec[which]->first(status));
+  };
+  auto const nextMatch = [&](size_t which, int32_t pos) -> Match {
+    if (searchVec[which] == nullptr) {
+      return {pos < unicodeStr.length() ? unicodeStr.moveIndex32(pos, 1)
+                                        : USEARCH_DONE,
+              0};
+    }
+    return fromSearch(which, searchVec[which]->next(status));
+  };
+
+  std::vector<Match> srchResultPtrs;
   std::string utf8;
   srchResultPtrs.reserve(matchPatterns.size());
-  for (auto& search : searchVec) {
+  for (size_t i = 0; i < matchPatterns.size(); ++i) {
     // We now find the first hit for each search string.
-    auto pos = search->first(status);
+    srchResultPtrs.push_back(firstMatch(i));
     if (U_FAILURE(status)) {
       registerICUWarning(expressionContext, AFN, status);
       return AqlValue(AqlValueHintNull());
     }
-
-    int32_t len = 0;
-    if (pos != USEARCH_DONE) {
-      len = search->getMatchedLength();
-    }
-    srchResultPtrs.push_back(std::make_pair(pos, len));
   }
 
   icu_64_64::UnicodeString result;
   int32_t lastStart = 0;
-  int64_t count = 0;
-  while (true) {
-    int which = -1;
-    int32_t pos = USEARCH_DONE;
-    int32_t mLen = 0;
-    int i = 0;
-    for (auto resultPair : srchResultPtrs) {
-      // We locate the nearest matching search result.
-      int32_t thisPos;
-      thisPos = resultPair.first;
-      if ((pos == USEARCH_DONE) || (pos > thisPos)) {
-        if (thisPos != USEARCH_DONE) {
-          pos = thisPos;
-          which = i;
-          mLen = resultPair.second;
-        }
-      }
-      i++;
-    }
-    if (which == -1) {
+  for (int64_t count = 0; limit == -1 || count < limit; ++count) {
+    auto best = std::ranges::min_element(
+        srchResultPtrs, [](Match const& a, Match const& b) {
+          return a.first != USEARCH_DONE &&
+                 (b.first == USEARCH_DONE || a.first < b.first);
+        });
+    if (best->first == USEARCH_DONE) {
       break;
     }
-    // from last match to this match, copy the original string.
+    size_t const which = best - srchResultPtrs.begin();
+    auto const [pos, len] = *best;
+
     result.append(unicodeStr, lastStart, pos - lastStart);
-    if (replacePatterns.size() != 0) {
-      if (replacePatterns.size() > (size_t)which) {
-        result.append(replacePatterns[which]);
-      } else if (replaceWasPlainString) {
-        result.append(replacePatterns[0]);
+    if (which < replacePatterns.size()) {
+      result.append(replacePatterns[which]);
+    } else if (replaceWasPlainString) {
+      result.append(replacePatterns[0]);
+    }
+    lastStart = pos + len;
+
+    srchResultPtrs[which] = nextMatch(which, pos);
+    for (size_t i = 0; i < srchResultPtrs.size() && U_SUCCESS(status); ++i) {
+      while (srchResultPtrs[i].first != USEARCH_DONE &&
+             srchResultPtrs[i].first < lastStart && U_SUCCESS(status)) {
+        srchResultPtrs[i] = nextMatch(i, srchResultPtrs[i].first);
       }
     }
-
-    // lastStart is the place up to we searched the source string
-    lastStart = pos + mLen;
-
-    // we try to search the next occurance of this string
-    auto& search = searchVec[which];
-    pos = search->next(status);
     if (U_FAILURE(status)) {
       registerICUWarning(expressionContext, AFN, status);
       return AqlValue(AqlValueHintNull());
-    }
-    if (pos != USEARCH_DONE) {
-      mLen = search->getMatchedLength();
-    } else {
-      mLen = -1;
-    }
-    srchResultPtrs[which] = std::make_pair(pos, mLen);
-
-    which = 0;
-    for (auto searchPair : srchResultPtrs) {
-      // now we invalidate all search results that overlap with
-      // our last search result and see whether we can find the
-      // overlapped pattern again.
-      // However, that mustn't overlap with the current lastStart
-      // position either.
-      int32_t thisPos;
-      thisPos = searchPair.first;
-      if ((thisPos != USEARCH_DONE) && (thisPos < lastStart)) {
-        auto& search = searchVec[which];
-        pos = thisPos;
-        while ((pos < lastStart) && (pos != USEARCH_DONE)) {
-          pos = search->next(status);
-          if (U_FAILURE(status)) {
-            registerICUWarning(expressionContext, AFN, status);
-            return AqlValue(AqlValueHintNull());
-          }
-          if (pos != USEARCH_DONE) {
-            mLen = search->getMatchedLength();
-          }
-          srchResultPtrs[which] = std::make_pair(pos, mLen);
-        }
-      }
-      which++;
-    }
-
-    count++;
-    if ((limit != -1) && (count >= limit)) {
-      // Do we have a limit count?
-      break;
-    }
-    // check whether none of our search objects has any more results
-    bool allFound = true;
-    for (auto resultPair : srchResultPtrs) {
-      if (resultPair.first != USEARCH_DONE) {
-        allFound = false;
-        break;
-      }
-    }
-    if (allFound) {
-      break;
     }
   }
   // Append from the last found:
