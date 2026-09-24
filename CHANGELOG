@@ -1,6 +1,10 @@
 3.12.12 (XXXX-XX-XX)
 --------------------
 
+* Fix AQL SUBSTITUTE() with an empty search string. It previously returned
+  null with a warning; it now matches at every character position, e.g.
+  SUBSTITUTE('abc', '', '_') returns '_a_b_c_'.
+
 * Fixed a rare issue where a cluster-internal request that was retried with
   less than one millisecond left until its deadline was sent without any
   timeout, because the remaining time was truncated to 0ms, which the network
