@@ -7,7 +7,7 @@ jobs:
       # We build libunwind ourselves because sadly the version
       # provided by Ubuntu via apt-get is much too old.
       - name: Check out libunwind
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: libunwind/libunwind
           path: libunwind
@@ -23,7 +23,7 @@ jobs:
           cd ..
           rm -rf libunwind
       - name: Check out repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       # We download LLVM directly from the latest stable release
       # on GitHub, because this tends to be much newer than the
       # version available via apt-get in Ubuntu.
@@ -54,7 +54,7 @@ jobs:
           scripts/run_static_analysis.sh static_analysis_results "$GITHUB_OUTPUT"
       - name: Upload static analysis results
         if: ${{ steps.run_static_analysis.outputs.HAS_STATIC_ANALYSIS_RESULTS }} == '1'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: static_analysis_results
           path: static_analysis_results

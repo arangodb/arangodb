@@ -3,6 +3,10 @@
  * of namespace management, and should be omitted in application code unless
  * JEMALLOC_NO_DEMANGLE is defined (see jemalloc_mangle@install_suffix@.h).
  */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern JEMALLOC_EXPORT const char	*@je_@malloc_conf;
 extern JEMALLOC_EXPORT const char	*@je_@malloc_conf_2_conf_harder;
 extern JEMALLOC_EXPORT void		(*@je_@malloc_message)(void *cbopaque,
@@ -78,4 +82,8 @@ JEMALLOC_EXPORT JEMALLOC_ALLOCATOR JEMALLOC_RESTRICT_RETURN
 JEMALLOC_EXPORT JEMALLOC_ALLOCATOR JEMALLOC_RESTRICT_RETURN
     void JEMALLOC_SYS_NOTHROW	*@je_@pvalloc(size_t size) JEMALLOC_CXX_THROW
     JEMALLOC_ATTR(malloc);
+#endif
+
+#ifdef __cplusplus
+}
 #endif

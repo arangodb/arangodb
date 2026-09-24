@@ -61,7 +61,9 @@
     <ClCompile Include="..\..\..\..\src\fxp.c" />
     <ClCompile Include="..\..\..\..\src\hook.c" />
     <ClCompile Include="..\..\..\..\src\hpa.c" />
+    <ClCompile Include="..\..\..\..\src\hpa_central.c" />
     <ClCompile Include="..\..\..\..\src\hpa_hooks.c" />
+    <ClCompile Include="..\..\..\..\src\hpa_utils.c" />
     <ClCompile Include="..\..\..\..\src\hpdata.c" />
     <ClCompile Include="..\..\..\..\src\inspect.c" />
     <ClCompile Include="..\..\..\..\src\jemalloc.c" />
@@ -72,7 +74,6 @@
     <ClCompile Include="..\..\..\..\src\nstime.c" />
     <ClCompile Include="..\..\..\..\src\pa.c" />
     <ClCompile Include="..\..\..\..\src\pa_extra.c" />
-    <ClCompile Include="..\..\..\..\src\pai.c" />
     <ClCompile Include="..\..\..\..\src\pac.c" />
     <ClCompile Include="..\..\..\..\src\pages.c" />
     <ClCompile Include="..\..\..\..\src\peak_event.c" />
@@ -94,6 +95,7 @@
     <ClCompile Include="..\..\..\..\src\tcache.c" />
     <ClCompile Include="..\..\..\..\src\test_hooks.c" />
     <ClCompile Include="..\..\..\..\src\thread_event.c" />
+    <ClCompile Include="..\..\..\..\src\thread_event_registry.c" />
     <ClCompile Include="..\..\..\..\src\ticker.c" />
     <ClCompile Include="..\..\..\..\src\tsd.c" />
     <ClCompile Include="..\..\..\..\src\util.c" />

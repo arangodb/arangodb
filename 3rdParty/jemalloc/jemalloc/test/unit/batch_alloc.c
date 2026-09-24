@@ -6,8 +6,8 @@ static void *global_ptrs[BATCH_MAX];
 #define PAGE_ALIGNED(ptr) (((uintptr_t)ptr & PAGE_MASK) == 0)
 
 static void
-verify_batch_basic(tsd_t *tsd, void **ptrs, size_t batch, size_t usize,
-    bool zero) {
+verify_batch_basic(
+    tsd_t *tsd, void **ptrs, size_t batch, size_t usize, bool zero) {
 	for (size_t i = 0; i < batch; ++i) {
 		void *p = ptrs[i];
 		expect_zu_eq(isalloc(tsd_tsdn(tsd), p), usize, "");
@@ -46,7 +46,8 @@ verify_batch_locality(tsd_t *tsd, void **ptrs, size_t batch, size_t usize,
 		assert(i > 0);
 		void *q = ptrs[i - 1];
 		expect_true((uintptr_t)p > (uintptr_t)q
-		    && (size_t)((uintptr_t)p - (uintptr_t)q) == usize, "");
+		        && (size_t)((uintptr_t)p - (uintptr_t)q) == usize,
+		    "");
 	}
 }
 
@@ -62,16 +63,17 @@ struct batch_alloc_packet_s {
 	void **ptrs;
 	size_t num;
 	size_t size;
-	int flags;
+	int    flags;
 };
 
 static size_t
 batch_alloc_wrapper(void **ptrs, size_t num, size_t size, int flags) {
 	batch_alloc_packet_t batch_alloc_packet = {ptrs, num, size, flags};
-	size_t filled;
-	size_t len = sizeof(size_t);
+	size_t               filled;
+	size_t               len = sizeof(size_t);
 	assert_d_eq(mallctl("experimental.batch_alloc", &filled, &len,
-	    &batch_alloc_packet, sizeof(batch_alloc_packet)), 0, "");
+	                &batch_alloc_packet, sizeof(batch_alloc_packet)),
+	    0, "");
 	return filled;
 }
 
@@ -79,16 +81,16 @@ static void
 test_wrapper(size_t size, size_t alignment, bool zero, unsigned arena_flag) {
 	tsd_t *tsd = tsd_fetch();
 	assert(tsd != NULL);
-	const size_t usize =
-	    (alignment != 0 ? sz_sa2u(size, alignment) : sz_s2u(size));
-	const szind_t ind = sz_size2index(usize);
+	const size_t      usize = (alignment != 0 ? sz_sa2u(size, alignment)
+	                                          : sz_s2u(size));
+	const szind_t     ind = sz_size2index(usize);
 	const bin_info_t *bin_info = &bin_infos[ind];
-	const unsigned nregs = bin_info->nregs;
+	const unsigned    nregs = bin_info->nregs;
 	assert(nregs > 0);
 	arena_t *arena;
 	if (arena_flag != 0) {
-		arena = arena_get(tsd_tsdn(tsd), MALLOCX_ARENA_GET(arena_flag),
-		    false);
+		arena = arena_get(
+		    tsd_tsdn(tsd), MALLOCX_ARENA_GET(arena_flag), false);
 	} else {
 		arena = arena_choose(tsd, NULL);
 	}
@@ -122,13 +124,13 @@ test_wrapper(size_t size, size_t alignment, bool zero, unsigned arena_flag) {
 			}
 			size_t batch = base + (size_t)j;
 			assert(batch < BATCH_MAX);
-			size_t filled = batch_alloc_wrapper(global_ptrs, batch,
-			    size, flags);
+			size_t filled = batch_alloc_wrapper(
+			    global_ptrs, batch, size, flags);
 			assert_zu_eq(filled, batch, "");
-			verify_batch_basic(tsd, global_ptrs, batch, usize,
-			    zero);
-			verify_batch_locality(tsd, global_ptrs, batch, usize,
-			    arena, nregs);
+			verify_batch_basic(
+			    tsd, global_ptrs, batch, usize, zero);
+			verify_batch_locality(
+			    tsd, global_ptrs, batch, usize, arena, nregs);
 			release_batch(global_ptrs, batch, usize);
 		}
 	}
@@ -153,9 +155,10 @@ TEST_END
 
 TEST_BEGIN(test_batch_alloc_manual_arena) {
 	unsigned arena_ind;
-	size_t len_unsigned = sizeof(unsigned);
-	assert_d_eq(mallctl("arenas.create", &arena_ind, &len_unsigned, NULL,
-	    0), 0, "");
+	size_t   len_unsigned = sizeof(unsigned);
+	assert_d_eq(
+	    mallctl("arenas.create", &arena_ind, &len_unsigned, NULL, 0), 0,
+	    "");
 	test_wrapper(11, 0, false, MALLOCX_ARENA(arena_ind));
 }
 TEST_END
@@ -180,10 +183,7 @@ TEST_END
 
 int
 main(void) {
-	return test(
-	    test_batch_alloc,
-	    test_batch_alloc_zero,
-	    test_batch_alloc_aligned,
-	    test_batch_alloc_manual_arena,
+	return test(test_batch_alloc, test_batch_alloc_zero,
+	    test_batch_alloc_aligned, test_batch_alloc_manual_arena,
 	    test_batch_alloc_large);
 }

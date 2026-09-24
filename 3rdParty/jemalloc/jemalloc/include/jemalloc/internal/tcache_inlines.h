@@ -42,8 +42,8 @@ tcache_max_set(tcache_slow_t *tcache_slow, size_t tcache_max) {
 }
 
 static inline void
-tcache_bin_settings_backup(tcache_t *tcache,
-    cache_bin_info_t tcache_bin_info[TCACHE_NBINS_MAX]) {
+tcache_bin_settings_backup(
+    tcache_t *tcache, cache_bin_info_t tcache_bin_info[TCACHE_NBINS_MAX]) {
 	for (unsigned i = 0; i < TCACHE_NBINS_MAX; i++) {
 		cache_bin_info_init(&tcache_bin_info[i],
 		    cache_bin_ncached_max_get_unsafe(&tcache->bins[i]));
@@ -51,8 +51,7 @@ tcache_bin_settings_backup(tcache_t *tcache,
 }
 
 JEMALLOC_ALWAYS_INLINE bool
-tcache_bin_disabled(szind_t ind, cache_bin_t *bin,
-    tcache_slow_t *tcache_slow) {
+tcache_bin_disabled(szind_t ind, cache_bin_t *bin, tcache_slow_t *tcache_slow) {
 	assert(bin != NULL);
 	assert(ind < TCACHE_NBINS_MAX);
 	bool disabled = cache_bin_disabled(bin);
@@ -66,7 +65,7 @@ tcache_bin_disabled(szind_t ind, cache_bin_t *bin,
 	 * ind >= nbins or ncached_max == 0.  If a bin is enabled, it has
 	 * ind < nbins and ncached_max > 0.
 	 */
-	unsigned nbins = tcache_nbins_get(tcache_slow);
+	unsigned       nbins = tcache_nbins_get(tcache_slow);
 	cache_bin_sz_t ncached_max = cache_bin_ncached_max_get_unsafe(bin);
 	if (ind >= nbins) {
 		assert(disabled);
@@ -88,10 +87,10 @@ tcache_bin_disabled(szind_t ind, cache_bin_t *bin,
 }
 
 JEMALLOC_ALWAYS_INLINE void *
-tcache_alloc_small(tsd_t *tsd, arena_t *arena, tcache_t *tcache,
-    size_t size, szind_t binind, bool zero, bool slow_path) {
+tcache_alloc_small(tsd_t *tsd, arena_t *arena, tcache_t *tcache, size_t size,
+    szind_t binind, bool zero, bool slow_path) {
 	void *ret;
-	bool tcache_success;
+	bool  tcache_success;
 
 	assert(binind < SC_NBINS);
 	cache_bin_t *bin = &tcache->bins[binind];
@@ -103,8 +102,8 @@ tcache_alloc_small(tsd_t *tsd, arena_t *arena, tcache_t *tcache,
 		if (unlikely(arena == NULL)) {
 			return NULL;
 		}
-		if (unlikely(tcache_bin_disabled(binind, bin,
-		    tcache->tcache_slow))) {
+		if (unlikely(tcache_bin_disabled(
+		        binind, bin, tcache->tcache_slow))) {
 			/* stats and zero are handled directly by the arena. */
 			return arena_malloc_hard(tsd_tsdn(tsd), arena, size,
 			    binind, zero, /* slab */ true);
@@ -112,8 +111,8 @@ tcache_alloc_small(tsd_t *tsd, arena_t *arena, tcache_t *tcache,
 		tcache_bin_flush_stashed(tsd, tcache, bin, binind,
 		    /* is_small */ true);
 
-		ret = tcache_alloc_small_hard(tsd_tsdn(tsd), arena, tcache,
-		    bin, binind, &tcache_hard_success);
+		ret = tcache_alloc_small_hard(tsd_tsdn(tsd), arena, tcache, bin,
+		    binind, &tcache_hard_success);
 		if (tcache_hard_success == false) {
 			return NULL;
 		}
@@ -135,11 +134,11 @@ JEMALLOC_ALWAYS_INLINE void *
 tcache_alloc_large(tsd_t *tsd, arena_t *arena, tcache_t *tcache, size_t size,
     szind_t binind, bool zero, bool slow_path) {
 	void *ret;
-	bool tcache_success;
+	bool  tcache_success;
 
 	cache_bin_t *bin = &tcache->bins[binind];
-	assert(binind >= SC_NBINS &&
-	    !tcache_bin_disabled(binind, bin, tcache->tcache_slow));
+	assert(binind >= SC_NBINS
+	    && !tcache_bin_disabled(binind, bin, tcache->tcache_slow));
 	ret = cache_bin_alloc(bin, &tcache_success);
 	assert(tcache_success == (ret != NULL));
 	if (unlikely(!tcache_success)) {
@@ -164,18 +163,18 @@ tcache_alloc_large(tsd_t *tsd, arena_t *arena, tcache_t *tcache, size_t size,
 			assert(usize <= tcache_max_get(tcache->tcache_slow));
 			memset(ret, 0, usize);
 		}
+	}
 
-		if (config_stats) {
-			bin->tstats.nrequests++;
-		}
+	if (config_stats) {
+		bin->tstats.nrequests++;
 	}
 
 	return ret;
 }
 
 JEMALLOC_ALWAYS_INLINE void
-tcache_dalloc_small(tsd_t *tsd, tcache_t *tcache, void *ptr, szind_t binind,
-    bool slow_path) {
+tcache_dalloc_small(
+    tsd_t *tsd, tcache_t *tcache, void *ptr, szind_t binind, bool slow_path) {
 	assert(tcache_salloc(tsd_tsdn(tsd), ptr) <= SC_SMALL_MAXCLASS);
 
 	cache_bin_t *bin = &tcache->bins[binind];
@@ -195,13 +194,13 @@ tcache_dalloc_small(tsd_t *tsd, tcache_t *tcache, void *ptr, szind_t binind,
 	}
 
 	if (unlikely(!cache_bin_dalloc_easy(bin, ptr))) {
-		if (unlikely(tcache_bin_disabled(binind, bin,
-		    tcache->tcache_slow))) {
+		if (unlikely(tcache_bin_disabled(
+		        binind, bin, tcache->tcache_slow))) {
 			arena_dalloc_small(tsd_tsdn(tsd), ptr);
 			return;
 		}
 		cache_bin_sz_t max = cache_bin_ncached_max_get(bin);
-		unsigned remain = max >> opt_lg_tcache_flush_small_div;
+		unsigned       remain = max >> opt_lg_tcache_flush_small_div;
 		tcache_bin_flush_small(tsd, tcache, bin, binind, remain);
 		bool ret = cache_bin_dalloc_easy(bin, ptr);
 		assert(ret);
@@ -209,19 +208,18 @@ tcache_dalloc_small(tsd_t *tsd, tcache_t *tcache, void *ptr, szind_t binind,
 }
 
 JEMALLOC_ALWAYS_INLINE void
-tcache_dalloc_large(tsd_t *tsd, tcache_t *tcache, void *ptr, szind_t binind,
-    bool slow_path) {
-
+tcache_dalloc_large(
+    tsd_t *tsd, tcache_t *tcache, void *ptr, szind_t binind, bool slow_path) {
 	assert(tcache_salloc(tsd_tsdn(tsd), ptr) > SC_SMALL_MAXCLASS);
-	assert(tcache_salloc(tsd_tsdn(tsd), ptr) <=
-	    tcache_max_get(tcache->tcache_slow));
-	assert(!tcache_bin_disabled(binind, &tcache->bins[binind],
-	    tcache->tcache_slow));
+	assert(tcache_salloc(tsd_tsdn(tsd), ptr)
+	    <= tcache_max_get(tcache->tcache_slow));
+	assert(!tcache_bin_disabled(
+	    binind, &tcache->bins[binind], tcache->tcache_slow));
 
 	cache_bin_t *bin = &tcache->bins[binind];
 	if (unlikely(!cache_bin_dalloc_easy(bin, ptr))) {
-		unsigned remain = cache_bin_ncached_max_get(bin) >>
-		    opt_lg_tcache_flush_large_div;
+		unsigned remain = cache_bin_ncached_max_get(bin)
+		    >> opt_lg_tcache_flush_large_div;
 		tcache_bin_flush_large(tsd, tcache, bin, binind, remain);
 		bool ret = cache_bin_dalloc_easy(bin, ptr);
 		assert(ret);

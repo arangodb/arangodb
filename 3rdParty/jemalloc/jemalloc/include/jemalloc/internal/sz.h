@@ -54,6 +54,11 @@ extern size_t sz_large_pad;
 
 extern void sz_boot(const sc_data_t *sc_data, bool cache_oblivious);
 
+JEMALLOC_ALWAYS_INLINE bool
+sz_large_size_classes_disabled(void) {
+	return opt_disable_large_size_classes;
+}
+
 JEMALLOC_ALWAYS_INLINE pszind_t
 sz_psz2ind(size_t psz) {
 	assert(psz > 0);
@@ -71,8 +76,9 @@ sz_psz2ind(size_t psz) {
 	 * SC_NGROUP. off_to_first_ps_rg begins from 1, instead of 0. e.g.
 	 * off_to_first_ps_rg is 1 when psz is (PAGE * SC_NGROUP + 1).
 	 */
-	pszind_t off_to_first_ps_rg = (x < SC_LG_NGROUP + LG_PAGE) ?
-	    0 : x - (SC_LG_NGROUP + LG_PAGE);
+	pszind_t off_to_first_ps_rg = (x < SC_LG_NGROUP + LG_PAGE)
+	    ? 0
+	    : x - (SC_LG_NGROUP + LG_PAGE);
 
 	/*
 	 * Same as sc_s::lg_delta.
@@ -80,8 +86,9 @@ sz_psz2ind(size_t psz) {
 	 * for each increase in offset, it's multiplied by two.
 	 * Therefore, lg_delta = LG_PAGE + (off_to_first_ps_rg - 1).
 	 */
-	pszind_t lg_delta = (off_to_first_ps_rg == 0) ?
-	    LG_PAGE : LG_PAGE + (off_to_first_ps_rg - 1);
+	pszind_t lg_delta = (off_to_first_ps_rg == 0)
+	    ? LG_PAGE
+	    : LG_PAGE + (off_to_first_ps_rg - 1);
 
 	/*
 	 * Let's write psz in binary, e.g. 0011 for 0x3, 0111 for 0x7.
@@ -113,13 +120,13 @@ sz_pind2sz_compute(pszind_t pind) {
 	size_t grp = pind >> SC_LG_NGROUP;
 	size_t mod = pind & ((ZU(1) << SC_LG_NGROUP) - 1);
 
-	size_t grp_size_mask = ~((!!grp)-1);
-	size_t grp_size = ((ZU(1) << (LG_PAGE + (SC_LG_NGROUP-1))) << grp)
+	size_t grp_size_mask = ~((!!grp) - 1);
+	size_t grp_size = ((ZU(1) << (LG_PAGE + (SC_LG_NGROUP - 1))) << grp)
 	    & grp_size_mask;
 
 	size_t shift = (grp == 0) ? 1 : grp;
-	size_t lg_delta = shift + (LG_PAGE-1);
-	size_t mod_size = (mod+1) << lg_delta;
+	size_t lg_delta = shift + (LG_PAGE - 1);
+	size_t mod_size = (mod + 1) << lg_delta;
 
 	size_t sz = grp_size + mod_size;
 	return sz;
@@ -143,17 +150,18 @@ sz_psz2u(size_t psz) {
 	if (unlikely(psz > SC_LARGE_MAXCLASS)) {
 		return SC_LARGE_MAXCLASS + PAGE;
 	}
-	size_t x = lg_floor((psz<<1)-1);
-	size_t lg_delta = (x < SC_LG_NGROUP + LG_PAGE + 1) ?
-	    LG_PAGE : x - SC_LG_NGROUP - 1;
+	size_t x = lg_floor((psz << 1) - 1);
+	size_t lg_delta = (x < SC_LG_NGROUP + LG_PAGE + 1)
+	    ? LG_PAGE
+	    : x - SC_LG_NGROUP - 1;
 	size_t delta = ZU(1) << lg_delta;
 	size_t delta_mask = delta - 1;
 	size_t usize = (psz + delta_mask) & ~delta_mask;
 	return usize;
 }
 
-static inline szind_t
-sz_size2index_compute(size_t size) {
+JEMALLOC_ALWAYS_INLINE szind_t
+sz_size2index_compute_inline(size_t size) {
 	if (unlikely(size > SC_LARGE_MAXCLASS)) {
 		return SC_NSIZES;
 	}
@@ -169,21 +177,28 @@ sz_size2index_compute(size_t size) {
 	}
 #endif
 	{
-		szind_t x = lg_floor((size<<1)-1);
-		szind_t shift = (x < SC_LG_NGROUP + LG_QUANTUM) ? 0 :
-		    x - (SC_LG_NGROUP + LG_QUANTUM);
+		szind_t x = lg_floor((size << 1) - 1);
+		szind_t shift = (x < SC_LG_NGROUP + LG_QUANTUM)
+		    ? 0
+		    : x - (SC_LG_NGROUP + LG_QUANTUM);
 		szind_t grp = shift << SC_LG_NGROUP;
 
 		szind_t lg_delta = (x < SC_LG_NGROUP + LG_QUANTUM + 1)
-		    ? LG_QUANTUM : x - SC_LG_NGROUP - 1;
+		    ? LG_QUANTUM
+		    : x - SC_LG_NGROUP - 1;
 
-		size_t delta_inverse_mask = ZU(-1) << lg_delta;
-		szind_t mod = ((((size-1) & delta_inverse_mask) >> lg_delta)) &
-		    ((ZU(1) << SC_LG_NGROUP) - 1);
+		size_t  delta_inverse_mask = ZU(-1) << lg_delta;
+		szind_t mod = ((((size - 1) & delta_inverse_mask) >> lg_delta))
+		    & ((ZU(1) << SC_LG_NGROUP) - 1);
 
 		szind_t index = SC_NTINY + grp + mod;
 		return index;
 	}
+}
+
+static inline szind_t
+sz_size2index_compute(size_t size) {
+	return sz_size2index_compute_inline(size);
 }
 
 JEMALLOC_ALWAYS_INLINE szind_t
@@ -208,8 +223,8 @@ sz_size2index(size_t size) {
 	return sz_size2index_compute(size);
 }
 
-static inline size_t
-sz_index2size_compute(szind_t index) {
+JEMALLOC_ALWAYS_INLINE size_t
+sz_index2size_compute_inline(szind_t index) {
 #if (SC_NTINY > 0)
 	if (index < SC_NTINY) {
 		return (ZU(1) << (SC_LG_TINY_MAXCLASS - SC_NTINY + 1 + index));
@@ -218,20 +233,25 @@ sz_index2size_compute(szind_t index) {
 	{
 		size_t reduced_index = index - SC_NTINY;
 		size_t grp = reduced_index >> SC_LG_NGROUP;
-		size_t mod = reduced_index & ((ZU(1) << SC_LG_NGROUP) -
-		    1);
+		size_t mod = reduced_index & ((ZU(1) << SC_LG_NGROUP) - 1);
 
-		size_t grp_size_mask = ~((!!grp)-1);
-		size_t grp_size = ((ZU(1) << (LG_QUANTUM +
-		    (SC_LG_NGROUP-1))) << grp) & grp_size_mask;
+		size_t grp_size_mask = ~((!!grp) - 1);
+		size_t grp_size = ((ZU(1) << (LG_QUANTUM + (SC_LG_NGROUP - 1)))
+		                      << grp)
+		    & grp_size_mask;
 
 		size_t shift = (grp == 0) ? 1 : grp;
-		size_t lg_delta = shift + (LG_QUANTUM-1);
-		size_t mod_size = (mod+1) << lg_delta;
+		size_t lg_delta = shift + (LG_QUANTUM - 1);
+		size_t mod_size = (mod + 1) << lg_delta;
 
 		size_t usize = grp_size + mod_size;
 		return usize;
 	}
+}
+
+static inline size_t
+sz_index2size_compute(szind_t index) {
+	return sz_index2size_compute_inline(index);
 }
 
 JEMALLOC_ALWAYS_INLINE size_t
@@ -247,15 +267,61 @@ sz_index2size_lookup(szind_t index) {
 }
 
 JEMALLOC_ALWAYS_INLINE size_t
-sz_index2size(szind_t index) {
+sz_index2size_unsafe(szind_t index) {
 	assert(index < SC_NSIZES);
 	return sz_index2size_lookup(index);
 }
 
+JEMALLOC_ALWAYS_INLINE size_t
+sz_index2size(szind_t index) {
+	assert(!sz_large_size_classes_disabled()
+	    || index <= sz_size2index(USIZE_GROW_SLOW_THRESHOLD));
+	size_t size = sz_index2size_unsafe(index);
+	/*
+	 * With large size classes disabled, the usize above
+	 * SC_LARGE_MINCLASS should grow by PAGE.  However, for sizes
+	 * in [SC_LARGE_MINCLASS, USIZE_GROW_SLOW_THRESHOLD], the
+	 * usize would not change because the size class gap in this
+	 * range is just the same as PAGE.  Although we use
+	 * SC_LARGE_MINCLASS as the threshold in most places, we
+	 * allow tcache and sec to cache up to
+	 * USIZE_GROW_SLOW_THRESHOLD to minimize the side effect of
+	 * not having size classes for larger sizes.  Thus, we assert
+	 * the size is no larger than USIZE_GROW_SLOW_THRESHOLD here
+	 * instead of SC_LARGE_MINCLASS.
+	 */
+	assert(!sz_large_size_classes_disabled()
+	    || size <= USIZE_GROW_SLOW_THRESHOLD);
+	return size;
+}
+
 JEMALLOC_ALWAYS_INLINE void
 sz_size2index_usize_fastpath(size_t size, szind_t *ind, size_t *usize) {
-	*ind = sz_size2index_lookup_impl(size);
-	*usize = sz_index2size_lookup_impl(*ind);
+	if (util_compile_time_const(size)) {
+		/*
+		 * When inlined, the size may become known at compile
+		 * time, which allows static computation through LTO.
+		 */
+		*ind = sz_size2index_compute_inline(size);
+		assert(*ind == sz_size2index_lookup_impl(size));
+		*usize = sz_index2size_compute_inline(*ind);
+		assert(*usize == sz_index2size_lookup_impl(*ind));
+	} else {
+		*ind = sz_size2index_lookup_impl(size);
+		*usize = sz_index2size_lookup_impl(*ind);
+	}
+}
+
+JEMALLOC_ALWAYS_INLINE size_t
+sz_s2u_compute_using_delta(size_t size) {
+	size_t x = lg_floor((size << 1) - 1);
+	size_t lg_delta = (x < SC_LG_NGROUP + LG_QUANTUM + 1)
+	    ? LG_QUANTUM
+	    : x - SC_LG_NGROUP - 1;
+	size_t delta = ZU(1) << lg_delta;
+	size_t delta_mask = delta - 1;
+	size_t usize = (size + delta_mask) & ~delta_mask;
+	return usize;
 }
 
 JEMALLOC_ALWAYS_INLINE size_t
@@ -271,23 +337,28 @@ sz_s2u_compute(size_t size) {
 	if (size <= (ZU(1) << SC_LG_TINY_MAXCLASS)) {
 		size_t lg_tmin = SC_LG_TINY_MAXCLASS - SC_NTINY + 1;
 		size_t lg_ceil = lg_floor(pow2_ceil_zu(size));
-		return (lg_ceil < lg_tmin ? (ZU(1) << lg_tmin) :
-		    (ZU(1) << lg_ceil));
+		return (lg_ceil < lg_tmin ? (ZU(1) << lg_tmin)
+		                          : (ZU(1) << lg_ceil));
 	}
 #endif
-	{
-		size_t x = lg_floor((size<<1)-1);
-		size_t lg_delta = (x < SC_LG_NGROUP + LG_QUANTUM + 1)
-		    ?  LG_QUANTUM : x - SC_LG_NGROUP - 1;
-		size_t delta = ZU(1) << lg_delta;
-		size_t delta_mask = delta - 1;
-		size_t usize = (size + delta_mask) & ~delta_mask;
+	if (size <= SC_SMALL_MAXCLASS || !sz_large_size_classes_disabled()) {
+		return sz_s2u_compute_using_delta(size);
+	} else {
+		/*
+		 * With sz_large_size_classes_disabled() == true, usize of a large
+		 * allocation is calculated by ceiling size to the smallest
+		 * multiple of PAGE to minimize the memory overhead, especially
+		 * when using hugepages.
+		 */
+		size_t usize = PAGE_CEILING(size);
+		assert(usize - size < PAGE);
 		return usize;
 	}
 }
 
 JEMALLOC_ALWAYS_INLINE size_t
 sz_s2u_lookup(size_t size) {
+	assert(size < SC_LARGE_MINCLASS);
 	size_t ret = sz_index2size_lookup(sz_size2index_lookup(size));
 
 	assert(ret == sz_s2u_compute(size));

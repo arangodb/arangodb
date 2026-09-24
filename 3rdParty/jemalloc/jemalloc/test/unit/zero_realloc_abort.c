@@ -4,7 +4,8 @@
 
 static bool abort_called = false;
 
-void set_abort_called(const char *message) {
+void
+set_abort_called(const char *message) {
 	(void)message;
 	abort_called = true;
 };
@@ -21,7 +22,5 @@ TEST_END
 
 int
 main(void) {
-	return test(
-	    test_realloc_abort);
+	return test(test_realloc_abort);
 }
-

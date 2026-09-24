@@ -2,36 +2,37 @@
 
 #include "jemalloc/internal/bit_util.h"
 
-#define TEST_POW2_CEIL(t, suf, pri) do {				\
-	unsigned i, pow2;						\
-	t x;								\
-									\
-	expect_##suf##_eq(pow2_ceil_##suf(0), 0, "Unexpected result");	\
-									\
-	for (i = 0; i < sizeof(t) * 8; i++) {				\
-		expect_##suf##_eq(pow2_ceil_##suf(((t)1) << i), ((t)1)	\
-		    << i, "Unexpected result");				\
-	}								\
-									\
-	for (i = 2; i < sizeof(t) * 8; i++) {				\
-		expect_##suf##_eq(pow2_ceil_##suf((((t)1) << i) - 1),	\
-		    ((t)1) << i, "Unexpected result");			\
-	}								\
-									\
-	for (i = 0; i < sizeof(t) * 8 - 1; i++) {			\
-		expect_##suf##_eq(pow2_ceil_##suf((((t)1) << i) + 1),	\
-		    ((t)1) << (i+1), "Unexpected result");		\
-	}								\
-									\
-	for (pow2 = 1; pow2 < 25; pow2++) {				\
-		for (x = (((t)1) << (pow2-1)) + 1; x <= ((t)1) << pow2;	\
-		    x++) {						\
-			expect_##suf##_eq(pow2_ceil_##suf(x),		\
-			    ((t)1) << pow2,				\
-			    "Unexpected result, x=%"pri, x);		\
-		}							\
-	}								\
-} while (0)
+#define TEST_POW2_CEIL(t, suf, pri)                                            \
+	do {                                                                   \
+		unsigned i, pow2;                                              \
+		t        x;                                                    \
+                                                                               \
+		expect_##suf##_eq(pow2_ceil_##suf(0), 0, "Unexpected result"); \
+                                                                               \
+		for (i = 0; i < sizeof(t) * 8; i++) {                          \
+			expect_##suf##_eq(pow2_ceil_##suf(((t)1) << i),        \
+			    ((t)1) << i, "Unexpected result");                 \
+		}                                                              \
+                                                                               \
+		for (i = 2; i < sizeof(t) * 8; i++) {                          \
+			expect_##suf##_eq(pow2_ceil_##suf((((t)1) << i) - 1),  \
+			    ((t)1) << i, "Unexpected result");                 \
+		}                                                              \
+                                                                               \
+		for (i = 0; i < sizeof(t) * 8 - 1; i++) {                      \
+			expect_##suf##_eq(pow2_ceil_##suf((((t)1) << i) + 1),  \
+			    ((t)1) << (i + 1), "Unexpected result");           \
+		}                                                              \
+                                                                               \
+		for (pow2 = 1; pow2 < 25; pow2++) {                            \
+			for (x = (((t)1) << (pow2 - 1)) + 1;                   \
+			     x <= ((t)1) << pow2; x++) {                       \
+				expect_##suf##_eq(pow2_ceil_##suf(x),          \
+				    ((t)1) << pow2,                            \
+				    "Unexpected result, x=%" pri, x);          \
+			}                                                      \
+		}                                                              \
+	} while (0)
 
 TEST_BEGIN(test_pow2_ceil_u64) {
 	TEST_POW2_CEIL(uint64_t, u64, FMTu64);
@@ -54,10 +55,10 @@ expect_lg_ceil_range(size_t input, unsigned answer) {
 		expect_u_eq(0, answer, "Got %u as lg_ceil of 1", answer);
 		return;
 	}
-	expect_zu_le(input, (ZU(1) << answer),
-	    "Got %u as lg_ceil of %zu", answer, input);
-	expect_zu_gt(input, (ZU(1) << (answer - 1)),
-	    "Got %u as lg_ceil of %zu", answer, input);
+	expect_zu_le(input, (ZU(1) << answer), "Got %u as lg_ceil of %zu",
+	    answer, input);
+	expect_zu_gt(input, (ZU(1) << (answer - 1)), "Got %u as lg_ceil of %zu",
+	    answer, input);
 }
 
 static void
@@ -66,8 +67,8 @@ expect_lg_floor_range(size_t input, unsigned answer) {
 		expect_u_eq(0, answer, "Got %u as lg_floor of 1", answer);
 		return;
 	}
-	expect_zu_ge(input, (ZU(1) << answer),
-	    "Got %u as lg_floor of %zu", answer, input);
+	expect_zu_ge(input, (ZU(1) << answer), "Got %u as lg_floor of %zu",
+	    answer, input);
 	expect_zu_lt(input, (ZU(1) << (answer + 1)),
 	    "Got %u as lg_floor of %zu", answer, input);
 }
@@ -101,22 +102,24 @@ TEST_BEGIN(test_lg_ceil_floor) {
 }
 TEST_END
 
-#define TEST_FFS(t, suf, test_suf, pri) do {				\
-	for (unsigned i = 0; i < sizeof(t) * 8; i++) {			\
-		for (unsigned j = 0; j <= i; j++) {			\
-			for (unsigned k = 0; k <= j; k++) {		\
-				t x = (t)1 << i;			\
-				x |= (t)1 << j;				\
-				x |= (t)1 << k;				\
-				expect_##test_suf##_eq(ffs_##suf(x), k,	\
-				    "Unexpected result, x=%"pri, x);	\
-			}						\
-		}							\
-	}								\
-} while(0)
+#define TEST_FFS(t, suf, test_suf, pri)                                        \
+	do {                                                                   \
+		for (unsigned i = 0; i < sizeof(t) * 8; i++) {                 \
+			for (unsigned j = 0; j <= i; j++) {                    \
+				for (unsigned k = 0; k <= j; k++) {            \
+					t x = (t)1 << i;                       \
+					x |= (t)1 << j;                        \
+					x |= (t)1 << k;                        \
+					expect_##test_suf##_eq(ffs_##suf(x),   \
+					    k, "Unexpected result, x=%" pri,   \
+					    x);                                \
+				}                                              \
+			}                                                      \
+		}                                                              \
+	} while (0)
 
 TEST_BEGIN(test_ffs_u) {
-	TEST_FFS(unsigned, u, u,"u");
+	TEST_FFS(unsigned, u, u, "u");
 }
 TEST_END
 
@@ -145,22 +148,24 @@ TEST_BEGIN(test_ffs_zu) {
 }
 TEST_END
 
-#define TEST_FLS(t, suf, test_suf, pri) do {				\
-	for (unsigned i = 0; i < sizeof(t) * 8; i++) {			\
-		for (unsigned j = 0; j <= i; j++) {			\
-			for (unsigned k = 0; k <= j; k++) {		\
-				t x = (t)1 << i;			\
-				x |= (t)1 << j;				\
-				x |= (t)1 << k;				\
-				expect_##test_suf##_eq(fls_##suf(x), i,	\
-				    "Unexpected result, x=%"pri, x);	\
-			}						\
-		}							\
-	}								\
-} while(0)
+#define TEST_FLS(t, suf, test_suf, pri)                                        \
+	do {                                                                   \
+		for (unsigned i = 0; i < sizeof(t) * 8; i++) {                 \
+			for (unsigned j = 0; j <= i; j++) {                    \
+				for (unsigned k = 0; k <= j; k++) {            \
+					t x = (t)1 << i;                       \
+					x |= (t)1 << j;                        \
+					x |= (t)1 << k;                        \
+					expect_##test_suf##_eq(fls_##suf(x),   \
+					    i, "Unexpected result, x=%" pri,   \
+					    x);                                \
+				}                                              \
+			}                                                      \
+		}                                                              \
+	} while (0)
 
 TEST_BEGIN(test_fls_u) {
-	TEST_FLS(unsigned, u, u,"u");
+	TEST_FLS(unsigned, u, u, "u");
 }
 TEST_END
 
@@ -190,7 +195,7 @@ TEST_BEGIN(test_fls_zu) {
 TEST_END
 
 TEST_BEGIN(test_fls_u_slow) {
-	TEST_FLS(unsigned, u_slow, u,"u");
+	TEST_FLS(unsigned, u_slow, u, "u");
 }
 TEST_END
 
@@ -226,6 +231,7 @@ expand_byte_to_mask(unsigned byte) {
 	return result;
 }
 
+/* clang-format off */
 #define TEST_POPCOUNT(t, suf, pri_hex) do {				\
 	t bmul = (t)0x0101010101010101ULL;				\
 	for (unsigned i = 0; i < (1 << sizeof(t)); i++) {		\
@@ -245,6 +251,7 @@ expand_byte_to_mask(unsigned byte) {
 		}							\
 	}								\
 } while (0)
+/* clang-format on */
 
 TEST_BEGIN(test_popcount_u) {
 	TEST_POPCOUNT(unsigned, u, "x");
@@ -278,30 +285,11 @@ TEST_END
 
 int
 main(void) {
-	return test_no_reentrancy(
-	    test_pow2_ceil_u64,
-	    test_pow2_ceil_u32,
-	    test_pow2_ceil_zu,
-	    test_lg_ceil_floor,
-	    test_ffs_u,
-	    test_ffs_lu,
-	    test_ffs_llu,
-	    test_ffs_u32,
-	    test_ffs_u64,
-	    test_ffs_zu,
-	    test_fls_u,
-	    test_fls_lu,
-	    test_fls_llu,
-	    test_fls_u32,
-	    test_fls_u64,
-	    test_fls_zu,
-	    test_fls_u_slow,
-	    test_fls_lu_slow,
-	    test_fls_llu_slow,
-	    test_popcount_u,
-	    test_popcount_u_slow,
-	    test_popcount_lu,
-	    test_popcount_lu_slow,
-	    test_popcount_llu,
-	    test_popcount_llu_slow);
+	return test_no_reentrancy(test_pow2_ceil_u64, test_pow2_ceil_u32,
+	    test_pow2_ceil_zu, test_lg_ceil_floor, test_ffs_u, test_ffs_lu,
+	    test_ffs_llu, test_ffs_u32, test_ffs_u64, test_ffs_zu, test_fls_u,
+	    test_fls_lu, test_fls_llu, test_fls_u32, test_fls_u64, test_fls_zu,
+	    test_fls_u_slow, test_fls_lu_slow, test_fls_llu_slow,
+	    test_popcount_u, test_popcount_u_slow, test_popcount_lu,
+	    test_popcount_lu_slow, test_popcount_llu, test_popcount_llu_slow);
 }

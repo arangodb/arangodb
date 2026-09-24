@@ -3,11 +3,11 @@
 #include "jemalloc/internal/prof_data.h"
 
 TEST_BEGIN(test_prof_realloc) {
-	tsd_t *tsd;
-	int flags;
-	void *p, *q;
+	tsd_t      *tsd;
+	int         flags;
+	void       *p, *q;
 	prof_info_t prof_info_p, prof_info_q;
-	prof_cnt_t cnt_0, cnt_1, cnt_2, cnt_3;
+	prof_cnt_t  cnt_0, cnt_1, cnt_2, cnt_3;
 
 	test_skip_if(!config_prof);
 
@@ -18,8 +18,8 @@ TEST_BEGIN(test_prof_realloc) {
 	p = mallocx(1024, flags);
 	expect_ptr_not_null(p, "Unexpected mallocx() failure");
 	prof_info_get(tsd, p, NULL, &prof_info_p);
-	expect_ptr_ne(prof_info_p.alloc_tctx, PROF_TCTX_SENTINEL,
-	    "Expected valid tctx");
+	expect_ptr_ne(
+	    prof_info_p.alloc_tctx, PROF_TCTX_SENTINEL, "Expected valid tctx");
 	prof_cnt_all(&cnt_1);
 	expect_u64_eq(cnt_0.curobjs + 1, cnt_1.curobjs,
 	    "Allocation should have increased sample size");
@@ -28,8 +28,8 @@ TEST_BEGIN(test_prof_realloc) {
 	expect_ptr_ne(p, q, "Expected move");
 	expect_ptr_not_null(p, "Unexpected rmallocx() failure");
 	prof_info_get(tsd, q, NULL, &prof_info_q);
-	expect_ptr_ne(prof_info_q.alloc_tctx, PROF_TCTX_SENTINEL,
-	    "Expected valid tctx");
+	expect_ptr_ne(
+	    prof_info_q.alloc_tctx, PROF_TCTX_SENTINEL, "Expected valid tctx");
 	prof_cnt_all(&cnt_2);
 	expect_u64_eq(cnt_1.curobjs, cnt_2.curobjs,
 	    "Reallocation should not have changed sample size");
@@ -43,6 +43,5 @@ TEST_END
 
 int
 main(void) {
-	return test_no_reentrancy(
-	    test_prof_realloc);
+	return test_no_reentrancy(test_prof_realloc);
 }

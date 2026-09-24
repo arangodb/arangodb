@@ -1,9 +1,9 @@
 #include "test/jemalloc_test.h"
 
-static witness_lock_error_t *witness_lock_error_orig;
-static witness_owner_error_t *witness_owner_error_orig;
+static witness_lock_error_t      *witness_lock_error_orig;
+static witness_owner_error_t     *witness_owner_error_orig;
 static witness_not_owner_error_t *witness_not_owner_error_orig;
-static witness_depth_error_t *witness_depth_error_orig;
+static witness_depth_error_t     *witness_depth_error_orig;
 
 static bool saw_lock_error;
 static bool saw_owner_error;
@@ -11,8 +11,8 @@ static bool saw_not_owner_error;
 static bool saw_depth_error;
 
 static void
-witness_lock_error_intercept(const witness_list_t *witnesses,
-    const witness_t *witness) {
+witness_lock_error_intercept(
+    const witness_list_t *witnesses, const witness_t *witness) {
 	saw_lock_error = true;
 }
 
@@ -43,8 +43,8 @@ witness_comp(const witness_t *a, void *oa, const witness_t *b, void *ob) {
 }
 
 static int
-witness_comp_reverse(const witness_t *a, void *oa, const witness_t *b,
-    void *ob) {
+witness_comp_reverse(
+    const witness_t *a, void *oa, const witness_t *b, void *ob) {
 	expect_u_eq(a->rank, b->rank, "Witnesses should have equal rank");
 
 	assert(oa == (void *)a);
@@ -54,8 +54,8 @@ witness_comp_reverse(const witness_t *a, void *oa, const witness_t *b,
 }
 
 TEST_BEGIN(test_witness) {
-	witness_t a, b;
-	witness_tsdn_t witness_tsdn = { WITNESS_TSD_INITIALIZER };
+	witness_t      a, b;
+	witness_tsdn_t witness_tsdn = {WITNESS_TSD_INITIALIZER};
 
 	test_skip_if(!config_debug);
 
@@ -94,8 +94,8 @@ TEST_BEGIN(test_witness) {
 TEST_END
 
 TEST_BEGIN(test_witness_comp) {
-	witness_t a, b, c, d;
-	witness_tsdn_t witness_tsdn = { WITNESS_TSD_INITIALIZER };
+	witness_t      a, b, c, d;
+	witness_tsdn_t witness_tsdn = {WITNESS_TSD_INITIALIZER};
 
 	test_skip_if(!config_debug);
 
@@ -146,8 +146,8 @@ TEST_BEGIN(test_witness_comp) {
 TEST_END
 
 TEST_BEGIN(test_witness_reversal) {
-	witness_t a, b;
-	witness_tsdn_t witness_tsdn = { WITNESS_TSD_INITIALIZER };
+	witness_t      a, b;
+	witness_tsdn_t witness_tsdn = {WITNESS_TSD_INITIALIZER};
 
 	test_skip_if(!config_debug);
 
@@ -177,8 +177,8 @@ TEST_BEGIN(test_witness_reversal) {
 TEST_END
 
 TEST_BEGIN(test_witness_recursive) {
-	witness_t a;
-	witness_tsdn_t witness_tsdn = { WITNESS_TSD_INITIALIZER };
+	witness_t      a;
+	witness_tsdn_t witness_tsdn = {WITNESS_TSD_INITIALIZER};
 
 	test_skip_if(!config_debug);
 
@@ -207,13 +207,12 @@ TEST_BEGIN(test_witness_recursive) {
 
 	witness_owner_error = witness_owner_error_orig;
 	witness_lock_error = witness_lock_error_orig;
-
 }
 TEST_END
 
 TEST_BEGIN(test_witness_unlock_not_owned) {
-	witness_t a;
-	witness_tsdn_t witness_tsdn = { WITNESS_TSD_INITIALIZER };
+	witness_t      a;
+	witness_tsdn_t witness_tsdn = {WITNESS_TSD_INITIALIZER};
 
 	test_skip_if(!config_debug);
 
@@ -236,8 +235,8 @@ TEST_BEGIN(test_witness_unlock_not_owned) {
 TEST_END
 
 TEST_BEGIN(test_witness_depth) {
-	witness_t a;
-	witness_tsdn_t witness_tsdn = { WITNESS_TSD_INITIALIZER };
+	witness_t      a;
+	witness_tsdn_t witness_tsdn = {WITNESS_TSD_INITIALIZER};
 
 	test_skip_if(!config_debug);
 
@@ -270,11 +269,7 @@ TEST_END
 
 int
 main(void) {
-	return test(
-	    test_witness,
-	    test_witness_comp,
-	    test_witness_reversal,
-	    test_witness_recursive,
-	    test_witness_unlock_not_owned,
+	return test(test_witness, test_witness_comp, test_witness_reversal,
+	    test_witness_recursive, test_witness_unlock_not_owned,
 	    test_witness_depth);
 }

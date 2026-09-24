@@ -46,7 +46,7 @@ enum witness_rank_e {
 	WITNESS_RANK_DECAY = WITNESS_RANK_CORE,
 	WITNESS_RANK_TCACHE_QL,
 
-	WITNESS_RANK_SEC_SHARD,
+	WITNESS_RANK_SEC_BIN,
 
 	WITNESS_RANK_EXTENT_GROW,
 	WITNESS_RANK_HPA_SHARD_GROW = WITNESS_RANK_EXTENT_GROW,
@@ -65,7 +65,7 @@ enum witness_rank_e {
 	WITNESS_RANK_ARENA_LARGE,
 	WITNESS_RANK_HOOK,
 
-	WITNESS_RANK_LEAF=0x1000,
+	WITNESS_RANK_LEAF = 0x1000,
 	WITNESS_RANK_BIN = WITNESS_RANK_LEAF,
 	WITNESS_RANK_ARENA_STATS = WITNESS_RANK_LEAF,
 	WITNESS_RANK_COUNTER_ACCUM = WITNESS_RANK_LEAF,
@@ -77,6 +77,7 @@ enum witness_rank_e {
 	WITNESS_RANK_PROF_RECENT_ALLOC = WITNESS_RANK_LEAF,
 	WITNESS_RANK_PROF_STATS = WITNESS_RANK_LEAF,
 	WITNESS_RANK_PROF_THREAD_ACTIVE_INIT = WITNESS_RANK_LEAF,
+	WITNESS_RANK_THREAD_EVENTS_USER = WITNESS_RANK_LEAF,
 };
 typedef enum witness_rank_e witness_rank_t;
 
@@ -84,38 +85,43 @@ typedef enum witness_rank_e witness_rank_t;
 /* PER-WITNESS DATA */
 /******************************************************************************/
 #if defined(JEMALLOC_DEBUG)
-#  define WITNESS_INITIALIZER(name, rank) {name, rank, NULL, NULL, {NULL, NULL}}
+#	define WITNESS_INITIALIZER(name, rank)                                \
+		{                                                              \
+			name, rank, NULL, NULL, {                              \
+				NULL, NULL                                     \
+			}                                                      \
+		}
 #else
-#  define WITNESS_INITIALIZER(name, rank)
+#	define WITNESS_INITIALIZER(name, rank)
 #endif
 
 typedef struct witness_s witness_t;
 typedef ql_head(witness_t) witness_list_t;
-typedef int witness_comp_t (const witness_t *, void *, const witness_t *,
-    void *);
+typedef int witness_comp_t(
+    const witness_t *, void *, const witness_t *, void *);
 
 struct witness_s {
 	/* Name, used for printing lock order reversal messages. */
-	const char		*name;
+	const char *name;
 
 	/*
 	 * Witness rank, where 0 is lowest and WITNESS_RANK_LEAF is highest.
 	 * Witnesses must be acquired in order of increasing rank.
 	 */
-	witness_rank_t		rank;
+	witness_rank_t rank;
 
 	/*
 	 * If two witnesses are of equal rank and they have the samp comp
 	 * function pointer, it is called as a last attempt to differentiate
 	 * between witnesses of equal rank.
 	 */
-	witness_comp_t		*comp;
+	witness_comp_t *comp;
 
 	/* Opaque data, passed to comp(). */
-	void			*opaque;
+	void *opaque;
 
 	/* Linkage for thread's currently owned locks. */
-	ql_elm(witness_t)	link;
+	ql_elm(witness_t) link;
 };
 
 /******************************************************************************/
@@ -124,10 +130,11 @@ struct witness_s {
 typedef struct witness_tsd_s witness_tsd_t;
 struct witness_tsd_s {
 	witness_list_t witnesses;
-	bool forking;
+	bool           forking;
 };
 
-#define WITNESS_TSD_INITIALIZER { ql_head_initializer(witnesses), false }
+#define WITNESS_TSD_INITIALIZER                                                \
+	{ ql_head_initializer(witnesses), false }
 #define WITNESS_TSDN_NULL ((witness_tsdn_t *)0)
 
 /******************************************************************************/
@@ -160,17 +167,17 @@ witness_tsdn_tsd(witness_tsdn_t *witness_tsdn) {
 void witness_init(witness_t *witness, const char *name, witness_rank_t rank,
     witness_comp_t *comp, void *opaque);
 
-typedef void (witness_lock_error_t)(const witness_list_t *, const witness_t *);
+typedef void(witness_lock_error_t)(const witness_list_t *, const witness_t *);
 extern witness_lock_error_t *JET_MUTABLE witness_lock_error;
 
-typedef void (witness_owner_error_t)(const witness_t *);
+typedef void(witness_owner_error_t)(const witness_t *);
 extern witness_owner_error_t *JET_MUTABLE witness_owner_error;
 
-typedef void (witness_not_owner_error_t)(const witness_t *);
+typedef void(witness_not_owner_error_t)(const witness_t *);
 extern witness_not_owner_error_t *JET_MUTABLE witness_not_owner_error;
 
-typedef void (witness_depth_error_t)(const witness_list_t *,
-    witness_rank_t rank_inclusive, unsigned depth);
+typedef void(witness_depth_error_t)(
+    const witness_list_t *, witness_rank_t rank_inclusive, unsigned depth);
 extern witness_depth_error_t *JET_MUTABLE witness_depth_error;
 
 void witnesses_cleanup(witness_tsd_t *witness_tsd);
@@ -182,12 +189,12 @@ void witness_postfork_child(witness_tsd_t *witness_tsd);
 static inline bool
 witness_owner(witness_tsd_t *witness_tsd, const witness_t *witness) {
 	witness_list_t *witnesses;
-	witness_t *w;
+	witness_t      *w;
 
 	cassert(config_debug);
 
 	witnesses = &witness_tsd->witnesses;
-	ql_foreach(w, witnesses, link) {
+	ql_foreach (w, witnesses, link) {
 		if (w == witness) {
 			return true;
 		}
@@ -219,11 +226,11 @@ witness_assert_owner(witness_tsdn_t *witness_tsdn, const witness_t *witness) {
 }
 
 static inline void
-witness_assert_not_owner(witness_tsdn_t *witness_tsdn,
-    const witness_t *witness) {
-	witness_tsd_t *witness_tsd;
+witness_assert_not_owner(
+    witness_tsdn_t *witness_tsdn, const witness_t *witness) {
+	witness_tsd_t  *witness_tsd;
 	witness_list_t *witnesses;
-	witness_t *w;
+	witness_t      *w;
 
 	if (!config_debug) {
 		return;
@@ -238,7 +245,7 @@ witness_assert_not_owner(witness_tsdn_t *witness_tsdn,
 	}
 
 	witnesses = &witness_tsd->witnesses;
-	ql_foreach(w, witnesses, link) {
+	ql_foreach (w, witnesses, link) {
 		if (w == witness) {
 			witness_not_owner_error(witness);
 		}
@@ -247,9 +254,9 @@ witness_assert_not_owner(witness_tsdn_t *witness_tsdn,
 
 /* Returns depth.  Not intended for direct use. */
 static inline unsigned
-witness_depth_to_rank(witness_list_t *witnesses, witness_rank_t rank_inclusive)
-{
-	unsigned d = 0;
+witness_depth_to_rank(
+    witness_list_t *witnesses, witness_rank_t rank_inclusive) {
+	unsigned   d = 0;
 	witness_t *w = ql_last(witnesses, link);
 
 	if (w != NULL) {
@@ -272,7 +279,7 @@ witness_assert_depth_to_rank(witness_tsdn_t *witness_tsdn,
 	}
 
 	witness_list_t *witnesses = &witness_tsdn_tsd(witness_tsdn)->witnesses;
-	unsigned d = witness_depth_to_rank(witnesses, rank_inclusive);
+	unsigned        d = witness_depth_to_rank(witnesses, rank_inclusive);
 
 	if (d != depth) {
 		witness_depth_error(witnesses, rank_inclusive, depth);
@@ -290,14 +297,14 @@ witness_assert_lockless(witness_tsdn_t *witness_tsdn) {
 }
 
 static inline void
-witness_assert_positive_depth_to_rank(witness_tsdn_t *witness_tsdn,
-    witness_rank_t rank_inclusive) {
+witness_assert_positive_depth_to_rank(
+    witness_tsdn_t *witness_tsdn, witness_rank_t rank_inclusive) {
 	if (!config_debug || witness_tsdn_null(witness_tsdn)) {
 		return;
 	}
 
 	witness_list_t *witnesses = &witness_tsdn_tsd(witness_tsdn)->witnesses;
-	unsigned d = witness_depth_to_rank(witnesses, rank_inclusive);
+	unsigned        d = witness_depth_to_rank(witnesses, rank_inclusive);
 
 	if (d == 0) {
 		witness_depth_error(witnesses, rank_inclusive, 1);
@@ -306,9 +313,9 @@ witness_assert_positive_depth_to_rank(witness_tsdn_t *witness_tsdn,
 
 static inline void
 witness_lock(witness_tsdn_t *witness_tsdn, witness_t *witness) {
-	witness_tsd_t *witness_tsd;
+	witness_tsd_t  *witness_tsd;
 	witness_list_t *witnesses;
-	witness_t *w;
+	witness_t      *w;
 
 	if (!config_debug) {
 		return;
@@ -333,9 +340,9 @@ witness_lock(witness_tsdn_t *witness_tsdn, witness_t *witness) {
 	} else if (w->rank > witness->rank) {
 		/* Not forking, rank order reversal. */
 		witness_lock_error(witnesses, witness);
-	} else if (w->rank == witness->rank && (w->comp == NULL || w->comp !=
-	    witness->comp || w->comp(w, w->opaque, witness, witness->opaque) >
-	    0)) {
+	} else if (w->rank == witness->rank
+	    && (w->comp == NULL || w->comp != witness->comp
+	        || w->comp(w, w->opaque, witness, witness->opaque) > 0)) {
 		/*
 		 * Missing/incompatible comparison function, or comparison
 		 * function indicates rank order reversal.
@@ -344,15 +351,15 @@ witness_lock(witness_tsdn_t *witness_tsdn, witness_t *witness) {
 	}
 
 	/* Suppress spurious warning from static analysis */
-	assert(ql_empty(witnesses) ||
-	    qr_prev(ql_first(witnesses), link) != NULL);
+	assert(
+	    ql_empty(witnesses) || qr_prev(ql_first(witnesses), link) != NULL);
 	ql_elm_new(witness, link);
 	ql_tail_insert(witnesses, witness, link);
 }
 
 static inline void
 witness_unlock(witness_tsdn_t *witness_tsdn, witness_t *witness) {
-	witness_tsd_t *witness_tsd;
+	witness_tsd_t  *witness_tsd;
 	witness_list_t *witnesses;
 
 	if (!config_debug) {

@@ -16,10 +16,10 @@ emap_init(emap_t *emap, base_t *base, bool zeroed) {
 }
 
 void
-emap_update_edata_state(tsdn_t *tsdn, emap_t *emap, edata_t *edata,
-    extent_state_t state) {
-	witness_assert_positive_depth_to_rank(tsdn_witness_tsdp_get(tsdn),
-	    WITNESS_RANK_CORE);
+emap_update_edata_state(
+    tsdn_t *tsdn, emap_t *emap, edata_t *edata, extent_state_t state) {
+	witness_assert_positive_depth_to_rank(
+	    tsdn_witness_tsdp_get(tsdn), WITNESS_RANK_CORE);
 
 	edata_state_set(edata, state);
 
@@ -28,10 +28,11 @@ emap_update_edata_state(tsdn_t *tsdn, emap_t *emap, edata_t *edata,
 	    rtree_ctx, (uintptr_t)edata_base_get(edata), /* dependent */ true,
 	    /* init_missing */ false);
 	assert(elm1 != NULL);
-	rtree_leaf_elm_t *elm2 = edata_size_get(edata) == PAGE ? NULL :
-	    rtree_leaf_elm_lookup(tsdn, &emap->rtree, rtree_ctx,
-	    (uintptr_t)edata_last_get(edata), /* dependent */ true,
-	    /* init_missing */ false);
+	rtree_leaf_elm_t *elm2 = edata_size_get(edata) == PAGE
+	    ? NULL
+	    : rtree_leaf_elm_lookup(tsdn, &emap->rtree, rtree_ctx,
+	          (uintptr_t)edata_last_get(edata), /* dependent */ true,
+	          /* init_missing */ false);
 
 	rtree_leaf_elm_state_update(tsdn, &emap->rtree, elm1, elm2, state);
 
@@ -42,17 +43,17 @@ static inline edata_t *
 emap_try_acquire_edata_neighbor_impl(tsdn_t *tsdn, emap_t *emap, edata_t *edata,
     extent_pai_t pai, extent_state_t expected_state, bool forward,
     bool expanding) {
-	witness_assert_positive_depth_to_rank(tsdn_witness_tsdp_get(tsdn),
-	    WITNESS_RANK_CORE);
+	witness_assert_positive_depth_to_rank(
+	    tsdn_witness_tsdp_get(tsdn), WITNESS_RANK_CORE);
 	assert(!edata_guarded_get(edata));
 	assert(!expanding || forward);
 	assert(!edata_state_in_transition(expected_state));
-	assert(expected_state == extent_state_dirty ||
-	       expected_state == extent_state_muzzy ||
-	       expected_state == extent_state_retained);
+	assert(expected_state == extent_state_dirty
+	    || expected_state == extent_state_muzzy
+	    || expected_state == extent_state_retained);
 
-	void *neighbor_addr = forward ? edata_past_get(edata) :
-	    edata_before_get(edata);
+	void *neighbor_addr = forward ? edata_past_get(edata)
+	                              : edata_before_get(edata);
 	/*
 	 * This is subtle; the rtree code asserts that its input pointer is
 	 * non-NULL, and this is a useful thing to check.  But it's possible
@@ -73,10 +74,10 @@ emap_try_acquire_edata_neighbor_impl(tsdn_t *tsdn, emap_t *emap, edata_t *edata,
 		return NULL;
 	}
 
-	rtree_contents_t neighbor_contents = rtree_leaf_elm_read(tsdn,
-	    &emap->rtree, elm, /* dependent */ true);
+	rtree_contents_t neighbor_contents = rtree_leaf_elm_read(
+	    tsdn, &emap->rtree, elm, /* dependent */ false);
 	if (!extent_can_acquire_neighbor(edata, neighbor_contents, pai,
-	    expected_state, forward, expanding)) {
+	        expected_state, forward, expanding)) {
 		return NULL;
 	}
 
@@ -109,8 +110,8 @@ emap_try_acquire_edata_neighbor_expand(tsdn_t *tsdn, emap_t *emap,
 }
 
 void
-emap_release_edata(tsdn_t *tsdn, emap_t *emap, edata_t *edata,
-    extent_state_t new_state) {
+emap_release_edata(
+    tsdn_t *tsdn, emap_t *emap, edata_t *edata, extent_state_t new_state) {
 	assert(emap_edata_in_transition(tsdn, emap, edata));
 	assert(emap_edata_is_acquired(tsdn, emap, edata));
 
@@ -145,8 +146,8 @@ emap_rtree_write_acquired(tsdn_t *tsdn, emap_t *emap, rtree_leaf_elm_t *elm_a,
 	contents.edata = edata;
 	contents.metadata.szind = szind;
 	contents.metadata.slab = slab;
-	contents.metadata.is_head = (edata == NULL) ? false :
-	    edata_is_head_get(edata);
+	contents.metadata.is_head = (edata == NULL) ? false
+	                                            : edata_is_head_get(edata);
 	contents.metadata.state = (edata == NULL) ? 0 : edata_state_get(edata);
 	rtree_leaf_elm_write(tsdn, &emap->rtree, elm_a, contents);
 	if (elm_b != NULL) {
@@ -155,29 +156,33 @@ emap_rtree_write_acquired(tsdn_t *tsdn, emap_t *emap, rtree_leaf_elm_t *elm_a,
 }
 
 bool
-emap_register_boundary(tsdn_t *tsdn, emap_t *emap, edata_t *edata,
-    szind_t szind, bool slab) {
+emap_register_boundary(
+    tsdn_t *tsdn, emap_t *emap, edata_t *edata, szind_t szind, bool slab) {
 	assert(edata_state_get(edata) == extent_state_active);
 	EMAP_DECLARE_RTREE_CTX;
 
 	rtree_leaf_elm_t *elm_a, *elm_b;
-	bool err = emap_rtree_leaf_elms_lookup(tsdn, emap, rtree_ctx, edata,
-	    false, true, &elm_a, &elm_b);
+	bool              err = emap_rtree_leaf_elms_lookup(
+            tsdn, emap, rtree_ctx, edata, false, true, &elm_a, &elm_b);
 	if (err) {
 		return true;
 	}
 	assert(rtree_leaf_elm_read(tsdn, &emap->rtree, elm_a,
-	    /* dependent */ false).edata == NULL);
+	           /* dependent */ false)
+	           .edata
+	    == NULL);
 	assert(rtree_leaf_elm_read(tsdn, &emap->rtree, elm_b,
-	    /* dependent */ false).edata == NULL);
+	           /* dependent */ false)
+	           .edata
+	    == NULL);
 	emap_rtree_write_acquired(tsdn, emap, elm_a, elm_b, edata, szind, slab);
 	return false;
 }
 
 /* Invoked *after* emap_register_boundary. */
 void
-emap_register_interior(tsdn_t *tsdn, emap_t *emap, edata_t *edata,
-    szind_t szind) {
+emap_register_interior(
+    tsdn_t *tsdn, emap_t *emap, edata_t *edata, szind_t szind) {
 	EMAP_DECLARE_RTREE_CTX;
 
 	assert(edata_slab_get(edata));
@@ -226,10 +231,10 @@ emap_deregister_boundary(tsdn_t *tsdn, emap_t *emap, edata_t *edata) {
 	EMAP_DECLARE_RTREE_CTX;
 	rtree_leaf_elm_t *elm_a, *elm_b;
 
-	emap_rtree_leaf_elms_lookup(tsdn, emap, rtree_ctx, edata,
-	    true, false, &elm_a, &elm_b);
-	emap_rtree_write_acquired(tsdn, emap, elm_a, elm_b, NULL, SC_NSIZES,
-	    false);
+	emap_rtree_leaf_elms_lookup(
+	    tsdn, emap, rtree_ctx, edata, true, false, &elm_a, &elm_b);
+	emap_rtree_write_acquired(
+	    tsdn, emap, elm_a, elm_b, NULL, SC_NSIZES, false);
 }
 
 void
@@ -245,8 +250,8 @@ emap_deregister_interior(tsdn_t *tsdn, emap_t *emap, edata_t *edata) {
 }
 
 void
-emap_remap(tsdn_t *tsdn, emap_t *emap, edata_t *edata, szind_t szind,
-    bool slab) {
+emap_remap(
+    tsdn_t *tsdn, emap_t *emap, edata_t *edata, szind_t szind, bool slab) {
 	EMAP_DECLARE_RTREE_CTX;
 
 	if (szind != SC_NSIZES) {
@@ -274,8 +279,8 @@ emap_remap(tsdn_t *tsdn, emap_t *emap, edata_t *edata, szind_t szind,
 		if (slab && edata_size_get(edata) > PAGE) {
 			uintptr_t key = (uintptr_t)edata_past_get(edata)
 			    - (uintptr_t)PAGE;
-			rtree_write(tsdn, &emap->rtree, rtree_ctx, key,
-			    contents);
+			rtree_write(
+			    tsdn, &emap->rtree, rtree_ctx, key, contents);
 		}
 	}
 }
@@ -344,29 +349,29 @@ emap_merge_commit(tsdn_t *tsdn, emap_t *emap, emap_prepare_t *prepare,
 	clear_contents.metadata.state = (extent_state_t)0;
 
 	if (prepare->lead_elm_b != NULL) {
-		rtree_leaf_elm_write(tsdn, &emap->rtree,
-		    prepare->lead_elm_b, clear_contents);
+		rtree_leaf_elm_write(
+		    tsdn, &emap->rtree, prepare->lead_elm_b, clear_contents);
 	}
 
 	rtree_leaf_elm_t *merged_b;
 	if (prepare->trail_elm_b != NULL) {
-		rtree_leaf_elm_write(tsdn, &emap->rtree,
-		    prepare->trail_elm_a, clear_contents);
+		rtree_leaf_elm_write(
+		    tsdn, &emap->rtree, prepare->trail_elm_a, clear_contents);
 		merged_b = prepare->trail_elm_b;
 	} else {
 		merged_b = prepare->trail_elm_a;
 	}
 
-	emap_rtree_write_acquired(tsdn, emap, prepare->lead_elm_a, merged_b,
-	    lead, SC_NSIZES, false);
+	emap_rtree_write_acquired(
+	    tsdn, emap, prepare->lead_elm_a, merged_b, lead, SC_NSIZES, false);
 }
 
 void
 emap_do_assert_mapped(tsdn_t *tsdn, emap_t *emap, edata_t *edata) {
 	EMAP_DECLARE_RTREE_CTX;
 
-	rtree_contents_t contents = rtree_read(tsdn, &emap->rtree, rtree_ctx,
-	    (uintptr_t)edata_base_get(edata));
+	rtree_contents_t contents = rtree_read(
+	    tsdn, &emap->rtree, rtree_ctx, (uintptr_t)edata_base_get(edata));
 	assert(contents.edata == edata);
 	assert(contents.metadata.is_head == edata_is_head_get(edata));
 	assert(contents.metadata.state == edata_state_get(edata));
@@ -375,12 +380,12 @@ emap_do_assert_mapped(tsdn_t *tsdn, emap_t *emap, edata_t *edata) {
 void
 emap_do_assert_not_mapped(tsdn_t *tsdn, emap_t *emap, edata_t *edata) {
 	emap_full_alloc_ctx_t context1 = {0};
-	emap_full_alloc_ctx_try_lookup(tsdn, emap, edata_base_get(edata),
-	    &context1);
+	emap_full_alloc_ctx_try_lookup(
+	    tsdn, emap, edata_base_get(edata), &context1);
 	assert(context1.edata == NULL);
 
 	emap_full_alloc_ctx_t context2 = {0};
-	emap_full_alloc_ctx_try_lookup(tsdn, emap, edata_last_get(edata),
-	    &context2);
+	emap_full_alloc_ctx_try_lookup(
+	    tsdn, emap, edata_last_get(edata), &context2);
 	assert(context2.edata == NULL);
 }

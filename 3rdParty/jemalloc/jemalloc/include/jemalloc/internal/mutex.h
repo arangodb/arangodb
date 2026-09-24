@@ -31,26 +31,28 @@ struct malloc_mutex_s {
 			 * avoid prefetching a modified cacheline (for the
 			 * unlocking thread).
 			 */
-			mutex_prof_data_t	prof_data;
+			mutex_prof_data_t prof_data;
 			/*
 			 * Hint flag to avoid exclusive cache line contention
 			 * during spin waiting.  Placed along with prof_data
 			 * since it's always modified even with no contention.
+			 * Modified by the lock owner only (after acquired, and
+			 * before release), and may be read by other threads.
 			 */
-			atomic_b_t		locked;
+			atomic_b_t locked;
 #ifdef _WIN32
-#  if _WIN32_WINNT >= 0x0600
-			SRWLOCK         	lock;
-#  else
-			CRITICAL_SECTION	lock;
-#  endif
+#	if _WIN32_WINNT >= 0x0600
+			SRWLOCK lock;
+#	else
+			CRITICAL_SECTION lock;
+#	endif
 #elif (defined(JEMALLOC_OS_UNFAIR_LOCK))
-			os_unfair_lock		lock;
+			os_unfair_lock lock;
 #elif (defined(JEMALLOC_MUTEX_INIT_CB))
-			pthread_mutex_t		lock;
-			malloc_mutex_t		*postponed_next;
+			pthread_mutex_t lock;
+			malloc_mutex_t *postponed_next;
 #else
-			pthread_mutex_t		lock;
+			pthread_mutex_t lock;
 #endif
 		};
 		/*
@@ -60,82 +62,118 @@ struct malloc_mutex_s {
 		 * memory cost.
 		 */
 #if !defined(JEMALLOC_DEBUG)
-		witness_t			witness;
-		malloc_mutex_lock_order_t	lock_order;
+		witness_t                 witness;
+		malloc_mutex_lock_order_t lock_order;
 #endif
 	};
 
 #if defined(JEMALLOC_DEBUG)
-	witness_t			witness;
-	malloc_mutex_lock_order_t	lock_order;
+	witness_t                 witness;
+	malloc_mutex_lock_order_t lock_order;
 #endif
 };
 
 #ifdef _WIN32
-#  if _WIN32_WINNT >= 0x0600
-#    define MALLOC_MUTEX_LOCK(m)    AcquireSRWLockExclusive(&(m)->lock)
-#    define MALLOC_MUTEX_UNLOCK(m)  ReleaseSRWLockExclusive(&(m)->lock)
-#    define MALLOC_MUTEX_TRYLOCK(m) (!TryAcquireSRWLockExclusive(&(m)->lock))
-#  else
-#    define MALLOC_MUTEX_LOCK(m)    EnterCriticalSection(&(m)->lock)
-#    define MALLOC_MUTEX_UNLOCK(m)  LeaveCriticalSection(&(m)->lock)
-#    define MALLOC_MUTEX_TRYLOCK(m) (!TryEnterCriticalSection(&(m)->lock))
-#  endif
+#	if _WIN32_WINNT >= 0x0600
+#		define MALLOC_MUTEX_LOCK(m) AcquireSRWLockExclusive(&(m)->lock)
+#		define MALLOC_MUTEX_UNLOCK(m)                                 \
+			ReleaseSRWLockExclusive(&(m)->lock)
+#		define MALLOC_MUTEX_TRYLOCK(m)                                \
+			(!TryAcquireSRWLockExclusive(&(m)->lock))
+#	else
+#		define MALLOC_MUTEX_LOCK(m) EnterCriticalSection(&(m)->lock)
+#		define MALLOC_MUTEX_UNLOCK(m) LeaveCriticalSection(&(m)->lock)
+#		define MALLOC_MUTEX_TRYLOCK(m)                                \
+			(!TryEnterCriticalSection(&(m)->lock))
+#	endif
 #elif (defined(JEMALLOC_OS_UNFAIR_LOCK))
-#    define MALLOC_MUTEX_LOCK(m)    os_unfair_lock_lock(&(m)->lock)
-#    define MALLOC_MUTEX_UNLOCK(m)  os_unfair_lock_unlock(&(m)->lock)
-#    define MALLOC_MUTEX_TRYLOCK(m) (!os_unfair_lock_trylock(&(m)->lock))
+#	define MALLOC_MUTEX_LOCK(m) os_unfair_lock_lock(&(m)->lock)
+#	define MALLOC_MUTEX_UNLOCK(m) os_unfair_lock_unlock(&(m)->lock)
+#	define MALLOC_MUTEX_TRYLOCK(m) (!os_unfair_lock_trylock(&(m)->lock))
 #else
-#    define MALLOC_MUTEX_LOCK(m)    pthread_mutex_lock(&(m)->lock)
-#    define MALLOC_MUTEX_UNLOCK(m)  pthread_mutex_unlock(&(m)->lock)
-#    define MALLOC_MUTEX_TRYLOCK(m) (pthread_mutex_trylock(&(m)->lock) != 0)
+#	define MALLOC_MUTEX_LOCK(m) pthread_mutex_lock(&(m)->lock)
+#	define MALLOC_MUTEX_UNLOCK(m) pthread_mutex_unlock(&(m)->lock)
+#	define MALLOC_MUTEX_TRYLOCK(m) (pthread_mutex_trylock(&(m)->lock) != 0)
 #endif
 
-#define LOCK_PROF_DATA_INITIALIZER					\
-    {NSTIME_ZERO_INITIALIZER, NSTIME_ZERO_INITIALIZER, 0, 0, 0,		\
-	    ATOMIC_INIT(0), 0, NULL, 0}
+#define LOCK_PROF_DATA_INITIALIZER                                             \
+	{                                                                      \
+		NSTIME_ZERO_INITIALIZER, NSTIME_ZERO_INITIALIZER, 0, 0, 0,     \
+		    ATOMIC_INIT(0), 0, NULL, 0                                 \
+	}
 
 #ifdef _WIN32
-#  define MALLOC_MUTEX_INITIALIZER
+#	define MALLOC_MUTEX_INITIALIZER
 #elif (defined(JEMALLOC_OS_UNFAIR_LOCK))
-#  if defined(JEMALLOC_DEBUG)
-#    define MALLOC_MUTEX_INITIALIZER					\
-  {{{LOCK_PROF_DATA_INITIALIZER, ATOMIC_INIT(false), OS_UNFAIR_LOCK_INIT}}, \
-         WITNESS_INITIALIZER("mutex", WITNESS_RANK_OMIT), 0}
-#  else
-#    define MALLOC_MUTEX_INITIALIZER                      \
-  {{{LOCK_PROF_DATA_INITIALIZER, ATOMIC_INIT(false), OS_UNFAIR_LOCK_INIT}},  \
-      WITNESS_INITIALIZER("mutex", WITNESS_RANK_OMIT)}
-#  endif
+#	if defined(JEMALLOC_DEBUG)
+#		define MALLOC_MUTEX_INITIALIZER                               \
+			{                                                      \
+				{{LOCK_PROF_DATA_INITIALIZER,                  \
+				    ATOMIC_INIT(false), OS_UNFAIR_LOCK_INIT}}, \
+				    WITNESS_INITIALIZER(                       \
+				        "mutex", WITNESS_RANK_OMIT),           \
+				    0                                          \
+			}
+#	else
+#		define MALLOC_MUTEX_INITIALIZER                               \
+			{                                                      \
+				{{LOCK_PROF_DATA_INITIALIZER,                  \
+				    ATOMIC_INIT(false), OS_UNFAIR_LOCK_INIT}}, \
+				    WITNESS_INITIALIZER(                       \
+				        "mutex", WITNESS_RANK_OMIT)            \
+			}
+#	endif
 #elif (defined(JEMALLOC_MUTEX_INIT_CB))
-#  if (defined(JEMALLOC_DEBUG))
-#     define MALLOC_MUTEX_INITIALIZER					\
-      {{{LOCK_PROF_DATA_INITIALIZER, ATOMIC_INIT(false), PTHREAD_MUTEX_INITIALIZER, NULL}},	\
-           WITNESS_INITIALIZER("mutex", WITNESS_RANK_OMIT), 0}
-#  else
-#     define MALLOC_MUTEX_INITIALIZER					\
-      {{{LOCK_PROF_DATA_INITIALIZER, ATOMIC_INIT(false), PTHREAD_MUTEX_INITIALIZER, NULL}},	\
-           WITNESS_INITIALIZER("mutex", WITNESS_RANK_OMIT)}
-#  endif
+#	if (defined(JEMALLOC_DEBUG))
+#		define MALLOC_MUTEX_INITIALIZER                               \
+			{                                                      \
+				{{LOCK_PROF_DATA_INITIALIZER,                  \
+				    ATOMIC_INIT(false),                        \
+				    PTHREAD_MUTEX_INITIALIZER, NULL}},         \
+				    WITNESS_INITIALIZER(                       \
+				        "mutex", WITNESS_RANK_OMIT),           \
+				    0                                          \
+			}
+#	else
+#		define MALLOC_MUTEX_INITIALIZER                               \
+			{                                                      \
+				{{LOCK_PROF_DATA_INITIALIZER,                  \
+				    ATOMIC_INIT(false),                        \
+				    PTHREAD_MUTEX_INITIALIZER, NULL}},         \
+				    WITNESS_INITIALIZER(                       \
+				        "mutex", WITNESS_RANK_OMIT)            \
+			}
+#	endif
 
 #else
-#    define MALLOC_MUTEX_TYPE PTHREAD_MUTEX_DEFAULT
-#  if defined(JEMALLOC_DEBUG)
-#    define MALLOC_MUTEX_INITIALIZER					\
-     {{{LOCK_PROF_DATA_INITIALIZER, ATOMIC_INIT(false), PTHREAD_MUTEX_INITIALIZER}}, \
-           WITNESS_INITIALIZER("mutex", WITNESS_RANK_OMIT), 0}
-#  else
-#    define MALLOC_MUTEX_INITIALIZER                          \
-     {{{LOCK_PROF_DATA_INITIALIZER, ATOMIC_INIT(false), PTHREAD_MUTEX_INITIALIZER}},	\
-      WITNESS_INITIALIZER("mutex", WITNESS_RANK_OMIT)}
-#  endif
+#	define MALLOC_MUTEX_TYPE PTHREAD_MUTEX_DEFAULT
+#	if defined(JEMALLOC_DEBUG)
+#		define MALLOC_MUTEX_INITIALIZER                               \
+			{                                                      \
+				{{LOCK_PROF_DATA_INITIALIZER,                  \
+				    ATOMIC_INIT(false),                        \
+				    PTHREAD_MUTEX_INITIALIZER}},               \
+				    WITNESS_INITIALIZER(                       \
+				        "mutex", WITNESS_RANK_OMIT),           \
+				    0                                          \
+			}
+#	else
+#		define MALLOC_MUTEX_INITIALIZER                               \
+			{                                                      \
+				{{LOCK_PROF_DATA_INITIALIZER,                  \
+				    ATOMIC_INIT(false),                        \
+				    PTHREAD_MUTEX_INITIALIZER}},               \
+				    WITNESS_INITIALIZER(                       \
+				        "mutex", WITNESS_RANK_OMIT)            \
+			}
+#	endif
 #endif
 
 #ifdef JEMALLOC_LAZY_LOCK
 extern bool isthreaded;
 #else
-#  undef isthreaded /* Undo private_namespace.h definition. */
-#  define isthreaded true
+#	undef isthreaded /* Undo private_namespace.h definition. */
+#	define isthreaded true
 #endif
 
 bool malloc_mutex_init(malloc_mutex_t *mutex, const char *name,
@@ -156,7 +194,12 @@ malloc_mutex_lock_final(malloc_mutex_t *mutex) {
 
 static inline bool
 malloc_mutex_trylock_final(malloc_mutex_t *mutex) {
-	return MALLOC_MUTEX_TRYLOCK(mutex);
+	bool failed = MALLOC_MUTEX_TRYLOCK(mutex);
+	if (!failed) {
+		atomic_store_b(&mutex->locked, true, ATOMIC_RELAXED);
+	}
+
+	return failed;
 }
 
 static inline void
@@ -171,6 +214,12 @@ mutex_owner_stats_update(tsdn_t *tsdn, malloc_mutex_t *mutex) {
 	}
 }
 
+static inline bool
+malloc_mutex_is_locked(malloc_mutex_t *mutex) {
+	/* Used for sanity checking only. */
+	return atomic_load_b(&mutex->locked, ATOMIC_RELAXED);
+}
+
 /* Trylock: return false if the lock is successfully acquired. */
 static inline bool
 malloc_mutex_trylock(tsdn_t *tsdn, malloc_mutex_t *mutex) {
@@ -179,6 +228,7 @@ malloc_mutex_trylock(tsdn_t *tsdn, malloc_mutex_t *mutex) {
 		if (malloc_mutex_trylock_final(mutex)) {
 			return true;
 		}
+		assert(malloc_mutex_is_locked(mutex));
 		mutex_owner_stats_update(tsdn, mutex);
 	}
 	witness_lock(tsdn_witness_tsdp_get(tsdn), &mutex->witness);
@@ -200,12 +250,12 @@ malloc_mutex_prof_merge(mutex_prof_data_t *sum, mutex_prof_data_t *data) {
 	if (sum->max_n_thds < data->max_n_thds) {
 		sum->max_n_thds = data->max_n_thds;
 	}
-	uint32_t cur_n_waiting_thds = atomic_load_u32(&sum->n_waiting_thds,
-	    ATOMIC_RELAXED);
-	uint32_t new_n_waiting_thds = cur_n_waiting_thds + atomic_load_u32(
-	    &data->n_waiting_thds, ATOMIC_RELAXED);
-	atomic_store_u32(&sum->n_waiting_thds, new_n_waiting_thds,
-	    ATOMIC_RELAXED);
+	uint32_t cur_n_waiting_thds = atomic_load_u32(
+	    &sum->n_waiting_thds, ATOMIC_RELAXED);
+	uint32_t new_n_waiting_thds = cur_n_waiting_thds
+	    + atomic_load_u32(&data->n_waiting_thds, ATOMIC_RELAXED);
+	atomic_store_u32(
+	    &sum->n_waiting_thds, new_n_waiting_thds, ATOMIC_RELAXED);
 	sum->n_owner_switches += data->n_owner_switches;
 	sum->n_lock_ops += data->n_lock_ops;
 }
@@ -216,8 +266,8 @@ malloc_mutex_lock(tsdn_t *tsdn, malloc_mutex_t *mutex) {
 	if (isthreaded) {
 		if (malloc_mutex_trylock_final(mutex)) {
 			malloc_mutex_lock_slow(mutex);
-			atomic_store_b(&mutex->locked, true, ATOMIC_RELAXED);
 		}
+		assert(malloc_mutex_is_locked(mutex));
 		mutex_owner_stats_update(tsdn, mutex);
 	}
 	witness_lock(tsdn_witness_tsdp_get(tsdn), &mutex->witness);
@@ -225,9 +275,10 @@ malloc_mutex_lock(tsdn_t *tsdn, malloc_mutex_t *mutex) {
 
 static inline void
 malloc_mutex_unlock(tsdn_t *tsdn, malloc_mutex_t *mutex) {
-	atomic_store_b(&mutex->locked, false, ATOMIC_RELAXED);
 	witness_unlock(tsdn_witness_tsdp_get(tsdn), &mutex->witness);
 	if (isthreaded) {
+		assert(malloc_mutex_is_locked(mutex));
+		atomic_store_b(&mutex->locked, false, ATOMIC_RELAXED);
 		MALLOC_MUTEX_UNLOCK(mutex);
 	}
 }
@@ -235,6 +286,9 @@ malloc_mutex_unlock(tsdn_t *tsdn, malloc_mutex_t *mutex) {
 static inline void
 malloc_mutex_assert_owner(tsdn_t *tsdn, malloc_mutex_t *mutex) {
 	witness_assert_owner(tsdn_witness_tsdp_get(tsdn), &mutex->witness);
+	if (isthreaded) {
+		assert(malloc_mutex_is_locked(mutex));
+	}
 }
 
 static inline void
@@ -256,16 +310,16 @@ malloc_mutex_prof_copy(mutex_prof_data_t *dst, mutex_prof_data_t *source) {
 
 /* Copy the prof data from mutex for processing. */
 static inline void
-malloc_mutex_prof_read(tsdn_t *tsdn, mutex_prof_data_t *data,
-    malloc_mutex_t *mutex) {
+malloc_mutex_prof_read(
+    tsdn_t *tsdn, mutex_prof_data_t *data, malloc_mutex_t *mutex) {
 	/* Can only read holding the mutex. */
 	malloc_mutex_assert_owner(tsdn, mutex);
 	malloc_mutex_prof_copy(data, &mutex->prof_data);
 }
 
 static inline void
-malloc_mutex_prof_accum(tsdn_t *tsdn, mutex_prof_data_t *data,
-    malloc_mutex_t *mutex) {
+malloc_mutex_prof_accum(
+    tsdn_t *tsdn, mutex_prof_data_t *data, malloc_mutex_t *mutex) {
 	mutex_prof_data_t *source = &mutex->prof_data;
 	/* Can only read holding the mutex. */
 	malloc_mutex_assert_owner(tsdn, mutex);
@@ -287,8 +341,8 @@ malloc_mutex_prof_accum(tsdn_t *tsdn, mutex_prof_data_t *data,
 
 /* Compare the prof data and update to the maximum. */
 static inline void
-malloc_mutex_prof_max_update(tsdn_t *tsdn, mutex_prof_data_t *data,
-    malloc_mutex_t *mutex) {
+malloc_mutex_prof_max_update(
+    tsdn_t *tsdn, mutex_prof_data_t *data, malloc_mutex_t *mutex) {
 	mutex_prof_data_t *source = &mutex->prof_data;
 	/* Can only read holding the mutex. */
 	malloc_mutex_assert_owner(tsdn, mutex);
