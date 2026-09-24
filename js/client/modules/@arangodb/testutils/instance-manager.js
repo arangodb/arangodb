@@ -136,6 +136,9 @@ class instanceManager {
       this.options.jwtFiles = fs.list(this.addArgs['server.jwt-secret-folder']);
       this.options.jwtFiles = this.options.jwtFiles.sort();
       this.jwt_secret = fs.read(fs.join(this.addArgs['server.jwt-secret-folder'], this.options.jwtFiles[0]));
+    } else if (this.addArgs.hasOwnProperty('server.jwt-secret-keyfile')) {
+      this.restKeyFile = this.addArgs['server.jwt-secret-keyfile'];
+      this.jwt_secret = fs.read(this.restKeyFile);
     } else if (this.options.encryptionAtRest &&
                !this.addArgs.hasOwnProperty('server.jwt-secret')) {
       this.restKeyFile = fs.join(this.rootDir, 'openSesame.txt');
