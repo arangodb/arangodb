@@ -31,8 +31,8 @@ const crypto = require('@arangodb/crypto');
 const arango = require("@arangodb").arango;
 const { makeAuthorizationHeaders } = require('@arangodb/testutils/instance');
 let IM = global.instanceManager;
-
-const JWT_key = "The quick brown foxx jumps over ";
+// must not contain trailing spaces:
+const JWT_key = "The quick brown foxx jumps  over";
 let tmpDir;
 
 if (getOptions === true) {
@@ -50,19 +50,12 @@ if (getOptions === true) {
 function testSuite() {
 
   // Helper function to make authenticated request
-  let makeRequest = function(token) {
+  let makeRequest = function() {
     let options = {
       method: "GET",
-      url: IM.url + "/_api/version"
+      url: IM.url + "/_api/version",
+      ...makeAuthorizationHeaders(IM.options, JWT_key)
     };
-
-    if (token !== undefined) {
-      if (token === null) {
-        // No authentication
-      } else {
-        options.auth = { bearer: token };
-      }
-    }
 
     return request(options);
   };
@@ -74,7 +67,7 @@ function testSuite() {
     tearDown: function() {
     },
     testVersionReply: function() {
-      const res = makeRequest(makeAuthorizationHeaders(JWT_key));
+      const res = makeRequest();
       assertEqual(200, res.status, `Request with valid token from primary key should succeed ${JSON.stringify(res)}`);
     }
   };

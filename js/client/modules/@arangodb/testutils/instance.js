@@ -587,14 +587,6 @@ class instance {
   // //////////////////////////////////////////////////////////////////////////////
 
   _executeArangod (moreArgs, instanceJson) {
-    if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
-      this.jwt_secret = moreArgs['server.jwt-secret'];
-    } else if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret-folder')) {
-      let files = fs.list(moreArgs['server.jwt-secret-folder']);
-      files = files.sort();
-      this.jwt_secret = fs.read(fs.join(moreArgs['server.jwt-secret-folder'], files[0]));
-    }
-
     let cmd = pu.ARANGOD_BIN;
     let args = _.defaults(moreArgs, this.args);
     let argv = [];
@@ -685,13 +677,6 @@ class instance {
   };
   restartOneInstance(moreArgs, instanceJson) {
     this.moreArgs = moreArgs;
-    if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
-      this.jwt_secret = moreArgs['server.jwt-secret'];
-    } else if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret-folder')) {
-      let files = fs.list(moreArgs['server.jwt-secret-folder']);
-      files = files.sort();
-      this.jwt_secret = fs.read(fs.join(moreArgs['server.jwt-secret-folder'], files[0]));
-    }
     const startTime = time();
     this.exitStatus = null;
     this.pid = null;
@@ -820,8 +805,9 @@ class instance {
       return;
     }
     let httpOptions = makeAuthorizationHeaders(this.options, this.jwt_secret);
-    httpOptions.method = 'POST';
+    httpOptions.method = '';
     httpOptions.returnBodyOnError = true;
+
     while (true) {
       this.exitStatus = this.status(false);
       if (this.exitStatus.status === 'RUNNING') {
@@ -836,9 +822,9 @@ class instance {
             print(`${Date()} reconnecting ${this.name} with JWT '${this.jwt_secret}' to ${this.url}`);
             if (arango.reconnect(this.endpoint,
                                  '_system',
-                                 this.isFrontend() ? `${this.options.username}` : undefined,
-                                 this.isFrontend() ? this.options.password : undefined,
-                                 true,
+                                 undefined,
+                                 undefined,
+                                 false,
                                  this.jwt_secret)) {
               this.connectionHandle = arango.getConnectionHandle();
               this.dumpConnectionTable();
