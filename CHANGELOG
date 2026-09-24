@@ -1,5 +1,27 @@
 3.12.12 (XXXX-XX-XX)
 --------------------
+
+* Fixed a rare issue where a cluster-internal request that was retried with
+  less than one millisecond left until its deadline was sent without any
+  timeout, because the remaining time was truncated to 0ms, which the network
+  layer interprets as "no timeout". In maintainer mode this triggered the
+  assertion `timeout.count() > 0` in NetworkFeature::finishRequest. Request
+  timeouts are now rounded up to whole milliseconds.
+
+* COR-1018: Cap the `ttl` of replication batches (`POST` and `PUT` on
+  `/_api/replication/batch`) at 24 hours. Previously any value was accepted,
+  and a far-future value kept the batch's replication client entry alive
+  indefinitely, which prevented the RocksDB WAL from being released.
+
+* COR-1025: Escape double quotes, backslashes and line feeds in metric label
+  values according to the Prometheus text exposition format.
+
+* COR-917: AQL UPDATE with keepNull: false leaves the attribute in place in the 
+  _to_ shadow collection of a non-disjoint SmartGraph.
+  Fixed an issue where updating an edge attribute with keepNull: false in a 
+  non-disjoint SmartGraph could leave the removed attribute in the edge’s _to_ shadow 
+  copy. The attribute is now consistently removed from both copies of the edge.
+
 * BTS-2454: Update FAISS to a new patched version which fixes a TSAN race inside
   the hnsw_stats and rabitq_stats internal counters.
 
@@ -17,6 +39,11 @@
   collection of a non-disjoint SmartGraph.
   Fix remote SmartGraph edge modifications so returnNew/returnOld response
   data is not persisted in the _to shadow collection.
+
+* COR-994: arangodump, arangorestore and arangosh now renew a JWT passed via
+  `--server.jwt-token` before it expires, using `POST /_open/auth/renew`
+  and controlled by `--server.jwt-renewal-threshold`. Long-running dumps
+  no longer fail with HTTP 401 once `--server.session-timeout` elapses.
 
 * arangodump, arangorestore and arangobackup now report the server's error (e.g.
   "HTTP 401 (Unauthorized): ArangoError 11: User not authenticated") together
