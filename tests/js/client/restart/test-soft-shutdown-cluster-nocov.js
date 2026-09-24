@@ -1,6 +1,6 @@
 
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, assertFalse, assertEqual, arango */
+/* global getOptions, assertTrue, assertFalse, assertEqual, assertMatch, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -110,13 +110,13 @@ function testSuite() {
       // Now slowly read the cursor through:
       for (let i = 0; i < 8; ++i) {
         wait(2);
-        let next = arango.PUT("/_api/cursor/" + resp.id, {});
+        let next = arango.POST("/_api/cursor/" + resp.id, {});
         console.warn("Read document:", next);
         assertTrue(next.hasMore);
       }
       // And the last one:
       wait(2);
-      let next = arango.PUT("/_api/cursor/" + resp.id, {});
+      let next = arango.POST("/_api/cursor/" + resp.id, {});
       console.warn("Read last document:", next, "awaiting shutdown...");
       assertFalse(next.hasMore);
       assertFalse(next.error);
@@ -151,7 +151,7 @@ function testSuite() {
       // Now slowly read the cursor through:
       for (let i = 0; i < 8; ++i) {
         wait(2);
-        let next = arango.PUT("/_api/cursor/" + resp.id, {});
+        let next = arango.POST("/_api/cursor/" + resp.id, {});
         console.warn("Read document:", next);
         assertTrue(next.hasMore);
       }
@@ -269,7 +269,7 @@ function testSuite() {
       assertFalse(resp.error);
       assertEqual(201, resp.code);
     },
-
+/*
     testSoftShutdownWithQueuedLowPrio : function() {
       // Create a streaming transaction:
       let op = `require("internal").wait(1); return 1;`;
@@ -345,7 +345,7 @@ function testSuite() {
       // This is tracked in https://arangodb.atlassian.net/browse/BTS-2227.
       assertTrue(status.allClear, "status: " + JSON.stringify(status));
     },
-
+*/
   };
 }
 

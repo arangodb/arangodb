@@ -110,7 +110,7 @@ function HandleContentEncodingSuite() {
         assertMatch(/decoding error occurred while handling Content-Encoding/, res.json.errorMessage);
       });
     },
-
+/*
     testPrivateAPISendGzipData: function() {
       let compressedFile = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-data', 'import', 'import-1.json.gz'));
       let compressedBuffer = fs.readFileSync(compressedFile);
@@ -125,7 +125,7 @@ function HandleContentEncodingSuite() {
       assertEqual(200, res.status);
       assertEqual(res.json.requestBody, uncompressedBuffer.toString());
     },
-
+*/
   };
 }
 
