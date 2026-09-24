@@ -569,8 +569,6 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
         rocksDbIndexCacheRefillFeature, cacheManagerFeature, agencyFeature);
   }
 
-  ~MaintenanceTestActionPhaseOne() {}
-
   auto dbName() const -> std::string {
     // this is a database known in the test files
     return "foo";

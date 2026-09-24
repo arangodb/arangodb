@@ -23,6 +23,7 @@
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/ArangodServer.h"
 
+#include <functional>
 #include <type_traits>
 
 #include "Basics/application-exit.h"
@@ -383,19 +384,20 @@ void ArangodServer::addFeatures() {
                              getOptions<UpgradeOptionsProvider>());
   auto& rocksdbOption = addFeature<RocksDBOptionFeature>(
       getOptions<RocksDBOptionFeatureOptionsProvider>());
-  StorageEngine* enginePtr;
-  if (ServerState::instance()->isCoordinator()) {
-    enginePtr = &addFeature<StorageEngine, ClusterEngine>(
-        clusterFeature, database, metrics, vectorIndex);
-  } else {
-    enginePtr = &addFeature<StorageEngine, RocksDBEngine>(
-        rocksdbOption, metrics, databasePath, vectorIndex, flush, dumpLimits,
-        replication2::EnableReplication2 ? &replicatedLogFeature : nullptr,
-        scheduler, database, database, rocksdbCacheRefill, cacheManager, agency,
-        getOptions<RocksDBEngineOptionsProvider>());
-  }
+  StorageEngine& engine = std::invoke([&]() -> StorageEngine& {
+    if (ServerState::instance()->isCoordinator()) {
+      return addFeature<StorageEngine, ClusterEngine>(clusterFeature, database,
+                                                      metrics, vectorIndex);
+    } else {
+      return addFeature<StorageEngine, RocksDBEngine>(
+          rocksdbOption, metrics, databasePath, vectorIndex, flush, dumpLimits,
+          replication2::EnableReplication2 ? &replicatedLogFeature : nullptr,
+          scheduler, database, database, rocksdbCacheRefill, cacheManager,
+          agency, getOptions<RocksDBEngineOptionsProvider>());
+    }
+  });
   addFeature<transaction::ManagerFeature>(
-      metrics, *enginePtr, getOptions<transaction::ManagerOptionsProvider>());
+      metrics, engine, getOptions<transaction::ManagerOptionsProvider>());
   addFeature<replication2::replicated_state::ReplicatedStateAppFeature>();
   addFeature<replication2::replicated_state::black_hole::
                  BlackHoleStateMachineFeature>();

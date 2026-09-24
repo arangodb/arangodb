@@ -145,13 +145,12 @@ class replicationRunner extends trs.runLocalInArangoshRunner {
 function replicationStatic (options) {
   let testCases = tu.scanTestPaths(testPaths.replication_static, options);
   testCases = tu.splitBuckets(options, testCases);
-  let localOptions = Object.assign({extraArgs: {'vector-index': true}}, options, tu.testServerAuthInfo);
+  let localOptions = Object.assign({extraArgs: {}}, options, tu.testServerAuthInfo);
   let ret = new replicationRunner(
     localOptions,
     'leader_static',
     {
       'server.authentication': 'true',
-      'vector-index': 'true',
     }, true).run(testCases);
   options.cleanup = options.cleanup && localOptions.cleanup;
   return ret;

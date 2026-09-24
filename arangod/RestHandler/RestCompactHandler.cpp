@@ -25,7 +25,6 @@
 #include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
 #include "Cluster/ClusterMethods.h"
-#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/ExecContext.h"
 

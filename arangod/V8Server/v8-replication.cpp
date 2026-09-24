@@ -25,7 +25,6 @@
 #endif
 
 #include "v8-replication.h"
-#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"

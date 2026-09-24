@@ -32,7 +32,6 @@
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/ApiRecordingFeature.h"
-#include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/StorageEngine.h"
