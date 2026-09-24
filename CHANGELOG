@@ -1,6 +1,11 @@
 3.12.12 (XXXX-XX-XX)
 --------------------
 
+* COR-1020: Fix the web UI repeatedly reporting "Something went wrong while
+  creating the index : not found" after saving an arangosearch view link or
+  creating an index, accompanied by "not allowed to connect to this URL" in
+  the server log.
+
 * COR-1018: Cap the `ttl` of replication batches (`POST` and `PUT` on
   `/_api/replication/batch`) at 24 hours. Previously any value was accepted,
   and a far-future value kept the batch's replication client entry alive
