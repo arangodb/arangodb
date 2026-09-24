@@ -35,7 +35,6 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
@@ -53,17 +52,12 @@ struct DefaultIndexFactory : public IndexTypeFactory {
   std::string const _type;
 
   explicit DefaultIndexFactory(application_features::ApplicationServer& server,
-                               std::string const& type, ClusterEngine& engine,
-                               ClusterIndexFactory& clusterIndexFactory)
-      : IndexTypeFactory(server),
-        _type(type),
-        _engine(engine),
-        _clusterIndexFactory(clusterIndexFactory) {}
+                               std::string const& type, ClusterEngine& engine)
+      : IndexTypeFactory(server), _type(type), _engine(engine) {}
 
   bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
              std::string const& dbname) const override {
-    return _clusterIndexFactory.rocksDBIndexFactory().factory(_type).equal(
-        lhs, rhs, dbname);
+    return _engine.indexDefinitions().definition(_type).equal(lhs, rhs, dbname);
   }
 
   std::shared_ptr<Index> instantiate(
@@ -77,20 +71,18 @@ struct DefaultIndexFactory : public IndexTypeFactory {
   virtual Result normalize(velocypack::Builder& normalized,
                            velocypack::Slice definition, bool isCreation,
                            TRI_vocbase_t const& vocbase) const override {
-    return _clusterIndexFactory.rocksDBIndexFactory().factory(_type).normalize(
+    return _engine.indexDefinitions().definition(_type).normalize(
         normalized, definition, isCreation, vocbase);
   }
 
  protected:
   ClusterEngine& _engine;
-  ClusterIndexFactory& _clusterIndexFactory;
 };
 
 struct EdgeIndexFactory : public DefaultIndexFactory {
   explicit EdgeIndexFactory(application_features::ApplicationServer& server,
-                            std::string const& type, ClusterEngine& engine,
-                            ClusterIndexFactory& clusterIndexFactory)
-      : DefaultIndexFactory(server, type, engine, clusterIndexFactory) {}
+                            std::string const& type, ClusterEngine& engine)
+      : DefaultIndexFactory(server, type, engine) {}
 
   std::shared_ptr<Index> instantiate(LogicalCollection& collection,
                                      velocypack::Slice definition, IndexId id,
@@ -109,9 +101,8 @@ struct EdgeIndexFactory : public DefaultIndexFactory {
 
 struct PrimaryIndexFactory : public DefaultIndexFactory {
   explicit PrimaryIndexFactory(application_features::ApplicationServer& server,
-                               std::string const& type, ClusterEngine& engine,
-                               ClusterIndexFactory& clusterIndexFactory)
-      : DefaultIndexFactory(server, type, engine, clusterIndexFactory) {}
+                               std::string const& type, ClusterEngine& engine)
+      : DefaultIndexFactory(server, type, engine) {}
 
   std::shared_ptr<Index> instantiate(LogicalCollection& collection,
                                      velocypack::Slice definition,
@@ -131,10 +122,9 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
 
 struct IResearchInvertedIndexClusterFactory : public DefaultIndexFactory {
   explicit IResearchInvertedIndexClusterFactory(
-      application_features::ApplicationServer& server, ClusterEngine& engine,
-      ClusterIndexFactory& clusterIndexFactory)
+      application_features::ApplicationServer& server, ClusterEngine& engine)
       : DefaultIndexFactory(server, IRESEARCH_INVERTED_INDEX_TYPE.data(),
-                            engine, clusterIndexFactory) {}
+                            engine) {}
 
   std::shared_ptr<Index> instantiate(LogicalCollection& collection,
                                      velocypack::Slice definition, IndexId id,
@@ -169,38 +159,29 @@ struct IResearchInvertedIndexClusterFactory : public DefaultIndexFactory {
 namespace arangodb {
 
 void ClusterIndexFactory::linkIndexFactories(
-    application_features::ApplicationServer& server,
-    ClusterIndexFactory& factory, ClusterEngine& engine) {
-  static const EdgeIndexFactory edgeIndexFactory(server, "edge", engine,
-                                                 factory);
+    application_features::ApplicationServer& server, IndexFactory& factory,
+    ClusterEngine& engine) {
+  static const EdgeIndexFactory edgeIndexFactory(server, "edge", engine);
   static const DefaultIndexFactory fulltextIndexFactory(server, "fulltext",
-                                                        engine, factory);
-  static const DefaultIndexFactory geoIndexFactory(server, "geo", engine,
-                                                   factory);
-  static const DefaultIndexFactory geo1IndexFactory(server, "geo1", engine,
-                                                    factory);
-  static const DefaultIndexFactory geo2IndexFactory(server, "geo2", engine,
-                                                    factory);
-  static const DefaultIndexFactory hashIndexFactory(server, "hash", engine,
-                                                    factory);
+                                                        engine);
+  static const DefaultIndexFactory geoIndexFactory(server, "geo", engine);
+  static const DefaultIndexFactory geo1IndexFactory(server, "geo1", engine);
+  static const DefaultIndexFactory geo2IndexFactory(server, "geo2", engine);
+  static const DefaultIndexFactory hashIndexFactory(server, "hash", engine);
   static const DefaultIndexFactory persistentIndexFactory(server, "persistent",
-                                                          engine, factory);
+                                                          engine);
   static const PrimaryIndexFactory primaryIndexFactory(server, "primary",
-                                                       engine, factory);
+                                                       engine);
   static const DefaultIndexFactory skiplistIndexFactory(server, "skiplist",
-                                                        engine, factory);
-  static const DefaultIndexFactory ttlIndexFactory(server, "ttl", engine,
-                                                   factory);
-  static const DefaultIndexFactory mdiIndexFactory(server, "mdi", engine,
-                                                   factory);
-  static const DefaultIndexFactory zkdIndexFactory(server, "zkd", engine,
-                                                   factory);
+                                                        engine);
+  static const DefaultIndexFactory ttlIndexFactory(server, "ttl", engine);
+  static const DefaultIndexFactory mdiIndexFactory(server, "mdi", engine);
+  static const DefaultIndexFactory zkdIndexFactory(server, "zkd", engine);
   static const DefaultIndexFactory mdiPrefixedIndexFactory(
-      server, "mdi-prefixed", engine, factory);
+      server, "mdi-prefixed", engine);
   static const IResearchInvertedIndexClusterFactory invertedIndexFactory(
-      server, engine, factory);
-  static const DefaultIndexFactory vectorIndexFactory(server, "vector", engine,
-                                                      factory);
+      server, engine);
+  static const DefaultIndexFactory vectorIndexFactory(server, "vector", engine);
 
   factory.emplace(edgeIndexFactory._type, edgeIndexFactory);
   factory.emplace(fulltextIndexFactory._type, fulltextIndexFactory);
@@ -220,22 +201,16 @@ void ClusterIndexFactory::linkIndexFactories(
 }
 
 ClusterIndexFactory::ClusterIndexFactory(
-    application_features::ApplicationServer& server, ClusterEngine& engine,
-    IVectorIndexProvider const& vectorIndexProvider)
-    : IndexFactory(server),
-      _engine(engine),
-      _rocksDBIndexFactory(
-          std::make_unique<RocksDBIndexFactory>(server, vectorIndexProvider)) {
+    application_features::ApplicationServer& server, ClusterEngine& engine)
+    : IndexFactory(server), _engine(engine) {
   linkIndexFactories(server, *this, engine);
 }
-
-ClusterIndexFactory::~ClusterIndexFactory() = default;
 
 /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
 /// "hash") used to display storage engine capabilities
 std::vector<std::pair<std::string_view, std::string_view>>
 ClusterIndexFactory::indexAliases(uint32_t apiVersion) const {
-  return rocksDBIndexFactory().indexAliases(apiVersion);
+  return _engine.indexDefinitions().indexAliases(apiVersion);
 }
 
 Result ClusterIndexFactory::enhanceIndexDefinition(  // normalize definition
@@ -244,8 +219,8 @@ Result ClusterIndexFactory::enhanceIndexDefinition(  // normalize definition
     bool isCreation,                  // definition for index creation
     TRI_vocbase_t const& vocbase      // index vocbase
 ) const {
-  return rocksDBIndexFactory().enhanceIndexDefinition(definition, normalized,
-                                                      isCreation, vocbase);
+  return _engine.indexDefinitions().enhanceIndexDefinition(
+      definition, normalized, isCreation, vocbase);
 }
 
 void ClusterIndexFactory::fillSystemIndexes(

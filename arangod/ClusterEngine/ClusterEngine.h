@@ -23,6 +23,7 @@
 #pragma once
 
 #include "ClusterEngine/Common.h"
+#include "Indexes/IndexDefinitionRegistry.h"
 #include "Metrics/IRegistry.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VectorIndex/IVectorIndexProvider.h"
@@ -47,6 +48,11 @@ class ClusterEngine final : public StorageEngine {
   ~ClusterEngine();
 
   ClusterEngineType engineType() const;
+
+  // equal()/normalize() only, no RocksDB dependency
+  IndexDefinitionRegistry const& indexDefinitions() const {
+    return *_indexDefinitions;
+  }
 
   // storage engine overrides
   // ------------------------
@@ -206,6 +212,7 @@ class ClusterEngine final : public StorageEngine {
   metrics::IRegistry& _metrics;
   /// path to arangodb data dir
   std::string _basePath;
+  std::unique_ptr<IndexDefinitionRegistry> _indexDefinitions;
 };
 
 }  // namespace arangodb

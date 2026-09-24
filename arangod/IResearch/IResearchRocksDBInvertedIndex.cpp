@@ -36,13 +36,17 @@
 namespace arangodb {
 namespace iresearch {
 
+IResearchInvertedIndexDefinition::IResearchInvertedIndexDefinition(
+    application_features::ApplicationServer& server)
+    : IndexDefinition(IndexType::Inverted), _server(server) {}
+
 IResearchRocksDBInvertedIndexFactory::IResearchRocksDBInvertedIndexFactory(
     application_features::ApplicationServer& server)
-    : IndexTypeFactory(server) {}
+    : DelegatingIndexFactory(server, server) {}
 
-bool IResearchRocksDBInvertedIndexFactory::equal(
-    velocypack::Slice lhs, velocypack::Slice rhs,
-    std::string const& dbname) const {
+bool IResearchInvertedIndexDefinition::equal(velocypack::Slice lhs,
+                                             velocypack::Slice rhs,
+                                             std::string const& dbname) const {
   IResearchInvertedIndexMeta lhsFieldsMeta;
   std::string errField;
   if (!lhsFieldsMeta.init(_server, lhs, true, errField, dbname)) {
@@ -126,7 +130,7 @@ std::shared_ptr<Index> IResearchRocksDBInvertedIndexFactory::instantiate(
   return index;
 }
 
-Result IResearchRocksDBInvertedIndexFactory::normalize(
+Result IResearchInvertedIndexDefinition::normalize(
     velocypack::Builder& normalized, velocypack::Slice definition,
     bool isCreation, TRI_vocbase_t const& vocbase) const {
   TRI_ASSERT(normalized.isOpenObject());
@@ -221,10 +225,10 @@ T getMetric(IResearchRocksDBInvertedIndex const& index) {
 
 std::string getLabels(IResearchRocksDBInvertedIndex const& index) {
   return absl::StrCat(  // clang-format off
-      "db=\"", metrics::escapeLabelValue(index.getDbName()), "\","
-      "index=\"", metrics::escapeLabelValue(index.name()), "\","
-      "collection=\"", metrics::escapeLabelValue(index.getCollectionName()),
-      "\",index_id=\"", index.id().id(), "\","
+      "db=\"", index.getDbName(), "\","
+      "index=\"", index.name(), "\","
+      "collection=\"", index.getCollectionName(), "\","
+      "index_id=\"", index.id().id(), "\","
       "shard=\"", index.getShardName(), "\"");  // clang-format on
 }
 
