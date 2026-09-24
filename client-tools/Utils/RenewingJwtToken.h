@@ -134,6 +134,13 @@ class RenewingJwtToken {
    */
   void renewIfDue();
 
+  /**
+   * Changes how long before expiry the token is renewed
+   *
+   * Takes effect at the next renewIfDue().
+   */
+  void setRenewalThreshold(JwtClock::duration renewalThreshold);
+
  private:
   std::mutex _mutex;
   JwtTokenState _state;

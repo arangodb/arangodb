@@ -104,7 +104,8 @@ class ClientFeature final : public HttpEndpointProvider {
   bool compressTransfer() const noexcept;
   uint64_t compressRequestThreshold() const noexcept;
   double jwtRenewalThreshold() const noexcept;
-  void setJwtRenewalThreshold(double value) noexcept;
+  /// also applies to the renewal of a token passed via --server.jwt-token
+  void setJwtRenewalThreshold(double value);
 
   std::unique_ptr<httpclient::GeneralClientConnection> createConnection(
       std::string const& definition);

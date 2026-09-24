@@ -316,3 +316,20 @@ TEST(RenewingJwtTokenTest, currentDoesNotWaitForARenewalInProgress) {
   renewal.join();
   EXPECT_EQ(token.current(), tokenExpiringAt(2000));
 }
+
+TEST(RenewingJwtTokenTest, changedThresholdAppliesToTheNextRenewalCheck) {
+  auto now = at(0);
+  auto renewer = ScriptedRenewer{.outcome = renewedToken()};
+  auto token = RenewingJwtToken{tokenExpiringAt(1000), renewer.asFunction(),
+                                threshold, [&now] { return now; }};
+
+  // with a threshold of 300 the renewal point is 700
+  now = at(600);
+  token.renewIfDue();
+  EXPECT_EQ(renewer.calls.load(), 0);
+
+  token.setRenewalThreshold(400s);
+  token.renewIfDue();
+  EXPECT_EQ(renewer.calls.load(), 1);
+  EXPECT_EQ(token.current(), tokenExpiringAt(2000));
+}

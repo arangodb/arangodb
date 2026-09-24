@@ -133,7 +133,11 @@ auto parseRenewalResponse(httpclient::SimpleHttpResult const& response)
           TRI_ERROR_INTERNAL,
           "unexpected reply from /_open/auth/renew: jwt is not a string");
     }
-    return RenewalOutcome::success(jwt.copyString());
+    auto token = jwt.copyString();
+    if (token.empty() || token == "invalid") {
+      return RenewalOutcome::success(std::nullopt);
+    }
+    return RenewalOutcome::success(std::move(token));
   } catch (std::exception const& ex) {
     return RenewalOutcome::error(
         TRI_ERROR_INTERNAL,
@@ -154,6 +158,12 @@ RenewingJwtToken::RenewingJwtToken(JwtToken initialToken, Renewer renewer,
 auto RenewingJwtToken::current() -> JwtToken {
   auto const guard = std::lock_guard{_mutex};
   return _state.token;
+}
+
+void RenewingJwtToken::setRenewalThreshold(
+    JwtClock::duration renewalThreshold) {
+  auto const guard = std::lock_guard{_mutex};
+  _renewalThreshold = renewalThreshold;
 }
 
 void RenewingJwtToken::renewIfDue() {
