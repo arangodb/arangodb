@@ -1,6 +1,11 @@
 3.12.12 (XXXX-XX-XX)
 --------------------
 
+* COR-1018: Cap the `ttl` of replication batches (`POST` and `PUT` on
+  `/_api/replication/batch`) at 24 hours. Previously any value was accepted,
+  and a far-future value kept the batch's replication client entry alive
+  indefinitely, which prevented the RocksDB WAL from being released.
+
 * COR-1025: Escape double quotes, backslashes and line feeds in metric label
   values according to the Prometheus text exposition format.
 
