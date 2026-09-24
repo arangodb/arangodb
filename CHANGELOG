@@ -40,6 +40,11 @@
   Fix remote SmartGraph edge modifications so returnNew/returnOld response
   data is not persisted in the _to shadow collection.
 
+* COR-994: arangodump, arangorestore and arangosh now renew a JWT passed via
+  `--server.jwt-token` before it expires, using `POST /_open/auth/renew`
+  and controlled by `--server.jwt-renewal-threshold`. Long-running dumps
+  no longer fail with HTTP 401 once `--server.session-timeout` elapses.
+
 * arangodump, arangorestore and arangobackup now report the server's error (e.g.
   "HTTP 401 (Unauthorized): ArangoError 11: User not authenticated") together
   with the "Could not connect to endpoint" message when the initial connection

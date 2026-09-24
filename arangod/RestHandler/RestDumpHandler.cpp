@@ -40,7 +40,9 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
+#include <chrono>
 #include <cstdint>
+#include <thread>
 #include <vector>
 
 using namespace arangodb;
@@ -212,6 +214,11 @@ void RestDumpHandler::handleCommandDumpNext() {
 
   auto batch = context->next(*batchId, lastBatch);
   auto counts = context->getBlockCounts();
+
+  TRI_IF_FAILURE("RestDumpHandler::slow-next") {
+    // slow down every fetch so that a dump outlives a short-lived JWT
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+  }
 
   TRI_IF_FAILURE("RestDumpHandler::fetch-delay") {
     // busy loop when we are the first fetch
