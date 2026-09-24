@@ -142,6 +142,11 @@ function makeAuthorizationHeaders (options, jwtSecret=false) {
   }
 }
 
+function loadJWTKeyFile(fn) {
+  // must remove whitespace - as in the server
+  return fs.read(fn).trim();
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief converts endpoints to URL
 // //////////////////////////////////////////////////////////////////////////////
@@ -1809,6 +1814,7 @@ class instance {
 
 exports.makeAuthorizationHeaders = makeAuthorizationHeaders;
 exports.encodeJWTSecret = encodeJWTSecret;
+exports.loadJWTKeyFile = loadJWTKeyFile;
 exports.instance = instance;
 exports.instanceType = instanceType;
 exports.instanceRole = instanceRole;

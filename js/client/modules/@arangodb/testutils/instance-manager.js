@@ -125,7 +125,8 @@ class instanceManager {
   }
 
   handleJWT() {
-    this.forceJWT = this.addArgs.hasOwnProperty('server.jwt-secret') && this.addArgs.hasOwnProperty('server.authentication');
+    this.forceJWT = (this.addArgs.hasOwnProperty('server.jwt-secret') &&
+                     this.addArgs.hasOwnProperty('server.authentication'));
     if (this.addArgs.hasOwnProperty('server.jwt-secret')) {
       this.jwt_secret = this.addArgs['server.jwt-secret'];
     } else if (this.options.hasOwnProperty('jwtSecret')) {
@@ -135,16 +136,17 @@ class instanceManager {
     if (this.addArgs.hasOwnProperty('server.jwt-secret-folder')) {
       this.options.jwtFiles = fs.list(this.addArgs['server.jwt-secret-folder']);
       this.options.jwtFiles = this.options.jwtFiles.sort();
-      this.jwt_secret = fs.read(fs.join(this.addArgs['server.jwt-secret-folder'], this.options.jwtFiles[0])).trim();
+      this.jwt_secret = inst.loadJWTKeyFile(fs.join(this.addArgs['server.jwt-secret-folder'],
+                                                    this.options.jwtFiles[0]));
     } else if (this.addArgs.hasOwnProperty('server.jwt-secret-keyfile')) {
       this.restKeyFile = this.addArgs['server.jwt-secret-keyfile'];
-      this.jwt_secret = fs.read(this.restKeyFile).trim();
+      this.jwt_secret = inst.loadJWTKeyFile(this.restKeyFile);
     } else if (this.options.encryptionAtRest &&
                !this.addArgs.hasOwnProperty('server.jwt-secret')) {
       this.restKeyFile = fs.join(this.rootDir, 'openSesame.txt');
       fs.makeDirectoryRecursive(this.rootDir);
       fs.write(this.restKeyFile, "Open Sesame!Open Sesame!Open Ses");
-      this.jwt_secret = fs.read(this.restKeyFile).trim();
+      this.jwt_secret = inst.loadJWTKeyFile(this.restKeyFile);
       this.addArgs['server.jwt-secret-keyfile'] = this.restKeyFile;
     } else if (this.options.cluster && (this.jwt_secret === "") &&
                !this.addArgs.hasOwnProperty('server.jwt-secret')) {
