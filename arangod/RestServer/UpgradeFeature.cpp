@@ -38,7 +38,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/BootstrapFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/RestartAction.h"
@@ -84,7 +83,6 @@ UpgradeFeature::UpgradeFeature(
     if (server.hasFeature<AgencyFeature>()) {
       server.forceDisableFeatures<AgencyFeature>();
     }
-    server.forceDisableFeatures<BootstrapFeature>();
   }
   // a coordinator has nothing left to disable here: already unregistered
 
