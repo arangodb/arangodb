@@ -23,6 +23,8 @@
 #include "gtest/gtest.h"
 
 #include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
+#include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Inspection/VPack.h"
 #include "VocBase/Properties/CreateCollectionBody.h"
@@ -40,6 +42,17 @@ namespace arangodb::tests {
 
 class CreateCollectionBodyTest : public ::testing::Test {
  protected:
+  // The backwards compatible retry asks for the server role, which has no
+  // default. Tests that need a different one call setRole().
+  void SetUp() override { setRole(ServerState::ROLE_COORDINATOR); }
+  void TearDown() override { setRole(_previousRole); }
+
+  static void setRole(ServerState::RoleEnum role) {
+    ServerState::instance()->setRole(role);
+  }
+
+  ServerState::RoleEnum const _previousRole{ServerState::instance()->getRole()};
+
   /// @brief this generates the minimal required body, only exchanging one
   /// attribute with the given value should work on all basic types
   /// if your attribute is "name" you will get a body back only with the name,
@@ -96,6 +109,22 @@ class CreateCollectionBodyTest : public ::testing::Test {
       VPackSlice body,
       DatabaseConfiguration const& config = defaultDBConfig()) {
     return CreateCollectionBody::fromCreateAPIBody(body, config, false);
+  }
+
+  // Same as parse() except activateBackwardsCompatibility = true;
+  // this is prod behavior
+  static ResultT<CreateCollectionBody> parseCompatible(VPackSlice body) {
+    return CreateCollectionBody::fromCreateAPIBody(body, defaultDBConfig());
+  }
+
+  // name and type are arguments of the V8 API, not part of the body
+  static ResultT<CreateCollectionBody> parseV8(VPackSlice body) {
+    return CreateCollectionBody::fromCreateAPIV8(
+        body, "test", TRI_COL_TYPE_DOCUMENT, defaultDBConfig());
+  }
+
+  static ResultT<CreateCollectionBody> parseRestore(VPackSlice body) {
+    return CreateCollectionBody::fromRestoreAPIBody(body, defaultDBConfig());
   }
 
   static void assertParsingThrows(VPackBuilder const& body) {
@@ -735,6 +764,357 @@ TEST_P(PlanCollectionReplicationFactorTest, test_nonoEnforce) {
   } else {
     EXPECT_FALSE(result.ok()) << "False positive on " << body.toJson();
   }
+}
+
+/**********************
+ * fromCreateAPIBody
+ *********************/
+
+// Every test below parses with the retry on, which is prod behavior. A value
+// the parse rejects can still be dropped or corrected by the retry.
+
+// numberOfShards: a positive number is kept, null is accepted as absent,
+// 0 is rejected
+TEST_F(CreateCollectionBodyTest, test_numberOfShards) {
+  auto body = createMinimumBodyWithOneValue(StaticStrings::NumberOfShards, 3);
+  auto valid = parseCompatible(body.slice());
+  ASSERT_TRUE(valid.ok()) << " On body " << body.toJson();
+  EXPECT_EQ(valid->numberOfShards, 3u);
+
+  body = createMinimumBodyWithOneValue(StaticStrings::NumberOfShards,
+                                       VPackSlice::nullSlice());
+  auto testee = parseCompatible(body.slice());
+  ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
+  EXPECT_EQ(
+      testee->numberOfShards,
+      parseCompatible(createMinimumBodyWithOneValue("name", "test").slice())
+          ->numberOfShards);
+
+  body = createMinimumBodyWithOneValue(StaticStrings::NumberOfShards, 0);
+  EXPECT_TRUE(parseCompatible(body.slice()).fail())
+      << " On body " << body.toJson();
+}
+
+// distributeShardsLike: null is accepted as absent
+TEST_F(CreateCollectionBodyTest, test_distributeShardsLike_null) {
+  auto body = createMinimumBodyWithOneValue(StaticStrings::DistributeShardsLike,
+                                            VPackSlice::nullSlice());
+  auto testee = parseCompatible(body.slice());
+  ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
+  EXPECT_FALSE(testee->distributeShardsLike.has_value());
+}
+
+// name must not be empty
+TEST_F(CreateCollectionBodyTest, test_name_cannot_be_empty) {
+  auto body =
+      createMinimumBodyWithOneValue(StaticStrings::DataSourceName, "test");
+  auto valid = parseCompatible(body.slice());
+  ASSERT_TRUE(valid.ok()) << " On body " << body.toJson();
+  EXPECT_EQ(valid->name, "test");
+
+  body = createMinimumBodyWithOneValue(StaticStrings::DataSourceName, "");
+  EXPECT_TRUE(parseCompatible(body.slice()).fail())
+      << " On body " << body.toJson();
+}
+
+// schema must be an object; an empty one removes the schema
+TEST_F(CreateCollectionBodyTest, test_schema_must_be_an_object) {
+  auto body = createMinimumBodyWithOneValue(StaticStrings::Schema,
+                                            VPackSlice::emptyObjectSlice());
+  EXPECT_TRUE(parseCompatible(body.slice()).ok())
+      << " On body " << body.toJson();
+
+  body = createMinimumBodyWithOneValue(StaticStrings::Schema, 42);
+  EXPECT_TRUE(parseCompatible(body.slice()).fail())
+      << " On body " << body.toJson();
+}
+
+#ifdef USE_ENTERPRISE
+// smartGraphAttribute must not be empty
+TEST_F(CreateCollectionBodyTest, test_smartGraphAttribute_cannot_be_empty) {
+  auto body = createMinimumBodyWithOneValue(
+      StaticStrings::GraphSmartGraphAttribute, "");
+  EXPECT_TRUE(parseCompatible(body.slice()).fail())
+      << " On body " << body.toJson();
+}
+#endif
+
+// an unknown type becomes document in prod; "edge" becomes edge
+TEST_F(CreateCollectionBodyTest, test_type_unknownValueBecomesDocument) {
+  auto body = createMinimumBodyWithOneValue(StaticStrings::DataSourceType, 4);
+  auto testee = parseCompatible(body.slice());
+  ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
+  EXPECT_EQ(testee->getType(), TRI_COL_TYPE_DOCUMENT);
+
+  body = createMinimumBodyWithOneValue(StaticStrings::DataSourceType, "edge");
+  testee = parseCompatible(body.slice());
+  ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
+  EXPECT_EQ(testee->getType(), TRI_COL_TYPE_EDGE);
+}
+
+// "traditional" is user input, "upgrade" is for the load path only
+TEST_F(CreateCollectionBodyTest, test_keyOptions_upgradeIsNotUserInput) {
+  auto bodyWithGenerator = [](std::string_view type) {
+    VPackBuilder body;
+    {
+      VPackObjectBuilder guard(&body);
+      body.add("name", VPackValue("test"));
+      VPackObjectBuilder keyOptions(&body, StaticStrings::KeyOptions);
+      body.add("type", VPackValue(type));
+    }
+    return body;
+  };
+
+  auto body = bodyWithGenerator("traditional");
+  auto valid = parseCompatible(body.slice());
+  ASSERT_TRUE(valid.ok()) << " On body " << body.toJson();
+  EXPECT_TRUE(std::holds_alternative<TraditionalKeyGeneratorProperties>(
+      valid->keyOptions));
+
+  body = bodyWithGenerator("upgrade");
+  EXPECT_TRUE(parseCompatible(body.slice()).fail())
+      << " On body " << body.toJson();
+}
+
+// shadowCollections is written by the server; user input is dropped
+TEST_F(CreateCollectionBodyTest, test_shadowCollections_areDropped) {
+  auto body = createMinimumBodyWithOneValue(StaticStrings::ShadowCollections,
+                                            std::vector<std::string>{"1", "2"});
+  auto testee = parseCompatible(body.slice());
+  ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
+  EXPECT_FALSE(testee->shadowCollections.has_value());
+}
+
+// groupId and shardsR2 are written by the server; user input is dropped
+TEST_F(CreateCollectionBodyTest, test_serverOwnedAttributes_areDropped) {
+  {
+    auto body = createMinimumBodyWithOneValue(StaticStrings::GroupId, 1234);
+    auto testee = parseCompatible(body.slice());
+    ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
+    EXPECT_FALSE(testee->groupId.has_value());
+  }
+  {
+    auto body = createMinimumBodyWithOneValue(
+        "shardsR2", std::vector<std::string>{"s100001"});
+    auto testee = parseCompatible(body.slice());
+    ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
+    EXPECT_FALSE(testee->shardsR2.has_value());
+  }
+}
+
+// replicationFactor: 0 is rewritten to satellite, "satellite" is kept
+TEST_F(CreateCollectionBodyTest, test_replicationFactor_zeroBecomesSatellite) {
+#ifdef USE_ENTERPRISE
+  for (auto value : {VPackValue(0), VPackValue(StaticStrings::Satellite)}) {
+    VPackBuilder body;
+    {
+      VPackObjectBuilder guard(&body);
+      body.add("name", VPackValue("test"));
+      body.add(StaticStrings::ReplicationFactor, value);
+    }
+    auto testee = parseCompatible(body.slice());
+    ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
+    EXPECT_EQ(testee->replicationFactor, 0u) << " On body " << body.toJson();
+  }
+#endif
+}
+
+// writeConcern 0 needs a satellite; a single server drops the attribute
+TEST_F(CreateCollectionBodyTest, test_writeConcern_zeroNeedsSatellite) {
+  VPackBuilder body;
+  {
+    VPackObjectBuilder guard(&body);
+    body.add("name", VPackValue("test"));
+    body.add(StaticStrings::WriteConcern, VPackValue(0));
+    body.add(StaticStrings::ReplicationFactor, VPackValue(2));
+  }
+  EXPECT_TRUE(parseCompatible(body.slice()).fail())
+      << " On body " << body.toJson();
+
+  setRole(ServerState::ROLE_SINGLE);
+  EXPECT_TRUE(parseCompatible(body.slice()).ok())
+      << " On body " << body.toJson();
+}
+
+// shardingStrategy must name a known strategy; a single server drops it
+TEST_F(CreateCollectionBodyTest, test_shardingStrategy_mustBeKnown) {
+  auto valid =
+      createMinimumBodyWithOneValue(StaticStrings::ShardingStrategy, "hash");
+  EXPECT_TRUE(parseCompatible(valid.slice()).ok())
+      << " On body " << valid.toJson();
+
+  auto body =
+      createMinimumBodyWithOneValue(StaticStrings::ShardingStrategy, "bogus");
+  EXPECT_TRUE(parseCompatible(body.slice()).fail())
+      << " On body " << body.toJson();
+
+  setRole(ServerState::ROLE_SINGLE);
+  EXPECT_TRUE(parseCompatible(body.slice()).ok())
+      << " On body " << body.toJson();
+}
+
+/**********************
+ * fromCreateAPIV8
+ *********************/
+
+// The V8 API shares the allow list with fromCreateAPIBody, so the same values
+// are accepted and corrected. name and type arrive as arguments.
+
+// name and type are taken from the arguments when the body has neither
+TEST_F(CreateCollectionBodyTest, test_v8_nameAndTypeComeFromArguments) {
+  VPackBuilder body;
+  { VPackObjectBuilder guard(&body); }
+  auto testee = parseV8(body.slice());
+  ASSERT_TRUE(testee.ok()) << testee.errorMessage();
+  EXPECT_EQ(testee->name, "test");
+  EXPECT_EQ(testee->getType(), TRI_COL_TYPE_DOCUMENT);
+}
+
+// an empty name argument is rejected before the body is parsed
+TEST_F(CreateCollectionBodyTest, test_v8_nameArgumentCannotBeEmpty) {
+  VPackBuilder body;
+  { VPackObjectBuilder guard(&body); }
+  auto testee = CreateCollectionBody::fromCreateAPIV8(
+      body.slice(), "", TRI_COL_TYPE_DOCUMENT, defaultDBConfig());
+  ASSERT_TRUE(testee.fail());
+  EXPECT_EQ(testee.errorNumber(), TRI_ERROR_ARANGO_ILLEGAL_NAME);
+}
+
+// numberOfShards: null is accepted as absent; 0 is rejected
+TEST_F(CreateCollectionBodyTest, test_v8_numberOfShards) {
+  VPackBuilder empty;
+  { VPackObjectBuilder guard(&empty); }
+  auto missing = parseV8(empty.slice());
+  ASSERT_TRUE(missing.ok()) << missing.errorMessage();
+
+  auto body = createMinimumBodyWithOneValue(StaticStrings::NumberOfShards,
+                                            VPackSlice::nullSlice());
+  auto testee = parseV8(body.slice());
+  ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
+  EXPECT_EQ(testee->numberOfShards, missing->numberOfShards);
+
+  body = createMinimumBodyWithOneValue(StaticStrings::NumberOfShards, 0);
+  EXPECT_TRUE(parseV8(body.slice()).fail()) << " On body " << body.toJson();
+}
+
+// an unknown type becomes document; "edge" becomes edge
+TEST_F(CreateCollectionBodyTest, test_v8_type) {
+  auto body = createMinimumBodyWithOneValue(StaticStrings::DataSourceType, 4);
+  auto testee = parseV8(body.slice());
+  ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
+  EXPECT_EQ(testee->getType(), TRI_COL_TYPE_DOCUMENT);
+
+  body = createMinimumBodyWithOneValue(StaticStrings::DataSourceType, "edge");
+  testee = parseV8(body.slice());
+  ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
+  EXPECT_EQ(testee->getType(), TRI_COL_TYPE_EDGE);
+}
+
+// the "upgrade" key generator is for the load path only
+TEST_F(CreateCollectionBodyTest, test_v8_keyOptions_upgradeIsNotUserInput) {
+  VPackBuilder body;
+  {
+    VPackObjectBuilder guard(&body);
+    VPackObjectBuilder keyOptions(&body, StaticStrings::KeyOptions);
+    body.add("type", VPackValue("upgrade"));
+  }
+  EXPECT_TRUE(parseV8(body.slice()).fail()) << " On body " << body.toJson();
+}
+
+/**********************
+ * fromRestoreAPIBody
+ *********************/
+
+// Restore has its own allow list, which takes precedence over the one the
+// other two APIs use. It is forever backwards compatible.
+
+// the id in the body is never taken, a fresh one is generated
+TEST_F(CreateCollectionBodyTest, test_restore_generatesFreshId) {
+  auto body = createMinimumBodyWithOneValue(StaticStrings::Id, "123");
+  auto testee = parseRestore(body.slice());
+  ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
+  EXPECT_EQ(testee->id, DataSourceId{42}) << " the fixture id generator";
+}
+
+// numberOfShards: null is accepted as absent; 0 is rejected
+TEST_F(CreateCollectionBodyTest, test_restore_numberOfShards) {
+  auto missing =
+      parseRestore(createMinimumBodyWithOneValue("name", "test").slice());
+  ASSERT_TRUE(missing.ok()) << missing.errorMessage();
+
+  auto body = createMinimumBodyWithOneValue(StaticStrings::NumberOfShards,
+                                            VPackSlice::nullSlice());
+  auto testee = parseRestore(body.slice());
+  ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
+  EXPECT_EQ(testee->numberOfShards, missing->numberOfShards);
+
+  body = createMinimumBodyWithOneValue(StaticStrings::NumberOfShards, 0);
+  EXPECT_TRUE(parseRestore(body.slice()).fail())
+      << " On body " << body.toJson();
+}
+
+// restore keeps numbers as they are, so an unknown type is rejected instead of
+// being corrected; a string type is dropped and the default applies
+TEST_F(CreateCollectionBodyTest, test_restore_type) {
+  auto body = createMinimumBodyWithOneValue(StaticStrings::DataSourceType, 4);
+  EXPECT_TRUE(parseRestore(body.slice()).fail())
+      << " On body " << body.toJson();
+
+  body = createMinimumBodyWithOneValue(StaticStrings::DataSourceType, "edge");
+  auto testee = parseRestore(body.slice());
+  ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
+  EXPECT_EQ(testee->getType(), TRI_COL_TYPE_DOCUMENT);
+}
+
+// shardingStrategy must name a known strategy; a single server drops it
+TEST_F(CreateCollectionBodyTest, test_restore_shardingStrategy_mustBeKnown) {
+  auto body =
+      createMinimumBodyWithOneValue(StaticStrings::ShardingStrategy, "bogus");
+  EXPECT_TRUE(parseRestore(body.slice()).fail())
+      << " On body " << body.toJson();
+
+  setRole(ServerState::ROLE_SINGLE);
+  EXPECT_TRUE(parseRestore(body.slice()).ok()) << " On body " << body.toJson();
+}
+
+// replicationFactor: 0 is rewritten to satellite, "satellite" is kept
+TEST_F(CreateCollectionBodyTest,
+       test_restore_replicationFactor_zeroBecomesSatellite) {
+#ifdef USE_ENTERPRISE
+  for (auto value : {VPackValue(0), VPackValue(StaticStrings::Satellite)}) {
+    VPackBuilder body;
+    {
+      VPackObjectBuilder guard(&body);
+      body.add("name", VPackValue("test"));
+      body.add(StaticStrings::ReplicationFactor, value);
+    }
+    auto testee = parseRestore(body.slice());
+    ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
+    EXPECT_EQ(testee->replicationFactor, 0u) << " On body " << body.toJson();
+  }
+#endif
+}
+
+// the "upgrade" key generator is for the load path only
+TEST_F(CreateCollectionBodyTest,
+       test_restore_keyOptions_upgradeIsNotUserInput) {
+  VPackBuilder body;
+  {
+    VPackObjectBuilder guard(&body);
+    body.add("name", VPackValue("test"));
+    VPackObjectBuilder keyOptions(&body, StaticStrings::KeyOptions);
+    body.add("type", VPackValue("upgrade"));
+  }
+  EXPECT_TRUE(parseRestore(body.slice()).fail())
+      << " On body " << body.toJson();
+}
+
+// groupId and shardsR2 are written by the server; user input is dropped
+TEST_F(CreateCollectionBodyTest, test_restore_serverOwnedAttributes) {
+  auto body = createMinimumBodyWithOneValue(StaticStrings::GroupId, 1234);
+  auto testee = parseRestore(body.slice());
+  ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
+  EXPECT_FALSE(testee->groupId.has_value());
 }
 
 }  // namespace arangodb::tests
