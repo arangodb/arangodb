@@ -21,6 +21,9 @@ if (USE_ENTERPRISE)
   if (USE_JEMALLOC)
     target_link_libraries(${BIN_ARANGOBACKUP} jemalloc)
   endif ()
+  if (USE_MIMALLOC)
+    target_link_libraries(${BIN_ARANGOBACKUP} mimalloc)
+  endif ()
 
   install(
     TARGETS ${BIN_ARANGOBACKUP}
