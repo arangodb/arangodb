@@ -627,10 +627,11 @@ void MockClusterServer::startFeatures() {
 
   // register factories & normalizers
   auto& indexFactory = const_cast<IndexFactory&>(_engine->indexFactory());
-  auto& factory =
-      getFeature<iresearch::IResearchFeature>().factory<ClusterEngine>();
+  _iresearchLinkFactory =
+      iresearch::IResearchLinkCoordinator::createFactory(server());
   indexFactory.emplace(
-      std::string{iresearch::StaticStrings::ViewArangoSearchType}, factory);
+      std::string{iresearch::StaticStrings::ViewArangoSearchType},
+      *_iresearchLinkFactory);
   _server.getFeature<ClusterFeature>().clusterInfo().startSyncers();
 }
 
