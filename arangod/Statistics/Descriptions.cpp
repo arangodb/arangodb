@@ -431,10 +431,6 @@ stats::Descriptions::Descriptions(
 }
 
 void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
-#ifdef USE_V8
-  auto& dealer = _server.getFeature<V8DealerFeature>();
-#endif
-
   b.add("uptime", VPackValue(metrics::MetricsFeature::serverUptime()));
   b.add("physicalMemory", VPackValue(PhysicalMemory::getValue()));
 
@@ -450,7 +446,9 @@ void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
   b.close();
 
 #ifdef USE_V8
-  if (dealer.isEnabled()) {
+  if (_server.hasFeature<V8DealerFeature>() &&
+      _server.getFeature<V8DealerFeature>().isEnabled()) {
+    auto& dealer = _server.getFeature<V8DealerFeature>();
     b.add("v8Context", VPackValue(VPackValueType::Object, true));
     auto v8Counters = dealer.getCurrentExecutorStatistics();
     auto memoryStatistics = dealer.getCurrentExecutorDetails();

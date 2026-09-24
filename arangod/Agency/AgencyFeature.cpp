@@ -34,17 +34,11 @@
 #include "Endpoint/Endpoint.h"
 #include "FeaturePhases/FoxxFeaturePhase.h"
 #include "FeaturePhases/ServerFeaturePhase.h"
-#include "IResearch/IResearchAnalyzerFeature.h"
-#include "IResearch/IResearchFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #ifdef USE_V8
-#include "RestServer/FrontendFeature.h"
-#include "RestServer/ScriptFeature.h"
-#include "V8/V8PlatformFeature.h"
-#include "V8Server/FoxxFeature.h"
 #include "V8Server/V8DealerFeature.h"
 #endif
 
@@ -68,11 +62,6 @@ AgencyFeature::AgencyFeature(ApplicationServer& server, AgencyOptions options)
   startsAfter<application_features::ServerFeaturePhase>();
 #endif
 
-  if (!_options.activated) {
-    disable();
-    return;
-  }
-
   if (!_options.agencyMyAddress.empty()) {
     std::string const unified = Endpoint::unifiedForm(_options.agencyMyAddress);
 
@@ -89,25 +78,13 @@ AgencyFeature::AgencyFeature(ApplicationServer& server, AgencyOptions options)
     ss->findHost(fallback);
   }
 
-  // turn off the following features, as they are not needed in an agency:
-  // - ArangoSearch: not needed by agency
-  // - IResearchAnalyzer: analyzers are not needed by agency
-  // - Action/Script/FoxxQueues/Frontend: Foxx and JavaScript APIs
-  server.disableFeatures<iresearch::IResearchFeature,
-                         iresearch::IResearchAnalyzerFeature,
-#ifdef USE_V8
-                         FoxxFeature, FrontendFeature,
-#endif
-                         ActionFeature>();
+  // ActionFeature is only registered when the agency isn't active
+  TRI_ASSERT(!server.hasFeature<ActionFeature>());
 
 #ifdef USE_V8
-  if (!V8DealerFeature::javascriptRequestedViaOptions(server.options())) {
-    // specifying --console requires JavaScript, so we can only turn Javascript
-    // off if not requested
-
-    // console mode inactive. so we can turn off V8
-    server.disableFeatures<ScriptFeature, V8PlatformFeature, V8DealerFeature>();
-  }
+  // registered only when JS was requested via options (enableV8Runtime)
+  TRI_ASSERT(server.hasFeature<V8DealerFeature>() ==
+             V8DealerFeature::javascriptRequestedViaOptions(server.options()));
 #endif
 }
 
@@ -129,9 +106,10 @@ void AgencyFeature::prepare() {
   if (_options.agencyMyAddress.empty()) {
     std::string port = "8529";
 
-    HttpEndpointProvider& endpointFeature =
-        server().getFeature<HttpEndpointProvider>();
-    auto endpoints = endpointFeature.httpEndpoints();
+    std::vector<std::string> endpoints;
+    if (server().hasFeature<HttpEndpointProvider>()) {
+      endpoints = server().getFeature<HttpEndpointProvider>().httpEndpoints();
+    }
 
     if (!endpoints.empty()) {
       std::string const& tmp = endpoints.front();

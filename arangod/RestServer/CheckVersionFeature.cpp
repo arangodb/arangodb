@@ -23,6 +23,7 @@
 #include "CheckVersionFeature.h"
 
 #include "RestServer/CheckVersionOptionsProvider.h"
+#include "Agency/AgencyFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ServerState.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
@@ -78,6 +79,9 @@ CheckVersionFeature::CheckVersionFeature(
   ServerState::instance()->setRole(ServerState::ROLE_SINGLE);
 
   server.forceDisableFeatures(_nonServerFeatures);
+  if (server.hasFeature<AgencyFeature>()) {
+    server.forceDisableFeatures<AgencyFeature>();
+  }
 
   LoggerFeature& logger = server.getFeature<LoggerFeature>();
   logger.disableThreaded();
