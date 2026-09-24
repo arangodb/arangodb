@@ -1,6 +1,13 @@
 3.12.12 (XXXX-XX-XX)
 --------------------
 
+* Fixed a rare issue where a cluster-internal request that was retried with
+  less than one millisecond left until its deadline was sent without any
+  timeout, because the remaining time was truncated to 0ms, which the network
+  layer interprets as "no timeout". In maintainer mode this triggered the
+  assertion `timeout.count() > 0` in NetworkFeature::finishRequest. Request
+  timeouts are now rounded up to whole milliseconds.
+
 * COR-1018: Cap the `ttl` of replication batches (`POST` and `PUT` on
   `/_api/replication/batch`) at 24 hours. Previously any value was accepted,
   and a far-future value kept the batch's replication client entry alive
