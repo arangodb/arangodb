@@ -26,6 +26,7 @@
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionNode/CollectionAccessingNode.h"
+#include "Aql/Expression.h"
 #include "VectorIndex/VectorSearchStrategy.h"
 #include "Transaction/Methods.h"
 
