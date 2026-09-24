@@ -642,7 +642,8 @@ void GeneralServerFeature::defineRemainingHandlers(
       {0}, queryRegistry);
 
 #ifdef USE_V8
-  if (server().isEnabled<V8DealerFeature>()) {
+  if (server().hasFeature<V8DealerFeature>() &&
+      server().isEnabled<V8DealerFeature>()) {
     // the tasks feature depends on V8. only enable it if JavaScript is enabled
     f.addPrefixHandler(RestVocbaseBaseHandler::TASKS_PATH,
                        RestHandlerCreator<RestTasksHandler>::createNoData, {0});
@@ -692,7 +693,8 @@ void GeneralServerFeature::defineRemainingHandlers(
                      {0, 1});
 
 #ifdef USE_V8
-  if (server().isEnabled<V8DealerFeature>()) {
+  if (server().hasFeature<V8DealerFeature>() &&
+      server().isEnabled<V8DealerFeature>()) {
     // the AQL UDfs feature depends on V8. only enable it if JavaScript is
     // enabled
     f.addPrefixHandler(
@@ -874,7 +876,8 @@ void GeneralServerFeature::defineRemainingHandlers(
       {0, 1}, &_logApiOptions);
 
 #ifdef USE_V8
-  if (server().isEnabled<V8DealerFeature>()) {
+  if (server().hasFeature<V8DealerFeature>() &&
+      server().isEnabled<V8DealerFeature>()) {
     // the routing feature depends on V8. only enable it if JavaScript is
     // enabled
     f.addPrefixHandler(

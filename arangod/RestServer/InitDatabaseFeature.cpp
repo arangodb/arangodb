@@ -27,6 +27,7 @@
 #include <iostream>
 #include <thread>
 
+#include "Actions/ActionFeature.h"
 #include "Agency/AgencyFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
@@ -74,6 +75,9 @@ InitDatabaseFeature::InitDatabaseFeature(
     server.forceDisableFeatures(_nonServerFeatures);
     if (server.hasFeature<AgencyFeature>()) {
       server.forceDisableFeatures<AgencyFeature>();
+    }
+    if (server.hasFeature<ActionFeature>()) {
+      server.forceDisableFeatures<ActionFeature>();
     }
     ServerState::instance()->setRole(ServerState::ROLE_SINGLE);
 

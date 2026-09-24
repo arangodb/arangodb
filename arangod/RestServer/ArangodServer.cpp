@@ -42,8 +42,7 @@ using namespace arangodb::application_features;
 namespace {
 // the rest of what this used to list is now conditionally registered instead
 auto const kNonServerFeatures =
-    std::array{std::type_index(typeid(ActionFeature)),
-               std::type_index(typeid(ClusterFeature))};
+    std::array{std::type_index(typeid(ClusterFeature))};
 
 // decouples RocksDBEngine from needing AgencyFeature to exist
 struct SortingPolicy final : public ISortingPolicy {
