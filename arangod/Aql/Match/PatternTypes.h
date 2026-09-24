@@ -36,18 +36,10 @@ struct Variable;
 
 namespace arangodb::aql::match {
 
-/// @brief MATCH semantic IR (COR-890 / COR-971).
-///
-/// These types are the planning-facing representation produced by
-/// PatternNormalizer. They intentionally remain separate from
-/// arangodb::aql::ast TypedAstNode wrappers for MATCH:
-/// - TypedAstNodes are non-owning layout views over the parser Ast
-///   (member counts, typed getters).
-/// - Normalized* hold decoded semantics Builder needs: owned collection
-///   / projection strings, EdgeDirection / PathRange kinds, reshaped
-///   start + segments, optional filters/projections.
-/// Do not fold this IR into TypedAstNodes.h; the overlap is intentional
-/// (views vs IR), not redundant.
+/// @brief MATCH planning IR produced by PatternNormalizer.
+/// Separate from ast::* TypedAstNode wrappers, which are non-owning
+/// views over the parser AST layout. These types hold decoded semantics
+/// (datasources, PathRange, projections, and reshaped start + segments).
 
 /// @brief references an expression subtree owned by the query Ast
 /// valid for the lifetime of the associated Ast object
