@@ -87,11 +87,14 @@ class CollectionMutablePropertiesTest : public ::testing::Test {
   }
 };
 
-TEST_F(CollectionMutablePropertiesTest, test_requires_some_input) {
+TEST_F(CollectionMutablePropertiesTest, test_empty_input) {
+  // The name is only required by applyDefaultsAndValidate, so an empty body
+  // parses and leaves the name empty. See CollectionDescriptorFactoryTest.
   VPackBuilder body;
   { VPackObjectBuilder guard(&body); }
   auto testee = parse(body.slice());
-  EXPECT_TRUE(testee.fail()) << " On body " << body.toJson();
+  ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
+  EXPECT_TRUE(testee->name.empty());
 }
 
 TEST_F(CollectionMutablePropertiesTest, test_minimal_user_input) {
@@ -113,8 +116,8 @@ TEST_F(CollectionMutablePropertiesTest, test_minimal_user_input) {
 }
 
 TEST_F(CollectionMutablePropertiesTest, test_illegal_names) {
-  // The empty string
-  __HELPER_assertParsingThrows(name, "");
+  // NOTE: the empty string parses. It is rejected by
+  // applyDefaultsAndValidate, see CollectionDescriptorFactoryTest.
 
   // Non String types
   __HELPER_assertParsingThrows(name, 0);

@@ -63,7 +63,6 @@ class ShardingInfo;
 
 struct Database;
 struct OperationOptions;
-struct UserInputCollectionProperties;
 
 namespace transaction {
 class Methods;
@@ -222,8 +221,6 @@ class LogicalCollection : public LogicalDataSource {
 
   // SECTION: sharding
   ShardingInfo* shardingInfo() const;
-
-  UserInputCollectionProperties getCollectionProperties() const noexcept;
 
   // proxy methods that will use the sharding info in the background
   size_t numberOfShards() const noexcept;
