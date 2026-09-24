@@ -48,9 +48,15 @@
   "icu error: U_ILLEGAL_ARGUMENT_ERROR" when the input string is empty and a
   non-empty search string is given. It now returns the empty string.
 
-* COR-995: Security fix.
+* COR-995: Removed several broken `/_admin/foxx/*` routes and tightened the
+  JavaScript sandbox settings for the remaining Foxx service management
+  actions.
 
-* COR-984: Security fix.
+* COR-984: HTTP/2 requests are now subject to the same maximum request body
+  size as HTTP/1.1 requests. Streams that exceed the limit are reset.
+
+* COR-986: `DELETE /_api/transaction/write` now only aborts the modification
+  queries that the calling user is authorized to abort.
 
 * BTS-2453: Allow again to access /_admin/aardvark/api/ (the REST API
   documentation shown in the web UI's Support tab) without authentication.
