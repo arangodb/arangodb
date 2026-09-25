@@ -1092,6 +1092,11 @@ static void JS_DefineAction(v8::FunctionCallbackInfo<v8::Value> const& args) {
     options = v8::Object::New(isolate);
   }
 
+  if (!v8g->server().hasFeature<ActionFeature>()) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "actions are not available on this instance");
+  }
+
   // create an action with the given options
   auto action =
       std::make_shared<v8_action_t>(v8g->server().getFeature<ActionFeature>());
@@ -1695,9 +1700,9 @@ static void JS_FoxxQueueVersion(
     TRI_V8_THROW_EXCEPTION_USAGE("foxxQueueVersion(<version>)");
   }
 
-  if (ServerState::instance()->isCoordinator()) {
-    TRI_GET_GLOBALS();
-
+  TRI_GET_GLOBALS();
+  if (ServerState::instance()->isCoordinator() &&
+      v8g->server().hasFeature<FoxxFeature>()) {
     auto& feature = v8g->server().getFeature<FoxxFeature>();
 
     if (args.Length() == 1) {
@@ -1711,7 +1716,7 @@ static void JS_FoxxQueueVersion(
       TRI_V8_RETURN(TRI_V8UInt64String(isolate, version));
     }
   } else {
-    // single server response.
+    // single server response, or Foxx is disabled on this instance.
     TRI_V8_RETURN_NULL();
   }
 
@@ -1727,12 +1732,11 @@ static void JS_FoxxQueueVersionBump(
     TRI_V8_THROW_EXCEPTION_USAGE("FOXX_QUEUE_VERSION_BUMP()");
   }
 
-  if (ServerState::instance()->isCoordinator()) {
+  TRI_GET_GLOBALS();
+  if (ServerState::instance()->isCoordinator() &&
+      v8g->server().hasFeature<FoxxFeature>()) {
     // only necessary in coordinator
-    TRI_GET_GLOBALS();
-
-    auto& feature = v8g->server().getFeature<FoxxFeature>();
-    feature.bumpQueueVersionIfRequired();
+    v8g->server().getFeature<FoxxFeature>().bumpQueueVersionIfRequired();
   }
   TRI_V8_RETURN_NULL();
 
@@ -1920,21 +1924,24 @@ void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
 
   // poll interval for Foxx queues
   TRI_GET_GLOBALS();
-  FoxxFeature& foxxFeature = v8g->server().getFeature<FoxxFeature>();
+  if (v8g->server().hasFeature<FoxxFeature>()) {
+    FoxxFeature& foxxFeature = v8g->server().getFeature<FoxxFeature>();
 
-  isolate->GetCurrentContext()
-      ->Global()
-      ->DefineOwnProperty(
-          TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "FOXX_QUEUES_POLL_INTERVAL"),
-          v8::Number::New(isolate, foxxFeature.pollInterval()), v8::ReadOnly)
-      .FromMaybe(false);  // ignore result
+    isolate->GetCurrentContext()
+        ->Global()
+        ->DefineOwnProperty(
+            TRI_IGETC,
+            TRI_V8_ASCII_STRING(isolate, "FOXX_QUEUES_POLL_INTERVAL"),
+            v8::Number::New(isolate, foxxFeature.pollInterval()), v8::ReadOnly)
+        .FromMaybe(false);  // ignore result
 
-  isolate->GetCurrentContext()
-      ->Global()
-      ->DefineOwnProperty(
-          TRI_IGETC,
-          TRI_V8_ASCII_STRING(isolate, "FOXX_STARTUP_WAIT_FOR_SELF_HEAL"),
-          v8::Boolean::New(isolate, foxxFeature.startupWaitForSelfHeal()),
-          v8::ReadOnly)
-      .FromMaybe(false);  // ignore result
+    isolate->GetCurrentContext()
+        ->Global()
+        ->DefineOwnProperty(
+            TRI_IGETC,
+            TRI_V8_ASCII_STRING(isolate, "FOXX_STARTUP_WAIT_FOR_SELF_HEAL"),
+            v8::Boolean::New(isolate, foxxFeature.startupWaitForSelfHeal()),
+            v8::ReadOnly)
+        .FromMaybe(false);  // ignore result
+  }
 }

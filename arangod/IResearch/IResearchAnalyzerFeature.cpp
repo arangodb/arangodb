@@ -180,6 +180,11 @@ aql::AqlValue aqlFnTokens(aql::ExpressionContext* expressionContext,
   auto& trx = expressionContext->trx();
   auto& server = expressionContext->vocbase().server();
   if (args.size() > 1) {
+    if (!server.hasFeature<IResearchAnalyzerFeature>()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_NOT_IMPLEMENTED,
+          "analyzers are not available on this instance");
+    }
     auto& analyzers = server.getFeature<IResearchAnalyzerFeature>();
     pool = analyzers.get(name, trx.vocbase(), trx.state()->analyzersRevision(),
                          trx.state()->operationOrigin());

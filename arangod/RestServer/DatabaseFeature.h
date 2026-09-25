@@ -99,7 +99,7 @@ class DatabaseManagerThread final : public ServerThread {
   DatabaseFeature& _databaseFeature;
   StorageEngine& _engine;
 #ifdef USE_V8
-  V8DealerFeature& _dealer;
+  V8DealerFeature* _dealer;
 #endif
 };
 
