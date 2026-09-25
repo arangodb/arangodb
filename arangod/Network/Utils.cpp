@@ -75,6 +75,20 @@ futures::Future<ErrorCode> resolveDestination(ClusterInfo& ci,
     co_return TRI_ERROR_NO_ERROR;
   }
 
+  // Accept URL-style schemes too, mapping them onto the fuerte transport
+  // schemes: http:// -> tcp://, https:// -> ssl://. This lets callers that
+  // hold a plain URL (e.g. the external RBAC service endpoint) use it directly
+  // as a destination.
+  if (dest.starts_with("http://")) {
+    spec.endpoint = "tcp://" + dest.substr(std::string_view{"http://"}.size());
+    co_return TRI_ERROR_NO_ERROR;
+  }
+
+  if (dest.starts_with("https://")) {
+    spec.endpoint = "ssl://" + dest.substr(std::string_view{"https://"}.size());
+    co_return TRI_ERROR_NO_ERROR;
+  }
+
   // This sets result.shardId, result.serverId and result.endpoint,
   // depending on what dest is. Note that if a shardID is given, the
   // responsible server is looked up, if a serverID is given, the endpoint

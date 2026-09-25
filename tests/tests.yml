@@ -228,6 +228,22 @@
             forceOneShard: true
             makedataDB: system_oneshard_makedata
             suffix: cluster-oneshard
+
+- rta_makedata:
+    job: run-rbac-tests
+    options:
+      type: single
+      size: medium
+      suffix: rbac
+      timeLimit: 5400
+    requires:
+      coverage: false
+      v8: true
+      arch: x64
+    args:
+      test: 050,100,400,500,580,607,612
+      oneTestTimeout: 5350
+
 # with coverage we need to have several jobs:
 - rta_makedata:
     options:

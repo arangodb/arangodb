@@ -43,8 +43,8 @@ struct SmockerHistoryEntry {
 
 class SmockerClient {
  public:
-  SmockerClient(std::string containerName, std::string mockUrl,
-                std::string adminUrl, bool manageDocker = true);
+  SmockerClient(std::string containerName, std::vector<std::string> hosts,
+                bool manageDocker = true);
 
   void start();
   void stop();
@@ -64,6 +64,7 @@ class SmockerClient {
       -> std::unique_ptr<fuerte::Response>;
 
   std::string _containerName;
+  std::vector<std::string> _hosts;
   std::string _mockUrl;
   std::string _adminUrl;
   bool _manageDocker;
