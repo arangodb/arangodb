@@ -30,7 +30,6 @@ const _ = require('lodash');
 const internal = require('internal');
 const time = internal.time;
 const jsunity = require('jsunity');
-let IM = global.instanceManager;
 const {waitForEstimatorSync } = require('@arangodb/test-helper');
 
 const colName = 'UnitTestsRecovery';
@@ -50,6 +49,7 @@ try {
 }
 
 function runSetupRoutine (config) {
+  let IM = global.instanceManager;
   // create missing collections
   for (let i = 0; i < numberOfCollections; ++i) {
     if (db._collection(colName + i) === null) {
@@ -241,7 +241,7 @@ function main (runSetup, config) {
     return 0;
   } else {
     jsunity.run(recoverySuite);
-    return jsunity.writeDone();
+    return jsunity.done();
   }
 }
 
