@@ -1048,7 +1048,8 @@ void IResearchFeature::registerIndexFactory() {
     _factory = IResearchLinkCoordinator::createFactory(server());
     emplace(*clusterIndexFactory);
     emplace(clusterIndexFactory->rocksDBIndexFactory());
-  } else if (dynamic_cast<RocksDBEngine*>(&engine) != nullptr) {
+  } else if (dynamic_cast<RocksDBIndexFactory const*>(&engine.indexFactory()) !=
+             nullptr) {
     _factory = IResearchRocksDBLink::createFactory(server());
     emplace(engine.indexFactory());
   }
