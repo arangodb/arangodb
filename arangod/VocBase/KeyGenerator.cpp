@@ -30,6 +30,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/debugging.h"
 #include "Basics/system-compiler.h"
+#include "Basics/overload.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -715,184 +716,6 @@ std::unordered_map<std::string, GeneratorType> const generatorNames = {
     {"padded", GeneratorType::kPadded},
     {"upgrade", GeneratorType::kUpgrade}};
 
-/// @brief get the generator type from VelocyPack
-GeneratorType generatorType(VPackSlice parameters) {
-  if (!parameters.isObject()) {
-    // the default
-    return GeneratorType::kTraditional;
-  }
-
-  VPackSlice type = parameters.get("type");
-  if (!type.isString()) {
-    return GeneratorType::kTraditional;
-  }
-
-  std::string typeName = basics::StringUtils::tolower(type.copyString());
-
-  auto it = generatorNames.find(typeName);
-
-  if (it != generatorNames.end()) {
-    return (*it).second;
-  }
-
-  return GeneratorType::kUnknown;
-}
-
-std::unordered_map<GeneratorMapType,
-                   std::function<std::unique_ptr<KeyGenerator>(
-                       LogicalCollection const&, VPackSlice)>> const factories =
-    {{static_cast<GeneratorMapType>(GeneratorType::kUnknown),
-      [](LogicalCollection const&,
-         VPackSlice) -> std::unique_ptr<KeyGenerator> {
-        // unknown key generator type
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR,
-                                       "invalid key generator type");
-      }},
-     {static_cast<GeneratorMapType>(GeneratorType::kTraditional),
-      [](LogicalCollection const& collection,
-         VPackSlice options) -> std::unique_ptr<KeyGenerator> {
-        bool allowUserKeys = basics::VelocyPackHelper::getBooleanValue(
-            options, StaticStrings::AllowUserKeys, true);
-
-        if (ServerState::instance()->isCoordinator() ||
-            ServerState::instance()->isDBServer()) {
-          // We are in a cluster where keys need to be globally unique. Under
-          // normal circumstances, coordinators create the keys.
-          // However, there are cases, in which this can happen on a DBServer,
-          // amongst them are:
-          //  - collections with a single shard and an AQL query which does
-          //    INSERT in a loop, no _key given by query
-          //  - collections with multiple shards, non-standard sharding, an
-          //    AQL query which does INSERT in a loop, no key given by query
-          //    and usage of the option `forceOneShardAttributeValue`
-          // In these cases we have to generate a key using a cluster-wide
-          // unique identifier, so we use the "Coordinator" key generator
-          // also on DBServers.
-
-          auto const& server = collection.vocbase().server();
-
-          auto const upgrading = server.getFeature<DatabaseFeature>().upgrade();
-          if (upgrading) {
-            return std::make_unique<UpgradeKeyGenerator>(collection);
-          } else {
-            auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
-
-            return std::make_unique<TraditionalKeyGeneratorCoordinator>(
-                ci, collection, allowUserKeys);
-          }
-        }
-        return std::make_unique<TraditionalKeyGeneratorSingle>(
-            collection, allowUserKeys, ::readLastValue(options));
-      }},
-     {static_cast<GeneratorMapType>(GeneratorType::kAutoincrement),
-      [](LogicalCollection const& collection,
-         VPackSlice options) -> std::unique_ptr<KeyGenerator> {
-        if (!ServerState::instance()->isSingleServer() &&
-            collection.numberOfShards() > 1) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_CLUSTER_UNSUPPORTED,
-              "the specified key generator is not "
-              "supported for collections with more than one shard");
-        }
-
-        uint64_t offset = 0;
-        uint64_t increment = 1;
-
-        if (VPackSlice incrementSlice = options.get("increment");
-            incrementSlice.isNumber()) {
-          double v = incrementSlice.getNumericValue<double>();
-          if (v <= 0.0) {
-            // negative or 0 increment is not allowed
-            THROW_ARANGO_EXCEPTION_MESSAGE(
-                TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR,
-                "increment value must be greater than zero");
-          }
-
-          increment = incrementSlice.getNumericValue<uint64_t>();
-
-          if (increment == 0 || increment >= (1ULL << 16)) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(
-                TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR,
-                "increment value must be greater than zero and smaller than "
-                "65536");
-          }
-        }
-
-        if (VPackSlice offsetSlice = options.get("offset");
-            offsetSlice.isNumber()) {
-          double v = offsetSlice.getNumericValue<double>();
-          if (v < 0.0) {
-            // negative or 0 offset is not allowed
-            THROW_ARANGO_EXCEPTION_MESSAGE(
-                TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR,
-                "offset value must be zero or greater");
-          }
-
-          offset = offsetSlice.getNumericValue<uint64_t>();
-
-          if (offset >= UINT64_MAX) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(
-                TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR,
-                "offset value is too high");
-          }
-        }
-
-        bool allowUserKeys = basics::VelocyPackHelper::getBooleanValue(
-            options, StaticStrings::AllowUserKeys, true);
-
-        return std::make_unique<AutoIncrementKeyGenerator>(
-            collection, allowUserKeys, ::readLastValue(options), offset,
-            increment);
-      }},
-     {static_cast<GeneratorMapType>(GeneratorType::kUuid),
-      [](LogicalCollection const& collection,
-         VPackSlice options) -> std::unique_ptr<KeyGenerator> {
-        bool allowUserKeys = basics::VelocyPackHelper::getBooleanValue(
-            options, StaticStrings::AllowUserKeys, true);
-
-        return std::make_unique<UuidKeyGenerator>(collection, allowUserKeys);
-      }},
-     {static_cast<GeneratorMapType>(GeneratorType::kPadded),
-      [](LogicalCollection const& collection,
-         VPackSlice options) -> std::unique_ptr<KeyGenerator> {
-        bool allowUserKeys = basics::VelocyPackHelper::getBooleanValue(
-            options, StaticStrings::AllowUserKeys, true);
-
-        if (ServerState::instance()->isCoordinator() ||
-            ServerState::instance()->isDBServer()) {
-          // We are in a cluster where keys need to be globally unique. Under
-          // normal circumstances, coordinators create the keys.
-          // However, there are cases, in which this can happen on a DBServer,
-          // amongst them are:
-          //  - collections with a single shard and an AQL query which does
-          //    INSERT in a loop, no _key given by query
-          //  - collections with multiple shards, non-standard sharding, an
-          //    AQL query which does INSERT in a loop, no key given by query
-          //    and usage of the option `forceOneShardAttributeValue`
-          // In these cases we have to generate a key using a cluster-wide
-          // unique identifier, so we use the "Coordinator" key generator
-          // also on DBServers.
-          auto const& server = collection.vocbase().server();
-
-          auto const upgrading = server.getFeature<DatabaseFeature>().upgrade();
-          if (upgrading) {
-            return std::make_unique<UpgradeKeyGenerator>(collection);
-          } else {
-            auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
-
-            return std::make_unique<PaddedKeyGeneratorCoordinator>(
-                ci, collection, allowUserKeys, ::readLastValue(options));
-          }
-        }
-        return std::make_unique<PaddedKeyGeneratorSingle>(
-            collection, allowUserKeys, ::readLastValue(options));
-      }},
-     {static_cast<GeneratorMapType>(GeneratorType::kUpgrade),
-      [](LogicalCollection const& collection,
-         VPackSlice options) -> std::unique_ptr<UpgradeKeyGenerator> {
-        return std::make_unique<UpgradeKeyGenerator>(collection);
-      }}};
-
 }  // namespace
 
 // smallest possible key
@@ -1033,24 +856,87 @@ bool KeyGeneratorHelper::validateId(char const* key, size_t len,
 
 /// @brief create a key generator based on the options specified
 std::unique_ptr<KeyGenerator> KeyGeneratorHelper::createKeyGenerator(
-    LogicalCollection const& collection, VPackSlice options) {
-  if (!options.isObject()) {
-    options = VPackSlice::emptyObjectSlice();
-  }
-
-  auto type = ::generatorType(options);
-
-  auto it = ::factories.find(static_cast<::GeneratorMapType>(type));
-
-  if (it == ::factories.end()) {
-    it = ::factories.find(
-        static_cast<::GeneratorMapType>(::GeneratorType::kUnknown));
-  }
-
-  TRI_ASSERT(it != ::factories.end());
-
+    LogicalCollection const& collection,
+    KeyGeneratorProperties const& options) {
   // create key generator based on what the user requested
-  std::unique_ptr<KeyGenerator> generator = (*it).second(collection, options);
+  auto generator = std::visit(
+      overload{[&](TraditionalKeyGeneratorProperties const& p)
+                   -> std::unique_ptr<KeyGenerator> {
+                 if (ServerState::instance()->isCoordinator() ||
+                     ServerState::instance()->isDBServer()) {
+                   // We are in a cluster where keys need to be globally unique.
+                   // Under normal circumstances, coordinators create the keys.
+                   // However, there are cases, in which this can happen on a
+                   // DBServer, amongst them are:
+                   //  - collections with a single shard and an AQL query which
+                   //  does
+                   //    INSERT in a loop, no _key given by query
+                   //  - collections with multiple shards, non-standard
+                   //  sharding, an
+                   //    AQL query which does INSERT in a loop, no key given by
+                   //    query and usage of the option
+                   //    `forceOneShardAttributeValue`
+                   // In these cases we have to generate a key using a
+                   // cluster-wide unique identifier, so we use the
+                   // "Coordinator" key generator also on DBServers.
+                   auto const& server = collection.vocbase().server();
+
+                   if (server.getFeature<DatabaseFeature>().upgrade()) {
+                     return std::make_unique<UpgradeKeyGenerator>(collection);
+                   }
+                   auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+
+                   return std::make_unique<TraditionalKeyGeneratorCoordinator>(
+                       ci, collection, p.allowUserKeys);
+                 }
+                 return std::make_unique<TraditionalKeyGeneratorSingle>(
+                     collection, p.allowUserKeys, p.lastValue);
+               },
+
+               [&](AutoIncrementGeneratorProperties const& p)
+                   -> std::unique_ptr<KeyGenerator> {
+                 if (!ServerState::instance()->isSingleServer() &&
+                     collection.numberOfShards() > 1) {
+                   THROW_ARANGO_EXCEPTION_MESSAGE(
+                       TRI_ERROR_CLUSTER_UNSUPPORTED,
+                       "the specified key generator is not "
+                       "supported for collections with more than one shard");
+                 }
+                 return std::make_unique<AutoIncrementKeyGenerator>(
+                     collection, p.allowUserKeys, p.lastValue, p.offset,
+                     p.increment);
+               },
+
+               [&](UUIDKeyGeneratorProperties const& p)
+                   -> std::unique_ptr<KeyGenerator> {
+                 return std::make_unique<UuidKeyGenerator>(collection,
+                                                           p.allowUserKeys);
+               },
+
+               [&](PaddedKeyGeneratorProperties const& p)
+                   -> std::unique_ptr<KeyGenerator> {
+                 if (ServerState::instance()->isCoordinator() ||
+                     ServerState::instance()->isDBServer()) {
+                   // see the comment on the traditional generator above
+                   auto const& server = collection.vocbase().server();
+
+                   if (server.getFeature<DatabaseFeature>().upgrade()) {
+                     return std::make_unique<UpgradeKeyGenerator>(collection);
+                   }
+                   auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+
+                   return std::make_unique<PaddedKeyGeneratorCoordinator>(
+                       ci, collection, p.allowUserKeys, p.lastValue);
+                 }
+                 return std::make_unique<PaddedKeyGeneratorSingle>(
+                     collection, p.allowUserKeys, p.lastValue);
+               },
+
+               [&](UpgradeKeyGeneratorProperties const&)
+                   -> std::unique_ptr<KeyGenerator> {
+                 return std::make_unique<UpgradeKeyGenerator>(collection);
+               }},
+      options);
 
   // optionally wrap it into a KeyGenerator for a smart graph collection,
   // if necessary
