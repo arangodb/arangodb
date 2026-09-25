@@ -1281,7 +1281,7 @@ class instance {
       if (ret.code !== 200) {
         throw new ArangoError(ret);
       }
-      return ret.parsedBody;
+      return `${ret.parsedBody}`;
     });
   }
   /////////////////////////////////////////////////////////////////////////////////////////
