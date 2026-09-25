@@ -116,7 +116,6 @@ class instanceManager {
     } else {
       this.startupMaxCount = options.startupMaxCount;
     }
-    this.forceJWT = false;
     this.jwt_secret = "";
     this.JWT = "";
     this.handleJWT();
@@ -125,8 +124,6 @@ class instanceManager {
   }
 
   handleJWT() {
-    this.forceJWT = (this.addArgs.hasOwnProperty('server.jwt-secret') &&
-                     this.addArgs.hasOwnProperty('server.authentication'));
     if (this.addArgs.hasOwnProperty('server.jwt-secret')) {
       this.jwt_secret = this.addArgs['server.jwt-secret'];
     } else if (this.options.hasOwnProperty('jwtSecret')) {
@@ -141,17 +138,23 @@ class instanceManager {
     } else if (this.addArgs.hasOwnProperty('server.jwt-secret-keyfile')) {
       this.restKeyFile = this.addArgs['server.jwt-secret-keyfile'];
       this.jwt_secret = inst.loadJWTKeyFile(this.restKeyFile);
-    } else if (this.options.encryptionAtRest &&
-               !this.addArgs.hasOwnProperty('server.jwt-secret')) {
-      this.restKeyFile = fs.join(this.rootDir, 'openSesame.txt');
-      fs.makeDirectoryRecursive(this.rootDir);
-      fs.write(this.restKeyFile, "Open Sesame!Open Sesame!Open Ses");
-      this.jwt_secret = inst.loadJWTKeyFile(this.restKeyFile);
-      this.addArgs['server.jwt-secret-keyfile'] = this.restKeyFile;
     } else if (this.options.cluster && (this.jwt_secret === "") &&
                !this.addArgs.hasOwnProperty('server.jwt-secret')) {
       this.jwt_secret = "Open Sesame!Open Sesame!Open Ses";
       this.addArgs['server.jwt-secret'] = this.jwt_secret;
+    }
+
+    if (this.options.encryptionAtRest) {
+      if (this.addArgs.hasOwnProperty('rocksdb.encryption-keyfile')) {
+        this.restKeyFile = this.addArgs['rocksdb.encryption-keyfile'];
+      } else if (this.addArgs.hasOwnProperty('rocksdb.encryption-keyfolder')) {
+        this.options.restKeyFile = fs.list(this.addArgs['rocksdb.encryption-keyfolder'])[0];
+      } else {
+        fs.makeDirectoryRecursive(this.rootDir);
+        this.restKeyFile = fs.join(this.rootDir, 'openDiskSesame.txt');
+        fs.write(this.restKeyFile, "Open Sesame!Disk Sesame!Open Ses");
+        this.addArgs['rocksdb.encryption-keyfile'] = this.restKeyFile;
+      }
     }
     this.agencyMgr.jwt_secret = this.jwt_secret;
     this.JWT = inst.encodeJWTSecret(this.jwt_secret);
@@ -543,8 +546,7 @@ class instanceManager {
           this.arangods.push(new inst.instance(
             this.options, instanceRole.agent, this.protocol,
             this.agencyMgr, this.addArgs,
-            fs.join(this.rootDir, instanceRole.agent + "_" + count),
-            this.tmpDir, this.restKeyFile,
+            fs.join(this.rootDir, instanceRole.agent + "_" + count), this.tmpDir,
             this.jwt_secret, this.memlayout[instanceRole.agent]));
         }
         this.instanceRoles.push(instanceRole.agent);
@@ -557,8 +559,7 @@ class instanceManager {
           this.arangods.push(new inst.instance(
             this.options, instanceRole.dbServer, this.protocol,
             this.agencyMgr, this.addArgs,
-            fs.join(this.rootDir, instanceRole.dbServer + "_" + count),
-            this.tmpDir, this.restKeyFile,
+            fs.join(this.rootDir, instanceRole.dbServer + "_" + count), this.tmpDir,
             this.jwt_secret, this.memlayout[instanceRole.dbServer]));
         }
         this.instanceRoles.push(instanceRole.dbServer);
@@ -569,8 +570,7 @@ class instanceManager {
           this.arangods.push(new inst.instance(
             this.options, instanceRole.coordinator, this.protocol,
             this.agencyMgr, this.addArgs,
-            fs.join(this.rootDir, instanceRole.coordinator + "_" + count),
-            this.tmpDir, this.restKeyFile,
+            fs.join(this.rootDir, instanceRole.coordinator + "_" + count), this.tmpDir,
             this.jwt_secret, this.memlayout[instanceRole.coordinator]));
           frontendCount ++;
         }
@@ -583,8 +583,7 @@ class instanceManager {
           this.arangods.push(new inst.instance(
             this.options, instanceRole.single, this.protocol,
             this.agencyMgr, this.addArgs,
-            fs.join(this.rootDir, instanceRole.single + "_" + count),
-            this.tmpDir, this.restKeyFile,
+            fs.join(this.rootDir, instanceRole.single + "_" + count), this.tmpDir,
             this.jwt_secret, this.memlayout[instanceRole.single]));
           this.urls.push(this.arangods[this.arangods.length -1].url);
           this.endpoints.push(this.arangods[this.arangods.length -1].endpoint);
@@ -1519,7 +1518,7 @@ class instanceManager {
   reconnect(privileged)
   {
     let passvoid = this.hasSetPassvoid ? this.options.password:'';
-    if (this.jwt_secret !== null && (privileged || this.forceJWT)) {
+    if (this.jwt_secret !== null && privileged) {
       let deadline = time() + seconds(60);
       arango.reconnect(this.endpoint,
                        '_system',
