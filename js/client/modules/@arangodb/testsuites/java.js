@@ -38,9 +38,9 @@ const optionsDocumentation = [
 
 const internal = require('internal');
 
-const executeExternal = internal.executeExternal;
-const executeExternalAndWait = internal.executeExternalAndWait;
-const statusExternal = internal.statusExternal;
+const {
+  statusExternal,
+  SetGlobalExecutionDeadlineTo } = internal;
 
 /* Modules: */
 const _ = require('lodash');
@@ -142,11 +142,23 @@ arangodb.acquireHostList=true
     let start = Date();
     let status = true;
     const cwd = fs.normalize(fs.makeAbsolute(this.options.javasource));
-    const rc = executeExternalAndWait('mvn', args, false, 0, [], cwd);
-    if (rc.exit !== 0) {
-      print(`${RED}${Date()} test execution returned non-zero result: ${JSON.stringify(rc)}${RESET}`);
+    SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout);
+    try {
+      const rc = pu.executeAndWait('mvn', args, this.options, "javaDriver", cwd, false, this.options.oneTestTimeout, this.instanceManager, cwd);
+      if (rc.exit !== 0) {
+        print(`${RED}${Date()} test execution returned non-zero result: ${JSON.stringify(rc)}${RESET}`);
+        status = false;
+      }
+    } catch (ex) {
+      let timeout = SetGlobalExecutionDeadlineTo(0.0);
       status = false;
+      results = {
+        status: false,
+        failed: 1,
+        message: `testrun has thrown ${ex.message} \n ${ex.stack}`
+      };
     }
+    SetGlobalExecutionDeadlineTo(0.0);
     let txtfile = fs.join(cwd, "test-functional/target/unicode_names.txt");
     if (fs.exists(txtfile)) {
       print(`copying ${txtfile}`);
@@ -225,11 +237,23 @@ class runInKafkaTest extends runWithAllureReport {
     let start = Date();
     let status = true;
     const cwd = fs.normalize(fs.makeAbsolute(this.options.kafkasource));
-    const rc = executeExternalAndWait('mvn', args, false, 0, [], cwd);
-    if (rc.exit !== 0) {
-      print(`${RED}${Date()} test execution returned non-zero result: ${JSON.stringify(rc)}${RESET}`);
+    SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout);
+    try {
+      const rc = pu.executeAndWait('mvn', args, this.options, "kafkaDriver", cwd, false, this.options.oneTestTimeout, this.instanceManager, cwd);
+      if (rc.exit !== 0) {
+        print(`${RED}${Date()} test execution returned non-zero result: ${JSON.stringify(rc)}${RESET}`);
+        status = false;
+      }
+    } catch (ex) {
       status = false;
+      let timeout = SetGlobalExecutionDeadlineTo(0.0);
+      results = {
+        status: false,
+        failed: 1,
+        message: `testrun has thrown ${ex.message} \n ${ex.stack}`
+      };
     }
+    SetGlobalExecutionDeadlineTo(0.0);
     this.getAllureResults(testResultsDir, results, status, 'kafkadriver');
     return results;
   }
@@ -294,11 +318,23 @@ class runInSparkDatasourceTest extends runWithAllureReport {
     let start = Date();
     let status = true;
     const cwd = fs.normalize(fs.makeAbsolute(this.options.sparksource));
-    const rc = executeExternalAndWait('mvn', args, false, 0, [], cwd);
-    if (rc.exit !== 0) {
-      print(`${RED}${Date()} test execution returned non-zero result: ${JSON.stringify(rc)}${RESET}`);
+    SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout);
+    try {
+      const rc = pu.executeAndWait('mvn', args, this.options, "sparkdriver", cwd, false, this.options.oneTestTimeout, this.instanceManager, cwd);
+      if (rc.exit !== 0) {
+        print(`${RED}${Date()} test execution returned non-zero result: ${JSON.stringify(rc)}${RESET}`);
+        status = false;
+      }
+    } catch (ex) {
       status = false;
+      let timeout = SetGlobalExecutionDeadlineTo(0.0);
+      results = {
+        status: false,
+        failed: 1,
+        message: `testrun has thrown ${ex.message} \n ${ex.stack}`
+      };
     }
+    SetGlobalExecutionDeadlineTo(0.0);
     this.getAllureResults(testResultsDir, results, status, 'sparkdriver');
     return results;
   }
@@ -360,11 +396,23 @@ class runInSpringDataTest extends runWithAllureReport {
     let start = Date();
     let status = true;
     const cwd = fs.normalize(fs.makeAbsolute(this.options.springsource));
-    const rc = executeExternalAndWait('mvn', args, false, 0, [], cwd);
-    if (rc.exit !== 0) {
-      print(`${RED}${Date()} test execution returned non-zero result: ${JSON.stringify(rc)}${RESET}`);
+    SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout);
+    try {
+      const rc = pu.executeAndWait('mvn', args, this.options, "SpringDataDriver", cwd, false, this.options.oneTestTimeout, this.instanceManager, cwd);
+      if (rc.exit !== 0) {
+        print(`${RED}${Date()} test execution returned non-zero result: ${JSON.stringify(rc)}${RESET}`);
+        status = false;
+      }
+    } catch (ex) {
       status = false;
+      let timeout = SetGlobalExecutionDeadlineTo(0.0);
+      results = {
+        status: false,
+        failed: 1,
+        message: `testrun has thrown ${ex.message} \n ${ex.stack}`
+      };
     }
+    SetGlobalExecutionDeadlineTo(0.0);
     this.getAllureResults(testResultsDir, results, status, 'springdatatest');
     return results;
   }
@@ -429,11 +477,29 @@ class runInTinkerpopProvider extends runWithAllureReport {
     let start = Date();
     let status = true;
     const cwd = fs.normalize(fs.makeAbsolute(this.options.tinkerpopsource));
-    const rc = executeExternalAndWait('mvn', args, false, 0, [], cwd);
-    if (rc.exit !== 0) {
-      print(`${RED}${Date()} test execution returned non-zero result: ${JSON.stringify(rc)}${RESET}`);
-      status = false;
+    let deadline = this.options.oneTestTimeout;
+    if (this.options.cluster) {
+      deadline *= 5;
+    } else {
+      deadline *= 2;
     }
+    SetGlobalExecutionDeadlineTo(deadline);
+    try {
+      const rc = pu.executeAndWait('mvn', args, this.options, "TinkerpopDriver", cwd, false, this.options.oneTestTimeout, this.instanceManager, cwd);
+      if (rc.exit !== 0) {
+        print(`${RED}${Date()} test execution returned non-zero result: ${JSON.stringify(rc)}${RESET}`);
+        status = false;
+      }
+    } catch (ex) {
+      status = false;
+      let timeout = SetGlobalExecutionDeadlineTo(0.0);
+      results = {
+        status: false,
+        failed: 1,
+        message: `testrun has thrown ${ex.message} \n ${ex.stack}`
+      };
+    }
+    SetGlobalExecutionDeadlineTo(0.0);
     this.getAllureResults(testResultsDir, results, status, 'tinkerpopdriver');
     return results;
   }

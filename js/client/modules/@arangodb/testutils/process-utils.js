@@ -226,7 +226,7 @@ function killRemainingProcesses(results) {
 // / @brief executes a command and waits for result
 // //////////////////////////////////////////////////////////////////////////////
 
-function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = false, timeout = 0, instanceInfo = {}) {
+function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = false, timeout = 0, instanceInfo = {}, cwd=undefined) {
   if (valgrindTest && options.valgrind) {
     let valgrindOpts = {};
 
@@ -279,7 +279,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
 
   let sh = new sanHandler(cmd.replace(/.*\//, ''), options);
   sh.detectLogfiles(instanceInfo.rootDir, instanceInfo.rootDir);
-  let res = executeExternalAndWait(cmd, args, false, timeout * 1000,  sh.getSanOptions());
+  let res = executeExternalAndWait(cmd, args, false, timeout * 1000,  sh.getSanOptions(), cwd);
 
   instanceInfo.pid = res.pid;
   instanceInfo.exitStatus = res;
