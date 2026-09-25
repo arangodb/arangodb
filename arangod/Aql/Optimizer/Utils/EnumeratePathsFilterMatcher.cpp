@@ -30,6 +30,9 @@
 #include "Aql/ExecutionNode/FilterNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
+#include "Aql/Function.h"
+#include "Aql/Quantifier.h"
+#include "Aql/TypedAstNodes.h"
 #include "Basics/overload.h"
 #include "Logger/LogMacros.h"
 
@@ -47,44 +50,151 @@ struct Match {
   AstNode const* map;
   AstNode const* attributeAccess;
   AstNode const* rhs;
+  /// @brief expression inside `[* FILTER ...]`, or nullptr when absent
+  AstNode const* inlineFilter;
+  /// @brief CURRENT variable belonging to the matched expansion only
+  Variable const* iteratorVar;
+  AstNodeType comparisonType;
   std::string accessedAttribute;
 };
 
+/// @brief Replace references to the expansion's own CURRENT (`iteratorVar`)
+/// with `tmpVar`. Nested expansions introduce a different CURRENT variable and
+/// must remain untouched — matching is by Variable* identity, not by name.
+AstNode* replaceIteratorReference(AstNode* node, Variable const* iteratorVar,
+                                  AstNode* tmpVar) {
+  auto func = [&](AstNode* n) -> AstNode* {
+    if (n->type == NODE_TYPE_REFERENCE || n->type == NODE_TYPE_VARIABLE) {
+      if (static_cast<Variable const*>(n->getData()) == iteratorVar) {
+        return tmpVar;
+      }
+    }
+    return n;
+  };
+  return Ast::traverseAndModify(node, func);
+}
+
+/// @brief Map ARRAY_* operators to the corresponding binary operator; for
+/// NONE negate so the per-element implication stays `!B || cmp`.
+AstNodeType buildSingleComparatorType(AstNode const* condition) {
+  TRI_ASSERT(condition->numMembers() == 3);
+  AstNodeType type = NODE_TYPE_ROOT;
+
+  switch (condition->type) {
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
+      type = NODE_TYPE_OPERATOR_BINARY_EQ;
+      break;
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
+      type = NODE_TYPE_OPERATOR_BINARY_NE;
+      break;
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
+      type = NODE_TYPE_OPERATOR_BINARY_LT;
+      break;
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
+      type = NODE_TYPE_OPERATOR_BINARY_LE;
+      break;
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
+      type = NODE_TYPE_OPERATOR_BINARY_GT;
+      break;
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
+      type = NODE_TYPE_OPERATOR_BINARY_GE;
+      break;
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
+      type = NODE_TYPE_OPERATOR_BINARY_IN;
+      break;
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
+      type = NODE_TYPE_OPERATOR_BINARY_NIN;
+      break;
+    default:
+      TRI_ASSERT(false) << "unsupported array operator type";
+      return NODE_TYPE_ROOT;
+  }
+  auto quantifier = condition->getMemberUnchecked(2);
+  TRI_ASSERT(quantifier->type == NODE_TYPE_QUANTIFIER);
+  TRI_ASSERT(!Quantifier::isAny(quantifier));
+  if (Quantifier::isNone(quantifier)) {
+    type = Ast::negateOperator(type);
+  }
+  return type;
+}
+
+/// @brief Lightweight check that an inline FILTER may be pulled into the path
+/// enumeration. Mirrors TraversalConditionFinder::isSupportedInlineFilter:
+/// plain `[* FILTER ...]` only, no path-variable access, no nested ARRAY_FILTER
+/// quantifier. Nested expansions are allowed; their CURRENT stays distinct.
+bool isSupportedInlineFilter(Variable const* pathVar, AstNode const* filter) {
+  ast::ArrayFilterNode arrayFilter{filter};
+  if (arrayFilter.getQuantifier()->type != NODE_TYPE_NOP) {
+    return false;
+  }
+  bool supported = true;
+  Ast::traverseReadOnly(
+      arrayFilter.getFilter(),
+      [&](AstNode const* n) -> bool {
+        if (!supported) {
+          return false;
+        }
+        // Filter is evaluated per edge/vertex and must not look at the path.
+        if ((n->type == NODE_TYPE_REFERENCE || n->type == NODE_TYPE_VARIABLE) &&
+            static_cast<Variable const*>(n->getData()) == pathVar) {
+          supported = false;
+          return false;
+        }
+        if (n->type == NODE_TYPE_FCALL_USER) {
+          supported = false;
+          return false;
+        }
+        if (n->type == NODE_TYPE_FCALL) {
+          auto* func = static_cast<Function const*>(n->getData());
+          if (!func->hasFlag(Function::Flags::Deterministic)) {
+            supported = false;
+            return false;
+          }
+        }
+        return true;
+      },
+      [](AstNode const*) {});
+  return supported;
+}
+
 // Currently supported conditions are of the form
 //
-//  pathVariable.vertices[* RETURN ...] ALL == $literal_value
+//  pathVariable.vertices[* ...] ALL|NONE op $literal_value
+//  pathVariable.edges[* ...] ALL|NONE op $literal_value
 //
-// or
+// Optionally with an inline FILTER on the expansion:
 //
-//  pathVariable.edges[* RETURN ...] ALL == $literal_value
+//  pathVariable.edges[* FILTER B(CURRENT)].attr ALL op y
 //
-// such that the map in RETURN does not access *any* variables
-// in the environment. This can be extended to variables that are
-// valid in the path enumeration i.e. calculated before the enumeration
-// is run.
+// which becomes the per-element condition `!B(edge) || edge.attr op y`
+// (for NONE the comparator is negated first).
 //
-// This function either returns std::nullopt, if it finds that the expression
-// does not have the correct shape, or the `Match` struct which contains
-// the *map*, which is the (RETURN ...) expression, the *rhs* which is the
-// right hand side of the `ALL ==` operator, and the accessedAttribute, which
-// can only be `vertices` or `edges`;
-//
-// The match function is not intended to check which variables are accessed
-// inside `map`.
+// The map in RETURN / attribute access after the expansion must not access
+// variables that are invalid inside the path enumeration.
 auto matchExpression(Ast* ast, AstNode const* expression,
                      Variable const* pathVar) -> std::optional<Match> {
-  if (expression->type != NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ) {
-    LOG_ENUMERATE_PATHS_OPTIMIZER_RULE
-        << std::format("iterating andNode, bailing not binary eq, but {}",
-                       expression->getTypeString());
-    return std::nullopt;
+  switch (expression->type) {
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
+      break;
+    default:
+      LOG_ENUMERATE_PATHS_OPTIMIZER_RULE
+          << std::format("iterating andNode, bailing not binary array op, but {}",
+                         expression->getTypeString());
+      return std::nullopt;
   }
 
   auto quantifier = expression->getMemberUnchecked(2);
-  if ((quantifier == nullptr) or (not Quantifier::isAll(quantifier))) {
-    LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << std::format(
-        "iterating andNode, bailing binary eq quantifier not ALL, but {}",
-        quantifier->getIntValue(true));
+  if (quantifier == nullptr || quantifier->type != NODE_TYPE_QUANTIFIER ||
+      Quantifier::isAny(quantifier) || Quantifier::isAtLeast(quantifier)) {
+    LOG_ENUMERATE_PATHS_OPTIMIZER_RULE
+        << "iterating andNode, bailing quantifier not ALL/NONE";
     return std::nullopt;
   }
 
@@ -94,58 +204,61 @@ auto matchExpression(Ast* ast, AstNode const* expression,
         << std::format("iterating andNode, bailing lhs not EXPANSION");
     return std::nullopt;
   }
-  if (lhs->getMemberUnchecked(2)->type != NODE_TYPE_NOP) {
+
+  ast::ExpansionNode expansion{lhs};
+
+  // Inline LIMIT is unsupported (same as before).
+  if (expansion.getLimit()->type != NODE_TYPE_NOP) {
     LOG_ENUMERATE_PATHS_OPTIMIZER_RULE
-        << std::format("iterating andNode, bailing lhs member 2 not NOP");
-    return std::nullopt;
-  }
-  if (lhs->getMemberUnchecked(3)->type != NODE_TYPE_NOP) {
-    LOG_ENUMERATE_PATHS_OPTIMIZER_RULE
-        << std::format("iterating andNode, bailing lhs member 3 not NOP");
+        << std::format("iterating andNode, bailing lhs member 3 (LIMIT) not NOP");
     return std::nullopt;
   }
 
-  if (lhs->getMemberUnchecked(1)->type != NODE_TYPE_ATTRIBUTE_ACCESS &&
-      lhs->getMemberUnchecked(4)->type == NODE_TYPE_NOP) {
+  AstNode const* inlineFilter = nullptr;
+  AstNode const* filterMember = expansion.getFilter();
+  if (filterMember->type == NODE_TYPE_ARRAY_FILTER) {
+    // Validate the FILTER as a whole here and do not recurse into it for
+    // path-pattern matching — nested expansions inside the FILTER must not be
+    // mistaken for the path access being optimized (COR-918).
+    if (!isSupportedInlineFilter(pathVar, filterMember)) {
+      LOG_ENUMERATE_PATHS_OPTIMIZER_RULE
+          << "iterating andNode, bailing unsupported inline FILTER";
+      return std::nullopt;
+    }
+    inlineFilter = ast::ArrayFilterNode{filterMember}.getFilter();
+  } else if (filterMember->type != NODE_TYPE_NOP) {
+    LOG_ENUMERATE_PATHS_OPTIMIZER_RULE
+        << std::format("iterating andNode, bailing lhs member 2 not NOP/FILTER");
+    return std::nullopt;
+  }
+
+  if (expansion.getExpression()->type != NODE_TYPE_ATTRIBUTE_ACCESS &&
+      expansion.getProjection()->type == NODE_TYPE_NOP) {
     LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << std::format(
         "iterating andNode, bailing lhs member 1 not ATTRIBUTE_ACCESS");
     return std::nullopt;
   }
 
-  auto map = lhs->getMemberUnchecked(4)->clone(ast);
+  auto map = expansion.getProjection()->clone(ast);
 
   auto rhsValue = expression->getMemberUnchecked(1);
-  if (rhsValue->type != NODE_TYPE_VALUE) {
+  if (rhsValue->type != NODE_TYPE_VALUE && rhsValue->type != NODE_TYPE_ARRAY &&
+      rhsValue->type != NODE_TYPE_OBJECT) {
     LOG_ENUMERATE_PATHS_OPTIMIZER_RULE
-        << std::format("iterating andNode, bailing rhs not a Value, but a {}",
+        << std::format("iterating andNode, bailing rhs not a constant, but a {}",
                        rhsValue->getTypeString());
     return std::nullopt;
   }
 
-  auto iterator = lhs->getMemberUnchecked(0);
-  if (iterator->type != NODE_TYPE_ITERATOR) {
-    LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << std::format(
-        "iterating andNode, bailing lhs member 0 not an iterator, but a "
-        "{}",
-        rhsValue->getTypeString());
-    return std::nullopt;
-  }
-  auto current = iterator->getMemberUnchecked(0);
-  if (current->type != NODE_TYPE_VARIABLE) {
-    LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << std::format(
-        "iterating andNode, bailing iterator member 0 not a variable, "
-        "but a "
-        "{}",
-        rhsValue->getTypeString());
-    return std::nullopt;
-  }
+  auto iterator = expansion.getIterator();
+  Variable const* current = iterator.getVariable();
 
-  auto attributeAccess = iterator->getMemberUnchecked(1);
+  auto attributeAccess = iterator.getExpression();
   if (attributeAccess->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
     LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << std::format(
         "iterating andNode, bailing iterator member 1 not an attribute "
         "access, but a {}",
-        rhsValue->getTypeString());
+        attributeAccess->getTypeString());
     return std::nullopt;
   }
 
@@ -166,44 +279,53 @@ auto matchExpression(Ast* ast, AstNode const* expression,
     return std::nullopt;
   }
 
+  AstNodeType comparisonType = buildSingleComparatorType(expression);
+  if (comparisonType == NODE_TYPE_ROOT) {
+    return std::nullopt;
+  }
+
   return Match{.map = map,
-               .attributeAccess = lhs->getMemberUnchecked(1),
+               .attributeAccess = expansion.getExpression(),
                .rhs = rhsValue,
+               .inlineFilter = inlineFilter,
+               .iteratorVar = current,
+               .comparisonType = comparisonType,
                .accessedAttribute = std::string{accessedAttribute}};
 }
 
 // Assemble a filter that can be applied to a single vertex or edge.
-// the *map* extracted in the matchExpression function is a function
-// that has to evaluate equal to the *rhs* for *all* vertices/edges on
-// a path.
-//
-// This function replaces the references to the variable CURRENT by
-// the temporary variable used by the EnumeratePathsNode to evaluate
-// vertex/edge conditions, and assembles a new expression with one
-// "free" variable (the temporary) evaluating map == rhs
-//
-// TODO: Use the Expression wrapper class?
-auto assembleCondition(Ast* ast, AstNode* tmpVar,
-                       AstNode const* attributeAccess, AstNode const* map,
-                       AstNode const* rhs) -> AstNode const* {
-  if (map->type != NODE_TYPE_NOP) {
-    auto mapClone = map->clone(ast);
+// Without an inline FILTER this is `map(tmp) op rhs` (or attribute access).
+// With an inline FILTER B, this is `!B(tmp) || (map(tmp) op rhs)`.
+auto assembleCondition(Ast* ast, AstNode* tmpVar, Match const& match)
+    -> AstNode const* {
+  AstNode* comparison = nullptr;
+  if (match.map->type != NODE_TYPE_NOP) {
+    auto mapClone = match.map->clone(ast);
     auto lhs =
-        Ast::traverseAndModify(mapClone, [&tmpVar](AstNode* node) -> AstNode* {
-          if (node->type == NODE_TYPE_REFERENCE) {
-            return tmpVar;
-          }
-          return node;
-        });
-    return ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, lhs,
-                                         rhs);
+        replaceIteratorReference(mapClone, match.iteratorVar, tmpVar);
+    comparison = ast->createNodeBinaryOperator(match.comparisonType, lhs,
+                                               match.rhs);
+  } else {
+    AstNode* access = match.attributeAccess->clone(ast);
+    // inject tmpVar as the base of the attribute access (replacing CURRENT)
+    access->changeMember(0, tmpVar);
+    comparison = ast->createNodeBinaryOperator(match.comparisonType, access,
+                                               match.rhs);
   }
 
-  AstNode* access = attributeAccess->clone(ast);
-  // inject tmpVar
-  access->changeMember(0, tmpVar);
-  return ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, access,
-                                       rhs);
+  if (match.inlineFilter == nullptr) {
+    return comparison;
+  }
+
+  // p.edges[* FILTER B(CURRENT)].attr ALL|NONE op y
+  //   =>  !B(edge) || edge.attr op y   (NONE: comparator already negated)
+  AstNode* filterExpression = replaceIteratorReference(
+      match.inlineFilter->clone(ast), match.iteratorVar, tmpVar);
+  return ast->createNodeBinaryOperator(
+      NODE_TYPE_OPERATOR_BINARY_OR,
+      ast->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT,
+                                   filterExpression),
+      comparison);
 }
 
 auto processFilter(Ast* ast, EnumeratePathsNode* enumeratePathsNode,
@@ -222,6 +344,12 @@ auto processFilter(Ast* ast, EnumeratePathsNode* enumeratePathsNode,
      inside the path enumeration */
   auto variablesReferenced = VarSet{};
   Ast::getReferencedVariables(match->map, variablesReferenced);
+  if (match->inlineFilter != nullptr) {
+    Ast::getReferencedVariables(match->inlineFilter, variablesReferenced);
+  }
+  // The expansion's CURRENT is replaced with the temporary and must not be
+  // treated as an external dependency of the pushed condition.
+  variablesReferenced.erase(match->iteratorVar);
 
   auto const& variablesValid = enumeratePathsNode->getVarsValid();
 
@@ -232,8 +360,7 @@ auto processFilter(Ast* ast, EnumeratePathsNode* enumeratePathsNode,
   }
 
   auto* tmpVar = enumeratePathsNode->getTemporaryRefNode();
-  auto condition = assembleCondition(ast, tmpVar, match->attributeAccess,
-                                     match->map, match->rhs);
+  auto condition = assembleCondition(ast, tmpVar, *match);
 
   if (match->accessedAttribute == "vertices") {
     enumeratePathsNode->registerGlobalVertexCondition(condition);
