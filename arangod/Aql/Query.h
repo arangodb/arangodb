@@ -257,6 +257,13 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   }
   void initForTests();
   void initTrxForTests();
+
+  /// @brief runs the same parse/validate/instantiate/optimize pipeline that
+  /// prepareQuery() uses (via preparePlan()), but, unlike prepareQuery(),
+  /// never proceeds to physically instantiate the execution engine or enter
+  /// EXECUTION state. The query is left in PLAN_OPTIMIZATION with its
+  /// transaction open.
+  void prepareOptimizedPlanForTests();
 #endif
 
   AqlItemBlockManager& itemBlockManager() { return _itemBlockManager; }
