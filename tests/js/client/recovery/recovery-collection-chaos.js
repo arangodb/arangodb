@@ -23,7 +23,7 @@
 // /
 // //////////////////////////////////////////////////////////////////////////////
 
-const base = require("fs").join(process.cwd(), require('internal').pathForTesting('server'),
+const base = require("fs").join(process.cwd(), require('internal').pathForTesting('client'),
   'recovery', 'recovery-collection-chaos.inc');
 const chaos = require(base);
 
