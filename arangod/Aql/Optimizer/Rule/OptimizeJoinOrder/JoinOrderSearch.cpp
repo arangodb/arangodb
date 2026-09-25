@@ -234,11 +234,7 @@ auto getCheapestConcatenation(JoinGraph& graph,
   // only replaces `bestIndex` on a strict cost improvement -- tie-breaks
   // equal-cost components by that address order, making the final
   // concatenation (and therefore whether it clears the improvement margin)
-  // non-deterministic. Sorting by each component's first vertex id here
-  // fixes the tie-break for every round below: erasing the winner each round
-  // never disturbs the relative id-order of what remains, so this single
-  // sort is enough for the whole loop. Do not remove this as "redundant" --
-  // ties are the common case, not an edge case, here.
+  // non-deterministic.
   std::sort(decided.begin(), decided.end(),
             [](DecidedComponent const& lhs, DecidedComponent const& rhs) {
               return lhs.order.order.front()->id() <
@@ -268,27 +264,19 @@ auto getCheapestConcatenation(JoinGraph& graph,
 }
 
 /// @brief whether the cheapest concatenation may replace the written
-/// sequence of components. The selection in getCheapestConcatenation has no
-/// guard of its own -- it always picks the cheapest, unconditionally, and
-/// that cost is computed by replaying every component's vertices, including
-/// one that may have been declined for resting on defaulted statistics. Left
-/// unguarded, resequencing would apply exactly the statistics the
-/// per-component pass declared untrustworthy to decide which component runs
-/// first. So resequencing gets the same defaulted/margin treatment as a
-/// component's own internal order, just judged against the written
-/// *sequence* of components rather than any one component's written order.
-/// `defaulted` propagates through every `extend` call, so "neither estimate
-/// is defaulted" already reduces to "no component's chosen order rests on a
-/// fallback statistic" -- no separate per-component scan is needed.
+/// sequence of components.
 auto acceptsResequencing(JoinGraph& graph, JoinCostEstimator const& estimator,
-                         std::vector<EnumerateCollectionNode*> const& baseline,
+                         JoinEstimate const& baselineEstimate,
                          std::vector<EnumerateCollectionNode*> const& candidate)
     -> bool {
-  auto const baselineEstimate = getEstimateForOrder(graph, estimator, baseline);
+  // The caller skips the search entirely when the baseline is defaulted, so
+  // this only documents the precondition; violating it would cost plan
+  // quality, not correctness.
+  TRI_ASSERT(!baselineEstimate.defaulted);
   auto const candidateEstimate =
       getEstimateForOrder(graph, estimator, candidate);
 
-  if (baselineEstimate.defaulted || candidateEstimate.defaulted) {
+  if (candidateEstimate.defaulted) {
     LOG_TOPIC("a7f06", TRACE, Logger::AQL)
         << "optimize-join-order: keeping the written component sequence, "
            "estimate rests on defaulted statistics";
@@ -425,15 +413,28 @@ auto chooseJoinOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
                   [](DecidedComponent const& c) { return c.reordered; });
 
   auto baseline = concatenateInWrittenSequence(decided, graph.nodes.size());
-  auto candidate =
-      getCheapestConcatenation(graph, estimator, decided, graph.nodes.size());
+  auto const baselineEstimate = getEstimateForOrder(graph, estimator, baseline);
 
+  // Estimated before the search, not after: getCheapestConcatenation() costs
+  // O(k^2) replays for k components, and all of them are wasted if the
+  // sequence cannot be replaced anyway.
+  //
   // acceptsResequencing() only accepts a candidate that beats the baseline by
   // the improvement margin, so an accepted candidate cannot equal it.
-  bool const sequenceChanged =
-      acceptsResequencing(graph, estimator, baseline, candidate);
-  std::vector<EnumerateCollectionNode*> chosen =
-      sequenceChanged ? std::move(candidate) : std::move(baseline);
+  bool sequenceChanged = false;
+  std::vector<EnumerateCollectionNode*> chosen;
+  if (baselineEstimate.defaulted) {
+    LOG_TOPIC("a7f08", TRACE, Logger::AQL)
+        << "optimize-join-order: keeping the written component sequence, "
+           "the sequence estimate rests on defaulted statistics";
+    chosen = std::move(baseline);
+  } else {
+    auto candidate =
+        getCheapestConcatenation(graph, estimator, decided, graph.nodes.size());
+    sequenceChanged =
+        acceptsResequencing(graph, estimator, baselineEstimate, candidate);
+    chosen = sequenceChanged ? std::move(candidate) : std::move(baseline);
+  }
 
   if (!anyComponentReordered && !sequenceChanged) {
     return std::nullopt;
