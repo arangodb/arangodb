@@ -542,7 +542,7 @@ void QuerySnippet::serializeIntoBuilder(
         // lifetime needs to be extended.
         auto const var = dist->getVariable();
         if (!dist->getVarsUsedLater().contains(var)) {
-          auto reg = dist->getRegisterPlan()->variableToRegisterId(var);
+          auto reg = dist->inputRegister(var);
           auto globalRegsToClear = dist->getRegsToClear();
           auto globalRegsToKeepStack = dist->getRegsToKeepStack();
           for (auto& regSet : globalRegsToKeepStack) {
