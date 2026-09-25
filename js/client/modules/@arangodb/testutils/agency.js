@@ -915,9 +915,9 @@ class agencyMgr {
             print("Agency Up!");
             try {
               // set back log level to info for agents
-              for (let agentIndex = 0; agentIndex < this.agencySize; agentIndex ++) {
-                this.getAnyAgent(this.agencyInstances[agentIndex], '/_admin/log/level', 'PUT_RAW', JSON.stringify({"agency":"info"}));
-              }
+              this.agencyInstances.forEach(agent => {
+                agent.setLogLevel({"agency":"info"});
+              });
             } catch (err) {}
             return;
           }

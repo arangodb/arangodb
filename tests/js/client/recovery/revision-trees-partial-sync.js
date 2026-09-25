@@ -1,5 +1,6 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global runSetup, assertEqual, assertTrue, assertFalse, assertNull, fail, print, arango */
+/* global runSetup, assertEqual, assertFalse, assertTrue */
+
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -22,45 +23,69 @@
 // /
 // //////////////////////////////////////////////////////////////////////////////
 
-var db = require('@arangodb').db;
+const db = require('@arangodb').db;
 const internal = require('internal');
-var jsunity = require('jsunity');
+const jsunity = require('jsunity');
 let IM = global.instanceManager;
 const {waitForEstimatorSync } = require('@arangodb/test-helper');
 
+const colName1 = 'UnitTestsRecovery1';
+const colName2 = 'UnitTestsRecovery2';
+const colName3 = 'UnitTestsRecovery3';
+
 function runSetupRoutine () {
   'use strict';
+  db._drop(colName1);
+  let c = db._create(colName1);
+  c.ensureIndex({ type: "hash", fields: ["value"] });
 
-  db._drop('UnitTestsRecoveryDummy');
-  var c = db._create('UnitTestsRecoveryDummy');
-
-  db._dropView('UnitTestsRecoveryView');
-  db._createView('UnitTestsRecoveryView', 'arangosearch', {});
-
-  var meta = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } };
-  db._view('UnitTestsRecoveryView').properties(meta);
-
-  internal.wal.flush(true, true);
-  IM.debugSetFailAt("FlushCrashAfterReleasingMinTick");
-
-  if (global.hasOwnProperty('arango')) {
-    // we intend to crash, so we should get to know quickly:
-    print('setting short timeout');
-    arango.timeout(10);
+  let docs = [];
+  for (let i = 0; i < 1000; ++i) {
+    docs.push({ _key: "test_" + i });
   }
-  try {
-    for (let i = 0; i < 10000; i++) {
-      c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
-    }
-    c.save({ name: 'crashme' }, { waitForSync: true });
-  } catch (ex) {
-    if ((ex.errorNum !== internal.errors.ERROR_SIMPLE_CLIENT_UNKNOWN_ERROR.code) &&
-        (ex.errorNum !== internal.errors.ERROR_CLUSTER_CONNECTION_LOST.code) &&
-        (ex.errorNum !== internal.errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code)) {
-      print(ex);
-      throw ex;
-    }
+  c.insert(docs);
+
+  db._drop(colName2);
+  c = db._create(colName2);
+
+  docs = [];
+  for (let i = 0; i < 1000; ++i) {
+    docs.push({ _key: "test_" + i });
   }
+  c.insert(docs);
+
+  db._drop(colName3);
+  c = db._create(colName3);
+
+  docs = [];
+  for (let i = 0; i < 1000; ++i) {
+    docs.push({ _key: "test_" + i });
+  }
+  c.insert(docs);
+
+  waitForEstimatorSync();
+  IM.debugSetFailAt("RocksDBMetaCollection::serializeRevisionTree");
+
+  c = db._collection(colName1);
+  docs = [];
+  for (let i = 1000; i < 2000; ++i) {
+    docs.push({ _key: "test_" + i });
+  }
+  c.insert(docs);
+
+  c = db._collection(colName2);
+  for (let i = 0; i < 500; ++i) {
+    c.remove({ _key: "test_" + i });
+  }
+
+  c = db._collection(colName3);
+  c.truncate();
+
+  db._drop('test');
+  c = db._create('test');
+  c.save({ _key: 'crashme' }, true);
+
+  waitForEstimatorSync();
 
   IM.debugTerminate('crashing server');
 }
@@ -74,24 +99,28 @@ function recoverySuite () {
   jsunity.jsUnity.attachAssertions();
 
   return {
-
+    setUp: function () {
+      waitForEstimatorSync(); // make sure estimates are consistent
+    },
+    tearDown: function () {},
 
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test whether we can restore the trx data
     // //////////////////////////////////////////////////////////////////////////////
 
-    testIResearchLinkPopulateNoRelease: function () {
-      var v = db._view('UnitTestsRecoveryView');
-      assertEqual(v.name(), 'UnitTestsRecoveryView');
-      assertEqual(v.type(), 'arangosearch');
-      var p = v.properties().links;
-      assertTrue(p.hasOwnProperty('UnitTestsRecoveryDummy'));
-      assertTrue(p.UnitTestsRecoveryDummy.includeAllFields);
+    testRevisionTreeCounts: function() {
+      const c1 = db._collection(colName1);
+      assertEqual(c1._revisionTreeSummary().count, c1.count());
+      assertEqual(c1._revisionTreeSummary().count, 2000);
 
-      var result = db._query("FOR doc IN UnitTestsRecoveryView SEARCH doc.c >= 0 OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").toArray();
-      var expectedResult = db._query("FOR doc IN UnitTestsRecoveryDummy FILTER doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length").toArray();
-      assertEqual(result[0], expectedResult[0]);
-    }
+      const c2 = db._collection(colName2);
+      assertEqual(c2._revisionTreeSummary().count, c2.count());
+      assertEqual(c2._revisionTreeSummary().count, 500);
+
+      const c3 = db._collection(colName3);
+      assertEqual(c3._revisionTreeSummary().count, c3.count());
+      assertEqual(c3._revisionTreeSummary().count, 0);
+    },
 
   };
 }

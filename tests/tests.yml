@@ -79,14 +79,6 @@
       buckets: 8
       size: small
 
-- recovery_server:
-    options:
-      priority: 2000
-      buckets: 2
-      parallelity: 3
-      size: small
-      type: single
-
 - shell_api_multi_permissions:
     options:
       priority: 500

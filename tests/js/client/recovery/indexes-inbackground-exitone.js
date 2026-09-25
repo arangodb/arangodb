@@ -1,5 +1,6 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global runSetup, assertEqual, assertTrue, assertFalse, assertNull, fail, print, arango */
+/* global runSetup, print, fail, assertEqual, assertFalse, assertTrue */
+
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -23,46 +24,31 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 var db = require('@arangodb').db;
-const internal = require('internal');
+var internal = require('internal');
 var jsunity = require('jsunity');
 let IM = global.instanceManager;
-const {waitForEstimatorSync } = require('@arangodb/test-helper');
 
 function runSetupRoutine () {
   'use strict';
+  db._drop('UnitTestsRecovery1');
+  let c = db._create('UnitTestsRecovery1');
 
-  db._drop('UnitTestsRecoveryDummy');
-  var c = db._create('UnitTestsRecoveryDummy');
-
-  db._dropView('UnitTestsRecoveryView');
-  db._createView('UnitTestsRecoveryView', 'arangosearch', {});
-
-  var meta = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } };
-  db._view('UnitTestsRecoveryView').properties(meta);
-
-  internal.wal.flush(true, true);
-  IM.debugSetFailAt("FlushCrashAfterReleasingMinTick");
-
-  if (global.hasOwnProperty('arango')) {
-    // we intend to crash, so we should get to know quickly:
-    print('setting short timeout');
-    arango.timeout(10);
+  let docs = [];
+  for (let i = 0; i < 1000; ++i) {
+    docs.push({ value: i });
   }
+  c.insert(docs);
+
+  IM.debugSetFailAt("RocksDBBuilderIndex::fillIndex");
   try {
-    for (let i = 0; i < 10000; i++) {
-      c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
-    }
-    c.save({ name: 'crashme' }, { waitForSync: true });
+    c.ensureIndex({ type: "skiplist", fields: ["value"] });
+    fail();
   } catch (ex) {
-    if ((ex.errorNum !== internal.errors.ERROR_SIMPLE_CLIENT_UNKNOWN_ERROR.code) &&
-        (ex.errorNum !== internal.errors.ERROR_CLUSTER_CONNECTION_LOST.code) &&
-        (ex.errorNum !== internal.errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code)) {
+    if (ex.errorNum !== internal.errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) {
       print(ex);
       throw ex;
     }
   }
-
-  IM.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -80,17 +66,12 @@ function recoverySuite () {
     // / @brief test whether we can restore the trx data
     // //////////////////////////////////////////////////////////////////////////////
 
-    testIResearchLinkPopulateNoRelease: function () {
-      var v = db._view('UnitTestsRecoveryView');
-      assertEqual(v.name(), 'UnitTestsRecoveryView');
-      assertEqual(v.type(), 'arangosearch');
-      var p = v.properties().links;
-      assertTrue(p.hasOwnProperty('UnitTestsRecoveryDummy'));
-      assertTrue(p.UnitTestsRecoveryDummy.includeAllFields);
-
-      var result = db._query("FOR doc IN UnitTestsRecoveryView SEARCH doc.c >= 0 OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").toArray();
-      var expectedResult = db._query("FOR doc IN UnitTestsRecoveryDummy FILTER doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length").toArray();
-      assertEqual(result[0], expectedResult[0]);
+    testBrokenIndex: function () {
+      const c = db._collection('UnitTestsRecovery1');
+      const indexes = c.indexes();
+      assertEqual(indexes.length, 1);
+      assertEqual(indexes[0].type, 'primary');
+      assertEqual(indexes[0].id, 'UnitTestsRecovery1/0');
     }
 
   };
