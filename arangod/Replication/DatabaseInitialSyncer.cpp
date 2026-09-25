@@ -390,7 +390,9 @@ Result fetchRevisions(NetworkFeature& netFeature, transaction::Methods& trx,
           RevisionId rid = RevisionId::fromSlice(leaderDoc);
 
           double tInsert = TRI_microtime();
-          Result res = trx.insert(collection.name(), leaderDoc, options).result;
+          Result res = basics::catchToResult([&] {
+            return trx.insert(collection.name(), leaderDoc, options).result;
+          });
           stats.waitedForInsertions += TRI_microtime() - tInsert;
 
           options.indexOperationMode = IndexOperationMode::internal;
@@ -403,7 +405,8 @@ Result fetchRevisions(NetworkFeature& netFeature, transaction::Methods& trx,
           }
 
           if (!res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
-            return res;
+            return replutils::documentInsertError(std::move(res),
+                                                  collection.name());
           }
 
           // conflicting documents (that we just inserted), as documents may be
@@ -423,7 +426,8 @@ Result fetchRevisions(NetworkFeature& netFeature, transaction::Methods& trx,
           // errorMessage() is this case contains the conflicting key
           auto inner = removeConflict(res.errorMessage());
           if (inner.fail()) {
-            return res;
+            return replutils::documentInsertError(std::move(res),
+                                                  collection.name());
           }
         }
       }
@@ -761,8 +765,14 @@ Result DatabaseInitialSyncer::parseCollectionDumpMarker(
   }
 
   std::string conflictingDocumentKey;
-  return applyCollectionDumpMarker(trx, coll, type, doc,
-                                   conflictingDocumentKey);
+  Result res = basics::catchToResult([&] {
+    return applyCollectionDumpMarker(trx, coll, type, doc,
+                                     conflictingDocumentKey);
+  });
+  if (res.fail()) {
+    return replutils::documentInsertError(std::move(res), coll->name());
+  }
+  return res;
 }
 
 /// @brief apply the data from a collection dump
@@ -815,24 +825,30 @@ Result DatabaseInitialSyncer::parseCollectionDump(
       options.checkUniqueConstraintsInPreflight = false;
       options.isSynchronousReplicationFrom = _state.leaderId;
 
-      auto opRes = trx.insert(coll->name(), s, options);
-      if (opRes.fail()) {
-        return opRes.result;
-      }
-
-      VPackSlice resultSlice = opRes.slice();
-      if (resultSlice.isArray()) {
-        for (VPackSlice it : VPackArrayIterator(resultSlice)) {
-          VPackSlice s = it.get(StaticStrings::Error);
-          if (!s.isTrue()) {
-            continue;
-          }
-          // found an error
-          auto errorCode =
-              ErrorCode{it.get(StaticStrings::ErrorNum).getNumber<int>()};
-          VPackSlice msg = it.get(StaticStrings::ErrorMessage);
-          return Result(errorCode, msg.copyString());
+      auto res = basics::catchToResult([&]() -> Result {
+        auto opRes = trx.insert(coll->name(), s, options);
+        if (opRes.fail()) {
+          return std::move(opRes.result);
         }
+
+        VPackSlice resultSlice = opRes.slice();
+        if (resultSlice.isArray()) {
+          for (VPackSlice it : VPackArrayIterator(resultSlice)) {
+            VPackSlice s = it.get(StaticStrings::Error);
+            if (!s.isTrue()) {
+              continue;
+            }
+            // found an error
+            auto errorCode =
+                ErrorCode{it.get(StaticStrings::ErrorNum).getNumber<int>()};
+            VPackSlice msg = it.get(StaticStrings::ErrorMessage);
+            return Result(errorCode, msg.copyString());
+          }
+        }
+        return {};
+      });
+      if (res.fail()) {
+        return replutils::documentInsertError(std::move(res), coll->name());
       }
 
     } else {
@@ -849,9 +865,11 @@ Result DatabaseInitialSyncer::parseCollectionDump(
 
           TRI_ASSERT(!r.is(TRI_ERROR_ARANGO_TRY_AGAIN));
           if (r.fail()) {
-            r.reset(r.errorNumber(),
-                    absl::StrCat("received invalid dump data for collection '",
-                                 coll->name(), "'"));
+            if (r.is(TRI_ERROR_REPLICATION_INVALID_RESPONSE)) {
+              r.reset(r.errorNumber(),
+                      absl::StrCat("received invalid dump data for collection '",
+                                   coll->name(), "'"));
+            }
             return r;
           }
           ++markersProcessed;
