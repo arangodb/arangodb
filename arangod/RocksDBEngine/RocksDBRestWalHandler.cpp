@@ -184,6 +184,3 @@ void RocksDBRestWalHandler::transactions() {
   builder.close();
   generateResult(rest::ResponseCode::NOT_IMPLEMENTED, builder.slice());
 }
-
-
-
