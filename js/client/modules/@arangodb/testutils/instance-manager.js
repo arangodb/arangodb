@@ -124,12 +124,18 @@ class instanceManager {
     this.expectAsserts = false;
     this.hasSetPassvoid = false;
     this.pm = pm.getPortManager(options);
-    this.rbacPort = this.pm.findFreePort(this.options.minPort, this.options.maxPort);
+    // Only when the built-in dummy will actually be launched (same condition as
+    // launchInstance). findFreePort() probes ports, which throws under
+    // --javascript.allow-port-testing false - see tests/js/client/permissions/ports.js.
+    this.rbacPort = (this.options.rbac && typeof this.options.rbac !== "string")
+          ? this.pm.findFreePort(this.options.minPort, this.options.maxPort)
+          : null;
     this.rbacInstance = null;
   }
 
   handleJWT() {
-    this.forceJWT = this.addArgs.hasOwnProperty('server.jwt-secret') && this.addArgs.hasOwnProperty('server.authentication');
+    this.forceJWT = (this.addArgs.hasOwnProperty('server.jwt-secret') &&
+                     this.addArgs.hasOwnProperty('server.authentication'));
     if (this.addArgs.hasOwnProperty('server.jwt-secret')) {
       this.jwt_secret = this.addArgs['server.jwt-secret'];
     } else if (this.options.hasOwnProperty('jwtSecret')) {
@@ -139,19 +145,22 @@ class instanceManager {
     if (this.addArgs.hasOwnProperty('server.jwt-secret-folder')) {
       this.options.jwtFiles = fs.list(this.addArgs['server.jwt-secret-folder']);
       this.options.jwtFiles = this.options.jwtFiles.sort();
-      this.jwt_secret = fs.read(fs.join(this.addArgs['server.jwt-secret-folder'], this.options.jwtFiles[0]));
+      this.jwt_secret = inst.loadJWTKeyFile(fs.join(this.addArgs['server.jwt-secret-folder'],
+                                                    this.options.jwtFiles[0]));
+    } else if (this.addArgs.hasOwnProperty('server.jwt-secret-keyfile')) {
+      this.restKeyFile = this.addArgs['server.jwt-secret-keyfile'];
+      this.jwt_secret = inst.loadJWTKeyFile(this.restKeyFile);
     } else if (this.options.encryptionAtRest &&
                !this.addArgs.hasOwnProperty('server.jwt-secret')) {
       this.restKeyFile = fs.join(this.rootDir, 'openSesame.txt');
       fs.makeDirectoryRecursive(this.rootDir);
       fs.write(this.restKeyFile, "Open Sesame!Open Sesame!Open Ses");
-      this.jwt_secret = fs.read(this.restKeyFile);
+      this.jwt_secret = inst.loadJWTKeyFile(this.restKeyFile);
       this.addArgs['server.jwt-secret-keyfile'] = this.restKeyFile;
     } else if (this.options.cluster && (this.jwt_secret === "") &&
                !this.addArgs.hasOwnProperty('server.jwt-secret')) {
       this.jwt_secret = "Open Sesame!Open Sesame!Open Ses";
       this.addArgs['server.jwt-secret'] = this.jwt_secret;
-      //this.addArgs['server.jwt-key'] = encodeJWTSecret(this.jwt_secret);
     }
     this.agencyMgr.jwt_secret = this.jwt_secret;
     this.JWT = inst.encodeJWTSecret(this.jwt_secret);
@@ -1095,7 +1104,7 @@ class instanceManager {
     if (moreArgs.hasOwnProperty('server.jwt-secret-folder')) {
       let files = fs.list(moreArgs['server.jwt-secret-folder']);
       files = files.sort();
-      this.jwt_secret = fs.read(fs.join(moreArgs['server.jwt-secret-folder'], files[0]));
+      this.jwt_secret = fs.read(fs.join(moreArgs['server.jwt-secret-folder'], files[0])).trim();
     }
 
     this.JWT = inst.encodeJWTSecret(this.jwt_secret);
@@ -1537,7 +1546,7 @@ class instanceManager {
   reconnect(privileged)
   {
     let passvoid = this.hasSetPassvoid ? this.options.password:'';
-    if (this.JWT !== null && (privileged || this.forceJWT)) {
+    if (this.jwt_secret !== null && (privileged || this.forceJWT)) {
       let deadline = time() + seconds(60);
       arango.reconnect(this.endpoint,
                        '_system',

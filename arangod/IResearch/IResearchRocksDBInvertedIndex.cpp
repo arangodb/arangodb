@@ -221,10 +221,10 @@ T getMetric(IResearchRocksDBInvertedIndex const& index) {
 
 std::string getLabels(IResearchRocksDBInvertedIndex const& index) {
   return absl::StrCat(  // clang-format off
-      "db=\"", index.getDbName(), "\","
-      "index=\"", index.name(), "\","
-      "collection=\"", index.getCollectionName(), "\","
-      "index_id=\"", index.id().id(), "\","
+      "db=\"", metrics::escapeLabelValue(index.getDbName()), "\","
+      "index=\"", metrics::escapeLabelValue(index.name()), "\","
+      "collection=\"", metrics::escapeLabelValue(index.getCollectionName()),
+      "\",index_id=\"", index.id().id(), "\","
       "shard=\"", index.getShardName(), "\"");  // clang-format on
 }
 
