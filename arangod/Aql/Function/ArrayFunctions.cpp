@@ -39,6 +39,9 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
+#include <algorithm>
+#include <cmath>
+#include <limits>
 #include <list>
 #include <set>
 #include <unordered_map>
@@ -723,37 +726,35 @@ AqlValue functions::Range(ExpressionContext* expressionContext, AstNode const&,
 
   double step = stepValue.toDouble();
 
-  if (step == 0.0 || (from < to && step < 0.0) || (from > to && step > 0.0)) {
+  if (!std::isfinite(from) || !std::isfinite(to) || !std::isfinite(step) ||
+      step == 0.0 || (from < to && step < 0.0) || (from > to && step > 0.0)) {
     registerWarning(expressionContext, AFN,
                     TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
 
+  // epsilon is the smallest representable gap between 1.0 and the next double;
+  // times the operand, which gives one ulp (the gap on that scale);
+  // `from`, `to`, and `step` are possible to contain 0.5 ulp empirically;
+  // and the subtract and divide add 0.5 each, which can land ~2.5 ulp;
+  // therefore, 4 * ulp can absorb the floating point errors.
+  double const tol = std::copysign(
+      4 * std::numeric_limits<double>::epsilon() *
+          std::max({std::abs(from), std::abs(to), std::abs(step)}),
+      step);
+
+  // if `count` is an integer, it can be infinite -> UB; so we use double here
+  double const count = std::floor((to - from + tol) / step) + 1.0;
+  uint64_t const n = (count <= static_cast<double>(Range::MaterializationLimit))
+                         ? static_cast<uint64_t>(count)
+                         : Range::MaterializationLimit + 1;
+  Range::throwIfTooBigForMaterialization(n);
+
   auto builder = ThreadLocalBuilderLeaser::lease();
   builder->openArray(true);
-  // TODO(COR-938): Fix the float-loop-counter and maybe the one-off
-  if (step < 0.0 && to <= from) {
-    TRI_ASSERT(step != 0.0);
-    Range::throwIfTooBigForMaterialization(
-        static_cast<uint64_t>((from - to) / -step));
-    // NOLINTBEGIN(clang-analyzer-security.FloatLoopCounter)
-    // NOLINTBEGIN(bugprone-float-loop-counter)
-    for (; from >= to; from += step) {
-      builder->add(VPackValue(from));
-    }
-    // NOLINTEND(bugprone-float-loop-counter)
-    // NOLINTEND(clang-analyzer-security.FloatLoopCounter)
-  } else {
-    TRI_ASSERT(step != 0.0);
-    Range::throwIfTooBigForMaterialization(
-        static_cast<uint64_t>((to - from) / step));
-    // NOLINTBEGIN(clang-analyzer-security.FloatLoopCounter)
-    // NOLINTBEGIN(bugprone-float-loop-counter)
-    for (; from <= to; from += step) {
-      builder->add(VPackValue(from));
-    }
-    // NOLINTEND(bugprone-float-loop-counter)
-    // NOLINTEND(clang-analyzer-security.FloatLoopCounter)
+  // from + i*step keeps the rounding error constant instead of compounding.
+  for (uint64_t i = 0; i < n; ++i) {
+    builder->add(VPackValue(from + static_cast<double>(i) * step));
   }
   builder->close();
   return AqlValue(builder->slice(), builder->size());
