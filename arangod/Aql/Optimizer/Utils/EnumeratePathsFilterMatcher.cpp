@@ -184,9 +184,9 @@ auto matchExpression(Ast* ast, AstNode const* expression,
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
       break;
     default:
-      LOG_ENUMERATE_PATHS_OPTIMIZER_RULE
-          << std::format("iterating andNode, bailing not binary array op, but {}",
-                         expression->getTypeString());
+      LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << std::format(
+          "iterating andNode, bailing not binary array op, but {}",
+          expression->getTypeString());
       return std::nullopt;
   }
 
@@ -209,8 +209,8 @@ auto matchExpression(Ast* ast, AstNode const* expression,
 
   // Inline LIMIT is unsupported (same as before).
   if (expansion.getLimit()->type != NODE_TYPE_NOP) {
-    LOG_ENUMERATE_PATHS_OPTIMIZER_RULE
-        << std::format("iterating andNode, bailing lhs member 3 (LIMIT) not NOP");
+    LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << std::format(
+        "iterating andNode, bailing lhs member 3 (LIMIT) not NOP");
     return std::nullopt;
   }
 
@@ -227,8 +227,8 @@ auto matchExpression(Ast* ast, AstNode const* expression,
     }
     inlineFilter = ast::ArrayFilterNode{filterMember}.getFilter();
   } else if (filterMember->type != NODE_TYPE_NOP) {
-    LOG_ENUMERATE_PATHS_OPTIMIZER_RULE
-        << std::format("iterating andNode, bailing lhs member 2 not NOP/FILTER");
+    LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << std::format(
+        "iterating andNode, bailing lhs member 2 not NOP/FILTER");
     return std::nullopt;
   }
 
@@ -244,9 +244,9 @@ auto matchExpression(Ast* ast, AstNode const* expression,
   auto rhsValue = expression->getMemberUnchecked(1);
   if (rhsValue->type != NODE_TYPE_VALUE && rhsValue->type != NODE_TYPE_ARRAY &&
       rhsValue->type != NODE_TYPE_OBJECT) {
-    LOG_ENUMERATE_PATHS_OPTIMIZER_RULE
-        << std::format("iterating andNode, bailing rhs not a constant, but a {}",
-                       rhsValue->getTypeString());
+    LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << std::format(
+        "iterating andNode, bailing rhs not a constant, but a {}",
+        rhsValue->getTypeString());
     return std::nullopt;
   }
 
@@ -301,16 +301,15 @@ auto assembleCondition(Ast* ast, AstNode* tmpVar, Match const& match)
   AstNode* comparison = nullptr;
   if (match.map->type != NODE_TYPE_NOP) {
     auto mapClone = match.map->clone(ast);
-    auto lhs =
-        replaceIteratorReference(mapClone, match.iteratorVar, tmpVar);
-    comparison = ast->createNodeBinaryOperator(match.comparisonType, lhs,
-                                               match.rhs);
+    auto lhs = replaceIteratorReference(mapClone, match.iteratorVar, tmpVar);
+    comparison =
+        ast->createNodeBinaryOperator(match.comparisonType, lhs, match.rhs);
   } else {
     AstNode* access = match.attributeAccess->clone(ast);
     // inject tmpVar as the base of the attribute access (replacing CURRENT)
     access->changeMember(0, tmpVar);
-    comparison = ast->createNodeBinaryOperator(match.comparisonType, access,
-                                               match.rhs);
+    comparison =
+        ast->createNodeBinaryOperator(match.comparisonType, access, match.rhs);
   }
 
   if (match.inlineFilter == nullptr) {
