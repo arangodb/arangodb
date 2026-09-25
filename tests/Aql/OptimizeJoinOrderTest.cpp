@@ -646,7 +646,7 @@ TEST_F(OptimizeJoinOrderTest, rewrite_splices_the_chosen_order) {
 
   std::vector<EnumerateCollectionNode*> desired{current[2], current[1],
                                                 current[0]};
-  rewritePlan(*plan, first, nullptr, desired);
+  rewritePlan(*plan, current, desired);
 
   auto after = collectEnumerationOrder(plan->root()->getSingleton(), nullptr);
   EXPECT_EQ(namesOf(after), (std::vector<std::string>{"c", "b", "a"}));
@@ -659,7 +659,7 @@ TEST_F(OptimizeJoinOrderTest, rewrite_keeps_the_plan_valid) {
   auto current = collectEnumerationOrder(first, nullptr);
 
   std::vector<EnumerateCollectionNode*> desired{current[1], current[0]};
-  rewritePlan(*plan, first, nullptr, desired);
+  rewritePlan(*plan, current, desired);
 
   // findVarUsage() only records which node sets and uses each variable; it
   // does not check that a used variable was already set. planRegisters() is

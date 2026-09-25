@@ -81,7 +81,7 @@ void optimizeJoinOrder(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
       auto const writtenOrder = collectEnumerationOrder(firstEnumeration, next);
       if (auto chosen = chooseJoinOrder(graph, *estimator, writtenOrder);
           chosen.has_value()) {
-        rewritePlan(*plan, firstEnumeration, next, *chosen);
+        rewritePlan(*plan, writtenOrder, *chosen);
         modified = true;
       }
     }
