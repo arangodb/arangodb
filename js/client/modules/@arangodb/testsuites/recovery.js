@@ -289,8 +289,8 @@ function _recovery (options, recoveryTests) {
     let filtered = {};
     arango.timeout(timeout);
 
-    while (true) {
-      if (tu.filterTestcaseByOptions(test, localOptions, filtered)) {
+    if (tu.filterTestcaseByOptions(test, localOptions, filtered)) {
+      while (true) {
         count += 1;
         ////////////////////////////////////////////////////////////////////////
         print(BLUE + "running setup of test " + count + " - " + test + RESET);
@@ -372,10 +372,11 @@ function _recovery (options, recoveryTests) {
           print("Not cleaning up " + params.rootDir);
           results.status = false;
         }
-      } else {
-        if (localOptions.extremeVerbosity) {
-          print('Skipped ' + test + ' because of ' + filtered.filter);
-        }
+        break;
+      }
+    } else {
+      if (localOptions.extremeVerbosity) {
+        print('Skipped ' + test + ' because of ' + filtered.filter);
       }
     }
   }
