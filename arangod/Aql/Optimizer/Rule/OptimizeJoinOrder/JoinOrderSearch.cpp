@@ -447,19 +447,19 @@ auto chooseJoinOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
   return chosen;
 }
 
-void rewritePlan(ExecutionPlan& plan, ExecutionNode* firstEnumeration,
-                 ExecutionNode* next,
+void rewritePlan(ExecutionPlan& plan,
+                 std::vector<EnumerateCollectionNode*> const& current,
                  std::vector<EnumerateCollectionNode*> const& order) {
+  ADB_PROD_ASSERT(!current.empty());
   // Capture the anchor before touching anything: after the unlink loop the
   // spine no longer contains the enumerations.
-  ExecutionNode* firstDependency = firstEnumeration->getFirstDependency();
+  ExecutionNode* firstDependency = current.front()->getFirstDependency();
   ADB_PROD_ASSERT(firstDependency != nullptr);
 
   // A permutation check, not merely a size check: the loop below unlinks every
   // enumeration and reinserts only what `order` holds, so a duplicate paired
   // with an omission would silently delete a FOR loop from the query -- which
   // no assertion on the resulting *order* would catch.
-  auto const current = collectEnumerationOrder(firstEnumeration, next);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   {
     auto sortedCurrent = current;

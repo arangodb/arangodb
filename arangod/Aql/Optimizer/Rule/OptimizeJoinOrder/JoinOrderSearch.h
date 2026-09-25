@@ -72,13 +72,13 @@ auto chooseJoinOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
                      std::vector<EnumerateCollectionNode*> const& writtenOrder)
     -> std::optional<std::vector<EnumerateCollectionNode*>>;
 
-/// @brief splice `order` into the plan in place of the run's current
-/// enumeration order. Unlinking the enumerations leaves the run's calculations
-/// and filters chained onto the run's first dependency; reinserting the
-/// enumerations above them yields a valid, if un-optimised, plan, which
-/// move-calculations-up-2 and move-filters-up-2 then repair.
-void rewritePlan(ExecutionPlan& plan, ExecutionNode* firstEnumeration,
-                 ExecutionNode* next,
+/// @brief splice `order` into the plan in place of `current`, the enumerations
+/// the run holds now. Unlinking them leaves the run's calculations and filters
+/// chained onto the run's first dependency; reinserting the enumerations above
+/// them yields a valid, if un-optimised, plan, which move-calculations-up-2 and
+/// move-filters-up-2 then repair.
+void rewritePlan(ExecutionPlan& plan,
+                 std::vector<EnumerateCollectionNode*> const& current,
                  std::vector<EnumerateCollectionNode*> const& order);
 
 }  // namespace arangodb::aql
