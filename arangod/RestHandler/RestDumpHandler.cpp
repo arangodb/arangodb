@@ -313,10 +313,15 @@ Result RestDumpHandler::validateRequest() {
         return {TRI_ERROR_BAD_PARAMETER};
       }
 
-      if (!ServerState::instance()->isDBServer()) {
-        RocksDBDumpContextOptions opts;
-        velocypack::deserializeUnsafe(body, opts);
+      RocksDBDumpContextOptions opts;
+      velocypack::deserializeUnsafe(body, opts);
 
+      if (opts.shards.empty()) {
+        return {TRI_ERROR_BAD_PARAMETER,
+                "expecting at least one entry in 'shards'"};
+      }
+
+      if (!ServerState::instance()->isDBServer()) {
         for (auto const& it : opts.shards) {
           // get collection name
           std::string collectionName;
