@@ -37,9 +37,8 @@ struct DatabaseConfiguration;
 class Result;
 
 struct ClusteringConstantProperties {
-  // null must load as unset (legacy markers), and unset must omit the key --
-  // std::optional without a fallback does both
-  std::optional<uint64_t> numberOfShards{std::nullopt};
+  // `null` is rejected for user input while being accepted for load path
+  NonNullUserOptional<uint64_t> numberOfShards{std::nullopt};
   inspection::NonNullOptional<std::string> distributeShardsLike{std::nullopt};
   // internal/agency parse "distributeShardsLike" into this one
   std::optional<std::string> distributeShardsLikeCid{std::nullopt};
