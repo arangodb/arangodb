@@ -27,6 +27,8 @@
 #include <string>
 #include <unordered_map>
 
+#include <absl/strings/str_cat.h>
+
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Validator.h>
@@ -576,6 +578,13 @@ bool isVelocyPack(httpclient::SimpleHttpResult const& response) {
   std::string const& cType =
       response.getHeaderField(StaticStrings::ContentTypeHeader, found);
   return found && cType == StaticStrings::MimeTypeVPack;
+}
+
+Result documentInsertError(Result res, std::string_view collectionName) {
+  TRI_ASSERT(res.fail());
+  return Result{res.errorNumber(),
+                absl::StrCat("error while inserting documents into collection '",
+                             collectionName, "': ", res.errorMessage())};
 }
 
 /// @brief parse a velocypack response
