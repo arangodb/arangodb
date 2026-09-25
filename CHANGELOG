@@ -1,5 +1,10 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
+* COR-918: Push path filters with an inline FILTER into K_PATHS and friends
+  Improved path filtering performance by improving query optimization for `K_PATHS`, `K_SHORTEST_PATHS`, and `ALL_SHORTEST_PATHS` queries that use inline `FILTER` 
+  conditions on path vertices or edges. These filters can now be applied earlier while 
+  paths are being enumerated, reducing unnecessary path processing and improving query 
+  performance for affected queries.
 
 * COR-994: arangodump, arangorestore and arangosh now renew a JWT passed via
   `--server.jwt-token` before it expires, using `POST /_open/auth/renew`
