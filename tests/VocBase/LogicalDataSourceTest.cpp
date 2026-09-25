@@ -71,24 +71,24 @@ class LogicalViewImpl : public arangodb::LogicalView {
 class LogicalDataSourceTest : public ::testing::Test {
  protected:
   arangodb::application_features::ApplicationServer server;
-  StorageEngineMock engine;
+  StorageEngineMock& engine;
   std::vector<
       std::pair<arangodb::application_features::ApplicationFeature&, bool>>
       features;
 
-  LogicalDataSourceTest() : server(nullptr, nullptr), engine(server) {
+  LogicalDataSourceTest()
+      : server(nullptr, nullptr),
+        engine(
+            server.addFeature<arangodb::StorageEngine, StorageEngineMock>()) {
     // setup required application features
     auto& dbFeature = server.addFeature<arangodb::DatabaseFeature>();
     features.emplace_back(dbFeature, false);
-    dbFeature.setEngineTesting(&engine);
     features.emplace_back(
         server.addFeature<arangodb::metrics::MetricsFeature>(
             arangodb::LazyApplicationFeatureReference<
                 arangodb::QueryRegistryFeature>(nullptr),
             arangodb::LazyApplicationFeatureReference<
                 arangodb::StatisticsFeature>(nullptr),
-            arangodb::LazyApplicationFeatureReference<
-                arangodb::DatabaseFeature>(nullptr),
             arangodb::LazyApplicationFeatureReference<
                 arangodb::metrics::ClusterMetricsFeature>(nullptr),
             arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
@@ -113,8 +113,6 @@ class LogicalDataSourceTest : public ::testing::Test {
   }
 
   ~LogicalDataSourceTest() {
-    server.getFeature<arangodb::DatabaseFeature>().setEngineTesting(nullptr);
-
     // destroy application features
     for (auto& f : features) {
       if (f.second) {

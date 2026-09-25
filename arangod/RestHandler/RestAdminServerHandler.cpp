@@ -32,7 +32,6 @@
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/ApiRecordingFeature.h"
-#include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -47,7 +46,7 @@ RestAdminServerHandler::RestAdminServerHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
     : RestBaseHandler(server, request, response),
-      _engine(server.getFeature<DatabaseFeature>().engine()),
+      _engine(server.getFeature<StorageEngine>()),
       _apiRecordingFeature(server.getFeature<ApiRecordingFeature>()) {}
 
 // Mounted at /_admin/server (prefix)

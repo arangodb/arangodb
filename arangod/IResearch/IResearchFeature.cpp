@@ -44,6 +44,7 @@
 #endif
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
+#include "ClusterEngine/ClusterIndexFactory.h"
 #include "CrashHandler/CrashHandler.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "FeaturePhases/V8FeaturePhase.h"
@@ -67,6 +68,7 @@
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -563,26 +565,6 @@ void registerFilters(aql::AqlFunctionFeature& functions) {
   addFunction(functions, {"ANALYZER", ".,.", flagsNoAnalyzer, &contextFunc});
 }
 
-template<typename T>
-void registerSingleFactory(IndexTypeFactory& factory,
-                           application_features::ApplicationServer& server) {
-  if (!server.hasFeature<T>()) {
-    return;
-  }
-  auto& engine = server.getFeature<T>();
-  auto& engineFactory = const_cast<IndexFactory&>(engine.indexFactory());
-  // TODO(MBkkt) remove std::string and update IndexFactory interface
-  auto r = engineFactory.emplace(
-      std::string{StaticStrings::ViewArangoSearchType}, factory);
-  if (!r.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        r.errorNumber(),
-        absl::StrCat("failure registering IResearch link factory with index "
-                     "factory from feature '",
-                     engine.name(), "': ", r.errorMessage()));
-  }
-}
-
 void registerFunctions(aql::AqlFunctionFeature& functions) {
   arangodb::iresearch::addFunction(
       functions,
@@ -1016,6 +998,11 @@ bool IResearchFeature::failQueriesOnOutOfSync() const noexcept {
 }
 
 void IResearchFeature::registerRecoveryHelper() {
+  if (ServerState::instance()->isCoordinator()) {
+    // no local WAL to recover on coordinators
+    return;
+  }
+
   if (!_options.skipRecoveryItems.empty()) {
     LOG_TOPIC("e36f2", WARN, arangodb::iresearch::TOPIC)
         << "arangosearch recovery explicitly disabled via the '"
@@ -1039,10 +1026,33 @@ void IResearchFeature::registerRecoveryHelper() {
 }
 
 void IResearchFeature::registerIndexFactory() {
-  _clusterFactory = IResearchLinkCoordinator::createFactory(server());
-  registerSingleFactory<ClusterEngine>(*_clusterFactory, server());
-  _rocksDBFactory = IResearchRocksDBLink::createFactory(server());
-  registerSingleFactory<RocksDBEngine>(*_rocksDBFactory, server());
+  if (!server().hasFeature<StorageEngine>()) {
+    return;
+  }
+  auto& engine = server().getFeature<StorageEngine>();
+
+  auto emplace = [&](IndexFactory const& target) {
+    auto r = const_cast<IndexFactory&>(target).emplace(
+        std::string{StaticStrings::ViewArangoSearchType}, *_factory);
+    if (!r.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          r.errorNumber(),
+          absl::StrCat("failure registering IResearch link factory with "
+                       "index factory from feature '",
+                       engine.name(), "': ", r.errorMessage()));
+    }
+  };
+
+  if (auto* clusterIndexFactory =
+          dynamic_cast<ClusterIndexFactory const*>(&engine.indexFactory())) {
+    _factory = IResearchLinkCoordinator::createFactory(server());
+    emplace(*clusterIndexFactory);
+    emplace(clusterIndexFactory->rocksDBIndexFactory());
+  } else if (dynamic_cast<RocksDBIndexFactory const*>(&engine.indexFactory()) !=
+             nullptr) {
+    _factory = IResearchRocksDBLink::createFactory(server());
+    emplace(engine.indexFactory());
+  }
 }
 
 #ifdef USE_ENTERPRISE
@@ -1065,17 +1075,5 @@ bool IResearchFeature::columnsCacheOnlyLeaders() const noexcept {
   return _options.columnsCacheOnlyLeader;
 }
 #endif
-
-template<typename Engine>
-IndexTypeFactory& IResearchFeature::factory() {
-  if constexpr (std::is_same_v<Engine, ClusterEngine>) {
-    return *_clusterFactory;
-  } else {
-    static_assert(std::is_same_v<Engine, RocksDBEngine>);
-    return *_rocksDBFactory;
-  }
-}
-template IndexTypeFactory& IResearchFeature::factory<ClusterEngine>();
-template IndexTypeFactory& IResearchFeature::factory<RocksDBEngine>();
 
 }  // namespace arangodb::iresearch

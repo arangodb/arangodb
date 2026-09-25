@@ -25,6 +25,7 @@
 #include "ClusterEngine/Common.h"
 #include "Metrics/IRegistry.h"
 #include "StorageEngine/StorageEngine.h"
+#include "VectorIndex/IVectorIndexProvider.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -41,22 +42,16 @@ class ClusterEngine final : public StorageEngine {
   // create the storage engine
   explicit ClusterEngine(application_features::ApplicationServer& server,
                          ClusterFeature& clusterFeature,
-                         DatabaseFeature& database,
-                         metrics::IRegistry& metrics);
+                         DatabaseFeature& database, metrics::IRegistry& metrics,
+                         IVectorIndexProvider const& vectorIndexProvider);
   ~ClusterEngine();
 
-  void setActualEngine(StorageEngine* e);
-  StorageEngine* actualEngine() const { return _actualEngine; }
-  bool isRocksDB() const;
-  bool isMock() const;
   ClusterEngineType engineType() const;
 
   // storage engine overrides
   // ------------------------
 
-  std::string_view typeName() const override {
-    return _actualEngine ? _actualEngine->typeName() : std::string_view{};
-  }
+  std::string_view typeName() const override;
 
   // inherited from ApplicationFeature
   // ---------------------------------
@@ -211,7 +206,6 @@ class ClusterEngine final : public StorageEngine {
   metrics::IRegistry& _metrics;
   /// path to arangodb data dir
   std::string _basePath;
-  StorageEngine* _actualEngine;
 };
 
 }  // namespace arangodb

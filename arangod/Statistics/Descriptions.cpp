@@ -28,7 +28,6 @@
 #include "Metrics/Counter.h"
 #include "Metrics/MetricsFeature.h"
 #include "Statistics/StatisticsFeature.h"
-#include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -438,8 +437,7 @@ void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
   b.add("uptime", VPackValue(metrics::MetricsFeature::serverUptime()));
   b.add("physicalMemory", VPackValue(PhysicalMemory::getValue()));
 
-  auto const& ts =
-      _server.getFeature<DatabaseFeature>().engine().transactionStatistics();
+  auto const& ts = _server.getFeature<StorageEngine>().transactionStatistics();
   b.add("transactions", VPackValue(VPackValueType::Object));
   b.add("started", VPackValue(ts._transactionsStarted.load()));
   b.add("aborted", VPackValue(ts._transactionsAborted.load()));

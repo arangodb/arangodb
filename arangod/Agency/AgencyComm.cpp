@@ -40,6 +40,7 @@
 #include "Metrics/LogScale.h"
 #include "Rest/GeneralRequest.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/IDatabaseProvider.h"
 #include "RestServer/ServerFeature.h"
 #include "StorageEngine/HealthData.h"
 #include "StorageEngine/StorageEngine.h"
@@ -659,10 +660,10 @@ AgencyComm::AgencyComm(application_features::ApplicationServer& server)
 
 AgencyComm::AgencyComm(ApplicationServer& server,
                        ClusterFeature& clusterFeature,
-                       DatabaseFeature& databaseFeature)
+                       IDatabaseProvider& databaseProvider)
     : _server(server),
       _clusterFeature(clusterFeature),
-      _databaseFeature(databaseFeature),
+      _databaseProvider(databaseProvider),
       _agency_comm_request_time_ms(
           _clusterFeature.agency_comm_request_time_ms()) {}
 
@@ -680,7 +681,8 @@ AgencyCommResult AgencyComm::sendServerState(double timeout) {
 
     if (ServerState::instance()->isDBServer()) {
       // use storage engine health self-assessment and send it to agency too
-      arangodb::HealthData hd = _databaseFeature.engine().healthCheck();
+      arangodb::HealthData hd =
+          _server.getFeature<StorageEngine>().healthCheck();
       hd.toVelocyPack(builder, /*withDetails*/ false);
     }
 
@@ -1317,7 +1319,7 @@ bool AgencyComm::tryInitializeStructure() {
           builder.add(StaticStrings::DatabaseId, VPackValue("1"));
           builder.add(StaticStrings::ReplicationVersion,
                       arangodb::replication::versionToString(
-                          _databaseFeature.defaultReplicationVersion()));
+                          _databaseProvider.defaultReplicationVersion()));
           // We need to also take care of the `cluster.force-one-shard` option
           // here. If set, the entire cluster is forced to be a OneShard
           // deployment.
