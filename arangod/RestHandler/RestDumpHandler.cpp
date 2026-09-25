@@ -221,13 +221,19 @@ void RestDumpHandler::handleCommandDumpNext() {
   }
 
   TRI_IF_FAILURE("RestDumpHandler::fetch-delay") {
-    // busy loop when we are the first fetch
-    // exist busy loop with second fetch
+    // the first fetch waits here until a second fetch arrives, so that it
+    // stays observable as a running activity in the meantime.
+    // the wait also ends when the failure point is cleared or the server
+    // stops: otherwise a second fetch that never reaches this point would
+    // keep this handler, and with it the dump context and its collection
+    // locks, alive forever.
     static std::atomic<bool> firstFetch{false};
-    if (!firstFetch.load()) {
-      firstFetch.store(true);
-      while (firstFetch.load()) {
+    if (!firstFetch.exchange(true)) {
+      while (firstFetch.load() && !server().isStopping() &&
+             TRI_ShouldFailDebugging("RestDumpHandler::fetch-delay")) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
       }
+      firstFetch.store(false);
     } else {
       firstFetch.store(false);
     }
