@@ -260,54 +260,32 @@ function VectorIndexScalingTestSuite() {
             assertVectorIndexUsable(randomPoint, 5, 15);
         },
 
-        testFixedFactoryWithMatchingScaling: function() {
-            collection.ensureIndex({
-                name: idxName,
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2", dimension,
-                    factory: "IVF15,Flat",
-                    nLists: {
-                        strategy: "autoSqrt",
-                        multiplier: 1,
-                        minNLists: 15,
-                        tiers: [],
+        testFixedFactoryWithScalingNListsFails: function() {
+            // A fixed IVF count contradicts a scaling spec, even when the
+            // spec would happen to resolve to the same value.
+            try {
+                collection.ensureIndex({
+                    name: idxName,
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2", dimension,
+                        factory: "IVF15,Flat",
+                        nLists: {
+                            strategy: "autoSqrt",
+                            multiplier: 1,
+                            minNLists: 15,
+                            tiers: [],
+                        },
                     },
-                },
-            });
-            const idx = collection.getIndexes().find(i => i.name === idxName);
-            assertTrue(idx !== undefined);
-            assertEqual("IVF15,Flat", idx.params.factory);
-            assertResolvedNLists(15, collection);
-            assertVectorIndexUsable(randomPoint, 5, 15);
-        },
-
-        testFixedFactoryWithMismatchedScalingFails: function() {
-            // The factory string fixes nLists at 20 while the scaling spec
-            // demands at least 15 — the mismatch is only detected by FAISS
-            // during training, so the index is created but ends up in the
-            // 'unusable' state with the training error surfaced in the
-            // response.
-            const result = collection.ensureIndex({
-                name: idxName,
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2", dimension,
-                    factory: "IVF20,Flat",
-                    nLists: {
-                        strategy: "autoSqrt",
-                        multiplier: 1,
-                        minNLists: 15,
-                        tiers: [],
-                    },
-                },
-            });
-            assertEnsureIndexResultUnusable(result,
-                "factory IVF20 vs scaling minNLists=15 mismatch");
+                });
+                fail();
+            } catch (e) {
+                assertEqual(errors.ERROR_BAD_PARAMETER.code, e.errorNum);
+            }
+            assertEqual(undefined,
+                collection.getIndexes().find(i => i.name === idxName));
         },
     };
 }
