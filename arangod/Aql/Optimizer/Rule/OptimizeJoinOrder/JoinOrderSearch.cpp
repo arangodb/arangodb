@@ -137,7 +137,7 @@ struct DecidedComponent {
 /// fully indexed and one not, must not lose the confident reordering of the
 /// first just because the second's statistics are guesses. Each component
 /// stands or falls on a comparison against its own written order.
-auto decideComponentOrders(
+auto decideInternalOrdersForEachComponent(
     JoinGraph& graph, JoinCostEstimator const& estimator,
     std::vector<EnumerateCollectionNode*> const& writtenOrder)
     -> std::vector<DecidedComponent> {
@@ -216,6 +216,13 @@ auto concatenateInWrittenSequence(std::vector<DecidedComponent> const& decided,
 
 /// @brief the cheapest concatenation of the components: they join by cross
 /// product, so they are sequenced greedily too, one winner at a time.
+///
+/// Every concatenation ends at the same cardinality -- a cross product
+/// multiplies, and multiplication commutes. Cost still differs, because a
+/// cross-product step charges `prefix.cardinality * count(next)`: each
+/// component's work is multiplied by the accumulated cardinality of everything
+/// placed before it. Hence the candidates below are costed as whole prefixes
+/// rather than in isolation.
 auto getCheapestConcatenation(JoinGraph& graph,
                               JoinCostEstimator const& estimator,
                               std::vector<DecidedComponent> decided,
@@ -411,7 +418,8 @@ auto chooseJoinOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
     return std::nullopt;
   }
 
-  auto const decided = decideComponentOrders(graph, estimator, writtenOrder);
+  auto const decided =
+      decideInternalOrdersForEachComponent(graph, estimator, writtenOrder);
   bool const anyComponentReordered =
       std::any_of(decided.begin(), decided.end(),
                   [](DecidedComponent const& c) { return c.reordered; });
@@ -452,14 +460,16 @@ void rewritePlan(ExecutionPlan& plan, ExecutionNode* firstEnumeration,
   // with an omission would silently delete a FOR loop from the query -- which
   // no assertion on the resulting *order* would catch.
   auto const current = collectEnumerationOrder(firstEnumeration, next);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   {
     auto sortedCurrent = current;
     auto sortedOrder = order;
     auto byId = [](auto const* l, auto const* r) { return l->id() < r->id(); };
     std::sort(sortedCurrent.begin(), sortedCurrent.end(), byId);
     std::sort(sortedOrder.begin(), sortedOrder.end(), byId);
-    ADB_PROD_ASSERT(sortedCurrent == sortedOrder);
+    TRI_ASSERT(sortedCurrent == sortedOrder);
   }
+#endif
 
   for (auto* enumeration : current) {
     plan.unlinkNode(enumeration);
