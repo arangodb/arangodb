@@ -1,10 +1,15 @@
-3.12.12 (XXXX-XX-XX)
+3.12.13 (XXXX-XX-XX)
 --------------------
 
 * COR-1040: Fix the web UI repeatedly reporting "Something went wrong while
   creating the index : not found" after saving an arangosearch view link or
   creating an index, accompanied by "not allowed to connect to this URL" in
   the server log.
+
+* COR-994: arangodump, arangorestore and arangosh now renew a JWT passed via
+  `--server.jwt-token` before it expires, using `POST /_open/auth/renew`
+  and controlled by `--server.jwt-renewal-threshold`. Long-running dumps
+  no longer fail with HTTP 401 once `--server.session-timeout` elapses.
 
 * Fixed a rare issue where a cluster-internal request that was retried with
   less than one millisecond left until its deadline was sent without any
@@ -30,25 +35,23 @@
 * BTS-2454: Update FAISS to a new patched version which fixes a TSAN race inside
   the hnsw_stats and rabitq_stats internal counters.
 
+
+3.12.12 (2026-09-21)
+--------------------
+
 * ES-3044: Fix comparison of array and object literals whose members are not
   constants, such as an object passed to a function call in a `FILTER`
   condition. These were serialized to VelocyPack for comparison, which dropped
-  the members that have no VelocyPack representation. Unrelated conditions
-  could then compare as equal, and the query could fail with `The key of the
-  next key/value pair must be a string` while optimizing the plan. Such
-  literals are now compared structurally, and two objects listing the same
-  members in a different order compare as equal unless a key is duplicated or
-  computed.
+  the members that have no VelocyPack representation. Unrelated conditions could
+  then compare as equal, and the query could fail with `The key of the next
+  key/value pair must be a string` while optimizing the plan. Such literals are
+  now compared structurally, and two objects listing the same members in a
+  different order compare as equal unless a key is duplicated or computed.
 
-* COR-915: returnNew/returnOld are stored as document attributes in the _to_ shadow 
-  collection of a non-disjoint SmartGraph.
-  Fix remote SmartGraph edge modifications so returnNew/returnOld response
-  data is not persisted in the _to shadow collection.
-
-* COR-994: arangodump, arangorestore and arangosh now renew a JWT passed via
-  `--server.jwt-token` before it expires, using `POST /_open/auth/renew`
-  and controlled by `--server.jwt-renewal-threshold`. Long-running dumps
-  no longer fail with HTTP 401 once `--server.session-timeout` elapses.
+* COR-915: returnNew/returnOld are stored as document attributes in the _to_
+  shadow collection of a non-disjoint SmartGraph.
+  Fix remote SmartGraph edge modifications so returnNew/returnOld response data
+  is not persisted in the _to shadow collection.
 
 * arangodump, arangorestore and arangobackup now report the server's error (e.g.
   "HTTP 401 (Unauthorized): ArangoError 11: User not authenticated") together
@@ -76,9 +79,9 @@
   logged in, so the Support/Rest API tab failed with a 401 error.
 
 * BTS-2450: Allow again to access / without authentication with
-  --server.authentication-system-only=false. This changed unintentionally
-  with 3.12.11, which led to a 401 error instead of redirecting to the UI
-  entry point at /_admin/aardvark/index.html. Note that requesting
+  --server.authentication-system-only=false. This changed unintentionally with
+  3.12.11, which led to a 401 error instead of redirecting to the UI entry point
+  at /_admin/aardvark/index.html. Note that requesting
   /_admin/aardvark/index.html directly still worked.
 
 * Upgraded included rclone to v1.75.1 with go1.26.8 and non-vulnerable
@@ -91,11 +94,12 @@
 * COR-967: Fixed the web UI in RBAC mode, where the classic permission API is
   rejected.
 
-* COR-837 & COR-838 Fix a bug where deactivated users where still able to renew their token.
+* COR-837, COR-838: Fix a bug where deactivated users where still able to renew
+  their token.
 
-* Vector index `factory` strings are now validated on index creation instead
-  of during training. Unparseable or non-IVF strings, an `nLists` mismatch, or
-  a fixed factory string combined with a scaling `nLists` are rejected with
+* Vector index `factory` strings are now validated on index creation instead of
+  during training. Unparseable or non-IVF strings, an `nLists` mismatch, or a
+  fixed factory string combined with a scaling `nLists` are rejected with
   `TRI_ERROR_BAD_PARAMETER` instead of leaving an unusable index behind.
 
 * Updated node modules:
@@ -108,7 +112,8 @@
   Fixed an issue where certain AQL queries using index joins across multiple 
   collections could cause the server to abort when a join condition referenced 
   a calculated expression based on a document from an earlier collection.
-  Such queries are now handled safely without triggering an assertion failure or server crash.
+  Such queries are now handled safely without triggering an assertion failure or
+  server crash.
   
 * Upgraded OpenSSL to 3.5.8.
 
