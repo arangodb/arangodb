@@ -114,7 +114,7 @@ function runArangodRecovery (params, useEncryption, exitSuccessOk, exitFailOk) {
     params['instance'] = new inst.instance(
       params.options, inst.instanceRole.single, 'tcp',
       new agencyMgr(params.options, null), args,
-      params.testDir, params.testDir, '',
+      params.testDir, params.testDir,
       '', 0);
     argv = toArgv(Object.assign(params.instance.args, additionalParams));
   } else {
