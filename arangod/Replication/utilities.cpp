@@ -582,9 +582,10 @@ bool isVelocyPack(httpclient::SimpleHttpResult const& response) {
 
 Result documentInsertError(Result res, std::string_view collectionName) {
   TRI_ASSERT(res.fail());
-  return Result{res.errorNumber(),
-                absl::StrCat("error while inserting documents into collection '",
-                             collectionName, "': ", res.errorMessage())};
+  return Result{
+      res.errorNumber(),
+      absl::StrCat("error while inserting documents into collection '",
+                   collectionName, "': ", res.errorMessage())};
 }
 
 /// @brief parse a velocypack response

@@ -866,9 +866,10 @@ Result DatabaseInitialSyncer::parseCollectionDump(
           TRI_ASSERT(!r.is(TRI_ERROR_ARANGO_TRY_AGAIN));
           if (r.fail()) {
             if (r.is(TRI_ERROR_REPLICATION_INVALID_RESPONSE)) {
-              r.reset(r.errorNumber(),
-                      absl::StrCat("received invalid dump data for collection '",
-                                   coll->name(), "'"));
+              r.reset(
+                  r.errorNumber(),
+                  absl::StrCat("received invalid dump data for collection '",
+                               coll->name(), "'"));
             }
             return r;
           }

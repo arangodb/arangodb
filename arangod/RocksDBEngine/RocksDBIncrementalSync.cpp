@@ -655,8 +655,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
           res.reset(errorNumber,
                     basics::StringUtils::concatT(TRI_errno_string(errorNumber),
                                                  ": ", res.errorMessage()));
-          return replutils::documentInsertError(std::move(res),
-                                                collectionName);
+          return replutils::documentInsertError(std::move(res), collectionName);
         }
 
         // unique constraint violation!
@@ -665,8 +664,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
         // errorMessage() is this case contains the conflicting key
         auto inner = removeConflict(res.errorMessage());
         if (inner.fail()) {
-          return replutils::documentInsertError(std::move(res),
-                                                collectionName);
+          return replutils::documentInsertError(std::move(res), collectionName);
         }
       }
     }
