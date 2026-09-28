@@ -207,9 +207,6 @@ void ArangodServer::addFeatures() {
   addFeature<metrics::ClusterMetricsFeature>(
       getOptions<metrics::ClusterMetricsOptionsProvider>());
   bool const agencyActivated = getOptions<AgencyOptionsProvider>().activated;
-  if (!agencyActivated) {
-    addFeature<ActionFeature>(getOptions<ActionOptionsProvider>());
-  }
   addFeature<ApiRecordingFeature>(_dataSourceRegistry, metrics,
                                   getOptions<ApiRecordingOptionsProvider>());
   addFeature<AqlFeature>();
@@ -254,7 +251,7 @@ void ArangodServer::addFeatures() {
       getOptions<ServerOptionsProvider>().operationMode;
   bool const enableDaemonSupervisor =
       !auxMode && restServer && operationMode != OperationMode::MODE_CONSOLE;
-  if (!skipNonServerFeatures) {
+  if (!agencyActivated && !skipNonServerFeatures) {
     addFeature<ActionFeature>(getOptions<ActionOptionsProvider>());
   }
 #ifdef USE_V8
