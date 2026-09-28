@@ -135,7 +135,7 @@ commands:
           name: Load Java Cache from AWS
           command: |
             set -x
-            cd ../${echo '<< parameters.driver-git-repo >>' | sed -e "s;.*/;;" -e "s;.git$;;" }
+            cd ../$(echo '<< parameters.driver-git-repo >>' | sed -e "s;.*/;;" -e "s;.git$;;")
             find . -name 'pom.xml' | sort | xargs cat > /tmp/maven_cache_seed
             set -eo pipefail
 
@@ -167,6 +167,7 @@ commands:
             set -x
 
             ROOT="- ~/.m2/repository"
+            cd ../$(echo '<< parameters.driver-git-repo >>' | sed -e "s;.*/;;" -e "s;.git$;;")
             ARCHIVE="maven-{{ .Environment.CIRCLE_JOB }}-{{ checksum "/tmp/maven_cache_seed" }}.tar.gz"
 
             if [ -z "${AWS_S3_WORKSPACE_BUCKET:-}" ]; then
