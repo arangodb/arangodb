@@ -155,7 +155,7 @@ commands:
             aws s3 cp --no-sign-request --profile anon \
               "s3://${AWS_S3_WORKSPACE_BUCKET}/java-caches/${ARCHIVE}" \
               "$TAR" && \
-            tar -xzf "$TAR"  ~/.m2/repository
+            tar -xzf "$TAR"  ~/.m2/repository || true
   store_cache:
     parameters:
       driver-git-repo:
