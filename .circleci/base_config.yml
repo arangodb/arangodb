@@ -1304,7 +1304,8 @@ jobs:
           sanitizer: << parameters.sanitizer >>
           extraArgs: << parameters.extraArgs >>
           use-s3-workspace: false
-      - store_cache
+      - store_cache:
+          driver-git-repo: << parameters.driver-git-repo >>
 
   run-rta-tests:
     machine:
