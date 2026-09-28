@@ -1,6 +1,8 @@
 v3.11.14.6 (XXXX-XX-XX)
 -----------------------
 
+* Updated ArangoDB Starter to v0.18.31.
+
 * Upgraded included rclone to v1.75.1 with go1.26.8 and non-vulnerable
   dependencies.
 
@@ -14,8 +16,6 @@ v3.11.14.6 (XXXX-XX-XX)
 * Fix potential race then reloading token secret (secret rotation).
 
 * Upgraded OpenSSL to 3.5.8 and OpenLDAP to 2.6.14.
-
-* Updated ArangoDB Starter to v0.18.30.
 
 
 v3.11.14.5 (2026-08-11)
