@@ -1,6 +1,8 @@
 3.12.12.1 (XXXX-XX-XX)
 ----------------------
 
+* Updated ArangoDB Starter to v0.19.28.
+
 * BTS-2461: Fix a query plan losing the distribute input calculation for every
   DistributeNode after the first one. If the first node needed no such
   calculation, the optimizer stopped there instead of continuing with the
