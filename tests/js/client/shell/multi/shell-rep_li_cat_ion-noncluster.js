@@ -79,6 +79,38 @@ function ReplicationApiSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief batch ttl is capped so a client cannot pin WAL indefinitely
+////////////////////////////////////////////////////////////////////////////////
+
+    testBatchTtlIsCapped : function () {
+      const syncerId = 987654321;
+      const maxTtl = 86400;
+      const tenYears = 10 * 365 * 86400;
+      const secondsUntilExpiry = function () {
+        const state = arango.GET("/_api/replication/logger-state");
+        const client = state.clients.find((c) => c.syncerId === String(syncerId));
+        assertTrue(client !== undefined, JSON.stringify(state.clients));
+        return (Date.parse(client.expires) - Date.parse(client.time)) / 1000;
+      };
+
+      let result = arango.POST("/_api/replication/batch?syncerId=" + syncerId,
+                               { ttl: tenYears });
+      assertTrue(result.hasOwnProperty("id"));
+      batchesToFree.push(result.id);
+      let ttl = secondsUntilExpiry();
+      assertTrue(Math.abs(ttl - maxTtl) <= 5, ttl);
+
+      result = arango.PUT("/_api/replication/batch/" + result.id +
+                          "?syncerId=" + syncerId, { ttl: tenYears });
+      assertEqual(204, result.code);
+      ttl = secondsUntilExpiry();
+      assertTrue(Math.abs(ttl - maxTtl) <= 5, ttl);
+
+      result = arango.DELETE("/_api/replication/batch/" + batchesToFree.pop());
+      assertEqual(204, result.code);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get document w/ special keys
 ////////////////////////////////////////////////////////////////////////////////
 

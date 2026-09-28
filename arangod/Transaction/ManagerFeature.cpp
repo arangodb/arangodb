@@ -23,8 +23,6 @@
 #include "ManagerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Cluster/ServerState.h"
-#include "ClusterEngine/ClusterEngine.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -34,7 +32,6 @@
 #include "Metrics/CounterBuilder.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Manager.h"
 
@@ -50,13 +47,17 @@ DECLARE_COUNTER(arangodb_transactions_expired_total,
 std::shared_ptr<transaction::Manager> ManagerFeature::MANAGER;
 
 ManagerFeature::ManagerFeature(application_features::ApplicationServer& server,
-                               metrics::IRegistry& metricsRegistry)
-    : ManagerFeature(server, metricsRegistry, ManagerFeatureOptions{}) {}
+                               metrics::IRegistry& metricsRegistry,
+                               StorageEngine& engine)
+    : ManagerFeature(server, metricsRegistry, engine, ManagerFeatureOptions{}) {
+}
 
 ManagerFeature::ManagerFeature(application_features::ApplicationServer& server,
                                metrics::IRegistry& metricsRegistry,
+                               StorageEngine& engine,
                                ManagerFeatureOptions options)
     : application_features::ApplicationFeature{server, *this},
+      _engine(engine),
       _options(std::move(options)),
       _numExpiredTransactions(
           metricsRegistry.add(arangodb_transactions_expired_total{})) {
@@ -88,19 +89,7 @@ ManagerFeature::~ManagerFeature() {
 
 void ManagerFeature::prepare() {
   TRI_ASSERT(MANAGER.get() == nullptr);
-  StorageEngine* engine = nullptr;
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  if (!server().hasFeature<RocksDBEngine>() &&
-      !server().hasFeature<ClusterEngine>()) {
-    engine = &server().getFeature<DatabaseFeature>().engine();
-  } else
-#endif
-      if (ServerState::instance()->isCoordinator()) {
-    engine = &server().getFeature<ClusterEngine>();
-  } else {
-    engine = &server().getFeature<RocksDBEngine>();
-  }
-  MANAGER = engine->createTransactionManager(_options, _numExpiredTransactions);
+  MANAGER = _engine.createTransactionManager(_options, _numExpiredTransactions);
 }
 
 void ManagerFeature::start() {

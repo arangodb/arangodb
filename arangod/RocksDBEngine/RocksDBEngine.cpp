@@ -294,7 +294,7 @@ RocksDBEngine::RocksDBEngine(
     ICacheManagerProvider& cacheManagerProvider,
     ISortingPolicy const& sortingPolicy, RocksDBEngineOptions options)
     : StorageEngine(
-          server, kEngineName, name(), typeid(RocksDBEngine),
+          server, kEngineName, name(),
           std::make_unique<RocksDBIndexFactory>(server, vectorIndexProvider),
           databaseProvider, databaseBootstrap),
       _databasePathProvider(databasePathProvider),
@@ -3343,6 +3343,10 @@ void RocksDBEngine::releaseTick(TRI_voc_tick_t tick) {
     // update metric for released tick
     _metricsWalReleasedTickFlush.store(tick, std::memory_order_relaxed);
   }
+}
+
+RocksDBIndexFactory const& RocksDBEngine::indexFactory() const {
+  return static_cast<RocksDBIndexFactory const&>(StorageEngine::indexFactory());
 }
 
 HealthData RocksDBEngine::healthCheck() {

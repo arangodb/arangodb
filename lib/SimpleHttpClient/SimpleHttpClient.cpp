@@ -68,6 +68,13 @@ void SimpleHttpClientParams::setUserNamePassword(std::string_view prefix,
   _basicAuth = absl::Base64Escape(absl::StrCat(username, ":", password));
 }
 
+std::string SimpleHttpClientParams::currentJwt() const {
+  if (_jwtProvider) {
+    return _jwtProvider();
+  }
+  return _jwt;
+}
+
 /// @brief default value for max packet size
 size_t SimpleHttpClientParams::MaxPacketSize = 512 * 1024 * 1024;
 
@@ -611,10 +618,11 @@ ErrorCode SimpleHttpClient::setRequest(
   using ExclusionType = std::pair<size_t, size_t>;
   containers::SmallVector<ExclusionType, 4> exclusions;
   size_t pos = 0;
-  if (!_params._jwt.empty()) {
+  auto const jwt = _params.currentJwt();
+  if (!jwt.empty()) {
     _writeBuffer.appendText(std::string_view("Authorization: bearer "));
     pos = _writeBuffer.size();
-    _writeBuffer.appendText(_params._jwt);
+    _writeBuffer.appendText(jwt);
     exclusions.emplace_back(pos, _writeBuffer.size());
     _writeBuffer.appendText(std::string_view("\r\n"));
   } else if (!_params._basicAuth.empty()) {
