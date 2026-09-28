@@ -1207,7 +1207,7 @@ jobs:
           timeLimit: << parameters.timeLimit >>
           sanitizer: << parameters.sanitizer >>
           extraArgs: << parameters.extraArgs >>
-      - store_cache
+      - store_cache:
           driver-git-repo: << parameters.driver-git-repo >>
 
   kafka-driver-tests:
