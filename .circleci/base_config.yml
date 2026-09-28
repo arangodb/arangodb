@@ -179,8 +179,6 @@ commands:
             TAR="/tmp/javas-cache/${ARCHIVE}"
 
             cd "$ROOT"
-            - ~/.m2/repository
-
             tar -czf "$TAR"  ~/.m2/repository
 
             du -sh "$TAR"
