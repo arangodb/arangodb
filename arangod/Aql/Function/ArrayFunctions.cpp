@@ -27,6 +27,7 @@
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Aql/Range.h"
+#include "Aql/RangeSpec.h"
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/debugging.h"
@@ -724,37 +725,18 @@ AqlValue functions::Range(ExpressionContext* expressionContext, AstNode const&,
     return AqlValue(left.toInt64(), right.toInt64());
   }
 
-  double step = stepValue.toDouble();
-
-  if (!std::isfinite(from) || !std::isfinite(to) || !std::isfinite(step) ||
-      step == 0.0 || (from < to && step < 0.0) || (from > to && step > 0.0)) {
+  auto spec = functions::makeRangeSpec(from, to, stepValue.toDouble());
+  if (!spec) {
     registerWarning(expressionContext, AFN,
                     TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
-
-  // epsilon is the smallest representable gap between 1.0 and the next double;
-  // times the operand, which gives one ulp (the gap on that scale);
-  // `from`, `to`, and `step` are possible to contain 0.5 ulp empirically;
-  // and the subtract and divide add 0.5 each, which can land ~2.5 ulp;
-  // therefore, 4 * ulp can absorb the floating point errors.
-  double const tol = std::copysign(
-      4 * std::numeric_limits<double>::epsilon() *
-          std::max({std::abs(from), std::abs(to), std::abs(step)}),
-      step);
-
-  // if `count` is an integer, it can be infinite -> UB; so we use double here
-  double const count = std::floor((to - from + tol) / step) + 1.0;
-  uint64_t const n = (count <= static_cast<double>(Range::MaterializationLimit))
-                         ? static_cast<uint64_t>(count)
-                         : Range::MaterializationLimit + 1;
-  Range::throwIfTooBigForMaterialization(n);
+  Range::throwIfTooBigForMaterialization(spec->count);
 
   auto builder = ThreadLocalBuilderLeaser::lease();
   builder->openArray(true);
-  // from + i*step keeps the rounding error constant instead of compounding.
-  for (uint64_t i = 0; i < n; ++i) {
-    builder->add(VPackValue(from + static_cast<double>(i) * step));
+  for (uint64_t i = 0; i < spec->count; ++i) {
+    builder->add(VPackValue(spec->at(i)));
   }
   builder->close();
   return AqlValue(builder->slice(), builder->size());
