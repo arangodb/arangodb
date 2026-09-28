@@ -33,6 +33,7 @@
 namespace arangodb {
 
 class ClusterFeature;
+class ClusterIndexFactory;
 class DatabaseFeature;
 
 class ClusterEngine final : public StorageEngine {
@@ -52,6 +53,8 @@ class ClusterEngine final : public StorageEngine {
   // ------------------------
 
   std::string_view typeName() const override;
+
+  ClusterIndexFactory const& indexFactory() const override;
 
   // inherited from ApplicationFeature
   // ---------------------------------

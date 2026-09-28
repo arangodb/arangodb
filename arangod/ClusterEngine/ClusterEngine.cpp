@@ -78,6 +78,10 @@ std::string_view ClusterEngine::typeName() const {
   return RocksDBEngine::kEngineName;
 }
 
+ClusterIndexFactory const& ClusterEngine::indexFactory() const {
+  return static_cast<ClusterIndexFactory const&>(StorageEngine::indexFactory());
+}
+
 HealthData ClusterEngine::healthCheck() { return {}; }
 
 ClusterEngineType ClusterEngine::engineType() const {

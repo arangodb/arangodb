@@ -315,7 +315,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // Returns the StorageEngine-specific implementation
   // of the IndexFactory. This is used to validate
   // information about indexes.
-  IndexFactory const& indexFactory() const;
+  virtual IndexFactory const& indexFactory() const;
 
   // AQL functions
   // -------------

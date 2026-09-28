@@ -1043,15 +1043,13 @@ void IResearchFeature::registerIndexFactory() {
     }
   };
 
-  if (auto* clusterIndexFactory =
-          dynamic_cast<ClusterIndexFactory const*>(&engine.indexFactory())) {
+  if (auto* clusterEngine = dynamic_cast<ClusterEngine*>(&engine)) {
     _factory = IResearchLinkCoordinator::createFactory(server());
-    emplace(*clusterIndexFactory);
-    emplace(clusterIndexFactory->rocksDBIndexFactory());
-  } else if (dynamic_cast<RocksDBIndexFactory const*>(&engine.indexFactory()) !=
-             nullptr) {
+    emplace(clusterEngine->indexFactory());
+    emplace(clusterEngine->indexFactory().rocksDBIndexFactory());
+  } else if (auto* rocksDBEngine = dynamic_cast<RocksDBEngine*>(&engine)) {
     _factory = IResearchRocksDBLink::createFactory(server());
-    emplace(engine.indexFactory());
+    emplace(rocksDBEngine->indexFactory());
   }
 }
 

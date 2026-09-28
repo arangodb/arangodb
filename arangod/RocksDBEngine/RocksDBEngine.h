@@ -90,6 +90,7 @@ class PhysicalCollection;
 class RocksDBBackgroundErrorListener;
 class RocksDBBackgroundThread;
 class RocksDBDumpManager;
+class RocksDBIndexFactory;
 class RocksDBKey;
 class RocksDBLogValue;
 class RocksDBRecoveryHelper;
@@ -206,6 +207,8 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   void flushOpenFilesIfRequired();
   HealthData healthCheck() override;
+
+  RocksDBIndexFactory const& indexFactory() const override;
 
   std::shared_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TransactionId,
