@@ -127,6 +127,21 @@ parameters:
 
 commands:
   load_cache:
+    steps:
+      - run:
+          name: Generate Cache Checksum
+          command: |
+            cd ../$(echo '<< parameters.driver-git-repo >>' | sed -e "s;.*/;;" -e "s;.git$;;")
+            find . -name 'pom.xml' | sort | xargs cat > /tmp/maven_cache_seed
+      - restore_cache:
+          key: maven-{{ .Environment.CIRCLE_JOB }}-{{ checksum "/tmp/maven_cache_seed" }}
+  store_cache:
+    steps:
+      - save_cache:
+          key: maven-{{ .Environment.CIRCLE_JOB }}-{{ checksum "/tmp/maven_cache_seed" }}
+          paths:
+            - ~/.m2/repository
+  load_cache_s3:
     parameters:
       driver-git-repo:
         type: string
@@ -156,7 +171,7 @@ commands:
               "s3://${AWS_S3_WORKSPACE_BUCKET}/java-caches/${ARCHIVE}" \
               "$TAR" && \
             tar -xzf "$TAR"  ~/.m2/repository || true
-  store_cache:
+  store_cache_s3:
     parameters:
       driver-git-repo:
         type: string
@@ -178,14 +193,16 @@ commands:
             mkdir -p /tmp/javas-cache
             TAR="/tmp/javas-cache/${ARCHIVE}"
 
-            cd "$ROOT"
-            tar -czf "$TAR"  ~/.m2/repository
+            if test -d ~/.m2/repository; then
+              cd "$ROOT"
+              tar -czf "$TAR"  ~/.m2/repository
 
-            du -sh "$TAR"
-            aws configure set profile.anon.s3.multipart_threshold 5GB
-            aws s3 cp --no-sign-request --profile anon \
-              "$TAR" \
-              "s3://${AWS_S3_WORKSPACE_BUCKET}/java-caches/${ARCHIVE}"
+              du -sh "$TAR"
+              aws configure set profile.anon.s3.multipart_threshold 5GB
+              aws s3 cp --no-sign-request --profile anon \
+                "$TAR" \
+                "s3://${AWS_S3_WORKSPACE_BUCKET}/java-caches/${ARCHIVE}"
+            fi
   persist_workspace_to_s3:
     parameters:
       root:
@@ -374,8 +391,6 @@ commands:
             cd ..
             export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no"
             git clone --single-branch --branch << parameters.driver-git-branch >> << parameters.driver-git-repo >>
-      - load_cache:
-          driver-git-repo: << parameters.driver-git-repo >>
   fetch-aux-binaries:
     parameters:
       arch:
@@ -1193,6 +1208,8 @@ jobs:
       - clone-driver-repo:
           driver-git-repo: << parameters.driver-git-repo >>
           driver-git-branch: << parameters.driver-git-branch >>
+      - load_cache:
+          driver-git-repo: << parameters.driver-git-repo >>
       - run:
           name: Initialize driver tests
           command: |
@@ -1274,6 +1291,8 @@ jobs:
       - clone-driver-repo:
           driver-git-repo: << parameters.driver-git-repo >>
           driver-git-branch: << parameters.driver-git-branch >>
+      - store_cache_s3:
+          driver-git-repo: << parameters.driver-git-repo >>
       - run:
           name: Wait for Kafka brokers to be ready
           command: |
@@ -1303,7 +1322,7 @@ jobs:
           sanitizer: << parameters.sanitizer >>
           extraArgs: << parameters.extraArgs >>
           use-s3-workspace: false
-      - store_cache:
+      - store_cache_s3:
           driver-git-repo: << parameters.driver-git-repo >>
 
   run-rta-tests:
