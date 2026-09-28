@@ -23,6 +23,7 @@
 #pragma once
 
 #include "ClusterEngine/Common.h"
+#include "ClusterEngine/ClusterIndexFactory.h"
 #include "Metrics/IRegistry.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VectorIndex/IVectorIndexProvider.h"
@@ -33,7 +34,6 @@
 namespace arangodb {
 
 class ClusterFeature;
-class ClusterIndexFactory;
 class DatabaseFeature;
 
 class ClusterEngine final : public StorageEngine {

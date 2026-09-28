@@ -52,6 +52,7 @@
 #include "RestServer/IFlushControl.h"
 #include "RocksDBEngine/IIndexCacheRefill.h"
 #include "VectorIndex/IVectorIndexProvider.h"
+#include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/Identifiers/DataSourceId.h"
@@ -90,7 +91,6 @@ class PhysicalCollection;
 class RocksDBBackgroundErrorListener;
 class RocksDBBackgroundThread;
 class RocksDBDumpManager;
-class RocksDBIndexFactory;
 class RocksDBKey;
 class RocksDBLogValue;
 class RocksDBRecoveryHelper;
