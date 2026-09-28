@@ -1420,14 +1420,18 @@ static void JS_GetCurrentResponse(
 
 void TRI_InitV8Actions(v8::Isolate* isolate) {
   v8::HandleScope scope(isolate);
+  TRI_GET_GLOBALS();
 
   // .............................................................................
   // create the global functions
   // .............................................................................
 
-  TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_DEFINE_ACTION"),
-      JS_DefineAction);
+  // unbound lets actions.js's own startup() guard skip cleanly
+  if (v8g->server().hasFeature<ActionFeature>()) {
+    TRI_AddGlobalFunctionVocbase(
+        isolate, TRI_V8_ASCII_STRING(isolate, "SYS_DEFINE_ACTION"),
+        JS_DefineAction);
+  }
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_RELOAD_ROUTING"),
       JS_ReloadRouting, true);

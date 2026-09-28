@@ -23,6 +23,7 @@
 #include "CheckVersionFeature.h"
 
 #include "RestServer/CheckVersionOptionsProvider.h"
+#include "Actions/ActionFeature.h"
 #include "Agency/AgencyFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ServerState.h"
@@ -81,6 +82,9 @@ CheckVersionFeature::CheckVersionFeature(
   server.forceDisableFeatures(_nonServerFeatures);
   if (server.hasFeature<AgencyFeature>()) {
     server.forceDisableFeatures<AgencyFeature>();
+  }
+  if (server.hasFeature<ActionFeature>()) {
+    server.forceDisableFeatures<ActionFeature>();
   }
 
   LoggerFeature& logger = server.getFeature<LoggerFeature>();

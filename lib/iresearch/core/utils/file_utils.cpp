@@ -64,7 +64,7 @@ namespace {
 const std::filesystem::path::string_type path_prefix(L"\\\\?\\");
 
 std::filesystem::path::string_type ensure_path_prefix(
-  const std::filesystem::path::string_type& path) {
+    const std::filesystem::path::string_type& path) {
   if (path.size() >= path_prefix.size() &&
       !path.compare(0, path_prefix.size(), path_prefix)) {
     return path;
@@ -81,8 +81,9 @@ inline int path_stats(file_stat_t& info, const irs::path_char_t* path) {
 #ifdef WIN32
   if (wcslen(path) >= path_prefix.size() &&
       !wcsncmp(path, path_prefix.c_str(), path_prefix.size())) {
-    path += path_prefix
-              .size();  // skip prefix to avoid mix of slashes in prefixed path
+    path +=
+        path_prefix
+            .size();  // skip prefix to avoid mix of slashes in prefixed path
   }
 #endif
 
@@ -92,7 +93,8 @@ inline int path_stats(file_stat_t& info, const irs::path_char_t* path) {
   auto parts = irs::file_utils::path_parts(path);
 
   return file_stat(
-    parts.basename.empty() ? std::wstring(parts.dirname).c_str() : path, &info);
+      parts.basename.empty() ? std::wstring(parts.dirname).c_str() : path,
+      &info);
 #else
   return file_stat(path, &info);
 #endif
@@ -270,13 +272,13 @@ bool verify_lock_file(const path_char_t* file) {
   }
 
   HANDLE handle =
-    ::CreateFileW(file,
-                  GENERIC_WRITE | GENERIC_READ,  // write access
-                  0,                      // prevent access from other processes
-                  NULL,                   // default security attributes
-                  OPEN_EXISTING,          // open existing file
-                  FILE_ATTRIBUTE_NORMAL,  // use normal file attributes
-                  NULL);
+      ::CreateFileW(file,
+                    GENERIC_WRITE | GENERIC_READ,  // write access
+                    0,              // prevent access from other processes
+                    NULL,           // default security attributes
+                    OPEN_EXISTING,  // open existing file
+                    FILE_ATTRIBUTE_NORMAL,  // use normal file attributes
+                    NULL);
 
   if (INVALID_HANDLE_VALUE == handle) {
     if (ERROR_SHARING_VIOLATION == GET_ERROR()) {
@@ -390,8 +392,8 @@ lock_handle_t create_lock_file(const path_char_t* file) {
 
 bool file_sync(const path_char_t* file) noexcept {
   HANDLE handle =
-    ::CreateFileW(file, GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ, NULL,
-                  OPEN_EXISTING, 0, NULL);
+      ::CreateFileW(file, GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ,
+                    NULL, OPEN_EXISTING, 0, NULL);
   if (INVALID_HANDLE_VALUE == handle) {
     return false;
   }
@@ -483,8 +485,8 @@ lock_handle_t create_lock_file(const path_char_t* file) {
   const int fd = ::open(file, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
 
   if (fd < 0) {
-    IRS_LOG_ERROR(
-      absl::StrCat("Unable to create lock file: '", file, "', error: ", errno));
+    IRS_LOG_ERROR(absl::StrCat("Unable to create lock file: '", file,
+                               "', error: ", errno));
     return nullptr;
   }
 
@@ -499,30 +501,30 @@ lock_handle_t create_lock_file(const path_char_t* file) {
 
   if (!file_utils::write(reinterpret_cast<void*>(fd), buf,
                          strlen(buf) + 1)) {  // include terminated 0
-    IRS_LOG_ERROR(
-      absl::StrCat("Unable to write lock file: '", file, "', error: ", errno));
+    IRS_LOG_ERROR(absl::StrCat("Unable to write lock file: '", file,
+                               "', error: ", errno));
     return nullptr;
   }
 
   // write PID to lock file
   size_t size = sprintf(buf, "%d", get_pid());
   if (!file_utils::write(reinterpret_cast<void*>(fd), buf, size)) {
-    IRS_LOG_ERROR(
-      absl::StrCat("Unable to write lock file: '", file, "', error: ", errno));
+    IRS_LOG_ERROR(absl::StrCat("Unable to write lock file: '", file,
+                               "', error: ", errno));
     return nullptr;
   }
 
   // flush buffers
   if (fsync(fd)) {
-    IRS_LOG_ERROR(
-      absl::StrCat("Unable to write lock file: '", file, "', error: ", errno));
+    IRS_LOG_ERROR(absl::StrCat("Unable to write lock file: '", file,
+                               "', error: ", errno));
     return nullptr;
   }
 
   // try to apply advisory lock on lock file
   if (flock(fd, LOCK_EX)) {
-    IRS_LOG_ERROR(
-      absl::StrCat("Unable to write lock file: '", file, "', error: ", errno));
+    IRS_LOG_ERROR(absl::StrCat("Unable to write lock file: '", file,
+                               "', error: ", errno));
     return nullptr;
   }
 
@@ -725,7 +727,7 @@ handle_t open(const path_char_t* path, OpenMode mode, int advice) noexcept {
     case OpenMode::Write:
       desiredAccess = GENERIC_WRITE | GENERIC_READ;
       create_disposition =
-        CREATE_ALWAYS;  // while opening for write we infer creation
+          CREATE_ALWAYS;  // while opening for write we infer creation
       break;
     default:
       IRS_LOG_ERROR(absl::StrCat("Invalid OpenMode ", static_cast<int>(mode),
@@ -758,8 +760,8 @@ handle_t open(const path_char_t* path, OpenMode mode, int advice) noexcept {
   return handle_t(nullptr);
 #else
   auto posix_mode = (((OpenMode::Read & mode) == OpenMode::Read)
-                       ? O_RDONLY
-                       : (O_CREAT | O_TRUNC | O_WRONLY));
+                         ? O_RDONLY
+                         : (O_CREAT | O_TRUNC | O_WRONLY));
 #ifndef __APPLE__
   // Implement Alignment and File Access Requirements
   // if ((mode & OpenMode::Direct) == OpenMode::Direct) {
@@ -769,7 +771,7 @@ handle_t open(const path_char_t* path, OpenMode mode, int advice) noexcept {
   auto fd = ::open(path ? path : "/dev/null", posix_mode, S_IRUSR | S_IWUSR);
   if (fd < 0) {
     IRS_LOG_ERROR(
-      absl::StrCat("Failed to open file, error: ", errno, ", path: ", path));
+        absl::StrCat("Failed to open file, error: ", errno, ", path: ", path));
     return handle_t(nullptr);
   }
 #ifdef __APPLE__
@@ -800,7 +802,7 @@ handle_t open(void* file, OpenMode mode, int advice) noexcept {
 
   if (!length) {
     IRS_LOG_ERROR(absl::StrCat(
-      "Failed to get filename from file handle, error ", GET_ERROR()));
+        "Failed to get filename from file handle, error ", GET_ERROR()));
 
     return nullptr;
   }
@@ -825,10 +827,10 @@ handle_t open(void* file, OpenMode mode, int advice) noexcept {
     return open(buf.get(), mode, advice);
   }
 
-  IRS_LOG_ERROR(
-    absl::StrCat("Failed to get filename from file handle, inconsistent length "
-                 "detected, first ",
-                 buf_size, " then ", length + 1));  // +1 for \0
+  IRS_LOG_ERROR(absl::StrCat(
+      "Failed to get filename from file handle, inconsistent length "
+      "detected, first ",
+      buf_size, " then ", length + 1));  // +1 for \0
 
   return nullptr;
 #elif defined(__APPLE__)
@@ -843,8 +845,8 @@ handle_t open(void* file, OpenMode mode, int advice) noexcept {
                               // MAXPATHLEN, +1 for \0
 
   if (0 > fd || 0 > fcntl(fd, F_GETPATH, path)) {
-    IRS_LOG_ERROR(
-      absl::StrCat("Failed to get file path from file handle, error ", errno));
+    IRS_LOG_ERROR(absl::StrCat(
+        "Failed to get file path from file handle, error ", errno));
     return nullptr;
   }
 
@@ -859,7 +861,7 @@ handle_t open(void* file, OpenMode mode, int advice) noexcept {
 
   if (0 > fd || 0 > sprintf(path, "/proc/self/fd/%d", fd)) {
     IRS_LOG_ERROR(absl::StrCat(
-      "Failed to get system handle from file handle, error ", errno));
+        "Failed to get system handle from file handle, error ", errno));
     return nullptr;
   }
 
@@ -892,8 +894,8 @@ bool mkdir(const path_char_t* path, bool createNew) noexcept {
     // need a null terminated string for use with ::mkdir()/::CreateDirectoryW()
     std::filesystem::path::string_type parent(parts.dirname);
     if (!mkdir(
-          parent.c_str(),
-          false)) {  // intermediate path parts can exist, this is ok anyway
+            parent.c_str(),
+            false)) {  // intermediate path parts can exist, this is ok anyway
       return false;
     }
   }
@@ -947,7 +949,7 @@ bool mkdir(const path_char_t* path, bool createNew) noexcept {
       // failed to create directory  or directory exist, but we are asked to
       // perform creation
       IRS_LOG_ERROR(
-        absl::StrCat("Failed to create path: '", path, "', error ", errno));
+          absl::StrCat("Failed to create path: '", path, "', error ", errno));
       return false;
     }
   }
@@ -1002,7 +1004,7 @@ path_parts_t path_parts(const path_char_t* path) noexcept {
 
         if (have_extension) {
           result.extension = path_parts_t::ref_t(
-            path + stem_end + 1, i - stem_end - 1);  // +1/-1 for delimiter
+              path + stem_end + 1, i - stem_end - 1);  // +1/-1 for delimiter
         } else {
           stem_end = i;
         }
@@ -1014,9 +1016,9 @@ path_parts_t path_parts(const path_char_t* path) noexcept {
           auto stem_start = dirname.size() + 1;  // +1 for delimiter
 
           result.basename =
-            path_parts_t::ref_t(path + stem_start, i - stem_start);
+              path_parts_t::ref_t(path + stem_start, i - stem_start);
           result.stem =
-            path_parts_t::ref_t(path + stem_start, stem_end - stem_start);
+              path_parts_t::ref_t(path + stem_start, stem_end - stem_start);
         }
 
         result.dirname = std::move(dirname);
@@ -1030,15 +1032,15 @@ path_parts_t path_parts(const path_char_t* path) noexcept {
 }
 
 bool read_cwd(
-  irs::basic_string<std::filesystem::path::value_type>& result) noexcept {
+    irs::basic_string<std::filesystem::path::value_type>& result) noexcept {
   try {
 #ifdef _WIN32
     auto size = GetCurrentDirectory(0, nullptr);
 
     if (!size) {
       IRS_LOG_ERROR(absl::StrCat(
-        "Failed to get length of the current working directory, error ",
-        GET_ERROR()));
+          "Failed to get length of the current working directory, error ",
+          GET_ERROR()));
 
       return false;
     }
@@ -1052,7 +1054,7 @@ bool read_cwd(
     // if error or more space required than available
     if (!size || size >= result.size()) {
       IRS_LOG_ERROR(absl::StrCat(
-        "Failed to get the current working directory, error ", GET_ERROR()));
+          "Failed to get the current working directory, error ", GET_ERROR()));
 
       return false;
     }
@@ -1085,7 +1087,7 @@ bool read_cwd(
 
     if (ERANGE != errno) {
       IRS_LOG_ERROR(absl::StrCat(
-        "Failed to get the current working directory, error ", errno));
+          "Failed to get the current working directory, error ", errno));
 
       return false;
     }
@@ -1093,11 +1095,14 @@ bool read_cwd(
     struct deleter_t {
       void operator()(char* ptr) const { free(ptr); }
     };
+    // TODO (COR-1008): getcwd(nullptr, 0) is valid, but should be replaced;
+    // remove NOLINT supression below.
+    // NOLINTNEXTLINE(clang-analyzer-unix.StdCLibraryFunctions)
     std::unique_ptr<char, deleter_t> pcwd(getcwd(nullptr, 0));
 
     if (!pcwd) {
       IRS_LOG_ERROR(absl::StrCat(
-        "Failed to allocate the current working directory, error ", errno));
+          "Failed to allocate the current working directory, error ", errno));
 
       return false;
     }
@@ -1107,13 +1112,14 @@ bool read_cwd(
 
     return true;
   } catch (const std::bad_alloc& e) {
-    IRS_LOG_ERROR(absl::StrCat(
-      "Memory allocation failure while getting the current working directory: ",
-      e.what()));
+    IRS_LOG_ERROR(
+        absl::StrCat("Memory allocation failure while getting the current "
+                     "working directory: ",
+                     e.what()));
   } catch (const std::exception& e) {
     IRS_LOG_ERROR(absl::StrCat(
-      "Caught exception while getting the current working directory: ",
-      e.what()));
+        "Caught exception while getting the current working directory: ",
+        e.what()));
   }
 
   return false;
@@ -1136,16 +1142,16 @@ bool remove(const path_char_t* path) noexcept {
     // must remove each directory entry recursively (ignore result, check final
     // ::remove() instead)
     visit_directory(
-      path,
-      [path, &buf](const path_char_t* name) -> bool {
-        buf.assign(path);
-        buf += std::filesystem::path::preferred_separator;
-        buf += name;
-        remove(buf.c_str());
+        path,
+        [path, &buf](const path_char_t* name) -> bool {
+          buf.assign(path);
+          buf += std::filesystem::path::preferred_separator;
+          buf += name;
+          remove(buf.c_str());
 
-        return true;
-      },
-      false);
+          return true;
+        },
+        false);
   } catch (...) {
     return false;  // possibly a malloc error
   }
@@ -1161,8 +1167,8 @@ bool remove(const path_char_t* path) noexcept {
   if (!abs) {
     bool result;
     auto res = exists_directory(result, path) && result
-                 ? ::RemoveDirectoryW(path)
-                 : ::DeleteFileW(path);
+                   ? ::RemoveDirectoryW(path)
+                   : ::DeleteFileW(path);
 
     if (!res) {  // 0 == error
       const auto system_error = GET_ERROR();
@@ -1192,8 +1198,8 @@ bool remove(const path_char_t* path) noexcept {
 
   bool result;
   auto res = exists_directory(result, path) && result
-               ? ::RemoveDirectoryW(fullpath.c_str())
-               : ::DeleteFileW(fullpath.c_str());
+                 ? ::RemoveDirectoryW(fullpath.c_str())
+                 : ::DeleteFileW(fullpath.c_str());
 
   if (!res) {  // 0 == error
     const auto system_error = GET_ERROR();
@@ -1214,10 +1220,10 @@ bool remove(const path_char_t* path) noexcept {
   if (res) {                // non-0 == error
     if (ENOENT == errno) {  // file is just not here, so we are done actually
       IRS_LOG_DEBUG(
-        absl::StrCat("Failed to remove path: '", path, "', error ", errno));
+          absl::StrCat("Failed to remove path: '", path, "', error ", errno));
     } else {
       IRS_LOG_ERROR(
-        absl::StrCat("Failed to remove path: '", path, "', error ", errno));
+          absl::StrCat("Failed to remove path: '", path, "', error ", errno));
     }
     return false;
   }
@@ -1259,9 +1265,9 @@ bool set_cwd(const path_char_t* path) noexcept {
 // -----------------------------------------------------------------------------
 
 bool visit_directory(
-  const path_char_t* name,
-  const std::function<bool(const path_char_t* name)>& visitor,
-  bool include_dot_dir /*= true*/) {
+    const path_char_t* name,
+    const std::function<bool(const path_char_t* name)>& visitor,
+    bool include_dot_dir /*= true*/) {
 #ifdef _WIN32
   std::wstring dirname(name);
 

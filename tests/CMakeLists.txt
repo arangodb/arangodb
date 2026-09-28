@@ -210,6 +210,8 @@ set(ARANGODB_TESTS_SOURCES
   Cache/TransactionalCacheVPackKeyHasher.cpp
   Cache/TransactionalStore.cpp
   Cache/TransactionsWithBackingStore.cpp
+  ClientTools/BackgroundJwtRenewalTest.cpp
+  ClientTools/RenewingJwtTokenTest.cpp
   Cluster/AgencyPathsTest.cpp
   Cluster/ClusterHelpersTest.cpp
   Cluster/ClusterInfoTest.cpp
@@ -268,6 +270,8 @@ set(ARANGODB_TESTS_SOURCES
   Sharding/ShardDistributionReporterTest.cpp
   SimpleHttpClient/ConnectionCacheTest.cpp
   SimpleHttpClient/HttpResponseCheckerTest.cpp
+  SimpleHttpClient/SimpleHttpClientParamsTest.cpp
+  Ssl/JwtTest.cpp
   StorageEngine/PhysicalCollectionTest.cpp
   Transaction/ContextTest.cpp
   Transaction/CountCacheTest.cpp

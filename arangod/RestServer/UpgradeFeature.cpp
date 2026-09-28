@@ -22,6 +22,7 @@
 
 #include "UpgradeFeature.h"
 
+#include "Actions/ActionFeature.h"
 #include "Agency/AgencyFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/UserManager.h"
@@ -82,6 +83,12 @@ UpgradeFeature::UpgradeFeature(
     server.forceDisableFeatures(_nonServerFeatures);
     if (server.hasFeature<AgencyFeature>()) {
       server.forceDisableFeatures<AgencyFeature>();
+    }
+    if (server.hasFeature<ActionFeature>()) {
+      server.forceDisableFeatures<ActionFeature>();
+    }
+    if (server.hasFeature<BootstrapFeature>()) {
+      server.forceDisableFeatures<BootstrapFeature>();
     }
   }
   // a coordinator has nothing left to disable here: already unregistered
