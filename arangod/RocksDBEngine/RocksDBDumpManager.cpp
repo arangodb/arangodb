@@ -72,10 +72,8 @@ std::shared_ptr<RocksDBDumpContext> RocksDBDumpManager::createContext(
   TRI_ASSERT(ServerState::instance()->isSingleServer() ||
              ServerState::instance()->isDBServer());
 
-  if (opts.shards.empty()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "expecting at least one entry in 'shards'");
-  }
+  // rejected by RestDumpHandler::validateRequest() before we get here
+  TRI_ASSERT(!opts.shards.empty());
 
   opts.docsPerBatch =
       std::clamp(opts.docsPerBatch, _limits.docsPerBatchLowerBound,

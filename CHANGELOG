@@ -1,5 +1,11 @@
 3.12.12 (XXXX-XX-XX)
 --------------------
+* COR-1017: Reject `POST /_api/dump/start` requests that pass an empty `shards`
+  array. Such a dump context has no function, as it never hands out any data.
+
+* COR-1017: Added the `--dump.max-prefetch-count` startup option (default 1024).
+  The `prefetchCount` of `POST /_api/dump/start` is now clamped to it, in the
+  same way as `docsPerBatch`, `batchSize` and `parallelism`.
 
 * Fixed a rare issue where a cluster-internal request that was retried with
   less than one millisecond left until its deadline was sent without any
