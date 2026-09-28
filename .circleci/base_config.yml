@@ -139,9 +139,6 @@ commands:
       - restore_cache:
           key: maven-{{ .Environment.CIRCLE_JOB }}-{{ checksum "/tmp/maven_cache_seed" }}
   store_cache:
-    parameters:
-      driver-git-repo:
-        type: string
     steps:
       - save_cache:
           key: maven-{{ .Environment.CIRCLE_JOB }}-{{ checksum "/tmp/maven_cache_seed" }}
@@ -1214,7 +1211,7 @@ jobs:
       - clone-driver-repo:
           driver-git-repo: << parameters.driver-git-repo >>
           driver-git-branch: << parameters.driver-git-branch >>
-      - load_cache:
+      - load_cache_s3:
           driver-git-repo: << parameters.driver-git-repo >>
       - run:
           name: Initialize driver tests
@@ -1229,7 +1226,7 @@ jobs:
           timeLimit: << parameters.timeLimit >>
           sanitizer: << parameters.sanitizer >>
           extraArgs: << parameters.extraArgs >>
-      - store_cache:
+      - store_cache_s3:
           driver-git-repo: << parameters.driver-git-repo >>
 
   kafka-driver-tests:
@@ -1297,7 +1294,7 @@ jobs:
       - clone-driver-repo:
           driver-git-repo: << parameters.driver-git-repo >>
           driver-git-branch: << parameters.driver-git-branch >>
-      - store_cache_s3:
+      - store_cache:
           driver-git-repo: << parameters.driver-git-repo >>
       - run:
           name: Wait for Kafka brokers to be ready
@@ -1328,8 +1325,7 @@ jobs:
           sanitizer: << parameters.sanitizer >>
           extraArgs: << parameters.extraArgs >>
           use-s3-workspace: false
-      - store_cache_s3:
-          driver-git-repo: << parameters.driver-git-repo >>
+      - store_cache
 
   run-rta-tests:
     machine:
