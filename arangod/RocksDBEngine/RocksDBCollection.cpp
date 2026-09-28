@@ -1705,8 +1705,23 @@ Result RocksDBCollection::removeDocument(transaction::Methods* trx,
 
   invalidateCacheEntry(key);
 
-  RocksDBMethods* mthds =
-      RocksDBTransactionState::toMethods(trx, _logicalCollection.id());
+  RocksDBTransactionState* state = RocksDBTransactionState::toState(trx);
+  auto* mthds = state->rocksdbMethods(_logicalCollection.id());
+
+  // Time travel: a remove creates no new version, so - unlike an update - it
+  // has no document body to read its timestamp back out of. It is the one the
+  // operation registered with the transaction before taking the key lock (see
+  // ReplicatedProcessorBase::prepareTimeTravelWrite).
+  uint64_t writeTimestamp = 0;
+  if (timeTravelEnabled()) {
+    auto writeTS = mthds->writeTimestamp();
+    if (!writeTS.has_value()) {
+      TRI_ASSERT(false) << "time-travel remove without a write timestamp";
+      return res.reset(TRI_ERROR_INTERNAL,
+                       "missing time-travel timestamp for remove operation");
+    }
+    writeTimestamp = writeTS.value();
+  }
 
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
@@ -1727,10 +1742,25 @@ Result RocksDBCollection::removeDocument(transaction::Methods* trx,
     return res.reset(TRI_ERROR_DEBUG);
   }
 
-  rocksdb::Status s =
-      mthds->SingleDelete(RocksDBColumnFamilyManager::get(
-                              RocksDBColumnFamilyManager::Family::Documents),
-                          key);
+  auto* documentsCf = RocksDBColumnFamilyManager::get(
+      RocksDBColumnFamilyManager::Family::Documents);
+
+  rocksdb::Status s = std::invoke([&]() {
+    if (timeTravelEnabled()) {
+      // Time travel: the version being removed is kept so earlier read
+      // timestamps can still resolve it, and is rewritten in place with the
+      // timestamp that ended its validity. No new version takes its place -
+      // the primary index gets a tombstone instead (see below).
+      VPackBuilder expiredVersion;
+      buildExpiredVersion(doc, writeTimestamp, expiredVersion);
+      VPackSlice expired = expiredVersion.slice();
+      return mthds->PutUntracked(
+          documentsCf, key,
+          rocksdb::Slice(expired.startAs<char>(), expired.byteSize()));
+    } else {
+      return mthds->SingleDelete(documentsCf, key);
+    }
+  });
   if (!s.ok()) {
     res.reset(rocksutils::convertStatus(s, rocksutils::document));
     res.withError([&doc](result::Error& err) {
@@ -1741,7 +1771,7 @@ Result RocksDBCollection::removeDocument(transaction::Methods* trx,
     return res;
   }
 
-  // we have successfully removed a value from the WBWI. after this, we
+  // we have successfully changed a value in the WBWI. after this, we
   // can only restore the previous state via a full rebuild
   savepoint.tainted();
 
@@ -1799,8 +1829,11 @@ Result RocksDBCollection::removeDocument(transaction::Methods* trx,
     TRI_ASSERT(revisionId == RevisionId::fromSlice(doc));
 
     res = savepoint.finish(_logicalCollection.newRevisionId());
-    if (res.ok()) {
-      RocksDBTransactionState* state = RocksDBTransactionState::toState(trx);
+    if (res.ok() && !timeTravelEnabled()) {
+      // Time travel: the removed version is retained in the Documents family,
+      // so it stays part of the revision tree - dropping it becomes the job of
+      // the (not yet implemented) history GC. The current-state document count
+      // still decreases, which savepoint.finish() has already taken care of.
       state->trackRemove(_logicalCollection.id(), revisionId);
     }
   }
