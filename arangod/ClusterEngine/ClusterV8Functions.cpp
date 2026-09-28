@@ -29,7 +29,6 @@
 #include "Cluster/ClusterAdminOperations.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
-#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "V8/v8-conv.h"
@@ -178,7 +177,7 @@ static void JS_WaitForEstimatorSync(
   v8::HandleScope scope(isolate);
   TRI_GET_GLOBALS();
 
-  v8g->server().getFeature<DatabaseFeature>().engine().waitForEstimatorSync();
+  v8g->server().getFeature<StorageEngine>().waitForEstimatorSync();
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
