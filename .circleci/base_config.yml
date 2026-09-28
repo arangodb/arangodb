@@ -127,6 +127,9 @@ parameters:
 
 commands:
   load_cache:
+    parameters:
+      driver-git-repo:
+        type: string
     steps:
       - run:
           name: Generate Cache Checksum
@@ -136,6 +139,9 @@ commands:
       - restore_cache:
           key: maven-{{ .Environment.CIRCLE_JOB }}-{{ checksum "/tmp/maven_cache_seed" }}
   store_cache:
+    parameters:
+      driver-git-repo:
+        type: string
     steps:
       - save_cache:
           key: maven-{{ .Environment.CIRCLE_JOB }}-{{ checksum "/tmp/maven_cache_seed" }}
