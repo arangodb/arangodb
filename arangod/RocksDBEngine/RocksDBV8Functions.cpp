@@ -33,7 +33,6 @@
 #include "RocksDBEngine/RocksDBReplicationContext.h"
 #include "RocksDBEngine/RocksDBReplicationContextGuard.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
-#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/ExecContext.h"
 #include "V8/v8-conv.h"
@@ -84,8 +83,8 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  v8g->server().getFeature<DatabaseFeature>().engine().flushWal(
-      waitForSync, flushColumnFamilies);
+  v8g->server().getFeature<StorageEngine>().flushWal(waitForSync,
+                                                     flushColumnFamilies);
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
 }
@@ -206,7 +205,7 @@ static void JS_WaitForEstimatorSync(
 
   TRI_GET_GLOBALS();
 
-  v8g->server().getFeature<DatabaseFeature>().engine().waitForEstimatorSync();
+  v8g->server().getFeature<StorageEngine>().waitForEstimatorSync();
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
@@ -219,8 +218,8 @@ static void JS_WalRecoveryStartSequence(
   v8::HandleScope scope(isolate);
 
   TRI_GET_GLOBALS();
-  auto* engine = dynamic_cast<RocksDBEngine*>(
-      &v8g->server().getFeature<DatabaseFeature>().engine());
+  auto* engine =
+      dynamic_cast<RocksDBEngine*>(&v8g->server().getFeature<StorageEngine>());
   if (engine == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("expected RocksDB engine");
   }

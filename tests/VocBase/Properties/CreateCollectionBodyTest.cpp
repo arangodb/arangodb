@@ -1351,9 +1351,7 @@ TEST_F(CreateCollectionBodyTest, test_v8_nameArgumentCannotBeEmpty) {
 // numberOfShards: null is accepted as absent, 0 is rejected
 TEST_F(CreateCollectionBodyTest, test_v8NumberOfShardsNullIsAccepted) {
   VPackBuilder empty;
-  {
-    VPackObjectBuilder guard(&empty);
-  }
+  { VPackObjectBuilder guard(&empty); }
   auto missing = parseV8(empty.slice());
   ASSERT_TRUE(missing.ok()) << missing.errorMessage();
 
