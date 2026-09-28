@@ -127,18 +127,66 @@ parameters:
 
 commands:
   load_cache:
+    parameters:
+      driver-git-repo:
+        type: string
     steps:
       - run:
-          name: Generate Cache Checksum
-          command: find . -name 'pom.xml' | sort | xargs cat > /tmp/maven_cache_seed
-      - restore_cache:
-          key: maven-{{ .Environment.CIRCLE_JOB }}-{{ checksum "/tmp/maven_cache_seed" }}
+          name: Load Java Cache from AWS
+          command: |
+            set -x
+            cd ../${echo '<< parameters.driver-git-repo >>' | sed -e "s;.*/;;" -e "s;.git$;;" }
+            find . -name 'pom.xml' | sort | xargs cat > /tmp/maven_cache_seed
+            set -eo pipefail
+
+            ROOT="- ~/.m2/repository"
+            ARCHIVE="maven-{{ .Environment.CIRCLE_JOB }}-{{ checksum "/tmp/maven_cache_seed" }}.tar.gz"
+
+            if [ -z "${AWS_S3_WORKSPACE_BUCKET:-}" ]; then
+              echo "AWS_S3_WORKSPACE_BUCKET not set"
+              exit 1
+            fi
+
+            mkdir -p /tmp/javas-cache
+            mkdir -p "$ROOT"
+            TAR="/tmp/javas-cache/${ARCHIVE}"
+
+            aws configure set profile.anon.s3.multipart_threshold 5GB
+            aws s3 cp --no-sign-request --profile anon \
+              "s3://${AWS_S3_WORKSPACE_BUCKET}/java-caches/${ARCHIVE}" \
+              "$TAR" && \
+            tar -xzf "$TAR"  ~/.m2/repository
   store_cache:
+    parameters:
+      driver-git-repo:
+        type: string
     steps:
-      - save_cache:
-          key: maven-{{ .Environment.CIRCLE_JOB }}-{{ checksum "/tmp/maven_cache_seed" }}
-          paths:
+      - run:
+          command: |
+            set -eo pipefail
+            set -x
+
+            ROOT="- ~/.m2/repository"
+            ARCHIVE="maven-{{ .Environment.CIRCLE_JOB }}-{{ checksum "/tmp/maven_cache_seed" }}.tar.gz"
+
+            if [ -z "${AWS_S3_WORKSPACE_BUCKET:-}" ]; then
+              echo "AWS_S3_WORKSPACE_BUCKET not set"
+              exit 1
+            fi
+
+            mkdir -p /tmp/javas-cache
+            TAR="/tmp/javas-cache/${ARCHIVE}"
+
+            cd "$ROOT"
             - ~/.m2/repository
+
+            tar -czf "$TAR"  ~/.m2/repository
+
+            du -sh "$TAR"
+            aws configure set profile.anon.s3.multipart_threshold 5GB
+            aws s3 cp --no-sign-request --profile anon \
+              "$TAR" \
+              "s3://${AWS_S3_WORKSPACE_BUCKET}/java-caches/${ARCHIVE}"
   persist_workspace_to_s3:
     parameters:
       root:
@@ -327,8 +375,8 @@ commands:
             cd ..
             export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no"
             git clone --single-branch --branch << parameters.driver-git-branch >> << parameters.driver-git-repo >>
-      - load_cache
-
+      - load_cache:
+          driver-git-repo: << parameters.driver-git-repo >>
   fetch-aux-binaries:
     parameters:
       arch:
@@ -1160,6 +1208,7 @@ jobs:
           sanitizer: << parameters.sanitizer >>
           extraArgs: << parameters.extraArgs >>
       - store_cache
+          driver-git-repo: << parameters.driver-git-repo >>
 
   kafka-driver-tests:
     parameters:
@@ -1226,7 +1275,6 @@ jobs:
       - clone-driver-repo:
           driver-git-repo: << parameters.driver-git-repo >>
           driver-git-branch: << parameters.driver-git-branch >>
-      - load_cache
       - run:
           name: Wait for Kafka brokers to be ready
           command: |
