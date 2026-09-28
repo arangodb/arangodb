@@ -1,6 +1,9 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
 
+* AQL `REGEX_MATCHES()` matches empty strings like any other input.
+  This fixes issue #23362.
+
 * Updated ArangoDB Starter to v0.19.28.
 
 * COR-994: arangodump, arangorestore and arangosh now renew a JWT passed via
