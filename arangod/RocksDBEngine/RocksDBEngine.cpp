@@ -3345,6 +3345,10 @@ void RocksDBEngine::releaseTick(TRI_voc_tick_t tick) {
   }
 }
 
+RocksDBIndexFactory const& RocksDBEngine::indexFactory() const {
+  return static_cast<RocksDBIndexFactory const&>(StorageEngine::indexFactory());
+}
+
 HealthData RocksDBEngine::healthCheck() {
   auto now = std::chrono::steady_clock::now();
 

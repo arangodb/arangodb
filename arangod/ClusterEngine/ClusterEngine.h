@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include "ClusterEngine/ClusterIndexFactory.h"
 #include "ClusterEngine/Common.h"
 #include "Indexes/IndexDefinitionRegistry.h"
 #include "Metrics/IRegistry.h"
@@ -58,6 +59,8 @@ class ClusterEngine final : public StorageEngine {
   // ------------------------
 
   std::string_view typeName() const override;
+
+  ClusterIndexFactory const& indexFactory() const override;
 
   // inherited from ApplicationFeature
   // ---------------------------------
