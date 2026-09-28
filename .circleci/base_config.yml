@@ -139,8 +139,8 @@ commands:
             find . -name 'pom.xml' | sort | xargs cat > /tmp/maven_cache_seed
             set -eo pipefail
 
-            ROOT="- ~/.m2/repository"
-            ARCHIVE="maven-{{ .Environment.CIRCLE_JOB }}-{{ checksum "/tmp/maven_cache_seed" }}.tar.gz"
+            ROOT="~/.m2/repository"
+            ARCHIVE="maven-${CIRCLE_JOB}-$( checksum "/tmp/maven_cache_seed" ).tar.gz"
 
             if [ -z "${AWS_S3_WORKSPACE_BUCKET:-}" ]; then
               echo "AWS_S3_WORKSPACE_BUCKET not set"
@@ -166,9 +166,9 @@ commands:
             set -eo pipefail
             set -x
 
-            ROOT="- ~/.m2/repository"
+            ROOT="~/.m2/repository"
             cd ../$(echo '<< parameters.driver-git-repo >>' | sed -e "s;.*/;;" -e "s;.git$;;")
-            ARCHIVE="maven-{{ .Environment.CIRCLE_JOB }}-{{ checksum "/tmp/maven_cache_seed" }}.tar.gz"
+            ARCHIVE="maven-${CIRCLE_JOB}-$( checksum "/tmp/maven_cache_seed" ).tar.gz"
 
             if [ -z "${AWS_S3_WORKSPACE_BUCKET:-}" ]; then
               echo "AWS_S3_WORKSPACE_BUCKET not set"
