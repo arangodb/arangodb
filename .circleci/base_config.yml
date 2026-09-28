@@ -173,7 +173,7 @@ commands:
             aws s3 cp --no-sign-request --profile anon \
               "s3://${AWS_S3_WORKSPACE_BUCKET}/java-caches/${ARCHIVE}" \
               "$TAR" && \
-            tar -xzf "$TAR"  ~/.m2/repository || true
+            cd / && tar -xzf "$TAR" || true
   store_cache_s3:
     parameters:
       driver-git-repo:
