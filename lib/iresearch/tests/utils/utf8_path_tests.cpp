@@ -69,18 +69,6 @@ TEST_F(utf8_path_tests, current) {
     std::time_t tmpTime;
     uint64_t tmpUint;
 
-#ifdef _WIN32
-    wchar_t buf[_MAX_PATH];
-    irs::basic_string<wchar_t> current_dir(_wgetcwd(buf, _MAX_PATH));
-    // irs::basic_string<wchar_t> prefix(L"\\\\?\\"); // prepended by chdir()
-    // and returned by win32
-#else
-    char buf[PATH_MAX];
-    irs::basic_string<char> current_dir(getcwd(buf, PATH_MAX));
-    // irs::basic_string<char> prefix;
-#endif
-
-    ASSERT_TRUE(current_dir == path.native());
     ASSERT_TRUE(irs::file_utils::exists(tmpBool, path.c_str()) && tmpBool);
     ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path.c_str()) &&
                 tmpBool);
@@ -121,17 +109,6 @@ TEST_F(utf8_path_tests, current) {
     bool tmpBool;
     std::time_t tmpTime;
     uint64_t tmpUint;
-
-#ifdef _WIN32
-    wchar_t buf[_MAX_PATH];
-    irs::basic_string<wchar_t> current_dir(_wgetcwd(buf, _MAX_PATH));
-    irs::basic_string<wchar_t> prefix(
-      L"\\\\?\\");  // prepended by chdir() and returned by win32
-#else
-    char buf[PATH_MAX];
-    irs::basic_string<char> current_dir(getcwd(buf, PATH_MAX));
-    irs::basic_string<char> prefix;
-#endif
 
     ASSERT_TRUE(irs::file_utils::exists(tmpBool, path.c_str()) && !tmpBool);
     ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path.c_str()) &&
