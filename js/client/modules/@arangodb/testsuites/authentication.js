@@ -198,9 +198,7 @@ function authenticationParameters (options) {
 
         results[testName][authTestUrl] = {
           status: false,
-          message: 'we expected a redirect to ' +
-            authTestRedirectLocation +
-            ' and we got ' + reply.headers['location'] +
+          message: 'we got a redirect to ' + reply.headers['location'] +
             ' Full Status: ' + yaml.safeDump(reply)
         };
         cleanup = false;

@@ -141,11 +141,11 @@ class instanceManager {
     // we write the secret to a temprary keyfile and rather us the
     // more secure --server.jwt-secret-keyfile option.
     if (this.addArgs.hasOwnProperty('server.jwt-secret')) {
-      const jwt = addArgs['server.jwt-secret'];
-      delete addArgs['server.jwt-secret'];
-      addArgs['server.jwt-secret-keyfile'] = writeJwtSecretToFile(this.rootDir, jwt);
-    } else if (options.hasOwnProperty('jwtSecret')) {
-      addArgs['server.jwt-secret-keyfile'] = writeJwtSecretToFile(this.rootDir, this.options.jwtSecret);
+      const jwt = this.addArgs['server.jwt-secret'];
+      delete this.addArgs['server.jwt-secret'];
+      this.addArgs['server.jwt-secret-keyfile'] = writeJwtSecretToFile(this.rootDir, jwt);
+    } else if (this.options.hasOwnProperty('jwtSecret')) {
+      this.addArgs['server.jwt-secret-keyfile'] = writeJwtSecretToFile(this.rootDir, this.options.jwtSecret);
     }
 
     this.forceJWT = (this.addArgs.hasOwnProperty('server.jwt-secret') &&
@@ -1176,6 +1176,7 @@ class instanceManager {
 
   checkUptime () {
     let ret = {};
+    const metricName = 'arangodb_server_statistics_server_uptime_total';
     this.arangods.forEach(arangod => {
       let reply = arangod.toThisInstance(() => {
         return arango.GET_RAW('/_admin/metrics');
