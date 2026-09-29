@@ -1,3 +1,14 @@
+3.12.12.1 (XXXX-XX-XX)
+----------------------
+
+* BTS-2461: Fix a query plan losing the distribute input calculation for every
+  DistributeNode after the first one. If the first node needed no such
+  calculation, the optimizer stopped there instead of continuing with the
+  remaining nodes. In a disjoint SmartGraph, a traversal was then distributed
+  on its raw start vertex rather than on the prepared input, and one of two
+  sibling subqueries could silently return an empty result.
+
+
 3.12.12 (2026-09-21)
 --------------------
 
