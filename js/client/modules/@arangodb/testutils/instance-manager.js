@@ -314,6 +314,7 @@ class instanceManager {
     }
     try {
       this.hasSetPassvoid = true;
+      this.arangods.forEach(arangod => { arangod.hasSetPassvoid = true; });
       return require('org/arangodb/users').save(this.options.username, this.options.password);
     } catch (ex) {
       if (ex.errorNum === errors.ERROR_USER_DUPLICATE.code) {
