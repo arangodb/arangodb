@@ -27,6 +27,7 @@
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
 #include "Endpoint/Endpoint.h"
@@ -37,6 +38,7 @@
 #include "Shell/ShellConsoleFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
+#include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Ssl/ssl-helper.h"
 #include "Utils/ClientManager.h"
 #include "Utilities/NameValidator.h"
@@ -44,12 +46,24 @@
 #include <absl/strings/str_cat.h>
 #include "Ssl/jwt.h"
 
+#include <chrono>
+#include <exception>
+
 using namespace arangodb::application_features;
 using namespace arangodb::httpclient;
 using namespace arangodb::options;
 
 namespace {
 constexpr size_t DEFAULT_RETRIES = 2;
+constexpr auto kJwtRenewalCheckInterval = std::chrono::seconds{1};
+
+/**
+ * The --server.jwt-renewal-threshold value (seconds) as clock duration
+ */
+auto toRenewalThreshold(double seconds) -> arangodb::JwtClock::duration {
+  return std::chrono::duration_cast<arangodb::JwtClock::duration>(
+      std::chrono::duration<double>{seconds});
+}
 }  // anonymous namespace
 
 namespace arangodb {
@@ -169,7 +183,23 @@ void ClientFeature::prepare() {
     // if the jwt token is set to "-" we will ask for it
     readJwtToken();
   }
+
+  if (!_options.jwtToken.empty()) {
+    _renewingJwtToken = std::make_shared<RenewingJwtToken>(
+        _options.jwtToken,
+        [this](JwtToken const& token) { return renewJwtViaOpenAuth(token); },
+        toRenewalThreshold(_options.jwtRenewalThreshold), &JwtClock::now);
+  }
 }
+
+void ClientFeature::start() {
+  if (_renewingJwtToken != nullptr) {
+    _jwtRenewal = std::make_unique<BackgroundJwtRenewal>(
+        _renewingJwtToken, kJwtRenewalCheckInterval);
+  }
+}
+
+void ClientFeature::stop() { _jwtRenewal.reset(); }
 
 std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient(
     size_t threadNumber, bool suppressError) const {
@@ -183,22 +213,21 @@ std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient(
 
 std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient(
     std::string const& definition, bool suppressError) const {
-  double requestTimeout;
-  bool warn;
-  {
-    READ_LOCKER(locker, _settingsLock);
-    requestTimeout = _options.requestTimeout;
-    warn = _warn;
-  }
-  SimpleHttpClientParams params(requestTimeout, warn);
-  params.setCompressRequestThreshold(
-      compressTransfer() ? compressRequestThreshold() : 0);
-  return createHttpClient(definition, std::move(params), suppressError);
+  return createHttpClient(definition, defaultHttpClientParams(), suppressError);
 }
 
-std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
-    std::string const& definition, SimpleHttpClientParams const& params,
-    bool suppressError) const {
+SimpleHttpClientParams ClientFeature::defaultHttpClientParams() const {
+  READ_LOCKER(locker, _settingsLock);
+  SimpleHttpClientParams params(_options.requestTimeout, _warn);
+  params.setCompressRequestThreshold(
+      _options.compressTransfer ? _options.compressRequestThreshold : 0);
+  return params;
+}
+
+std::unique_ptr<httpclient::SimpleHttpClient>
+ClientFeature::createBareHttpClient(std::string const& definition,
+                                    SimpleHttpClientParams const& params,
+                                    bool suppressError) const {
   std::unique_ptr<Endpoint> endpoint(Endpoint::clientFactory(definition));
 
   if (endpoint == nullptr) {
@@ -217,13 +246,26 @@ std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
                                        _options.sslProtocol));
 
   // takes over ownership for the connection object
-  auto httpClient = std::make_unique<SimpleHttpClient>(connection, params);
-  // set client parameters
+  return std::make_unique<SimpleHttpClient>(connection, params);
+}
+
+std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
+    std::string const& definition, SimpleHttpClientParams const& params,
+    bool suppressError) const {
+  auto httpClient = createBareHttpClient(definition, params, suppressError);
+
+  READ_LOCKER(locker, _settingsLock);
+
   httpClient->params().setLocationRewriter(static_cast<void const*>(this),
                                            &ClientManager::rewriteLocation);
   httpClient->params().setUserNamePassword("/", _options.username,
                                            _options.password);
-  if (!_options.jwtToken.empty()) {
+  if (_renewingJwtToken != nullptr) {
+    // only installs the callable; it is invoked per request, never while
+    // _settingsLock is held
+    httpClient->params().setJwtProvider(
+        [token = _renewingJwtToken] { return token->current(); });
+  } else if (!_options.jwtToken.empty()) {
     httpClient->params().setJwt(_options.jwtToken);
   } else if (!_jwtSecret.empty()) {
     TRI_ASSERT(!_options.endpoints.empty());
@@ -233,6 +275,24 @@ std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
   }
 
   return httpClient;
+}
+
+RenewalOutcome ClientFeature::renewJwtViaOpenAuth(JwtToken const& token) const {
+  try {
+    auto const client =
+        createBareHttpClient(endpoint(), defaultHttpClientParams(),
+                             /*suppressError*/ false);
+    std::unique_ptr<SimpleHttpResult> const response(client->request(
+        rest::RequestType::POST, "/_open/auth/renew", nullptr, 0,
+        {{StaticStrings::Authorization, absl::StrCat("bearer ", token)}}));
+    if (response == nullptr || !response->isComplete()) {
+      return RenewalOutcome::error(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
+                                   client->getErrorMessage());
+    }
+    return parseRenewalResponse(*response);
+  } catch (std::exception const& ex) {
+    return RenewalOutcome::error(TRI_ERROR_INTERNAL, ex.what());
+  }
 }
 
 std::vector<std::string> ClientFeature::httpEndpoints() {
@@ -277,6 +337,13 @@ void ClientFeature::setEndpoint(std::string_view value) {
 }
 
 std::string ClientFeature::username() const {
+  // a token authenticates as the user it was issued for, whatever
+  // --server.username says
+  if (auto const tokenUser =
+          rest::SslInterface::jwt::extractPreferredUsername(jwtToken());
+      tokenUser.has_value()) {
+    return *tokenUser;
+  }
   READ_LOCKER(locker, _settingsLock);
   return _options.username;
 }
@@ -312,6 +379,9 @@ void ClientFeature::setJwtSecret(std::string_view jwtSecret) {
 }
 
 std::string ClientFeature::jwtToken() const {
+  if (_renewingJwtToken != nullptr) {
+    return _renewingJwtToken->current();
+  }
   READ_LOCKER(locker, _settingsLock);
   return _options.jwtToken;
 }
@@ -396,9 +466,15 @@ double ClientFeature::jwtRenewalThreshold() const noexcept {
   return _options.jwtRenewalThreshold;
 }
 
-void ClientFeature::setJwtRenewalThreshold(double value) noexcept {
-  WRITE_LOCKER(locker, _settingsLock);
-  _options.jwtRenewalThreshold = value;
+void ClientFeature::setJwtRenewalThreshold(double value) {
+  {
+    WRITE_LOCKER(locker, _settingsLock);
+    _options.jwtRenewalThreshold = value;
+  }
+  // outside _settingsLock: the token's mutex must never nest inside it
+  if (_renewingJwtToken != nullptr) {
+    _renewingJwtToken->setRenewalThreshold(toRenewalThreshold(value));
+  }
 }
 
 uint64_t ClientFeature::compressRequestThreshold() const noexcept {

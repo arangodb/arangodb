@@ -407,19 +407,17 @@ ErrorCode TRI_ZipFile(
     }
 
     while (true) {
-      int sizeRead = (int)fread(buffer, 1, bufferSize, fin);
+      int const sizeRead = static_cast<int>(fread(buffer, 1, bufferSize, fin));
+      bool eof = false;
       if (sizeRead < bufferSize) {
-        if (feof(fin) == 0) {
+        eof = feof(fin) > 0;
+        if (!eof) {
           res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
           break;
         }
       }
-
-      if (sizeRead > 0) {
-        if (0 != zipWriteInFileInZip(zf, buffer, sizeRead)) {
-          break;
-        }
-      } else /* if (sizeRead <= 0) */ {
+      if (sizeRead <= 0 || zipWriteInFileInZip(zf, buffer, sizeRead) != 0 ||
+          eof) {
         break;
       }
     }

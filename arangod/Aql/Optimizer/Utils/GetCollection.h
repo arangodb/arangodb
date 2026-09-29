@@ -22,11 +22,12 @@
 
 #pragma once
 
-namespace arangodb {
+namespace arangodb::aql {
 
-struct IRecoveryCallback {
-  virtual ~IRecoveryCallback() = default;
-  virtual void recoveryDone() = 0;
-};
+struct Collection;
+class ExecutionNode;
 
-}  // namespace arangodb
+namespace optimizer {
+Collection const* getCollection(ExecutionNode const* node);
+}
+}  // namespace arangodb::aql

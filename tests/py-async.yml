@@ -9,8 +9,6 @@ tests:
       priority: 500
       type: single
       suffix: -async
-    args:
-      extremeVerbosity: true
 - python_driver:
     job: run-driver-tests
     options:
@@ -18,5 +16,3 @@ tests:
       type: cluster
       size: large
       suffix: -async
-    args:
-      extremeVerbosity: true

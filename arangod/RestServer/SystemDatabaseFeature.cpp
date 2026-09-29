@@ -25,8 +25,10 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/application-exit.h"
+#include "ClusterEngine/ClusterEngine.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
@@ -42,6 +44,9 @@ SystemDatabaseFeature::SystemDatabaseFeature(
     TRI_vocbase_t* vocbase /*= nullptr*/)
     : ApplicationFeature{server, *this}, _vocbase(vocbase) {
   startsAfter<DatabaseFeature>();
+  // start() below looks up the already-bootstrapped _system database
+  startsAfter<ClusterEngine>();
+  startsAfter<RocksDBEngine>();
 }
 
 void SystemDatabaseFeature::start() {

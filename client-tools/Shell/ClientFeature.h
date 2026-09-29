@@ -23,11 +23,14 @@
 #pragma once
 
 #include <functional>
+#include <memory>
 #include <string>
 #include <string_view>
 
 #include "Shell/ClientFeatureOptions.h"
 #include "Shell/ShellConsoleFeature.h"
+#include "Utils/BackgroundJwtRenewal.h"
+#include "Utils/RenewingJwtToken.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
@@ -58,6 +61,8 @@ class ClientFeature final : public HttpEndpointProvider {
   ClientFeature(ApplicationServer& server, ClientFeatureOptions options);
 
   void prepare() override;
+  void start() override;
+  void stop() override;
 
   std::string databaseName() const;
   void setDatabaseName(std::string_view databaseName);
@@ -66,6 +71,8 @@ class ClientFeature final : public HttpEndpointProvider {
   // set single endpoint
   void setEndpoint(std::string_view value);
 
+  /// the user requests are authenticated as: the user of a --server.jwt-token
+  /// if it names one, otherwise --server.username
   std::string username() const;
   void setUsername(std::string_view value);
 
@@ -75,6 +82,8 @@ class ClientFeature final : public HttpEndpointProvider {
   std::string jwtSecret() const;
   void setJwtSecret(std::string_view jwtSecret);
 
+  /// the token passed via --server.jwt-token; once the feature has started
+  /// it is renewed in the background, so callers must re-read it
   std::string jwtToken() const;
   void setJwtToken(std::string_view jwtToken);
 
@@ -95,7 +104,8 @@ class ClientFeature final : public HttpEndpointProvider {
   bool compressTransfer() const noexcept;
   uint64_t compressRequestThreshold() const noexcept;
   double jwtRenewalThreshold() const noexcept;
-  void setJwtRenewalThreshold(double value) noexcept;
+  /// also applies to the renewal of a token passed via --server.jwt-token
+  void setJwtRenewalThreshold(double value);
 
   std::unique_ptr<httpclient::GeneralClientConnection> createConnection(
       std::string const& definition);
@@ -130,6 +140,24 @@ class ClientFeature final : public HttpEndpointProvider {
   void readJwtToken();
   void loadJwtSecretFile();
 
+  /**
+   * Parameters shared by all clients: timeouts, warnings, compression
+   */
+  httpclient::SimpleHttpClientParams defaultHttpClientParams() const;
+
+  /**
+   * Client without authentication, location rewriter or token provider
+   */
+  std::unique_ptr<httpclient::SimpleHttpClient> createBareHttpClient(
+      std::string const& definition,
+      httpclient::SimpleHttpClientParams const& params,
+      bool suppressError) const;
+
+  /**
+   * POSTs /_open/auth/renew authenticated with the given token
+   */
+  RenewalOutcome renewJwtViaOpenAuth(JwtToken const& token) const;
+
   ClientFeatureOptions _options;
 
   CommunicationFeaturePhase& _comm;
@@ -138,6 +166,11 @@ class ClientFeature final : public HttpEndpointProvider {
   basics::ReadWriteLock mutable _settingsLock;
 
   std::string _jwtSecret;
+  /// set when a token was passed via --server.jwt-token; shared by all clients
+  /// created by this feature, so every worker thread sees a renewed token
+  std::shared_ptr<RenewingJwtToken> _renewingJwtToken;
+  /// renews _renewingJwtToken even while no requests are sent
+  std::unique_ptr<BackgroundJwtRenewal> _jwtRenewal;
   size_t _retries;
 
   bool _warn;

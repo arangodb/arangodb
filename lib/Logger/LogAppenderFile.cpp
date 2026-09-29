@@ -75,12 +75,7 @@ void LogAppenderFile::writeLogMessage(LogLevel level, size_t /*topicId*/,
   }
 
   if (level == LogLevel::FATAL) {
-    FILE* f = TRI_FDOPEN(_fd, "a");
-    if (f != nullptr) {
-      // valid file pointer...
-      // now flush the file one last time before we shut down
-      fflush(f);
-    }
+    fsync(_fd);
   }
 }
 

@@ -188,16 +188,17 @@ auto loadJwtSecretFolder(std::filesystem::path path) -> ResultT<AuthInfo> {
                               path.string()));
   }
 
-  auto r =
-      loadJwtSecretFile(basics::FileUtils::buildFilename(path, list.at(0)));
+  auto const fn = basics::FileUtils::buildFilename(path, f.front());
+  auto const r = loadKeyfile(fn);
   if (!r.ok()) {
     return r.result();
   }
-  auto result = r.get();
+  auto result = AuthInfo{.activeSecret = r.get(), .passiveSecrets = {}};
 
   std::vector<AuthKey> passiveSecrets;
   for (auto&& file : f | std::views::drop(1)) {
-    auto r = loadKeyfile(basics::FileUtils::buildFilename(path, file));
+    auto const fn = basics::FileUtils::buildFilename(path, file);
+    auto const r = loadKeyfile(fn);
 
     if (!r.ok()) {
       return r.result();

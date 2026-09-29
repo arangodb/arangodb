@@ -700,11 +700,11 @@ TEST_F(IResearchAnalyzerFeatureTest,
 }
 
 TEST_F(IResearchAnalyzerFeatureTest, test_emplace_creation_during_recovery) {
-  // add valid inRecovery (failure)
+  // add valid !isReady() (failure)
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   auto feature = createAnalyzerFeature();
   auto before = StorageEngineMock::recoveryStateResult;
-  StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+  StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
   irs::Finally restore = [&before]() noexcept {
     StorageEngineMock::recoveryStateResult = before;
   };
@@ -2494,7 +2494,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     feature.unprepare();
   }
 
-  // remove existing (inRecovery) single-server
+  // remove existing (engine !isReady()) single-server
   {
     auto feature = createAnalyzerFeature();
 
@@ -2517,8 +2517,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     }
 
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -2636,7 +2635,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
                   arangodb::transaction::OperationOriginTestCase{}));
   }
 
-  // remove existing (inRecovery) dbserver
+  // remove existing (engine !isReady()) dbserver
   {
     auto beforeRole = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
@@ -2727,8 +2726,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     }
 
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -2857,7 +2855,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
 
 TEST_F(IResearchAnalyzerFeatureTest, test_prepare) {
   auto before = StorageEngineMock::recoveryStateResult;
-  StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+  StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
   irs::Finally restore = [&before]() noexcept {
     StorageEngineMock::recoveryStateResult = before;
   };
@@ -2899,8 +2897,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_prepare) {
 TEST_F(IResearchAnalyzerFeatureTest, test_start) {
   auto vocbase = _systemDatabaseFeature.use();
 
-  // test feature start load configuration (inRecovery, no configuration
-  // collection)
+  // test feature start load configuration (!isReady(), no config collection)
   {
     // ensure no configuration collection
     {
@@ -2918,8 +2915,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
     }
 
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -2960,8 +2956,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
     feature.unprepare();
   }
 
-  // test feature start load configuration (inRecovery, with configuration
-  // collection)
+  // test feature start load configuration (!isReady(), with config collection)
   {
     // ensure there is an empty configuration collection
     {
@@ -2997,8 +2992,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
     }
 
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
