@@ -1518,7 +1518,7 @@ class instanceManager {
 
   reconnect(privileged)
   {
-    let passvoid = this.hasSetPassvoid ? this.options.password:'';
+    let passvoid = this.hasSetPassvoid ? this.options.password:undefined;
     if (this.jwt_secret !== null && privileged) {
       let deadline = time() + seconds(60);
       arango.reconnect(this.endpoint,
@@ -1531,14 +1531,18 @@ class instanceManager {
       return true;
     }
     if (this.options.hasOwnProperty('server')) {
+      print(`${Date()} before`)
       arango.reconnect(this.endpoint, '_system', 'root', passvoid);
+      print(`${Date()} after`)
       this.connectionHandle = arango.getConnectionHandle();
       return true;
     }
 
     try {
       if (this.endpoint !== null) {
+        print(`${Date()} before`)
         arango.reconnect(this.endpoint, '_system', 'root', passvoid);
+      print(`${Date()} after`)
         this.connectionHandle = arango.getConnectionHandle();
       } else {
         print("Don't have a frontend instance to connect to");
