@@ -449,6 +449,7 @@ function makeDataWrapper (options) {
       localOptions.dbServers = 3;
     }
     localOptions.password = "cluster";
+    localOptions.jwtSecret = "makedata_jwt_secret"; // cluster Waitdata needs JWT to access _users
   } else {
     localOptions.password = "single";
   }
