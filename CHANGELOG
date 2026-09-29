@@ -1,6 +1,8 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
 
+* Updated ArangoDB Starter to v0.19.28.
+
 * COR-994: arangodump, arangorestore and arangosh now renew a JWT passed via
   `--server.jwt-token` before it expires, using `POST /_open/auth/renew`
   and controlled by `--server.jwt-renewal-threshold`. Long-running dumps
