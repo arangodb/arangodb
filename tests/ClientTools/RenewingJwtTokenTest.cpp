@@ -223,6 +223,15 @@ TEST(RenewingJwtTokenTest, rejectsUnexpectedResponseBodies) {
   EXPECT_TRUE(parseTokenResponse(*completeResponse(200, "not json")).fail());
 }
 
+TEST(RenewingJwtTokenTest, parsesEmptyTokenAsNotTokenIssued) {
+  // the server answers with the token "invalid" when authentication is off
+  auto const outcome =
+      parseTokenResponse(*completeResponse(200, R"({"jwt":""})"));
+
+  ASSERT_TRUE(outcome.ok());
+  EXPECT_EQ(outcome.get(), std::nullopt);
+}
+
 // RenewingJwtToken
 
 TEST(RenewingJwtTokenTest, currentReturnsTheTokenWithoutRenewingIt) {

@@ -134,6 +134,9 @@ auto parseTokenResponse(httpclient::SimpleHttpResult const& response)
           TRI_ERROR_INTERNAL,
           "unexpected reply from /_open/auth: jwt is not a string");
     }
+    if (jwt.isEqualString("")) {
+      return TokenOutcome::success(std::nullopt);
+    }
     if (jwt.isEqualString("invalid")) {
       // the server issues no tokens while authentication is disabled
       return TokenOutcome::success(std::nullopt);
