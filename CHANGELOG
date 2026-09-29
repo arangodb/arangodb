@@ -16,6 +16,10 @@
 
 * Updated ArangoDB Starter to v0.19.28.
 
+* Fix AQL SUBSTITUTE() with an empty search string. It previously returned
+  null with a warning; it now matches at every character position, e.g.
+  SUBSTITUTE('abc', '', '_') returns '_a_b_c_'.
+
 * COR-994: arangodump, arangorestore and arangosh now renew a JWT passed via
   `--server.jwt-token` before it expires, using `POST /_open/auth/renew`
   and controlled by `--server.jwt-renewal-threshold`. Long-running dumps
