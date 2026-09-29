@@ -58,6 +58,14 @@ using namespace arangodb::options;
 namespace {
 constexpr size_t DEFAULT_RETRIES = 2;
 constexpr auto kJwtRenewalCheckInterval = std::chrono::seconds{1};
+
+/**
+ * The --server.jwt-renewal-threshold value (seconds) as clock duration
+ */
+auto toRenewalThreshold(double seconds) -> arangodb::JwtClock::duration {
+  return std::chrono::duration_cast<arangodb::JwtClock::duration>(
+      std::chrono::duration<double>{seconds});
+}
 }  // anonymous namespace
 
 namespace arangodb {
@@ -182,7 +190,7 @@ void ClientFeature::prepare() {
     _renewingJwtToken = std::make_shared<RenewingJwtToken>(
         _options.jwtToken,
         [this](JwtToken const& token) { return renewJwtViaOpenAuth(token); },
-        renewalThreshold(), &JwtClock::now);
+        toRenewalThreshold(_options.jwtRenewalThreshold), &JwtClock::now);
   }
 }
 
@@ -514,9 +522,15 @@ double ClientFeature::jwtRenewalThreshold() const noexcept {
   return _options.jwtRenewalThreshold;
 }
 
-void ClientFeature::setJwtRenewalThreshold(double value) noexcept {
-  WRITE_LOCKER(locker, _settingsLock);
-  _options.jwtRenewalThreshold = value;
+void ClientFeature::setJwtRenewalThreshold(double value) {
+  {
+    WRITE_LOCKER(locker, _settingsLock);
+    _options.jwtRenewalThreshold = value;
+  }
+  // outside _settingsLock: the token's mutex must never nest inside it
+  if (_renewingJwtToken != nullptr) {
+    _renewingJwtToken->setRenewalThreshold(toRenewalThreshold(value));
+  }
 }
 
 uint64_t ClientFeature::compressRequestThreshold() const noexcept {

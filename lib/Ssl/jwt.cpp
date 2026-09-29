@@ -161,7 +161,7 @@ std::shared_ptr<velocypack::Builder> decodeClaims(std::string_view token) {
 
   try {
     auto claims = velocypack::Parser::fromJson(body);
-    if (!claims->slice().isObject()) {
+    if (claims == nullptr || !claims->slice().isObject()) {
       return nullptr;
     }
     return claims;

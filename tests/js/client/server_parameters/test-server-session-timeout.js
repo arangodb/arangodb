@@ -217,6 +217,18 @@ function arangoshProvidedTokenRenewalSuite() {
       assertFalse(res.status, JSON.stringify(res));
     },
 
+    // the threshold can be changed at runtime; the background renewal must
+    // use the new value, otherwise the token expires after 5 seconds
+    testArangoshAppliesChangedRenewalThreshold: function() {
+      const res = runArangoshWithToken(fetchToken("root", ""), `
+        arango.jwtRenewalThreshold(2);
+        if (arango.jwtRenewalThreshold() !== 2) {
+          throw new Error("threshold is " + arango.jwtRenewalThreshold());
+        }
+        ${requestsFor12Seconds}`, 0);
+      assertTrue(res.status, JSON.stringify(res));
+    },
+
     testArangoshReportsTheTokenUser: function() {
       const users = require("@arangodb/users");
       users.save("tokenuser", "tokenpw");

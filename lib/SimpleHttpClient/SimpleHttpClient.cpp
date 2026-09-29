@@ -1006,6 +1006,8 @@ void SimpleHttpClient::processChunkedHeader() {
   processChunkedBody();
 }
 
+// TODO (COR-1030): lz4Uncompress call is broken; this func should assemble
+// chunked compressed data into one data and then call lz4Uncompress.
 void SimpleHttpClient::processChunkedBody() {
   // HEAD requests may be responded to without a body...
   if (_method == rest::RequestType::HEAD) {

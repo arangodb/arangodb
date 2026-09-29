@@ -547,6 +547,9 @@ void mdi::extractBoundsFromCondition(
     // not be null.
     for (size_t i = 0; i < condition->numMembers(); i++) {
       auto op = condition->getMemberUnchecked(i);
+      if (!op->isComparisonOperator()) {
+        continue;
+      }
       auto other = op->getMember(0);
       auto access = op->getMember(1);
       index->canUseConditionPart(access, other, op, reference,

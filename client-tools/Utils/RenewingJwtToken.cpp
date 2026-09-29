@@ -118,7 +118,8 @@ auto parseTokenResponse(httpclient::SimpleHttpResult const& response)
     return check;
   }
   try {
-    auto const body = response.getBodyVelocyPack()->slice();
+    auto const builder = response.getBodyVelocyPack();
+    auto const body = builder->slice();
     if (!body.isObject()) {
       return TokenOutcome::error(
           TRI_ERROR_INTERNAL,
@@ -158,6 +159,12 @@ RenewingJwtToken::RenewingJwtToken(JwtToken initialToken, Renewer renewer,
 auto RenewingJwtToken::current() -> JwtToken {
   auto const guard = std::lock_guard{_mutex};
   return _state.token;
+}
+
+void RenewingJwtToken::setRenewalThreshold(
+    JwtClock::duration renewalThreshold) {
+  auto const guard = std::lock_guard{_mutex};
+  _renewalThreshold = renewalThreshold;
 }
 
 void RenewingJwtToken::renewIfDue() {

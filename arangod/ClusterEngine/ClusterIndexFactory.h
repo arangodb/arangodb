@@ -23,19 +23,26 @@
 #pragma once
 
 #include "Indexes/IndexFactory.h"
+#include "VectorIndex/IVectorIndexProvider.h"
 
 namespace arangodb {
 
 class ClusterEngine;
+class RocksDBIndexFactory;
 
 class ClusterIndexFactory final : public IndexFactory {
  public:
   static void linkIndexFactories(
-      application_features::ApplicationServer& server, IndexFactory& factory,
-      ClusterEngine& engine);
+      application_features::ApplicationServer& server,
+      ClusterIndexFactory& factory, ClusterEngine& engine);
   explicit ClusterIndexFactory(application_features::ApplicationServer&,
-                               ClusterEngine& engine);
-  ~ClusterIndexFactory() = default;
+                               ClusterEngine& engine,
+                               IVectorIndexProvider const& vectorIndexProvider);
+  ~ClusterIndexFactory();
+
+  RocksDBIndexFactory const& rocksDBIndexFactory() const {
+    return *_rocksDBIndexFactory;
+  }
 
   // normalize definition
   Result enhanceIndexDefinition(velocypack::Slice const definition,
@@ -59,6 +66,7 @@ class ClusterIndexFactory final : public IndexFactory {
 
  private:
   ClusterEngine& _engine;
+  std::unique_ptr<RocksDBIndexFactory> _rocksDBIndexFactory;
 };
 
 }  // namespace arangodb
