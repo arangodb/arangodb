@@ -63,6 +63,7 @@ if (runSetup === true) {
   }
 
   IM.debugTerminate('crashing server');
+  return 0;
 }
 
 function recoverySuite () {
