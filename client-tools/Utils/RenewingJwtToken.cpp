@@ -118,7 +118,8 @@ auto parseRenewalResponse(httpclient::SimpleHttpResult const& response)
     return check;
   }
   try {
-    auto const body = response.getBodyVelocyPack()->slice();
+    auto const builder = response.getBodyVelocyPack();
+    auto const body = builder->slice();
     if (!body.isObject()) {
       return RenewalOutcome::error(
           TRI_ERROR_INTERNAL,

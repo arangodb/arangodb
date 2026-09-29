@@ -68,6 +68,19 @@ function activityRegistrySuite() {
     return res.headers["x-arango-async-id"];
   }
 
+  function waitForAsyncJobToFinish(jobId) {
+    const deadline = Date.now() + 60 * 1000;
+    while (true) {
+      // fetching the result also removes the finished job from the server
+      const res = internal.arango.PUT_RAW(`/_api/job/${jobId}`, "");
+      if (res.code !== 204) {
+        return res;
+      }
+      assertTrue(Date.now() < deadline, `async job ${jobId} did not finish in time`);
+      internal.wait(0.5);
+    }
+  }
+
   return {
     setUpAll: function () {
       db._create(c);
@@ -134,7 +147,7 @@ function activityRegistrySuite() {
       try {
         IM.debugSetFailAt("RestDumpHandler::fetch-delay");
         
-        const cursorId = fetchDumpAsynchronously(dumpId, server); // Rest call is kept busy with failure point
+        const fetchJobId = fetchDumpAsynchronously(dumpId, server); // Rest call is kept busy with failure point
 
         // make sure that dump context fetch activity is created before activities are requested
         let maxWait = 5;
@@ -163,9 +176,12 @@ function activityRegistrySuite() {
           .filter((id) => dumpContextFetchActivityParents.includes(id)), 0);
 
         // stop first dump-fetch Rest call with a second call
-        const cursorId2 = fetchDumpAsynchronously(dumpId, server);
-        internal.arango.DELETE_RAW(`/_api/job/${cursorId}`);
-        internal.arango.DELETE_RAW(`/_api/job/${cursorId2}`);
+        const secondFetchJobId = fetchDumpAsynchronously(dumpId, server);
+        // both fetches only pass the failure point together: wait for both
+        // before the failure point is cleared, otherwise a fetch that reaches
+        // the failure point after it was cleared leaves the other one waiting
+        waitForAsyncJobToFinish(fetchJobId);
+        waitForAsyncJobToFinish(secondFetchJobId);
 
       } finally {
         IM.debugClearFailAt();

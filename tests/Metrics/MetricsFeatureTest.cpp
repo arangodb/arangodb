@@ -38,7 +38,6 @@ application_features::ApplicationServer server(opts, nullptr);
 metrics::MetricsFeature feature = metrics::MetricsFeature(
     server, LazyApplicationFeatureReference<QueryRegistryFeature>(server),
     LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
-    LazyApplicationFeatureReference<DatabaseFeature>(nullptr),
     LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(nullptr),
     LazyApplicationFeatureReference<ClusterFeature>(nullptr));
 

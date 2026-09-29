@@ -1,5 +1,20 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
+* COR-1018: Cap vector index search result buffers at the collection's
+  document count and track their memory against the query memory limit.
+
+* AQL `REGEX_MATCHES()` matches empty strings like any other input.
+  This fixes issue #23362.
+
+* AQL `REVERSE` keeps characters above U+FFFF, such as emoji, intact when
+  reversing a string, and reverses strings containing U+FFFF completely.
+  This fixes issue #23360.
+
+* AQL `REVERSE` keeps characters above U+FFFF, such as emoji, intact when
+  reversing a string, and reverses strings containing U+FFFF completely.
+  This fixes issue #23360.
+
+* Updated ArangoDB Starter to v0.19.28.
 
 * COR-994: arangodump, arangorestore and arangosh now renew a JWT passed via
   `--server.jwt-token` before it expires, using `POST /_open/auth/renew`
@@ -20,6 +35,11 @@
 
 * COR-1025: Escape double quotes, backslashes and line feeds in metric label
   values according to the Prometheus text exposition format.
+
+* AQL queries on collections with a sparse `mdi` or `mdi-prefixed` index
+  accept any `FILTER` condition, including conditions that are not
+  comparisons, such as `IS_STRING(doc.attr)` or `NOT doc.attr`. Such queries
+  failed with `member out of range` before. This fixes issue #23356.
 
 * COR-917: AQL UPDATE with keepNull: false leaves the attribute in place in the 
   _to_ shadow collection of a non-disjoint SmartGraph.
