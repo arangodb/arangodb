@@ -1,4 +1,5 @@
 jobProperties:
+    maven_cache: true
     container_suffix: '-tinkerpop:'
     second_repo: git@github.com:arangodb/arangodb-tinkerpop-provider.git
     branch: main
