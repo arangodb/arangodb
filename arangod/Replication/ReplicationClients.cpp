@@ -78,9 +78,7 @@ void ReplicationClientsProgressTracker::extend(SyncerId syncerId,
     return;
   }
 
-  if (ttl <= 0.0) {
-    ttl = replutils::BatchInfo::DefaultTimeout;
-  }
+  ttl = replutils::BatchInfo::sanitizeTtl(ttl);
 
   double const timestamp = []() {
     using namespace std::chrono;
@@ -119,9 +117,7 @@ void ReplicationClientsProgressTracker::track(SyncerId syncerId,
     return;
   }
 
-  if (ttl <= 0.0) {
-    ttl = replutils::BatchInfo::DefaultTimeout;
-  }
+  ttl = replutils::BatchInfo::sanitizeTtl(ttl);
   double const timestamp = []() {
     using namespace std::chrono;
     return duration<double>(steady_clock::now().time_since_epoch()).count();

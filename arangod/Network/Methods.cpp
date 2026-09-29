@@ -50,6 +50,8 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
 
+#include <chrono>
+
 namespace arangodb {
 namespace network {
 using namespace arangodb::fuerte;
@@ -232,6 +234,17 @@ static std::unique_ptr<fuerte::Response> buildResponse(
 
 namespace {
 
+/**
+ * Converts a timeout to whole milliseconds, rounding up
+ *
+ * fuerte treats a 0ms request timeout as "no timeout", so any positive
+ * duration must map to at least 1ms.
+ */
+auto toRequestTimeout(auto const timeout) noexcept
+    -> std::chrono::milliseconds {
+  return std::chrono::ceil<std::chrono::milliseconds>(timeout);
+}
+
 struct Pack {
   DestinationId dest;
   futures::Promise<network::Response> promise;
@@ -327,8 +340,7 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
   try {
     auto req =
         prepareRequest(pool, type, path, std::move(payload), options, headers);
-    req->timeout(
-        std::chrono::duration_cast<std::chrono::milliseconds>(options.timeout));
+    req->timeout(toRequestTimeout(options.timeout));
 
     if (!pool || !pool->config().clusterInfo) {
       LOG_TOPIC("59b95", ERR, Logger::COMMUNICATION)
@@ -477,8 +489,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState>,
         t -= std::chrono::seconds(30);
       }
       TRI_ASSERT(t.count() > 0);
-      _tmp_req->timeout(
-          std::chrono::duration_cast<std::chrono::milliseconds>(t));
+      _tmp_req->timeout(toRequestTimeout(t));
 
       auto& server = _pool->config().clusterInfo->server();
       NetworkFeature& nf = server.getFeature<NetworkFeature>();
