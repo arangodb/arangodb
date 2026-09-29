@@ -1,5 +1,11 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
+* COR-1018: Cap vector index search result buffers at the collection's
+  document count and track their memory against the query memory limit.
+
+* AQL `REVERSE` keeps characters above U+FFFF, such as emoji, intact when
+  reversing a string, and reverses strings containing U+FFFF completely.
+  This fixes issue #23360.
 
 * AQL `REVERSE` keeps characters above U+FFFF, such as emoji, intact when
   reversing a string, and reverses strings containing U+FFFF completely.
