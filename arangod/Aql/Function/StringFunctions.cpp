@@ -796,6 +796,7 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
     }
   }
 
+  // pair of the position and length of the found match
   using Match = std::pair<int32_t, int32_t>;
   auto const fromSearch = [&](size_t which, int32_t pos) -> Match {
     if (pos == USEARCH_DONE) {
