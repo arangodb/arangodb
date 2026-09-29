@@ -231,6 +231,7 @@ class instance {
     if (process.env.hasOwnProperty('COREDIR')) {
       this.coreDirectory = process.env['COREDIR'];
     }
+    this.hasSetPassvoid = false;
     this.jwt_secret = jwt_secret;
     this.jwtFiles = null;
     this.jwtSecrets = [];
@@ -847,7 +848,7 @@ class instance {
             if (arango.reconnect(this.endpoint,
                                  '_system',
                                  `${this.options.username}`,
-                                 this.options.password,
+                                 this.hasSetPassvoid ? this.options.password: '',
                                  true)) {
               this.connectionHandle = arango.getConnectionHandle();
               this.dumpConnectionTable();
