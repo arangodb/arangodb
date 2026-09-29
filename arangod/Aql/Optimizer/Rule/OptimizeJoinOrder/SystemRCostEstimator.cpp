@@ -22,14 +22,12 @@
 
 #include "SystemRCostEstimator.h"
 
-#include "Aql/AstNode.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/Optimizer/Rule/OptimizeJoinOrder/CachingJoinStatistics.h"
 #include "Aql/Optimizer/Rule/OptimizeJoinOrder/IndexJoinStatistics.h"
 #include "Assertions/ProdAssert.h"
 
 #include <algorithm>
-#include <array>
 #include <utility>
 
 namespace arangodb::aql {
@@ -46,131 +44,7 @@ auto dedupe(std::vector<AttributePath> const& paths)
   return result;
 }
 
-/// @brief Table 1, `column = value`: F = 1/ICARD(column index), i.e. the same
-/// selectivity the constant restrictions get in restrictedFor(). Only
-/// reachable from inside a disjunction: a top-level equality on one graph
-/// variable is extracted as a node condition, and one between two of them
-/// becomes an edge.
-auto equalitySelectivity(AstNode const* eq, JoinStatistics const& stats,
-                         JoinGraph::Node const& node) -> double {
-  if (eq->numMembers() != 2) {
-    return 1.0;
-  }
-  for (size_t i = 0; i < 2; ++i) {
-    auto access = extractAttributeAccess(eq->getMemberUnchecked(i));
-    if (!access.has_value() ||
-        access->first != node.executionNode->outVariable()) {
-      continue;
-    }
-    if (!eq->getMemberUnchecked(1 - i)->isConstant()) {
-      // comparing against something that varies per row; 1/|distinct| models
-      // an equality against a constant and nothing else
-      continue;
-    }
-    std::array attributes{std::move(access->second)};
-    auto distinct = stats.distinctValues(node, attributes);
-    if (distinct.defaulted) {
-      return 1.0;
-    }
-    return std::clamp(1.0 / std::max(distinct.value, 1.0), 0.0, 1.0);
-  }
-  return 1.0;
-}
-
-/// @brief Table 1, `(pred1) AND (pred2)`: F = F(pred1) * F(pred2), which
-/// assumes the column values are independent.
-auto conjunctionSelectivity(AstNode const* conjunction,
-                            JoinStatistics const& stats,
-                            JoinGraph::Node const& node) -> double {
-  double factor = 1.0;
-  for (size_t i = 0; i < conjunction->numMembers(); ++i) {
-    factor *= residualSelectivityFactor(conjunction->getMemberUnchecked(i),
-                                        stats, node);
-  }
-  return factor;
-}
-
-/// @brief Table 1, `(pred1) OR (pred2)`: F = F(pred1) + F(pred2) -
-/// F(pred1) * F(pred2), again assuming independence. An unmeasurable branch
-/// contributes 1.0 and collapses the whole disjunction to 1.0, which is the
-/// honest answer: a union cannot be bounded below by one of its branches.
-auto disjunctionSelectivity(AstNode const* disjunction,
-                            JoinStatistics const& stats,
-                            JoinGraph::Node const& node) -> double {
-  if (disjunction->numMembers() == 0) {
-    return 1.0;
-  }
-  double factor = 0.0;
-  for (size_t i = 0; i < disjunction->numMembers(); ++i) {
-    double const branch = residualSelectivityFactor(
-        disjunction->getMemberUnchecked(i), stats, node);
-    factor = factor + branch - factor * branch;
-  }
-  return std::clamp(factor, 0.0, 1.0);
-}
-
-/// @brief Table 1, `column IN (list of values)`: (number of items in list) *
-/// (the factor for `column = value`), which the paper allows "to be no more
-/// than 1/2".
-auto inSelectivity(AstNode const* in, JoinStatistics const& stats,
-                   JoinGraph::Node const& node) -> double {
-  if (in->numMembers() != 2) {
-    return 1.0;
-  }
-  auto const* values = in->getMemberUnchecked(1);
-  if (!values->isArray()) {
-    return 1.0;
-  }
-  auto access = extractAttributeAccess(in->getMemberUnchecked(0));
-  if (!access.has_value() ||
-      access->first != node.executionNode->outVariable()) {
-    // Either not an attribute access, or an access on some other variable: a
-    // residual is attached to a node when it references exactly one *graph*
-    // variable, but it may also reference non-graph variables (e.g.
-    // `FILTER t.k IN [a.x, 1, 2]` attaches to `a`), so this cannot be assumed
-    // to be about `node`'s own attribute.
-    return 1.0;
-  }
-  std::array<AttributePath, 1> attributes{std::move(access->second)};
-  auto distinct = stats.distinctValues(node, attributes);
-  if (distinct.defaulted) {
-    return 1.0;
-  }
-  return std::min(kInCapSelectivity, static_cast<double>(values->numMembers()) /
-                                         std::max(distinct.value, 1.0));
-}
-
 }  // namespace
-
-auto residualSelectivityFactor(AstNode const* residual,
-                               JoinStatistics const& stats,
-                               JoinGraph::Node const& node) -> double {
-  switch (residual->type) {
-    case NODE_TYPE_OPERATOR_BINARY_LT:
-    case NODE_TYPE_OPERATOR_BINARY_LE:
-    case NODE_TYPE_OPERATOR_BINARY_GT:
-    case NODE_TYPE_OPERATOR_BINARY_GE:
-      return kRangeSelectivityFactor;
-
-    case NODE_TYPE_OPERATOR_BINARY_EQ:
-      return equalitySelectivity(residual, stats, node);
-
-    case NODE_TYPE_OPERATOR_BINARY_AND:
-    case NODE_TYPE_OPERATOR_NARY_AND:
-      return conjunctionSelectivity(residual, stats, node);
-
-    case NODE_TYPE_OPERATOR_BINARY_OR:
-    case NODE_TYPE_OPERATOR_NARY_OR:
-      return disjunctionSelectivity(residual, stats, node);
-
-    case NODE_TYPE_OPERATOR_BINARY_IN:
-      return inSelectivity(residual, stats, node);
-
-    default:
-      // no principled constant for this shape; do not guess
-      return 1.0;
-  }
-}
 
 SystemRCostEstimator::SystemRCostEstimator(
     std::unique_ptr<JoinStatistics> statistics)
@@ -191,14 +65,7 @@ auto SystemRCostEstimator::restrictedFor(JoinGraph::Node const& node) const
 
   Restricted value;
   value.defaulted = distinct.defaulted;
-  value.restricted =
-      std::clamp(count / std::max(distinct.value, 1.0), 1.0, count);
-
-  double base = value.restricted;
-  for (auto const* residual : node.residuals) {
-    base *= residualSelectivityFactor(residual, *_statistics, node);
-  }
-  value.base = std::clamp(base, 1.0, count);
+  value.rows = std::clamp(count / std::max(distinct.value, 1.0), 1.0, count);
 
   return _restricted.emplace(variable, value).first->second;
 }
@@ -208,14 +75,14 @@ auto SystemRCostEstimator::seed(JoinGraph::Node const& start) const
   auto const& restricted = restrictedFor(start);
 
   JoinEstimate estimate;
-  estimate.cardinality = clampEstimate(restricted.base);
+  estimate.cardinality = clampEstimate(restricted.rows);
   estimate.defaulted = restricted.defaulted;
   // An index over the constant restrictions turns the initial scan into a
   // lookup returning restricted(v) rows; otherwise the whole collection is
-  // read. Residuals never cheapen this -- they filter afterwards.
+  // read.
   estimate.cost =
       _statistics->hasIndexCovering(start, start.conditions)
-          ? clampEstimate(restricted.restricted)
+          ? clampEstimate(restricted.rows)
           : clampEstimate(std::max(_statistics->documentCount(start), 1.0));
   return estimate;
 }
@@ -254,8 +121,8 @@ auto SystemRCostEstimator::extend(
         estimate.defaulted || otherDistinct.defaulted || nextDistinct.defaulted;
 
     // A node cannot hold more distinct values than surviving rows.
-    double const dp = std::min(otherDistinct.value, otherRestricted.base);
-    double const dn = std::min(nextDistinct.value, nextRestricted.base);
+    double const dp = std::min(otherDistinct.value, otherRestricted.rows);
+    double const dn = std::min(nextDistinct.value, nextRestricted.rows);
     factor /= std::max({dp, dn, 1.0});
 
     probeable =
@@ -265,13 +132,13 @@ auto SystemRCostEstimator::extend(
   double const count = std::max(_statistics->documentCount(next), 1.0);
   // Floored at 1.0: a join cannot meaningfully produce less than one row when
   // its output is itself a multiplier feeding later extend() calls. Without
-  // this floor, two connecting edges plus a residual-shrunk base(next) can
+  // this floor, two connecting edges plus an over-restricted next can
   // drive the product arbitrarily far below 1 (clampEstimate only floors at
   // 0), which then charges near-zero cost for every subsequent step and
   // erases the cost differences the search relies on to discriminate between
   // orderings.
   estimate.cardinality = std::max(
-      clampEstimate(prefix.cardinality * nextRestricted.base * factor), 1.0);
+      clampEstimate(prefix.cardinality * nextRestricted.rows * factor), 1.0);
   estimate.cost = clampEstimate(
       prefix.cost + (probeable ? probeCost(prefix.cardinality, count)
                                : scanCost(prefix.cardinality, count)));
