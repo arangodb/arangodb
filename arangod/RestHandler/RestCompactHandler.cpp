@@ -25,7 +25,6 @@
 #include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
 #include "Cluster/ClusterMethods.h"
-#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/ExecContext.h"
 
@@ -39,7 +38,7 @@ RestCompactHandler::RestCompactHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
     : RestBaseHandler(server, request, response),
-      _engine(server.getFeature<DatabaseFeature>().engine()) {}
+      _engine(server.getFeature<StorageEngine>()) {}
 
 // Mounted at /_admin/compact (exact)
 RestStatus RestCompactHandler::execute() {

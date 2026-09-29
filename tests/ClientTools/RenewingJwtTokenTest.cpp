@@ -104,7 +104,7 @@ TEST(RenewingJwtTokenTest, renewalIsNeverDueWithoutExpiry) {
   auto const state = JwtTokenState{
       .token = "t", .obtainedAt = at(0), .expiresAt = std::nullopt};
 
-  EXPECT_FALSE(isRenewalDue(state, at(1'000'000'000'000), threshold));
+  EXPECT_FALSE(isRenewalDue(state, at(1'000'000'000), threshold));
 }
 
 TEST(RenewingJwtTokenTest, renewalIsDueOnceWithinThresholdOfExpiry) {

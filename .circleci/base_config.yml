@@ -137,11 +137,11 @@ commands:
             cd ../$(echo '<< parameters.driver-git-repo >>' | sed -e "s;.*/;;" -e "s;.git$;;")
             find . -name 'pom.xml' | sort | xargs cat > /tmp/maven_cache_seed
       - restore_cache:
-          key: maven-{{ .Environment.CIRCLE_JOB }}-{{ checksum "/tmp/maven_cache_seed" }}
+          key: maven-v1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "/tmp/maven_cache_seed" }}
   store_cache:
     steps:
       - save_cache:
-          key: maven-{{ .Environment.CIRCLE_JOB }}-{{ checksum "/tmp/maven_cache_seed" }}
+          key: maven-v1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "/tmp/maven_cache_seed" }}
           paths:
             - ~/.m2/repository
   load_cache_s3:
@@ -157,8 +157,7 @@ commands:
             find . -name 'pom.xml' | sort | xargs cat > /tmp/maven_cache_seed
             set -eo pipefail
 
-            ROOT="~/.m2/repository"
-            ARCHIVE="maven-${CIRCLE_JOB}-$( md5sum "/tmp/maven_cache_seed" |sed "s; .*;;" ).tar.gz"
+            ARCHIVE="maven-v1-${CIRCLE_JOB}-$( md5sum "/tmp/maven_cache_seed" |sed "s; .*;;" ).tar.gz"
 
             if [ -z "${AWS_S3_WORKSPACE_BUCKET:-}" ]; then
               echo "AWS_S3_WORKSPACE_BUCKET not set"
@@ -166,27 +165,22 @@ commands:
             fi
 
             mkdir -p /tmp/javas-cache
-            mkdir -p "$ROOT"
+            mkdir -p ~/.m2/repository
             TAR="/tmp/javas-cache/${ARCHIVE}"
 
             aws configure set profile.anon.s3.multipart_threshold 5GB
             aws s3 cp --no-sign-request --profile anon \
               "s3://${AWS_S3_WORKSPACE_BUCKET}/java-caches/${ARCHIVE}" \
               "$TAR" && \
-            tar -xzf "$TAR"  ~/.m2/repository || true
+            tar -C ~ -xzf "$TAR" || true
   store_cache_s3:
-    parameters:
-      driver-git-repo:
-        type: string
     steps:
       - run:
           command: |
             set -eo pipefail
             set -x
 
-            ROOT="~/.m2/repository"
-            cd ../$(echo '<< parameters.driver-git-repo >>' | sed -e "s;.*/;;" -e "s;.git$;;")
-            ARCHIVE="maven-${CIRCLE_JOB}-$( md5sum "/tmp/maven_cache_seed" |sed "s; .*;;" ).tar.gz"
+            ARCHIVE="maven-v1-${CIRCLE_JOB}-$( md5sum "/tmp/maven_cache_seed" |sed "s; .*;;" ).tar.gz"
 
             if [ -z "${AWS_S3_WORKSPACE_BUCKET:-}" ]; then
               echo "AWS_S3_WORKSPACE_BUCKET not set"
@@ -197,8 +191,7 @@ commands:
             TAR="/tmp/javas-cache/${ARCHIVE}"
 
             if test -d ~/.m2/repository; then
-              cd "$ROOT"
-              tar -czf "$TAR"  ~/.m2/repository
+              tar -C ~ -czf "$TAR" .m2/repository
 
               du -sh "$TAR"
               aws configure set profile.anon.s3.multipart_threshold 5GB
@@ -1196,6 +1189,9 @@ jobs:
   run-driver-tests:
     parameters:
       <<: *shared-test-job-parameters
+      maven-cache:
+        type: boolean
+        default: false
       driver-git-repo:
         type: string
       driver-git-branch:
@@ -1211,8 +1207,11 @@ jobs:
       - clone-driver-repo:
           driver-git-repo: << parameters.driver-git-repo >>
           driver-git-branch: << parameters.driver-git-branch >>
-      - load_cache_s3:
-          driver-git-repo: << parameters.driver-git-repo >>
+      - when:
+          condition: << parameters.maven-cache >>
+          steps:
+            - load_cache_s3:
+                driver-git-repo: << parameters.driver-git-repo >>
       - run:
           name: Initialize driver tests
           command: |
@@ -1226,12 +1225,17 @@ jobs:
           timeLimit: << parameters.timeLimit >>
           sanitizer: << parameters.sanitizer >>
           extraArgs: << parameters.extraArgs >>
-      - store_cache_s3:
-          driver-git-repo: << parameters.driver-git-repo >>
+      - when:
+          condition: << parameters.maven-cache >>
+          steps:
+            - store_cache_s3
 
   kafka-driver-tests:
     parameters:
       <<: *shared-test-job-parameters
+      maven-cache:
+        type: boolean
+        default: false
       driver-git-repo:
         type: string
       driver-git-branch:
@@ -1294,8 +1298,11 @@ jobs:
       - clone-driver-repo:
           driver-git-repo: << parameters.driver-git-repo >>
           driver-git-branch: << parameters.driver-git-branch >>
-      - load_cache:
-          driver-git-repo: << parameters.driver-git-repo >>
+      - when:
+          condition: << parameters.maven-cache >>
+          steps:
+            - load_cache:
+                driver-git-repo: << parameters.driver-git-repo >>
       - run:
           name: Wait for Kafka brokers to be ready
           command: |
@@ -1325,7 +1332,10 @@ jobs:
           sanitizer: << parameters.sanitizer >>
           extraArgs: << parameters.extraArgs >>
           use-s3-workspace: false
-      - store_cache
+      - when:
+          condition: << parameters.maven-cache >>
+          steps:
+            - store_cache
 
   run-rta-tests:
     machine:
