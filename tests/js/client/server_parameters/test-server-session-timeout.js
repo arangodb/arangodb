@@ -170,6 +170,83 @@ function arangoshTokenRenewalSuite() {
   };
 }
 
+function arangoshProvidedTokenRenewalSuite() {
+  'use strict';
+  const runArangosh = require("@arangodb/testutils/client-tools").run.arangoshCmd;
+
+  const fetchToken = function(username, password) {
+    return request.post({
+      url: IM.url + "/_open/auth",
+      body: { username, password },
+      json: true
+    }).json.jwt;
+  };
+
+  // starts arangosh with the token and runs the script in it
+  const runArangoshWithToken = function(token, script, renewalThresholdSeconds = 300) {
+    // the helper would otherwise add --server.username, which is not allowed
+    // together with --server.jwt-token
+    const { username, password, ...options } = IM.options;
+    return runArangosh(options, IM, {
+      "server.jwt-token": token,
+      "server.jwt-renewal-threshold": String(renewalThresholdSeconds),
+      "javascript.execute-string": script,
+    }, "");
+  };
+
+  // the token lives 5 seconds; the script keeps sending requests for 12
+  const requestsFor12Seconds = `
+    for (let i = 0; i < 6; ++i) {
+      const result = arango.GET_RAW("/_api/version");
+      if (result.code !== 200) {
+        throw new Error("request failed with HTTP " + result.code);
+      }
+      require("internal").sleep(2);
+    }`;
+
+  return {
+    testArangoshRenewsProvidedToken: function() {
+      const res = runArangoshWithToken(fetchToken("root", ""), requestsFor12Seconds, 2);
+      assertTrue(res.status, JSON.stringify(res));
+    },
+
+    // with a threshold of 0 the token is only renewed once it has expired,
+    // which the server refuses
+    testArangoshAbortsWithoutRenewal: function() {
+      const res = runArangoshWithToken(fetchToken("root", ""), requestsFor12Seconds, 0);
+      assertFalse(res.status, JSON.stringify(res));
+    },
+
+    // the threshold can be changed at runtime; the background renewal must
+    // use the new value, otherwise the token expires after 5 seconds
+    testArangoshAppliesChangedRenewalThreshold: function() {
+      const res = runArangoshWithToken(fetchToken("root", ""), `
+        arango.jwtRenewalThreshold(2);
+        if (arango.jwtRenewalThreshold() !== 2) {
+          throw new Error("threshold is " + arango.jwtRenewalThreshold());
+        }
+        ${requestsFor12Seconds}`, 0);
+      assertTrue(res.status, JSON.stringify(res));
+    },
+
+    testArangoshReportsTheTokenUser: function() {
+      const users = require("@arangodb/users");
+      users.save("tokenuser", "tokenpw");
+      users.grantDatabase("tokenuser", "_system", "rw");
+      try {
+        const res = runArangoshWithToken(fetchToken("tokenuser", "tokenpw"), `
+          if (arango.connectedUser() !== "tokenuser") {
+            throw new Error("connected user is " + arango.connectedUser());
+          }`);
+        assertTrue(res.status, JSON.stringify(res));
+      } finally {
+        users.remove("tokenuser");
+      }
+    },
+  };
+}
+
 jsunity.run(testSuite);
 jsunity.run(arangoshTokenRenewalSuite);
+jsunity.run(arangoshProvidedTokenRenewalSuite);
 return jsunity.done();

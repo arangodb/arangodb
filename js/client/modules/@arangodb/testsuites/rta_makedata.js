@@ -376,7 +376,6 @@ function makeDataWrapper (options) {
   } else {
     localOptions.password = "single";
   }
-  localOptions.extraArgs['vector-index'] = true;
 
   if (!localOptions.isSan) {
     // don't have default values if non instrumented arangosh.

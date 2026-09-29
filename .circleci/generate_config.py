@@ -152,6 +152,7 @@ def create_generator_config(
     arangod_without_v8: bool,
     gtest: bool,
     full: bool,
+    clang_tidy: bool,
     replication_two: bool,
     create_test_docker_images: str,
     validate_only: bool,
@@ -185,6 +186,7 @@ def create_generator_config(
     filter_criteria = FilterCriteria(
         gtest=gtest,
         full=full,
+        clang_tidy=clang_tidy,
         v8=not arangod_without_v8,
         test_suite=test_suite,
     )
@@ -282,6 +284,11 @@ def create_generator_config(
     help="Include full test set",
 )
 @click.option(
+    "--clang-tidy",
+    is_flag=True,
+    help="Schedule the clang-tidy job",
+)
+@click.option(
     "-rt",
     "--replication-two",
     is_flag=True,
@@ -318,6 +325,7 @@ def main(
     arangod_without_v8: bool,
     gtest: bool,
     full: bool,
+    clang_tidy: bool,
     replication_two: bool,
     create_test_docker_images: str,
     validate_only: bool,
@@ -352,6 +360,7 @@ def main(
             arangod_without_v8=arangod_without_v8,
             gtest=gtest,
             full=full,
+            clang_tidy=clang_tidy,
             replication_two=replication_two,
             create_test_docker_images=create_test_docker_images,
             validate_only=validate_only,
