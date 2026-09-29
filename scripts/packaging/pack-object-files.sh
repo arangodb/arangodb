@@ -35,14 +35,6 @@ if [ -z "${ARANGODB_VERSION:-}" ]; then
   find_arangodb_version "${PROJECT_DIR}/CMakeLists.txt" > /dev/null
 fi
 
-# V8 produces thin archives; rewrite them into self-contained ones so they
-# survive being shipped.
-while IFS= read -r lib; do
-  echo "${lib} ..."
-  ar -t "${lib}" | xargs ar rvs "${lib}.new" > /dev/null
-  mv "${lib}.new" "${lib}"
-done < <(find "${BUILD_DIR}/3rdParty/v8-build" -name "*.a" 2>/dev/null)
-
 # The linking scripts reference ../../libssl.a / ../../libcrypto.a relative
 # to the build directory.
 cp -a "$(find /opt -name libssl.a | head -1)" "${BUILD_DIR}/"
@@ -52,20 +44,36 @@ INCLUSION_LIST="$(mktemp)"
 trap 'rm -f "${INCLUSION_LIST}"' EXIT
 
 find "${BUILD_DIR}" -name "*.a" > "${INCLUSION_LIST}"
-for obj in arangovpack arangobackup arangobench arangosh arangodump \
+for obj in arangovpack arangobackup arangosh arangodump \
            arangoexport arangorestore arangoimport arangod; do
   find "${BUILD_DIR}" -name "${obj}.cpp.o" >> "${INCLUSION_LIST}"
 done
 find "${BUILD_DIR}/client-tools" -name "*.cpp.o" >> "${INCLUSION_LIST}"
 echo "lib/BuildId/BuildId.ld" >> "${INCLUSION_LIST}"
 
-cp "${SCRIPT_DIR}/link_executables.sh" scripts/link_executables.sh
-cp "${SCRIPT_DIR}/README.static-linking" README.static-linking
+# ── Generate scripts/link_executables.sh from this very build ───────────────────
+# The relink script shipped in the archive is generated from the link
+# command lines of the build being packed (a hand-maintained copy proved
+# to rot silently) - see generate_link_executables.py for the details.
+# The clang major version stamped into the script must match the build
+# toolchain; fail clearly if it cannot be determined from VERSIONS.
+CLANG_MAJOR="$(grep -Po 'CLANG_LINUX "\K[0-9]+' "${PROJECT_DIR}/VERSIONS" || true)"
+if [ -z "${CLANG_MAJOR}" ]; then
+  echo "pack-object-files: cannot determine the clang major version (CLANG_LINUX) from ${PROJECT_DIR}/VERSIONS" >&2
+  exit 1
+fi
+python3 "${SCRIPT_DIR}/generate_link_executables.py" "${PROJECT_DIR}" "${BUILD_DIR}" "${CLANG_MAJOR}" > scripts/link_executables.sh
+chmod +x scripts/link_executables.sh
+
+# The README's toolchain instructions follow the build's clang, like the
+# generated script's.
+sed -E "s/clang-[0-9]+/clang-${CLANG_MAJOR}/g; s/lld-[0-9]+/lld-${CLANG_MAJOR}/g" \
+  "${SCRIPT_DIR}/README.static-linking" > README.static-linking
 echo "scripts/link_executables.sh" >> "${INCLUSION_LIST}"
 echo "README.static-linking" >> "${INCLUSION_LIST}"
 
 mkdir -p "${PACKAGES_OUT}"
-ARCHIVE="${PACKAGES_OUT}/arangodb3e-linux-object_files_${BUILDMODE}-${ARANGODB_VERSION}_${ARCH}.tar.gz"
+ARCHIVE="${PACKAGES_OUT}/arangodb4e-linux-object_files_${BUILDMODE}-${ARANGODB_VERSION}_${ARCH}.tar.gz"
 rm -f "${ARCHIVE}"
 tar -czf "${ARCHIVE}" \
   --transform "s|^${BUILD_DIR}|build|" \

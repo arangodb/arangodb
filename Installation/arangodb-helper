@@ -47,7 +47,7 @@ ar_ferr(){
 ar_find_dat_file(){
     local name="$1"
     local found=false
-    for p in "/usr/share/arangodb3" "some other path"; do
+    for p in "/usr/share/arangodb4" "some other path"; do
         local full_path="$p/$name"
         if [ -f "$full_path" ]; then
             found=true

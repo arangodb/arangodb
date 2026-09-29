@@ -1,5 +1,0 @@
-
-# OSX bundle 
-if (CPACK_GENERATOR STREQUAL "Bundle")
-  set(CPACK_PACKAGE_NAME "ArangoDB-CLI")
-endif ()

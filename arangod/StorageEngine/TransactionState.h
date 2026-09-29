@@ -186,6 +186,12 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
       DataSourceId cid, std::string_view cname, AccessMode::Type accessType,
       bool lockUsage);
 
+  /// @brief check that the current user may access the given collection in the
+  /// requested mode
+  [[nodiscard]] Result checkCollectionPermission(DataSourceId cid,
+                                                 std::string_view cname,
+                                                 AccessMode::Type accessType);
+
   /// @brief use all participating collections of a transaction
   [[nodiscard]] futures::Future<Result> useCollections();
 
@@ -289,6 +295,18 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   virtual void addIntermediateCommits(uint64_t value) = 0;
 
   virtual bool hasFailedOperations() const noexcept = 0;
+
+  /// @brief record the timestamp at which this transaction's time-travel
+  /// writes into `collectionId` happen. Must be called before the operation
+  /// locks its document key: the engine validates write-write conflicts
+  /// against this timestamp while taking the lock. Only ever called for
+  /// collections with time travel enabled.
+  virtual Result setTimeTravelWriteTimestamp(DataSourceId /*collectionId*/,
+                                             std::uint64_t /*timestamp*/) {
+    TRI_ASSERT(false);
+    return {TRI_ERROR_NOT_IMPLEMENTED,
+            "time travel is not supported by this storage engine"};
+  }
 
   virtual void beginQuery(std::shared_ptr<ResourceMonitor> resourceMonitor,
                           bool /*isModificationQuery*/) {}
@@ -413,10 +431,6 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
     }
     callbacks.clear();
   }
-
-  /// @brief check if current user can access this collection
-  Result checkCollectionPermission(DataSourceId cid, std::string_view cname,
-                                   AccessMode::Type);
 
   /// @brief helper function for addCollection
   futures::Future<Result> addCollectionInternal(DataSourceId cid,

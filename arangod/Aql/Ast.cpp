@@ -3126,7 +3126,7 @@ bool Ast::getReferencedAttributesRecursive(
           // here we need to take special precautions that we normally
           // don't need
           if (expansionNode.getFilter()->type != NODE_TYPE_NOP ||
-              expansionNode.getOptions()->type != NODE_TYPE_NOP) {
+              expansionNode.getProjection()->type != NODE_TYPE_NOP) {
             // expansion has a filter or a projection set, e.g.
             // p.vertices[FILTER CURRENT.x == 1 RETURN CURRENT.y].
             // we currently cannot handle this.

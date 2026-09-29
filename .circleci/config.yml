@@ -14,7 +14,7 @@ parameters:
     type: string
     # we use an empty string as default. In this case we check if the enterprise repo
     # contains a branch with the same name as the arangodb repo. If this is the case
-    # we use it, otherwise we fall back to "devel".
+    # we use it, otherwise we fall back to "4.0".
     default: ""
     description: "The branch to use for the enterprise repository."
   without-instrumentation:
@@ -37,7 +37,7 @@ parameters:
     type: string
     default: tests.yml
     description: Space separated list of YAML files with test definitions. Available files
-      arangojs.yml java.yml spark-ds.yml go.yml kafka.yml spring-data.yml tinkerpop.yml py-async.yml py.yml tests.yml
+      arangojs.yml java.yml spark-ds.yml go-v2.yml go-v3.yml kafka.yml spring-data.yml tinkerpop.yml py-async.yml py.yml tests.yml
   config-definitions-branches:
     type: string
     default: ""
@@ -48,15 +48,15 @@ parameters:
     description: "filter to be executed testuite names for containing this string"
   create-test-docker-images:
     type: enum
-    enum: [none, alpine, deb]
+    enum: [none, alpine]
     default: none
-    description: "Build and publish a multi-arch (amd64 + arm64) test Docker image
-      of the Enterprise Edition from this commit's build results. Selects the image
-      base: 'alpine' or 'deb' (Debian-based); 'none' disables. The image is pushed
-      to public ECR as public.ecr.aws/b0b8h2r4/arangodb/enterprise-test, tagged with
-      the community commit short SHA; Debian-based images get an extra -deb suffix
-      (<sha>[-deb] multi-arch manifest, <sha>[-deb]-amd64 / <sha>[-deb]-arm64v8
-      per-arch tags)."
+    description: "Build and publish multi-arch (amd64 + arm64) test Docker images
+      of the Enterprise Edition from this commit's build results; 'alpine' builds
+      TWO Alpine-3.24-based images: arangodb/core-test (server only, no client
+      tools) and arangodb/client-tools-test (client tools only); 'none'
+      disables. Both are pushed to public ECR under public.ecr.aws/b0b8h2r4/,
+      tagged <community sha7>_<enterprise sha7> (multi-arch manifest) with
+      -amd64 / -arm64v8 per-arch tags."
   extra_args:
     type: string
     default: ""
@@ -71,7 +71,7 @@ parameters:
     description: "Docker image to use for testing ArangoDB - only relevant when trying new test images"
   build-docker-image:
     type: string
-    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-312:24.04-f7032bef0"
+    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-40:24.04-dc3196a5"
     description: "Docker image to use for building ArangoDB - only relevant when trying new build images"
   # Rarely used options
   replication-two:
@@ -112,6 +112,46 @@ jobs:
                 exit 1
       - run: echo "Check successful - generating config."
 
+  # A new push makes an in-flight infrastructure pipeline on this branch stale;
+  # cancel its workflows. Exceptions: non-push pipelines and the infrastructure
+  # pipeline's own tag-bump commit. Deliberately independent of
+  # check-build-trigger so it runs on every push.
+  cancel-stale-infrastructure:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: Cancel stale infrastructure workflows on this branch
+          command: |
+            if [ "<< pipeline.trigger_source >>" != "webhook" ]; then
+              echo "Not a push-triggered pipeline (<< pipeline.trigger_source >>); leaving infrastructure pipelines alone."
+              exit 0
+            fi
+            SUBJECT="$(curl -s --header "Circle-Token: $CIRCLECI_TOKEN" \
+              "https://circleci.com/api/v2/pipeline/<< pipeline.id >>" | jq -r '.vcs.commit.subject // ""')"
+            if [ "$SUBJECT" = "chore: update Docker image tags" ]; then
+              echo "This push is the infrastructure pipeline's own tag-bump commit; not cancelling."
+              exit 0
+            fi
+            PIPE_IDS=$(curl -s --header "Circle-Token: $CIRCLECI_TOKEN" \
+              "https://circleci.com/api/v2/project/gh/arangodb/arangodb/pipeline?branch=$CIRCLE_BRANCH" | \
+              jq -r '.items[]|select(.state == "created")|select(.id != "<< pipeline.id >>")|.id')
+            for PIPE_ID in $PIPE_IDS; do
+              curl -s --header "Circle-Token: $CIRCLECI_TOKEN" \
+                "https://circleci.com/api/v2/pipeline/${PIPE_ID}/workflow" | \
+                jq -r '.items[]
+                       |select(.status == "running" or .status == "on_hold")
+                       |select(.name == "build-test-docker-images" or .name == "build-ubuntu-build-images" or .name == "build-all-docker-images")
+                       |[.id,.name]|@tsv' | \
+                while IFS=$'\t' read -r WF_ID WF_NAME; do
+                  echo "Cancelling stale infrastructure workflow ${WF_NAME} (${WF_ID}) of pipeline ${PIPE_ID}"
+                  curl -s --header "Circle-Token: $CIRCLECI_TOKEN" --request POST \
+                    "https://circleci.com/api/v2/workflow/${WF_ID}/cancel" >/dev/null
+                done
+            done
+            echo "Stale infrastructure check done."
+
   cancel-redundant-pipelines:
     docker:
       - image: cimg/base:current
@@ -122,7 +162,7 @@ jobs:
           command: |
             if [ "<< pipeline.parameters.dont-cancel-pipelines >>" == "true" ]; then
               echo "Cancelling of redundant pipelines is disabled, not cancelling any pipelines"
-            elif [[ "$CIRCLE_BRANCH" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)$ ]] || [ "$CIRCLE_BRANCH" == "devel" ]; then
+            elif [[ "$CIRCLE_BRANCH" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]] || [ "$CIRCLE_BRANCH" == "devel" ]; then
               echo "Branch is a release branch or devel, not cancelling any pipelines"
             else
               ## Get the name of the workflow and the related pipeline number
@@ -163,11 +203,11 @@ jobs:
         type: string
       default-enterprise-branch:
         type: string
-        default: "devel"
+        default: "4.0"
       config-definitions-branches:
         type: string
         default: ""
-
+      
     steps:
       - run:
           name: Print pipeline parameters
@@ -267,6 +307,8 @@ workflows:
       # we always create a workflow and let the build fail in check-build-trigger unless it has been triggered manually
       # or runs on the devel branch (see condition in check-build-trigger)
       - check-build-trigger
+      - cancel-stale-infrastructure:
+          context: [ circleci-token ]
       - cancel-redundant-pipelines:
           context: [ circleci-token ]
           requires:
@@ -274,6 +316,5 @@ workflows:
       - generate-config:
           definitions: << pipeline.parameters.config-definitions >>
           config-definitions-branches: << pipeline.parameters.config-definitions-branches >>
-          default-enterprise-branch: "4.0"
           requires:
             - cancel-redundant-pipelines

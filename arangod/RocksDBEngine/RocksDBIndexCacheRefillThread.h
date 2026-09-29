@@ -23,8 +23,8 @@
 #pragma once
 
 #include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
 #include "Metrics/Fwd.h"
+#include "Utils/Thread.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"

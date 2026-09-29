@@ -28,7 +28,7 @@
 #include <thread>
 #include <vector>
 
-#include "Cache/CacheOptionsProvider.h"
+#include "Cache/CacheOptions.h"
 #include "Cache/Manager.h"
 #include "Cache/Rebalancer.h"
 #include "Random/RandomGenerator.h"

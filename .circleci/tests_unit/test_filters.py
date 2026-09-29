@@ -34,7 +34,9 @@ class TestFilterCriteria:
         assert criteria.gtest is False
         assert criteria.architecture is None
         assert criteria.build_variant is None
+        assert criteria.deployment_type is None
         assert criteria.enterprise is True
+        assert criteria.test_suite == ""
 
     def test_custom_values(self):
         """Test setting custom criteria values."""

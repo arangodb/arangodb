@@ -212,6 +212,23 @@ function testSuite() {
       });
       assertEqual(401, res.status, "Request to protected endpoint without token should fail");
     },
+
+    testWithForgedToken : function() {
+      // Test access to a more sensitive endpoint
+
+      const payload = {
+        "server_id": "testserver",
+        "iss": "arangodb",
+        "exp": Math.floor(Date.now() / 1000) + 3600
+      };
+      const token = crypto.jwtEncode(publicKey2.trim(), payload, 'HS256');
+      const res = request({
+        method: "GET",
+        url: IM.url + "/_api/version",
+        auth: { bearer: token }
+      });
+        assertEqual(401, res.status, "Request to protected endpoint with forged token should fail");
+    },
   };
 }
 

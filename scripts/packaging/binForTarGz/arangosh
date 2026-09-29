@@ -24,7 +24,7 @@ if [ -x "$executable" ] ; then
   exec "$executable" \
        --configuration none \
        --server.authentication true \
-       --javascript.startup-directory "$installation/usr/share/arangodb3/js" \
+       --javascript.startup-directory "$installation/usr/share/arangodb4/js" \
        "$@"
 fi
 echo "Could not find executable ${executable}!"

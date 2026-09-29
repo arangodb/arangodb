@@ -31,7 +31,7 @@
 #include "Cache/BinaryKeyHasher.h"
 #include "Cache/Cache.h"
 #include "Cache/CacheManagerFeature.h"
-#include "Cache/CacheOptionsProvider.h"
+#include "Cache/CacheOptions.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Random/RandomGenerator.h"

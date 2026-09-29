@@ -64,6 +64,8 @@
 #include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
 #endif
 
+#include "Utils/ExecContext.h"
+
 #include <absl/strings/str_cat.h>
 #include "Ssl/jwt.h"
 #include <velocypack/Iterator.h>
@@ -78,13 +80,13 @@ using namespace arangodb;
 namespace {
 bool authorized(std::string const& user) {
   auto const& exec = arangodb::ExecContext::current();
-  if (exec.isSuperuser()) {
+  if (exec.isSuperuserOrDisabled()) {
     return true;
   }
   return (user == exec.user());
 }
 
-std::string currentUser() { return arangodb::ExecContext::current().user(); }
+auto currentUser() { return arangodb::ExecContext::current().user(); }
 
 bool extractCollections(VPackSlice collections, std::vector<std::string>& reads,
                         std::vector<std::string>& writes,
@@ -1456,8 +1458,8 @@ bool Manager::abortManagedTrx(
   return !toAbort.empty();
 }
 
-void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
-                           std::string const& username, bool fanout,
+void Manager::toVelocyPack(VPackBuilder& builder, std::string_view database,
+                           std::string_view username, bool fanout,
                            bool details) const {
   TRI_ASSERT(!builder.isClosed());
 
@@ -1501,7 +1503,7 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
         if (!username.empty()) {
           headers.try_emplace(
               StaticStrings::Authorization,
-              "bearer " + arangodb::rest::SslInterface::jwt::generateUserToken(
+              "bearer " + auth::generateUserToken(
                               auth->tokenCache().jwtSecret(), username));
         } else {
           headers.try_emplace(StaticStrings::Authorization,
@@ -1540,7 +1542,8 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
       [this, &builder, &database, details](TransactionId tid,
                                            ManagedTrx const& trx) {
         bool authorized = isAuthorized(trx, database);
-        if (details && arangodb::ExecContext::current().isSuperuser()) {
+        if (details &&
+            arangodb::ExecContext::current().isSuperuserOrDisabled()) {
           authorized = true;
         }
         if (!authorized) {
@@ -1610,7 +1613,7 @@ History& Manager::history() noexcept {
 }
 #endif
 
-Result Manager::abortAllManagedWriteTrx(std::string const& username,
+Result Manager::abortAllManagedWriteTrx(std::string_view username,
                                         bool fanout) {
   LOG_TOPIC("bba16", INFO, Logger::QUERIES)
       << "aborting all " << (fanout ? "" : "local ") << "write transactions";
@@ -1659,7 +1662,7 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username,
         if (!username.empty()) {
           headers.try_emplace(
               StaticStrings::Authorization,
-              "bearer " + arangodb::rest::SslInterface::jwt::generateUserToken(
+              "bearer " + auth::generateUserToken(
                               auth->tokenCache().jwtSecret(), username));
         } else {
           headers.try_emplace(StaticStrings::Authorization,
@@ -1717,8 +1720,23 @@ bool Manager::storeManagedState(
 }
 
 bool Manager::isAuthorized(ManagedTrx const& trx) const {
-  auto const& exec = arangodb::ExecContext::current();
-  return isAuthorized(trx, exec.database());
+  auto const& exec = ExecContext::current();
+  if (exec.isSuperuser()) {
+    // see the comment below, in isAuthorized(ManagedTrx const&,
+    // std::string_view)
+    return true;
+  }
+  auto db = exec.vocbase();
+  TRI_ASSERT(db.has_value());
+  auto const databaseName = db.value().get().name();
+  TRI_ASSERT(!databaseName.empty())
+      << "This function cannot be called when there's no database context";
+  if (databaseName.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "Trying to access a transaction outside of a database context");
+  }
+  return isAuthorized(trx, databaseName);
 }
 
 bool Manager::isAuthorized(ManagedTrx const& trx,

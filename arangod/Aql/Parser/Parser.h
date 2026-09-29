@@ -34,6 +34,7 @@ struct AstNode;
 class QueryContext;
 struct QueryResult;
 class QueryString;
+class QueryWarnings;
 
 /// @brief the parser
 class Parser {
@@ -42,7 +43,7 @@ class Parser {
   Parser& operator=(Parser const&) = delete;
 
   /// @brief create the parser
-  explicit Parser(QueryContext&, Ast&, QueryString&);
+  explicit Parser(QueryContext&, QueryWarnings*, Ast&, QueryString&);
 
   /// @brief destroy the parser
   ~Parser();
@@ -179,6 +180,8 @@ class Parser {
 
   /// @brief stack for handling of lazy conditions
   LazyConditions _lazyConditions;
+
+  QueryWarnings* _warnings;
 };
 }  // namespace arangodb::aql
 

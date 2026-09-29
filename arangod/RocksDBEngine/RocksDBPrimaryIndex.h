@@ -48,7 +48,7 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   ~RocksDBPrimaryIndex();
 
-  IndexType type() const override { return Index::TRI_IDX_TYPE_PRIMARY_INDEX; }
+  IndexType type() const override { return IndexType::Primary; }
 
   char const* typeName() const override { return "primary"; }
 
@@ -74,6 +74,13 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   LocalDocumentId lookupKey(transaction::Methods* trx, std::string_view key,
                             ReadOwnWrites readOwnWrites,
                             bool& foundInCache) const;
+
+  /// @brief the timestamp at which the currently committed version of `key`
+  /// was created, taken from its index entry's own User-Defined Timestamp. An
+  /// unset optional means the key has no current version. Time-travel
+  /// collections only.
+  ResultT<std::optional<std::uint64_t>> currentVersionTimestamp(
+      std::string_view key) const;
 
   /// @brief reads a revision id from the primary index
   /// the revision id will only be non-zero if the primary index

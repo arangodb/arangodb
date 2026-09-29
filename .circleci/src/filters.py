@@ -54,6 +54,7 @@ class FilterCriteria:
         return self.build_variant is not None and self.build_variant.is_instrumented
 
 
+
 def is_gtest_suite(suite: SuiteConfig) -> bool:
     """
     Check if a suite is a gtest suite.

@@ -158,7 +158,12 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   // Whether this collection stores time-travel history
   // Immutable, set at creation.
-  bool timeTravelEnabled() const noexcept { return _timeTravelEnabled; }
+  bool timeTravelEnabled() const noexcept override {
+    return _timeTravelEnabled;
+  }
+
+  ResultT<std::optional<std::uint64_t>> currentVersionTimestamp(
+      std::string_view key) const override;
 
   bool hasDocuments() override;
 

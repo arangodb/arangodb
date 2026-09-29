@@ -1,0 +1,50 @@
+# ArangoDB configuration file
+#
+# Documentation:
+# https://docs.arango.ai/arangodb/stable/operations/administration/configuration/
+#
+
+[database]
+directory = @LOCALSTATEDIR@/lib/arangodb4
+
+[server]
+# Specify the endpoint for HTTP requests by clients.
+#  tcp://ipv4-address:port
+#  tcp://[ipv6-address]:port
+#  ssl://ipv4-address:port
+#  ssl://[ipv6-address]:port
+#  unix:///path/to/socket
+#
+# Examples:
+#   endpoint = tcp://0.0.0.0:8529
+#   endpoint = tcp://127.0.0.1:8529
+#   endpoint = tcp://localhost:8529
+#   endpoint = tcp://myserver.arango.ai:8529
+#   endpoint = tcp://[::]:8529
+#   endpoint = tcp://[fe80::21a:5df1:aede:98cf]:8529
+#
+endpoint = tcp://127.0.0.1:8529
+
+# reuse a port on restart or wait until it is freed by the operating system
+# reuse-address = false
+
+authentication = true
+
+# number of maximal server threads. use 0 to make arangod determine the
+# number of threads automatically, based on available CPUs
+# maximal-threads = 0
+
+# the user and group are normally set in the start script
+# uid = arangodb
+# gid = arangodb
+
+@DEFINEUID@uid = arangodb
+
+[log]
+level = info
+@COMMENT_LOGFILE@file = @LOCALSTATEDIR@/log/arangodb4/arangod.log
+
+[cluster]
+
+[rocksdb]
+# encryption-keyfile=/your-encryption-file

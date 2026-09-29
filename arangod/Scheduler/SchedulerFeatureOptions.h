@@ -28,8 +28,13 @@
 namespace arangodb {
 
 struct SchedulerFeatureOptions {
+  /// @brief return the default number of threads to use (upper bound)
+  static uint64_t getDefaultMaxThreads() noexcept;
+
+  SchedulerFeatureOptions();
+
   uint64_t nrMinimalThreads = 4;
-  uint64_t nrMaximalThreads = 0;
+  uint64_t nrMaximalThreads;  // computed in constructor
   uint64_t queueSize = 4096;
   uint64_t fifo1Size = 4096;
   uint64_t fifo2Size = 4096;

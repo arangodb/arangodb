@@ -138,11 +138,16 @@ ValidatorBase* ComputedValuesExpressionContext::buildValidator(
 
 aql::AqlValue ComputedValuesExpressionContext::getVariableValue(
     aql::Variable const* variable, bool doCopy, bool& mustDestroy) const {
+  mustDestroy = false;
   auto it = _variables.find(variable);
   if (it == _variables.end()) {
     return aql::AqlValue(aql::AqlValueHintNull());
   }
   if (doCopy) {
+    // AqlValueHintSliceCopy allocates only for slices that do not fit inline.
+    // Report ownership in both cases, because destroy() is a no-op on an
+    // inline value.
+    mustDestroy = true;
     return aql::AqlValue(aql::AqlValueHintSliceCopy(it->second));
   }
   return aql::AqlValue(aql::AqlValueHintSliceNoCopy(it->second));
@@ -179,7 +184,7 @@ ComputedValues::ComputedValue::ComputedValue(
   aql::Ast* ast = _queryContext->ast();
 
   auto qs = aql::QueryString(expressionString);
-  aql::Parser parser(*_queryContext, *ast, qs);
+  aql::Parser parser(*_queryContext, &_queryContext->warnings(), *ast, qs);
   // force the condition of the ternary operator (condition ? truePart :
   // falsePart) to be always inlined and not be extracted into its own LET node.
   // if we don't set this boolean flag here, then a ternary operator could

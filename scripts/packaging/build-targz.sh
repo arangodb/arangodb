@@ -40,9 +40,9 @@ case "${ARCH}" in
 esac
 
 if [ "${EDITION}" = "enterprise" ]; then
-  NAME=arangodb3e
+  NAME=arangodb4e
 else
-  NAME=arangodb3
+  NAME=arangodb4
 fi
 
 V="${ARANGODB_TGZ_UPSTREAM}"
@@ -61,12 +61,28 @@ cp -a "${SCRIPT_DIR}/binForTarGz" bin
 find bin \( -name "*.bak" -o -name "*~" \) -delete
 cp "bin/README.${OS}.server" ./README
 sed -i -E "s/@ARANGODB_PACKAGE_NAME@/${NAME}-${OS}-${V}${ARCH_SUFFIX}/g" README
-# prepareInstall: strip client tools per policy; arangod stays unstripped.
+# prepareInstall: strip client tools per policy, extracting their debug
+# information first; arangod stays unstripped (its minimal debug info
+# remains in the binary and is deliberately NOT part of the debug-symbols
+# bundle — the same semantics as 3.12's ExceptArangod -dbg packages).
+if [ "${PACKAGE_STRIP}" != "None" ]; then
+  export DEBUG_SYMBOLS_DIR="${WORK}/${NAME}-dbg-${OS}-${V}${ARCH_SUFFIX}"
+fi
 "${SCRIPT_DIR}/strip-install-tree.sh" "${WORK}/targz"
 
 mkdir -p "${PACKAGES_OUT}"
 
-# Server bundle
+# Debug-symbols bundle: the TAR.GZ analogue of 3.12's -dbg package,
+# containing usr/lib/debug/.build-id/... debug files for every binary
+# stripped above.
+if [ -n "${DEBUG_SYMBOLS_DIR:-}" ] && [ -d "${DEBUG_SYMBOLS_DIR}/usr/lib/debug" ]; then
+  DBG="$(basename "${DEBUG_SYMBOLS_DIR}")"
+  tar czf "${PACKAGES_OUT}/${DBG}.tar.gz" -C "${WORK}" "${DBG}"
+fi
+
+# Server bundle: server bits only — the client tools (binaries, their
+# launcher wrappers, man pages and the client-only JS tree) ship in the
+# client bundle instead.
 cd "${WORK}"
 cp -a targz "${NAME}-${OS}-${V}${ARCH_SUFFIX}"
 tar czf "${PACKAGES_OUT}/${NAME}-${OS}-${V}${ARCH_SUFFIX}.tar.gz" \
@@ -74,6 +90,16 @@ tar czf "${PACKAGES_OUT}/${NAME}-${OS}-${V}${ARCH_SUFFIX}.tar.gz" \
   --exclude "etc" \
   --exclude "bin/README*" \
   --exclude "var" \
+  --exclude "bin/arangobackup" \
+  --exclude "bin/arangodump" \
+  --exclude "bin/arangoexport" \
+  --exclude "bin/arangoimport" \
+  --exclude "bin/arangoinspect" \
+  --exclude "bin/arangorestore" \
+  --exclude "bin/arangosh" \
+  --exclude "bin/arangovpack" \
+  --exclude "usr/share/man/man1" \
+  --exclude "usr/share/arangodb4/js" \
   "${NAME}-${OS}-${V}${ARCH_SUFFIX}"
 rm -rf "${NAME}-${OS}-${V}${ARCH_SUFFIX}"
 
@@ -99,8 +125,8 @@ tar czf "${PACKAGES_OUT}/${CLIENT}.tar.gz" \
   --exclude "${CLIENT}/bin/arangodb" \
   --exclude "${CLIENT}/usr/sbin" \
   --exclude "${CLIENT}/usr/bin/arangodb" \
-  --exclude "${CLIENT}/usr/share/arangodb3/arangodb-update-db" \
-  --exclude "${CLIENT}/usr/share/arangodb3/js/server" \
+  --exclude "${CLIENT}/usr/share/arangodb4/arangodb-update-db" \
+  --exclude "${CLIENT}/usr/share/arangodb4/js/server" \
   "${CLIENT}"
 rm -rf "${CLIENT}"
 

@@ -39,9 +39,6 @@ class ApplicationFeaturePhase
   friend class ApplicationServer;
 
  public:
-  // validate options of this phase
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
-
   // prepare the phase
   void prepare() override;
 

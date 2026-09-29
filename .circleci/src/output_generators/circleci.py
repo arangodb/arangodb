@@ -170,7 +170,7 @@ class CircleCIGenerator(OutputGenerator):
         self, workflow: Dict[str, Any], build_config: BuildConfig
     ) -> List[str]:
         """
-        Add compilation build job.
+        Add compilation build jobs.
 
         Returns:
             List of build job names that tests depend on
@@ -259,23 +259,21 @@ class CircleCIGenerator(OutputGenerator):
                 {"run-cppcheck": {"name": "cppcheck", "requires": [build_jobs[0]]}}
             )
 
-    # Architecture -> (docker --platform arch, workspace tarball name)
+    # Architecture -> docker --platform arch
     _DOCKER_IMAGE_ARCHES = (
-        (Architecture.X64, "amd64", "docker-amd64.tar"),
-        (Architecture.AARCH64, "arm64", "docker-arm64.tar"),
+        (Architecture.X64, "amd64"),
+        (Architecture.AARCH64, "arm64"),
     )
 
     def _add_docker_images_workflow(self, workflows: Dict[str, Any]) -> None:
         """
-        Add a dedicated workflow that builds and publishes a multi-arch
-        arangodb/enterprise-test Docker image to public ECR (maintainer-mode,
-        Alpine- or Debian-based per create-test-docker-images).
+        Add a dedicated workflow that builds and publishes the multi-arch
+        arangodb/core-test and arangodb/client-tools-test Docker images
+        (Alpine 3.24 based, maintainer-mode) to public ECR.
 
-        Tagging follows the nightly-packages convention: the tag is
-        <community sha7>_<enterprise sha7>, Alpine is the suffix-less
-        default, and Debian-based images carry an extra -deb suffix before
-        the per-arch suffix (<tag>[-deb][-amd64|-arm64v8], manifest
-        <tag>[-deb]).
+        Tagging follows the nightly-packages convention: the manifest tag is
+        <community sha7>_<enterprise sha7>, per-arch tags append
+        -amd64/-arm64v8; both image names share the same tags.
 
         This has to be a separate workflow rather than a job tacked onto the
         per-architecture pr workflows: creating a multi-arch manifest needs
@@ -287,17 +285,14 @@ class CircleCIGenerator(OutputGenerator):
         workflow: Dict[str, Any] = {"jobs": []}
         workflows["docker-images"] = workflow
 
-        distro = self.config.circleci.create_test_docker_images
         # ENTERPRISE_COMMIT is exported by the setup pipeline's "Determine
         # enterprise branch" step (config.yml).
         community = (self.env_getter("CIRCLE_SHA1", "") or "unknown-sha1")[:7]
         enterprise = (self.env_getter("ENTERPRISE_COMMIT", "") or "unknown-sha1")[:7]
         tag = f"{community}_{enterprise}"
-        if distro != "alpine":
-            tag += f"-{distro}"
 
         image_job_names = []
-        for architecture, docker_arch, output in self._DOCKER_IMAGE_ARCHES:
+        for architecture, docker_arch in self._DOCKER_IMAGE_ARCHES:
             build_config = BuildConfig(
                 architecture=architecture, build_variant=BuildVariant.NORMAL
             )
@@ -307,7 +302,7 @@ class CircleCIGenerator(OutputGenerator):
             compile_job_name = compile_job["compile-linux"]["name"]
 
             image_job = self._create_docker_build_job(
-                build_config, distro, docker_arch, output, [compile_job_name]
+                build_config, docker_arch, [compile_job_name]
             )
             workflow["jobs"].append(image_job)
             image_job_names.append(image_job["build-docker-image"]["name"])
@@ -349,22 +344,19 @@ class CircleCIGenerator(OutputGenerator):
     def _create_docker_build_job(
         self,
         build_config: BuildConfig,
-        distro: str,
         docker_arch: str,
-        output: str,
         requires: List[str],
     ) -> Dict[str, Any]:
-        """Create the job that builds and locally saves one architecture's Docker image."""
+        """Create the job that builds and locally saves one architecture's
+        pair of Docker images (core-test and client-tools-test)."""
         return {
             "build-docker-image": {
                 "name": f"build-{build_config.architecture.value}-docker-image",
                 "resource-class": self.sizer.get_resource_class(
                     ResourceSize.CIRCLECI_LARGE, build_config.architecture
                 ),
-                "distro": distro,
                 "arch": docker_arch,
                 "build-arch": build_config.architecture.value,
-                "output": output,
                 "requires": requires,
             }
         }
@@ -372,7 +364,8 @@ class CircleCIGenerator(OutputGenerator):
     def _create_docker_manifest_job(
         self, tag: str, requires: List[str]
     ) -> Dict[str, Any]:
-        """Create the job that pushes the multi-arch arangodb/enterprise-test manifest to ECR."""
+        """Create the job that pushes the multi-arch core-test and
+        client-tools-test manifests to ECR."""
         return {
             "push-docker-manifest": {
                 "name": "push-docker-manifest",

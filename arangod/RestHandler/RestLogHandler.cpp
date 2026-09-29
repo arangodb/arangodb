@@ -44,11 +44,24 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 
+// Mounted at /_api/log (prefix, only when replication2 is enabled and in
+// cluster mode)
 auto RestLogHandler::executeAsync() -> futures::Future<futures::Unit> {
   // for now required admin access to the database
-  if (!ExecContext::current().isAdminUser()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
-    co_return;
+  if (_request->requestType() == RequestType::GET) {
+    if (auto r = ExecContext::current().canUseAdminAction(
+            auth::perms::AdminReadReplicatedLog{});
+        r.fail()) {
+      generateError(r);
+      co_return;
+    }
+  } else {
+    if (auto r = ExecContext::current().canUseAdminAction(
+            auth::perms::AdminWriteReplicatedLog{});
+        r.fail()) {
+      generateError(r);
+      co_return;
+    }
   }
 
   auto methods = ReplicatedLogMethods::createInstance(_vocbase);

@@ -58,7 +58,7 @@ struct IndexTypeFactory {
 
   /// @brief determine if the two Index definitions will result in the same
   ///        index once instantiated
-  virtual bool equal(Index::IndexType type, velocypack::Slice lhs,
+  virtual bool equal(IndexType type, velocypack::Slice lhs,
                      velocypack::Slice rhs, bool attributeOrderMatters) const;
 
   virtual bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
@@ -109,12 +109,13 @@ class IndexFactory {
                                                bool isClusterConstructor) const;
 
   /// @brief used to display storage engine capabilities
-  virtual std::vector<std::string_view> supportedIndexes() const;
+  virtual std::vector<std::string_view> supportedIndexes(
+      uint32_t apiVersion) const;
 
   /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
   /// "hash") used to display storage engine capabilities
   virtual std::vector<std::pair<std::string_view, std::string_view>>
-  indexAliases() const;
+  indexAliases(uint32_t apiVersion) const;
 
   /// @brief create system indexes primary / edge
   virtual void fillSystemIndexes(

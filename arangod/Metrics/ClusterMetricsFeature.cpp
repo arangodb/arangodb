@@ -31,13 +31,11 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
-#include "Metrics/ClusterMetricsOptionsProvider.h"
 #include "Metrics/Metric.h"
 #include "Metrics/MetricsFeature.h"
 #include "Metrics/Types.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
-#include "ProgramOptions/ProgramOptions.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 
@@ -148,18 +146,6 @@ ClusterMetricsFeature::ClusterMetricsFeature(
   startsAfter<ClusterFeature>();
   startsAfter<NetworkFeature>();
   startsAfter<SchedulerFeature>();
-}
-
-void ClusterMetricsFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  ClusterMetricsOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void ClusterMetricsFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  ClusterMetricsOptionsProvider provider;
-  provider.validateOptions(options, _options);
 
   if (!ServerState::instance()->isCoordinator()) {
     _count.store(kStop);

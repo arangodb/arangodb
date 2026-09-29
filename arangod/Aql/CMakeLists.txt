@@ -145,6 +145,7 @@ add_subdirectory(ExecutionNode)
 add_subdirectory(Executor)
 add_subdirectory(Function)
 add_subdirectory(Parser)
+add_subdirectory(Match)
 add_subdirectory(Optimizer)
 
 target_link_libraries(arango_aql

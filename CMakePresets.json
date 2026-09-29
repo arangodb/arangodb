@@ -88,14 +88,6 @@
     },
     {
       "hidden": true,
-      "name": "no-v8",
-      "cacheVariables": {
-        "USE_V8": "Off",
-        "USE_FRONTEND": "Off"
-      }
-    },
-    {
-      "hidden": true,
       "name": "pr-base",
       "binaryDir": "${sourceDir}/build",
       "inherits": [
@@ -178,54 +170,6 @@
       "displayName": "Build ArangoDB Enterprise Edition (ASAN and UBSAN Build) - ARM64"
     },
     {
-      "name": "pr-x64-no-v8",
-      "inherits": [
-        "no-v8",
-        "pr-x64"
-      ],
-      "displayName": "PR Build ArangoDB Enterprise Edition Maintainer Mode (No V8/Frontend) - x64"
-    },
-    {
-      "name": "pr-arm64-no-v8",
-      "inherits": [
-        "no-v8",
-        "pr-arm64"
-      ],
-      "displayName": "PR Build ArangoDB Enterprise Edition Maintainer Mode (No V8/Frontend) - ARM64"
-    },
-    {
-      "name": "pr-x64-tsan-no-v8",
-      "inherits": [
-        "no-v8",
-        "pr-x64-tsan"
-      ],
-      "displayName": "Build ArangoDB Enterprise Edition (TSAN Build, No V8/Frontend) - x64"
-    },
-    {
-      "name": "pr-arm64-tsan-no-v8",
-      "inherits": [
-        "no-v8",
-        "pr-arm64-tsan"
-      ],
-      "displayName": "Build ArangoDB Enterprise Edition (TSAN Build, No V8/Frontend) - ARM64"
-    },
-    {
-      "name": "pr-x64-alubsan-no-v8",
-      "inherits": [
-        "no-v8",
-        "pr-x64-alubsan"
-      ],
-      "displayName": "Build ArangoDB Enterprise Edition (ASAN and UBSAN Build, No V8/Frontend) - x64"
-    },
-    {
-      "name": "pr-arm64-alubsan-no-v8",
-      "inherits": [
-        "no-v8",
-        "pr-arm64-alubsan"
-      ],
-      "displayName": "Build ArangoDB Enterprise Edition (ASAN and UBSAN Build, No V8/Frontend) - ARM64"
-    },
-    {
       "name": "pr-x64-coverage",
       "inherits": [
         "gcov",
@@ -273,8 +217,6 @@
         "CMAKE_INSTALL_PREFIX": "/",
         "USE_MINIMAL_DEBUGINFO": "On",
         "USE_STRICT_OPENSSL_VERSION": "On",
-        "USE_V8": "On",
-        "USE_FRONTEND": "On",
         "BUILD_REPO_INFO": "nightly",
         "CMAKE_C_FLAGS": "-fno-stack-protector",
         "CMAKE_CXX_FLAGS": "-fno-stack-protector",
@@ -360,22 +302,6 @@
         "developer-arm64"
       ],
       "displayName": "Build ArangoDB Enterprise Edition (ASAN and UBSAN Build, Developer) - ARM64"
-    },
-    {
-      "name": "developer-x64-no-v8",
-      "inherits": [
-        "no-v8",
-        "developer-x64"
-      ],
-      "displayName": "Build ArangoDB Enterprise Edition (No V8/Frontend, Developer) - x64"
-    },
-    {
-      "name": "developer-arm64-no-v8",
-      "inherits": [
-        "no-v8",
-        "developer-arm64"
-      ],
-      "displayName": "Build ArangoDB Enterprise Edition (No V8/Frontend, Developer) - ARM64"
     }
   ],
   "buildPresets": [
@@ -410,30 +336,6 @@
     {
       "name": "pr-arm64-alubsan",
       "configurePreset": "pr-arm64-alubsan"
-    },
-    {
-      "name": "pr-x64-no-v8",
-      "configurePreset": "pr-x64-no-v8"
-    },
-    {
-      "name": "pr-arm64-no-v8",
-      "configurePreset": "pr-arm64-no-v8"
-    },
-    {
-      "name": "pr-x64-tsan-no-v8",
-      "configurePreset": "pr-x64-tsan-no-v8"
-    },
-    {
-      "name": "pr-arm64-tsan-no-v8",
-      "configurePreset": "pr-arm64-tsan-no-v8"
-    },
-    {
-      "name": "pr-x64-alubsan-no-v8",
-      "configurePreset": "pr-x64-alubsan-no-v8"
-    },
-    {
-      "name": "pr-arm64-alubsan-no-v8",
-      "configurePreset": "pr-arm64-alubsan-no-v8"
     },
     {
       "name": "pr-x64-coverage",
@@ -482,14 +384,6 @@
     {
       "name": "developer-arm64-alubsan",
       "configurePreset": "developer-arm64-alubsan"
-    },
-    {
-      "name": "developer-x64-no-v8",
-      "configurePreset": "developer-x64-no-v8"
-    },
-    {
-      "name": "developer-arm64-no-v8",
-      "configurePreset": "developer-arm64-no-v8"
     }
   ],
   "testPresets": [

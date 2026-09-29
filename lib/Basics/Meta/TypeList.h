@@ -89,4 +89,15 @@ struct TypeList {
 template<typename T>
 using TypeListFromVariant = detail::TypeListFromVariant<T>::type;
 
+// Reusable membership concept: satisfied iff `T` is one of the types in
+// `List`. C++20 does not allow a concept to be a member template, so this is
+// a free concept parameterized on the list.
+// Define per-list convenience concepts on top of it, e.g.:
+//
+//     using FooBarBaz = meta::TypeList<Foo, Bar, Baz>;
+//     template<typename T>
+//     concept IsFooBarOrBaz = meta::InList<T, FooBarBaz>;
+template<typename T, typename List>
+concept InList = List::template contains<T>();
+
 }  // namespace arangodb::meta

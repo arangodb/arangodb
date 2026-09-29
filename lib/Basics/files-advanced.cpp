@@ -65,7 +65,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"

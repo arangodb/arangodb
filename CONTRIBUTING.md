@@ -137,6 +137,41 @@ To be safe from committing non-linted stuff add **.git/hooks/pre-commit** with:
 
     ./utils/eslint.sh
 
+### clang-tidy
+
+clang-tidy can be run on-demand with the wrapper script `./utils/clang-tidy.sh`,
+or along with a build by setting `USE_CLANG_TIDY=On`:
+
+#### On demand
+
+This requires `clang-tidy`, `run-clang-tidy` and `jq` in PATH. It also needs an
+existing build directory; defaulting to `./build/`, which can be overridden with
+`--build` or `-B`.
+
+    ./utils/clang-tidy.sh                    # files changed vs. HEAD (both repos)
+    ./utils/clang-tidy.sh arangod/RestServer # specific files or directories
+    ./utils/clang-tidy.sh --fix <files>      # apply clang-tidy's fixes in place
+
+With no arguments it checks the sources locally modified vs. `HEAD` in both the
+main and the enterprise repository (same selection as `./scripts/clang-format.sh`).
+
+To scan the whole codebase, pass the source roots:
+
+    ./utils/clang-tidy.sh \
+      arangod lib client-tools enterprise
+
+#### As part of the build
+
+Configure `cmake` with `-DUSE_CLANG_TIDY=On` to run clang-tidy on every
+first-party translation unit as it compiles. It is `Off` by default.
+
+This covers `arangod`, `lib` (including `lib/iresearch`), `client-tools` and
+`enterprise`; vendored `3rdParty` code is excluded.
+
+clang-tidy runs in addition to the compilation, and can increase the total build
+time significantly. Any partial recompile will also run clang-tidy on the same
+set of translation units.
+
 ### Adding startup options
 
 Startup option example with explanations:
@@ -306,7 +341,7 @@ It copies the needed files to a folder called `install`.
 It may fail if you only built a subset of the targets.
 The folder is organized following the Linux directory structure, with the
 server executable at `usr/sbin/arangod`, the tools in `usr/bin/`, the
-configuration files in `usr/etc/arangodb3/`, and so on.
+configuration files in `usr/etc/arangodb4/`, and so on.
 
 For building the ArangoDB Starter (`arangodb` executable), see the
 [ArangoDB Starter repository](https://github.com/arangodb-helper/arangodb).
@@ -630,19 +665,19 @@ Edit `/etc/security/limits.conf` to contain:
 arangodb        -       core            infinity
 ```
 
-Edit the systemd unit file `/lib/systemd/system/arangodb3.service` (USE infinity!!!):
+Edit the systemd unit file `/lib/systemd/system/arangodb4.service` (USE infinity!!!):
 
 ```
 ## setting for core files
 # Any dir that is writable by the user running arangod
-WorkingDirectory=/var/lib/arangodb3
+WorkingDirectory=/var/lib/arangodb4
 # core limit - set this to infinity to enable cores
 LimitCORE=0
 ```
 
 Enable new systemd settings:
 
-`systemctl daemon-reload && systemctl restart arangodb3.service`
+`systemctl daemon-reload && systemctl restart arangodb4.service`
 
 Enable suid process dumping:
 
@@ -989,6 +1024,8 @@ Pre-requisites:
 Once this is completed, you may run it like this:
 
     ./scripts/unittest go_driver --gosource ../go-driver/ --testCase View --goOptions:timeout 180m --cluster true
+
+`go_driver` defaults to **v3** on ArangoDB 4.0+ and **v2** on 3.12.*. Pass `--goVersion v2` or `--goVersion v3` to override. On ArangoDB 4.0, CI uses `go-v2.yml` and `go-v3.yml` to run both driver versions.
 
 This will invoke the test with a filter to only execute tests that have `View` in their name.
 As an additional parameter we pass `-timeout 100m` to the driver test.

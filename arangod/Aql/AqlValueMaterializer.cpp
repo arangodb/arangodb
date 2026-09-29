@@ -53,8 +53,14 @@ AqlValueMaterializer& AqlValueMaterializer::operator=(
       materialized.destroy();
       hasCopied = false;
     }
-    // copy other's slice
-    materialized = other.materialized.clone();
+    // only clone when the other side actually owns its value. cloning a
+    // borrowed value would allocate and then record the result as non-owning,
+    // leaking it.
+    if (other.hasCopied) {
+      materialized = other.materialized.clone();
+    } else {
+      materialized = other.materialized;
+    }
     hasCopied = other.hasCopied;
   }
   return *this;

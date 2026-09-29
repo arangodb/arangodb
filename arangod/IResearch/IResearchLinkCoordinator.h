@@ -55,7 +55,7 @@ class IResearchLinkCoordinator final : public Index, public IResearchLink {
     unload();
   }
 
-  IndexType type() const final { return Index::TRI_IDX_TYPE_IRESEARCH_LINK; }
+  IndexType type() const final { return IndexType::IResearchLink; }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief initialize from the specified definition used in make(...)

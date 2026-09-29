@@ -12,13 +12,13 @@ add_library(arango_vocbase STATIC
   VocbaseMetrics.cpp
   ${PROJECT_SOURCE_DIR}/arangod/Aql/QueryCursor.cpp
   ${PROJECT_SOURCE_DIR}/arangod/Aql/StandaloneCalculation.cpp
-  ${PROJECT_SOURCE_DIR}/arangod/Replication/DatabaseReplicationApplier.cpp
   ${PROJECT_SOURCE_DIR}/arangod/Utils/CollectionNameResolver.cpp
   ${PROJECT_SOURCE_DIR}/arangod/Utils/CursorRepository.cpp
   ${PROJECT_SOURCE_DIR}/arangod/Utils/DatabaseGuard.cpp
   ${PROJECT_SOURCE_DIR}/arangod/Utils/SingleCollectionTransaction.cpp)
 
 target_link_libraries(arango_vocbase
+  arango_auth
   arango_agency
   arango_cluster_methods
   arango_indexes

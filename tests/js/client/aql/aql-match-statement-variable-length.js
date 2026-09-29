@@ -35,6 +35,15 @@ function aqlMatchStatementVariableLengthTestSuite() {
     return path.vertices.map((v) => `(${v._id})`).join(" -[]-> ");
   };
 
+  // pathToString ignores the edges entirely, so two paths sharing a vertex
+  // sequence render identically. Where several edge collections are in play the
+  // hop's collection is the point, so render that too. (Edge _keys here are
+  // auto-generated, hence the collection name rather than the _id.)
+  const pathToStringWithTypes = function(path) {
+    return path.vertices.map((v) => `(${v._id})`).join(" -[]-> ") +
+           " via " + path.edges.map((e) => e._id.split("/")[0]).join(",");
+  };
+
   const setEq = function(s1, s2) {
     return s1.size === s2.size && [...s1].every((x) => s2.has(x));
   };
@@ -61,6 +70,11 @@ function aqlMatchStatementVariableLengthTestSuite() {
               db.vc3.save({_key: `v${i}`});
             }
 
+            // A second edge collection over the same graph, so a multi-type
+            // variable-length traversal can leave the start collection: the
+            // vc1/v0 -> vc3/v0 shortcut must be excluded by a (w:vc1) target.
+            db._createEdgeCollection("ec1b");
+
             db._createEdgeCollection("ec1");
             for (let i = 0; i < 3; i++) {
               db.ec1.save({_from: `vc1/v${i}`, _to: `vc1/v${i+1}`});
@@ -71,6 +85,8 @@ function aqlMatchStatementVariableLengthTestSuite() {
               db.ec1.save({_from: `vc1/v${i}`, _to: `vc2/v${i}`});
               db.ec1.save({_from: `vc2/v${i}`, _to: `vc3/v${i}`});
             }
+            db.ec1b.save({_from: "vc1/v0", _to: "vc3/v0"});
+            db.ec1b.save({_from: "vc1/v1", _to: "vc1/v3"});
 
             // Self-contained vertex/edge collections used by the collection
             // bind-parameter tests. Their edges never leave `vcbp`, so the
@@ -425,6 +441,128 @@ function aqlMatchStatementVariableLengthTestSuite() {
             "(mvc/v1) -[]-> (mvc/v2)",
             "(mvc/v1) -[]-> (mvc/v2) -[]-> (mvc/v3)",
             "(mvc/v2) -[]-> (mvc/v3)"
+          ];
+          expected.sort();
+          const result = db._query(query, {}, options).toArray().map(pathToString);
+          result.sort();
+          assertEqual(result, expected);
+        },
+
+        // A variable-length segment is always lowered to a traversal, so the
+        // target vertex's constraints have to be re-applied on the traversal's
+        // vertex output. Unlike the one-hop case there is no alternative
+        // lowering to cross-check against, so the expected paths are spelled
+        // out: mec1 is v0->v1->v2->v3 and mec2 is the single shortcut v0->v2.
+        testMatchVarLenTargetVertexProperties: function() {
+          const query = aql`MATCH (v :mvc) -[ e:mec1 * 1..2 ]-> (w :mvc {_key: "v2"})
+                              RETURN e`;
+          const expected = [
+            "(mvc/v0) -[]-> (mvc/v1) -[]-> (mvc/v2)",
+            "(mvc/v1) -[]-> (mvc/v2)"
+          ];
+          expected.sort();
+          const result = db._query(query, {}, options).toArray().map(pathToString);
+          result.sort();
+          assertEqual(result, expected);
+        },
+
+        testMatchVarLenTargetVertexWhereClause: function() {
+          const query = aql`MATCH (v :mvc) -[ e:mec1 * 1..2 ]-> (w :mvc WHERE w._key == "v2")
+                              RETURN e`;
+          const expected = [
+            "(mvc/v0) -[]-> (mvc/v1) -[]-> (mvc/v2)",
+            "(mvc/v1) -[]-> (mvc/v2)"
+          ];
+          expected.sort();
+          const result = db._query(query, {}, options).toArray().map(pathToString);
+          result.sort();
+          assertEqual(result, expected);
+        },
+
+        testMatchVarLenMultiTypeTargetVertexProperties: function() {
+          const query = aql`MATCH (v :mvc) -[ e:mec1|mec2 * 1..2 ]-> (w :mvc {_key: "v2"})
+                              RETURN e`;
+          // the one-hop v0->v2 must be the mec2 shortcut, the two-hop must be
+          // two mec1 edges -- vertices alone cannot tell those apart
+          const expected = [
+            "(mvc/v0) -[]-> (mvc/v1) -[]-> (mvc/v2) via mec1,mec1",
+            "(mvc/v0) -[]-> (mvc/v2) via mec2",
+            "(mvc/v1) -[]-> (mvc/v2) via mec1"
+          ];
+          expected.sort();
+          const result = db._query(query, {}, options).toArray().map(pathToStringWithTypes);
+          result.sort();
+          assertEqual(result, expected);
+        },
+
+        testMatchVarLenMultiTypeTargetVertexWhereClause: function() {
+          const query = aql`MATCH (v :mvc) -[ e:mec1|mec2 * 1..2 ]-> (w :mvc WHERE w._key == "v2")
+                              RETURN e`;
+          const expected = [
+            "(mvc/v0) -[]-> (mvc/v1) -[]-> (mvc/v2) via mec1,mec1",
+            "(mvc/v0) -[]-> (mvc/v2) via mec2",
+            "(mvc/v1) -[]-> (mvc/v2) via mec1"
+          ];
+          expected.sort();
+          const result = db._query(query, {}, options).toArray().map(pathToStringWithTypes);
+          result.sort();
+          assertEqual(result, expected);
+        },
+
+        testMatchVarLenUnsatisfiableTargetVertexFilter: function() {
+          // no vertex has _key == "nope", so none of these may return a row
+          const queries = [
+            "MATCH (v :mvc) -[ e:mec1 * 1..2 ]-> (w :mvc {_key: \"nope\"}) RETURN e",
+            "MATCH (v :mvc) -[ e:mec1 * 1..2 ]-> (w :mvc WHERE w._key == \"nope\") RETURN e",
+            "MATCH (v :mvc) -[ e:mec1|mec2 * 1..2 ]-> (w :mvc {_key: \"nope\"}) RETURN e",
+            "MATCH (v :mvc) -[ e:mec1|mec2 * 1..2 ]-> (w :mvc WHERE w._key == \"nope\") RETURN e"
+          ];
+          for (const query of queries) {
+            assertEqual(db._query(query, {}, options).toArray(), [], query);
+          }
+        },
+
+        testMatchVarLenMultiTypeTargetVertexCollection: function() {
+          // testMatchVariableLengthPathCollectionEnd covers the single-collection
+          // spelling; this is the multi-type one, where ec1b lets the traversal
+          // jump straight out of vc1 and only the target label brings it back.
+          const inVc1 = aql`WITH vc1, vc2, vc3
+                              FOR v IN ["vc1/v0"]
+                                MATCH (v) -[ e:ec1|ec1b * 1..2 ]-> (w:vc1)
+                                RETURN e`;
+          const expectedVc1 = [
+            "(vc1/v0) -[]-> (vc1/v1) via ec1",
+            "(vc1/v0) -[]-> (vc1/v1) -[]-> (vc1/v2) via ec1,ec1",
+            "(vc1/v0) -[]-> (vc1/v1) -[]-> (vc1/v3) via ec1,ec1b"
+          ];
+          expectedVc1.sort();
+          const resultVc1 = db._query(inVc1, {}, options).toArray().map(pathToStringWithTypes);
+          resultVc1.sort();
+          assertEqual(resultVc1, expectedVc1);
+
+          const inVc3 = aql`WITH vc1, vc2, vc3
+                              FOR v IN ["vc1/v0"]
+                                MATCH (v) -[ e:ec1|ec1b * 1..2 ]-> (w:vc3)
+                                RETURN e`;
+          const expectedVc3 = [
+            "(vc1/v0) -[]-> (vc3/v0) via ec1b",
+            "(vc1/v0) -[]-> (vc2/v0) -[]-> (vc3/v0) via ec1,ec1",
+            "(vc1/v0) -[]-> (vc3/v0) -[]-> (vc3/v1) via ec1b,ec1"
+          ];
+          expectedVc3.sort();
+          const resultVc3 = db._query(inVc3, {}, options).toArray().map(pathToStringWithTypes);
+          resultVc3.sort();
+          assertEqual(resultVc3, expectedVc3);
+        },
+
+        testMatchVarLenBothVertexFilters: function() {
+          // start-vertex constraints already worked; assert they compose with
+          // the target-vertex ones rather than replacing them
+          const query = aql`MATCH (v :mvc {_key: "v0"}) -[ e:mec1|mec2 * 1..2 ]-> (w :mvc {_key: "v2"})
+                              RETURN e`;
+          const expected = [
+            "(mvc/v0) -[]-> (mvc/v1) -[]-> (mvc/v2)",
+            "(mvc/v0) -[]-> (mvc/v2)"
           ];
           expected.sort();
           const result = db._query(query, {}, options).toArray().map(pathToString);

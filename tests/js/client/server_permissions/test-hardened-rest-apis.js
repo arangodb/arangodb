@@ -70,7 +70,7 @@ function testSuite() {
     testCanAccessVersionRo : function() {
       arango.reconnect(IM.endpoint, db._name(), "test_ro", "testi");
       let result = arango.GET("/_api/version");
-      assertFalse(result.hasOwnProperty("version"));
+      assertTrue(result.hasOwnProperty("version"));
       assertTrue(result.hasOwnProperty("license"));
     },
 
@@ -87,8 +87,8 @@ function testSuite() {
 
       let indexes = result.supports.indexes.filter((t) => t !== "vector");
       assertEqual([
-        "primary", "edge", "fulltext", "ttl", "persistent",
-        "geo", "geo1", "geo2", "mdi", "mdi-prefixed", "inverted"
+        "primary", "edge", "ttl", "persistent",
+        "geo", "mdi", "mdi-prefixed", "inverted"
       ], indexes);
 
       assertEqual({ zkd: "mdi" }, result.supports.aliases.indexes);

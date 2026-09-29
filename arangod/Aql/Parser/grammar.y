@@ -1193,14 +1193,39 @@ for_statement:
 
 
 
+/* Unquoted dotted keep path, e.g. profile.name → ARRAY("profile","name"). */
+%type <node> pattern_keep_path;
+pattern_keep_path:
+    T_STRING {
+      auto* path = parser->ast()->createNodeArray(1);
+      path->addMember(
+          parser->ast()->createNodeValueString($1.value, $1.length));
+      $$ = path;
+    }
+  | pattern_keep_path[path] '.' T_STRING {
+      $path->addMember(
+          parser->ast()->createNodeValueString($3.value, $3.length));
+      $$ = $path;
+    }
+  ;
+
 %type <node> pattern_projection_item;
 pattern_projection_item:
-    object_element_name[elt] {
-      /* bare keep: status */
+    pattern_keep_path[path] {
+      /* bare keep: ARRAY of path segments (nested when size > 1) */
+      $$ = $path;
+    }
+  | T_QUOTED_STRING[elt] {
+      /* literal single key; dots inside quotes are NOT hierarchy */
       $$ = parser->ast()->createNodeValueString($elt.value, $elt.length);
     }
-  | object_element_name[elt] T_ASSIGN expression[expr] {
+  | T_STRING[elt] T_ASSIGN expression[expr] {
       /* alias / flatten: name = v.profile.first_name (expr is normal query scope) */
+      $$ = parser->ast()->createNodeObjectElement(
+          {$elt.value, $elt.length}, $expr);
+    }
+  | T_QUOTED_STRING[elt] T_ASSIGN expression[expr] {
+      /* alias with quoted key name */
       $$ = parser->ast()->createNodeObjectElement(
           {$elt.value, $elt.length}, $expr);
     }

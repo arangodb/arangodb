@@ -115,7 +115,7 @@ function setupBinaries (options) {
     oneSet.ARANGOSH_BIN = fs.join(oneSet.BIN_DIR, 'arangosh' + executableExt);
     oneSet.ARANGO_SECURE_INSTALLATION_BIN = fs.join(oneSet.BIN_DIR, 'arango-secure-installation' + executableExt);
 
-    oneSet.CONFIG_ARANGODB_DIR = fs.join(options.build, 'etc', 'arangodb3');
+    oneSet.CONFIG_ARANGODB_DIR = fs.join(options.build, 'etc', 'arangodb4');
     if (!fs.exists(oneSet.CONFIG_ARANGODB_DIR)) {
       oneSet.CONFIG_ARANGODB_DIR = fs.join(directory, oneSet.CONFIG_ARANGODB_DIR);
     }
@@ -175,10 +175,15 @@ function setupBinaries (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function killRemainingProcesses(results) {
+  let timeoutReached = false;
   let running = internal.getExternalSpawned();
+  if (running.length === 0) {
+    return;
+  }
+  print(`${RED} ${Date()} killRemainingProcesses ${JSON.stringify(new Error().stack)}`);
   results.status = results.status && (running.length === 0);
   for (let i = 0; i < running.length; i++) {
-    let timeoutReached = internal.SetGlobalExecutionDeadlineTo(0.0);
+    timeoutReached = internal.SetGlobalExecutionDeadlineTo(0.0);
     print('VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV');
     if (timeoutReached) {
       print(RED + Date() + ' external deadline reached!' + RESET);
@@ -187,7 +192,7 @@ function killRemainingProcesses(results) {
   }
   sleep(1);
   for (let i = 0; i < running.length; i++) {
-    let timeoutReached = internal.SetGlobalExecutionDeadlineTo(0.0);
+    timeoutReached = timeoutReached || internal.SetGlobalExecutionDeadlineTo(0.0);
     print('VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV');
     if (timeoutReached) {
       print(RED + Date() + ' external deadline reached!' + RESET);

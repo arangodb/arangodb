@@ -223,17 +223,6 @@ bool StorageEngineMock::autoRefillIndexCachesOnFollowers() const {
   return false;
 }
 
-void StorageEngineMock::addOptimizerRules(
-    arangodb::aql::OptimizerRulesFeature& /*feature*/) {
-  before();
-  // NOOP
-}
-
-void StorageEngineMock::addRestHandlers(
-    arangodb::rest::RestHandlerFactory& handlerFactory) {
-  TRI_ASSERT(false);
-}
-
 void StorageEngineMock::changeCollection(
     TRI_vocbase_t& vocbase, arangodb::LogicalCollection const& collection) {
   // NOOP, assume physical collection changed OK
@@ -369,25 +358,6 @@ void StorageEngineMock::cleanupReplicationContexts() {
   // nothing to do here
 }
 
-arangodb::velocypack::Builder
-StorageEngineMock::getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                                      ErrorCode& result) {
-  before();
-  result =
-      TRI_ERROR_FILE_NOT_FOUND;  // assume no ReplicationApplierConfiguration
-                                 // for vocbase
-
-  return arangodb::velocypack::Builder();
-}
-
-arangodb::velocypack::Builder
-StorageEngineMock::getReplicationApplierConfiguration(ErrorCode& status) {
-  before();
-  status = TRI_ERROR_FILE_NOT_FOUND;
-
-  return arangodb::velocypack::Builder();
-}
-
 ErrorCode StorageEngineMock::getViews(TRI_vocbase_t& vocbase,
                                       arangodb::velocypack::Builder& result) {
   result.openArray();
@@ -439,34 +409,11 @@ void StorageEngineMock::releaseTick(TRI_voc_tick_t tick) {
   _releasedTick = tick;
 }
 
-ErrorCode StorageEngineMock::removeReplicationApplierConfiguration(
-    TRI_vocbase_t& vocbase) {
-  TRI_ASSERT(false);
-  return TRI_ERROR_NO_ERROR;
-}
-
-ErrorCode StorageEngineMock::removeReplicationApplierConfiguration() {
-  TRI_ASSERT(false);
-  return TRI_ERROR_NO_ERROR;
-}
-
 arangodb::Result StorageEngineMock::renameCollection(
     TRI_vocbase_t& vocbase, arangodb::LogicalCollection const& collection,
     std::string const& oldName) {
   TRI_ASSERT(false);
   return arangodb::Result(TRI_ERROR_INTERNAL);
-}
-
-ErrorCode StorageEngineMock::saveReplicationApplierConfiguration(
-    TRI_vocbase_t& vocbase, arangodb::velocypack::Slice slice, bool doSync) {
-  TRI_ASSERT(false);
-  return TRI_ERROR_NO_ERROR;
-}
-
-ErrorCode StorageEngineMock::saveReplicationApplierConfiguration(
-    arangodb::velocypack::Slice, bool) {
-  TRI_ASSERT(false);
-  return TRI_ERROR_NO_ERROR;
 }
 
 std::string StorageEngineMock::versionFilename(TRI_voc_tick_t) const {
