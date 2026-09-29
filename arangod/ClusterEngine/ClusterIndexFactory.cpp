@@ -220,12 +220,10 @@ void ClusterIndexFactory::linkIndexFactories(
 }
 
 ClusterIndexFactory::ClusterIndexFactory(
-    application_features::ApplicationServer& server, ClusterEngine& engine,
-    IVectorIndexProvider const& vectorIndexProvider)
+    application_features::ApplicationServer& server, ClusterEngine& engine)
     : IndexFactory(server),
       _engine(engine),
-      _rocksDBIndexFactory(
-          std::make_unique<RocksDBIndexFactory>(server, vectorIndexProvider)) {
+      _rocksDBIndexFactory(std::make_unique<RocksDBIndexFactory>(server)) {
   linkIndexFactories(server, *this, engine);
 }
 

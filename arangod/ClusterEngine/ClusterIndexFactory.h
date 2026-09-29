@@ -23,7 +23,6 @@
 #pragma once
 
 #include "Indexes/IndexFactory.h"
-#include "VectorIndex/IVectorIndexProvider.h"
 
 namespace arangodb {
 
@@ -36,8 +35,7 @@ class ClusterIndexFactory final : public IndexFactory {
       application_features::ApplicationServer& server,
       ClusterIndexFactory& factory, ClusterEngine& engine);
   explicit ClusterIndexFactory(application_features::ApplicationServer&,
-                               ClusterEngine& engine,
-                               IVectorIndexProvider const& vectorIndexProvider);
+                               ClusterEngine& engine);
   ~ClusterIndexFactory();
 
   RocksDBIndexFactory const& rocksDBIndexFactory() const {

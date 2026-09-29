@@ -26,7 +26,6 @@
 #include "ClusterEngine/ClusterIndexFactory.h"
 #include "Metrics/IRegistry.h"
 #include "StorageEngine/StorageEngine.h"
-#include "VectorIndex/IVectorIndexProvider.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -43,8 +42,8 @@ class ClusterEngine final : public StorageEngine {
   // create the storage engine
   explicit ClusterEngine(application_features::ApplicationServer& server,
                          ClusterFeature& clusterFeature,
-                         DatabaseFeature& database, metrics::IRegistry& metrics,
-                         IVectorIndexProvider const& vectorIndexProvider);
+                         DatabaseFeature& database,
+                         metrics::IRegistry& metrics);
   ~ClusterEngine();
 
   ClusterEngineType engineType() const;
