@@ -51,6 +51,7 @@
 #include "RestServer/IDumpLimitsProvider.h"
 #include "RestServer/IFlushControl.h"
 #include "RocksDBEngine/IIndexCacheRefill.h"
+#include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/Identifiers/DataSourceId.h"
@@ -204,6 +205,8 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   void flushOpenFilesIfRequired();
   HealthData healthCheck() override;
+
+  RocksDBIndexFactory const& indexFactory() const override;
 
   std::shared_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TransactionId,

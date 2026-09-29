@@ -457,6 +457,32 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test reverse function with characters outside the BMP and U+FFFF
+////////////////////////////////////////////////////////////////////////////////
+
+    testReverseKeepsAllCodePoints : function () {
+      // TO_CHAR builds the input, so the client never encodes surrogate pairs
+      let actual = getQueryResults(`
+        LET single = TO_CHAR(65536)
+        LET mixed = CONCAT("a", TO_CHAR(128512), "b", TO_CHAR(65536))
+        LET nonCharacter = CONCAT("a", TO_CHAR(65535), "b")
+        RETURN {
+          single: TO_HEX(REVERSE(single)),
+          singleLength: CHAR_LENGTH(REVERSE(single)),
+          mixed: TO_HEX(REVERSE(mixed)),
+          mixedLength: CHAR_LENGTH(REVERSE(mixed)),
+          nonCharacter: TO_HEX(REVERSE(nonCharacter))
+        }`);
+      assertEqual([{
+        single: "f0908080",
+        singleLength: 1,
+        mixed: "f090808062f09f988061",
+        mixedLength: 4,
+        nonCharacter: "62efbfbf61"
+      }], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test reverse function
 ////////////////////////////////////////////////////////////////////////////////
 

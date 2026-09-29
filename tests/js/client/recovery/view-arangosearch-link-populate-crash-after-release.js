@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global runSetup assertEqual, assertTrue, assertFalse, assertNull, fail, print, arango */
+/* global runSetup, assertEqual, assertTrue, assertFalse, assertNull, fail, print, arango */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -25,10 +25,11 @@
 var db = require('@arangodb').db;
 const internal = require('internal');
 var jsunity = require('jsunity');
+let IM = global.instanceManager;
+const {waitForEstimatorSync } = require('@arangodb/test-helper');
 
-if (runSetup === true) {
+function runSetupRoutine () {
   'use strict';
-  global.instanceManager.debugClearFailAt();
 
   db._drop('UnitTestsRecoveryDummy');
   var c = db._create('UnitTestsRecoveryDummy');
@@ -40,7 +41,7 @@ if (runSetup === true) {
   db._view('UnitTestsRecoveryView').properties(meta);
 
   internal.wal.flush(true, true);
-  global.instanceManager.debugSetFailAt("FlushCrashAfterReleasingMinTick");
+  IM.debugSetFailAt("FlushCrashAfterReleasingMinTick");
 
   if (global.hasOwnProperty('arango')) {
     // we intend to crash, so we should get to know quickly:
@@ -61,8 +62,7 @@ if (runSetup === true) {
     }
   }
 
-  global.instanceManager.debugTerminate('crashing server');
-  return 0;
+  IM.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -100,5 +100,11 @@ function recoverySuite () {
 // / @brief executes the test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(recoverySuite);
-return jsunity.done();
+'use strict';
+if (runSetup === true ) {
+  runSetupRoutine();
+  return 0;
+} else {
+  jsunity.run(recoverySuite);
+  return jsunity.done();
+}

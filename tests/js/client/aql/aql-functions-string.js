@@ -937,6 +937,13 @@ function ahuacatlStringFunctionsTestSuite () {
 // //////////////////////////////////////////////////////////////////////////////
     testToRegexMatchesValues: function () {
       [ 
+        ["", "^[a-z0-9_-]{3,16}$", false, null ],
+        ["a", "^[a-z0-9_-]{3,16}$", false, null ],
+        ["abc", "^[a-z0-9_-]{3,16}$", false, ["abc"] ],
+        ["", "^$", false, [""] ],
+        ["", "a*", false, [""] ],
+        ["", "(a)?b", false, null ],
+        ["", "", false, [""] ],
         ["my-us3r_n4m3", "^[a-z0-9_-]{3,16}$", true, ["my-us3r_n4m3"] ],
         ["my-us3r_n4m3", "^[a-z0-9_-]{3,16}$", false, ["my-us3r_n4m3"] ],
         ["my-Us3r_N4m3", "^[a-z0-9_-]{3,16}$", true, ["my-Us3r_N4m3"] ],

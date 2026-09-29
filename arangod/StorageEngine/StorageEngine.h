@@ -98,7 +98,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   // create the storage engine
   StorageEngine(application_features::ApplicationServer& server,
                 std::string_view engineName, std::string_view featureName,
-                std::type_index registration,
                 std::unique_ptr<IndexFactory>&& indexFactory,
                 IDatabaseProvider& databaseProvider,
                 IDatabaseBootstrap& databaseBootstrap);
@@ -316,7 +315,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // Returns the StorageEngine-specific implementation
   // of the IndexFactory. This is used to validate
   // information about indexes.
-  IndexFactory const& indexFactory() const;
+  virtual IndexFactory const& indexFactory() const;
 
   // AQL functions
   // -------------
