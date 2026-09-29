@@ -1,7 +1,6 @@
 add_library(arango_indexes STATIC
   Index.cpp
   IndexDefinition.cpp
-  IndexDefinitionRegistry.cpp
   IndexDefinitions.cpp
   IndexFactory.cpp
   IndexIterator.cpp

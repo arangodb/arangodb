@@ -23,6 +23,7 @@
 #pragma once
 
 #include "Indexes/IndexFactory.h"
+#include "VectorIndex/IVectorIndexProvider.h"
 
 namespace arangodb {
 
@@ -32,16 +33,11 @@ class ClusterIndexFactory final : public IndexFactory {
  public:
   static void linkIndexFactories(
       application_features::ApplicationServer& server, IndexFactory& factory,
-      ClusterEngine& engine);
+      ClusterEngine& engine, IVectorIndexProvider const& vectorIndexProvider);
   explicit ClusterIndexFactory(application_features::ApplicationServer&,
-                               ClusterEngine& engine);
+                               ClusterEngine& engine,
+                               IVectorIndexProvider const& vectorIndexProvider);
   ~ClusterIndexFactory() = default;
-
-  // normalize definition
-  Result enhanceIndexDefinition(velocypack::Slice const definition,
-                                velocypack::Builder& normalized,
-                                bool isCreation,
-                                Database const& vocbase) const override;
 
   /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
   /// "hash") used to display storage engine capabilities
