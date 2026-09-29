@@ -292,7 +292,8 @@ function _recovery (options, recoveryTests) {
       while (true) {
         count += 1;
         ////////////////////////////////////////////////////////////////////////
-        print(BLUE + "running setup of test " + count + " - " + test + RESET);
+        ++iteration;
+        print(BLUE + "running setup #" + iteration + " of test " + count + " - " + test + RESET);
         let params = {
           tempDir: tmpMgr.tempDir,
           rootDir: fs.join(fs.getTempPath(), 'recovery', count.toString()),
@@ -315,11 +316,11 @@ function _recovery (options, recoveryTests) {
         if (!ret.status) {
           results[test] = ret;
           results.status = false;
-          continue;
+          break;
         }
         ////////////////////////////////////////////////////////////////////////
         SetGlobalExecutionDeadlineTo(params.options.oneTestTimeout / 4);
-        print(BLUE + "running recovery of test " + count + " - " + test + RESET);
+        print(BLUE + "running recovery_server #" + iteration + " of test " + count + " - " + test + RESET);
         params.options.disableMonitor = localOptions.disableMonitor;
         params.setup = false;
         try {
