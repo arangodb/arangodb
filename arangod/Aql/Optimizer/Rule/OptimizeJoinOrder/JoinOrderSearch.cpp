@@ -223,6 +223,17 @@ auto concatenateInWrittenSequence(std::vector<DecidedComponent> const& decided,
 /// component's work is multiplied by the accumulated cardinality of everything
 /// placed before it. Hence the candidates below are costed as whole prefixes
 /// rather than in isolation.
+///
+/// The estimates already stored in `decided` cannot stand in for that replay.
+/// Each was built with its component's first node going through seed(); in any
+/// position but the first, that node goes through extend() with no connecting
+/// edges instead, and nothing in the JoinCostEstimator contract makes the two
+/// agree. For the System-R estimator they do not: seed() may charge an index
+/// lookup over the constant restrictions, a cross-product extend() always
+/// charges a full scan per outer row. Scaling the stored estimate by the
+/// prefix cardinality is no substitute either, since it assumes cost is linear
+/// in the prefix -- a property of one estimator, broken even there by the
+/// cardinality floor, and not part of the contract.
 auto getCheapestConcatenation(JoinGraph& graph,
                               JoinCostEstimator const& estimator,
                               std::vector<DecidedComponent> decided,
@@ -269,9 +280,6 @@ auto acceptsResequencing(JoinGraph& graph, JoinCostEstimator const& estimator,
                          JoinEstimate const& baselineEstimate,
                          std::vector<EnumerateCollectionNode*> const& candidate)
     -> bool {
-  // The caller skips the search entirely when the baseline is defaulted, so
-  // this only documents the precondition; violating it would cost plan
-  // quality, not correctness.
   TRI_ASSERT(!baselineEstimate.defaulted);
   auto const candidateEstimate =
       getEstimateForOrder(graph, estimator, candidate);
@@ -413,14 +421,12 @@ auto chooseJoinOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
                   [](DecidedComponent const& c) { return c.reordered; });
 
   auto baseline = concatenateInWrittenSequence(decided, graph.nodes.size());
-  auto const baselineEstimate = getEstimateForOrder(graph, estimator, baseline);
 
   // Estimated before the search, not after: getCheapestConcatenation() costs
   // O(k^2) replays for k components, and all of them are wasted if the
   // sequence cannot be replaced anyway.
-  //
-  // acceptsResequencing() only accepts a candidate that beats the baseline by
-  // the improvement margin, so an accepted candidate cannot equal it.
+  auto const baselineEstimate = getEstimateForOrder(graph, estimator, baseline);
+
   bool sequenceChanged = false;
   std::vector<EnumerateCollectionNode*> chosen;
   if (baselineEstimate.defaulted) {
