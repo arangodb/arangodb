@@ -230,7 +230,7 @@ TEST_F(SystemRCostEstimatorTest, missing_statistic_defaults_to_one_and_flags) {
   EXPECT_TRUE(est.defaulted);
 }
 
-TEST_F(SystemRCostEstimatorTest, constant_restriction_shrinks_the_base) {
+TEST_F(SystemRCostEstimatorTest, constant_restriction_shrinks_the_row_count) {
   auto q = prepare(
       "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
       "FILTER a.k == 'v' RETURN [a, b]");
@@ -262,106 +262,7 @@ TEST_F(SystemRCostEstimatorTest,
   EXPECT_DOUBLE_EQ(seeded.cost, 100.0);  // restricted, not the full count
 }
 
-TEST_F(SystemRCostEstimatorTest, range_residual_applies_a_third) {
-  auto q = prepare(
-      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
-      "FILTER a.p < 5 RETURN [a, b]");
-  auto g = buildGraph(*q);
-  auto [estimator, stats] = makeEstimator();
-  stats->counts = {{"a", 900.0}, {"b", 100.0}};
-
-  auto seeded = estimator->seed(*nodeByName(g, "a"));
-  EXPECT_DOUBLE_EQ(seeded.cardinality, 300.0);  // 900 * 1/3
-  // the residual does not cheapen the scan: restricted(v) is unchanged
-  EXPECT_DOUBLE_EQ(seeded.cost, 900.0);
-}
-
-TEST_F(SystemRCostEstimatorTest, residual_factor_does_not_set_defaulted) {
-  auto q = prepare(
-      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
-      "FILTER a.p < 5 RETURN [a, b]");
-  auto g = buildGraph(*q);
-  auto [estimator, stats] = makeEstimator();
-  stats->counts = {{"a", 900.0}, {"b", 100.0}};
-
-  // 'a' has no constant restrictions, so its condition lookup uses the empty
-  // set, which is not a defaulted lookup. The 1/3 range constant is a
-  // heuristic, not a missing statistic, so it must not raise the flag either.
-  EXPECT_FALSE(estimator->seed(*nodeByName(g, "a")).defaulted);
-}
-
-TEST_F(SystemRCostEstimatorTest, disjunction_residual_combines_its_branches) {
-  // A real disjunction survives normalization as an OR, so the whole
-  // expression is attached as one residual rather than split into conjuncts.
-  // System-R combines independent branches as s1 + s2 - s1*s2.
-  auto q = prepare(
-      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
-      "FILTER a.p == 1 OR a.q == 2 RETURN [a, b]");
-  auto g = buildGraph(*q);
-  auto [estimator, stats] = makeEstimator();
-  stats->counts = {{"a", 1000.0}, {"b", 100.0}};
-  stats->distinct["a"]["p"] = {10.0, false};  // 1/10
-  stats->distinct["a"]["q"] = {4.0, false};   // 1/4
-
-  auto seeded = estimator->seed(*nodeByName(g, "a"));
-  // 0.1 + 0.25 - 0.1*0.25 = 0.325
-  EXPECT_DOUBLE_EQ(seeded.cardinality, 325.0);
-  // and, as for every residual, the scan itself is not cheapened
-  EXPECT_DOUBLE_EQ(seeded.cost, 1000.0);
-}
-
-TEST_F(SystemRCostEstimatorTest,
-       disjunction_with_an_unknown_branch_claims_nothing) {
-  // A union cannot be bounded by one branch: if either side is unmeasurable
-  // the disjunction must claim no reduction at all. Falls out of the formula
-  // with s2 = 1, but it is the property worth pinning.
-  auto q = prepare(
-      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
-      "FILTER a.p == 1 OR a.q == 2 RETURN [a, b]");
-  auto g = buildGraph(*q);
-  auto [estimator, stats] = makeEstimator();
-  stats->counts = {{"a", 1000.0}, {"b", 100.0}};
-  stats->distinct["a"]["p"] = {10.0, false};  // 'q' is left unscripted
-
-  EXPECT_DOUBLE_EQ(estimator->seed(*nodeByName(g, "a")).cardinality, 1000.0);
-}
-
-TEST_F(SystemRCostEstimatorTest,
-       disjunction_of_a_conjunction_multiplies_within_a_branch) {
-  auto q = prepare(
-      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
-      "FILTER (a.p == 1 AND a.r < 5) OR a.q == 2 RETURN [a, b]");
-  auto g = buildGraph(*q);
-  auto [estimator, stats] = makeEstimator();
-  stats->counts = {{"a", 1000.0}, {"b", 100.0}};
-  stats->distinct["a"]["p"] = {10.0, false};  // 1/10
-  stats->distinct["a"]["q"] = {4.0, false};   // 1/4
-
-  // branch1 = 1/10 * 1/3, branch2 = 1/4
-  auto const branch1 = 0.1 * (1.0 / 3.0);
-  auto const expected = branch1 + 0.25 - branch1 * 0.25;
-  EXPECT_DOUBLE_EQ(estimator->seed(*nodeByName(g, "a")).cardinality,
-                   1000.0 * expected);
-}
-
-TEST_F(SystemRCostEstimatorTest,
-       equality_against_another_variable_is_not_priced) {
-  // `b.q` is not a constant, so 1/distinct does not model it. Reachable only
-  // inside a disjunction -- a top-level equality between two graph variables
-  // is an edge, not a residual.
-  auto q = prepare(
-      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
-      "FILTER a.p == b.q OR a.p == b.r RETURN [a, b]");
-  auto g = buildGraph(*q);
-  auto [estimator, stats] = makeEstimator();
-  stats->counts = {{"a", 1000.0}, {"b", 100.0}};
-  stats->distinct["a"]["p"] = {10.0, false};
-
-  // two graph variables -> the residual stays graph-level and is unpriced
-  EXPECT_DOUBLE_EQ(estimator->seed(*nodeByName(g, "a")).cardinality, 1000.0);
-}
-
-TEST_F(SystemRCostEstimatorTest, distinct_is_capped_by_the_restricted_base) {
+TEST_F(SystemRCostEstimatorTest, distinct_is_capped_by_the_restricted_count) {
   auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
   auto g = buildGraph(*q);
   auto [estimator, stats] = makeEstimator();
@@ -374,7 +275,7 @@ TEST_F(SystemRCostEstimatorTest, distinct_is_capped_by_the_restricted_base) {
   auto* b = nodeByName(g, "b");
   std::array<JoinGraph::Edge const*, 1> connecting{&g.edges.front()};
 
-  // dp is capped at base(a) = 10, so the factor is 1/max(10,5) = 1/10
+  // dp is capped at restricted(a) = 10, so the factor is 1/max(10,5) = 1/10
   auto est = estimator->extend(estimator->seed(*a), *b, connecting);
   EXPECT_DOUBLE_EQ(est.cardinality, 10.0);
 }
@@ -411,16 +312,17 @@ TEST_F(SystemRCostEstimatorTest, multiple_edges_multiply_their_factors) {
 }
 
 TEST_F(SystemRCostEstimatorTest, distinct_caps_pair_with_their_own_node) {
-  // Unlike the equal-base cap test above, base(a) and base(b) are clearly
-  // different here (100 vs. 1000), so a bug that caps otherDistinct against
-  // nextRestricted.base (or vice versa) changes the answer instead of
+  // Unlike the equal-count cap test above, restricted(a) and restricted(b)
+  // are clearly different here (100 vs. 1000), so a bug that caps
+  // otherDistinct against
+  // nextRestricted.rows (or vice versa) changes the answer instead of
   // silently agreeing with the correct pairing.
   auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
   auto g = buildGraph(*q);
   auto [estimator, stats] = makeEstimator();
   stats->counts = {{"a", 100.0}, {"b", 1000.0}};
-  stats->distinct["a"]["x"] = {1e6, false};  // capped by base(a) = 100
-  stats->distinct["b"]["y"] = {5.0, false};  // stays under base(b) = 1000
+  stats->distinct["a"]["x"] = {1e6, false};  // capped by restricted(a) = 100
+  stats->distinct["b"]["y"] = {5.0, false};  // stays under restricted(b) = 1000
 
   auto* a = nodeByName(g, "a");
   auto* b = nodeByName(g, "b");
@@ -502,92 +404,10 @@ TEST_F(SystemRCostEstimatorTest,
   EXPECT_TRUE(est.defaulted);
 }
 
-TEST_F(SystemRCostEstimatorTest, in_residual_is_capped_at_a_half) {
-  // The ratio must exceed the cap to exercise it at all, and the node needs a
-  // separate constant restriction so restricted(a) < count(a): otherwise
-  // restricted == count and the [1, count] clamp on base() would mask a
-  // missing cap just as easily as a correct one. distinct(c) = 10 shrinks
-  // restricted(a) to 100; the IN array of 5 over distinct(k) = 2 gives a raw
-  // ratio of 2.5, so an uncapped 100 * 2.5 = 250 sits well inside [1, 1000]
-  // and is genuinely visible.
-  auto q = prepare(
-      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
-      "FILTER a.c == 'v' "
-      "FILTER a.k IN ['p', 'q', 'r', 's', 't'] RETURN [a, b]");
-  auto g = buildGraph(*q);
-  auto [estimator, stats] = makeEstimator();
-  stats->counts = {{"a", 1000.0}, {"b", 100.0}};
-  stats->distinct["a"]["c"] = {10.0, false};  // restricted(a) = 1000/10 = 100
-  stats->distinct["a"]["k"] = {2.0, false};   // ratio = 5/2 = 2.5
-
-  auto seeded = estimator->seed(*nodeByName(g, "a"));
-  // base(a) = 100 * 1/2 = 50; uncapped it would be 250, capped at 1 it would
-  // be 100.
-  EXPECT_DOUBLE_EQ(seeded.cardinality, 50.0);
-}
-
-TEST_F(SystemRCostEstimatorTest, in_residual_below_the_cap_is_left_alone) {
-  // A list shorter than the distinct count is priced by the ratio itself, so
-  // the cap must not flatten every IN to one half.
-  auto q = prepare(
-      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
-      "FILTER a.k IN ['p', 'q'] RETURN [a, b]");
-  auto g = buildGraph(*q);
-  auto [estimator, stats] = makeEstimator();
-  stats->counts = {{"a", 1000.0}, {"b", 100.0}};
-  stats->distinct["a"]["k"] = {10.0, false};  // ratio = 2/10 = 0.2
-
-  EXPECT_DOUBLE_EQ(estimator->seed(*nodeByName(g, "a")).cardinality, 200.0);
-}
-
-TEST_F(SystemRCostEstimatorTest,
-       in_residual_on_a_different_variable_is_neutral) {
-  // The residual is attached to `a` because it is the only *graph* variable
-  // it references, but the IN's own attribute access (t.k) belongs to a
-  // variable outside the graph entirely. distinct["a"]["k"] is scripted and
-  // non-defaulted on purpose: an unguarded lookup would not fall back to the
-  // masking defaulted-1.0 case, it would compute a visibly wrong factor
-  // (3 array members / 50 = 0.06) instead of the correct neutral 1.0.
-  auto q = prepare(
-      "LET t = NOOPT({k: 1}) FOR a IN c1 FOR b IN c2 "
-      "FILTER a.x == b.y FILTER t.k IN [a.q, 1, 2] RETURN [a, b]");
-  auto g = buildGraph(*q);
-  auto* a = nodeByName(g, "a");
-  ASSERT_NE(a, nullptr);
-  ASSERT_EQ(a->residuals.size(), 1u);
-
-  FakeJoinStatistics stats;
-  stats.distinct["a"]["k"] = {50.0, false};
-  EXPECT_DOUBLE_EQ(residualSelectivityFactor(a->residuals.front(), stats, *a),
-                   1.0);
-}
-
-TEST_F(SystemRCostEstimatorTest, unmodelled_residual_is_the_neutral_element) {
-  // a != comparison has no principled selectivity constant. Its factor must
-  // be exactly 1.0, so base(v) ends up equal to restricted(v) even though a
-  // residual is present.
-  auto q = prepare(
-      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
-      "FILTER a.k == 'v' FILTER a.m != 5 RETURN [a, b]");
-  auto g = buildGraph(*q);
-  auto [estimator, stats] = makeEstimator();
-  stats->counts = {{"a", 1000.0}, {"b", 100.0}};
-  stats->distinct["a"]["k"] = {10.0, false};
-
-  auto* a = nodeByName(g, "a");
-  ASSERT_EQ(a->residuals.size(), 1u);
-  EXPECT_DOUBLE_EQ(residualSelectivityFactor(a->residuals.front(), *stats, *a),
-                   1.0);
-
-  // restricted(a) = 1000 / 10 = 100; base(a) = 100 * 1.0 == restricted(a).
-  auto seeded = estimator->seed(*a);
-  EXPECT_DOUBLE_EQ(seeded.cardinality, 100.0);
-}
-
 TEST_F(SystemRCostEstimatorTest, extend_floors_cardinality_at_one) {
   // Two connecting edges each divide by ~100, and c's own equality
-  // restriction is so over-selective that restricted(c)/base(c) clamp to
-  // their floor of 1. Unfloored, 100 * 1 * (1/100) * (1/100) == 0.01; a join
+  // restriction is so over-selective that restricted(c) clamps to its
+  // floor of 1. Unfloored, 100 * 1 * (1/100) * (1/100) == 0.01; a join
   // cannot meaningfully produce a fraction of a row, and letting it through
   // would make every later probeCost/scanCost on this prefix collapse
   // towards zero.
