@@ -128,7 +128,7 @@ bool UpdateCollection::first() {
               std::move(coll));
         }
 
-        OperationOptions options(ExecContext::current());
+        OperationOptions options;
         return Collections::updateProperties(*coll, props, options)
             .waitAndGet();
       }));

@@ -36,7 +36,7 @@
 #include "Basics/Result.h"
 #include "Basics/Result.tpp"
 #include "Basics/StaticStrings.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/TimeString.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
@@ -64,6 +64,7 @@
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
 #include "Metrics/IRegistry.h"
+#include "Metrics/MetricsFeature.h"
 #include "Replication2/Methods.h"
 #include "Replication2/AgencyCollectionSpecification.h"
 #include "Replication2/AgencyCollectionSpecificationInspectors.h"
@@ -78,6 +79,8 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/CountCache.h"
 #include "Utils/Events.h"
+#include "Utils/ExecContext.h"
+#include "Utils/Thread.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/VocbaseInfo.h"
@@ -278,7 +281,7 @@ constexpr frozen::unordered_map<std::string_view, ServerHealth, 4>
       << "Supervision health is:" << supervisionHealth.toString();
   if (serversKnownSlice.isObject()) {
     for (auto const it : VPackObjectIterator(serversKnownSlice)) {
-      auto status = ServerHealth::kUnclear;
+      auto status = ServerHealth::kFailed;
       std::string serverId = it.key.copyString();
       if (ADB_LIKELY(supervisionHealth.isObject())) {
         auto serverKey = supervisionHealth.get(serverId);
@@ -339,7 +342,9 @@ void doQueueLinkDrop(IndexId id, std::string const& collection,
           res = methods::Indexes::drop(*coll, builder.slice()).waitAndGet();
         }
         if (res.fail() && res.isNot(TRI_ERROR_ARANGO_INDEX_NOT_FOUND)) {
-          // we should have internal superuser
+          // this task runs under the superuser ExecContext captured at
+          // enqueue time from the SyncerThread (COR-821), so the drop
+          // cannot fail with a permission error
           TRI_ASSERT(res.isNot(TRI_ERROR_FORBIDDEN));
           LOG_TOPIC("b27f3", WARN, Logger::CLUSTER)
               << "Failed to drop dangling link " << id
@@ -461,6 +466,16 @@ DECLARE_GAUGE(arangodb_metadata_shard_followers_out_of_sync_number,
               "leader");  // No leaders have been elected yet or they are
                           // catching up
 
+/// Gauge-style metric (one series per server via target_server /
+/// target_shortname). Values: 0=FAILED, 1=BAD, 2=GOOD.
+/// Updated from Supervision/Health via ClusterInfo::loadServers on
+/// Coordinators.
+DECLARE_GAUGE(
+    arangodb_server_health, std::uint64_t,
+    "Cluster server health status (0=FAILED, 1=BAD, 2=GOOD). "
+    "Labeled by target_server (unique id), target_shortname."
+    "Exporter identity is provided by the global shortname/role labels.");
+
 ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
                          AgencyCache& agencyCache,
                          AgencyCallbackRegistry& agencyCallbackRegistry,
@@ -545,6 +560,7 @@ ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterInfo::~ClusterInfo() {
+  clearServerHealthMetrics();
   _resourceMonitor.decreaseMemoryUsage(_planMemoryUsage);
   _planMemoryUsage = 0;
   _resourceMonitor.decreaseMemoryUsage(_currentMemoryUsage);
@@ -869,7 +885,7 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
       // the collection caching optimization
       bool const hasViewLink =
           std::any_of(indexes.begin(), indexes.end(), [](auto const& index) {
-            return (index->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK);
+            return (index->type() == IndexType::IResearchLink);
           });
       if (hasViewLink) {
         // we do have a view. set hash to 0, which will disable the caching
@@ -879,7 +895,7 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
           TRI_ASSERT(ServerState::instance()->isCoordinator());
           for (auto const& idx : indexes) {
             TRI_ASSERT(idx);
-            if (idx->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
+            if (idx->type() == IndexType::IResearchLink) {
               auto& coordLink =
                   basics::downCast<iresearch::IResearchLinkCoordinator const>(
                       *idx);
@@ -4453,6 +4469,7 @@ void ClusterInfo::loadServers() {
     // RebootTracker has its own mutex, and doesn't strictly need to be in
     // sync with the other members.
     rebootTracker().updateServerState(_serversKnown);
+    updateServerHealthMetrics(_serversKnown);
     return;
   }
 
@@ -4468,6 +4485,107 @@ void ClusterInfo::loadServers() {
 ServersKnown ClusterInfo::rebootIds() const {
   READ_LOCKER(readLocker, _serversProt.lock);
   return _serversKnown;
+}
+
+namespace {
+
+[[nodiscard]] arangodb_server_health makeServerHealthBuilder(
+    ServerID const& serverId, std::string_view targetShortName) {
+  arangodb_server_health builder;
+  // Reserve for variable label values plus ~80 bytes of fixed label overhead
+  // (label names and separators value) to minimize reallocations.
+  builder.reserveSpaceForLabels(serverId.size() + targetShortName.size() + 80);
+  builder.addLabel("target_server", serverId);
+  builder.addLabel("target_shortname", targetShortName);
+  return builder;
+}
+
+}  // namespace
+
+void ClusterInfo::updateServerHealthMetrics(ServersKnown const& serversKnown) {
+  // Cluster-wide health view is exported from Coordinators (the usual
+  // Prometheus scrape targets). Agency Supervision remains the source of truth;
+  // ClusterInfo already mirrors Supervision/Health into ServersKnown.
+  //
+  // Agents intentionally do not export this metric: AgencyCache / ClusterInfo
+  // server-list sync are not started for ROLE_AGENT, so ServersKnown is not
+  // kept up to date on Agents. Leading Agents already hold Supervision/Health
+  // in the agency snapshot, but wiring a parallel export path would duplicate
+  // ClusterInfo and is not needed for the normal Coordinator scrape model.
+  if (!ServerState::instance()->isCoordinator()) {
+    return;
+  }
+  if (!_server.hasFeature<metrics::MetricsFeature>()) {
+    return;
+  }
+  auto& metricsFeature = _server.getFeature<metrics::MetricsFeature>();
+
+  // Target/MapUniqueToShortID is stored as ShortName -> ServerID.
+  containers::FlatHashMap<ServerID, std::string> idToShortName;
+  {
+    READ_LOCKER(readLocker, _serversProt.lock);
+    idToShortName.reserve(_serverAliases.size());
+    for (auto const& [shortName, id] : _serverAliases) {
+      idToShortName.try_emplace(id, shortName);
+    }
+  }
+
+  containers::FlatHashMap<ServerID, metrics::Gauge<std::uint64_t>*>
+      updatedMetrics;
+  updatedMetrics.reserve(serversKnown.size());
+
+  // Iterate every ServersKnown entry — Coordinators and DBServers alike.
+  // There is no role-based filter; disappeared servers are removed below.
+  for (auto const& [serverId, state] : serversKnown) {
+    std::string_view targetShortName;
+    if (auto alias = idToShortName.find(serverId);
+        alias != idToShortName.end()) {
+      targetShortName = alias->second;
+    }
+
+    auto builder = makeServerHealthBuilder(serverId, targetShortName);
+    auto it = _serverHealthMetrics.find(serverId);
+    metrics::Gauge<std::uint64_t>* gauge = nullptr;
+    if (it != _serverHealthMetrics.end()) {
+      gauge = it->second;
+      _serverHealthMetrics.erase(it);
+      // ShortName may appear (or change) after the first registration; recreate
+      // the series when labels diverge so Prometheus identity stays correct.
+      if (gauge->labels() != builder.labels()) {
+        metricsFeature.remove(*gauge);
+        gauge = &metricsFeature.ensureMetric(std::move(builder));
+      }
+    } else {
+      gauge = &metricsFeature.ensureMetric(std::move(builder));
+    }
+    TRI_ASSERT(gauge != nullptr);
+    gauge->store(serverHealthMetricValue(state.status),
+                 std::memory_order_relaxed);
+    updatedMetrics.emplace(serverId, gauge);
+  }
+
+  // Drop series for servers that disappeared from ServersKnown.
+  for (auto const& [serverId, gauge] : _serverHealthMetrics) {
+    TRI_ASSERT(gauge != nullptr);
+    metricsFeature.remove(*gauge);
+  }
+  _serverHealthMetrics = std::move(updatedMetrics);
+}
+
+void ClusterInfo::clearServerHealthMetrics() {
+  if (_serverHealthMetrics.empty()) {
+    return;
+  }
+  if (!_server.hasFeature<metrics::MetricsFeature>()) {
+    _serverHealthMetrics.clear();
+    return;
+  }
+  auto& metricsFeature = _server.getFeature<metrics::MetricsFeature>();
+  for (auto const& [serverId, gauge] : _serverHealthMetrics) {
+    TRI_ASSERT(gauge != nullptr);
+    metricsFeature.remove(*gauge);
+  }
+  _serverHealthMetrics.clear();
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -5367,6 +5485,14 @@ void ClusterInfo::setServerAdvertisedEndpoints(
   }
 }
 
+void ClusterInfo::setServersKnown(ServersKnown serversKnown) {
+  {
+    WRITE_LOCKER(writeLocker, _serversProt.lock);
+    _serversKnown = std::move(serversKnown);
+  }
+  updateServerHealthMetrics(_serversKnown);
+}
+
 void ClusterInfo::setShardToShardGroupLeader(
     containers::FlatHashMap<ShardID, ShardID> shardToShardGroupLeader) {
   WRITE_LOCKER(writeLocker, _planProt.lock);
@@ -6043,7 +6169,8 @@ void ClusterInfo::waitForSyncersToStop() {
 ClusterInfo::SyncerThread::SyncerThread(
     std::string const& section, std::function<consensus::index_t()> const& f,
     AgencyCache& agencyCache)
-    : Thread(section + "Syncer"),
+    // needs superuser permissions for loadPlan: it may create databases etc.
+    : Thread(section + "Syncer", ExecContext::superuserAsShared()),
       _section(section),
       _f(f),
       _agencyCache(agencyCache) {}

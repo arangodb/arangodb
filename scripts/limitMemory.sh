@@ -2,8 +2,6 @@
 # limit memory useage for process
 # using control groups https://en.wikipedia.org/wiki/Cgroups
 
-# @author Jan Christoph Uhde
-
 echo "usage: $0 <ram in mb> <swap in mb> command"
 
 # get args

@@ -261,7 +261,7 @@ void OneSidedEnumerator<Configuration>::resetManyStartVertices(
  */
 template<class Configuration>
 auto OneSidedEnumerator<Configuration>::getNextPath()
-    -> std::unique_ptr<PathResultInterface> {
+    -> std::unique_ptr<IPathResult> {
   if constexpr (std::is_same_v<ResultList,
                                enterprise::SmartGraphResponse<Provider>>) {
     // Not implemented and used

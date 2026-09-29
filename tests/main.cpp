@@ -31,7 +31,7 @@
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/icu-helper.h"
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
@@ -42,10 +42,10 @@
 #include "VocBase/Identifiers/ServerId.h"
 
 template<class Function>
-class TestThread : public arangodb::Thread {
+class TestThread : public arangodb::BasicThread {
  public:
   TestThread(Function&& f, int i, char* c[])
-      : arangodb::Thread("gtest"), _f(f), _i(i), _c(c), _done(false) {
+      : arangodb::BasicThread("gtest"), _f(f), _i(i), _c(c), _done(false) {
     run();
     std::unique_lock guard{_wait.mutex};
     while (true) {

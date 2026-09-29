@@ -134,10 +134,6 @@ RocksDBValue RocksDBValue::View(VPackSlice data) {
   return RocksDBValue(RocksDBEntryType::View, data);
 }
 
-RocksDBValue RocksDBValue::ReplicationApplierConfig(VPackSlice data) {
-  return RocksDBValue(RocksDBEntryType::ReplicationApplierConfig, data);
-}
-
 RocksDBValue RocksDBValue::KeyGeneratorValue(VPackSlice data) {
   return RocksDBValue(RocksDBEntryType::KeyGeneratorValue, data);
 }

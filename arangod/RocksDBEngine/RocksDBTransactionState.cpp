@@ -77,12 +77,26 @@ void RocksDBTransactionState::unuse() noexcept {
 #endif
 
 /// @brief start a transaction
+Result RocksDBTransactionState::setTimeTravelWriteTimestamp(
+    DataSourceId collectionId, std::uint64_t timestamp) {
+  return rocksdbMethods(collectionId)->setWriteTimestamp(timestamp);
+}
+
 futures::Future<Result> RocksDBTransactionState::beginTransaction(
     transaction::Hints hints) {
   LOG_TRX("0c057", TRACE, this)
       << "beginning " << AccessMode::typeString(_type) << " transaction";
 
   _hints = hints;  // set hints before useCollections
+
+  if (_options.readTimestamp.has_value() && !isReadOnlyTransaction()) {
+    // A point-in-time read observes a past state, while writes commit at a
+    // later timestamp - the two cannot be combined in one transaction.
+    updateStatus(transaction::Status::ABORTED);
+    co_return Result{TRI_ERROR_BAD_PARAMETER,
+                     "a read timestamp can only be set on a read-only "
+                     "transaction"};
+  }
 
   auto& stats = statistics();
 

@@ -22,12 +22,11 @@
 
 #pragma once
 
-#include "Aql/QueryContext.h"
-#include "Containers/SmallVector.h"
 #include "RocksDBEngine/RocksDBMethodsMemoryTracker.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 
 #include <cstdint>
+#include <optional>
 
 namespace arangodb {
 struct ResourceMonitor;
@@ -119,6 +118,8 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
                                RocksDBKey const&) final override;
   void PutLogData(rocksdb::Slice const&) final override;
 
+  Result setWriteTimestamp(uint64_t ts) final override;
+
   void SetSavePoint() final override;
   rocksdb::Status RollbackToSavePoint() final override;
   rocksdb::Status RollbackToWriteBatchSavePoint() final override;
@@ -171,6 +172,18 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
 
   /// @brief object used for tracking memory usage
   RocksDBMethodsMemoryTracker _memoryTracker;
+
+  /// @brief timestamp for User-Defined Timestamp column families (time
+  /// travel). Set from a document's _created before the operation takes its
+  /// key lock, used as the validation read timestamp (`_writeTimestamp - 1`)
+  /// and applied via SetCommitTimestamp just before Commit(). Unset for
+  /// ordinary transactions, which leaves non-UDT commits untouched.
+  std::optional<uint64_t> _writeTimestamp;
+
+  /// @brief point rocksdb's write-write validation at the instant before the
+  /// write timestamp. Re-applied whenever the underlying rocksdb transaction is
+  /// (re-)created, since the setting lives on that object.
+  rocksdb::Status applyValidationReadTimestamp();
 
   bool _indexingDisabled{false};
 };

@@ -57,7 +57,7 @@ using namespace arangodb::import;
 ////////////////////////////////////////////////////////////////////////////////
 
 AutoTuneThread::AutoTuneThread(ImportHelper& importHelper)
-    : Thread("AutoTuneThread"),
+    : BasicThread("AutoTuneThread"),
       _importHelper(importHelper),
       _nextSend(std::chrono::steady_clock::now()),
       _pace(std::chrono::milliseconds(1000 / importHelper.getThreadCount())) {}
@@ -65,7 +65,7 @@ AutoTuneThread::AutoTuneThread(ImportHelper& importHelper)
 AutoTuneThread::~AutoTuneThread() { shutdown(); }
 
 void AutoTuneThread::beginShutdown() {
-  Thread::beginShutdown();
+  BasicThread::beginShutdown();
 
   // wake up the thread that may be waiting in run()
   std::lock_guard guard{_condition.mutex};

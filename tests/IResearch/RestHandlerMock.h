@@ -30,13 +30,10 @@
 
 namespace arangodb {
 struct Database;
-class VocbaseContext;
 }  // namespace arangodb
 
 struct GeneralRequestMock : public arangodb::GeneralRequest {
   int64_t _contentLength;
-  std::shared_ptr<arangodb::VocbaseContext>
-      _context;  // VocbaseContext required for use with RestVocbaseBaseHandler
   arangodb::velocypack::Builder _payload;  // request body
 
   GeneralRequestMock(arangodb::Database& vocbase);

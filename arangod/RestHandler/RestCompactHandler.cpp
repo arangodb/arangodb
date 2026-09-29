@@ -41,8 +41,9 @@ RestCompactHandler::RestCompactHandler(
     : RestBaseHandler(server, request, response),
       _engine(server.getFeature<DatabaseFeature>().engine()) {}
 
+// Mounted at /_admin/compact (exact)
 RestStatus RestCompactHandler::execute() {
-  if (ExecContext::isAuthEnabled() && !ExecContext::current().isSuperuser()) {
+  if (!ExecContext::current().isSuperuserOrDisabled()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
                   "compaction is only allowed for superusers");
     return RestStatus::DONE;

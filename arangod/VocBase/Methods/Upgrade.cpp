@@ -248,12 +248,6 @@ void methods::Upgrade::registerTasks(arangodb::UpgradeFeature& upgradeFeature) {
           /*system*/ Flags::DATABASE_EXCEPT_SYSTEM,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
           /*database*/ DATABASE_INIT, &UpgradeTasks::addDefaultUserOther);
-  addTask(upgradeFeature, "renameReplicationApplierStateFiles",
-          "rename replication applier state files",
-          /*system*/ Flags::DATABASE_ALL,
-          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
-          /*database*/ DATABASE_UPGRADE | DATABASE_EXISTING,
-          &UpgradeTasks::renameReplicationApplierStateFiles);
   addTask(upgradeFeature, "dropPregelQueriesCollection",
           "drop _pregel_queries collection",
           /*system*/ Upgrade::Flags::DATABASE_ALL,

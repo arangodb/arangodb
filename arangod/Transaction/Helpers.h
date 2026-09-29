@@ -113,6 +113,13 @@ std::string makeIdFromCustom(CollectionNameResolver const* resolver,
 std::string makeIdFromParts(CollectionNameResolver const* resolver,
                             DataSourceId const& cid, VPackSlice keyPart);
 
+/// @brief the timestamp a time-travel insert/update/replace writes at: the new
+/// version's user-supplied `_created`. Must be a positive integer - write-write
+/// validation reads at `_created - 1`, which is meaningless for 0 - and the
+/// value is normalized to uint64 so the stored attribute and the commit
+/// timestamp can never disagree.
+ResultT<std::uint64_t> timeTravelWriteTimestamp(velocypack::Slice value);
+
 /// @brief new object for insert, value must have _key set correctly.
 Result newObjectForInsert(Methods& trx, LogicalCollection& collection,
                           std::string_view key, velocypack::Slice value,

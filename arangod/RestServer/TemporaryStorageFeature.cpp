@@ -30,7 +30,7 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Basics/error.h"
@@ -131,7 +131,8 @@ TemporaryStorageFeature::TemporaryStorageFeature(
 
   // replace $PID with current process id
   _options.basePath = basics::StringUtils::replace(
-      _options.basePath, "$PID", std::to_string(Thread::currentProcessId()));
+      _options.basePath, "$PID",
+      std::to_string(BasicThread::currentProcessId()));
 
   // configure defaults for query options
   aql::QueryOptions::defaultSpillOverThresholdNumRows =

@@ -22,8 +22,10 @@
 
 #pragma once
 
+#include "Ssl/AuthInfo.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "AuthenticationOptions.h"
+#include "Basics/Guarded.h"
 #include "Basics/Result.h"
 
 #include <atomic>
@@ -33,11 +35,18 @@
 #include <vector>
 
 namespace arangodb {
+
 namespace auth {
 class TokenCache;
 class UserManager;
+
 }  // namespace auth
 
+// TODO Should be renamed to AuthFeature, as it handles both authentication and
+//      authorization aspects.
+//      It also mixes server and client parts of authentication. E.g. the
+//      connection pool uses the TokenCache to get a JWT token when creating
+//      a connection.
 class AuthenticationFeature final
     : public application_features::ApplicationFeature {
  public:
@@ -60,7 +69,8 @@ class AuthenticationFeature final
   bool isActive() const noexcept;
 
   bool authenticationUnixSockets() const noexcept;
-  std::string_view externalRBACservice() const noexcept;
+  std::string_view externalRbacService() const noexcept;
+  bool rbacEnabled() const noexcept;
 
   /// @return Cache to deal with authentication tokens
   auth::TokenCache& tokenCache() const noexcept;
@@ -70,13 +80,15 @@ class AuthenticationFeature final
   auth::UserManager* userManager() const noexcept;
 
   bool hasUserdefinedJwt() const;
-  /// verification only secrets (returns active secret, passive secrets,
-  /// isES256)
-  std::tuple<std::string, std::vector<std::string>, bool> jwtSecrets() const;
+  /// verification only secrets
+  auth::AuthInfo jwtSecrets() const;
 
   double sessionTimeout() const { return _options.sessionTimeout; }
   double minimalJwtExpiryTime() const { return _options.minimalJwtExpiryTime; }
   double maximalJwtExpiryTime() const { return _options.maximalJwtExpiryTime; }
+  double maximalAccessTokenExpiryTime() const {
+    return _options.maximalAccessTokenExpiryTime;
+  }
 
   // load secrets from file(s)
   [[nodiscard]] Result loadJwtSecretsFromFile();
@@ -86,17 +98,11 @@ class AuthenticationFeature final
 #endif  // ARANGODB_USE_GOOGLE_TESTS
 
  private:
-  /// load JWT secret from file specified at startup
-  [[nodiscard]] Result loadJwtSecretKeyfile();
-
-  /// load JWT secrets from folder
-  [[nodiscard]] Result loadJwtSecretFolder();
-
   AuthenticationOptions _options;
   std::unique_ptr<auth::UserManager> _userManager;
   std::unique_ptr<auth::TokenCache> _authCache;
 
-  mutable std::mutex _jwtSecretsLock;
+  Guarded<std::optional<auth::AuthInfo>> _authInfo{std::nullopt};
 
   static std::atomic<AuthenticationFeature*> INSTANCE;
 };

@@ -715,42 +715,34 @@ Result TransactionState::checkCollectionPermission(
   TRI_ASSERT(!cname.empty());
   ExecContext const& exec = ExecContext::current();
 
-  // no need to check for superuser, cluster_sync tests break otherwise
-  if (exec.isSuperuser()) {
+  if (accessType == AccessMode::Type::READ) {
+    if (auto r =
+            exec.canUseCollection(_vocbase.name(), cname, AccessLevel::Read);
+        r.fail()) {
+      LOG_TOPIC("24971", TRACE, Logger::AUTHORIZATION)
+          << "User " << exec.user() << " has collection AccessLevel::None";
+#ifdef USE_ENTERPRISE
+      if (_options.skipInaccessibleCollections) {
+        addInaccessibleCollection(cid, std::string{cname});
+        return {};
+      }
+#endif
+
+      return {TRI_ERROR_FORBIDDEN,
+              absl::StrCat(TRI_errno_string(TRI_ERROR_FORBIDDEN), ": ", cname,
+                           " [", AccessMode::typeString(accessType), "]")};
+    }
     return {};
   }
 
-  auto level = exec.collectionAuthLevel(_vocbase.name(), cname);
-  TRI_ASSERT(level != auth::Level::UNDEFINED);  // not allowed here
+  if (auto r =
+          exec.canUseCollection(_vocbase.name(), cname, AccessLevel::WriteData);
+      r.fail()) {
+    LOG_TOPIC("d3e61", TRACE, Logger::AUTHORIZATION)
+        << "User " << exec.user()
+        << " has no write (data) right for collection " << cname;
 
-  if (level == auth::Level::NONE) {
-    LOG_TOPIC("24971", TRACE, Logger::AUTHORIZATION)
-        << "User " << exec.user() << " has collection auth::Level::NONE";
-
-#ifdef USE_ENTERPRISE
-    if (accessType == AccessMode::Type::READ &&
-        _options.skipInaccessibleCollections) {
-      addInaccessibleCollection(cid, std::string{cname});
-      return {};
-    }
-#endif
-
-    return {TRI_ERROR_FORBIDDEN,
-            absl::StrCat(TRI_errno_string(TRI_ERROR_FORBIDDEN), ": ", cname,
-                         " [", AccessMode::typeString(accessType), "]")};
-  } else {
-    bool collectionWillWrite = AccessMode::isWriteOrExclusive(accessType);
-
-    if (level == auth::Level::RO && collectionWillWrite) {
-      LOG_TOPIC("d3e61", TRACE, Logger::AUTHORIZATION)
-          << "User " << exec.user() << " has no write right for collection "
-          << cname;
-
-      return {
-          TRI_ERROR_ARANGO_READ_ONLY,
-          absl::StrCat(TRI_errno_string(TRI_ERROR_ARANGO_READ_ONLY), ": ",
-                       cname, " [", AccessMode::typeString(accessType), "]")};
-    }
+    return r;
   }
 
   return {};

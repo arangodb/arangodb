@@ -58,7 +58,8 @@ TEST_F(ParserTest, parseSimpleTernaryCondition) {
   auto queryString =
       aql::QueryString(std::string_view("RETURN true ? 'true' : 'false'"));
 
-  aql::Parser parser(*queryContext, ast, queryString);
+  aql::Parser parser(*queryContext, &queryContext->warnings(), ast,
+                     queryString);
   ASSERT_FALSE(parser.lazyConditions().forceInline());
   parser.parse();
 
@@ -97,7 +98,8 @@ TEST_F(ParserTest, parseSimpleTernaryConditionForceInline) {
   auto queryString =
       aql::QueryString(std::string_view("RETURN true ? 'true' : 'false'"));
 
-  aql::Parser parser(*queryContext, ast, queryString);
+  aql::Parser parser(*queryContext, &queryContext->warnings(), ast,
+                     queryString);
   parser.lazyConditions().pushForceInline();
   ASSERT_TRUE(parser.lazyConditions().forceInline());
   parser.parse();
@@ -137,7 +139,8 @@ TEST_F(ParserTest, parseTernaryWithSubquery) {
   auto queryString = aql::QueryString(std::string_view(
       "RETURN true ? (FOR i IN 1..10 RETURN i) : (FOR j IN 1..2 RETURN j)"));
 
-  aql::Parser parser(*queryContext, ast, queryString);
+  aql::Parser parser(*queryContext, &queryContext->warnings(), ast,
+                     queryString);
   ASSERT_FALSE(parser.lazyConditions().forceInline());
   parser.parse();
 
@@ -258,7 +261,8 @@ TEST_F(ParserTest, parseTernaryWithSubqueryForceInline) {
   auto queryString = aql::QueryString(std::string_view(
       "RETURN true ? (FOR i IN 1..10 RETURN i) : (FOR j IN 1..2 RETURN j)"));
 
-  aql::Parser parser(*queryContext, ast, queryString);
+  aql::Parser parser(*queryContext, &queryContext->warnings(), ast,
+                     queryString);
   parser.lazyConditions().pushForceInline();
   ASSERT_TRUE(parser.lazyConditions().forceInline());
   parser.parse();

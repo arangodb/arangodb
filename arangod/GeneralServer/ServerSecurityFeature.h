@@ -22,8 +22,8 @@
 
 #pragma once
 
-#include "GeneralServer/ServerSecurityFeatureOptions.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "GeneralServer/ServerSecurityFeatureOptions.h"
 
 namespace arangodb {
 
@@ -39,7 +39,6 @@ class ServerSecurityFeature final
       application_features::ApplicationServer& server);
 
   bool isRestApiHardened() const noexcept;
-  bool canAccessHardenedApi() const noexcept;
 
  private:
   ServerSecurityFeatureOptions _options;

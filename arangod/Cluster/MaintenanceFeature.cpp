@@ -139,7 +139,7 @@ arangodb::Result arangodb::maintenance::collectionCount(
     return res;
   }
 
-  OperationOptions options(ExecContext::current());
+  OperationOptions options;
   OperationResult opResult = trx.count(
       collectionName, arangodb::transaction::CountType::kNormal, options);
   res = trx.finish(opResult.result);

@@ -24,7 +24,7 @@
 
 #include "Basics/ConditionVariable.h"
 #include "Basics/Result.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "Utils/ClientManager.h"
 
@@ -147,7 +147,7 @@ class ClientTaskQueue {
   void waitForIdle() noexcept;
 
  private:
-  class Worker : public arangodb::Thread {
+  class Worker : public arangodb::BasicThread {
    private:
     Worker(Worker const&) = delete;
     Worker& operator=(Worker const&) = delete;
@@ -364,14 +364,14 @@ template<typename JobData>
 inline ClientTaskQueue<JobData>::Worker::Worker(
     ClientTaskQueue<JobData>& queue,
     std::unique_ptr<httpclient::SimpleHttpClient>&& client)
-    : Thread("Worker"),
+    : BasicThread("Worker"),
       _queue(queue),
       _client(std::move(client)),
       _idle(true) {}
 
 template<typename JobData>
 inline ClientTaskQueue<JobData>::Worker::~Worker() {
-  Thread::shutdown();
+  BasicThread::shutdown();
 }
 
 template<typename JobData>

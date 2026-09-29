@@ -23,7 +23,7 @@
 #pragma once
 
 #include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -41,14 +41,14 @@ namespace import {
 //
 // quickly written histogram class for debugging
 //
-class QuickHistogram : public arangodb::Thread {
+class QuickHistogram : public arangodb::BasicThread {
  private:
   QuickHistogram(QuickHistogram const&) = delete;
   QuickHistogram& operator=(QuickHistogram const&) = delete;
 
  public:
   QuickHistogram()
-      : Thread("QuickHistogram"),
+      : BasicThread("QuickHistogram"),
         _writingLatencies(nullptr),
         _readingLatencies(nullptr),
         _objectsWriting(0),
@@ -59,7 +59,7 @@ class QuickHistogram : public arangodb::Thread {
 
   void beginShutdown() override {
     _threadRunning = false;
-    Thread::beginShutdown();
+    BasicThread::beginShutdown();
 
     // wake up the thread that may be waiting in run()
     std::lock_guard guard{_condvar.mutex};
