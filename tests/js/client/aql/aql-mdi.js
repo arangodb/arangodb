@@ -610,6 +610,51 @@ function optimizerRuleMdi2dIndexTestSuite() {
   };
 }
 
+function mdiIndexInWriteTransactionTestSuite() {
+  const colName = "UnitTestMdiIndexTrxCollection";
+  let col;
+
+  return {
+    setUp: function () {
+      col = db._create(colName);
+      col.insert({ _key: "z", f1: 1, f3: 2 });
+      col.ensureIndex({ type: "mdi", name: "first", fields: ["f1", "f3"],
+                        fieldValueTypes: "double", sparse: true });
+      col.ensureIndex({ type: "mdi", name: "second", fields: ["f3", "f1"],
+                        fieldValueTypes: "double", sparse: true });
+    },
+
+    tearDown: function () {
+      db._drop(colName);
+    },
+
+    testEntriesOfOtherMdiIndexAreNotReturned: function () {
+      const query = `FOR n IN ${colName} FILTER n.f3 >= 1 RETURN n._key`;
+      const trx = db._createTransaction({ collections: { write: [colName] } });
+      try {
+        trx.collection(colName).update("z", { f1: 1 });
+        assertEqual(["z"], trx.query(query).toArray());
+      } finally {
+        trx.abort();
+      }
+      assertEqual(["z"], db._query(query).toArray());
+    },
+
+    testQueryEndsAtIndexBoundary: function () {
+      col.insert([{ _key: "x", f1: 0, f3: 0 }, { _key: "y", f1: 1, f3: 1 }]);
+      const query = `FOR n IN ${colName} FILTER n.f3 >= 1.5 RETURN n._key`;
+      const trx = db._createTransaction({ collections: { write: [colName] } });
+      try {
+        trx.query(`FOR n IN ${colName} UPDATE n WITH { u: 1 } IN ${colName}`);
+        assertEqual(["z"], trx.query(query).toArray());
+      } finally {
+        trx.abort();
+      }
+    },
+  };
+}
+
 jsunity.run(optimizerRuleMdi2dIndexTestSuite);
+jsunity.run(mdiIndexInWriteTransactionTestSuite);
 
 return jsunity.done();
