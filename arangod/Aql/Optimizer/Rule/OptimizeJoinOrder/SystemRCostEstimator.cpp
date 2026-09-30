@@ -100,11 +100,7 @@ auto SystemRCostEstimator::extend(
   bool probeable = false;
 
   for (auto const* edge : connecting) {
-    if (edge->from == edge->to) {
-      // A self-loop is really a single-node filter, not a join predicate; it
-      // constrains nothing about this extension.
-      continue;
-    }
+    TRI_ASSERT(edge->from != edge->to);
     bool const nextIsTo = (edge->to == &next);
     ADB_PROD_ASSERT(nextIsTo || edge->from == &next);
 
