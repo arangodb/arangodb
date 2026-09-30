@@ -45,7 +45,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TtlFeature.h"
-#include "RocksDBEngine/RocksDBEngine.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/HealthData.h"
@@ -1158,7 +1157,7 @@ void HeartbeatThread::sendServerStateAsync() {
     if (ServerState::instance()->isDBServer()) {
       // use storage engine health self-assessment and send it to agency too
       arangodb::HealthData hd =
-          server().getFeature<RocksDBEngine>().healthCheck();
+          server().getFeature<StorageEngine>().healthCheck();
       // intentionally dont transmit details so we can save a bit of traffic
       hd.toVelocyPack(builder, /*withDetails*/ false);
     }

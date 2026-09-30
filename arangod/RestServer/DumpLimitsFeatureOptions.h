@@ -39,6 +39,10 @@ struct DumpLimitsFeatureOptions {
   std::uint64_t parallelismLowerBound = 1;
   // per-dump value
   std::uint64_t parallelismUpperBound = 8;
+  // per-dump value
+  std::uint64_t prefetchCountLowerBound = 1;
+  // per-dump value
+  std::uint64_t prefetchCountUpperBound = 1024;
   // server-global. value will be overridden in the .cpp file.
   std::uint64_t memoryUsage;  // computed in ctor
 

@@ -1,5 +1,31 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
+* COR-1017: Reject `POST /_api/dump/start` requests that pass an empty `shards`
+  array. Such a dump context has no function, as it never hands out any data.
+
+* COR-1017: Added the `--dump.max-prefetch-count` startup option (default 1024).
+  The `prefetchCount` of `POST /_api/dump/start` is now clamped to it, in the
+  same way as `docsPerBatch`, `batchSize` and `parallelism`.
+
+* COR-1018: Cap vector index search result buffers at the collection's
+  document count and track their memory against the query memory limit.
+
+* AQL `REGEX_MATCHES()` matches empty strings like any other input.
+  This fixes issue #23362.
+
+* AQL `REVERSE` keeps characters above U+FFFF, such as emoji, intact when
+  reversing a string, and reverses strings containing U+FFFF completely.
+  This fixes issue #23360.
+
+* AQL `REVERSE` keeps characters above U+FFFF, such as emoji, intact when
+  reversing a string, and reverses strings containing U+FFFF completely.
+  This fixes issue #23360.
+
+* Updated ArangoDB Starter to v0.19.28.
+
+* Fix AQL SUBSTITUTE() with an empty search string. It previously returned
+  null with a warning; it now matches at every character position, e.g.
+  SUBSTITUTE('abc', '', '_') returns '_a_b_c_'.
 
 * COR-994: arangodump, arangorestore and arangosh now renew a JWT passed via
   `--server.jwt-token` before it expires, using `POST /_open/auth/renew`
@@ -20,6 +46,11 @@
 
 * COR-1025: Escape double quotes, backslashes and line feeds in metric label
   values according to the Prometheus text exposition format.
+
+* AQL queries on collections with a sparse `mdi` or `mdi-prefixed` index
+  accept any `FILTER` condition, including conditions that are not
+  comparisons, such as `IS_STRING(doc.attr)` or `NOT doc.attr`. Such queries
+  failed with `member out of range` before. This fixes issue #23356.
 
 * COR-917: AQL UPDATE with keepNull: false leaves the attribute in place in the 
   _to_ shadow collection of a non-disjoint SmartGraph.

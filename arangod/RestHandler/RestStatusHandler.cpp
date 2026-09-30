@@ -45,7 +45,6 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Rest/Version.h"
-#include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
@@ -63,7 +62,7 @@ RestStatusHandler::RestStatusHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
     : RestBaseHandler(server, request, response),
-      _engine(server.getFeature<DatabaseFeature>().engine()) {}
+      _engine(server.getFeature<StorageEngine>()) {}
 
 // Mounted at /_admin/status (exact)
 RestStatus RestStatusHandler::execute() {
