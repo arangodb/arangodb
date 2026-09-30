@@ -41,19 +41,13 @@ namespace arangodb::aql {
 
 namespace {
 
-/// @brief the relative cost improvement required before rewriting. Note the
-/// arithmetic: the check is `chosen < current / (1 + kImprovementMargin)`, so
-/// 0.25 demands that the chosen order cost at most 0.8 of the current one --
-/// a 20% reduction, not 25%. Differences below the estimator's own error
-/// on non-unique index estimates are not signal, so the
-/// exact figure matters far less than its direction: bias toward not rewriting.
-constexpr double kImprovementMargin = 0.25;
+/// @brief a rewrite must cost less than this share of the written order.
+/// Smaller differences are within the estimator's own error; bias toward not
+/// rewriting.
+constexpr double kMaxCostRatio = 0.8;
 
 /// @brief every edge joining `candidate` to a vertex already in `placed`,
 /// written into `out`, which is cleared first.
-///
-/// The caller owns the buffer so it can be reused across the search's inner
-/// loop rather than reallocated on each of its O(n^3) iterations.
 void edgesToPrefix(JoinGraph& graph, JoinGraph::Node* candidate,
                    std::unordered_set<JoinGraph::Node const*> const& placed,
                    std::vector<JoinGraph::Edge const*>& out) {
@@ -67,11 +61,10 @@ void edgesToPrefix(JoinGraph& graph, JoinGraph::Node* candidate,
   }
 }
 
-/// @brief the estimate after appending `next` to a prefix, joined through
-/// every edge to a vertex in `placed`. `connecting` is the caller's scratch
-/// buffer and holds those edges on return, so the caller can tell a join
-/// from a cross product. Inserting into `placed` is left to the caller,
-/// which may be trying `next` rather than committing to it.
+/// @brief the estimate after appending `next` to a prefix. `connecting` holds
+/// the edges used on return, so the caller can tell a join from a cross
+/// product; inserting into `placed` is the caller's call, since it may only
+/// be trying `next`.
 auto extendPrefix(JoinGraph& graph, JoinCostEstimator const& estimator,
                   JoinEstimate const& prefix,
                   std::unordered_set<JoinGraph::Node const*> const& placed,
@@ -101,11 +94,7 @@ auto nodesInIdOrder(JoinGraph& graph,
   return nodes;
 }
 
-/// @brief one component's vertices, in the order they already appear in
-/// `writtenOrder` (i.e. the plan as written). This is the baseline a
-/// component's greedy order is judged against: each component's accept/
-/// decline decision compares against its own written order, never the whole
-/// graph's.
+/// @brief one component's vertices in the order the plan was written.
 auto writtenComponentOrder(
     std::vector<Variable const*> const& component,
     std::vector<EnumerateCollectionNode*> const& writtenOrder)
@@ -122,26 +111,18 @@ auto writtenComponentOrder(
   return order;
 }
 
-/// @brief a connected component and the outcome of its own accept/decline
-/// decision. `order` carries the winner either way, so callers concatenate
-/// these without checking which way each decision went.
+/// @brief a component and the order that won its accept/decline decision.
 struct DecidedComponent {
   /// @brief the greedy order if it was accepted, the written order if not.
   JoinOrder order;
-  /// @brief where this component's earliest member sits in the plan's written
-  /// enumeration order. Sequences the components against one another.
+  /// @brief position of the component's first member in the written order.
   size_t firstAppearance;
   /// @brief whether the greedy order replaced the written one.
   bool reordered;
 };
 
-/// @brief order each connected component internally, then, independently
-/// for each, decide whether its greedy order is confident and cheap enough
-/// to replace the order it was written in. This decision must be made per
-/// component, not once for the whole graph: a run with two components, one
-/// fully indexed and one not, must not lose the confident reordering of the
-/// first just because the second's statistics are guesses. Each component
-/// stands or falls on a comparison against its own written order.
+/// @brief decided per component, not per graph, so that one component's
+/// guessed statistics do not cost another its confident reordering.
 auto decideInternalOrdersForEachComponent(
     JoinGraph& graph, JoinCostEstimator const& estimator,
     std::vector<EnumerateCollectionNode*> const& writtenOrder)
@@ -176,8 +157,7 @@ auto decideInternalOrdersForEachComponent(
     }
 
     // Require a real margin against this component's own written cost.
-    if (greedy.estimate.cost >=
-        writtenEstimate.cost / (1.0 + kImprovementMargin)) {
+    if (greedy.estimate.cost >= writtenEstimate.cost * kMaxCostRatio) {
       LOG_TOPIC("a7f05", TRACE, Logger::AQL)
           << "optimize-join-order: keeping a component's written order, "
           << writtenEstimate.cost << " -> " << greedy.estimate.cost
@@ -195,10 +175,8 @@ auto decideInternalOrdersForEachComponent(
   return decided;
 }
 
-/// @brief the components' own final orders concatenated in the order those
-/// components first appear in the written plan. This is the baseline the
-/// resequencing decision is judged against. With a single component there is
-/// only one possible sequence, so that decision is a structural no-op.
+/// @brief the decided orders concatenated in written sequence: the baseline
+/// for the resequencing decision.
 auto concatenateInWrittenSequence(std::vector<DecidedComponent> const& decided,
                                   size_t total)
     -> std::vector<EnumerateCollectionNode*> {
@@ -219,26 +197,10 @@ auto concatenateInWrittenSequence(std::vector<DecidedComponent> const& decided,
   return baseline;
 }
 
-/// @brief the cheapest concatenation of the components: they join by cross
-/// product, so they are sequenced greedily too, one winner at a time.
-///
-/// Every concatenation ends at the same cardinality -- a cross product
-/// multiplies, and multiplication commutes. Cost still differs, because a
-/// cross-product step charges `prefix.cardinality * count(next)`: each
-/// component's work is multiplied by the accumulated cardinality of everything
-/// placed before it. Hence the candidates below are costed as whole prefixes
-/// rather than in isolation.
-///
-/// The estimates already stored in `decided` cannot stand in for that replay.
-/// Each was built with its component's first node going through seed(); in any
-/// position but the first, that node goes through extend() with no connecting
-/// edges instead, and nothing in the JoinCostEstimator contract makes the two
-/// agree. For the System-R estimator they do not: seed() may charge an index
-/// lookup over the constant restrictions, a cross-product extend() always
-/// charges a full scan per outer row. Scaling the stored estimate by the
-/// prefix cardinality is no substitute either, since it assumes cost is linear
-/// in the prefix -- a property of one estimator, broken even there by the
-/// cardinality floor, and not part of the contract.
+/// @brief the cheapest concatenation of the components, sequenced greedily.
+/// Candidates are costed as whole prefixes: a component's cost scales with
+/// the cardinality placed before it, and its stored estimate began with
+/// seed() where a later position goes through a cross-product extend().
 auto getCheapestConcatenation(JoinGraph& graph,
                               JoinCostEstimator const& estimator,
                               std::vector<DecidedComponent> decided,
@@ -296,8 +258,7 @@ auto acceptsResequencing(JoinGraph& graph, JoinCostEstimator const& estimator,
   auto const candidateEstimate =
       getEstimateForOrder(graph, estimator, candidate);
 
-  if (candidateEstimate.cost >=
-      baselineEstimate.cost / (1.0 + kImprovementMargin)) {
+  if (candidateEstimate.cost >= baselineEstimate.cost * kMaxCostRatio) {
     LOG_TOPIC("a7f07", TRACE, Logger::AQL)
         << "optimize-join-order: keeping the written component sequence, "
         << baselineEstimate.cost << " -> " << candidateEstimate.cost
@@ -412,9 +373,6 @@ auto chooseJoinOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
 
   auto baseline = concatenateInWrittenSequence(decided, graph.nodes.size());
 
-  // Estimated before the search, not after: getCheapestConcatenation() costs
-  // O(k^2) replays for k components, and all of them are wasted if the
-  // sequence cannot be replaced anyway.
   auto const baselineEstimate = getEstimateForOrder(graph, estimator, baseline);
 
   bool sequenceChanged = false;
@@ -453,10 +411,7 @@ void rewritePlan(ExecutionPlan& plan,
   ExecutionNode* firstDependency = current.front()->getFirstDependency();
   ADB_PROD_ASSERT(firstDependency != nullptr);
 
-  // A permutation check, not merely a size check: the loop below unlinks every
-  // enumeration and reinserts only what `order` holds, so a duplicate paired
-  // with an omission would silently delete a FOR loop from the query -- which
-  // no assertion on the resulting *order* would catch.
+  // a duplicate paired with an omission would silently delete a FOR loop
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   {
     auto sortedCurrent = current;
