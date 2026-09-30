@@ -31,9 +31,8 @@
 
 namespace arangodb::aql {
 
-/// @brief System-R cardinality estimation over a pluggable statistics source.
-/// |a join b| = |a||b| / max(|a_x|, |b_y|), which is symmetric, paired with the
-/// engine-level probe/scan cost recurrence from JoinCostEstimator.h.
+/// @brief System-R cardinality, |a join b| = |a||b| / max(|a_x|, |b_y|),
+/// over a pluggable statistics source.
 class SystemRCostEstimator final : public JoinCostEstimator {
  public:
   explicit SystemRCostEstimator(std::unique_ptr<JoinStatistics> statistics);
