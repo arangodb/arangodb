@@ -76,7 +76,7 @@ struct CountingRenewer {
   auto asFunction() -> RenewingJwtToken::Renewer {
     return [this](JwtToken const&) {
       ++calls;
-      return RenewalOutcome::success(std::optional{tokenExpiringAt(2000)});
+      return TokenOutcome::success(std::optional{tokenExpiringAt(2000)});
     };
   }
 };
