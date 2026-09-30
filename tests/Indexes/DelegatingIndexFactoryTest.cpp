@@ -74,7 +74,7 @@ struct SpyIndexFactory : public DelegatingIndexFactory<SpyDefinition> {
 
 class DelegatingIndexFactoryTest : public ::testing::Test {
  protected:
-  tests::mocks::MockMetricsServer mockServer;
+  tests::mocks::MockRestServer mockServer;
 };
 
 TEST_F(DelegatingIndexFactoryTest, forwardsConstructorArgsToDefinition) {
