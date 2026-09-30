@@ -1344,6 +1344,14 @@ function ahuacatlStringFunctionsTestSuite () {
         [ '', '', [ 'foo', 'baz' ], [ 'bar', 'qux' ] ],
         [ '', '', { foo: 'bar' } ],
         [ '', '', 'foo', 'bar', 1 ],
+        [ '_a_b_c_', 'abc', '', '_' ],
+        [ '_a_bc', 'abc', '', '_', 2 ],
+        [ '_a_b_c_', 'abc', [ '' ], [ '_' ] ],
+        [ '_a_b_c_', 'abc', { '': '_' } ],
+        [ '_a_bc', 'abc', { '': '_' }, 2 ],
+        [ '-ö-ü-', 'öü', '', '-' ],
+        [ 'x', '', '', 'x' ],
+        [ '_a-_c_', 'abc', [ 'b', '' ], [ '-', '_' ] ],
       ];
 
       values.forEach(function (value) {
@@ -1359,6 +1367,10 @@ function ahuacatlStringFunctionsTestSuite () {
       });
     },
     
+    testSubstituteDuplicateEmptyKeyUsesFirst: function () {
+      assertEqual([ '_a_b_c_' ], getQueryResults(`RETURN SUBSTITUTE('abc', { '': '_', '': '-' })`));
+    },
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test substitute function
 // //////////////////////////////////////////////////////////////////////////////

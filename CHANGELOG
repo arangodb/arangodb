@@ -5,6 +5,13 @@
   it expires, which also makes them work against servers in RBAC mode; they
   fall back to HTTP basic authentication if the server issues no token.
 
+* COR-1017: Reject `POST /_api/dump/start` requests that pass an empty `shards`
+  array. Such a dump context has no function, as it never hands out any data.
+
+* COR-1017: Added the `--dump.max-prefetch-count` startup option (default 1024).
+  The `prefetchCount` of `POST /_api/dump/start` is now clamped to it, in the
+  same way as `docsPerBatch`, `batchSize` and `parallelism`.
+
 * COR-1018: Cap vector index search result buffers at the collection's
   document count and track their memory against the query memory limit.
 
@@ -20,6 +27,10 @@
   This fixes issue #23360.
 
 * Updated ArangoDB Starter to v0.19.28.
+
+* Fix AQL SUBSTITUTE() with an empty search string. It previously returned
+  null with a warning; it now matches at every character position, e.g.
+  SUBSTITUTE('abc', '', '_') returns '_a_b_c_'.
 
 * COR-994: arangodump, arangorestore and arangosh now renew a JWT passed via
   `--server.jwt-token` before it expires, using `POST /_open/auth/renew`
