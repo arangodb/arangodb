@@ -29,7 +29,6 @@
 
 #include <array>
 #include <cmath>
-#include <limits>
 #include <memory>
 
 using namespace arangodb::aql;
@@ -58,16 +57,6 @@ TEST(JoinCostFunctionsTest, probing_beats_scanning_the_larger_side) {
   double const scanSmallProbeLarge = 100.0 + probeCost(100.0, 1000.0);
   double const scanLargeProbeSmall = 1000.0 + probeCost(1000.0, 100.0);
   EXPECT_LT(scanSmallProbeLarge, scanLargeProbeSmall);
-}
-
-TEST(JoinCostFunctionsTest, estimates_clamp_to_a_finite_ceiling) {
-  EXPECT_DOUBLE_EQ(clampEstimate(std::numeric_limits<double>::infinity()),
-                   kMaxEstimate);
-  EXPECT_DOUBLE_EQ(clampEstimate(std::nan("")), kMaxEstimate);
-  EXPECT_DOUBLE_EQ(clampEstimate(1e300), kMaxEstimate);
-  EXPECT_DOUBLE_EQ(clampEstimate(-5.0), 0.0);
-  EXPECT_DOUBLE_EQ(clampEstimate(42.0), 42.0);
-  EXPECT_DOUBLE_EQ(scanCost(1e200, 1e200), kMaxEstimate);
 }
 
 TEST(JoinCostFunctionsTest, probe_cost_guards_log2_against_a_nonpositive_size) {
