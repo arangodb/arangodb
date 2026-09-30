@@ -109,7 +109,7 @@ class SystemRCostEstimatorTest : public testing::Test {
 
 // With unique indexes on both sides the
 // current estimator says 1000, System-R says 100.
-TEST_F(SystemRCostEstimatorTest, worked_example_from_the_design_note) {
+TEST_F(SystemRCostEstimatorTest, worked_example) {
   auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
   auto g = buildGraph(*q);
   ASSERT_EQ(g.edges.size(), 1u);
