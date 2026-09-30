@@ -131,9 +131,6 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   std::tuple<size_t, size_t, size_t> stats(ThreadGroup id) const;
   std::pair<size_t, size_t> limits(ThreadGroup id) const;
 
-  template<typename Engine>
-  IndexTypeFactory& factory();
-
   void trackOutOfSyncLink() noexcept;
   void untrackOutOfSyncLink() noexcept;
 
@@ -183,8 +180,7 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   irs::IResourceManager& _columnsCacheMemoryUsed;
 #endif
 
-  std::shared_ptr<IndexTypeFactory> _clusterFactory;
-  std::shared_ptr<IndexTypeFactory> _rocksDBFactory;
+  std::shared_ptr<IndexTypeFactory> _factory;
 
   // helper object, only useful during WAL recovery
   std::shared_ptr<IResearchRocksDBRecoveryHelper> _recoveryHelper;

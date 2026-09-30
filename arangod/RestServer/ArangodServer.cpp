@@ -23,6 +23,7 @@
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/ArangodServer.h"
 
+#include <functional>
 #include <type_traits>
 
 #include "Basics/application-exit.h"
@@ -200,7 +201,6 @@ void ArangodServer::addFeatures() {
   auto& metrics = addFeature<metrics::MetricsFeature>(
       LazyApplicationFeatureReference<QueryRegistryFeature>(*this),
       LazyApplicationFeatureReference<StatisticsFeature>(*this),
-      LazyApplicationFeatureReference<DatabaseFeature>(*this),
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(*this),
       LazyApplicationFeatureReference<ClusterFeature>(*this),
       getOptions<metrics::MetricsOptionsProvider>());
@@ -382,8 +382,6 @@ void ArangodServer::addFeatures() {
   addFeature<TemporaryStorageFeature>(
       databasePath, getOptions<TemporaryStorageOptionsProvider>());
   addFeature<TtlFeature>(getOptions<TtlOptionsProvider>());
-  addFeature<transaction::ManagerFeature>(
-      metrics, getOptions<transaction::ManagerOptionsProvider>());
   addFeature<ViewTypesFeature>();
   auto& aqlFunctionFeature = addFeature<aql::AqlFunctionFeature>();
   addFeature<aql::OptimizerRulesFeature>(
@@ -449,13 +447,21 @@ void ArangodServer::addFeatures() {
                              getOptions<UpgradeOptionsProvider>());
   auto& rocksdbOption = addFeature<RocksDBOptionFeature>(
       getOptions<RocksDBOptionFeatureOptionsProvider>());
-  addFeature<ClusterEngine>(clusterFeature, database, metrics);
-  static SortingPolicy const sortingPolicy(agencyActivated);
-  addFeature<RocksDBEngine>(
-      rocksdbOption, metrics, databasePath, vectorIndex, flush, dumpLimits,
-      replication2::EnableReplication2 ? &replicatedLogFeature : nullptr,
-      scheduler, database, database, rocksdbCacheRefill, cacheManager,
-      sortingPolicy, getOptions<RocksDBEngineOptionsProvider>());
+  StorageEngine& engine = std::invoke([&]() -> StorageEngine& {
+    if (ServerState::instance()->isCoordinator()) {
+      return addFeature<StorageEngine, ClusterEngine>(clusterFeature, database,
+                                                      metrics, vectorIndex);
+    } else {
+      static SortingPolicy const sortingPolicy(agencyActivated);
+      return addFeature<StorageEngine, RocksDBEngine>(
+          rocksdbOption, metrics, databasePath, vectorIndex, flush, dumpLimits,
+          replication2::EnableReplication2 ? &replicatedLogFeature : nullptr,
+          scheduler, database, database, rocksdbCacheRefill, cacheManager,
+          sortingPolicy, getOptions<RocksDBEngineOptionsProvider>());
+    }
+  });
+  addFeature<transaction::ManagerFeature>(
+      metrics, engine, getOptions<transaction::ManagerOptionsProvider>());
   addFeature<replication2::replicated_state::ReplicatedStateAppFeature>();
   addFeature<replication2::replicated_state::black_hole::
                  BlackHoleStateMachineFeature>();
