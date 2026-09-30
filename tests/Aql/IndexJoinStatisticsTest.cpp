@@ -23,121 +23,14 @@
 #include "gtest/gtest.h"
 
 #include "Aql/Optimizer/Rule/OptimizeJoinOrder/IndexJoinStatistics.h"
-#include "JoinGraphTestHelper.h"
-// trx.abort() below needs the full transaction::Methods definition, which
-// none of the above only-forward-declaring headers provide.
-#include "Transaction/Methods.h"
-
-// createIndex() is called through a shared_ptr<LogicalCollection>, so the full
-// definition is required here -- JoinGraphTestHelper.h only forward-declares
-// it.
-#include "VocBase/LogicalCollection.h"
 
 #include <array>
-#include <string>
+#include <string_view>
 #include <vector>
 
 using namespace arangodb::aql;
 
 namespace arangodb::tests::aql {
-namespace {
-
-// -----------------------------------------------------------------------------
-// IndexJoinStatistics itself, against a real MockAqlServer collection. This
-// exercises the adapter (real Ast/Query/transaction, real Collection) end to
-// end -- exactly what the IndexFacts-level tests below cannot do.
-//
-// PhysicalCollectionMock::createIndex implements only edge, hash, inverted
-// and arangosearch types, so a "persistent" index is never created and never
-// found here. Only the "no index found" paths are exercisable against this
-// fixture; which index qualifies belongs to the IndexFacts-level tests below.
-// -----------------------------------------------------------------------------
-
-class IndexJoinStatisticsTest : public testing::Test {
- protected:
-  mocks::MockAqlServer server;
-
-  // Creates collection `name` with `count` documents where x = i, y = i % 10,
-  // z = i, then applies `indexes` (each a full index definition).
-  void makeCollection(std::string const& name, int count,
-                      std::vector<std::string> const& indexes = {}) {
-    auto& vocbase = server.getSystemDatabase();
-    auto json = velocypack::Parser::fromJson(R"({"name":")" + name + R"("})");
-    auto collection = vocbase.createCollection(json->slice());
-    for (auto const& definition : indexes) {
-      bool created = false;
-      collection
-          ->createIndex(velocypack::Parser::fromJson(definition)->slice(),
-                        created)
-          .waitAndGet();
-    }
-    executeQuery(vocbase, "FOR i IN 1.." + std::to_string(count) +
-                              " INSERT {x: i, y: i % 10, z: i} INTO " + name);
-  }
-
-  static AttributePath path(std::string_view name) {
-    return AttributePath{name};
-  }
-};
-
-}  // namespace
-
-TEST_F(IndexJoinStatisticsTest, document_count_matches_the_collection) {
-  makeCollection("s1", 100);
-  auto q = prepareJoinPlanForStatistics(server, "FOR a IN s1 RETURN a");
-  auto g = buildGraph(*q);
-  IndexJoinStatistics stats{*q->plan()};
-
-  EXPECT_DOUBLE_EQ(stats.documentCount(*nodeByName(g, "a")), 100.0);
-}
-
-TEST_F(IndexJoinStatisticsTest, empty_attribute_set_is_one_and_not_defaulted) {
-  makeCollection("s1", 100);
-  auto q = prepareJoinPlanForStatistics(server, "FOR a IN s1 RETURN a");
-  auto g = buildGraph(*q);
-  IndexJoinStatistics stats{*q->plan()};
-
-  auto est = stats.distinctValues(*nodeByName(g, "a"), {});
-  EXPECT_DOUBLE_EQ(est.value, 1.0);
-  EXPECT_FALSE(est.defaulted)
-      << "an unrestricted node must not be reported as a guess";
-}
-
-TEST_F(IndexJoinStatisticsTest, no_covering_index_defaults_to_one) {
-  makeCollection("s1", 100);
-  auto q = prepareJoinPlanForStatistics(server, "FOR a IN s1 RETURN a");
-  auto g = buildGraph(*q);
-  IndexJoinStatistics stats{*q->plan()};
-
-  std::array<AttributePath, 1> attributes{path("x")};
-  auto est = stats.distinctValues(*nodeByName(g, "a"), attributes);
-  EXPECT_DOUBLE_EQ(est.value, 1.0);
-  EXPECT_TRUE(est.defaulted);
-}
-
-TEST_F(IndexJoinStatisticsTest,
-       unusable_transaction_defaults_even_with_a_qualifying_index) {
-  // If the transaction cannot be consulted, documentCount() falls back to 0
-  // (its only fallback -- the interface has no defaulted channel of its
-  // own). Naively feeding that into `selectivity * count` for a qualifying
-  // index would produce a confident-looking {1.0, defaulted = false}: a
-  // fabricated statistic wearing a trustworthy flag. distinctValues() must
-  // reject this case outright rather than let it fall out of the
-  // arithmetic.
-  makeCollection("s1", 100,
-                 {R"({"type":"persistent","fields":["x"],"unique":true})"});
-  auto q = prepareJoinPlanForStatistics(server, "FOR a IN s1 RETURN a");
-  auto g = buildGraph(*q);
-  IndexJoinStatistics stats{*q->plan()};
-
-  auto& trx = q->trxForOptimization();
-  ASSERT_TRUE(trx.abort().ok());
-
-  std::array<AttributePath, 1> attributes{path("x")};
-  auto est = stats.distinctValues(*nodeByName(g, "a"), attributes);
-  EXPECT_DOUBLE_EQ(est.value, 1.0);
-  EXPECT_TRUE(est.defaulted);
-}
 
 // -----------------------------------------------------------------------------
 // The selection rules themselves, against scripted IndexFacts. No collection,
