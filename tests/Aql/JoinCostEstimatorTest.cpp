@@ -35,40 +35,6 @@ using namespace arangodb::aql;
 
 namespace arangodb::tests::aql {
 
-TEST(JoinCostFunctionsTest, probe_cost_is_rows_times_log2_of_collection) {
-  EXPECT_DOUBLE_EQ(probeCost(100.0, 1000.0), 100.0 * std::log2(1000.0));
-  EXPECT_DOUBLE_EQ(probeCost(1000.0, 100.0), 1000.0 * std::log2(100.0));
-}
-
-TEST(JoinCostFunctionsTest, probe_cost_per_row_is_floored_at_one) {
-  // log2(1) == 0 would make a join into a one-document collection free.
-  EXPECT_DOUBLE_EQ(probeCost(50.0, 1.0), 50.0);
-  EXPECT_DOUBLE_EQ(probeCost(50.0, 0.0), 50.0);
-}
-
-TEST(JoinCostFunctionsTest, scan_cost_is_rows_times_collection) {
-  EXPECT_DOUBLE_EQ(scanCost(100.0, 1000.0), 100000.0);
-  // an empty collection still costs one touch per outer row
-  EXPECT_DOUBLE_EQ(scanCost(100.0, 0.0), 100.0);
-}
-
-TEST(JoinCostFunctionsTest, probing_beats_scanning_the_larger_side) {
-  // scan the small collection, probe the large one
-  double const scanSmallProbeLarge = 100.0 + probeCost(100.0, 1000.0);
-  double const scanLargeProbeSmall = 1000.0 + probeCost(1000.0, 100.0);
-  EXPECT_LT(scanSmallProbeLarge, scanLargeProbeSmall);
-}
-
-TEST(JoinCostFunctionsTest, probe_cost_guards_log2_against_a_nonpositive_size) {
-  // The inner max(collectionSize, 1.0) keeps log2's argument >= 1. Without it a
-  // negative size yields log2(negative) == NaN, and std::max(NaN, 1.0) returns
-  // NaN rather than the floor, so the NaN would propagate into the cost.
-  // clampEstimate would catch it downstream, but the guard is what keeps the
-  // per-row cost meaningful in the first place.
-  EXPECT_DOUBLE_EQ(probeCost(10.0, -5.0), 10.0);
-  EXPECT_TRUE(std::isfinite(probeCost(10.0, -5.0)));
-}
-
 class SystemRCostEstimatorTest : public testing::Test {
  protected:
   mocks::MockAqlServer server;
@@ -137,8 +103,8 @@ TEST_F(SystemRCostEstimatorTest, cardinality_is_symmetric_but_cost_is_not) {
   EXPECT_DOUBLE_EQ(ab.cardinality, ba.cardinality);
   // scanning the 100-row side and probing the 1000-row side is cheaper
   EXPECT_LT(ba.cost, ab.cost);
-  EXPECT_DOUBLE_EQ(ba.cost, 100.0 + probeCost(100.0, 1000.0));
-  EXPECT_DOUBLE_EQ(ab.cost, 1000.0 + probeCost(1000.0, 100.0));
+  EXPECT_DOUBLE_EQ(ba.cost, 100.0 + 100.0 * std::log2(1000.0));
+  EXPECT_DOUBLE_EQ(ab.cost, 1000.0 + 1000.0 * std::log2(100.0));
 }
 
 TEST_F(SystemRCostEstimatorTest, unindexed_join_attribute_costs_a_scan) {
@@ -155,7 +121,7 @@ TEST_F(SystemRCostEstimatorTest, unindexed_join_attribute_costs_a_scan) {
   std::array<JoinGraph::Edge const*, 1> connecting{&g.edges.front()};
 
   auto est = estimator->extend(estimator->seed(*a), *b, connecting);
-  EXPECT_DOUBLE_EQ(est.cost, 1000.0 + scanCost(1000.0, 100.0));
+  EXPECT_DOUBLE_EQ(est.cost, 1000.0 + 1000.0 * 100.0);
 }
 
 TEST_F(SystemRCostEstimatorTest, empty_connecting_span_is_a_cross_product) {
@@ -171,7 +137,7 @@ TEST_F(SystemRCostEstimatorTest, empty_connecting_span_is_a_cross_product) {
   auto est = estimator->extend(estimator->seed(*a), *b, {});
 
   EXPECT_DOUBLE_EQ(est.cardinality, 100000.0);  // no reduction
-  EXPECT_DOUBLE_EQ(est.cost, 1000.0 + scanCost(1000.0, 100.0));
+  EXPECT_DOUBLE_EQ(est.cost, 1000.0 + 1000.0 * 100.0);
 }
 
 TEST_F(SystemRCostEstimatorTest,
@@ -198,7 +164,7 @@ TEST_F(SystemRCostEstimatorTest,
                                *nodeByName(g, "c"), {});
 
   EXPECT_DOUBLE_EQ(est.cardinality, 50000.0);  // 1000 * 50, no reduction
-  EXPECT_DOUBLE_EQ(est.cost, 1000.0 + scanCost(1000.0, 50.0));
+  EXPECT_DOUBLE_EQ(est.cost, 1000.0 + 1000.0 * 50.0);
   EXPECT_FALSE(est.defaulted);
 }
 
@@ -346,7 +312,7 @@ TEST_F(SystemRCostEstimatorTest, extend_costs_against_the_unrestricted_count) {
   auto est = estimator->extend(estimator->seed(*a), *b, connecting);
   // seed(a).cost == documentCount(a) == 500 (no index on a's empty
   // conditions); the probe is against |C_b| = 1000, not restricted(b) = 10.
-  EXPECT_DOUBLE_EQ(est.cost, 500.0 + probeCost(500.0, 1000.0));
+  EXPECT_DOUBLE_EQ(est.cost, 500.0 + 500.0 * std::log2(1000.0));
 }
 
 TEST_F(SystemRCostEstimatorTest, defaulted_propagates_from_the_prefix) {

@@ -24,29 +24,11 @@
 
 #include "Aql/Optimizer/Rule/OptimizeJoinOrder/JoinGraph.h"
 
-#include <algorithm>
-#include <cmath>
 #include <memory>
 #include <span>
 
 namespace arangodb::aql {
 class ExecutionPlan;
-
-/// @brief cost of one index lookup per outer row. The descent traverses the
-/// whole index, so `collectionSize` is the *unrestricted* document count: a
-/// constant restriction on the inner side is an extra predicate and does not
-/// shrink the index. Floored at 1.0 per row so a one-document collection does
-/// not make a join free.
-///
-inline auto probeCost(double rows, double collectionSize) noexcept -> double {
-  double const perRow = std::max(std::log2(std::max(collectionSize, 1.0)), 1.0);
-  return rows * perRow;
-}
-
-/// @brief cost of one full scan per outer row, i.e. no usable index.
-inline auto scanCost(double rows, double collectionSize) noexcept -> double {
-  return rows * std::max(collectionSize, 1.0);
-}
 
 /// @brief the running estimate for one join prefix.
 struct JoinEstimate {
