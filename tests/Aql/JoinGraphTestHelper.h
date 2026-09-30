@@ -83,24 +83,6 @@ inline arangodb::aql::JoinGraph buildGraph(arangodb::aql::Query const& q) {
   return arangodb::aql::buildJoinGraph(plan, first, next);
 }
 
-// Builds one JoinGraph per maximal run of adjacent enumerations, mirroring
-// the spine walk of the optimizeJoinOrder rule itself.
-inline std::vector<arangodb::aql::JoinGraph> buildAllGraphs(
-    arangodb::aql::Query const& q) {
-  auto* plan = q.plan();
-  std::vector<arangodb::aql::JoinGraph> graphs;
-  for (auto* n = plan->root()->getSingleton(); n != nullptr;) {
-    if (n->getType() == arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION) {
-      arangodb::aql::ExecutionNode* next = nullptr;
-      graphs.emplace_back(arangodb::aql::buildJoinGraph(plan, n, next));
-      n = next;
-    } else {
-      n = n->getFirstParent();
-    }
-  }
-  return graphs;
-}
-
 inline arangodb::aql::JoinGraph::Node* nodeByName(arangodb::aql::JoinGraph& g,
                                                   std::string_view name) {
   for (auto& [var, node] : g.nodes) {

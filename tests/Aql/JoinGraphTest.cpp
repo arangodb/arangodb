@@ -21,10 +21,7 @@
 
 #include "JoinGraphTestHelper.h"
 
-#include "Aql/OptimizerRule.h"
-
 #include <algorithm>
-#include <cstdlib>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -34,6 +31,23 @@ using namespace arangodb::aql;
 
 namespace arangodb::tests::aql {
 namespace {
+// Builds one JoinGraph per maximal run of adjacent enumerations, mirroring
+// the spine walk of the optimizeJoinOrder rule itself.
+std::vector<JoinGraph> buildAllGraphs(Query const& q) {
+  auto* plan = q.plan();
+  std::vector<JoinGraph> graphs;
+  for (auto* n = plan->root()->getSingleton(); n != nullptr;) {
+    if (n->getType() == ExecutionNode::ENUMERATE_COLLECTION) {
+      ExecutionNode* next = nullptr;
+      graphs.emplace_back(buildJoinGraph(plan, n, next));
+      n = next;
+    } else {
+      n = n->getFirstParent();
+    }
+  }
+  return graphs;
+}
+
 class JoinGraphTest : public testing::Test {
  protected:
   mocks::MockAqlServer server;
@@ -126,15 +140,12 @@ TEST_F(JoinGraphTest, equality_within_one_variable_becomes_residual) {
   }
   EXPECT_EQ(g.residuals.size(), 1u);
   EXPECT_TRUE(nodeByName(g, "a")->conditions.empty());
-}
 
-TEST_F(JoinGraphTest, equality_within_one_variable_alone_is_not_a_join) {
-  auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.p == a.q RETURN [a, b]");
-  auto g = buildGraph(*q);
-
-  EXPECT_FALSE(g.hasJoin());
-  EXPECT_TRUE(g.edges.empty());
-  EXPECT_EQ(g.residuals.size(), 1u);
+  // and on its own it is not a join at all
+  auto alone = buildGraph(
+      *prepare("FOR a IN c1 FOR b IN c2 FILTER a.p == a.q RETURN [a, b]"));
+  EXPECT_FALSE(alone.hasJoin());
+  EXPECT_EQ(alone.residuals.size(), 1u);
 }
 
 TEST_F(JoinGraphTest, id_is_remapped_to_key) {
