@@ -46,7 +46,7 @@ using JwtToken = std::string;
 using JwtClock = std::chrono::system_clock;
 
 /**
- * Snapshot of a JWT that is renewed via POST /_open/auth/renew
+ * Snapshot of a JWT that is renewed via POST /_open/auth or /_open/auth/renew
  */
 struct JwtTokenState {
   JwtToken token;
@@ -61,13 +61,13 @@ struct JwtTokenState {
 };
 
 /**
- * Outcome of one POST /_open/auth/renew
+ * Outcome of one POST to /_open/auth or /_open/auth/renew
  *
- * ok(token): the server issued a new token. ok(nullopt): the server is not
- * yet willing to renew, because the token is still far from expiry.
+ * ok(token): the server issued a token. ok(nullopt): the server issued none,
+ * because a renewal is not yet due or authentication is disabled.
  * error: the request failed.
  */
-using RenewalOutcome = ResultT<std::optional<JwtToken>>;
+using TokenOutcome = ResultT<std::optional<JwtToken>>;
 
 /// Time to wait after a renewal request that yielded no token
 constexpr auto kRenewalRetryInterval = std::chrono::seconds{5};
@@ -88,14 +88,15 @@ auto isRenewalDue(JwtTokenState const& state, JwtClock::time_point now,
  * A new token replaces the old one. Otherwise the token is kept and the
  * next attempt is scheduled kRenewalRetryInterval later.
  */
-auto applyRenewal(JwtTokenState state, RenewalOutcome const& outcome,
+auto applyRenewal(JwtTokenState state, TokenOutcome const& outcome,
                   JwtClock::time_point now) -> JwtTokenState;
 
 /**
- * Interprets the complete HTTP reply of POST /_open/auth/renew
+ * Interprets the complete HTTP reply of a POST to /_open/auth or
+ * /_open/auth/renew
  */
-auto parseRenewalResponse(httpclient::SimpleHttpResult const& response)
-    -> RenewalOutcome;
+auto parseTokenResponse(httpclient::SimpleHttpResult const& response)
+    -> TokenOutcome;
 
 /**
  * Thread-safe holder of a user JWT that is renewed before it expires
@@ -113,8 +114,9 @@ auto parseRenewalResponse(httpclient::SimpleHttpResult const& response)
  */
 class RenewingJwtToken {
  public:
-  /// sends POST /_open/auth/renew authenticated with the current token
-  using Renewer = std::function<RenewalOutcome(JwtToken const& currentToken)>;
+  /// obtains a new token, via POST /_open/auth/renew with the current token or
+  /// via POST /_open/auth with credentials
+  using Renewer = std::function<TokenOutcome(JwtToken const& currentToken)>;
   /// tells the current time; injectable for tests
   using TimeSource = std::function<JwtClock::time_point()>;
 

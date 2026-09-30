@@ -6,6 +6,11 @@
   paths are being enumerated, reducing unnecessary path processing and improving query 
   performance for affected queries.
   
+* COR-1012 The client tools started with `--server.username`/`--server.password`
+  now obtain a JWT via `POST /_open/auth` like arangosh and renew it before
+  it expires, which also makes them work against servers in RBAC mode; they
+  fall back to HTTP basic authentication if the server issues no token.
+
 * COR-1017: Reject `POST /_api/dump/start` requests that pass an empty `shards`
   array. Such a dump context has no function, as it never hands out any data.
 
