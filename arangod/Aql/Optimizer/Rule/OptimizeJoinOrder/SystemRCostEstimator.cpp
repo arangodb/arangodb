@@ -53,12 +53,7 @@ SystemRCostEstimator::SystemRCostEstimator(
 }
 
 auto SystemRCostEstimator::restrictedFor(JoinGraph::Node const& node) const
-    -> Restricted const& {
-  auto const* variable = node.executionNode->outVariable();
-  if (auto it = _restricted.find(variable); it != _restricted.end()) {
-    return it->second;
-  }
-
+    -> Restricted {
   double const count = std::max(_statistics->documentCount(node), 1.0);
   auto const conditions = dedupe(node.conditions);
   auto const distinct = _statistics->distinctValues(node, conditions);
@@ -66,13 +61,12 @@ auto SystemRCostEstimator::restrictedFor(JoinGraph::Node const& node) const
   Restricted value;
   value.defaulted = distinct.defaulted;
   value.rows = std::clamp(count / std::max(distinct.value, 1.0), 1.0, count);
-
-  return _restricted.emplace(variable, value).first->second;
+  return value;
 }
 
 auto SystemRCostEstimator::seed(JoinGraph::Node const& start) const
     -> JoinEstimate {
-  auto const& restricted = restrictedFor(start);
+  auto const restricted = restrictedFor(start);
 
   JoinEstimate estimate;
   estimate.cardinality = clampEstimate(restricted.rows);
@@ -90,7 +84,7 @@ auto SystemRCostEstimator::seed(JoinGraph::Node const& start) const
 auto SystemRCostEstimator::extend(
     JoinEstimate const& prefix, JoinGraph::Node const& next,
     std::span<JoinGraph::Edge const* const> connecting) const -> JoinEstimate {
-  auto const& nextRestricted = restrictedFor(next);
+  auto const nextRestricted = restrictedFor(next);
 
   JoinEstimate estimate;
   estimate.defaulted = prefix.defaulted || nextRestricted.defaulted;
@@ -109,7 +103,7 @@ auto SystemRCostEstimator::extend(
         nextIsTo ? edge->fromAttributes : edge->toAttributes;
     JoinGraph::Node const* other = nextIsTo ? edge->from : edge->to;
 
-    auto const& otherRestricted = restrictedFor(*other);
+    auto const otherRestricted = restrictedFor(*other);
     auto const otherDistinct =
         _statistics->distinctValues(*other, otherAttributes);
     auto const nextDistinct = _statistics->distinctValues(next, nextAttributes);
