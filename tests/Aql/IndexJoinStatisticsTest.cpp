@@ -166,7 +166,6 @@ auto qualifyingIndex(std::string_view name, double selectivity) -> IndexFacts {
   IndexFacts facts;
   facts.type = IndexType::Persistent;
   facts.fields = {singleField(name)};
-  facts.hasSelectivityEstimate = true;
   facts.selectivityEstimate = selectivity;
   return facts;
 }
@@ -230,34 +229,6 @@ TEST(IndexFactsRulesTest,
 }
 
 TEST(IndexFactsRulesTest,
-     hidden_index_is_rejected_even_with_a_qualifying_index) {
-  // Collection::indexes() already strips hidden indexes, so in production
-  // this guard is belt-and-braces; the rule is pure over IndexFacts and must
-  // not assume its caller filtered.
-  auto hidden = qualifyingIndex("x", 1.0);
-  hidden.hidden = true;
-  std::array<IndexFacts, 2> candidates{qualifyingIndex("x", 0.1), hidden};
-  std::array<AttributePath, 1> attributes{AttributePath{"x"}};
-
-  auto est = distinctFromIndexFacts(candidates, 100.0, attributes);
-  EXPECT_DOUBLE_EQ(est.value, 10.0);
-  EXPECT_FALSE(est.defaulted);
-}
-
-TEST(IndexFactsRulesTest,
-     in_progress_index_is_rejected_even_with_a_qualifying_index) {
-  // An index still being built has no reliable estimate yet.
-  auto inProgress = qualifyingIndex("x", 1.0);
-  inProgress.inProgress = true;
-  std::array<IndexFacts, 2> candidates{qualifyingIndex("x", 0.1), inProgress};
-  std::array<AttributePath, 1> attributes{AttributePath{"x"}};
-
-  auto est = distinctFromIndexFacts(candidates, 100.0, attributes);
-  EXPECT_DOUBLE_EQ(est.value, 10.0);
-  EXPECT_FALSE(est.defaulted);
-}
-
-TEST(IndexFactsRulesTest,
      expanded_field_is_rejected_even_with_a_qualifying_index) {
   // An index on x[*] has different selectivity semantics than a plain field.
   auto expanded = qualifyingIndex("x", 1.0);
@@ -270,28 +241,9 @@ TEST(IndexFactsRulesTest,
   EXPECT_FALSE(est.defaulted);
 }
 
-TEST(IndexFactsRulesTest,
-     missing_selectivity_estimate_is_rejected_even_with_a_qualifying_index) {
-  // hasSelectivityEstimate() == false must be honoured even when a stale
-  // value sits in the estimate field.
-  auto noEstimate = qualifyingIndex("x", 1.0);
-  noEstimate.hasSelectivityEstimate = false;
-  std::array<IndexFacts, 2> candidates{qualifyingIndex("x", 0.1), noEstimate};
-  std::array<AttributePath, 1> attributes{AttributePath{"x"}};
-
-  auto est = distinctFromIndexFacts(candidates, 100.0, attributes);
-  EXPECT_DOUBLE_EQ(est.value, 10.0);
-  EXPECT_FALSE(est.defaulted);
-}
-
-TEST(IndexFactsRulesTest, zero_selectivity_is_rejected_despite_the_flag) {
-  // A selectivity of 0.0 divides badly downstream and is never a genuine
-  // "every row is distinct" reading, so it is rejected even though
-  // hasSelectivityEstimate() says true. Unlike the other rejections, a
-  // companion qualifying index would make this invisible: a 0-contribution
-  // never changes a max(). So this is a solo positive control instead --
-  // without the guard, this index alone would be accepted and report
-  // {1.0, defaulted = false} rather than the correct {1.0, defaulted = true}.
+TEST(IndexFactsRulesTest, zero_selectivity_means_no_estimate) {
+  // 0.0 is how toIndexFacts records an index without an estimate. Tested
+  // solo: beside a qualifying index a 0 contribution never changes a max().
   std::array<IndexFacts, 1> candidates{qualifyingIndex("x", 0.0)};
   std::array<AttributePath, 1> attributes{AttributePath{"x"}};
 
@@ -333,7 +285,6 @@ TEST(IndexFactsRulesTest, covering_needs_the_leading_field) {
   IndexFacts compound;
   compound.type = IndexType::Persistent;
   compound.fields = {singleField("y"), singleField("x")};
-  compound.hasSelectivityEstimate = true;
   compound.selectivityEstimate = 1.0;
   std::array<IndexFacts, 1> candidates{compound};
 
@@ -350,7 +301,7 @@ TEST(IndexFactsRulesTest, covering_succeeds_without_a_selectivity_estimate) {
   IndexFacts noEstimate;
   noEstimate.type = IndexType::Persistent;
   noEstimate.fields = {singleField("x")};
-  noEstimate.hasSelectivityEstimate = false;
+  noEstimate.selectivityEstimate = 0.0;
   std::array<IndexFacts, 1> candidates{noEstimate};
   std::array<AttributePath, 1> byX{AttributePath{"x"}};
 

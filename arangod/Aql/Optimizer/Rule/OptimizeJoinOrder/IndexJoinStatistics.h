@@ -40,12 +40,9 @@ class ExecutionPlan;
 struct IndexFacts {
   IndexType type = IndexType::Unknown;
   std::vector<std::vector<basics::AttributeName>> fields;
-  bool hidden = false;
-  bool inProgress = false;
   bool sparse = false;
-  bool hasSelectivityEstimate = false;
-  // Only meaningful when hasSelectivityEstimate is true; the Index contract
-  // forbids calling Index::selectivityEstimate() otherwise.
+  // 0.0 when the index has none; the Index contract forbids calling
+  // Index::selectivityEstimate() then.
   double selectivityEstimate = 0.0;
 };
 

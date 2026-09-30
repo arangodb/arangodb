@@ -60,8 +60,7 @@ auto hasExpandedField(IndexFacts const& facts) noexcept -> bool {
 /// documents only; expanded (array) fields have different selectivity
 /// semantics.
 auto isUsable(IndexFacts const& facts) noexcept -> bool {
-  return isAllowedType(facts) && !facts.hidden && !facts.inProgress &&
-         !facts.sparse && !hasExpandedField(facts);
+  return isAllowedType(facts) && !facts.sparse && !hasExpandedField(facts);
 }
 
 auto fieldEquals(std::vector<basics::AttributeName> const& field,
@@ -101,14 +100,9 @@ auto toIndexFacts(Index const& index) -> IndexFacts {
   IndexFacts facts;
   facts.type = index.type();
   facts.fields = index.fields();
-  facts.hidden = index.isHidden();
-  facts.inProgress = index.inProgress();
   facts.sparse = index.sparse();
-  facts.hasSelectivityEstimate = index.hasSelectivityEstimate();
-  // The Index contract does not permit calling selectivityEstimate() when
-  // hasSelectivityEstimate() is false.
   facts.selectivityEstimate =
-      facts.hasSelectivityEstimate ? index.selectivityEstimate() : 0.0;
+      index.hasSelectivityEstimate() ? index.selectivityEstimate() : 0.0;
   return facts;
 }
 
@@ -131,14 +125,10 @@ auto distinctFromIndexFacts(std::span<IndexFacts const> candidates,
     if (!isUsable(facts)) {
       continue;
     }
-    if (!facts.hasSelectivityEstimate) {
-      continue;
-    }
     if (!fieldsAreSubsetOf(facts, attributes)) {
       continue;
     }
-    // The Index contract does not promise that hasSelectivityEstimate()
-    // yields a usable number, and an out-of-range value divides by zero
+    // 0.0 is "no estimate", and an out-of-range value divides by zero
     // downstream.
     double const selectivity = facts.selectivityEstimate;
     if (!(selectivity > 0.0) || selectivity > 1.0) {
