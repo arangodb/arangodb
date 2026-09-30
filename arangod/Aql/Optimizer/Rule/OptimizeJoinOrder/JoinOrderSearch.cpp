@@ -49,8 +49,7 @@ namespace {
 constexpr double kImprovementMargin = 0.25;
 
 /// @brief every edge joining `candidate` to a vertex already in `placed`,
-/// written into `out`, which is cleared first. Self-loops are skipped: they
-/// are single-node filters, not join predicates.
+/// written into `out`, which is cleared first.
 ///
 /// The caller owns the buffer so it can be reused across the search's inner
 /// loop rather than reallocated on each of its O(n^3) iterations.
@@ -59,9 +58,7 @@ void edgesToPrefix(JoinGraph& graph, JoinGraph::Node* candidate,
                    std::vector<JoinGraph::Edge const*>& out) {
   out.clear();
   for (auto* edge : graph.getEdgesForNode(candidate)) {
-    if (edge->from == edge->to) {
-      continue;
-    }
+    TRI_ASSERT(edge->from != edge->to);
     auto const* other = (edge->from == candidate) ? edge->to : edge->from;
     if (placed.contains(other)) {
       out.emplace_back(edge);
