@@ -183,31 +183,30 @@ auto coveringFromIndexFacts(std::span<IndexFacts const> candidates,
 IndexJoinStatistics::IndexJoinStatistics(ExecutionPlan const& plan)
     : _plan(plan) {}
 
-auto IndexJoinStatistics::candidatesFor(JoinGraph::Node const& node) const
-    -> std::span<IndexFacts const> {
+auto IndexJoinStatistics::factsFor(JoinGraph::Node const& node) const
+    -> NodeFacts const& {
   auto const id = node.executionNode->id();
-  if (auto it = _candidates.find(id); it != _candidates.end()) {
+  if (auto it = _facts.find(id); it != _facts.end()) {
     return it->second;
   }
 
-  std::vector<IndexFacts> candidates;
+  NodeFacts facts;
   for (auto const& index : node.executionNode->collection()->indexes()) {
     if (index != nullptr) {
-      candidates.push_back(toIndexFacts(*index));
+      facts.indexes.push_back(toIndexFacts(*index));
     }
   }
-  return _candidates.emplace(id, std::move(candidates)).first->second;
+  auto& trx = _plan.getAst()->query().trxForOptimization();
+  if (trx.status() == transaction::Status::RUNNING) {
+    facts.count = static_cast<double>(node.executionNode->collection()->count(
+        &trx, transaction::CountType::kTryCache));
+  }
+  return _facts.emplace(id, std::move(facts)).first->second;
 }
 
 auto IndexJoinStatistics::documentCount(JoinGraph::Node const& node) const
     -> double {
-  double count = 0.0;
-  auto& trx = _plan.getAst()->query().trxForOptimization();
-  if (trx.status() == transaction::Status::RUNNING) {
-    count = static_cast<double>(node.executionNode->collection()->count(
-        &trx, transaction::CountType::kTryCache));
-  }
-  return count;
+  return factsFor(node).count;
 }
 
 auto IndexJoinStatistics::distinctValues(
@@ -222,8 +221,8 @@ auto IndexJoinStatistics::distinctValues(
   DistinctEstimate estimate{1.0, true};
   auto& trx = _plan.getAst()->query().trxForOptimization();
   if (trx.status() == transaction::Status::RUNNING) {
-    double const count = documentCount(node);
-    estimate = distinctFromIndexFacts(candidatesFor(node), count, attributes);
+    auto const& facts = factsFor(node);
+    estimate = distinctFromIndexFacts(facts.indexes, facts.count, attributes);
   }
 
   return estimate;
@@ -236,7 +235,8 @@ auto IndexJoinStatistics::hasIndexCovering(
     return false;
   }
 
-  bool const covering = coveringFromIndexFacts(candidatesFor(node), attributes);
+  bool const covering =
+      coveringFromIndexFacts(factsFor(node).indexes, attributes);
 
   return covering;
 }

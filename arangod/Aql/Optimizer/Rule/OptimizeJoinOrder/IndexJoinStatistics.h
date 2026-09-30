@@ -78,19 +78,18 @@ class IndexJoinStatistics final : public JoinStatistics {
       -> bool override;
 
  private:
-  /// @brief the collection's indexes, lifted into IndexFacts once per node.
-  /// Uncached this ran on every distinctValues() and hasIndexCovering() call,
-  /// and it is the expensive part: Collection::indexes() refreshes the cluster
-  /// index estimates on a coordinator, and each index's fields() is a deep
-  /// copy. The returned span survives a rehash -- moving a vector transfers
-  /// its buffer rather than reallocating -- but nothing holds one across a
-  /// call that could insert anyway.
-  [[nodiscard]] auto candidatesFor(JoinGraph::Node const& node) const
-      -> std::span<IndexFacts const>;
+  /// @brief the collection's indexes lifted into IndexFacts, and its document
+  /// count, read once per node.
+  struct NodeFacts {
+    std::vector<IndexFacts> indexes;
+    double count = 0.0;
+  };
+
+  [[nodiscard]] auto factsFor(JoinGraph::Node const& node) const
+      -> NodeFacts const&;
 
   ExecutionPlan const& _plan;
-  mutable containers::FlatHashMap<ExecutionNodeId, std::vector<IndexFacts>>
-      _candidates;
+  mutable containers::FlatHashMap<ExecutionNodeId, NodeFacts> _facts;
 };
 
 }  // namespace arangodb::aql
