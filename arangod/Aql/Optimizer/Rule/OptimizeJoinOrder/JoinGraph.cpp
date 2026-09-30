@@ -42,6 +42,11 @@
 
 namespace arangodb::aql {
 
+auto VariableIdLess::operator()(Variable const* lhs,
+                                Variable const* rhs) const noexcept -> bool {
+  return lhs->id < rhs->id;
+}
+
 auto JoinGraph::nodeForVariable(Variable const* variable) -> Node* {
   auto iter = nodes.find(variable);
   if (iter == nodes.end()) {
