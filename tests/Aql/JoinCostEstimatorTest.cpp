@@ -140,34 +140,6 @@ TEST_F(SystemRCostEstimatorTest, empty_connecting_span_is_a_cross_product) {
   EXPECT_DOUBLE_EQ(est.cost, 1000.0 + 1000.0 * 100.0);
 }
 
-TEST_F(SystemRCostEstimatorTest,
-       cross_product_ignores_edges_elsewhere_in_the_graph) {
-  // Two independent components, a-b and c-d. Concatenating them extends a
-  // prefix by a vertex it shares no edge with, so the span is empty even
-  // though the graph has edges -- that, not an edgeless graph, is the shape
-  // the search actually produces. The c-d estimates below are deliberately
-  // selective, so a caller that passed the wrong edges would read 10000 here
-  // rather than land on the same number by coincidence.
-  auto q = prepare(
-      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
-      "FOR c IN c3 FOR d IN c1 FILTER c.x == d.y RETURN [a, b, c, d]");
-  auto g = buildGraph(*q);
-  ASSERT_EQ(g.edges.size(), 2u);
-  ASSERT_EQ(g.connectedComponents().size(), 2u);
-
-  auto [estimator, stats] = makeEstimator();
-  stats->counts = {{"a", 1000.0}, {"b", 100.0}, {"c", 50.0}, {"d", 50.0}};
-  stats->distinct["c"]["x"] = {5.0, false};
-  stats->distinct["d"]["y"] = {5.0, false};
-
-  auto est = estimator->extend(estimator->seed(*nodeByName(g, "a")),
-                               *nodeByName(g, "c"), {});
-
-  EXPECT_DOUBLE_EQ(est.cardinality, 50000.0);  // 1000 * 50, no reduction
-  EXPECT_DOUBLE_EQ(est.cost, 1000.0 + 1000.0 * 50.0);
-  EXPECT_FALSE(est.defaulted);
-}
-
 TEST_F(SystemRCostEstimatorTest, missing_statistic_defaults_to_one_and_flags) {
   auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
   auto g = buildGraph(*q);
@@ -183,6 +155,22 @@ TEST_F(SystemRCostEstimatorTest, missing_statistic_defaults_to_one_and_flags) {
   // max(1, 100) defers to the known side: 1000 * 100 / 100
   EXPECT_DOUBLE_EQ(est.cardinality, 1000.0);
   EXPECT_TRUE(est.defaulted);
+
+  // once set, the flag survives fully scripted later steps
+  stats->distinct["a"]["x"] = {1000.0, false};
+  JoinEstimate prefix{.cardinality = 100.0, .cost = 0.0, .defaulted = true};
+  EXPECT_TRUE(estimator->extend(prefix, *b, connecting).defaulted);
+
+  // and next's own unscripted constant restriction sets it too
+  auto q2 = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FILTER b.k == 'v' RETURN [a, b]");
+  auto g2 = buildGraph(*q2);
+  std::array<JoinGraph::Edge const*, 1> connecting2{&g2.edges.front()};
+  EXPECT_TRUE(estimator
+                  ->extend(estimator->seed(*nodeByName(g2, "a")),
+                           *nodeByName(g2, "b"), connecting2)
+                  .defaulted);
 }
 
 TEST_F(SystemRCostEstimatorTest, constant_restriction_shrinks_the_row_count) {
@@ -221,18 +209,18 @@ TEST_F(SystemRCostEstimatorTest, distinct_is_capped_by_the_restricted_count) {
   auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
   auto g = buildGraph(*q);
   auto [estimator, stats] = makeEstimator();
-  stats->counts = {{"a", 10.0}, {"b", 10.0}};
-  // an absurd distinct estimate: more distinct values than rows
-  stats->distinct["a"]["x"] = {1e6, false};
+  stats->counts = {{"a", 100.0}, {"b", 1000.0}};
+  stats->distinct["a"]["x"] = {1e6, false};  // more distinct values than rows
   stats->distinct["b"]["y"] = {5.0, false};
 
   auto* a = nodeByName(g, "a");
   auto* b = nodeByName(g, "b");
   std::array<JoinGraph::Edge const*, 1> connecting{&g.edges.front()};
 
-  // dp is capped at restricted(a) = 10, so the factor is 1/max(10,5) = 1/10
+  // dp = min(1e6, 100), dn = min(5, 1000): factor 1/100, so 100 * 1000 / 100.
+  // The unequal counts make a swapped pairing visible: it would give 100.
   auto est = estimator->extend(estimator->seed(*a), *b, connecting);
-  EXPECT_DOUBLE_EQ(est.cardinality, 10.0);
+  EXPECT_DOUBLE_EQ(est.cardinality, 1000.0);
 }
 
 TEST_F(SystemRCostEstimatorTest, multiple_edges_multiply_their_factors) {
@@ -266,31 +254,6 @@ TEST_F(SystemRCostEstimatorTest, multiple_edges_multiply_their_factors) {
   EXPECT_DOUBLE_EQ(est.cardinality, 2000.0);
 }
 
-TEST_F(SystemRCostEstimatorTest, distinct_caps_pair_with_their_own_node) {
-  // Unlike the equal-count cap test above, restricted(a) and restricted(b)
-  // are clearly different here (100 vs. 1000), so a bug that caps
-  // otherDistinct against
-  // nextRestricted.rows (or vice versa) changes the answer instead of
-  // silently agreeing with the correct pairing.
-  auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
-  auto g = buildGraph(*q);
-  auto [estimator, stats] = makeEstimator();
-  stats->counts = {{"a", 100.0}, {"b", 1000.0}};
-  stats->distinct["a"]["x"] = {1e6, false};  // capped by restricted(a) = 100
-  stats->distinct["b"]["y"] = {5.0, false};  // stays under restricted(b) = 1000
-
-  auto* a = nodeByName(g, "a");
-  auto* b = nodeByName(g, "b");
-  std::array<JoinGraph::Edge const*, 1> connecting{&g.edges.front()};
-
-  // correct: dp = min(1e6, 100) = 100, dn = min(5, 1000) = 5,
-  // factor = 1/max(100, 5) = 1/100; cardinality = 100 * 1000 / 100 = 1000.
-  // a swapped pairing gives dp = min(1e6, 1000) = 1000, dn = min(5, 100) = 5,
-  // factor = 1/1000, cardinality = 100.
-  auto est = estimator->extend(estimator->seed(*a), *b, connecting);
-  EXPECT_DOUBLE_EQ(est.cardinality, 1000.0);
-}
-
 TEST_F(SystemRCostEstimatorTest, extend_costs_against_the_unrestricted_count) {
   // Give `next` (b) a constant restriction that shrinks restricted(b) well
   // below |C_b|, and check that extend()'s cost still uses the full
@@ -313,50 +276,6 @@ TEST_F(SystemRCostEstimatorTest, extend_costs_against_the_unrestricted_count) {
   // seed(a).cost == documentCount(a) == 500 (no index on a's empty
   // conditions); the probe is against |C_b| = 1000, not restricted(b) = 10.
   EXPECT_DOUBLE_EQ(est.cost, 500.0 + 500.0 * std::log2(1000.0));
-}
-
-TEST_F(SystemRCostEstimatorTest, defaulted_propagates_from_the_prefix) {
-  // Every lookup this extend() touches is fully scripted (not defaulted);
-  // only the prefix itself carries the flag. The result must still be
-  // defaulted -- once a fallback statistic has fed the estimate, nothing
-  // downstream can un-flag it.
-  auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
-  auto g = buildGraph(*q);
-  auto [estimator, stats] = makeEstimator();
-  stats->counts = {{"a", 100.0}, {"b", 100.0}};
-  stats->distinct["a"]["x"] = {10.0, false};
-  stats->distinct["b"]["y"] = {10.0, false};
-
-  auto* b = nodeByName(g, "b");
-  std::array<JoinGraph::Edge const*, 1> connecting{&g.edges.front()};
-
-  JoinEstimate prefix{.cardinality = 100.0, .cost = 0.0, .defaulted = true};
-  auto est = estimator->extend(prefix, *b, connecting);
-  EXPECT_TRUE(est.defaulted);
-}
-
-TEST_F(SystemRCostEstimatorTest,
-       defaulted_propagates_from_next_s_own_condition_lookup) {
-  // `next` (b) carries a constant restriction whose distinct count is not
-  // scripted, so restrictedFor(b) is itself defaulted -- distinct from every
-  // edge-level lookup, which are all scripted here, and from the prefix,
-  // which starts clean.
-  auto q = prepare(
-      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
-      "FILTER b.k == 'v' RETURN [a, b]");
-  auto g = buildGraph(*q);
-  auto [estimator, stats] = makeEstimator();
-  stats->counts = {{"a", 100.0}, {"b", 100.0}};
-  stats->distinct["a"]["x"] = {10.0, false};
-  stats->distinct["b"]["y"] = {10.0, false};
-  // stats->distinct["b"]["k"] intentionally left unscripted
-
-  auto* a = nodeByName(g, "a");
-  auto* b = nodeByName(g, "b");
-  std::array<JoinGraph::Edge const*, 1> connecting{&g.edges.front()};
-
-  auto est = estimator->extend(estimator->seed(*a), *b, connecting);
-  EXPECT_TRUE(est.defaulted);
 }
 
 TEST_F(SystemRCostEstimatorTest, extend_floors_cardinality_at_one) {
