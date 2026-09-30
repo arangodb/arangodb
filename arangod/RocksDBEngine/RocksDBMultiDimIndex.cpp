@@ -137,6 +137,7 @@ class RocksDBMdiIndexIterator final : public IndexIterator {
     }
   }
 
+  // the iterator points at an entry of this index within the query's bounds
   bool valid() const {
     return _iter->Valid() &&
            (!_mustCheckBounds || _cmp->Compare(_iter->key(), _upperBound) < 0);
