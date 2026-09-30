@@ -72,6 +72,9 @@ std::shared_ptr<RocksDBDumpContext> RocksDBDumpManager::createContext(
   TRI_ASSERT(ServerState::instance()->isSingleServer() ||
              ServerState::instance()->isDBServer());
 
+  // rejected by RestDumpHandler::validateRequest() before we get here
+  TRI_ASSERT(!opts.shards.empty());
+
   opts.docsPerBatch =
       std::clamp(opts.docsPerBatch, _limits.docsPerBatchLowerBound,
                  _limits.docsPerBatchUpperBound);
@@ -79,6 +82,9 @@ std::shared_ptr<RocksDBDumpContext> RocksDBDumpManager::createContext(
                               _limits.batchSizeUpperBound);
   opts.parallelism = std::clamp(opts.parallelism, _limits.parallelismLowerBound,
                                 _limits.parallelismUpperBound);
+  opts.prefetchCount =
+      std::clamp(opts.prefetchCount, _limits.prefetchCountLowerBound,
+                 _limits.prefetchCountUpperBound);
 
   // If the local RocksDB database still uses little endian key encoding,
   // then the whole new dump method does not work, since ranges in _revs
