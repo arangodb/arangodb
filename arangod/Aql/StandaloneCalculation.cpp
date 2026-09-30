@@ -40,6 +40,7 @@
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/vocbase.h"
+#include "Aql/Timing.h"
 
 #include <absl/strings/str_cat.h>
 
@@ -230,7 +231,14 @@ class CalculationQueryContext final : public arangodb::aql::QueryContext {
     return *_trx;
   }
 
-  bool killed() const override { return false; }
+  bool killed() const override {
+    return (std::numeric_limits<double>::epsilon() < _queryOptions.maxRuntime &&
+            _queryOptions.maxRuntime < aql::elapsedSince(_startTime));
+  }
+
+  void resetRuntimeClock() override {
+    _startTime = aql::currentSteadyClockValue();
+  }
 
   void debugKillQuery() override {}
 
@@ -251,6 +259,10 @@ class CalculationQueryContext final : public arangodb::aql::QueryContext {
   arangodb::CollectionNameResolver _resolver;
   mutable CalculationTransactionContext _transactionContext;
   std::unique_ptr<arangodb::transaction::Methods> _trx;
+
+  // Reset in resetRuntimeClock() and is used in killed() to check if the query
+  // execution time has run past the QueryOptions::maxRuntime.
+  double _startTime;
 };
 
 }  // namespace
