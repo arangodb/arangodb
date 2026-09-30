@@ -40,7 +40,6 @@
 #include "../Mocks/Servers.h"
 #include "Async/async.h"
 
-#include <algorithm>
 #include <map>
 #include <memory>
 #include <set>
@@ -111,31 +110,14 @@ class FakeJoinStatistics final : public arangodb::aql::JoinStatistics {
   // variable name -> attribute names that an index can probe by
   std::map<std::string, std::set<std::string>, std::less<>> indexed;
 
-  // Joins an attribute set into a stable lookup key: {["a"],["b","c"]}
-  // becomes "a,b.c". Paths are sorted so callers need not match ordering.
+  // Every test scripts single, unnested attributes, so that is all the key
+  // encodes.
   static std::string keyFor(
       std::span<arangodb::aql::AttributePath const> attributes) {
-    std::vector<std::string> parts;
-    parts.reserve(attributes.size());
-    for (auto const& path : attributes) {
-      std::string joined;
-      for (auto const& component : path) {
-        if (!joined.empty()) {
-          joined += '.';
-        }
-        joined += component;
-      }
-      parts.emplace_back(std::move(joined));
+    if (attributes.size() != 1 || attributes.front().size() != 1) {
+      return {};
     }
-    std::sort(parts.begin(), parts.end());
-    std::string key;
-    for (auto const& part : parts) {
-      if (!key.empty()) {
-        key += ',';
-      }
-      key += part;
-    }
-    return key;
+    return std::string{attributes.front().front()};
   }
 
   static std::string nameOf(arangodb::aql::JoinGraph::Node const& node) {
