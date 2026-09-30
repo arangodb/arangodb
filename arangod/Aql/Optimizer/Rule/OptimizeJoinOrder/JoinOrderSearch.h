@@ -65,9 +65,8 @@ auto collectEnumerationOrder(ExecutionNode* firstEnumeration,
     -> std::vector<EnumerateCollectionNode*>;
 
 /// @brief an order for the whole graph, or nullopt to leave the plan alone.
-/// Two decisions are taken independently -- each component's internal order,
-/// then the sequence of components -- and both are guarded the same way. See
-/// decideComponentOrders and acceptsResequencing.
+/// Each component's internal order and then the sequence of components are
+/// decided independently, each guarded the same way.
 auto chooseJoinOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
                      std::vector<EnumerateCollectionNode*> const& writtenOrder)
     -> std::optional<std::vector<EnumerateCollectionNode*>>;
