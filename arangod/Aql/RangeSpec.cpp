@@ -40,10 +40,12 @@ std::optional<RangeSpec> makeRangeSpec(double from, double to, double step) {
   // `from`, `to`, and `step` are possible to contain 0.5 ulp empirically;
   // and the subtract and divide add 0.5 each, which can land ~2.5 ulp;
   // therefore, 4 * ulp can absorb the floating point errors.
-  double const tol = std::copysign(
+  double const rawTol =
       4 * std::numeric_limits<double>::epsilon() *
-          std::max({std::abs(from), std::abs(to), std::abs(step)}),
-      step);
+      std::max({std::abs(from), std::abs(to), std::abs(step)});
+  // Sometimes, the calculated tol (`rawTol`) is larger than `step`, which
+  // produces extra elements; therefore, we cap the `tol` by `step` here.
+  double const tol = std::copysign(std::min(rawTol, std::abs(step) / 2), step);
 
   // if `count` is an integer, it can be infinite -> UB; so we use double here
   double const count = std::floor((to - from + tol) / step) + 1.0;
