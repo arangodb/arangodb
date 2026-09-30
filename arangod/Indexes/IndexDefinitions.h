@@ -53,7 +53,7 @@ struct GeoIndexDefinition : public IndexDefinition {
 };
 
 struct Geo1IndexDefinition : public IndexDefinition {
-  Geo1IndexDefinition() : IndexDefinition(IndexType::Geo) {}
+  Geo1IndexDefinition() : IndexDefinition(IndexType::Geo1) {}
 
   Result normalize(velocypack::Builder& normalized,
                    velocypack::Slice definition, bool isCreation,
@@ -61,7 +61,7 @@ struct Geo1IndexDefinition : public IndexDefinition {
 };
 
 struct Geo2IndexDefinition : public IndexDefinition {
-  Geo2IndexDefinition() : IndexDefinition(IndexType::Geo) {}
+  Geo2IndexDefinition() : IndexDefinition(IndexType::Geo2) {}
 
   Result normalize(velocypack::Builder& normalized,
                    velocypack::Slice definition, bool isCreation,
