@@ -115,8 +115,29 @@ auto decideInternalOrdersForEachComponent(
     JoinGraph& graph, JoinCostEstimator const& estimator,
     std::vector<EnumerateCollectionNode*> const& writtenOrder)
     -> std::vector<DecidedComponent> {
+  // Components in the order their first member appears in the written plan,
+  // which variable ids need not follow: a lowered MATCH can hand a loop a
+  // later id than the loops written after it.
+  auto components = graph.connectedComponents();
+  std::vector<size_t> byAppearance;
+  byAppearance.reserve(components.size());
+  for (auto const* enumeration : writtenOrder) {
+    for (size_t i = 0; i < components.size(); ++i) {
+      bool const seen =
+          std::ranges::find(byAppearance, i) != byAppearance.end();
+      bool const member =
+          std::ranges::find(components[i], enumeration->outVariable()) !=
+          components[i].end();
+      if (!seen && member) {
+        byAppearance.emplace_back(i);
+      }
+    }
+  }
+  ADB_PROD_ASSERT(byAppearance.size() == components.size());
+
   std::vector<DecidedComponent> decided;
-  for (auto const& component : graph.connectedComponents()) {
+  for (size_t index : byAppearance) {
+    auto const& component = components[index];
     auto greedy = getBestOrderForComponent(graph, component, estimator);
     auto written = writtenComponentOrder(component, writtenOrder);
     auto writtenEstimate = getEstimateForOrder(graph, estimator, written);
@@ -149,8 +170,8 @@ auto decideInternalOrdersForEachComponent(
   return decided;
 }
 
-/// @brief the decided orders concatenated in written sequence, which is the
-/// order connectedComponents() yields: the baseline for resequencing.
+/// @brief the decided orders concatenated in written sequence: the baseline
+/// for resequencing.
 auto concatenateInWrittenSequence(std::vector<DecidedComponent> const& decided,
                                   size_t total)
     -> std::vector<EnumerateCollectionNode*> {
@@ -365,16 +386,14 @@ void rewritePlan(ExecutionPlan& plan,
   ADB_PROD_ASSERT(firstDependency != nullptr);
 
   // a duplicate paired with an omission would silently delete a FOR loop
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   {
     auto sortedCurrent = current;
     auto sortedOrder = order;
     auto byId = [](auto const* l, auto const* r) { return l->id() < r->id(); };
     std::sort(sortedCurrent.begin(), sortedCurrent.end(), byId);
     std::sort(sortedOrder.begin(), sortedOrder.end(), byId);
-    TRI_ASSERT(sortedCurrent == sortedOrder);
+    ADB_PROD_ASSERT(sortedCurrent == sortedOrder);
   }
-#endif
 
   for (auto* enumeration : current) {
     plan.unlinkNode(enumeration);
