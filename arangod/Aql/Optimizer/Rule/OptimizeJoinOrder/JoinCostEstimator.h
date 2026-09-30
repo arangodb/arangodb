@@ -88,7 +88,7 @@ class JoinCostEstimator {
 };
 
 /// @brief the estimator used in production: System-R cardinality over
-/// memoised index-backed statistics.
+/// index-backed statistics.
 auto makeDefaultJoinCostEstimator(ExecutionPlan const& plan)
     -> std::unique_ptr<JoinCostEstimator>;
 
