@@ -93,7 +93,11 @@ arangosh without connecting to a server.)");
       "In startup options, you can wrap the names of environment variables "
       "in at signs to use their value, like @ARANGO_PASSWORD@. This helps to "
       "expose the password less, like to the process list. "
-      "Literal @ need to be escaped as @@.",
+      "Literal @ need to be escaped as @@.\n"
+      "The credentials are exchanged for a JWT via /_open/auth, which is "
+      "renewed automatically before it expires (see "
+      "--server.jwt-renewal-threshold). If the server does not issue tokens, "
+      "HTTP basic authentication is used.",
       new StringParameter(&options.password));
 
   if (isArangosh) {

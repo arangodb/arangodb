@@ -253,17 +253,17 @@ class CreateCollectionBodyTest : public ::testing::Test {
 
 // cid and planId are not part of the create API. The retry drops them, the
 // strict parse rejects them as unknown attributes.
-#define GenerateUnknownPropertyTest(testName, attributeName)                 \
-  TEST_F(CreateCollectionBodyTest,                                           \
-         test_##testName##IsDroppedWithCompatibility) {                      \
-    auto body = createMinimumBodyWithOneValue(attributeName, "123");         \
-    EXPECT_TRUE(parseCompatible(body.slice()).ok())                          \
-        << " On body " << body.toJson();                                     \
-  }                                                                          \
-  TEST_F(CreateCollectionBodyTest,                                           \
-         test_##testName##IsRejectedWithoutCompatibility) {                  \
-    auto body = createMinimumBodyWithOneValue(attributeName, "123");         \
-    expectRejected(parse(body.slice()), attributeName, body);                 \
+#define GenerateUnknownPropertyTest(testName, attributeName)         \
+  TEST_F(CreateCollectionBodyTest,                                   \
+         test_##testName##IsDroppedWithCompatibility) {              \
+    auto body = createMinimumBodyWithOneValue(attributeName, "123"); \
+    EXPECT_TRUE(parseCompatible(body.slice()).ok())                  \
+        << " On body " << body.toJson();                             \
+  }                                                                  \
+  TEST_F(CreateCollectionBodyTest,                                   \
+         test_##testName##IsRejectedWithoutCompatibility) {          \
+    auto body = createMinimumBodyWithOneValue(attributeName, "123"); \
+    expectRejected(parse(body.slice()), attributeName, body);        \
   }
 
 /**********************
@@ -545,18 +545,12 @@ TEST_F(CreateCollectionBodyTest, test_isSmartCannotBeSatellite) {
   EXPECT_FALSE(testee.ok()) << "Configured smartCollection as 'satellite'.";
 }
 
-// a smart document collection has to name its shardKeys. Community has no
-// smart collections, so the retry drops isSmart and an ordinary one is left.
+// a smart document collection has to name its shardKeys
 TEST_F(CreateCollectionBodyTest,
        test_isSmartWithoutShardKeysIsRejectedWithCompatibility) {
   auto body = createMinimumBodyWithOneValue(StaticStrings::IsSmart, true);
-  auto testee = parseCompatible(body.slice());
-#ifdef USE_ENTERPRISE
-  EXPECT_TRUE(testee.fail()) << " On body " << body.toJson();
-#else
-  ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
-  EXPECT_FALSE(testee->isSmart);
-#endif
+  EXPECT_TRUE(parseCompatible(body.slice()).fail())
+      << " On body " << body.toJson();
 }
 
 TEST_F(CreateCollectionBodyTest,
@@ -565,29 +559,12 @@ TEST_F(CreateCollectionBodyTest,
   EXPECT_TRUE(parse(body.slice()).fail()) << " On body " << body.toJson();
 }
 
-// isSmart is an enterprise only feature
-TEST_F(CreateCollectionBodyTest, test_isSmartWithShardKeysWithCompatibility) {
+TEST_F(CreateCollectionBodyTest, test_isSmartWithShardKeys) {
   auto body = smartCollectionBody();
-  auto testee = parseCompatible(body.slice());
-#ifdef USE_ENTERPRISE
-  EXPECT_TRUE(testee.ok()) << " On body " << body.toJson();
-#else
-  // the retry drops isSmart, so an ordinary collection is created
-  ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
-  EXPECT_FALSE(testee->isSmart);
-#endif
-}
-
-TEST_F(CreateCollectionBodyTest,
-       test_isSmartWithShardKeysWithoutCompatibility) {
-  auto body = smartCollectionBody();
-  auto testee = parse(body.slice());
-#ifdef USE_ENTERPRISE
-  EXPECT_TRUE(testee.ok()) << " On body " << body.toJson();
-#else
-  ASSERT_TRUE(testee.fail());
-  EXPECT_EQ(testee.errorNumber(), TRI_ERROR_ONLY_ENTERPRISE);
-#endif
+  for (auto const& testee :
+       {parseCompatible(body.slice()), parse(body.slice())}) {
+    EXPECT_TRUE(testee.ok()) << " On body " << body.toJson();
+  }
 }
 
 TEST_F(CreateCollectionBodyTest, test_distributeShardsLike_default) {

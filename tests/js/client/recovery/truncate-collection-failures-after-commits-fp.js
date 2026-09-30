@@ -1,0 +1,152 @@
+/* jshint globalstrict:false, strict:false, unused : false */
+/* global print, runSetup, assertEqual, assertFalse, fail */
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// //////////////////////////////////////////////////////////////////////////////
+
+'use strict';
+var internal = require('internal');
+const db = require('@arangodb').db;
+const jsunity = require('jsunity');
+const colName = "UnitTestsRecovery";
+let IM = global.instanceManager;
+const {waitForEstimatorSync } = require('@arangodb/test-helper');
+
+const runSetupRoutine = function () {
+  db._drop(colName);
+  const c = db._create(colName);
+  c.ensureIndex({ type: "hash", fields: ["value"] });
+  c.ensureIndex({ type: "skiplist", fields: ["value2"] });
+
+  const docs = [];
+  for (let i = 0; i < 10000; ++i) {
+    docs.push({value: i % 250, value2: i % 100});
+  }
+  // Add two packs of 10.000 Documents.
+  // Intermediate commits will commit after 10.000 removals
+  c.insert(docs);
+  c.insert(docs);
+
+  IM.debugSetFailAt("SegfaultAfterAllCommits");
+
+  try {
+    // This will crash the server
+    c.truncate();
+    fail();
+  } catch (ex) {
+    if (ex.errorNum !== internal.errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) {
+      print(ex);
+      throw ex;
+    }
+  }
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
+
+const recoverySuite = function () {
+  jsunity.jsUnity.attachAssertions();
+
+  const c = db._collection(colName);
+
+  return {
+
+
+    // Test that count of collection remains unmodified.
+    // We crashed after all commits, before return
+    testCollectionCount: () => {
+      assertEqual(c.count(), 0);
+    },
+
+    // Test that the HashIndex remains intact but empty.
+    testPrimaryIndex: () => {
+      let q = `FOR x IN @@c RETURN x._key`;
+      let res = db._query(q, {"@c": colName}).toArray();
+      assertEqual(res.length, 0);
+    },
+
+
+    // Test that the HashIndex remains intact but empty.
+    testHashIndex: () => {
+      let q = `FOR x IN @@c FILTER x.value == @i RETURN x`;
+      for (let i = 0; i < 250; ++i) {
+        // This validates that all documents can be found again
+        let res = db._query(q, {"@c": colName, i: i}).toArray();
+        assertEqual(res.length, 0);
+      }
+
+      // just validate that no other values are inserted.
+      let res2 = db._query(q, {"@c": colName, i: 251}).toArray();
+      assertEqual(res2.length, 0);
+    },
+
+    // Test that the SkiplistIndex remains intact.
+    testSkiplistIndex: () => {
+      let q = `FOR x IN @@c FILTER x.value2 == @i RETURN x`;
+      for (let i = 0; i < 100; ++i) {
+        // This validates that all documents can be found again
+        let res = db._query(q, {"@c": colName, i: i}).toArray();
+        assertEqual(res.length, 0);
+      }
+
+      // just validate that no other values are inserted.
+      let res2 = db._query(q, {"@c": colName, i: 101}).toArray();
+      assertEqual(res2.length, 0);
+    },
+
+    testIndexEstimates: () => {
+      waitForEstimatorSync(); // make sure estimates are consistent
+      let indexes = c.indexes(true);
+      for (let i of indexes) {
+        switch (i.type) {
+          case 'primary':
+            assertEqual(i.selectivityEstimate, 1);
+            break;
+          case 'hash':
+            assertEqual(i.selectivityEstimate, 1);
+            break;
+          case 'skiplist':
+            assertEqual(i.selectivityEstimate, 1);
+            break;
+          default:
+            fail();
+        }
+      }
+    },
+  };
+
+};
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes the test suites
+////////////////////////////////////////////////////////////////////////////////
+
+'use strict';
+if (runSetup === true ) {
+  runSetupRoutine();
+  return 0;
+} else {
+  jsunity.run(recoverySuite);
+  return jsunity.done();
+}
