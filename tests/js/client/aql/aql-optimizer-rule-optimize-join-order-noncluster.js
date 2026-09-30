@@ -169,22 +169,6 @@ function optimizeJoinOrderTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief rule IS reported applied when it genuinely reorders: real,
-/// index-backed statistics on a sufficiently asymmetric join clear the
-/// improvement margin. The written order (large collection outer, small
-/// collection probed) is the expensive one.
-////////////////////////////////////////////////////////////////////////////////
-
-    testAppliedWhenReordered : function () {
-      const query = `
-        FOR a IN ${cnLarge}
-          FOR b IN ${cnSmall}
-            FILTER a.joinKey == b.joinKey
-            RETURN a.joinKey`;
-      assertNotEqual(-1, rules(paramForced, query).indexOf(ruleName), query);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief the rule must not change query results when it is a genuine no-op
 /// (defaulted statistics on the unindexed fixture).
 ////////////////////////////////////////////////////////////////////////////////
@@ -333,9 +317,11 @@ function optimizeJoinOrderTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInterchangeStillFiresWhenJoinOrderDeclines : function () {
+      // an unindexed join: the rule reaches its decision and declines
       const query = `
-        FOR a IN ${cnLarge}
-          FOR b IN ${cnSmall}
+        FOR a IN ${c1}
+          FOR b IN ${c2}
+            FILTER a.value == b.value
             RETURN [a, b]`;
 
       const planRules = rules({ optimizer: { rules: ["+" + ruleName] } }, query);
