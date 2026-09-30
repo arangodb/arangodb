@@ -502,26 +502,13 @@ struct OptimizerRule {
       "pushFilterIntoEnumerateNear, since the filter mode must already be "
       "decided as it takes precedence over projections");
 
-  static_assert(
-      optimizeJoinOrder < interchangeAdjacentEnumerationsRule,
-      "optimizeJoinOrder must run first so it can suppress "
-      "interchangeAdjacentEnumerationsRule's n! fan-out once it has "
-      "actually reordered a join -- if the order inverted, interchange "
-      "would already have produced its candidate plans before "
-      "optimizeJoinOrder ever ran");
-  static_assert(
-      optimizeJoinOrder < moveCalculationsUpRule2,
-      "optimizeJoinOrder reinserts every enumeration at the front of the run, "
-      "so the calculations and filters that were interleaved between them end "
-      "up executing after all of them; moveCalculationsUpRule2 and "
-      "moveFiltersUpRule2 must run afterwards to move those back to the "
-      "enumerations they belong to");
-  static_assert(
-      moveCalculationsUpRule2 < moveFiltersUpRule2,
-      "a filter cannot move earlier than the calculation producing the "
-      "variable it reads, so the calculations must be repositioned first -- "
-      "otherwise optimizeJoinOrder's splice leaves filters stranded after "
-      "the enumerations they restrict, losing early filtering");
+  static_assert(optimizeJoinOrder < interchangeAdjacentEnumerationsRule,
+                "optimizeJoinOrder disables interchange once it has "
+                "reordered, which only works on a rule that runs later");
+  static_assert(optimizeJoinOrder < moveCalculationsUpRule2,
+                "optimizeJoinOrder's splice leaves the run's calculations "
+                "and filters after every enumeration; the move-up rules "
+                "must run afterwards to put them back");
 
   std::string_view name;
   RuleFunction func;
