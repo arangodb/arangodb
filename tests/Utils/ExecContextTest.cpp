@@ -343,16 +343,4 @@ TEST(ExecContextTest,
   EXPECT_FALSE(ctx->canAccessQuery("dummy").ok());
 }
 
-TEST(ExecContextTest, canAccessQuery_rbac_is_not_scoped_yet) {
-  // RBAC mode is deliberately left unscoped (follow-up of COR-1023): every
-  // query is accessible and the external service is not even asked.
-  DenyingRbacService service;
-  auto const ctx = createSharedExecContext(
-      AuthMode{AuthMode::Rbac{service, "alice", "token", 0}}, false,
-      VocbasePtr{nullptr});
-
-  EXPECT_TRUE(ctx->canAccessQuery("bob").ok());
-  EXPECT_EQ(service.checkCalls, 0);
-}
-
 }  // namespace arangodb::tests

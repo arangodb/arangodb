@@ -85,16 +85,16 @@ class QueryAccess {
 /**
  * Headers for fanning a request out to the other coordinators
  *
- * In classic auth mode the caller's identity is forwarded as a user JWT so
- * the other coordinators apply the same per-user scoping. Otherwise no header
- * is set and the connection pool's superuser token is used, which keeps the
- * (unscoped) RBAC behaviour unchanged.
+ * The caller's identity is forwarded as a user JWT, the same kind of token
+ * /_open/auth hands out, so the other coordinators apply the same per-user
+ * scoping in every auth mode. Without a user name (superuser JWT,
+ * authentication off) no header is set and the connection pool's superuser
+ * token is used.
  */
 auto fanoutHeaders() -> network::Headers {
   auto const* auth = AuthenticationFeature::instance();
   auto const& context = ExecContext::current();
-  if (auth == nullptr || !auth->isActive() || !context.isClassic() ||
-      context.user().empty()) {
+  if (auth == nullptr || !auth->isActive() || context.user().empty()) {
     return {};
   }
   return {{StaticStrings::Authorization,
@@ -235,11 +235,10 @@ arangodb::Result getQueries(TRI_vocbase_t& vocbase, velocypack::Builder& out,
           return result;
         }
         auto slice = resp.slice();
-        // copy results from other coordinators. in classic auth mode they
-        // already scope their answer to the calling user (see fanoutHeaders),
-        // so filtering again here is only a safety net for coordinators that
-        // do not scope, e.g. in a mixed-version cluster during a rolling
-        // upgrade
+        // copy results from other coordinators. they already scope their
+        // answer to the calling user (see fanoutHeaders), so filtering again
+        // here is only a safety net for coordinators that do not scope, e.g.
+        // in a mixed-version cluster during a rolling upgrade
         if (slice.isArray()) {
           for (auto const entry :
                VPackArrayIterator(slice) | std::views::filter(isAccessible)) {
