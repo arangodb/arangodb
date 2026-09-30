@@ -196,6 +196,28 @@ TEST_F(OptimizeJoinOrderTest, bails_out_when_any_statistic_was_defaulted) {
       << "rewriting on guessed statistics measured worse than not rewriting";
 }
 
+TEST_F(OptimizeJoinOrderTest, component_sequence_follows_the_written_order) {
+  // The written order need not follow variable ids (a MATCH lowering can
+  // hand a loop a later id than the loops after it). Here c-d is written
+  // first; a-b flips internally and c-d keeps its order and its place.
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FOR c IN c3 FOR d IN c1 FILTER c.x == d.y RETURN [a, b, c, d]");
+  auto g = buildGraph(*q);
+  auto parsed = collectEnumerationOrder(firstEnumeration(q->plan()), nullptr);
+  ASSERT_EQ(namesOf(parsed), (std::vector<std::string>{"a", "b", "c", "d"}));
+  std::vector<EnumerateCollectionNode*> written{parsed[2], parsed[3], parsed[0],
+                                                parsed[1]};
+
+  FakeCostEstimator estimator;
+  estimator.seedCost = {{"a", 100.0}, {"b", 1.0}, {"c", 1.0}, {"d", 1.0}};
+  estimator.stepCost = {{"a", 1.0}, {"b", 1.0}, {"c", 1.0}, {"d", 1.0}};
+
+  auto chosen = chooseJoinOrder(g, estimator, written);
+  ASSERT_TRUE(chosen.has_value());
+  EXPECT_EQ(namesOf(*chosen), (std::vector<std::string>{"c", "d", "b", "a"}));
+}
+
 TEST_F(OptimizeJoinOrderTest, keeps_components_contiguous) {
   // two independent joins that must not interleave. Neither beats its own
   // written order; what fires is resequencing, 5 against a baseline of 104.
