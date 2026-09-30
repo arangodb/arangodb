@@ -1558,18 +1558,14 @@ class instanceManager {
       return true;
     }
     if (this.options.hasOwnProperty('server')) {
-      print(`${Date()} before`)
       arango.reconnect(this.endpoint, '_system', 'root', passvoid);
-      print(`${Date()} after`)
       this.connectionHandle = arango.getConnectionHandle();
       return true;
     }
 
     try {
       if (this.endpoint !== null) {
-        print(`${Date()} before`)
         arango.reconnect(this.endpoint, '_system', 'root', passvoid);
-      print(`${Date()} after`)
         this.connectionHandle = arango.getConnectionHandle();
       } else {
         print("Don't have a frontend instance to connect to");
