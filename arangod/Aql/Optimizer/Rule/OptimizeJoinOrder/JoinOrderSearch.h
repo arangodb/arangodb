@@ -48,8 +48,8 @@ auto getEstimateForOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
     -> JoinEstimate;
 
 /// @brief the cheapest order for one connected component, by greedy search
-/// from every possible start vertex. Ties break on ExecutionNode::id() so the
-/// result is reproducible across processes.
+/// from every possible start vertex. Ties break in the graph's vertex order,
+/// which follows variable ids, so the result is reproducible.
 auto getBestOrderForComponent(JoinGraph& graph,
                               std::vector<Variable const*> const& component,
                               JoinCostEstimator const& estimator) -> JoinOrder;

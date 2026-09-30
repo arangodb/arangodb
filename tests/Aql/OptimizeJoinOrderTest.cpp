@@ -85,14 +85,14 @@ TEST_F(OptimizeJoinOrderTest, greedy_only_extends_along_edges) {
   EXPECT_EQ(namesOf(result.order), (std::vector<std::string>{"a", "b", "c"}));
 }
 
-TEST_F(OptimizeJoinOrderTest, equal_costs_break_ties_by_node_id) {
+TEST_F(OptimizeJoinOrderTest, equal_costs_keep_the_written_order) {
   auto q = prepare(
       "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
       "FOR c IN c3 FILTER b.z == c.w RETURN [a, b, c]");
   auto g = buildGraph(*q);
   auto components = g.connectedComponents();
 
-  // every cost is identical, so the tie-break alone decides the order
+  // every cost is identical, so the vertex order, i.e. the written one, wins
   FakeCostEstimator estimator;
 
   auto result = getBestOrderForComponent(g, components.front(), estimator);
