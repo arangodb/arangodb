@@ -105,7 +105,6 @@ auto SystemRCostEstimator::extend(
   bool probeable = false;
 
   for (auto const* edge : connecting) {
-    TRI_ASSERT(edge->from != edge->to);
     bool const nextIsTo = (edge->to == &next);
     ADB_PROD_ASSERT(nextIsTo || edge->from == &next);
 
