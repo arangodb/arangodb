@@ -103,6 +103,20 @@ auto fanoutHeaders() -> network::Headers {
 }
 
 /**
+ * Outcome of a request that was fanned out to another coordinator
+ *
+ * A coordinator that does not know the database yet (it was created very
+ * recently) is not an error: it simply has no queries to contribute.
+ */
+auto coordinatorResult(network::Response const& response) -> Result {
+  auto result = response.combinedResult();
+  if (result.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)) {
+    return {};
+  }
+  return result;
+}
+
+/**
  * Actions on the queries of all databases require the _system database and
  * superuser privileges
  */
@@ -173,14 +187,12 @@ arangodb::Result getQueries(TRI_vocbase_t& vocbase, velocypack::Builder& out,
     return query->slice();
   };
 
-  out.openArray();
+  VPackArrayBuilder resultArray(&out);
 
   for (auto const entry : queries | std::views::transform(toSlice) |
                               std::views::filter(isAccessible)) {
     out.add(entry);
   }
-
-  Result res;
 
   if (ServerState::instance()->isCoordinator() && fanout) {
     // coordinator case, fan out to other coordinators!
@@ -219,14 +231,8 @@ arangodb::Result getQueries(TRI_vocbase_t& vocbase, velocypack::Builder& out,
       auto responses = futures::collectAll(futures).waitAndGet();
       for (auto const& it : responses) {
         auto& resp = it.get();
-        res.reset(resp.combinedResult());
-        if (res.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)) {
-          // it is expected in a multi-coordinator setup that a coordinator is
-          // not aware of a database that was created very recently.
-          res.reset();
-        }
-        if (res.fail()) {
-          break;
+        if (auto const result = coordinatorResult(resp); result.fail()) {
+          return result;
         }
         auto slice = resp.slice();
         // copy results from other coordinators. in classic auth mode they
@@ -244,9 +250,7 @@ arangodb::Result getQueries(TRI_vocbase_t& vocbase, velocypack::Builder& out,
     }
   }
 
-  out.close();
-
-  return res;
+  return {};
 }
 
 }  // namespace
@@ -285,8 +289,6 @@ Result Queries::clearSlow(TRI_vocbase_t& vocbase, bool allDatabases,
     vocbase.queryList()->clearSlow(shouldClear);
   }
 
-  Result res;
-
   if (ServerState::instance()->isCoordinator() && fanout) {
     // coordinator case, fan out to other coordinators!
     NetworkFeature const& nf = vocbase.server().getFeature<NetworkFeature>();
@@ -322,21 +324,14 @@ Result Queries::clearSlow(TRI_vocbase_t& vocbase, bool allDatabases,
     if (!futures.empty()) {
       auto responses = futures::collectAll(futures).waitAndGet();
       for (auto const& it : responses) {
-        auto& resp = it.get();
-        res.reset(resp.combinedResult());
-        if (res.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)) {
-          // it is expected in a multi-coordinator setup that a coordinator is
-          // not aware of a database that was created very recently.
-          res.reset();
-        }
-        if (res.fail()) {
-          break;
+        if (auto const result = coordinatorResult(it.get()); result.fail()) {
+          return result;
         }
       }
     }
   }
 
-  return res;
+  return {};
 }
 
 /// @brief kills the given query if the caller is its owner or an admin
