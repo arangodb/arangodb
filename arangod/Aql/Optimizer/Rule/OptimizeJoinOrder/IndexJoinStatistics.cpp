@@ -69,7 +69,7 @@ auto fieldEquals(std::vector<basics::AttributeName> const& field,
     return false;
   }
   for (size_t i = 0; i < field.size(); ++i) {
-    if (field[i].shouldExpand || field[i].name != path[i]) {
+    if (field[i].name != path[i]) {
       return false;
     }
   }
@@ -141,7 +141,7 @@ auto distinctFromIndexFacts(std::span<IndexFacts const> candidates,
   if (!found) {
     return {1.0, true};
   }
-  return {std::clamp(best, 1.0, std::max(count, 1.0)), false};
+  return {best, false};
 }
 
 auto coveringFromIndexFacts(std::span<IndexFacts const> candidates,
@@ -157,9 +157,6 @@ auto coveringFromIndexFacts(std::span<IndexFacts const> candidates,
     // A probe needs the *leading* field: an index on (y,x) cannot serve a
     // probe by x alone. No selectivity estimate is required, only
     // existence.
-    if (facts.fields.empty()) {
-      continue;
-    }
     auto const& leading = facts.fields.front();
     for (auto const& path : attributes) {
       if (fieldEquals(leading, path)) {
@@ -182,9 +179,7 @@ auto IndexJoinStatistics::factsFor(JoinGraph::Node const& node) const
 
   NodeFacts facts;
   for (auto const& index : node.executionNode->collection()->indexes()) {
-    if (index != nullptr) {
-      facts.indexes.push_back(toIndexFacts(*index));
-    }
+    facts.indexes.push_back(toIndexFacts(*index));
   }
   auto& trx = _plan.getAst()->query().trxForOptimization();
   if (trx.status() == transaction::Status::RUNNING) {
@@ -202,33 +197,18 @@ auto IndexJoinStatistics::documentCount(JoinGraph::Node const& node) const
 auto IndexJoinStatistics::distinctValues(
     JoinGraph::Node const& node,
     std::span<AttributePath const> attributes) const -> DistinctEstimate {
-  if (attributes.empty()) {
-    // No restriction at all. This is the empty-subset case of the rule below,
-    // not an exception to it. It must not be reported as a guess.
-    return {1.0, false};  // Empty set.
-  }
-
-  DistinctEstimate estimate{1.0, true};
   auto& trx = _plan.getAst()->query().trxForOptimization();
-  if (trx.status() == transaction::Status::RUNNING) {
-    auto const& facts = factsFor(node);
-    estimate = distinctFromIndexFacts(facts.indexes, facts.count, attributes);
+  if (trx.status() != transaction::Status::RUNNING) {
+    return {1.0, true};
   }
-
-  return estimate;
+  auto const& facts = factsFor(node);
+  return distinctFromIndexFacts(facts.indexes, facts.count, attributes);
 }
 
 auto IndexJoinStatistics::hasIndexCovering(
     JoinGraph::Node const& node,
     std::span<AttributePath const> attributes) const -> bool {
-  if (attributes.empty()) {
-    return false;
-  }
-
-  bool const covering =
-      coveringFromIndexFacts(factsFor(node).indexes, attributes);
-
-  return covering;
+  return coveringFromIndexFacts(factsFor(node).indexes, attributes);
 }
 
 }  // namespace arangodb::aql
