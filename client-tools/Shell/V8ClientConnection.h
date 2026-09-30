@@ -74,8 +74,8 @@ class V8ClientConnection {
 
   bool isConnected() const;
 
-  void prepareConnection();
-  void connect();
+  ResultT<std::string> prepareConnection();
+  ResultT<std::string> connect();
   void reconnect();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -210,7 +210,7 @@ class V8ClientConnection {
   bool needsTokenRenewal();
 
   // Helper function to renew JWT token
-  void renewJwtToken();
+  ResultT<std::string> renewJwtToken();
 
   // Switches the connection to a --server.jwt-token that the ClientFeature
   // renewed in the background; no-op for all other authentication modes
