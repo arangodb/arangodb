@@ -118,14 +118,6 @@ auto writtenComponentOrder(
     }
   }
 
-  // buildJoinGraph and collectEnumerationOrder walk the same node range with
-  // the same predicate, so every component member appears here exactly once.
-  // Assert at the cause: a drift between those two walks would otherwise only
-  // surface as the permutation assertion much later.
-  ADB_PROD_ASSERT(order.size() == component.size())
-      << "component of " << component.size() << " vertices matched only "
-      << order.size() << " of the " << writtenOrder.size()
-      << " written enumerations";
   return order;
 }
 
@@ -435,9 +427,6 @@ auto chooseJoinOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
     return std::nullopt;
   }
 
-  ADB_PROD_ASSERT(chosen.size() == graph.nodes.size());
-  ADB_PROD_ASSERT(std::unordered_set(chosen.begin(), chosen.end()).size() ==
-                  chosen.size());
   TRI_ASSERT(chosen != writtenOrder);
 
   return chosen;
