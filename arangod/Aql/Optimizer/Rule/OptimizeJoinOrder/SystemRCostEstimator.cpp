@@ -27,6 +27,7 @@
 #include "Assertions/ProdAssert.h"
 
 #include <algorithm>
+#include <cmath>
 #include <utility>
 
 namespace arangodb::aql {
@@ -42,6 +43,18 @@ auto dedupe(std::vector<AttributePath> const& paths)
   std::ranges::sort(result);
   result.erase(std::ranges::unique(result).begin(), result.end());
   return result;
+}
+
+/// @brief one index lookup per outer row. The descent walks the whole index,
+/// so `collectionSize` is the unrestricted count. Floored at one per row so a
+/// one-document collection does not make a join free.
+auto probeCost(double rows, double collectionSize) noexcept -> double {
+  return rows * std::max(std::log2(collectionSize), 1.0);
+}
+
+/// @brief one full scan per outer row, i.e. no usable index.
+auto scanCost(double rows, double collectionSize) noexcept -> double {
+  return rows * collectionSize;
 }
 
 }  // namespace
