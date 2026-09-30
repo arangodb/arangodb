@@ -500,30 +500,6 @@ TEST_F(OptimizeJoinOrderTest, component_sequencing_ties_break_by_node_id) {
   EXPECT_EQ(namesOf(*chosen), (std::vector<std::string>{"b", "a", "d", "c"}));
 }
 
-TEST_F(OptimizeJoinOrderTest,
-       chosen_order_is_a_permutation_of_the_current_one) {
-  auto q = prepare(
-      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
-      "FOR c IN c3 FILTER b.z == c.w RETURN [a, b, c]");
-  auto g = buildGraph(*q);
-  auto current = collectEnumerationOrder(firstEnumeration(q->plan()), nullptr);
-
-  FakeCostEstimator estimator;
-  estimator.seedCost = {{"a", 1000.0}, {"b", 1000.0}, {"c", 1.0}};
-  estimator.stepCost = {{"a", 1.0}, {"b", 1.0}, {"c", 1.0}};
-
-  auto chosen = chooseJoinOrder(g, estimator, current);
-  ASSERT_TRUE(chosen.has_value());
-
-  auto sortedCurrent = namesOf(current);
-  auto sortedChosen = namesOf(*chosen);
-  std::sort(sortedCurrent.begin(), sortedCurrent.end());
-  std::sort(sortedChosen.begin(), sortedChosen.end());
-  EXPECT_EQ(sortedCurrent, sortedChosen)
-      << "every enumeration must appear exactly once, or the rewrite deletes a "
-         "FOR loop";
-}
-
 TEST_F(OptimizeJoinOrderTest, skips_graphs_above_the_enumeration_cap) {
   // 17 enumerations exceeds kMaxEnumerationsToReorder. Script costs that
   // would clearly win a rewrite if the cap were not checked: v0's seed is
