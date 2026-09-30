@@ -33,10 +33,8 @@
 namespace arangodb::aql {
 namespace {
 
-/// @brief the same attribute path may be recorded twice, e.g. when a
-/// restriction is repeated across statements: `FILTER a.x == 'u'
-/// FILTER a.x == 'u'`. Dividing twice by its distinct count would
-/// double-count the restriction.
+/// @brief a path repeated across FILTER statements is recorded once per
+/// statement; dividing by its distinct count twice would double-count it.
 auto dedupe(std::vector<AttributePath> const& paths)
     -> std::vector<AttributePath> {
   std::vector<AttributePath> result = paths;
@@ -84,9 +82,7 @@ auto SystemRCostEstimator::seed(JoinGraph::Node const& start) const
   JoinEstimate estimate;
   estimate.cardinality = restricted.rows;
   estimate.defaulted = restricted.defaulted;
-  // An index over the constant restrictions turns the initial scan into a
-  // lookup returning restricted(v) rows; otherwise the whole collection is
-  // read.
+  // an index over the constant restrictions turns the scan into a lookup
   estimate.cost = _statistics->hasIndexCovering(start, start.conditions)
                       ? restricted.rows
                       : std::max(_statistics->documentCount(start), 1.0);

@@ -52,8 +52,7 @@ class SystemRCostEstimatorTest : public testing::Test {
     return prepareJoinPlan(server, query);
   }
 
-  // The estimator takes ownership of the statistics, so hand back a raw
-  // pointer for the test to keep scripting through.
+  // the estimator owns the statistics; the raw pointer keeps them scriptable
   static std::pair<std::unique_ptr<SystemRCostEstimator>, FakeJoinStatistics*>
   makeEstimator() {
     auto stats = std::make_unique<FakeJoinStatistics>();
@@ -62,8 +61,6 @@ class SystemRCostEstimatorTest : public testing::Test {
   }
 };
 
-// With unique indexes on both sides the
-// current estimator says 1000, System-R says 100.
 TEST_F(SystemRCostEstimatorTest, worked_example) {
   auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
   auto g = buildGraph(*q);
@@ -255,10 +252,8 @@ TEST_F(SystemRCostEstimatorTest, multiple_edges_multiply_their_factors) {
 }
 
 TEST_F(SystemRCostEstimatorTest, extend_costs_against_the_unrestricted_count) {
-  // Give `next` (b) a constant restriction that shrinks restricted(b) well
-  // below |C_b|, and check that extend()'s cost still uses the full
-  // documentCount(b), not restricted(b) -- an index descent traverses the
-  // whole index regardless of how selective the outer restriction is.
+  // b's constant restriction shrinks restricted(b) well below |C_b|; the
+  // probe still costs log |C_b|, since the descent walks the whole index.
   auto q = prepare(
       "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
       "FILTER b.k == 'v' RETURN [a, b]");
@@ -273,18 +268,13 @@ TEST_F(SystemRCostEstimatorTest, extend_costs_against_the_unrestricted_count) {
   std::array<JoinGraph::Edge const*, 1> connecting{&g.edges.front()};
 
   auto est = estimator->extend(estimator->seed(*a), *b, connecting);
-  // seed(a).cost == documentCount(a) == 500 (no index on a's empty
-  // conditions); the probe is against |C_b| = 1000, not restricted(b) = 10.
+  // seed(a) = 500 scanned; the probe is against |C_b| = 1000, not 10
   EXPECT_DOUBLE_EQ(est.cost, 500.0 + 500.0 * std::log2(1000.0));
 }
 
 TEST_F(SystemRCostEstimatorTest, extend_floors_cardinality_at_one) {
-  // Two connecting edges each divide by ~100, and c's own equality
-  // restriction is so over-selective that restricted(c) clamps to its
-  // floor of 1. Unfloored, 100 * 1 * (1/100) * (1/100) == 0.01; a join
-  // cannot meaningfully produce a fraction of a row, and letting it through
-  // would make every later probeCost/scanCost on this prefix collapse
-  // towards zero.
+  // two edges each divide by 100 and restricted(c) is 1: unfloored, the
+  // prefix would carry 0.01 rows and every later step would cost nothing
   auto q = prepare(
       "FOR a IN c1 FOR b IN c2 FOR c IN c3 "
       "FILTER a.x == b.y FILTER b.z == c.w FILTER a.q == c.r "
