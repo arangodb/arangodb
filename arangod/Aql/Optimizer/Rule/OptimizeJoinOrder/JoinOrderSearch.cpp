@@ -32,6 +32,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -278,6 +279,14 @@ auto getCheapestConcatenation(JoinGraph& graph,
   return candidate;
 }
 
+auto names(std::vector<EnumerateCollectionNode*> const& order) -> std::string {
+  std::string result;
+  for (auto const* node : order) {
+    result += (result.empty() ? "" : ", ") + node->outVariable()->name;
+  }
+  return result;
+}
+
 /// @brief whether the cheapest concatenation may replace the written
 /// sequence of components.
 auto acceptsResequencing(JoinGraph& graph, JoinCostEstimator const& estimator,
@@ -428,6 +437,9 @@ auto chooseJoinOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
   }
 
   TRI_ASSERT(chosen != writtenOrder);
+  LOG_TOPIC("a7f06", TRACE, Logger::AQL)
+      << "optimize-join-order: rewriting " << names(writtenOrder) << " -> "
+      << names(chosen);
 
   return chosen;
 }
