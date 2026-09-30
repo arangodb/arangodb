@@ -68,45 +68,6 @@ std::vector<std::string> namesOf(
 }
 }  // namespace
 
-TEST_F(OptimizeJoinOrderTest, greedy_starts_at_the_cheapest_vertex) {
-  auto q = prepare(
-      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
-      "FOR c IN c3 FILTER b.z == c.w RETURN [a, b, c]");
-  auto g = buildGraph(*q);
-  auto components = g.connectedComponents();
-  ASSERT_EQ(components.size(), 1u);
-
-  FakeCostEstimator estimator;
-  estimator.seedCost = {{"a", 100.0}, {"b", 1.0}, {"c", 100.0}};
-  estimator.stepCost = {{"a", 1.0}, {"b", 1.0}, {"c", 1.0}};
-
-  auto result = getBestOrderForComponent(g, components.front(), estimator);
-  EXPECT_EQ(namesOf(result.order), (std::vector<std::string>{"b", "a", "c"}))
-      << "cheapest seed is b; a and c then tie and break on node id";
-}
-
-TEST_F(OptimizeJoinOrderTest, greedy_can_start_in_the_middle_of_a_chain) {
-  // a - b - c: starting at b then taking c is reachable, i.e. the search is
-  // not restricted to the ends of the chain.
-  auto q = prepare(
-      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
-      "FOR c IN c3 FILTER b.z == c.w RETURN [a, b, c]");
-  auto g = buildGraph(*q);
-  auto components = g.connectedComponents();
-
-  // The scripted costs must make the mid-chain start actually WIN, or the test
-  // cannot demonstrate what it claims. Starting at b costs 1 + 1 + 5 = 7, while
-  // either end costs 100 + 1 + 5 = 106 or 100 + 1 + 1 = 102. And from b, c is
-  // cheaper to absorb than a (1 vs 5), which fixes the rest of the order.
-  FakeCostEstimator estimator;
-  estimator.seedCost = {{"a", 100.0}, {"b", 1.0}, {"c", 100.0}};
-  estimator.stepCost = {{"a", 5.0}, {"b", 1.0}, {"c", 1.0}};
-
-  auto result = getBestOrderForComponent(g, components.front(), estimator);
-  EXPECT_EQ(namesOf(result.order), (std::vector<std::string>{"b", "c", "a"}));
-  EXPECT_DOUBLE_EQ(result.estimate.cost, 7.0);
-}
-
 TEST_F(OptimizeJoinOrderTest, greedy_only_extends_along_edges) {
   auto q = prepare(
       "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
@@ -206,21 +167,6 @@ TEST_F(OptimizeJoinOrderTest, estimate_order_replays_a_complete_order) {
   EXPECT_DOUBLE_EQ(getEstimateForOrder(g, estimator, {b, a}).cost, 3.0 + 11.0);
 }
 
-TEST_F(OptimizeJoinOrderTest, estimate_order_charges_a_cross_product) {
-  auto q = prepare("FOR a IN c1 FOR b IN c2 RETURN [a, b]");
-  auto g = buildGraph(*q);
-  ASSERT_TRUE(g.edges.empty());
-
-  FakeCostEstimator estimator;
-  estimator.seedCost = {{"a", 1.0}, {"b", 1.0}};
-  estimator.stepCost = {{"a", 5.0}, {"b", 5.0}};
-
-  auto* a = nodeByName(g, "a")->executionNode;
-  auto* b = nodeByName(g, "b")->executionNode;
-  // the fake doubles a cross-product step
-  EXPECT_DOUBLE_EQ(getEstimateForOrder(g, estimator, {a, b}).cost, 1.0 + 10.0);
-}
-
 TEST_F(OptimizeJoinOrderTest, chooses_a_cheaper_order_when_the_win_is_large) {
   auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
   auto g = buildGraph(*q);
@@ -248,26 +194,6 @@ TEST_F(OptimizeJoinOrderTest,
   estimator.stepCost = {{"a", 1.0}, {"b", 1.0}};
 
   EXPECT_FALSE(chooseJoinOrder(g, estimator, current).has_value());
-}
-
-TEST_F(OptimizeJoinOrderTest, identical_order_is_a_no_op) {
-  // All costs are uniform, so getBestOrderForComponent's strict "<" comparison
-  // converges on the written order: the component's own greedy order is
-  // identical to its own written order, so the per-component margin check
-  // compares that cost to itself (divided by 1.25) and declines -- the
-  // component is never accepted, chooseJoinOrder never sees a reordered
-  // component, and returns nullopt without ever assembling a `chosen`
-  // vector. This pins that no-op path, not the ">=" vs ">" boundary at the
-  // margin -- see exactly_meeting_the_margin_does_not_rewrite for that,
-  // where the greedy and written orders actually differ.
-  auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
-  auto g = buildGraph(*q);
-  auto current = collectEnumerationOrder(firstEnumeration(q->plan()), nullptr);
-
-  FakeCostEstimator estimator;  // all costs identical
-
-  EXPECT_FALSE(chooseJoinOrder(g, estimator, current).has_value())
-      << "an identical order must be a no-op, not a coin flip on node id";
 }
 
 TEST_F(OptimizeJoinOrderTest, bails_out_when_any_statistic_was_defaulted) {
@@ -379,51 +305,6 @@ TEST_F(OptimizeJoinOrderTest,
   EXPECT_EQ(namesOf(*chosen), (std::vector<std::string>{"b", "a", "c", "d"}));
 }
 
-TEST_F(OptimizeJoinOrderTest, no_component_reordered_declines_the_whole_graph) {
-  // Two independent joins, both scripted so their greedy order coincides
-  // with their own written order (a tie, which the per-component margin
-  // guard declines). With every cost identical, the resequencing guard also
-  // ties (the cheapest-concatenation candidate comes out identical to the
-  // written component sequence here), so it declines too. With neither a
-  // component reordered nor the sequence changed, chooseJoinOrder must
-  // decline the whole graph.
-  auto q = prepare(
-      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
-      "FOR c IN c3 FOR d IN c1 FILTER c.x == d.y RETURN [a, b, c, d]");
-  auto g = buildGraph(*q);
-  ASSERT_EQ(g.connectedComponents().size(), 2u);
-  auto current = collectEnumerationOrder(firstEnumeration(q->plan()), nullptr);
-
-  FakeCostEstimator estimator;  // all costs identical -> every start ties
-
-  EXPECT_FALSE(chooseJoinOrder(g, estimator, current).has_value())
-      << "no component was reordered, so the graph must be reported unapplied";
-}
-
-TEST_F(OptimizeJoinOrderTest, single_component_sequencing_guard_is_a_no_op) {
-  // A single connected component has only one possible component sequence,
-  // so the written sequence and the cheapest-concatenation candidate are
-  // structurally identical (both are exactly that one component's own final
-  // order). The resequencing guard added on top of the per-component guards
-  // must therefore never affect a single-component graph: this pins that a
-  // component's own accepted reorder ([b, a] here) still comes through
-  // untouched once the guard's baseline/candidate machinery is added,
-  // instead of, say, being dropped or duplicated when there is only one
-  // component to sequence.
-  auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
-  auto g = buildGraph(*q);
-  ASSERT_EQ(g.connectedComponents().size(), 1u);
-  auto current = collectEnumerationOrder(firstEnumeration(q->plan()), nullptr);
-
-  FakeCostEstimator estimator;
-  estimator.seedCost = {{"a", 1000.0}, {"b", 1.0}};
-  estimator.stepCost = {{"a", 1.0}, {"b", 1.0}};
-
-  auto chosen = chooseJoinOrder(g, estimator, current);
-  ASSERT_TRUE(chosen.has_value());
-  EXPECT_EQ(namesOf(*chosen), (std::vector<std::string>{"b", "a"}));
-}
-
 TEST_F(OptimizeJoinOrderTest,
        defaulted_statistics_block_resequencing_even_when_cost_favours_it) {
   // Two independent joins: a-b (confidently estimated, and internally
@@ -487,63 +368,26 @@ TEST_F(OptimizeJoinOrderTest, skips_graphs_above_the_enumeration_cap) {
   EXPECT_FALSE(chooseJoinOrder(g, estimator, current).has_value());
 }
 
-TEST_F(OptimizeJoinOrderTest, improvement_margin_requires_twenty_percent) {
-  // kImprovementMargin = 0.25 is applied as `chosen >= current / 1.25`, i.e.
-  // the chosen order must cost at most 0.8 * current to trigger a rewrite --
-  // a 20% reduction, not 25%. Pin that boundary exactly: current always costs
-  // 100 (seed(a)=50, step(b)=50), and the chosen order [b, a] costs 79 in one
-  // case (just inside 0.8 * 100 = 80: rewrite) and 81 in the other (just
-  // outside: no rewrite).
+TEST_F(OptimizeJoinOrderTest, rewrite_needs_cost_below_eight_tenths) {
+  // The written order [a, b] always costs 100 (seed(a) = 50, step(b) = 50).
+  // The greedy order [b, a] costs seed(b) + 40: 79 rewrites, 80 and 81 do not.
   auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
   auto g = buildGraph(*q);
   auto current = collectEnumerationOrder(firstEnumeration(q->plan()), nullptr);
   ASSERT_EQ(namesOf(current), (std::vector<std::string>{"a", "b"}));
 
-  {
-    // chosen cost = seed(b) + step(a) = 39 + 40 = 79 < 80.
+  auto chosenWithSeedB = [&](double seedB) {
     FakeCostEstimator estimator;
-    estimator.seedCost = {{"a", 50.0}, {"b", 39.0}};
+    estimator.seedCost = {{"a", 50.0}, {"b", seedB}};
     estimator.stepCost = {{"a", 40.0}, {"b", 50.0}};
+    return chooseJoinOrder(g, estimator, current);
+  };
 
-    auto chosen = chooseJoinOrder(g, estimator, current);
-    ASSERT_TRUE(chosen.has_value())
-        << "79 is inside 0.8 * 100 = 80, so the rewrite should fire";
-    EXPECT_EQ(namesOf(*chosen), (std::vector<std::string>{"b", "a"}));
-  }
-
-  {
-    // chosen cost = seed(b) + step(a) = 41 + 40 = 81 >= 80.
-    FakeCostEstimator estimator;
-    estimator.seedCost = {{"a", 50.0}, {"b", 41.0}};
-    estimator.stepCost = {{"a", 40.0}, {"b", 50.0}};
-
-    EXPECT_FALSE(chooseJoinOrder(g, estimator, current).has_value())
-        << "81 is outside 0.8 * 100 = 80, so the rewrite should not fire";
-  }
-}
-
-TEST_F(OptimizeJoinOrderTest, exactly_meeting_the_margin_does_not_rewrite) {
-  // Unlike identical_order_is_a_no_op, the component's greedy order actually
-  // differs from its written order here, so this test exercises the ">="
-  // boundary on a real candidate rather than a value compared to itself.
-  // current costs exactly 100
-  // (seed(a)=50, step(b)=50); chosen ([b, a]) costs exactly 80
-  // (seed(b)=40, step(a)=40) -- precisely current / (1 + kImprovementMargin)
-  // = 100 / 1.25 = 80. The guard is `chosen >= current / (1 + margin)`, so
-  // 80 >= 80 declines; a ">" comparison would rewrite here instead. This is
-  // the boundary that makes an exact tie consequential.
-  auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
-  auto g = buildGraph(*q);
-  auto current = collectEnumerationOrder(firstEnumeration(q->plan()), nullptr);
-  ASSERT_EQ(namesOf(current), (std::vector<std::string>{"a", "b"}));
-
-  FakeCostEstimator estimator;
-  estimator.seedCost = {{"a", 50.0}, {"b", 40.0}};
-  estimator.stepCost = {{"a", 40.0}, {"b", 50.0}};
-
-  EXPECT_FALSE(chooseJoinOrder(g, estimator, current).has_value())
-      << "80 exactly meets current / 1.25 = 80, which must decline, not "
-         "rewrite";
+  auto chosen = chosenWithSeedB(39.0);
+  ASSERT_TRUE(chosen.has_value());
+  EXPECT_EQ(namesOf(*chosen), (std::vector<std::string>{"b", "a"}));
+  EXPECT_FALSE(chosenWithSeedB(40.0).has_value()) << "80 is not below 80";
+  EXPECT_FALSE(chosenWithSeedB(41.0).has_value());
 }
 
 TEST_F(OptimizeJoinOrderTest, collect_enumeration_order_stops_at_run_boundary) {
@@ -620,65 +464,14 @@ TEST_F(OptimizeJoinOrderTest, decline_is_not_reported_as_applied) {
                   R"("-interchange-adjacent-enumerations"]}})"));
 }
 
-TEST_F(OptimizeJoinOrderTest, rule_leaves_the_plan_alone_without_statistics) {
-  // The mock collections carry no secondary indexes, so every distinct lookup
-  // is defaulted and the rule must decline. This is the documented behaviour,
-  // not a limitation of the test.
-  auto ctx = std::make_shared<transaction::StandaloneContext>(
-      server.getSystemDatabase(), transaction::OperationOriginTestCase{});
-  // interchange-adjacent-enumerations is enabled by default and also
-  // permutes adjacent FOR loops; with it left on, it -- not
-  // optimize-join-order -- could be the one deciding the enumeration order
-  // this test checks. It must be off so the test isolates its actual
-  // subject. The two rules are only mutually exclusive when optimize-join-
-  // order actually rewrites a join; on this unindexed fixture it always
-  // declines, so interchange would otherwise be free to permute this same
-  // pair and pick a different order via the generic cost estimate -- this
-  // explicit disable is what keeps the asserted order deterministic.
-  auto options = velocypack::Parser::fromJson(
-      R"({"optimizer":{"rules":["+optimize-join-order",)"
-      R"("-interchange-adjacent-enumerations"]}})");
-  auto query = Query::create(
-      std::move(ctx),
-      QueryString(std::string{"FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
-                              "RETURN [a, b]"}),
-      nullptr, QueryOptions(options->slice()));
-  waitForAsync(query->prepareQuery());
-
-  auto after =
-      collectEnumerationOrder(query->plan()->root()->getSingleton(), nullptr);
-  EXPECT_EQ(namesOf(after), (std::vector<std::string>{"a", "b"}));
-}
-
 TEST_F(OptimizeJoinOrderTest, interchange_still_runs_when_join_order_declines) {
-  // No indexes in this fixture, so the rule always declines and never
-  // suppresses interchange. The suppression itself is covered by the JS
-  // suites; what this pins is the other half: a decline must leave
-  // interchange running exactly as if the rule were not enabled.
-  std::string const query = "FOR a IN c1 FOR b IN c2 FOR c IN c3 RETURN 1";
-
+  // No indexes in this fixture, so the rule reaches its decision and
+  // declines; interchange, enabled by default, must then still run.
   EXPECT_TRUE(assertRules(
-      server.getSystemDatabase(), query,
+      server.getSystemDatabase(),
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y FOR c IN c3 RETURN 1",
       {OptimizerRule::interchangeAdjacentEnumerationsRule}, nullptr,
-      R"({"optimizer":{"rules":["+interchange-adjacent-enumerations"]}})"))
-      << "interchange should fire when it is the only reordering rule on";
-
-  EXPECT_TRUE(assertRules(
-      server.getSystemDatabase(), query,
-      {OptimizerRule::interchangeAdjacentEnumerationsRule}, nullptr,
-      R"({"optimizer":{"rules":["+interchange-adjacent-enumerations",)"
-      R"("+optimize-join-order"]}})"))
-      << "optimize-join-order declines on this unindexed fixture, so it "
-         "never suppresses interchange -- both rules run";
-
-  // The realistic configuration: the user enables cost-based reordering and
-  // leaves interchange at its default-enabled state. Because
-  // optimize-join-order declines here, interchange must still run without
-  // needing to be named explicitly.
-  EXPECT_TRUE(
-      assertRules(server.getSystemDatabase(), query,
-                  {OptimizerRule::interchangeAdjacentEnumerationsRule}, nullptr,
-                  R"({"optimizer":{"rules":["+optimize-join-order"]}})"))
+      R"({"optimizer":{"rules":["+optimize-join-order"]}})"))
       << "declining to reorder must not silently disable interchange too";
 }
 

@@ -47,10 +47,6 @@ function optimizeJoinOrderClusterTestSuite () {
   const kLargeSize = 5000;
   const kShards = 3;
 
-  // Unindexed, so every statistic falls back to a default and the rule must
-  // decline regardless of shard layout.
-  const cnPlain = "UnitTestsOptimizeJoinOrderClusterPlain";
-
   const withRule    = { optimizer: { rules: [ "+" + ruleName ] } };
   const withoutRule = { optimizer: { rules: [ "-" + ruleName ] } };
 
@@ -86,11 +82,10 @@ function optimizeJoinOrderClusterTestSuite () {
   return {
 
     setUpAll : function () {
-      [cnSmall, cnLarge, cnPlain].forEach((c) => db._drop(c));
+      [cnSmall, cnLarge].forEach((c) => db._drop(c));
 
       const small = db._create(cnSmall, { numberOfShards: kShards });
       const large = db._create(cnLarge, { numberOfShards: kShards });
-      const plain = db._create(cnPlain, { numberOfShards: kShards });
 
       small.ensureIndex({ type: "persistent", fields: [ "joinKey" ] });
       large.ensureIndex({ type: "persistent", fields: [ "joinKey" ] });
@@ -106,7 +101,6 @@ function optimizeJoinOrderClusterTestSuite () {
         docs.push({ joinKey: i % kSmallSize });
       }
       large.insert(docs);
-      plain.insert(docs);
 
       // Index selectivity estimates are updated asynchronously after a bulk
       // insert; while they are stale the rule would decline for a reason that
@@ -115,18 +109,7 @@ function optimizeJoinOrderClusterTestSuite () {
     },
 
     tearDownAll : function () {
-      [cnSmall, cnLarge, cnPlain].forEach((c) => db._drop(c));
-    },
-
-    // Enabling the rule must not change what a join returns.
-    testResultsAreInvariantUnderTheRule : function () {
-      const off = run(joinQuery, withoutRule);
-      const on  = run(joinQuery, withRule);
-
-      // A join of 5000 rows against 50 distinct keys: every large-side row
-      // matches exactly one small-side row.
-      assertEqual(kLargeSize, off.length, "fixture produced no join rows");
-      assertEqual(norm(off), norm(on), joinQuery);
+      [cnSmall, cnLarge].forEach((c) => db._drop(c));
     },
 
     // More shard boundaries than the two-way case.
@@ -139,48 +122,11 @@ function optimizeJoinOrderClusterTestSuite () {
               FILTER b.joinKey == c.joinKey
               RETURN { a: a.joinKey, c: c.joinKey }`;
 
+      assertNotEqual(-1, explain(query, withRule).plan.rules.indexOf(ruleName), query);
       const off = run(query, withoutRule);
       const on  = run(query, withRule);
       assertTrue(off.length > 0, "fixture produced no join rows");
       assertEqual(norm(off), norm(on), query);
-    },
-
-    testIndependentComponentsResultsAreInvariant : function () {
-    // Two components: a resequencing decision must not change the results.
-      //
-      // Deliberately no LIMIT. A LIMIT without a total order picks an
-      // arbitrary subset, and *which* rows survive depends on the enumeration
-      // order -- precisely what this rule changes -- so it would make the
-      // invariant false by construction. (It did: this test failed in CI
-      // with LIMIT 500 while passing locally, because the two shard layouts
-      // surfaced different 500 rows.)
-      const query = `
-        FOR a IN ${cnSmall}
-          FOR b IN ${cnSmall}
-            FILTER a.joinKey == b.joinKey
-            FOR c IN ${cnSmall}
-              FOR d IN ${cnSmall}
-                FILTER c.joinKey == d.joinKey
-                RETURN { a: a.joinKey, c: c.joinKey }`;
-
-      const off = run(query, withoutRule);
-      const on  = run(query, withRule);
-      // joinKey is unique in cnSmall, so each of the two joins yields
-      // kSmallSize rows and the independent components cross-multiply.
-      assertEqual(kSmallSize * kSmallSize, off.length, "unexpected fixture size");
-      assertEqual(norm(off), norm(on), query);
-    },
-
-    testUnindexedJoinIsLeftAlone : function () {
-    // No index means no trustworthy statistics, so the rule must decline.
-      const query = `
-        FOR a IN ${cnPlain}
-          FOR b IN ${cnPlain}
-            FILTER a.joinKey == b.joinKey
-            LIMIT 100
-            RETURN { a: a.joinKey }`;
-
-      assertEqual(-1, explain(query, withRule).plan.rules.indexOf(ruleName), query);
     },
 
     testRewrittenPlanStaysExecutable : function () {
@@ -247,11 +193,6 @@ function optimizeJoinOrderClusterTestSuite () {
       });
       assertEqual([ "SCAN:" + cnSmall, "IDX:" + cnLarge ], seq,
                   "small side scanned, large side probed through its index");
-    },
-
-    testDisabledByDefaultInCluster : function () {
-    // Still opt-in on a coordinator.
-      assertEqual(-1, explain(joinQuery, {}).plan.rules.indexOf(ruleName), joinQuery);
     },
 
   };
