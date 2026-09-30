@@ -161,6 +161,18 @@ class CreateCollectionBodyTest : public ::testing::Test {
     return body;
   }
 
+  static void expectRejected(ResultT<CreateCollectionBody> const& testee,
+                             std::string_view attributeName,
+                             VPackBuilder const& body) {
+    EXPECT_TRUE(testee.fail()) << " On body " << body.toJson();
+    if (testee.fail()) {
+      EXPECT_NE(testee.errorMessage().find(attributeName),
+                std::string_view::npos)
+          << "'" << attributeName
+          << "' is not named in: " << testee.errorMessage();
+    }
+  }
+
   static void assertParsingThrows(VPackBuilder const& body) {
     auto p = CreateCollectionBody::fromCreateAPIBody(body.slice(),
                                                      defaultDBConfig(), false);
@@ -187,11 +199,13 @@ class CreateCollectionBodyTest : public ::testing::Test {
 #define GenerateBoolPropertyTest(attributeName)                              \
   TEST_F(CreateCollectionBodyTest,                                           \
          test_##attributeName##WrongTypeIsAcceptedWithCompatibility) {       \
-    auto valid = createMinimumBodyWithOneValue(#attributeName, true);        \
-    EXPECT_TRUE(parseCompatible(valid.slice()).ok())                         \
-        << " On body " << valid.toJson();                                    \
+    auto missing = createMinimumBodyWithOneValue("name", "test");            \
+    auto valid = parseCompatible(missing.slice());                           \
+    ASSERT_TRUE(valid.ok()) << " On body " << missing.toJson();              \
     auto body = createMinimumBodyWithOneValue(#attributeName, "yes");        \
-    EXPECT_TRUE(parseCompatible(body.slice()).ok())                          \
+    auto testee = parseCompatible(body.slice());                             \
+    ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();                \
+    EXPECT_EQ(testee->attributeName, valid->attributeName)                   \
         << " On body " << body.toJson();                                     \
   }                                                                          \
   TEST_F(CreateCollectionBodyTest,                                           \
@@ -199,7 +213,7 @@ class CreateCollectionBodyTest : public ::testing::Test {
     auto valid = createMinimumBodyWithOneValue(#attributeName, true);        \
     EXPECT_TRUE(parse(valid.slice()).ok()) << " On body " << valid.toJson(); \
     auto body = createMinimumBodyWithOneValue(#attributeName, "yes");        \
-    EXPECT_TRUE(parse(body.slice()).fail()) << " On body " << body.toJson(); \
+    expectRejected(parse(body.slice()), #attributeName, body);               \
   }
 
 // The retry hands these back unchanged, so a wrong type is rejected either way.
@@ -211,8 +225,7 @@ class CreateCollectionBodyTest : public ::testing::Test {
         << " On body " << valid.toJson();                                     \
     auto body = createMinimumBodyWithOneValue(attributeName,                  \
                                               VPackSlice::emptyArraySlice()); \
-    EXPECT_TRUE(parseCompatible(body.slice()).fail())                         \
-        << " On body " << body.toJson();                                      \
+    expectRejected(parseCompatible(body.slice()), attributeName, body);       \
   }                                                                           \
   TEST_F(CreateCollectionBodyTest,                                            \
          test_##testName##WrongTypeIsRejectedWithoutCompatibility) {          \
@@ -220,7 +233,7 @@ class CreateCollectionBodyTest : public ::testing::Test {
     EXPECT_TRUE(parse(valid.slice()).ok()) << " On body " << valid.toJson();  \
     auto body = createMinimumBodyWithOneValue(attributeName,                  \
                                               VPackSlice::emptyArraySlice()); \
-    EXPECT_TRUE(parse(body.slice()).fail()) << " On body " << body.toJson();  \
+    expectRejected(parse(body.slice()), attributeName, body);                 \
   }
 
 // globallyUniqueId and deleted are ignored by the parser itself, so any value
@@ -250,7 +263,7 @@ class CreateCollectionBodyTest : public ::testing::Test {
   TEST_F(CreateCollectionBodyTest,                                           \
          test_##testName##IsRejectedWithoutCompatibility) {                  \
     auto body = createMinimumBodyWithOneValue(attributeName, "123");         \
-    EXPECT_TRUE(parse(body.slice()).fail()) << " On body " << body.toJson(); \
+    expectRejected(parse(body.slice()), attributeName, body);                 \
   }
 
 /**********************
@@ -532,12 +545,18 @@ TEST_F(CreateCollectionBodyTest, test_isSmartCannotBeSatellite) {
   EXPECT_FALSE(testee.ok()) << "Configured smartCollection as 'satellite'.";
 }
 
-// a smart document collection has to name its shardKeys
+// a smart document collection has to name its shardKeys. Community has no
+// smart collections, so the retry drops isSmart and an ordinary one is left.
 TEST_F(CreateCollectionBodyTest,
        test_isSmartWithoutShardKeysIsRejectedWithCompatibility) {
   auto body = createMinimumBodyWithOneValue(StaticStrings::IsSmart, true);
-  EXPECT_TRUE(parseCompatible(body.slice()).fail())
-      << " On body " << body.toJson();
+  auto testee = parseCompatible(body.slice());
+#ifdef USE_ENTERPRISE
+  EXPECT_TRUE(testee.fail()) << " On body " << body.toJson();
+#else
+  ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
+  EXPECT_FALSE(testee->isSmart);
+#endif
 }
 
 TEST_F(CreateCollectionBodyTest,
@@ -547,17 +566,28 @@ TEST_F(CreateCollectionBodyTest,
 }
 
 // isSmart is an enterprise only feature
-TEST_F(CreateCollectionBodyTest, test_isSmartWithShardKeys) {
+TEST_F(CreateCollectionBodyTest, test_isSmartWithShardKeysWithCompatibility) {
   auto body = smartCollectionBody();
-  for (auto const& testee :
-       {parseCompatible(body.slice()), parse(body.slice())}) {
+  auto testee = parseCompatible(body.slice());
 #ifdef USE_ENTERPRISE
-    EXPECT_TRUE(testee.ok()) << " On body " << body.toJson();
+  EXPECT_TRUE(testee.ok()) << " On body " << body.toJson();
 #else
-    ASSERT_TRUE(testee.fail());
-    EXPECT_EQ(testee.errorNumber(), TRI_ERROR_ONLY_ENTERPRISE);
+  // the retry drops isSmart, so an ordinary collection is created
+  ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
+  EXPECT_FALSE(testee->isSmart);
 #endif
-  }
+}
+
+TEST_F(CreateCollectionBodyTest,
+       test_isSmartWithShardKeysWithoutCompatibility) {
+  auto body = smartCollectionBody();
+  auto testee = parse(body.slice());
+#ifdef USE_ENTERPRISE
+  EXPECT_TRUE(testee.ok()) << " On body " << body.toJson();
+#else
+  ASSERT_TRUE(testee.fail());
+  EXPECT_EQ(testee.errorNumber(), TRI_ERROR_ONLY_ENTERPRISE);
+#endif
 }
 
 TEST_F(CreateCollectionBodyTest, test_distributeShardsLike_default) {
@@ -1495,11 +1525,19 @@ TEST_F(CreateCollectionBodyTest,
 }
 
 // groupId and shardsR2 are written by the server; user input is dropped
-TEST_F(CreateCollectionBodyTest, test_restore_serverOwnedAttributes) {
+TEST_F(CreateCollectionBodyTest, test_restoreGroupIdIsDropped) {
   auto body = createMinimumBodyWithOneValue(StaticStrings::GroupId, 1234);
   auto testee = parseRestore(body.slice());
   ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
   EXPECT_FALSE(testee->groupId.has_value());
+}
+
+TEST_F(CreateCollectionBodyTest, test_restoreShardsR2IsDropped) {
+  auto body = createMinimumBodyWithOneValue(
+      "shardsR2", std::vector<std::string>{"s100001"});
+  auto testee = parseRestore(body.slice());
+  ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
+  EXPECT_FALSE(testee->shardsR2.has_value());
 }
 
 }  // namespace arangodb::tests
