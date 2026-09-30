@@ -33,7 +33,6 @@
 #include <algorithm>
 #include <cstddef>
 #include <string>
-#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 
@@ -75,22 +74,13 @@ auto extendPrefix(JoinGraph& graph, JoinCostEstimator const& estimator,
   return estimator.extend(prefix, *next, connecting);
 }
 
-/// @brief the component's nodes in a reproducible order. JoinGraph::nodes is
-/// keyed by Variable const*, so iterating it is address-ordered and would make
-/// plan choice vary between runs.
-auto nodesInIdOrder(JoinGraph& graph,
-                    std::vector<Variable const*> const& component)
+auto nodesOf(JoinGraph& graph, std::vector<Variable const*> const& component)
     -> std::vector<JoinGraph::Node*> {
   std::vector<JoinGraph::Node*> nodes;
   nodes.reserve(component.size());
   for (auto const* variable : component) {
-    if (auto* node = graph.nodeForVariable(variable); node != nullptr) {
-      nodes.emplace_back(node);
-    }
+    nodes.emplace_back(graph.nodeForVariable(variable));
   }
-  std::sort(nodes.begin(), nodes.end(), [](auto const* l, auto const* r) {
-    return l->executionNode->id() < r->executionNode->id();
-  });
   return nodes;
 }
 
@@ -115,8 +105,6 @@ auto writtenComponentOrder(
 struct DecidedComponent {
   /// @brief the greedy order if it was accepted, the written order if not.
   JoinOrder order;
-  /// @brief position of the component's first member in the written order.
-  size_t firstAppearance;
   /// @brief whether the greedy order replaced the written one.
   bool reordered;
 };
@@ -127,22 +115,11 @@ auto decideInternalOrdersForEachComponent(
     JoinGraph& graph, JoinCostEstimator const& estimator,
     std::vector<EnumerateCollectionNode*> const& writtenOrder)
     -> std::vector<DecidedComponent> {
-  std::unordered_map<EnumerateCollectionNode*, size_t> positionInWritten;
-  positionInWritten.reserve(writtenOrder.size());
-  for (size_t i = 0; i < writtenOrder.size(); ++i) {
-    positionInWritten.emplace(writtenOrder[i], i);
-  }
-
   std::vector<DecidedComponent> decided;
   for (auto const& component : graph.connectedComponents()) {
     auto greedy = getBestOrderForComponent(graph, component, estimator);
     auto written = writtenComponentOrder(component, writtenOrder);
     auto writtenEstimate = getEstimateForOrder(graph, estimator, written);
-
-    ADB_PROD_ASSERT(!written.empty());
-    auto const positionIt = positionInWritten.find(written.front());
-    ADB_PROD_ASSERT(positionIt != positionInWritten.end());
-    size_t const firstAppearance = positionIt->second;
 
     // Both orders read the same statistics, so one flag covers both: a
     // fallback anywhere makes this a comparison between guesses -- decline.
@@ -150,9 +127,8 @@ auto decideInternalOrdersForEachComponent(
       LOG_TOPIC("a7f04", TRACE, Logger::AQL)
           << "optimize-join-order: keeping a component's written order, "
              "estimate rests on defaulted statistics";
-      decided.emplace_back(
-          DecidedComponent{JoinOrder{std::move(written), writtenEstimate},
-                           firstAppearance, false});
+      decided.emplace_back(DecidedComponent{
+          JoinOrder{std::move(written), writtenEstimate}, false});
       continue;
     }
 
@@ -162,36 +138,26 @@ auto decideInternalOrdersForEachComponent(
           << "optimize-join-order: keeping a component's written order, "
           << writtenEstimate.cost << " -> " << greedy.estimate.cost
           << " does not clear the margin";
-      decided.emplace_back(
-          DecidedComponent{JoinOrder{std::move(written), writtenEstimate},
-                           firstAppearance, false});
+      decided.emplace_back(DecidedComponent{
+          JoinOrder{std::move(written), writtenEstimate}, false});
       continue;
     }
 
-    decided.emplace_back(
-        DecidedComponent{std::move(greedy), firstAppearance, true});
+    decided.emplace_back(DecidedComponent{std::move(greedy), true});
   }
 
   return decided;
 }
 
-/// @brief the decided orders concatenated in written sequence: the baseline
-/// for the resequencing decision.
+/// @brief the decided orders concatenated in written sequence, which is the
+/// order connectedComponents() yields: the baseline for resequencing.
 auto concatenateInWrittenSequence(std::vector<DecidedComponent> const& decided,
                                   size_t total)
     -> std::vector<EnumerateCollectionNode*> {
-  std::vector<size_t> byAppearance(decided.size());
-  for (size_t i = 0; i < byAppearance.size(); ++i) {
-    byAppearance[i] = i;
-  }
-  std::sort(byAppearance.begin(), byAppearance.end(), [&](size_t l, size_t r) {
-    return decided[l].firstAppearance < decided[r].firstAppearance;
-  });
-
   std::vector<EnumerateCollectionNode*> baseline;
   baseline.reserve(total);
-  for (size_t index : byAppearance) {
-    auto const& order = decided[index].order.order;
+  for (auto const& component : decided) {
+    auto const& order = component.order.order;
     baseline.insert(baseline.end(), order.begin(), order.end());
   }
   return baseline;
@@ -206,19 +172,6 @@ auto getCheapestConcatenation(JoinGraph& graph,
                               std::vector<DecidedComponent> decided,
                               size_t total)
     -> std::vector<EnumerateCollectionNode*> {
-  // connectedComponents() iterates a std::map<Variable const*, Node>, so the
-  // component list it returns comes out in heap-address order, which varies
-  // between processes. Without this sort, the selection loop below -- which
-  // only replaces `bestIndex` on a strict cost improvement -- tie-breaks
-  // equal-cost components by that address order, making the final
-  // concatenation (and therefore whether it clears the improvement margin)
-  // non-deterministic.
-  std::sort(decided.begin(), decided.end(),
-            [](DecidedComponent const& lhs, DecidedComponent const& rhs) {
-              return lhs.order.order.front()->id() <
-                     rhs.order.order.front()->id();
-            });
-
   std::vector<EnumerateCollectionNode*> candidate;
   candidate.reserve(total);
   while (!decided.empty()) {
@@ -291,7 +244,7 @@ auto getEstimateForOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
 auto getBestOrderForComponent(JoinGraph& graph,
                               std::vector<Variable const*> const& component,
                               JoinCostEstimator const& estimator) -> JoinOrder {
-  auto const nodes = nodesInIdOrder(graph, component);
+  auto const nodes = nodesOf(graph, component);
   ADB_PROD_ASSERT(!nodes.empty());
 
   std::optional<JoinOrder> best;

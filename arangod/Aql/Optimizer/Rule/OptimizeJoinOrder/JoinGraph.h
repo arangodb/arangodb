@@ -23,7 +23,6 @@
 
 #include <map>
 #include <string_view>
-#include <unordered_map>
 #include <vector>
 
 namespace arangodb::aql {
