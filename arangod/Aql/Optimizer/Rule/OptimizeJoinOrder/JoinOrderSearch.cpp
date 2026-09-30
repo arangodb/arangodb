@@ -69,6 +69,21 @@ void edgesToPrefix(JoinGraph& graph, JoinGraph::Node* candidate,
   }
 }
 
+/// @brief the estimate after appending `next` to a prefix, joined through
+/// every edge to a vertex in `placed`. `connecting` is the caller's scratch
+/// buffer and holds those edges on return, so the caller can tell a join
+/// from a cross product. Inserting into `placed` is left to the caller,
+/// which may be trying `next` rather than committing to it.
+auto extendPrefix(JoinGraph& graph, JoinCostEstimator const& estimator,
+                  JoinEstimate const& prefix,
+                  std::unordered_set<JoinGraph::Node const*> const& placed,
+                  JoinGraph::Node* next,
+                  std::vector<JoinGraph::Edge const*>& connecting)
+    -> JoinEstimate {
+  edgesToPrefix(graph, next, placed, connecting);
+  return estimator.extend(prefix, *next, connecting);
+}
+
 /// @brief the component's nodes in a reproducible order. JoinGraph::nodes is
 /// keyed by Variable const*, so iterating it is address-ordered and would make
 /// plan choice vary between runs.
@@ -314,12 +329,9 @@ auto getEstimateForOrder(JoinGraph& graph, JoinCostEstimator const& estimator,
   for (size_t i = 0; i < order.size(); ++i) {
     auto* node = graph.nodeForVariable(order[i]->outVariable());
     ADB_PROD_ASSERT(node != nullptr);
-    if (i == 0) {
-      estimate = estimator.seed(*node);
-    } else {
-      edgesToPrefix(graph, node, placed, connecting);
-      estimate = estimator.extend(estimate, *node, connecting);
-    }
+    estimate = (i == 0) ? estimator.seed(*node)
+                        : extendPrefix(graph, estimator, estimate, placed, node,
+                                       connecting);
     placed.insert(node);
   }
   return estimate;
@@ -350,13 +362,13 @@ auto getBestOrderForComponent(JoinGraph& graph,
         if (placed.contains(next)) {
           continue;
         }
-        edgesToPrefix(graph, next, placed, connecting);
+        auto estimate = extendPrefix(graph, estimator, candidate.estimate,
+                                     placed, next, connecting);
         if (connecting.empty()) {
           // not adjacent to the prefix yet; within a connected component some
           // other vertex is, so defer this one rather than cross-producting.
           continue;
         }
-        auto estimate = estimator.extend(candidate.estimate, *next, connecting);
         if (chosen == nullptr || estimate.cost < chosenEstimate.cost) {
           chosen = next;
           chosenEstimate = estimate;
@@ -370,7 +382,8 @@ auto getBestOrderForComponent(JoinGraph& graph,
         for (auto* next : nodes) {
           if (!placed.contains(next)) {
             chosen = next;
-            chosenEstimate = estimator.extend(candidate.estimate, *next, {});
+            chosenEstimate = extendPrefix(graph, estimator, candidate.estimate,
+                                          placed, next, connecting);
             break;
           }
         }
