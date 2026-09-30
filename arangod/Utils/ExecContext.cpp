@@ -547,6 +547,20 @@ Result ExecContext::canReadUser(std::string_view userName) const {
   return can(ReadUser{.name{userName}});
 }
 
+Result ExecContext::canAccessQuery(std::string_view queryUser) const {
+  using namespace auth::perms;
+  // own queries are always accessible, unless the request was not
+  // authenticated.
+  if (!_authMode.isUnauthenticated() && queryUser == user()) {
+    return {};
+  }
+  if (_authMode.isRbac()) {
+    // TODO: scope queries per user under RBAC as well (follow-up of COR-1023)
+    return {};
+  }
+  return can(AdminAqlQueries{});
+}
+
 /// @brief returns true if the given user may be created.
 Result ExecContext::canCreateUser(std::string_view userName) const {
   using namespace auth::perms;

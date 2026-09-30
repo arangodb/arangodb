@@ -28,6 +28,7 @@
 #include "Aql/QueryList.h"
 #include "Auth/TokenCache.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -36,6 +37,7 @@
 #include "Network/Methods.h"
 #include "Network/Utils.h"
 #include "RestServer/DatabaseFeature.h"
+#include "Ssl/jwt.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/vocbase.h"
 
@@ -44,11 +46,61 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
+#include <functional>
+#include <ranges>
+#include <string>
+#include <unordered_map>
+
 using namespace arangodb;
 using namespace arangodb::methods;
 
 namespace {
 enum class QueriesMode { Current, Slow };
+
+/**
+ * Remembers per query owner whether the calling identity may access that
+ * owner's queries
+ *
+ * ExecContext::canAccessQuery() is asked at most once per owner, so a list
+ * with many queries of the same user asks a single question only.
+ */
+class QueryAccess {
+ public:
+  /// @brief whether the calling identity may see, kill or clear this entry
+  auto isAccessible(velocypack::Slice const entry) -> bool {
+    auto const user = entry.get("user");
+    auto const owner = user.isString() ? user.copyString() : std::string{};
+    if (auto const known = _decisions.find(owner); known != _decisions.end()) {
+      return known->second;
+    }
+    auto const accessible = ExecContext::current().canAccessQuery(owner).ok();
+    _decisions.emplace(owner, accessible);
+    return accessible;
+  }
+
+ private:
+  std::unordered_map<std::string, bool> _decisions;
+};
+
+/**
+ * Headers for fanning a request out to the other coordinators
+ *
+ * In classic auth mode the caller's identity is forwarded as a user JWT so
+ * the other coordinators apply the same per-user scoping. Otherwise no header
+ * is set and the connection pool's superuser token is used, which keeps the
+ * (unscoped) RBAC behaviour unchanged.
+ */
+auto fanoutHeaders() -> network::Headers {
+  auto const* auth = AuthenticationFeature::instance();
+  auto const& context = ExecContext::current();
+  if (auth == nullptr || !auth->isActive() || !context.isClassic() ||
+      context.user().empty()) {
+    return {};
+  }
+  return {{StaticStrings::Authorization,
+           "bearer " + auth::generateUserToken(auth->tokenCache().jwtSecret(),
+                                               context.user())}};
+}
 
 arangodb::Result checkAuthorization(TRI_vocbase_t& vocbase, bool allDatabases) {
   Result res;
@@ -114,11 +166,20 @@ arangodb::Result getQueries(TRI_vocbase_t& vocbase, velocypack::Builder& out,
     }
   }
 
-  // build the result
+  // build the result, containing only the queries the caller may see
+  QueryAccess access;
+  auto const isAccessible = [&access](velocypack::Slice const entry) {
+    return access.isAccessible(entry);
+  };
+  auto const toSlice = [](std::shared_ptr<velocypack::String> const& query) {
+    return query->slice();
+  };
+
   out.openArray();
 
-  for (auto const& q : queries) {
-    out.add(q->slice());
+  for (auto const entry : queries | std::views::transform(toSlice) |
+                              std::views::filter(isAccessible)) {
+    out.add(entry);
   }
 
   if (ServerState::instance()->isCoordinator() && fanout) {
@@ -139,6 +200,7 @@ arangodb::Result getQueries(TRI_vocbase_t& vocbase, velocypack::Builder& out,
 
     auto url = absl::StrCat("/_api/query/",
                             (mode == QueriesMode::Slow ? "slow" : "current"));
+    auto const headers = fanoutHeaders();
 
     auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
     for (auto const& coordinator : ci.getCurrentCoordinators()) {
@@ -147,9 +209,9 @@ arangodb::Result getQueries(TRI_vocbase_t& vocbase, velocypack::Builder& out,
         continue;
       }
 
-      auto f = network::sendRequestRetry(pool, "server:" + coordinator,
-                                         fuerte::RestVerb::Get, url,
-                                         VPackBuffer<uint8_t>{}, options);
+      auto f = network::sendRequestRetry(
+          pool, "server:" + coordinator, fuerte::RestVerb::Get, url,
+          VPackBuffer<uint8_t>{}, options, headers);
       futures.emplace_back(std::move(f));
     }
 
@@ -167,9 +229,14 @@ arangodb::Result getQueries(TRI_vocbase_t& vocbase, velocypack::Builder& out,
           break;
         }
         auto slice = resp.slice();
-        // copy results from other coordinators
+        // copy results from other coordinators. in classic auth mode they
+        // already scope their answer to the calling user (see fanoutHeaders),
+        // so filtering again here is only a safety net for coordinators that
+        // do not scope, e.g. in a mixed-version cluster during a rolling
+        // upgrade
         if (slice.isArray()) {
-          for (auto const& entry : VPackArrayIterator(slice)) {
+          for (auto const entry :
+               VPackArrayIterator(slice) | std::views::filter(isAccessible)) {
             out.add(entry);
           }
         }
@@ -196,10 +263,15 @@ Result Queries::listCurrent(TRI_vocbase_t& vocbase, velocypack::Builder& out,
   return getQueries(vocbase, out, QueriesMode::Current, allDatabases, fanout);
 }
 
-/// @brief clears the list of slow queries
+/// @brief clears the slow queries the caller may access
 Result Queries::clearSlow(TRI_vocbase_t& vocbase, bool allDatabases,
                           bool fanout) {
   Result res;
+
+  QueryAccess access;
+  auto const shouldClear = [&access](velocypack::Slice const entry) {
+    return access.isAccessible(entry);
+  };
 
   if (allDatabases) {
     // list of queries requested for _all_ databases
@@ -217,10 +289,11 @@ Result Queries::clearSlow(TRI_vocbase_t& vocbase, bool allDatabases,
 
     arangodb::DatabaseFeature& databaseFeature =
         vocbase.server().getFeature<DatabaseFeature>();
-    databaseFeature.enumerate(
-        [](TRI_vocbase_t* vocbase) { vocbase->queryList()->clearSlow(); });
+    databaseFeature.enumerate([&shouldClear](TRI_vocbase_t* database) {
+      database->queryList()->clearSlow(shouldClear);
+    });
   } else {
-    vocbase.queryList()->clearSlow();
+    vocbase.queryList()->clearSlow(shouldClear);
   }
 
   if (ServerState::instance()->isCoordinator() && fanout) {
@@ -240,6 +313,7 @@ Result Queries::clearSlow(TRI_vocbase_t& vocbase, bool allDatabases,
     options.param("all", allDatabases ? "true" : "false");
 
     VPackBuffer<uint8_t> body;
+    auto const headers = fanoutHeaders();
 
     auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
     for (auto const& coordinator : ci.getCurrentCoordinators()) {
@@ -248,9 +322,9 @@ Result Queries::clearSlow(TRI_vocbase_t& vocbase, bool allDatabases,
         continue;
       }
 
-      auto f = network::sendRequestRetry(pool, "server:" + coordinator,
-                                         fuerte::RestVerb::Delete,
-                                         "/_api/query/slow", body, options);
+      auto f = network::sendRequestRetry(
+          pool, "server:" + coordinator, fuerte::RestVerb::Delete,
+          "/_api/query/slow", body, options, headers);
       futures.emplace_back(std::move(f));
     }
 
@@ -274,38 +348,38 @@ Result Queries::clearSlow(TRI_vocbase_t& vocbase, bool allDatabases,
   return res;
 }
 
-/// @brief kills the given query
+/// @brief kills the given query if the caller is its owner or an admin
 Result Queries::kill(TRI_vocbase_t& vocbase, TRI_voc_tick_t id,
                      bool allDatabases) {
-  Result res = checkAuthorization(vocbase, allDatabases);
-
-  if (res.ok()) {
-    if (allDatabases) {
-      arangodb::DatabaseFeature& databaseFeature =
-          vocbase.server().getFeature<DatabaseFeature>();
-      bool found = false;
-      databaseFeature.enumerate([id, &res, &found](TRI_vocbase_t* vocbase) {
-        res = vocbase->queryList()->kill(id);
-        if (res.ok()) {
-          // unfortunately there is no way to stop the iteration once we found
-          // the query.
-          found = true;
-        }
-      });
-      if (found) {
-        // we found the query in question. so we now clear the errors we
-        // potentially got from other databases that did not have the query
-        res.reset();
-      }
-    } else {
-      res.reset(vocbase.queryList()->kill(id));
-    }
+  if (auto const res = checkAuthorization(vocbase, allDatabases); res.fail()) {
+    return res;
   }
 
-  return res;
+  auto const authorize = [](aql::Query const& query) {
+    return ExecContext::current().canAccessQuery(query.user());
+  };
+
+  if (!allDatabases) {
+    return vocbase.queryList()->kill(id, authorize);
+  }
+
+  // unfortunately there is no way to stop the enumeration once we found the
+  // query, so only a result from the database that has the query is kept
+  Result outcome{TRI_ERROR_QUERY_NOT_FOUND, "query ID not found in query list"};
+  vocbase.server().getFeature<DatabaseFeature>().enumerate(
+      [id, &authorize, &outcome](TRI_vocbase_t* database) {
+        if (auto const result = database->queryList()->kill(id, authorize);
+            !result.is(TRI_ERROR_QUERY_NOT_FOUND)) {
+          outcome = result;
+        }
+      });
+  return outcome;
 }
 
-/// @brief kills the given query
+/// @brief kills the given query on behalf of the server itself
+///
+/// Internal use only (e.g. when a participating DB server is gone), hence
+/// intentionally not scoped to a user.
 Result Queries::kill(DatabaseFeature& df, std::string const& databaseName,
                      TRI_voc_tick_t id) {
   auto vocbase = df.useDatabase(databaseName);
