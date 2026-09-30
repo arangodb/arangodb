@@ -226,13 +226,19 @@ void handleExpression(JoinGraph& graph, ExecutionPlan const* plan,
       std::swap(maybeLhsAccess, maybeRhsAccess);
     }
 
-    if (maybeLhsAccess.has_value() && maybeRhsAccess.has_value()) {
+    if (maybeLhsAccess.has_value() && maybeRhsAccess.has_value() &&
+        std::get<0>(*maybeLhsAccess) != std::get<0>(*maybeRhsAccess)) {
       // `a.x == b.y` with both a and b in the graph -> join edge
       [[maybe_unused]] auto& [lhsVar, lhsNode, lhsPath] =
           maybeLhsAccess.value();
       [[maybe_unused]] auto& [rhsVar, rhsNode, rhsPath] =
           maybeRhsAccess.value();
       graph.addJoinCondition(lhsVar, lhsPath, rhsVar, rhsPath);
+    } else if (maybeLhsAccess.has_value() && maybeRhsAccess.has_value()) {
+      // `a.x == a.y` compares two attributes of one row. It cannot be probed,
+      // so it is a filter on a, not a join, and a self-loop edge would only
+      // have to be skipped by every reader.
+      graph.addResidual(predicate);
     } else if (maybeLhsAccess.has_value()) {
       // `a.x == <constant>` -> constant restriction on node a
       [[maybe_unused]] auto& [lhsVar, lhsNode, lhsPath] =

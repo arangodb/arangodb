@@ -111,6 +111,32 @@ TEST_F(JoinGraphTest, non_equijoin_predicate_becomes_residual) {
   EXPECT_FALSE(g.residuals.empty());
 }
 
+TEST_F(JoinGraphTest, equality_within_one_variable_becomes_residual) {
+  // `a.p == a.q` compares two attributes of one document. It cannot be
+  // probed -- the lookup key would come from the row not yet read -- so it is
+  // a per-row filter, not a join, and must not produce a self-loop edge.
+  auto q = prepare(
+      "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
+      "FILTER a.p == a.q RETURN [a, b]");
+  auto g = buildGraph(*q);
+
+  EXPECT_EQ(g.edges.size(), 1u);
+  for (auto const& edge : g.edges) {
+    EXPECT_NE(edge.from, edge.to);
+  }
+  EXPECT_EQ(g.residuals.size(), 1u);
+  EXPECT_TRUE(nodeByName(g, "a")->conditions.empty());
+}
+
+TEST_F(JoinGraphTest, equality_within_one_variable_alone_is_not_a_join) {
+  auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.p == a.q RETURN [a, b]");
+  auto g = buildGraph(*q);
+
+  EXPECT_FALSE(g.hasJoin());
+  EXPECT_TRUE(g.edges.empty());
+  EXPECT_EQ(g.residuals.size(), 1u);
+}
+
 TEST_F(JoinGraphTest, id_is_remapped_to_key) {
   auto q =
       prepare("FOR a IN c1 FOR b IN c2 FILTER a._id == b._id RETURN [a, b]");
