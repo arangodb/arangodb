@@ -216,7 +216,8 @@ TEST(RbacServiceImplCheckTest, denyReturnsForbiddenWithMessage) {
       rbac::Action::Read, rbac::resources::Database{.name = "mydb"}}};
   auto r = f.svc.check({testToken}, queries);
   EXPECT_EQ(r.errorNumber(), TRI_ERROR_FORBIDDEN);
-  EXPECT_EQ(r.errorMessage(), "role lacks db:Read");
+  EXPECT_EQ(r.errorMessage(),
+            "Failed to read database 'mydb'. role lacks db:Read");
 }
 
 TEST(RbacServiceImplCheckTest, backendErrorIsThrown) {
