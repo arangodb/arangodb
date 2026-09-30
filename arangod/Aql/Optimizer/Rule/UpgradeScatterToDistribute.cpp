@@ -182,12 +182,20 @@ bool checkIfAllShardKeysAreUsed(AstNode const* root, ExecutionNode const* node,
     bool isShardKey = std::find(shardKeys.begin(), shardKeys.end(),
                                 attrField) != shardKeys.end();
 
-    if (isShardKey > 0 && expression != nullptr) {
-      if (shardKeyNode->getString() == arangodb::StaticStrings::IdString) {
-        distDep.shardKeyAccessMap[arangodb::StaticStrings::KeyString] =
-            expression;
-      } else {
-        distDep.shardKeyAccessMap[shardKeyNode->getStringView()] = expression;
+    if (isShardKey && expression != nullptr) {
+      std::string_view shardKey =
+          shardKeyNode->getString() == arangodb::StaticStrings::IdString
+              ? std::string_view{arangodb::StaticStrings::KeyString}
+              : shardKeyNode->getStringView();
+      // If a shard key is compared with multiple expressions, e.g.
+      // `doc._key == "foo" AND doc._id == other._from`, prefer a constant
+      // one. restrict-to-single-shard derives the target shard from constant
+      // shard key values, so the distribute key has to agree with it.
+      // Otherwise rows would be sent to shards that were restricted away.
+      auto [it, inserted] =
+          distDep.shardKeyAccessMap.try_emplace(shardKey, expression);
+      if (!inserted && !it->second->isConstant()) {
+        it->second = expression;
       }
     }
   }

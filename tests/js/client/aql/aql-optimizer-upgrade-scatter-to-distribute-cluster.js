@@ -356,6 +356,20 @@ function optimizerUpgradeScatterToDistributeSuite() {
       db._explain(query);
       let plan = db._createStatement({query: query}).explain().plan;
       assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
+    },
+
+    test_DefaultShardKey_ConstantAndId_RestrictToSingleShard: function() {
+      const opts = {optimizer: {rules: ["-interchange-adjacent-enumerations"]}};
+      let query =
+          `FOR doc1 IN ${col_id.name()}
+            FOR doc2 IN ${col_id.name()}
+             FILTER doc2._key == "key-42" AND doc2._id == doc1.foreign_id
+             RETURN doc2._key`;
+      let plan = db._createStatement({query, options: opts}).explain().plan;
+      assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
+      assertTrue(plan.rules.includes("restrict-to-single-shard"));
+      let result = db._query(query, {}, opts).toArray();
+      assertEqual(["key-42"], result);
     }
   };
 }
