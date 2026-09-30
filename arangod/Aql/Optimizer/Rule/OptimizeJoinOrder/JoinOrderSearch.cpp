@@ -170,9 +170,9 @@ auto decideInternalOrdersForEachComponent(
     ADB_PROD_ASSERT(positionIt != positionInWritten.end());
     size_t const firstAppearance = positionIt->second;
 
-    // Either side resting on a fallback statistic makes this a comparison
-    // between two guesses -- decline.
-    if (greedy.estimate.defaulted || writtenEstimate.defaulted) {
+    // Both orders read the same statistics, so one flag covers both: a
+    // fallback anywhere makes this a comparison between guesses -- decline.
+    if (writtenEstimate.defaulted) {
       LOG_TOPIC("a7f04", TRACE, Logger::AQL)
           << "optimize-join-order: keeping a component's written order, "
              "estimate rests on defaulted statistics";
@@ -292,16 +292,8 @@ auto acceptsResequencing(JoinGraph& graph, JoinCostEstimator const& estimator,
                          JoinEstimate const& baselineEstimate,
                          std::vector<EnumerateCollectionNode*> const& candidate)
     -> bool {
-  TRI_ASSERT(!baselineEstimate.defaulted);
   auto const candidateEstimate =
       getEstimateForOrder(graph, estimator, candidate);
-
-  if (candidateEstimate.defaulted) {
-    LOG_TOPIC("a7f06", TRACE, Logger::AQL)
-        << "optimize-join-order: keeping the written component sequence, "
-           "estimate rests on defaulted statistics";
-    return false;
-  }
 
   if (candidateEstimate.cost >=
       baselineEstimate.cost / (1.0 + kImprovementMargin)) {
@@ -372,19 +364,6 @@ auto getBestOrderForComponent(JoinGraph& graph,
         }
       }
 
-      // Defensive: a disconnected "component" would leave nothing adjacent.
-      // Fall back to the lowest-id remaining vertex as a cross product so the
-      // order still covers every vertex.
-      if (chosen == nullptr) {
-        for (auto* next : nodes) {
-          if (!placed.contains(next)) {
-            chosen = next;
-            chosenEstimate = extendPrefix(graph, estimator, candidate.estimate,
-                                          placed, next, connecting);
-            break;
-          }
-        }
-      }
       ADB_PROD_ASSERT(chosen != nullptr);
 
       candidate.order.emplace_back(chosen->executionNode);
