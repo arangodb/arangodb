@@ -76,7 +76,7 @@ class V8ClientConnection {
 
   ResultT<std::string> prepareConnection();
   ResultT<std::string> connect();
-  ResultT<std::string> reconnect();
+  void reconnect();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void reconnectWithNewPassword(std::string const& password);
