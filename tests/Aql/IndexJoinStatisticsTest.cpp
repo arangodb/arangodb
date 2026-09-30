@@ -32,19 +32,9 @@ using namespace arangodb::aql;
 
 namespace arangodb::tests::aql {
 
-// -----------------------------------------------------------------------------
-// The selection rules themselves, against scripted IndexFacts. No collection,
-// no server, no storage engine:
-// distinctFromIndexFacts()/coveringFromIndexFacts() are pure functions of the
-// facts and the attribute set, which is exactly what lets these be exact and
-// environment-independent.
-//
-// Every rejection case below is paired with a qualifying index (or, where a
-// companion index would be numerically invisible against a max(), a solo
-// index whose exclusion is instead observable through `defaulted`) so that an
-// implementation with the corresponding guard removed would fail the test,
-// not pass it vacuously.
-// -----------------------------------------------------------------------------
+// The selection rules over scripted IndexFacts. Every rejection case is
+// paired with a qualifying index, so removing the guard under test changes
+// the answer rather than passing vacuously.
 
 namespace {
 
@@ -79,11 +69,8 @@ TEST(IndexFactsRulesTest, subset_index_qualifies) {
 
 TEST(IndexFactsRulesTest,
      superset_index_is_rejected_even_with_a_qualifying_index) {
-  // index on {x,z} is a superset of {x}: distinct(x,z) >= distinct(x), so
-  // using it would over-estimate distinctness and under-estimate the join.
-  // The qualifying {x} index alone would report 10 (selectivity 0.1); if the
-  // superset were wrongly allowed too, its selectivity of 1.0 would push the
-  // answer to 100 instead.
+  // distinct(x,z) >= distinct(x), so a superset index would over-estimate;
+  // allowed, its selectivity of 1.0 would push the answer from 10 to 100.
   auto superset = qualifyingIndex("x", 1.0);
   superset.fields = {singleField("x"), singleField("z")};
   std::array<IndexFacts, 2> candidates{qualifyingIndex("x", 0.1), superset};
@@ -161,10 +148,7 @@ TEST(IndexFactsRulesTest,
 
 TEST(IndexFactsRulesTest,
      distinct_is_floored_at_one_even_for_an_empty_collection) {
-  // selectivity is always <= 1, so selectivity * count can never exceed
-  // count -- the clamp's upper bound is never actually reached. Its lower
-  // bound is the interesting side: a qualifying index over an empty (or
-  // fully-restricted-to-nothing) collection must still report 1, not 0.
+  // a qualifying index over an empty collection reports 1, not 0
   std::array<IndexFacts, 1> candidates{qualifyingIndex("x", 1.0)};
   std::array<AttributePath, 1> attributes{AttributePath{"x"}};
 
@@ -188,9 +172,7 @@ TEST(IndexFactsRulesTest, covering_needs_the_leading_field) {
 }
 
 TEST(IndexFactsRulesTest, covering_succeeds_without_a_selectivity_estimate) {
-  // The index still exists and can still serve a probe even with no
-  // selectivity estimate at all -- that is a distinctValues() concern, not a
-  // hasIndexCovering() one.
+  // an estimate is a distinctValues() concern, not a hasIndexCovering() one
   IndexFacts noEstimate;
   noEstimate.type = IndexType::Persistent;
   noEstimate.fields = {singleField("x")};

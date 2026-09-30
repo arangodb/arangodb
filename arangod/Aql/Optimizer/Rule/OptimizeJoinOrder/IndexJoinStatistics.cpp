@@ -55,10 +55,8 @@ auto hasExpandedField(IndexFacts const& facts) noexcept -> bool {
   return false;
 }
 
-/// @brief structural prerequisites. `sparse` is
-/// rejected because a sparse index's estimate is relative to the indexed
-/// documents only; expanded (array) fields have different selectivity
-/// semantics.
+/// @brief a sparse index's estimate is relative to the indexed documents
+/// only, and an expanded (array) field has different selectivity semantics.
 auto isUsable(IndexFacts const& facts) noexcept -> bool {
   return isAllowedType(facts) && !facts.sparse && !hasExpandedField(facts);
 }
@@ -154,9 +152,7 @@ auto coveringFromIndexFacts(std::span<IndexFacts const> candidates,
     if (!isUsable(facts)) {
       continue;
     }
-    // A probe needs the *leading* field: an index on (y,x) cannot serve a
-    // probe by x alone. No selectivity estimate is required, only
-    // existence.
+    // a probe needs the leading field: an index on (y,x) cannot serve x alone
     auto const& leading = facts.fields.front();
     for (auto const& path : attributes) {
       if (fieldEquals(leading, path)) {

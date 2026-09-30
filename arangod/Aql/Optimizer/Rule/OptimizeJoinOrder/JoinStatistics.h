@@ -30,10 +30,8 @@ namespace arangodb::aql {
 
 /// @brief the result of a distinct-tuple lookup.
 struct DistinctEstimate {
-  /// @brief |C_S| : estimated number of distinct *tuples* over the attribute
-  /// set S. For S = {x,y} this is the count of distinct (x,y) combinations,
-  /// not distinct(x) * distinct(y) and not either one alone. A count, not a
-  /// ratio; `double` because it is an estimate that feeds into products.
+  /// @brief |C_S| : distinct *tuples* over the attribute set S, i.e. for
+  /// S = {x,y} the distinct (x,y) combinations. A count, not a ratio.
   double value = 1.0;
   /// @brief true when no index could supply an estimate and `value` is the
   /// fallback of 1.
@@ -51,18 +49,15 @@ class JoinStatistics {
   [[nodiscard]] virtual auto documentCount(JoinGraph::Node const& node) const
       -> double = 0;
 
-  /// @brief |C_S| : distinct tuples over the attribute set S. Note the two
-  /// levels of vector mean different things - AttributePath is itself a
-  /// vector, so S = {["b","c"]} is the *single* attribute v.b.c and the tuple
-  /// arity is S.size(), not the length of any path within it.
+  /// @brief |C_S| : distinct tuples over the attribute set S. Each element
+  /// of S is one attribute path, so S = {["b","c"]} is the single attribute
+  /// v.b.c.
   [[nodiscard]] virtual auto distinctValues(
       JoinGraph::Node const& node,
       std::span<AttributePath const> attributes) const -> DistinctEstimate = 0;
 
-  /// @brief can an index serve a *probe* by these attributes, i.e. an index
-  /// lookup rather than a full scan per outer row? One of the attributes has
-  /// to be the index's first field; appearing further along does not help.
-  /// Only existence matters here, not selectivity.
+  /// @brief can an index serve a probe by these attributes, i.e. a lookup
+  /// rather than a scan per outer row? One of them must be its leading field.
   [[nodiscard]] virtual auto hasIndexCovering(
       JoinGraph::Node const& node,
       std::span<AttributePath const> attributes) const -> bool = 0;
