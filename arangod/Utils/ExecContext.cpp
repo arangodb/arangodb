@@ -554,10 +554,6 @@ Result ExecContext::canAccessQuery(std::string_view queryUser) const {
   if (!_authMode.isUnauthenticated() && queryUser == user()) {
     return {};
   }
-  if (_authMode.isRbac()) {
-    // TODO: scope queries per user under RBAC as well (follow-up of COR-1023)
-    return {};
-  }
   return can(AdminAqlQueries{});
 }
 
