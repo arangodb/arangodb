@@ -27,7 +27,6 @@
 
 #include <boost/container_hash/hash.hpp>
 
-#include <algorithm>
 #include <functional>
 #include <utility>
 
@@ -39,26 +38,14 @@ auto keyFor(JoinGraph::Node const& node,
   return {node.executionNode->id(), {attributes.begin(), attributes.end()}};
 }
 
-auto viewFor(JoinGraph::Node const& node,
-             std::span<AttributePath const> attributes) -> StatsKeyView {
-  return {node.executionNode->id(), attributes};
-}
-
 }  // namespace
 
-auto StatsKeyHash::operator()(StatsKeyView const& key) const noexcept
+auto StatsKeyHash::operator()(StatsKey const& key) const noexcept
     -> std::size_t {
-  // Order-sensitive, and so is StatsKeyEq: equal keys hashing equally is the
-  // only obligation. In practice only one order occurs per node anyway.
   std::size_t seed = 0;
   boost::hash_combine(seed, std::hash<ExecutionNodeId>{}(key.node));
   boost::hash_range(seed, key.paths.begin(), key.paths.end());
   return seed;
-}
-
-auto StatsKeyEq::operator()(StatsKeyView const& lhs,
-                            StatsKeyView const& rhs) const noexcept -> bool {
-  return lhs.node == rhs.node && std::ranges::equal(lhs.paths, rhs.paths);
 }
 
 CachingJoinStatistics::CachingJoinStatistics(
@@ -79,24 +66,24 @@ auto CachingJoinStatistics::documentCount(JoinGraph::Node const& node) const
 auto CachingJoinStatistics::distinctValues(
     JoinGraph::Node const& node,
     std::span<AttributePath const> attributes) const -> DistinctEstimate {
-  if (auto it = _distinct.find(viewFor(node, attributes));
-      it != _distinct.end()) {
+  auto key = keyFor(node, attributes);
+  if (auto it = _distinct.find(key); it != _distinct.end()) {
     return it->second;
   }
   auto const estimate = _inner->distinctValues(node, attributes);
-  _distinct.emplace(keyFor(node, attributes), estimate);
+  _distinct.emplace(std::move(key), estimate);
   return estimate;
 }
 
 auto CachingJoinStatistics::hasIndexCovering(
     JoinGraph::Node const& node,
     std::span<AttributePath const> attributes) const -> bool {
-  if (auto it = _covering.find(viewFor(node, attributes));
-      it != _covering.end()) {
+  auto key = keyFor(node, attributes);
+  if (auto it = _covering.find(key); it != _covering.end()) {
     return it->second;
   }
   bool const covering = _inner->hasIndexCovering(node, attributes);
-  _covering.emplace(keyFor(node, attributes), covering);
+  _covering.emplace(std::move(key), covering);
   return covering;
 }
 

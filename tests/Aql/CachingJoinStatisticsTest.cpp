@@ -96,24 +96,24 @@ class CachingJoinStatisticsTest : public testing::Test {
 }  // namespace
 
 // The key's hash and equality cannot be tested through the map: a
-// discriminating hash means Eq is never consulted, and a discriminating Eq
-// means a weak hash only costs probe length. Both mutations pass every test
-// below that goes through CachingJoinStatistics, so the key is tested here
-// directly.
+// discriminating hash means operator== is never consulted, and a
+// discriminating operator== means a weak hash only costs probe length. Both
+// mutations pass every test below that goes through CachingJoinStatistics, so
+// the key is tested here directly.
 
 TEST(StatsKeyTest, equality_distinguishes_the_attribute_set) {
   StatsKey const byX{ExecutionNodeId{1}, {AttributePath{"x"}}};
   StatsKey const byY{ExecutionNodeId{1}, {AttributePath{"y"}}};
 
-  EXPECT_TRUE(StatsKeyEq{}(byX, byX));
-  EXPECT_FALSE(StatsKeyEq{}(byX, byY));
+  EXPECT_TRUE(byX == byX);
+  EXPECT_FALSE(byX == byY);
 }
 
 TEST(StatsKeyTest, equality_distinguishes_the_node) {
   StatsKey const onOne{ExecutionNodeId{1}, {AttributePath{"x"}}};
   StatsKey const onTwo{ExecutionNodeId{2}, {AttributePath{"x"}}};
 
-  EXPECT_FALSE(StatsKeyEq{}(onOne, onTwo));
+  EXPECT_FALSE(onOne == onTwo);
 }
 
 TEST(StatsKeyTest, equality_distinguishes_nesting_from_arity) {
@@ -121,18 +121,7 @@ TEST(StatsKeyTest, equality_distinguishes_nesting_from_arity) {
                                {AttributePath{"p"}, AttributePath{"q"}}};
   StatsKey const oneNested{ExecutionNodeId{1}, {AttributePath{"p", "q"}}};
 
-  EXPECT_FALSE(StatsKeyEq{}(twoAttributes, oneNested));
-}
-
-TEST(StatsKeyTest, a_view_compares_equal_to_the_key_it_views) {
-  StatsKey const key{ExecutionNodeId{1},
-                     {AttributePath{"p"}, AttributePath{"q"}}};
-
-  // The whole point of the transparent comparator: a probe built from a span
-  // must match the stored key without materialising one.
-  EXPECT_TRUE(StatsKeyEq{}(key, key.view()));
-  EXPECT_TRUE(StatsKeyEq{}(key.view(), key));
-  EXPECT_EQ(StatsKeyHash{}(key), StatsKeyHash{}(key.view()));
+  EXPECT_FALSE(twoAttributes == oneNested);
 }
 
 TEST(StatsKeyTest, hash_separates_the_keys_equality_separates) {
