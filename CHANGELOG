@@ -1,5 +1,12 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
+* COR-1017: Reject `POST /_api/dump/start` requests that pass an empty `shards`
+  array. Such a dump context has no function, as it never hands out any data.
+
+* COR-1017: Added the `--dump.max-prefetch-count` startup option (default 1024).
+  The `prefetchCount` of `POST /_api/dump/start` is now clamped to it, in the
+  same way as `docsPerBatch`, `batchSize` and `parallelism`.
+
 * COR-1018: Cap vector index search result buffers at the collection's
   document count and track their memory against the query memory limit.
 
