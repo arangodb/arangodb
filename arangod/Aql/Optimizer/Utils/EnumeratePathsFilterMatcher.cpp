@@ -217,9 +217,8 @@ auto matchExpression(Ast* ast, AstNode const* expression,
   AstNode const* inlineFilter = nullptr;
   AstNode const* filterMember = expansion.getFilter();
   if (filterMember->type == NODE_TYPE_ARRAY_FILTER) {
-    // Validate the FILTER as a whole here and do not recurse into it for
-    // path-pattern matching — nested expansions inside the FILTER must not be
-    // mistaken for the path access being optimized (COR-918).
+    // Validate the inline FILTER as a whole. Nested expansions may be part of
+    // the FILTER and must not be treated as the path access we are optimizing
     if (!isSupportedInlineFilter(pathVar, filterMember)) {
       LOG_ENUMERATE_PATHS_OPTIMIZER_RULE
           << "iterating andNode, bailing unsupported inline FILTER";
