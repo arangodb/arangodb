@@ -33,8 +33,9 @@
 namespace arangodb::aql {
 namespace {
 
-/// @brief the same attribute path may be recorded twice, e.g. from
-/// `a.x == 'u' AND a.x == 'v'`. Dividing twice by its distinct count would
+/// @brief the same attribute path may be recorded twice, e.g. when a
+/// restriction is repeated across statements: `FILTER a.x == 'u'
+/// FILTER a.x == 'u'`. Dividing twice by its distinct count would
 /// double-count the restriction.
 auto dedupe(std::vector<AttributePath> const& paths)
     -> std::vector<AttributePath> {
