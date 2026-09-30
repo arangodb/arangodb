@@ -39,7 +39,7 @@ function optimizeJoinOrderTestSuite () {
   // Indexed, size-asymmetric fixture: a persistent index on the join
   // attribute on both sides makes distinctValues() index-backed rather than
   // defaulted, and the size asymmetry is large enough that the cheaper order
-  // clears the rule's improvement margin. This is the only fixture the rule
+  // clears the rule's cost ratio. This is the only fixture the rule
   // can genuinely reorder.
   const cnSmall = "UnitTestsOptimizeJoinOrderSmall";
   const cnLarge = "UnitTestsOptimizeJoinOrderLarge";
@@ -308,12 +308,9 @@ function optimizeJoinOrderTestSuite () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the other half of the guarantee: when this rule declines, opting
-/// into it must not cost anything either. A plain cross product between
-/// cnLarge and cnSmall gives optimize-join-order no equijoin to build a
-/// graph from, so it declines exactly as in testRuleNoEffect. interchange-
-/// adjacent-enumerations, left at its default-enabled state, must still be
-/// free to reorder the same two enumerations by their generic (index-
-/// independent) cost estimate, proving suppression did not fire.
+/// into it must not cost anything either. On the unindexed fixture the rule
+/// reaches its decision and declines; interchange-adjacent-enumerations, left
+/// at its default-enabled state, must still be free to reorder the loops.
 ////////////////////////////////////////////////////////////////////////////////
 
     testInterchangeStillFiresWhenJoinOrderDeclines : function () {

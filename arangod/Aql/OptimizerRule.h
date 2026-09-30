@@ -505,7 +505,8 @@ struct OptimizerRule {
   static_assert(optimizeJoinOrder < interchangeAdjacentEnumerationsRule,
                 "optimizeJoinOrder disables interchange once it has "
                 "reordered, which only works on a rule that runs later");
-  static_assert(optimizeJoinOrder < moveCalculationsUpRule2,
+  static_assert(optimizeJoinOrder < moveCalculationsUpRule2 &&
+                    optimizeJoinOrder < moveFiltersUpRule2,
                 "optimizeJoinOrder's splice leaves the run's calculations "
                 "and filters after every enumeration; the move-up rules "
                 "must run afterwards to put them back");
