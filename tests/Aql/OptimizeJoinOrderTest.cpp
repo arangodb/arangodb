@@ -92,16 +92,7 @@ TEST_F(OptimizeJoinOrderTest, equal_costs_break_ties_by_node_id) {
   auto g = buildGraph(*q);
   auto components = g.connectedComponents();
 
-  // Every cost is identical, so the outcome is decided entirely by the
-  // tie-break rule: ascending ExecutionNode::id(). This is necessary but not
-  // sufficient to prove run-to-run stability -- JoinGraph::nodes is keyed by
-  // Variable const*, and within a single process calling
-  // getBestOrderForComponent twice on the same graph would see the same map
-  // iteration order whether or not nodesInIdOrder sorts, so that could not have
-  // caught the sort being removed. What this test does catch: id-ascending
-  // order coinciding by chance with Variable-pointer order is exceedingly
-  // unlikely, so if the sort in nodesInIdOrder is ever deleted, this is very
-  // likely to fail.
+  // every cost is identical, so the tie-break alone decides the order
   FakeCostEstimator estimator;
 
   auto result = getBestOrderForComponent(g, components.front(), estimator);
@@ -116,13 +107,8 @@ TEST_F(OptimizeJoinOrderTest, multi_start_beats_picking_the_cheapest_seed) {
   auto g = buildGraph(*q);
   auto components = g.connectedComponents();
 
-  // a has by far the cheapest SEED cost, so a shortcut that starts at
-  // argmin(seedCost) and then just descends once would start at a. Doing so
-  // forces the chain order a, b, c, which pays b's enormous step cost. Only
-  // trying every start and costing the *complete* order finds that starting
-  // at b instead -- paying a slightly higher seed but never paying b's own
-  // step cost -- is actually cheapest overall (11, vs. 1006 either other
-  // way): seed(b)=5 + step(a)=1 + step(c)=5 = 11.
+  // a has the cheapest seed, but starting there pays b's huge step cost;
+  // starting at b costs 5 + 1 + 5 = 11 against 1006 from either end.
   FakeCostEstimator estimator;
   estimator.seedCost = {{"a", 1.0}, {"b", 5.0}, {"c", 5.0}};
   estimator.stepCost = {{"a", 1.0}, {"b", 1000.0}, {"c", 5.0}};
@@ -211,13 +197,8 @@ TEST_F(OptimizeJoinOrderTest, bails_out_when_any_statistic_was_defaulted) {
 }
 
 TEST_F(OptimizeJoinOrderTest, keeps_components_contiguous) {
-  // two independent joins: a-b and c-d. The chosen order must finish one
-  // component before starting the other, never interleave them.
-  //
-  // Neither component beats its own written order (each ties, so the margin
-  // check declines). What fires is the resequencing guard: candidate cost 5
-  // vs baseline 104, past 104/1.25 = 83.2. So this is a reorder with no
-  // component's internal order moving -- the resequencing accept path.
+  // two independent joins that must not interleave. Neither beats its own
+  // written order; what fires is resequencing, 5 against a baseline of 104.
   auto q = prepare(
       "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
       "FOR c IN c3 FOR d IN c1 FILTER c.x == d.y RETURN [a, b, c, d]");
@@ -256,14 +237,8 @@ TEST_F(OptimizeJoinOrderTest,
   ASSERT_EQ(g.connectedComponents().size(), 2u);
   auto current = collectEnumerationOrder(firstEnumeration(q->plan()), nullptr);
 
-  // a-b: seed(b)=1 + step(a)=1 = 2 against a written cost of seed(a)=100 +
-  // step(b)=1 = 101 -- clears the margin (2 < 101/1.25 = 80.8), and neither
-  // vertex is defaulted, so this component is accepted and flips to [b, a].
-  //
-  // c-d: same seed/step shape, so greedy would also want [d, c] at cost 2
-  // against a written cost of 101 -- but both c and d are marked defaulted,
-  // so this component must decline regardless of the cost numbers and keep
-  // its written order [c, d].
+  // a-b flips to [b, a] at 2 against 101; c-d would too, but its vertices
+  // are defaulted, so it keeps [c, d] regardless of cost
   FakeCostEstimator estimator;
   estimator.seedCost = {{"a", 100.0}, {"b", 1.0}, {"c", 100.0}, {"d", 1.0}};
   estimator.stepCost = {{"a", 1.0}, {"b", 1.0}, {"c", 1.0}, {"d", 1.0}};
@@ -277,11 +252,7 @@ TEST_F(OptimizeJoinOrderTest,
 
 TEST_F(OptimizeJoinOrderTest,
        marginal_component_keeps_written_order_while_another_reorders) {
-  // Two independent joins: a-b clears the margin, c-d is confidently
-  // estimated (no defaulted statistic) but its improvement is only ~10%,
-  // well short of the required 20%. c-d must keep its written order even
-  // though it is not defaulted -- the margin guard is independent of the
-  // defaulted guard, and both are now per component.
+  // a-b clears the ratio; c-d improves only ten percent and keeps its order
   auto q = prepare(
       "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
       "FOR c IN c3 FOR d IN c1 FILTER c.x == d.y RETURN [a, b, c, d]");
@@ -289,13 +260,7 @@ TEST_F(OptimizeJoinOrderTest,
   ASSERT_EQ(g.connectedComponents().size(), 2u);
   auto current = collectEnumerationOrder(firstEnumeration(q->plan()), nullptr);
 
-  // a-b: seed(b)=1 + step(a)=1 = 2 against written seed(a)=100 + step(b)=1 =
-  // 101 -- clears the margin (2 < 80.8), accepted, flips to [b, a].
-  //
-  // c-d: greedy is [d, c] at seed(d)=90 + step(c)=1 = 91, against a written
-  // cost of seed(c)=100 + step(d)=1 = 101. 91 is cheaper than 101, but
-  // 91 >= 101/1.25 = 80.8, so the margin does not clear -- c-d must keep its
-  // written order [c, d].
+  // a-b: 2 against 101. c-d: 91 against 101, above 0.8 * 101 = 80.8.
   FakeCostEstimator estimator;
   estimator.seedCost = {{"a", 100.0}, {"b", 1.0}, {"c", 100.0}, {"d", 90.0}};
   estimator.stepCost = {{"a", 1.0}, {"b", 1.0}, {"c", 1.0}, {"d", 1.0}};
@@ -307,17 +272,8 @@ TEST_F(OptimizeJoinOrderTest,
 
 TEST_F(OptimizeJoinOrderTest,
        defaulted_statistics_block_resequencing_even_when_cost_favours_it) {
-  // Two independent joins: a-b (confidently estimated, and internally
-  // reordered) and c-d (statistics defaulted, so it correctly keeps its
-  // written order [c, d] per the per-component guard). c-d is scripted to be
-  // very cheap standalone, so the cheapest-concatenation candidate wants to
-  // hoist it ahead of a-b, reversing the written component sequence
-  // [a,b,c,d] -> [c,d,a,b]. Cost alone would even clear the margin for that
-  // swap (3.2 vs 4.1/1.25=3.28) -- but c-d's defaulted flag propagates
-  // through every replay it appears in, so both the candidate and the
-  // written-sequence baseline come out `defaulted`, and the resequencing
-  // guard must decline regardless of the cost numbers. The written
-  // component sequence -- a-b before c-d -- must survive.
+  // c-d is defaulted and cheap enough that cost alone would hoist it ahead
+  // of a-b; the defaulted flag must block that resequencing
   auto q = prepare(
       "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
       "FOR c IN c3 FOR d IN c1 FILTER c.x == d.y RETURN [a, b, c, d]");
@@ -325,12 +281,6 @@ TEST_F(OptimizeJoinOrderTest,
   ASSERT_EQ(g.connectedComponents().size(), 2u);
   auto current = collectEnumerationOrder(firstEnumeration(q->plan()), nullptr);
 
-  // a-b: seed(b)=1 + step(a)=1 = 2 against a written cost of seed(a)=100 +
-  // step(b)=1 = 101 -- clears the margin, accepted, flips to [b, a].
-  //
-  // c-d: seed(c)=0.1 + step(d)=0.1 = 0.2 standalone -- cheap enough that the
-  // sequencing loop wants it first -- but c and d are both defaulted, so the
-  // per-component guard keeps c-d's written order [c, d] regardless.
   FakeCostEstimator estimator;
   estimator.seedCost = {{"a", 100.0}, {"b", 1.0}, {"c", 0.1}, {"d", 1.0}};
   estimator.stepCost = {{"a", 1.0}, {"b", 1.0}, {"c", 1.0}, {"d", 0.1}};
@@ -344,12 +294,8 @@ TEST_F(OptimizeJoinOrderTest,
 }
 
 TEST_F(OptimizeJoinOrderTest, skips_graphs_above_the_enumeration_cap) {
-  // 17 enumerations exceeds kMaxEnumerationsToReorder. Script costs that
-  // would clearly win a rewrite if the cap were not checked: v0's seed is
-  // expensive (1000) while every other seed/step defaults to 1.0, so any
-  // order starting elsewhere costs about 17 against the written order's
-  // 1016 -- nowhere near the 20% margin -- so without the cap this would
-  // rewrite. EXPECT_FALSE is therefore attributable to the cap alone.
+  // 17 enumerations exceed the cap; without it, v0's seed of 1000 against
+  // everything else at 1 would make any other start win by a mile
   std::string query = "FOR v0 IN c1 ";
   for (int i = 1; i < 17; ++i) {
     query += "FOR v" + std::to_string(i) + " IN c1 FILTER v" +
@@ -391,13 +337,8 @@ TEST_F(OptimizeJoinOrderTest, rewrite_needs_cost_below_eight_tenths) {
 }
 
 TEST_F(OptimizeJoinOrderTest, collect_enumeration_order_stops_at_run_boundary) {
-  // Two joins separated by a SORT (same query shape as
-  // separate_runs_produce_separate_graphs): the first run is a, b; the
-  // second is c, d. collectEnumerationOrder must stop at `next` -- the node
-  // that terminated the first run -- rather than continuing into the run
-  // that follows it, or a rewrite of the first run would silently pull in
-  // the second run's FOR loops. Every other test passes nullptr for `next`,
-  // which cannot exercise this.
+  // two runs separated by a SORT: the walk must stop at `next`, or a rewrite
+  // of the first run would pull in the second run's FOR loops
   auto q = prepare(
       "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
       "SORT a.x "
@@ -443,11 +384,8 @@ TEST_F(OptimizeJoinOrderTest, rewrite_keeps_the_plan_valid) {
   std::vector<EnumerateCollectionNode*> desired{current[1], current[0]};
   rewritePlan(*plan, current, desired);
 
-  // findVarUsage() only records which node sets and uses each variable; it
-  // does not check that a used variable was already set. planRegisters() is
-  // the check that actually enforces "set before use" -- it throws
-  // MissingVariablesException from the register planner, and it needs
-  // findVarUsage()'s recorded set/use relationships to run at all.
+  // planRegisters() is what enforces set-before-use; findVarUsage() only
+  // records the relationships it needs
   plan->findVarUsage();
   EXPECT_NO_THROW(plan->planRegisters());
 }

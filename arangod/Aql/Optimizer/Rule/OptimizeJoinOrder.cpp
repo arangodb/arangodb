@@ -98,8 +98,6 @@ void optimizeJoinOrder(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     });
   }
 
-  // `modified` decides whether the rule appears in explain's applied-rules
-  // list, which hasAppliedRule() also reads.
   opt->addPlan(std::move(plan), rule, modified);
 }
 
