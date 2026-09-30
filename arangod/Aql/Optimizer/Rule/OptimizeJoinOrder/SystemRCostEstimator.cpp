@@ -69,15 +69,14 @@ auto SystemRCostEstimator::seed(JoinGraph::Node const& start) const
   auto const restricted = restrictedFor(start);
 
   JoinEstimate estimate;
-  estimate.cardinality = clampEstimate(restricted.rows);
+  estimate.cardinality = restricted.rows;
   estimate.defaulted = restricted.defaulted;
   // An index over the constant restrictions turns the initial scan into a
   // lookup returning restricted(v) rows; otherwise the whole collection is
   // read.
-  estimate.cost =
-      _statistics->hasIndexCovering(start, start.conditions)
-          ? clampEstimate(restricted.rows)
-          : clampEstimate(std::max(_statistics->documentCount(start), 1.0));
+  estimate.cost = _statistics->hasIndexCovering(start, start.conditions)
+                      ? restricted.rows
+                      : std::max(_statistics->documentCount(start), 1.0);
   return estimate;
 }
 
@@ -120,18 +119,12 @@ auto SystemRCostEstimator::extend(
   }
 
   double const count = std::max(_statistics->documentCount(next), 1.0);
-  // Floored at 1.0: a join cannot meaningfully produce less than one row when
-  // its output is itself a multiplier feeding later extend() calls. Without
-  // this floor, two connecting edges plus an over-restricted next can
-  // drive the product arbitrarily far below 1 (clampEstimate only floors at
-  // 0), which then charges near-zero cost for every subsequent step and
-  // erases the cost differences the search relies on to discriminate between
-  // orderings.
-  estimate.cardinality = std::max(
-      clampEstimate(prefix.cardinality * nextRestricted.rows * factor), 1.0);
-  estimate.cost = clampEstimate(
+  // a join cannot produce a fraction of a row
+  estimate.cardinality =
+      std::max(prefix.cardinality * nextRestricted.rows * factor, 1.0);
+  estimate.cost =
       prefix.cost + (probeable ? probeCost(prefix.cardinality, count)
-                               : scanCost(prefix.cardinality, count)));
+                               : scanCost(prefix.cardinality, count));
   return estimate;
 }
 

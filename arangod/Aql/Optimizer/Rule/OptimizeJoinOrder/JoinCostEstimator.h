@@ -32,19 +32,6 @@
 namespace arangodb::aql {
 class ExecutionPlan;
 
-/// @brief ceiling for cardinalities and costs. A long chain of defaulted
-/// statistics would otherwise reach infinity, and inf - inf is nan, which
-/// would break the ordering comparison. A large finite number keeps the
-/// comparison total.
-constexpr double kMaxEstimate = 1e18;
-
-inline auto clampEstimate(double value) noexcept -> double {
-  if (!std::isfinite(value) || value > kMaxEstimate) {
-    return kMaxEstimate;
-  }
-  return std::max(value, 0.0);
-}
-
 /// @brief cost of one index lookup per outer row. The descent traverses the
 /// whole index, so `collectionSize` is the *unrestricted* document count: a
 /// constant restriction on the inner side is an extra predicate and does not
@@ -53,12 +40,12 @@ inline auto clampEstimate(double value) noexcept -> double {
 ///
 inline auto probeCost(double rows, double collectionSize) noexcept -> double {
   double const perRow = std::max(std::log2(std::max(collectionSize, 1.0)), 1.0);
-  return clampEstimate(rows * perRow);
+  return rows * perRow;
 }
 
 /// @brief cost of one full scan per outer row, i.e. no usable index.
 inline auto scanCost(double rows, double collectionSize) noexcept -> double {
-  return clampEstimate(rows * std::max(collectionSize, 1.0));
+  return rows * std::max(collectionSize, 1.0);
 }
 
 /// @brief the running estimate for one join prefix.
