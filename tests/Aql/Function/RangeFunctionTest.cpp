@@ -88,16 +88,13 @@ void sweepExponentSpread() {
               double const to = static_cast<double>(b) / kDenom;
               double const step = sign * static_cast<double>(s) / kDenom;
 
-              // In some cases, the tolerance to cover double noise (implemented
-              // as 4 * ulp in RANGE function) is larger than the step, which
-              // produces extra elements, and the assertion will fail.
-              // Intentionally, we cut those cases out of the test since
-              // 'perfect' precision is impossible to achieve.
+              // A step narrower than the gap between neighbouring doubles
+              // cannot be represented at this magnitude, so no count is right.
               double const m = std::max(std::abs(from), std::abs(to));
               double const ulp =
                   std::nextafter(m, std::numeric_limits<double>::infinity()) -
                   m;
-              if (std::abs(step) < 8.0 * ulp) {
+              if (std::abs(step) < ulp) {
                 continue;
               }
 
