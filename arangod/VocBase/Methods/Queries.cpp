@@ -102,32 +102,30 @@ auto fanoutHeaders() -> network::Headers {
                                                context.user())}};
 }
 
-arangodb::Result checkAuthorization(TRI_vocbase_t& vocbase, bool allDatabases) {
-  Result res;
-
-  if (allDatabases) {
-    // list of queries requested for _all_ databases
-    if (!vocbase.isSystem()) {
-      // request must be made in the system database
-      res.reset(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
-    } else if (!ExecContext::current().isSuperuserOrDisabled()) {
-      // request must be made only by superusers
-      res.reset(
-          TRI_ERROR_FORBIDDEN,
-          "only superusers are allowed to perform actions on all queries");
-    }
+/**
+ * Actions on the queries of all databases require the _system database and
+ * superuser privileges
+ */
+auto checkAllDatabasesAuthorization(TRI_vocbase_t const& vocbase) -> Result {
+  if (!vocbase.isSystem()) {
+    // request must be made in the system database
+    return {TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE};
   }
-
-  return res;
+  if (!ExecContext::current().isSuperuserOrDisabled()) {
+    // request must be made only by superusers
+    return {TRI_ERROR_FORBIDDEN,
+            "only superusers are allowed to perform actions on all queries"};
+  }
+  return {};
 }
 
 /// @brief return the list of currently running or slow queries
 arangodb::Result getQueries(TRI_vocbase_t& vocbase, velocypack::Builder& out,
                             QueriesMode mode, bool allDatabases, bool fanout) {
-  Result res = checkAuthorization(vocbase, allDatabases);
-
-  if (res.fail()) {
-    return res;
+  if (allDatabases) {
+    if (auto const res = checkAllDatabasesAuthorization(vocbase); res.fail()) {
+      return res;
+    }
   }
 
   TRI_ASSERT(mode == QueriesMode::Slow || mode == QueriesMode::Current);
@@ -181,6 +179,8 @@ arangodb::Result getQueries(TRI_vocbase_t& vocbase, velocypack::Builder& out,
                               std::views::filter(isAccessible)) {
     out.add(entry);
   }
+
+  Result res;
 
   if (ServerState::instance()->isCoordinator() && fanout) {
     // coordinator case, fan out to other coordinators!
@@ -266,25 +266,14 @@ Result Queries::listCurrent(TRI_vocbase_t& vocbase, velocypack::Builder& out,
 /// @brief clears the slow queries the caller may access
 Result Queries::clearSlow(TRI_vocbase_t& vocbase, bool allDatabases,
                           bool fanout) {
-  Result res;
-
   QueryAccess access;
   auto const shouldClear = [&access](velocypack::Slice const entry) {
     return access.isAccessible(entry);
   };
 
   if (allDatabases) {
-    // list of queries requested for _all_ databases
-    if (!vocbase.isSystem()) {
-      // request must be made in the system database
-      return res.reset(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
-    }
-    auto const& context = ExecContext::current();
-    if (!context.isSuperuserOrDisabled()) {
-      // request must be made only by superusers
-      return res.reset(
-          TRI_ERROR_FORBIDDEN,
-          "only superusers may retrieve the list of queries for all databases");
+    if (auto const res = checkAllDatabasesAuthorization(vocbase); res.fail()) {
+      return res;
     }
 
     arangodb::DatabaseFeature& databaseFeature =
@@ -295,6 +284,8 @@ Result Queries::clearSlow(TRI_vocbase_t& vocbase, bool allDatabases,
   } else {
     vocbase.queryList()->clearSlow(shouldClear);
   }
+
+  Result res;
 
   if (ServerState::instance()->isCoordinator() && fanout) {
     // coordinator case, fan out to other coordinators!
@@ -351,8 +342,10 @@ Result Queries::clearSlow(TRI_vocbase_t& vocbase, bool allDatabases,
 /// @brief kills the given query if the caller is its owner or an admin
 Result Queries::kill(TRI_vocbase_t& vocbase, TRI_voc_tick_t id,
                      bool allDatabases) {
-  if (auto const res = checkAuthorization(vocbase, allDatabases); res.fail()) {
-    return res;
+  if (allDatabases) {
+    if (auto const res = checkAllDatabasesAuthorization(vocbase); res.fail()) {
+      return res;
+    }
   }
 
   auto const authorize = [](aql::Query const& query) {
@@ -386,11 +379,5 @@ Result Queries::kill(DatabaseFeature& df, std::string const& databaseName,
   if (!vocbase) {
     return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND};
   }
-  Result res = checkAuthorization(*vocbase, /*allDatabases*/ false);
-
-  if (res.ok()) {
-    res.reset(vocbase->queryList()->kill(id));
-  }
-
-  return res;
+  return vocbase->queryList()->kill(id);
 }
