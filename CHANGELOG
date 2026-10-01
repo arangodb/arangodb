@@ -1,6 +1,16 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* AQL optimizer rule `optimize-join-order` now reorders adjacent `FOR` loops
+  joined by equijoin conditions, choosing the order from estimated join
+  cardinalities, instead of only building the join graph. The rule stays
+  disabled by default and must be requested per query with
+  `{ optimizer: { rules: ["+optimize-join-order"] } }`. It keeps the written
+  order unless the estimate shows a clear improvement, keeps any join whose
+  statistics are not backed by an index as written, and switches off
+  `interchange-adjacent-enumerations` for a query only once it has actually
+  reordered a join.
+
 * Updated ArangoDB Starter to v0.20.0-preview-17.
 
 * Upgraded included rclone to v1.75.1 with go1.26.8 and non-vulnerable

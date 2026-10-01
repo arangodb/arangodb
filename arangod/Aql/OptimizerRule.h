@@ -140,14 +140,14 @@ struct OptimizerRule {
     // push limits into subqueries and simplify them
     optimizeSubqueriesRule,
 
+    optimizeJoinOrder,
+
     // "Pass 3": interchange EnumerateCollection nodes in all possible ways
     //           this is level 500, please never let new plans from higher
     //           levels go back to this or lower levels!
     // ======================================================
 
     interchangeAdjacentEnumerationsRule,
-
-    optimizeJoinOrder,
 
     // replace attribute accesses that are equal due to a filter statement
     // with the same value. This might enable other optimizations later on.
@@ -501,6 +501,15 @@ struct OptimizerRule {
       "materializeForEnumerateNearRule must run after "
       "pushFilterIntoEnumerateNear, since the filter mode must already be "
       "decided as it takes precedence over projections");
+
+  static_assert(optimizeJoinOrder < interchangeAdjacentEnumerationsRule,
+                "optimizeJoinOrder disables interchange once it has "
+                "reordered, which only works on a rule that runs later");
+  static_assert(optimizeJoinOrder < moveCalculationsUpRule2 &&
+                    optimizeJoinOrder < moveFiltersUpRule2,
+                "optimizeJoinOrder's splice leaves the run's calculations "
+                "and filters after every enumeration; the move-up rules "
+                "must run afterwards to put them back");
 
   std::string_view name;
   RuleFunction func;

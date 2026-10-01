@@ -274,8 +274,10 @@ auto buildJoinGraph(ExecutionPlan const* plan, ExecutionNode* firstEnumeration,
       }
 
       case ExecutionNode::CALCULATION: {
-        // calculations feeding filters are inspected via the FILTER case; the
-        // calculation node itself is part of the run but carries no join info.
+        auto* calc = ExecutionNode::castTo<CalculationNode*>(n);
+        if (!calc->expression()->isDeterministic()) {
+          graph.hasNonDeterministicCalculation = true;
+        }
         break;
       }
 

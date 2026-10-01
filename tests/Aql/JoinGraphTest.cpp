@@ -201,4 +201,18 @@ TEST_F(JoinGraphTest, separate_runs_produce_separate_graphs) {
   }
 }
 
+TEST_F(JoinGraphTest, non_deterministic_calculation_is_flagged) {
+  auto q = prepare(
+      "FOR a IN c1 LET r = RAND() FILTER a.x > r "
+      "FOR b IN c2 FILTER a.y == b.z RETURN [a, b]");
+  auto g = buildGraph(*q);
+  EXPECT_TRUE(g.hasNonDeterministicCalculation);
+}
+
+TEST_F(JoinGraphTest, deterministic_run_is_not_flagged) {
+  auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
+  auto g = buildGraph(*q);
+  EXPECT_FALSE(g.hasNonDeterministicCalculation);
+}
+
 }  // namespace arangodb::tests::aql
