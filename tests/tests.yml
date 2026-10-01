@@ -221,12 +221,13 @@
             makedataDB: system_oneshard_makedata
             suffix: cluster-oneshard
 
-- rta_makedata:
+- rta_makedata_rbac:
     job: run-rbac-tests
+    suites:
+      - rta_makedata
     options:
       type: single
       size: medium
-      suffix: rbac
       timeLimit: 5400
     requires:
       coverage: false
