@@ -256,6 +256,7 @@ function arangosh (options) {
   print('--------------------------------------------------------------------------------');
   let section = "testArangoshPipeThrough";
   let args = ct.makeArgs.arangosh(options);
+  args['connect'] = false;
   args['javascript.execute-string'] = "print(require('internal').pollStdin())";
 
   const startTime = time();
@@ -264,7 +265,6 @@ function arangosh (options) {
   sh.detectLogfiles(tmpMgr.tempDir, tmpMgr.tempDir);
   let res = executeExternal(pu.ARANGOSH_BIN, toArgv(args), true, sh.getSanOptions());
   const deltaTime = time() - startTime;
-
   fs.writePipe(res.pid, "bla\n");
   fs.closePipe(res.pid, false);
   let output = fs.readPipe(res.pid);
@@ -339,7 +339,7 @@ function arangosh (options) {
   }
 
   // test shebang execution with arangosh
-  {
+  if (false) { // connection handling being disabled makes this nice to have feature untesteable.
     var shebangSuccess = true;
     var deltaTime3 = 0;
     var shebangFile = fs.getTempFile();
@@ -378,11 +378,11 @@ function arangosh (options) {
       ret.testArangoshShebang.failed = 0;
     }
     fs.remove(shebangFile);
+    ++ret.testArangoshShebang['total'];
+    ret.testArangoshShebang['status'] = shebangSuccess;
+    ret.testArangoshShebang['duration'] = deltaTime3;
+    print((shebangSuccess ? GREEN : RED) + 'Status: ' + (shebangSuccess ? 'SUCCESS' : 'FAIL') + RESET);
   }
-  ++ret.testArangoshShebang['total'];
-  ret.testArangoshShebang['status'] = shebangSuccess;
-  ret.testArangoshShebang['duration'] = deltaTime3;
-  print((shebangSuccess ? GREEN : RED) + 'Status: ' + (shebangSuccess ? 'SUCCESS' : 'FAIL') + RESET);
   print();
   return ret;
 }

@@ -1,5 +1,4 @@
 /*jshint strict: false */
-/* global SYS_IS_V8_BUILD */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -725,7 +724,7 @@ ArangoCollection.prototype.exists = function (id, options) {
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief gets a random element from the collection
 // //////////////////////////////////////////////////////////////////////////////
-if (SYS_IS_V8_BUILD) {
+if (false) {
   ArangoCollection.prototype.any = function () {
     let requestResult = this._database._connection.PUT(
       this._prefixurl('/_api/simple/any'), { collection: this._name });
@@ -777,7 +776,7 @@ let buildExampleQuery = function(col, exampleDoc, skip, limit) {
 // / @brief constructs a query-by-example for a collection
 // //////////////////////////////////////////////////////////////////////////////
 
-if (SYS_IS_V8_BUILD) {
+if (false) {
   ArangoCollection.prototype.firstExample = function (example) {
     let e;
     if (arguments.length === 1) {
@@ -1323,7 +1322,7 @@ ArangoCollection.prototype.outEdges = function (vertex) {
 // / @brief removes documents matching an example
 // //////////////////////////////////////////////////////////////////////////////
 
-if (SYS_IS_V8_BUILD) {
+if (false) {
   ArangoCollection.prototype.removeByExample = function (example,
                                                          waitForSync, limit) {
     let data = {
@@ -1364,7 +1363,7 @@ if (SYS_IS_V8_BUILD) {
 // / @brief replaces documents matching an example
 // //////////////////////////////////////////////////////////////////////////////
 
-if (SYS_IS_V8_BUILD) {
+if (false) {
   ArangoCollection.prototype.replaceByExample = function (example,
                                                           newValue, waitForSync, limit) {
     let data = {
@@ -1408,7 +1407,7 @@ if (SYS_IS_V8_BUILD) {
 // / @brief updates documents matching an example
 // //////////////////////////////////////////////////////////////////////////////
 
-if (SYS_IS_V8_BUILD) {
+if (false) {
   ArangoCollection.prototype.updateByExample = function (example,
                                                          newValue, keepNull, waitForSync, limit) {
     let data = {
