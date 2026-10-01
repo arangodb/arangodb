@@ -404,7 +404,9 @@ ResultT<std::string> V8ClientConnection::authenticateViaOpenAuth() {
   // Create connection without authentication
   auto connection = tempBuilder.connect(_loop);
   if (!connection) {
-    throw std::runtime_error("Failed to create connection for authentication");
+    return ResultT<std::string>::error(
+        TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
+        "Failed to create connection for authentication");
   }
 
   // Prepare the authentication request
@@ -427,61 +429,68 @@ ResultT<std::string> V8ClientConnection::authenticateViaOpenAuth() {
   std::string jsonBody = bodyBuilder.slice().toJson();
   req->addBinary(reinterpret_cast<uint8_t const*>(jsonBody.data()),
                  jsonBody.size());
-
   // Send the request
   auto response = connection->sendRequest(std::move(req));
   if (!response) {
-    throw std::runtime_error("Failed to send authentication request");
+    return ResultT<std::string>::error(TRI_ERROR_FAILED,
+                                       "Failed to send authentication request");
   }
-
-  if (response->statusCode() != fuerte::StatusOK) {
-    std::string errorMsg = "Authentication failed with status code: " +
-                           std::to_string(response->statusCode());
-    if (response->payloadSize() > 0) {
-      // Try to parse error message from response
-      try {
-        auto parsedBody = VPackParser::fromJson(
-            reinterpret_cast<char const*>(response->payload().data()),
-            response->payload().size());
-        auto slice = parsedBody->slice();
-        if (slice.isObject() && slice.hasKey("errorMessage")) {
-          errorMsg =
-              VelocyPackHelper::getStringValue(slice, "errorMessage", errorMsg);
-        }
-
-        // This means that open/auth endpoint is not implemented and we are not
-        // communicating to the coordinator
-        if (slice.hasKey("code") && slice.get("code").isNumber()) {
-          auto const errorCode = ErrorCode(slice.get("code").getNumber<int>());
-          if (errorCode == TRI_ERROR_HTTP_NOT_IMPLEMENTED ||
-              errorCode == TRI_ERROR_HTTP_NOT_FOUND) {
-            return {TRI_ERROR_ARANGO_TRY_AGAIN};
-          }
-        }
-
-      } catch (...) {
-        // Ignore parsing errors, use default error message
-      }
-    }
-    throw std::runtime_error(errorMsg);
-  }
-
   // Parse the response to extract the JWT token
   if (response->payloadSize() == 0) {
-    throw std::runtime_error("Empty response from authentication endpoint");
+    if (response->statusCode() != fuerte::StatusOK) {
+      return ResultT<std::string>::error(
+          ::ErrorCode{static_cast<int>(response->statusCode())},
+          "Empty response from authentication endpoint");
+    } else {
+      return ResultT<std::string>::error(
+          TRI_ERROR_MALFORMED_JSON,
+          "Empty response from authentication endpoint");
+    }
   }
 
-  auto parsedBody = VPackParser::fromJson(
-      reinterpret_cast<char const*>(response->payload().data()),
-      response->payload().size());
-  auto slice = parsedBody->slice();
+  try {
+    auto parsedBody = VPackParser::fromJson(
+        reinterpret_cast<char const*>(response->payload().data()),
+        response->payload().size());
+    auto slice = parsedBody->slice();
 
-  if (!slice.isObject() || !slice.hasKey("jwt")) {
-    throw std::runtime_error(
-        "Invalid response format from authentication endpoint");
+    if (response->statusCode() != fuerte::StatusOK) {
+      std::string errorMsg = "Authentication failed with status code: " +
+                             std::to_string(response->statusCode());
+      if (slice.isObject() && slice.hasKey("errorMessage")) {
+        errorMsg =
+            VelocyPackHelper::getStringValue(slice, "errorMessage", errorMsg);
+      }
+
+      // This means that open/auth endpoint is not implemented and we are not
+      // communicating to the coordinator
+      if (slice.hasKey("code") && slice.get(StaticStrings::Code).isNumber()) {
+        auto const errorCode =
+            ErrorCode(slice.get(StaticStrings::Code).getNumber<int>());
+        if (errorCode == TRI_ERROR_HTTP_NOT_IMPLEMENTED ||
+            errorCode == TRI_ERROR_HTTP_NOT_FOUND) {
+          return ResultT<std::string>::error(TRI_ERROR_ARANGO_TRY_AGAIN, "");
+        }
+        if (VPackSlice errorNumSlice = slice.get(StaticStrings::ErrorNum);
+            errorNumSlice.isNumber()) {
+          auto const errorNum = ::ErrorCode{errorNumSlice.getNumber<int>()};
+          return ResultT<std::string>::error(errorNum, errorMsg);
+        }
+      }
+      return ResultT<std::string>::error(
+          ::ErrorCode{static_cast<int>(response->statusCode())}, errorMsg);
+    }
+    if (!slice.isObject() || !slice.hasKey("jwt")) {
+      return ResultT<std::string>::error(
+          TRI_ERROR_MALFORMED_JSON,
+          "Invalid response format from authentication endpoint");
+    }
+
+    return ResultT<std::string>::success(
+        VelocyPackHelper::getStringValue(slice, "jwt", ""));
+  } catch (std::exception const& ex) {
+    return ResultT<std::string>::error(TRI_ERROR_MALFORMED_JSON, ex.what());
   }
-
-  return {VelocyPackHelper::getStringValue(slice, "jwt", "")};
 }
 
 // Helper function to check if JWT token needs renewal
@@ -508,48 +517,41 @@ bool V8ClientConnection::needsTokenRenewal() {
 }
 
 // Helper function to renew JWT token
-void V8ClientConnection::renewJwtToken() {
+ResultT<std::string> V8ClientConnection::renewJwtToken() {
   std::lock_guard<std::recursive_mutex> guard(_lock);
 
-  try {
-    // Temporarily store the current values to restore _builder later
-    auto oldUsername = _client.username();
-    auto oldPassword = _client.password();
+  // Temporarily store the current values to restore _builder later
+  auto oldUsername = _client.username();
+  auto oldPassword = _client.password();
 
-    // Set the stored credentials for authentication
-    _client.setUsername(_storedUsername);
-    _client.setPassword(_storedPassword);
+  // Set the stored credentials for authentication
+  _client.setUsername(_storedUsername);
+  _client.setPassword(_storedPassword);
 
-    // Authenticate and get new JWT token
-    auto const res = authenticateViaOpenAuth();
-    if (res.ok()) {
-      std::string newJwtToken = res.get();
-      if (!newJwtToken.empty() && newJwtToken != "invalid") {
-        // Update the JWT token in the builder
-        _builder.jwtToken(newJwtToken);
-        _builder.authenticationType(fu::AuthenticationType::Jwt);
+  // Authenticate and get new JWT token
+  auto const res = authenticateViaOpenAuth();
+  if (res.ok()) {
+    std::string newJwtToken = res.get();
+    if (!newJwtToken.empty() && newJwtToken != "invalid") {
+      // Update the JWT token in the builder
+      _builder.jwtToken(newJwtToken);
+      _builder.authenticationType(fu::AuthenticationType::Jwt);
 
-        // Store the new token and extract its expiration time
-        _currentJwtToken = newJwtToken;
-        auto expiry = arangodb::rest::SslInterface::jwt::extractExpiration(
-            _currentJwtToken);
-        _jwtTokenExpiry = expiry.value_or(0.0);
+      // Store the new token and extract its expiration time
+      _currentJwtToken = newJwtToken;
+      auto expiry = arangodb::rest::SslInterface::jwt::extractExpiration(
+          _currentJwtToken);
+      _jwtTokenExpiry = expiry.value_or(0.0);
 
-        // Force reconnection with the new token
-        shutdownConnection();
-        createConnection();
-      }
+      // Force reconnection with the new token
+      shutdownConnection();
+      createConnection();
     }
-
     // Restore original client credentials (in case they were different)
     _client.setUsername(oldUsername);
     _client.setPassword(oldPassword);
-  } catch (std::exception const& ex) {
-    // Log error but don't throw - let the request fail normally
-    // This prevents disrupting the existing error handling
-  } catch (...) {
-    // Ignore errors during renewal
   }
+  return res;
 }
 
 void V8ClientConnection::adoptRenewedJwtToken() {
@@ -563,7 +565,7 @@ void V8ClientConnection::adoptRenewedJwtToken() {
   createConnection();
 }
 
-void V8ClientConnection::prepareConnection() {
+ResultT<std::string> V8ClientConnection::prepareConnection() {
   // Need to hold _lock when running this function
   _forceJson = _client.forceJson();
   _requestTimeout = std::chrono::duration<double>(_client.requestTimeout());
@@ -577,55 +579,56 @@ void V8ClientConnection::prepareConnection() {
   if (!_client.jwtToken().empty()) {
     _builder.jwtToken(_client.jwtToken());
     _builder.authenticationType(fu::AuthenticationType::Jwt);
+    return ResultT<std::string>::success("");
   } else if (!_client.jwtSecret().empty()) {
     _builder.jwtToken(arangodb::rest::SslInterface::jwt::generateInternalToken(
         _client.jwtSecret(), "arangosh"));
     _builder.authenticationType(fu::AuthenticationType::Jwt);
+    return ResultT<std::string>::success("");
   } else if (!_client.username().empty()) {
     // Use new authentication method via /_open/auth endpoint
-    try {
-      auto const res = authenticateViaOpenAuth();
-      std::string jwtToken;
+    auto const res = authenticateViaOpenAuth();
+    std::string jwtToken;
 
-      if (res.ok()) {
-        jwtToken = res.get();
-        // Server has authentication enabled, use the JWT token
-        _builder.jwtToken(jwtToken);
-        _builder.authenticationType(fu::AuthenticationType::Jwt);
+    if (res.ok()) {
+      jwtToken = res.get();
+      // Server has authentication enabled, use the JWT token
+      _builder.jwtToken(jwtToken);
+      _builder.authenticationType(fu::AuthenticationType::Jwt);
 
-        // Store credentials and JWT token for automatic renewal
-        _storedUsername = _client.username();
-        _storedPassword = _client.password();
-        _currentJwtToken = jwtToken;
+      // Store credentials and JWT token for automatic renewal
+      _storedUsername = _client.username();
+      _storedPassword = _client.password();
+      _currentJwtToken = jwtToken;
 
-        // Extract and store the expiration time
-        auto expiry = arangodb::rest::SslInterface::jwt::extractExpiration(
-            _currentJwtToken);
-        _jwtTokenExpiry = expiry.value_or(0.0);
-      }
-      if (res.errorNumber() == TRI_ERROR_ARANGO_TRY_AGAIN ||
-          jwtToken == "invalid") {
-        // This happens only on agents and dbsevers since they do noe implement
-        // _open/auth API and we will try basic auth. Used only in tests
-        _builder.user(_client.username()).password(_client.password());
-        _builder.authenticationType(fu::AuthenticationType::Basic);
-
-        // Store credentials for potential future use
-        _storedUsername = _client.username();
-        _storedPassword = _client.password();
-      }
-      // If jwtToken is empty, server has authentication disabled
-      // Proceed without authentication
-    } catch (...) {
-      _builder = fuerte::ConnectionBuilder();
+      // Extract and store the expiration time
+      auto expiry = arangodb::rest::SslInterface::jwt::extractExpiration(
+          _currentJwtToken);
+      _jwtTokenExpiry = expiry.value_or(0.0);
     }
+    if (res.errorNumber() == TRI_ERROR_ARANGO_TRY_AGAIN ||
+        jwtToken == "invalid") {
+      // This happens only on agents and dbsevers since they do noe implement
+      // _open/auth API and we will try basic auth. Used only in tests
+      _builder.user(_client.username()).password(_client.password());
+      _builder.authenticationType(fu::AuthenticationType::Basic);
+
+      // Store credentials for potential future use
+      _storedUsername = _client.username();
+      _storedPassword = _client.password();
+    }
+    return res;
   }
+  return ResultT<std::string>::success("");
 }
 
-void V8ClientConnection::connect() {
+ResultT<std::string> V8ClientConnection::connect() {
   std::lock_guard<std::recursive_mutex> guard(_lock);
-  prepareConnection();
-  createConnection();
+  auto res = prepareConnection();
+  if (res.ok()) {
+    createConnection();
+  }
+  return res;
 }
 
 void V8ClientConnection::reconnect() {
@@ -633,7 +636,11 @@ void V8ClientConnection::reconnect() {
 
   std::string oldConnectionId = connectionIdentifier(_connectedBuilder);
 
-  prepareConnection();
+  auto res = prepareConnection();
+  if (!res.ok()) {
+    _lastErrorMessage = res.errorMessage();
+    throw std::runtime_error(_lastErrorMessage);
+  }
 
   std::shared_ptr<fu::Connection> oldConnection;
   _connection.swap(oldConnection);
@@ -940,9 +947,8 @@ static void ClientConnection_ConstructorCallback(
 
   auto v8connection =
       std::make_unique<V8ClientConnection>(v8g->server(), *client);
-  v8connection->connect();
-
-  if (v8connection->isConnected() &&
+  auto res = v8connection->connect();
+  if (res.ok() && v8connection->isConnected() &&
       v8connection->lastHttpReturnCode() == (int)rest::ResponseCode::OK) {
     LOG_TOPIC("9c8b4", INFO, arangodb::Logger::FIXME)
         << ClientFeature::buildConnectedMessage(
@@ -950,11 +956,15 @@ static void ClientConnection_ConstructorCallback(
                v8connection->role(), v8connection->mode(),
                v8connection->databaseName(), v8connection->username());
   } else {
-    std::string errorMessage =
-        "Could not connect. Error message: " + v8connection->lastErrorMessage();
+    if (!res.ok()) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+    } else {
+      std::string errorMessage = "Could not connect. Error message: " +
+                                 v8connection->lastErrorMessage();
 
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
-                                   errorMessage);
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
+                                     errorMessage);
+    }
   }
 
   TRI_V8_RETURN(WrapV8ClientConnection(isolate, v8connection.release()));

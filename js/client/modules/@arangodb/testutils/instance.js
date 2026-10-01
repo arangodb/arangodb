@@ -171,7 +171,7 @@ class instance {
   // / protocol must be one of ["tcp", "ssl", "unix"]
   constructor(options, myInstanceRole, protocol,
               agencyMgr, addArgs,
-              rootDir, tmpDir, restKeyFile,
+              rootDir, tmpDir,
               jwt_secret, mem) {
     this.id = null;
     this.shortName = null;
@@ -198,7 +198,6 @@ class instance {
         this.args[key] = value;
       }
     }
-    this.restKeyFile = restKeyFile;
     this.agencyMgr = agencyMgr;
 
     this.upAndRunning = false;
@@ -226,6 +225,7 @@ class instance {
     if (process.env.hasOwnProperty('COREDIR')) {
       this.coreDirectory = process.env['COREDIR'];
     }
+    this.hasSetPassvoid = false;
     this.jwt_secret = jwt_secret;
     this.jwtFiles = null;
     this.jwtSecrets = [];
@@ -264,7 +264,6 @@ class instance {
       message: this.message,
       rootDir: this.rootDir,
       protocol: this.protocol,
-      restKeyFile: this.restKeyFile,
       agencyConfig: (this.agencyMgr !== undefined) ? this.agencyMgr.getStructure():{},
       upAndRunning: this.upAndRunning,
       suspended: this.suspended,
@@ -293,7 +292,6 @@ class instance {
     this.message = struct['message'];
     this.rootDir = struct['rootDir'];
     this.protocol = struct['protocol'];
-    this.restKeyFile = struct['restKeyFile'];
     this.upAndRunning = struct['upAndRunning'];
     this.suspended = struct['suspended'];
     this.port = struct['port'];
@@ -541,11 +539,6 @@ class instance {
       if (!this.args.hasOwnProperty('cluster.default-replication-factor')) {
         this.args['cluster.default-replication-factor'] = '2';
       }
-    }
-    if (this.options.encryptionAtRest &&
-        !this.args.hasOwnProperty('rocksdb.encryption-keyfile') &&
-        !this.args.hasOwnProperty('rocksdb.encryption-keyfolder')) {
-      this.args['rocksdb.encryption-keyfile'] = this.restKeyFile;
     }
     if (this.options.isInstrumented && this.instanceRole in [
       instanceRole.dbServer,
@@ -839,7 +832,7 @@ class instance {
             if (arango.reconnect(this.endpoint,
                                  '_system',
                                  `${this.options.username}`,
-                                 this.options.password,
+                                 this.hasSetPassvoid ? this.options.password: '',
                                  true)) {
               this.connectionHandle = arango.getConnectionHandle();
               this.dumpConnectionTable();
@@ -1287,7 +1280,7 @@ class instance {
   /////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////
-  /////////////                Utility functionality                             ////////////////////
+  /////////////                Utility functionality                   ////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////
