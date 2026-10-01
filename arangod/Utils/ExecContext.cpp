@@ -557,6 +557,18 @@ Result ExecContext::canAccessQuery(std::string_view queryUser) const {
   return can(AdminAqlQueries{});
 }
 
+/// @brief returns true if the query properties of the given database
+/// may be changed
+Result ExecContext::canChangeQueryProperties(std::string_view db) const {
+  using namespace auth::perms;
+  auto const databaseAccess =
+      can(UseDatabase{.name{db}, .level = DatabaseAccessLevel::Write});
+  if (databaseAccess.fail() && can(AdminAqlQueries{}).fail()) {
+    return databaseAccess;
+  }
+  return checkNotReadOnly();
+}
+
 /// @brief returns true if the given user may be created.
 Result ExecContext::canCreateUser(std::string_view userName) const {
   using namespace auth::perms;

@@ -245,6 +245,10 @@ class ExecContext {
 
   [[nodiscard]] Result canAccessQuery(std::string_view queryUser) const;
 
+  /// @brief returns true if the query properties of the given
+  /// database may be changed
+  [[nodiscard]] Result canChangeQueryProperties(std::string_view db) const;
+
   /// @brief returns true for each user which can be read
   // TODO Should this return a std::vector<Result>?
   // MAX: I do not think so, it is used only once to filter the visible

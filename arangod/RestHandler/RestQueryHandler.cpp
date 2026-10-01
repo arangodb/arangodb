@@ -332,6 +332,12 @@ void RestQueryHandler::replaceProperties() {
     return;
   }
 
+  if (auto r = ExecContext::current().canChangeQueryProperties(_vocbase.name());
+      r.fail()) {
+    generateError(r);
+    return;
+  }
+
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
