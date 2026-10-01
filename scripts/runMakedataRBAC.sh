@@ -15,18 +15,17 @@
 #   export OPERATOR=/path/to/kube-arangodb/bin/linux/amd64/arangodb_operator
 #
 # Usage:
-#   run_all.sh                          every layer
-#   run_all.sh --layers offline         just the offline checks
-#   run_all.sh --layers rbac,classic    just the two live configurations
-#   run_all.sh --test 050,400           override the RBAC suite filter
+#   scripts/runMakedataRBAC.sh                          every layer
+#   scripts/runMakedataRBAC.sh --layers offline         just the offline checks
+#   scripts/runMakedataRBAC.sh --layers rbac,classic    just the two live configurations
+#   scripts/runMakedataRBAC.sh --test 050,400           override the RBAC suite filter
 set -u -o pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SCRIPTS="$(cd "$HERE/.." && pwd)/scripts"
-RUNNER="$HERE/run_scenarios.py"
-# tests/api/rbac/rta -> rbac -> api -> tests -> source root. Four levels, not
-# three: run_scenarios.py counts from tests/api/rbac, this file from one deeper.
-ROOT="$(cd "$HERE/../../../.." && pwd)"
+ROOT="$(cd "$HERE/.." && pwd)"
+RBAC="$ROOT/tests/api/rbac"
+SCRIPTS="$RBAC/scripts"
+RUNNER="$RBAC/rta/run_scenarios.py"
 
 LAYERS="offline,rbac,role-modelling,classic"
 # Both empty means "use the runner's default" for both layers, so the two

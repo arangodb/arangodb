@@ -22,7 +22,7 @@ tests/api/rbac/
                       with the requirements enforced and verified
   mkjwt.py            mints ArangoDB-compatible HS256 JWTs
   rta/
-    run_all.sh        every layer, cheapest first - start here
+    (moved to scripts/runMakedataRBAC.sh)
     scenarios.py      the catalogs: RBAC configs and classic grants, + outcomes
     run_scenarios.py  the driver
     selfcheck.py      validates the catalogs against arangod's own vocabulary
@@ -102,7 +102,7 @@ Readiness is `authorization.v1=healthy` in the sidecar log, not merely the gatew
 
 ```bash
 export OPERATOR=/path/to/kube-arangodb/bin/linux/amd64/arangodb_operator
-tests/api/rbac/rta/run_all.sh
+scripts/runMakedataRBAC.sh
 ```
 
 That runs four layers, cheapest first, and prints a PASS/FAIL summary:
@@ -117,10 +117,10 @@ That runs four layers, cheapest first, and prints a PASS/FAIL summary:
 Subsets and overrides:
 
 ```bash
-tests/api/rbac/rta/run_all.sh --layers offline          # CI without binaries
-tests/api/rbac/rta/run_all.sh --layers rbac,classic     # both configurations
-tests/api/rbac/rta/run_all.sh --test 050,400,500        # override the suite filter
-tests/api/rbac/rta/run_all.sh --help
+scripts/runMakedataRBAC.sh --layers offline          # CI without binaries
+scripts/runMakedataRBAC.sh --layers rbac,classic     # both configurations
+scripts/runMakedataRBAC.sh --test 050,400,500        # override the suite filter
+scripts/runMakedataRBAC.sh --help
 ```
 
 Most of the wall time is denials: a step that is *meant* to be refused still costs about two minutes, because rta-makedata's `createSafe()` retries a failing create 50 times before giving up.
@@ -178,7 +178,7 @@ sidecar's integration services with that secret**. So the sidecar's
 `--sidecar.auth` key folder has to hold the same value.
 
 `env.sh`'s `ensure_secret()` generates a *random* secret when the key file is
-absent. That is correct for `run_all.sh`, which owns both ends, and fatal here.
+absent. That is correct for `scripts/runMakedataRBAC.sh`, which owns both ends, and fatal here.
 Measured, with a random-key sidecar:
 
 ```
@@ -200,7 +200,7 @@ token and checks arangod accepts it before declaring the stack ready.
 
 ### Port ownership
 
-`env.sh` pins `:8107`-`:8109` and `:8529`, so a `run_all.sh` stack and a
+`env.sh` pins `:8107`-`:8109` and `:8529`, so a `scripts/runMakedataRBAC.sh` stack and a
 harness stack cannot coexist; run one, then the other.
 `start_sidecar.sh` kills only the sidecar recorded in `$RBAC_WORK/sidecar.pid`
 and refuses to start when something it does not own holds the ports, naming the
@@ -210,6 +210,44 @@ kill a process whose name is neither `arangod` nor `arangodb_operator`.
 One caveat inherited from `start_arangod.sh`: it runs `pkill -9 -x arangod`,
 which kills **every** `arangod` owned by the user, including an in-flight
 unittest instance. Do not bring a stack up while a test is running.
+
+### Where the harness-side RBAC code lives
+
+`--rbac` is a **global** option: `instance-manager.js` declares it and
+`instance.js` points every arangod it starts at the service. So the parts that
+make RBAC actually function belong to the harness, not to one suite, and live
+in `js/client/modules/@arangodb/testutils/rbac.js`:
+
+| Function | Purpose |
+|---|---|
+| `applyServerOptions()` | authentication on, request compression pinned off |
+| `bootstrapUser()` | binds the account the suite runs as; unbinds afterwards |
+| `runnerArgs()` | secret file plus management/integration flags |
+| `checkSuiteSupported()` | refuses an unverified suite against a real sidecar |
+
+`testrunner.js` calls into that module, so the base class of every suite does
+not grow a dependency on `tests/api/rbac/rta/run_scenarios.py`. What stays in
+`testsuites/rta_makedata.js` is only what is rta-specific: `normalizeSuiteFilter()`
+(makedata's own argv coercion and three-digit suite names) and
+`runRbacScenarios()` (needs `rtasource` and the rta runner).
+
+Two placement details that are load-bearing rather than stylistic:
+
+* The bootstrap runs in `run()` right after `reconnect()`, **not** in
+  `postStart()` - suites override `postStart` without calling `super`, and
+  would silently lose their binding.
+* `applyServerOptions()` runs in the base constructor, before the
+  instanceManager exists, because `handleJWT()` reads
+  `addArgs['server.jwt-secret']` in *its* constructor to set `jwt_secret`,
+  which `bootstrapUser()` then signs with.
+
+A suite that has been exercised against a real sidecar sets `this.rbacVerified
+= true` on its runner. Any other suite given `--rbac <url>` is refused with a
+message naming itself, rather than running against a deny-by-default service it
+has never been checked against; `--rbacUnverified true` overrides that.
+Measured: `shell_client --rbac <url> --rbacUnverified true --test shell-keygen`
+now passes, binding and unbinding `root` around the run - which was not
+possible while this code lived in one suite's file.
 
 ### What the harness has to do for RBAC to be real
 
@@ -521,7 +559,7 @@ Detection falls back to the source when no binary is present.
 
 ## Provenance
 
-`../scripts/`, `../mkjwt.py` and the rest of `tests/api/rbac/` come from the `feature/rbac-api-tester` branch, which is **not merged into `devel`** — it is a separate line of development, and its `arangod/Auth/Rbac` is older than devel's. `setup_all.sh` is intentionally *not* used: it also seeds a demo user and policy, which would contaminate the scenarios. The driver calls `start_arangod.sh`, `start_sidecar.sh` and `start_integration.sh` directly.
+`../scripts/`, `../mkjwt.py` and the rest of `tests/api/rbac/` come from the `feature/rbac-api-tester` branch, which is **not merged into `devel`** — it is a separate line of development, and its `arangod/Auth/Rbac` is older than devel's.
 
 Everything under `rta/` is new and branch-independent — it detects the arangod it is pointed at, so it works on `devel` too, where the `scripts/` it depends on would have to be brought in.
 
@@ -576,10 +614,10 @@ documents; views; graphs; analyzers.
 
 | layer | how | result |
 |---|---|---|
-| offline: self-check, listings, dry runs | `run_all.sh` | **PASS** |
-| RBAC (`:8529`, with the service) | `run_all.sh` | **21 steps, 0 mismatches** |
-| `role-modelling` (opt-in) | `run_all.sh` | **1 step, 0 mismatches** |
-| classic (`:8530`, without the service) | `run_all.sh` | **14 steps, 0 mismatches** |
+| offline: self-check, listings, dry runs | `scripts/runMakedataRBAC.sh` | **PASS** |
+| RBAC (`:8529`, with the service) | `scripts/runMakedataRBAC.sh` | **21 steps, 0 mismatches** |
+| `role-modelling` (opt-in) | `scripts/runMakedataRBAC.sh` | **1 step, 0 mismatches** |
+| classic (`:8530`, without the service) | `scripts/runMakedataRBAC.sh` | **14 steps, 0 mismatches** |
 | RBAC, inside the test harness | `unittest rta_makedata --rbac <url>` | **Success; 19 steps, 0 mismatches** |
 
 The harness path runs 19 of the 21 steps: `reader-permissive-mode` needs the

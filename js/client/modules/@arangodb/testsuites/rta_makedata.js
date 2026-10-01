@@ -35,6 +35,7 @@ const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const ct = require('@arangodb/testutils/client-tools');
 const tu = require('@arangodb/testutils/test-utils');
+const rbac = require('@arangodb/testutils/rbac');
 const im = require('@arangodb/testutils/instance-manager');
 const inst = require('@arangodb/testutils/instance');
 const SetGlobalExecutionDeadlineTo = require('internal').SetGlobalExecutionDeadlineTo;
@@ -104,10 +105,7 @@ function makeDataWrapper (options) {
       if (this.options.isCov) {
         this.options.oneTestTimeout = this.options.oneTestTimeout * 4;
       }
-      if (this.options.rbac) {
-        Object.assign(this.serverOptions, tu.testServerAuthInfo);
-        this.serverOptions['network.compression-method'] = 'none';
-      }
+      this.rbacVerified = true;
     }
     filter(te, filtered) {
       return true;
@@ -154,44 +152,10 @@ function makeDataWrapper (options) {
     // / Drive the RBAC scenario matrix (tests/api/rbac/rta) against the SUT.
     // / Runs only when --rbac was given a URL.
     // //////////////////////////////////////////////////////////////////////
-    rbacRunnerArgs() {
-      const secretFile = fs.join(this.instanceManager.rootDir, 'rta_rbac_jwt_secret');
-      const secret = this.instanceManager.jwt_secret;
-      if (typeof secret !== 'string' || secret === '') {
-        throw new Error(
-          'instanceManager.jwt_secret is empty - cannot sign RBAC scenario ' +
-          'tokens. --rbac requires authentication to be enabled on the server.');
-      }
-      fs.write(secretFile, secret);
-      return [
-        fs.join(this.options.rtaRbacDir, 'run_scenarios.py'),
-        '--management', this.options.rbac,
-        '--integration', this.options.rbac,
-        '--jwt-secret-file', secretFile,
-        '--external-sidecar',
-      ];
-    }
-
-    bootstrapRbacUser(remove) {
-      if (typeof this.options.rbac !== 'string') {
-        return true;
-      }
-      const flag = remove ? '--remove-bootstrap-user' : '--bootstrap-user';
-      const argv = this.rbacRunnerArgs().concat([flag, this.options.username]);
-      const rc = executeExternalAndWait('python3', argv);
-      if (rc.exit !== 0 && !remove) {
-        print(`${RED}${(new Date()).toISOString()} could not give ` +
-              `'${this.options.username}' an RBAC binding; the workload cannot ` +
-              `run against a deny-by-default sidecar without one${RESET}`);
-        return false;
-      }
-      return true;
-    }
-
     runRbacScenarios(res) {
       const whichRTA = 'rta_RbacScenarios';
       res[whichRTA] = {'status': true, 'message': '', 'duration': 0.0};
-      if (typeof this.options.rbac !== 'string') {
+      if (!rbac.usesRealSidecar(this.options)) {
         res[whichRTA].message =
           'skipped: --rbac was not given a sidecar URL, so there is no ' +
           'management API to seed scenarios through';
@@ -209,7 +173,7 @@ function makeDataWrapper (options) {
         return;
       }
 
-      const argv = this.rbacRunnerArgs().concat([
+      const argv = rbac.runnerArgs(this.options, this.instanceManager).concat([
         '--endpoint', this.instanceManager.findEndpoint(),
         '--arangosh', pu.ARANGOSH_BIN,
         '--rta', this.options.rtasource,
@@ -276,12 +240,6 @@ function makeDataWrapper (options) {
         };
       }
       let res = {'total':0, 'duration':0.0, 'status':true, message: '', 'failed': 0};
-      if (!this.bootstrapRbacUser(false)) {
-        return {
-          'message': 'could not bootstrap the RBAC binding for the workload user',
-          'failed': 1, 'status': false, 'duration': 0.0
-        };
-      }
       let count = 0;
       let counters = { nonAgenciesCount: 1};
       [
@@ -476,7 +434,6 @@ function makeDataWrapper (options) {
       if (this.options.rbac && this.continueTesting) {
         this.runRbacScenarios(res);
       }
-      this.bootstrapRbacUser(true);
       return res;
     }
   }
