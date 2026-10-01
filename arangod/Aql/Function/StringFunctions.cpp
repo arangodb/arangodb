@@ -115,6 +115,22 @@ void rtrimInternal(int32_t& startOffset, int32_t& endOffset,
   }  // for
 }
 
+// Most control characters (like backspace)' collation weights are zeros;
+// So StringSearch will not be able to find them.
+bool hasNoWeightChar(icu_64_64::Collator const& collator,
+                     icu_64_64::UnicodeString const& unicodeStr) {
+  icu_64_64::UnicodeString const empty;
+  for (int32_t i = 0; i < unicodeStr.length();
+       i = unicodeStr.moveIndex32(i, 1)) {
+    UErrorCode status = U_ZERO_ERROR;
+    if (collator.compare(icu_64_64::UnicodeString(unicodeStr.char32At(i)),
+                         empty, status) == UCOL_EQUAL) {
+      return true;
+    }
+  }
+  return false;
+}
+
 }  // namespace
 
 /// @brief function TO_STRING
@@ -266,6 +282,15 @@ AqlValue functions::FindFirst(ExpressionContext* expressionContext,
   UErrorCode status = U_ZERO_ERROR;
   icu_64_64::StringSearch search(uSearchBuf, uBuf, locale, nullptr, status);
 
+  if (U_SUCCESS(status) && hasNoWeightChar(*search.getCollator(), uSearchBuf)) {
+    int32_t start =
+        static_cast<int32_t>(std::min<int64_t>(startOffset, uBuf.length()));
+    int32_t end =
+        static_cast<int32_t>(std::min<int64_t>(maxEnd + 1, uBuf.length()));
+    return AqlValue(
+        AqlValueHintInt(uBuf.indexOf(uSearchBuf, start, end - start)));
+  }
+
   for (int pos = search.first(status); U_SUCCESS(status) && pos != USEARCH_DONE;
        pos = search.next(status)) {
     if (U_FAILURE(status)) {
@@ -343,6 +368,15 @@ AqlValue functions::FindLast(ExpressionContext* expressionContext,
   auto locale = server.getFeature<LanguageFeature>().getLocale();
   UErrorCode status = U_ZERO_ERROR;
   icu_64_64::StringSearch search(uSearchBuf, uBuf, locale, nullptr, status);
+
+  if (U_SUCCESS(status) && hasNoWeightChar(*search.getCollator(), uSearchBuf)) {
+    int32_t start =
+        static_cast<int32_t>(std::min<int64_t>(startOffset, uBuf.length()));
+    int32_t end =
+        static_cast<int32_t>(std::min<int64_t>(maxEnd + 1, uBuf.length()));
+    return AqlValue(
+        AqlValueHintInt(uBuf.lastIndexOf(uSearchBuf, start, end - start)));
+  }
 
   int foundPos = -1;
   for (int pos = search.first(status); U_SUCCESS(status) && pos != USEARCH_DONE;
