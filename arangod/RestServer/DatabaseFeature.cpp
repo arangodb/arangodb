@@ -612,13 +612,10 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
 
     if (!ServerState::instance()->isCoordinator()) {
 #ifdef USE_V8
-      if (server().hasFeature<V8DealerFeature>()) {
-        auto& dealer = server().getFeature<V8DealerFeature>();
-        if (dealer.isEnabled()) {
-          auto r = dealer.createDatabase(name, std::to_string(dbId), true);
-          if (r != TRI_ERROR_NO_ERROR) {
-            THROW_ARANGO_EXCEPTION(r);
-          }
+      if (_dealer != nullptr && _dealer->isEnabled()) {
+        auto r = _dealer->createDatabase(name, std::to_string(dbId), true);
+        if (r != TRI_ERROR_NO_ERROR) {
+          THROW_ARANGO_EXCEPTION(r);
         }
       }
 #endif
