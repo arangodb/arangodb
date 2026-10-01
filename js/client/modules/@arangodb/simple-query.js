@@ -1,5 +1,4 @@
 /* jshint strict: false */
-/* global SYS_IS_V8_BUILD */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -195,7 +194,7 @@ SimpleQueryByCondition.prototype.execute = function (batchSize) {
 // / @brief executes a range query
 // //////////////////////////////////////////////////////////////////////////////
 
-if (SYS_IS_V8_BUILD) {
+if (false) {
   SimpleQueryRange.prototype.execute = function (batchSize) {
     if (this._execution === null) {
       if (batchSize !== undefined && batchSize > 0) {
