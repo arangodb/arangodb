@@ -122,12 +122,6 @@ IndexTypeFactory::IndexTypeFactory(
     application_features::ApplicationServer& server)
     : _server(server) {}
 
-bool IndexTypeFactory::equal(IndexType type, velocypack::Slice lhs,
-                             velocypack::Slice rhs,
-                             bool attributeOrderMatters) const {
-  return indexDefinitionsEqual(type, lhs, rhs, attributeOrderMatters);
-}
-
 IndexFactory::IndexFactory(application_features::ApplicationServer& server)
     : _server(server),
       _factories(),

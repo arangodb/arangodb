@@ -51,7 +51,7 @@ struct IndexDefinition {
   ///        index once instantiated
   virtual bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
                      std::string const&) const {
-    return indexDefinitionsEqual(_type, lhs, rhs, true);
+    return indexDefinitionsEqual(_type, lhs, rhs, attributeOrderMatters());
   }
 
   /// @brief normalize an Index definition prior to instantiation/persistence
