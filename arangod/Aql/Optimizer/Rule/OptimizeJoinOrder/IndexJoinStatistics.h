@@ -75,18 +75,13 @@ class IndexJoinStatistics final : public JoinStatistics {
       -> bool override;
 
  private:
-  /// @brief the collection's indexes lifted into IndexFacts, and its document
-  /// count, read once per node.
-  struct NodeFacts {
-    std::vector<IndexFacts> indexes;
-    double count = 0.0;
-  };
-
-  [[nodiscard]] auto factsFor(JoinGraph::Node const& node) const
-      -> NodeFacts const&;
+  /// @brief the collection's indexes lifted into IndexFacts, once per node.
+  [[nodiscard]] auto candidatesFor(JoinGraph::Node const& node) const
+      -> std::span<IndexFacts const>;
 
   ExecutionPlan const& _plan;
-  mutable containers::FlatHashMap<ExecutionNodeId, NodeFacts> _facts;
+  mutable containers::FlatHashMap<ExecutionNodeId, std::vector<IndexFacts>>
+      _candidates;
 };
 
 }  // namespace arangodb::aql

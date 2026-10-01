@@ -166,28 +166,28 @@ auto coveringFromIndexFacts(std::span<IndexFacts const> candidates,
 IndexJoinStatistics::IndexJoinStatistics(ExecutionPlan const& plan)
     : _plan(plan) {}
 
-auto IndexJoinStatistics::factsFor(JoinGraph::Node const& node) const
-    -> NodeFacts const& {
+auto IndexJoinStatistics::candidatesFor(JoinGraph::Node const& node) const
+    -> std::span<IndexFacts const> {
   auto const id = node.executionNode->id();
-  if (auto it = _facts.find(id); it != _facts.end()) {
+  if (auto it = _candidates.find(id); it != _candidates.end()) {
     return it->second;
   }
 
-  NodeFacts facts;
+  std::vector<IndexFacts> candidates;
   for (auto const& index : node.executionNode->collection()->indexes()) {
-    facts.indexes.push_back(toIndexFacts(*index));
+    candidates.push_back(toIndexFacts(*index));
   }
-  auto& trx = _plan.getAst()->query().trxForOptimization();
-  if (trx.status() == transaction::Status::RUNNING) {
-    facts.count = static_cast<double>(node.executionNode->collection()->count(
-        &trx, transaction::CountType::kTryCache));
-  }
-  return _facts.emplace(id, std::move(facts)).first->second;
+  return _candidates.emplace(id, std::move(candidates)).first->second;
 }
 
 auto IndexJoinStatistics::documentCount(JoinGraph::Node const& node) const
     -> double {
-  return factsFor(node).count;
+  auto& trx = _plan.getAst()->query().trxForOptimization();
+  if (trx.status() != transaction::Status::RUNNING) {
+    return 0.0;
+  }
+  return static_cast<double>(node.executionNode->collection()->count(
+      &trx, transaction::CountType::kTryCache));
 }
 
 auto IndexJoinStatistics::distinctValues(
@@ -197,14 +197,14 @@ auto IndexJoinStatistics::distinctValues(
   if (trx.status() != transaction::Status::RUNNING) {
     return {1.0, true};
   }
-  auto const& facts = factsFor(node);
-  return distinctFromIndexFacts(facts.indexes, facts.count, attributes);
+  return distinctFromIndexFacts(candidatesFor(node), documentCount(node),
+                                attributes);
 }
 
 auto IndexJoinStatistics::hasIndexCovering(
     JoinGraph::Node const& node,
     std::span<AttributePath const> attributes) const -> bool {
-  return coveringFromIndexFacts(factsFor(node).indexes, attributes);
+  return coveringFromIndexFacts(candidatesFor(node), attributes);
 }
 
 }  // namespace arangodb::aql
