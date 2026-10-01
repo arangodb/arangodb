@@ -2115,8 +2115,8 @@ AstNode* Ast::createPatternOutVariable(std::string_view name) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  // A variable that already exists is a reference. References must not be
-  // used with MATCH filters or constraints;
+  // A pattern out variable must not exist before. Otherwise it is supposed to
+  // be a reference. References must not be restricted within the pattern.
   if (_scopes.existsVariable(name)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_QUERY_PARSE,
