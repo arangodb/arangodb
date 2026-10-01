@@ -42,6 +42,14 @@
 // Every request additionally asks `UseApiVersion version=0` and
 // `UseDatabase name=d level=read` first.
 // Transactions used as preconditions are created as root BEFORE beginObserve().
+//
+// Other users' transactions: own transactions never ask more than the base
+// checks. A transaction of another user asks `AdminMonitorTransactions` when
+// it is listed or its state is requested, and `AdminKillTransactions` when it
+// is aborted (also by DELETE /_api/transaction/write). Committing another
+// user's transaction stays reserved to its owner and the superuser. The
+// requests of the plain users go through the request module with basic auth,
+// so the arangosh connection stays root for the observer.
 
 if (getOptions === true) {
   return {
@@ -67,6 +75,35 @@ const {
   DB,
   DOC_COLLECTION
 } = require('@arangodb/testutils/apitest-fixtures');
+const { assertEqual, assertTrue, assertFalse } = jsunity.jsUnity.assertions;
+const internal = require('internal');
+const request = require('@arangodb/request');
+const users = require('@arangodb/users');
+
+const baseQuestions = [
+  'UseApiVersion version=0',
+  `UseDatabase name=${DB} level=read`
+];
+const monitorQuestions = baseQuestions.concat(['AdminMonitorTransactions']);
+const killQuestions = baseQuestions.concat(['AdminKillTransactions']);
+
+const password = 'testi';
+const transactionApi = `/_db/${DB}/_api/transaction`;
+
+// sends a request as `user` to the connected server without touching the
+// arangosh connection, which has to stay root for the observer
+function sendAs (user, method, path, body) {
+  const url = arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
+  return request({
+    method,
+    url: url + path,
+    body,
+    json: true,
+    headers: {
+      authorization: `Basic ${internal.base64Encode(user + ':' + password)}`
+    }
+  });
+}
 
 function transactionApiAuthzSuite () {
   const c = DOC_COLLECTION;
@@ -83,12 +120,45 @@ function transactionApiAuthzSuite () {
     }
   }
 
+  // begins a stream transaction as `user` (before observation) and returns its id
+  function beginTrxAs (user, collections) {
+    const res = sendAs(user, 'POST', `${transactionApi}/begin`, { collections });
+    assertEqual(201, res.status, JSON.stringify(res.json));
+    return res.json.result.id;
+  }
+  // ids of the transactions root (an admin) can see
+  function transactionIdsAsRoot () {
+    return arango.GET(transactionApi).transactions.map((trx) => trx.id);
+  }
+  function abortAllAsRoot () {
+    transactionIdsAsRoot().forEach(abortTrx);
+  }
+
   return {
-    setUpAll: setUpApiTestData,
-    tearDownAll: tearDownApiTestData,
+    setUpAll: function () {
+      setUpApiTestData();
+      // alice may write to the test database, bob may only read it; root
+      // keeps read-write access to _system and is therefore an admin
+      users.save('alice', password);
+      users.grantDatabase('alice', DB, 'rw');
+      users.save('bob', password);
+      users.grantDatabase('bob', DB, 'ro');
+    },
+
+    tearDownAll: function () {
+      abortAllAsRoot();
+      ['alice', 'bob'].forEach((user) => {
+        try {
+          users.remove(user);
+        } catch (err) {
+        }
+      });
+      tearDownApiTestData();
+    },
 
     tearDown: function () {
       disableObserve();
+      abortAllAsRoot();
     },
 
     // GET /_api/transaction - list ongoing transactions; manager only
@@ -179,6 +249,130 @@ function transactionApiAuthzSuite () {
         "UseApiVersion version=0",
         "UseDatabase name=d level=read"
       ], endObserve());
+    },
+
+    // ── transactions of other users ──────────────────────────────────────
+
+    testListOwnTransactionAsUser: function () {
+      const id = beginTrxAs('alice', { read: [c] });
+
+      beginObserve();
+      const res = sendAs('alice', 'GET', transactionApi);
+      assertPermissions(baseQuestions, endObserve());
+
+      assertEqual(200, res.status, JSON.stringify(res.json));
+      assertTrue(res.json.transactions.some((trx) => trx.id === id));
+    },
+
+    testListForeignTransactionAsUser: function () {
+      const id = beginTrxAs('alice', { read: [c] });
+
+      beginObserve();
+      const res = sendAs('bob', 'GET', transactionApi);
+      assertPermissions(monitorQuestions, endObserve());
+
+      assertEqual(200, res.status, JSON.stringify(res.json));
+      assertFalse(res.json.transactions.some((trx) => trx.id === id));
+    },
+
+    testListForeignTransactionAsAdmin: function () {
+      const id = beginTrxAs('alice', { read: [c] });
+
+      beginObserve();
+      const res = arango.GET_RAW(transactionApi);
+      assertPermissions(monitorQuestions, endObserve());
+
+      assertEqual(200, res.code, JSON.stringify(res.parsedBody));
+      assertTrue(res.parsedBody.transactions.some((trx) => trx.id === id));
+    },
+
+    testGetForeignTransactionStateAsUser: function () {
+      const id = beginTrxAs('alice', { read: [c] });
+
+      beginObserve();
+      const res = sendAs('bob', 'GET', `${transactionApi}/${id}`);
+      assertPermissions(monitorQuestions, endObserve());
+
+      assertEqual(404, res.status, JSON.stringify(res.json));
+    },
+
+    testGetForeignTransactionStateAsAdmin: function () {
+      const id = beginTrxAs('alice', { read: [c] });
+
+      beginObserve();
+      const res = arango.GET_RAW(`${transactionApi}/${id}`);
+      assertPermissions(monitorQuestions, endObserve());
+
+      assertEqual(200, res.code, JSON.stringify(res.parsedBody));
+      assertEqual('running', res.parsedBody.result.status);
+    },
+
+    testAbortOwnTransactionAsUser: function () {
+      const id = beginTrxAs('alice', { write: [c] });
+
+      beginObserve();
+      const res = sendAs('alice', 'DELETE', `${transactionApi}/${id}`);
+      assertPermissions(baseQuestions, endObserve());
+
+      assertEqual(200, res.status, JSON.stringify(res.json));
+    },
+
+    testAbortForeignTransactionAsUser: function () {
+      const id = beginTrxAs('alice', { write: [c] });
+
+      beginObserve();
+      const res = sendAs('bob', 'DELETE', `${transactionApi}/${id}`);
+      assertPermissions(killQuestions, endObserve());
+
+      assertEqual(404, res.status, JSON.stringify(res.json));
+      // still running
+      assertTrue(transactionIdsAsRoot().includes(id));
+    },
+
+    testAbortForeignTransactionAsAdmin: function () {
+      const id = beginTrxAs('alice', { write: [c] });
+
+      beginObserve();
+      const res = arango.DELETE_RAW(`${transactionApi}/${id}`);
+      assertPermissions(killQuestions, endObserve());
+
+      assertEqual(200, res.code, JSON.stringify(res.parsedBody));
+      assertFalse(transactionIdsAsRoot().includes(id));
+    },
+
+    // committing stays reserved to the owner (and the superuser): no admin
+    // question is asked and the transaction is reported as not found
+    testCommitForeignTransactionAsAdmin: function () {
+      const id = beginTrxAs('alice', { write: [c] });
+
+      beginObserve();
+      const res = arango.PUT_RAW(`${transactionApi}/${id}`, {});
+      assertPermissions(baseQuestions, endObserve());
+
+      assertEqual(404, res.code, JSON.stringify(res.parsedBody));
+      assertTrue(transactionIdsAsRoot().includes(id));
+    },
+
+    testAbortAllWriteTransactionsAsUserKeepsForeign: function () {
+      const id = beginTrxAs('alice', { write: [c] });
+
+      beginObserve();
+      const res = sendAs('bob', 'DELETE', `${transactionApi}/write`);
+      assertPermissions(killQuestions, endObserve());
+
+      assertEqual(200, res.status, JSON.stringify(res.json));
+      assertTrue(transactionIdsAsRoot().includes(id));
+    },
+
+    testAbortAllWriteTransactionsAsAdminAbortsForeign: function () {
+      const id = beginTrxAs('alice', { write: [c] });
+
+      beginObserve();
+      const res = arango.DELETE_RAW(`${transactionApi}/write`);
+      assertPermissions(killQuestions, endObserve());
+
+      assertEqual(200, res.code, JSON.stringify(res.parsedBody));
+      assertFalse(transactionIdsAsRoot().includes(id));
     },
   };
 }
