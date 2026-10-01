@@ -100,11 +100,12 @@ T getMetric(IResearchLink const& link) {
 }
 
 std::string getLabels(IResearchLink const& link) {
-  return absl::StrCat("db=\"", link.getDbName(),                     //
-                      "\",view=\"", link.getViewId(),                //
-                      "\",collection=\"", link.getCollectionName(),  //
-                      "\",index_id=\"", link.index().id().id(),      //
-                      "\",shard=\"", link.getShardName(), "\"");
+  return absl::StrCat(  // clang-format off
+      "db=\"", metrics::escapeLabelValue(link.getDbName()), "\","
+      "view=\"", link.getViewId(), "\","
+      "collection=\"", metrics::escapeLabelValue(link.getCollectionName()),
+      "\",index_id=\"", link.index().id().id(), "\","
+      "shard=\"", link.getShardName(), "\"");  // clang-format on
 }
 
 Result linkWideCluster(LogicalCollection const& logical, IResearchView* view) {

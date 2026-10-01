@@ -95,9 +95,9 @@ RocksDBRestReplicationHandler::handleCommandBatch() {
     SyncerId const syncerId = SyncerId::fromRequest(*_request);
     std::string const clientInfo = _request->value("clientInfo");
 
-    // create transaction+snapshot, ttl will be default if `ttl == 0``
-    auto ttl = VelocyPackHelper::getNumericValue<double>(
-        body, "ttl", replutils::BatchInfo::DefaultTimeout);
+    auto ttl = replutils::BatchInfo::sanitizeTtl(
+        VelocyPackHelper::getNumericValue<double>(
+            body, "ttl", replutils::BatchInfo::DefaultTimeout));
     auto& engine = _vocbase.engine<RocksDBEngine>();
     auto ctx =
         _manager->createContext(engine, ttl, syncerId, clientId, patchCount);
@@ -165,9 +165,9 @@ RocksDBRestReplicationHandler::handleCommandBatch() {
       co_return;
     }
 
-    // extract ttl. Context uses initial ttl from batch creation, if `ttl == 0`
-    auto ttl = VelocyPackHelper::getNumericValue<double>(
-        body, "ttl", replutils::BatchInfo::DefaultTimeout);
+    auto ttl = replutils::BatchInfo::sanitizeTtl(
+        VelocyPackHelper::getNumericValue<double>(
+            body, "ttl", replutils::BatchInfo::DefaultTimeout));
 
     auto res = _manager->extendLifetime(id, ttl);
     if (res.fail()) {
