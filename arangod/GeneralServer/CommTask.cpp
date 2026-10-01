@@ -324,22 +324,36 @@ CommTask::Flow CommTask::prepareExecution(
   }
 
   if (ServerState::instance()->isSingleServerOrCoordinator()) {
+    bool const allowedPath =
+        path == "/" || path.starts_with(::pathPrefixAdmin) ||
+        path.starts_with(::pathPrefixApi) || path.starts_with(::pathPrefixOpen);
 #ifdef USE_V8
     auto& server = _server.server();
-    bool const foxxEnabled = server.hasFeature<FoxxFeature>() &&
-                             server.getFeature<FoxxFeature>().foxxEnabled();
-#else
-    constexpr bool foxxEnabled = false;
-#endif
-    if (!foxxEnabled && !(path == "/" || path.starts_with(::pathPrefixAdmin) ||
-                          path.starts_with(::pathPrefixApi) ||
-                          path.starts_with(::pathPrefixOpen))) {
+    if (!server.hasFeature<FoxxFeature>()) {
+      if (!allowedPath) {
+        sendErrorResponse(rest::ResponseCode::NOT_IMPLEMENTED,
+                          req.contentTypeResponse(), req.messageId(),
+                          TRI_ERROR_NOT_IMPLEMENTED,
+                          "Foxx apps are not supported on this instance");
+        return Flow::Abort;
+      }
+    } else if (!server.getFeature<FoxxFeature>().foxxEnabled() &&
+               !allowedPath) {
       sendErrorResponse(rest::ResponseCode::FORBIDDEN,
                         req.contentTypeResponse(), req.messageId(),
                         TRI_ERROR_FORBIDDEN,
                         "access to Foxx apps is turned off on this instance");
       return Flow::Abort;
     }
+#else
+    if (!allowedPath) {
+      sendErrorResponse(rest::ResponseCode::NOT_IMPLEMENTED,
+                        req.contentTypeResponse(), req.messageId(),
+                        TRI_ERROR_NOT_IMPLEMENTED,
+                        "Foxx apps are not supported on this instance");
+      return Flow::Abort;
+    }
+#endif
   }
 
   // Step 5: Update global HLC timestamp from authenticated requests
