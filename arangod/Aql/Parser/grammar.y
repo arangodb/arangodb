@@ -1324,7 +1324,9 @@ pattern_node_pattern:
 %type <node> pattern_out_variable;
 pattern_out_variable:
     variable_name {
-      $$ = parser->ast()->createNodeVariable({$1.value, $1.length}, true);
+      // A variable introduced by a pattern must be new. An existing
+      // variable is a reference and must not be used with pattern constraints.
+      $$ = parser->ast()->createPatternOutVariable({$1.value, $1.length});
     }
   | /* empty */ { $$ = parser->ast()->createNodeReference(parser->ast()->variables()->createTemporaryVariable()); };
 

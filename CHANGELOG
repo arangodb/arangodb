@@ -1,6 +1,10 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-1049: Disallow filters on references
+  MATCH now rejects filters and attribute constraints applied to variables
+  that reference documents defined outside the MATCH pattern.
+
 * Updated ArangoDB Starter to v0.20.0-preview-17.
 
 * Upgraded included rclone to v1.75.1 with go1.26.8 and non-vulnerable

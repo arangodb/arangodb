@@ -2110,6 +2110,24 @@ AstNode* Ast::createPatternPathVariable(std::string_view name) {
   return n;
 }
 
+AstNode* Ast::createPatternOutVariable(std::string_view name) {
+  if (name.empty()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  // A variable that already exists is a reference. References must not be
+  // used with MATCH filters or constraints;
+  if (_scopes.existsVariable(name)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_PARSE,
+        absl::StrCat("filters or constraints are not allowed on MATCH pattern "
+                     "reference '",
+                     name, "'"));
+  }
+
+  return createNodeVariable(name, true);
+}
+
 AstNode* Ast::createNodeMatch() {
   if (not query().queryOptions().isMatchStatementEnabled()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
