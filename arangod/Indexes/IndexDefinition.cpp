@@ -57,7 +57,8 @@ bool indexDefinitionsEqual(IndexType type, velocypack::Slice lhs,
 
   VPackSlice value;
 
-  if (IndexType::Geo1 == type || IndexType::Geo == type) {
+  if (IndexType::Geo2 == type || IndexType::Geo1 == type ||
+      IndexType::Geo == type) {
     // geoJson must be identical if present
     value = lhs.get("geoJson");
 
