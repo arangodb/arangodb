@@ -137,9 +137,17 @@ function VectorGraphIndexCreateAndDropTestSuite() {
             assertEqual("PQ16x8", index.params.quantization);
         },
 
-        testMalformedQuantizationRejected: function() {
-            assertBadParameter(
+        testQuantizationWithoutBitsDefaultsToEight: function() {
+            const index = ensureGraphIndex(
                 Object.assign({}, baseParams, { quantization: "PQ32" }));
+            assertEqual("PQ32x8", index.params.quantization);
+        },
+
+        testMalformedQuantizationRejected: function() {
+            for (const quantization of ["PQ", "PQx8", "XQ32", "PQ32y8"]) {
+                assertBadParameter(
+                    Object.assign({}, baseParams, { quantization }));
+            }
         },
 
         testSubByteQuantizationRoundTrip: function() {
