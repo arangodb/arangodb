@@ -636,7 +636,11 @@ void V8ClientConnection::reconnect() {
 
   std::string oldConnectionId = connectionIdentifier(_connectedBuilder);
 
-  prepareConnection();
+  auto res = prepareConnection();
+  if (!res.ok()) {
+    _lastErrorMessage = res.errorMessage();
+    throw std::runtime_error(_lastErrorMessage);
+  }
 
   std::shared_ptr<fu::Connection> oldConnection;
   _connection.swap(oldConnection);
@@ -944,7 +948,6 @@ static void ClientConnection_ConstructorCallback(
   auto v8connection =
       std::make_unique<V8ClientConnection>(v8g->server(), *client);
   auto res = v8connection->connect();
-
   if (res.ok() && v8connection->isConnected() &&
       v8connection->lastHttpReturnCode() == (int)rest::ResponseCode::OK) {
     LOG_TOPIC("9c8b4", INFO, arangodb::Logger::FIXME)
