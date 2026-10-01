@@ -129,6 +129,8 @@ BatchOptions buildBatchOptions(OperationOptions const& options,
                                TRI_voc_document_operation_e opType,
                                bool isDBServer) {
   BatchOptions batchOptions;
+  batchOptions.runInternalValidators =
+      options.isSynchronousReplicationFrom.empty();
 
   if (!options.isRestore && options.isSynchronousReplicationFrom.empty()) {
     if (isDBServer) {
@@ -1145,12 +1147,11 @@ struct ModifyingProcessorBase : ReplicatedProcessorBase<Derived> {
         return {TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE};
       }
 
-      // note: schema can be a nullptr here, but we need to call validate()
-      // anyway. the reason is that validate() does not only perform schema
-      // validation, but also some validation for SmartGraph data
-      res = this->_collection.validate(
-          _batchOptions.schema, newDocumentBuilder.slice(), previousDocument,
-          this->_methods.transactionContextPtr()->getVPackOptions());
+      if (_batchOptions.runInternalValidators) {
+        res = this->_collection.validate(
+            _batchOptions.schema, newDocumentBuilder.slice(), previousDocument,
+            this->_methods.transactionContextPtr()->getVPackOptions());
+      }
 
       if (res.ok()) {
         if (isUpdate) {
@@ -1437,10 +1438,7 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
 #else
       constexpr bool isMock = false;
 #endif
-      // note: schema can be a nullptr here, but we need to call validate()
-      // anyway. the reason is that validate() does not only perform schema
-      // validation, but also some validation for SmartGraph data
-      if (!isMock) {
+      if (!isMock && _batchOptions.runInternalValidators) {
         res = _collection.validate(
             _batchOptions.schema, _newDocumentBuilder->slice(),
             _methods.transactionContextPtr()->getVPackOptions());
