@@ -205,6 +205,11 @@ void RestViewHandler::createView() {
   }
 
   try {
+    if (!server().hasFeature<arangodb::iresearch::IResearchAnalyzerFeature>()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_NOT_IMPLEMENTED,
+          "analyzers are not supported on this server");
+    }
     auto& analyzers =
         server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     // First refresh our analyzers cache to see all latest changes in analyzers

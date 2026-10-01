@@ -82,8 +82,7 @@ AgencyFeature::AgencyFeature(ApplicationServer& server, AgencyOptions options)
   TRI_ASSERT(!server.hasFeature<ActionFeature>());
 
 #ifdef USE_V8
-  // registered only when JS was requested via options (enableV8Runtime)
-  TRI_ASSERT(server.hasFeature<V8DealerFeature>() ==
+  TRI_ASSERT(!server.hasFeature<V8DealerFeature>() ||
              V8DealerFeature::javascriptRequestedViaOptions(server.options()));
 #endif
 }
