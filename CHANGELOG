@@ -32,6 +32,11 @@
   null with a warning; it now matches at every character position, e.g.
   SUBSTITUTE('abc', '', '_') returns '_a_b_c_'.
 
+* COR-1040: Fix the web UI repeatedly reporting "Something went wrong while
+  creating the index : not found" after saving an arangosearch view link or
+  creating an index, accompanied by "not allowed to connect to this URL" in
+  the server log.
+
 * COR-994: arangodump, arangorestore and arangosh now renew a JWT passed via
   `--server.jwt-token` before it expires, using `POST /_open/auth/renew`
   and controlled by `--server.jwt-renewal-threshold`. Long-running dumps
@@ -51,6 +56,11 @@
 
 * COR-1025: Escape double quotes, backslashes and line feeds in metric label
   values according to the Prometheus text exposition format.
+
+* COR-1044: AQL queries that use an `mdi` or `mdi-prefixed` index inside a
+  write transaction return only the entries of that index, also when the
+  collection has several MDI indexes and the transaction has already
+  modified documents.
 
 * AQL queries on collections with a sparse `mdi` or `mdi-prefixed` index
   accept any `FILTER` condition, including conditions that are not

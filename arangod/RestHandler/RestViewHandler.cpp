@@ -326,6 +326,8 @@ void RestViewHandler::modifyView(bool partialUpdate) {
     }
   }
 
+  // a view can only exist where analyzers exist too
+  TRI_ASSERT(server().hasFeature<iresearch::IResearchAnalyzerFeature>());
   if (!server().hasFeature<iresearch::IResearchAnalyzerFeature>()) {
     return generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                          TRI_ERROR_NOT_IMPLEMENTED,
