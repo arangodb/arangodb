@@ -483,6 +483,16 @@ TEST_F(RbacAuthModeTest, AdminKillAqlQueries) {
   expectSingle(rbac::Action::AdminKillAqlQueries, "<none>");
 }
 
+TEST_F(RbacAuthModeTest, AdminMonitorTransactions) {
+  check(p::AdminMonitorTransactions{});
+  expectSingle(rbac::Action::AdminMonitorTransactions, "<none>");
+}
+
+TEST_F(RbacAuthModeTest, AdminKillTransactions) {
+  check(p::AdminKillTransactions{});
+  expectSingle(rbac::Action::AdminKillTransactions, "<none>");
+}
+
 // ---------------------------------------------------------------------------
 // API versions
 // ---------------------------------------------------------------------------

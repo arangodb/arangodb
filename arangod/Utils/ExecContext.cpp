@@ -564,6 +564,22 @@ Result ExecContext::canKillQuery(std::string_view queryUser) const {
   return can(auth::perms::AdminKillAqlQueries{});
 }
 
+/// @brief returns true if the transaction of the given user may be seen
+Result ExecContext::canMonitorTransaction(std::string_view trxUser) const {
+  if (!_authMode.isUnauthenticated() && trxUser == user()) {
+    return {};
+  }
+  return can(auth::perms::AdminMonitorTransactions{});
+}
+
+/// @brief returns true if the transaction of the given user may be aborted
+Result ExecContext::canKillTransaction(std::string_view trxUser) const {
+  if (!_authMode.isUnauthenticated() && trxUser == user()) {
+    return {};
+  }
+  return can(auth::perms::AdminKillTransactions{});
+}
+
 /// @brief returns true if the given user may be created.
 Result ExecContext::canCreateUser(std::string_view userName) const {
   using namespace auth::perms;

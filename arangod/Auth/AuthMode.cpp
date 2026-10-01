@@ -112,6 +112,10 @@ auto describe(auth::perms::AnyAdmin auto const& admin) -> std::string {
     return "see the AQL queries of other users (as admin)";
   } else if constexpr (std::is_same_v<T, p::AdminKillAqlQueries>) {
     return "kill the AQL queries of other users (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminMonitorTransactions>) {
+    return "see the transactions of other users (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminKillTransactions>) {
+    return "abort the transactions of other users (as admin)";
   } else if constexpr (std::is_same_v<T, p::AdminShutdown>) {
     return "shut down the server (as admin)";
   } else if constexpr (std::is_same_v<T, p::AdminReadLogs>) {
@@ -992,6 +996,10 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
       return rbac::Action::AdminMonitorAqlQueries;
     } else if constexpr (std::is_same_v<T, p::AdminKillAqlQueries>) {
       return rbac::Action::AdminKillAqlQueries;
+    } else if constexpr (std::is_same_v<T, p::AdminMonitorTransactions>) {
+      return rbac::Action::AdminMonitorTransactions;
+    } else if constexpr (std::is_same_v<T, p::AdminKillTransactions>) {
+      return rbac::Action::AdminKillTransactions;
     } else if constexpr (std::is_same_v<T, p::AdminShutdown>) {
       return rbac::Action::AdminShutdown;
     } else if constexpr (std::is_same_v<T, p::AdminReadLogs>) {

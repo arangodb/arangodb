@@ -1,5 +1,11 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
+* Admins (classic authentication: read-write access to `_system`) can now list,
+  inspect and abort other users' stream transactions via `/_api/transaction`.
+  RBAC gets the matching permissions `AdminMonitorTransactions` and
+  `AdminKillTransactions`. Committing another user's transaction remains
+  reserved to its owner and the superuser.
+
 * Add new permissions AdminMonitorAqlQueries and AdminKillAqlQueries that allow for
   for more fine-grained permission setting for aql queries.
 
