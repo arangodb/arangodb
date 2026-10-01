@@ -547,14 +547,21 @@ Result ExecContext::canReadUser(std::string_view userName) const {
   return can(ReadUser{.name{userName}});
 }
 
-Result ExecContext::canAccessQuery(std::string_view queryUser) const {
-  using namespace auth::perms;
-  // own queries are always accessible, unless the request was not
-  // authenticated.
+/// @brief returns true if the AQL query of the given user may be seen or
+/// removed from the slow query list
+Result ExecContext::canMonitorQuery(std::string_view queryUser) const {
   if (!_authMode.isUnauthenticated() && queryUser == user()) {
     return {};
   }
-  return can(AdminAqlQueries{});
+  return can(auth::perms::AdminMonitorAqlQueries{});
+}
+
+/// @brief returns true if the AQL query of the given user may be killed
+Result ExecContext::canKillQuery(std::string_view queryUser) const {
+  if (!_authMode.isUnauthenticated() && queryUser == user()) {
+    return {};
+  }
+  return can(auth::perms::AdminKillAqlQueries{});
 }
 
 /// @brief returns true if the given user may be created.

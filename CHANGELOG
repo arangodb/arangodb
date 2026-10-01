@@ -1,5 +1,8 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
+* Add new permissions AdminMonitorAqlQueries and AdminKillAqlQueries that allow for
+  for more fine-grained permission setting for aql queries.
+
 * COR-1023: Adapt permissions of `GET /_api/query/current`, `GET /_api/query/slow`,
   `DELETE /_api/query/{id}` and `DELETE /_api/query/slow`.
 
