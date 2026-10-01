@@ -31,6 +31,7 @@
 #include <memory>
 #include <span>
 #include <string>
+#include <vector>
 
 using namespace arangodb;
 using namespace arangodb::tests::mocks;
@@ -271,76 +272,132 @@ TEST(ExecContextTest, superuser_scope_false_is_noop) {
   EXPECT_EQ(ExecContext::currentAsShared(), original);
 }
 
-// --- canAccessQuery ---
+// --- canMonitorQuery / canKillQuery ---
 
 /**
- * RBAC service that denies every question and counts how often it was asked
+ * RBAC service that records the actions it is asked about and answers with a
+ * programmable result
  */
-struct DenyingRbacService final : rbac::Service {
-  int checkCalls = 0;
+struct RecordingRbacService final : rbac::Service {
+  std::vector<rbac::Action> actions;
+  Result answer{};
 
   auto check(rbac::JwtToken const& /*token*/,
-             std::span<rbac::ActionResource const> /*queries*/)
-      -> Result override {
-    ++checkCalls;
-    return {TRI_ERROR_FORBIDDEN, "denied by test service"};
+             std::span<rbac::ActionResource const> queries) -> Result override {
+    for (auto const& query : queries) {
+      actions.push_back(query.action);
+    }
+    return answer;
   }
 };
 
-TEST(ExecContextTest, canAccessQuery_own_query_is_allowed) {
+TEST(ExecContextTest, queryAccess_own_query_is_allowed) {
   auto const cec =
       makeClassicExecContext("alice", "db", auth::Level::NONE, auth::Level::RO);
 
-  EXPECT_TRUE(cec.execContext->canAccessQuery("alice").ok());
+  EXPECT_TRUE(cec.execContext->canMonitorQuery("alice").ok());
+  EXPECT_TRUE(cec.execContext->canKillQuery("alice").ok());
 }
 
-TEST(ExecContextTest, canAccessQuery_foreign_query_requires_admin) {
+TEST(ExecContextTest, queryAccess_foreign_query_requires_admin) {
   auto const cec =
       makeClassicExecContext("alice", "db", auth::Level::NONE, auth::Level::RO);
 
-  auto const result = cec.execContext->canAccessQuery("bob");
   // FakeGeneralRequest is API v0, so classic admin checks report HTTP_FORBIDDEN
-  EXPECT_EQ(result.errorNumber(), TRI_ERROR_HTTP_FORBIDDEN);
+  EXPECT_EQ(cec.execContext->canMonitorQuery("bob").errorNumber(),
+            TRI_ERROR_HTTP_FORBIDDEN);
+  EXPECT_EQ(cec.execContext->canKillQuery("bob").errorNumber(),
+            TRI_ERROR_HTTP_FORBIDDEN);
 }
 
-TEST(ExecContextTest, canAccessQuery_system_read_only_is_not_admin) {
+TEST(ExecContextTest, queryAccess_system_read_only_is_not_admin) {
   auto const cec =
       makeClassicExecContext("alice", "db", auth::Level::RO, auth::Level::RO);
 
-  EXPECT_FALSE(cec.execContext->canAccessQuery("bob").ok());
+  EXPECT_FALSE(cec.execContext->canMonitorQuery("bob").ok());
+  EXPECT_FALSE(cec.execContext->canKillQuery("bob").ok());
 }
 
-TEST(ExecContextTest, canAccessQuery_admin_may_access_foreign_query) {
+TEST(ExecContextTest, queryAccess_admin_may_access_foreign_query) {
   // classic admin = read-write access to the _system database
   auto const cec =
       makeClassicExecContext("root", "db", auth::Level::RW, auth::Level::RO);
 
-  EXPECT_TRUE(cec.execContext->canAccessQuery("bob").ok());
+  EXPECT_TRUE(cec.execContext->canMonitorQuery("bob").ok());
+  EXPECT_TRUE(cec.execContext->canKillQuery("bob").ok());
   // queries without a user (internal ones)
-  EXPECT_TRUE(cec.execContext->canAccessQuery("").ok());
+  EXPECT_TRUE(cec.execContext->canMonitorQuery("").ok());
+  EXPECT_TRUE(cec.execContext->canKillQuery("").ok());
 }
 
-TEST(ExecContextTest, canAccessQuery_superuser_may_access_any_query) {
+TEST(ExecContextTest, queryAccess_superuser_may_access_any_query) {
   auto const ctx = createSharedExecContext(AuthMode{AuthMode::Superuser{}},
                                            false, VocbasePtr{nullptr});
 
-  EXPECT_TRUE(ctx->canAccessQuery("bob").ok());
-  EXPECT_TRUE(ctx->canAccessQuery("").ok());
+  EXPECT_TRUE(ctx->canMonitorQuery("bob").ok());
+  EXPECT_TRUE(ctx->canKillQuery("bob").ok());
+  EXPECT_TRUE(ctx->canMonitorQuery("").ok());
+  EXPECT_TRUE(ctx->canKillQuery("").ok());
 }
 
-TEST(ExecContextTest, canAccessQuery_disabled_auth_may_access_any_query) {
+TEST(ExecContextTest, queryAccess_disabled_auth_may_access_any_query) {
   auto const ctx = createSharedExecContext(
       AuthMode{AuthMode::Disabled{"dummy"}}, false, VocbasePtr{nullptr});
 
-  EXPECT_TRUE(ctx->canAccessQuery("bob").ok());
+  EXPECT_TRUE(ctx->canMonitorQuery("bob").ok());
+  EXPECT_TRUE(ctx->canKillQuery("bob").ok());
 }
 
-TEST(ExecContextTest,
-     canAccessQuery_unauthenticated_is_denied_even_for_own_name) {
+TEST(ExecContextTest, queryAccess_unauthenticated_is_denied_even_for_own_name) {
   auto const ctx = createSharedExecContext(
       AuthMode{AuthMode::Unauthenticated{"dummy"}}, false, VocbasePtr{nullptr});
 
-  EXPECT_FALSE(ctx->canAccessQuery("dummy").ok());
+  EXPECT_FALSE(ctx->canMonitorQuery("dummy").ok());
+  EXPECT_FALSE(ctx->canKillQuery("dummy").ok());
+}
+
+TEST(ExecContextTest, queryAccess_rbac_does_not_ask_for_own_query) {
+  RecordingRbacService service;
+  auto const ctx = createSharedExecContext(
+      AuthMode{AuthMode::Rbac{service, "alice", "token", 0}}, false,
+      VocbasePtr{nullptr});
+
+  EXPECT_TRUE(ctx->canMonitorQuery("alice").ok());
+  EXPECT_TRUE(ctx->canKillQuery("alice").ok());
+  EXPECT_TRUE(service.actions.empty());
+}
+
+TEST(ExecContextTest, queryAccess_rbac_asks_monitor_permission_for_listing) {
+  RecordingRbacService service;
+  auto const ctx = createSharedExecContext(
+      AuthMode{AuthMode::Rbac{service, "alice", "token", 0}}, false,
+      VocbasePtr{nullptr});
+
+  EXPECT_TRUE(ctx->canMonitorQuery("bob").ok());
+  EXPECT_EQ(service.actions,
+            std::vector<rbac::Action>{rbac::Action::AdminMonitorAqlQueries});
+}
+
+TEST(ExecContextTest, queryAccess_rbac_asks_kill_permission_for_killing) {
+  RecordingRbacService service;
+  auto const ctx = createSharedExecContext(
+      AuthMode{AuthMode::Rbac{service, "alice", "token", 0}}, false,
+      VocbasePtr{nullptr});
+
+  EXPECT_TRUE(ctx->canKillQuery("bob").ok());
+  EXPECT_EQ(service.actions,
+            std::vector<rbac::Action>{rbac::Action::AdminKillAqlQueries});
+}
+
+TEST(ExecContextTest, queryAccess_rbac_denial_is_forwarded) {
+  RecordingRbacService service;
+  service.answer = {TRI_ERROR_FORBIDDEN, "denied by test service"};
+  auto const ctx = createSharedExecContext(
+      AuthMode{AuthMode::Rbac{service, "alice", "token", 0}}, false,
+      VocbasePtr{nullptr});
+
+  EXPECT_FALSE(ctx->canMonitorQuery("bob").ok());
+  EXPECT_FALSE(ctx->canKillQuery("bob").ok());
 }
 
 }  // namespace arangodb::tests

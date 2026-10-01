@@ -58,22 +58,22 @@ namespace {
 enum class QueriesMode { Current, Slow };
 
 /**
- * Remembers per query owner whether the calling identity may access that
- * owner's queries
+ * Remembers per query owner whether the calling identity may monitor that
+ * owner's queries.
  *
- * ExecContext::canAccessQuery() is asked at most once per owner, so a list
- * with many queries of the same user asks a single question only.
+ * the exec context is asked at most once per owner, so a list with many queries
+ * of the same user asks a single question only.
  */
-class QueryAccess {
+class MonitorQueryAccess {
  public:
-  /// @brief whether the calling identity may see, kill or clear this entry
+  /// @brief whether the calling identity may access this query entry
   auto isAccessible(velocypack::Slice const entry) -> bool {
     auto const user = entry.get("user");
     auto const owner = user.isString() ? user.copyString() : std::string{};
     if (auto const known = _decisions.find(owner); known != _decisions.end()) {
       return known->second;
     }
-    auto const accessible = ExecContext::current().canAccessQuery(owner).ok();
+    auto const accessible = ExecContext::current().canMonitorQuery(owner).ok();
     _decisions.emplace(owner, accessible);
     return accessible;
   }
@@ -179,7 +179,7 @@ arangodb::Result getQueries(TRI_vocbase_t& vocbase, velocypack::Builder& out,
   }
 
   // build the result, containing only the queries the caller may see
-  QueryAccess access;
+  MonitorQueryAccess access;
   auto const isAccessible = [&access](velocypack::Slice const entry) {
     return access.isAccessible(entry);
   };
@@ -269,7 +269,9 @@ Result Queries::listCurrent(TRI_vocbase_t& vocbase, velocypack::Builder& out,
 /// @brief clears the slow queries the caller may access
 Result Queries::clearSlow(TRI_vocbase_t& vocbase, bool allDatabases,
                           bool fanout) {
-  QueryAccess access;
+  // the slow query list is monitoring data, so removing other users' entries
+  // requires the same permission as listing them
+  MonitorQueryAccess access;
   auto const shouldClear = [&access](velocypack::Slice const entry) {
     return access.isAccessible(entry);
   };
@@ -343,7 +345,7 @@ Result Queries::kill(TRI_vocbase_t& vocbase, TRI_voc_tick_t id,
   }
 
   auto const authorize = [](aql::Query const& query) {
-    return ExecContext::current().canAccessQuery(query.user());
+    return ExecContext::current().canKillQuery(query.user());
   };
 
   if (!allDatabases) {
