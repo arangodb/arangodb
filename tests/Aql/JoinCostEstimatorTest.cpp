@@ -54,8 +54,8 @@ class SystemRCostEstimatorTest : public testing::Test {
 
   // the estimator owns the statistics; the raw pointer keeps them scriptable
   static std::pair<std::unique_ptr<SystemRCostEstimator>, FakeJoinStatistics*>
-  makeEstimator() {
-    auto stats = std::make_unique<FakeJoinStatistics>();
+  makeEstimator(Query const& q) {
+    auto stats = std::make_unique<FakeJoinStatistics>(*q.plan());
     auto* raw = stats.get();
     return {std::make_unique<SystemRCostEstimator>(std::move(stats)), raw};
   }
@@ -66,7 +66,7 @@ TEST_F(SystemRCostEstimatorTest, worked_example) {
   auto g = buildGraph(*q);
   ASSERT_EQ(g.edges.size(), 1u);
 
-  auto [estimator, stats] = makeEstimator();
+  auto [estimator, stats] = makeEstimator(*q);
   stats->counts = {{"a", 1000.0}, {"b", 100.0}};
   stats->distinct["a"]["x"] = {1000.0, false};  // unique
   stats->distinct["b"]["y"] = {100.0, false};   // unique
@@ -83,7 +83,7 @@ TEST_F(SystemRCostEstimatorTest, worked_example) {
 TEST_F(SystemRCostEstimatorTest, cardinality_is_symmetric_but_cost_is_not) {
   auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
   auto g = buildGraph(*q);
-  auto [estimator, stats] = makeEstimator();
+  auto [estimator, stats] = makeEstimator(*q);
   stats->counts = {{"a", 1000.0}, {"b", 100.0}};
   stats->distinct["a"]["x"] = {1000.0, false};
   stats->distinct["b"]["y"] = {100.0, false};
@@ -107,7 +107,7 @@ TEST_F(SystemRCostEstimatorTest, cardinality_is_symmetric_but_cost_is_not) {
 TEST_F(SystemRCostEstimatorTest, unindexed_join_attribute_costs_a_scan) {
   auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
   auto g = buildGraph(*q);
-  auto [estimator, stats] = makeEstimator();
+  auto [estimator, stats] = makeEstimator(*q);
   stats->counts = {{"a", 1000.0}, {"b", 100.0}};
   stats->distinct["a"]["x"] = {1000.0, false};
   stats->distinct["b"]["y"] = {100.0, false};
@@ -126,7 +126,7 @@ TEST_F(SystemRCostEstimatorTest, empty_connecting_span_is_a_cross_product) {
   auto g = buildGraph(*q);
   ASSERT_TRUE(g.edges.empty());
 
-  auto [estimator, stats] = makeEstimator();
+  auto [estimator, stats] = makeEstimator(*q);
   stats->counts = {{"a", 1000.0}, {"b", 100.0}};
 
   auto* a = nodeByName(g, "a");
@@ -140,7 +140,7 @@ TEST_F(SystemRCostEstimatorTest, empty_connecting_span_is_a_cross_product) {
 TEST_F(SystemRCostEstimatorTest, missing_statistic_defaults_to_one_and_flags) {
   auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
   auto g = buildGraph(*q);
-  auto [estimator, stats] = makeEstimator();
+  auto [estimator, stats] = makeEstimator(*q);
   stats->counts = {{"a", 1000.0}, {"b", 100.0}};
   stats->distinct["b"]["y"] = {100.0, false};  // only b is known
 
@@ -175,7 +175,7 @@ TEST_F(SystemRCostEstimatorTest, constant_restriction_shrinks_the_row_count) {
       "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
       "FILTER a.k == 'v' RETURN [a, b]");
   auto g = buildGraph(*q);
-  auto [estimator, stats] = makeEstimator();
+  auto [estimator, stats] = makeEstimator(*q);
   stats->counts = {{"a", 1000.0}, {"b", 100.0}};
   stats->distinct["a"]["k"] = {10.0, false};  // 10 distinct k values
 
@@ -192,7 +192,7 @@ TEST_F(SystemRCostEstimatorTest,
       "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
       "FILTER a.k == 'v' RETURN [a, b]");
   auto g = buildGraph(*q);
-  auto [estimator, stats] = makeEstimator();
+  auto [estimator, stats] = makeEstimator(*q);
   stats->counts = {{"a", 1000.0}, {"b", 100.0}};
   stats->distinct["a"]["k"] = {10.0, false};
   stats->indexed["a"] = {"k"};
@@ -205,7 +205,7 @@ TEST_F(SystemRCostEstimatorTest,
 TEST_F(SystemRCostEstimatorTest, distinct_is_capped_by_the_restricted_count) {
   auto q = prepare("FOR a IN c1 FOR b IN c2 FILTER a.x == b.y RETURN [a, b]");
   auto g = buildGraph(*q);
-  auto [estimator, stats] = makeEstimator();
+  auto [estimator, stats] = makeEstimator(*q);
   stats->counts = {{"a", 100.0}, {"b", 1000.0}};
   stats->distinct["a"]["x"] = {1e6, false};  // more distinct values than rows
   stats->distinct["b"]["y"] = {5.0, false};
@@ -229,7 +229,7 @@ TEST_F(SystemRCostEstimatorTest, multiple_edges_multiply_their_factors) {
   auto g = buildGraph(*q);
   ASSERT_EQ(g.edges.size(), 3u);
 
-  auto [estimator, stats] = makeEstimator();
+  auto [estimator, stats] = makeEstimator(*q);
   stats->counts = {{"a", 100.0}, {"b", 100.0}, {"c", 100.0}};
   stats->distinct["b"]["z"] = {10.0, false};
   stats->distinct["c"]["w"] = {10.0, false};
@@ -258,7 +258,7 @@ TEST_F(SystemRCostEstimatorTest, extend_costs_against_the_unrestricted_count) {
       "FOR a IN c1 FOR b IN c2 FILTER a.x == b.y "
       "FILTER b.k == 'v' RETURN [a, b]");
   auto g = buildGraph(*q);
-  auto [estimator, stats] = makeEstimator();
+  auto [estimator, stats] = makeEstimator(*q);
   stats->counts = {{"a", 500.0}, {"b", 1000.0}};
   stats->distinct["b"]["k"] = {100.0, false};  // restricted(b) = 1000/100 = 10
   stats->indexed["b"] = {"y"};                 // extend() probes, not scans
@@ -282,7 +282,7 @@ TEST_F(SystemRCostEstimatorTest, extend_floors_cardinality_at_one) {
   auto g = buildGraph(*q);
   ASSERT_EQ(g.edges.size(), 3u);
 
-  auto [estimator, stats] = makeEstimator();
+  auto [estimator, stats] = makeEstimator(*q);
   stats->counts = {{"a", 100.0}, {"b", 100.0}, {"c", 100.0}};
   stats->distinct["b"]["z"] = {100.0, false};
   stats->distinct["c"]["w"] = {100.0, false};

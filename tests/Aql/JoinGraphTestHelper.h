@@ -101,6 +101,8 @@ inline arangodb::aql::JoinGraph::Node* nodeByName(arangodb::aql::JoinGraph& g,
 // an exact non-unique distinct count.
 class FakeJoinStatistics final : public arangodb::aql::JoinStatistics {
  public:
+  using JoinStatistics::JoinStatistics;
+
   // variable name -> document count
   std::map<std::string, double, std::less<>> counts;
   // variable name -> "attr,attr" key -> distinct estimate
@@ -124,15 +126,17 @@ class FakeJoinStatistics final : public arangodb::aql::JoinStatistics {
     return node.executionNode->outVariable()->name;
   }
 
-  auto documentCount(arangodb::aql::JoinGraph::Node const& node) const
+ protected:
+  auto countDocuments(arangodb::aql::JoinGraph::Node const& node) const
       -> double override {
     auto it = counts.find(nameOf(node));
     return it == counts.end() ? 0.0 : it->second;
   }
 
-  auto distinctValues(arangodb::aql::JoinGraph::Node const& node,
-                      std::span<arangodb::aql::AttributePath const> attributes)
-      const -> arangodb::aql::DistinctEstimate override {
+  auto estimateDistinct(
+      arangodb::aql::JoinGraph::Node const& node,
+      std::span<arangodb::aql::AttributePath const> attributes) const
+      -> arangodb::aql::DistinctEstimate override {
     if (attributes.empty()) {
       return {1.0, false};
     }
@@ -146,10 +150,9 @@ class FakeJoinStatistics final : public arangodb::aql::JoinStatistics {
     return {1.0, true};
   }
 
-  auto hasIndexCovering(
-      arangodb::aql::JoinGraph::Node const& node,
-      std::span<arangodb::aql::AttributePath const> attributes) const
-      -> bool override {
+  auto indexCovers(arangodb::aql::JoinGraph::Node const& node,
+                   std::span<arangodb::aql::AttributePath const> attributes)
+      const -> bool override {
     auto it = indexed.find(nameOf(node));
     if (it == indexed.end()) {
       return false;
