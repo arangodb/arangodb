@@ -111,7 +111,6 @@ set(ARANGODB_TESTS_SOURCES
   Aql/Match/VariableScopeTest.cpp
   Aql/AttributeNamePathTest.cpp  
   Aql/BlockCollector.cpp
-  Aql/CachingJoinStatisticsTest.cpp
   Aql/ConditionRemoveForIndexTest.cpp
   Aql/ConditionRemoveForTraversalTest.cpp
   Aql/DependencyProxyMock.cpp
@@ -172,6 +171,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/IndexJoinStatisticsTest.cpp
   Aql/InputRangeTest.cpp
   Aql/JoinGraphTest.cpp
+  Aql/JoinStatisticsTest.cpp
   Aql/JoinStrategy/GenericAndTwoNonUniqueJoinTest.cpp
   Aql/JoinStrategy/TwoIndicesUniqueJoinTest.cpp
   Aql/NodeWalkerTest.cpp

@@ -1,5 +1,5 @@
 target_sources(arango_aql PRIVATE
-  CachingJoinStatistics.cpp
   IndexJoinStatistics.cpp
+  JoinStatistics.cpp
   JoinGraph.cpp
 )

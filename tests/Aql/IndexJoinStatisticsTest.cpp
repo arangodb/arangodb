@@ -22,7 +22,7 @@
 
 #include "gtest/gtest.h"
 
-#include "Aql/Optimizer/Rule/OptimizeJoinOrder/IndexJoinStatistics.h"
+#include "Aql/Optimizer/Rule/OptimizeJoinOrder/JoinStatistics.h"
 
 #include <array>
 #include <string_view>

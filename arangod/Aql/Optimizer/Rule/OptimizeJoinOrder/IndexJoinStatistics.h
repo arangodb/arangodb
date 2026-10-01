@@ -19,69 +19,26 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
-#include "Aql/ExecutionNodeId.h"
 #include "Aql/Optimizer/Rule/OptimizeJoinOrder/JoinGraph.h"
 #include "Aql/Optimizer/Rule/OptimizeJoinOrder/JoinStatistics.h"
-#include "Basics/AttributeNameParser.h"
-#include "Containers/FlatHashMap.h"
-#include "Indexes/IndexType.h"
 
 #include <span>
-#include <vector>
 
 namespace arangodb::aql {
-class ExecutionPlan;
 
-/// @brief the index properties this model consults, lifted out of Index so
-/// the selection rules below can be exercised without a storage engine.
-struct IndexFacts {
-  IndexType type = IndexType::Unknown;
-  std::vector<std::vector<basics::AttributeName>> fields;
-  bool sparse = false;
-  // 0.0 when the index has none; the Index contract forbids calling
-  // Index::selectivityEstimate() then.
-  double selectivityEstimate = 0.0;
-};
-
-/// @brief |C_S| under the subset rule: consider only candidates whose fields
-/// are a subset of `attributes`, and take the maximum of
-/// selectivityEstimate() * count over them.
-auto distinctFromIndexFacts(std::span<IndexFacts const> candidates,
-                            double count,
-                            std::span<AttributePath const> attributes)
-    -> DistinctEstimate;
-
-auto coveringFromIndexFacts(std::span<IndexFacts const> candidates,
-                            std::span<AttributePath const> attributes) -> bool;
-
-/// @brief statistics read from whatever indexes happen to exist on the
-/// collections. This runs before index selection, so it consults the
+/// @brief distinct tuples estimated from whatever indexes happen to exist on
+/// the collections. This runs before index selection, so it consults the
 /// collection's indexes directly rather than any IndexNode.
 class IndexJoinStatistics final : public JoinStatistics {
  public:
-  explicit IndexJoinStatistics(ExecutionPlan const& plan);
+  using JoinStatistics::JoinStatistics;
 
-  auto documentCount(JoinGraph::Node const& node) const -> double override;
-
-  auto distinctValues(JoinGraph::Node const& node,
-                      std::span<AttributePath const> attributes) const
-      -> DistinctEstimate override;
-
-  auto hasIndexCovering(JoinGraph::Node const& node,
+ protected:
+  auto estimateDistinct(JoinGraph::Node const& node,
                         std::span<AttributePath const> attributes) const
-      -> bool override;
-
- private:
-  /// @brief the collection's indexes lifted into IndexFacts, once per node.
-  [[nodiscard]] auto candidatesFor(JoinGraph::Node const& node) const
-      -> std::span<IndexFacts const>;
-
-  ExecutionPlan const& _plan;
-  mutable containers::FlatHashMap<ExecutionNodeId, std::vector<IndexFacts>>
-      _candidates;
+      -> DistinctEstimate override;
 };
 
 }  // namespace arangodb::aql

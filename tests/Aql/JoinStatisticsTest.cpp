@@ -19,7 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/Optimizer/Rule/OptimizeJoinOrder/CachingJoinStatistics.h"
+#include "Aql/Optimizer/Rule/OptimizeJoinOrder/JoinStatistics.h"
 
 #include "JoinGraphTestHelper.h"
 
@@ -35,39 +35,42 @@ namespace arangodb::tests::aql {
 namespace {
 
 // Answers every call with a fresh, strictly increasing value. That makes a
-// cache hit visible twice over: the delegation counter does not move, and the
+// cache hit visible twice over: the call counter does not move, and the
 // value would have changed if it had. Scripted tables are deliberately absent
 // -- nothing here is about what the statistics say, only about how often they
 // are asked.
 class CountingStatistics final : public JoinStatistics {
  public:
+  using JoinStatistics::JoinStatistics;
+
   mutable std::size_t documentCountCalls = 0;
   mutable std::size_t distinctValuesCalls = 0;
   mutable std::size_t hasIndexCoveringCalls = 0;
   bool defaulted = false;
 
-  auto documentCount(JoinGraph::Node const&) const -> double override {
+ protected:
+  auto countDocuments(JoinGraph::Node const&) const -> double override {
     return static_cast<double>(++documentCountCalls);
   }
 
-  auto distinctValues(JoinGraph::Node const&,
-                      std::span<AttributePath const>) const
+  auto estimateDistinct(JoinGraph::Node const&,
+                        std::span<AttributePath const>) const
       -> DistinctEstimate override {
     return {static_cast<double>(++distinctValuesCalls), defaulted};
   }
 
-  auto hasIndexCovering(JoinGraph::Node const&,
-                        std::span<AttributePath const>) const -> bool override {
+  auto indexCovers(JoinGraph::Node const&, std::span<AttributePath const>) const
+      -> bool override {
     // Alternates, so a repeat that was *not* cached reports the opposite.
     return ++hasIndexCoveringCalls % 2 == 1;
   }
 };
 
-class CachingJoinStatisticsTest : public testing::Test {
+class JoinStatisticsTest : public testing::Test {
  protected:
   mocks::MockAqlServer server;
 
-  CachingJoinStatisticsTest() {
+  JoinStatisticsTest() {
     auto& vocbase = server.getSystemDatabase();
     for (auto const& name : {"c1", "c2"}) {
       auto json = velocypack::Parser::fromJson(std::string{R"({"name":")"} +
@@ -80,12 +83,12 @@ class CachingJoinStatisticsTest : public testing::Test {
     return prepareJoinPlan(server, query);
   }
 
-  // The inner pointer stays valid: the cache owns it and never reseats it.
-  static std::pair<std::unique_ptr<CachingJoinStatistics>, CountingStatistics*>
-  makeCache() {
-    auto inner = std::make_unique<CountingStatistics>();
-    auto* raw = inner.get();
-    return {std::make_unique<CachingJoinStatistics>(std::move(inner)), raw};
+  // Both pointers name one object: the base caches, the subclass counts.
+  static std::pair<std::unique_ptr<JoinStatistics>, CountingStatistics*>
+  makeCache(Query const& q) {
+    auto stats = std::make_unique<CountingStatistics>(*q.plan());
+    auto* raw = stats.get();
+    return {std::move(stats), raw};
   }
 
   std::shared_ptr<Query> twoNodeQuery() {
@@ -98,7 +101,7 @@ class CachingJoinStatisticsTest : public testing::Test {
 // The key's hash and equality cannot be tested through the map: a
 // discriminating hash means operator== is never consulted, and a
 // discriminating operator== means a weak hash only costs probe length. Both
-// mutations pass every test below that goes through CachingJoinStatistics, so
+// mutations pass every test below that goes through the base class, so
 // the key is tested here directly.
 
 TEST(StatsKeyTest, equality_distinguishes_the_attribute_set) {
@@ -141,10 +144,10 @@ TEST(StatsKeyTest, hash_separates_the_keys_equality_separates) {
   EXPECT_NE(hash(twoAttributes), hash(oneNested));
 }
 
-TEST_F(CachingJoinStatisticsTest, document_count_delegates_once_per_node) {
+TEST_F(JoinStatisticsTest, document_count_delegates_once_per_node) {
   auto q = twoNodeQuery();
   auto g = buildGraph(*q);
-  auto [cache, inner] = makeCache();
+  auto [cache, inner] = makeCache(*q);
   auto* a = nodeByName(g, "a");
 
   EXPECT_DOUBLE_EQ(cache->documentCount(*a), 1.0);
@@ -152,21 +155,20 @@ TEST_F(CachingJoinStatisticsTest, document_count_delegates_once_per_node) {
   EXPECT_EQ(inner->documentCountCalls, 1u);
 }
 
-TEST_F(CachingJoinStatisticsTest, document_count_keys_on_the_node) {
+TEST_F(JoinStatisticsTest, document_count_keys_on_the_node) {
   auto q = twoNodeQuery();
   auto g = buildGraph(*q);
-  auto [cache, inner] = makeCache();
+  auto [cache, inner] = makeCache(*q);
 
   EXPECT_DOUBLE_EQ(cache->documentCount(*nodeByName(g, "a")), 1.0);
   EXPECT_DOUBLE_EQ(cache->documentCount(*nodeByName(g, "b")), 2.0);
   EXPECT_EQ(inner->documentCountCalls, 2u);
 }
 
-TEST_F(CachingJoinStatisticsTest,
-       distinct_values_delegates_once_per_attribute_set) {
+TEST_F(JoinStatisticsTest, distinct_values_delegates_once_per_attribute_set) {
   auto q = twoNodeQuery();
   auto g = buildGraph(*q);
-  auto [cache, inner] = makeCache();
+  auto [cache, inner] = makeCache(*q);
   auto* a = nodeByName(g, "a");
   std::array<AttributePath, 1> attributes{AttributePath{"x"}};
 
@@ -175,10 +177,10 @@ TEST_F(CachingJoinStatisticsTest,
   EXPECT_EQ(inner->distinctValuesCalls, 1u);
 }
 
-TEST_F(CachingJoinStatisticsTest, distinct_values_key_includes_the_attributes) {
+TEST_F(JoinStatisticsTest, distinct_values_key_includes_the_attributes) {
   auto q = twoNodeQuery();
   auto g = buildGraph(*q);
-  auto [cache, inner] = makeCache();
+  auto [cache, inner] = makeCache(*q);
   auto* a = nodeByName(g, "a");
   std::array<AttributePath, 1> byX{AttributePath{"x"}};
   std::array<AttributePath, 1> byY{AttributePath{"y"}};
@@ -188,10 +190,10 @@ TEST_F(CachingJoinStatisticsTest, distinct_values_key_includes_the_attributes) {
   EXPECT_EQ(inner->distinctValuesCalls, 2u);
 }
 
-TEST_F(CachingJoinStatisticsTest, distinct_values_key_includes_the_node) {
+TEST_F(JoinStatisticsTest, distinct_values_key_includes_the_node) {
   auto q = twoNodeQuery();
   auto g = buildGraph(*q);
-  auto [cache, inner] = makeCache();
+  auto [cache, inner] = makeCache(*q);
   std::array<AttributePath, 1> attributes{AttributePath{"x"}};
 
   // Same attribute set, different nodes: the node must be part of the key or
@@ -203,11 +205,10 @@ TEST_F(CachingJoinStatisticsTest, distinct_values_key_includes_the_node) {
   EXPECT_EQ(inner->distinctValuesCalls, 2u);
 }
 
-TEST_F(CachingJoinStatisticsTest,
-       a_nested_attribute_is_not_a_two_attribute_set) {
+TEST_F(JoinStatisticsTest, a_nested_attribute_is_not_a_two_attribute_set) {
   auto q = twoNodeQuery();
   auto g = buildGraph(*q);
-  auto [cache, inner] = makeCache();
+  auto [cache, inner] = makeCache(*q);
   auto* a = nodeByName(g, "a");
 
   // {["p"],["q"]} is a two-attribute set; {["p","q"]} is the single attribute
@@ -222,11 +223,10 @@ TEST_F(CachingJoinStatisticsTest,
   EXPECT_EQ(inner->distinctValuesCalls, 2u);
 }
 
-TEST_F(CachingJoinStatisticsTest,
-       a_defaulted_estimate_is_cached_with_its_flag) {
+TEST_F(JoinStatisticsTest, a_defaulted_estimate_is_cached_with_its_flag) {
   auto q = twoNodeQuery();
   auto g = buildGraph(*q);
-  auto [cache, inner] = makeCache();
+  auto [cache, inner] = makeCache(*q);
   inner->defaulted = true;
   auto* a = nodeByName(g, "a");
   std::array<AttributePath, 1> attributes{AttributePath{"x"}};
@@ -239,10 +239,10 @@ TEST_F(CachingJoinStatisticsTest,
   EXPECT_EQ(inner->distinctValuesCalls, 1u);
 }
 
-TEST_F(CachingJoinStatisticsTest, the_empty_attribute_set_is_cached) {
+TEST_F(JoinStatisticsTest, the_empty_attribute_set_is_cached) {
   auto q = twoNodeQuery();
   auto g = buildGraph(*q);
-  auto [cache, inner] = makeCache();
+  auto [cache, inner] = makeCache(*q);
   auto* a = nodeByName(g, "a");
 
   // The common case: a node with no constant restriction is asked with an
@@ -252,10 +252,10 @@ TEST_F(CachingJoinStatisticsTest, the_empty_attribute_set_is_cached) {
   EXPECT_EQ(inner->distinctValuesCalls, 1u);
 }
 
-TEST_F(CachingJoinStatisticsTest, index_covering_delegates_once) {
+TEST_F(JoinStatisticsTest, index_covering_delegates_once) {
   auto q = twoNodeQuery();
   auto g = buildGraph(*q);
-  auto [cache, inner] = makeCache();
+  auto [cache, inner] = makeCache(*q);
   auto* a = nodeByName(g, "a");
   std::array<AttributePath, 1> attributes{AttributePath{"x"}};
 
@@ -264,10 +264,10 @@ TEST_F(CachingJoinStatisticsTest, index_covering_delegates_once) {
   EXPECT_EQ(inner->hasIndexCoveringCalls, 1u);
 }
 
-TEST_F(CachingJoinStatisticsTest, index_covering_has_its_own_cache) {
+TEST_F(JoinStatisticsTest, index_covering_has_its_own_cache) {
   auto q = twoNodeQuery();
   auto g = buildGraph(*q);
-  auto [cache, inner] = makeCache();
+  auto [cache, inner] = makeCache(*q);
   auto* a = nodeByName(g, "a");
   std::array<AttributePath, 1> attributes{AttributePath{"x"}};
 
