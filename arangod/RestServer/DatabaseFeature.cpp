@@ -293,11 +293,8 @@ void DatabaseFeature::initCalculationVocbase() {
 
 void DatabaseFeature::start() {
 #ifdef USE_V8
-  if (server().hasFeature<V8DealerFeature>()) {
-    auto& dealer = server().getFeature<V8DealerFeature>();
-    if (dealer.isEnabled()) {
-      dealer.verifyAppPaths();
-    }
+  if (_dealer != nullptr && _dealer->isEnabled()) {
+    _dealer->verifyAppPaths();
   }
 #endif
 
@@ -479,6 +476,11 @@ void DatabaseFeature::unprepare() {
 
 void DatabaseFeature::prepare() {
   _engine = &server().getFeature<StorageEngine>();
+#ifdef USE_V8
+  _dealer = server().hasFeature<V8DealerFeature>()
+                ? &server().getFeature<V8DealerFeature>()
+                : nullptr;
+#endif
 
   // need this to make calculation analyzer available in database links
   initCalculationVocbase();
@@ -1010,12 +1012,6 @@ void DatabaseFeature::closeOpenDatabases() {
 }
 
 ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
-#ifdef USE_V8
-  auto* dealer = server().hasFeature<V8DealerFeature>()
-                     ? &server().getFeature<V8DealerFeature>()
-                     : nullptr;
-#endif
-
   auto r = TRI_ERROR_NO_ERROR;
 
   // open databases in defined order
@@ -1044,9 +1040,9 @@ ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
 
     auto name = it.get("name").stringView();
 #ifdef USE_V8
-    if (dealer != nullptr && dealer->isEnabled()) {
+    if (_dealer != nullptr && _dealer->isEnabled()) {
       auto id = basics::VelocyPackHelper::getStringView(it.get("id"), {});
-      r = dealer->createDatabase(name, id, false);
+      r = _dealer->createDatabase(name, id, false);
       if (r != TRI_ERROR_NO_ERROR) {
         break;
       }
