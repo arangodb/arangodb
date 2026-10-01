@@ -402,96 +402,105 @@ ResultT<std::string> V8ClientConnection::authenticateViaOpenAuth() {
   tempBuilder.endpoint(_client.endpoint());
 
   // Create connection without authentication
-  auto connection = tempBuilder.connect(_loop);
-  if (!connection) {
-    return ResultT<std::string>::error(
-        TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
-        "Failed to create connection for authentication");
-  }
-
-  // Prepare the authentication request
-  auto req = std::make_unique<fu::Request>();
-  req->header.restVerb = fu::RestVerb::Post;
-  req->header.path = "/_open/auth";
-  req->header.contentType(fu::ContentType::Json);
-  req->header.acceptType(fu::ContentType::Json);
-  req->timeout(
-      std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout));
-
-  // Create JSON body with username and password
-  velocypack::Builder bodyBuilder;
-  bodyBuilder.openObject();
-  bodyBuilder.add("username", _client.username());
-  bodyBuilder.add("password", _client.password());
-  bodyBuilder.close();
-
-  // Add the JSON body to the request
-  std::string jsonBody = bodyBuilder.slice().toJson();
-  req->addBinary(reinterpret_cast<uint8_t const*>(jsonBody.data()),
-                 jsonBody.size());
-
-  // Send the request
-  auto response = connection->sendRequest(std::move(req));
-  if (!response) {
-    return ResultT<std::string>::error(TRI_ERROR_FAILED,
-                                       "Failed to send authentication request");
-  }
-  // Parse the response to extract the JWT token
-  if (response->payloadSize() == 0) {
-    if (response->statusCode() != fuerte::StatusOK) {
-      return ResultT<std::string>::error(
-          ::ErrorCode{static_cast<int>(response->statusCode())},
-          "Empty response from authentication endpoint");
-    } else {
-      return ResultT<std::string>::error(
-          TRI_ERROR_MALFORMED_JSON,
-          "Empty response from authentication endpoint");
-    }
-  }
-
   try {
-    auto parsedBody = VPackParser::fromJson(
-        reinterpret_cast<char const*>(response->payload().data()),
-        response->payload().size());
-    auto slice = parsedBody->slice();
+    auto connection = tempBuilder.connect(_loop);
+    if (!connection) {
+      return ResultT<std::string>::error(
+          TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
+          "Failed to create connection for authentication");
+    }
+    // Prepare the authentication request
+    auto req = std::make_unique<fu::Request>();
+    req->header.restVerb = fu::RestVerb::Post;
+    req->header.path = "/_open/auth";
+    req->header.contentType(fu::ContentType::Json);
+    req->header.acceptType(fu::ContentType::Json);
+    req->timeout(
+        std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout));
 
-    if (response->statusCode() != fuerte::StatusOK) {
-      std::string errorMsg = "Authentication failed with status code: " +
-                             std::to_string(response->statusCode());
-      if (slice.isObject() && slice.hasKey("errorMessage")) {
-        errorMsg =
-            VelocyPackHelper::getStringValue(slice, "errorMessage", errorMsg);
+    // Create JSON body with username and password
+    velocypack::Builder bodyBuilder;
+    bodyBuilder.openObject();
+    bodyBuilder.add("username", _client.username());
+    bodyBuilder.add("password", _client.password());
+    bodyBuilder.close();
+
+    // Add the JSON body to the request
+    std::string jsonBody = bodyBuilder.slice().toJson();
+    req->addBinary(reinterpret_cast<uint8_t const*>(jsonBody.data()),
+                   jsonBody.size());
+
+    // Send the request
+    auto response = connection->sendRequest(std::move(req));
+    if (!response) {
+      return ResultT<std::string>::error(
+          TRI_ERROR_FAILED, "Failed to send authentication request");
+    }
+    // Parse the response to extract the JWT token
+    if (response->payloadSize() == 0) {
+      if (response->statusCode() != fuerte::StatusOK) {
+        return ResultT<std::string>::error(
+            ::ErrorCode{static_cast<int>(response->statusCode())},
+            "Empty response from authentication endpoint");
+      } else {
+        return ResultT<std::string>::error(
+            TRI_ERROR_MALFORMED_JSON,
+            "Empty response from authentication endpoint");
+      }
+    }
+
+    try {
+      auto parsedBody = VPackParser::fromJson(
+          reinterpret_cast<char const*>(response->payload().data()),
+          response->payload().size());
+      auto slice = parsedBody->slice();
+
+      if (response->statusCode() != fuerte::StatusOK) {
+        std::string errorMsg = "Authentication failed with status code: " +
+                               std::to_string(response->statusCode());
+        if (slice.isObject() && slice.hasKey("errorMessage")) {
+          errorMsg =
+              VelocyPackHelper::getStringValue(slice, "errorMessage", errorMsg);
+        }
+
+        // This means that open/auth endpoint is not implemented and we are not
+        // communicating to the coordinator
+        if (slice.hasKey("code") && slice.get(StaticStrings::Code).isNumber()) {
+          auto const errorCode =
+              ErrorCode(slice.get(StaticStrings::Code).getNumber<int>());
+          if (errorCode == TRI_ERROR_HTTP_NOT_IMPLEMENTED ||
+              errorCode == TRI_ERROR_HTTP_NOT_FOUND) {
+            return ResultT<std::string>::error(TRI_ERROR_ARANGO_TRY_AGAIN, "");
+          }
+          if (VPackSlice errorNumSlice = slice.get(StaticStrings::ErrorNum);
+              errorNumSlice.isNumber()) {
+            auto const errorNum = ::ErrorCode{errorNumSlice.getNumber<int>()};
+            return ResultT<std::string>::error(errorNum, errorMsg);
+          }
+        }
+        return ResultT<std::string>::error(
+            ::ErrorCode{static_cast<int>(response->statusCode())}, errorMsg);
+      }
+      if (!slice.isObject() || !slice.hasKey("jwt")) {
+        return ResultT<std::string>::error(
+            TRI_ERROR_MALFORMED_JSON,
+            "Invalid response format from authentication endpoint");
       }
 
-      // This means that open/auth endpoint is not implemented and we are not
-      // communicating to the coordinator
-      if (slice.hasKey("code") && slice.get(StaticStrings::Code).isNumber()) {
-        auto const errorCode =
-            ErrorCode(slice.get(StaticStrings::Code).getNumber<int>());
-        if (errorCode == TRI_ERROR_HTTP_NOT_IMPLEMENTED ||
-            errorCode == TRI_ERROR_HTTP_NOT_FOUND) {
-          return ResultT<std::string>::error(TRI_ERROR_ARANGO_TRY_AGAIN, "");
-        }
-        if (VPackSlice errorNumSlice = slice.get(StaticStrings::ErrorNum);
-            errorNumSlice.isNumber()) {
-          auto const errorNum = ::ErrorCode{errorNumSlice.getNumber<int>()};
-          return ResultT<std::string>::error(errorNum, errorMsg);
-        }
-      }
-      return ResultT<std::string>::error(
-          ::ErrorCode{static_cast<int>(response->statusCode())}, errorMsg);
+      return ResultT<std::string>::success(
+          VelocyPackHelper::getStringValue(slice, "jwt", ""));
+    } catch (std::exception const& ex) {
+      return ResultT<std::string>::error(TRI_ERROR_MALFORMED_JSON, ex.what());
     }
-    if (!slice.isObject() || !slice.hasKey("jwt")) {
-      return ResultT<std::string>::error(
-          TRI_ERROR_MALFORMED_JSON,
-          "Invalid response format from authentication endpoint");
-    }
-
-    return ResultT<std::string>::success(
-        VelocyPackHelper::getStringValue(slice, "jwt", ""));
   } catch (std::exception const& ex) {
-    return ResultT<std::string>::error(TRI_ERROR_MALFORMED_JSON, ex.what());
+    return ResultT<std::string>::error(TRI_ERROR_FAILED, ex.what());
+  } catch (fu::Error const& ec) {
+    return ResultT<std::string>::error(TRI_ERROR_FAILED,
+                                       fuerte::v1::to_string(ec));
+  } catch (...) {
+    // intentional fall through to error
   }
+  return ResultT<std::string>::error(TRI_ERROR_FAILED, "unknown error");
 }
 
 // Helper function to check if JWT token needs renewal
@@ -638,10 +647,10 @@ void V8ClientConnection::reconnect() {
   std::string oldConnectionId = connectionIdentifier(_connectedBuilder);
 
   auto res = prepareConnection();
-  if (!res.ok()) {
-    _lastErrorMessage = res.errorMessage();
-    throw std::runtime_error(_lastErrorMessage);
-  }
+  // if (!res.ok()) {
+  //   _lastErrorMessage = res.errorMessage();
+  //   throw std::runtime_error(_lastErrorMessage);
+  // }
 
   std::shared_ptr<fu::Connection> oldConnection;
   _connection.swap(oldConnection);
