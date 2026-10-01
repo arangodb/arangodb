@@ -1332,11 +1332,11 @@ unsigned int ExecutionNode::inputDepth() const noexcept {
 }
 
 RegisterId ExecutionNode::outputRegister(Variable const* variable) const {
-  return getRegisterPlan()->variableToRegisterId(variable, _depth);
+  return getRegisterPlan()->resolverForDepth(_depth).resolve(*variable);
 }
 
 RegisterId ExecutionNode::inputRegister(Variable const* variable) const {
-  return getRegisterPlan()->variableToRegisterId(variable, inputDepth());
+  return getRegisterPlan()->resolverForDepth(inputDepth()).resolve(*variable);
 }
 
 RegisterId ExecutionNode::inputRegisterOrInvalid(
@@ -1344,8 +1344,9 @@ RegisterId ExecutionNode::inputRegisterOrInvalid(
   if (variable == nullptr) {
     return RegisterId::makeInvalid();
   }
-  return getRegisterPlan()->variableToOptionalRegisterId(variable->id,
-                                                         inputDepth());
+  return getRegisterPlan()
+      ->resolverForDepth(inputDepth())
+      .tryResolve(variable->id);
 }
 
 RegisterId ExecutionNode::outputRegisterOrInvalid(
@@ -1353,7 +1354,7 @@ RegisterId ExecutionNode::outputRegisterOrInvalid(
   if (variable == nullptr) {
     return RegisterId::makeInvalid();
   }
-  return getRegisterPlan()->variableToOptionalRegisterId(variable->id, _depth);
+  return getRegisterPlan()->resolverForDepth(_depth).tryResolve(variable->id);
 }
 
 RegisterResolver ExecutionNode::inputRegisterResolver() const noexcept {

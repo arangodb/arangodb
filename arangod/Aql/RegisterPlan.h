@@ -146,14 +146,6 @@ struct RegisterPlanT final
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
   static void toVelocyPackEmpty(arangodb::velocypack::Builder& builder);
 
-  /// @brief register holding `variable` in rows of the given depth.
-  /// Prefer ExecutionNode::inputRegister()/outputRegister(), which pass the
-  /// depth of the row the caller actually means.
-  auto variableToRegisterId(Variable const* variable, unsigned int depth) const
-      -> RegisterId;
-  auto variableToOptionalRegisterId(VariableId varId, unsigned int depth) const
-      -> RegisterId;
-
   /// @brief a resolver bound to one depth, for code that has to resolve
   /// variables later than register planning (e.g. during execution).
   auto resolverForDepth(unsigned int depth) const -> RegisterResolver;
@@ -170,9 +162,7 @@ struct RegisterPlanT final
       -> RegIdSetStack;
 
  private:
-  /// @brief depth-agnostic lookups, for register planning itself: while the
-  /// plan is being built there is only one numbering to resolve against.
-  /// Everything downstream must go through the depth-aware overloads.
+  /// @brief depth-agnostic lookups, used during register planning itself
   auto variableToRegisterId(Variable const* variable) const -> RegisterId;
   auto variableToOptionalRegisterId(VariableId varId) const -> RegisterId;
 
