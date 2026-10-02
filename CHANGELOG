@@ -1,6 +1,11 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Updated node modules:
+ - brace-expansion to 5.0.12 to resolve CVE-2026-102276, CVE-2026-102277
+   and CVE-2026-102278
+ - fast-uri to 3.1.8 to resolve CVE-2026-86472
+
 * COR-1049: Disallow filters on references
   MATCH now rejects filters and attribute constraints applied to variables
   that reference documents defined outside the MATCH pattern.
