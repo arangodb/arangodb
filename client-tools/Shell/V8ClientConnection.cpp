@@ -1082,7 +1082,7 @@ static void ClientConnection_reconnect(
   if (!v8security.isAllowedToConnectToUrl(isolate, endpoint)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
-        absl::StrCat("not allowed to connect to this endpoint", endpoint));
+        absl::StrCat("not allowed to connect to this endpoint: ", endpoint));
   }
 
   if (args.Length() > 5 && !args[5]->IsUndefined()) {
