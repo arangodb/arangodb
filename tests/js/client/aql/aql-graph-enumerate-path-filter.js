@@ -108,14 +108,14 @@ const createGraph = () => {
   db[eName].save(edges);
 };
 
-function assertRuleFires(query) {
-  const result = th.AQL_EXPLAIN(query);
+function assertRuleFires(query, bindVars) {
+  const result = th.AQL_EXPLAIN(query, bindVars || {});
   assertTrue(result.plan.rules.includes(optimizerRuleName),
              `[${result.plan.rules}] does not contain "${optimizerRuleName}"`);
 }
 
-function assertRuleDoesNotFire(query) {
-  const result = th.AQL_EXPLAIN(query);
+function assertRuleDoesNotFire(query, bindVars) {
+  const result = th.AQL_EXPLAIN(query, bindVars || {});
   assertFalse(result.plan.rules.includes(optimizerRuleName),
              `[${result.plan.rules}] contains "${optimizerRuleName}"`);
 }
@@ -127,11 +127,12 @@ function getVerticesAndEdgesFromPath(path) {
   };
 }
 
-function assertSameResults(query) {
-  const resultWith = db._query(query).toArray();
+function assertSameResults(query, bindVars) {
+  const vars = bindVars || {};
+  const resultWith = db._query(query, vars).toArray();
   const resultWithPaths = resultWith.map(getVerticesAndEdgesFromPath);
 
-  const resultWithout = db._query(query, {}, {optimizer: {rules: [`-${optimizerRuleName}`]}}).toArray();
+  const resultWithout = db._query(query, vars, {optimizer: {rules: [`-${optimizerRuleName}`]}}).toArray();
   const resultWithoutPaths = resultWithout.map(getVerticesAndEdgesFromPath);
 
   assertEqual(resultWithPaths, resultWithoutPaths);
@@ -187,7 +188,9 @@ function enumeratePathsFilter() {
           FILTER path.vertices[* LIMIT 5] ALL == false
           RETURN path`);
     },
-    testDoesNotFireWhenFilter: function () {
+    // Bare `[* FILTER ...]` without a trailing attribute / RETURN projection
+    // is still unsupported (same shape rejection as before COR-918).
+    testDoesNotFireWhenFilterWithoutAttribute: function () {
       assertRuleDoesNotFire(`
         FOR path IN ANY K_PATHS "${vName}/0" TO "${vName}/2" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
           FILTER path.vertices[* FILTER CURRENT.foo < 5] ALL == false
@@ -200,6 +203,63 @@ function enumeratePathsFilter() {
           FILTER path.vertices[* RETURN CURRENT.colour == "green"] ALL == false && x.y == 0
           RETURN path`;
       assertRuleDoesNotFire(query);
+    },
+    // COR-918: inline FILTER on path expansion must be pushed into the
+    // EnumeratePathsNode (ALL / NONE, all path search types).
+    testInlineFilterAllPushed_K_PATHS: function () {
+      const query = `
+        FOR path IN OUTBOUND K_PATHS "${vName}/0" TO "${vName}/2" GRAPH "${graphName}"
+          FILTER path.edges[* FILTER CURRENT.colour != null].colour ALL == "green"
+          RETURN path`;
+      assertRuleFires(query);
+      assertSameResults(query);
+    },
+    testInlineFilterNonePushed_K_PATHS: function () {
+      const query = `
+        FOR path IN OUTBOUND K_PATHS "${vName}/0" TO "${vName}/2" GRAPH "${graphName}"
+          FILTER path.edges[* FILTER CURRENT.colour != null].colour NONE == "red"
+          RETURN path`;
+      assertRuleFires(query);
+      assertSameResults(query);
+    },
+    testInlineFilterAllPushed_K_SHORTEST_PATHS: function () {
+      const query = `
+        FOR path IN OUTBOUND K_SHORTEST_PATHS "${vName}/0" TO "${vName}/2" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
+          FILTER path.edges[* FILTER CURRENT.colour != null].colour ALL == "green"
+          RETURN path`;
+      assertRuleFires(query);
+      assertSameResults(query);
+    },
+    testInlineFilterAllPushed_ALL_SHORTEST_PATHS: function () {
+      const query = `
+        FOR path IN OUTBOUND ALL_SHORTEST_PATHS "${vName}/0" TO "${vName}/2" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
+          FILTER path.edges[* FILTER CURRENT.colour != null].colour ALL == "green"
+          RETURN path`;
+      assertRuleFires(query);
+      assertSameResults(query);
+    },
+    testInlineFilterGtWithBindParam: function () {
+      // Reproducer shape from COR-918 (ALL > bind parameter).
+      const query = `
+        FOR path IN OUTBOUND K_PATHS "${vName}/8" TO "${vName}/14" GRAPH "${graphName}"
+          FILTER path.edges[* FILTER CURRENT.weight != null].weight ALL > @minWeight
+          RETURN path`;
+      const bind = {minWeight: -1};
+      assertRuleFires(query, bind);
+      const withRule = db._query(query, bind).toArray().map(getVerticesAndEdgesFromPath);
+      const withoutRule = db._query(query, bind, {optimizer: {rules: [`-${optimizerRuleName}`]}})
+                            .toArray().map(getVerticesAndEdgesFromPath);
+      assertEqual(withRule, withoutRule);
+    },
+    // Make sure the outer CURRENT is rewritten, while the CURRENT used by
+    // the nested expansion remains unchanged.
+    testInlineFilterWithNestedExpansionCurrent: function () {
+      const query = `
+        FOR path IN OUTBOUND K_PATHS "${vName}/0" TO "${vName}/2" GRAPH "${graphName}"
+          FILTER path.edges[* FILTER LENGTH([1, 2][* FILTER CURRENT > 0]) > 0].colour ALL == "green"
+          RETURN path`;
+      assertRuleFires(query);
+      assertSameResults(query);
     },
     testFiresWithNesting: function() {
       for (let o of ['', ', algorithm: "legacy"']) {
