@@ -1,3 +1,12 @@
+v3.11.14.7 (XXXX-XX-XX)
+-----------------------
+
+* Updated node modules:
+ - brace-expansion to 1.1.21 to resolve CVE-2026-102276, CVE-2026-102277
+   and CVE-2026-102278
+ - fast-uri to 3.1.8 to resolve CVE-2026-86472
+
+
 v3.11.14.6 (2026-09-29)
 -----------------------
 
