@@ -225,6 +225,12 @@ static void JS_CreateViewVocbase(
   try {
     // First refresh our analyzers cache to see all latest changes in analyzers
     TRI_GET_GLOBALS();
+    if (!v8g->server()
+             .hasFeature<arangodb::iresearch::IResearchAnalyzerFeature>()) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(
+          TRI_ERROR_NOT_IMPLEMENTED,
+          "analyzers are not supported on this server");
+    }
     auto res =
         v8g->server()
             .getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
@@ -665,6 +671,12 @@ static void JS_PropertiesViewVocbase(
 
     auto& vocbase = GetContextVocBase(isolate);
     TRI_GET_GLOBALS();
+    if (!v8g->server()
+             .hasFeature<arangodb::iresearch::IResearchAnalyzerFeature>()) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(
+          TRI_ERROR_NOT_IMPLEMENTED,
+          "analyzers are not supported on this server");
+    }
     auto res =
         v8g->server()
             .getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()

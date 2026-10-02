@@ -209,6 +209,12 @@ arangodb::RestStatus RestAnalyzerHandler::execute() {
     return arangodb::RestStatus::DONE;
   }
 
+  if (!server().hasFeature<IResearchAnalyzerFeature>()) {
+    generateError(arangodb::rest::ResponseCode::NOT_IMPLEMENTED,
+                  TRI_ERROR_NOT_IMPLEMENTED,
+                  "analyzers are not available on this instance");
+    return arangodb::RestStatus::DONE;
+  }
   auto& analyzers = server().getFeature<IResearchAnalyzerFeature>();
 
   auto& suffixes = _request->suffixes();
