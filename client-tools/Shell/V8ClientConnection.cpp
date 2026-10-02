@@ -641,16 +641,15 @@ ResultT<std::string> V8ClientConnection::connect() {
   return res;
 }
 
-void V8ClientConnection::reconnect() {
+ResultT<std::string> V8ClientConnection::reconnect() {
   std::lock_guard<std::recursive_mutex> guard(_lock);
 
   std::string oldConnectionId = connectionIdentifier(_connectedBuilder);
 
   auto res = prepareConnection();
-  // if (!res.ok()) {
-  //   _lastErrorMessage = res.errorMessage();
-  //   throw std::runtime_error(_lastErrorMessage);
-  // }
+  if (!res.ok()) {
+    return res;
+  }
 
   std::shared_ptr<fu::Connection> oldConnection;
   _connection.swap(oldConnection);
@@ -672,7 +671,8 @@ void V8ClientConnection::reconnect() {
   try {
     createConnection();
   } catch (...) {
-    throw std::runtime_error("error in '" + _client.endpoint() + "'");
+    return ResultT<std::string>::error(TRI_ERROR_FAILED,
+                                       "error in '" + _client.endpoint() + "'");
   }
 
   if (isConnected() &&
@@ -688,10 +688,11 @@ void V8ClientConnection::reconnect() {
           << "', username: '" << _client.username()
           << "' - Server message: " << _lastErrorMessage;
     }
-
-    throw std::runtime_error(!_lastErrorMessage.empty() ? _lastErrorMessage
-                                                        : "could not connect");
+    return ResultT<std::string>::error(
+        TRI_ERROR_FAILED,
+        !_lastErrorMessage.empty() ? _lastErrorMessage : "could not connect");
   }
+  return ResultT<std::string>::success("");
 }
 
 std::string V8ClientConnection::getHandle() { return _currentConnectionId; }
@@ -1099,7 +1100,10 @@ static void ClientConnection_reconnect(
   client->setWarnConnect(warnConnect);
 
   try {
-    v8connection->reconnect();
+    auto res = v8connection->reconnect();
+    if (!res.ok()) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+    }
   } catch (std::exception const& ex) {
     TRI_V8_THROW_EXCEPTION_PARAMETER(ex.what());
   } catch (...) {
