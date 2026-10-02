@@ -56,8 +56,9 @@ class IResearchInvertedIndexDefinition : public IndexDefinition {
 class IResearchRocksDBInvertedIndexFactory
     : public DelegatingIndexFactory<IResearchInvertedIndexDefinition> {
  public:
-  explicit IResearchRocksDBInvertedIndexFactory(
-      application_features::ApplicationServer& server);
+  IResearchRocksDBInvertedIndexFactory(
+      application_features::ApplicationServer& server,
+      IResearchInvertedIndexDefinition const& definition);
 
   /// @brief instantiate an Index definition
   std::shared_ptr<Index> instantiate(LogicalCollection& collection,

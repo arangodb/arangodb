@@ -41,8 +41,9 @@ IResearchInvertedIndexDefinition::IResearchInvertedIndexDefinition(
     : IndexDefinition(IndexType::Inverted), _server(server) {}
 
 IResearchRocksDBInvertedIndexFactory::IResearchRocksDBInvertedIndexFactory(
-    application_features::ApplicationServer& server)
-    : DelegatingIndexFactory(server, server) {}
+    application_features::ApplicationServer& server,
+    IResearchInvertedIndexDefinition const& definition)
+    : DelegatingIndexFactory(server, definition) {}
 
 bool IResearchInvertedIndexDefinition::equal(velocypack::Slice lhs,
                                              velocypack::Slice rhs,

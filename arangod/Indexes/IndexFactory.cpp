@@ -30,6 +30,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
+#include "Indexes/IndexTypeCatalog.h"
 #include "VectorIndex/Definition.h"
 #include "VectorIndex/FaissFactory.h"
 #include "IResearch/IResearchCommon.h"
@@ -122,8 +123,10 @@ IndexTypeFactory::IndexTypeFactory(
     application_features::ApplicationServer& server)
     : _server(server) {}
 
-IndexFactory::IndexFactory(application_features::ApplicationServer& server)
+IndexFactory::IndexFactory(application_features::ApplicationServer& server,
+                           IndexTypeCatalog const& catalog)
     : _server(server),
+      _catalog(catalog),
       _factories(),
       _invalid(std::make_unique<InvalidIndexFactory>(server)) {}
 
@@ -165,8 +168,6 @@ Result IndexFactory::enhanceIndexDefinition(  // normalize definition
     return Result(TRI_ERROR_BAD_PARAMETER, "invalid index type");
   }
 
-  auto& factory = IndexFactory::factory(type.copyString());
-
   TRI_ASSERT(normalized.isEmpty());
 
   try {
@@ -202,7 +203,21 @@ Result IndexFactory::enhanceIndexDefinition(  // normalize definition
 
     normalized.add(StaticStrings::IndexName, velocypack::Value(name));
 
-    return factory.normalize(normalized, definition, isCreation, vocbase);
+    // the catalog only knows the built-in types; anything a feature or a
+    // test registered directly with this engine (e.g. the arangosearch
+    // link) is only known to this engine's own registry
+    Result res =
+        _catalog.resolve(type.stringView()) != IndexType::Unknown
+            ? _catalog.normalizeType(type.stringView(), normalized, definition,
+                                     isCreation, vocbase)
+            : factory(type.copyString())
+                  .normalize(normalized, definition, isCreation, vocbase);
+    if (res.fail()) {
+      return res;
+    }
+    // must run while ObjectBuilder is still open
+    finalizeDefinition(normalized, definition, isCreation);
+    return Result();
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
@@ -274,7 +289,7 @@ std::vector<std::string_view> IndexFactory::supportedIndexes(
 
 std::vector<std::pair<std::string_view, std::string_view>>
 IndexFactory::indexAliases(uint32_t apiVersion) const {
-  return {};
+  return _catalog.aliases(apiVersion);
 }
 
 IndexId IndexFactory::validateSlice(velocypack::Slice info, bool generateKey,

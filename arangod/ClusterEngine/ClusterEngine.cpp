@@ -62,10 +62,10 @@ ClusterEngine::ClusterEngine(application_features::ApplicationServer& server,
                              ClusterFeature& clusterFeature,
                              DatabaseFeature& database,
                              metrics::IRegistry& metrics,
-                             IVectorIndexProvider const& vectorIndexProvider)
+                             IndexTypeCatalog const& indexTypeCatalog)
     : StorageEngine(server, EngineName, name(),
                     std::make_unique<ClusterIndexFactory>(server, *this,
-                                                          vectorIndexProvider),
+                                                          indexTypeCatalog),
                     database, database),
       _clusterFeature(clusterFeature),
       _metrics(metrics) {

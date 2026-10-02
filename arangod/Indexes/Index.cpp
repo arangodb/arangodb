@@ -22,6 +22,7 @@
 
 #include "Index.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Projections.h"
 #include "Aql/Ast.h"
 #include "Aql/Variable.h"
@@ -31,6 +32,7 @@
 #include "Basics/datetime.h"
 #include "Containers/HashSet.h"
 #include "IResearch/IResearchCommon.h"
+#include "Indexes/IndexTypeCatalog.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
@@ -569,25 +571,24 @@ bool Index::compareIdentifiers(velocypack::Slice const& lhs,
 /// contents are the same
 bool Index::compare(StorageEngine& engine, VPackSlice const& lhs,
                     VPackSlice const& rhs, std::string const& dbname) {
-  auto normalizeType = [](VPackSlice s) -> std::string_view {
-    TRI_ASSERT(s.isString());
-    // "zkd" is the old naming for "mdi", so we have to treat these
-    // two type names as identical.
-    if (s.stringView() == "zkd") {
-      return "mdi";
-    }
-    return s.stringView();
-  };
-
-  auto lhsType = normalizeType(lhs.get(arangodb::StaticStrings::IndexType));
-  auto rhsType = normalizeType(rhs.get(arangodb::StaticStrings::IndexType));
-
-  if (lhsType != rhsType) {
+  auto typeSlice = lhs.get(arangodb::StaticStrings::IndexType);
+  if (!typeSlice.isString()) {
     return false;
   }
+  // "zkd" is the old naming for "mdi", so we have to treat these
+  // two type names as identical.
+  std::string_view typeName = typeSlice.stringView() == "zkd"
+                                  ? std::string_view{"mdi"}
+                                  : typeSlice.stringView();
 
+  auto& catalog = engine.server().getFeature<IndexTypeCatalog>();
+  if (catalog.resolve(typeName) != IndexType::Unknown) {
+    return catalog.equal(lhs, rhs, dbname);
+  }
+  // not a built-in type (e.g. the arangosearch link): fall back to this
+  // engine's own registry
   return engine.indexFactory()
-      .factory(std::string{lhsType})
+      .factory(std::string{typeName})
       .equal(lhs, rhs, dbname);
 }
 

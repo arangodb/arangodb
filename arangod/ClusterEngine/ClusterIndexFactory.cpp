@@ -30,6 +30,7 @@
 #include "ClusterEngine/ClusterIndex.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexDefinitions.h"
+#include "Indexes/IndexTypeCatalog.h"
 #include "IResearch/IResearchInvertedIndex.h"
 #include "IResearch/IResearchInvertedClusterIndex.h"
 #include "IResearch/IResearchRocksDBInvertedIndex.h"
@@ -50,9 +51,8 @@ namespace {
 using namespace arangodb;
 using namespace arangodb::iresearch;
 
-// composes the same *IndexDefinition RocksDBIndexFactory uses, so
-// equal()/normalize() logic is written once and shared, not looked up
-// through a separate registry at runtime
+// Definition is a reference into IndexTypeCatalog, the same instance
+// RocksDBIndexFactory uses; only instantiate() differs per engine
 template<typename Definition>
 struct ClusterIndexFactoryT : public DelegatingIndexFactory<Definition> {
   template<typename... Args>
@@ -111,9 +111,7 @@ struct PrimaryIndexFactory
 
 struct IResearchInvertedIndexClusterFactory
     : public ClusterIndexFactoryT<IResearchInvertedIndexDefinition> {
-  explicit IResearchInvertedIndexClusterFactory(
-      application_features::ApplicationServer& server, ClusterEngine& engine)
-      : ClusterIndexFactoryT(server, engine, server) {}
+  using ClusterIndexFactoryT::ClusterIndexFactoryT;
 
   std::shared_ptr<Index> instantiate(LogicalCollection& collection,
                                      velocypack::Slice definition, IndexId id,
@@ -149,35 +147,37 @@ namespace arangodb {
 
 void ClusterIndexFactory::linkIndexFactories(
     application_features::ApplicationServer& server, IndexFactory& factory,
-    ClusterEngine& engine, IVectorIndexProvider const& vectorIndexProvider) {
-  static const EdgeIndexFactory edgeIndexFactory(server, engine);
+    ClusterEngine& engine, IndexTypeCatalog const& catalog) {
+  static const EdgeIndexFactory edgeIndexFactory(server, engine,
+                                                 catalog.edge());
   static const ClusterIndexFactoryT<FulltextIndexDefinition>
-      fulltextIndexFactory(server, engine);
-  static const ClusterIndexFactoryT<GeoIndexDefinition> geoIndexFactory(server,
-                                                                        engine);
+      fulltextIndexFactory(server, engine, catalog.fulltext());
+  static const ClusterIndexFactoryT<GeoIndexDefinition> geoIndexFactory(
+      server, engine, catalog.geo());
   static const ClusterIndexFactoryT<Geo1IndexDefinition> geo1IndexFactory(
-      server, engine);
+      server, engine, catalog.geo1());
   static const ClusterIndexFactoryT<Geo2IndexDefinition> geo2IndexFactory(
-      server, engine);
+      server, engine, catalog.geo2());
   static const ClusterIndexFactoryT<SecondaryIndexDefinition> hashIndexFactory(
-      server, engine, IndexType::Hash);
+      server, engine, catalog.hash());
   static const ClusterIndexFactoryT<SecondaryIndexDefinition>
-      persistentIndexFactory(server, engine, IndexType::Persistent);
-  static const PrimaryIndexFactory primaryIndexFactory(server, engine);
+      persistentIndexFactory(server, engine, catalog.persistent());
+  static const PrimaryIndexFactory primaryIndexFactory(server, engine,
+                                                       catalog.primary());
   static const ClusterIndexFactoryT<SecondaryIndexDefinition>
-      skiplistIndexFactory(server, engine, IndexType::Skiplist);
+      skiplistIndexFactory(server, engine, catalog.skiplist());
   static const ClusterIndexFactoryT<TtlIndexDefinition> ttlIndexFactory(
-      server, engine, IndexType::TTL);
+      server, engine, catalog.ttl());
   static const ClusterIndexFactoryT<MdiIndexDefinition> mdiIndexFactory(
-      server, engine, IndexType::MDI);
+      server, engine, catalog.mdi());
   static const ClusterIndexFactoryT<MdiIndexDefinition> zkdIndexFactory(
-      server, engine, IndexType::Zkd);
+      server, engine, catalog.zkd());
   static const ClusterIndexFactoryT<MdiPrefixedIndexDefinition>
-      mdiPrefixedIndexFactory(server, engine);
+      mdiPrefixedIndexFactory(server, engine, catalog.mdiPrefixed());
   static const IResearchInvertedIndexClusterFactory invertedIndexFactory(
-      server, engine);
+      server, engine, catalog.inverted());
   static const ClusterIndexFactoryT<VectorIndexDefinition> vectorIndexFactory(
-      server, engine, IndexType::Vector, vectorIndexProvider);
+      server, engine, catalog.vector());
 
   factory.emplace("edge", edgeIndexFactory);
   factory.emplace("fulltext", fulltextIndexFactory);
@@ -199,21 +199,9 @@ void ClusterIndexFactory::linkIndexFactories(
 
 ClusterIndexFactory::ClusterIndexFactory(
     application_features::ApplicationServer& server, ClusterEngine& engine,
-    IVectorIndexProvider const& vectorIndexProvider)
-    : IndexFactory(server), _engine(engine) {
-  linkIndexFactories(server, *this, engine, vectorIndexProvider);
-}
-
-std::vector<std::pair<std::string_view, std::string_view>>
-ClusterIndexFactory::indexAliases(uint32_t apiVersion) const {
-  if (apiVersion == 0) {
-    return {
-        {"hash", "persistent"},
-        {"skiplist", "persistent"},
-        {"zkd", "mdi"},
-    };
-  }
-  return {{"zkd", "mdi"}};
+    IndexTypeCatalog const& catalog)
+    : IndexFactory(server, catalog), _engine(engine) {
+  linkIndexFactories(server, *this, engine, catalog);
 }
 
 void ClusterIndexFactory::fillSystemIndexes(

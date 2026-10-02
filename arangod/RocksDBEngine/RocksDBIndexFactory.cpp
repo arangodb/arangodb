@@ -54,8 +54,7 @@ using namespace arangodb;
 namespace {
 
 struct EdgeIndexFactory : public DelegatingIndexFactory<EdgeIndexDefinition> {
-  explicit EdgeIndexFactory(application_features::ApplicationServer& server)
-      : DelegatingIndexFactory(server) {}
+  using DelegatingIndexFactory::DelegatingIndexFactory;
 
   std::shared_ptr<Index> instantiate(LogicalCollection& collection,
                                      velocypack::Slice definition, IndexId id,
@@ -79,8 +78,7 @@ struct EdgeIndexFactory : public DelegatingIndexFactory<EdgeIndexDefinition> {
 
 struct FulltextIndexFactory
     : public DelegatingIndexFactory<FulltextIndexDefinition> {
-  explicit FulltextIndexFactory(application_features::ApplicationServer& server)
-      : DelegatingIndexFactory(server) {}
+  using DelegatingIndexFactory::DelegatingIndexFactory;
 
   std::shared_ptr<Index> instantiate(
       LogicalCollection& collection, velocypack::Slice definition, IndexId id,
@@ -90,8 +88,7 @@ struct FulltextIndexFactory
 };
 
 struct GeoIndexFactory : public DelegatingIndexFactory<GeoIndexDefinition> {
-  explicit GeoIndexFactory(application_features::ApplicationServer& server)
-      : DelegatingIndexFactory(server) {}
+  using DelegatingIndexFactory::DelegatingIndexFactory;
 
   std::shared_ptr<Index> instantiate(
       LogicalCollection& collection, velocypack::Slice definition, IndexId id,
@@ -101,8 +98,7 @@ struct GeoIndexFactory : public DelegatingIndexFactory<GeoIndexDefinition> {
 };
 
 struct Geo1IndexFactory : public DelegatingIndexFactory<Geo1IndexDefinition> {
-  explicit Geo1IndexFactory(application_features::ApplicationServer& server)
-      : DelegatingIndexFactory(server) {}
+  using DelegatingIndexFactory::DelegatingIndexFactory;
 
   std::shared_ptr<Index> instantiate(
       LogicalCollection& collection, velocypack::Slice definition, IndexId id,
@@ -113,8 +109,7 @@ struct Geo1IndexFactory : public DelegatingIndexFactory<Geo1IndexDefinition> {
 };
 
 struct Geo2IndexFactory : public DelegatingIndexFactory<Geo2IndexDefinition> {
-  explicit Geo2IndexFactory(application_features::ApplicationServer& server)
-      : DelegatingIndexFactory(server) {}
+  using DelegatingIndexFactory::DelegatingIndexFactory;
 
   std::shared_ptr<Index> instantiate(
       LogicalCollection& collection, velocypack::Slice definition, IndexId id,
@@ -124,12 +119,10 @@ struct Geo2IndexFactory : public DelegatingIndexFactory<Geo2IndexDefinition> {
   }
 };
 
-template<typename F, IndexType type>
+template<typename F>
 struct SecondaryIndexFactory
     : public DelegatingIndexFactory<SecondaryIndexDefinition> {
-  explicit SecondaryIndexFactory(
-      application_features::ApplicationServer& server)
-      : DelegatingIndexFactory(server, type) {}
+  using DelegatingIndexFactory::DelegatingIndexFactory;
 
   std::shared_ptr<Index> instantiate(
       LogicalCollection& collection, velocypack::Slice definition, IndexId id,
@@ -139,9 +132,7 @@ struct SecondaryIndexFactory
 };
 
 struct MdiIndexFactory : public DelegatingIndexFactory<MdiIndexDefinition> {
-  MdiIndexFactory(application_features::ApplicationServer& server,
-                  IndexType type)
-      : DelegatingIndexFactory(server, type) {}
+  using DelegatingIndexFactory::DelegatingIndexFactory;
 
   std::shared_ptr<arangodb::Index> instantiate(
       arangodb::LogicalCollection& collection,
@@ -159,9 +150,7 @@ struct MdiIndexFactory : public DelegatingIndexFactory<MdiIndexDefinition> {
 
 struct MdiPrefixedIndexFactory
     : public DelegatingIndexFactory<MdiPrefixedIndexDefinition> {
-  explicit MdiPrefixedIndexFactory(
-      application_features::ApplicationServer& server)
-      : DelegatingIndexFactory(server) {}
+  using DelegatingIndexFactory::DelegatingIndexFactory;
 
   std::shared_ptr<arangodb::Index> instantiate(
       arangodb::LogicalCollection& collection,
@@ -179,10 +168,7 @@ struct MdiPrefixedIndexFactory
 
 struct VectorIndexFactory
     : public DelegatingIndexFactory<VectorIndexDefinition> {
-  explicit VectorIndexFactory(application_features::ApplicationServer& server,
-                              IndexType type,
-                              IVectorIndexProvider const& vectorIndexProvider)
-      : DelegatingIndexFactory(server, type, vectorIndexProvider) {}
+  using DelegatingIndexFactory::DelegatingIndexFactory;
 
   std::shared_ptr<arangodb::Index> instantiate(
       arangodb::LogicalCollection& collection,
@@ -193,9 +179,7 @@ struct VectorIndexFactory
 };
 
 struct TtlIndexFactory : public DelegatingIndexFactory<TtlIndexDefinition> {
-  TtlIndexFactory(application_features::ApplicationServer& server,
-                  IndexType type)
-      : DelegatingIndexFactory(server, type) {}
+  using DelegatingIndexFactory::DelegatingIndexFactory;
 
   std::shared_ptr<Index> instantiate(
       LogicalCollection& collection, velocypack::Slice definition, IndexId id,
@@ -206,8 +190,7 @@ struct TtlIndexFactory : public DelegatingIndexFactory<TtlIndexDefinition> {
 
 struct PrimaryIndexFactory
     : public DelegatingIndexFactory<PrimaryIndexDefinition> {
-  explicit PrimaryIndexFactory(application_features::ApplicationServer& server)
-      : DelegatingIndexFactory(server) {}
+  using DelegatingIndexFactory::DelegatingIndexFactory;
 
   std::shared_ptr<Index> instantiate(LogicalCollection& collection,
                                      velocypack::Slice definition,
@@ -227,29 +210,30 @@ struct PrimaryIndexFactory
 
 RocksDBIndexFactory::RocksDBIndexFactory(
     application_features::ApplicationServer& server,
-    IVectorIndexProvider const& vectorIndexProvider)
-    : IndexFactory(server) {
-  static const EdgeIndexFactory edgeIndexFactory(server);
-  static const FulltextIndexFactory fulltextIndexFactory(server);
-  static const GeoIndexFactory geoIndexFactory(server);
-  static const Geo1IndexFactory geo1IndexFactory(server);
-  static const Geo2IndexFactory geo2IndexFactory(server);
-  static const SecondaryIndexFactory<RocksDBHashIndex, IndexType::Hash>
-      hashIndexFactory(server);
-  static const SecondaryIndexFactory<RocksDBPersistentIndex,
-                                     IndexType::Persistent>
-      persistentIndexFactory(server);
-  static const SecondaryIndexFactory<RocksDBSkiplistIndex, IndexType::Skiplist>
-      skiplistIndexFactory(server);
-  static const TtlIndexFactory ttlIndexFactory(server, IndexType::TTL);
-  static const PrimaryIndexFactory primaryIndexFactory(server);
-  static const MdiIndexFactory zkdIndexFactory(server, IndexType::Zkd);
-  static const MdiIndexFactory mdiIndexFactory(server, IndexType::MDI);
-  static const VectorIndexFactory vectorIndexFactory(server, IndexType::Vector,
-                                                     vectorIndexProvider);
+    IndexTypeCatalog const& catalog)
+    : IndexFactory(server, catalog) {
+  static const EdgeIndexFactory edgeIndexFactory(server, catalog.edge());
+  static const FulltextIndexFactory fulltextIndexFactory(server,
+                                                         catalog.fulltext());
+  static const GeoIndexFactory geoIndexFactory(server, catalog.geo());
+  static const Geo1IndexFactory geo1IndexFactory(server, catalog.geo1());
+  static const Geo2IndexFactory geo2IndexFactory(server, catalog.geo2());
+  static const SecondaryIndexFactory<RocksDBHashIndex> hashIndexFactory(
+      server, catalog.hash());
+  static const SecondaryIndexFactory<RocksDBPersistentIndex>
+      persistentIndexFactory(server, catalog.persistent());
+  static const SecondaryIndexFactory<RocksDBSkiplistIndex> skiplistIndexFactory(
+      server, catalog.skiplist());
+  static const TtlIndexFactory ttlIndexFactory(server, catalog.ttl());
+  static const PrimaryIndexFactory primaryIndexFactory(server,
+                                                       catalog.primary());
+  static const MdiIndexFactory zkdIndexFactory(server, catalog.zkd());
+  static const MdiIndexFactory mdiIndexFactory(server, catalog.mdi());
+  static const VectorIndexFactory vectorIndexFactory(server, catalog.vector());
   static const iresearch::IResearchRocksDBInvertedIndexFactory
-      iresearchInvertedIndexFactory(server);
-  static const MdiPrefixedIndexFactory mdiPrefixedIndexFactory(server);
+      iresearchInvertedIndexFactory(server, catalog.inverted());
+  static const MdiPrefixedIndexFactory mdiPrefixedIndexFactory(
+      server, catalog.mdiPrefixed());
 
   emplace("edge", edgeIndexFactory);
   emplace("fulltext", fulltextIndexFactory);
@@ -270,18 +254,13 @@ RocksDBIndexFactory::RocksDBIndexFactory(
           iresearchInvertedIndexFactory);
 }
 
-/// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
-/// "hash") used to display storage engine capabilities
-std::vector<std::pair<std::string_view, std::string_view>>
-RocksDBIndexFactory::indexAliases(uint32_t apiVersion) const {
-  if (apiVersion == 0) {
-    return {
-        {"hash", "persistent"},
-        {"skiplist", "persistent"},
-        {"zkd", "mdi"},
-    };
+void RocksDBIndexFactory::finalizeDefinition(velocypack::Builder& normalized,
+                                             velocypack::Slice definition,
+                                             bool isCreation) const {
+  if (isCreation && !definition.hasKey(StaticStrings::ObjectId)) {
+    normalized.add(StaticStrings::ObjectId,
+                   velocypack::Value(std::to_string(TRI_NewTickServer())));
   }
-  return {{"zkd", "mdi"}};
 }
 
 void RocksDBIndexFactory::fillSystemIndexes(

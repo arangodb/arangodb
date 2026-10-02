@@ -38,8 +38,10 @@
 #include "IResearch/IResearchRocksDBLink.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "Indexes/IndexIterator.h"
+#include "Indexes/IndexTypeCatalog.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
+#include "VectorIndex/IVectorIndexProvider.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/IDatabaseProvider.h"
@@ -66,10 +68,27 @@
 
 namespace {
 
-struct IndexFactoryMock : arangodb::IndexFactory {
+struct NoVectorIndexProvider : arangodb::IVectorIndexProvider {
+  bool isVectorIndexEnabled() const noexcept override { return false; }
+};
+
+// constructed as a base of IndexFactoryMock (in listed order, before
+// IndexFactory) so its `catalog` is already alive when IndexFactory's
+// reference member binds to it
+struct MockIndexTypeCatalogHolder {
+  explicit MockIndexTypeCatalogHolder(
+      arangodb::application_features::ApplicationServer& server)
+      : catalog(server, vectorIndexProvider) {}
+
+  NoVectorIndexProvider vectorIndexProvider;
+  arangodb::IndexTypeCatalog catalog;
+};
+
+struct IndexFactoryMock : private MockIndexTypeCatalogHolder,
+                          public arangodb::IndexFactory {
   IndexFactoryMock(arangodb::application_features::ApplicationServer& server,
                    bool injectClusterIndexes)
-      : IndexFactory(server) {
+      : MockIndexTypeCatalogHolder(server), IndexFactory(server, catalog) {
     // there is only a single StorageEngine slot now, and StorageEngineMock
     // always occupies it, so a real ClusterEngine can never be fetched here.
     TRI_ASSERT(!injectClusterIndexes);

@@ -24,11 +24,9 @@
 
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexFactory.h"
 #include "VectorIndex/IVectorIndexProvider.h"
-#include "VocBase/ticks.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -59,12 +57,6 @@ Result FulltextIndexDefinition::normalize(velocypack::Builder& normalized,
   normalized.add(StaticStrings::IndexType,
                  velocypack::Value(Index::oldtypeName(IndexType::Fulltext)));
 
-  if (isCreation && !ServerState::instance()->isCoordinator() &&
-      !definition.hasKey(StaticStrings::ObjectId)) {
-    normalized.add(StaticStrings::ObjectId,
-                   velocypack::Value(std::to_string(TRI_NewTickServer())));
-  }
-
   return IndexFactory::enhanceJsonIndexFulltext(definition, normalized,
                                                 isCreation);
 }
@@ -76,12 +68,6 @@ Result GeoIndexDefinition::normalize(velocypack::Builder& normalized,
   TRI_ASSERT(normalized.isOpenObject());
   normalized.add(StaticStrings::IndexType,
                  velocypack::Value(Index::oldtypeName(IndexType::Geo)));
-
-  if (isCreation && !ServerState::instance()->isCoordinator() &&
-      !definition.hasKey(StaticStrings::ObjectId)) {
-    normalized.add(StaticStrings::ObjectId,
-                   VPackValue(std::to_string(TRI_NewTickServer())));
-  }
 
   return IndexFactory::enhanceJsonIndexGeo(definition, normalized, isCreation,
                                            1, 2);
@@ -95,12 +81,6 @@ Result Geo1IndexDefinition::normalize(velocypack::Builder& normalized,
   normalized.add(StaticStrings::IndexType,
                  velocypack::Value(Index::oldtypeName(IndexType::Geo)));
 
-  if (isCreation && !ServerState::instance()->isCoordinator() &&
-      !definition.hasKey(StaticStrings::ObjectId)) {
-    normalized.add(StaticStrings::ObjectId,
-                   velocypack::Value(std::to_string(TRI_NewTickServer())));
-  }
-
   return IndexFactory::enhanceJsonIndexGeo(definition, normalized, isCreation,
                                            1, 1);
 }
@@ -112,12 +92,6 @@ Result Geo2IndexDefinition::normalize(velocypack::Builder& normalized,
   TRI_ASSERT(normalized.isOpenObject());
   normalized.add(StaticStrings::IndexType,
                  velocypack::Value(Index::oldtypeName(IndexType::Geo)));
-
-  if (isCreation && !ServerState::instance()->isCoordinator() &&
-      !definition.hasKey(StaticStrings::ObjectId)) {
-    normalized.add(StaticStrings::ObjectId,
-                   velocypack::Value(std::to_string(TRI_NewTickServer())));
-  }
 
   return IndexFactory::enhanceJsonIndexGeo(definition, normalized, isCreation,
                                            1, 2);
@@ -131,11 +105,6 @@ Result SecondaryIndexDefinition::normalize(velocypack::Builder& normalized,
   normalized.add(StaticStrings::IndexType,
                  velocypack::Value(Index::oldtypeName(_type)));
 
-  if (isCreation && !ServerState::instance()->isCoordinator() &&
-      !definition.hasKey(StaticStrings::ObjectId)) {
-    normalized.add(StaticStrings::ObjectId,
-                   velocypack::Value(std::to_string(TRI_NewTickServer())));
-  }
   if (isCreation) {
     bool est = basics::VelocyPackHelper::getBooleanValue(
         definition, StaticStrings::IndexEstimates, true);
@@ -153,13 +122,6 @@ Result MdiIndexDefinition::normalize(velocypack::Builder& normalized,
   TRI_ASSERT(normalized.isOpenObject());
   normalized.add(StaticStrings::IndexType,
                  velocypack::Value(Index::oldtypeName(_type)));
-
-  if (isCreation && !ServerState::instance()->isCoordinator() &&
-      !definition.hasKey(StaticStrings::ObjectId)) {
-    normalized.add(
-        StaticStrings::ObjectId,
-        arangodb::velocypack::Value(std::to_string(TRI_NewTickServer())));
-  }
 
   if (definition.hasKey(StaticStrings::IndexPrefixFields)) {
     return Result(TRI_ERROR_BAD_PARAMETER,
@@ -180,12 +142,6 @@ Result MdiPrefixedIndexDefinition::normalize(
                  arangodb::velocypack::Value(
                      arangodb::Index::oldtypeName(IndexType::MDIPrefixed)));
 
-  if (isCreation && !ServerState::instance()->isCoordinator() &&
-      !definition.hasKey(StaticStrings::ObjectId)) {
-    normalized.add(
-        StaticStrings::ObjectId,
-        arangodb::velocypack::Value(std::to_string(TRI_NewTickServer())));
-  }
   if (isCreation) {
     bool est = basics::VelocyPackHelper::getBooleanValue(
         definition, StaticStrings::IndexEstimates, true);
@@ -211,13 +167,6 @@ Result VectorIndexDefinition::normalize(velocypack::Builder& normalized,
   normalized.add(StaticStrings::IndexType,
                  velocypack::Value(Index::oldtypeName(_type)));
 
-  if (isCreation && !ServerState::instance()->isCoordinator() &&
-      !definition.hasKey(StaticStrings::ObjectId)) {
-    normalized.add(
-        StaticStrings::ObjectId,
-        arangodb::velocypack::Value(std::to_string(TRI_NewTickServer())));
-  }
-
   // a vector index never uses index estimates
   normalized.add(StaticStrings::IndexEstimates, velocypack::Value(false));
 
@@ -233,11 +182,6 @@ Result TtlIndexDefinition::normalize(velocypack::Builder& normalized,
   normalized.add(StaticStrings::IndexType,
                  velocypack::Value(Index::oldtypeName(_type)));
 
-  if (isCreation && !ServerState::instance()->isCoordinator() &&
-      !definition.hasKey(StaticStrings::ObjectId)) {
-    normalized.add(StaticStrings::ObjectId,
-                   velocypack::Value(std::to_string(TRI_NewTickServer())));
-  }
   // a TTL index never uses index estimates
   normalized.add(StaticStrings::IndexEstimates, velocypack::Value(false));
 

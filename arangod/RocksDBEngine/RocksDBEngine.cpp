@@ -286,7 +286,8 @@ RocksDBEngine::RocksDBEngine(
     RocksDBOptionsProvider& optionsProvider, metrics::IRegistry& metrics,
     IDatabasePathProvider const& databasePathProvider,
     IVectorIndexProvider const& vectorIndexProvider,
-    IFlushControl& flushControl, IDumpLimitsProvider const& dumpLimitsProvider,
+    IndexTypeCatalog const& indexTypeCatalog, IFlushControl& flushControl,
+    IDumpLimitsProvider const& dumpLimitsProvider,
     replication2::IReplicatedLogProvider* replicatedLogProvider,
     ISchedulerProvider const& schedulerProvider,
     IDatabaseProvider& databaseProvider, IDatabaseBootstrap& databaseBootstrap,
@@ -295,7 +296,7 @@ RocksDBEngine::RocksDBEngine(
     ISortingPolicy const& sortingPolicy, RocksDBEngineOptions options)
     : StorageEngine(
           server, kEngineName, name(),
-          std::make_unique<RocksDBIndexFactory>(server, vectorIndexProvider),
+          std::make_unique<RocksDBIndexFactory>(server, indexTypeCatalog),
           databaseProvider, databaseBootstrap),
       _databasePathProvider(databasePathProvider),
       _vectorIndexProvider(vectorIndexProvider),
