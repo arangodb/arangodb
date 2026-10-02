@@ -1,5 +1,8 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
+* COR-1023: Adapt permissions of `GET /_api/query/current`, `GET /_api/query/slow`,
+  `DELETE /_api/query/{id}` and `DELETE /_api/query/slow`.
+
 * COR-1012 The client tools started with `--server.username`/`--server.password`
   now obtain a JWT via `POST /_open/auth` like arangosh and renew it before
   it expires, which also makes them work against servers in RBAC mode; they
