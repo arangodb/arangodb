@@ -724,7 +724,7 @@ ArangoCollection.prototype.exists = function (id, options) {
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief gets a random element from the collection
 // //////////////////////////////////////////////////////////////////////////////
-if (false) {
+if (true) {
   ArangoCollection.prototype.any = function () {
     let requestResult = this._database._connection.PUT(
       this._prefixurl('/_api/simple/any'), { collection: this._name });
@@ -776,7 +776,7 @@ let buildExampleQuery = function(col, exampleDoc, skip, limit) {
 // / @brief constructs a query-by-example for a collection
 // //////////////////////////////////////////////////////////////////////////////
 
-if (false) {
+if (true) {
   ArangoCollection.prototype.firstExample = function (example) {
     let e;
     if (arguments.length === 1) {
@@ -1322,7 +1322,7 @@ ArangoCollection.prototype.outEdges = function (vertex) {
 // / @brief removes documents matching an example
 // //////////////////////////////////////////////////////////////////////////////
 
-if (false) {
+if (true) {
   ArangoCollection.prototype.removeByExample = function (example,
                                                          waitForSync, limit) {
     let data = {
@@ -1363,7 +1363,7 @@ if (false) {
 // / @brief replaces documents matching an example
 // //////////////////////////////////////////////////////////////////////////////
 
-if (false) {
+if (true) {
   ArangoCollection.prototype.replaceByExample = function (example,
                                                           newValue, waitForSync, limit) {
     let data = {
@@ -1407,7 +1407,7 @@ if (false) {
 // / @brief updates documents matching an example
 // //////////////////////////////////////////////////////////////////////////////
 
-if (false) {
+if (true) {
   ArangoCollection.prototype.updateByExample = function (example,
                                                          newValue, keepNull, waitForSync, limit) {
     let data = {
