@@ -196,6 +196,8 @@ class ModificationExecutor {
       typename FetcherType::DataRange& input,
       ProduceOrSkipData& produceOrSkipData);
 
+  void performDeferredIntermediateCommit();
+
   transaction::Methods _trx;
 
   ModificationExecutorInfos& _infos;

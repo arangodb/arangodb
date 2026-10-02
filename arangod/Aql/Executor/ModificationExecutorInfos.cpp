@@ -63,6 +63,9 @@ ModificationExecutorInfos::ModificationExecutorInfos(
   // is reflected in _ignoreDocumentNotFound). This makes sure that results are
   // reported back from a DBServer.
   auto isDBServer = ServerState::instance()->isDBServer();
+  // replicated modifications must not intermediate-commit on the network
+  // thread that resumes them; the executor does it under the query lock.
+  _options.deferIntermediateCommit = isDBServer;
   _producesResults = ProducesResults(_producesResults || !_options.silent ||
                                      (isDBServer && _ignoreDocumentNotFound));
 }

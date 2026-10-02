@@ -33,6 +33,9 @@
 #include <absl/strings/str_cat.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
 
+#include <chrono>
+#include <thread>
+
 using namespace arangodb;
 
 namespace {
@@ -413,7 +416,17 @@ void RocksDBTrxBaseMethods::createTransaction() {
              (_rocksTransaction->GetState() == rocksdb::Transaction::STARTED &&
               _rocksTransaction->GetNumKeys() == 0));
   rocksdb::WriteOptions wo;
-  _rocksTransaction = _db->BeginTransaction(wo, trxOpts, _rocksTransaction);
+  auto* rocksTransaction =
+      _db->BeginTransaction(wo, trxOpts, _rocksTransaction);
+  TRI_IF_FAILURE("RocksDBTrxBaseMethods::sleepAfterIntermediateCommitReBegin") {
+    // a re-begin after an intermediate commit has just released the snapshot
+    // that concurrently running snippets of the same query may still be using
+    if (_rocksTransaction != nullptr &&
+        !_state->options().isFollowerTransaction) {
+      std::this_thread::sleep_for(std::chrono::seconds(3));
+    }
+  }
+  _rocksTransaction = rocksTransaction;
 }
 
 Result RocksDBTrxBaseMethods::doCommit() {
