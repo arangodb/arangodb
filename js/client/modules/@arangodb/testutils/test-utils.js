@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global print, db, arango, SYS_IS_V8_BUILD */
+/* global print, db, arango */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -378,7 +378,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
     'skipNondeterministic': false,
     'skipGrey': false,
     'skipN': false,
-    'skipServerJS': !SYS_IS_V8_BUILD,
+    'skipServerJS': false,
     'onlyGrey': false,
     'onlyNightly': false,
     'skipTimeCritical': false,

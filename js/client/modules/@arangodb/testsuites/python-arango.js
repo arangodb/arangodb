@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global print, db, SYS_IS_V8_BUILD */
+/* global print, db */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -105,7 +105,7 @@ class runInPythonTest extends runWithAllureReport {
     if (!this.options.cluster) {
       testSkipList.push('backup');
     }
-    if (true) { //!SYS_IS_V8_BUILD) {
+    if (true) {
       testSkipList.push('foxx');
       //testSkipList.push('tasks');
       testSkipList.push('js-transactions');
