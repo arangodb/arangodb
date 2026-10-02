@@ -28,6 +28,7 @@
 
 #include <span>
 #include <string_view>
+#include <unicode/regex.h>
 
 namespace arangodb {
 class Result;
@@ -80,6 +81,9 @@ std::string extractCollectionName(transaction::Methods* trx,
 template<typename T>
 void appendAsString(velocypack::Options const& vopts, T& buffer,
                     AqlValue const& value);
+
+void abortMatchWhenKilled(icu_64_64::RegexMatcher& matcher,
+                          ExpressionContext const* context);
 
 /// @brief helper function. not callable as a "normal" AQL function
 template<typename T>
