@@ -28,6 +28,7 @@ const _ = require('lodash');
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const rbac = require('@arangodb/testutils/rbac');
 const im = require('@arangodb/testutils/instance-manager');
 const time = require('internal').time;
 const sleep = require('internal').sleep;
@@ -68,6 +69,8 @@ class testRunner {
     if (this.serverOptions === undefined) {
       this.serverOptions = {};
     }
+    this.rbacVerified = false;
+    rbac.applyServerOptions(this.options, this.serverOptions);
     this.testList = [];
     this.customInstanceInfos = {};
     this.memProfCounter = 0;
@@ -288,6 +291,12 @@ class testRunner {
       };
     }
     
+    let unsupported = rbac.checkSuiteSupported(this.options, this.friendlyName,
+                                               this.rbacVerified);
+    if (unsupported !== null) {
+      return {setup: {status: false, message: unsupported}};
+    }
+
     let beforeStart = time();
 
     this.instanceManager = new im.instanceManager(this.options.protocol,
@@ -317,6 +326,16 @@ class testRunner {
       };
     }
     this.instanceManager.reconnect(false);
+    if (!rbac.bootstrapUser(this.options, this.instanceManager, false)) {
+      let shutdownStatus = this.instanceManager.shutdownInstance();
+      return {
+        setup: {
+          status: false,
+          message: 'could not bootstrap the RBAC binding for the workload user',
+          shutdown: shutdownStatus
+        }
+      };
+    }
     this.customInstanceInfos['postStart'] = this.postStart();
     if (this.customInstanceInfos.postStart.state === false) {
       let shutdownStatus = this.customInstanceInfos.postStart.shutdown;
@@ -462,6 +481,7 @@ class testRunner {
     if (!this.options.noStartStopLogs) {
       print(Date() + ' Shutting down...');
     }
+    rbac.bootstrapUser(this.options, this.instanceManager, true);
     this.customInstanceInfos.preStop = this.preStop();
     if (this.customInstanceInfos.preStop.state === false) {
       if (!this.results.hasOwnProperty('setup')) {

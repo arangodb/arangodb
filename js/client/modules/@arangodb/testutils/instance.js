@@ -169,10 +169,15 @@ class instance {
   #pid = null;
 
   // / protocol must be one of ["tcp", "ssl", "unix"]
+  // devel's signature, plus `rbacPort` appended: the RBAC branch needs it to
+  // point --server.external-rbac-service at the locally launched dummy. The
+  // authHeaders / JWT / authHeadersJWT parameters this branch used to take are
+  // gone on purpose - the instance now derives JWT from moreArgs itself (see
+  // the jwt-secret handling further down), so passing them in was redundant.
   constructor(options, myInstanceRole, protocol,
               agencyMgr, addArgs,
               rootDir, tmpDir, restKeyFile,
-              jwt_secret, mem) {
+              jwt_secret, mem, rbacPort) {
     this.id = null;
     this.shortName = null;
     this.pm = pm.getPortManager(options);
@@ -180,6 +185,7 @@ class instance {
     this.instanceRole = myInstanceRole;
     this.rootDir = rootDir;
     this.protocol = protocol;
+    this.rbacPort = rbacPort;
 
     this.moreArgs = {};
     this.args = {};
@@ -268,6 +274,7 @@ class instance {
       agencyConfig: (this.agencyMgr !== undefined) ? this.agencyMgr.getStructure():{},
       upAndRunning: this.upAndRunning,
       suspended: this.suspended,
+      rbacPort: this.rbacPort,
       port: this.port,
       url: this.url,
       endpoint: this.endpoint,
@@ -297,6 +304,7 @@ class instance {
     this.upAndRunning = struct['upAndRunning'];
     this.suspended = struct['suspended'];
     this.port = struct['port'];
+    this.rbacPort = struct['rbacPort'];
     this.url = struct['url'];
     this.endpoint = struct['endpoint'];
     this.dataDir = struct['dataDir'];
@@ -457,6 +465,14 @@ class instance {
       this.args['ssl.keyfile'] = fs.join('etc', 'testing', 'server.pem');
     }
 
+    if (this.options.rbac) {
+      if (typeof this.options.rbac !== "string") {
+        this.args["server.external-rbac-service"] = `http://127.0.0.1:${this.rbacPort}`;
+      } else {
+        this.args["server.external-rbac-service"] = this.options.rbac;
+      }
+      this.args["server.harden"] = true;
+    }
     if (this.options.hasOwnProperty("replicationVersion")) {
       this.args['database.default-replication-version'] = this.options.replicationVersion;
     }
