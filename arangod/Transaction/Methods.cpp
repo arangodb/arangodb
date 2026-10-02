@@ -850,13 +850,24 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
     if (!this->_collection.timeTravelEnabled()) {
       return {};
     }
-    auto timestamp = timeTravelWriteTimestamp(value);
+    auto timestamp =
+        timeTravelTimestamp(value, timeTravelTimestampAttribute());
     if (timestamp.fail()) {
       return timestamp.result();
     }
     _timeTravelWriteTimestamp = timestamp.get();
     return this->_methods.state()->setTimeTravelWriteTimestamp(
         this->_collection.id(), _timeTravelWriteTimestamp);
+  }
+
+  // Time travel: which attribute this operation takes its timestamp from. A
+  // remove creates no new version, it only ends the current one's validity, so
+  // the user states when it expires; every other operation writes a new
+  // version and states when it was created.
+  std::string_view timeTravelTimestampAttribute() const noexcept {
+    return _operationType == TRI_VOC_DOCUMENT_OPERATION_REMOVE
+               ? std::string_view{StaticStrings::Expired}
+               : std::string_view{StaticStrings::Created};
   }
 
   // Time travel: the key lock also rejects a write whose timestamp is not
@@ -879,7 +890,7 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
       return conflict;
     }
     return Result{TRI_ERROR_BAD_PARAMETER,
-                  absl::StrCat("'", StaticStrings::Created,
+                  absl::StrCat("'", timeTravelTimestampAttribute(),
                                "' must be newer than the current version of '",
                                key, "' (", existing.get().value(), "), but is ",
                                _timeTravelWriteTimestamp)};
@@ -935,10 +946,18 @@ struct RemoveProcessor : ReplicatedProcessorBase<RemoveProcessor> {
       return {TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD};
     }
 
+    if (auto r = this->prepareTimeTravelWrite(value); r.fail()) {
+      return r;
+    }
+
     std::pair<LocalDocumentId, RevisionId> lookupResult;
     Result res = _collection.getPhysical()->lookupKeyForUpdate(&_methods, key,
                                                                lookupResult);
     if (res.fail()) {
+      if (res.is(TRI_ERROR_ARANGO_CONFLICT) &&
+          _collection.timeTravelEnabled()) {
+        res = this->diagnoseTimeTravelConflict(key, std::move(res));
+      }
       // Error reporting in the babies case is done outside of here.
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isArray) {
         TRI_ASSERT(_replicationType != Methods::ReplicationType::FOLLOWER);
