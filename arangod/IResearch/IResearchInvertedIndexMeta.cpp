@@ -345,10 +345,7 @@ bool IResearchInvertedIndexMeta::init(
       }
     }
   }
-  if (!server.hasFeature<IResearchAnalyzerFeature>()) {
-    errorField = kFieldName;
-    return false;
-  }
+  TRI_ASSERT(server.hasFeature<IResearchAnalyzerFeature>());
   auto& analyzers = server.getFeature<IResearchAnalyzerFeature>();
 
 #ifdef USE_ENTERPRISE

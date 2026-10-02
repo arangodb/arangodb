@@ -180,10 +180,7 @@ bool FieldMeta::init(
       _analyzers = defaults._analyzers;
       _primitiveOffset = defaults._primitiveOffset;
     } else {
-      if (!server.hasFeature<IResearchAnalyzerFeature>()) {
-        errorField = kFieldName;
-        return false;
-      }
+      TRI_ASSERT(server.hasFeature<IResearchAnalyzerFeature>());
       auto& analyzers = server.getFeature<IResearchAnalyzerFeature>();
       bool const extendedNames =
           server.getFeature<DatabaseFeature>().extendedNames();

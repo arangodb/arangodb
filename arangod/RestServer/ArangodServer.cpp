@@ -408,18 +408,20 @@ void ArangodServer::addFeatures() {
   addFeature<RCloneFeature>(getOptions<RCloneOptionsProvider>());
   addFeature<HotBackupFeature>(getOptions<HotBackupOptionsProvider>());
   addFeature<EncryptionFeature>(getOptions<EncryptionOptionsProvider>());
-  auto& sslServer = addFeature<SslServerFeature, SslServerFeatureEE>(
-      getOptions<SslServerOptionsProvider>(),
-      getOptions<SslServerEEOptionsProvider>());
-#else
-  auto& sslServer =
-      addFeature<SslServerFeature>(getOptions<SslServerOptionsProvider>());
-#endif
-  if (skipNonServerFeatures || !restServer) {
-    sslServer.disable();
+  if (!skipNonServerFeatures && restServer) {
+    addFeature<SslServerFeature, SslServerFeatureEE>(
+        getOptions<SslServerOptionsProvider>(),
+        getOptions<SslServerEEOptionsProvider>());
   }
+#else
+  if (!skipNonServerFeatures && restServer) {
+    addFeature<SslServerFeature>(getOptions<SslServerOptionsProvider>());
+  }
+#endif
   addFeature<RbacFeature>(authentication);
-  if (!agencyActivated) {
+  if (agencyActivated) {
+    addFeature<AgencyFeature>(getOptions<AgencyOptionsProvider>());
+  } else {
     addFeature<iresearch::IResearchAnalyzerFeature>(
         iresearch::IResearchAnalyzerFeature::Dependencies{
             .databaseFeature = database,
@@ -429,14 +431,9 @@ void ArangodServer::addFeatures() {
             .schedulerFeature = &scheduler,
             .aqlFunctionFeature = &aqlFunctionFeature,
         });
-  }
-  // an agency has no need for ArangoSearch
-  if (!agencyActivated) {
+    // an agency has no need for ArangoSearch
     addFeature<iresearch::IResearchFeature>(
         metrics, getOptions<iresearch::IResearchOptionsProvider>());
-  }
-  if (agencyActivated) {
-    addFeature<AgencyFeature>(getOptions<AgencyOptionsProvider>());
   }
   addFeature<CheckVersionFeature>(
       _ret, kNonServerFeatures,
