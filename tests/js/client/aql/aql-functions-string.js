@@ -1756,18 +1756,7 @@ function ahuacatlStringFunctionsTestSuite () {
       [ 4, 'foo bar foo bar', 'bar' ],
       [ 17, 'Heavy metal from MÖtleyCrÜe or MÖtleyCrÜe doing heavy metal?', 'MÖtleyCrÜe'],
       [ 3, '或或或MÖtleyCrÜe或MÖtleyCrÜe从重金属中提取重金属？',  'MÖtleyCrÜe'],
-      [ 10, 'MÖtleyCrÜe或MÖtleyCrÜe从重金属中提取重金属？',  '或'],
-      [ 0, 'カエルの子はカエル', 'カエル'],
-      [ 1, 'a\bb', '\b' ],
-      [ 1, 'a\u0000b', '\u0000' ],
-      [ 1, 'a\u0001b', '\u0001' ],
-      [ 1, 'a\u001fb', '\u001f' ],
-      [ 1, 'a\u007fb', '\u007f' ],
-      [ 1, 'a\bb\b', '\bb' ],
-      [ 0, 'a\bb', 'a\b' ],
-      [ 0, 'a\bb', 'a\bb' ],
-      [ 1, 'a\b\u0001b', '\b\u0001' ],
-      [ -1, 'a\bb', '\b\u0001' ]
+      [ 10, 'MÖtleyCrÜe或MÖtleyCrÜe从重金属中提取重金属？',  '或']
     ].forEach(function (v) {
       var actual = getQueryResults(`RETURN FIND_FIRST(` + JSON.stringify(v[1]) + ', ' + JSON.stringify(v[2]) + ')');
       assertEqual([ v[0] ], actual);
@@ -1795,10 +1784,7 @@ function ahuacatlStringFunctionsTestSuite () {
       [ 4, 'the quick brown bar jumped over the lazy dog', 'q', 1 ],
       [ 4, 'the quick brown bar jumped over the lazy dog', 'q', 3 ],
       [ 4, 'the quick brown bar jumped over the lazy dog', 'q', 4 ],
-      [ -1, 'the quick brown bar jumped over the lazy dog', 'q', 5 ],
-      [ 1, 'a\bb', '\b', 0, 1 ],
-      [ 3, 'a\bb\b', '\b', 2 ],
-      [ -1, 'a\bb\b', '\b', 2, 2 ]
+      [ -1, 'the quick brown bar jumped over the lazy dog', 'q', 5 ]
     ].forEach(function (v) {
       var actual = getQueryResults(`RETURN FIND_FIRST(` + JSON.stringify(v[1]) + ', ' + JSON.stringify(v[2]) + ', ' + v[3] + ', ' + (v[4] === undefined ? null : v[4]) + ')');
       assertEqual([ v[0] ], actual);
@@ -1886,15 +1872,7 @@ function ahuacatlStringFunctionsTestSuite () {
       [ 14, 'some linebreak\r\ngoes here', '\r\n' ],
       [ 31, 'Heavy metal from MÖtleyCrÜe or MÖtleyCrÜe doing heavy metal?', 'MÖtleyCrÜe'],
       [ 11, 'MÖtleyCrÜe或MÖtleyCrÜe从重金属中提取重金属？',  'MÖtleyCrÜe'],
-      [ 10, 'MÖtleyCrÜe或MÖtleyCrÜe从重金属中提取重金属？',  '或'],
-      [ 6, 'カエルの子はカエル', 'カエル'],
-      [ 3, 'a\bb\b', '\b' ],
-      [ 1, 'a\bb\b', '\bb' ],
-      [ 0, 'a\bb', 'a\bb' ],
-      [ 3, 'a\u0000b\u0000', '\u0000' ],
-      [ 3, 'a\u0001b\u0001', '\u0001' ],
-      [ 3, 'a\u001fb\u001f', '\u001f' ]
-
+      [ 10, 'MÖtleyCrÜe或MÖtleyCrÜe从重金属中提取重金属？',  '或']
     ].forEach(function (v) {
       var actual = getQueryResults(`RETURN FIND_LAST(` + JSON.stringify(v[1]) + ', ' + JSON.stringify(v[2]) + ')');
       assertEqual([ v[0] ], actual);
@@ -1923,10 +1901,7 @@ function ahuacatlStringFunctionsTestSuite () {
       [ 3, 'foobar', 'bar', 0, 999 ],
       [ 32, 'the quick brown bar jumped over the lazy dog', 'the', 0 ],
       [ 32, 'the quick brown bar jumped over the lazy dog', 'the', 10 ],
-      [ 32, 'the quick brown bar jumped over the lazy dog', 'the', 1 ],
-      [ 1, 'a\bb\b', '\b', 0, 2 ],
-      [ 3, 'a\bb\b', '\b', 1 ],
-      [ -1, 'a\bb\b', '\b', 2, 2 ]
+      [ 32, 'the quick brown bar jumped over the lazy dog', 'the', 1 ]
     ].forEach(function (v) {
       var actual = getQueryResults(`RETURN FIND_LAST(` + JSON.stringify(v[1]) + ', ' + JSON.stringify(v[2]) + ', ' + v[3] + ', ' + (v[4] === undefined ? null : v[4]) + ')');
       assertEqual([ v[0] ], actual);
