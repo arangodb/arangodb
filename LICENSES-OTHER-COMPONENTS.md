@@ -1123,7 +1123,7 @@ License Id: MIT
 #### brace-expansion
 
 Name: brace-expansion
-Version: 1.1.18
+Version: 1.1.21
 Project Home: http://juliangruber.com
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/minimatch/node_modules/brace-expansion/README.md
 License Name: MIT License
@@ -1456,7 +1456,7 @@ License Id: MIT
 #### fast-uri
 
 Name: fast-uri
-Version: 3.1.7
+Version: 3.1.8
 Project Home: https://github.com/fastify/fast-uri
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/fast-uri/LICENSE
 License Name: BSD-style 3-Clause License
