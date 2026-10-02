@@ -1219,6 +1219,7 @@ AqlValue functions::Like(ExpressionContext* expressionContext, AstNode const&,
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
     return AqlValue(AqlValueHintNull());
   }
+  functions::abortMatchWhenKilled(*matcher, expressionContext);
 
   // extract value
   buffer->clear();
@@ -1307,7 +1308,8 @@ AqlValue functions::Split(ExpressionContext* expressionContext, AstNode const&,
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
     return AqlValue(AqlValueHintNull());
   }
-
+  functions::abortMatchWhenKilled(*matcher, expressionContext);
+  
   auto result = ThreadLocalBuilderLeaser::lease();
   result->openArray();
   if (!isEmptyExpression && (buffer->length() == 0)) {
