@@ -207,9 +207,6 @@ void ArangodServer::addFeatures() {
   addFeature<metrics::ClusterMetricsFeature>(
       getOptions<metrics::ClusterMetricsOptionsProvider>());
   bool const agencyActivated = getOptions<AgencyOptionsProvider>().activated;
-  if (!agencyActivated) {
-    addFeature<ActionFeature>(getOptions<ActionOptionsProvider>());
-  }
   addFeature<ApiRecordingFeature>(_dataSourceRegistry, metrics,
                                   getOptions<ApiRecordingOptionsProvider>());
   addFeature<AqlFeature>();
@@ -254,6 +251,9 @@ void ArangodServer::addFeatures() {
       getOptions<ServerOptionsProvider>().operationMode;
   bool const enableDaemonSupervisor =
       !auxMode && restServer && operationMode != OperationMode::MODE_CONSOLE;
+  if (!agencyActivated && !skipNonServerFeatures) {
+    addFeature<ActionFeature>(getOptions<ActionOptionsProvider>());
+  }
 #ifdef USE_V8
   bool const enableJS = getOptions<V8DealerOptionsProvider>().enableJS;
   bool const enableFoxx = enableJS && !agencyActivated;
@@ -347,14 +347,16 @@ void ArangodServer::addFeatures() {
         metrics, getOptions<V8DealerOptionsProvider>());
   }
 #endif
-  addFeature<BootstrapFeature>(
-      clusterFeature, database, &systemDatabaseFeature, &clusterUpgradeFeature
+  if (!skipNonServerFeatures) {
+    addFeature<BootstrapFeature>(
+        clusterFeature, database, &systemDatabaseFeature, &clusterUpgradeFeature
 #ifdef USE_V8
-      ,
-      v8DealerFeature
+        ,
+        v8DealerFeature
 #endif
-      ,
-      getOptions<bootstrap::BootstrapOptionsProvider>());
+        ,
+        getOptions<bootstrap::BootstrapOptionsProvider>());
+  }
   if (!skipNonServerFeatures) {
     addFeature<ServerFeature>(_ret, getOptions<ServerOptionsProvider>());
   }

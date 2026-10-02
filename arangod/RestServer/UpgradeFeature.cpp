@@ -88,7 +88,9 @@ UpgradeFeature::UpgradeFeature(
     if (server.hasFeature<ActionFeature>()) {
       server.forceDisableFeatures<ActionFeature>();
     }
-    server.forceDisableFeatures<BootstrapFeature>();
+    if (server.hasFeature<BootstrapFeature>()) {
+      server.forceDisableFeatures<BootstrapFeature>();
+    }
   }
   // a coordinator has nothing left to disable here: already unregistered
 
