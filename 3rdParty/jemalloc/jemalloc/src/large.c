@@ -18,10 +18,10 @@ large_malloc(tsdn_t *tsdn, arena_t *arena, size_t usize, bool zero) {
 }
 
 void *
-large_palloc(tsdn_t *tsdn, arena_t *arena, size_t usize, size_t alignment,
-    bool zero) {
-	size_t ausize;
-	edata_t *edata;
+large_palloc(
+    tsdn_t *tsdn, arena_t *arena, size_t usize, size_t alignment, bool zero) {
+	size_t            ausize;
+	edata_t          *edata;
 	UNUSED bool idump JEMALLOC_CC_SILENCE_INIT(false);
 
 	assert(!tsdn_null(tsdn) || arena != NULL);
@@ -34,12 +34,14 @@ large_palloc(tsdn_t *tsdn, arena_t *arena, size_t usize, size_t alignment,
 	if (likely(!tsdn_null(tsdn))) {
 		arena = arena_choose_maybe_huge(tsdn_tsd(tsdn), arena, usize);
 	}
-	if (unlikely(arena == NULL) || (edata = arena_extent_alloc_large(tsdn,
-	    arena, usize, alignment, zero)) == NULL) {
+	if (unlikely(arena == NULL)
+	    || (edata = arena_extent_alloc_large(
+	            tsdn, arena, usize, alignment, zero))
+	        == NULL) {
 		return NULL;
 	}
 
-	/* See comments in arena_bin_slabs_full_insert(). */
+	/* See comments in bin_slabs_full_insert(). */
 	if (!arena_is_auto(arena)) {
 		/* Insert edata into large. */
 		malloc_mutex_lock(tsdn, &arena->large_mtx);
@@ -53,10 +55,10 @@ large_palloc(tsdn_t *tsdn, arena_t *arena, size_t usize, size_t alignment,
 
 static bool
 large_ralloc_no_move_shrink(tsdn_t *tsdn, edata_t *edata, size_t usize) {
-	arena_t *arena = arena_get_from_edata(edata);
+	arena_t  *arena = arena_get_from_edata(edata);
 	ehooks_t *ehooks = arena_get_ehooks(arena);
-	size_t old_size = edata_size_get(edata);
-	size_t old_usize = edata_usize_get(edata);
+	size_t    old_size = edata_size_get(edata);
+	size_t    old_usize = edata_usize_get(edata);
 
 	assert(old_usize > usize);
 
@@ -80,8 +82,8 @@ large_ralloc_no_move_shrink(tsdn_t *tsdn, edata_t *edata, size_t usize) {
 }
 
 static bool
-large_ralloc_no_move_expand(tsdn_t *tsdn, edata_t *edata, size_t usize,
-    bool zero) {
+large_ralloc_no_move_expand(
+    tsdn_t *tsdn, edata_t *edata, size_t usize, bool zero) {
 	arena_t *arena = arena_get_from_edata(edata);
 
 	size_t old_size = edata_size_get(edata);
@@ -112,10 +114,10 @@ large_ralloc_no_move_expand(tsdn_t *tsdn, edata_t *edata, size_t usize,
 			 * offset from the beginning of the extent is a multiple
 			 * of CACHELINE in [0 .. PAGE).
 			 */
-			void *zbase = (void *)
-			    ((byte_t *)edata_addr_get(edata) + old_usize);
-			void *zpast = PAGE_ADDR2BASE((void *)((byte_t *)zbase +
-			    PAGE));
+			void *zbase = (void *)((byte_t *)edata_addr_get(edata)
+			    + old_usize);
+			void *zpast = PAGE_ADDR2BASE(
+			    (void *)((byte_t *)zbase + PAGE));
 			size_t nzero = (byte_t *)zpast - (byte_t *)zbase;
 			assert(nzero > 0);
 			memset(zbase, 0, nzero);
@@ -134,19 +136,19 @@ large_ralloc_no_move(tsdn_t *tsdn, edata_t *edata, size_t usize_min,
 	/* The following should have been caught by callers. */
 	assert(usize_min > 0 && usize_max <= SC_LARGE_MAXCLASS);
 	/* Both allocation sizes must be large to avoid a move. */
-	assert(oldusize >= SC_LARGE_MINCLASS
-	    && usize_max >= SC_LARGE_MINCLASS);
+	assert(oldusize >= SC_LARGE_MINCLASS && usize_max >= SC_LARGE_MINCLASS);
 
 	if (usize_max > oldusize) {
 		/* Attempt to expand the allocation in-place. */
-		if (!large_ralloc_no_move_expand(tsdn, edata, usize_max,
-		    zero)) {
+		if (!large_ralloc_no_move_expand(
+		        tsdn, edata, usize_max, zero)) {
 			arena_decay_tick(tsdn, arena_get_from_edata(edata));
 			return false;
 		}
 		/* Try again, this time with usize_min. */
-		if (usize_min < usize_max && usize_min > oldusize &&
-		    large_ralloc_no_move_expand(tsdn, edata, usize_min, zero)) {
+		if (usize_min < usize_max && usize_min > oldusize
+		    && !large_ralloc_no_move_expand(
+		        tsdn, edata, usize_min, zero)) {
 			arena_decay_tick(tsdn, arena_get_from_edata(edata));
 			return false;
 		}
@@ -172,8 +174,8 @@ large_ralloc_no_move(tsdn_t *tsdn, edata_t *edata, size_t usize_min,
 }
 
 static void *
-large_ralloc_move_helper(tsdn_t *tsdn, arena_t *arena, size_t usize,
-    size_t alignment, bool zero) {
+large_ralloc_move_helper(
+    tsdn_t *tsdn, arena_t *arena, size_t usize, size_t alignment, bool zero) {
 	if (alignment <= CACHELINE) {
 		return large_malloc(tsdn, arena, usize, zero);
 	}
@@ -190,14 +192,13 @@ large_ralloc(tsdn_t *tsdn, arena_t *arena, void *ptr, size_t usize,
 	/* The following should have been caught by callers. */
 	assert(usize > 0 && usize <= SC_LARGE_MAXCLASS);
 	/* Both allocation sizes must be large to avoid a move. */
-	assert(oldusize >= SC_LARGE_MINCLASS
-	    && usize >= SC_LARGE_MINCLASS);
+	assert(oldusize >= SC_LARGE_MINCLASS && usize >= SC_LARGE_MINCLASS);
 
 	/* Try to avoid moving the allocation. */
 	if (!large_ralloc_no_move(tsdn, edata, usize, usize, zero)) {
-		hook_invoke_expand(hook_args->is_realloc
-		    ? hook_expand_realloc : hook_expand_rallocx, ptr, oldusize,
-		    usize, (uintptr_t)ptr, hook_args->args);
+		hook_invoke_expand(hook_args->is_realloc ? hook_expand_realloc
+		                                         : hook_expand_rallocx,
+		    ptr, oldusize, usize, (uintptr_t)ptr, hook_args->args);
 		return edata_addr_get(edata);
 	}
 
@@ -206,17 +207,18 @@ large_ralloc(tsdn_t *tsdn, arena_t *arena, void *ptr, size_t usize,
 	 * different size class.  In that case, fall back to allocating new
 	 * space and copying.
 	 */
-	void *ret = large_ralloc_move_helper(tsdn, arena, usize, alignment,
-	    zero);
+	void *ret = large_ralloc_move_helper(
+	    tsdn, arena, usize, alignment, zero);
 	if (ret == NULL) {
 		return NULL;
 	}
 
-	hook_invoke_alloc(hook_args->is_realloc
-	    ? hook_alloc_realloc : hook_alloc_rallocx, ret, (uintptr_t)ret,
-	    hook_args->args);
-	hook_invoke_dalloc(hook_args->is_realloc
-	    ? hook_dalloc_realloc : hook_dalloc_rallocx, ptr, hook_args->args);
+	hook_invoke_alloc(
+	    hook_args->is_realloc ? hook_alloc_realloc : hook_alloc_rallocx,
+	    ret, (uintptr_t)ret, hook_args->args);
+	hook_invoke_dalloc(
+	    hook_args->is_realloc ? hook_dalloc_realloc : hook_dalloc_rallocx,
+	    ptr, hook_args->args);
 
 	size_t copysize = (usize < oldusize) ? usize : oldusize;
 	memcpy(ret, edata_addr_get(edata), copysize);
@@ -228,10 +230,10 @@ large_ralloc(tsdn_t *tsdn, arena_t *arena, void *ptr, size_t usize,
  * locked indicates whether the arena's large_mtx is currently held.
  */
 static void
-large_dalloc_prep_impl(tsdn_t *tsdn, arena_t *arena, edata_t *edata,
-    bool locked) {
+large_dalloc_prep_impl(
+    tsdn_t *tsdn, arena_t *arena, edata_t *edata, bool locked) {
 	if (!locked) {
-		/* See comments in arena_bin_slabs_full_insert(). */
+		/* See comments in bin_slabs_full_insert(). */
 		if (!arena_is_auto(arena)) {
 			malloc_mutex_lock(tsdn, &arena->large_mtx);
 			edata_list_active_remove(&arena->large, edata);
@@ -274,22 +276,17 @@ large_dalloc(tsdn_t *tsdn, edata_t *edata) {
 	arena_decay_tick(tsdn, arena);
 }
 
-size_t
-large_salloc(tsdn_t *tsdn, const edata_t *edata) {
-	return edata_usize_get(edata);
-}
-
 void
-large_prof_info_get(tsd_t *tsd, edata_t *edata, prof_info_t *prof_info,
-    bool reset_recent) {
+large_prof_info_get(
+    tsd_t *tsd, edata_t *edata, prof_info_t *prof_info, bool reset_recent) {
 	assert(prof_info != NULL);
 
 	prof_tctx_t *alloc_tctx = edata_prof_tctx_get(edata);
 	prof_info->alloc_tctx = alloc_tctx;
 
 	if (prof_tctx_is_valid(alloc_tctx)) {
-		nstime_copy(&prof_info->alloc_time,
-		    edata_prof_alloc_time_get(edata));
+		nstime_copy(
+		    &prof_info->alloc_time, edata_prof_alloc_time_get(edata));
 		prof_info->alloc_size = edata_prof_alloc_size_get(edata);
 		if (reset_recent) {
 			/*

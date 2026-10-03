@@ -39,30 +39,38 @@ typedef enum {
 static int
 hash_variant_bits(hash_variant_t variant) {
 	switch (variant) {
-	case hash_variant_x86_32: return 32;
-	case hash_variant_x86_128: return 128;
-	case hash_variant_x64_128: return 128;
-	default: not_reached();
+	case hash_variant_x86_32:
+		return 32;
+	case hash_variant_x86_128:
+		return 128;
+	case hash_variant_x64_128:
+		return 128;
+	default:
+		not_reached();
 	}
 }
 
 static const char *
 hash_variant_string(hash_variant_t variant) {
 	switch (variant) {
-	case hash_variant_x86_32: return "hash_x86_32";
-	case hash_variant_x86_128: return "hash_x86_128";
-	case hash_variant_x64_128: return "hash_x64_128";
-	default: not_reached();
+	case hash_variant_x86_32:
+		return "hash_x86_32";
+	case hash_variant_x86_128:
+		return "hash_x86_128";
+	case hash_variant_x64_128:
+		return "hash_x64_128";
+	default:
+		not_reached();
 	}
 }
 
-#define KEY_SIZE	256
+#define KEY_SIZE 256
 static void
 hash_variant_verify_key(hash_variant_t variant, uint8_t *key) {
 	const int hashbytes = hash_variant_bits(variant) / 8;
 	const int hashes_size = hashbytes * 256;
-	VARIABLE_ARRAY(uint8_t, hashes, hashes_size);
-	VARIABLE_ARRAY(uint8_t, final, hashbytes);
+	VARIABLE_ARRAY_UNSAFE(uint8_t, hashes, hashes_size);
+	VARIABLE_ARRAY_UNSAFE(uint8_t, final, hashbytes);
 	unsigned i;
 	uint32_t computed, expected;
 
@@ -79,20 +87,24 @@ hash_variant_verify_key(hash_variant_t variant, uint8_t *key) {
 		switch (variant) {
 		case hash_variant_x86_32: {
 			uint32_t out;
-			out = hash_x86_32(key, i, 256-i);
-			memcpy(&hashes[i*hashbytes], &out, hashbytes);
+			out = hash_x86_32(key, i, 256 - i);
+			memcpy(&hashes[i * hashbytes], &out, hashbytes);
 			break;
-		} case hash_variant_x86_128: {
+		}
+		case hash_variant_x86_128: {
 			uint64_t out[2];
-			hash_x86_128(key, i, 256-i, out);
-			memcpy(&hashes[i*hashbytes], out, hashbytes);
+			hash_x86_128(key, i, 256 - i, out);
+			memcpy(&hashes[i * hashbytes], out, hashbytes);
 			break;
-		} case hash_variant_x64_128: {
+		}
+		case hash_variant_x64_128: {
 			uint64_t out[2];
-			hash_x64_128(key, i, 256-i, out);
-			memcpy(&hashes[i*hashbytes], out, hashbytes);
+			hash_x64_128(key, i, 256 - i, out);
+			memcpy(&hashes[i * hashbytes], out, hashbytes);
 			break;
-		} default: not_reached();
+		}
+		default:
+			not_reached();
 		}
 	}
 
@@ -102,33 +114,50 @@ hash_variant_verify_key(hash_variant_t variant, uint8_t *key) {
 		uint32_t out = hash_x86_32(hashes, hashes_size, 0);
 		memcpy(final, &out, sizeof(out));
 		break;
-	} case hash_variant_x86_128: {
+	}
+	case hash_variant_x86_128: {
 		uint64_t out[2];
 		hash_x86_128(hashes, hashes_size, 0, out);
 		memcpy(final, out, sizeof(out));
 		break;
-	} case hash_variant_x64_128: {
+	}
+	case hash_variant_x64_128: {
 		uint64_t out[2];
 		hash_x64_128(hashes, hashes_size, 0, out);
 		memcpy(final, out, sizeof(out));
 		break;
-	} default: not_reached();
+	}
+	default:
+		not_reached();
 	}
 
-	computed = (final[0] << 0) | (final[1] << 8) | (final[2] << 16) |
-	    (final[3] << 24);
+	computed = ((uint32_t) final[0] << 0) | ((uint32_t) final[1] << 8)
+	    | ((uint32_t) final[2] << 16) | ((uint32_t) final[3] << 24);
 
 	switch (variant) {
 #ifdef JEMALLOC_BIG_ENDIAN
-	case hash_variant_x86_32: expected = 0x6213303eU; break;
-	case hash_variant_x86_128: expected = 0x266820caU; break;
-	case hash_variant_x64_128: expected = 0xcc622b6fU; break;
+	case hash_variant_x86_32:
+		expected = 0x6213303eU;
+		break;
+	case hash_variant_x86_128:
+		expected = 0x266820caU;
+		break;
+	case hash_variant_x64_128:
+		expected = 0xcc622b6fU;
+		break;
 #else
-	case hash_variant_x86_32: expected = 0xb0f57ee3U; break;
-	case hash_variant_x86_128: expected = 0xb3ece62aU; break;
-	case hash_variant_x64_128: expected = 0x6384ba69U; break;
+	case hash_variant_x86_32:
+		expected = 0xb0f57ee3U;
+		break;
+	case hash_variant_x86_128:
+		expected = 0xb3ece62aU;
+		break;
+	case hash_variant_x64_128:
+		expected = 0x6384ba69U;
+		break;
 #endif
-	default: not_reached();
+	default:
+		not_reached();
 	}
 
 	expect_u32_eq(computed, expected,
@@ -138,8 +167,8 @@ hash_variant_verify_key(hash_variant_t variant, uint8_t *key) {
 
 static void
 hash_variant_verify(hash_variant_t variant) {
-#define MAX_ALIGN	16
-	uint8_t key[KEY_SIZE + (MAX_ALIGN - 1)];
+#define MAX_ALIGN 16
+	uint8_t  key[KEY_SIZE + (MAX_ALIGN - 1)];
 	unsigned i;
 
 	for (i = 0; i < MAX_ALIGN; i++) {
@@ -166,8 +195,5 @@ TEST_END
 
 int
 main(void) {
-	return test(
-	    test_hash_x86_32,
-	    test_hash_x86_128,
-	    test_hash_x64_128);
+	return test(test_hash_x86_32, test_hash_x86_128, test_hash_x64_128);
 }

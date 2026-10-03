@@ -164,8 +164,8 @@ JEMALLOC_ALWAYS_INLINE prof_tctx_t *
 prof_alloc_prep(tsd_t *tsd, bool prof_active, bool sample_event) {
 	prof_tctx_t *ret;
 
-	if (!prof_active ||
-	    likely(prof_sample_should_skip(tsd, sample_event))) {
+	if (!prof_active
+	    || likely(prof_sample_should_skip(tsd, sample_event))) {
 		ret = PROF_TCTX_SENTINEL;
 	} else {
 		ret = prof_tctx_create(tsd);
@@ -242,8 +242,8 @@ prof_realloc(tsd_t *tsd, const void *ptr, size_t size, size_t usize,
 	 * counters.
 	 */
 	if (unlikely(old_sampled)) {
-		prof_free_sampled_object(tsd, old_ptr, old_usize,
-		    old_prof_info);
+		prof_free_sampled_object(
+		    tsd, old_ptr, old_usize, old_prof_info);
 	}
 }
 
@@ -254,9 +254,10 @@ prof_sample_align(size_t usize, size_t orig_align) {
 	 * w/o metadata lookup.
 	 */
 	assert(opt_prof);
-	return (orig_align < PROF_SAMPLE_ALIGNMENT &&
-	       (sz_can_use_slab(usize) || opt_cache_oblivious)) ?
-	           PROF_SAMPLE_ALIGNMENT : orig_align;
+	return (orig_align < PROF_SAMPLE_ALIGNMENT
+	           && (sz_can_use_slab(usize) || opt_cache_oblivious))
+	    ? PROF_SAMPLE_ALIGNMENT
+	    : orig_align;
 }
 
 JEMALLOC_ALWAYS_INLINE bool
@@ -271,8 +272,8 @@ prof_sampled(tsd_t *tsd, const void *ptr) {
 }
 
 JEMALLOC_ALWAYS_INLINE void
-prof_free(tsd_t *tsd, const void *ptr, size_t usize,
-    emap_alloc_ctx_t *alloc_ctx) {
+prof_free(
+    tsd_t *tsd, const void *ptr, size_t usize, emap_alloc_ctx_t *alloc_ctx) {
 	prof_info_t prof_info;
 	prof_info_get_and_reset_recent(tsd, ptr, alloc_ctx, &prof_info);
 

@@ -12,50 +12,39 @@ typedef struct sec_opts_s sec_opts_t;
 struct sec_opts_s {
 	/*
 	 * We don't necessarily always use all the shards; requests are
-	 * distributed across shards [0, nshards - 1).
+	 * distributed across shards [0, nshards - 1).  Once thread picks a
+	 * shard it will always use that one.  If this value is set to 0 sec is
+	 * not used.
 	 */
 	size_t nshards;
 	/*
 	 * We'll automatically refuse to cache any objects in this sec if
-	 * they're larger than max_alloc bytes, instead forwarding such objects
-	 * directly to the fallback.
+	 * they're larger than max_alloc bytes.
 	 */
 	size_t max_alloc;
 	/*
-	 * Exceeding this amount of cached extents in a shard causes us to start
-	 * flushing bins in that shard until we fall below bytes_after_flush.
+	 * Exceeding this amount of cached extents in a bin causes us to flush
+	 * until we are 1/4 below max_bytes.
 	 */
 	size_t max_bytes;
 	/*
-	 * The number of bytes (in all bins) we flush down to when we exceed
-	 * bytes_cur.  We want this to be less than bytes_cur, because
-	 * otherwise we could get into situations where a shard undergoing
-	 * net-deallocation keeps bytes_cur very near to max_bytes, so that
-	 * most deallocations get immediately forwarded to the underlying PAI
-	 * implementation, defeating the point of the SEC.
-	 */
-	size_t bytes_after_flush;
-	/*
 	 * When we can't satisfy an allocation out of the SEC because there are
-	 * no available ones cached, we allocate multiple of that size out of
-	 * the fallback allocator.  Eventually we might want to do something
-	 * cleverer, but for now we just grab a fixed number.
+	 * no available ones cached, allocator will allocate a batch with extra
+	 * batch_fill_extra extents of the same size.
 	 */
 	size_t batch_fill_extra;
 };
 
-#define SEC_OPTS_DEFAULT {						\
-	/* nshards */							\
-	4,								\
-	/* max_alloc */							\
-	(32 * 1024) < PAGE ? PAGE : (32 * 1024),			\
-	/* max_bytes */							\
-	256 * 1024,							\
-	/* bytes_after_flush */						\
-	128 * 1024,							\
-	/* batch_fill_extra */						\
-	0								\
-}
+#define SEC_OPTS_NSHARDS_DEFAULT 2
+#define SEC_OPTS_BATCH_FILL_EXTRA_DEFAULT 3
+#define SEC_OPTS_MAX_ALLOC_DEFAULT ((32 * 1024) < PAGE ? PAGE : (32 * 1024))
+#define SEC_OPTS_MAX_BYTES_DEFAULT                                             \
+	((256 * 1024) < (4 * SEC_OPTS_MAX_ALLOC_DEFAULT)                       \
+	        ? (4 * SEC_OPTS_MAX_ALLOC_DEFAULT)                             \
+	        : (256 * 1024))
 
+#define SEC_OPTS_DEFAULT                                                       \
+	{SEC_OPTS_NSHARDS_DEFAULT, SEC_OPTS_MAX_ALLOC_DEFAULT,                 \
+	    SEC_OPTS_MAX_BYTES_DEFAULT, SEC_OPTS_BATCH_FILL_EXTRA_DEFAULT}
 
 #endif /* JEMALLOC_INTERNAL_SEC_OPTS_H */

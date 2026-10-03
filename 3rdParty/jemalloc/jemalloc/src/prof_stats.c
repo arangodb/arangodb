@@ -3,8 +3,8 @@
 
 #include "jemalloc/internal/prof_stats.h"
 
-bool opt_prof_stats = false;
-malloc_mutex_t prof_stats_mtx;
+bool                opt_prof_stats = false;
+malloc_mutex_t      prof_stats_mtx;
 static prof_stats_t prof_stats_live[PROF_SC_NSIZES];
 static prof_stats_t prof_stats_accum[PROF_SC_NSIZES];
 

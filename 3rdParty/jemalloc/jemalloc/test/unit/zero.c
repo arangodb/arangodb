@@ -3,35 +3,35 @@
 static void
 test_zero(size_t sz_min, size_t sz_max) {
 	uint8_t *s;
-	size_t sz_prev, sz, i;
-#define MAGIC	((uint8_t)0x61)
+	size_t   sz_prev, sz, i;
+#define MAGIC ((uint8_t)0x61)
 
 	sz_prev = 0;
 	s = (uint8_t *)mallocx(sz_min, 0);
 	expect_ptr_not_null((void *)s, "Unexpected mallocx() failure");
 
 	for (sz = sallocx(s, 0); sz <= sz_max;
-	    sz_prev = sz, sz = sallocx(s, 0)) {
+	     sz_prev = sz, sz = sallocx(s, 0)) {
 		if (sz_prev > 0) {
 			expect_u_eq(s[0], MAGIC,
 			    "Previously allocated byte %zu/%zu is corrupted",
 			    ZU(0), sz_prev);
-			expect_u_eq(s[sz_prev-1], MAGIC,
+			expect_u_eq(s[sz_prev - 1], MAGIC,
 			    "Previously allocated byte %zu/%zu is corrupted",
-			    sz_prev-1, sz_prev);
+			    sz_prev - 1, sz_prev);
 		}
 
 		for (i = sz_prev; i < sz; i++) {
 			expect_u_eq(s[i], 0x0,
-			    "Newly allocated byte %zu/%zu isn't zero-filled",
-			    i, sz);
+			    "Newly allocated byte %zu/%zu isn't zero-filled", i,
+			    sz);
 			s[i] = MAGIC;
 		}
 
-		if (xallocx(s, sz+1, 0, 0) == sz) {
-			s = (uint8_t *)rallocx(s, sz+1, 0);
-			expect_ptr_not_null((void *)s,
-			    "Unexpected rallocx() failure");
+		if (xallocx(s, sz + 1, 0, 0) == sz) {
+			s = (uint8_t *)rallocx(s, sz + 1, 0);
+			expect_ptr_not_null(
+			    (void *)s, "Unexpected rallocx() failure");
 		}
 	}
 
@@ -53,7 +53,5 @@ TEST_END
 
 int
 main(void) {
-	return test(
-	    test_zero_small,
-	    test_zero_large);
+	return test(test_zero_small, test_zero_large);
 }

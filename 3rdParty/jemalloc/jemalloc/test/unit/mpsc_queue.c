@@ -12,10 +12,10 @@ struct elem_s {
 };
 
 /* Include both proto and gen to make sure they match up. */
-mpsc_queue_proto(static, elem_mpsc_queue_, elem_mpsc_queue_t, elem_t,
-    elem_list_t);
-mpsc_queue_gen(static, elem_mpsc_queue_, elem_mpsc_queue_t, elem_t,
-    elem_list_t, link);
+mpsc_queue_proto(
+    static, elem_mpsc_queue_, elem_mpsc_queue_t, elem_t, elem_list_t);
+mpsc_queue_gen(
+    static, elem_mpsc_queue_, elem_mpsc_queue_t, elem_t, elem_list_t, link);
 
 static void
 init_elems_simple(elem_t *elems, int nelems, int thread) {
@@ -29,8 +29,8 @@ init_elems_simple(elem_t *elems, int nelems, int thread) {
 static void
 check_elems_simple(elem_list_t *list, int nelems, int thread) {
 	elem_t *elem;
-	int next_idx = 0;
-	ql_foreach(elem, list, link) {
+	int     next_idx = 0;
+	ql_foreach (elem, list, link) {
 		expect_d_lt(next_idx, nelems, "Too many list items");
 		expect_d_eq(thread, elem->thread, "");
 		expect_d_eq(next_idx, elem->idx, "List out of order");
@@ -39,9 +39,9 @@ check_elems_simple(elem_list_t *list, int nelems, int thread) {
 }
 
 TEST_BEGIN(test_simple) {
-	enum {NELEMS = 10};
-	elem_t elems[NELEMS];
-	elem_list_t list;
+	enum { NELEMS = 10 };
+	elem_t            elems[NELEMS];
+	elem_list_t       list;
 	elem_mpsc_queue_t queue;
 
 	/* Pop empty queue onto empty list -> empty list */
@@ -82,7 +82,6 @@ TEST_BEGIN(test_simple) {
 	}
 	elem_mpsc_queue_pop_batch(&queue, &list);
 	check_elems_simple(&list, NELEMS, 0);
-
 }
 TEST_END
 
@@ -137,7 +136,7 @@ TEST_BEGIN(test_push_single_or_batch) {
 TEST_END
 
 TEST_BEGIN(test_multi_op) {
-	enum {NELEMS = 20};
+	enum { NELEMS = 20 };
 	elem_t elems[NELEMS];
 	init_elems_simple(elems, NELEMS, 0);
 	elem_list_t push_list;
@@ -176,30 +175,29 @@ TEST_BEGIN(test_multi_op) {
 	elem_mpsc_queue_pop_batch(&queue, &result_list);
 
 	check_elems_simple(&result_list, NELEMS, 0);
-
 }
 TEST_END
 
 typedef struct pusher_arg_s pusher_arg_t;
 struct pusher_arg_s {
 	elem_mpsc_queue_t *queue;
-	int thread;
-	elem_t *elems;
-	int nelems;
+	int                thread;
+	elem_t            *elems;
+	int                nelems;
 };
 
 typedef struct popper_arg_s popper_arg_t;
 struct popper_arg_s {
 	elem_mpsc_queue_t *queue;
-	int npushers;
-	int nelems_per_pusher;
-	int *pusher_counts;
+	int                npushers;
+	int                nelems_per_pusher;
+	int               *pusher_counts;
 };
 
 static void *
 thd_pusher(void *void_arg) {
 	pusher_arg_t *arg = (pusher_arg_t *)void_arg;
-	int next_idx = 0;
+	int           next_idx = 0;
 	while (next_idx < arg->nelems) {
 		/* Push 10 items in batch. */
 		elem_list_t list;
@@ -216,7 +214,6 @@ thd_pusher(void *void_arg) {
 			elem_mpsc_queue_push(arg->queue, &arg->elems[next_idx]);
 			next_idx++;
 		}
-
 	}
 	return NULL;
 }
@@ -224,13 +221,13 @@ thd_pusher(void *void_arg) {
 static void *
 thd_popper(void *void_arg) {
 	popper_arg_t *arg = (popper_arg_t *)void_arg;
-	int done_pushers = 0;
+	int           done_pushers = 0;
 	while (done_pushers < arg->npushers) {
 		elem_list_t list;
 		ql_new(&list);
 		elem_mpsc_queue_pop_batch(arg->queue, &list);
 		elem_t *elem;
-		ql_foreach(elem, &list, link) {
+		ql_foreach (elem, &list, link) {
 			int thread = elem->thread;
 			int idx = elem->idx;
 			expect_d_eq(arg->pusher_counts[thread], idx,
@@ -248,12 +245,12 @@ thd_popper(void *void_arg) {
 TEST_BEGIN(test_multiple_threads) {
 	enum {
 		NPUSHERS = 4,
-		NELEMS_PER_PUSHER = 1000*1000,
+		NELEMS_PER_PUSHER = 1000 * 1000,
 	};
-	thd_t pushers[NPUSHERS];
+	thd_t        pushers[NPUSHERS];
 	pusher_arg_t pusher_arg[NPUSHERS];
 
-	thd_t popper;
+	thd_t        popper;
 	popper_arg_t popper_arg;
 
 	elem_mpsc_queue_t queue;
@@ -296,9 +293,6 @@ TEST_END
 
 int
 main(void) {
-	return test_no_reentrancy(
-	    test_simple,
-	    test_push_single_or_batch,
-	    test_multi_op,
-	    test_multiple_threads);
+	return test_no_reentrancy(test_simple, test_push_single_or_batch,
+	    test_multi_op, test_multiple_threads);
 }
