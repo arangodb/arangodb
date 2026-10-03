@@ -298,10 +298,9 @@ TEST_F(IndexAggregateScanExecutorTest,
 
   std::vector<IndexAggregateScanInfos::Aggregation> aggregations;
   aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
-      .type = "SUM",
-      .outputRegister = aggregationRegisterId,
-      .expression =
-          std::make_unique<Expression>(&ast, aggregationExpression.slice())});
+      .type = "SUM", .outputRegister = aggregationRegisterId});
+  aggregations.back().expressions.emplace_back(
+      std::make_unique<Expression>(&ast, aggregationExpression.slice()));
 
   size_t indexField = 0;
   makeExecutorTestHelper<0, 1>()
@@ -332,10 +331,9 @@ TEST_F(IndexAggregateScanExecutorTest,
 
   std::vector<IndexAggregateScanInfos::Aggregation> aggregations;
   aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
-      .type = "SUM",
-      .outputRegister = aggregationRegisterId,
-      .expression =
-          std::make_unique<Expression>(&ast, aggregationExpression.slice())});
+      .type = "SUM", .outputRegister = aggregationRegisterId});
+  aggregations.back().expressions.emplace_back(
+      std::make_unique<Expression>(&ast, aggregationExpression.slice()));
 
   size_t groupIndexField = 0;
   size_t aggregateIndexField = groupIndexField;
@@ -378,10 +376,9 @@ TEST_F(IndexAggregateScanExecutorTest,
 
   std::vector<IndexAggregateScanInfos::Aggregation> aggregations;
   aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
-      .type = "SUM",
-      .outputRegister = aggregationRegisterId,
-      .expression =
-          std::make_unique<Expression>(&ast, aggregationExpression.slice())});
+      .type = "SUM", .outputRegister = aggregationRegisterId});
+  aggregations.back().expressions.emplace_back(
+      std::make_unique<Expression>(&ast, aggregationExpression.slice()));
 
   size_t groupIndexField = 0;
   size_t aggregateIndexField = 1;
@@ -424,10 +421,9 @@ TEST_F(IndexAggregateScanExecutorTest, groups_by_several_index_fields) {
 
   std::vector<IndexAggregateScanInfos::Aggregation> aggregations;
   aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
-      .type = "SUM",
-      .outputRegister = aggregationRegisterId,
-      .expression =
-          std::make_unique<Expression>(&ast, aggregationExpression.slice())});
+      .type = "SUM", .outputRegister = aggregationRegisterId});
+  aggregations.back().expressions.emplace_back(
+      std::make_unique<Expression>(&ast, aggregationExpression.slice()));
 
   size_t groupIndexField_0 = 0;
   size_t groupIndexField_1 = 1;
@@ -480,15 +476,13 @@ TEST_F(IndexAggregateScanExecutorTest, aggregates_different_columns) {
 
   std::vector<IndexAggregateScanInfos::Aggregation> aggregations;
   aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
-      .type = "SUM",
-      .outputRegister = aggregationRegisterId_0,
-      .expression =
-          std::make_unique<Expression>(&ast, aggregationExpression_0.slice())});
+      .type = "SUM", .outputRegister = aggregationRegisterId_0});
+  aggregations.back().expressions.emplace_back(
+      std::make_unique<Expression>(&ast, aggregationExpression_0.slice()));
   aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
-      .type = "SUM",
-      .outputRegister = aggregationRegisterId_1,
-      .expression =
-          std::make_unique<Expression>(&ast, aggregationExpression_1.slice())});
+      .type = "SUM", .outputRegister = aggregationRegisterId_1});
+  aggregations.back().expressions.emplace_back(
+      std::make_unique<Expression>(&ast, aggregationExpression_1.slice()));
 
   size_t groupIndexField = 0;
   size_t aggregateIndexField_0 = 1;
@@ -536,15 +530,13 @@ TEST_F(IndexAggregateScanExecutorTest,
 
   std::vector<IndexAggregateScanInfos::Aggregation> aggregations;
   aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
-      .type = "SUM",
-      .outputRegister = aggregationRegisterId_0,
-      .expression =
-          std::make_unique<Expression>(&ast, aggregationExpression.slice())});
+      .type = "SUM", .outputRegister = aggregationRegisterId_0});
+  aggregations.back().expressions.emplace_back(
+      std::make_unique<Expression>(&ast, aggregationExpression.slice()));
   aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
-      .type = "MAX",
-      .outputRegister = aggregationRegisterId_1,
-      .expression =
-          std::make_unique<Expression>(&ast, aggregationExpression.slice())});
+      .type = "MAX", .outputRegister = aggregationRegisterId_1});
+  aggregations.back().expressions.emplace_back(
+      std::make_unique<Expression>(&ast, aggregationExpression.slice()));
 
   size_t groupIndexField = 0;
   size_t aggregateIndexField = 1;
@@ -598,10 +590,9 @@ TEST_F(IndexAggregateScanExecutorTest,
 
   std::vector<IndexAggregateScanInfos::Aggregation> aggregations;
   aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
-      .type = "SUM",
-      .outputRegister = aggregationRegisterId,
-      .expression =
-          std::make_unique<Expression>(&ast, aggregationExpression.slice())});
+      .type = "SUM", .outputRegister = aggregationRegisterId});
+  aggregations.back().expressions.emplace_back(
+      std::make_unique<Expression>(&ast, aggregationExpression.slice()));
 
   size_t groupIndexField = 0;
   size_t aggregateIndexField_0 = 1;
@@ -648,10 +639,9 @@ TEST_F(IndexAggregateScanExecutorTest, skip) {
 
   std::vector<IndexAggregateScanInfos::Aggregation> aggregations;
   aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
-      .type = "SUM",
-      .outputRegister = aggregationRegisterId,
-      .expression =
-          std::make_unique<Expression>(&ast, aggregationExpression.slice())});
+      .type = "SUM", .outputRegister = aggregationRegisterId});
+  aggregations.back().expressions.emplace_back(
+      std::make_unique<Expression>(&ast, aggregationExpression.slice()));
 
   size_t indexField = 0;
   makeExecutorTestHelper<0, 1>()
@@ -681,10 +671,9 @@ TEST_F(IndexAggregateScanExecutorTest, hard_limit) {
 
   std::vector<IndexAggregateScanInfos::Aggregation> aggregations;
   aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
-      .type = "SUM",
-      .outputRegister = aggregationRegisterId,
-      .expression =
-          std::make_unique<Expression>(&ast, aggregationExpression.slice())});
+      .type = "SUM", .outputRegister = aggregationRegisterId});
+  aggregations.back().expressions.emplace_back(
+      std::make_unique<Expression>(&ast, aggregationExpression.slice()));
 
   size_t indexField = 0;
   makeExecutorTestHelper<0, 1>()
@@ -714,10 +703,9 @@ TEST_F(IndexAggregateScanExecutorTest, soft_limit) {
 
   std::vector<IndexAggregateScanInfos::Aggregation> aggregations;
   aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
-      .type = "SUM",
-      .outputRegister = aggregationRegisterId,
-      .expression =
-          std::make_unique<Expression>(&ast, aggregationExpression.slice())});
+      .type = "SUM", .outputRegister = aggregationRegisterId});
+  aggregations.back().expressions.emplace_back(
+      std::make_unique<Expression>(&ast, aggregationExpression.slice()));
 
   size_t indexField = 0;
   makeExecutorTestHelper<0, 1>()
@@ -747,10 +735,9 @@ TEST_F(IndexAggregateScanExecutorTest, fullcount) {
 
   std::vector<IndexAggregateScanInfos::Aggregation> aggregations;
   aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
-      .type = "SUM",
-      .outputRegister = aggregationRegisterId,
-      .expression =
-          std::make_unique<Expression>(&ast, aggregationExpression.slice())});
+      .type = "SUM", .outputRegister = aggregationRegisterId});
+  aggregations.back().expressions.emplace_back(
+      std::make_unique<Expression>(&ast, aggregationExpression.slice()));
 
   size_t indexField = 0;
   makeExecutorTestHelper<0, 1>()
@@ -780,10 +767,9 @@ TEST_F(IndexAggregateScanExecutorTest, skip_produce_fullcount) {
 
   std::vector<IndexAggregateScanInfos::Aggregation> aggregations;
   aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
-      .type = "SUM",
-      .outputRegister = aggregationRegisterId,
-      .expression =
-          std::make_unique<Expression>(&ast, aggregationExpression.slice())});
+      .type = "SUM", .outputRegister = aggregationRegisterId});
+  aggregations.back().expressions.emplace_back(
+      std::make_unique<Expression>(&ast, aggregationExpression.slice()));
 
   size_t indexField = 0;
   makeExecutorTestHelper<0, 1>()
@@ -813,10 +799,9 @@ TEST_F(IndexAggregateScanExecutorTest, skip_too_much) {
 
   std::vector<IndexAggregateScanInfos::Aggregation> aggregations;
   aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
-      .type = "SUM",
-      .outputRegister = aggregationRegisterId,
-      .expression =
-          std::make_unique<Expression>(&ast, aggregationExpression.slice())});
+      .type = "SUM", .outputRegister = aggregationRegisterId});
+  aggregations.back().expressions.emplace_back(
+      std::make_unique<Expression>(&ast, aggregationExpression.slice()));
 
   size_t indexField = 0;
   makeExecutorTestHelper<0, 1>()

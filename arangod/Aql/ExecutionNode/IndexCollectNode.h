@@ -39,9 +39,10 @@ struct IndexCollectAggregation {
   std::string type;
   // output variable
   Variable const* outVariable;
-  // aggregation expression. It must only contain attribute accesses to the old
-  // document variable that are covered by the index.
-  std::unique_ptr<Expression> expression;
+  // one aggregation expression per argument of the aggregate call. Each must
+  // only contain attribute accesses to the old document variable that are
+  // covered by the index.
+  std::vector<std::unique_ptr<Expression>> expressions;
 };
 
 using IndexCollectGroups = std::vector<IndexCollectGroup>;

@@ -240,7 +240,7 @@ void collectInClusterRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                 plan->getAst()->variables()->createTemporaryVariable();
             std::vector<AggregateVarInfo> aggregateVariables;
             aggregateVariables.emplace_back(AggregateVarInfo{
-                outVariable, collectNode->aggregateVariables()[0].inVar,
+                outVariable, collectNode->aggregateVariables()[0].inVars,
                 "LENGTH"});
             auto dbCollectNode = plan->createNode<CollectNode>(
                 plan.get(), plan->nextId(), collectNode->getOptions(),
@@ -256,7 +256,7 @@ void collectInClusterRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
             // re-use the existing CollectNode on the coordinator to aggregate
             // the counts of the DB servers
             collectNode->aggregateVariables()[0].type = "SUM";
-            collectNode->aggregateVariables()[0].inVar = outVariable;
+            collectNode->aggregateVariables()[0].inVars = {outVariable};
             collectNode->aggregationMethod(
                 CollectOptions::CollectMethod::kSorted);
 
@@ -314,7 +314,7 @@ void collectInClusterRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
               auto outVariable =
                   plan->getAst()->variables()->createTemporaryVariable();
               dbServerAggVars.emplace_back(
-                  AggregateVarInfo{outVariable, it.inVar, std::string(func)});
+                  AggregateVarInfo{outVariable, it.inVars, std::string(func)});
             }
 
             if (!eligible) {
@@ -371,7 +371,9 @@ void collectInClusterRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
 
             size_t j = 0;
             for (AggregateVarInfo& it : collectNode->aggregateVariables()) {
-              it.inVar = dbServerAggVars[j].outVar;
+              // the DB server's partial result is a single value, whatever the
+              // arity of the original aggregate call was
+              it.inVars = {dbServerAggVars[j].outVar};
               it.type = Aggregator::runOnCoordinatorAs(it.type);
               ++j;
             }

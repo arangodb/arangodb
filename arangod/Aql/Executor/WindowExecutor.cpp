@@ -39,16 +39,13 @@
 
 namespace arangodb::aql {
 
-namespace {
-static const AqlValue EmptyValue;
-}
+namespace {}
 
 WindowExecutorInfos::WindowExecutorInfos(
     WindowBounds const& bounds, RegisterId rangeRegister,
     std::vector<std::string> aggregateTypes,
-    std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-    QueryWarnings& w, velocypack::Options const* opts,
-    ResourceMonitor& resourceMonitor)
+    std::vector<AggregateRegisters>&& aggregateRegisters, QueryWarnings& w,
+    velocypack::Options const* opts, ResourceMonitor& resourceMonitor)
     : _bounds(bounds),
       _rangeRegister(rangeRegister),
       _aggregateTypes(std::move(aggregateTypes)),
@@ -63,8 +60,8 @@ WindowBounds const& WindowExecutorInfos::bounds() const { return _bounds; }
 
 RegisterId WindowExecutorInfos::rangeRegister() const { return _rangeRegister; }
 
-std::vector<std::pair<RegisterId, RegisterId>>
-WindowExecutorInfos::getAggregatedRegisters() const {
+std::vector<AggregateRegisters> WindowExecutorInfos::getAggregatedRegisters()
+    const {
   return _aggregateRegisters;
 }
 
@@ -113,11 +110,11 @@ void BaseWindowExecutor::applyAggregators(InputAqlItemRow& input) {
   TRI_ASSERT(_aggregators.size() == _infos.getAggregatedRegisters().size());
   size_t j = 0;
   for (auto const& r : _infos.getAggregatedRegisters()) {
-    if (r.second.value() == RegisterId::maxRegisterId) {  // e.g. LENGTH / COUNT
-      _aggregators[j]->reduce(::EmptyValue);
-    } else {
-      _aggregators[j]->reduce(input.getValue(/*inRegister*/ r.second));
+    _inputValues.clear();
+    for (auto const& reg : r.inRegs) {
+      _inputValues.emplace_back(input.getValue(reg));
     }
+    _aggregators[j]->reduce(_inputValues);
     ++j;
   }
 }
@@ -137,7 +134,7 @@ void BaseWindowExecutor::produceOutputRow(InputAqlItemRow& input,
   for (std::unique_ptr<Aggregator> const& agg : _aggregators) {
     AqlValue r = agg->get();
     AqlValueGuard guard{r, /*destroy*/ true};
-    output.moveValueInto(/*outRegister*/ registers[j++].first, input, &guard);
+    output.moveValueInto(/*outRegister*/ registers[j++].outReg, input, &guard);
     if (reset) {
       agg->reset();
     }
@@ -149,7 +146,7 @@ void BaseWindowExecutor::produceInvalidOutputRow(InputAqlItemRow& input,
                                                  OutputAqlItemRow& output) {
   VPackSlice nullSlice = VPackSlice::nullSlice();
   for (auto const& regId : _infos.getAggregatedRegisters()) {
-    output.moveValueInto(/*outRegister*/ regId.first, input, nullSlice);
+    output.moveValueInto(/*outRegister*/ regId.outReg, input, nullSlice);
   }
   output.advanceRow();
 }

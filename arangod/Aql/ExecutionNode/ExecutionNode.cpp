@@ -350,25 +350,9 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
       }
 
       // aggregates
-      VPackSlice aggregatesSlice = slice.get("aggregates");
-      if (!aggregatesSlice.isArray()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                       "invalid \"aggregates\" definition");
-      }
-
-      std::vector<AggregateVarInfo> aggregateVariables;
-      {
-        aggregateVariables.reserve(aggregatesSlice.length());
-        for (VPackSlice it : VPackArrayIterator(aggregatesSlice)) {
-          Variable* outVar =
-              Variable::varFromVPack(plan->getAst(), it, "outVariable");
-          Variable* inVar =
-              Variable::varFromVPack(plan->getAst(), it, "inVariable", true);
-
-          aggregateVariables.emplace_back(
-              AggregateVarInfo{outVar, inVar, it.get("type").copyString()});
-        }
-      }
+      std::vector<AggregateVarInfo> aggregateVariables =
+          AggregateVarInfo::fromVelocyPack(plan->getAst(),
+                                           slice.get("aggregates"));
 
       return new CollectNode(plan, slice, expressionVariable, outVariable,
                              keepVariables,
@@ -446,25 +430,9 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
           plan->getAst(), slice, "rangeVariable", /*optional*/ true);
 
       // aggregates
-      VPackSlice aggregatesSlice = slice.get("aggregates");
-      if (!aggregatesSlice.isArray()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                       "invalid \"aggregates\" definition");
-      }
-
-      std::vector<AggregateVarInfo> aggregateVariables;
-      {
-        aggregateVariables.reserve(aggregatesSlice.length());
-        for (VPackSlice it : VPackArrayIterator(aggregatesSlice)) {
-          Variable* outVar =
-              Variable::varFromVPack(plan->getAst(), it, "outVariable");
-          Variable* inVar =
-              Variable::varFromVPack(plan->getAst(), it, "inVariable", true);
-
-          aggregateVariables.emplace_back(
-              AggregateVarInfo{outVar, inVar, it.get("type").copyString()});
-        }
-      }
+      std::vector<AggregateVarInfo> aggregateVariables =
+          AggregateVarInfo::fromVelocyPack(plan->getAst(),
+                                           slice.get("aggregates"));
 
       auto type = rangeVar != nullptr ? WindowBounds::Type::Range
                                       : WindowBounds::Type::Row;
