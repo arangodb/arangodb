@@ -740,7 +740,16 @@ function readRtaErrorLog(logFile) {
   return fnLines;
 }
 
+// version that created the data; the SUT gets upgraded, the data does not
+let rtaDataVersion;
+
 function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, moreargv=[], addArgs=undefined) {
+  if (rtaDataVersion === undefined) {
+    if (pu.currentBinarySet !== 0) {
+      throw new Error('rta oldVersion captured after the binary switch');
+    }
+    rtaDataVersion = internal.db._version();
+  }
   let args = Object.assign(makeArgsArangosh(
     options, instanceManager,
     // waitData needs JWT access for the _users collection
@@ -769,7 +778,7 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
                        '--progress', true,
                        '--printTimeTableMeasurement', true,
                        '--progress', 'true',
-                       '--oldVersion', require('internal').db._version()
+                       '--oldVersion', rtaDataVersion
                      ]);
   if (options.password) {
     argv = argv.concat(['--passvoid', options.password]);
