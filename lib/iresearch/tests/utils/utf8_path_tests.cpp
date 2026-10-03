@@ -209,6 +209,84 @@ TEST_F(utf8_path_tests, absolute) {
   }
 }
 
+TEST_F(utf8_path_tests, read_cwd_returns_root_directory) {
+  const std::filesystem::path root{"/"};
+  ASSERT_TRUE(irs::file_utils::set_cwd(root.c_str()));
+  std::filesystem::path::string_type cwd;
+  ASSERT_TRUE(irs::file_utils::read_cwd(cwd));
+  ASSERT_EQ(root.native(), cwd);
+}
+
+TEST_F(utf8_path_tests, read_cwd_replaces_shorter_previous_content) {
+  const auto dir = test_dir() / "a_directory_name_longer_than_sso";
+  ASSERT_TRUE(irs::file_utils::mkdir(dir.c_str(), false));
+  ASSERT_TRUE(irs::file_utils::set_cwd(dir.c_str()));
+  auto cwd = std::filesystem::path{"stale content"}.native();
+  ASSERT_TRUE(irs::file_utils::read_cwd(cwd));
+  ASSERT_EQ(std::filesystem::canonical(dir).native(), cwd);
+}
+
+TEST_F(utf8_path_tests, read_cwd_replaces_longer_previous_content) {
+  const auto dir = test_dir() / "reused_buffer";
+  ASSERT_TRUE(irs::file_utils::mkdir(dir.c_str(), false));
+  ASSERT_TRUE(irs::file_utils::set_cwd(dir.c_str()));
+  const auto expected = std::filesystem::canonical(dir).native();
+  std::filesystem::path::string_type cwd(expected.size() * 2, 'x');
+  ASSERT_TRUE(irs::file_utils::read_cwd(cwd));
+  ASSERT_EQ(expected, cwd);
+}
+
+// Windows needs extra privileges for symlinks and cannot remove the cwd.
+#ifndef _WIN32
+TEST_F(utf8_path_tests, read_cwd_resolves_symlinked_cwd) {
+  const auto target = test_dir() / "symlink_target";
+  const auto link = test_dir() / "symlink";
+  ASSERT_TRUE(irs::file_utils::mkdir(target.c_str(), false));
+  std::filesystem::create_directory_symlink(target, link);
+  ASSERT_TRUE(irs::file_utils::set_cwd(link.c_str()));
+  std::filesystem::path::string_type cwd;
+  ASSERT_TRUE(irs::file_utils::read_cwd(cwd));
+  ASSERT_EQ(std::filesystem::canonical(target).native(), cwd);
+}
+
+TEST_F(utf8_path_tests, read_cwd_fails_when_cwd_was_removed) {
+  const auto dir = test_dir() / "removed_cwd";
+  ASSERT_TRUE(irs::file_utils::mkdir(dir.c_str(), false));
+  ASSERT_TRUE(irs::file_utils::set_cwd(dir.c_str()));
+  ASSERT_TRUE(irs::file_utils::remove(dir.c_str()));
+  std::filesystem::path::string_type cwd;
+  ASSERT_FALSE(irs::file_utils::read_cwd(cwd));
+}
+#endif
+
+TEST_F(utf8_path_tests, ensure_absolute_prefixes_relative_path_with_cwd) {
+  std::filesystem::path path{"deleteme"};
+  irs::file_utils::ensure_absolute(path);
+  ASSERT_EQ(std::filesystem::canonical(test_dir()) / "deleteme", path);
+}
+
+TEST_F(utf8_path_tests, ensure_absolute_keeps_parent_directory_references) {
+  std::filesystem::path path{"../deleteme"};
+  irs::file_utils::ensure_absolute(path);
+  ASSERT_EQ(std::filesystem::canonical(test_dir()) / "../deleteme", path);
+}
+
+TEST_F(utf8_path_tests,
+       ensure_absolute_turns_empty_path_into_cwd_with_trailing_separator) {
+  std::filesystem::path path;
+  irs::file_utils::ensure_absolute(path);
+  ASSERT_EQ(std::filesystem::canonical(test_dir()).native() +
+              std::filesystem::path::preferred_separator,
+            path.native());
+}
+
+TEST_F(utf8_path_tests, ensure_absolute_leaves_absolute_path_unchanged) {
+  const auto expected = test_dir() / "deleteme";
+  auto path = expected;
+  irs::file_utils::ensure_absolute(path);
+  ASSERT_EQ(expected, path);
+}
+
 TEST_F(utf8_path_tests, path) {
 #if defined(_MSC_VER)
   const char* native_path_sep("\\");
