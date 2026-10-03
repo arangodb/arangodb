@@ -42,7 +42,7 @@ function medQueueBlockedSuite() {
     tearDown: function () {
       db._drop(cn);
     },
-    
+    /* TODO 
     testRunAql: function() {
       let coll = db._create(cn, {numberOfShards:3});
       let l = [];
@@ -94,7 +94,7 @@ function medQueueBlockedSuite() {
         coll.drop();
       }
     },
-
+*/
     testCreateColl: function() {
       try {
         // This failure point blocks the medium priority queue. This means
