@@ -1,6 +1,8 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
 
+* COR-1019: Security issue fix to enable interrupting unbounded AQL analyzers.
+
 * Updated node modules:
  - brace-expansion to 5.0.12 to resolve CVE-2026-102276, CVE-2026-102277
    and CVE-2026-102278

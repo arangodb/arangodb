@@ -31,6 +31,7 @@
 #include "Basics/ResultT.h"
 #include "Transaction/OperationOrigin.h"
 #include "VocBase/voc-types.h"
+#include "Aql/Timing.h"
 
 #include <atomic>
 #include <mutex>
@@ -161,6 +162,10 @@ class QueryContext {
 
   virtual bool hasEnteredV8Executor() const { return false; }
 
+  virtual void resetRuntimeClock() {
+    _startTime = aql::currentSteadyClockValue();
+  }
+
   // base overhead for each query. the number used here is somewhat arbitrary.
   // it is just that all the basics data structures of a query are not totally
   // free, and there is not other accounting for them. note: this value is
@@ -235,6 +240,10 @@ class QueryContext {
   // buildEngines, cleanupEngines, etc. pp
   QueryApiSynchronicity _queryApiSynchronicity =
       QueryApiSynchronicity::Asynchronous;
+
+  // Reset in resetRuntimeClock() and is used in killed() to check if the query
+  // execution time has run past the QueryOptions::maxRuntime.
+  double _startTime;
 };
 
 }  // namespace aql
