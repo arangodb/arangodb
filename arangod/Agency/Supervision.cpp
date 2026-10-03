@@ -199,10 +199,11 @@ struct HealthRecord {
 // This is initialized in AgencyFeature:
 std::string Supervision::_agencyPrefix = "/arango";
 
-Supervision::Supervision(application_features::ApplicationServer& server,
+Supervision::Supervision(ApplicationServer& server,
                          metrics::IRegistry& metricsRegistry)
-    // operates on the agency store only, no ExecContext required
-    : arangodb::ServerThread(server, "Supervision", nullptr),
+    // operates on the agency store, may need to persist log entries
+    // via Agent::transact.
+    : ServerThread(server, "Supervision", ExecContext::superuserAsShared()),
       _agent(nullptr),
       _snapshot(nullptr),
       _transient(Node::create()),
