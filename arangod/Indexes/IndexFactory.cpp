@@ -24,13 +24,13 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
-#include "Basics/FloatingPoint.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
+#include "Indexes/IndexTypeCatalog.h"
 #include "VectorIndex/Definition.h"
 #include "VectorIndex/FaissFactory.h"
 #include "IResearch/IResearchCommon.h"
@@ -123,126 +123,10 @@ IndexTypeFactory::IndexTypeFactory(
     application_features::ApplicationServer& server)
     : _server(server) {}
 
-bool IndexTypeFactory::equal(IndexType type, velocypack::Slice lhs,
-                             velocypack::Slice rhs,
-                             bool attributeOrderMatters) const {
-  // unique must be identical if present
-  bool lhsUnique = basics::VelocyPackHelper::getBooleanValue(
-      lhs, StaticStrings::IndexUnique, false);
-  bool rhsUnique = basics::VelocyPackHelper::getBooleanValue(
-      rhs, StaticStrings::IndexUnique, false);
-  if (lhsUnique != rhsUnique) {
-    return false;
-  }
-
-  // sparse must be identical if present
-  if (IndexType::Geo2 != type && IndexType::Geo1 != type &&
-      IndexType::Geo != type && IndexType::Fulltext != type) {
-    bool lhsSparse = basics::VelocyPackHelper::getBooleanValue(
-        lhs, StaticStrings::IndexSparse, false);
-    bool rhsSparse = basics::VelocyPackHelper::getBooleanValue(
-        rhs, StaticStrings::IndexSparse, false);
-    if (lhsSparse != rhsSparse) {
-      return false;
-    }
-  }
-
-  VPackSlice value;
-
-  if (IndexType::Geo1 == type || IndexType::Geo == type) {
-    // geoJson must be identical if present
-    value = lhs.get("geoJson");
-
-    if (value.isBoolean() &&
-        !basics::VelocyPackHelper::equal(value, rhs.get("geoJson"), false)) {
-      return false;
-    }
-  } else if (IndexType::Fulltext == type) {
-    // minLength
-    value = lhs.get("minLength");
-
-    if (value.isNumber() &&
-        !basics::VelocyPackHelper::equal(value, rhs.get("minLength"), false)) {
-      return false;
-    }
-  } else if (IndexType::TTL == type) {
-    value = lhs.get(StaticStrings::IndexExpireAfter);
-
-    if (value.isNumber() &&
-        rhs.get(StaticStrings::IndexExpireAfter).isNumber()) {
-      double const expireAfter = value.getNumber<double>();
-      value = rhs.get(StaticStrings::IndexExpireAfter);
-
-      if (!FloatingPoint<double>{expireAfter}.AlmostEquals(
-              FloatingPoint<double>{value.getNumber<double>()})) {
-        return false;
-      }
-    }
-  } else if (IndexType::MDIPrefixed == type) {
-    value = lhs.get(StaticStrings::IndexPrefixFields);
-
-    if (value.isArray() &&
-        !basics::VelocyPackHelper::equal(
-            value, rhs.get(StaticStrings::IndexPrefixFields), false)) {
-      return false;
-    }
-  } else if (IndexType::Vector == type) {
-    // check if the parameters are the same
-    vector::UserDefinition leftDefinition;
-    vector::UserDefinition rightDefinition;
-    velocypack::deserialize(lhs.get("params"), leftDefinition);
-    velocypack::deserialize(rhs.get("params"), rightDefinition);
-
-    if (leftDefinition != rightDefinition) {
-      return false;
-    }
-  }
-
-  // other index types: fields must be identical if present
-  value = lhs.get(StaticStrings::IndexFields);
-
-  if (value.isArray()) {
-    if (!attributeOrderMatters) {
-      // attributes can be specified in any order
-      velocypack::ValueLength const nv = value.length();
-
-      // compare fields in arbitrary order
-      auto r = rhs.get(StaticStrings::IndexFields);
-
-      if (!r.isArray() || nv != r.length()) {
-        return false;
-      }
-
-      for (size_t i = 0; i < nv; ++i) {
-        velocypack::Slice const v = value.at(i);
-
-        bool found = false;
-
-        for (VPackSlice vr : VPackArrayIterator(r)) {
-          if (basics::VelocyPackHelper::equal(v, vr, false)) {
-            found = true;
-            break;
-          }
-        }
-
-        if (!found) {
-          return false;
-        }
-      }
-    } else {
-      // attribute order matters
-      if (!basics::VelocyPackHelper::equal(
-              value, rhs.get(StaticStrings::IndexFields), false)) {
-        return false;
-      }
-    }
-  }
-
-  return true;
-}
-
-IndexFactory::IndexFactory(application_features::ApplicationServer& server)
+IndexFactory::IndexFactory(application_features::ApplicationServer& server,
+                           IndexTypeCatalog const& catalog)
     : _server(server),
+      _catalog(catalog),
       _factories(),
       _invalid(std::make_unique<InvalidIndexFactory>(server)) {}
 
@@ -284,8 +168,6 @@ Result IndexFactory::enhanceIndexDefinition(  // normalize definition
     return Result(TRI_ERROR_BAD_PARAMETER, "invalid index type");
   }
 
-  auto& factory = IndexFactory::factory(type.copyString());
-
   TRI_ASSERT(normalized.isEmpty());
 
   try {
@@ -321,7 +203,21 @@ Result IndexFactory::enhanceIndexDefinition(  // normalize definition
 
     normalized.add(StaticStrings::IndexName, velocypack::Value(name));
 
-    return factory.normalize(normalized, definition, isCreation, vocbase);
+    // the catalog only knows the built-in types; anything a feature or a
+    // test registered directly with this engine (e.g. the arangosearch
+    // link) is only known to this engine's own registry
+    Result res =
+        _catalog.resolve(type.stringView()) != IndexType::Unknown
+            ? _catalog.normalizeType(type.stringView(), normalized, definition,
+                                     isCreation, vocbase)
+            : factory(type.copyString())
+                  .normalize(normalized, definition, isCreation, vocbase);
+    if (res.fail()) {
+      return res;
+    }
+    // must run while ObjectBuilder is still open
+    finalizeDefinition(normalized, definition, isCreation);
+    return Result();
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
@@ -393,7 +289,7 @@ std::vector<std::string_view> IndexFactory::supportedIndexes(
 
 std::vector<std::pair<std::string_view, std::string_view>>
 IndexFactory::indexAliases(uint32_t apiVersion) const {
-  return {};
+  return _catalog.aliases(apiVersion);
 }
 
 IndexId IndexFactory::validateSlice(velocypack::Slice info, bool generateKey,

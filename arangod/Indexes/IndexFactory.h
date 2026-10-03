@@ -24,7 +24,10 @@
 
 #include "Basics/Result.h"
 #include "Indexes/Index.h"
+#include "Indexes/IndexDefinition.h"
 #include "VocBase/Identifiers/IndexId.h"
+
+#include <utility>
 
 namespace arangodb {
 
@@ -37,6 +40,8 @@ namespace application_features {
 class ApplicationServer;
 
 }  // namespace application_features
+
+class IndexTypeCatalog;
 namespace velocypack {
 
 class Builder;
@@ -58,9 +63,6 @@ struct IndexTypeFactory {
 
   /// @brief determine if the two Index definitions will result in the same
   ///        index once instantiated
-  virtual bool equal(IndexType type, velocypack::Slice lhs,
-                     velocypack::Slice rhs, bool attributeOrderMatters) const;
-
   virtual bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
                      std::string const& dbname) const = 0;
 
@@ -84,10 +86,43 @@ struct IndexTypeFactory {
   application_features::ApplicationServer& _server;
 };
 
+// turns an IndexDefinition into a full IndexTypeFactory by composing it
+// rather than inheriting it; the subclass only has to implement instantiate().
+// the Definition itself lives in the IndexTypeCatalog (shared by both
+// engines), so this only ever holds a reference to it, never a copy
+template<typename Definition>
+class DelegatingIndexFactory : public IndexTypeFactory {
+ public:
+  DelegatingIndexFactory(application_features::ApplicationServer& server,
+                         Definition const& definition)
+      : IndexTypeFactory(server), _definition(definition) {}
+
+  bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
+             std::string const& dbname) const override {
+    return _definition.equal(lhs, rhs, dbname);
+  }
+
+  Result normalize(velocypack::Builder& normalized,
+                   velocypack::Slice definition, bool isCreation,
+                   Database const& vocbase) const override {
+    return _definition.normalize(normalized, definition, isCreation, vocbase);
+  }
+
+  bool attributeOrderMatters() const override {
+    return _definition.attributeOrderMatters();
+  }
+
+ protected:
+  Definition const& _definition;
+};
+
 class IndexFactory {
  public:
-  IndexFactory(application_features::ApplicationServer&);
+  IndexFactory(application_features::ApplicationServer&,
+               IndexTypeCatalog const& catalog);
   virtual ~IndexFactory() = default;
+
+  IndexTypeCatalog const& catalog() const noexcept { return _catalog; }
 
   /// @brief returns if 'factory' for 'type' was added successfully
   Result emplace(std::string const& type, IndexTypeFactory const& factory);
@@ -96,6 +131,13 @@ class IndexFactory {
                                         velocypack::Builder& normalized,
                                         bool isCreation,
                                         Database const& vocbase) const;
+
+  // engine-specific step run after a type's normalize() succeeds and before
+  // the normalized definition is closed (e.g. RocksDB adds the objectId that
+  // becomes part of the persisted definition); no-op by default
+  virtual void finalizeDefinition(velocypack::Builder& normalized,
+                                  velocypack::Slice definition,
+                                  bool isCreation) const {}
 
   /// @brief returns factory for the specified type or a failing placeholder if
   /// no such type
@@ -229,6 +271,7 @@ class IndexFactory {
 
  protected:
   application_features::ApplicationServer& _server;
+  IndexTypeCatalog const& _catalog;
   std::unordered_map<std::string, IndexTypeFactory const*> _factories;
   std::unique_ptr<IndexTypeFactory> _invalid;
 };

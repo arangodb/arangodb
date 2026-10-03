@@ -23,37 +23,19 @@
 #pragma once
 
 #include "Indexes/IndexFactory.h"
-#include "VectorIndex/IVectorIndexProvider.h"
 
 namespace arangodb {
 
 class ClusterEngine;
-class RocksDBIndexFactory;
 
 class ClusterIndexFactory final : public IndexFactory {
  public:
   static void linkIndexFactories(
-      application_features::ApplicationServer& server,
-      ClusterIndexFactory& factory, ClusterEngine& engine);
-  explicit ClusterIndexFactory(application_features::ApplicationServer&,
-                               ClusterEngine& engine,
-                               IVectorIndexProvider const& vectorIndexProvider);
-  ~ClusterIndexFactory();
-
-  RocksDBIndexFactory const& rocksDBIndexFactory() const {
-    return *_rocksDBIndexFactory;
-  }
-
-  // normalize definition
-  Result enhanceIndexDefinition(velocypack::Slice const definition,
-                                velocypack::Builder& normalized,
-                                bool isCreation,
-                                Database const& vocbase) const override;
-
-  /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
-  /// "hash") used to display storage engine capabilities
-  std::vector<std::pair<std::string_view, std::string_view>> indexAliases(
-      uint32_t apiVersion) const override;
+      application_features::ApplicationServer& server, IndexFactory& factory,
+      ClusterEngine& engine, IndexTypeCatalog const& catalog);
+  ClusterIndexFactory(application_features::ApplicationServer&,
+                      ClusterEngine& engine, IndexTypeCatalog const& catalog);
+  ~ClusterIndexFactory() = default;
 
   void fillSystemIndexes(
       LogicalCollection& col,
@@ -66,7 +48,6 @@ class ClusterIndexFactory final : public IndexFactory {
 
  private:
   ClusterEngine& _engine;
-  std::unique_ptr<RocksDBIndexFactory> _rocksDBIndexFactory;
 };
 
 }  // namespace arangodb

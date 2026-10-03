@@ -44,7 +44,6 @@
 #endif
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
-#include "ClusterEngine/ClusterIndexFactory.h"
 #include "CrashHandler/CrashHandler.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "FeaturePhases/V8FeaturePhase.h"
@@ -68,7 +67,6 @@
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -79,6 +77,8 @@
 #include "VocBase/LogicalView.h"
 
 #include <absl/strings/str_cat.h>
+
+#include <type_traits>
 
 using namespace std::chrono_literals;
 
@@ -1046,7 +1046,6 @@ void IResearchFeature::registerIndexFactory() {
   if (auto* clusterEngine = dynamic_cast<ClusterEngine*>(&engine)) {
     _factory = IResearchLinkCoordinator::createFactory(server());
     emplace(clusterEngine->indexFactory());
-    emplace(clusterEngine->indexFactory().rocksDBIndexFactory());
   } else if (auto* rocksDBEngine = dynamic_cast<RocksDBEngine*>(&engine)) {
     _factory = IResearchRocksDBLink::createFactory(server());
     emplace(rocksDBEngine->indexFactory());

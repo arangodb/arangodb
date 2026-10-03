@@ -22,11 +22,10 @@
 
 #pragma once
 
-#include "ClusterEngine/Common.h"
 #include "ClusterEngine/ClusterIndexFactory.h"
+#include "ClusterEngine/Common.h"
 #include "Metrics/IRegistry.h"
 #include "StorageEngine/StorageEngine.h"
-#include "VectorIndex/IVectorIndexProvider.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -44,7 +43,7 @@ class ClusterEngine final : public StorageEngine {
   explicit ClusterEngine(application_features::ApplicationServer& server,
                          ClusterFeature& clusterFeature,
                          DatabaseFeature& database, metrics::IRegistry& metrics,
-                         IVectorIndexProvider const& vectorIndexProvider);
+                         IndexTypeCatalog const& indexTypeCatalog);
   ~ClusterEngine();
 
   ClusterEngineType engineType() const;

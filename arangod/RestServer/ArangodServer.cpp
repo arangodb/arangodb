@@ -384,13 +384,15 @@ void ArangodServer::addFeatures() {
                              getOptions<UpgradeOptionsProvider>());
   auto& rocksdbOption = addFeature<RocksDBOptionFeature>(
       getOptions<RocksDBOptionFeatureOptionsProvider>());
+  auto& indexTypeCatalog = addFeature<IndexTypeCatalog>(vectorIndex);
   StorageEngine& engine = std::invoke([&]() -> StorageEngine& {
     if (ServerState::instance()->isCoordinator()) {
-      return addFeature<StorageEngine, ClusterEngine>(clusterFeature, database,
-                                                      metrics, vectorIndex);
+      return addFeature<StorageEngine, ClusterEngine>(
+          clusterFeature, database, metrics, indexTypeCatalog);
     } else {
       return addFeature<StorageEngine, RocksDBEngine>(
-          rocksdbOption, metrics, databasePath, vectorIndex, flush, dumpLimits,
+          rocksdbOption, metrics, databasePath, vectorIndex, indexTypeCatalog,
+          flush, dumpLimits,
           replication2::EnableReplication2 ? &replicatedLogFeature : nullptr,
           scheduler, database, database, rocksdbCacheRefill, cacheManager,
           agency, getOptions<RocksDBEngineOptionsProvider>());
