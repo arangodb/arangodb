@@ -285,6 +285,7 @@ if (USE_TESTS)
 endif ()
 
 add_subdirectory(core)
+add_subdirectory(tools)
 
 if (USE_UTILS)
   add_subdirectory(utils)
