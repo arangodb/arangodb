@@ -1100,8 +1100,10 @@ graph::Graph const* GraphNode::graph() const noexcept { return _graphObj; }
 void GraphNode::initializeIndexConditions() const {
   // We need to prepare the variable accesses before we ask the index nodes.
   // Those are located on the options, and need to be partially executed.
+  // the non-constant parts of the index conditions are evaluated against this
+  // node's input rows
   options()->initializeIndexConditions(
-      plan()->getAst(), getRegisterPlan()->varInfo, getTemporaryVariable());
+      plan()->getAst(), inputRegisterResolver(), getTemporaryVariable());
 }
 
 void GraphNode::setVertexProjections(Projections projections) {

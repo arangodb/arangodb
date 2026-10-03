@@ -54,7 +54,7 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  RegisterId inputRegister = variableToRegisterId(_inVariable);
+  RegisterId inReg = inputRegister(_inVariable);
 
   // This is an important performance improvement:
   // If we have inherited results, we do move the block through
@@ -62,7 +62,7 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
   // In the other case it is important to shrink the matrix to exactly
   // one register that is stored within the DOCVEC.
   if (returnInheritedResults()) {
-    auto executorInfos = IdExecutorInfos(_count, inputRegister);
+    auto executorInfos = IdExecutorInfos(_count, inReg);
     auto registerInfos = createRegisterInfos({}, {});
     return std::make_unique<ExecutionBlockImpl<
         IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>(
@@ -75,8 +75,8 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
     constexpr auto outputRegister = RegisterId{0};
 
     auto registerInfos =
-        createRegisterInfos(RegIdSet{inputRegister}, RegIdSet{outputRegister});
-    auto executorInfos = ReturnExecutorInfos(inputRegister, _count);
+        createRegisterInfos(RegIdSet{inReg}, RegIdSet{outputRegister});
+    auto executorInfos = ReturnExecutorInfos(inReg, _count);
 
     return std::make_unique<ExecutionBlockImpl<ReturnExecutor>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));

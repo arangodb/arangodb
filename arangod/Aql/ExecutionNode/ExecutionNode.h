@@ -64,6 +64,7 @@
 #include "Aql/IndexHint.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/SortElement.h"
+#include "Aql/VarInfoMap.h"
 #include "Aql/WalkerWorker.h"
 #include "Aql/types.h"
 #include "Basics/TypeTraits.h"
@@ -548,6 +549,34 @@ class ExecutionNode {
   /// An existing annotation with the same name is overwritten.
   void setAnnotatedFlag(std::string name, bool value);
 
+  /// @brief The depth of the rows this node reads, i.e. the depth of its
+  /// first dependency. Equal to getDepth() unless this node begins a new
+  /// block shape (isIncreaseDepth()).
+  unsigned int inputDepth() const noexcept;
+
+  /// @brief Register holding `variable` in the rows this node WRITES.
+  /// Use this for the variables in getVariablesSetHere(), i.e. for everything
+  /// the executor writes to an OutputAqlItemRow.
+  RegisterId outputRegister(Variable const* variable) const;
+
+  /// @brief Register holding `variable` in the rows this node READS.
+  /// Use this for everything the executor reads off an InputAqlItemRow.
+  RegisterId inputRegister(Variable const* variable) const;
+
+  /// @brief Like inputRegister(), but returns an invalid RegisterId instead of
+  /// asserting when `variable` is a nullptr or has no register.
+  RegisterId inputRegisterOrInvalid(Variable const* variable) const noexcept;
+
+  /// @brief Like outputRegister(), but returns an invalid RegisterId instead
+  /// of asserting when `variable` is a nullptr or has no register.
+  RegisterId outputRegisterOrInvalid(Variable const* variable) const noexcept;
+
+  /// @brief Resolvers bound to the input/output row shape of this node, for
+  /// code that resolves variables later than createBlock() e.g. during
+  /// execution. Prefer resolving here and passing RegisterIds down.
+  RegisterResolver inputRegisterResolver() const noexcept;
+  RegisterResolver outputRegisterResolver() const noexcept;
+
  protected:
   /// @brief serialize this ExecutionNode to VelocyPack.
   /// This function is called as part of `toVelocyPack` and must be overriden in
@@ -565,10 +594,6 @@ class ExecutionNode {
   /// @brief factory for sort elements, used by SortNode and GatherNode
   static void getSortElements(SortElementVector& elements, ExecutionPlan* plan,
                               velocypack::Slice slice, std::string_view which);
-
-  RegisterId variableToRegisterId(Variable const*) const;
-
-  RegisterId variableToRegisterOptionalId(Variable const* var) const;
 
   RegisterInfos createRegisterInfos(RegIdSet readableInputRegisters,
                                     RegIdSet writableOutputRegisters) const;

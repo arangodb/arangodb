@@ -23,6 +23,7 @@
 #pragma once
 
 #include "Aql/FixedVarExpressionContext.h"
+#include "Aql/VarInfoMap.h"
 #include "Graph/BaseOptions.h"
 #include "StorageEngine/TransactionState.h"
 
@@ -201,7 +202,8 @@ struct TraverserOptions : public graph::BaseOptions {
 
   auto isSatelliteLeader() const -> bool;
 
-  void initializeIndexConditions(aql::Ast* ast, aql::VarInfoMap const& varInfo,
+  void initializeIndexConditions(aql::Ast* ast,
+                                 aql::RegisterResolver const& registers,
                                  aql::Variable const* indexVariable) override;
 
   void calculateIndexExpressions(aql::Ast* ast) override;
