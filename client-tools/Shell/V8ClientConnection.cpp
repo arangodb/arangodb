@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
@@ -52,7 +52,6 @@
 #include "Enterprise/Encryption/EncryptionFeature.h"
 #endif
 
-#include <absl/strings/escaping.h>
 #include <absl/strings/str_cat.h>
 #include <fuerte/connection.h>
 #include <fuerte/requests.h>
@@ -485,50 +484,6 @@ ResultT<std::string> V8ClientConnection::authenticateViaOpenAuth() {
   return {VelocyPackHelper::getStringValue(slice, "jwt", "")};
 }
 
-// Helper function to extract expiration time from JWT token
-std::optional<double> V8ClientConnection::extractJwtExpiration(
-    std::string const& jwt) {
-  // JWT tokens consist of three parts separated by dots: header.body.signature
-  std::vector<std::string> const parts = basics::StringUtils::split(jwt, '.');
-  if (parts.size() != 3) {
-    // Invalid JWT format
-    return std::nullopt;
-  }
-
-  // Decode the body (second part) which contains the expiration time
-  std::string const& bodyWebBase64 = parts[1];
-  std::string body;
-  if (!absl::WebSafeBase64Unescape(bodyWebBase64, &body)) {
-    // Failed to decode base64
-    return std::nullopt;
-  }
-
-  // Parse the JSON body
-  try {
-    auto bodyBuilder = VPackParser::fromJson(body);
-    if (bodyBuilder == nullptr) {
-      return std::nullopt;
-    }
-
-    VPackSlice const bodySlice = bodyBuilder->slice();
-    if (!bodySlice.isObject()) {
-      return std::nullopt;
-    }
-
-    // Extract the expiration time from the "exp" field
-    VPackSlice const expSlice = bodySlice.get("exp");
-    if (!expSlice.isNone() && expSlice.isNumber()) {
-      return expSlice.getNumber<double>();
-    }
-  } catch (...) {
-    // Parsing failed
-    return std::nullopt;
-  }
-
-  // No expiration time found (some tokens don't expire)
-  return std::nullopt;
-}
-
 // Helper function to check if JWT token needs renewal
 bool V8ClientConnection::needsTokenRenewal() {
   // If we don't have stored credentials, we can't renew
@@ -576,7 +531,8 @@ void V8ClientConnection::renewJwtToken() {
 
         // Store the new token and extract its expiration time
         _currentJwtToken = newJwtToken;
-        auto expiry = extractJwtExpiration(_currentJwtToken);
+        auto expiry = arangodb::rest::SslInterface::jwt::extractExpiration(
+            _currentJwtToken);
         _jwtTokenExpiry = expiry.value_or(0.0);
 
         // Force reconnection with the new token
@@ -594,6 +550,17 @@ void V8ClientConnection::renewJwtToken() {
   } catch (...) {
     // Ignore errors during renewal
   }
+}
+
+void V8ClientConnection::adoptRenewedJwtToken() {
+  std::lock_guard<std::recursive_mutex> guard(_lock);
+  auto const token = _client.jwtToken();
+  if (token.empty() || token == _builder.jwtToken()) {
+    return;
+  }
+  _builder.jwtToken(token);
+  shutdownConnection();
+  createConnection();
 }
 
 void V8ClientConnection::prepareConnection() {
@@ -632,7 +599,8 @@ void V8ClientConnection::prepareConnection() {
         _currentJwtToken = jwtToken;
 
         // Extract and store the expiration time
-        auto expiry = extractJwtExpiration(_currentJwtToken);
+        auto expiry = arangodb::rest::SslInterface::jwt::extractExpiration(
+            _currentJwtToken);
         _jwtTokenExpiry = expiry.value_or(0.0);
       }
       if (res.errorNumber() == TRI_ERROR_ARANGO_TRY_AGAIN ||
@@ -687,8 +655,7 @@ void V8ClientConnection::reconnect() {
   try {
     createConnection();
   } catch (...) {
-    std::string errorMessage = "error in '" + _client.endpoint() + "'";
-    throw errorMessage;
+    throw std::runtime_error("error in '" + _client.endpoint() + "'");
   }
 
   if (isConnected() &&
@@ -705,13 +672,8 @@ void V8ClientConnection::reconnect() {
           << "' - Server message: " << _lastErrorMessage;
     }
 
-    std::string errorMsg = "could not connect";
-
-    if (!_lastErrorMessage.empty()) {
-      errorMsg = _lastErrorMessage;
-    }
-
-    throw errorMsg;
+    throw std::runtime_error(!_lastErrorMessage.empty() ? _lastErrorMessage
+                                                        : "could not connect");
   }
 }
 
@@ -745,10 +707,16 @@ void V8ClientConnection::getConnectionHandleTable(
         v8::Local<v8::Object> entry = v8::Object::New(isolate);
 
         setBool("active", isActive, entry);
-        setBool("connected", conn->state() == fu::Connection::State::Connected,
-                entry);
-        setString("endpoint", conn->endpoint(), entry);
-        setString("localPort", conn->localEndpoint(), entry);
+        if (conn) {
+          setBool("connected",
+                  conn->state() == fu::Connection::State::Connected, entry);
+          setString("endpoint", conn->endpoint(), entry);
+          setString("localPort", conn->localEndpoint(), entry);
+        } else {
+          setBool("connected", false, entry);
+          setString("endpoint", "N/A", entry);
+          setString("localPort", "N/A", entry);
+        }
         setString("username", builder.user(), entry);
         setString("password", builder.password(), entry);
         setString("jwtToken", builder.jwtToken(), entry);
@@ -795,7 +763,7 @@ void V8ClientConnection::connectHandle(
   // check if we have a connection for that endpoint in our cache
   auto it = _connectionCache.find(handle);
   auto iit = _connectionBuilderCache.find(handle);
-  if (it != _connectionCache.end()) {
+  if (it != _connectionCache.end() && iit != _connectionBuilderCache.end()) {
     // cache hit. remove the connection from the cache and return it!
     std::shared_ptr<fu::Connection> oldConnection;
     std::string oldConnectionId = _currentConnectionId;
@@ -1112,8 +1080,8 @@ static void ClientConnection_reconnect(
 
   try {
     v8connection->reconnect();
-  } catch (std::string const& errorMessage) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER(errorMessage);
+  } catch (std::exception const& ex) {
+    TRI_V8_THROW_EXCEPTION_PARAMETER(ex.what());
   } catch (...) {
     std::string errorMessage = absl::StrCat("error in '", endpoint, "'");
     TRI_V8_THROW_EXCEPTION_PARAMETER(errorMessage);
@@ -3149,6 +3117,7 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
   if (needsTokenRenewal()) {
     renewJwtToken();
   }
+  adoptRenewedJwtToken();
 
   bool retry = true;
 
@@ -3230,6 +3199,7 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
   if (needsTokenRenewal()) {
     renewJwtToken();
   }
+  adoptRenewedJwtToken();
 
   bool retry = true;
 

@@ -112,9 +112,6 @@ class TokenCache {
   TokenCache::Entry checkAuthenticationBasic(std::string const& secret);
   /// Check JWT token contents
   TokenCache::Entry checkAuthenticationJWT(std::string const& secret);
-  /// Check JWT token contents and return full token string
-  TokenCache::Entry checkAuthenticationJWT(std::string const& secret,
-                                           std::string const& fullToken);
 
   bool validateJwtHeader(std::string_view headerWebBase64, bool& isES256);
   TokenCache::Entry validateJwtBody(std::string_view bodyWebBase64);
@@ -138,6 +135,7 @@ class TokenCache {
 
   mutable std::mutex _jwtCacheMutex;
   arangodb::basics::LruCache<std::string, TokenCache::Entry> _jwtCache;
+  std::atomic<uint64_t> _jwtCacheVersion{0};
 
   /// Timeout in seconds
   double const _authTimeout;

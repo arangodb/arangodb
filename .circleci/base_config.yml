@@ -44,6 +44,9 @@ parameters:
   full:
     type: boolean
     default: false
+  with-clang-tidy:
+    type: boolean
+    default: false
   replication-two:
     type: boolean
     default: false
@@ -119,6 +122,79 @@ parameters:
 
 
 commands:
+  load_cache:
+    parameters:
+      driver-git-repo:
+        type: string
+    steps:
+      - run:
+          name: Generate Cache Checksum
+          command: |
+            cd ../$(echo '<< parameters.driver-git-repo >>' | sed -e "s;.*/;;" -e "s;.git$;;")
+            find . -name 'pom.xml' | sort | xargs cat > /tmp/maven_cache_seed
+      - restore_cache:
+          key: maven-v1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "/tmp/maven_cache_seed" }}
+  store_cache:
+    steps:
+      - save_cache:
+          key: maven-v1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "/tmp/maven_cache_seed" }}
+          paths:
+            - ~/.m2/repository
+  load_cache_s3:
+    parameters:
+      driver-git-repo:
+        type: string
+    steps:
+      - run:
+          name: Load Java Cache from AWS
+          command: |
+            set -x
+            cd ../$(echo '<< parameters.driver-git-repo >>' | sed -e "s;.*/;;" -e "s;.git$;;")
+            find . -name 'pom.xml' | sort | xargs cat > /tmp/maven_cache_seed
+            set -eo pipefail
+
+            ARCHIVE="maven-v1-${CIRCLE_JOB}-$( md5sum "/tmp/maven_cache_seed" |sed "s; .*;;" ).tar.gz"
+
+            if [ -z "${AWS_S3_WORKSPACE_BUCKET:-}" ]; then
+              echo "AWS_S3_WORKSPACE_BUCKET not set"
+              exit 1
+            fi
+
+            mkdir -p /tmp/javas-cache
+            mkdir -p ~/.m2/repository
+            TAR="/tmp/javas-cache/${ARCHIVE}"
+
+            aws configure set profile.anon.s3.multipart_threshold 5GB
+            aws s3 cp --no-sign-request --profile anon \
+              "s3://${AWS_S3_WORKSPACE_BUCKET}/java-caches/${ARCHIVE}" \
+              "$TAR" && \
+            tar -C ~ -xzf "$TAR" || true
+  store_cache_s3:
+    steps:
+      - run:
+          command: |
+            set -eo pipefail
+            set -x
+
+            ARCHIVE="maven-v1-${CIRCLE_JOB}-$( md5sum "/tmp/maven_cache_seed" |sed "s; .*;;" ).tar.gz"
+
+            if [ -z "${AWS_S3_WORKSPACE_BUCKET:-}" ]; then
+              echo "AWS_S3_WORKSPACE_BUCKET not set"
+              exit 1
+            fi
+
+            mkdir -p /tmp/javas-cache
+            TAR="/tmp/javas-cache/${ARCHIVE}"
+
+            if test -d ~/.m2/repository; then
+              tar -C ~ -czf "$TAR" .m2/repository
+
+              du -sh "$TAR"
+              aws configure set profile.anon.s3.multipart_threshold 5GB
+              aws s3 cp --no-sign-request --profile anon \
+                "$TAR" \
+                "s3://${AWS_S3_WORKSPACE_BUCKET}/java-caches/${ARCHIVE}"
+            fi
   persist_workspace_to_s3:
     parameters:
       root:
@@ -307,7 +383,6 @@ commands:
             cd ..
             export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no"
             git clone --single-branch --branch << parameters.driver-git-branch >> << parameters.driver-git-repo >>
-
   fetch-aux-binaries:
     parameters:
       arch:
@@ -397,6 +472,15 @@ commands:
           # we increase the no_output_timeout so our own timeout mechanism can kick in and gather more information
           no_output_timeout: 20m
           command: |
+            BUCKETS="$CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX"
+            unset IFS
+            for var in $(compgen -e); do
+               for filter in AWS CIRCLE CONTAINER GITHUB KUBERNETES; do
+                 if [[ "$var" == *"$filter"* ]]; then
+                   unset "$var"
+                 fi
+               done
+            done
             set -x
             # ulimit needs to be in here since it only has effect for this verry shell and its subprocesses:
             ulimit -c unlimited
@@ -438,7 +522,7 @@ commands:
             python3 -u scripts/test/test_launch_controller.py '<< parameters.suites >>' \
               --suiteName '<< parameters.suiteName >>' \
               --arangosh_args '<< parameters.arangosh_args >>' \
-              --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
+              --testBuckets $BUCKETS \
               --cluster << parameters.cluster >> \
               --extraArgs "${EXTRA_ARGS}"
       - run:
@@ -895,11 +979,20 @@ jobs:
                   - tsan_arangodb_suppressions.txt
                   - ubsan_arangodb_suppressions.txt
                   - lsan_arangodb_suppressions.txt
+            # clang-tidy can only parse if generated headers (voc-errors.h, ...) exist.
+            - run:
+                name: Stage generated headers for clang-tidy
+                command: |
+                  cd /root/project
+                  find build \( -name '*.h' -o -name '*.hpp' -o -name '*.inc' -o -name '*.csx' \) -print0 \
+                    | tar --null -cf - -T - \
+                    | (mkdir -p tidy-headers && tar -xf - -C tidy-headers)
             - persist_workspace_to_s3:
                 root: .
-                archive: cppcheck.tar.gz
+                archive: compile_commands.tar.gz
                 paths: |
                   build/compile_commands.json
+                  tidy-headers
             - persist_workspace_to_s3:
                 # not there? install.tar.gz
                 root: .
@@ -1086,6 +1179,9 @@ jobs:
   run-driver-tests:
     parameters:
       <<: *shared-test-job-parameters
+      maven-cache:
+        type: boolean
+        default: false
       driver-git-repo:
         type: string
       driver-git-branch:
@@ -1101,6 +1197,11 @@ jobs:
       - clone-driver-repo:
           driver-git-repo: << parameters.driver-git-repo >>
           driver-git-branch: << parameters.driver-git-branch >>
+      - when:
+          condition: << parameters.maven-cache >>
+          steps:
+            - load_cache_s3:
+                driver-git-repo: << parameters.driver-git-repo >>
       - run:
           name: Initialize driver tests
           command: |
@@ -1114,10 +1215,17 @@ jobs:
           timeLimit: << parameters.timeLimit >>
           sanitizer: << parameters.sanitizer >>
           extraArgs: << parameters.extraArgs >>
+      - when:
+          condition: << parameters.maven-cache >>
+          steps:
+            - store_cache_s3
 
   kafka-driver-tests:
     parameters:
       <<: *shared-test-job-parameters
+      maven-cache:
+        type: boolean
+        default: false
       driver-git-repo:
         type: string
       driver-git-branch:
@@ -1180,6 +1288,11 @@ jobs:
       - clone-driver-repo:
           driver-git-repo: << parameters.driver-git-repo >>
           driver-git-branch: << parameters.driver-git-branch >>
+      - when:
+          condition: << parameters.maven-cache >>
+          steps:
+            - load_cache:
+                driver-git-repo: << parameters.driver-git-repo >>
       - run:
           name: Wait for Kafka brokers to be ready
           command: |
@@ -1209,6 +1322,10 @@ jobs:
           sanitizer: << parameters.sanitizer >>
           extraArgs: << parameters.extraArgs >>
           use-s3-workspace: false
+      - when:
+          condition: << parameters.maven-cache >>
+          steps:
+            - store_cache
 
   run-cppcheck:
     docker:
@@ -1222,7 +1339,7 @@ jobs:
             mkdir -p /root/project/
       - attach_workspace_from_s3:
           at: /root/workspace/
-          archive: cppcheck.tar.gz
+          archive: compile_commands.tar.gz
       - run:
           name: Print workspace size
           command: |
@@ -1252,6 +1369,108 @@ jobs:
           path: /root/project/cppcheck.xml
       - store_test_results:
           path: /root/project/cppcheck-junit.xml
+
+  run-clang-tidy:
+    docker:
+      - image: << pipeline.parameters.build-docker-image >>
+    resource_class: arangodb/large-amd64
+    steps:
+      - run:
+          name: Prepare container
+          command: |
+            mkdir -p /root/workspace/
+            mkdir -p /root/project/
+      - attach_workspace_from_s3:
+          at: /root/workspace/
+          archive: compile_commands.tar.gz
+      - run:
+          name: Print workspace size
+          command: |
+            du -sh /root/workspace/*
+            echo "==================="
+            du -sh /root/workspace/build/*
+            echo "=== container limits ==="
+            nproc
+            cat /sys/fs/cgroup/memory.max 2>/dev/null || cat /sys/fs/cgroup/memory/memory.limit_in_bytes
+      - checkout-arangodb:
+          with-submodules: true
+          destination: "/root/project"
+      - checkout-enterprise:
+          destination: "/root/project/enterprise"
+      - run:
+          name: Run clang-tidy
+          # tee, not >, so the console keeps producing output and CircleCI does
+          # not kill the step after 10 minutes of silence.
+          no_output_timeout: 3h
+          command: |
+            ln -s /root/workspace/build/ /root/project/
+            cp -r /root/workspace/tidy-headers/build/. /root/workspace/build/
+            cd /root/project/
+
+            # -j is bounded by two container limits, either of which can bind.
+            # nproc is neither: it reports host cores, not this container's quota.
+            mem=$(cat /sys/fs/cgroup/memory.max 2>/dev/null \
+                  || cat /sys/fs/cgroup/memory/memory.limit_in_bytes 2>/dev/null \
+                  || echo "")
+            case "$mem" in
+              ''|*[!0-9]*) mem=8589934592 ;;
+            esac
+            # Measured 1.47GiB per job on a full run; budget 1.5, keep 2GiB spare.
+            by_mem=$(( (mem / 1073741824 - 2) * 10 / 15 ))
+
+            cpus=""
+            if [ -r /sys/fs/cgroup/cpu.max ]; then
+              read -r quota period < /sys/fs/cgroup/cpu.max || true
+              if [ "$quota" != "max" ] && [ "${period:-0}" -gt 0 ]; then
+                cpus=$(( quota / period ))
+              fi
+            elif [ -r /sys/fs/cgroup/cpu/cpu.cfs_quota_us ]; then
+              quota=$(cat /sys/fs/cgroup/cpu/cpu.cfs_quota_us)
+              period=$(cat /sys/fs/cgroup/cpu/cpu.cfs_period_us)
+              if [ "$quota" -gt 0 ] && [ "$period" -gt 0 ]; then
+                cpus=$(( quota / period ))
+              fi
+            fi
+            if [ -z "$cpus" ] || [ "$cpus" -lt 1 ]; then cpus=$(nproc); fi
+
+            jobs=$by_mem
+            if [ "$jobs" -gt "$cpus" ]; then jobs=$cpus; fi
+            if [ "$jobs" -lt 1 ]; then jobs=1; fi
+            echo "limits: mem=$((mem / 1073741824))GiB allows $by_mem, cpu quota $cpus, nproc $(nproc) -> using -j $jobs"
+
+            # /usr/bin/time is not in the build image; use the clock and the
+            # cgroup's own peak-usage counter instead.
+            start=$(date +%s)
+            rc=0
+            utils/clang-tidy.sh arangod lib client-tools enterprise -B /root/workspace/build/ -j "$jobs" \
+              | tee clang-tidy-results.txt || rc=$?
+            end=$(date +%s)
+            peak=$(cat /sys/fs/cgroup/memory.peak 2>/dev/null \
+                   || cat /sys/fs/cgroup/memory/memory.max_usage_in_bytes 2>/dev/null \
+                   || echo 0)
+            echo "elapsed_s=$((end - start)) peak_rss_kb=$((peak / 1024)) jobs=$jobs" \
+              > /root/project/clang-tidy-time.txt
+            cat /root/project/clang-tidy-time.txt
+            exit $rc
+      - run:
+          name: Report run cost
+          when: always
+          command: |
+            cd /root/project/
+            cat clang-tidy-time.txt 2>/dev/null || echo "(no timing captured)"
+      - store_artifacts:
+          path: /root/project/clang-tidy-time.txt
+      - run:
+          name: Format result
+          when: always
+          command: |
+            cd /root/project/
+            sed -i 's#/root/project/##g' clang-tidy-results.txt
+            python3 utils/clang-tidy-junit.py clang-tidy-results.txt clang-tidy-junit.xml
+      - store_artifacts:
+          path: /root/project/clang-tidy-results.txt
+      - store_test_results:
+          path: /root/project/clang-tidy-junit.xml
 
 workflows:
   lint:

@@ -115,6 +115,9 @@ static Fp multiply(Fp* a, Fp* b) {
 
 static void round_digit(char* digits, int ndigits, uint64_t delta, uint64_t rem,
                         uint64_t kappa, uint64_t frac) {
+  if (ndigits <= 0) {
+    return;
+  }
   while (rem < frac && delta - rem >= kappa &&
          (rem + kappa < frac || frac - rem > rem + kappa - frac)) {
     digits[ndigits - 1]--;

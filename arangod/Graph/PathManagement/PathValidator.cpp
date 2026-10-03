@@ -37,6 +37,7 @@
 #include "Enterprise/Graph/Providers/SmartGraphProvider.h"
 
 // For additional information, please read PathValidatorEE.cpp
+// NOLINTNEXTLINE(bugprone-suspicious-include)
 #include "Enterprise/Graph/PathValidatorEE.cpp"
 #endif
 

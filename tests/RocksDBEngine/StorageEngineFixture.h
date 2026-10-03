@@ -29,11 +29,9 @@
 #include "Mocks/FakeRegistry.h"
 #include "Mocks/FakeScheduler.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "RestServer/IRecoveryCallback.h"
 #include "RocksDBEngine/Mocks.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBOptionsProvider.h"
-#include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "RocksDBEngine/TempDatabasePathProvider.h"
 #include "Scheduler/ISchedulerProvider.h"
 
@@ -69,10 +67,6 @@ struct TestRocksDBOptionsProvider final : RocksDBOptionsProvider {
   bool _timeTravel;
 };
 
-struct NullRecoveryCallback final : IRecoveryCallback {
-  void recoveryDone() override {}
-};
-
 struct TestSchedulerProvider final : ISchedulerProvider {
   explicit TestSchedulerProvider(Scheduler& scheduler)
       : _scheduler(scheduler) {}
@@ -105,16 +99,13 @@ struct StorageEngineFixtureSuite {
   ::testing::NiceMock<MockIndexCacheRefill> indexCacheRefill;
   ::testing::NiceMock<MockReplicatedLogProvider> logProvider;
 
-  NullRecoveryCallback nullCallback;
-  RocksDBRecoveryManager recoveryManager{server, dbProvider, nullCallback};
-
   FakeScheduler scheduler{server};
   TestSchedulerProvider schedulerProvider{scheduler};
 
   RocksDBEngine engine{
-      server,          optionsProvider, metricsRegistry,  dbPath,
-      flush,           dumpLimits,      &logProvider,     schedulerProvider,
-      recoveryManager, dbProvider,      indexCacheRefill, cacheManager,
+      server,       optionsProvider, metricsRegistry,  dbPath,
+      flush,        dumpLimits,      &logProvider,     schedulerProvider,
+      dbProvider,   dbProvider,      indexCacheRefill, cacheManager,
       sortingPolicy};
 };
 

@@ -95,8 +95,6 @@ class IResearchLinkCoordinatorTest : public ::testing::Test {
 // -----------------------------------------------------------------------------
 
 TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
-  auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
-
   arangodb::ServerState::instance()->setRebootId(
       arangodb::RebootId{1});  // Hack.
   auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
@@ -124,12 +122,13 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
   }
 
   // no view specified
-  auto& factory = feature.factory<arangodb::ClusterEngine>();
+  auto factory = arangodb::iresearch::IResearchLinkCoordinator::createFactory(
+      server.server());
   {
     auto json = arangodb::velocypack::Parser::fromJson("{}");
     try {
-      factory.instantiate(*logicalCollection.get(), json->slice(),
-                          arangodb::IndexId::edgeFrom(), true);
+      factory->instantiate(*logicalCollection.get(), json->slice(),
+                           arangodb::IndexId::edgeFrom(), true);
       EXPECT_TRUE(false);
     } catch (arangodb::basics::Exception const& ex) {
       EXPECT_EQ(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, ex.code());
@@ -141,8 +140,8 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"view\": \"42\" }");
     EXPECT_NE(nullptr,
-              factory.instantiate(*logicalCollection.get(), json->slice(),
-                                  arangodb::IndexId{1}, true));
+              factory->instantiate(*logicalCollection.get(), json->slice(),
+                                   arangodb::IndexId{1}, true));
   }
 
   auto const currentCollectionPath =

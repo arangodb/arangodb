@@ -1357,15 +1357,15 @@ Result IResearchDataStore::initDataStore(
       initCallback ? initCallback() : irs::directory_attributes{},
       readerOptions.resource_manager);
 
-  switch (_engine->recoveryState()) {
-    case RecoveryState::BEFORE:  // Link is being opened before recovery
+  switch (_engine->engineState()) {
+    case EngineState::kPreRecovery:  // Link is being opened before recovery
       [[fallthrough]];
-    case RecoveryState::DONE: {  // Link is being created after recovery
+    case EngineState::kRunning: {  // Link is being created after recovery
       // Will be adjusted in post-recovery callback
       _dataStore._recoveryTickHigh = _dataStore._recoveryTickLow =
           _engine->recoveryTick();
     } break;
-    case RecoveryState::IN_PROGRESS: {  // Link is being created during recovery
+    case EngineState::kRecovering: {  // Link is being created during recovery
       _dataStore._recoveryTickHigh = _dataStore._recoveryTickLow =
           _engine->releasedTick();
     } break;
@@ -1445,7 +1445,7 @@ Result IResearchDataStore::initDataStore(
   }
   auto& dbFeature = server.getFeature<DatabaseFeature>();
 
-  if (_engine->inRecovery()) {
+  if (!_engine->isReady()) {
     _recoveryRemoves = makePrimaryKeysFilter(_hasNestedFields, *_writersMemory);
     _recoveryTrx = _dataStore._writer->GetBatch();
   }
@@ -1466,7 +1466,7 @@ Result IResearchDataStore::initDataStore(
         auto& index = linkLock->index();
 
         // recovery finished
-        TRI_ASSERT(!linkLock->_engine->inRecovery());
+        TRI_ASSERT(linkLock->_engine->isReady());
 
         const auto recoveryTick = linkLock->_engine->recoveryTick();
 
@@ -1586,7 +1586,7 @@ void IResearchDataStore::properties(LinkLock linkLock,
     linkLock->_dataStore._meta.storeFull(meta);
   }
 
-  if (linkLock->_engine->recoveryState() == RecoveryState::DONE) {
+  if (linkLock->_engine->engineState() == EngineState::kRunning) {
     if (meta._commitIntervalMsec) {
       linkLock->scheduleCommit(
           std::chrono::milliseconds(meta._commitIntervalMsec));
