@@ -1,6 +1,8 @@
 v3.11.14.7 (XXXX-XX-XX)
 -----------------------
 
+* Upgraded OpenSSL to 3.5.9 and OpenLDAP to 2.6.15.
+
 * Updated node modules:
  - brace-expansion to 1.1.21 to resolve CVE-2026-102276, CVE-2026-102277
    and CVE-2026-102278
