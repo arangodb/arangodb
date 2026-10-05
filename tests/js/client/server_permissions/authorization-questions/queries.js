@@ -264,7 +264,31 @@ function queryApiAuthzSuite () {
       assertEqual(200, res.code, JSON.stringify(res.parsedBody));
     },
 
+    // an unknown query id is "not found" for everybody; there is no query
+    // whose owner could be checked, so no admin question is asked
+    testKillUnknownQueryAsUser: function () {
+      beginObserve();
+      const res = sendAs('bob', 'DELETE', `${queryApi}/123456789`);
+      assertPermissions(baseQuestions, endObserve());
+
+      assertEqual(404, res.status, JSON.stringify(res.json));
+    },
+
     // ── GET /_api/query/slow ─────────────────────────────────────────────
+
+    testListSlowOwnQuery: function () {
+      runSlowQueryAs('alice');
+
+      beginObserve();
+      const res = sendAs('alice', 'GET', `${queryApi}/slow`);
+      assertPermissions(baseQuestions, endObserve());
+
+      assertEqual(200, res.status, JSON.stringify(res.json));
+      const found = sleepQueries(res.json);
+      assertEqual(1, found.length, JSON.stringify(res.json));
+      assertEqual('alice', found[0].user);
+      assertEqual(secret, found[0].bindVars.secret);
+    },
 
     testListSlowForeignQueryAsUser: function () {
       runSlowQueryAs('alice');
@@ -293,6 +317,17 @@ function queryApiAuthzSuite () {
     },
 
     // ── DELETE /_api/query/slow ──────────────────────────────────────────
+
+    testClearSlowOwnQuery: function () {
+      runSlowQueryAs('alice');
+
+      beginObserve();
+      const res = sendAs('alice', 'DELETE', `${queryApi}/slow`);
+      assertPermissions(baseQuestions, endObserve());
+
+      assertEqual(200, res.status, JSON.stringify(res.json));
+      assertEqual(0, sleepQueries(arango.GET(`${queryApi}/slow`)).length);
+    },
 
     // a read-only user is asked for AdminAqlQueries and the other user's
     // entry survives the clear
