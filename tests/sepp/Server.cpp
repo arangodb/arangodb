@@ -39,7 +39,8 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 
 constexpr auto kNonServerFeatures =
-    std::array{ArangodServer::id<AgencyFeature>(),
+    std::array{ArangodServer::id<ActionFeature>(),
+               ArangodServer::id<AgencyFeature>(),
                ArangodServer::id<ClusterFeature>(),
 #ifdef ARANGODB_HAVE_FORK
                ArangodServer::id<SupervisorFeature>(),
