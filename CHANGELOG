@@ -1,5 +1,9 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
+* AQL `DATE_ROUND` does not crash with a SIGFPE anymore due to integer overflow and division by 0
+* AQL `DATE_ROUND` rounds down correctly for dates before the epoch
+
+* AQL `DATE_ISO8601` applies negative offset correctly to minutes as well
 
 * Updated node modules:
  - brace-expansion to 5.0.12 to resolve CVE-2026-102276, CVE-2026-102277
