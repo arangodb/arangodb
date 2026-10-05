@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -20,38 +20,28 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "CollectionConstantProperties.h"
+#include "CollectionStorageProperties.h"
+#include "Basics/NumberUtils.h"
 
-#include "Basics/StaticStrings.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Inspection/Status.h"
+namespace arangodb {
 
-#include <velocypack/Builder.h>
-
-using namespace arangodb;
-
-bool CollectionConstantProperties::operator==(
-    CollectionConstantProperties const& other) const {
-  if (type != other.type) {
-    return false;
-  }
-  if (isSystem != other.isSystem) {
-    return false;
-  }
-  if (smartJoinAttribute != other.smartJoinAttribute) {
-    return false;
-  }
-  if (isSmart != other.isSmart) {
-    return false;
-  }
-  if (isDisjoint != other.isDisjoint) {
-    return false;
-  }
-  if (smartGraphAttribute != other.smartGraphAttribute) {
-    return false;
-  }
-  if (keyOptions != other.keyOptions) {
-    return false;
-  }
-  return true;
+inspection::Status
+CollectionStorageProperties::Transformers::ObjectIdAsString::toSerialized(
+    uint64_t v, std::string& result) {
+  result = std::to_string(v);
+  return {};
 }
+
+inspection::Status
+CollectionStorageProperties::Transformers::ObjectIdAsString::fromSerialized(
+    std::string const& v, uint64_t& result) {
+  char const* p = v.c_str();
+  bool valid = false;
+  result = NumberUtils::atoi<uint64_t>(p, p + v.length(), valid);
+  if (!valid) {
+    return {"Expecting a number in a string"};
+  }
+  return {};
+}
+
+}  // namespace arangodb
