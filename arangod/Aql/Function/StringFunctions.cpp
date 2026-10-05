@@ -763,16 +763,16 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
 
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
-  if ((limit == 0) || (matchPatterns.size() == 0)) {
-    // if the limit is 0, or we don't have any match pattern, return the source
-    // string.
-    return AqlValue(value);
-  }
 
   auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
   appendAsString(vopts, adapter, value);
+  if ((limit == 0) || (matchPatterns.size() == 0)) {
+    // if the limit is 0, or we don't have any match pattern, return the source
+    // string.
+    return AqlValue(std::string_view{buffer->data(), buffer->length()});
+  }
   icu_64_64::UnicodeString unicodeStr(buffer->data(),
                                       static_cast<int32_t>(buffer->length()));
 
