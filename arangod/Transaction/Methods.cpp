@@ -3633,7 +3633,6 @@ Future<Result> Methods::replicateOperations(
   }
 
   // keep the shared_ptr alive
-  // First
   auto responses = co_await futures::collectAll(std::move(futures));
 
   auto duration = std::chrono::steady_clock::now() - startTimeReplication;
