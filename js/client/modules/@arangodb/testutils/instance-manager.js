@@ -583,7 +583,7 @@ class instanceManager {
             this.options, instanceRole.coordinator, this.protocol,
             this.agencyMgr, this.addArgs,
             fs.join(this.rootDir, instanceRole.coordinator + "_" + count), this.tmpDir,
-            this.jwt_secret, this.memlayout[instanceRole.coordinator]), this.rbacPort));
+            this.jwt_secret, this.memlayout[instanceRole.coordinator], this.rbacPort));
           frontendCount ++;
         }
         this.instanceRoles.push(instanceRole.coordinator);
