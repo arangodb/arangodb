@@ -1381,6 +1381,13 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ '_a_b_c_' ], getQueryResults(`RETURN SUBSTITUTE('abc', { '': '_', '': '-' })`));
     },
 
+    testSubstituteComputedValueUnchanged: function () {
+      const value = '0123456789abcdefghijklmnopqrstuvwxyz';
+      const expected = [ value + '1', value + '2' ];
+      assertEqual(expected, getQueryResults(`FOR i IN 1..2 RETURN SUBSTITUTE(CONCAT('${value}', i), 'x', 'y', 0)`));
+      assertEqual(expected, getQueryResults(`FOR i IN 1..2 RETURN SUBSTITUTE(CONCAT('${value}', i), [ ], 'y')`));
+    },
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test substitute function
 // //////////////////////////////////////////////////////////////////////////////
