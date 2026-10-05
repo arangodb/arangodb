@@ -168,6 +168,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/Function/NgramMatchFunctionTest.cpp
   Aql/Function/NgramPosSimilarityFunctionTest.cpp
   Aql/Function/NgramSimilarityFunctionTest.cpp
+  Aql/Function/RangeFunctionTest.cpp
   Aql/InputRangeTest.cpp
   Aql/JoinGraphTest.cpp
   Aql/JoinStrategy/GenericAndTwoNonUniqueJoinTest.cpp
@@ -191,7 +192,7 @@ set(ARANGODB_TESTS_SOURCES
   Auth/RbacAuthModeTest.cpp
   Auth/RbacBackendTest.cpp
   # Disabled for now, since this needs docker and does not work in CI:
-  # Auth/RbacIntegrationTest.cpp
+  Auth/RbacIntegrationTest.cpp
   Auth/RbacSerializationTest.cpp
   Auth/SmockerClient.cpp
   Auth/RbacServiceImplTest.cpp

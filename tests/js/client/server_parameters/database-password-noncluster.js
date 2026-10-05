@@ -47,7 +47,7 @@ function OptionsTestSuite () {
         arango.reconnect(IM.endpoint, db._name(), arango.connectedUser(), "testmann");
         fail();
       } catch (err) {
-        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+        assertEqual(errors.ERROR_HTTP_UNAUTHORIZED.code, err.errorNum);
       }
     },
 

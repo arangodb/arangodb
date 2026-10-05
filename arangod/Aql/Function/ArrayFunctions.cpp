@@ -27,6 +27,7 @@
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Aql/Range.h"
+#include "Aql/RangeSpec.h"
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/debugging.h"
@@ -39,6 +40,9 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
+#include <algorithm>
+#include <cmath>
+#include <limits>
 #include <list>
 #include <set>
 #include <unordered_map>
@@ -752,39 +756,18 @@ AqlValue functions::Range(ExpressionContext* expressionContext, AstNode const&,
     return AqlValue(left.toInt64(), right.toInt64());
   }
 
-  double step = stepValue.toDouble();
-
-  if (step == 0.0 || (from < to && step < 0.0) || (from > to && step > 0.0)) {
+  auto spec = functions::makeRangeSpec(from, to, stepValue.toDouble());
+  if (!spec) {
     registerWarning(expressionContext, AFN,
                     TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
+  Range::throwIfTooBigForMaterialization(spec->count);
 
   auto builder = ThreadLocalBuilderLeaser::lease();
   builder->openArray(true);
-  // TODO(COR-938): Fix the float-loop-counter and maybe the one-off
-  if (step < 0.0 && to <= from) {
-    TRI_ASSERT(step != 0.0);
-    Range::throwIfTooBigForMaterialization(
-        static_cast<uint64_t>((from - to) / -step));
-    // NOLINTBEGIN(clang-analyzer-security.FloatLoopCounter)
-    // NOLINTBEGIN(bugprone-float-loop-counter)
-    for (; from >= to; from += step) {
-      builder->add(VPackValue(from));
-    }
-    // NOLINTEND(bugprone-float-loop-counter)
-    // NOLINTEND(clang-analyzer-security.FloatLoopCounter)
-  } else {
-    TRI_ASSERT(step != 0.0);
-    Range::throwIfTooBigForMaterialization(
-        static_cast<uint64_t>((to - from) / step));
-    // NOLINTBEGIN(clang-analyzer-security.FloatLoopCounter)
-    // NOLINTBEGIN(bugprone-float-loop-counter)
-    for (; from <= to; from += step) {
-      builder->add(VPackValue(from));
-    }
-    // NOLINTEND(bugprone-float-loop-counter)
-    // NOLINTEND(clang-analyzer-security.FloatLoopCounter)
+  for (uint64_t i = 0; i < spec->count; ++i) {
+    builder->add(VPackValue(spec->at(i)));
   }
   builder->close();
   return AqlValue(builder->slice(), builder->size());
