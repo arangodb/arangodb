@@ -818,6 +818,15 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
     }
     return fromSearch(which, searchVec[which]->next(status));
   };
+  auto const matchFrom = [&](size_t which, int32_t pos) -> Match {
+    if (searchVec[which] == nullptr) {
+      return {pos, 0};
+    }
+    if (pos >= unicodeStr.length()) {
+      return {USEARCH_DONE, 0};
+    }
+    return fromSearch(which, searchVec[which]->following(pos, status));
+  };
 
   std::vector<Match> srchResultPtrs;
   std::string utf8;
@@ -855,9 +864,9 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
 
     srchResultPtrs[which] = nextMatch(which, pos);
     for (size_t i = 0; i < srchResultPtrs.size() && U_SUCCESS(status); ++i) {
-      while (srchResultPtrs[i].first != USEARCH_DONE &&
-             srchResultPtrs[i].first < lastStart && U_SUCCESS(status)) {
-        srchResultPtrs[i] = nextMatch(i, srchResultPtrs[i].first);
+      if (srchResultPtrs[i].first != USEARCH_DONE &&
+          srchResultPtrs[i].first < lastStart) {
+        srchResultPtrs[i] = matchFrom(i, lastStart);
       }
     }
     if (U_FAILURE(status)) {
