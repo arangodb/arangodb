@@ -327,33 +327,30 @@ CommTask::Flow CommTask::prepareExecution(
     bool const allowedPath =
         path == "/" || path.starts_with(::pathPrefixAdmin) ||
         path.starts_with(::pathPrefixApi) || path.starts_with(::pathPrefixOpen);
+    if (!allowedPath) {
+      bool foxxRegistered = false;
+      bool foxxEnabled = false;
 #ifdef USE_V8
-    auto& server = _server.server();
-    if (!server.hasFeature<FoxxFeature>()) {
-      if (!allowedPath) {
+      auto& server = _server.server();
+      foxxRegistered = server.hasFeature<FoxxFeature>();
+      foxxEnabled =
+          foxxRegistered && server.getFeature<FoxxFeature>().foxxEnabled();
+#endif
+      if (!foxxRegistered) {
         sendErrorResponse(rest::ResponseCode::NOT_IMPLEMENTED,
                           req.contentTypeResponse(), req.messageId(),
                           TRI_ERROR_NOT_IMPLEMENTED,
                           "Foxx apps are not supported on this instance");
         return Flow::Abort;
       }
-    } else if (!server.getFeature<FoxxFeature>().foxxEnabled() &&
-               !allowedPath) {
-      sendErrorResponse(rest::ResponseCode::FORBIDDEN,
-                        req.contentTypeResponse(), req.messageId(),
-                        TRI_ERROR_FORBIDDEN,
-                        "access to Foxx apps is turned off on this instance");
-      return Flow::Abort;
+      if (!foxxEnabled) {
+        sendErrorResponse(rest::ResponseCode::FORBIDDEN,
+                          req.contentTypeResponse(), req.messageId(),
+                          TRI_ERROR_FORBIDDEN,
+                          "access to Foxx apps is turned off on this instance");
+        return Flow::Abort;
+      }
     }
-#else
-    if (!allowedPath) {
-      sendErrorResponse(rest::ResponseCode::NOT_IMPLEMENTED,
-                        req.contentTypeResponse(), req.messageId(),
-                        TRI_ERROR_NOT_IMPLEMENTED,
-                        "Foxx apps are not supported on this instance");
-      return Flow::Abort;
-    }
-#endif
   }
 
   // Step 5: Update global HLC timestamp from authenticated requests
