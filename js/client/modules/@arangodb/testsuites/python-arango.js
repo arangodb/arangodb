@@ -105,11 +105,6 @@ class runInPythonTest extends runWithAllureReport {
     if (!this.options.cluster) {
       testSkipList.push('backup');
     }
-    if (true) {
-      testSkipList.push('foxx');
-      //testSkipList.push('tasks');
-      testSkipList.push('js-transactions');
-    }
     if (testSkipList.length > 0) {
       args = args.concat(['--skip'].concat(testSkipList));
     }
