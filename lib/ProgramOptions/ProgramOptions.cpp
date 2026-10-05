@@ -820,7 +820,7 @@ void ProgramOptions::addOption(Option&& option) {
 }
 
 // modernize an option name
-std::string const& ProgramOptions::modernize(std::string const& name) {
+std::string ProgramOptions::modernize(std::string const& name) {
   auto it = _oldOptions.find(Option::stripPrefix(name));
   if (it == _oldOptions.end()) {
     return name;

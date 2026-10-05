@@ -1948,8 +1948,8 @@ void geod_polygon_addpoint(const struct geod_geodesic* g,
 
 void geod_polygon_addedge(const struct geod_geodesic* g, struct geod_polygon* p,
                           real azi, real s) {
-  if (p->num) {             /* Do nothing is num is zero */
-    real lat, lon, S12 = 0; /* Initialize S12 to stop Visual Studio warning */
+  if (p->num) { /* Do nothing if num is zero */
+    real lat = 0, lon = 0, S12 = 0;
     geod_gendirect(g, p->lat, p->lon, azi, GEOD_LONG_UNROLL, s, &lat, &lon, 0,
                    0, 0, 0, 0, p->polyline ? 0 : &S12);
     accadd(p->P, s);
@@ -2075,7 +2075,7 @@ unsigned geod_polygon_testedge(const struct geod_geodesic* g,
   tempsum = p->A[0];
   crossings = p->crossings;
   {
-    real lat, lon, s12, S12;
+    real lat = 0, lon = 0, s12 = 0, S12 = 0;
     geod_gendirect(g, p->lat, p->lon, azi, GEOD_LONG_UNROLL, s, &lat, &lon, 0,
                    0, 0, 0, 0, &S12);
     tempsum += S12;

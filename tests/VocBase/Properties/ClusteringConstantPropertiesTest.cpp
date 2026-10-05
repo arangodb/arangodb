@@ -119,8 +119,9 @@ TEST_F(ClusteringConstantPropertiesTest, test_shardingStrategy) {
         createMinimumBodyWithOneValue("shardingStrategy", strategy), strategy);
   }
 
-  // NOTE: an unknown strategy name parses here. It is rejected by
-  // applyDefaultsAndValidate, see CollectionDescriptorFactoryTest.
+  // NOTE: Inspect() parses an unknown strategy name parses here,
+  // but applyDefaultsAndValidate() rejects it, which is tested
+  // in the CreateCollectionRequestTest.
   GenerateFailsOnBool(shardingStrategy);
   GenerateFailsOnInteger(shardingStrategy);
   GenerateFailsOnDouble(shardingStrategy);
@@ -128,10 +129,9 @@ TEST_F(ClusteringConstantPropertiesTest, test_shardingStrategy) {
   GenerateFailsOnObject(shardingStrategy);
 }
 
-// Zero parses; applyDefaultsAndValidate is what rejects it.
-GeneratePositiveIntegerAttributeTestInternal(ClusteringConstantPropertiesTest,
-                                             numberOfShards, numberOfShards,
-                                             true, GenerateAcceptsNullAsUnset);
+// Note: Inspect() parse a zero, but applyDefaultsAndValidate() rejects it,
+// which is tested in the CreateCollectionRequestTest.
+GenerateIntegerAttributeTest(ClusteringConstantPropertiesTest, numberOfShards);
 
 GenerateOptionalStringAttributeTest(ClusteringConstantPropertiesTest,
                                     distributeShardsLike);

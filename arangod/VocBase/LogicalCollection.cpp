@@ -246,7 +246,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase,
 }
 
 LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase,
-                                     CollectionDescriptor descriptor,
+                                     CollectionDescriptor const& descriptor,
                                      bool isAStub)
     : LogicalDataSource(
           *this, vocbase, descriptor.internal.id,
@@ -446,8 +446,7 @@ CollectionDescriptor LogicalCollection::properties() const {
   d.internal.syncByRevision = _syncByRevision.load(std::memory_order_relaxed);
   d.internal.usesRevisionsAsDocumentIds = _usesRevisionsAsDocumentIds;
   d.internal.isSmartChild = _invariants.isSmartChild;
-  d.internal.internalValidatorType =
-      _internalValidatorTypes.load(std::memory_order_relaxed);
+  d.internal.internalValidatorType = _internalValidatorTypes;
   if (auto sga = smartGraphAttribute(); !sga.empty()) {
     d.internal.smartGraphAttribute = std::move(sga);
   }
@@ -967,9 +966,8 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
   computedValuesToVelocyPack(build);
 
   // Internal CollectionType
-  build.add(
-      StaticStrings::InternalValidatorTypes,
-      VPackValue(_internalValidatorTypes.load(std::memory_order_relaxed)));
+  build.add(StaticStrings::InternalValidatorTypes,
+            VPackValue(_internalValidatorTypes));
   // Cluster Specific
   build.add(StaticStrings::IsDisjoint, VPackValue(isDisjoint()));
   build.add(StaticStrings::IsSmart, VPackValue(isSmart()));
@@ -1476,11 +1474,11 @@ Result LogicalCollection::validate(std::shared_ptr<ValidatorBase> const& schema,
 }
 
 uint64_t LogicalCollection::getInternalValidatorTypes() const noexcept {
-  return _internalValidatorTypes.load(std::memory_order_relaxed);
+  return _internalValidatorTypes;
 }
 
 void LogicalCollection::setInternalValidatorTypes(uint64_t type) {
-  _internalValidatorTypes.store(type, std::memory_order_relaxed);
+  _internalValidatorTypes = type;
 }
 
 void LogicalCollection::addInternalValidator(

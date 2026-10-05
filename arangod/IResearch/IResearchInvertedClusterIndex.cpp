@@ -24,6 +24,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
+#include "Metrics/Builder.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -104,9 +105,9 @@ IResearchDataStore::Stats IResearchInvertedClusterIndex::getStats() const {
   }
   auto& metrics = data->metrics;
   auto labels = absl::StrCat(  // clang-format off
-      "db=\"", getDbName(), "\","
-      "index=\"", name(), "\","
-      "collection=\"", getCollectionName(), "\",",
+      "db=\"", metrics::escapeLabelValue(getDbName()), "\","
+      "index=\"", metrics::escapeLabelValue(name()), "\","
+      "collection=\"", metrics::escapeLabelValue(getCollectionName()), "\",",
       "index_id=\"", id().id(), "\"");  // clang-format on
   return {
       metrics.get<std::uint64_t>("arangodb_search_num_docs", labels),

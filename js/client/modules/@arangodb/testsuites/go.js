@@ -79,7 +79,6 @@ function goDriver (options) {
       } else {
         opts.extraArgs['server.authentication'] = true;
       }
-      opts.extraArgs['vector-index'] = true;
       opts['arangodConfig'] = 'arangod-auth.conf';
       super(opts, testname, ...optionalArgs);
       this.info = "runInGoTest";
@@ -87,7 +86,7 @@ function goDriver (options) {
     runOneTest(file) {    
       process.env['TEST_ENDPOINTS'] = this.instanceManager.urls.join(',');
       process.env['TEST_AUTHENTICATION'] = 'basic:root:';
-      let jwt = this.instanceManager.JWT; 
+      let jwt = this.instanceManager.jwt_secret; 
       if (jwt) {
         process.env['TEST_JWTSECRET'] = jwt;
       }
@@ -105,8 +104,8 @@ function goDriver (options) {
       process.env['GODEBUG'] = 'tls13=1';
       process.env['CGO_ENABLED'] = '0';
       process.env['ENABLE_VECTOR_INDEX'] = 'true';
-      if (this.instanceManager.JWT) {
-        process.env['TEST_JWTSECRET'] = this.instanceManager.JWT;
+      if (this.instanceManager.jwt_secret) {
+        process.env['TEST_JWTSECRET'] = this.instanceManager.jwt_secret;
       }
       let args = ['test', '-json', '-tags', 'auth', './tests'];
       if (options.cluster || options.isInstrumented) {

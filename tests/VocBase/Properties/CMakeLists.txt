@@ -6,7 +6,7 @@ set(ARANGODB_VOCBASE_PROPERTIES_TEST_SOURCES
         CollectionMutablePropertiesTest.cpp
         CollectionInternalPropertiesTest.cpp
         CollectionCreateOptionsTest.cpp
-        CollectionDescriptorFactoryTest.cpp
+        CreateCollectionRequestTest.cpp
         KeyGeneratorPropertiesTest.cpp
 
         ${PROJECT_SOURCE_DIR}/arangod/VocBase/Identifiers/DataSourceId.cpp
@@ -32,5 +32,7 @@ target_include_directories(arangodb_vocbase_properties_test PRIVATE
 target_link_libraries(
   arangodb_vocbase_properties_test
   arango_vocbase_api
+  arango_basic_errors
+  immer
   gtest
 )

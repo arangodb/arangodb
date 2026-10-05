@@ -103,7 +103,7 @@ class LogicalCollection : public LogicalDataSource {
   LogicalCollection() = delete;
   LogicalCollection(Database& vocbase, velocypack::Slice info, bool isAStub);
   // TODO (COR-885): This ctor only works for create path
-  LogicalCollection(Database& vocbase, CollectionDescriptor descriptor,
+  LogicalCollection(Database& vocbase, CollectionDescriptor const& descriptor,
                     bool isAStub);
   LogicalCollection(LogicalCollection const&) = delete;
   LogicalCollection& operator=(LogicalCollection const&) = delete;
@@ -475,8 +475,9 @@ class LogicalCollection : public LogicalDataSource {
   std::atomic<bool> _waitForSync;
 
   // Bitmap of InternalValidatorType. Changed by the maintenance during
-  // cluster upgrades only.
-  std::atomic<uint64_t> _internalValidatorTypes;
+  // cluster upgrades only, together with _internalValidators below.
+  uint64_t _internalValidatorTypes;
+  std::vector<std::unique_ptr<ValidatorBase>> _internalValidators;
 
 #ifdef USE_ENTERPRISE
   // Set once, either during construction or by the DBServer maintenance
@@ -508,8 +509,6 @@ class LogicalCollection : public LogicalDataSource {
   // `_schema` must be used with atomic accessors only!!
   // We use acquire/release access (load/store)
   std::shared_ptr<ValidatorBase> _schema;
-
-  std::vector<std::unique_ptr<ValidatorBase>> _internalValidators;
 
   // Temporarily here, used for shards, only on DBServers
   std::optional<arangodb::replication2::LogId> _replicatedStateId;

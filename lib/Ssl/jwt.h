@@ -23,6 +23,7 @@
 #pragma once
 
 #include <chrono>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -42,6 +43,22 @@ std::string generateUserToken(
     std::chrono::seconds validFor = std::chrono::seconds{0});
 
 std::string generateRawJwt(std::string_view secret, velocypack::Slice body);
+
+/**
+ * Returns the "exp" claim of a JWT in seconds since epoch
+ *
+ * Returns nullopt for tokens without an expiry (such as internal superuser
+ * tokens) and for malformed tokens.
+ */
+std::optional<double> extractExpiration(std::string_view token);
+
+/**
+ * Returns the "preferred_username" claim of a JWT
+ *
+ * Returns nullopt for tokens without a user (such as internal superuser
+ * tokens) and for malformed tokens.
+ */
+std::optional<std::string> extractPreferredUsername(std::string_view token);
 
 }  // namespace rest::SslInterface::jwt
 }  // namespace arangodb

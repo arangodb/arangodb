@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include "Inspection/Access.h"
 #include "Inspection/InspectorBase.h"
 
 #include <type_traits>
@@ -60,4 +61,33 @@ inline constexpr bool isAgencyContext =
     std::is_same_v<typename detail::ContextOf<Inspector>::type,
                    InspectAgencyContext>;
 
+// Extend inspection::NonNullOptional to allow `null` for internal context;
+// but, `null` is still rejected for user input like NonNullOptional.
+template<typename T>
+struct NonNullUserOptional : inspection::NonNullOptional<T> {
+  using inspection::NonNullOptional<T>::NonNullOptional;
+  bool operator==(NonNullUserOptional const&) const noexcept = default;
+  template<typename U>
+  bool operator==(U const& other) const noexcept {
+    return this->has_value() && this->value() == other;
+  }
+};
 }  // namespace arangodb
+
+namespace arangodb::inspection {
+template<class T>
+struct Access<arangodb::NonNullUserOptional<T>> : Access<NonNullOptional<T>> {
+  using Base = Access<NonNullOptional<T>>;
+
+  template<class Inspector>
+  [[nodiscard]] static Status loadField(Inspector& f, std::string_view name,
+                                        bool isPresent,
+                                        arangodb::NonNullUserOptional<T>& val) {
+    if (isPresent && f.isNull() && arangodb::isInternalContext<Inspector>) {
+      val.reset();
+      return {};
+    }
+    return Base::loadField(f, name, isPresent, val);
+  }
+};
+}  // namespace arangodb::inspection

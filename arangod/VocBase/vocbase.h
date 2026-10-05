@@ -456,6 +456,11 @@ struct Database {
   arangodb::Result validateCollectionDescriptor(
       CollectionDescriptor const& descriptor);
 
+  /// @brief checks the licence for SmartGraph collections. does nothing in
+  /// community edition or if the collection is not a SmartGraph collection.
+  arangodb::Result validateEnterpriseLicense(
+      CollectionDescriptor const& descriptor);
+
   /// @brief locks a collection for usage by id.
   /// note: when the collection is not used anymore, the caller *must*
   /// call vocbase::releaseCollection() to decrease the reference
@@ -512,11 +517,6 @@ struct Database {
   /// in community edition or if the collection is not a SmartGraph collection.
   arangodb::Result validateExtendedCollectionParameters(
       arangodb::velocypack::Slice parameters);
-
-  /// @brief checks the licence for SmartGraph collections. does nothing in
-  /// community edition or if the collection is not a SmartGraph collection.
-  arangodb::Result validateEnterpriseLicense(
-      CollectionDescriptor const& descriptor);
 
   /// @brief stores the collection object in the list of available collections,
   /// so it can later be looked up and found by name, guid etc.

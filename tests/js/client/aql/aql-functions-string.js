@@ -937,6 +937,13 @@ function ahuacatlStringFunctionsTestSuite () {
 // //////////////////////////////////////////////////////////////////////////////
     testToRegexMatchesValues: function () {
       [ 
+        ["", "^[a-z0-9_-]{3,16}$", false, null ],
+        ["a", "^[a-z0-9_-]{3,16}$", false, null ],
+        ["abc", "^[a-z0-9_-]{3,16}$", false, ["abc"] ],
+        ["", "^$", false, [""] ],
+        ["", "a*", false, [""] ],
+        ["", "(a)?b", false, null ],
+        ["", "", false, [""] ],
         ["my-us3r_n4m3", "^[a-z0-9_-]{3,16}$", true, ["my-us3r_n4m3"] ],
         ["my-us3r_n4m3", "^[a-z0-9_-]{3,16}$", false, ["my-us3r_n4m3"] ],
         ["my-Us3r_N4m3", "^[a-z0-9_-]{3,16}$", true, ["my-Us3r_N4m3"] ],
@@ -1332,6 +1339,19 @@ function ahuacatlStringFunctionsTestSuite () {
         [ 'the quick  foxx', 'the quick brown foxx', [ 'brown' ], [ ] ],
         [ 'the   ant', 'the quick brown foxx', [ 'quick', 'brown', 'foxx' ], [ '', null, 'ant' ] ], 
         [ 'the   ant', 'the quick brown foxx', { quick: '', brown: null, foxx: 'ant' } ],
+        [ '', '', 'foo', 'bar' ],
+        [ '', '', 'foo' ],
+        [ '', '', [ 'foo', 'baz' ], [ 'bar', 'qux' ] ],
+        [ '', '', { foo: 'bar' } ],
+        [ '', '', 'foo', 'bar', 1 ],
+        [ '_a_b_c_', 'abc', '', '_' ],
+        [ '_a_bc', 'abc', '', '_', 2 ],
+        [ '_a_b_c_', 'abc', [ '' ], [ '_' ] ],
+        [ '_a_b_c_', 'abc', { '': '_' } ],
+        [ '_a_bc', 'abc', { '': '_' }, 2 ],
+        [ '-ö-ü-', 'öü', '', '-' ],
+        [ 'x', '', '', 'x' ],
+        [ '_a-_c_', 'abc', [ 'b', '' ], [ '-', '_' ] ],
       ];
 
       values.forEach(function (value) {
@@ -1347,6 +1367,10 @@ function ahuacatlStringFunctionsTestSuite () {
       });
     },
     
+    testSubstituteDuplicateEmptyKeyUsesFirst: function () {
+      assertEqual([ '_a_b_c_' ], getQueryResults(`RETURN SUBSTITUTE('abc', { '': '_', '': '-' })`));
+    },
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test substitute function
 // //////////////////////////////////////////////////////////////////////////////

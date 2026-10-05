@@ -910,8 +910,10 @@ ClusterCollectionMethods::createCollectionsOnCoordinator(
         "Trying to create an empty list of collections on coordinator."};
   }
 
+  // A smart edge collection has no shards, so no DBServer ever runs this check
+  // for it. The coordinator is the only place it can be caught.
   for (auto const& col : collections) {
-    if (auto res = vocbase.validateCollectionDescriptor(col); res.fail()) {
+    if (auto res = vocbase.validateEnterpriseLicense(col); res.fail()) {
       return res;
     }
   }

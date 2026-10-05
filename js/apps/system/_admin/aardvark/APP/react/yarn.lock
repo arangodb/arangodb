@@ -2327,11 +2327,6 @@
     "@react-hook/latest" "^1.0.2"
     "@react-hook/passive-layout-effect" "^1.2.0"
 
-"@react-leaflet/core@^2.1.0":
-  version "2.1.0"
-  resolved "https://registry.yarnpkg.com/@react-leaflet/core/-/core-2.1.0.tgz#383acd31259d7c9ae8fb1b02d5e18fe613c2a13d"
-  integrity sha512-Qk7Pfu8BSarKGqILj4x7bCSZ1pjuAPZ+qmRwH5S7mDS91VSbVVsJSrW4qA+GPrro8t69gFYVMWb1Zc4yFmPiVg==
-
 "@sinclair/typebox@^0.34.0":
   version "0.34.52"
   resolved "https://registry.yarnpkg.com/@sinclair/typebox/-/typebox-0.34.52.tgz#62f8a686e4ab28a8944902e2ad2d648312ef11cb"
@@ -3478,6 +3473,11 @@ arangojs@^9.1.0:
   integrity sha512-wOCYfZN3GoMS3+oL9P3rGXXd0X6Emve3Y16LwBD6HGy4GAvgfYTALWXQCYLxaqZiabVZ/WWFq08RpMpZboA6yQ==
   dependencies:
     "@types/node" "^20.11.26"
+
+arc@^1.0.0:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/arc/-/arc-1.0.0.tgz#d4bbed54a76542b384facd2738840f69fb25d040"
+  integrity sha512-Y1czl0GTrN/CAyZczn/kgZZ5EnOHLqLog2kdp/Cw00IDt1aq0UC5zdZQ5EjA0ucaqDc2F2AUs0dss9QUWnSc/w==
 
 argparse@^2.0.1:
   version "2.0.1"
@@ -6134,11 +6134,6 @@ leaflet-gesture-handling@^1.2.2:
   resolved "https://registry.yarnpkg.com/leaflet-gesture-handling/-/leaflet-gesture-handling-1.2.2.tgz#ea10afb94f2d477d77d47beb21e409ed327df07a"
   integrity sha512-Blf5V4PoNphWkzL7Y1qge+Spkd4OCQ2atjwUNhMhLIcjKzPcBH++x/lwOinaR9jSqLWqJ6oKYO8d0XdTffy4hQ==
 
-leaflet.geodesic@^2.6.1:
-  version "2.6.1"
-  resolved "https://registry.yarnpkg.com/leaflet.geodesic/-/leaflet.geodesic-2.6.1.tgz#72604259cb4a3f3991cbc287bdc0867a8d548932"
-  integrity sha512-irHHgQUCWUDqMdSdGBj66k7F1eeYhviI8OP5aGg2s/fY8SSZrPAPmdxYuRxclWaHvFkyjwtDws8uBHMG8dtuHw==
-
 leaflet@^1.9.3:
   version "1.9.3"
   resolved "https://registry.yarnpkg.com/leaflet/-/leaflet-1.9.3.tgz#52ec436954964e2d3d39e0d433da4b2500d74414"
@@ -7215,13 +7210,6 @@ react-is@^16.10.2, react-is@^16.13.1, react-is@^16.6.0, react-is@^16.7.0:
   version "16.13.1"
   resolved "https://registry.npmjs.org/react-is/-/react-is-16.13.1.tgz"
   integrity sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ==
-
-react-leaflet@^4.2.1:
-  version "4.2.1"
-  resolved "https://registry.yarnpkg.com/react-leaflet/-/react-leaflet-4.2.1.tgz#c300e9eccaf15cb40757552e181200aa10b94780"
-  integrity sha512-p9chkvhcKrWn/H/1FFeVSqLdReGwn2qmiobOQGO3BifX+/vV/39qhY8dGqbdcPh1e6jxh/QHriLXr7a4eLFK4Q==
-  dependencies:
-    "@react-leaflet/core" "^2.1.0"
 
 react-refresh@^0.11.0:
   version "0.11.0"
