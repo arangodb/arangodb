@@ -268,13 +268,13 @@ AqlValue functions::FindFirst(ExpressionContext* expressionContext,
 
   for (int pos = search.first(status); U_SUCCESS(status) && pos != USEARCH_DONE;
        pos = search.next(status)) {
-    if (U_FAILURE(status)) {
-      registerICUWarning(expressionContext, AFN, status);
-      return AqlValue(AqlValueHintNull());
-    }
     if ((pos >= startOffset) && ((pos + searchLen - 1) <= maxEnd)) {
       return AqlValue(AqlValueHintInt(pos));
     }
+  }
+  if (U_FAILURE(status)) {
+    registerICUWarning(expressionContext, AFN, status);
+    return AqlValue(AqlValueHintNull());
   }
   return AqlValue(AqlValueHintInt(-1));
 }
@@ -347,13 +347,13 @@ AqlValue functions::FindLast(ExpressionContext* expressionContext,
   int foundPos = -1;
   for (int pos = search.first(status); U_SUCCESS(status) && pos != USEARCH_DONE;
        pos = search.next(status)) {
-    if (U_FAILURE(status)) {
-      registerICUWarning(expressionContext, AFN, status);
-      return AqlValue(AqlValueHintNull());
-    }
     if ((pos >= startOffset) && ((pos + searchLen - 1) <= maxEnd)) {
       foundPos = pos;
     }
+  }
+  if (U_FAILURE(status)) {
+    registerICUWarning(expressionContext, AFN, status);
+    return AqlValue(AqlValueHintNull());
   }
   return AqlValue(AqlValueHintInt(foundPos));
 }
