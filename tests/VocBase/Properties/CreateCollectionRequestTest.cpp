@@ -889,7 +889,7 @@ TEST_F(CreateCollectionRequestTest,
   EXPECT_EQ(testee->clusteringMutable.writeConcern.value(), 1ull);
   ASSERT_TRUE(testee->clusteringConstant.numberOfShards.has_value());
   EXPECT_EQ(testee->clusteringConstant.numberOfShards.value(), 1ull);
-  __HELPER_equalsAfterSerializeParseCircle(testee->descriptor);
+  __HELPER_equalsAfterSerializeParseCircle(testee.get());
 #else
   EXPECT_FALSE(testee.ok())
       << "Created a 'satellite' collection in community edition.";
@@ -924,7 +924,7 @@ TEST_F(CreateCollectionRequestTest, test_satelliteAcceptsNumberOfShardsOne) {
   EXPECT_EQ(testee->clusteringMutable.writeConcern.value(), 1ull);
   ASSERT_TRUE(testee->clusteringConstant.numberOfShards.has_value());
   EXPECT_EQ(testee->clusteringConstant.numberOfShards.value(), 1ull);
-  __HELPER_equalsAfterSerializeParseCircle(testee->descriptor);
+  __HELPER_equalsAfterSerializeParseCircle(testee.get());
 #else
   EXPECT_FALSE(testee.ok())
       << "Created a 'satellite' collection in community edition.";
