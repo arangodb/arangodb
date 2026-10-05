@@ -3119,7 +3119,7 @@ function ahuacatlDateFunctionsTestSuite () {
 
     testDateISO8601NegativeOffsetMinutes: function() {
       const actual = getQueryResults(`
-        FOR date IN ["2014-05-07T14:19:09.522-00:30", "2014-05-07T14:19:09.522+00:30",                DATE_ISO8601("2014-05-07T14:19:09.522-03:30")] 
+        FOR date IN ["2014-05-07T14:19:09.522-00:30", "2014-05-07T14:19:09.522+00:30", DATE_ISO8601("2014-05-07T14:19:09.522-03:30")]
           RETURN DATE_ISO8601(date)`);
       assertEqual(
         [ '2014-05-07T14:49:09.522Z'
