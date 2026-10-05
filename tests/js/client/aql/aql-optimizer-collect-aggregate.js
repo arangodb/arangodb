@@ -1816,6 +1816,71 @@ function optimizerAggregateTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test median
+////////////////////////////////////////////////////////////////////////////////
+
+    testMedianEmpty : function () {
+      const query = "FOR i IN [ ] COLLECT AGGREGATE m = MEDIAN(i) RETURN m";
+
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN MEDIAN([ ])").toArray()[0]);
+    },
+
+    testMedianOnlyNull : function () {
+      const query = "FOR i IN [ null, null ] COLLECT AGGREGATE m = MEDIAN(i) RETURN m";
+
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+    },
+
+    testMedianOddCount : function () {
+      const values = [ 1, 1, 1, 350000, 1, 1, 1, 1, 2, 1, 7 ];
+      const query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = MEDIAN(i) RETURN m";
+
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual(1, results[0]);
+      assertEqual(results[0], db._query("RETURN MEDIAN(" + JSON.stringify(values) + ")").toArray()[0]);
+    },
+
+    testMedianEvenCount : function () {
+      const values = [ 4, -28, 23, 1, 42, 19.5, null ];
+      const query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = MEDIAN(i) RETURN m";
+
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual(11.75, results[0]);
+      assertEqual(results[0], db._query("RETURN MEDIAN(" + JSON.stringify(values) + ")").toArray()[0]);
+    },
+
+    testMedianNonNumbers : function () {
+      const query = "FOR i IN [ 1, 2, 'foo', 3 ] COLLECT AGGREGATE m = MEDIAN(i) RETURN m";
+
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+    },
+
+    testMedianGrouped : function () {
+      const query = "FOR i IN 1..100 COLLECT g = i % 3 AGGREGATE m = MEDIAN(i * i) SORT g RETURN [g, m]";
+      const expected = "FOR i IN 1..100 COLLECT g = i % 3 INTO vals = i * i SORT g RETURN [g, MEDIAN(vals)]";
+
+      let results = db._query(query).toArray();
+      assertEqual(3, results.length);
+      assertEqual(db._query(expected).toArray(), results);
+    },
+
+    testMedianWindow : function () {
+      const query = "FOR i IN [ 5, 1, 4, 2, 3 ] WINDOW { preceding: 'unbounded', following: 0 } AGGREGATE m = MEDIAN(i) RETURN m";
+
+      let results = db._query(query).toArray();
+      assertEqual([ 5, 3, 4, 3, 3 ], results);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test bit_and
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2579,6 +2644,30 @@ function optimizerAggregateResultsSuite () {
 
     testPushAggregator : function () {
       compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = PUSH(doc.value2) RETURN v", true);
+    },
+
+    testMedian1 : function () {
+      compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = MEDIAN(doc.value1) RETURN v");
+    },
+
+    testMedian2 : function () {
+      compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = MEDIAN(doc.value2) RETURN v");
+    },
+
+    testMedian3 : function () {
+      compare("FOR doc IN " + c.name() + " FILTER doc.value1 != 7 COLLECT AGGREGATE v = MEDIAN(doc.value1 * doc.value2) RETURN v");
+    },
+
+    testMedianGroupedOnDBServers : function () {
+      const query = "FOR doc IN " + c.name() + " COLLECT g = doc.group AGGREGATE v = MEDIAN(doc.value1 % 37) SORT g RETURN [g, v]";
+      const expected = "FOR doc IN " + c.name() + " COLLECT g = doc.group INTO vals = doc.value1 % 37 SORT g RETURN [g, MEDIAN(vals)]";
+      assertEqual(db._query(expected).toArray(), db._query(query).toArray());
+
+      const plan = db._createStatement(query).explain().plan;
+      const collectNodes = plan.nodes.filter((node) => node.type === 'CollectNode');
+      assertEqual(2, collectNodes.length);
+      assertEqual("MEDIAN_STEP1", collectNodes[0].aggregates[0].type);
+      assertEqual("MEDIAN_STEP2", collectNodes[1].aggregates[0].type);
     },
 
   };

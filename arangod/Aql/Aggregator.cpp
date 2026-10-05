@@ -33,7 +33,10 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
+#include <algorithm>
+#include <queue>
 #include <set>
+#include <vector>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -644,6 +647,155 @@ struct AggregatorStddevBaseStep2 final : public AggregatorVarianceBaseStep2 {
   }
 };
 
+/// @brief the single-server variant of MEDIAN
+struct AggregatorMedian : public Aggregator {
+  explicit AggregatorMedian(velocypack::Options const* opts,
+                            ResourceMonitor& resourceMonitor)
+      : Aggregator(opts, resourceMonitor), invalid(false) {}
+
+  // cppcheck-suppress virtualCallInConstructor
+  void reset() override {
+    values = {};
+    resourceUsageScope().revert();
+    invalid = false;
+  }
+
+  void reduce(AqlValue const& cmpValue) override {
+    if (invalid || cmpValue.isNull(true)) {
+      // ignore `null` values here
+      return;
+    }
+    if (!cmpValue.isNumber()) {
+      invalid = true;
+      return;
+    }
+    add(cmpValue.toDouble());
+  }
+
+  AqlValue get() const override {
+    if (invalid || values.empty()) {
+      return AqlValue(AqlValueHintNull());
+    }
+    // nth_element only reorders the values, so WINDOW can keep calling
+    // reduce() and get() on the same instance
+    auto mid = values.begin() + values.size() / 2;
+    std::nth_element(values.begin(), mid, values.end());
+    double v = *mid;
+    if (values.size() % 2 == 0) {
+      v = (*std::max_element(values.begin(), mid) + v) / 2;
+    }
+    return functions::numberValue(v, true);
+  }
+
+ protected:
+  void add(double v) {
+    if (values.size() == values.capacity()) {
+      size_t newCapacity = std::max<size_t>(16, values.capacity() * 2);
+      resourceUsageScope().increase((newCapacity - values.capacity()) *
+                                    sizeof(double));
+      values.reserve(newCapacity);
+    }
+    values.push_back(v);
+  }
+
+  mutable std::vector<double> values;
+  bool invalid;
+};
+
+/// @brief the DB server variant of MEDIAN, producing its input values sorted
+struct AggregatorMedianStep1 final : public AggregatorMedian {
+  explicit AggregatorMedianStep1(velocypack::Options const* opts,
+                                 ResourceMonitor& resourceMonitor)
+      : AggregatorMedian(opts, resourceMonitor),
+        builder(velocypack::Builder(
+            std::make_shared<velocypack::SupervisedBuffer>(resourceMonitor))) {}
+
+  AqlValue get() const override {
+    if (invalid) {
+      return AqlValue(AqlValueHintNull());
+    }
+    std::sort(values.begin(), values.end());
+    builder.clear();
+    builder.openArray();
+    for (double v : values) {
+      builder.add(VPackValue(v));
+    }
+    builder.close();
+    return AqlValue(builder.slice());
+  }
+
+  mutable arangodb::velocypack::Builder builder;
+};
+
+/// @brief the coordinator variant of MEDIAN, merging the sorted value lists
+/// from the DB servers up to the midpoint
+struct AggregatorMedianStep2 final : public AggregatorMedian {
+  explicit AggregatorMedianStep2(velocypack::Options const* opts,
+                                 ResourceMonitor& resourceMonitor)
+      : AggregatorMedian(opts, resourceMonitor) {}
+
+  void reset() override {
+    AggregatorMedian::reset();
+    runStarts.clear();
+  }
+
+  void reduce(AqlValue const& cmpValue) override {
+    if (invalid) {
+      return;
+    }
+    AqlValueMaterializer materializer(_vpackOptions);
+    VPackSlice s = materializer.slice(cmpValue);
+    if (!s.isArray()) {
+      invalid = true;
+      return;
+    }
+    runStarts.push_back(values.size());
+    for (VPackSlice it : VPackArrayIterator(s)) {
+      add(it.getNumber<double>());
+    }
+  }
+
+  AqlValue get() const override {
+    if (invalid || values.empty()) {
+      return AqlValue(AqlValueHintNull());
+    }
+
+    // min-heap of (value, run) over the current head of each sorted run
+    using Head = std::pair<double, size_t>;
+    std::priority_queue<Head, std::vector<Head>, std::greater<>> heads;
+    std::vector<size_t> positions(runStarts);
+    auto runEnd = [&](size_t run) {
+      return run + 1 < runStarts.size() ? runStarts[run + 1] : values.size();
+    };
+    for (size_t run = 0; run < runStarts.size(); ++run) {
+      if (positions[run] < runEnd(run)) {
+        heads.emplace(values[positions[run]], run);
+      }
+    }
+
+    size_t const mid = values.size() / 2;
+    double previous = 0.0;
+    double current = 0.0;
+    for (size_t i = 0; i <= mid; ++i) {
+      TRI_ASSERT(!heads.empty());
+      auto [v, run] = heads.top();
+      heads.pop();
+      previous = current;
+      current = v;
+      if (++positions[run] < runEnd(run)) {
+        heads.emplace(values[positions[run]], run);
+      }
+    }
+    double v = current;
+    if (values.size() % 2 == 0) {
+      v = (previous + current) / 2;
+    }
+    return functions::numberValue(v, true);
+  }
+
+  std::vector<size_t> runStarts;
+};
+
 /// @brief the single-server and DB server variant of UNIQUE
 struct AggregatorUnique : public Aggregator {
   explicit AggregatorUnique(velocypack::Options const* opts,
@@ -1151,6 +1303,15 @@ std::unordered_map<std::string_view, AggregatorInfo> const aggregators = {
      {std::make_shared<GenericVarianceFactory<AggregatorStddevBaseStep2>>(
           false),
       doesRequireInput, internalOnly, "", "STDDEV_SAMPLE_STEP2"}},
+    {"MEDIAN",
+     {std::make_shared<GenericFactory<AggregatorMedian>>(), doesRequireInput,
+      official, "MEDIAN_STEP1", "MEDIAN_STEP2"}},
+    {"MEDIAN_STEP1",
+     {std::make_shared<GenericFactory<AggregatorMedianStep1>>(),
+      doesRequireInput, internalOnly, "", "MEDIAN_STEP1"}},
+    {"MEDIAN_STEP2",
+     {std::make_shared<GenericFactory<AggregatorMedianStep2>>(),
+      doesRequireInput, internalOnly, "", "MEDIAN_STEP2"}},
     {"UNIQUE",
      {std::make_shared<GenericFactory<AggregatorUnique>>(), doesRequireInput,
       official, "UNIQUE", "UNIQUE_STEP2"}},

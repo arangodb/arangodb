@@ -3,6 +3,14 @@
 
 * Upgraded OpenSSL to 3.5.9.
 
+* AQL `COLLECT ... AGGREGATE` and `WINDOW` accept `MEDIAN()` as an aggregate
+  function. The result is the same as calling `MEDIAN()` on the collected
+  values: `null` values are ignored, any other non-numeric value makes the
+  result `null`, and an even number of values yields the mean of the two
+  middle values. In cluster deployments, DB-Servers sort their partial values
+  and the Coordinator merges the sorted lists only up to the midpoint.
+  This fixes issue #21171.
+
 * Updated node modules:
  - brace-expansion to 5.0.12 to resolve CVE-2026-102276, CVE-2026-102277
    and CVE-2026-102278
