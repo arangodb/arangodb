@@ -28,6 +28,7 @@
 #include "Aql/Functions.h"
 #include "Basics/ThreadLocalLeaser.h"
 #include "Basics/datetime.h"
+#include "Basics/voc-errors.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 
@@ -40,6 +41,8 @@
 #include <velocypack/Slice.h>
 
 #include <chrono>
+#include <cstdint>
+#include <limits>
 
 using namespace arangodb;
 using namespace std::chrono;
@@ -1725,6 +1728,12 @@ AqlValue functions::DateRound(ExpressionContext* expressionContext,
     factor = 24 * 60 * 60 * 1000;
   } else {
     registerInvalidArgumentWarning(expressionContext, AFN);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  // Check for integer overflow
+  if (m > std::numeric_limits<int64_t>::max() / factor) {
+    registerWarning(expressionContext, AFN, TRI_ERROR_NUMERIC_OVERFLOW);
     return AqlValue(AqlValueHintNull());
   }
 

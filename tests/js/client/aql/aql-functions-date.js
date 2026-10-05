@@ -3102,7 +3102,11 @@ function ahuacatlDateFunctionsTestSuite () {
 
       actual = getQueryResults("RETURN DATE_ISO8601(DATE_TIMESTAMP(DATE_YEAR(@value), DATE_MONTH(@value), DATE_DAY(@value), DATE_HOUR(@value), DATE_MINUTE(@value), DATE_SECOND(@value), DATE_MILLISECOND(@value)))", { value: dt + "Z" });
       assertEqual([ dt + "Z" ], actual);
-    }
+    },
+
+    testDateSIGFPE: function() {
+      assertQueryWarningAndNull(errors.ERROR_NUMERIC_OVERFLOW.code, `RETURN DATE_ROUND("2000-01-01", 18014398509481984, "d")`);
+    },
 
   };
 }
