@@ -1565,6 +1565,9 @@ class instanceManager {
 
     try {
       if (this.endpoint !== null) {
+        if (passvoid === undefined) {
+          passvoid = '';
+        }
         arango.reconnect(this.endpoint, '_system', 'root', passvoid);
         this.connectionHandle = arango.getConnectionHandle();
       } else {
