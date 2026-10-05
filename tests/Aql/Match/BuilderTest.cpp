@@ -22,9 +22,13 @@
 
 #include "Aql/Match/MatchTestHelper.h"
 
+#include "Aql/AstNode.h"
+#include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNode/TraversalNode.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Expression.h"
+#include "Aql/TypedAstNodes.h"
 #include "Containers/SmallVector.h"
 #include "Graph/TraverserOptions.h"
 
@@ -102,6 +106,55 @@ TEST_F(BuilderTest, pathVariableAddsCalculation) {
   auto plan = instantiatePlan(parsed);
   ASSERT_NE(nullptr, plan);
   EXPECT_GE(countNodesOfType(*plan, ExecutionNode::CALCULATION), 1U);
+}
+
+TEST_F(BuilderTest, laterCommaPatternReadsFullDocumentNotProjection) {
+  auto parsed = parseMatch(
+      "MATCH (u :vc {_key: 'u1'} RETURN name), "
+      "(w :vc WHERE w.age == u.age) RETURN w");
+  auto plan = instantiatePlan(parsed);
+  ASSERT_NE(nullptr, plan);
+
+  arangodb::containers::SmallVector<ExecutionNode*, 8> nodes;
+  plan->findNodesOfType(nodes, ExecutionNode::CALCULATION, true);
+
+  bool sawAgeComparison = false;
+  bool sawProjectionOfU = false;
+  for (ExecutionNode* node : nodes) {
+    auto* calc = ExecutionNode::castTo<CalculationNode*>(node);
+    if (calc->outVariable() != nullptr && calc->outVariable()->name == "u") {
+      sawProjectionOfU = true;
+    }
+    AstNode const* expr = calc->expression()->node();
+    if (expr == nullptr || expr->type != NODE_TYPE_OPERATOR_BINARY_EQ) {
+      continue;
+    }
+    ast::RelationalOperatorNode eq(expr);
+    AstNode const* left = eq.getLeft();
+    AstNode const* right = eq.getRight();
+    if (left->type != NODE_TYPE_ATTRIBUTE_ACCESS ||
+        right->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
+      continue;
+    }
+    ast::AttributeAccessNode leftAccess(left);
+    ast::AttributeAccessNode rightAccess(right);
+    if (leftAccess.getAttributeName() != "age" ||
+        rightAccess.getAttributeName() != "age") {
+      continue;
+    }
+    ASSERT_EQ(NODE_TYPE_REFERENCE, leftAccess.getObject()->type);
+    ASSERT_EQ(NODE_TYPE_REFERENCE, rightAccess.getObject()->type);
+    auto leftName =
+        ast::ReferenceNode(leftAccess.getObject()).getVariable()->name;
+    auto rightName =
+        ast::ReferenceNode(rightAccess.getObject()).getVariable()->name;
+    EXPECT_EQ("w", leftName);
+    EXPECT_NE("u", rightName);
+    sawAgeComparison = true;
+  }
+
+  EXPECT_TRUE(sawProjectionOfU);
+  EXPECT_TRUE(sawAgeComparison);
 }
 
 TEST_F(BuilderTest, inPatternProjectionAddsCalculation) {

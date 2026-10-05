@@ -129,6 +129,82 @@ TEST_F(ProjectionBuilderTest, edgeProjectionInjectsIdFromTo) {
   EXPECT_TRUE(keys.contains("weight"));
 }
 
+namespace {
+
+AstNode const* objectElementValue(AstNode const* object, std::string_view key) {
+  for (size_t i = 0; i < object->numMembers(); ++i) {
+    AstNode const* member = object->getMemberUnchecked(i);
+    if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
+        member->getStringView() == key) {
+      return member->getMember(0);
+    }
+  }
+  return nullptr;
+}
+
+}  // namespace
+
+TEST_F(ProjectionBuilderTest, parentKeepSubsumesChildPath) {
+  // KEEP profile, profile.name → whole profile object, not a nested name.
+  Variable const* dest = ast.variables()->createTemporaryVariable();
+  Variable const* full = ast.variables()->createTemporaryVariable();
+  Projection projection;
+  projection.items.push_back(ProjectionItem::keepPath({"profile", "name"}));
+  projection.items.push_back(ProjectionItem::keepPath({"profile"}));
+  std::unordered_map<VariableId, Variable const*> subst;
+
+  auto* node = projections.createDocumentPatternProjection(dest, full,
+                                                           projection, subst);
+  auto* calc = ExecutionNode::castTo<CalculationNode*>(node);
+  AstNode const* root = calc->expression()->node();
+  auto keys = objectKeys(root);
+  EXPECT_TRUE(keys.contains("_id"));
+  EXPECT_TRUE(keys.contains("profile"));
+  EXPECT_EQ(2U, keys.size());
+
+  AstNode const* profile = objectElementValue(root, "profile");
+  ASSERT_NE(nullptr, profile);
+  EXPECT_EQ(NODE_TYPE_ATTRIBUTE_ACCESS, profile->type);
+}
+
+TEST_F(ProjectionBuilderTest, deeperParentKeepSubsumesChildPath) {
+  // KEEP a.b, a.b.c.d → keep a.b only.
+  Variable const* dest = ast.variables()->createTemporaryVariable();
+  Variable const* full = ast.variables()->createTemporaryVariable();
+  Projection projection;
+  projection.items.push_back(ProjectionItem::keepPath({"a", "b", "c", "d"}));
+  projection.items.push_back(ProjectionItem::keepPath({"a", "b"}));
+  std::unordered_map<VariableId, Variable const*> subst;
+
+  auto* node = projections.createDocumentPatternProjection(dest, full,
+                                                           projection, subst);
+  auto* calc = ExecutionNode::castTo<CalculationNode*>(node);
+  AstNode const* root = calc->expression()->node();
+  AstNode const* a = objectElementValue(root, "a");
+  ASSERT_NE(nullptr, a);
+  EXPECT_EQ(NODE_TYPE_OBJECT, a->type);
+  AstNode const* b = objectElementValue(a, "b");
+  ASSERT_NE(nullptr, b);
+  EXPECT_EQ(NODE_TYPE_ATTRIBUTE_ACCESS, b->type);
+  EXPECT_EQ(nullptr, objectElementValue(a, "c"));
+}
+
+TEST_F(ProjectionBuilderTest, quotedLiteralKeepIsNotSubsumedByParentPath) {
+  Variable const* dest = ast.variables()->createTemporaryVariable();
+  Variable const* full = ast.variables()->createTemporaryVariable();
+  Projection projection;
+  projection.items.push_back(ProjectionItem::keepPath({"profile"}));
+  projection.items.push_back(ProjectionItem::keepLiteral("profile.name"));
+  std::unordered_map<VariableId, Variable const*> subst;
+
+  auto* node = projections.createDocumentPatternProjection(dest, full,
+                                                           projection, subst);
+  auto* calc = ExecutionNode::castTo<CalculationNode*>(node);
+  auto keys = objectKeys(calc->expression()->node());
+  EXPECT_TRUE(keys.contains("profile"));
+  EXPECT_TRUE(keys.contains("profile.name"));
+}
+
 TEST_F(ProjectionBuilderTest, aliasCollisionWithKeepThrows) {
   Variable const* dest = ast.variables()->createTemporaryVariable();
   Variable const* full = ast.variables()->createTemporaryVariable();

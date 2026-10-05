@@ -1,6 +1,15 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Updated node modules:
+ - brace-expansion to 5.0.12 to resolve CVE-2026-102276, CVE-2026-102277
+   and CVE-2026-102278
+ - fast-uri to 3.1.8 to resolve CVE-2026-86472
+
+* COR-1049: Disallow filters on references
+  MATCH now rejects filters and attribute constraints applied to variables
+  that reference documents defined outside the MATCH pattern.
+
 * Updated ArangoDB Starter to v0.20.0-preview-17.
 
 * Upgraded included rclone to v1.75.1 with go1.26.8 and non-vulnerable
@@ -18,6 +27,13 @@
   traversal.
 
 * Upgraded OpenSSL to 3.5.8.
+
+* The AQL optimizer rule `upgrade-scatter-to-distribute` distributes rows by
+  the constant value when a shard key is compared with both a constant and
+  another expression, as in
+  `FILTER doc._key == "foo" AND doc._id == other._from`. The rows then go to
+  the shard that `restrict-to-single-shard` limits the collection access to.
+  Previously, such queries could crash the Coordinator.
 
 * COR-741: AQL `MATCH` inline bare attribute keeps support unquoted nested
   paths. Dot notation preserves object hierarchy, e.g.
