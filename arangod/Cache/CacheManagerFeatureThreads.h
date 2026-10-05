@@ -25,9 +25,9 @@
 #include <cstdint>
 
 #include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
 #include "Cache/Manager.h"
 #include "Cache/Rebalancer.h"
+#include "Utils/Thread.h"
 
 namespace arangodb {
 

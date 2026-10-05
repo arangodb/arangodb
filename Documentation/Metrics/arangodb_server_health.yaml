@@ -1,0 +1,37 @@
+name: arangodb_server_health
+introducedIn: "3.12.11"
+help: |
+  Cluster server health status (0=FAILED, 1=BAD, 2=GOOD).
+unit: number
+type: gauge
+category: Health
+complexity: simple
+exposedBy:
+  - coordinator
+description: |
+  Reports the Agency Supervision health of every known cluster server
+  (Coordinators and DB-Servers). Values are `0` (FAILED),
+  `1` (BAD), and `2` (GOOD).
+
+  Metric-specific labels identify the *target* server whose health is
+  reported:
+
+  - `target_server`: unique server id (for example `PRMR-...` / `CRDN-...`)
+  - `target_shortname`: human-readable short name from
+    `Target/MapUniqueToShortID` (for example `DBServer0001`)  
+
+  Exporter identity (the Coordinator being scraped) continues to come from
+  the global Prometheus labels `shortname` and `role`. Those must not be
+  confused with `target_shortname`.
+
+  Agents do not export this metric: AgencyCache / ClusterInfo server-list
+  sync is not started for Agents, and Coordinators are the intended scrape
+  targets for the cluster-wide health view.
+threshold: |
+  Persistently BAD or FAILED servers indicate heartbeat / connectivity
+  problems or servers that Supervision has failed. Investigate Agency
+  Supervision health and server logs.
+troubleshoot: |
+  Confirm the Coordinator still sees the server in `Current/ServersKnown`
+  and `Supervision/Health`. Missing `target_shortname` usually means the
+  short-name mapping in `Target/MapUniqueToShortID` is not yet available.

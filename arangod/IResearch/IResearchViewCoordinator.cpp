@@ -178,13 +178,15 @@ Result IResearchViewCoordinator::appendVPackImpl(VPackBuilder& build,
     std::shared_lock lock{_mutex};
     // verify that the current user has access on all linked collections
     ExecContext const& exec = ExecContext::current();
-    if (!exec.isSuperuser()) {
-      for (auto& entry : _collections) {
-        if (!exec.canUseCollection(vocbase().name(),
-                                   entry.second->collectionName,
-                                   auth::Level::RO)) {
-          return {TRI_ERROR_FORBIDDEN};
-        }
+    // TODO This should be changed into a more semantic exec.can().... call;
+    //      but I don't know which, because I don't know where this is being
+    //      called from (createView? modifyView? both?)
+    for (auto& entry : _collections) {
+      if (auto r = exec.canUseCollection(vocbase().name(),
+                                         entry.second->collectionName,
+                                         AccessLevel::Read);
+          !r.ok()) {
+        return r;
       }
     }
     VPackBuilder tmp;
@@ -324,6 +326,16 @@ bool IResearchViewCoordinator::visitCollections(
   return true;
 }
 
+std::vector<std::string> IResearchViewCoordinator::linkedCollectionNames()
+    const {
+  std::shared_lock lock{_mutex};
+  std::vector<std::string> names;
+  for (auto const& pair : _collections) {
+    names.push_back(pair.second->collectionName);
+  }
+  return names;
+}
+
 bool IResearchViewCoordinator::isBuilding() const {
   std::shared_lock lock{_mutex};
   for (auto& entry : _collections) {
@@ -358,19 +370,23 @@ Result IResearchViewCoordinator::properties(velocypack::Slice slice,
     }
     // check link auth as per https://github.com/arangodb/backlog/issues/459
     auto const& exec = ExecContext::current();
-    if (!exec.isSuperuser()) {  // check existing links
+    {
       std::shared_lock lock{_mutex};
+      // TODO This should be changed into a more semantic exec.can().... call;
+      //      but I don't know which, because I don't know where this is being
+      //      called from (createView? modifyView? both?)
       for (auto& entry : _collections) {
         auto const& name = vocbase().name();
         auto collection = engine.getCollection(
             name, absl::AlphaNum{entry.first.id()}.Piece());
-        if (collection &&
-            !exec.canUseCollection(name, collection->name(), auth::Level::RO)) {
-          return {
-              TRI_ERROR_FORBIDDEN,
-              absl::StrCat(
-                  "while updating arangosearch definition, error: collection '",
-                  collection->name(), "' not authorized for read access")};
+        if (collection) {
+          if (auto r = exec.canUseCollection(name, collection->name(),
+                                             AccessLevel::Read);
+              !r.ok()) {
+            return {TRI_ERROR_FORBIDDEN,
+                    absl::StrCat("while updating arangosearch definition: ",
+                                 r.errorMessage())};
+          }
         }
       }
     }
@@ -453,24 +469,12 @@ Result IResearchViewCoordinator::dropImpl() {
             "failure to get storage engine while dropping arangosearch view '",
             name(), "'")};
   }
-  auto& engine = server.getFeature<ClusterFeature>().clusterInfo();
   // drop links first
   containers::FlatHashSet<DataSourceId> currentCids;
-  visitCollections([&](DataSourceId cid, LogicalView::Indexes*) {
-    currentCids.emplace(cid);
-    return true;
-  });
-  // check link auth as per https://github.com/arangodb/backlog/issues/459
-  ExecContext const& exec = ExecContext::current();
-  if (!exec.isSuperuser()) {
-    for (auto& entry : currentCids) {
-      auto const& name = vocbase().name();
-      auto collection =
-          engine.getCollection(name, absl::AlphaNum{entry.id()}.Piece());
-      if (collection &&
-          !exec.canUseCollection(name, collection->name(), auth::Level::RO)) {
-        return {TRI_ERROR_FORBIDDEN};
-      }
+  {
+    std::shared_lock lock{_mutex};
+    for (auto& it : _collections) {
+      currentCids.emplace(it.first);
     }
   }
   containers::FlatHashSet<DataSourceId> collections;

@@ -162,7 +162,11 @@ describe('User Rights Management', () => {
                   try {
                     graphModule._drop(testGraphName, true);
                   } catch (e) {
-                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                    if (dbLevel['rw'].has(name) && colLevel['ro'].has(name)) {
+                      expect(e.errorNum).to.equal(errors.ERROR_ARANGO_READ_ONLY.code);
+                    } else {
+                      expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                    }
                   }
                   expect(!rootTestGraph()).to.equal(false, `${name} was able to drop a graph with insufficent rights`);
                   expect(!rootTestCollection(testEdgeColName)).to.equal(false, 'Graph drop reported error, but edge collection was not found afterwards.');
@@ -197,7 +201,11 @@ describe('User Rights Management', () => {
                   try {
                     graphModule._drop(testGraphName, true);
                   } catch (e) {
-                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                    if (dbLevel['rw'].has(name) && colLevel['ro'].has(name)) {
+                      expect(e.errorNum).to.equal(errors.ERROR_ARANGO_READ_ONLY.code);
+                    } else {
+                      expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                    }
                   }
                   expect(!rootTestGraph()).to.equal(false, `${name} was able to drop a graph with insufficent rights`);
                 }

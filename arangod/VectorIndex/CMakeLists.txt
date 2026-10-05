@@ -1,14 +1,14 @@
 add_library(arango_vector_index STATIC
-  VectorIndexBuildManager.cpp
-  VectorIndexFeature.cpp
-  VectorIndexOptionsProvider.cpp
-  VectorIndexTrainingSampler.cpp)
+  BuildManager.cpp
+  Feature.cpp
+  OptionsProvider.cpp
+  TrainingSampler.cpp)
 
 target_link_libraries(arango_vector_index
   PUBLIC
     arango_basic_utils velocypack
     arango::validation rocksdb_interface immer arango_actor
-    arango_iresearch arango_v8)
+    arango_iresearch)
 
 target_include_directories(arango_vector_index PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"

@@ -35,6 +35,7 @@
 #include "Random/RandomGenerator.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -66,7 +67,9 @@ void Constituent::configure(Agent* agent) {
 
 // Default ctor
 Constituent::Constituent(application_features::ApplicationServer& server)
-    : Thread("Constituent"),
+    // needs superuser permissions for election persistence: AQL queries and
+    // transactions on agency collections
+    : Thread("Constituent", ExecContext::superuserAsShared()),
       _vocbase(nullptr),
       _term(0),
       _gterm(server.getFeature<metrics::MetricsFeature>().add(

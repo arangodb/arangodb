@@ -801,7 +801,7 @@ License Id: -
 #### brace-expansion
 
 * Name: brace-expansion
-* Version: 5.0.9
+* Version: 5.0.12
 * Project Home: <https://github.com/juliangruber/brace-expansion>
 * License: <https://raw.githubusercontent.com/juliangruber/brace-expansion/main/LICENSE>
 * License Name: MIT License
@@ -980,7 +980,7 @@ License Id: -
 #### fast-uri
 
 * Name: fast-uri
-* Version: 3.1.5
+* Version: 3.1.8
 * Project Home: <https://github.com/fastify/fast-uri>
 * License: <https://raw.githubusercontent.com/fastify/fast-uri/main/LICENSE>
 * License Name: BSD-style 3-Clause License
@@ -1169,7 +1169,7 @@ License Id: -
 #### js-yaml
 
 * Name: js-yaml
-* Version: 4.3.1
+* Version: 4.3.2
 * Project Home: <https://github.com/nodeca/js-yaml>
 * License: <https://raw.githubusercontent.com/nodeca/js-yaml/refs/heads/master/LICENSE>
 * License Name: MIT License
@@ -1304,7 +1304,7 @@ License Id: -
 #### qs
 
 * Name: qs
-* Version: 6.15.2
+* Version: 6.16.0
 * Project Home: <https://github.com/ljharb/qs>
 * License: <https://raw.githubusercontent.com/ljharb/qs/main/LICENSE.md>
 * License Name: BSD-style 3-Clause License

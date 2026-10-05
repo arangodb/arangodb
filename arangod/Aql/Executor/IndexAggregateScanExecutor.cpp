@@ -130,7 +130,7 @@ auto IndexAggregateScanExecutor::skipRowsRange(
   auto vpackOptions = &_infos.query->vpackOptions();
 
   while (clientCall.needSkipMore() && hasMore) {
-    _iterator->cacheCurrentKey(_currentGroupKeySlices);
+    _currentGroupKeyCache.update(_keySlices, _currentGroupKeySlices);
     LOG_AGG_SCAN << "[SCAN] Group keys "
                  << inspection::json(_currentGroupKeySlices);
 
@@ -200,7 +200,7 @@ auto IndexAggregateScanExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       _variablesToProjectionsRelative};
 
   while (!output.isFull() && hasMore) {
-    _iterator->cacheCurrentKey(_currentGroupKeySlices);
+    _currentGroupKeyCache.update(_keySlices, _currentGroupKeySlices);
     LOG_AGG_SCAN << "[SCAN] Group keys "
                  << inspection::json(_currentGroupKeySlices);
 
@@ -272,9 +272,8 @@ IndexAggregateScanExecutor::IndexAggregateScanExecutor(Fetcher& fetcher,
 
   // fill projection slices
   _projectionSlices.resize(streamOptions.projectedFields.size());
-  bool hasMore = _iterator->reset(_currentGroupKeySlices, {});
-  LOG_AGG_SCAN << "[SCAN] after reset at "
-               << inspection::json(_currentGroupKeySlices)
+  bool hasMore = _iterator->reset(_keySlices, {});
+  LOG_AGG_SCAN << "[SCAN] after reset at " << inspection::json(_keySlices)
                << " hasMore= " << hasMore;
   _indexIncludesAnyData = hasMore;
 

@@ -3,10 +3,6 @@ add_library(arango_cluster_engine STATIC
   ClusterEngine.cpp
   ClusterIndex.cpp
   ClusterIndexFactory.cpp
-  ClusterRestCollectionHandler.cpp
-  ClusterRestHandlers.cpp
-  ClusterRestReplicationHandler.cpp
-  ClusterRestWalHandler.cpp
   ClusterSelectivityEstimates.cpp
   ClusterTransactionCollection.cpp
   ClusterTransactionState.cpp)
@@ -19,5 +15,20 @@ target_link_libraries(arango_cluster_engine
 target_include_directories(arango_cluster_engine PUBLIC
   ${IRESEARCH_INCLUDE})
 target_include_directories(arango_cluster_engine PRIVATE
+  "${PROJECT_SOURCE_DIR}/arangod"
+  "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+
+add_library(arango_cluster_engine_rest STATIC
+  ClusterRestCollectionHandler.cpp
+  ClusterRestHandlers.cpp
+  ClusterRestReplicationHandler.cpp
+  ClusterRestWalHandler.cpp)
+
+target_link_libraries(arango_cluster_engine_rest
+  PUBLIC
+    arango_cluster_engine
+    arango_common_rest_handler)
+
+target_include_directories(arango_cluster_engine_rest PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")

@@ -2113,7 +2113,7 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx,
                                  velocypack::Slice doc,
                                  OperationOptions const& options) {
   TRI_IF_FAILURE("BreakHashIndexRemove") {
-    if (type() == Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX) {
+    if (type() == IndexType::Persistent) {
       // intentionally  break index removal
       return Result(TRI_ERROR_INTERNAL,
                     "BreakHashIndexRemove failure point triggered");
@@ -3016,7 +3016,6 @@ struct RocksDBVPackStreamIterator final : AqlIndexStreamIterator {
 
   RocksDBVPackStreamOptions _options;
   VPackBuilder _builder;
-  VPackString _cache;
   RocksDBKeyBounds _bounds;
   rocksdb::Slice _end;
   RocksDBKey _rocksdbKey;
@@ -3118,11 +3117,6 @@ struct RocksDBVPackStreamIterator final : AqlIndexStreamIterator {
     storeKey(key, RocksDBKey::indexedVPack(_iterator->key()));
     docId = load(projections);
     return true;
-  }
-
-  void cacheCurrentKey(std::span<VPackSlice> cache) override {
-    _cache = VPackString{RocksDBKey::indexedVPack(_iterator->key())};
-    storeKey(cache, _cache);
   }
 
   static void constructKey(VPackBuilder& builder,

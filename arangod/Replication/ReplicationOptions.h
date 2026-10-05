@@ -27,8 +27,6 @@
 namespace arangodb {
 
 struct ReplicationOptions {
-  bool replicationApplierAutoStart = true;
-
   /// maximum number of parallel tailing operations invocations
   uint64_t maxParallelTailingInvocations = 0;
 

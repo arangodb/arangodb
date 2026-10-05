@@ -29,7 +29,7 @@ namespace tao::json
 
    inline namespace literals
    {
-      [[nodiscard]] inline value operator"" _json( const char* data, const std::size_t size )
+      [[nodiscard]] inline value operator""_json( const char* data, const std::size_t size )
       {
          return json::from_string( data, size, "literal" );
       }

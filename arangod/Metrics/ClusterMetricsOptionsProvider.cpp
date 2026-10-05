@@ -29,7 +29,7 @@ namespace arangodb::metrics {
 
 using namespace arangodb::options;
 
-void ClusterMetricsOptionsProvider::declareOptions(
+void ClusterMetricsOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, ClusterMetricsOptions& opts) {
   options
       ->addOption("--server.cluster-metrics-timeout",

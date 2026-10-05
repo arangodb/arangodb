@@ -55,7 +55,6 @@
 #include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/vocbase.h"
 
-#include <filesystem>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 
@@ -71,7 +70,7 @@ namespace {
 Result createSystemCollections(
     TRI_vocbase_t& vocbase,
     std::vector<std::shared_ptr<LogicalCollection>>& createdCollections) {
-  OperationOptions options(ExecContext::current());
+  OperationOptions options;
 
   std::vector<CreateCollectionBody> systemCollectionsToCreate;
   // the order of systemCollections is important. If we're in _system db, the
@@ -235,7 +234,7 @@ Result createSystemCollections(
 }
 
 Result createIndex(
-    std::string const& name, Index::IndexType type,
+    std::string const& name, IndexType type,
     std::vector<std::string> const& fields, bool unique, bool sparse,
     std::vector<std::shared_ptr<LogicalCollection>> const& collections) {
   // Static helper function that wraps creating an index. If we fail to
@@ -262,8 +261,8 @@ Result createSystemCollectionsIndices(
   Result res;
   if (vocbase.isSystem()) {
     res = ::createIndex(StaticStrings::UsersCollection,
-                        arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX,
-                        {"user"}, true, true, collections);
+                        arangodb::IndexType::Persistent, {"user"}, true, true,
+                        collections);
     if (!res.ok()) {
       return res;
     }
@@ -420,38 +419,6 @@ Result UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
   return {};
 }
 
-Result UpgradeTasks::renameReplicationApplierStateFiles(
-    TRI_vocbase_t& vocbase, velocypack::Slice slice) {
-  std::string const path = vocbase.engine().databasePath();
-
-  std::string const source = arangodb::basics::FileUtils::buildFilename(
-      path, "REPLICATION-APPLIER-STATE");
-
-  if (!std::filesystem::is_regular_file(source)) {
-    // source file does not exist (or not a regular file)
-    return {};
-  }
-
-  // copy file REPLICATION-APPLIER-STATE to REPLICATION-APPLIER-STATE-<id>
-  return basics::catchToResult([&vocbase, &path, &source]() -> Result {
-    std::string const dest = arangodb::basics::FileUtils::buildFilename(
-        path, "REPLICATION-APPLIER-STATE-" + std::to_string(vocbase.id()));
-
-    LOG_TOPIC("75337", TRACE, Logger::STARTUP)
-        << "copying replication applier file '" << source << "' to '" << dest
-        << "'";
-
-    std::string error;
-    if (!TRI_CopyFile(source, dest, error)) {
-      auto msg = absl::StrCat("could not copy replication applier file '",
-                              source, "' to '", dest, "'");
-      LOG_TOPIC("6c90c", WARN, Logger::STARTUP) << msg;
-      return {TRI_ERROR_INTERNAL, std::move(msg)};
-    }
-    return {};
-  });
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops '_pregel_queries' collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -543,7 +510,7 @@ Result UpgradeTasks::dropFulltextIndexes(TRI_vocbase_t& vocbase,
   for (auto const& collection : collections) {
     auto indexes = collection->getPhysical()->getReadyIndexes();
     for (auto const& index : indexes) {
-      if (index->type() == Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+      if (index->type() == IndexType::Fulltext) {
         LOG_TOPIC("d4e3f", WARN, Logger::STARTUP)
             << "Dropping obsolete fulltext index '" << index->id().id()
             << "' from collection '" << collection->name()
@@ -800,8 +767,8 @@ Result UpgradeTasks::dropLegacyGeoIndexes(TRI_vocbase_t& vocbase,
   for (auto const& collection : collections) {
     auto indexes = collection->getPhysical()->getReadyIndexes();
     for (auto const& index : indexes) {
-      if (index->type() == Index::TRI_IDX_TYPE_GEO1_INDEX ||
-          index->type() == Index::TRI_IDX_TYPE_GEO2_INDEX) {
+      if (index->type() == IndexType::Geo1 ||
+          index->type() == IndexType::Geo2) {
         LOG_TOPIC("5550a", WARN, Logger::STARTUP)
             << "Dropping obsolete geo1/geo2 index '" << index->id().id()
             << "' from collection '" << collection->name()

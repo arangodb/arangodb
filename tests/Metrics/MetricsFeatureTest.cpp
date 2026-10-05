@@ -26,6 +26,7 @@
 #include "Metrics/Metric.h"
 #include "Metrics/MetricsFeature.h"
 #include "MetricsFeatureTest.h"
+#include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/QueryRegistryFeature.h"
 
 using namespace arangodb;

@@ -33,6 +33,7 @@ RestQueryPlanCacheHandler::RestQueryPlanCacheHandler(
     GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
+// Mounted at /_api/query-plan-cache (prefix)
 RestStatus RestQueryPlanCacheHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
@@ -55,10 +56,17 @@ RestStatus RestQueryPlanCacheHandler::execute() {
 }
 
 void RestQueryPlanCacheHandler::clearCache() {
-  if (!ExecContext::current().canUseDatabase(auth::Level::RW)) {
+  // Note that contrary to versions up to and including 3.12.9 this is now
+  // forbidden if the server is in read-only mode. This is intentional.
+  // TODO Should this get a separate admin action/permission?
+  if (auto r = ExecContext::current().canUseDatabase(
+          _vocbase.name(), DatabaseAccessLevel::Write);
+      r.fail()) {
     generateError(
         rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
-        "not allowed to clear this database's query plan cache entries");
+        absl::StrCat(
+            "not allowed to clear this database's query plan cache entries: ",
+            r.errorMessage()));
     return;
   }
 
@@ -74,23 +82,18 @@ void RestQueryPlanCacheHandler::clearCache() {
 }
 
 void RestQueryPlanCacheHandler::readPlans() {
-  if (!ExecContext::current().canUseDatabase(auth::Level::RO)) {
-    generateError(
-        rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
-        "not allowed to retrieve this database's query plan cache entries");
-    return;
-  }
-
-  auto filter = [](aql::QueryPlanCache::Key const& key,
-                   aql::QueryPlanCache::Value const& value) -> bool {
-    if (ExecContext::isAuthEnabled() && !ExecContext::current().isSuperuser()) {
-      // check if non-superusers have at least read permissions on all
-      // collections/views used in the query
-      for (auto const& dataSource : value.dataSources) {
-        if (!ExecContext::current().canUseCollection(dataSource.second.name,
-                                                     auth::Level::RO)) {
-          return false;
-        }
+  auto filter = [databaseName = _vocbase.name()](
+                    aql::QueryPlanCache::Key const& key,
+                    aql::QueryPlanCache::Value const& value) -> bool {
+    auto const& context = ExecContext::current();
+    // check if non-superusers have at least read permissions on all
+    // collections/views used in the query
+    for (auto const& dataSource : value.dataSources) {
+      if (!context
+               .canUseCollection(databaseName, dataSource.second.name,
+                                 AccessLevel::Read)
+               .ok()) {
+        return false;
       }
     }
     return true;

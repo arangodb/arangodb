@@ -1,0 +1,989 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Business Source License 1.1 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+////////////////////////////////////////////////////////////////////////////////
+
+#include "Aql/Match/MatchTestHelper.h"
+
+#include "Aql/AstNode.h"
+#include "Aql/ExecutionPlan.h"
+#include "Aql/Match/PatternNormalizer.h"
+#include "Aql/TypedAstNodes.h"
+#include "Aql/Variable.h"
+#include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
+
+#include <algorithm>
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <vector>
+
+using namespace arangodb;
+using namespace arangodb::aql;
+using namespace arangodb::aql::match;
+using namespace arangodb::tests;
+
+namespace {
+
+/// @brief Test-only mirror of MATCH projection reserved-attribute
+/// classification. Production code uses kMandatory*ProjectionAttributes
+/// membership instead.
+enum class ProjectionReservedAttribute : uint8_t {
+  kNone,
+  kId,
+  kFrom,
+  kTo,
+};
+
+[[nodiscard]] ProjectionReservedAttribute
+classifyDocumentProjectionReservedAttribute(std::string_view name) noexcept {
+  if (name == StaticStrings::IdString) {
+    return ProjectionReservedAttribute::kId;
+  }
+  return ProjectionReservedAttribute::kNone;
+}
+
+[[nodiscard]] ProjectionReservedAttribute
+classifyEdgeDocumentProjectionReservedAttribute(
+    std::string_view name) noexcept {
+  auto const documentClass = classifyDocumentProjectionReservedAttribute(name);
+  if (documentClass != ProjectionReservedAttribute::kNone) {
+    return documentClass;
+  }
+  if (name == StaticStrings::FromString) {
+    return ProjectionReservedAttribute::kFrom;
+  }
+  if (name == StaticStrings::ToString) {
+    return ProjectionReservedAttribute::kTo;
+  }
+  return ProjectionReservedAttribute::kNone;
+}
+
+class PatternNormalizerTest
+    : public arangodb::tests::aql::match::MatchTestFixture {
+ protected:
+  /// @brief start vertex pattern's collection/datasource label AST node
+  static AstNode const* startVertexCollectionNode(ParsedMatch const& parsed) {
+    EXPECT_NE(nullptr, parsed.matchNode);
+    if (parsed.matchNode == nullptr || parsed.matchNode->numMembers() == 0) {
+      return nullptr;
+    }
+    AstNode const* pattern = parsed.matchNode->getMember(0);
+    EXPECT_EQ(NODE_TYPE_PATTERN_MATCH_EXPRESSION, pattern->type);
+    if (pattern->type != NODE_TYPE_PATTERN_MATCH_EXPRESSION ||
+        pattern->numMembers() == 0) {
+      return nullptr;
+    }
+    AstNode const* start = pattern->getMember(0);
+    // path variable may come first
+    if (start->type == NODE_TYPE_PATTERN_PATH_VARIABLE &&
+        pattern->numMembers() > 1) {
+      start = pattern->getMember(1);
+    }
+    EXPECT_EQ(NODE_TYPE_PATTERN_NODE_PATTERN, start->type);
+    if (start->type != NODE_TYPE_PATTERN_NODE_PATTERN) {
+      return nullptr;
+    }
+    return start->getMember(1);
+  }
+
+  /// @brief walk a NODE_TYPE_ATTRIBUTE_ACCESS chain into (variable, attrs).
+  /// attrs[0] is the outermost attribute (closest to the reference).
+  static void expectNestedAttributeAccess(
+      AstNode const* node, std::string_view expectedVariable,
+      std::vector<std::string_view> const& expectedAttributes) {
+    ASSERT_NE(nullptr, node);
+    ASSERT_FALSE(expectedAttributes.empty());
+
+    std::vector<std::string> attrs;
+    AstNode const* cur = node;
+    while (cur->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      ast::AttributeAccessNode access(cur);
+      attrs.emplace_back(access.getAttributeName());
+      cur = access.getObject();
+    }
+    std::reverse(attrs.begin(), attrs.end());
+
+    ASSERT_EQ(NODE_TYPE_REFERENCE, cur->type) << cur->getTypeString();
+    ast::ReferenceNode ref(cur);
+    ASSERT_NE(nullptr, ref.getVariable());
+    EXPECT_EQ(expectedVariable, ref.getVariable()->name);
+
+    ASSERT_EQ(expectedAttributes.size(), attrs.size());
+    for (size_t i = 0; i < expectedAttributes.size(); ++i) {
+      EXPECT_EQ(expectedAttributes[i], attrs[i]) << "attribute index " << i;
+    }
+
+    // Nested dotted access must not collapse into a single dotted name.
+    if (expectedAttributes.size() > 1) {
+      std::string collapsed;
+      for (size_t i = 0; i < expectedAttributes.size(); ++i) {
+        if (i != 0) {
+          collapsed.push_back('.');
+        }
+        collapsed.append(expectedAttributes[i]);
+      }
+      EXPECT_FALSE(attrs.size() == 1 && attrs.front() == collapsed);
+    }
+  }
+
+  /// @brief e["Data.Weight"] after parse (INDEXED_ACCESS) or after optimize
+  /// (ATTRIBUTE_ACCESS with a single attribute name containing a dot).
+  static void expectSingleDottedAttributeAccess(
+      AstNode const* node, std::string_view expectedVariable,
+      std::string_view expectedAttribute) {
+    ASSERT_NE(nullptr, node);
+
+    if (node->type == NODE_TYPE_INDEXED_ACCESS) {
+      ast::IndexedAccessNode indexed(node);
+      AstNode const* object = indexed.getObject();
+      AstNode const* index = indexed.getIndex();
+
+      ASSERT_EQ(NODE_TYPE_REFERENCE, object->type) << object->getTypeString();
+      ast::ReferenceNode ref(object);
+      ASSERT_NE(nullptr, ref.getVariable());
+      EXPECT_EQ(expectedVariable, ref.getVariable()->name);
+
+      ASSERT_EQ(NODE_TYPE_VALUE, index->type) << index->getTypeString();
+      ASSERT_TRUE(index->isStringValue());
+      EXPECT_EQ(expectedAttribute, index->getStringView());
+      return;
+    }
+
+    ASSERT_EQ(NODE_TYPE_ATTRIBUTE_ACCESS, node->type) << node->getTypeString();
+    expectNestedAttributeAccess(node, expectedVariable, {expectedAttribute});
+  }
+
+  static AstNode const* equalityLhs(AstNode const* eqNode) {
+    EXPECT_NE(nullptr, eqNode);
+    if (eqNode == nullptr) {
+      return nullptr;
+    }
+    EXPECT_EQ(NODE_TYPE_OPERATOR_BINARY_EQ, eqNode->type)
+        << eqNode->getTypeString();
+    if (eqNode->type != NODE_TYPE_OPERATOR_BINARY_EQ) {
+      return nullptr;
+    }
+    ast::RelationalOperatorNode rel(eqNode);
+    return rel.getLeft();
+  }
+};
+
+TEST_F(PatternNormalizerTest, simpleVertex) {
+  auto parsed = parseMatch("MATCH (v :vc) RETURN v");
+  auto statement = normalize(parsed);
+
+  ASSERT_EQ(1U, statement.patterns.size());
+  auto const& pattern = statement.patterns.front();
+  ASSERT_EQ(PatternElement::Kind::kVertex, pattern.start.kind);
+  ASSERT_TRUE(pattern.start.vertex.has_value());
+  EXPECT_EQ("v", pattern.start.vertex->variable->name);
+  EXPECT_EQ(DataSource::Kind::kCollection,
+            pattern.start.vertex->collection.kind());
+  EXPECT_EQ("vc", pattern.start.vertex->collection.name());
+  EXPECT_TRUE(pattern.start.vertex->properties.empty());
+  EXPECT_FALSE(pattern.start.vertex->filter.has_value());
+  EXPECT_FALSE(pattern.start.vertex->projection.has_value());
+  EXPECT_TRUE(pattern.segments.empty());
+}
+
+TEST_F(PatternNormalizerTest, outboundEdgeSingleCollection) {
+  auto parsed = parseMatch("MATCH (v :vc) -[ e :ec ]-> (w :vc) RETURN [v,e,w]");
+  auto statement = normalize(parsed);
+
+  ASSERT_EQ(1U, statement.patterns.size());
+  auto const& pattern = statement.patterns.front();
+  ASSERT_EQ(1U, pattern.segments.size());
+
+  auto const& edge = pattern.segments.front().edge;
+  EXPECT_EQ("e", edge.variable->name);
+  ASSERT_EQ(1U, edge.collections.size());
+  EXPECT_EQ("ec", edge.collections.front().name());
+  EXPECT_EQ(EdgeDirection::kOutbound, edge.direction);
+  EXPECT_TRUE(edge.range.isDefaultFixedOne());
+  EXPECT_TRUE(edge.range.isFixedOne());
+  EXPECT_TRUE(edge.properties.empty());
+  EXPECT_FALSE(edge.filter.has_value());
+  EXPECT_FALSE(edge.projection.has_value());
+
+  auto const& target = pattern.segments.front().target;
+  ASSERT_EQ(PatternElement::Kind::kVertex, target.kind);
+  EXPECT_EQ("w", target.vertex->variable->name);
+  EXPECT_EQ("vc", target.vertex->collection.name());
+}
+
+TEST_F(PatternNormalizerTest, inboundEdge) {
+  auto parsed = parseMatch("MATCH (v :vc) <-[ e :ec ]- (w :vc) RETURN [v,e,w]");
+  auto statement = normalize(parsed);
+  EXPECT_EQ(EdgeDirection::kInbound,
+            statement.patterns.front().segments.front().edge.direction);
+}
+
+TEST_F(PatternNormalizerTest, anyDirectionEdge) {
+  auto parsed = parseMatch("MATCH (v :vc) -[ e :ec ]- (w :vc) RETURN [v,e,w]");
+  auto statement = normalize(parsed);
+  EXPECT_EQ(EdgeDirection::kAny,
+            statement.patterns.front().segments.front().edge.direction);
+}
+
+TEST_F(PatternNormalizerTest, multipleEdgeCollections) {
+  auto parsed =
+      parseMatch("MATCH (v :vc) -[ e :ec|ec2 ]-> (w :vc) RETURN [v,e,w]");
+  auto statement = normalize(parsed);
+
+  auto const& collections =
+      statement.patterns.front().segments.front().edge.collections;
+  ASSERT_EQ(2U, collections.size());
+  EXPECT_EQ("ec", collections[0].name());
+  EXPECT_EQ("ec2", collections[1].name());
+}
+
+TEST_F(PatternNormalizerTest, literalCollectionVertexAndEdge) {
+  auto parsed = parseMatch("MATCH (v :vc1) -[ e :ec1 ]-> (w :vc2) RETURN 1");
+
+  // Literal collection labels are NODE_TYPE_COLLECTION with Ast-owned
+  // strings (lexer registers via Ast::resources().registerString).
+  AstNode const* vertexLabel = startVertexCollectionNode(parsed);
+  ASSERT_NE(nullptr, vertexLabel);
+  ASSERT_EQ(NODE_TYPE_COLLECTION, vertexLabel->type);
+  EXPECT_EQ("vc1", vertexLabel->getStringView());
+
+  auto statement = normalize(parsed);
+
+  EXPECT_EQ("vc1", statement.patterns.front().start.vertex->collection.name());
+  EXPECT_EQ("vc2", statement.patterns.front()
+                       .segments.front()
+                       .target.vertex->collection.name());
+  EXPECT_EQ("ec1", statement.patterns.front()
+                       .segments.front()
+                       .edge.collections.front()
+                       .name());
+}
+
+TEST_F(PatternNormalizerTest, collectionBindParameter) {
+  auto parsed = parseMatch("MATCH (v :@@vc) -[ e :@@ec ]-> (w :@@vc) RETURN 1");
+
+  AstNode const* vertexLabel = startVertexCollectionNode(parsed);
+  ASSERT_NE(nullptr, vertexLabel);
+  ASSERT_EQ(NODE_TYPE_PARAMETER_DATASOURCE, vertexLabel->type);
+  EXPECT_EQ("@vc", vertexLabel->getStringView());
+
+  auto statement = normalize(parsed);
+
+  EXPECT_EQ(DataSource::Kind::kBindParameter,
+            statement.patterns.front().start.vertex->collection.kind());
+  EXPECT_EQ("@vc", statement.patterns.front().start.vertex->collection.name());
+
+  auto const& edgeCollection =
+      statement.patterns.front().segments.front().edge.collections.front();
+  EXPECT_EQ(DataSource::Kind::kBindParameter, edgeCollection.kind());
+  EXPECT_EQ("@ec", edgeCollection.name());
+}
+
+TEST_F(PatternNormalizerTest, resolvedCollectionBindParameter) {
+  auto parsed =
+      parseMatch("MATCH (v :@@vc) -[ e :@@ec ]-> (w :@@vc) RETURN 1", true,
+                 {{"@vc", "resolved_vc"}, {"@ec", "resolved_ec"}});
+
+  // After bind-parameter injection, @@ labels become NODE_TYPE_COLLECTION.
+  // Collection-name string_views point into BindParameters' VPack Builder,
+  // which ParsedMatch keeps alive (mirrors Query::_bindParameters).
+  ASSERT_NE(nullptr, parsed.bindParameters);
+  AstNode const* vertexLabel = startVertexCollectionNode(parsed);
+  ASSERT_NE(nullptr, vertexLabel);
+  ASSERT_EQ(NODE_TYPE_COLLECTION, vertexLabel->type)
+      << vertexLabel->getTypeString();
+  EXPECT_EQ("resolved_vc", vertexLabel->getStringView());
+
+  AstNode const* edge =
+      parsed.matchNode->getMember(0)->getMember(1)->getMember(0);
+  ASSERT_EQ(NODE_TYPE_PATTERN_EDGE, edge->type);
+  AstNode const* edgeCollections = edge->getMember(1);
+  ASSERT_EQ(NODE_TYPE_ARRAY, edgeCollections->type);
+  ASSERT_EQ(1U, edgeCollections->numMembers());
+  AstNode const* edgeLabel = edgeCollections->getMember(0);
+  ASSERT_EQ(NODE_TYPE_COLLECTION, edgeLabel->type);
+  EXPECT_EQ("resolved_ec", edgeLabel->getStringView());
+
+  auto statement = normalize(parsed);
+
+  EXPECT_EQ(DataSource::Kind::kCollection,
+            statement.patterns.front().start.vertex->collection.kind());
+  EXPECT_EQ("resolved_vc",
+            statement.patterns.front().start.vertex->collection.name());
+  EXPECT_EQ("resolved_ec", statement.patterns.front()
+                               .segments.front()
+                               .edge.collections.front()
+                               .name());
+  EXPECT_EQ(DataSource::Kind::kCollection,
+            statement.patterns.front()
+                .segments.front()
+                .target.vertex->collection.kind());
+  EXPECT_EQ("resolved_vc", statement.patterns.front()
+                               .segments.front()
+                               .target.vertex->collection.name());
+}
+
+TEST_F(PatternNormalizerTest, fixedRange) {
+  auto parsed = parseMatch("MATCH (v :vc) -[ e :ec ]-> (w :vc) RETURN 1");
+  auto statement = normalize(parsed);
+  auto const& range = statement.patterns.front().segments.front().edge.range;
+  EXPECT_TRUE(range.isDefaultFixedOne());
+  EXPECT_TRUE(range.isFixedOne());
+  EXPECT_EQ(1U, range.minDepth());
+  EXPECT_TRUE(range.hasMaxDepth());
+  EXPECT_EQ(1U, range.maxDepth());
+}
+
+TEST_F(PatternNormalizerTest, fixedRangeThree) {
+  auto parsed = parseMatch("MATCH (v :vc) -[ e :ec *3..3 ]-> (w :vc) RETURN 1");
+  auto statement = normalize(parsed);
+  auto const& range = statement.patterns.front().segments.front().edge.range;
+
+  EXPECT_TRUE(range.isFixed());
+  EXPECT_FALSE(range.isDefaultFixedOne());
+  EXPECT_FALSE(range.isFixedOne());
+  EXPECT_EQ(3U, range.minDepth());
+  EXPECT_TRUE(range.hasMaxDepth());
+  EXPECT_EQ(3U, range.maxDepth());
+}
+
+TEST_F(PatternNormalizerTest, boundedRange) {
+  auto parsed =
+      parseMatch("MATCH (v :vc) -[ e :ec * 2..5 ]-> (w :vc) RETURN 1");
+  auto statement = normalize(parsed);
+  auto const& range = statement.patterns.front().segments.front().edge.range;
+  EXPECT_FALSE(range.isDefaultFixedOne());
+  EXPECT_FALSE(range.isFixedOne());
+  EXPECT_EQ(2U, range.minDepth());
+  EXPECT_TRUE(range.hasMaxDepth());
+  EXPECT_EQ(5U, range.maxDepth());
+}
+
+TEST_F(PatternNormalizerTest, explicitFixedRangeIsNotDefault) {
+  auto parsed =
+      parseMatch("MATCH (v :vc) -[ e :ec * 1..1 ]-> (w :vc) RETURN 1");
+  auto statement = normalize(parsed);
+  auto const& range = statement.patterns.front().segments.front().edge.range;
+  EXPECT_FALSE(range.isDefaultFixedOne());
+  EXPECT_TRUE(range.isFixedOne());
+  EXPECT_EQ(PathRange::Kind::kBounded, range.kind());
+}
+
+TEST_F(PatternNormalizerTest, unboundedRangeSemanticType) {
+  auto range = PathRange::unboundedMin(3);
+  EXPECT_EQ(3U, range.minDepth());
+  EXPECT_FALSE(range.hasMaxDepth());
+  EXPECT_FALSE(range.isFixedOne());
+  EXPECT_FALSE(range.isDefaultFixedOne());
+}
+
+TEST_F(PatternNormalizerTest, projectionKeepPath) {
+  auto parsed =
+      parseMatch("MATCH (v :vc RETURN i) -[ e :ec ]-> (w :vc) RETURN 1");
+  auto statement = normalize(parsed);
+
+  auto const& projection = statement.patterns.front().start.vertex->projection;
+  ASSERT_TRUE(projection.has_value());
+  ASSERT_EQ(1U, projection->items.size());
+  EXPECT_EQ(ProjectionItem::Kind::kKeepAttribute,
+            projection->items.front().kind);
+  EXPECT_EQ("i", projection->items.front().name);
+  ASSERT_EQ((std::vector<std::string>{"i"}), projection->items.front().path);
+}
+
+TEST_F(PatternNormalizerTest, projectionAliasAndNestedPath) {
+  auto parsed = parseMatch(
+      "MATCH (v :vc RETURN idx = v.profile.first_name, status) "
+      "-[ e :ec RETURN edgeI = e.i ]-> (w :vc) RETURN 1");
+  auto statement = normalize(parsed);
+
+  auto const& vertexProjection =
+      statement.patterns.front().start.vertex->projection;
+  ASSERT_TRUE(vertexProjection.has_value());
+  ASSERT_EQ(2U, vertexProjection->items.size());
+
+  EXPECT_EQ(ProjectionItem::Kind::kAlias, vertexProjection->items[0].kind);
+  EXPECT_EQ("idx", vertexProjection->items[0].name);
+  ASSERT_NE(nullptr, vertexProjection->items[0].expression.node);
+
+  EXPECT_EQ(ProjectionItem::Kind::kKeepAttribute,
+            vertexProjection->items[1].kind);
+  EXPECT_EQ("status", vertexProjection->items[1].name);
+  ASSERT_EQ((std::vector<std::string>{"status"}),
+            vertexProjection->items[1].path);
+
+  auto const& edgeProjection =
+      statement.patterns.front().segments.front().edge.projection;
+  ASSERT_TRUE(edgeProjection.has_value());
+  ASSERT_EQ(1U, edgeProjection->items.size());
+  EXPECT_EQ(ProjectionItem::Kind::kAlias, edgeProjection->items[0].kind);
+  EXPECT_EQ("edgeI", edgeProjection->items[0].name);
+}
+
+TEST_F(PatternNormalizerTest, projectionNestedKeepPath) {
+  auto parsed = parseMatch(
+      "MATCH (v :vc RETURN profile.name) -[ e :ec ]-> (w :vc) RETURN 1");
+  auto statement = normalize(parsed);
+
+  auto const& projection = statement.patterns.front().start.vertex->projection;
+  ASSERT_TRUE(projection.has_value());
+  ASSERT_EQ(1U, projection->items.size());
+  EXPECT_EQ(ProjectionItem::Kind::kKeepAttribute,
+            projection->items.front().kind);
+  EXPECT_TRUE(projection->items.front().name.empty());
+  ASSERT_EQ((std::vector<std::string>{"profile", "name"}),
+            projection->items.front().path);
+  EXPECT_EQ("profile", projection->items.front().topLevelKey());
+}
+
+TEST_F(PatternNormalizerTest, projectionQuotedLiteralKeep) {
+  // Quoted "profile.name" is one literal key, not nested hierarchy.
+  auto parsed = parseMatch(
+      "MATCH (v :vc RETURN \"profile.name\") -[ e :ec ]-> (w :vc) RETURN 1");
+  auto statement = normalize(parsed);
+
+  auto const& projection = statement.patterns.front().start.vertex->projection;
+  ASSERT_TRUE(projection.has_value());
+  ASSERT_EQ(1U, projection->items.size());
+  auto const& item = projection->items.front();
+  EXPECT_EQ(ProjectionItem::Kind::kKeepLiteral, item.kind);
+  EXPECT_TRUE(item.isKeep());
+  EXPECT_EQ("profile.name", item.name);
+  ASSERT_EQ((std::vector<std::string>{"profile.name"}), item.path);
+  EXPECT_EQ("profile.name", item.topLevelKey());
+}
+
+TEST_F(PatternNormalizerTest, projectionNestedVsQuotedDottedName) {
+  auto nestedParsed = parseMatch(
+      "MATCH (v :vc RETURN Data.Weight) -[ e :ec ]-> (w :vc) RETURN 1");
+  auto quotedParsed = parseMatch(
+      "MATCH (v :vc RETURN \"Data.Weight\") -[ e :ec ]-> (w :vc) RETURN 1");
+
+  auto nested = normalize(nestedParsed);
+  auto quoted = normalize(quotedParsed);
+
+  auto const& nestedItem =
+      nested.patterns.front().start.vertex->projection->items.front();
+  auto const& quotedItem =
+      quoted.patterns.front().start.vertex->projection->items.front();
+
+  EXPECT_EQ(ProjectionItem::Kind::kKeepAttribute, nestedItem.kind);
+  ASSERT_EQ((std::vector<std::string>{"Data", "Weight"}), nestedItem.path);
+
+  EXPECT_EQ(ProjectionItem::Kind::kKeepLiteral, quotedItem.kind);
+  ASSERT_EQ((std::vector<std::string>{"Data.Weight"}), quotedItem.path);
+
+  EXPECT_NE(nestedItem.path, quotedItem.path);
+}
+
+TEST_F(PatternNormalizerTest, projectionEdgeKeepAndAlias) {
+  auto parsed = parseMatch(
+      "MATCH (v :vc) -[ e :ec RETURN i, num = e.j ]-> (w :vc) RETURN 1");
+  auto statement = normalize(parsed);
+
+  auto const& projection =
+      statement.patterns.front().segments.front().edge.projection;
+  ASSERT_TRUE(projection.has_value());
+  ASSERT_EQ(2U, projection->items.size());
+
+  EXPECT_EQ(ProjectionItem::Kind::kKeepAttribute, projection->items[0].kind);
+  EXPECT_EQ("i", projection->items[0].name);
+  ASSERT_EQ((std::vector<std::string>{"i"}), projection->items[0].path);
+
+  EXPECT_EQ(ProjectionItem::Kind::kAlias, projection->items[1].kind);
+  EXPECT_EQ("num", projection->items[1].name);
+  EXPECT_TRUE(projection->items[1].path.empty());
+  ASSERT_NE(nullptr, projection->items[1].expression.node);
+}
+
+TEST_F(PatternNormalizerTest, projectionSystemAttributeKeeps) {
+  // Normalization preserves requested system attribute names as ordinary
+  // keeps; Builder applies reserved-attribute rules when lowering.
+  auto vertexParsed = parseMatch(
+      "MATCH (v :vc RETURN _id, _key, _rev) -[ e :ec ]-> (w :vc) RETURN 1");
+  auto edgeParsed = parseMatch(
+      "MATCH (v :vc) -[ e :ec RETURN _id, _key, _rev, _from, _to ]-> (w :vc) "
+      "RETURN 1");
+
+  auto vertexStatement = normalize(vertexParsed);
+  auto edgeStatement = normalize(edgeParsed);
+
+  auto const& vertexProj =
+      vertexStatement.patterns.front().start.vertex->projection;
+  ASSERT_TRUE(vertexProj.has_value());
+  ASSERT_EQ(3U, vertexProj->items.size());
+  EXPECT_EQ((std::vector<std::string>{"_id"}), vertexProj->items[0].path);
+  EXPECT_EQ((std::vector<std::string>{"_key"}), vertexProj->items[1].path);
+  EXPECT_EQ((std::vector<std::string>{"_rev"}), vertexProj->items[2].path);
+
+  auto const& edgeProj =
+      edgeStatement.patterns.front().segments.front().edge.projection;
+  ASSERT_TRUE(edgeProj.has_value());
+  ASSERT_EQ(5U, edgeProj->items.size());
+  EXPECT_EQ((std::vector<std::string>{"_id"}), edgeProj->items[0].path);
+  EXPECT_EQ((std::vector<std::string>{"_key"}), edgeProj->items[1].path);
+  EXPECT_EQ((std::vector<std::string>{"_rev"}), edgeProj->items[2].path);
+  EXPECT_EQ((std::vector<std::string>{"_from"}), edgeProj->items[3].path);
+  EXPECT_EQ((std::vector<std::string>{"_to"}), edgeProj->items[4].path);
+}
+
+TEST_F(PatternNormalizerTest, projectionReservedAttributeClassification) {
+  EXPECT_EQ(ProjectionReservedAttribute::kId,
+            classifyDocumentProjectionReservedAttribute("_id"));
+  EXPECT_EQ(ProjectionReservedAttribute::kId,
+            classifyEdgeDocumentProjectionReservedAttribute("_id"));
+  EXPECT_EQ(ProjectionReservedAttribute::kNone,
+            classifyDocumentProjectionReservedAttribute("_key"));
+  EXPECT_EQ(ProjectionReservedAttribute::kNone,
+            classifyDocumentProjectionReservedAttribute("_rev"));
+  EXPECT_EQ(ProjectionReservedAttribute::kNone,
+            classifyDocumentProjectionReservedAttribute("_from"));
+  EXPECT_EQ(ProjectionReservedAttribute::kFrom,
+            classifyEdgeDocumentProjectionReservedAttribute("_from"));
+  EXPECT_EQ(ProjectionReservedAttribute::kTo,
+            classifyEdgeDocumentProjectionReservedAttribute("_to"));
+
+  EXPECT_EQ((std::vector<std::string_view>{"_id"}),
+            std::vector<std::string_view>(
+                kMandatoryDocumentProjectionAttributes.begin(),
+                kMandatoryDocumentProjectionAttributes.end()));
+
+  EXPECT_EQ((std::vector<std::string_view>{"_id", "_from", "_to"}),
+            std::vector<std::string_view>(
+                kMandatoryEdgeDocumentProjectionAttributes.begin(),
+                kMandatoryEdgeDocumentProjectionAttributes.end()));
+}
+
+TEST_F(PatternNormalizerTest, variableReferenceTarget) {
+  auto parsed = parseMatch(
+      "FOR w IN 1..1 LET start = \"vc/v0\" "
+      "MATCH (v :vc) -[ e :ec ]-> (w) RETURN [v,e,w]");
+  auto statement = normalize(parsed);
+
+  auto const& target = statement.patterns.front().segments.front().target;
+  ASSERT_EQ(PatternElement::Kind::kVariableReference, target.kind);
+  EXPECT_EQ("w", target.variableReference->name);
+}
+
+TEST_F(PatternNormalizerTest, pathVariable) {
+  auto parsed =
+      parseMatch("MATCH p = (v :vc) -[ e :ec * 1..2 ]-> (w :vc) RETURN p");
+  auto statement = normalize(parsed);
+
+  ASSERT_NE(nullptr, statement.patterns.front().pathVariable);
+  EXPECT_EQ("p", statement.patterns.front().pathVariable->name);
+}
+
+TEST_F(PatternNormalizerTest, vertexPropertiesAndWhereFilter) {
+  auto parsed = parseMatch(
+      "MATCH (v :vc {j: 0, k: 1} WHERE v.i > 0) -[ e :ec {j: 2} WHERE e.i > 1 "
+      "]-> (w :vc) RETURN 1");
+  auto statement = normalize(parsed);
+
+  auto const& vertex = statement.patterns.front().start.vertex;
+  ASSERT_TRUE(vertex.has_value());
+  ASSERT_EQ(2U, vertex->properties.size());
+  EXPECT_EQ("j", vertex->properties[0].key);
+  EXPECT_EQ("k", vertex->properties[1].key);
+  ASSERT_TRUE(vertex->filter.has_value());
+  ASSERT_NE(nullptr, vertex->filter->node);
+
+  auto const& edge = statement.patterns.front().segments.front().edge;
+  ASSERT_EQ(1U, edge.properties.size());
+  EXPECT_EQ("j", edge.properties.front().key);
+  ASSERT_TRUE(edge.filter.has_value());
+}
+
+TEST_F(PatternNormalizerTest, vertexPropertiesAfterOptimize) {
+  auto parsed = parseMatch("MATCH (v :vc {j: 0}) RETURN v");
+  optimizeAst(parsed);
+
+  AstNode const* vertexPattern = parsed.matchNode->getMember(0)->getMember(0);
+  ASSERT_EQ(NODE_TYPE_PATTERN_NODE_PATTERN, vertexPattern->type);
+  AstNode const* propsNode = vertexPattern->getMember(2);
+  ASSERT_NE(nullptr, propsNode);
+  ASSERT_EQ(NODE_TYPE_OBJECT, propsNode->type) << propsNode->getTypeString();
+  ASSERT_EQ(1U, propsNode->numMembers());
+  AstNode const* propMember = propsNode->getMember(0);
+  ASSERT_EQ(NODE_TYPE_OBJECT_ELEMENT, propMember->type);
+  EXPECT_EQ("j", propMember->getStringView());
+
+  auto statement = normalize(parsed);
+  auto const& vertex = statement.patterns.front().start.vertex;
+  ASSERT_TRUE(vertex.has_value());
+  ASSERT_EQ(1U, vertex->properties.size());
+  EXPECT_EQ("j", vertex->properties.front().key);
+}
+
+TEST_F(PatternNormalizerTest, combinedPattern) {
+  auto parsed = parseMatch(
+      "MATCH p = (v :@@vc RETURN i) "
+      "-[ e :@@ec1|@@ec2 * 2..4 ]-> (w :@@vc RETURN wId = w._key) "
+      "RETURN p",
+      true, {{"@vc", "mvc"}, {"@ec1", "mec1"}, {"@ec2", "mec2"}});
+  auto statement = normalize(parsed);
+
+  ASSERT_EQ(1U, statement.patterns.size());
+  auto const& pattern = statement.patterns.front();
+  EXPECT_EQ("p", pattern.pathVariable->name);
+  EXPECT_EQ("v", pattern.start.vertex->variable->name);
+  EXPECT_EQ("mvc", pattern.start.vertex->collection.name());
+  ASSERT_TRUE(pattern.start.vertex->projection.has_value());
+
+  ASSERT_EQ(1U, pattern.segments.size());
+  auto const& segment = pattern.segments.front();
+  ASSERT_EQ(2U, segment.edge.collections.size());
+  EXPECT_EQ("mec1", segment.edge.collections[0].name());
+  EXPECT_EQ("mec2", segment.edge.collections[1].name());
+  EXPECT_EQ(EdgeDirection::kOutbound, segment.edge.direction);
+  EXPECT_EQ(2U, segment.edge.range.minDepth());
+  EXPECT_EQ(4U, segment.edge.range.maxDepth());
+  EXPECT_FALSE(segment.edge.projection.has_value());
+  EXPECT_EQ("w", segment.target.vertex->variable->name);
+  EXPECT_EQ("mvc", segment.target.vertex->collection.name());
+  ASSERT_TRUE(segment.target.vertex->projection.has_value());
+}
+
+TEST_F(PatternNormalizerTest, multiplePatternsInOneMatch) {
+  auto parsed = parseMatch(
+      "MATCH (v :vc) -[ e :ec ]-> (w :vc), (a :vc2) -[ b :ec2 ]-> (c :vc2) "
+      "RETURN 1");
+  auto statement = normalize(parsed);
+
+  ASSERT_EQ(2U, statement.patterns.size());
+  EXPECT_EQ("v", statement.patterns[0].start.vertex->variable->name);
+  EXPECT_EQ("a", statement.patterns[1].start.vertex->variable->name);
+}
+
+TEST_F(PatternNormalizerTest, rejectsInvalidDirectionValue) {
+  auto parsed = parseMatch("MATCH (v :vc) -[ e :ec ]-> (w :vc) RETURN 1");
+
+  AstNode* matchNode = const_cast<AstNode*>(parsed.matchNode);
+  AstNode* edge = matchNode->getMember(0)->getMember(1)->getMember(0);
+  edge->getMember(4)->setIntValue(99);
+
+  PatternNormalizer normalizer(*parsed.ast);
+  EXPECT_THROW(
+      { (void)normalizer.normalize(ast::MatchNode(parsed.matchNode)); },
+      basics::Exception);
+}
+
+TEST_F(PatternNormalizerTest, rejectsInvalidRange) {
+  auto parsed =
+      parseMatch("MATCH (v :vc) -[ e :ec * 5..2 ]-> (w :vc) RETURN 1");
+  PatternNormalizer normalizer(*parsed.ast);
+  EXPECT_THROW(
+      { (void)normalizer.normalize(ast::MatchNode(parsed.matchNode)); },
+      basics::Exception);
+}
+
+TEST_F(PatternNormalizerTest, whereNestedDottedAttributeAccess) {
+  auto parsed = parseMatch(
+      "MATCH (v :vc) -[ e :ec WHERE e.Data.Weight == 1 ]-> (w :vc) RETURN 1");
+  auto statement = normalize(parsed);
+
+  auto const& edge = statement.patterns.front().segments.front().edge;
+  ASSERT_TRUE(edge.filter.has_value());
+  AstNode const* lhs = equalityLhs(edge.filter->node);
+  expectNestedAttributeAccess(lhs, "e", {"Data", "Weight"});
+}
+
+TEST_F(PatternNormalizerTest, whereBracketDottedAttributeName) {
+  auto parsed = parseMatch(
+      "MATCH (v :vc) -[ e :ec WHERE e[\"Data.Weight\"] == 2 ]-> (w :vc) "
+      "RETURN 1");
+  auto statement = normalize(parsed);
+
+  auto const& edge = statement.patterns.front().segments.front().edge;
+  ASSERT_TRUE(edge.filter.has_value());
+  AstNode const* lhs = equalityLhs(edge.filter->node);
+  // Pre-optimize: INDEXED_ACCESS with literal index "Data.Weight".
+  expectSingleDottedAttributeAccess(lhs, "e", "Data.Weight");
+  EXPECT_EQ(NODE_TYPE_INDEXED_ACCESS, lhs->type);
+}
+
+TEST_F(PatternNormalizerTest, whereNestedAndBracketRemainDistinct) {
+  auto parsed = parseMatch(
+      "MATCH (v :vc) -[ e :ec WHERE e.Data.Weight == 1 AND "
+      "e[\"Data.Weight\"] == 2 ]-> (w :vc) RETURN 1");
+  auto statement = normalize(parsed);
+
+  auto const& edge = statement.patterns.front().segments.front().edge;
+  ASSERT_TRUE(edge.filter.has_value());
+  ASSERT_EQ(NODE_TYPE_OPERATOR_BINARY_AND, edge.filter->node->type);
+
+  ast::LogicalOperatorNode andNode(edge.filter->node);
+  AstNode const* nestedLhs = equalityLhs(andNode.getLeft());
+  AstNode const* dottedLhs = equalityLhs(andNode.getRight());
+
+  expectNestedAttributeAccess(nestedLhs, "e", {"Data", "Weight"});
+  expectSingleDottedAttributeAccess(dottedLhs, "e", "Data.Weight");
+
+  // Distinct representations: nested ATTRIBUTE_ACCESS chain vs single
+  // INDEXED_ACCESS / single ATTRIBUTE_ACCESS with a dotted name.
+  EXPECT_NE(nestedLhs->type, dottedLhs->type);
+  EXPECT_EQ(NODE_TYPE_ATTRIBUTE_ACCESS, nestedLhs->type);
+  EXPECT_EQ(NODE_TYPE_INDEXED_ACCESS, dottedLhs->type);
+}
+
+TEST_F(PatternNormalizerTest,
+       whereNestedAndBracketRemainDistinctAfterOptimize) {
+  // Mirrors Query prepare order: parse → validateAndOptimize → normalize
+  // (as invoked from ExecutionPlan::fromNodeMatch).
+  auto parsed = parseMatch(
+      "MATCH (v :vc) -[ e :ec WHERE e.Data.Weight == 1 AND "
+      "e[\"Data.Weight\"] == 2 ]-> (w :vc) RETURN 1");
+  optimizeAst(parsed);
+  auto statement = normalize(parsed);
+
+  auto const& edge = statement.patterns.front().segments.front().edge;
+  ASSERT_TRUE(edge.filter.has_value());
+  ASSERT_EQ(NODE_TYPE_OPERATOR_BINARY_AND, edge.filter->node->type);
+
+  ast::LogicalOperatorNode andNode(edge.filter->node);
+  AstNode const* nestedLhs = equalityLhs(andNode.getLeft());
+  AstNode const* dottedLhs = equalityLhs(andNode.getRight());
+
+  // After optimizeIndexedAccess, e["Data.Weight"] becomes a single
+  // ATTRIBUTE_ACCESS whose attribute name is the literal "Data.Weight".
+  expectNestedAttributeAccess(nestedLhs, "e", {"Data", "Weight"});
+  expectSingleDottedAttributeAccess(dottedLhs, "e", "Data.Weight");
+
+  ASSERT_EQ(NODE_TYPE_ATTRIBUTE_ACCESS, nestedLhs->type);
+  ASSERT_EQ(NODE_TYPE_ATTRIBUTE_ACCESS, dottedLhs->type);
+
+  ast::AttributeAccessNode nestedLeaf(nestedLhs);
+  ast::AttributeAccessNode dottedLeaf(dottedLhs);
+  EXPECT_EQ("Weight", nestedLeaf.getAttributeName());
+  EXPECT_EQ("Data.Weight", dottedLeaf.getAttributeName());
+  EXPECT_NE(nestedLeaf.getAttributeName(), dottedLeaf.getAttributeName());
+
+  // Nested form has Reference under Data; dotted form has Reference under
+  // the single "Data.Weight" attribute.
+  EXPECT_EQ(NODE_TYPE_ATTRIBUTE_ACCESS, nestedLeaf.getObject()->type);
+  EXPECT_EQ(NODE_TYPE_REFERENCE, dottedLeaf.getObject()->type);
+}
+
+TEST_F(PatternNormalizerTest, nestedAttributeEquivalentForms) {
+  auto parsed = parseMatch(
+      "MATCH (v :vc) -[ e :ec WHERE e.Data.Weight == 1 AND "
+      "e[\"Data\"][\"Weight\"] == 1 AND e.Data[\"Weight\"] == 1 ]-> "
+      "(w :vc) RETURN 1");
+  optimizeAst(parsed);
+  auto statement = normalize(parsed);
+
+  auto const& edge = statement.patterns.front().segments.front().edge;
+  ASSERT_TRUE(edge.filter.has_value());
+
+  // ((a AND b) AND c) after left-associative parsing.
+  ASSERT_EQ(NODE_TYPE_OPERATOR_BINARY_AND, edge.filter->node->type);
+  ast::LogicalOperatorNode outer(edge.filter->node);
+  ASSERT_EQ(NODE_TYPE_OPERATOR_BINARY_AND, outer.getLeft()->type);
+  ast::LogicalOperatorNode inner(outer.getLeft());
+
+  AstNode const* formDot = equalityLhs(inner.getLeft());
+  AstNode const* formBrackets = equalityLhs(inner.getRight());
+  AstNode const* formMixed = equalityLhs(outer.getRight());
+
+  expectNestedAttributeAccess(formDot, "e", {"Data", "Weight"});
+  expectNestedAttributeAccess(formBrackets, "e", {"Data", "Weight"});
+  expectNestedAttributeAccess(formMixed, "e", {"Data", "Weight"});
+}
+
+TEST_F(PatternNormalizerTest, edgePropertyDottedNameVsNestedAttribute) {
+  auto parsed = parseMatch(
+      "MATCH (v :vc) -[ e :ec {nested: e.Data.Weight, dotted: "
+      "e[\"Data.Weight\"]} ]-> "
+      "(w :vc) RETURN 1");
+  optimizeAst(parsed);
+  auto statement = normalize(parsed);
+
+  auto const& edge = statement.patterns.front().segments.front().edge;
+  ASSERT_EQ(2U, edge.properties.size());
+
+  EXPECT_EQ("nested", edge.properties[0].key);
+  ASSERT_NE(nullptr, edge.properties[0].value.node);
+  expectNestedAttributeAccess(edge.properties[0].value.node, "e",
+                              {"Data", "Weight"});
+
+  EXPECT_EQ("dotted", edge.properties[1].key);
+  ASSERT_NE(nullptr, edge.properties[1].value.node);
+  expectSingleDottedAttributeAccess(edge.properties[1].value.node, "e",
+                                    "Data.Weight");
+}
+
+TEST_F(PatternNormalizerTest, matchBuilderConsumesNormalizedSimpleVertex) {
+  auto parsed = parseMatch("MATCH (v :vc) RETURN v");
+  auto statement = normalize(parsed);
+
+  ASSERT_EQ(1U, statement.patterns.size());
+  ASSERT_TRUE(statement.patterns.front().start.vertex.has_value());
+  EXPECT_EQ("vc", statement.patterns.front().start.vertex->collection.name());
+
+  auto plan = instantiatePlan(parsed);
+  ASSERT_NE(nullptr, plan);
+}
+
+TEST_F(PatternNormalizerTest, matchBuilderConsumesNormalizedEdgeMatch) {
+  auto parsed =
+      parseMatch("MATCH (v :vc) -[ e :ec ]-> (w :vc) RETURN [v, e, w]");
+  auto statement = normalize(parsed);
+
+  ASSERT_EQ(1U, statement.patterns.front().segments.size());
+  EXPECT_EQ("ec", statement.patterns.front()
+                      .segments.front()
+                      .edge.collections.front()
+                      .name());
+  EXPECT_TRUE(statement.patterns.front()
+                  .segments.front()
+                  .edge.range.isDefaultFixedOne());
+
+  auto plan = instantiatePlan(parsed);
+  ASSERT_NE(nullptr, plan);
+}
+
+TEST_F(PatternNormalizerTest,
+       matchBuilderConsumesNormalizedMultipleEdgeCollections) {
+  auto parsed =
+      parseMatch("MATCH (v :vc) -[ e :ec|ec2 ]-> (w :vc) RETURN [v, e, w]");
+  auto statement = normalize(parsed);
+
+  ASSERT_EQ(
+      2U, statement.patterns.front().segments.front().edge.collections.size());
+
+  auto plan = instantiatePlan(parsed);
+  ASSERT_NE(nullptr, plan);
+}
+
+TEST_F(PatternNormalizerTest, matchBuilderConsumesNormalizedFixedPathRange) {
+  auto parsed =
+      parseMatch("MATCH (v :vc) -[ e :ec * 2..2 ]-> (w :vc) RETURN [v, e, w]");
+  auto statement = normalize(parsed);
+  auto const& range = statement.patterns.front().segments.front().edge.range;
+
+  EXPECT_FALSE(range.isDefaultFixedOne());
+  EXPECT_TRUE(range.isFixed());
+  EXPECT_EQ(2U, range.minDepth());
+  EXPECT_EQ(2U, range.maxDepth());
+
+  auto plan = instantiatePlan(parsed);
+  ASSERT_NE(nullptr, plan);
+}
+
+TEST_F(PatternNormalizerTest, matchBuilderConsumesNormalizedBoundedPathRange) {
+  auto parsed =
+      parseMatch("MATCH (v :vc) -[ e :ec * 1..3 ]-> (w :vc) RETURN [v, e, w]");
+  auto statement = normalize(parsed);
+  auto const& range = statement.patterns.front().segments.front().edge.range;
+
+  EXPECT_EQ(1U, range.minDepth());
+  EXPECT_TRUE(range.hasMaxDepth());
+  EXPECT_EQ(3U, range.maxDepth());
+
+  auto plan = instantiatePlan(parsed);
+  ASSERT_NE(nullptr, plan);
+}
+
+TEST_F(PatternNormalizerTest,
+       matchBuilderConsumesNormalizedPropertyAccessForms) {
+  auto parsed = parseMatch(
+      "MATCH (v :vc) -[ e :ec WHERE e.Data.Weight == 1 AND "
+      "e[\"Data.Weight\"] == 2 ]-> (w :vc) RETURN e");
+  optimizeAst(parsed);
+  auto statement = normalize(parsed);
+
+  auto const& edge = statement.patterns.front().segments.front().edge;
+  ASSERT_TRUE(edge.filter.has_value());
+
+  auto plan = instantiatePlan(parsed);
+  ASSERT_NE(nullptr, plan);
+}
+
+TEST_F(PatternNormalizerTest,
+       matchBuilderConsumesResolvedCollectionBindParameter) {
+  auto parsed = parseMatch("MATCH (v :@@vc) -[ e :@@ec ]-> (w :@@vc) RETURN v",
+                           true, {{"@vc", "vc"}, {"@ec", "ec"}});
+  auto statement = normalize(parsed);
+
+  EXPECT_EQ(DataSource::Kind::kCollection,
+            statement.patterns.front().start.vertex->collection.kind());
+  EXPECT_EQ("vc", statement.patterns.front().start.vertex->collection.name());
+
+  auto plan = instantiatePlan(parsed);
+  ASSERT_NE(nullptr, plan);
+}
+
+TEST_F(PatternNormalizerTest,
+       fromNodeMatchRejectsUnresolvedCollectionBindParameter) {
+  // Normalization intentionally preserves unresolved collection bind
+  // parameters as DataSource::Kind::kBindParameter. Builder then
+  // rejects them via requireCollectionName (TRI_ERROR_INTERNAL).
+
+  auto parsed = parseMatch("MATCH (v :@@vc) -[ e :ec ]-> (w :vc) RETURN 1");
+
+  auto statement = normalize(parsed);
+  ASSERT_EQ(1U, statement.patterns.size());
+  ASSERT_TRUE(statement.patterns.front().start.vertex.has_value());
+  EXPECT_EQ(DataSource::Kind::kBindParameter,
+            statement.patterns.front().start.vertex->collection.kind());
+
+  try {
+    // trackMemoryUsage=false: safer under gtest (see ExecutionPlan.h).
+    auto plan = ExecutionPlan::instantiateFromAst(parsed.ast.get(), false);
+    FAIL() << "expected unresolved collection bind parameter to throw during "
+              "plan construction, but instantiateFromAst succeeded";
+    (void)plan;
+  } catch (basics::Exception const& ex) {
+    EXPECT_EQ(TRI_ERROR_INTERNAL, ex.code());
+  } catch (...) {
+    FAIL() << "expected basics::Exception with TRI_ERROR_INTERNAL";
+  }
+}
+
+TEST_F(PatternNormalizerTest,
+       fromNodeMatchRejectsUnresolvedEdgeCollectionBindParameter) {
+  // Start/target use an existing collection so plan construction reaches
+  // requireCollectionName on the unresolved edge bind parameter.
+  auto parsed = parseMatch("MATCH (v :mvc) -[ e :@@ec ]-> (w :mvc) RETURN 1");
+
+  auto statement = normalize(parsed);
+  ASSERT_EQ(1U, statement.patterns.size());
+  ASSERT_EQ(1U, statement.patterns.front().segments.size());
+  EXPECT_EQ(DataSource::Kind::kBindParameter, statement.patterns.front()
+                                                  .segments.front()
+                                                  .edge.collections.front()
+                                                  .kind());
+
+  try {
+    auto plan = ExecutionPlan::instantiateFromAst(parsed.ast.get(), false);
+    FAIL() << "expected unresolved edge collection bind parameter to throw "
+              "during plan construction, but instantiateFromAst succeeded";
+    (void)plan;
+  } catch (basics::Exception const& ex) {
+    EXPECT_EQ(TRI_ERROR_INTERNAL, ex.code());
+  } catch (...) {
+    FAIL() << "expected basics::Exception with TRI_ERROR_INTERNAL";
+  }
+}
+
+}  // namespace

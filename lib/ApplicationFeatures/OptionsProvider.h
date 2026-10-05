@@ -46,31 +46,4 @@ struct OptionsProviderImpl {
   OptionsT _options;
 };
 
-// This is a temporary solution to allow us to move logic to declare/validate
-// options out of the features without changing the API of the features
-// themselves. The option values still have to live in the features because
-// ProgramOptions::addOption stores a reference to the value. That's why this
-// class is templated with the Options type and takes the options struct as
-// argument.
-// Long term we want to remove this and make the provide a pure virtual class.
-// To get there, we have to remove the option related API from the features and
-// instead add an additional phase in the startup code that instantiates the
-// different concrete options providers. Then we can process program options
-// _before_ creating the features and can pass the already parsed options to
-// the features when they are created.
-template<typename OptionsT>
-struct OptionsProvider {
-  using OptionsType = OptionsT;
-
-  virtual ~OptionsProvider() = default;
-
-  // Declare options, binding them to the provided options struct
-  virtual void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                              OptionsT& options) = 0;
-
-  // Optional callback to validate options
-  virtual void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
-                               OptionsT& options) {}
-};
-
 }  // namespace arangodb

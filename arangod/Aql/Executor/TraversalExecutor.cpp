@@ -30,7 +30,6 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/ThreadLocalLeaser.h"
 #include "Basics/system-compiler.h"
-#include "Graph/Enumerators/OneSidedEnumeratorInterface.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/Providers/ClusterProvider.h"
@@ -154,7 +153,7 @@ TraversalExecutorInfos::TraversalExecutorInfos(
 }
 
 // REFACTOR
-arangodb::graph::TraversalEnumerator*
+arangodb::graph::ITraversalEnumerator*
 TraversalExecutorInfos::traversalEnumerator() const {
   TRI_ASSERT(_traversalEnumerator != nullptr);
   return _traversalEnumerator.get();
@@ -295,7 +294,7 @@ auto TraversalExecutorInfos::parseTraversalEnumeratorSingleServer(
   TRI_ASSERT(!isSmart);
   TRI_ASSERT(_traversalEnumerator == nullptr);
 
-  _traversalEnumerator = TraversalEnumerator::createEnumerator<
+  _traversalEnumerator = ITraversalEnumerator::createEnumerator<
       SingleServerProvider<SingleServerProviderStep>>(
       order, uniqueVertices, uniqueEdges, query, std::move(baseProviderOptions),
       std::move(pathValidatorOptions), std::move(enumeratorOptions));
@@ -341,20 +340,20 @@ auto TraversalExecutorInfos::parseTraversalEnumeratorCluster(
     baseProviderOptions.setRPCCommunicator(
         std::make_unique<aql::enterprise::SmartGraphRPCCommunicator>(
             query, query.resourceMonitor(), baseProviderOptions.engines()));
-    _traversalEnumerator = TraversalEnumerator::createEnumerator<
+    _traversalEnumerator = ITraversalEnumerator::createEnumerator<
         aql::enterprise::SmartGraphProvider<ClusterProviderStep>>(
         order, uniqueVertices, uniqueEdges, query,
         std::move(baseProviderOptions), std::move(pathValidatorOptions),
         std::move(enumeratorOptions));
   } else {
-    _traversalEnumerator = TraversalEnumerator::createEnumerator<
+    _traversalEnumerator = ITraversalEnumerator::createEnumerator<
         ClusterProvider<ClusterProviderStep>>(
         order, uniqueVertices, uniqueEdges, query,
         std::move(baseProviderOptions), std::move(pathValidatorOptions),
         std::move(enumeratorOptions));
   }
 #else
-  _traversalEnumerator = TraversalEnumerator::createEnumerator<
+  _traversalEnumerator = ITraversalEnumerator::createEnumerator<
       ClusterProvider<ClusterProviderStep>>(
       order, uniqueVertices, uniqueEdges, query, std::move(baseProviderOptions),
       std::move(pathValidatorOptions), std::move(enumeratorOptions));
@@ -535,7 +534,8 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
   return traversalEnumerator()->stealStats();
 }
 
-arangodb::graph::TraversalEnumerator* TraversalExecutor::traversalEnumerator() {
+arangodb::graph::ITraversalEnumerator*
+TraversalExecutor::traversalEnumerator() {
   TRI_ASSERT(_traversalEnumerator != nullptr);
   return _traversalEnumerator;
 }

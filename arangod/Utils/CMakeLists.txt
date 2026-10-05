@@ -3,6 +3,7 @@ add_library(arango_utils STATIC
   ExecContext.cpp
   OperationOptions.cpp
   SupportInfoBuilder.cpp
+  Thread.cpp
   UrlHelper.cpp
 )
 

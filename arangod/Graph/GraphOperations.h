@@ -223,6 +223,10 @@ class GraphOperations {
       transaction::Methods* trx, std::string const& collectionName,
       VPackSlice document, bool waitForSync, bool returnNew);
 
+  /// @brief Checks if the user is authorized to manipulate the graph
+  /// structure.
+  Result checkCanModifyGraphStructure() const;
+
   Result checkEdgeCollectionAvailability(std::string const& edgeCollectionName);
 
   /// @brief Validates the given vertex collection name and checks if it is
@@ -237,7 +241,7 @@ class GraphOperations {
   bool hasROPermissionsFor(std::string const& collection) const;
   bool hasRWPermissionsFor(std::string const& collection) const;
   bool hasPermissionsFor(std::string const& collection,
-                         auth::Level level) const;
+                         CollectionAccessLevel level) const;
 
   Result checkEdgeDefinitionPermissions(
       EdgeDefinition const& edgeDefinition) const;

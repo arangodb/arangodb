@@ -30,6 +30,7 @@
 #include "VocBase/Identifiers/TransactionId.h"
 
 #include <string>
+#include <string_view>
 #include <unordered_set>
 
 namespace arangodb {
@@ -62,11 +63,11 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
                          GeneralRequest*, GeneralResponse*);
 
  public:
-  static std::string const Revisions;
-  static std::string const Tree;
-  static std::string const TreePending;
-  static std::string const Ranges;
-  static std::string const Documents;
+  static constexpr std::string_view Revisions = "revisions";
+  static constexpr std::string_view Tree = "tree";
+  static constexpr std::string_view TreePending = "treepending";
+  static constexpr std::string_view Ranges = "ranges";
+  static constexpr std::string_view Documents = "documents";
 
  protected:
   //////////////////////////////////////////////////////////////////////////////

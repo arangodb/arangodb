@@ -45,6 +45,10 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
+#include <absl/strings/str_cat.h>
+
+#include <limits>
+#include <optional>
 #include <string_view>
 
 namespace arangodb::transaction {
@@ -66,7 +70,56 @@ bool isSystemAttribute(std::string_view key) noexcept {
   }
 }
 
+// Time travel: _created and _expired are system attributes on TT collections -
+// the engine owns their values, so user input for them is never copied through.
+bool isTimeTravelAttribute(std::string_view key) noexcept {
+  return key == StaticStrings::Created || key == StaticStrings::Expired;
+}
+
+// Time travel: stamp a newly written version with the user-supplied creation
+// timestamp and a null expiry. The timestamp must be provided explicitly (the
+// PoC does not auto-generate it). Any user-supplied _expired is ignored: the
+// version being written is by definition still live - it is the *previous*
+// version that gets expired, and the storage engine does that.
+Result addTimeTravelAttributes(velocypack::Slice value,
+                               velocypack::Builder& b) {
+  auto created = timeTravelWriteTimestamp(value);
+  if (created.fail()) {
+    return created.result();
+  }
+  b.add(StaticStrings::Created, VPackValue(created.get()));
+  b.add(StaticStrings::Expired, VPackSlice::nullSlice());
+  return {};
+}
+
 }  // namespace
+
+ResultT<std::uint64_t> timeTravelWriteTimestamp(velocypack::Slice value) {
+  VPackSlice created = value.get(StaticStrings::Created);
+  std::optional<std::uint64_t> ts;
+  if (created.isUInt()) {
+    ts = created.getUIntUnchecked();
+  } else if (created.isInt() || created.isSmallInt()) {
+    if (auto v = created.getIntUnchecked(); v > 0) {
+      ts = static_cast<std::uint64_t>(v);
+    }
+  }
+  // Both ends of the range are reserved, so they are rejected alongside
+  // non-integers and negative values: write-write validation reads at
+  // `_created - 1`, which 0 leaves no room for, and the maximum value is the
+  // "current state" timestamp, which rocksdb reads back as "no commit
+  // timestamp was assigned at all".
+  if (!ts.has_value() || *ts == 0 ||
+      *ts == std::numeric_limits<std::uint64_t>::max()) {
+    return Result{TRI_ERROR_BAD_PARAMETER,
+                  absl::StrCat("time-travel collections require '",
+                               StaticStrings::Created,
+                               "' to be an integer timestamp greater than 0 "
+                               "and less than ",
+                               std::numeric_limits<std::uint64_t>::max())};
+  }
+  return *ts;
+}
 
 /// @brief quick access to the _key attribute in a database document
 /// the document must have at least two attributes, and _key is supposed to
@@ -472,6 +525,8 @@ Result mergeObjectsForUpdate(Methods& trx, LogicalCollection& collection,
   auto b = ThreadLocalBuilderLeaser::lease();
   b->openObject();
 
+  bool const timeTravel = collection.timeTravelEnabled();
+
   VPackSlice keySlice = oldValue.get(StaticStrings::KeyString);
   VPackSlice idSlice = oldValue.get(StaticStrings::IdString);
   TRI_ASSERT(!keySlice.isNone());
@@ -487,8 +542,10 @@ Result mergeObjectsForUpdate(Methods& trx, LogicalCollection& collection,
     while (it.valid()) {
       auto current = *it;
       auto key = current.key.stringView();
-      if (isSystemAttribute(key)) {
-        // note _from and _to and ignore _id, _key and _rev
+      if (isSystemAttribute(key) ||
+          (timeTravel && isTimeTravelAttribute(key))) {
+        // note _from and _to and ignore _id, _key, _rev and (on time-travel
+        // collections) _created/_expired, which are stamped below
         if (collection.type() == TRI_COL_TYPE_EDGE) {
           if (key == StaticStrings::FromString) {
             fromSlice = current.value;
@@ -559,6 +616,13 @@ Result mergeObjectsForUpdate(Methods& trx, LogicalCollection& collection,
     b->add(StaticStrings::RevString, revisionId.toValuePair(ridBuffer));
   }
 
+  // _created / _expired
+  if (timeTravel) {
+    if (auto res = addTimeTravelAttributes(newValue, *b); res.fail()) {
+      return res;
+    }
+  }
+
   containers::FlatHashSet<std::string_view> keysWritten;
 
   // add other attributes after the system attributes
@@ -568,7 +632,8 @@ Result mergeObjectsForUpdate(Methods& trx, LogicalCollection& collection,
       auto current = (*it);
       auto key = current.key.stringView();
       // exclude system attributes in old value now
-      if (isSystemAttribute(key)) {
+      if (isSystemAttribute(key) ||
+          (timeTravel && isTimeTravelAttribute(key))) {
         it.next();
         continue;
       }
@@ -720,17 +785,32 @@ Result newObjectForInsert(Methods& trx, LogicalCollection& collection,
     b->add(StaticStrings::RevString, revisionId.toValuePair(ridBuffer));
   }
 
+  // _created / _expired: time-travel collections stamp every version with the
+  // user-supplied creation timestamp and a null expiry. The user must provide
+  // _created explicitly (the PoC does not auto-generate it); a missing or
+  // non-numeric value is rejected. Any user-supplied _expired on insert is
+  // ignored - a freshly inserted version is always live.
+  bool const timeTravel = collection.timeTravelEnabled();
+  if (timeTravel) {
+    if (auto res = addTimeTravelAttributes(value, *b); res.fail()) {
+      return res;
+    }
+  }
+
   containers::FlatHashSet<std::string_view> keysWritten;
 
   // add other attributes after the system attributes
   VPackObjectIterator it(value, true);
   while (it.valid()) {
     auto key = it.key().stringView();
-    // _id, _key, _rev, _from, _to. minimum size here is 3
+    // _id, _key, _rev, _from, _to. minimum size here is 3. for time-travel
+    // collections _created/_expired are system attributes too (added above),
+    // so they must not be copied again from the user input.
     if (key.size() < 3 || key[0] != '_' ||
         (key != StaticStrings::KeyString && key != StaticStrings::IdString &&
          key != StaticStrings::RevString && key != StaticStrings::FromString &&
-         key != StaticStrings::ToString)) {
+         key != StaticStrings::ToString &&
+         !(timeTravel && isTimeTravelAttribute(key)))) {
       b->add(key, it.value());
       if (batchOptions.computedValues != nullptr) {
         // track which attributes we have produced so that they are not
@@ -768,6 +848,8 @@ Result newObjectForReplace(Methods& trx, LogicalCollection& collection,
                            BatchOptions& batchOptions) {
   auto b = ThreadLocalBuilderLeaser::lease();
   b->openObject();
+
+  bool const timeTravel = collection.timeTravelEnabled();
 
   // add system attributes first, in this order:
   // _key, _id, _from, _to, _rev
@@ -826,6 +908,13 @@ Result newObjectForReplace(Methods& trx, LogicalCollection& collection,
     b->add(StaticStrings::RevString, revisionId.toValuePair(&ridBuffer[0]));
   }
 
+  // _created / _expired
+  if (timeTravel) {
+    if (auto res = addTimeTravelAttributes(newValue, *b); res.fail()) {
+      return res;
+    }
+  }
+
   containers::FlatHashSet<std::string_view> keysWritten;
 
   // add other attributes after the system attributes
@@ -833,11 +922,13 @@ Result newObjectForReplace(Methods& trx, LogicalCollection& collection,
   while (it.valid()) {
     auto key = it.key().stringView();
 
-    // _id, _key, _rev, _from, _to. minimum size here is 3
+    // _id, _key, _rev, _from, _to. minimum size here is 3. for time-travel
+    // collections _created/_expired are system attributes too (added above).
     if (key.size() < 3 || key[0] != '_' ||
         (key != StaticStrings::KeyString && key != StaticStrings::IdString &&
          key != StaticStrings::RevString && key != StaticStrings::FromString &&
-         key != StaticStrings::ToString)) {
+         key != StaticStrings::ToString &&
+         !(timeTravel && isTimeTravelAttribute(key)))) {
       b->add(key, it.value());
       if (batchOptions.computedValues != nullptr) {
         // track which attributes we have produced so that they are not

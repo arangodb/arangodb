@@ -2110,6 +2110,24 @@ AstNode* Ast::createPatternPathVariable(std::string_view name) {
   return n;
 }
 
+AstNode* Ast::createPatternOutVariable(std::string_view name) {
+  if (name.empty()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  // A pattern out variable must not exist before. Otherwise it is supposed to
+  // be a reference. References must not be restricted within the pattern.
+  if (_scopes.existsVariable(name)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_PARSE,
+        absl::StrCat("filters or constraints are not allowed on MATCH pattern "
+                     "reference '",
+                     name, "'"));
+  }
+
+  return createNodeVariable(name, true);
+}
+
 AstNode* Ast::createNodeMatch() {
   if (not query().queryOptions().isMatchStatementEnabled()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -3126,7 +3144,7 @@ bool Ast::getReferencedAttributesRecursive(
           // here we need to take special precautions that we normally
           // don't need
           if (expansionNode.getFilter()->type != NODE_TYPE_NOP ||
-              expansionNode.getOptions()->type != NODE_TYPE_NOP) {
+              expansionNode.getProjection()->type != NODE_TYPE_NOP) {
             // expansion has a filter or a projection set, e.g.
             // p.vertices[FILTER CURRENT.x == 1 RETURN CURRENT.y].
             // we currently cannot handle this.

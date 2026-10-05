@@ -36,7 +36,6 @@ namespace std_coro = std;
 #include "Basics/Result.h"
 #include "Promise.h"
 #include "Try.h"
-#include "Utils/ExecContext.h"
 
 /// This file contains helper classes and tools for coroutines.
 

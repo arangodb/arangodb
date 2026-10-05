@@ -156,7 +156,7 @@ class QueryNGramMatch : public QueryTest {
                                  vocbase2);
         std::shared_ptr<arangodb::LogicalCollection> unused;
         ASSERT_NE(nullptr, vocbase2);
-        arangodb::OperationOptions options(arangodb::ExecContext::current());
+        arangodb::OperationOptions options;
         arangodb::methods::Collections::createSystem(
             *vocbase2, options, arangodb::tests::AnalyzerCollectionName, false,
             unused);

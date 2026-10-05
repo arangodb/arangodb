@@ -161,13 +161,7 @@ struct NodeLoadInspectorImpl
   }
 
  private:
-  template<class>
-  friend struct detail::EmbeddedFields;
-  template<class, class...>
-  friend struct detail::EmbeddedFieldsImpl;
-  template<class, class, class>
-  friend struct detail::EmbeddedFieldsWithObjectInvariant;
-  template<class, class>
+  template<class, class, FieldCondition>
   friend struct detail::EmbeddedFieldInspector;
 
   template<class, class, class>

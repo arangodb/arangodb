@@ -1046,6 +1046,325 @@ TEST_F(VPackLoadInspectorTest, load_object_with_invariant_and_fallback) {
   EXPECT_EQ("foobar", i.s);
 }
 
+TEST_F(VPackLoadInspectorTest, load_conditional_field_when_condition_is_met) {
+  builder.openObject();
+  builder.add("version", VPackValue(2));
+  builder.add("newField", VPackValue(42));
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  ConditionalReject c;
+  auto result = inspector.apply(c);
+  ASSERT_TRUE(result.ok()) << result.error();
+  EXPECT_EQ(42, c.newField);
+}
+
+TEST_F(VPackLoadInspectorTest,
+       load_rejecting_condition_leaves_value_untouched) {
+  builder.openObject();
+  builder.add("version", VPackValue(1));
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  ConditionalReject c{.version = 0, .newField = 7};
+  auto result = inspector.apply(c);
+  ASSERT_TRUE(result.ok()) << result.error();
+  EXPECT_EQ(7, c.newField);
+}
+
+TEST_F(VPackLoadInspectorTest, load_rejecting_condition_rejects_present_field) {
+  builder.openObject();
+  builder.add("version", VPackValue(1));
+  builder.add("newField", VPackValue(42));
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  ConditionalReject c;
+  auto result = inspector.apply(c);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Found unexpected attribute 'newField'", result.error());
+}
+
+TEST_F(VPackLoadInspectorTest,
+       load_rejecting_condition_tolerates_present_field_when_ignoring_unknown) {
+  builder.openObject();
+  builder.add("version", VPackValue(1));
+  builder.add("newField", VPackValue(42));
+  builder.close();
+  VPackLoadInspector inspector{builder, {.ignoreUnknownFields = true}};
+
+  ConditionalReject c{.version = 0, .newField = 7};
+  auto result = inspector.apply(c);
+  ASSERT_TRUE(result.ok()) << result.error();
+  EXPECT_EQ(7, c.newField);
+}
+
+TEST_F(VPackLoadInspectorTest,
+       load_ignoring_condition_tolerates_present_field) {
+  builder.openObject();
+  builder.add("version", VPackValue(1));
+  builder.add("newField", VPackValue(42));
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  ConditionalIgnore c{.version = 0, .newField = 7};
+  auto result = inspector.apply(c);
+  ASSERT_TRUE(result.ok()) << result.error();
+  EXPECT_EQ(7, c.newField);
+}
+
+TEST_F(VPackLoadInspectorTest, load_applies_load_scoped_condition) {
+  builder.openObject();
+  builder.add("version", VPackValue(1));
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  ConditionalLoadOnly c{.version = 0, .newField = 7};
+  auto result = inspector.apply(c);
+  ASSERT_TRUE(result.ok()) << result.error();
+  EXPECT_EQ(7, c.newField);
+}
+
+TEST_F(VPackLoadInspectorTest, load_ignores_save_scoped_condition) {
+  builder.openObject();
+  builder.add("version", VPackValue(1));
+  builder.add("newField", VPackValue(42));
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  ConditionalSaveOnly c;
+  auto result = inspector.apply(c);
+  ASSERT_TRUE(result.ok()) << result.error();
+  EXPECT_EQ(42, c.newField);
+}
+
+TEST_F(VPackLoadInspectorTest, load_skipped_field_applies_fallback) {
+  builder.openObject();
+  builder.add("version", VPackValue(1));
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  ConditionalWithFallback c{.version = 0, .newField = 7};
+  auto result = inspector.apply(c);
+  ASSERT_TRUE(result.ok()) << result.error();
+  EXPECT_EQ(42, c.newField);
+}
+
+TEST_F(VPackLoadInspectorTest, load_processed_field_still_applies_fallback) {
+  builder.openObject();
+  builder.add("version", VPackValue(2));
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  ConditionalWithFallback c{.version = 0, .newField = 7};
+  auto result = inspector.apply(c);
+  ASSERT_TRUE(result.ok()) << result.error();
+  EXPECT_EQ(42, c.newField);
+}
+
+TEST_F(VPackLoadInspectorTest,
+       load_skipped_field_checks_invariant_on_fallback) {
+  builder.openObject();
+  builder.add("version", VPackValue(1));
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  // The member starts out violating the invariant; only the fallback, applied
+  // before the check, makes it valid.
+  ConditionalFallbackAndInvariant c{.version = 0, .newField = 0};
+  auto result = inspector.apply(c);
+  ASSERT_TRUE(result.ok()) << result.error();
+  EXPECT_EQ(42, c.newField);
+}
+
+TEST_F(VPackLoadInspectorTest, load_selects_first_alternative_field) {
+  builder.openObject();
+  builder.add("useId", VPackValue(true));
+  builder.add("target", VPackValue(7));
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  AlternativeFields a{.useId = false, .id = 0, .name = "untouched"};
+  auto result = inspector.apply(a);
+  ASSERT_TRUE(result.ok()) << result.error();
+  EXPECT_EQ(7u, a.id);
+  EXPECT_EQ("untouched", a.name);
+}
+
+TEST_F(VPackLoadInspectorTest, load_selects_second_alternative_field) {
+  builder.openObject();
+  builder.add("useId", VPackValue(false));
+  builder.add("target", VPackValue("foo"));
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  AlternativeFields a{.useId = true, .id = 42, .name = ""};
+  auto result = inspector.apply(a);
+  ASSERT_TRUE(result.ok()) << result.error();
+  EXPECT_EQ(42u, a.id);
+  EXPECT_EQ("foo", a.name);
+}
+
+TEST_F(VPackLoadInspectorTest,
+       load_alternative_field_resolves_fallback_through_condition) {
+  builder.openObject();
+  builder.add("useId", VPackValue(false));
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  AlternativeFields a{.useId = true, .id = 0, .name = "untouched"};
+  auto result = inspector.apply(a);
+  ASSERT_TRUE(result.ok()) << result.error();
+  EXPECT_EQ("untouched", a.name);
+}
+
+TEST_F(VPackLoadInspectorTest,
+       load_alternative_field_stays_required_without_fallback) {
+  builder.openObject();
+  builder.add("useId", VPackValue(true));
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  AlternativeFields a;
+  auto result = inspector.apply(a);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Missing required attribute 'target'", result.error());
+}
+
+TEST_F(VPackLoadInspectorTest, load_skipped_field_still_checks_invariant) {
+  builder.openObject();
+  builder.add("version", VPackValue(1));
+  builder.close();
+
+  {  // the member has no fallback, so its own value is what gets checked
+    VPackLoadInspector inspector{builder};
+    ConditionalWithInvariant c{.version = 0, .newField = 0};
+    auto result = inspector.apply(c);
+    ASSERT_FALSE(result.ok());
+    EXPECT_EQ("Field invariant failed", result.error());
+    EXPECT_EQ("newField", result.path());
+  }
+  {
+    VPackLoadInspector inspector{builder};
+    ConditionalWithInvariant c{.version = 0, .newField = 5};
+    auto result = inspector.apply(c);
+    ASSERT_TRUE(result.ok()) << result.error();
+    EXPECT_EQ(5, c.newField);
+  }
+}
+
+TEST_F(VPackLoadInspectorTest, load_processed_field_still_checks_invariant) {
+  builder.openObject();
+  builder.add("version", VPackValue(2));
+  builder.add("newField", VPackValue(0));
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  ConditionalWithInvariant c;
+  auto result = inspector.apply(c);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Field invariant failed", result.error());
+  EXPECT_EQ("newField", result.path());
+}
+
+TEST_F(VPackLoadInspectorTest, load_conditional_transformed_field) {
+  builder.openObject();
+  builder.add("version", VPackValue(2));
+  builder.add("newField", VPackValue("42"));
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  ConditionalWithTransform c;
+  auto result = inspector.apply(c);
+  ASSERT_TRUE(result.ok()) << result.error();
+  EXPECT_EQ(42, c.newField);
+}
+
+TEST_F(VPackLoadInspectorTest, load_conditional_group_when_condition_is_met) {
+  builder.openObject();
+  builder.add("version", VPackValue(2));
+  builder.add("a", VPackValue(1));
+  builder.add("b", VPackValue(2));
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  ConditionalGroupReject c;
+  auto result = inspector.apply(c);
+  ASSERT_TRUE(result.ok()) << result.error();
+  EXPECT_EQ(1, c.group.a);
+  EXPECT_EQ(2, c.group.b);
+}
+
+TEST_F(VPackLoadInspectorTest, load_rejecting_group_leaves_members_untouched) {
+  builder.openObject();
+  builder.add("version", VPackValue(1));
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  ConditionalGroupReject c{.version = 0, .group = {.a = 7, .b = 8}};
+  auto result = inspector.apply(c);
+  ASSERT_TRUE(result.ok()) << result.error();
+  EXPECT_EQ(7, c.group.a);
+  EXPECT_EQ(8, c.group.b);
+}
+
+TEST_F(VPackLoadInspectorTest, load_rejecting_group_rejects_present_attribute) {
+  builder.openObject();
+  builder.add("version", VPackValue(1));
+  builder.add("a", VPackValue(1));
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  ConditionalGroupReject c;
+  auto result = inspector.apply(c);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Found unexpected attribute 'a'", result.error());
+}
+
+TEST_F(VPackLoadInspectorTest,
+       load_ignoring_group_tolerates_present_attributes) {
+  builder.openObject();
+  builder.add("version", VPackValue(1));
+  builder.add("a", VPackValue(1));
+  builder.add("b", VPackValue(2));
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  ConditionalGroupIgnore c{.version = 0, .group = {.a = 7, .b = 8}};
+  auto result = inspector.apply(c);
+  ASSERT_TRUE(result.ok()) << result.error();
+  EXPECT_EQ(7, c.group.a);
+  EXPECT_EQ(8, c.group.b);
+}
+
+TEST_F(VPackLoadInspectorTest,
+       load_skipped_group_still_checks_object_invariant) {
+  builder.openObject();
+  builder.add("version", VPackValue(1));
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  ConditionalGroupWithObjectInvariant c{.version = 0, .group = {.a = 99}};
+  auto result = inspector.apply(c);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Object invariant failed", result.error());
+}
+
+TEST_F(VPackLoadInspectorTest, load_conditional_embedded_field) {
+  builder.openObject();
+  builder.add("version", VPackValue(1));
+  builder.add("innerVersion", VPackValue(1));
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  ConditionalEmbedded c;
+  c.inner.innerVersion = 0;
+  c.inner.newField = 7;
+  auto result = inspector.apply(c);
+  ASSERT_TRUE(result.ok()) << result.error();
+  EXPECT_EQ(7, c.inner.newField);
+}
+
 TEST_F(VPackLoadInspectorTest, load_object_with_object_invariant) {
   builder.openObject();
   builder.add("i", VPackValue(42));

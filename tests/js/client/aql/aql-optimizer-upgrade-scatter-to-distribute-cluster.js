@@ -24,6 +24,7 @@
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
+const isEnterprise = require("internal").isEnterprise();
 
 function optimizerUpgradeScatterToDistributeSuite() {
 
@@ -33,6 +34,8 @@ function optimizerUpgradeScatterToDistributeSuite() {
   let col_msk_dsl; // distribute shards like the collection with multiple shard keys
   let col_id;
   let col_id_key;
+  let col_sat;
+  let col_edge; // edges pointing into the satellite collection
 
   return {
     setUpAll: function () {
@@ -42,6 +45,8 @@ function optimizerUpgradeScatterToDistributeSuite() {
       db._drop("UnitTestsCollection_col");
       db._drop("UnitTestsCollection_col_id");
       db._drop("UnitTestsCollection_col_id_key");
+      db._drop("UnitTestsCollection_col_edge");
+      db._drop("UnitTestsCollection_col_sat");
 
       col = db._create("UnitTestsCollection_col", { numberOfShards: 10});
       col_dsl = db._create("UnitTestsCollection_col_dsl", { numberOfShards: 10, distributeShardsLike: "UnitTestsCollection_col" });
@@ -91,6 +96,19 @@ function optimizerUpgradeScatterToDistributeSuite() {
       col_msk_dsl.insert(docs_no_key);
       col_id.insert(docs_id);
       col_id_key.insert(docs_id_key);
+
+      if (isEnterprise) {
+        col_sat = db._create("UnitTestsCollection_col_sat", {replicationFactor: "satellite"});
+        col_edge = db._createEdgeCollection("UnitTestsCollection_col_edge", {numberOfShards: 3});
+        let sat_docs = [];
+        let edges = [];
+        for (let i = 0; i < 10; ++i) {
+          sat_docs.push({_key: "sat-" + i});
+          edges.push({_key: "edge-" + i, _from: col_sat.name() + "/sat-" + i, _to: col_sat.name() + "/sat-" + i});
+        }
+        col_sat.insert(sat_docs);
+        col_edge.insert(edges);
+      }
     },
 
     tearDownAll: function () {
@@ -100,6 +118,8 @@ function optimizerUpgradeScatterToDistributeSuite() {
       db._drop("UnitTestsCollection_col");
       db._drop("UnitTestsCollection_col_id");
       db._drop("UnitTestsCollection_col_id_key");
+      db._drop("UnitTestsCollection_col_edge");
+      db._drop("UnitTestsCollection_col_sat");
     },
 
     test_DefaultShardKey_Upgrade: function() {
@@ -356,6 +376,37 @@ function optimizerUpgradeScatterToDistributeSuite() {
       db._explain(query);
       let plan = db._createStatement({query: query}).explain().plan;
       assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
+    },
+
+    test_DefaultShardKey_ConstantAndId_RestrictToSingleShard: function() {
+      const opts = {optimizer: {rules: ["-interchange-adjacent-enumerations"]}};
+      let query =
+          `FOR doc1 IN ${col_id.name()}
+            FOR doc2 IN ${col_id.name()}
+             FILTER doc2._key == "key-42" AND doc2._id == doc1.foreign_id
+             RETURN doc2._key`;
+      let plan = db._createStatement({query, options: opts}).explain().plan;
+      assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
+      assertTrue(plan.rules.includes("restrict-to-single-shard"));
+      let result = db._query(query, {}, opts).toArray();
+      assertEqual(["key-42"], result);
+    },
+
+    test_SatelliteJoinedIntoLaterSnippet_NoUpgrade: function() {
+      if (!isEnterprise) {
+        return;
+      }
+      let query =
+          `FOR e1 IN ${col_edge.name()}
+            FOR v IN ${col_sat.name()} FILTER v._id == e1._from
+             FOR e2 IN ${col_edge.name()}
+              RETURN [e1._key, v._key, e2._key]`;
+      let plan = db._createStatement({query}).explain().plan;
+      assertTrue(plan.rules.includes("remove-satellite-joins"));
+      assertFalse(plan.rules.includes("upgrade-scatter-to-distribute"));
+      assertEqual([], plan.nodes.filter(n => n.type === "DistributeNode"));
+      let result = db._query(query).toArray();
+      assertEqual(col_edge.count() * col_edge.count(), result.length);
     }
   };
 }

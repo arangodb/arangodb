@@ -45,15 +45,15 @@ velocypack::SharedSlice toOwnedSharedSlice(velocypack::Slice slice) {
   return velocypack::SharedSlice{std::move(buf)};
 }
 
-// Single switch on VectorIndexFormatVersion so the compiler flags an
+// Single switch on FormatVersion so the compiler flags an
 // unhandled version when a new on-disk format is added.
 template<template<typename> typename Iter, typename... Args>
 faiss::InvertedListsIterator* makeWithStoredValuesByVersion(
-    VectorIndexFormatVersion version, Args&&... args) {
+    FormatVersion version, Args&&... args) {
   switch (version) {
-    case VectorIndexFormatVersion::kV1:
+    case FormatVersion::kV1:
       return new Iter<WithStoredValuesV1Strategy>(std::forward<Args>(args)...);
-    case VectorIndexFormatVersion::kV2:
+    case FormatVersion::kV2:
       return new Iter<WithStoredValuesV2Strategy>(std::forward<Args>(args)...);
   }
   ADB_UNREACHABLE;

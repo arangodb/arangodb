@@ -4,7 +4,8 @@ version: 2.1
 # Parameter (set when triggering the pipeline):
 #   rebuild-images = test | build | all   which image set to rebuild (default: all)
 #
-# Updated image tags are always committed back to the triggering branch.
+# Updated image tags are committed back to the triggering branch in a single
+# commit by the commit-image-tags job, after all manifest jobs are done.
 #
 # Supersedes build_test_image.yml (kept for reference).
 
@@ -80,27 +81,48 @@ commands:
             fi
             git commit -m "<< parameters.message >>"
             install -m 700 -d ~/.ssh
-            printf '%s' "$GIT_WRITE_DEPLOY_KEY" | base64 -d > ~/.ssh/id_write_deploy
+            if ! printf '%s' "$GIT_WRITE_DEPLOY_KEY" | base64 -d > ~/.ssh/id_write_deploy 2>/tmp/b64.err; then
+              echo "ERROR: GIT_WRITE_DEPLOY_KEY is not valid base64."
+              cat /tmp/b64.err
+              exit 1
+            fi
             chmod 600 ~/.ssh/id_write_deploy
-            ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
-            git -c core.sshCommand="ssh -F /dev/null -o IdentitiesOnly=yes -o IdentityAgent=none -i ~/.ssh/id_write_deploy" \
-              push git@github.com:arangodb/arangodb.git HEAD:"$CIRCLE_BRANCH"
+            if ! ssh-keyscan -T 15 github.com >> ~/.ssh/known_hosts 2>/tmp/keyscan.err; then
+              echo "ERROR: ssh-keyscan could not fetch github.com's host key."
+              cat /tmp/keyscan.err
+              exit 1
+            fi
+            if ! git -c core.sshCommand="ssh -F /dev/null -o IdentitiesOnly=yes -o IdentityAgent=none -i ~/.ssh/id_write_deploy" \
+              push git@github.com:arangodb/arangodb.git HEAD:"$CIRCLE_BRANCH"; then
+              echo "ERROR: push rejected — the branch moved during this run, so this pipeline is stale"
+              echo "(a newer push normally cancels it). Re-trigger the infrastructure pipeline on the new head."
+              exit 1
+            fi
 
   # Arm push-tracking for the rest of the job: source scripts/ci/push-tracking.sh
   # from every subsequent step (via $BASH_ENV) so record_push/record_manifest and
   # the cancellation trap are available. Call this once, after checkout and after
   # the skip guard, before any image is pushed.
   setup-push-tracking:
+    parameters:
+      scope:
+        type: string
+        default: "*"
     steps:
       - run:
           name: Arm push tracking and cancel cleanup
           command: |
             echo 'source /home/circleci/project/scripts/ci/push-tracking.sh' >> "$BASH_ENV"
+            echo 'export PUSHED_CLEANUP_SCOPE="<< parameters.scope >>"' >> "$BASH_ENV"
 
   # Delete only the images this run pushed, if the job fails. Skipped images are
   # never recorded, and a skipped job halts as success, so this can never delete
   # a reused pre-existing image. (Cancellation is handled by the trap instead.)
   cleanup-pushed-on-failure:
+    parameters:
+      scope:
+        type: string
+        default: "*"
     steps:
       - run:
           name: Delete images this run pushed (on failure)
@@ -109,7 +131,7 @@ commands:
             source /home/circleci/project/scripts/ci/push-tracking.sh 2>/dev/null || true
             if type delete_pushed_images >/dev/null 2>&1; then
               echo "Job failed — removing only the images this run pushed:"
-              delete_pushed_images
+              delete_pushed_images "<< parameters.scope >>"
             else
               echo "Nothing pushed by this job; nothing to clean up."
             fi
@@ -138,10 +160,25 @@ jobs:
               echo "Ask a maintainer with access to the 'coredb-automated-push' context to trigger it."
               exit 1
             fi
+            echo "Write deploy key is present (context attached)."
             install -m 700 -d ~/.ssh
-            printf '%s' "$GIT_WRITE_DEPLOY_KEY" | base64 -d > ~/.ssh/id_write_deploy
+            # Guard every step explicitly: this step runs under bash -eo
+            # pipefail (CircleCI default), where an unguarded failure exits 1
+            # without any output pointing at the culprit.
+            if ! printf '%s' "$GIT_WRITE_DEPLOY_KEY" | base64 -d > ~/.ssh/id_write_deploy 2>/tmp/b64.err; then
+              echo "ERROR: GIT_WRITE_DEPLOY_KEY is not valid base64. The context is expected"
+              echo "to store the private key base64-wrapped (base64 -w0 < key)."
+              cat /tmp/b64.err
+              exit 1
+            fi
             chmod 600 ~/.ssh/id_write_deploy
-            ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
+            if ! ssh-keyscan -T 15 github.com >> ~/.ssh/known_hosts 2>/tmp/keyscan.err; then
+              echo "ERROR: ssh-keyscan could not fetch github.com's host key —"
+              echo "github.com:22 appears unreachable from this runner (egress/DNS)."
+              cat /tmp/keyscan.err
+              exit 1
+            fi
+            echo "github.com host key fetched."
             SSH="ssh -F /dev/null -o IdentitiesOnly=yes -o IdentityAgent=none -i ~/.ssh/id_write_deploy"
             # 1) The key authenticates and can read the repo.
             if ! GIT_SSH_COMMAND="$SSH" \
@@ -314,7 +351,11 @@ jobs:
       - persist_to_workspace:
           root: .
           paths:
-            - scripts/docker/*-tag*.txt
+            # Only THIS arch's tag files: amd64-tag.txt is committed in the
+            # repo, so a broader glob would persist the checked-out copy from
+            # the arm64 job too and collide with the amd64 job's fresh one
+            # ("Concurrent upstream jobs persisted the same file(s)").
+            - scripts/docker/<< parameters.arch >>-tag*.txt
       - persist_to_workspace:
           root: /tmp/workspace
           paths:
@@ -347,7 +388,7 @@ jobs:
       - aws-ecr/ecr_login:
           public_registry: true
       - run:
-          name: Skip if manifest already exists for this commit
+          name: Resolve tag (skip builds if manifest already exists)
           command: |
             set -eu
             IMG="<< parameters.image >>"
@@ -357,16 +398,25 @@ jobs:
                       --repository-name "${REPO}" \
                       --query 'imageDetails[].imageTags[]' --output text 2>/dev/null \
                     | tr '[:space:]' '\n' || true)"
+            mkdir -p /tmp/workspace/tag-updates
+            # Record the tag even when the manifest already exists, so a rerun
+            # can still pin an image set that was built but never committed.
             if printf '%s\n' "${TAGS}" | grep -qE -- "-${SHORT_SHA}$"; then
-              echo "Manifest for commit ${SHORT_SHA} already exists — skipping manifest and commit."
-              circleci-agent step halt
+              TAG="$(printf '%s\n' "${TAGS}" | grep -E -- "-${SHORT_SHA}$" | sed -n 1p)"
+              echo "Manifest for commit ${SHORT_SHA} already exists — skipping the builds, still recording tag ${TAG}."
+              echo 'export SKIP_MANIFEST_BUILD=1' >> "$BASH_ENV"
+            else
+              echo "No test image manifest for commit ${SHORT_SHA}; building."
+              TAG="$(cat /home/circleci/project/scripts/docker/amd64-tag.txt)"
             fi
-            echo "No manifest for commit ${SHORT_SHA}; building."
-      - setup-push-tracking
+            echo "${TAG}" > /tmp/workspace/tag-updates/test-tag.txt
+      - setup-push-tracking:
+          scope: "*test-docker-image*"
       - run:
           name: Build test container manifests (base + all suites)
           command: |
             set -eu
+            if [ -n "${SKIP_MANIFEST_BUILD:-}" ]; then echo "Manifest already exists — skipping."; exit 0; fi
             cd scripts/docker/
             # The suffix-less base image, then one manifest per test suite;
             # each suite's per-arch tag was written to amd64-tag-<suite>.txt
@@ -379,24 +429,16 @@ jobs:
       - run:
           name: Build RTA container manifest
           command: |
+            if [ -n "${SKIP_MANIFEST_BUILD:-}" ]; then echo "Manifest already exists — skipping."; exit 0; fi
             TAG="$(cat /home/circleci/project/scripts/docker/amd64-tag.txt)"
             cd /home/circleci/project-rta
             ./jenkins/build_and_push_circle-ci-manifests.sh << parameters.image >> $TAG
-      - run:
-          name: Stage test-docker-image tag update
-          command: |
-            TAG="$(cat /home/circleci/project/scripts/docker/amd64-tag.txt)"
-            TEST_IMAGE="public.ecr.aws/b0b8h2r4/test-ubuntu"
-            sed -i "s|${TEST_IMAGE}:[^ \"]*|${TEST_IMAGE}:${TAG}|g" \
-              /home/circleci/project/.circleci/config.yml \
-              /home/circleci/project/.circleci/base_config.yml
-            cd /home/circleci/project
-            git add scripts/docker/amd64-tag.txt \
-                    .circleci/config.yml \
-                    .circleci/base_config.yml
-      - commit-and-push:
-          message: "chore: update test docker image tag [skip ci]"
-      - cleanup-pushed-on-failure
+      - persist_to_workspace:
+          root: /tmp/workspace
+          paths:
+            - tag-updates
+      - cleanup-pushed-on-failure:
+          scope: "*test-docker-image*"
 
   # ── Ubuntu build images ─────────────────────────────────────────────────────
   # Rebuilds the compiler image used by compile jobs.
@@ -494,7 +536,7 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - run:
-          name: Resolve tag (skip if manifest already exists)
+          name: Resolve tag (skip builds if manifest already exists)
           command: |
             set -eu
             source /home/circleci/project/scripts/ci/helpers.bash
@@ -508,21 +550,29 @@ jobs:
                       --query 'imageDetails[].imageTags[]' --output text 2>/dev/null \
                     | tr '[:space:]' '\n' || true)"
             # A tag ending in the bare short SHA (no arch suffix) is the multi-arch manifest.
+            # Record the tag even when it already exists, so a rerun can still
+            # pin an image set that was built but never committed.
             if printf '%s\n' "${TAGS}" | grep -qE -- "-${SHORT_SHA}$"; then
-              echo "Multi-arch manifest for commit ${SHORT_SHA} already exists — skipping manifest and commit."
-              circleci-agent step halt
+              TAG="$(printf '%s\n' "${TAGS}" | grep -E -- "-${SHORT_SHA}$" | sed -n 1p)"
+              echo "Multi-arch manifest for commit ${SHORT_SHA} already exists — skipping the build, still recording tag ${TAG}."
+              echo 'export SKIP_MANIFEST_BUILD=1' >> "$BASH_ENV"
+            else
+              # Derive the tag from the amd64 image already pushed for this commit.
+              TAG="$(printf '%s\n' "${TAGS}" | grep -E -- "-${SHORT_SHA}-amd64$" | sed -n 1p | sed 's/-amd64$//')"
+              test -n "${TAG}" || { echo "ERROR: no amd64 build image found for commit ${SHORT_SHA}"; exit 1; }
             fi
-            # Otherwise derive the tag from the amd64 image already pushed for this commit.
-            TAG="$(printf '%s\n' "${TAGS}" | grep -E -- "-${SHORT_SHA}-amd64$" | head -1 | sed 's/-amd64$//')"
-            test -n "${TAG}" || { echo "ERROR: no amd64 build image found for commit ${SHORT_SHA}"; exit 1; }
+            mkdir -p /tmp/workspace/tag-updates
+            echo "${IMAGE}:${TAG}" > /tmp/workspace/tag-updates/build-tag.txt
             echo "export IMAGE='${IMAGE}'" >> "$BASH_ENV"
             echo "export REPO='${REPO}'" >> "$BASH_ENV"
             echo "export TAG='${TAG}'" >> "$BASH_ENV"
             echo "Resolved IMAGE=${IMAGE} TAG=${TAG}"
-      - setup-push-tracking
+      - setup-push-tracking:
+          scope: "*build-image*"
       - run:
           name: Create multi-arch build image manifest
           command: |
+            if [ -n "${SKIP_MANIFEST_BUILD:-}" ]; then echo "Manifest already exists — skipping."; exit 0; fi
             set -x
             # Record the manifest tag before pushing so cleanup removes only what this
             # run created. Arch push-records were attached from the workspace, so on
@@ -530,32 +580,66 @@ jobs:
             echo "${REPO} ${TAG}" >> "$(_pushed_file)"
             make -C /home/circleci/project/scripts/docker/build/linux \
               manifest IMAGE="${IMAGE}" TAG="${TAG}" ALLOW_ECR_PUSH=1
+      - persist_to_workspace:
+          root: /tmp/workspace
+          paths:
+            - tag-updates
+      - cleanup-pushed-on-failure:
+          scope: "*build-image*"
+
+  # Lands the tag updates staged by the manifest jobs in a single commit.
+  commit-image-tags:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
+      - checkout-arangodb:
+          destination: /home/circleci/project
+      - attach_workspace:
+          at: /tmp/workspace
       - run:
-          name: Stage Ubuntu build-image tag update
+          name: Stage updated image tags
           command: |
-            echo "${IMAGE}:${TAG}" > /home/circleci/project/scripts/docker/build/linux/amd64-build-tag.txt
-            sed -i "s|public\.ecr\.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-[^\"]*|${IMAGE}:${TAG}|g" \
-              /home/circleci/project/.circleci/config.yml \
-              /home/circleci/project/.circleci/base_config.yml \
-              /home/circleci/project/.circleci/nightly_packages.yml \
-              /home/circleci/project/.circleci/base_nightly_packages.yml
+            set -eu
             cd /home/circleci/project
-            git add scripts/docker/build/linux/amd64-build-tag.txt \
-                    .circleci/config.yml \
-                    .circleci/base_config.yml \
-                    .circleci/nightly_packages.yml \
-                    .circleci/base_nightly_packages.yml
+            if [ -f /tmp/workspace/tag-updates/test-tag.txt ]; then
+              TAG="$(cat /tmp/workspace/tag-updates/test-tag.txt)"
+              TEST_IMAGE="public.ecr.aws/b0b8h2r4/test-ubuntu"
+              echo "${TAG}" > scripts/docker/amd64-tag.txt
+              sed -i "s|${TEST_IMAGE}:[^ \"]*|${TEST_IMAGE}:${TAG}|g" \
+                .circleci/config.yml \
+                .circleci/base_config.yml
+              git add scripts/docker/amd64-tag.txt \
+                      .circleci/config.yml \
+                      .circleci/base_config.yml
+              echo "Staged test image tag: ${TAG}"
+            fi
+            if [ -f /tmp/workspace/tag-updates/build-tag.txt ]; then
+              IMAGE_REF="$(cat /tmp/workspace/tag-updates/build-tag.txt)"
+              echo "${IMAGE_REF}" > scripts/docker/build/linux/amd64-build-tag.txt
+              sed -i "s|public\.ecr\.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-[^\"]*|${IMAGE_REF}|g" \
+                .circleci/config.yml \
+                .circleci/base_config.yml \
+                .circleci/nightly_packages.yml \
+                .circleci/base_nightly_packages.yml
+              git add scripts/docker/build/linux/amd64-build-tag.txt \
+                      .circleci/config.yml \
+                      .circleci/base_config.yml \
+                      .circleci/nightly_packages.yml \
+                      .circleci/base_nightly_packages.yml
+              echo "Staged build image tag: ${IMAGE_REF}"
+            fi
       - commit-and-push:
-          message: "chore: update Ubuntu build image tag [skip ci]"
-      - cleanup-pushed-on-failure
+          message: "chore: update Docker image tags"
 
 workflows:
-  # Rebuild test runner and driver Docker images (rebuild-images = test | all)
+  # Rebuild only the test runner and driver Docker images (rebuild-images = test)
   build-test-docker-images:
     when:
-      or:
-        - equal: [ "test", << pipeline.parameters.rebuild-images >> ]
-        - equal: [ "all", << pipeline.parameters.rebuild-images >> ]
+      equal: [ "test", << pipeline.parameters.rebuild-images >> ]
     jobs:
       - verify-push-access:
           context: [ coredb-automated-push ]
@@ -582,12 +666,15 @@ workflows:
             - aarch64-test-docker-image
             - x64-test-docker-image
 
-  # Rebuild the Ubuntu compiler image used by compile-linux jobs (rebuild-images = build | all)
+      - commit-image-tags:
+          context: [ coredb-automated-push ]
+          requires:
+            - build-test-docker-image-manifest
+
+  # Rebuild only the Ubuntu compiler image used by compile-linux jobs (rebuild-images = build)
   build-ubuntu-build-images:
     when:
-      or:
-        - equal: [ "build", << pipeline.parameters.rebuild-images >> ]
-        - equal: [ "all", << pipeline.parameters.rebuild-images >> ]
+      equal: [ "build", << pipeline.parameters.rebuild-images >> ]
     jobs:
       - verify-push-access:
           context: [ coredb-automated-push ]
@@ -613,3 +700,63 @@ workflows:
           requires:
             - aarch64-build-image
             - x64-build-image
+
+      - commit-image-tags:
+          context: [ coredb-automated-push ]
+          requires:
+            - build-ubuntu-build-image-manifest
+
+  # Rebuild both image sets (rebuild-images = all): one commit lands both tag bumps.
+  build-all-docker-images:
+    when:
+      equal: [ "all", << pipeline.parameters.rebuild-images >> ]
+    jobs:
+      - verify-push-access:
+          context: [ coredb-automated-push ]
+
+      - cancel-redundant-pipelines:
+          context: [ circleci-token ]
+
+      - build-test-docker-image:
+          resource-class: arm.large
+          name: aarch64-test-docker-image
+          arch: arm64
+          requires: [cancel-redundant-pipelines, verify-push-access]
+
+      - build-test-docker-image:
+          resource-class: large
+          name: x64-test-docker-image
+          arch: amd64
+          requires: [cancel-redundant-pipelines, verify-push-access]
+
+      - build-test-docker-manifest:
+          name: build-test-docker-image-manifest
+          context: [ coredb-automated-push ]
+          requires:
+            - aarch64-test-docker-image
+            - x64-test-docker-image
+
+      - build-ubuntu-build-image:
+          resource-class: arm.2xlarge
+          name: aarch64-build-image
+          arch: arm64
+          requires: [cancel-redundant-pipelines, verify-push-access]
+
+      - build-ubuntu-build-image:
+          resource-class: 2xlarge+
+          name: x64-build-image
+          arch: amd64
+          requires: [cancel-redundant-pipelines, verify-push-access]
+
+      - build-ubuntu-build-image-manifest:
+          name: build-ubuntu-build-image-manifest
+          context: [ coredb-automated-push ]
+          requires:
+            - aarch64-build-image
+            - x64-build-image
+
+      - commit-image-tags:
+          context: [ coredb-automated-push ]
+          requires:
+            - build-test-docker-image-manifest
+            - build-ubuntu-build-image-manifest

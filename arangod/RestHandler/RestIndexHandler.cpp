@@ -24,6 +24,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Async/async.h"
+#include "Auth/Common.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
@@ -36,7 +37,6 @@
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
-#include "RestServer/VocbaseContext.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -46,7 +46,7 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/Events.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "VectorIndex/VectorIndexFeature.h"
+#include "VectorIndex/Feature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Indexes.h"
 
@@ -191,6 +191,7 @@ RestIndexHandler::RestIndexHandler(
     : RestVocbaseBaseHandler(server, request, response),
       _clusterFeature(server.getFeature<ClusterFeature>()) {}
 
+// Mounted at /_api/index (prefix)
 futures::Future<futures::Unit> RestIndexHandler::executeAsync() {
   // extract the request type
   rest::RequestType const type = _request->requestType();
@@ -223,16 +224,35 @@ futures::Future<futures::Unit> RestIndexHandler::executeAsync() {
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 }
 
-std::shared_ptr<LogicalCollection> RestIndexHandler::collection(
+ResultT<std::shared_ptr<LogicalCollection>> RestIndexHandler::collection(
     std::string const& cName) {
-  if (!cName.empty()) {
-    if (ServerState::instance()->isCoordinator()) {
-      return _clusterFeature.clusterInfo().getCollectionNT(_vocbase.name(),
-                                                           cName);
-    }
-    return _vocbase.lookupCollection(cName);
+  if (cName.empty()) {
+    return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
-  return nullptr;
+
+  if (not ServerState::instance()->isDBServer()) {
+    if (auth::isNameAndNoId(cName).fail()) {
+      return Result{TRI_ERROR_FORBIDDEN};
+    }
+    if (auto r = ExecContext::current().canUseCollection(_vocbase.name(), cName,
+                                                         AccessLevel::Read);
+        r.fail()) {
+      return Result{TRI_ERROR_FORBIDDEN};
+    }
+  }
+  if (ServerState::instance()->isCoordinator()) {
+    auto coll =
+        _clusterFeature.clusterInfo().getCollectionNT(_vocbase.name(), cName);
+    if (coll == nullptr) {
+      return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
+    }
+    return coll;
+  }
+  auto coll = _vocbase.lookupCollection(cName);
+  if (coll == nullptr) {
+    return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
+  }
+  return coll;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -248,12 +268,12 @@ async<void> RestIndexHandler::getIndexes() {
 
     bool found = false;
     std::string cName = _request->value("collection", found);
-    auto coll = collection(cName);
-    if (coll == nullptr) {
-      generateError(rest::ResponseCode::NOT_FOUND,
-                    TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    auto collRes = collection(cName);
+    if (collRes.fail()) {
+      generateError(collRes.result());
       co_return;
     }
+    auto coll = collRes.get();
 
     auto flags = Index::makeFlags(Index::Serialize::Estimates);
     if (_request->parsedValue("withStats", false)) {
@@ -308,8 +328,7 @@ async<void> RestIndexHandler::getIndexes() {
               std::unordered_map<std::string, VectorIndexShardState> states;
               auto idx = coll->lookupIndex(
                   IndexId{basics::StringUtils::uint64(bareId)});
-              if (idx != nullptr &&
-                  idx->type() == Index::TRI_IDX_TYPE_VECTOR_INDEX) {
+              if (idx != nullptr && idx->type() == IndexType::Vector) {
                 // During ingestion the real index is swapped for a
                 // RocksDBBuilderIndex; unwrap to reach vector-specific state.
                 Index const* raw = idx.get();
@@ -611,12 +630,12 @@ async<void> RestIndexHandler::getIndexes() {
     // .............................................................................
 
     std::string const& cName = suffixes[0];
-    auto coll = collection(cName);
-    if (coll == nullptr) {
-      generateError(rest::ResponseCode::NOT_FOUND,
-                    TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    auto collRes = collection(cName);
+    if (collRes.fail()) {
+      generateError(collRes.result());
       co_return;
     }
+    auto coll = collRes.get();
 
     std::string const& iid = suffixes[1];
     VPackBuilder tmp;
@@ -733,7 +752,7 @@ futures::Future<ResultT<std::string>> RestIndexHandler::waitForVectorIndexReady(
     // state directly.
     auto idx = coll->lookupIndex(indexId);
     if (idx != nullptr) {
-      TRI_ASSERT(idx->type() == Index::TRI_IDX_TYPE_VECTOR_INDEX);
+      TRI_ASSERT(idx->type() == IndexType::Vector);
       auto* vecIdx = static_cast<RocksDBVectorIndex*>(idx.get());
       if (vecIdx->trainingState() == VectorIndexTrainingState::kUnusable) {
         auto msg = vecIdx->trainingError();
@@ -876,14 +895,14 @@ async<void> RestIndexHandler::createIndex() {
     co_return;
   }
 
-  auto coll = collection(cName);
-  if (coll == nullptr) {
+  auto collRes = collection(cName);
+  if (collRes.fail()) {
     events::CreateIndexEnd(_vocbase.name(), cName, body,
                            TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    generateError(collRes.result());
     co_return;
   }
+  auto coll = collRes.get();
 
   VPackBuilder copy;
   if (body.get("collection").isNone()) {
@@ -894,12 +913,36 @@ async<void> RestIndexHandler::createIndex() {
     body = copy.slice();
   }
 
+  auto type = body.get(StaticStrings::IndexType);
+  if (!type.isString()) {
+    events::CreateIndexEnd(_vocbase.name(), cName, body,
+                           TRI_ERROR_BAD_PARAMETER);
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "expecting attribute 'type' in request body");
+    co_return;
+  }
+
+  if (_request->requestedApiVersion() > 0) {
+    if (auto const typeStr = type.stringView();
+        typeStr == "geo1" || typeStr == "geo2" || typeStr == "hash" ||
+        typeStr == "skiplist" || typeStr == "fulltext") {
+      events::CreateIndexEnd(_vocbase.name(), cName, body,
+                             TRI_ERROR_BAD_PARAMETER);
+      generateError(
+          rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+          absl::StrCat("index type '", typeStr,
+                       "' is not supported in API version 1 or higher"));
+      co_return;
+    }
+  }
+
   VPackBuilder indexInfo;
   indexInfo.add(body);
 
-  // In version 4.*, we only want to reject creation of geo1/geo2 when requested
-  // from a client. On the other hand, DBServers want to stay compatible with
-  // legacy geo1/geo2 indexes because of potential Plan vs Current mismatch.
+  // In version 4.*, we only want to reject creation of geo1/geo2 when
+  // requested from a client. On the other hand, DBServers want to stay
+  // compatible with legacy geo1/geo2 indexes because of potential Plan vs
+  // Current mismatch.
   if (ServerState::instance()->isSingleServer() ||
       ServerState::instance()->isCoordinator()) {
     VPackSlice typeSlice = indexInfo.slice().get(StaticStrings::IndexType);
@@ -967,14 +1010,14 @@ async<void> RestIndexHandler::dropIndex() {
   }
 
   std::string const& cName = suffixes[0];
-  auto coll = collection(cName);
-  if (coll == nullptr) {
+  auto collRes = collection(cName);
+  if (collRes.fail()) {
     events::DropIndex(_vocbase.name(), cName, "(unknown)",
-                      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+                      collRes.errorNumber());
+    generateError(collRes.result());
     co_return;
   }
+  auto coll = collRes.get();
 
   std::string const& iid = suffixes[1];
   VPackBuilder idBuilder;
@@ -1000,6 +1043,13 @@ async<void> RestIndexHandler::dropIndex() {
 }
 
 void RestIndexHandler::syncCaches() {
+  if (_request->requestedApiVersion() > 0 &&
+      ServerState::instance()->isCoordinator()) {
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                  TRI_ERROR_NOT_IMPLEMENTED,
+                  "Not implemented on coordinators!");
+    return;
+  }
   StorageEngine& engine = _vocbase.engine();
   engine.syncIndexCaches();
 

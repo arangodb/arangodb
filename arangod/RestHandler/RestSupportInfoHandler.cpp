@@ -39,6 +39,7 @@ RestSupportInfoHandler::RestSupportInfoHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/support-info (exact)
 RestStatus RestSupportInfoHandler::execute() {
   if (!isAllowedHttpMethod({RequestType::GET})) {
     return RestStatus::DONE;
@@ -49,18 +50,23 @@ RestStatus RestSupportInfoHandler::execute() {
   TRI_ASSERT(apiPolicy != "disabled");
 
   if (apiPolicy == "jwt") {
-    if (!ExecContext::current().isSuperuser()) {
+    if (!ExecContext::current().isSuperuserOrDisabled()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     "insufficient permissions");
       return RestStatus::DONE;
     }
   }
 
-  if (apiPolicy == "admin" && !ExecContext::current().isAdminUser()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "insufficient permissions");
-    return RestStatus::DONE;
+  if (apiPolicy == "admin") {
+    if (auto r = ExecContext::current().canUseAdminAction(
+            auth::perms::AdminMonitoring{});
+        r.fail()) {
+      generateError(r);
+      return RestStatus::DONE;
+    }
   }
+
+  // If apiPolicy == "public", no more checks!
 
   if (_request->databaseName() != StaticStrings::SystemDatabase) {
     generateError(

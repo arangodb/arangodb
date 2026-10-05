@@ -199,6 +199,7 @@ class runInKafkaTest extends runWithAllureReport {
       `-Darango.endpoints=${this.instanceManager.url.replace(rx,'')}`,
       `-Dkafka.bootstrap.servers=${this.options.kafkaHost}`,
       '-Dgpg.skip',
+      '-Drecord.trace.level=DEBUG',
       '-Dmaven.javadoc.skip',
       `-Dallure.results.directory=${testResultsDir}`,
       `-Dconnect.schema.registry.url=${this.options.kafkaSchemaHost}`,
