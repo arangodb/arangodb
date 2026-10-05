@@ -176,7 +176,7 @@ class instance {
   // the jwt-secret handling further down), so passing them in was redundant.
   constructor(options, myInstanceRole, protocol,
               agencyMgr, addArgs,
-              rootDir, tmpDir, restKeyFile,
+              rootDir, tmpDir,
               jwt_secret, mem, rbacPort) {
     this.id = null;
     this.shortName = null;
@@ -204,7 +204,6 @@ class instance {
         this.args[key] = value;
       }
     }
-    this.restKeyFile = restKeyFile;
     this.agencyMgr = agencyMgr;
 
     this.upAndRunning = false;
@@ -270,7 +269,6 @@ class instance {
       message: this.message,
       rootDir: this.rootDir,
       protocol: this.protocol,
-      restKeyFile: this.restKeyFile,
       agencyConfig: (this.agencyMgr !== undefined) ? this.agencyMgr.getStructure():{},
       upAndRunning: this.upAndRunning,
       suspended: this.suspended,
@@ -300,7 +298,6 @@ class instance {
     this.message = struct['message'];
     this.rootDir = struct['rootDir'];
     this.protocol = struct['protocol'];
-    this.restKeyFile = struct['restKeyFile'];
     this.upAndRunning = struct['upAndRunning'];
     this.suspended = struct['suspended'];
     this.port = struct['port'];
@@ -557,11 +554,6 @@ class instance {
       if (!this.args.hasOwnProperty('cluster.default-replication-factor')) {
         this.args['cluster.default-replication-factor'] = '2';
       }
-    }
-    if (this.options.encryptionAtRest &&
-        !this.args.hasOwnProperty('rocksdb.encryption-keyfile') &&
-        !this.args.hasOwnProperty('rocksdb.encryption-keyfolder')) {
-      this.args['rocksdb.encryption-keyfile'] = this.restKeyFile;
     }
     if (this.options.isInstrumented && this.instanceRole in [
       instanceRole.dbServer,
@@ -1303,7 +1295,7 @@ class instance {
   /////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////
-  /////////////                Utility functionality                             ////////////////////
+  /////////////                Utility functionality                   ////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////
