@@ -101,7 +101,14 @@ set(ARANGODB_TESTS_SOURCES
   Aql/AqlValueMemoryLayoutTest.cpp
   Aql/AstNodeTest.cpp
   Aql/AstResourcesTest.cpp
+  Aql/Match/BuilderTest.cpp
+  Aql/Match/CollectionAccessBuilderTest.cpp
+  Aql/Match/FilterBuilderTest.cpp
+  Aql/Match/PathConstructionTest.cpp
   Aql/Match/PatternNormalizerTest.cpp
+  Aql/Match/PatternTypesTest.cpp
+  Aql/Match/ProjectionBuilderTest.cpp
+  Aql/Match/VariableScopeTest.cpp
   Aql/AttributeNamePathTest.cpp  
   Aql/BlockCollector.cpp
   Aql/ConditionRemoveForIndexTest.cpp

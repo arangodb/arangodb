@@ -491,6 +491,7 @@ class Ast {
 
   AstNode* createPatternSegment(AstNode const* edge, AstNode const* node);
   AstNode* createPatternPathVariable(std::string_view variable);
+  AstNode* createPatternOutVariable(std::string_view name);
   AstNode* createNodeMatch();
   AstNode* createNodeMatchExpr();
   AstNode* createNodeVariableOrReference(std::string_view name);

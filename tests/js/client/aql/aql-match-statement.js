@@ -1245,6 +1245,81 @@ function aqlMatchStatementTestSuite() {
             }
         },
 
+        // COR-1049: filters/constraints on externally defined MATCH references
+        testRejectReferenceWithWhereFilter: function () {
+            try {
+                db._query(
+                    `LET x = DOCUMENT("vc/v1")
+                     MATCH (x WHERE x.i > 100)
+                     RETURN x._key`,
+                    {},
+                    options
+                );
+                fail();
+            } catch (err) {
+                assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+            }
+        },
+
+        testRejectReferenceWithAttributeConstraint: function () {
+            try {
+                db._query(
+                    `LET x = DOCUMENT("vc/v1")
+                     MATCH (x { name: "alice" })
+                     RETURN x._key`,
+                    {},
+                    options
+                );
+                fail();
+            } catch (err) {
+                assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+            }
+        },
+
+        testRejectReferenceWithLabelAndWhere: function () {
+            try {
+                db._query(
+                    `LET x = DOCUMENT("vc/v1")
+                     MATCH (x :vc WHERE x.i > 100)
+                     RETURN x._key`,
+                    {},
+                    options
+                );
+                fail();
+            } catch (err) {
+                assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+            }
+        },
+
+        testAllowBareReferenceVertex: function () {
+            const result = db._query(
+                `LET x = DOCUMENT("vc/v1")
+                 MATCH (x)
+                 RETURN x._key`,
+                {},
+                options
+            ).toArray();
+            assertEqual(result, ["v1"]);
+        },
+
+        testAllowNormalVertexWithAttributeConstraint: function () {
+            const result = db._query(
+                "MATCH (x :vc {i: 1}) RETURN x._key",
+                {},
+                options
+            ).toArray();
+            assertEqual(result, ["v1"]);
+        },
+
+        testAllowNormalVertexWithWhereFilter: function () {
+            const result = db._query(
+                "MATCH (x :vc WHERE x.i == 1) RETURN x._key",
+                {},
+                options
+            ).toArray();
+            assertEqual(result, ["v1"]);
+        },
+
     };
 }
 
