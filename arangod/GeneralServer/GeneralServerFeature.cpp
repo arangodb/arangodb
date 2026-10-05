@@ -48,6 +48,7 @@
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "GeneralServer/SslServerFeature.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
 #include "InternalRestHandler/InternalRestTraverserHandler.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/HistogramBuilder.h"
@@ -576,11 +577,12 @@ void GeneralServerFeature::defineRemainingHandlers(
   // /_api
   // ...........................................................................
 
-  f.addPrefixHandler(                         // add handler
-      RestVocbaseBaseHandler::ANALYZER_PATH,  // base URL
-      RestHandlerCreator<
-          iresearch::RestAnalyzerHandler>::createNoData,  // handler
-      {0, 1});
+  if (server().hasFeature<iresearch::IResearchAnalyzerFeature>()) {
+    f.addPrefixHandler(
+        RestVocbaseBaseHandler::ANALYZER_PATH,
+        RestHandlerCreator<iresearch::RestAnalyzerHandler>::createNoData,
+        {0, 1});
+  }
 
   auto queryRegistry = QueryRegistryFeature::registry();
   f.addPrefixHandler(
