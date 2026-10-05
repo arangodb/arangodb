@@ -559,7 +559,7 @@ class instanceManager {
             this.options, instanceRole.agent, this.protocol,
             this.agencyMgr, this.addArgs,
             fs.join(this.rootDir, instanceRole.agent + "_" + count), this.tmpDir,
-            this.jwt_secret, this.memlayout[instanceRole.agent]), this.rbacPort));
+            this.jwt_secret, this.memlayout[instanceRole.agent], this.rbacPort));
         }
         this.instanceRoles.push(instanceRole.agent);
       }
@@ -572,7 +572,7 @@ class instanceManager {
             this.options, instanceRole.dbServer, this.protocol,
             this.agencyMgr, this.addArgs,
             fs.join(this.rootDir, instanceRole.dbServer + "_" + count), this.tmpDir,
-            this.jwt_secret, this.memlayout[instanceRole.dbServer]), this.rbacPort));
+            this.jwt_secret, this.memlayout[instanceRole.dbServer], this.rbacPort));
         }
         this.instanceRoles.push(instanceRole.dbServer);
 
@@ -596,7 +596,7 @@ class instanceManager {
             this.options, instanceRole.single, this.protocol,
             this.agencyMgr, this.addArgs,
             fs.join(this.rootDir, instanceRole.single + "_" + count), this.tmpDir,
-            this.jwt_secret, this.memlayout[instanceRole.single]), this.rbacPort));
+            this.jwt_secret, this.memlayout[instanceRole.single], this.rbacPort));
           this.urls.push(this.arangods[this.arangods.length -1].url);
           this.endpoints.push(this.arangods[this.arangods.length -1].endpoint);
           this.endpointPorts.push(this.arangods[this.arangods.length -1].port);
