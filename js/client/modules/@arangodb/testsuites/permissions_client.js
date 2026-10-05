@@ -47,6 +47,26 @@ const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
+const sleep = require('internal').sleep;
+
+// On Windows, deleting a directory tree is asynchronous: a just-removed child
+// can keep its parent non-empty (ERROR_DIR_NOT_EMPTY) until the last handle
+// held on it (anti-virus, search indexer, late process teardown) is closed.
+// Retry the removal a few times, and don't fail the whole testsuite over a
+// leftover temporary directory - the CI wipes the temp tree anyway.
+function removeDirectoryRetry(dir) {
+  for (let i = 0; i < 5; i++) {
+    try {
+      fs.removeDirectoryRecursive(dir, true);
+      return;
+    } catch (ex) {
+      print(RED + 'unable to remove ' + dir + ' - retrying. ' + ex + RESET);
+      sleep(1);
+    }
+  }
+  print(RED + 'giving up removing ' + dir + ' - leaving it behind!' + RESET);
+}
+
 const functionsDocumentation = {
   'permissions': 'arangosh javascript access permissions'
 };
@@ -101,7 +121,7 @@ class permissionsRunner extends trs.runInArangoshRunner {
           f                                
         );
         if (obj.options.cleanup && res[f].status) {
-          fs.removeDirectoryRecursive(instanceRoot, true);
+          removeDirectoryRetry(instanceRoot);
         }
       } else if (obj.options.extremeVerbosity) {
         print('Skipped ' + f + ' because of ' + filtered.filter);
