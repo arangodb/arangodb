@@ -3571,7 +3571,6 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
   TRI_AddGlobalVariableVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_ARANGO"),
                                WrapV8ClientConnection(isolate, this));
-  );
 }
 
 void V8ClientConnection::shutdownConnection() {
