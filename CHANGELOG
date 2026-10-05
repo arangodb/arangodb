@@ -35,6 +35,16 @@
   the shard that `restrict-to-single-shard` limits the collection access to.
   Previously, such queries could crash the Coordinator.
 
+* The AQL optimizer rule `remove-satellite-joins` joins a SatelliteCollection
+  into the snippet of the collection that comes before it in the query. It
+  uses the snippet that comes after it only if that is not possible. In
+  `FOR e1 IN edges FOR v IN sat FILTER v._id == e1._from FOR e2 IN edges`,
+  the lookups in `sat` now run on the shards of `e1`, once per row. Before,
+  every shard of `e2` repeated them for each row the ScatterNode sent it.
+  The rule `upgrade-scatter-to-distribute` can now also turn the ScatterNode
+  in front of `e2` into a DistributeNode when the shard key value comes from
+  `sat`.
+
 * COR-741: AQL `MATCH` inline bare attribute keeps support unquoted nested
   paths. Dot notation preserves object hierarchy, e.g.
   `MATCH (v:users RETURN profile.name) RETURN v` binds `v` to
