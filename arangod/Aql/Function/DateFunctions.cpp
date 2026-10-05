@@ -1741,8 +1741,17 @@ AqlValue functions::DateRound(ExpressionContext* expressionContext,
 
   duration<int64_t, std::milli> time = tp.time_since_epoch();
   int64_t t = time.count();
-  // integer division!
-  t /= multiplier;
+
+  auto floorDiv = [](int64_t divd, int64_t divr) {
+    if ((divd ^ divr) < 0 and (divd % divr) != 0) {
+      // TODO: this can underflow
+      return divd / divr - 1;
+    } else {
+      return divd / divr;
+    }
+  };
+
+  t = floorDiv(t, multiplier);
   tp = tp_sys_clock_ms(milliseconds(t * multiplier));
 
   if (parameters.size() == 4) {

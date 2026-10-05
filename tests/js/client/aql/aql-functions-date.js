@@ -3108,6 +3108,14 @@ function ahuacatlDateFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_NUMERIC_OVERFLOW.code, `RETURN DATE_ROUND("2000-01-01", 18014398509481984, "d")`);
     },
 
+    testDateNegativeRound: function() {
+      const actual = getQueryResults(`
+        FOR date IN ["1969-12-30T20:17:30Z", "1969-12-31T20:17:40Z", "1970-01-01T22:00:00Z"]
+          COLLECT d = DATE_ROUND(date,1,"day")
+          AGGREGATE count = COUNT(1)
+          RETURN count`);
+      assertEqual([1,1,1], actual);
+    },
   };
 }
 
