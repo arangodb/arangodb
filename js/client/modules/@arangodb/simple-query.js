@@ -194,81 +194,45 @@ SimpleQueryByCondition.prototype.execute = function (batchSize) {
 // / @brief executes a range query
 // //////////////////////////////////////////////////////////////////////////////
 
-if (false) {
-  SimpleQueryRange.prototype.execute = function (batchSize) {
-    if (this._execution === null) {
-      if (batchSize !== undefined && batchSize > 0) {
-        this._batchSize = batchSize;
-      }
-
-      var data = {
-        collection: this._collection.name(),
-        attribute: this._attribute,
-        right: this._right,
-        left: this._left,
-        closed: this._type === 1
-      };
-
-      if (this._limit !== null) {
-        data.limit = this._limit;
-      }
-
-      if (this._skip !== null) {
-        data.skip = this._skip;
-      }
-
-      if (this._batchSize !== null) {
-        data.batchSize = this._batchSize;
-      }
-
-      var requestResult = this._collection._database._connection.PUT(
-        '/_api/simple/range', data);
-
-      arangosh.checkRequestResult(requestResult);
-
-      this._execution = new ArangoQueryCursor(this._collection._database, requestResult);
-
-      if (requestResult.hasOwnProperty('count')) {
-        this._countQuery = requestResult.count;
-      }
+SimpleQueryRange.prototype.execute = function (batchSize) {
+  if (this._execution === null) {
+    if (batchSize !== undefined && batchSize > 0) {
+      this._batchSize = batchSize;
     }
-  };
-} else {
-  var limitString = function (skip, limit) {
-    if (skip > 0 || limit > 0) {
-      if (limit <= 0) {
-        limit = 99999999999;
-      }
-      return 'LIMIT ' + parseInt(skip, 10) + ', ' + parseInt(limit, 10) + ' ';
-    }
-    return '';
-  };
-  SimpleQueryRange.prototype.execute = function (batchSize) {
-    if (this._execution === null) {
-      if (batchSize !== undefined && batchSize > 0) {
-        this._batchSize = batchSize;
-      }
-      var query = 'FOR doc IN @@collection ';
-      var bindVars = {
-        '@collection': this._collection.name(),
-        attribute: this._attribute,
-        left: this._left,
-        right: this._right
-      };
 
-      if (this._type === 0) {
-        query += 'FILTER doc.@attribute >= @left && doc.@attribute < @right ';
-      } else if (this._type === 1) {
-        query += 'FILTER doc.@attribute >= @left && doc.@attribute <= @right ';
-      } else {
-        throw 'unknown type';
-      }
+    var data = {
+      collection: this._collection.name(),
+      attribute: this._attribute,
+      right: this._right,
+      left: this._left,
+      closed: this._type === 1
+    };
 
-      query += limitString(this._skip, this._limit) + ' RETURN doc';
-      this._execution = require('internal').db._query({ query, bindVars});
+    if (this._limit !== null) {
+      data.limit = this._limit;
     }
-  };
-}
+
+    if (this._skip !== null) {
+      data.skip = this._skip;
+    }
+
+    if (this._batchSize !== null) {
+      data.batchSize = this._batchSize;
+    }
+
+    var requestResult = this._collection._database._connection.PUT(
+      '/_api/simple/range', data);
+
+    arangosh.checkRequestResult(requestResult);
+
+    this._execution = new ArangoQueryCursor(this._collection._database, requestResult);
+
+    if (requestResult.hasOwnProperty('count')) {
+      this._countQuery = requestResult.count;
+    }
+  }
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief executes a near query
 // //////////////////////////////////////////////////////////////////////////////
