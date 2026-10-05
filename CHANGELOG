@@ -1,6 +1,8 @@
 v3.11.14.7 (XXXX-XX-XX)
 -----------------------
 
+* Update timezone database as of 05.10.2026.
+
 * Upgraded OpenSSL to 3.5.9 and OpenLDAP to 2.6.15.
 
 * Updated node modules:

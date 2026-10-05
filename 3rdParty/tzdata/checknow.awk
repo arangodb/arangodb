@@ -50,5 +50,10 @@ END {
       status = 1
     }
  }
+ if (now_out) {
+   for (data in zones) {
+     printf "%s=%s\n", now, zones[data] >>now_out
+   }
+ }
  exit status
 }

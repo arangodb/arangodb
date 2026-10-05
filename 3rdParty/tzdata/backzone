@@ -2,10 +2,10 @@
 
 # This file is in the public domain.
 
-# This file is by no means authoritative; if you think you know
-# better, go ahead and edit it (and please send any changes to
-# tz@iana.org for general use in the future).  For more, please see
-# the file CONTRIBUTING in the tz distribution.
+# This file is by no means authoritative; if you think you know better,
+# go ahead and edit the file, and please send any changes to
+# the public mailing list tz@iana.org for general use in the future.
+# For more, please see the file CONTRIBUTING in the tz distribution.
 
 # When proposing changes to this file, please use 'git format-patch'
 # format, either by attaching the resulting .patch file to your email,
@@ -1757,13 +1757,12 @@ Zone Pacific/Majuro	 11:24:48 -	LMT	1901
 # Midway
 #
 # From Mark Brader (2005-01-23):
-# [Fallacies and Fantasies of Air Transport History, by R.E.G. Davies,
-# published 1994 by Paladwr Press, McLean, VA, USA; ISBN 0-9626483-5-3]
+# [<https://www.timetableimages.com/ttimages/pa/pa36/pa36.pdf>]
 # reproduced a Pan American Airways timetable from 1936, for their weekly
 # "Orient Express" flights between San Francisco and Manila, and connecting
 # flights to Chicago and the US East Coast.  As it uses some time zone
 # designations that I've never seen before:....
-# Fri. 6:30A Lv. HONOLOLU (Pearl Harbor), H.I.   H.L.T. Ar. 5:30P Sun.
+# Fri. 6:30A Lv. HONOLULU (Pearl Harbor), H.I. . H.L.T. Ar. 5:30P Sun.
 #  "   3:00P Ar. MIDWAY ISLAND . . . . . . . . . M.L.T. Lv. 6:00A  "
 #
 Zone Pacific/Midway	-11:49:28 -	LMT	1901

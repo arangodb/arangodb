@@ -23,7 +23,8 @@ BEGIN {
   print "# This file is generated automatically from the data in the public-domain"
   print "# NIST/IERS format leap-seconds.list file, which can be copied from"
   print "# <https://hpiers.obspm.fr/iers/bul/bulc/ntp/leap-seconds.list>"
-  print "# or, in a variant with different comments, from"
+  print "# or via a less-secure protocol and with different comments and"
+  print "# less volatile last-modified and expiration timestamps, from"
   print "# <ftp://ftp.boulder.nist.gov/pub/time/leap-seconds.list>."
   print "# For more about leap-seconds.list, please see"
   print "# The NTP Timescale and Leap Seconds"
@@ -125,7 +126,13 @@ END {
     epoch_minus_NTP = ((1970 - 1900) * 365 + 17) * 24 * 60 * 60
 
     print ""
-    print "# POSIX timestamps for the data in this file:"
+    print "# Here are POSIX timestamps for the data in this file."
+    print "# \"#updated\" gives the last time the leap seconds data changed"
+    print "# or, if this file was derived from the IERS leap-seconds.list,"
+    print "# the last time that file changed in any way."
+    print "# \"#expires\" gives the first time this file might be wrong;"
+    print "# if this file was derived from the IERS leap-seconds.list,"
+    print "# this is typically a bit less than one year after \"updated\"."
     if (updated) {
       sstamp_to_ymdhMs(updated, ss_NTP)
       printf "#updated %d (%.4d-%.2d-%.2d %.2d:%.2d:%.2d UTC)\n", \
