@@ -65,6 +65,7 @@ class LogicalCollection;
 namespace aql {
 struct AstNode;
 struct Variable;
+class QueryContext;
 }  // namespace aql
 
 namespace transaction {
@@ -464,6 +465,8 @@ struct IndexIteratorOptions {
   /// @brief forces the materialize node past this index, even if its not a
   /// unique one
   bool pushDownMaterialization{false};
+  /// @brief running query, used to abort long regex matches when it is killed
+  aql::QueryContext const* query{nullptr};
 };
 
 /// index estimate map, defined here because it was convenient

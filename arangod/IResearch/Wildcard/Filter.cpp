@@ -22,6 +22,7 @@
 
 #include "IResearch/Wildcard/Filter.h"
 #include "Aql/Functions.h"
+#include "Aql/QueryContext.h"
 #include "IResearch/ExpressionFilter.h"
 #include "IResearch/IResearchFilterFactoryCommon.h"
 #include "IResearch/IResearchFilterFactory.h"
@@ -33,10 +34,18 @@
 
 namespace arangodb::iresearch::wildcard {
 
+namespace {
+// ICU calls this every 10,000 steps; returning false aborts the match.
+UBool continueUnlessQueryKilled(void const* query, int32_t /*steps*/) {
+  return !static_cast<aql::QueryContext const*>(query)->killed();
+}
+}  // namespace
+
 class Iterator : public irs::doc_iterator {
  public:
   Iterator(icu_64_64::RegexMatcher* matcher,
-           aql::ExpressionContext const* exprCtx, doc_iterator::ptr&& approx,
+           aql::ExpressionContext const* exprCtx,
+           aql::QueryContext const* query, doc_iterator::ptr&& approx,
            doc_iterator::ptr&& columnIt)
       : _approx{std::move(approx)}, _columnIt{std::move(columnIt)} {
     TRI_ASSERT(_approx);
@@ -53,6 +62,10 @@ class Iterator : public irs::doc_iterator {
     }
     if (exprCtx != nullptr) {
       aql::functions::abortMatchWhenKilled(*matcher, exprCtx);
+    } else if (query != nullptr) {
+      UErrorCode callbackStatus = U_ZERO_ERROR;
+      matcher->setMatchCallback(continueUnlessQueryKilled, query,
+                                callbackStatus);
     }
     TRI_ASSERT(status == U_ZERO_ERROR);
     _matcher = matcher;
@@ -152,15 +165,19 @@ class Query : public irs::filter::prepared {
       return irs::doc_iterator::empty();
     }
     aql::ExpressionContext const* exprCtx = nullptr;
+    aql::QueryContext const* query = nullptr;
     if (ctx.ctx) {
       if (auto const* execCtx = irs::get<ExpressionExecutionContext>(*ctx.ctx);
           execCtx && *execCtx) {
         exprCtx = execCtx->ctx;
       }
+      if (auto const* killCheck = irs::get<QueryKillCheck>(*ctx.ctx)) {
+        query = killCheck->query;
+      }
     }
     auto columnIt = column->iterator(irs::ColumnHint::kNormal);
     return irs::memory::make_managed<Iterator>(
-        _matcher, exprCtx, std::move(approx), std::move(columnIt));
+        _matcher, exprCtx, query, std::move(approx), std::move(columnIt));
   }
 
   void visit(const irs::SubReader&, irs::PreparedStateVisitor&,

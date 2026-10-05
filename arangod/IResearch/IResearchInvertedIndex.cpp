@@ -41,6 +41,7 @@
 #include "IResearch/IResearchReadUtils.h"
 #include "IResearch/SearchDoc.h"
 #include "IResearch/ViewSnapshot.h"
+#include "IResearch/Wildcard/Filter.h"
 #include "Logger/LogMacros.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Methods.h"
@@ -67,6 +68,14 @@ struct EmptyAttributeProvider final : irs::attribute_provider {
   irs::attribute* get_mutable(irs::type_info::type_id) override {
     return nullptr;
   }
+};
+
+struct QueryKillCheckProvider final : irs::attribute_provider {
+  irs::attribute* get_mutable(irs::type_info::type_id type) override {
+    return type == irs::type<wildcard::QueryKillCheck>::id() ? &killCheck
+                                                             : nullptr;
+  }
+  wildcard::QueryKillCheck killCheck;
 };
 
 EmptyAttributeProvider const kEmptyAttributeProvider;
@@ -348,13 +357,15 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
       ResourceMonitor& monitor, LogicalCollection* collection,
       ViewSnapshot& state, transaction::Methods* trx,
       aql::AstNode const* condition, IResearchInvertedIndexMeta const* meta,
-      aql::Variable const* variable, int mutableConditionIdx)
+      aql::Variable const* variable, int mutableConditionIdx,
+      aql::QueryContext const* query)
       : IndexIterator(collection, trx, ReadOwnWrites::no),
         _memory(monitor),
         _snapshot(state),
         _indexMeta(meta),
         _variable(variable),
         _mutableConditionIdx(mutableConditionIdx) {
+    _killCheckProvider.killCheck.query = query;
     resetFilter(condition);
   }
 
@@ -450,6 +461,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
   aql::Variable const* _variable;
   int _mutableConditionIdx;
   std::array<char, arangodb::iresearch::kSearchDocBufSize> _buf;
+  QueryKillCheckProvider _killCheckProvider;
 };
 
 template<bool emitLocalDocumentId>
@@ -462,10 +474,11 @@ class IResearchInvertedIndexIterator final
                                  aql::AstNode const* condition,
                                  IResearchInvertedIndexMeta const* meta,
                                  aql::Variable const* variable,
-                                 int mutableConditionIdx)
+                                 int mutableConditionIdx,
+                                 aql::QueryContext const* query)
       : IResearchInvertedIndexIteratorBase(monitor, collection, state, trx,
                                            condition, meta, variable,
-                                           mutableConditionIdx),
+                                           mutableConditionIdx, query),
         _projections(*meta) {}
 
   std::string_view typeName() const noexcept override {
@@ -540,7 +553,7 @@ class IResearchInvertedIndexIterator final
         _itr = segmentReader.mask(_filter->execute({
             .segment = segmentReader,
             .scorers = irs::Scorers::kUnordered,
-            .ctx = &kEmptyAttributeProvider,
+            .ctx = &_killCheckProvider,
             .wand = {},
         }));
         _doc = irs::get<irs::document>(*_itr);
@@ -617,10 +630,11 @@ class IResearchInvertedIndexMergeIterator final
       ResourceMonitor& monitor, LogicalCollection* collection,
       ViewSnapshot& state, transaction::Methods* trx,
       aql::AstNode const* condition, IResearchInvertedIndexMeta const* meta,
-      aql::Variable const* variable, int mutableConditionIdx)
+      aql::Variable const* variable, int mutableConditionIdx,
+      aql::QueryContext const* query)
       : IResearchInvertedIndexIteratorBase(monitor, collection, state, trx,
                                            condition, meta, variable,
-                                           mutableConditionIdx),
+                                           mutableConditionIdx, query),
         _heap_it{meta->_sort, meta->_sort.size()},
         _projectionsPrototype(*meta) {}
 
@@ -636,7 +650,7 @@ class IResearchInvertedIndexMergeIterator final
     for (size_t i = 0; i < size; ++i) {
       auto& segment = _snapshot[i];
       auto it = segment.mask(
-          _filter->execute({.segment = segment, .wand = irs::WandContext{}}));
+          _filter->execute({.segment = segment, .ctx = &_killCheckProvider, .wand = irs::WandContext{}}));
       // at least sort column should be here
       TRI_ASSERT(!_projectionsPrototype.empty());
       _segments.emplace_back(std::move(it), segment, _projectionsPrototype);
@@ -1040,14 +1054,14 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
         return std::make_unique<
             IResearchInvertedIndexIterator<LateMaterialization>>(
             monitor, collection, state, trx, node, &_meta, reference,
-            mutableConditionIdx);
+            mutableConditionIdx, opts.query);
       });
     } else {
       return resolveLateMaterialization([&]<bool LateMaterialization>() {
         return std::make_unique<
             IResearchInvertedIndexMergeIterator<LateMaterialization>>(
             monitor, collection, state, trx, node, &_meta, reference,
-            mutableConditionIdx);
+            mutableConditionIdx, opts.query);
       });
     }
   } else {
@@ -1058,7 +1072,7 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
       return std::make_unique<
           IResearchInvertedIndexMergeIterator<LateMaterialization>>(
           monitor, collection, state, trx, node, &_meta, reference,
-          transaction::Methods::kNoMutableConditionIdx);
+          transaction::Methods::kNoMutableConditionIdx, opts.query);
     });
   }
 }
