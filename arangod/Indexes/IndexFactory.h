@@ -269,11 +269,20 @@ class IndexFactory {
   static IndexId validateSlice(velocypack::Slice info, bool generateKey,
                                bool isClusterConstructor);
 
+  // the registry holds raw pointers, so the factory must be owned here
+  template<typename F, typename... Args>
+  F const& own(Args&&... args) {
+    auto& owned =
+        _owned.emplace_back(std::make_unique<F>(std::forward<Args>(args)...));
+    return static_cast<F const&>(*owned);
+  }
+
  protected:
   application_features::ApplicationServer& _server;
   IndexTypeCatalog const& _catalog;
   std::unordered_map<std::string, IndexTypeFactory const*> _factories;
   std::unique_ptr<IndexTypeFactory> _invalid;
+  std::vector<std::unique_ptr<IndexTypeFactory>> _owned;
 };
 
 }  // namespace arangodb

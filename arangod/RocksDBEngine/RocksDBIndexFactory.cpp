@@ -213,28 +213,32 @@ RocksDBIndexFactory::RocksDBIndexFactory(
     application_features::ApplicationServer& server,
     IndexTypeCatalog const& catalog)
     : IndexFactory(server, catalog) {
-  static const EdgeIndexFactory edgeIndexFactory(server, catalog.edge());
-  static const FulltextIndexFactory fulltextIndexFactory(server,
-                                                         catalog.fulltext());
-  static const GeoIndexFactory geoIndexFactory(server, catalog.geo());
-  static const Geo1IndexFactory geo1IndexFactory(server, catalog.geo1());
-  static const Geo2IndexFactory geo2IndexFactory(server, catalog.geo2());
-  static const SecondaryIndexFactory<RocksDBHashIndex> hashIndexFactory(
-      server, catalog.hash());
-  static const SecondaryIndexFactory<RocksDBPersistentIndex>
-      persistentIndexFactory(server, catalog.persistent());
-  static const SecondaryIndexFactory<RocksDBSkiplistIndex> skiplistIndexFactory(
-      server, catalog.skiplist());
-  static const TtlIndexFactory ttlIndexFactory(server, catalog.ttl());
-  static const PrimaryIndexFactory primaryIndexFactory(server,
-                                                       catalog.primary());
-  static const MdiIndexFactory zkdIndexFactory(server, catalog.zkd());
-  static const MdiIndexFactory mdiIndexFactory(server, catalog.mdi());
-  static const VectorIndexFactory vectorIndexFactory(server, catalog.vector());
-  static const iresearch::IResearchRocksDBInvertedIndexFactory
-      iresearchInvertedIndexFactory(server, catalog.inverted());
-  static const MdiPrefixedIndexFactory mdiPrefixedIndexFactory(
-      server, catalog.mdiPrefixed());
+  auto const& edgeIndexFactory = own<EdgeIndexFactory>(server, catalog.edge());
+  auto const& fulltextIndexFactory =
+      own<FulltextIndexFactory>(server, catalog.fulltext());
+  auto const& geoIndexFactory = own<GeoIndexFactory>(server, catalog.geo());
+  auto const& geo1IndexFactory = own<Geo1IndexFactory>(server, catalog.geo1());
+  auto const& geo2IndexFactory = own<Geo2IndexFactory>(server, catalog.geo2());
+  auto const& hashIndexFactory =
+      own<SecondaryIndexFactory<RocksDBHashIndex>>(server, catalog.hash());
+  auto const& persistentIndexFactory =
+      own<SecondaryIndexFactory<RocksDBPersistentIndex>>(server,
+                                                         catalog.persistent());
+  auto const& skiplistIndexFactory =
+      own<SecondaryIndexFactory<RocksDBSkiplistIndex>>(server,
+                                                       catalog.skiplist());
+  auto const& ttlIndexFactory = own<TtlIndexFactory>(server, catalog.ttl());
+  auto const& primaryIndexFactory =
+      own<PrimaryIndexFactory>(server, catalog.primary());
+  auto const& zkdIndexFactory = own<MdiIndexFactory>(server, catalog.zkd());
+  auto const& mdiIndexFactory = own<MdiIndexFactory>(server, catalog.mdi());
+  auto const& vectorIndexFactory =
+      own<VectorIndexFactory>(server, catalog.vector());
+  auto const& iresearchInvertedIndexFactory =
+      own<iresearch::IResearchRocksDBInvertedIndexFactory>(server,
+                                                           catalog.inverted());
+  auto const& mdiPrefixedIndexFactory =
+      own<MdiPrefixedIndexFactory>(server, catalog.mdiPrefixed());
 
   emplace("edge", edgeIndexFactory);
   emplace("fulltext", fulltextIndexFactory);

@@ -581,7 +581,7 @@ bool Index::compare(StorageEngine& engine, VPackSlice const& lhs,
                                   ? std::string_view{"mdi"}
                                   : typeSlice.stringView();
 
-  auto& catalog = engine.server().getFeature<IndexTypeCatalog>();
+  auto const& catalog = engine.indexTypeCatalog();
   if (catalog.resolve(typeName) != IndexType::Unknown) {
     return catalog.equal(lhs, rhs, dbname);
   }

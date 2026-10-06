@@ -35,8 +35,7 @@ using namespace arangodb;
 IndexTypeCatalog::IndexTypeCatalog(
     application_features::ApplicationServer& server,
     IVectorIndexProvider const& vectorIndexProvider)
-    : ApplicationFeature{server, *this},
-      _hash(IndexType::Hash),
+    : _hash(IndexType::Hash),
       _persistent(IndexType::Persistent),
       _skiplist(IndexType::Skiplist),
       _ttl(IndexType::TTL),
@@ -44,8 +43,6 @@ IndexTypeCatalog::IndexTypeCatalog(
       _mdi(IndexType::MDI),
       _vector(IndexType::Vector, vectorIndexProvider),
       _inverted(server) {
-  setOptional(false);
-
   auto reg = [&](std::string_view name, IndexDefinition const& definition) {
     _byName.try_emplace(std::string{name}, &definition);
   };

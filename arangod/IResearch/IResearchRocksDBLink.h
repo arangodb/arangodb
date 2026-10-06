@@ -23,6 +23,7 @@
 #pragma once
 
 #include "IResearch/IResearchLink.h"
+#include "IResearch/IResearchLinkDefinition.h"
 #include "Indexes/IndexFactory.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "VocBase/Identifiers/IndexId.h"
@@ -135,6 +136,8 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
 
    private:
     IndexFactory(application_features::ApplicationServer& server);
+
+    IResearchLinkDefinition _definition;
 
    public:
     bool equal(VPackSlice lhs, VPackSlice rhs,

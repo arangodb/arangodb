@@ -24,6 +24,7 @@
 #include "ClusterEngine/ClusterIndex.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchLink.h"
+#include "IResearch/IResearchLinkDefinition.h"
 #include "Indexes/IndexFactory.h"
 #include "VocBase/Identifiers/IndexId.h"
 
@@ -127,6 +128,9 @@ class IResearchLinkCoordinator final : public Index, public IResearchLink {
     Result normalize(velocypack::Builder& normalized,
                      velocypack::Slice definition, bool isCreation,
                      TRI_vocbase_t const& vocbase) const final;
+
+   private:
+    IResearchLinkDefinition _definition;
   };
 
   static std::shared_ptr<IndexFactory> createFactory(

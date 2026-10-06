@@ -22,7 +22,6 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Result.h"
 #include "Indexes/IndexDefinitions.h"
 #include "Indexes/IndexType.h"
@@ -33,6 +32,10 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
+namespace application_features {
+class ApplicationServer;
+}  // namespace application_features
 
 namespace arangodb {
 
@@ -45,12 +48,8 @@ class Slice;
 }  // namespace velocypack
 
 // Index type names and equal/normalize rules, shared by both engines.
-class IndexTypeCatalog final : public application_features::ApplicationFeature {
+class IndexTypeCatalog final {
  public:
-  static constexpr std::string_view name() noexcept {
-    return "IndexTypeCatalog";
-  }
-
   IndexTypeCatalog(application_features::ApplicationServer& server,
                    IVectorIndexProvider const& vectorIndexProvider);
 

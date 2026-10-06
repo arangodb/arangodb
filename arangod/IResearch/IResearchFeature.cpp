@@ -1043,12 +1043,27 @@ void IResearchFeature::registerIndexFactory() {
     }
   };
 
+  auto addDefinition = [&]() {
+    _linkDefinition = std::make_unique<IResearchLinkDefinition>(server());
+    auto r = engine.indexTypeCatalog().add(StaticStrings::ViewArangoSearchType,
+                                           *_linkDefinition);
+    if (!r.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          r.errorNumber(),
+          absl::StrCat("failure registering IResearch link definition with "
+                       "index type catalog from feature '",
+                       engine.name(), "': ", r.errorMessage()));
+    }
+  };
+
   if (auto* clusterEngine = dynamic_cast<ClusterEngine*>(&engine)) {
     _factory = IResearchLinkCoordinator::createFactory(server());
     emplace(clusterEngine->indexFactory());
+    addDefinition();
   } else if (auto* rocksDBEngine = dynamic_cast<RocksDBEngine*>(&engine)) {
     _factory = IResearchRocksDBLink::createFactory(server());
     emplace(rocksDBEngine->indexFactory());
+    addDefinition();
   }
 }
 

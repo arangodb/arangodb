@@ -43,7 +43,7 @@ class ClusterEngine final : public StorageEngine {
   explicit ClusterEngine(application_features::ApplicationServer& server,
                          ClusterFeature& clusterFeature,
                          DatabaseFeature& database, metrics::IRegistry& metrics,
-                         IndexTypeCatalog const& indexTypeCatalog);
+                         IVectorIndexProvider const& vectorIndexProvider);
   ~ClusterEngine();
 
   ClusterEngineType engineType() const;

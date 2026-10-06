@@ -53,6 +53,7 @@ class OptimizerRulesFeature;
 }
 
 class DatabaseInitialSyncer;
+class IndexTypeCatalog;
 class LogicalCollection;
 class LogicalView;
 class PhysicalCollection;
@@ -62,6 +63,7 @@ class TransactionState;
 class WalAccess;
 struct IDatabaseProvider;
 struct IDatabaseBootstrap;
+struct IVectorIndexProvider;
 struct CollectionStorageProperties;
 
 namespace rest {
@@ -98,11 +100,13 @@ class StorageSnapshot {
 class StorageEngine : public application_features::ApplicationFeature {
  public:
   // create the storage engine
+  // the factory is set by the engine: it needs this base's catalog first
   StorageEngine(application_features::ApplicationServer& server,
                 std::string_view engineName, std::string_view featureName,
-                std::unique_ptr<IndexFactory>&& indexFactory,
+                IVectorIndexProvider const& vectorIndexProvider,
                 IDatabaseProvider& databaseProvider,
                 IDatabaseBootstrap& databaseBootstrap);
+  ~StorageEngine() override;
 
   virtual HealthData healthCheck() = 0;
 
@@ -323,6 +327,9 @@ class StorageEngine : public application_features::ApplicationFeature {
   // information about indexes.
   virtual IndexFactory const& indexFactory() const;
 
+  IndexTypeCatalog const& indexTypeCatalog() const noexcept;
+  IndexTypeCatalog& indexTypeCatalog() noexcept;
+
   // AQL functions
   // -------------
 
@@ -392,8 +399,11 @@ class StorageEngine : public application_features::ApplicationFeature {
   // startup-lifecycle hooks called as the engine opens.
   IDatabaseBootstrap& _databaseBootstrap;
 
+  void setIndexFactory(std::unique_ptr<IndexFactory>&& indexFactory);
+
  private:
-  std::unique_ptr<IndexFactory> const _indexFactory;
+  std::unique_ptr<IndexTypeCatalog> const _indexTypeCatalog;
+  std::unique_ptr<IndexFactory> _indexFactory;
   std::string_view _typeName;
   std::unique_ptr<TransactionStatistics> _transactionStatistics;
   // non-owning handle to the manager created in createTransactionManager;

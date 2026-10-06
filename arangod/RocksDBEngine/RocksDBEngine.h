@@ -179,7 +179,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
                 metrics::IRegistry& metrics,
                 IDatabasePathProvider const& databasePathProvider,
                 IVectorIndexProvider const& vectorIndexProvider,
-                IndexTypeCatalog const& indexTypeCatalog,
                 IFlushControl& flushControl,
                 IDumpLimitsProvider const& dumpLimitsProvider,
                 replication2::IReplicatedLogProvider* replicatedLogProvider,

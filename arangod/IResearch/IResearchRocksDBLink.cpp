@@ -95,11 +95,11 @@ void IResearchRocksDBLink::toVelocyPack(
 
 IResearchRocksDBLink::IndexFactory::IndexFactory(
     application_features::ApplicationServer& server)
-    : IndexTypeFactory(server) {}
+    : IndexTypeFactory(server), _definition(server) {}
 
 bool IResearchRocksDBLink::IndexFactory::equal(
     VPackSlice lhs, VPackSlice rhs, std::string const& dbname) const {
-  return IResearchLinkHelper::equal(_server, lhs, rhs, dbname);
+  return _definition.equal(lhs, rhs, dbname);
 }
 
 std::shared_ptr<Index> IResearchRocksDBLink::IndexFactory::instantiate(
@@ -143,11 +143,7 @@ std::shared_ptr<Index> IResearchRocksDBLink::IndexFactory::instantiate(
 Result IResearchRocksDBLink::IndexFactory::normalize(
     VPackBuilder& normalized, VPackSlice definition, bool isCreation,
     TRI_vocbase_t const& vocbase) const {
-  // no attribute set in a definition -> old version
-  constexpr LinkVersion defaultVersion = LinkVersion::MIN;
-
-  return IResearchLinkHelper::normalize(normalized, definition, isCreation,
-                                        vocbase, defaultVersion);
+  return _definition.normalize(normalized, definition, isCreation, vocbase);
 }
 
 std::shared_ptr<IResearchRocksDBLink::IndexFactory>

@@ -63,14 +63,14 @@ ClusterEngine::ClusterEngine(application_features::ApplicationServer& server,
                              ClusterFeature& clusterFeature,
                              DatabaseFeature& database,
                              metrics::IRegistry& metrics,
-                             IndexTypeCatalog const& indexTypeCatalog)
-    : StorageEngine(server, EngineName, name(),
-                    std::make_unique<ClusterIndexFactory>(server, *this,
-                                                          indexTypeCatalog),
-                    database, database),
+                             IVectorIndexProvider const& vectorIndexProvider)
+    : StorageEngine(server, EngineName, name(), vectorIndexProvider, database,
+                    database),
       _clusterFeature(clusterFeature),
       _metrics(metrics) {
   setOptional(true);
+  setIndexFactory(
+      std::make_unique<ClusterIndexFactory>(server, *this, indexTypeCatalog()));
 }
 
 ClusterEngine::~ClusterEngine() = default;

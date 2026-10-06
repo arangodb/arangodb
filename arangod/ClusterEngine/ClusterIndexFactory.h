@@ -30,9 +30,6 @@ class ClusterEngine;
 
 class ClusterIndexFactory final : public IndexFactory {
  public:
-  static void linkIndexFactories(
-      application_features::ApplicationServer& server, IndexFactory& factory,
-      ClusterEngine& engine, IndexTypeCatalog const& catalog);
   ClusterIndexFactory(application_features::ApplicationServer&,
                       ClusterEngine& engine, IndexTypeCatalog const& catalog);
   ~ClusterIndexFactory() = default;
@@ -47,6 +44,8 @@ class ClusterIndexFactory final : public IndexFactory {
       std::vector<std::shared_ptr<Index>>& indexes) const override;
 
  private:
+  void linkIndexFactories(ClusterEngine& engine);
+
   ClusterEngine& _engine;
 };
 

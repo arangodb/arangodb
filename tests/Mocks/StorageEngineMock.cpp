@@ -211,15 +211,18 @@ std::function<void()> StorageEngineMock::recoveryTickCallback = []() -> void {};
 
 /*static*/ std::string StorageEngineMock::versionFilenameResult;
 
+// the engine's catalog keeps a reference to this, so it must be static
+static NoVectorIndexProvider const kNoVectorIndexProvider;
+
 StorageEngineMock::StorageEngineMock(
     arangodb::application_features::ApplicationServer& server,
     bool injectClusterIndexes)
-    : StorageEngine(server, "Mock", "Mock",
-                    std::unique_ptr<arangodb::IndexFactory>(
-                        new IndexFactoryMock(server, injectClusterIndexes)),
-                    _dbProvider, _dbProvider),
+    : StorageEngine(server, "Mock", "Mock", kNoVectorIndexProvider, _dbProvider,
+                    _dbProvider),
       vocbaseCount(1),
       _releasedTick(0) {
+  setIndexFactory(std::unique_ptr<arangodb::IndexFactory>(
+      new IndexFactoryMock(server, injectClusterIndexes)));
   initTransactionStatistics(_mockRegistry);
   ON_CALL(_dbProvider, extendedNames()).WillByDefault(::testing::Return(true));
 }
