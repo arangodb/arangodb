@@ -989,10 +989,6 @@ AstNode* Ast::createNodeCollection(CollectionNameResolver const& resolver,
       injectDataSourceInQuery(*this, resolver, accessType, false, name);
 
   if (category == LogicalDataSource::Category::kCollection) {
-    // add collection to query
-    _query.collections().add(std::string(resolved_name), accessType,
-                             Collection::Hint::Collection);
-
     // call private function after validation
     return createNodeCollectionNoValidation(resolved_name, accessType);
   }
