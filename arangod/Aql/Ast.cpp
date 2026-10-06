@@ -2128,6 +2128,21 @@ AstNode* Ast::createPatternOutVariable(std::string_view name) {
   return createNodeVariable(name, true);
 }
 
+AstNode* Ast::createPatternEdgeVariable(std::string_view name) {
+  if (name.empty()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  // Reject a pre-existing edge variable with a specific message.
+  if (_scopes.existsVariable(name)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_PARSE,
+        absl::StrCat("MATCH edge variable '", name, "' is already bound"));
+  }
+
+  return createNodeVariable(name, true);
+}
+
 AstNode* Ast::createNodeMatch() {
   if (not query().queryOptions().isMatchStatementEnabled()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
