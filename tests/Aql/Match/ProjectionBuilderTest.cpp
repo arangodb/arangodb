@@ -205,6 +205,35 @@ TEST_F(ProjectionBuilderTest, quotedLiteralKeepIsNotSubsumedByParentPath) {
   EXPECT_TRUE(keys.contains("profile.name"));
 }
 
+TEST_F(ProjectionBuilderTest, aliasOverwritingSystemAttributeThrows) {
+  Variable const* dest = ast.variables()->createTemporaryVariable();
+  Variable const* full = ast.variables()->createTemporaryVariable();
+  std::unordered_map<VariableId, Variable const*> subst;
+
+  auto expectThrows = [&](Projection const& projection, bool edge) {
+    try {
+      if (edge) {
+        (void)projections.createEdgeDocumentPatternProjection(dest, full,
+                                                              projection, subst);
+      } else {
+        (void)projections.createDocumentPatternProjection(dest, full, projection,
+                                                          subst);
+      }
+      FAIL() << "expected system attribute alias to throw";
+    } catch (arangodb::basics::Exception const& ex) {
+      EXPECT_EQ(TRI_ERROR_QUERY_PARSE, ex.code());
+    }
+  };
+
+  for (std::string_view name : {"_id", "_key", "_rev", "_from", "_to"}) {
+    Projection projection;
+    projection.items.push_back(ProjectionItem::alias(
+        std::string(name), ExpressionRef{ast.createNodeValueString("foo", 3)}));
+    expectThrows(projection, false);
+    expectThrows(projection, true);
+  }
+}
+
 TEST_F(ProjectionBuilderTest, aliasCollisionWithKeepThrows) {
   Variable const* dest = ast.variables()->createTemporaryVariable();
   Variable const* full = ast.variables()->createTemporaryVariable();
