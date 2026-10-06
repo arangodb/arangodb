@@ -22,21 +22,27 @@
 
 #pragma once
 
+#include "VocBase/voc-types.h"
+
+#include <optional>
 #include <string>
 
 namespace arangodb {
 
-struct ShellConsoleFeatureOptions {
-  bool quiet = false;
-  bool connect = true;
-  bool colors = true;
-  bool useHistory = true;
-  bool autoComplete = true;
-  bool prettyPrint = true;
-  std::string auditFile;
-  bool pager = false;
-  std::string pagerCommand = "less -X -R -F -L";
-  std::string prompt = "%E@%d> ";
+/// @brief The collection properties with no runtime owner. Everything else a
+/// CollectionDescriptor carries belongs to ShardingInfo, PhysicalCollection,
+/// KeyGenerator, LogicalDataSource or a LogicalCollection member.
+/// Never parsed or serialized, hence the plain types.
+struct CollectionInvariants {
+  TRI_col_type_e type{TRI_col_type_e::TRI_COL_TYPE_DOCUMENT};
+
+  bool isSmart{false};
+  bool isDisjoint{false};
+  bool isSmartChild{false};
+
+  std::optional<std::string> smartJoinAttribute;
+
+  bool operator==(CollectionInvariants const&) const = default;
 };
 
 }  // namespace arangodb

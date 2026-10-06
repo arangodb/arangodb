@@ -98,6 +98,10 @@ AnalyzerProvider makeAnalyzerProvider(IResearchInvertedIndexMeta const& meta) {
   };
 }
 
+irs::bytes_view refFromSlice(VPackSlice slice) {
+  return {slice.startAs<irs::byte_type>(), slice.byteSize()};
+}
+
 bool supportsFilterNode(
     transaction::Methods& trx, IndexId id,
     std::vector<std::vector<basics::AttributeName>> const& /*fields*/,

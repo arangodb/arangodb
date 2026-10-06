@@ -22,21 +22,16 @@
 
 #pragma once
 
-#include <string>
+#include <cstdint>
 
 namespace arangodb {
 
-struct ShellConsoleFeatureOptions {
-  bool quiet = false;
-  bool connect = true;
-  bool colors = true;
-  bool useHistory = true;
-  bool autoComplete = true;
-  bool prettyPrint = true;
-  std::string auditFile;
-  bool pager = false;
-  std::string pagerCommand = "less -X -R -F -L";
-  std::string prompt = "%E@%d> ";
+/// @brief Everything a PhysicalCollection needs at construction. The rest of
+/// what it uses is reached through the LogicalCollection it is given.
+struct LocalStorageProperties {
+  /// @brief RocksDB object id; 0 means not assigned yet / coordinator stub
+  uint64_t objectId{0};
+  bool cacheEnabled{false};
 };
 
 }  // namespace arangodb
