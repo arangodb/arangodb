@@ -82,8 +82,16 @@ template<typename T>
 void appendAsString(velocypack::Options const& vopts, T& buffer,
                     AqlValue const& value);
 
+template<typename Context>
 void abortMatchWhenKilled(icu_64_64::RegexMatcher& matcher,
-                          ExpressionContext const* context);
+                          Context const* context) {
+  UErrorCode status = U_ZERO_ERROR;
+  matcher.setMatchCallback(
+      [](void const* ctx, int32_t /*steps*/) -> UBool {
+        return !static_cast<Context const*>(ctx)->killed();
+      },
+      context, status);
+}
 
 /// @brief helper function. not callable as a "normal" AQL function
 template<typename T>

@@ -44,11 +44,6 @@ namespace {
 /// @brief an empty AQL value
 static AqlValue const emptyAqlValue;
 
-// ICU calls this every 10,000 steps; returning false aborts the match.
-UBool continueUnlessKilled(void const* context, int32_t /*steps*/) {
-  return !static_cast<ExpressionContext const*>(context)->killed();
-}
-
 }  // namespace
 
 /// @brief extract a boolean parameter from an array
@@ -237,11 +232,5 @@ template void functions::stringify<velocypack::StringSink>(
 template void functions::stringify<velocypack::SizeConstrainedStringSink>(
     velocypack::Options const* vopts,
     velocypack::SizeConstrainedStringSink& buffer, velocypack::Slice slice);
-
-void functions::abortMatchWhenKilled(icu_64_64 ::RegexMatcher& matcher,
-                                     ExpressionContext const* context) {
-  UErrorCode status = U_ZERO_ERROR;
-  matcher.setMatchCallback(continueUnlessKilled, context, status);
-}
 
 }  // namespace arangodb::aql

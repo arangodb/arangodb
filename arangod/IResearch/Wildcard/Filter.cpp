@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearch/Wildcard/Filter.h"
+#include "Aql/Functions.h"
 #include "Aql/QueryContext.h"
 #include "IResearch/ExpressionFilter.h"
 #include "IResearch/IResearchFilterFactoryCommon.h"
@@ -32,13 +33,6 @@
 #include "search/boolean_query.hpp"
 
 namespace arangodb::iresearch::wildcard {
-
-namespace {
-// ICU calls this every 10,000 steps; returning false aborts the match.
-UBool continueUnlessQueryKilled(void const* query, int32_t /*steps*/) {
-  return !static_cast<aql::QueryContext const*>(query)->killed();
-}
-}  // namespace
 
 class Iterator : public irs::doc_iterator {
  public:
@@ -58,9 +52,7 @@ class Iterator : public irs::doc_iterator {
                                      "Cannot create matcher for this pattern");
     }
     if (query != nullptr) {
-      UErrorCode callbackStatus = U_ZERO_ERROR;
-      matcher->setMatchCallback(continueUnlessQueryKilled, query,
-                                callbackStatus);
+      aql::functions::abortMatchWhenKilled(*matcher, query);
     }
     TRI_ASSERT(status == U_ZERO_ERROR);
     _matcher = matcher;
