@@ -147,34 +147,7 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   while (inputRange.hasDataRow() && !output.isFull()) {
     if (!_currentRow) {
       std::tie(_currentRowState, _currentRow) = inputRange.peekDataRow();
-      _constantBuilder.clear();
-      _constantSlices.clear();
-      _constantBuilder.openArray();
-
-      for (auto const& idx : _infos.indexes) {
-        if (!idx.constantExpressions.empty()) {
-          for (auto& expr : idx.constantExpressions) {
-            bool mustDestroy = false;
-            ExecutorExpressionContext ctx{_trx,
-                                          *_infos.query,
-                                          _functionsCache,
-                                          _currentRow,
-                                          idx.expressionVarsToRegs,
-                                          _infos.query->resourceMonitor()};
-
-            aql::AqlValue res = expr->execute(&ctx, mustDestroy);
-            aql::AqlValueGuard guard{res, mustDestroy};
-            LOG_JOIN << "Expression result: " << res.slice().toJson();
-            _constantBuilder.add(res.slice());
-          }
-        }
-      }
-      _constantBuilder.close();  // array
-
-      for (VPackSlice it : VPackArrayIterator(_constantBuilder.slice())) {
-        _constantSlices.push_back(it);
-      }
-      _strategy->reset(_constantSlices);
+      resetStrategyForCurrentRow();
     }
 
     [[maybe_unused]] std::size_t rowCount = 0;
@@ -528,6 +501,37 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   return {inputRange.upstreamState(), stats, upstreamCall};
 }
 
+void JoinExecutor::resetStrategyForCurrentRow() {
+  _constantBuilder.clear();
+  _constantSlices.clear();
+  _constantBuilder.openArray();
+
+  for (auto const& idx : _infos.indexes) {
+    if (!idx.constantExpressions.empty()) {
+      for (auto& expr : idx.constantExpressions) {
+        bool mustDestroy = false;
+        ExecutorExpressionContext ctx{_trx,
+                                      *_infos.query,
+                                      _functionsCache,
+                                      _currentRow,
+                                      idx.expressionVarsToRegs,
+                                      _infos.query->resourceMonitor()};
+
+        aql::AqlValue res = expr->execute(&ctx, mustDestroy);
+        aql::AqlValueGuard guard{res, mustDestroy};
+        LOG_JOIN << "Expression result: " << res.slice().toJson();
+        _constantBuilder.add(res.slice());
+      }
+    }
+  }
+  _constantBuilder.close();  // array
+
+  for (VPackSlice it : VPackArrayIterator(_constantBuilder.slice())) {
+    _constantSlices.push_back(it);
+  }
+  _strategy->reset(_constantSlices);
+}
+
 void JoinExecutor::clearProjectionsBuilder() noexcept {
   auto const& buffer = _projectionsBuilder.bufferRef();
   resourceMonitor().decreaseMemoryUsage(buffer.byteSize());
@@ -542,7 +546,7 @@ auto JoinExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
   while (inputRange.hasDataRow() && clientCall.needSkipMore()) {
     if (!_currentRow) {
       std::tie(_currentRowState, _currentRow) = inputRange.peekDataRow();
-      _strategy->reset({});
+      resetStrategyForCurrentRow();
     }
 
     auto [hasMore, amountOfSeeks] =
