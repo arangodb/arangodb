@@ -33,6 +33,10 @@ parameters:
     type: boolean
     default: false
     description: "Whether to run the full test set (e.g., for nightly builds) or reduced set (e.g., for normal PR builds)"
+  with-clang-tidy:
+    type: boolean
+    default: false
+    description: "Run clang-tidy over the tree (slow)"
   arangod-without-v8:
     type: boolean
     default: false
@@ -75,7 +79,7 @@ parameters:
     description: "Docker image to use for testing ArangoDB - only relevant when trying new test images"
   build-docker-image:
     type: string
-    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-312:24.04-554085737"
+    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-312:24.04-b6c8a8886"
     description: "Docker image to use for building ArangoDB - only relevant when trying new build images"
   # Rarely used options
   replication-two:
@@ -293,6 +297,7 @@ jobs:
               --test-image "<< pipeline.parameters.test-docker-image >>" \
               <<# pipeline.parameters.arangod-without-v8 >> --arangod-without-v8  <</ pipeline.parameters.arangod-without-v8 >>\
               <<# pipeline.parameters.full >> --full <</ pipeline.parameters.full >> \
+              <<# pipeline.parameters.with-clang-tidy >> --clang-tidy <</ pipeline.parameters.with-clang-tidy >> \
               --create-test-docker-images << pipeline.parameters.create-test-docker-images >> \
               <<# pipeline.parameters.replication-two >> -rt <</ pipeline.parameters.replication-two >> \
               --driver-branch-overrides "<<parameters.config-definitions-branches>>" \

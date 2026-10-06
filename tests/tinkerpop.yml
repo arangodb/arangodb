@@ -1,4 +1,5 @@
 jobProperties:
+    maven_cache: true
     container_suffix: '-tinkerpop:'
     second_repo: git@github.com:arangodb/arangodb-tinkerpop-provider.git
     branch: main
@@ -12,7 +13,6 @@ tests:
     requires:
       instrumentation: false
     args:
-      extremeVerbosity: true
       tinkerpopGraphType: simple
 - tinkerpop_provider:
     job: run-driver-tests
@@ -23,7 +23,6 @@ tests:
     requires:
       instrumentation: false
     args:
-      extremeVerbosity: true
       tinkerpopGraphType: simple
 
 - tinkerpop_provider:
@@ -37,7 +36,6 @@ tests:
     requires:
       instrumentation: false
     args:
-      extremeVerbosity: true
       tinkerpopGraphType: complex
 - tinkerpop_provider:
     job: run-driver-tests
@@ -50,5 +48,4 @@ tests:
     requires:
       instrumentation: false
     args:
-      extremeVerbosity: true
       tinkerpopGraphType: complex

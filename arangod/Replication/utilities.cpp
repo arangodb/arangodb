@@ -22,8 +22,12 @@
 
 #include "utilities.h"
 
+#include <algorithm>
+#include <cmath>
 #include <string>
 #include <unordered_map>
+
+#include <absl/strings/str_cat.h>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
@@ -260,6 +264,14 @@ void ProgressInfo::set(std::string const& msg) {
 }
 
 constexpr double BatchInfo::DefaultTimeout;
+constexpr double BatchInfo::kMaxTimeout;
+
+double BatchInfo::sanitizeTtl(double ttl) noexcept {
+  if (std::isnan(ttl) || ttl <= 0.0) {
+    return DefaultTimeout;
+  }
+  return std::min(ttl, kMaxTimeout);
+}
 
 /// @brief send a "start batch" command
 /// @param patchCount try to patch count of this collection
@@ -566,6 +578,14 @@ bool isVelocyPack(httpclient::SimpleHttpResult const& response) {
   std::string const& cType =
       response.getHeaderField(StaticStrings::ContentTypeHeader, found);
   return found && cType == StaticStrings::MimeTypeVPack;
+}
+
+Result documentInsertError(Result res, std::string_view collectionName) {
+  TRI_ASSERT(res.fail());
+  return Result{
+      res.errorNumber(),
+      absl::StrCat("error while inserting documents into collection '",
+                   collectionName, "': ", res.errorMessage())};
 }
 
 /// @brief parse a velocypack response

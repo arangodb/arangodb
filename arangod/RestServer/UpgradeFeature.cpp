@@ -298,7 +298,7 @@ Result UpgradeFeature::performFullCompaction() {
   LOG_TOPIC("e8f45", INFO, arangodb::Logger::ENGINES)
       << "starting full RocksDB compaction after upgrade";
 
-  StorageEngine& engine = server().getFeature<DatabaseFeature>().engine();
+  StorageEngine& engine = server().getFeature<StorageEngine>();
 
   // Perform full compaction with both changeLevel and compactBottomMostLevel
   // enabled This matches the behavior of the /_admin/compact API with

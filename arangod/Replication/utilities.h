@@ -25,6 +25,7 @@
 #include <map>
 #include <mutex>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 
 #include "Basics/Result.h"
@@ -149,6 +150,9 @@ struct LeaderInfo {
 struct BatchInfo {
   static constexpr double DefaultTimeout = 3600.0;
   static constexpr double DefaultTimeoutForTailing = 1800.0;
+  static constexpr double kMaxTimeout = 86400.0;  // 24h
+
+  static double sanitizeTtl(double ttl) noexcept;
 
   /// @brief dump batch id
   uint64_t id{0};
@@ -188,6 +192,10 @@ Result buildHttpError(httpclient::SimpleHttpResult* response,
 Result parseResponse(velocypack::Builder&, httpclient::SimpleHttpResult const*);
 
 bool isVelocyPack(httpclient::SimpleHttpResult const& response);
+
+/// @brief add context to an error that occurred while inserting documents
+/// received from the leader into a local collection
+Result documentInsertError(Result res, std::string_view collectionName);
 
 }  // namespace replutils
 }  // namespace arangodb

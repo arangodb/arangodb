@@ -50,7 +50,6 @@ function hotBackup (options) {
   const encryptionKey = '01234567890123456789012345678901';
   let c = getClusterStrings(options);
   console.warn(options);
-  options.extraArgs['vector-index'] = true;
   if (options.hasOwnProperty("dbServers") && options.dbServers > 1) {
     options.dbServers = 3;
   }
@@ -158,7 +157,6 @@ function hotBackup (options) {
 
 function hotBackup_load_backend (options, which, args) {
   const encryptionKey = '01234567890123456789012345678901';
-  options.extraArgs['vector-index'] = true;
   if (options.hasOwnProperty("dbServers") && options.dbServers > 1) {
     options.dbServers = 3;
   }

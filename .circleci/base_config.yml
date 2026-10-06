@@ -25,7 +25,7 @@ parameters:
     default: ""
   build-docker-image:
     type: string
-    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-312:24.04-554085737"
+    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-312:24.04-b6c8a8886"
     description: "Docker image to use for building ArangoDB - only relevant when trying new build images"
   test-docker-image:
     type: string
@@ -45,6 +45,9 @@ parameters:
     type: boolean
     default: false
   full:
+    type: boolean
+    default: false
+  with-clang-tidy:
     type: boolean
     default: false
   replication-two:
@@ -123,6 +126,79 @@ parameters:
 
 
 commands:
+  load_cache:
+    parameters:
+      driver-git-repo:
+        type: string
+    steps:
+      - run:
+          name: Generate Cache Checksum
+          command: |
+            cd ../$(echo '<< parameters.driver-git-repo >>' | sed -e "s;.*/;;" -e "s;.git$;;")
+            find . -name 'pom.xml' | sort | xargs cat > /tmp/maven_cache_seed
+      - restore_cache:
+          key: maven-v1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "/tmp/maven_cache_seed" }}
+  store_cache:
+    steps:
+      - save_cache:
+          key: maven-v1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "/tmp/maven_cache_seed" }}
+          paths:
+            - ~/.m2/repository
+  load_cache_s3:
+    parameters:
+      driver-git-repo:
+        type: string
+    steps:
+      - run:
+          name: Load Java Cache from AWS
+          command: |
+            set -x
+            cd ../$(echo '<< parameters.driver-git-repo >>' | sed -e "s;.*/;;" -e "s;.git$;;")
+            find . -name 'pom.xml' | sort | xargs cat > /tmp/maven_cache_seed
+            set -eo pipefail
+
+            ARCHIVE="maven-v1-${CIRCLE_JOB}-$( md5sum "/tmp/maven_cache_seed" |sed "s; .*;;" ).tar.gz"
+
+            if [ -z "${AWS_S3_WORKSPACE_BUCKET:-}" ]; then
+              echo "AWS_S3_WORKSPACE_BUCKET not set"
+              exit 1
+            fi
+
+            mkdir -p /tmp/javas-cache
+            mkdir -p ~/.m2/repository
+            TAR="/tmp/javas-cache/${ARCHIVE}"
+
+            aws configure set profile.anon.s3.multipart_threshold 5GB
+            aws s3 cp --no-sign-request --profile anon \
+              "s3://${AWS_S3_WORKSPACE_BUCKET}/java-caches/${ARCHIVE}" \
+              "$TAR" && \
+            tar -C ~ -xzf "$TAR" || true
+  store_cache_s3:
+    steps:
+      - run:
+          command: |
+            set -eo pipefail
+            set -x
+
+            ARCHIVE="maven-v1-${CIRCLE_JOB}-$( md5sum "/tmp/maven_cache_seed" |sed "s; .*;;" ).tar.gz"
+
+            if [ -z "${AWS_S3_WORKSPACE_BUCKET:-}" ]; then
+              echo "AWS_S3_WORKSPACE_BUCKET not set"
+              exit 1
+            fi
+
+            mkdir -p /tmp/javas-cache
+            TAR="/tmp/javas-cache/${ARCHIVE}"
+
+            if test -d ~/.m2/repository; then
+              tar -C ~ -czf "$TAR" .m2/repository
+
+              du -sh "$TAR"
+              aws configure set profile.anon.s3.multipart_threshold 5GB
+              aws s3 cp --no-sign-request --profile anon \
+                "$TAR" \
+                "s3://${AWS_S3_WORKSPACE_BUCKET}/java-caches/${ARCHIVE}"
+            fi
   persist_workspace_to_s3:
     parameters:
       root:
@@ -311,7 +387,6 @@ commands:
             cd ..
             export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no"
             git clone --single-branch --branch << parameters.driver-git-branch >> << parameters.driver-git-repo >>
-
   fetch-aux-binaries:
     parameters:
       arch:
@@ -338,6 +413,77 @@ commands:
 
             curl -s -L -o <<parameters.repo-path>>/build/bin/rclone-arangodb "https://github.com/arangodb/rclone-arangodb/releases/download/golang-${RCLONE_GO}/golang-${RCLONE_GO}_${ARANGO_MAJOR_MINOR_VERSION}_v${RCLONE_VERSION}_rclone-arangodb-linux-$arch"
             chmod a+x <<parameters.repo-path>>/build/bin/rclone-arangodb
+  provision-rbac-sidecar:
+    description: >
+      Downloads the `arangodb_operator` binary when it exists or builds it
+      from source when it does not. See
+      tests/api/rbac/scripts/provision_operator_sidecar.sh for why building is
+      currently the normal outcome.
+    parameters:
+      arch:
+        type: string
+        # Empty means "detect from uname"
+        default: ""
+      operator-repo:
+        type: string
+        default: "https://github.com/arangodb/kube-arangodb.git"
+      operator-ref:
+        type: string
+        default: master
+    steps:
+      - run:
+          name: Provision the authorization sidecar binary
+          # Build takes a few minutes and produces no output.
+          no_output_timeout: 20m
+          command: |
+            set -eo pipefail
+            missing=""
+            for tool in curl python3 tar unshare; do
+              command -v "$tool" >/dev/null 2>&1 || missing="$missing $tool"
+            done
+            if [ -n "$missing" ]; then
+              echo "this image is missing:$missing - the RBAC stack scripts need them" >&2
+              exit 1
+            fi
+            if ! unshare --map-root-user --mount "${BASH:-bash}" -c : 2>/dev/null; then
+              echo "this executor cannot create a user+mount namespace, which the" >&2
+              echo "authorization sidecar needs for a writable /run." >&2
+              echo "Either run this job on a machine executor (as run-rta-tests" >&2
+              echo "does) or use an image/seccomp profile that permits" >&2
+              echo "unshare(CLONE_NEWUSER|CLONE_NEWNS)." >&2
+              exit 1
+            fi
+            export RBAC_OPERATOR_DIR="$HOME/rbac-operator"
+            OPERATOR_PATH="$(tests/api/rbac/scripts/provision_operator_sidecar.sh \
+              --arch '<< parameters.arch >>' \
+              --repo '<< parameters.operator-repo >>' \
+              --ref '<< parameters.operator-ref >>')"
+            echo "export OPERATOR='$OPERATOR_PATH'" >> "$BASH_ENV"
+            echo "provisioned: $OPERATOR_PATH"
+
+  start-rbac-stack:
+    description: >
+      Launch the authorization sidecar and the arangod that stores its policies.
+      Must run AFTER the build artifacts are attached, because it starts arangod
+      from build/bin - hence run-test's pre-test-steps rather than a step before
+      it, which is where the driver tests put their setup.
+    parameters:
+      rbac-work:
+        type: string
+        default: /tmp/rbac-stack
+    steps:
+      - run:
+          name: Start the RBAC authorization stack
+          no_output_timeout: 10m
+          command: |
+            set -eo pipefail
+            if [ -z "${OPERATOR:-}" ]; then
+              echo "OPERATOR is not set - provision-rbac-sidecar must run first" >&2
+              exit 1
+            fi
+            export RBAC_WORK="<< parameters.rbac-work >>"
+            tests/api/rbac/scripts/start_stack_for_unittest.sh
+
   run-test:
     parameters:
       suiteName:
@@ -357,6 +503,9 @@ commands:
       use-s3-workspace:
         type: boolean
         default: true
+      pre-test-steps:
+        type: steps
+        default: []
     steps:
       - add_ssh_keys:
           fingerprints:
@@ -399,11 +548,21 @@ commands:
                 name: Symbolizer server
                 command: ./utils/llvm-symbolizer-server.py
                 background: true
+      - steps: << parameters.pre-test-steps >>
       - run:
           name: Run << parameters.suiteName >> tests
           # we increase the no_output_timeout so our own timeout mechanism can kick in and gather more information
           no_output_timeout: 20m
           command: |
+            BUCKETS="$CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX"
+            unset IFS
+            for var in $(compgen -e); do
+               for filter in AWS CIRCLE CONTAINER GITHUB KUBERNETES; do
+                 if [[ "$var" == *"$filter"* ]]; then
+                   unset "$var"
+                 fi
+               done
+            done
             set -x
             # ulimit needs to be in here since it only has effect for this verry shell and its subprocesses:
             ulimit -c unlimited
@@ -445,7 +604,7 @@ commands:
             python3 -u scripts/test/test_launch_controller.py '<< parameters.suites >>' \
               --suiteName '<< parameters.suiteName >>' \
               --arangosh_args '<< parameters.arangosh_args >>' \
-              --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
+              --testBuckets $BUCKETS \
               --cluster << parameters.cluster >> \
               --extraArgs "${EXTRA_ARGS}"
       - run:
@@ -936,13 +1095,21 @@ jobs:
                   - tsan_arangodb_suppressions.txt
                   - ubsan_arangodb_suppressions.txt
                   - lsan_arangodb_suppressions.txt
+            # clang-tidy can only parse if generated headers (voc-errors.h, ...) exist.
+            - run:
+                name: Stage generated headers for clang-tidy
+                command: |
+                  cd /root/project
+                  find build \( -name '*.h' -o -name '*.hpp' -o -name '*.inc' -o -name '*.csx' \) -print0 \
+                    | tar --null -cf - -T - \
+                    | (mkdir -p tidy-headers && tar -xf - -C tidy-headers)
             - persist_workspace_to_s3:
                 root: .
-                archive: cppcheck.tar.gz
+                archive: compile_commands.tar.gz
                 paths: |
                   build/compile_commands.json
+                  tidy-headers
             - persist_workspace_to_s3:
-                # not there? install.tar.gz
                 root: .
                 archive: binaries.tar.gz
                 paths: |
@@ -956,6 +1123,8 @@ jobs:
                   etc/
                   tests/js
                   enterprise/tests/js
+                  tests/api/rbac
+                  arangod/Auth/Rbac/ServiceImpl.cpp
                   utils
                   lib/iresearch/tests/resources
                   3rdParty/rta-makedata
@@ -1096,6 +1265,9 @@ jobs:
   run-driver-tests:
     parameters:
       <<: *shared-test-job-parameters
+      maven-cache:
+        type: boolean
+        default: false
       driver-git-repo:
         type: string
       driver-git-branch:
@@ -1111,6 +1283,11 @@ jobs:
       - clone-driver-repo:
           driver-git-repo: << parameters.driver-git-repo >>
           driver-git-branch: << parameters.driver-git-branch >>
+      - when:
+          condition: << parameters.maven-cache >>
+          steps:
+            - load_cache_s3:
+                driver-git-repo: << parameters.driver-git-repo >>
       - run:
           name: Initialize driver tests
           command: |
@@ -1124,10 +1301,17 @@ jobs:
           timeLimit: << parameters.timeLimit >>
           sanitizer: << parameters.sanitizer >>
           extraArgs: << parameters.extraArgs >>
+      - when:
+          condition: << parameters.maven-cache >>
+          steps:
+            - store_cache_s3
 
   kafka-driver-tests:
     parameters:
       <<: *shared-test-job-parameters
+      maven-cache:
+        type: boolean
+        default: false
       driver-git-repo:
         type: string
       driver-git-branch:
@@ -1190,6 +1374,11 @@ jobs:
       - clone-driver-repo:
           driver-git-repo: << parameters.driver-git-repo >>
           driver-git-branch: << parameters.driver-git-branch >>
+      - when:
+          condition: << parameters.maven-cache >>
+          steps:
+            - load_cache:
+                driver-git-repo: << parameters.driver-git-repo >>
       - run:
           name: Wait for Kafka brokers to be ready
           command: |
@@ -1219,6 +1408,71 @@ jobs:
           sanitizer: << parameters.sanitizer >>
           extraArgs: << parameters.extraArgs >>
           use-s3-workspace: false
+      - when:
+          condition: << parameters.maven-cache >>
+          steps:
+            - store_cache
+
+  run-rbac-tests:
+    description: >
+      rta_makedata under RBAC, against a real authorization sidecar.
+
+      Shaped like run-driver-tests - extra setup bolted onto run-test - with one
+      difference that matters: the driver clone needs no build artifacts and so
+      happens before run-test, whereas this has to start arangod, which only
+      exists after run-test attaches the workspace. So the stack launch goes in
+      run-test's pre-test-steps.
+
+      `--rbac <endpoint>` is appended here rather than taken from the test
+      definition, so the endpoint the harness is told about and the one the
+      stack actually binds cannot drift apart.
+    parameters:
+      <<: *shared-test-job-parameters
+      operator-repo:
+        type: string
+        default: "https://github.com/arangodb/kube-arangodb.git"
+      operator-ref:
+        type: string
+        default: master
+      operator-arch:
+        type: string
+        default: ""
+      rbac-endpoint:
+        type: string
+        # Must match SIDECAR_MGMT in tests/api/rbac/scripts/env.sh.
+        default: "http://127.0.0.1:8108"
+      rbac-work:
+        type: string
+        default: /tmp/rbac-stack
+    docker:
+      - image: << parameters.docker_image >>
+    resource_class: << parameters.size >>
+    parallelism: << parameters.buckets >>
+    steps:
+      - run-test:
+          suiteName: << parameters.suiteName >>
+          suites: << parameters.suites >>
+          cluster: << parameters.cluster >>
+          arangosh_args: << parameters.arangosh_args >>
+          timeLimit: << parameters.timeLimit >>
+          sanitizer: << parameters.sanitizer >>
+          extraArgs: << parameters.extraArgs >> --rbac << parameters.rbac-endpoint >>
+          pre-test-steps:
+            - provision-rbac-sidecar:
+                arch: << parameters.operator-arch >>
+                operator-repo: << parameters.operator-repo >>
+                operator-ref: << parameters.operator-ref >>
+            - start-rbac-stack:
+                rbac-work: << parameters.rbac-work >>
+      - run:
+          name: Collect RBAC stack logs
+          when: always
+          command: |
+            mkdir -p rbac-stack-logs
+            cp -a "<< parameters.rbac-work >>/log/." rbac-stack-logs/ 2>/dev/null || true
+      - store_artifacts:
+          destination: << parameters.suiteName >>-rbac-stack
+          path: ./rbac-stack-logs/
 
   run-rta-tests:
     machine:
@@ -1272,6 +1526,15 @@ jobs:
           name: Run << parameters.suiteName >> tests
           no_output_timeout: 20m
           command: |
+            BUCKETS="$CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX"
+            unset IFS
+            for var in $(compgen -e); do
+               for filter in AWS CIRCLE CONTAINER GITHUB KUBERNETES; do
+                 if [[ "$var" == *"$filter"* ]]; then
+                   unset "$var"
+                 fi
+               done
+            done
             set +x
             pwd
             export SOURCE=nightlypublic
@@ -1300,7 +1563,7 @@ jobs:
               --no-run-upgrade  \
               --selenium << parameters.browser >> \
               --starter-mode << parameters.deployment >> \
-              --buckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
+              --buckets $BUCKETS \
               << parameters.filterStatement >>
             exit_code=$?
             docker run \
@@ -1330,7 +1593,7 @@ jobs:
             mkdir -p /root/project/
       - attach_workspace_from_s3:
           at: /root/workspace/
-          archive: cppcheck.tar.gz
+          archive: compile_commands.tar.gz
       - run:
           name: Print workspace size
           command: |
@@ -1360,6 +1623,108 @@ jobs:
           path: /root/project/cppcheck.xml
       - store_test_results:
           path: /root/project/cppcheck-junit.xml
+
+  run-clang-tidy:
+    docker:
+      - image: << pipeline.parameters.build-docker-image >>
+    resource_class: arangodb/large-amd64
+    steps:
+      - run:
+          name: Prepare container
+          command: |
+            mkdir -p /root/workspace/
+            mkdir -p /root/project/
+      - attach_workspace_from_s3:
+          at: /root/workspace/
+          archive: compile_commands.tar.gz
+      - run:
+          name: Print workspace size
+          command: |
+            du -sh /root/workspace/*
+            echo "==================="
+            du -sh /root/workspace/build/*
+            echo "=== container limits ==="
+            nproc
+            cat /sys/fs/cgroup/memory.max 2>/dev/null || cat /sys/fs/cgroup/memory/memory.limit_in_bytes
+      - checkout-arangodb:
+          with-submodules: true
+          destination: "/root/project"
+      - checkout-enterprise:
+          destination: "/root/project/enterprise"
+      - run:
+          name: Run clang-tidy
+          # tee, not >, so the console keeps producing output and CircleCI does
+          # not kill the step after 10 minutes of silence.
+          no_output_timeout: 3h
+          command: |
+            ln -s /root/workspace/build/ /root/project/
+            cp -r /root/workspace/tidy-headers/build/. /root/workspace/build/
+            cd /root/project/
+
+            # -j is bounded by two container limits, either of which can bind.
+            # nproc is neither: it reports host cores, not this container's quota.
+            mem=$(cat /sys/fs/cgroup/memory.max 2>/dev/null \
+                  || cat /sys/fs/cgroup/memory/memory.limit_in_bytes 2>/dev/null \
+                  || echo "")
+            case "$mem" in
+              ''|*[!0-9]*) mem=8589934592 ;;
+            esac
+            # Measured 1.47GiB per job on a full run; budget 1.5, keep 2GiB spare.
+            by_mem=$(( (mem / 1073741824 - 2) * 10 / 15 ))
+
+            cpus=""
+            if [ -r /sys/fs/cgroup/cpu.max ]; then
+              read -r quota period < /sys/fs/cgroup/cpu.max || true
+              if [ "$quota" != "max" ] && [ "${period:-0}" -gt 0 ]; then
+                cpus=$(( quota / period ))
+              fi
+            elif [ -r /sys/fs/cgroup/cpu/cpu.cfs_quota_us ]; then
+              quota=$(cat /sys/fs/cgroup/cpu/cpu.cfs_quota_us)
+              period=$(cat /sys/fs/cgroup/cpu/cpu.cfs_period_us)
+              if [ "$quota" -gt 0 ] && [ "$period" -gt 0 ]; then
+                cpus=$(( quota / period ))
+              fi
+            fi
+            if [ -z "$cpus" ] || [ "$cpus" -lt 1 ]; then cpus=$(nproc); fi
+
+            jobs=$by_mem
+            if [ "$jobs" -gt "$cpus" ]; then jobs=$cpus; fi
+            if [ "$jobs" -lt 1 ]; then jobs=1; fi
+            echo "limits: mem=$((mem / 1073741824))GiB allows $by_mem, cpu quota $cpus, nproc $(nproc) -> using -j $jobs"
+
+            # /usr/bin/time is not in the build image; use the clock and the
+            # cgroup's own peak-usage counter instead.
+            start=$(date +%s)
+            rc=0
+            utils/clang-tidy.sh arangod lib client-tools enterprise -B /root/workspace/build/ -j "$jobs" \
+              | tee clang-tidy-results.txt || rc=$?
+            end=$(date +%s)
+            peak=$(cat /sys/fs/cgroup/memory.peak 2>/dev/null \
+                   || cat /sys/fs/cgroup/memory/memory.max_usage_in_bytes 2>/dev/null \
+                   || echo 0)
+            echo "elapsed_s=$((end - start)) peak_rss_kb=$((peak / 1024)) jobs=$jobs" \
+              > /root/project/clang-tidy-time.txt
+            cat /root/project/clang-tidy-time.txt
+            exit $rc
+      - run:
+          name: Report run cost
+          when: always
+          command: |
+            cd /root/project/
+            cat clang-tidy-time.txt 2>/dev/null || echo "(no timing captured)"
+      - store_artifacts:
+          path: /root/project/clang-tidy-time.txt
+      - run:
+          name: Format result
+          when: always
+          command: |
+            cd /root/project/
+            sed -i 's#/root/project/##g' clang-tidy-results.txt
+            python3 utils/clang-tidy-junit.py clang-tidy-results.txt clang-tidy-junit.xml
+      - store_artifacts:
+          path: /root/project/clang-tidy-results.txt
+      - store_test_results:
+          path: /root/project/clang-tidy-junit.xml
 
 workflows:
   lint:

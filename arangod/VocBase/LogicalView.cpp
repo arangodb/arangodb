@@ -375,7 +375,7 @@ Result properties(LogicalView const& view, bool safe) noexcept {
   auto& vocbase = view.vocbase();
   auto& engine = vocbase.engine();
   return safeCall([&]() -> Result {
-    if (engine.inRecovery()) {
+    if (!engine.isReady()) {
       return {};
     }
     velocypack::Builder b;

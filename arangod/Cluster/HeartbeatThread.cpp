@@ -26,6 +26,7 @@
 #include "Auth/UserManager.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/application-exit.h"
+#include "Basics/ScopeGuard.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
@@ -44,7 +45,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TtlFeature.h"
-#include "RocksDBEngine/RocksDBEngine.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/HealthData.h"
@@ -364,6 +364,26 @@ void HeartbeatThread::run() {
       << "stopped heartbeat thread (" << role << ")";
 }
 
+namespace {
+
+/// @brief wait for an already scheduled getNewsFromAgency job to finish.
+/// The job runs in a scheduler thread and accesses objects owned by the
+/// ClusterFeature (e.g. the AgencyCache). The ClusterFeature tears those down
+/// once the HeartbeatThread has stopped, so the thread must not stop while the
+/// job is still in flight.
+void waitForScheduledGetNews(std::atomic<int> const& getNewsRunning) noexcept {
+  size_t counter = 0;
+  while (getNewsRunning.load(std::memory_order_seq_cst) != 0) {
+    if (++counter % 200 == 0) {
+      LOG_TOPIC("a3b7c", WARN, Logger::HEARTBEAT)
+          << "waiting for scheduled getNewsFromAgency job to finish";
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+}
+
+}  // namespace
+
 void HeartbeatThread::getNewsFromAgencyForDBServer() {
   // ATTENTION: This method will usually be run in a scheduler thread and
   // not in the HeartbeatThread itself. Therefore, we must protect ourselves
@@ -488,6 +508,8 @@ void HeartbeatThread::runDBServer() {
   // thread. If it is zero, the heartbeat schedules another
   // run, which at its end, sets it back to 0:
   auto getNewsRunning = std::make_shared<std::atomic<int>>(0);
+  auto waitForGetNews =
+      scopeGuard([&]() noexcept { waitForScheduledGetNews(*getNewsRunning); });
 
   // Loop priorities / goals
   // 0. send state to agency server
@@ -786,6 +808,8 @@ void HeartbeatThread::runCoordinator() {
   // thread. If it is zero, the heartbeat schedules another
   // run, which at its end, sets it back to 0:
   auto getNewsRunning = std::make_shared<std::atomic<int>>(0);
+  auto waitForGetNews =
+      scopeGuard([&]() noexcept { waitForScheduledGetNews(*getNewsRunning); });
 
   while (!isStopping()) {
     try {
@@ -1133,7 +1157,7 @@ void HeartbeatThread::sendServerStateAsync() {
     if (ServerState::instance()->isDBServer()) {
       // use storage engine health self-assessment and send it to agency too
       arangodb::HealthData hd =
-          server().getFeature<RocksDBEngine>().healthCheck();
+          server().getFeature<StorageEngine>().healthCheck();
       // intentionally dont transmit details so we can save a bit of traffic
       hd.toVelocyPack(builder, /*withDetails*/ false);
     }

@@ -67,6 +67,8 @@ ArangoshServer::ArangoshServer(std::shared_ptr<options::ProgramOptions> options,
           options, binaryPath, std::move(binaryName), ret) {
   // Set a different default for the ClientFeature
   mutableOptions<ClientOptionsProvider>().allowJwtSecret = true;
+  // arangosh logs in through its own fuerte connection
+  mutableOptions<ClientOptionsProvider>().loginViaOpenAuth = false;
 }
 
 void ArangoshServer::addFeatures() {

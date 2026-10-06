@@ -131,7 +131,13 @@ function runArangodRecovery (params, useEncryption, isKillAfterSetup = true) {
         process.env["rocksdb-encryption-keyfile"] = keyfile;
       }
     }
+    let fileContent = fs.readFileSync(params.script);
+    if (String(fileContent).search('getOptions') > 0) {
+      let content = `(function(){ const runSetup = false; const getOptions = true; ${fileContent} 
+}())`; // DO NOT JOIN WITH THE LINE ABOVE -- because of content could contain '//' at the very EOF
 
+      instanceArgs = Object.assign(instanceArgs, executeScript(content, true, params.script));
+    }
     params.instanceArgs = instanceArgs;
       
   }
@@ -184,7 +190,7 @@ function runArangodRecovery (params, useEncryption, isKillAfterSetup = true) {
   let testFunc;
   let success = -1;
   try {
-    let content = `(function(){ let runSetup=${params.setup?"true":"false"};${testCode}
+    let content = `(function(){ let runSetup=${params.setup?"true":"false"}; const getOptions = false;;${testCode}
 }())`; // DO NOT JOIN WITH THE LINE ABOVE -- because of content could contain '//' at the very EOF
     success = executeScript(content, true, params.script);
 
@@ -276,66 +282,97 @@ function _recovery (options, recoveryTests) {
   let tmpMgr = new tmpDirMmgr('recovery', localOptions);
 
   for (let i = 0; i < recoveryTests.length; ++i) {
+    let iteration = 0;
+    let stateFile = fs.getTempFile();
     let test = recoveryTests[i];
     let filtered = {};
     arango.timeout(timeout);
 
     if (tu.filterTestcaseByOptions(test, localOptions, filtered)) {
-      count += 1;
-      ////////////////////////////////////////////////////////////////////////
-      print(BLUE + "running setup of test " + count + " - " + test + RESET);
-      let params = {
-        tempDir: tmpMgr.tempDir,
-        rootDir: fs.join(fs.getTempPath(), 'recovery', count.toString()),
-        options: _.cloneDeep(localOptions),
-        script: test,
-        setup: true,
-        count: count,
-        keyDir: "",
-        temp_path: fs.join(tmpMgr.tempDir, count.toString()),
-        crashLogDir: fs.join(fs.getTempPath(), `crash_${count}`),
-        crashLog: "",
-      };
-      fs.makeDirectoryRecursive(params.crashLogDir);
-      params.crashLog = fs.join(params.crashLogDir, 'crash.log');
-      fs.makeDirectoryRecursive(params.rootDir);
-      fs.makeDirectoryRecursive(params.temp_path);
-      let ret = runArangodRecovery(params, useEncryption, !doNotKillTests.includes(test));
-      localOptions.cleanup &&= params.options.cleanup;
-      if (!ret.status) {
-        results[test] = ret;
-        results.status = false;
-        continue;
-      }
-      ////////////////////////////////////////////////////////////////////////
-      SetGlobalExecutionDeadlineTo(params.options.oneTestTimeout / 4);
-      print(BLUE + "running recovery of test " + count + " - " + test + RESET);
-      params.options.disableMonitor = localOptions.disableMonitor;
-      params.setup = false;
-      try {
-        results[test] = runArangodRecovery(params, useEncryption);
-        results.status = results.status && results[test].status;
-      } catch (err) {
-        results[test] = {
-          failed: 1,
-          status: false,
-          message: `Crashed! \n${err.message}\nAborting execution of more tests\n${err.stack}`,
-          duration: -1
+      while (true) {
+        count += 1;
+        ////////////////////////////////////////////////////////////////////////
+        ++iteration;
+        print(BLUE + "running setup #" + iteration + " of test " + count + " - " + test + RESET);
+        let params = {
+          tempDir: tmpMgr.tempDir,
+          rootDir: fs.join(fs.getTempPath(), 'recovery', count.toString()),
+          options: _.cloneDeep(localOptions),
+          script: test,
+          setup: true,
+          count: count,
+          keyDir: "",
+          temp_path: fs.join(tmpMgr.tempDir, count.toString()),
+          stateFile,
+          crashLogDir: fs.join(fs.getTempPath(), `crash_${count}`),
+          crashLog: "",
         };
-        results.status = false;
-        results.crashed = true;
-        print("skipping more tests!");
-        return results;
-      }
-
-      params.instanceManager.destructor(results[test].status);
-      if (results[test].status) {
-        if (params.keyDir !== "") {
-          fs.removeDirectoryRecursive(params.keyDir);
+        fs.makeDirectoryRecursive(params.crashLogDir);
+        params.crashLog = fs.join(params.crashLogDir, 'crash.log');
+        fs.makeDirectoryRecursive(params.rootDir);
+        fs.makeDirectoryRecursive(params.temp_path);
+        let ret = runArangodRecovery(params, useEncryption, !doNotKillTests.includes(test));
+        localOptions.cleanup &&= params.options.cleanup;
+        if (!ret.status) {
+          results[test] = ret;
+          results.status = false;
+          break;
         }
-      } else {
-        print("Not cleaning up " + params.rootDir);
-        results.status = false;
+        ////////////////////////////////////////////////////////////////////////
+        SetGlobalExecutionDeadlineTo(params.options.oneTestTimeout / 4);
+        print(BLUE + "running recovery_server #" + iteration + " of test " + count + " - " + test + RESET);
+        params.options.disableMonitor = localOptions.disableMonitor;
+        params.setup = false;
+        try {
+          results[test] = runArangodRecovery(params, useEncryption);
+          results.status = results.status && results[test].status;
+        } catch (err) {
+          results[test] = {
+            failed: 1,
+            status: false,
+            message: `Crashed! \n${err.message}\nAborting execution of more tests\n${err.stack}`,
+            duration: -1
+          };
+          results.status = false;
+          results.crashed = true;
+          print("skipping more tests!");
+          return results;
+        }
+
+        // check if the state file has been written by the test.
+        // if so, we will run another round of this test!
+        if (!results[test].status) {
+          print("Not cleaning up " + params.testDir);
+          results.status = false;
+          // end while loop
+          break;
+        }
+        try {
+          if (String(fs.readFileSync(stateFile)).length) {
+            print('Going into next iteration of recovery_server test');
+            if (params.options.cleanup) {
+              if (params.crashLogDir !== "") {
+                fs.removeDirectoryRecursive(params.crashLogDir, true);
+              }
+              if (params.keyDir !== "") {
+                fs.removeDirectoryRecursive(params.keyDir, true);
+              }
+              continue;
+            }
+          }
+        } catch (err) {
+        }
+        // last iteration. break out of while loop
+        params.instanceManager.destructor(results[test].status);
+        if (results[test].status) {
+          if (params.keyDir !== "") {
+            fs.removeDirectoryRecursive(params.keyDir);
+          }
+        } else {
+          print("Not cleaning up " + params.rootDir);
+          results.status = false;
+        }
+        break;
       }
     } else {
       if (localOptions.extremeVerbosity) {
