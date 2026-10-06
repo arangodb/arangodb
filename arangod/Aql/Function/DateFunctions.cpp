@@ -1744,7 +1744,11 @@ AqlValue functions::DateRound(ExpressionContext* expressionContext,
 
   auto floorDiv = [](int64_t divd, int64_t divr) {
     if ((divd ^ divr) < 0 and (divd % divr) != 0) {
-      // TODO: this can underflow
+      // This cannot underflow: the only way the quotient
+      // ends up being std::numeric_limits<int64_t>::min() is
+      // divd to be std::numeric_limits<int64_t>::min() and
+      // divr being 1; but then divd / divr == 0 and this branch
+      // is not reached.
       return divd / divr - 1;
     } else {
       return divd / divr;
