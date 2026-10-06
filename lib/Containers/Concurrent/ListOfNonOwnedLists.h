@@ -89,6 +89,17 @@ struct ListOfNonOwnedLists {
     }
   }
 
+  auto size() -> size_t {
+    size_t count = 0;
+    auto lists = _lists.copy();
+    for (auto& weak_list : lists) {
+      if (auto list = weak_list.lock()) {
+        count += list->size();
+      }
+    }
+    return count;
+  }
+
   /**
      Executes the external garbage collection on each inner list.
    */
