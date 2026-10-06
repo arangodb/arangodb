@@ -21,7 +21,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearch/Wildcard/Filter.h"
-#include "Aql/Functions.h"
 #include "Aql/QueryContext.h"
 #include "IResearch/ExpressionFilter.h"
 #include "IResearch/IResearchFilterFactoryCommon.h"
@@ -43,10 +42,8 @@ UBool continueUnlessQueryKilled(void const* query, int32_t /*steps*/) {
 
 class Iterator : public irs::doc_iterator {
  public:
-  Iterator(icu_64_64::RegexMatcher* matcher,
-           aql::ExpressionContext const* exprCtx,
-           aql::QueryContext const* query, doc_iterator::ptr&& approx,
-           doc_iterator::ptr&& columnIt)
+  Iterator(icu_64_64::RegexMatcher* matcher, aql::QueryContext const* query,
+           doc_iterator::ptr&& approx, doc_iterator::ptr&& columnIt)
       : _approx{std::move(approx)}, _columnIt{std::move(columnIt)} {
     TRI_ASSERT(_approx);
     TRI_ASSERT(_columnIt);
@@ -60,9 +57,7 @@ class Iterator : public irs::doc_iterator {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
                                      "Cannot create matcher for this pattern");
     }
-    if (exprCtx != nullptr) {
-      aql::functions::abortMatchWhenKilled(*matcher, exprCtx);
-    } else if (query != nullptr) {
+    if (query != nullptr) {
       UErrorCode callbackStatus = U_ZERO_ERROR;
       matcher->setMatchCallback(continueUnlessQueryKilled, query,
                                 callbackStatus);
@@ -164,20 +159,15 @@ class Query : public irs::filter::prepared {
     if (column == nullptr) {
       return irs::doc_iterator::empty();
     }
-    aql::ExpressionContext const* exprCtx = nullptr;
     aql::QueryContext const* query = nullptr;
     if (ctx.ctx) {
-      if (auto const* execCtx = irs::get<ExpressionExecutionContext>(*ctx.ctx);
-          execCtx && *execCtx) {
-        exprCtx = execCtx->ctx;
-      }
-      if (auto const* killCheck = irs::get<QueryKillCheck>(*ctx.ctx)) {
-        query = killCheck->query;
+      if (auto const* running = irs::get<RunningQuery>(*ctx.ctx)) {
+        query = running->query;
       }
     }
     auto columnIt = column->iterator(irs::ColumnHint::kNormal);
     return irs::memory::make_managed<Iterator>(
-        _matcher, exprCtx, query, std::move(approx), std::move(columnIt));
+        _matcher, query, std::move(approx), std::move(columnIt));
   }
 
   void visit(const irs::SubReader&, irs::PreparedStateVisitor&,

@@ -68,6 +68,36 @@ struct ExpressionExecutionContext final : irs::attribute {
   ViewExpressionContextBase* ctx{};
 };
 
+// Carries the running query to filters, e.g. to stop long regex matches.
+struct RunningQuery final : irs::attribute {
+  static constexpr std::string_view type_name() noexcept {
+    return "arangodb::iresearch::RunningQuery";
+  }
+  aql::QueryContext const* query{};
+};
+
+// Provides the attributes filters may need at execution time.
+struct FilterCtx final : irs::attribute_provider {
+  FilterCtx(ViewExpressionContextBase* ctx,
+            aql::QueryContext const* query) noexcept {
+    _execCtx.ctx = ctx;
+    _runningQuery.query = query;
+  }
+
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    if (type == irs::type<ExpressionExecutionContext>::id()) {
+      return &_execCtx;
+    }
+    if (type == irs::type<RunningQuery>::id()) {
+      return &_runningQuery;
+    }
+    return nullptr;
+  }
+
+  ExpressionExecutionContext _execCtx;
+  RunningQuery _runningQuery;
+};
+
 // User-side filter based on arbitrary ArangoDB `Expression`.
 class ByExpression final : public irs::FilterWithBoost {
  public:

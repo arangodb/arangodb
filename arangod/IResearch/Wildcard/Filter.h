@@ -26,19 +26,7 @@
 
 #include "search/filter.hpp"
 
-namespace arangodb::aql {
-class QueryContext;
-}
-
 namespace arangodb::iresearch::wildcard {
-
-// Carries running query to wildcard iterator so it stops when killed
-struct QueryKillCheck final : irs::attribute {
-  static constexpr std::string_view type_name() noexcept {
-    return "arangodb::iresearch::wildcard::QueryKillCheck";
-  }
-  aql::QueryContext const* query{nullptr};
-};
 
 class Filter final : public irs::FilterWithField<Options> {
  public:

@@ -33,6 +33,7 @@
 #include "Basics/DownCast.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
+#include "IResearch/ExpressionFilter.h"
 #include "IResearch/IResearchDocument.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchFilterFactoryCommon.h"
@@ -41,7 +42,6 @@
 #include "IResearch/IResearchReadUtils.h"
 #include "IResearch/SearchDoc.h"
 #include "IResearch/ViewSnapshot.h"
-#include "IResearch/Wildcard/Filter.h"
 #include "Logger/LogMacros.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Methods.h"
@@ -70,14 +70,6 @@ struct EmptyAttributeProvider final : irs::attribute_provider {
   }
 };
 
-struct QueryKillCheckProvider final : irs::attribute_provider {
-  irs::attribute* get_mutable(irs::type_info::type_id type) override {
-    return type == irs::type<wildcard::QueryKillCheck>::id() ? &killCheck
-                                                             : nullptr;
-  }
-  wildcard::QueryKillCheck killCheck;
-};
-
 EmptyAttributeProvider const kEmptyAttributeProvider;
 
 InvertedIndexField const* findMatchingSubField(InvertedIndexField const& root,
@@ -104,10 +96,6 @@ AnalyzerProvider makeAnalyzerProvider(IResearchInvertedIndexMeta const& meta) {
     auto subfield = findMatchingSubField(meta, fieldPath);
     return subfield ? subfield->analyzer() : FieldMeta::identity();
   };
-}
-
-irs::bytes_view refFromSlice(VPackSlice slice) {
-  return {slice.startAs<irs::byte_type>(), slice.byteSize()};
 }
 
 bool supportsFilterNode(
@@ -364,8 +352,8 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
         _snapshot(state),
         _indexMeta(meta),
         _variable(variable),
-        _mutableConditionIdx(mutableConditionIdx) {
-    _killCheckProvider.killCheck.query = query;
+        _mutableConditionIdx(mutableConditionIdx),
+        _filterCtx(nullptr, query) {
     resetFilter(condition);
   }
 
@@ -460,8 +448,8 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
   IResearchInvertedIndexMeta const* _indexMeta;
   aql::Variable const* _variable;
   int _mutableConditionIdx;
+  FilterCtx _filterCtx;
   std::array<char, arangodb::iresearch::kSearchDocBufSize> _buf;
-  QueryKillCheckProvider _killCheckProvider;
 };
 
 template<bool emitLocalDocumentId>
@@ -553,7 +541,7 @@ class IResearchInvertedIndexIterator final
         _itr = segmentReader.mask(_filter->execute({
             .segment = segmentReader,
             .scorers = irs::Scorers::kUnordered,
-            .ctx = &_killCheckProvider,
+            .ctx = &_filterCtx,
             .wand = {},
         }));
         _doc = irs::get<irs::document>(*_itr);
@@ -649,8 +637,9 @@ class IResearchInvertedIndexMergeIterator final
     _segments.reserve(size);
     for (size_t i = 0; i < size; ++i) {
       auto& segment = _snapshot[i];
-      auto it = segment.mask(
-          _filter->execute({.segment = segment, .ctx = &_killCheckProvider, .wand = irs::WandContext{}}));
+      auto it = segment.mask(_filter->execute({.segment = segment,
+                                               .ctx = &_filterCtx,
+                                               .wand = irs::WandContext{}}));
       // at least sort column should be here
       TRI_ASSERT(!_projectionsPrototype.empty());
       _segments.emplace_back(std::move(it), segment, _projectionsPrototype);
