@@ -28,6 +28,7 @@
 #include "Aql/Functions.h"
 #include "Basics/ThreadLocalLeaser.h"
 #include "Basics/datetime.h"
+#include "Basics/voc-errors.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 
@@ -40,6 +41,8 @@
 #include <velocypack/Slice.h>
 
 #include <chrono>
+#include <cstdint>
+#include <limits>
 
 using namespace arangodb;
 using namespace std::chrono;
@@ -1728,12 +1731,31 @@ AqlValue functions::DateRound(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
+  // Check for integer overflow
+  if (m > std::numeric_limits<int64_t>::max() / factor) {
+    registerWarning(expressionContext, AFN, TRI_ERROR_NUMERIC_OVERFLOW);
+    return AqlValue(AqlValueHintNull());
+  }
+
   int64_t const multiplier = factor * m;
 
   duration<int64_t, std::milli> time = tp.time_since_epoch();
   int64_t t = time.count();
-  // integer division!
-  t /= multiplier;
+
+  auto floorDiv = [](int64_t divd, int64_t divr) {
+    if ((divd ^ divr) < 0 and (divd % divr) != 0) {
+      // This cannot underflow: the only way the quotient
+      // ends up being std::numeric_limits<int64_t>::min() is
+      // divd to be std::numeric_limits<int64_t>::min() and
+      // divr being 1; but then divd % divr == 0 and this branch
+      // is not reached.
+      return divd / divr - 1;
+    } else {
+      return divd / divr;
+    }
+  };
+
+  t = floorDiv(t, multiplier);
   tp = tp_sys_clock_ms(milliseconds(t * multiplier));
 
   if (parameters.size() == 4) {
