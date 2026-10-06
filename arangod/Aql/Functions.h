@@ -87,11 +87,15 @@ void abortMatchWhenKilled(icu_64_64::RegexMatcher& matcher,
                           Context const* context) {
   UErrorCode status = U_ZERO_ERROR;
   matcher.setMatchCallback(
+      // This lambda (callback) is called every 10,000 steps of the regex
+      // matching process.
       [](void const* ctx, int32_t /*steps*/) -> UBool {
         return !static_cast<Context const*>(ctx)->killed();
       },
       context, status);
 }
+
+void throwIfKilled(ExpressionContext const* context);
 
 /// @brief helper function. not callable as a "normal" AQL function
 template<typename T>

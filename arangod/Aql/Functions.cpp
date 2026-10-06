@@ -233,4 +233,10 @@ template void functions::stringify<velocypack::SizeConstrainedStringSink>(
     velocypack::Options const* vopts,
     velocypack::SizeConstrainedStringSink& buffer, velocypack::Slice slice);
 
+void functions::throwIfKilled(ExpressionContext const* context) {
+  if (context != nullptr && context->killed()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
+}
+
 }  // namespace arangodb::aql

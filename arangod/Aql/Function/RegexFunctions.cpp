@@ -114,6 +114,7 @@ AqlValue functions::RegexMatches(ExpressionContext* expressionContext,
   matcher->reset(valueToMatch);
   bool find = matcher->find();
   if (!find) {
+    functions::throwIfKilled(expressionContext);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -217,6 +218,7 @@ AqlValue functions::RegexSplit(ExpressionContext* expressionContext,
   while (true) {
     UErrorCode errorCode = U_ZERO_ERROR;
     auto uCount = matcher->split(valueToSplit, uResults, nrResults, errorCode);
+    functions::throwIfKilled(expressionContext);
     uint16_t copyThisTime = uCount;
 
     if (U_FAILURE(errorCode)) {
@@ -309,6 +311,7 @@ AqlValue functions::RegexTest(ExpressionContext* expressionContext,
       matcher, buffer->data(), buffer->length(), true, error);
 
   if (error) {
+    functions::throwIfKilled(expressionContext);
     // compiling regular expression failed
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
     return AqlValue(AqlValueHintNull());
@@ -360,6 +363,7 @@ AqlValue functions::RegexReplace(ExpressionContext* expressionContext,
   std::string result = basics::Utf8Helper::DefaultUtf8Helper.replace(
       matcher, buffer->data(), split, buffer->data() + split,
       buffer->length() - split, false, error);
+  functions::throwIfKilled(expressionContext);
 
   if (error) {
     // compiling regular expression failed
