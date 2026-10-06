@@ -646,7 +646,14 @@ void ConsolidationTask::operator()() {
 IResearchDataStore::IResearchDataStore(
     application_features::ApplicationServer& server,
     [[maybe_unused]] LogicalCollection& collection)
-    : _asyncFeature(&server.getFeature<IResearchFeature>()),
+    : _asyncFeature([&server]() -> IResearchFeature* {
+        if (!server.hasFeature<IResearchFeature>()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_NOT_IMPLEMENTED,
+              "ArangoSearch is not supported on this instance");
+        }
+        return &server.getFeature<IResearchFeature>();
+      }()),
       // mark as data store not initialized
       _asyncSelf(std::make_shared<AsyncLinkHandle>(nullptr)),
       _maintenanceState(std::make_shared<MaintenanceState>()) {
