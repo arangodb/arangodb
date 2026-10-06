@@ -96,6 +96,28 @@ function splicingSuite () {
       let res = db._query(query).toArray();
       assertEqual([[[1,2,3],[4]]], res);
     },
+    testArraySplicingIndexedAccess : function() {
+      let query = `RETURN [...[1, 2]][0]`;
+      let res = db._query(query).toArray();
+      assertEqual([1], res);
+    },
+    testArraySplicingIndexedAccessInComparison: function() {
+      let query = `RETURN [...[1, 2]][0] == 1`;
+      let res = db._query(query).toArray();
+      assertEqual([true], res);
+    },
+    testArraySplicingInOperator : function() {
+      let query = `RETURN 1 IN [...[1, 2]]`;
+      let res = db._query(query).toArray();
+      assertEqual([true], res);
+    },
+    testArraySplicingInOperatorFilter : function() {
+      let query = `FOR doc IN [{ value: 1 }, { value: 2 }]
+                     FILTER doc.value IN [...[1, 2]]
+                     RETURN doc.value`;
+      let res = db._query(query).toArray();
+      assertEqual([1, 2], res);
+    }
   };
 }
 
