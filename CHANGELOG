@@ -43,6 +43,12 @@
 
 * Updated ArangoDB Starter to v0.19.28.
 
+* The AQL optimizer uses a sparse index for a branch of an `OR` condition
+  only if that branch itself rules out `null` for the indexed attribute.
+  For example, `FILTER doc.b < 5 AND (doc.b >= 0 OR doc.a == 1)` returns
+  documents in which `doc.b` is `null` and `doc.a` is `1`.
+  This fixes issue #23396.
+
 * Fix AQL SUBSTITUTE() with an empty search string. It previously returned
   null with a warning; it now matches at every character position, e.g.
   SUBSTITUTE('abc', '', '_') returns '_a_b_c_'.
