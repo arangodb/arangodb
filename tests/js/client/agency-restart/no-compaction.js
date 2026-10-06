@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertTrue, ArangoAgent */
+/* global assertEqual, assertTrue, runSetup */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -26,13 +26,14 @@
 let db = require('@arangodb').db;
 let internal = require('internal');
 let jsunity = require('jsunity');
+let IM = global.instanceManager;
+let AM = IM.agencyMgr;
 
-function runSetup () {
+function runSetupRoutine () {
   'use strict';
-  internal.debugClearFailAt();
- 
+
   // turn off compaction
-  internal.debugSetFailAt("State::compact");
+  IM.debugSetFailAt("State::compact");
   
   db._drop('UnitTestsRecovery');
   let c = db._create('UnitTestsRecovery');
@@ -46,13 +47,13 @@ function runSetup () {
       }
     };
         
-    ArangoAgent.write([[ request, {}, "testi"]]);
+    AM.write([[ request, {}, "testi"]]);
   }
   
   // make sure everything is synced to disk before we crash
   c.insert({ _key: "sync" }, true); // wait for sync 
   
-  internal.debugTerminate('crashing server');
+  IM.debugTerminate('crashing server');
 }
 
 function recoverySuite () {
@@ -62,9 +63,9 @@ function recoverySuite () {
   return {
     testRestart: function () {
       // turn off compaction
-      internal.debugSetFailAt("State::compact");
+      IM.debugSetFailAt("State::compact");
 
-      let state = ArangoAgent.state();
+      let state = AM.state();
       assertEqual(state.current, state.log[0].index);
 
       let found = 0;
@@ -94,7 +95,7 @@ function recoverySuite () {
       assertTrue(found > 0);
       
       for (let i = 0; i < 50000; ++i) {
-        let r = ArangoAgent.read([["/arango/test" + i]]);
+        let r = AM.read([["/arango/test" + i]]);
         assertEqual([ { "arango": { ["test" + i] : "testmann" +i } } ], r); 
       }
     }
@@ -102,21 +103,17 @@ function recoverySuite () {
   };
 }
 
-function main (argv) {
-  'use strict';
-
-  for (let i = 0; i < 100; i++) {
-    if (ArangoAgent.leading().leading) {
-      break;
-    }
-    require('internal').sleep(0.5);
+for (let i = 0; i < 100; i++) {
+  if (AM.leading().leading) {
+    break;
   }
+  require('internal').sleep(0.5);
+}
 
-  if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
+if (runSetup) {
+  runSetupRoutine();
+  return 0;
+} else {
+  jsunity.run(recoverySuite);
+  return jsunity.writeDone();
 }

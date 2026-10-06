@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertNotEqual, assertTrue, ArangoAgent */
+/* global assertEqual, assertNotEqual, assertTrue, ArangoAgent, runSetup */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -26,10 +26,11 @@
 let db = require('@arangodb').db;
 let internal = require('internal');
 let jsunity = require('jsunity');
+let IM = global.instanceManager;
+let AM = IM.agencyMgr;
 
-function runSetup () {
+function runSetupRoutine () {
   'use strict';
-  internal.debugClearFailAt();
   
   db._drop('UnitTestsRecovery');
   let c = db._create('UnitTestsRecovery');
@@ -43,7 +44,7 @@ function runSetup () {
       }
     };
         
-    ArangoAgent.write([[ request, {}, "testi"]]);
+    AM.write([[ request, {}, "testi"]]);
   }
   
   // wait until no more compactions occur
@@ -66,7 +67,7 @@ function runSetup () {
   // make sure everything is synced to disk before we crash
   c.insert({ _key: "sync" }, true); // wait for sync 
   
-  internal.debugTerminate('crashing server');
+  IM.debugTerminate('crashing server');
 }
 
 function recoverySuite () {
@@ -75,7 +76,7 @@ function recoverySuite () {
 
   return {
     testRestart: function () {
-      let state = ArangoAgent.state();
+      let state = AM.state();
       assertNotEqual(0, state.current);
       assertEqual(state.current, state.log[0].index);
       let index = state.log[0].index;
@@ -110,21 +111,19 @@ function recoverySuite () {
   };
 }
 
-function main (argv) {
-  'use strict';
+'use strict';
 
-  for (let i = 0; i < 100; i++) {
-    if (ArangoAgent.leading().leading) {
-      break;
-    }
-    require('internal').sleep(0.5);
+for (let i = 0; i < 100; i++) {
+  if (AM.leading().leading) {
+    break;
   }
+  require('internal').sleep(0.5);
+}
 
-  if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
+if (runSetup) {
+  runSetupRoutine();
+  return 0;
+} else {
+  jsunity.run(recoverySuite);
+  return jsunity.writeDone();
 }

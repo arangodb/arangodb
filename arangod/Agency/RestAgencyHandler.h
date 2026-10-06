@@ -64,6 +64,7 @@ class RestAgencyHandler : public RestVocbaseBaseHandler {
   void handleTransact();
   void handleConfig();
   void reportMethodNotAllowed();
+  void handleAgentState();
   void handleState();
   void handleTransient();
   void handleInquire();

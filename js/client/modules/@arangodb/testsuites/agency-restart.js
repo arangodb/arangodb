@@ -209,7 +209,7 @@ function agencyRestart (options) {
 }
 
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
-  Object.assign(allTestPaths, testPaths);
-  testFns['agency-restart'] = agencyRestart;
-  tu.CopyIntoObject(fnDocs, functionsDocumentation);
+  //Object.assign(allTestPaths, testPaths);
+  //testFns['agency-restart'] = agencyRestart;
+  //tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

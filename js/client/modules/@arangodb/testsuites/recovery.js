@@ -26,7 +26,8 @@
 
 const functionsDocumentation = {
   'recovery': 'run recovery tests',
-  'recovery_cluster': 'run recovery cluster tests'
+  'recovery_cluster': 'run recovery cluster tests',
+  'agency-restart': 'run recovery tests'
 };
 
 const fs = require('fs');
@@ -56,6 +57,7 @@ const termSignal = 15;
 const testPaths = {
   'recovery': [tu.pathForTesting('client/recovery')],
   'recovery_cluster': [tu.pathForTesting('client/recovery/cluster/crash'), tu.pathForTesting('client/recovery/cluster/search')],
+  'agency-restart': [tu.pathForTesting('client/agency-restart')]
 };
 
 // These tests should NOT be killed after the setup phase.
@@ -67,8 +69,8 @@ const doNotKillTests = [
 // / @brief TEST: recovery
 // //////////////////////////////////////////////////////////////////////////////
 
-function runArangodRecovery (params, useEncryption, isKillAfterSetup = true) {
-  let additionalParams= {
+function runArangodRecovery (params, useEncryption, isKillAfterSetup = true, moreParams = {}) {
+  let additionalParams = { ...moreParams,
     'foxx.queues': 'false',
     'server.statistics': 'false',
     'log.foreground-tty': 'true',
@@ -254,7 +256,7 @@ function runArangodRecovery (params, useEncryption, isKillAfterSetup = true) {
   }
 }
 
-function _recovery (options, recoveryTests) {
+function _recovery (options, recoveryTests, additionalParams) {
   if (!versionHas('failure-tests') || !versionHas('maintainer-mode')) {
     return {
       recovery: {
@@ -311,7 +313,7 @@ function _recovery (options, recoveryTests) {
         params.crashLog = fs.join(params.crashLogDir, 'crash.log');
         fs.makeDirectoryRecursive(params.rootDir);
         fs.makeDirectoryRecursive(params.temp_path);
-        let ret = runArangodRecovery(params, useEncryption, !doNotKillTests.includes(test));
+        let ret = runArangodRecovery(params, useEncryption, !doNotKillTests.includes(test), additionalParams);
         localOptions.cleanup &&= params.options.cleanup;
         if (!ret.status) {
           results[test] = ret;
@@ -324,7 +326,7 @@ function _recovery (options, recoveryTests) {
         params.options.disableMonitor = localOptions.disableMonitor;
         params.setup = false;
         try {
-          results[test] = runArangodRecovery(params, useEncryption);
+          results[test] = runArangodRecovery(params, useEncryption, true, additionalParams);
           results.status = results.status && results[test].status;
         } catch (err) {
           results[test] = {
@@ -395,12 +397,29 @@ function _recovery (options, recoveryTests) {
   return results;
 }
 
+
 function recovery (options) {
   options.agency = undefined;
   options.cluster = false; 
   options.singles = 1;
   let recoveryTests = tu.scanTestPaths(testPaths.recovery, options);
   return _recovery(options, recoveryTests);
+}
+
+function agencyRestart (options) {
+  options.agency = 1;
+  options.agencySize = 1;
+  options.agencyWaitForSync = false;
+  options.cluster = false; 
+  options.singles = 0;
+  
+  let additionalParams = {
+    'agency.compaction-keep-size': '10000',
+    'server.jwt-secret': 'agency-recovery-secret',
+    'server.authentication': true,
+  };
+  let recoveryTests = tu.scanTestPaths(testPaths['agency-restart'], options);
+  return _recovery(options, recoveryTests, additionalParams);
 }
 
 function recovery_cluster (options) {
@@ -411,6 +430,7 @@ function recovery_cluster (options) {
 
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
+  testFns['agency-restart'] = agencyRestart;
   testFns['recovery'] = recovery;
   testFns['recovery_cluster'] = recovery_cluster;
   tu.CopyIntoObject(fnDocs, functionsDocumentation);

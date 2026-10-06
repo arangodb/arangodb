@@ -31,6 +31,7 @@
 #include "Rest/Version.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/StandaloneContext.h"
+#include "Agency/AgencyFeature.h"
 
 #include <Async/async.h>
 #include <velocypack/Builder.h>
@@ -747,6 +748,25 @@ void RestAgencyHandler::handleState() {
   generateResult(rest::ResponseCode::OK, body.slice(), ctx.getVPackOptions());
 }
 
+void RestAgencyHandler::handleAgentState() {
+  Agent* agent = nullptr;
+  try {
+    AgencyFeature& feature = server().getEnabledFeature<AgencyFeature>();
+    agent = feature.agent();
+    VPackBuilder builder;
+    agent->state().toVelocyPack(builder);
+
+    auto origin = transaction::OperationOriginInternal{"returning agency state"};
+    transaction::StandaloneContext ctx(_vocbase, origin);
+    generateResult(rest::ResponseCode::OK, builder.slice(), ctx.getVPackOptions());
+    return;
+  } catch (std::exception const& e) {
+      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                    e.what());
+      return;
+  }
+}
+
 void RestAgencyHandler::reportMethodNotAllowed() {
   generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
@@ -787,6 +807,11 @@ auto RestAgencyHandler::executeAsync() -> futures::Future<futures::Unit> {
           co_return reportMethodNotAllowed();
         }
         co_return handleState();
+      } else if (suffixes[0] == "thisAgentState") {
+        if (_request->requestType() != rest::RequestType::GET) {
+          co_return reportMethodNotAllowed();
+        }
+        co_return handleAgentState();
       } else if (suffixes[0] == "stores") {
         co_return handleStores();
       } else if (suffixes[0] == "store") {

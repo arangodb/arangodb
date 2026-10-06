@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertTrue, ArangoAgent */
+/* global assertEqual, assertTrue, runSetup */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -26,10 +26,11 @@
 let db = require('@arangodb').db;
 let internal = require('internal');
 let jsunity = require('jsunity');
+let IM = global.instanceManager;
+let AM = IM.agencyMgr;
 
-function runSetup () {
+function runSetupRoutine () {
   'use strict';
-  internal.debugClearFailAt();
   
   db._drop('UnitTestsRecovery');
   let c = db._create('UnitTestsRecovery');
@@ -43,13 +44,13 @@ function runSetup () {
       }
     };
         
-    ArangoAgent.write([[ request, {}, "testi"]]);
+    AM.write([[ request, {}, "testi"]]);
   }
   
   // make sure everything is synced to disk before we crash
   c.insert({ _key: "sync" }, true); // wait for sync 
   
-  internal.debugTerminate('crashing server');
+  IM.debugTerminate('crashing server');
 }
 
 function recoverySuite () {
@@ -58,7 +59,7 @@ function recoverySuite () {
 
   return {
     testRestart: function () {
-      let state = ArangoAgent.state();
+      let state = AM.state();
       assertEqual(0, state.current);
       assertTrue(state.log.length > 10);
       let start = 0;
@@ -89,7 +90,7 @@ function recoverySuite () {
       }
       
       for (let i = 0; i < 10; ++i) {
-        let r = ArangoAgent.read([["/arango/test" + i]]);
+        let r = AM.get([["/arango/test" + i]]);
         assertEqual([ { "arango": { ["test" + i] : "testmann" +i } } ], r); 
       }
     }
@@ -97,21 +98,18 @@ function recoverySuite () {
   };
 }
 
-function main (argv) {
-  'use strict';
-
-  for (let i = 0; i < 100; i++) {
-    if (ArangoAgent.leading().leading) {
-      break;
-    }
-    require('internal').sleep(0.5);
+for (let i = 0; i < 100; i++) {
+  if (AM.leading().leading) {
+    break;
   }
-
-  if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
+  require('internal').sleep(0.5);
 }
+
+if (runSetup) {
+  runSetupRoutine();
+  return 0;
+} else {
+  jsunity.run(recoverySuite);
+  return jsunity.writeDone();
+}
+

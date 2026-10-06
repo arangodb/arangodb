@@ -171,12 +171,28 @@ class agencyMgr {
     return this.postAgency(operation, body);
   }
 
+  leading() {
+    sleep(1) // TODO
+    return {leading:true};
+  }
   get(key) {
     const res = this.postAgency( 'read', [[
       `/arango/${key}`,
     ]]);
     return res[0];
   }
+
+  state() {
+    let res = this.getAnyAgent(this.agencyInstances[0],
+                               '/_api/agency/thisAgentState',
+                               'GET_RAW');
+    assertTrue(res.hasOwnProperty('code'), JSON.stringify(res));
+    assertEqual(res.code, 200, JSON.stringify(res));
+    assertTrue(res.hasOwnProperty('parsedBody'));
+    return arangosh.checkRequestResult(res.parsedBody);
+  }
+
+  
   unWrapQueriedItem(key, res) {
     const path = ['arango', ...key.split('/').filter(i => i)];
     for (const p of path) {
