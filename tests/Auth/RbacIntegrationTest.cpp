@@ -57,15 +57,15 @@ auto normalizeJson(velocypack::Slice slice) -> std::string {
 constexpr auto kContainerName = "rbac-integration-smocker";
 
 struct SmockerConfig {
-  std::string host;
+  std::vector<std::string> hosts;
   bool manageDocker;
 };
 
 auto getSmockerConfig() -> SmockerConfig {
   if (auto const* env = std::getenv("SMOCKER_HOST")) {
-    return {env, false};
+    return {{env, "localhost"}, false};
   }
-  return {"localhost", true};
+  return {{"localhost"}, true};
 }
 
 constexpr auto kEvaluateTokenManyPath =
@@ -98,12 +98,11 @@ struct RbacIntegrationTest : ::testing::Test {
   static inline std::string _smockerMockUrl;
 
   static void SetUpTestSuite() {
-    auto [host, manageDocker] = getSmockerConfig();
-    _smockerMockUrl = "http://" + host + ":8080";
-    auto adminUrl = "http://" + host + ":8081";
+    auto [hosts, manageDocker] = getSmockerConfig();
     _smocker = std::make_unique<test::SmockerClient>(
-        kContainerName, _smockerMockUrl, adminUrl, manageDocker);
+        kContainerName, std::move(hosts), manageDocker);
     _smocker->start();
+    _smockerMockUrl = _smocker->mockUrl();
   }
 
   static void TearDownTestSuite() {
@@ -117,11 +116,24 @@ struct RbacIntegrationTest : ::testing::Test {
     // Note that a failure / an exception on SetUpTestSuite() will cause all
     // tests to be *skipped*; so we need to check for errors and fail here
     // instead.
+    auto const* smockerHost = std::getenv("SMOCKER_HOST");
     ASSERT_TRUE(!_smocker->startError())
         << *_smocker->startError() << "\n\n"
-        << "To run these tests, either:\n"
-        << "  - Install Docker and ensure it is accessible, or\n"
-        << "  - Set SMOCKER_HOST to point to a running Smocker instance.\n"
+        << (smockerHost
+                ? std::format(
+                      "SMOCKER_HOST is set to '{}', so this test did not use "
+                      "Docker: it expected Smocker to be reachable there "
+                      "already. Check that the service container is running "
+                      "and that its admin port 8081 is reachable under that "
+                      "hostname.\n",
+                      smockerHost)
+                : std::string(
+                      "SMOCKER_HOST is not set, so this test tried to start "
+                      "Smocker itself with Docker.\nTo run these tests, "
+                      "either:\n"
+                      "  - Install Docker and ensure it is accessible, or\n"
+                      "  - Set SMOCKER_HOST to point to a running Smocker "
+                      "instance.\n"))
         << "To skip, use: --gtest_filter=-RbacIntegrationTest.*";
     _smocker->resetMocks();
 

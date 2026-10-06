@@ -22,7 +22,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -243,16 +242,14 @@ bool ClusterIndex::isSorted() const {
                                  "unsupported cluster storage engine");
 }
 
-void ClusterIndex::updateProperties(velocypack::Slice slice) {
+void ClusterIndex::setCacheEnabled(bool cacheEnabled) {
   VPackBuilder merge;
   merge.openObject();
 
   TRI_ASSERT(_engineType == ClusterEngineType::RocksDBEngine);
 
   if (_engineType == ClusterEngineType::RocksDBEngine) {
-    merge.add(StaticStrings::CacheEnabled,
-              VPackValue(basics::VelocyPackHelper::getBooleanValue(
-                  slice, StaticStrings::CacheEnabled, false)));
+    merge.add(StaticStrings::CacheEnabled, VPackValue(cacheEnabled));
 
   } else {
     TRI_ASSERT(false);

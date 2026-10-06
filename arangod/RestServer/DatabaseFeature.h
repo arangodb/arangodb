@@ -30,13 +30,15 @@
 #include "Replication2/Version.h"
 #include "RestServer/DatabaseFeatureOptions.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/IDatabaseBootstrap.h"
 #include "RestServer/IDatabaseProvider.h"
-#include "RestServer/IRecoveryCallback.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/Thread.h"
 #include "Utils/VersionTracker.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/Methods/Databases.h"
+
+#include <velocypack/Slice.h>
 
 #include <cstddef>
 #include <mutex>
@@ -103,7 +105,7 @@ class DatabaseManagerThread final : public ServerThread {
 
 class DatabaseFeature final : public application_features::ApplicationFeature,
                               public IDatabaseProvider,
-                              public IRecoveryCallback {
+                              public IDatabaseBootstrap {
   friend class DatabaseManagerThread;
 
  public:
@@ -122,16 +124,11 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
 
   // used by unit tests
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  void setEngineTesting(StorageEngine* engine) noexcept { _engine = engine; }
   ErrorCode loadDatabases(velocypack::Slice databases) {
     return iterateDatabases(databases);
   }
 #endif
 
-  /// @brief will be called when the recovery phase has run
-  /// this will call the engine-specific recoveryDone() procedures
-  /// and will execute engine-unspecific operations (such as starting
-  /// the replication appliers) for all databases
   void recoveryDone() override;
 
   /// @brief whether or not the DatabaseFeature has started (and thus has
@@ -144,7 +141,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief register a callback
-  ///   if StorageEngine.inRecovery() ->
+  ///   if !StorageEngine.isReady() ->
   ///     call at start of recoveryDone() in parallel with other callbacks
   ///     and fail recovery if callback !ok()
   ///   else ->
@@ -185,11 +182,6 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
       std::function<void(Database& vocbase)> const& func) override;
   std::string translateCollectionName(std::string_view dbName,
                                       std::string_view collectionName);
-
-  StorageEngine& engine() const noexcept {
-    TRI_ASSERT(_engine != nullptr);
-    return *_engine;
-  }
 
   bool ignoreDatafileErrors() const noexcept {
     return _options.ignoreDatafileErrors;
@@ -234,6 +226,9 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
 
  private:
   void initCalculationVocbase();
+
+  // called by the engine once it's open, not by anything else.
+  void bootstrapDatabases(velocypack::Slice databases) override;
 
   /// @brief iterate over all databases in the databases directory and open them
   ErrorCode iterateDatabases(velocypack::Slice databases);

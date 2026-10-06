@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global print, db, arango, SYS_IS_V8_BUILD */
+/* global print, db, arango */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -50,6 +50,7 @@ const testServerAuthInfo = {
 const testClientJwtAuthInfo = {
   jwtSecret: testsecret
 };
+
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief get the items uniq to arr1 or arr2
@@ -360,7 +361,6 @@ function scanTestPaths (paths, options, fun) {
 exports.testServerAuthInfo = testServerAuthInfo;
 exports.testClientJwtAuthInfo = testClientJwtAuthInfo;
 
-
 exports.makePathUnix = makePathUnix;
 exports.makePathGeneric = makePathGeneric;
 exports.filterTestcaseByOptions = filterTestcaseByOptions;
@@ -378,7 +378,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
     'skipNondeterministic': false,
     'skipGrey': false,
     'skipN': false,
-    'skipServerJS': !SYS_IS_V8_BUILD,
+    'skipServerJS': false,
     'onlyGrey': false,
     'onlyNightly': false,
     'skipTimeCritical': false,

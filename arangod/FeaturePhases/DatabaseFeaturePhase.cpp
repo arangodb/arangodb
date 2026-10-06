@@ -34,8 +34,7 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "VectorIndex/Feature.h"
 #include "RestServer/ViewTypesFeature.h"
-#include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBRecoveryManager.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Transaction/ManagerFeature.h"
 
 namespace arangodb::application_features {
@@ -54,8 +53,7 @@ DatabaseFeaturePhase::DatabaseFeaturePhase(
   startsAfter<InitDatabaseFeature>();
   startsAfter<LockfileFeature>();
   startsAfter<ReplicationFeature>();
-  startsAfter<RocksDBEngine>();
-  startsAfter<RocksDBRecoveryManager>();
+  startsAfter<StorageEngine>();
   startsAfter<ServerIdFeature>();
   startsAfter<SystemDatabaseFeature>();
   startsAfter<transaction::ManagerFeature>();

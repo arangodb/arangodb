@@ -54,7 +54,6 @@
 
 using namespace arangodb;
 using namespace arangodb::methods;
-using application_features::ApplicationServer;
 using basics::VelocyPackHelper;
 
 // Note: this entire file should run with superuser rights

@@ -1284,6 +1284,180 @@ const IndexJoinTestSuite = function () {
         const result = db._createStatement(query).execute().toArray();
         assertEqual(result.length, 0);
       }
+    },
+
+    // Regression: expressions that reference the first index's own outVariable
+    // (e.g. doc1.z + 1, CONCAT('s-', doc1.z)) must not be treated as JoinExecutor
+    // constantExpressions — those are evaluated against the JoinNode input row
+    // where doc1 is not available. Simple join keys (doc2.x == doc1.x) remain OK.
+    testRejectConstantExprUsingFirstOutVariable: function () {
+      const A = createCollection("A2", ["x"]);
+      A.ensureIndex({type: "persistent", fields: ["x"], storedValues: ["z"]});
+      fillCollection("A2", attributeGenerator(20, {
+        x: x => x,
+        z: x => x
+      }));
+      const B = createCollection("B2", ["x"]);
+      B.ensureIndex({type: "persistent", fields: ["x", "y"]});
+      fillCollection("B2", attributeGenerator(20, {
+        x: x => x + 1,
+        y: x => x
+      }));
+      const C = createCollection("C2", ["x"]);
+      C.ensureIndex({type: "persistent", fields: ["x"]});
+      fillCollection("C2", singleAttributeGenerator(20, "x", x => x));
+
+      const arithmeticQuery = `
+        FOR doc1 IN A2
+          SORT doc1.x
+          FOR doc2 IN B2
+            FILTER doc2.x == doc1.z + 1
+            FILTER doc2.y == doc1.x
+            RETURN [doc1.x, doc2.x, doc2.y]
+      `;
+      {
+        const plan = db._createStatement({
+          query: arithmeticQuery,
+          options: queryOptions
+        }).explain().plan;
+        const nodes = plan.nodes.map(n => n.type);
+        assertEqual(nodes.indexOf("JoinNode"), -1,
+          "join-index-nodes must not fire for doc2.x == doc1.z + 1");
+        const result = db._createStatement({
+          query: arithmeticQuery,
+          options: queryOptions
+        }).execute().toArray();
+        assertEqual(result.length, 20);
+        for (const [x1, x2, y2] of result) {
+          assertEqual(x2, x1 + 1);
+          assertEqual(y2, x1);
+        }
+      }
+
+      const B3 = createCollection("B3", ["x"]);
+      B3.ensureIndex({type: "persistent", fields: ["x"]});
+      fillCollection("B3", singleAttributeGenerator(20, "x", x => `s-${x}`));
+      const concatQuery = `
+        FOR doc1 IN A2
+          SORT doc1.x
+          FOR doc2 IN B3
+            FILTER doc2.x == CONCAT('s-', doc1.z)
+            RETURN [doc1.x, doc2.x]
+      `;
+      {
+        const plan = db._createStatement({
+          query: concatQuery,
+          options: queryOptions
+        }).explain().plan;
+        const nodes = plan.nodes.map(n => n.type);
+        assertEqual(nodes.indexOf("JoinNode"), -1,
+          "join-index-nodes must not fire for CONCAT('s-', doc1.z)");
+        const result = db._createStatement({
+          query: concatQuery,
+          options: queryOptions
+        }).execute().toArray();
+        assertEqual(result.length, 20);
+        for (const [x1, x2] of result) {
+          assertEqual(x2, `s-${x1}`);
+        }
+      }
+
+      // Control: plain join key must still produce a JoinNode.
+      const B4 = createCollection("B4", ["x"]);
+      B4.ensureIndex({type: "persistent", fields: ["x"]});
+      fillCollection("B4", singleAttributeGenerator(20, "x", x => x));
+      const joinKeyQuery = `
+        FOR doc1 IN A2
+          SORT doc1.x
+          FOR doc2 IN B4
+            FILTER doc2.x == doc1.x
+            RETURN [doc1.x, doc2.x]
+      `;
+      {
+        const plan = db._createStatement({
+          query: joinKeyQuery,
+          options: queryOptions
+        }).explain().plan;
+        const nodes = plan.nodes.map(n => n.type);
+        assertNotEqual(nodes.indexOf("JoinNode"), -1,
+          "join-index-nodes must still fire for doc2.x == doc1.x");
+        const result = db._createStatement({
+          query: joinKeyQuery,
+          options: queryOptions
+        }).execute().toArray();
+        assertEqual(result.length, 20);
+        for (const [x1, x2] of result) {
+          assertEqual(x1, x2);
+        }
+      }
+
+      // Full 3-collection reproduction of the COR-958 regression, which previously
+      // aborted in variableToRegisterId(doc1) while building the JoinNode and
+      // projections. With +join-index-nodes, the planner may still create a
+      // JoinNode for A2/C2 while keeping B2 as a separate IndexNode. On a cluster,
+      // this can miss cross-shard B2 matches. Therefore, the optimized plan is
+      // checked only for safe execution and valid JoinNode expressions, while the
+      // full result cardinality is verified using the non-optimized baseline.
+
+      const tripleQuery = `
+        FOR doc1 IN A2
+          SORT doc1.x
+          FOR doc2 IN B2
+            FOR doc3 IN C2
+              FILTER doc2.x == doc1.z + 1
+              FILTER doc2.y == doc1.x
+              FILTER doc3.x == doc1.x
+              RETURN [doc1.x, doc2.x, doc2.y, doc3.x]
+      `;
+      {
+        const plan = db._createStatement({
+          query: tripleQuery,
+          options: queryOptions
+        }).explain().plan;
+        // Optimized execution must no longer abort (COR-958).
+        db._createStatement({
+          query: tripleQuery,
+          options: queryOptions
+        }).execute().toArray();
+        // Ensure no JoinNode embeds doc1.z+1 (or similar) as a
+        // constantExpression referencing the first outVariable.
+        for (const node of plan.nodes) {
+          if (node.type !== "JoinNode") {
+            continue;
+          }
+          for (const info of node.indexInfos) {
+            if (!info.expressions || info.expressions.length === 0) {
+              continue;
+            }
+            const dump = JSON.stringify(info.expressions);
+            assertEqual(dump.indexOf("doc1"), -1,
+              "JoinNode must not carry constantExpressions referencing doc1: " +
+              dump);
+          }
+        }
+
+        // Full cardinality is only reliable when matches are not evaluated
+        // shard-locally. On cluster, A2/B2/C2 use distributeShardsLike with
+        // shardKeys ["x"], but B matches need doc2.x == doc1.x + 1 (other
+        // shard). That yields ~1/3 of rows regardless of join-index-nodes.
+        if (!isCluster) {
+          const baseline = db._createStatement({
+            query: tripleQuery,
+            options: {
+              optimizer: {
+                rules: ["-join-index-nodes", "-replace-equal-attribute-accesses"]
+              },
+              maxNumberOfPlans: 1
+            }
+          }).execute().toArray();
+          assertEqual(baseline.length, 20);
+          for (const [x1, x2, y2, x3] of baseline) {
+            assertEqual(x2, x1 + 1);
+            assertEqual(y2, x1);
+            assertEqual(x3, x1);
+          }
+        }
+      }
     }
 
   };

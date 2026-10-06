@@ -60,6 +60,7 @@ class RestAdminServerHandler : public RestBaseHandler {
   void handleEncryptionKeyRotation();
   void handleApiCalls();
   void handleAqlRecordedQueries();
+  void handleGetWalFileList();
 
   StorageEngine& _engine;
   ApiRecordingFeature& _apiRecordingFeature;

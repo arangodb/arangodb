@@ -68,9 +68,9 @@ _Enterprise Edition only_
 ### faiss
 
 * Name: faiss
-* Version: 1.14.2
-* Date: 2026-05-22
-* Project Home:https://github.com/facebookresearch/faiss/
+* Version: 1.15.0
+* Date: 2026-08-03
+* Project Home:https://github.com/facebookresearch/faiss
 * License: https://github.com/facebookresearch/faiss/blob/main/LICENSE
 * License Name: MIT License
 * License Id: MIT
@@ -911,9 +911,27 @@ License Id: -
 #### Leaflet.js
 
 * Name: leaflet
-* Version: 1.3.3
+* Version: 1.9.3
 * GitHub: https://github.com/Leaflet/Leaflet
 * License: https://raw.githubusercontent.com/Leaflet/Leaflet/master/LICENSE
+* License Name: BSD 2-clause "Simplified" License
+* License Id: BSD-2-Clause
+
+#### Leaflet.GestureHandling
+
+* Name: leaflet-gesture-handling
+* Version: 1.2.2
+* GitHub: https://github.com/elmarquis/Leaflet.GestureHandling
+* License: https://raw.githubusercontent.com/elmarquis/Leaflet.GestureHandling/master/LICENSE
+* License Name: MIT License
+* License Id: MIT
+
+#### arc.js
+
+* Name: arc
+* Version: 1.0.0
+* GitHub: https://github.com/springmeyer/arc.js
+* License: https://raw.githubusercontent.com/springmeyer/arc.js/v1.0.0/LICENSE.md
 * License Name: BSD 2-clause "Simplified" License
 * License Id: BSD-2-Clause
 
@@ -1084,7 +1102,7 @@ License Id: -
 #### brace-expansion
 
 * Name: brace-expansion
-* Version: 5.0.9
+* Version: 5.0.12
 * Project Home: <https://github.com/juliangruber/brace-expansion>
 * License: <https://raw.githubusercontent.com/juliangruber/brace-expansion/main/LICENSE>
 * License Name: MIT License
@@ -1263,7 +1281,7 @@ License Id: -
 #### fast-uri
 
 * Name: fast-uri
-* Version: 3.1.5
+* Version: 3.1.8
 * Project Home: <https://github.com/fastify/fast-uri>
 * License: <https://raw.githubusercontent.com/fastify/fast-uri/main/LICENSE>
 * License Name: BSD-style 3-Clause License
@@ -1452,7 +1470,7 @@ License Id: -
 #### js-yaml
 
 * Name: js-yaml
-* Version: 4.3.1
+* Version: 4.3.2
 * Project Home: <https://github.com/nodeca/js-yaml>
 * License: <https://raw.githubusercontent.com/nodeca/js-yaml/refs/heads/master/LICENSE>
 * License Name: MIT License
@@ -1587,7 +1605,7 @@ License Id: -
 #### qs
 
 * Name: qs
-* Version: 6.15.2
+* Version: 6.16.0
 * Project Home: <https://github.com/ljharb/qs>
 * License: <https://raw.githubusercontent.com/ljharb/qs/main/LICENSE.md>
 * License Name: BSD-style 3-Clause License
