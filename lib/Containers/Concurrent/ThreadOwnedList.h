@@ -149,8 +149,11 @@ struct ThreadOwnedList
     // (2) - this load synchronizes with store in (1) and (3)
     for (auto current = _head.load(std::memory_order_acquire);
          current != nullptr; current = current->next) {
-      // (9) - this load synchronizes with compare_exchange_strong in (10)
-      if (not current->is_marked_for_deletion.load(std::memory_order_acquire)) {
+      if (not current->is_marked_for_deletion.load(std::memory_order_relaxed)) {
+        // this can still execute function when the node was just marked for
+        // deletion which can result in slightly inconsistent results but cannot
+        // lead to any errors because garbage collection cannot run at the same
+        // time as this for_node function
         function(current->data.snapshot());
       }
     }
@@ -179,9 +182,8 @@ struct ThreadOwnedList
     // makes sure that node is really in this list
     ADB_PROD_ASSERT(&node.list == this);
     bool was_marked = false;
-    // (10) - this compare_exchange_strong synchronizes with load in (9)
     node.is_marked_for_deletion.compare_exchange_strong(
-        was_marked, true, std::memory_order_release, std::memory_order_relaxed);
+        was_marked, true, std::memory_order_relaxed, std::memory_order_relaxed);
     ADB_PROD_ASSERT(not was_marked)
         << "ThreadOwnedList::mark_for_deletion: Node cannot be marked for "
            "deletion more than once";

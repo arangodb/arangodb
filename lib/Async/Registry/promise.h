@@ -47,8 +47,9 @@ namespace arangodb::async_registry {
 enum class State { Running = 0, Suspended, Resolved };
 template<typename Inspector>
 auto inspect(Inspector& f, State& x) {
-  return f.enumeration(x).values(State::Running, "Running", State::Suspended,
-                                 "Suspended", State::Resolved, "Resolved");
+  return f.enumeration(x).values(State::Running, "Running",      //
+                                 State::Suspended, "Suspended",  //
+                                 State::Resolved, "Resolved");
 }
 
 struct PromiseId {
