@@ -23,6 +23,7 @@
 #pragma once
 
 #include "IResearch/IResearchInvertedIndex.h"
+#include "IResearch/IResearchInvertedIndexDefinition.h"
 #include "Indexes/IndexDefinition.h"
 #include "Indexes/IndexFactory.h"
 #include "RocksDBEngine/RocksDBIndex.h"
@@ -32,26 +33,6 @@ namespace arangodb {
 struct ResourceMonitor;
 
 namespace iresearch {
-
-class IResearchInvertedIndexDefinition : public IndexDefinition {
- public:
-  explicit IResearchInvertedIndexDefinition(
-      application_features::ApplicationServer& server);
-
-  bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
-             std::string const& dbname) const final;
-
-  /// @brief normalize an Index definition prior to instantiation/persistence
-  Result normalize(velocypack::Builder& normalized,
-                   velocypack::Slice definition, bool isCreation,
-                   TRI_vocbase_t const& vocbase) const final;
-
-  bool attributeOrderMatters() const final { return false; }
-
- private:
-  // needed by IResearchInvertedIndexMeta
-  application_features::ApplicationServer& _server;
-};
 
 class IResearchRocksDBInvertedIndexFactory
     : public DelegatingIndexFactory<IResearchInvertedIndexDefinition> {

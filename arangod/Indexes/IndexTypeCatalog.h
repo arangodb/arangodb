@@ -25,7 +25,7 @@
 #include "Basics/Result.h"
 #include "Indexes/IndexDefinitions.h"
 #include "Indexes/IndexType.h"
-#include "IResearch/IResearchRocksDBInvertedIndex.h"
+#include "IResearch/IResearchInvertedIndexDefinition.h"
 
 #include <string>
 #include <string_view>

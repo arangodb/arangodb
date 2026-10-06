@@ -33,7 +33,7 @@
 #include "Indexes/IndexTypeCatalog.h"
 #include "IResearch/IResearchInvertedIndex.h"
 #include "IResearch/IResearchInvertedClusterIndex.h"
-#include "IResearch/IResearchRocksDBInvertedIndex.h"
+#include "IResearch/IResearchInvertedIndexDefinition.h"
 #include "IResearch/IResearchViewMeta.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
