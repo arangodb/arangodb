@@ -243,9 +243,10 @@ void ArangodServer::addFeatures() {
   bool const upgrade = getOptions<UpgradeOptionsProvider>().upgrade;
   bool const isCoordinator = ServerState::instance()->isCoordinator();
   bool const auxMode = initDatabase || checkVersion || upgrade;
+  bool const skipBootstrap = upgrade && !isCoordinator;
   // coordinator upgrade only sheds Daemon/Supervisor/Greetings, not more
   bool const skipNonServerFeatures =
-      initDatabase || checkVersion || (upgrade && !isCoordinator);
+      initDatabase || checkVersion || skipBootstrap;
   bool const restServer = getOptions<ServerOptionsProvider>().restServer;
   OperationMode const operationMode =
       getOptions<ServerOptionsProvider>().operationMode;
@@ -347,7 +348,7 @@ void ArangodServer::addFeatures() {
         metrics, getOptions<V8DealerOptionsProvider>());
   }
 #endif
-  if (!skipNonServerFeatures) {
+  if (!skipBootstrap) {
     addFeature<BootstrapFeature>(
         clusterFeature, database, &systemDatabaseFeature, &clusterUpgradeFeature
 #ifdef USE_V8
