@@ -213,11 +213,11 @@ TEST_F(ProjectionBuilderTest, aliasOverwritingSystemAttributeThrows) {
   auto expectThrows = [&](Projection const& projection, bool edge) {
     try {
       if (edge) {
-        (void)projections.createEdgeDocumentPatternProjection(dest, full,
-                                                              projection, subst);
+        (void)projections.createEdgeDocumentPatternProjection(
+            dest, full, projection, subst);
       } else {
-        (void)projections.createDocumentPatternProjection(dest, full, projection,
-                                                          subst);
+        (void)projections.createDocumentPatternProjection(dest, full,
+                                                          projection, subst);
       }
       FAIL() << "expected system attribute alias to throw";
     } catch (arangodb::basics::Exception const& ex) {
