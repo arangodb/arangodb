@@ -638,6 +638,7 @@ bool parseDateTime(std::string_view dateTime, ParsedDateTime& result) {
       if (length == 0 || length > 2 || result.tzOffsetMinute > 59) {
         return false;
       }
+      result.tzOffsetMinute *= factor;
       dateTime = dateTime.substr(length);
     }
   }
