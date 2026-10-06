@@ -57,7 +57,7 @@ IndexTypeCatalog::IndexTypeCatalog(
   reg("geo2", _geo2);
   reg("hash", _hash);
   reg("persistent", _persistent);
-  // "rocksdb" is the legacy name for "persistent"
+  // legacy alias
   reg("rocksdb", _persistent);
   reg("skiplist", _skiplist);
   reg("primary", _primary);
@@ -89,8 +89,7 @@ Result IndexTypeCatalog::normalizeType(std::string_view name,
 
 bool IndexTypeCatalog::equal(velocypack::Slice lhs, velocypack::Slice rhs,
                              std::string const& dbname) const {
-  // "zkd" is the old naming for "mdi", so treat the two type names as
-  // identical here, same as Index::compare always did
+  // zkd is the old name of mdi
   auto typeName = [](velocypack::Slice s) -> std::string_view {
     TRI_ASSERT(s.isString());
     if (s.stringView() == "zkd") {
@@ -126,7 +125,7 @@ Result IndexTypeCatalog::add(std::string_view name,
   if (!_byName.try_emplace(std::string{name}, &definition).second) {
     return Result(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
                   absl::StrCat("index type '", name,
-                              "' already registered in the index catalog"));
+                               "' already registered in the index catalog"));
   }
   return Result();
 }

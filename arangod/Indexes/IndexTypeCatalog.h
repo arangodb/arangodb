@@ -44,9 +44,7 @@ class Builder;
 class Slice;
 }  // namespace velocypack
 
-// Single source of truth for index type names/aliases and the
-// engine-agnostic rules (equal/normalize) of each type; engines keep their
-// own registry only for instantiate().
+// Index type names and equal/normalize rules, shared by both engines.
 class IndexTypeCatalog final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept {
@@ -63,12 +61,12 @@ class IndexTypeCatalog final : public application_features::ApplicationFeature {
                        Database const& vocbase) const;
 
   bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
-            std::string const& dbname) const;
+             std::string const& dbname) const;
 
   std::vector<std::pair<std::string_view, std::string_view>> aliases(
       uint32_t apiVersion) const;
 
-  // caller keeps ownership of definition, so it must outlive the catalog
+  // definition must outlive the catalog
   Result add(std::string_view name, IndexDefinition const& definition);
 
   EdgeIndexDefinition const& edge() const noexcept { return _edge; }

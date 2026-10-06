@@ -33,8 +33,6 @@ using namespace arangodb;
 namespace {
 
 struct SpyDefinition {
-  explicit SpyDefinition(int tag = 0) : tag(tag) {}
-
   bool equal(velocypack::Slice, velocypack::Slice, std::string const&) const {
     equalCalled = true;
     return equalResult;
@@ -51,7 +49,6 @@ struct SpyDefinition {
     return attributeOrderMattersResult;
   }
 
-  int tag;
   bool equalResult = true;
   bool attributeOrderMattersResult = true;
   mutable bool equalCalled = false;
@@ -67,7 +64,7 @@ struct SpyIndexFactory : public DelegatingIndexFactory<SpyDefinition> {
     return nullptr;
   }
 
-  SpyDefinition& definition() { return _definition; }
+  SpyDefinition const& definition() const { return _definition; }
 };
 
 }  // namespace
@@ -77,40 +74,45 @@ class DelegatingIndexFactoryTest : public ::testing::Test {
   tests::mocks::MockRestServer mockServer;
 };
 
-TEST_F(DelegatingIndexFactoryTest, forwardsConstructorArgsToDefinition) {
-  SpyIndexFactory factory(mockServer.server(), 42);
-  EXPECT_EQ(factory.definition().tag, 42);
+TEST_F(DelegatingIndexFactoryTest, referencesTheGivenDefinition) {
+  SpyDefinition definition;
+  SpyIndexFactory factory(mockServer.server(), definition);
+  EXPECT_EQ(&factory.definition(), &definition);
 }
 
 TEST_F(DelegatingIndexFactoryTest, equalDelegatesToDefinition) {
-  SpyIndexFactory factory(mockServer.server());
-  factory.definition().equalResult = false;
+  SpyDefinition definition;
+  SpyIndexFactory factory(mockServer.server(), definition);
+  definition.equalResult = false;
 
   EXPECT_FALSE(factory.equal(velocypack::Slice(), velocypack::Slice(), "test"));
-  EXPECT_TRUE(factory.definition().equalCalled);
+  EXPECT_TRUE(definition.equalCalled);
 }
 
 TEST_F(DelegatingIndexFactoryTest, normalizeDelegatesToDefinition) {
-  SpyIndexFactory factory(mockServer.server());
+  SpyDefinition definition;
+  SpyIndexFactory factory(mockServer.server(), definition);
   velocypack::Builder builder;
 
   factory.normalize(builder, velocypack::Slice(), true,
                     mockServer.getSystemDatabase());
 
-  EXPECT_TRUE(factory.definition().normalizeCalled);
+  EXPECT_TRUE(definition.normalizeCalled);
 }
 
 TEST_F(DelegatingIndexFactoryTest, attributeOrderMattersDelegatesToDefinition) {
-  SpyIndexFactory factory(mockServer.server());
-  factory.definition().attributeOrderMattersResult = false;
+  SpyDefinition definition;
+  SpyIndexFactory factory(mockServer.server(), definition);
+  definition.attributeOrderMattersResult = false;
 
   EXPECT_FALSE(factory.attributeOrderMatters());
-  EXPECT_TRUE(factory.definition().attributeOrderMattersCalled);
+  EXPECT_TRUE(definition.attributeOrderMattersCalled);
 }
 
 TEST_F(DelegatingIndexFactoryTest, dispatchesThroughIndexTypeFactoryInterface) {
-  SpyIndexFactory factory(mockServer.server());
-  factory.definition().equalResult = false;
+  SpyDefinition definition;
+  SpyIndexFactory factory(mockServer.server(), definition);
+  definition.equalResult = false;
   IndexTypeFactory const& base = factory;
 
   EXPECT_FALSE(base.equal(velocypack::Slice(), velocypack::Slice(), "test"));
