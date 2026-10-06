@@ -1,6 +1,11 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
 
+* Fix AQL SUBSTITUTE() with several search values skipping an occurrence that
+  starts right after a replaced match. This fixes issue #23399.
+
+* Upgraded OpenSSL to 3.5.9.
+
 * Updated node modules:
  - brace-expansion to 5.0.12 to resolve CVE-2026-102276, CVE-2026-102277
    and CVE-2026-102278
