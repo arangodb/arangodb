@@ -1,6 +1,9 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
 
+* Fix AQL SUBSTITUTE() with several search values skipping an occurrence that
+  starts right after a replaced match. This fixes issue #23399.
+
 * Upgraded OpenSSL to 3.5.9.
 
 * Updated node modules:
